@@ -3212,6 +3212,28 @@ def outputfile_check(inputlist, outputlist, e):
             except ValueError:
                 pass  #There is no error.
 
+#Take as input the raw output of Pnfs.readlayer().
+def parse_layer_2(data):
+    # Define the match/search once before the loop.
+    crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
+    size_match = re.compile("l=[0-9]*")
+
+    dcache_crc_long = None
+    dcache_size_long = None
+
+    # Loop over every line in the output looking for the crc.
+    for line in data:
+        result = crc_match.search(line)
+        if result != None:
+            hex_dcache_string = "0x" + result.group().split(":")[1]
+            dcache_crc_long = long(hex_dcache_string, 16)
+        result = size_match.search(line)
+        if result != None:
+            dcache_string = result.group().split("=")[1]
+            dcache_size_long = long(dcache_string)
+
+    return (dcache_crc_long, dcache_size_long)
+
 #######################################################################
 
 #create_zero_length_pnfs_files() and create_zero_length_local_files()
@@ -4706,118 +4728,96 @@ def check_for_crcs(done_ticket):
     return
 
 def compare_crc(done_ticket, encp_crc_1_seeded):
-        #Make these more accessable.
-        mover_crc = done_ticket['fc'].get('complete_crc', None)
-        encp_crc = done_ticket['exfer'].get('encp_crc', None)
-    
-        compare_crc_start_time = time.time()
-        if mover_crc != encp_crc and mover_crc != encp_crc_1_seeded:
-            msg = "CRC mismatch: %d mover != %d (or %s) encp" % \
-                (mover_crc, encp_crc_1_seeded, encp_crc)
-            done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
-            return
-        message = "Time to compare CRC: %s sec." % \
-                  (time.time() - compare_crc_start_time,)
-        Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
+    #Make these more accessable.
+    mover_crc = done_ticket['fc'].get('complete_crc', None)
+    encp_crc = done_ticket['exfer'].get('encp_crc', None)
 
-        done_ticket['status'] = (e_errors.OK, None)
-        return
+    compare_crc_start_time = time.time()
+    if mover_crc != encp_crc and mover_crc != encp_crc_1_seeded:
+	    msg = "CRC mismatch: %d mover != %d (or %s) encp" % \
+		  (mover_crc, encp_crc_1_seeded, encp_crc)
+	    done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
+	    return
+    message = "Time to compare CRC: %s sec." % \
+	      (time.time() - compare_crc_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+    
+    done_ticket['status'] = (e_errors.OK, None)
+    return
 
 def check_crc_readback(done_ticket, fd):
-        #Make these more accessable.
-        mover_crc = done_ticket['fc'].get('complete_crc', None)
+    #Make these more accessable.
+    mover_crc = done_ticket['fc'].get('complete_crc', None)
     
-        readback_crc_start_time = time.time()
-        #If passed a file descriptor, make sure it is to a regular file.
-        if fd and (type(fd) == types.IntType) and \
-           stat.S_ISREG(os.fstat(fd)[stat.ST_MODE]):
-            try:
-                readback_crc = EXfer.ecrc(fd)
-            except EXfer.error, msg:
-                done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, str(msg))
-                return
+    readback_crc_start_time = time.time()
+    #If passed a file descriptor, make sure it is to a regular file.
+    if fd and (type(fd) == types.IntType) and \
+        stat.S_ISREG(os.fstat(fd)[stat.ST_MODE]):
+        try:
+	    readback_crc = EXfer.ecrc(fd)
+        except EXfer.error, msg:
+	    done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, str(msg))
+	    return
 
-            #Convert this to a one seeded alder32 CRC.
-            readback_crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
-                readback_crc, done_ticket['file_size'])
-            #Put the ecrc value into the ticket.
-            done_ticket['ecrc'] = readback_crc
+	#Convert this to a one seeded alder32 CRC.
+	readback_crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
+		readback_crc, done_ticket['file_size'])
+	#Put the ecrc value into the ticket.
+	done_ticket['ecrc'] = readback_crc
 
-            #If we have a valid crc value returned, compare it.
-            if readback_crc != mover_crc and \
-                   readback_crc_1_seeded != mover_crc:
-                msg = "CRC readback mismatch: %d mover != %d (or %s) encp" % \
-                      (mover_crc, readback_crc_1_seeded, readback_crc)
-                done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
-                return
-        message = "Time to check readback CRC: %s sec." % \
-                  (time.time() - readback_crc_start_time,)
-        Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
-
-        done_ticket['status'] = (e_errors.OK, None)
-        return
-
+	#If we have a valid crc value returned, compare it.
+	if readback_crc != mover_crc and \
+	       readback_crc_1_seeded != mover_crc:
+	    msg = "CRC readback mismatch: %d mover != %d (or %s) encp" % \
+		  (mover_crc, readback_crc_1_seeded, readback_crc)
+	    done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
+	    return
+    message = "Time to check readback CRC: %s sec." % \
+	      (time.time() - readback_crc_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+    
+    done_ticket['status'] = (e_errors.OK, None)
+    return
 
 def check_crc_layer2(done_ticket, encp_crc_1_seeded):
-        layer2_crc_start_time = time.time()
-        try:
-            # Get the pnfs layer 2 for this file.
-            p = Pnfs(done_ticket['wrapper']['pnfsFilename'])
-            data = p.readlayer(2, done_ticket['wrapper']['pnfsFilename'])
-        except (IOError, OSError, TypeError, AttributeError):
-            #There is no layer 2 to check.  Skip the rest of the check.
-            #If there are ever any later checks added, this return is bad.
-            #return
-            data = []
+    layer2_crc_start_time = time.time()
+    try:
+        # Get the pnfs layer 2 for this file.
+	p = Pnfs(done_ticket['wrapper']['pnfsFilename'])
+	data = p.readlayer(2, done_ticket['wrapper']['pnfsFilename'])
+    except (IOError, OSError, TypeError, AttributeError):
+        #There is no layer 2 to check.  Skip the rest of the check.
+	#If there are ever any later checks added, this return is bad.
+	#return
+	data = []
 
-        encp_crc_long = long(encp_crc_1_seeded)
-        encp_size_long = long(done_ticket['file_size'])
-        dcache_crc_long, dcache_size_long = parse_layer_2(data)
+    encp_crc_long = long(encp_crc_1_seeded)
+    encp_size_long = long(done_ticket['file_size'])
+    dcache_crc_long, dcache_size_long = parse_layer_2(data)
 
-        if dcache_crc_long != None and dcache_crc_long != encp_crc_1_seeded:
-            msg = "CRC dcache mismatch: %s (%s) != %s (%s)" % \
-                  (dcache_crc_long, hex(dcache_crc_long),
-                   encp_crc_long, hex(encp_crc_long))
-            done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
-            return
+    if dcache_crc_long != None and dcache_crc_long != encp_crc_1_seeded:
+        msg = "CRC dcache mismatch: %s (%s) != %s (%s)" % \
+	      (dcache_crc_long, hex(dcache_crc_long),
+	       encp_crc_long, hex(encp_crc_long))
+	done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
+	return
 
-        if dcache_size_long != None and dcache_size_long != encp_size_long:
-            msg = "Size dcache mismatch: %s (%s) != %s (%s)" % \
-                  (dcache_size_long, hex(dcache_size_long),
-                   encp_size_long, hex(encp_size_long))
-            done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
-            return
+    if dcache_size_long != None and dcache_size_long != encp_size_long:
+        msg = "Size dcache mismatch: %s (%s) != %s (%s)" % \
+	      (dcache_size_long, hex(dcache_size_long),
+	       encp_size_long, hex(encp_size_long))
+	done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
+	return
 
-        message = "Time to check dCache CRC: %s sec." % \
-                  (time.time() - layer2_crc_start_time,)
-        Trace.message(TIME_LEVEL, message)
-        Trace.log(TIME_LEVEL, message)
-
-        done_ticket['status'] = (e_errors.OK, None)
-        return
-
-def parse_layer_2(data):
-    # Define the match/search once before the loop.
-    crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
-    size_match = re.compile("l=[0-9]*")
-
-    dcache_crc_long = None
-    dcache_size_long = None
-
-    # Loop over every line in the output looking for the crc.
-    for line in data:
-        result = crc_match.search(line)
-        if result != None:
-            hex_dcache_string = "0x" + result.group().split(":")[1]
-            dcache_crc_long = long(hex_dcache_string, 16)
-        result = size_match.search(line)
-        if result != None:
-            dcache_string = result.group().split("=")[1]
-            dcache_size_long = long(dcache_string)
-
-    return (dcache_crc_long, dcache_size_long)
+    message = "Time to check dCache CRC: %s sec." % \
+	      (time.time() - layer2_crc_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+    
+    done_ticket['status'] = (e_errors.OK, None)
+    return
 
 ############################################################################
 
