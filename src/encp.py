@@ -84,6 +84,7 @@ import enstore_constants
 import enstore_functions2
 import pnfs_agent_client
 import checksum
+import enstore_functions3
 
 
 #Add these if missing.
@@ -435,7 +436,7 @@ def elapsed_string():
     return "  elapsed=%.3fsec" % (elapsed(),)
 
 ############################################################################
-
+"""
 def is_bfid(bfid):
 
     if type(bfid) == types.StringType:
@@ -528,7 +529,7 @@ def is_location_cookie(lc):
             return 1
         
     return 0
-
+"""
 ############################################################################
 
 def extract_brand(bfid):
@@ -563,7 +564,7 @@ def extract_file_number(location_cookie):
     if type(location_cookie) != types.StringType:
         return None
 
-    if is_location_cookie(location_cookie):
+    if enstore_functions3.is_location_cookie(location_cookie):
         try:
             #Return just third integer portion of the string.
             return int(string.split(location_cookie, "_")[2])
@@ -1439,10 +1440,10 @@ def __get_csc(parameter=None):
         volume = parameter.get('fc', {}).get('external_label',
                                              parameter.get('volume', None))
 
-    elif is_bfid(parameter):  #If passed a bfid.
+    elif enstore_functions3.is_bfid(parameter):  #If passed a bfid.
         bfid = parameter
 
-    elif is_volume(parameter):  #If passed a volume.
+    elif enstore_functions3.is_volume(parameter):  #If passed a volume.
         volume = parameter
 
     elif type(parameter) == types.TupleType and len(parameter) == 2 \
@@ -1530,7 +1531,7 @@ def __get_fcc(parameter = None):
         bfid = parameter.get('fc', {}).get("bfid",
                                            parameter.get("bfid", None))
 
-    elif is_bfid(parameter):  #If passed a bfid.
+    elif enstore_functions3.is_bfid(parameter):  #If passed a bfid.
         bfid = parameter
         
     else:
@@ -1681,7 +1682,7 @@ def __get_vcc(parameter = None):
         volume = parameter.get('fc', {}).get('external_label',
                                              parameter.get('volume', None))
 
-    elif is_volume(parameter):  #If passed a volume.
+    elif enstore_functions3.is_volume(parameter):  #If passed a volume.
         volume = parameter
 
     else:
@@ -2878,7 +2879,7 @@ def inputfile_check(input_files, e):
     for i in range(0, len(inputlist)):
         #If we already know for the tape read (--volume) that the file
         # is foobar, then skip this test and move to the next.
-        if is_location_cookie(inputlist[i]) and e.volume:
+        if enstore_functions3.is_location_cookie(inputlist[i]) and e.volume:
             continue
             
         try:
@@ -3118,7 +3119,8 @@ def outputfile_check(inputlist, outputlist, e):
                             l4_line1 = layer4[0]
                         except IndexError:
                             l4_line1 = None
-                        if is_bfid(l1_bfid) or is_bfid(l4_bfid):
+                        if enstore_functions3.is_bfid(l1_bfid) or \
+                               enstore_functions3.is_bfid(l4_bfid):
                             #The layers are already set.
                             raise EncpError(errno.EEXIST,
                                        "Layer 1 and layer 4 are already set.",
@@ -3377,14 +3379,14 @@ def get_clerks(bfid_or_volume=None):
     #If a bfid was passed in, we must obtain the fcc first.  This will
     # find the correct __csc.  The same is true with the vcc if a volume
     # name is passed in.
-    if is_volume(bfid_or_volume):
+    if enstore_functions3.is_volume(bfid_or_volume):
         #Set the volume.
         volume = bfid_or_volume
         bfid = None
         #Get the clerk clients.
         vcc = get_vcc(volume)  #Make sure vcc is done before fcc.
         fcc = get_fcc(None)
-    elif is_bfid(bfid_or_volume):
+    elif enstore_functions3.is_bfid(bfid_or_volume):
         #Set the bfid.
         volume = None
         bfid = bfid_or_volume
@@ -4625,6 +4627,53 @@ def check_crc(done_ticket, encp_intf, fd=None):
     check_crc_start_time = time.time()
 
     #Make these more accessable.
+    #mover_crc = done_ticket['fc'].get('complete_crc', None)
+    encp_crc = done_ticket['exfer'].get('encp_crc', None)
+
+    if encp_intf.chk_crc:
+        check_for_crcs(done_ticket)
+        if not e_errors.is_ok(done_ticket):
+            #We don't want to fail for this reason, just to skip testing more.
+            done_ticket['status'] = (e_errors.OK, None)
+            return
+
+    #Enstore at FNAL historically uses a zero seeded adler32.  The adler32
+    # standard says that it should be seed with 1 not 0.  Convert the zero
+    # seeded value to a one seeded value for comparison, if necessary.
+    #
+    #The variable encp_crc_1_seeded is what is used to check the CRC in
+    # layer 2, this always needs to be checked as a 1 seeded adler32.
+    encp_crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
+            encp_crc, done_ticket['file_size'])
+
+    # Check the CRC
+    if encp_intf.chk_crc:
+        compare_crc(done_ticket, encp_crc_1_seeded)
+        if not e_errors.is_ok(done_ticket):
+            return
+        
+    #If the user wants a crc readback check of the new output file (reads
+    # only) calculate it and compare.
+    if encp_intf.ecrc:
+        check_crc_readback(done_ticket, fd)
+        if not e_errors.is_ok(done_ticket):
+            return
+        
+    # Check the CRC in pnfs layer 2 (set by dcache).
+    if encp_intf.chk_crc and (encp_intf.get_cache or encp_intf.put_cache):
+        check_crc_layer2(done_ticket, encp_crc_1_seeded)
+        if not e_errors.is_ok(done_ticket):
+            return
+    
+    message = "Time to check CRC: %s sec." % \
+              (time.time() - check_crc_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
+    return
+
+def check_for_crcs(done_ticket):
+    #Make these more accessable.
     mover_crc = done_ticket['fc'].get('complete_crc', None)
     encp_crc = done_ticket['exfer'].get('encp_crc', None)
 
@@ -4640,29 +4689,27 @@ def check_crc(done_ticket, encp_intf, fd=None):
             sys.stderr.flush()
         except IOError:
             pass
-        #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
+        done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
         return
-    if encp_intf.chk_crc and encp_crc == None:
+    #if encp_intf.chk_crc and encp_crc == None:
+    if encp_crc == None:
         msg =   "warning: encp failed to calculate CRC; skipping CRC check\n"
         try:
             sys.stderr.write(msg)
             sys.stderr.flush()
         except IOError:
             pass
-        #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
+        done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
         return
 
-    #Enstore at FNAL historically uses a zero seeded adler32.  The adler32
-    # standard says that it should be seed with 1 not 0.  Convert the zero
-    # seeded value to a one seeded value for comparison, if necessary.
-    #
-    #The variable encp_crc_1_seeded is what is used to check the CRC in
-    # layer 2, this always needs to be checked as a 1 seeded adler32.
-    encp_crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
-            encp_crc, done_ticket['file_size'])
+    done_ticket['status'] = (e_errors.OK, None)
+    return
 
-    # Check the CRC
-    if encp_intf.chk_crc:
+def compare_crc(done_ticket, encp_crc_1_seeded):
+        #Make these more accessable.
+        mover_crc = done_ticket['fc'].get('complete_crc', None)
+        encp_crc = done_ticket['exfer'].get('encp_crc', None)
+    
         compare_crc_start_time = time.time()
         if mover_crc != encp_crc and mover_crc != encp_crc_1_seeded:
             msg = "CRC mismatch: %d mover != %d (or %s) encp" % \
@@ -4674,9 +4721,13 @@ def check_crc(done_ticket, encp_intf, fd=None):
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
 
-    #If the user wants a crc readback check of the new output file (reads
-    # only) calculate it and compare.
-    if encp_intf.ecrc:
+        done_ticket['status'] = (e_errors.OK, None)
+        return
+
+def check_crc_readback(done_ticket, fd):
+        #Make these more accessable.
+        mover_crc = done_ticket['fc'].get('complete_crc', None)
+    
         readback_crc_start_time = time.time()
         #If passed a file descriptor, make sure it is to a regular file.
         if fd and (type(fd) == types.IntType) and \
@@ -4705,8 +4756,11 @@ def check_crc(done_ticket, encp_intf, fd=None):
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
 
-    # Check the CRC in pnfs layer 2 (set by dcache).
-    if encp_intf.chk_crc:
+        done_ticket['status'] = (e_errors.OK, None)
+        return
+
+
+def check_crc_layer2(done_ticket, encp_crc_1_seeded):
         layer2_crc_start_time = time.time()
         try:
             # Get the pnfs layer 2 for this file.
@@ -4717,37 +4771,53 @@ def check_crc(done_ticket, encp_intf, fd=None):
             #If there are ever any later checks added, this return is bad.
             #return
             data = []
-    
-        # Define the match/search once before the loop.
-        crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
 
-        # Loop over every line in the output looking for the crc.
-        for line in data:
-            result = crc_match.search(line)
-            if result != None:
-                #Get the hex strings of the two CRCs.
-                hex_dcache_string = "0x" + result.group().split(":")[1]
-                hex_encp_string = hex(encp_crc_1_seeded)
-                #Convert to long integers for safety.  (padding of zero's)
-                dcache_crc_long = long(hex_dcache_string, 16)
-                encp_crc_long = long(hex_encp_string, 16)
-                #Test to make sure they are the same.
-                if dcache_crc_long != encp_crc_long:
-                    msg = "CRC dcache mismatch: %s (%s) != %s (%s)" % \
-                          (dcache_crc_long, hex(dcache_crc_long),
-                           encp_crc_long, hex(encp_crc_long))
-                    done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
-                    return
+        encp_crc_long = long(encp_crc_1_seeded)
+        encp_size_long = long(done_ticket['file_size'])
+        dcache_crc_long, dcache_size_long = parse_layer_2(data)
+
+        if dcache_crc_long != None and dcache_crc_long != encp_crc_1_seeded:
+            msg = "CRC dcache mismatch: %s (%s) != %s (%s)" % \
+                  (dcache_crc_long, hex(dcache_crc_long),
+                   encp_crc_long, hex(encp_crc_long))
+            done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
+            return
+
+        if dcache_size_long != None and dcache_size_long != encp_size_long:
+            msg = "Size dcache mismatch: %s (%s) != %s (%s)" % \
+                  (dcache_size_long, hex(dcache_size_long),
+                   encp_size_long, hex(encp_size_long))
+            done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
+            return
+
         message = "Time to check dCache CRC: %s sec." % \
                   (time.time() - layer2_crc_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
 
+        done_ticket['status'] = (e_errors.OK, None)
+        return
 
-    message = "Time to check CRC: %s sec." % \
-              (time.time() - check_crc_start_time,)
-    Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
+def parse_layer_2(data):
+    # Define the match/search once before the loop.
+    crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
+    size_match = re.compile("l=[0-9]*")
+
+    dcache_crc_long = None
+    dcache_size_long = None
+
+    # Loop over every line in the output looking for the crc.
+    for line in data:
+        result = crc_match.search(line)
+        if result != None:
+            hex_dcache_string = "0x" + result.group().split(":")[1]
+            dcache_crc_long = long(hex_dcache_string, 16)
+        result = size_match.search(line)
+        if result != None:
+            dcache_string = result.group().split("=")[1]
+            dcache_size_long = long(dcache_string)
+
+    return (dcache_crc_long, dcache_size_long)
 
 ############################################################################
 
@@ -7448,6 +7518,13 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     raise EncpError(getattr(msg, "errno", errno.EIO),
                                     str(msg), e_errors.PNFS_ERROR, request)
 
+                #If no layer 2 is present continue with the transfer.
+                try:
+                    data = p.readlayer(2, request['wrapper']['pnfsFilename'])
+                    dcache_crc, dcache_size = parse_layer_2(data)
+                except (OSError, IOError), msg:
+                    dcache_crc, dcache_size = (None, None)
+
                 #Raise an EncpError if the (input)file is larger than the
                 # output filesystem supports.
                 if not e.bypass_filesystem_max_filesize_check:
@@ -7658,6 +7735,18 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     rest['db_crc'] = db_crc
                     rest['pnfs_crc'] = pnfs_crc
                     rest['crc'] = "db_crc differs from pnfs_crc"
+
+                #Verify if the dcache information in layer 2 matches.
+                crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
+                    db_crc, db_size)
+                if (dcache_crc != None and dcache_crc != crc_1_seeded):
+                    rest['db_crc'] = crc_1_seeded
+                    rest['dcache_crc'] = dcache_crc
+                    rest['layer_2_crc'] = "db_crc differs from dcache_crc"
+                if (dcache_size != None and dcache_size != db_size):
+                    rest['db_size'] = db_size
+                    rest['dcache_size'] = dcache_size
+                    rest['layer_2_size'] = "db_size differs from dcache_size"
 
                 #If there is incorrect information.
                 if len(rest.keys()) > 0:
@@ -8183,7 +8272,8 @@ def create_read_request(request, file_number,
             #These two variables should only be used withing the e.volume
             # if statement.  After that their use would break usability
             # with the other read method type branches.
-            if is_location_cookie_disk(fc_reply['location_cookie']):
+            if enstore_functions3.is_location_cookie_disk(
+                fc_reply['location_cookie']):
                 #file_number starts with 0.  To make the 1st file at location 1
                 # we add 1 to the locations.
                 number = file_number + 1
