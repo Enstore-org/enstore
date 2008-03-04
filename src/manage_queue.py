@@ -690,6 +690,7 @@ class Request_Queue:
         self.adm_pri_t0 = 0.
         self.queue_length = 0
         self.families = {}
+        self.storage_groups = {}
 
     def start_cycle(self):
         self.process_admin_queue = 1
@@ -725,6 +726,10 @@ class Request_Queue:
                 else:
                    self.families[ticket['vc']['file_family']] = 1
                 Trace.trace(201, "PUT. FF %s"%(self.families,))
+            if self.storage_groups.has_key(rq.ticket["vc"]["storage_group"]):
+                self.storage_groups[rq.ticket["vc"]["storage_group"]] = self.storage_groups[rq.ticket["vc"]["storage_group"]] + 1
+            else:
+                self.storage_groups[rq.ticket["vc"]["storage_group"]] = 1
                 
         return rq, stat
     
@@ -739,6 +744,11 @@ class Request_Queue:
                 self.families[record.ticket['vc']['file_family']] = self.families[record.ticket['vc']['file_family']] - 1
                 if self.families[record.ticket['vc']['file_family']] <= 0 :
                     del(self.families[record.ticket['vc']['file_family']])
+                
+        if self.storage_groups.has_key(record.ticket["vc"]["storage_group"]):
+            self.storage_groups[record.ticket["vc"]["storage_group"]] = self.storage_groups[record.ticket["vc"]["storage_group"]] - 1
+            if self.storage_groups[record.ticket["vc"]["storage_group"]] <= 0:
+                del(self.storage_groups[record.ticket["vc"]["storage_group"]])
                 
         queue.delete(record)
         if self.queue_length > 0:
