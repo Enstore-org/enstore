@@ -187,7 +187,6 @@ class AtMovers:
     def __init__(self):
         self.at_movers = {}
         self.sg_vf = SG_FF()
-        self.check_interval = 30
         self.max_time_in_active = 7200
         self.max_time_in_other = 1200
         self.dont_update = {}
@@ -264,40 +263,38 @@ class AtMovers:
 
     # check how long mover did not update its state
     def check(self):
-        while 1:
-            time.sleep(self.check_interval)
-            Trace.trace(113, "checking at_movers list")
-            Trace.trace(113, "dont_update_list %s"%(self.dont_update,))
-            now = time.time()
-            movers_to_delete = []
-            if self.at_movers:
-                for mover in self.at_movers.keys():
-                    Trace.trace(113, "Check mover %s now %s"%(self.at_movers[mover], now))
-                    if int(now) - int(self.at_movers[mover]['updated']) > 600:
-                        Trace.alarm(e_errors.ALARM,
-                                    "The mover %s has not updated its state for %s minutes, will remove it from at_movers list"%
-                                    (mover, int((now - self.at_movers[mover]['updated'])/60)))
-                        movers_to_delete.append(mover)
-                    else:
-                        Trace.trace(111, "mover %s"%(mover,))
-                        add_to_list = 0
-                        time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
-                        state = self.at_movers[mover].get('state', 'unknown') 
-                        if time_in_state > self.max_time_in_other:
-                            if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND']:
-                                add_to_list = 1
-                            if time_in_state > self.max_time_in_active and state == 'ACTIVE':
-                                add_to_list = 1
-                            if add_to_list:
-                                self.dont_update[mover] = state
-                                movers_to_delete.append(mover)
-                                Trace.alarm(e_errors.ALARM,
-                                            "The mover %s is in state %s for %s minutes, will remove it from at_movers list"%
-                                            (mover, state, int(time_in_state)/60))
-                if movers_to_delete:
-                    for mover in movers_to_delete:
-                        self.delete(self.at_movers[mover])
-                return movers_to_delete
+        Trace.trace(113, "checking at_movers list")
+        Trace.trace(113, "dont_update_list %s"%(self.dont_update,))
+        now = time.time()
+        movers_to_delete = []
+        if self.at_movers:
+            for mover in self.at_movers.keys():
+                Trace.trace(113, "Check mover %s now %s"%(self.at_movers[mover], now))
+                if int(now) - int(self.at_movers[mover]['updated']) > 600:
+                    Trace.alarm(e_errors.ALARM,
+                                "The mover %s has not updated its state for %s minutes, will remove it from at_movers list"%
+                                (mover, int((now - self.at_movers[mover]['updated'])/60)))
+                    movers_to_delete.append(mover)
+                else:
+                    Trace.trace(111, "mover %s"%(mover,))
+                    add_to_list = 0
+                    time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
+                    state = self.at_movers[mover].get('state', 'unknown') 
+                    if time_in_state > self.max_time_in_other:
+                        if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND']:
+                            add_to_list = 1
+                        if time_in_state > self.max_time_in_active and state == 'ACTIVE':
+                            add_to_list = 1
+                        if add_to_list:
+                            self.dont_update[mover] = state
+                            movers_to_delete.append(mover)
+                            Trace.alarm(e_errors.ALARM,
+                                        "The mover %s is in state %s for %s minutes, will remove it from at_movers list"%
+                                        (mover, state, int(time_in_state)/60))
+            if movers_to_delete:
+                for mover in movers_to_delete:
+                    self.delete(self.at_movers[mover])
+            return movers_to_delete
                 
    # return a list of busy volumes for a given volume family
     def busy_volumes (self, volume_family_name):
@@ -344,11 +341,13 @@ class AtMovers:
     
     # check if a particular volume with given label is busy
     # for read requests
-    def is_vol_busy(self, external_label):
+    def is_vol_busy(self, external_label, mover=None):
         rc = 0
         # see if this volume is in voulemes_at movers list
         for key in self.at_movers.keys():
-            if external_label == self.at_movers[key]['external_label']:
+            if ((external_label == self.at_movers[key]['external_label']) and
+                (key != mover)):
+            
                 Trace.trace(11, "volume %s is active. Mover=%s"%\
                           (external_label, key))
                 rc = 1
@@ -453,6 +452,8 @@ class LibraryManagerMethods:
         self.csc = csc
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         self.vc_address=None
+        self.check_interval = 30
+
         self.sg_limits = {'use_default' : 1,
                           'default' : 0,
                           'limits' : {}
@@ -560,8 +561,8 @@ class LibraryManagerMethods:
 
     # check if a particular volume with given label is busy
     # for read requests
-    def is_vol_busy(self, external_label):
-        rc = self.volumes_at_movers.is_vol_busy(external_label)
+    def is_vol_busy(self, external_label, mover=None):
+        rc = self.volumes_at_movers.is_vol_busy(external_label, mover)
         if rc: return rc
         rc = 0
         for w in self.work_at_movers.list:
@@ -614,18 +615,18 @@ class LibraryManagerMethods:
         return rc
 
     def check(self):
-       movers = self.volumes_at_movers.check()
-       if movers:
-           works_to_delete = []
-           for mv in movers:
-               w = self.get_work_at_movers_m(mv)
-               if w:
-                  works_to_delete.append(w)
-           for w in works_to_delete:
-               self.work_at_movers.remove(w) 
+        while 1:
+           time.sleep(self.check_interval)
+           movers = self.volumes_at_movers.check()
+           if movers:
+               works_to_delete = []
+               for mv in movers:
+                   w = self.get_work_at_movers_m(mv)
+                   if w:
+                      works_to_delete.append(w)
+               for w in works_to_delete:
+                   self.work_at_movers.remove(w) 
                
-               
-           
 
     def is_vol_available(self, work, external_label, requestor):
         if work == 'write_to_hsm':
@@ -669,9 +670,119 @@ class LibraryManagerMethods:
             if v['status'][0] == e_errors.OK:
                 self.write_volumes.append(v)
             return v
-                    
 
+    def restrict_host_access(self, storage_group, host, max_permitted, rq_host=None, work=None):
+        disciplineExceptionMounted = 0
+        max_perm=max_permitted
+        if type(max_permitted) == type(()) and len(max_permitted) == 3:
+            # the max_permitted is (maximal_permitted, add_for_reads_for_bound,add_for_writes_for_bound)
+            max_perm=max_permitted[0]
+            if work:
+                # calculate the position in the tuple
+                w = (work == "write_to_hsm")+1
+                disciplineExceptionMounted=int(max_permitted[w])
+            
+        active = 0
+        Trace.trace(30, "restrict_host_access(%s,%s,%s %s)"%
+                    (storage_group, host, max_permitted, rq_host))
+        for w in self.work_at_movers.list:
+            callback = w.get('callback_addr', None)
+            if callback:
+                host_from_ticket = hostaddr.address_to_name(callback[0])
+            else:
+                host_from_ticket = w['wrapper']['machine'][1]
+            
+            Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
+            try:
+                if (w['vc']['storage_group'] == storage_group and
+                    re.search(host, host_from_ticket)):
+                    if rq_host:
+                        if  host_from_ticket == rq_host:
+                            active = active + 1
+                    else:
+                        active = active + 1
+            except KeyError,detail:
+                Trace.log(e_errors.ERROR,"restrict_host_access:%s....%s"%(detail, w))
+        Trace.trace(30, "restrict_host_access(%s,%s)"%
+                    (active, max_permitted))
+        return active >= max_perm+disciplineExceptionMounted
+    
+    def restrict_version_access(self, storage_group, legal_version, ticket):
+        Trace.trace(30, "restrict_version_access %s %s %s"%(storage_group,
+                                                            legal_version,
+                                                            ticket))
+        if storage_group == ticket['vc']['storage_group']:
+            if ticket.has_key('version'):
+                version=ticket['version'].split()[0]
+            else:
+                version = ''
+            if legal_version > version:
+                ticket['status'] = (e_errors.VERSION_MISMATCH,
+                                    "encp version too old: %s. Must be not older than %s"%(version, legal_version,))
+                return 1
+        return 0
+                
+
+    ## check if there are any additional restrictions        
+    def client_host_busy(self, w):
+        ret = 0
+        rc, fun, args, action = self.restrictor.match_found(w)
+        if rc and fun and action:
+            w["status"] = (e_errors.OK, None)
+            if fun == 'restrict_host_access':
+                callback = w.get('callback_addr', None)
+                if callback:
+                    host_from_ticket = hostaddr.address_to_name(callback[0])
+                    Trace.trace(30,'RHA01 %s'%(host_from_ticket,))
+                else:
+                    host_from_ticket = w['wrapper']['machine'][1]
+                Trace.trace(30,'RHA02 %s %s'%(host_from_ticket, w['wrapper']['machine'][1]))
+
+                args.append(host_from_ticket)
+                Trace.trace(30,'RHA1')
+                ret = apply(getattr(self,fun), args)
+                Trace.trace(17, "restrict_host_access returned %s"%(ret,))
+
+                if ret and (action in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.REJECT)):
+                    w["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                    Trace.trace(222,"PW4")
+        return ret
+
+    ## check if there are any additional restrictions for mounted
+    def client_host_busy_2(self, requestor, external_label, vol_family, w):
+        ret = 0
+        rc, fun, args, action = self.restrictor.match_found(w)
+        Trace.trace(22,"client_host_busy_2 args %s" %(args,)) 
+        if rc and fun and action:
+            w["status"] = (e_errors.OK, None)
+            if fun == 'restrict_host_access':
+                callback = w.get('callback_addr', None)
+                if callback:
+                    host_from_ticket = hostaddr.address_to_name(callback[0])
+                else:
+                    host_from_ticket = w['wrapper']['machine'][1]
+                mp=args[-1]
+                Trace.trace(22,"client_host_busy_2 mp %s" %(mp,))
+                if type(mp) == type(()) and len(mp) == 3:
+                    mp1=(mp[0]+1, mp[1], mp[2])
+                else:
+                    mp1=mp+1
+                Trace.trace(22,"client_host_busy_2 mp_1 %s" %(mp,))
+                args[-1]=mp1
                     
+                args.append(host_from_ticket)
+                Trace.trace(22,"client_host_busy_2 args_1 %s" %(args,))
+                if ((w['work'] == "read_from_hsm" and w["fc"]["external_label"] == external_label) or
+                    (w['work'] == "write_to_hsm" and w["vc"]["volume_family"] == vol_family)):
+                    args.append(w['work'])
+                Trace.trace(30,'RHA2 %s'%(args,))
+                ret = apply(getattr(self,fun), args)
+                if ret and (action in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.REJECT)):
+                    w["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                    Trace.trace(22, "222")
+        return ret
+                        
+
     def init_request_selection(self):
         self.write_volumes = []
         self.write_vf_list = {}
@@ -696,6 +807,10 @@ class LibraryManagerMethods:
             return None
         # fair share
         # see how many active volumes are in this storage group
+        if self.process_for_bound_vol:
+            ease = 1
+        else:
+            ease = 0
         if rq.ticket['work'] == 'read_from_hsm':
             storage_group = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
             check_key = rq.ticket["fc"]["external_label"]
@@ -703,12 +818,15 @@ class LibraryManagerMethods:
             # write request
             storage_group = rq.ticket["vc"]["storage_group"]
             check_key = rq.ticket["vc"]["volume_family"]
+        pw_sgs = self.pending_work.storage_groups.keys()
+        if len(pw_sgs)==1 and pw_sgs[0] == storage_group: # what else? All requests in the queue for only one storage group. No need to apply fair share
+            return None
             
         if not check_key in self.checked_keys:
             self.checked_keys.append(check_key)
         active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
         Trace.trace(16, "SG LIMIT %s"%(self.get_sg_limit(storage_group),))
-        if len(active_volumes) >= self.get_sg_limit(storage_group):
+        if len(active_volumes) >= self.get_sg_limit(storage_group)+ease:
             rq.ticket["reject_reason"] = ("PURSUING",None)
             Trace.trace(12, "fair_share: active work limit exceeded for %s" % (storage_group,))
             if rq.adminpri > -1:
@@ -727,7 +845,6 @@ class LibraryManagerMethods:
                             return key
         return None
 
-
     def process_read_request(self, request, requestor):
         self.continue_scan = 0
         rq = request
@@ -737,8 +854,10 @@ class LibraryManagerMethods:
         if key_to_check:
             self.continue_scan = 1
             #return rq, key_to_check
+
+        mover = requestor.get('mover', None)
     
-        if self.is_vol_busy(rq.ticket["fc"]["external_label"]) and self.mover_type(requestor) != 'DiskMover':
+        if self.is_vol_busy(rq.ticket["fc"]["external_label"], mover)and self.mover_type(requestor) != 'DiskMover':
             rq.ticket["reject_reason"] = ("VOL_BUSY",rq.ticket["fc"]["external_label"])
             self.continue_scan = 1
             Trace.trace(12,"process_read_request VOL_BUSY %s"%(rq.ticket["fc"]["external_label"]))
@@ -748,7 +867,24 @@ class LibraryManagerMethods:
         # ok passed criteria. Get request by file location
         if rq.ticket['encp']['adminpri'] < 0: # not a HiPri request
             Trace.trace(22,"PW2")
-            rq = self.pending_work.get(rq.ticket["fc"]["external_label"])
+            while 1:
+                rq_e = self.pending_work.get(rq.ticket["fc"]["external_label"], next=1)
+                # check whether client host exceeded a max allowed number of simult. transfers
+                if rq_e:
+                    if self.process_for_bound_vol and self.process_for_bound_vol == rq.ticket["fc"]["external_label"]:
+                        rc = self.client_host_busy_2(requestor, rq.ticket["fc"]["external_label"], rq.ticket["vc"]["volume_family"], rq_e.ticket)
+                    else:
+                        rc = self.client_host_busy(rq_e.ticket)
+                    if rc:
+                        continue
+                    else:
+                        break
+                else:
+                    break
+            if rq_e:
+                rq = rq_e
+                Trace.trace(22, 'PW3 %s'%(rq,))
+            
             if rq.ticket['encp']['adminpri'] >= 0: # got a HIPri request
                 self.continue_scan = 1
                 key_to_check = self.fair_share(rq)
@@ -776,7 +912,6 @@ class LibraryManagerMethods:
                           (rq.ticket,))
                 raise KeyError
             
-
         # request has passed about all the criterias
         # check if it passes the fair share criteria
         # temprorarily store selected request to use it in case
@@ -815,7 +950,7 @@ class LibraryManagerMethods:
     def process_write_request(self, request, requestor):
         self.continue_scan = 0
         rq = request
-        Trace.trace(22, "PW_RQ1")
+        Trace.trace(22, "PW_RQ1 %s"%(rq,))
         key_to_check = self.fair_share(rq)
         Trace.trace(22, "PW_RQ2")
         Trace.trace(16,"process_write_request: key %s"%(key_to_check,))
@@ -841,11 +976,49 @@ class LibraryManagerMethods:
             else:
                 vol_veto_list =  self.write_vf_list[vol_family]['vol_veto_list']
                 wr_en = self.write_vf_list[vol_family]['wr_en']
+
             # only so many volumes can be written to at one time
             if wr_en >= rq.ticket["vc"]["file_family_width"]:
                 rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
                 self.continue_scan = 1
                 return rq, key_to_check
+            else:
+                if not self.process_for_bound_vol and rq.ticket["vc"]["file_family_width"] > 1:
+                    # check if there is a potentially available tape at bound movers
+                    # and if yes skip request so that it will be picked by bound mover
+                    # this is done to aviod a single stream bouncing between different tapes
+                    # if FF width is more than 1
+                    Trace.trace(223,'veto %s, wr_en %s'%(vol_veto_list, wr_en))
+                    movers = self.volumes_at_movers.get_active_movers()
+                    found_mover = 0
+                    #matching_movers = []
+                    Trace.trace(223, 'movers %s'%(movers,))
+                    for mover in movers:
+                        Trace.trace(223, "mover %s state %s time %s"%(mover['mover'], mover['state'],mover['time_in_state']))
+                        if mover['state'] == 'HAVE_BOUND' and  mover['external_label'] in vol_veto_list and mover['time_in_state'] < 31:
+                            
+                            found_mover = 1
+                            '''
+                            if not (mover['mover'], mover['external_label']) in matching_movers:
+                                matching_movers.append((mover['mover'], mover['external_label']))
+                            '''
+                            break
+                    if found_mover:
+                        #Trace.trace(223, "movers in bound state %s"%(matching_movers,))
+                        # if the number of write requests for a given file family more than the
+                        # file family width then let it go.
+                        Trace.trace(223, "pending work families %s"%(self.pending_work.families,))
+                        if (self.pending_work.families.has_key(rq.ticket["vc"]["file_family"])) and \
+                           (self.pending_work.families[rq.ticket["vc"]["file_family"]] > rq.ticket["vc"]["file_family_width"]):
+                           #len(matching_movers) == 1:
+                            Trace.trace(223, " will let this request go to idle mover")
+                        else:
+                            Trace.trace(223, 'will wait with this request go to %s'%
+                                        (mover,))
+                            #rq = self.pending_work.get(next=1) # get next request
+                            self.continue_scan = 1
+                            return rq, key_to_check
+                
         else:
             vol_veto_list = []
             
@@ -955,6 +1128,8 @@ class LibraryManagerMethods:
         Trace.trace(22, "PW_RQ12")
         return rq, key_to_check
 
+
+    # is there any work for any volume?
     # is there any work for any volume?
     def next_work_any_volume(self, requestor, bound=None, storage_group=None):
         Trace.trace(11, "next_work_any_volume")
@@ -972,7 +1147,7 @@ class LibraryManagerMethods:
                     continue
             
             rej_reason = None
-            
+            ''' This has been moved to process_write_request
             if rq.work == "write_to_hsm":
                 # check if there is a potentially available tape at bound movers
                 # and if yes skip request so that it will be picked by bound mover
@@ -985,27 +1160,31 @@ class LibraryManagerMethods:
                         movers = self.volumes_at_movers.get_active_movers()
                         found_mover = 0
                         for vol in vol_veto_list:
+                            movers = []
                             found_mover = 0
                             for mover in movers:
                                 Trace.trace(223,'vol %s mover %s'%(vol, mover)) 
                                 if vol == mover['external_label']:
                                     if mover['state'] == 'HAVE_BOUND' and mover['time_in_state'] < 31:
                                         found_mover = 1
-                                        break
+                                        movers.append(mover['mover'], mover['external_label'])
+                                        #break   REMOVE AM
                             if found_mover:
+                                Trace.trace(223, "movers in bound state %s"%(movers,))
                                 break
                         if found_mover:
                             # if the number of write requests for a given file family more than the
                             # file family width then let it go.
                             if (self.pending_work.families.has_key(rq.ticket["vc"]["file_family"])) and \
-                               (self.pending_work.families[rq.ticket["vc"]["file_family"]] > rq.ticket["vc"]["file_family_width"]):
+                               (self.pending_work.families[rq.ticket["vc"]["file_family"]] > rq.ticket["vc"]["file_family_width"]) and \
+                               len(movers) > 1:
                                 Trace.trace(223, " will let this request go to idle mover")
                             else:
                                 Trace.trace(223, 'will wait with this request go to %s %s'%
                                             (mover['mover'], mover['external_label']))
                                 rq = self.pending_work.get(next=1) # get next request
                                 continue
-                
+            '''
             Trace.trace(222,"PW33")
             Trace.trace(17, "PWAA %s"%(rq,))
             rej_reason = None
@@ -1013,51 +1192,25 @@ class LibraryManagerMethods:
                 rej_reason = rq.ticket['reject_reason'][0]
                 del(rq.ticket['reject_reason'])
             ## check if there are any additional restrictions
-            rc, fun, args, action = self.restrictor.match_found(rq.ticket)
-            if rc and fun and action:
-                rq.ticket["status"] = (e_errors.OK, None)
-                if fun == 'restrict_host_access':
-                    callback = rq.ticket.get('callback_addr', None)
-                    if callback:
-                        host_from_ticket = hostaddr.address_to_name(callback[0])
-                        Trace.trace(30,'RHA01 %s'%(host_from_ticket,))
-                    else:
-                        host_from_ticket = rq.ticket['wrapper']['machine'][1]
-                    Trace.trace(30,'RHA02 %s %s'%(host_from_ticket,rq.ticket['wrapper']['machine'][1]))
-
-                    args.append(host_from_ticket)
-                    Trace.trace(30,'RHA1')
-                    ret = apply(getattr(self,fun), args)
-                    Trace.trace(17, "restrict_host_access returned %s"%(ret,))
-
-                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
-                        if not (rej_reason == "RESTRICTED_ACCESS"):
-                            format = "access delayed for %s : library=%s family=%s requester:%s"
-                            Trace.trace(20, format%(rq.ticket['wrapper']['pnfsFilename'],
-                                                    rq.ticket["vc"]["library"],
-                                                    rq.ticket["vc"]["volume_family"],
-                                                    rq.ticket["wrapper"]["uname"]))
-
-                            rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-                            Trace.trace(222,"PW4")
-                        if rq.work == 'write_to_hsm':
-                            label = rq.ticket["vc"]["volume_family"]
-                        else:
-                            label = rq.ticket["vc"]["external_label"]
-                            if self.is_vol_busy(label):
-                                # do not process requests fot this volume
-                                Trace.trace(222,"PWbbb")
-                                rq = self.pending_work.get(next=1) # get next request
-                                Trace.trace(222, "NEXT RQ21: %s"%(rq,))
-                                continue
-                        Trace.trace(222,"PWAAA")
-                        rq = self.pending_work.get(label, next=1)
-                        Trace.trace(222, "NEXT RQ1: %s"%(rq,))
-                        if not rq:
-                            Trace.trace(222,"PWBBB")
-                            rq = self.pending_work.get(next=1) # get next request
-                            Trace.trace(222, "NEXT RQ2: %s"%(rq,))
+            if self.client_host_busy(rq.ticket):
+                if rq.work == 'write_to_hsm':
+                    label = rq.ticket["vc"]["volume_family"]
+                else:
+                    label = rq.ticket["vc"]["external_label"]
+                    if self.is_vol_busy(label):
+                        # do not process requests fot this volume
+                        Trace.trace(222,"PWbbb")
+                        rq = self.pending_work.get(next=1) # get next request
+                        Trace.trace(222, "NEXT RQ21: %s"%(rq,))
                         continue
+                Trace.trace(222,"PWAAA")
+                rq = self.pending_work.get(label, next=1)
+                Trace.trace(222, "NEXT RQ1: %s"%(rq,))
+                if not rq:
+                    Trace.trace(222,"PWBBB")
+                    rq = self.pending_work.get(next=1) # get next request
+                    Trace.trace(222, "NEXT RQ2: %s"%(rq,))
+                continue
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
                 if rq: t = rq.ticket
@@ -1122,32 +1275,8 @@ class LibraryManagerMethods:
         # check if this volume is ok to work with
         if rq:
             ## check if there are any additional restrictions for postponed request
-            rc, fun, args, action = self.restrictor.match_found(rq.ticket)
-            if rc and fun and action:
-                rq.ticket["status"] = (e_errors.OK, None)
-                if fun == 'restrict_host_access':
-                    callback = rq.ticket.get('callback_addr', None)
-                    if callback:
-                        host_from_ticket = hostaddr.address_to_name(callback[0])
-                    else:
-                        host_from_ticket = rq.ticket['wrapper']['machine'][1]
-
-                    args.append(host_from_ticket)
-                    Trace.trace(30,'RHA1')
-                    ret = apply(getattr(self,fun), args)
-                    Trace.trace(17, "restrict_host_access returned %s"%(ret,))
-
-                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
-                        if not (rej_reason == "RESTRICTED_ACCESS"):
-                            format = "access delayed for %s : library=%s family=%s requester:%s"
-                            Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
-                                                             rq.ticket["vc"]["library"],
-                                                             rq.ticket["vc"]["volume_family"],
-                                                             rq.ticket["wrapper"]["uname"]))
-
-                            rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-
-                        return (None, (e_errors.NOWORK, None))
+            if self.client_host_busy(rq.ticket):
+                return (None, (e_errors.NOWORK, None))
             ##if self.tmp_rq:
             ##    Trace.trace(16,"next_work_any_volume: rq.pri %s, tmp_rq.pri %s"%(rq.pri, self.tmp_rq.pri))
             ##    sg_limit = self.get_sg_limit(volume_family.extract_storage_group(rq.ticket["vc"]["volume_family"]))
@@ -1359,42 +1488,44 @@ class LibraryManagerMethods:
         Trace.trace(22, "111")
         rq =self.pending_work.get_admin_request()
         while rq:
+            Trace.trace(22, "RQZZ %s"%(rq,))
             # skip over tape read requests they are processed only in the idle state
             #method = rq.ticket.get("method", None)
             #if method and method == "read_tape_start":
             #    rq = self.pending_work.get_admin_request(next=1) # get next request
             #    continue
 
-            # if current rq for bound volume has adminpri process only admin requests for current
+            # if current rq for bound volume has adminpri, process only admin requests for current
             # volume or current file family
-            if priority and priority[1]:
-                if priority[1] > 0:
-                    if last_work == 'WRITE':
-                        if rq.ticket['work'] == 'write_to_hsm':
-                            Trace.trace(223, 'HIPRI processing. cur label %s cur vf %s rq vf %s'%(external_label, vol_family, rq.ticket['vc']['volume_family'])) 
-                            if rq.ticket['vc']['volume_family'] != vol_family:
-                                rq = self.pending_work.get_admin_request(next=1)
-                                continue
-                        else:
-                            Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"].get("external_label", None)))
-                            if rq.ticket["fc"]["external_label"] != external_label:
-                                rq = self.pending_work.get_admin_request(next=1)
-                                continue
-                            
+            # request has admint pri if admin_pri (priority[1]) >= 0
+            if priority and priority[1] >= 0:
+                if last_work == 'WRITE':
+                    if rq.ticket['work'] == 'write_to_hsm':
+                        Trace.trace(223, 'HIPRI processing. cur label %s cur vf %s rq vf %s'%(external_label, vol_family, rq.ticket['vc']['volume_family'])) 
+                        if rq.ticket['vc']['volume_family'] != vol_family:
+                            rq = self.pending_work.get_admin_request(next=1)
+                            continue
                     else:
-                        if rq.ticket['work'] == 'read_from_hsm':
-                            Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"].get("external_label", None)))
-                        
-                            if rq.ticket["fc"]["external_label"] != external_label:
-                                rq = self.pending_work.get_admin_request(next=1)
-                                continue
-                        else:
-                            Trace.trace(223, 'HIPRI processing. cur label %s cur vf %s rq vf %s'%(external_label, vol_family, rq.ticket['vc']['volume_family'])) 
-                            if rq.ticket['vc']['volume_family'] != vol_family:
-                                rq = self.pending_work.get_admin_request(next=1)
-                                continue
+                        Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"].get("external_label", None)))
+                        if rq.ticket["fc"]["external_label"] != external_label:
+                            rq = self.pending_work.get_admin_request(next=1)
+                            continue
+
+                else:
+                    if rq.ticket['work'] == 'read_from_hsm':
+                        Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"].get("external_label", None)))
+
+                        if rq.ticket["fc"]["external_label"] != external_label:
+                            rq = self.pending_work.get_admin_request(next=1)
+                            continue
+                    else:
+                        Trace.trace(223, 'HIPRI processing. cur label %s cur vf %s rq vf %s'%(external_label, vol_family, rq.ticket['vc']['volume_family'])) 
+                        if rq.ticket['vc']['volume_family'] != vol_family:
+                            rq = self.pending_work.get_admin_request(next=1)
+                            continue
                         
             elif priority and priority[0] > 0:
+                
                 # for regular priority
                 if rq.work == "write_to_hsm":
                     # check if there is a potentially available tape at bound movers
@@ -1424,45 +1555,15 @@ class LibraryManagerMethods:
                                     rq = self.pending_work.get_admin_request(next=1) # get next request
                                     continue
                     
-                
+            Trace.trace(22, "RQYY %s"%(rq,))    
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
                 rej_reason = rq.ticket['reject_reason'][0]
                 del(rq.ticket['reject_reason'])
             ## check if there are any additional restrictions
-            rc, fun, args, action = self.restrictor.match_found(rq.ticket)
-            if rc and fun and action:
-                rq.ticket["status"] = (e_errors.OK, None)
-                if fun == 'restrict_host_access':
-                    callback = rq.ticket.get('callback_addr', None)
-                    if callback:
-                        host_from_ticket = hostaddr.address_to_name(callback[0])
-                    else:
-                        host_from_ticket = rq.ticket['wrapper']['machine'][1]
-                    if host_from_ticket == requestor['unique_id'].split('-')[0]:
-                            mp=args[-1]
-                            if type(mp) == type(()) and len(mp) == 3:
-                                mp1=(mp[0]+1, mp[1], mp[2])
-                            else:
-                                mp1=mp+1
-                            args[-1]=mp1
-                    args.append(host_from_ticket)
-                    if ((rq.ticket['work'] == "read_from_hsm" and rq.ticket["fc"]["external_label"] == external_label) or
-                        (rq.ticket['work'] == "write_to_hsm" and rq.ticket["vc"]["volume_family"] == vol_family)):
-                        args.append(rq.ticket['work'])
-                    Trace.trace(30,'RHA2 %s'%(args,))
-                    ret = apply(getattr(self,fun), args)
-                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
-                        if not (rej_reason == "RESTRICTED_ACCESS"):
-                            format = "bound1:access delayed for %s : library=%s family=%s requester:%s"
-                            Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
-                                                             rq.ticket["vc"]["library"],
-                                                             rq.ticket["vc"]["volume_family"],
-                                                             rq.ticket["wrapper"]["uname"]))
-                        rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-                        Trace.trace(22, "222")
-                        rq = self.pending_work.get_admin_request(next=1) # get next request
-                        continue
+            if self.client_host_busy_2(requestor, external_label, vol_family, rq.ticket):
+                rq = self.pending_work.get_admin_request(next=1) # get next request
+                continue
             if rq.work == 'read_from_hsm':
                 rq, key = self.process_read_request(rq, requestor)
                 if self.continue_scan:
@@ -1535,6 +1636,7 @@ class LibraryManagerMethods:
                 # already treated above
                 Trace.trace(22, "777")
                 rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
+                #rq = self.pending_work.get(external_label, current_location, use_admin_queue=0, next=1)
                 if not rq:
                     Trace.trace(22, "888")
                     rq = self.pending_work.get(vol_family, use_admin_queue=0) 
@@ -1553,78 +1655,62 @@ class LibraryManagerMethods:
                 if found:
                     rq = None
                     break
-                # skip over tape read requests they are processed only in the idle state
-                #method = rq.ticket.get("method", None)
-                #if method and method == "read_tape_start":
-                #    rq = self.pending_work.get_admin_request(next=1) # get next request
-                #    continue
                 rej_reason = None
                 if rq.ticket.has_key('reject_reason'):
                     rej_reason = rq.ticket['reject_reason'][0]
                     del(rq.ticket['reject_reason'])
                 ## check if there are any additional restrictions
-                rc, fun, args, action = self.restrictor.match_found(rq.ticket)
-                if rc and fun and action:
-                    rq.ticket["status"] = (e_errors.OK, None)
-                    if fun == 'restrict_host_access':
-                        callback = rq.ticket.get('callback_addr', None)
-                        if callback:
-                            host_from_ticket = hostaddr.address_to_name(callback[0])
-                        else:
-                            host_from_ticket = rq.ticket['wrapper']['machine'][1]
-                        if requestor['unique_id'] and host_from_ticket == requestor['unique_id'].split('-')[0]:
-                            mp=args[-1]
-                            if type(mp) == type(()) and len(mp) == 3:
-                                mp1=(mp[0]+1, mp[1], mp[2])
-                            else:
-                                mp1=mp+1
-                            args[-1]=mp1
-                        args.append(host_from_ticket)
-                        Trace.trace(30,'RHA3')
-                        ret = apply(getattr(self,fun), args)
-                        if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
-                            if not (rej_reason == "RESTRICTED_ACCESS"):
-                                format = "bound2:access delayed for %s : library=%s family=%s requester:%s"
-                                Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
-                                                                 rq.ticket["vc"]["library"],
-                                                                 rq.ticket["vc"]["volume_family"],
-                                                                 rq.ticket["wrapper"]["uname"]))
-                            rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-                            Trace.trace(14,"last work %s"%(last_work,))
-                            if last_work == 'WRITE':
-                                Trace.trace(22, "999")
-                                rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0)
-                                Trace.trace(14,"rq 1 %s"%(rq,))
-                                if not rq:
-                                    Trace.trace(22, "AAA")
-                                    rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
-                                    Trace.trace(14,"rq 2 %s"%(rq,))
-                            else:
-                                Trace.trace(22, "BBB")
-                                rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
-                                Trace.trace(14,"rq 3 %s"%(rq,))
-                            continue
-                        else: break
-                    else: break
-                else: break
+                if self.client_host_busy_2(requestor, external_label, vol_family, rq.ticket):
+                    rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                    Trace.trace(14,"last work %s"%(last_work,))
+                    if last_work == 'WRITE':
+                        Trace.trace(22, "999")
+                        rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0)
+                        Trace.trace(14,"rq 1 %s"%(rq,))
+                        if not rq:
+                            Trace.trace(22, "AAA")
+                            rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
+                            Trace.trace(14,"rq 2 %s"%(rq,))
+                    else:
+                        Trace.trace(22, "BBB")
+                        rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
+                        Trace.trace(14,"rq 3 %s"%(rq,))
+                    continue
+                #else: break
 
-        if rq:
-            Trace.trace(14, "s2 rq %s" % (rq.ticket,))
-            # fair share
-            storage_group = volume_family.extract_storage_group(vol_family)
-            active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
-            if (rq.ticket.get('ignore_fair_share', None)):
-                # do not count this request against fair share
-                # this is an automigration request
-                exc_limit_rq = 0
-            else:
-                if len(active_volumes) > self.get_sg_limit(storage_group):
-                    rq.ticket['reject_reason'] = ('PURSUING',None)
-                    Trace.trace(11, "next_work_this_volume: active work limit exceeded for %s" %
-                                (storage_group,))
-                    # temporarily store this request
-                    exc_limit_rq = rq
+                if rq:
+                    Trace.trace(14, "s2 rq %s" % (rq.ticket,))
+                    if rq.work == 'read_from_hsm':
+                        rq, key = self.process_read_request(rq, requestor)
+                        if self.continue_scan:
+                            # before continuing check if it is a request
+                            # for v['external_label']
+                            if rq.ticket['fc']['external_label'] == external_label:
+                                Trace.trace(22, "exc_limit_rq 1 %"%(rq,))
+                                exc_limit_rq = rq
+                                break
+                            Trace.trace(22, "3333")
+                            rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0) # get next request
+                            continue
+                        break
+                    elif rq.work == 'write_to_hsm':
+                        rq, key = self.process_write_request(rq, requestor) 
+                        if self.continue_scan:
+                            if rq:
+                                rq, status = self.check_write_request(external_label, rq, requestor)
+                                if rq and status[0] == e_errors.OK:
+                                    Trace.trace(22, "exc_limit_rq 2 %s"%(rq,))
+                                    exc_limit_rq = rq
+                                    break
+                            Trace.trace(22, "4443")
+                            rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0) # get next request
+                            continue
+                        break
+            if not rq and self.tmp_rq:
+                rq = self.tmp_rq 
+
             if exc_limit_rq:
+                Trace.trace(22, "4444")
                 # if storage group limit for this volume has been exceeded
                 # try to get any work with online priority
                 start_t=time.time()
@@ -1661,7 +1747,7 @@ class LibraryManagerMethods:
                             if rq.ticket['encp']['adminpri'] <0:
                                 rq = exc_limit_rq
                 Trace.trace(14, "s3 rq %s" % (rq.ticket,))
-            
+
             if rq and rq.work == 'write_to_hsm':
                 while rq:
                     Trace.trace(14,"LABEL %s RQQQQQQQ %s" % (external_label, rq))
@@ -1678,33 +1764,10 @@ class LibraryManagerMethods:
             # return read work
             if rq:
                 Trace.trace(14, "s4 rq %s" % (rq.ticket,))
+                if self.client_host_busy_2(requestor, external_label, vol_family, rq.ticket):
+                    # !!!! May not return here but let it try from the beginning?
+                    return (None, (e_errors.NOWORK, None))
 
-                rc, fun, args, action = self.restrictor.match_found(rq.ticket)
-                if rc and fun and action:
-                    rq.ticket["status"] = (e_errors.OK, None)
-                    if fun == 'restrict_host_access':
-                        callback = rq.ticket.get('callback_addr', None)
-                        if callback:
-                            host_from_ticket = hostaddr.address_to_name(callback[0])
-                        else:
-                            host_from_ticket = rq.ticket['wrapper']['machine'][1]
-                        args.append(host_from_ticket)
-                        Trace.trace(30,'RHA44')
-                        ret = apply(getattr(self,fun), args)
-                        if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
-                            if not (rej_reason == "RESTRICTED_ACCESS"):
-                                format = "bound:access delayed for %s : library=%s family=%s requester:%s"
-                                Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
-                                                                 rq.ticket["vc"]["library"],
-                                                                 rq.ticket["vc"]["volume_family"],
-                                                                 rq.ticket["wrapper"]["uname"]))
-                            rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-                            # !!!! May not return here but let it try from the beginning?
-                            return (None, (e_errors.NOWORK, None))
-
-
-
-                
                 rq, status = self.check_read_request(external_label, rq, requestor)
                 return rq, status
         
@@ -1718,27 +1781,8 @@ class LibraryManagerMethods:
                 rej_reason = rq.ticket['reject_reason'][0]
                 del(rq.ticket['reject_reason'])
             ## check if there are any additional restrictions
-            rc, fun, args, action = self.restrictor.match_found(rq.ticket)
-            if rc and fun and action:
-                rq.ticket["status"] = (e_errors.OK, None)
-                if fun == 'restrict_host_access':
-                    callback = rq.ticket.get('callback_addr', None)
-                    if callback:
-                        host_from_ticket = hostaddr.address_to_name(callback[0])
-                    else:
-                        host_from_ticket = rq.ticket['wrapper']['machine'][1]
-                    args.append(host_from_ticket)
-                    Trace.trace(30,'RHA4')
-                    ret = apply(getattr(self,fun), args)
-                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
-                        if not (rej_reason == "RESTRICTED_ACCESS"):
-                            format = "bound:access delayed for %s : library=%s family=%s requester:%s"
-                            Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
-                                                             rq.ticket["vc"]["library"],
-                                                             rq.ticket["vc"]["volume_family"],
-                                                             rq.ticket["wrapper"]["uname"]))
-                        rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-                        return (None, (e_errors.NOWORK, None))
+            if self.client_host_busy(rq.ticket):
+                return (None, (e_errors.NOWORK, None))
             if rq.work == 'read_from_hsm':
                 rq, status = self.check_read_request(external_label, rq, requestor)
             else:
@@ -1750,7 +1794,7 @@ class LibraryManagerMethods:
             return (None, status)
         return (None, (e_errors.NOWORK, None))
                 
-                    
+
     # check if volume is in the suspect volume list
     def is_volume_suspect(self, external_label):
         # remove volumes time in the queue for wich has expired
@@ -1890,7 +1934,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         self.lm_lock = self.get_lock()
         if not self.lm_lock:
-            self.lm_lock = 'unlocked'
+            self.lm_lock = e_errors.UNLOCKED
         self.set_lock(self.lm_lock)
         Trace.log(e_errors.INFO,"Library manager started in state:%s"%(self.lm_lock,))
 
@@ -2013,7 +2057,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # nowrite -- locked for write requests
             # noread -- locked for read requests
 
-            if self.keys['lock'] in (e_errors.LOCKED, 'unlocked', 'ignore', 'pause', e_errors.NOWRITE, e_errors.NOREAD): 
+            if self.keys['lock'] in (e_errors.LOCKED, e_errors.UNLOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOWRITE, e_errors.NOREAD): 
                 return self.keys['lock']
         try:
             lock_file = open(self.lockfile_name(), 'r')
@@ -2038,58 +2082,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.udpc = udp_client.UDPClient()
         self.rcv_timeout = 10 # set receive timeout
 
-    def restrict_host_access(self, storage_group, host, max_permitted, rq_host=None, work=None):
-        disciplineExceptionMounted = 0
-        max_perm=max_permitted
-        if type(max_permitted) == type(()) and len(max_permitted) == 3:
-            # the max_permitted is (maximal_permitted, add_for_reads_for_bound,add_for_writes_for_bound)
-            max_perm=max_permitted[0]
-            if work:
-                # calculate the position in the tuple
-                w = (work == "write_to_hsm")+1
-                disciplineExceptionMounted=int(max_permitted[w])
-            
-        active = 0
-        Trace.trace(30, "restrict_host_access(%s,%s,%s %s)"%
-                    (storage_group, host, max_permitted, rq_host))
-        for w in self.work_at_movers.list:
-            callback = w.get('callback_addr', None)
-            if callback:
-                host_from_ticket = hostaddr.address_to_name(callback[0])
-            else:
-                host_from_ticket = w['wrapper']['machine'][1]
-            
-            Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
-            try:
-                if (w['vc']['storage_group'] == storage_group and
-                    re.search(host, host_from_ticket)):
-                    if rq_host:
-                        if  host_from_ticket == rq_host:
-                            active = active + 1
-                    else:
-                        active = active + 1
-            except KeyError,detail:
-                Trace.log(e_errors.ERROR,"restrict_host_access:%s....%s"%(detail, w))
-        Trace.trace(30, "restrict_host_access(%s,%s)"%
-                    (active, max_permitted))
-        return active >= max_perm+disciplineExceptionMounted
-
-    def restrict_version_access(self, storage_group, legal_version, ticket):
-        Trace.trace(30, "restrict_version_access %s %s %s"%(storage_group,
-                                                            legal_version,
-                                                            ticket))
-        if storage_group == ticket['vc']['storage_group']:
-            if ticket.has_key('version'):
-                version=ticket['version'].split()[0]
-            else:
-                version = ''
-            if legal_version > version:
-                ticket['status'] = (e_errors.VERSION_MISMATCH,
-                                    "encp version too old: %s. Must be not older than %s"%(version, legal_version,))
-                return 1
-        return 0
-                
-
     def access_granted(self, ticket):
         self.allow_access = self.keys.get('allow', None) # allow host access on a per storage group
         Trace.trace(33, 'allow_access: %s'%(self.allow_access,))
@@ -2111,10 +2103,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 return 1
         return 1
         
-            
+    
         
     def write_to_hsm(self, ticket):
-        Trace.trace(112, "write_to_hasm: ticket %s"%(ticket))
+        Trace.trace(112, "write_to_hsm: ticket %s"%(ticket))
         key = encp_ticket.write_request_ok(ticket)
         if key:
             ticket['status'] = (e_errors.MALFORMED,
@@ -2193,7 +2185,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         host = ticket['wrapper']['machine'][1]
         work = 'write'
         ff = ticket['vc']['file_family']
-        #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
+        #if self.lm_lock == 'locked' or self.lm_lock == e_errors.IGNORE:
 
         # have we exceeded the number of allowed requests?
         if self.accept_request(ticket) == 0:
@@ -2202,7 +2194,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
             return
 
-        if self.lm_lock in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, e_errors.BROKEN):
+        if self.lm_lock in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOWRITE, e_errors.BROKEN):
             if self.lm_lock in  (e_errors.LOCKED, e_errors.NOWRITE):
                 ticket["status"] = (self.lm_lock, "Library manager is locked for external access")
             else:
@@ -2254,7 +2246,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 args.append(host_from_ticket)
             
             ret = apply(getattr(self,fun), args)
-            if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, e_errors.REJECT)):
+            if ret and (action in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOWRITE, e_errors.REJECT)):
                 format = "access restricted for %s : library=%s family=%s requester:%s "
                 Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
                                                  ticket["vc"]["library"],
@@ -2371,7 +2363,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         host = ticket['wrapper']['machine'][1]
         work = 'read'
         vol = ticket['fc']['external_label']
-        #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
+        #if self.lm_lock == 'locked' or self.lm_lock == e_errors.IGNORE:
         # have we exceeded the number of allowed requests?
         if self.accept_request(ticket) == 0:
             ticket["status"] = (e_errors.OK, None)
@@ -2379,7 +2371,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
             return
 
-        if self.lm_lock in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, e_errors.BROKEN):
+        if self.lm_lock in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOREAD, e_errors.BROKEN):
             if self.lm_lock in (e_errors.LOCKED, e_errors.NOREAD):
                 ticket["status"] = (self.lm_lock, "Library manager is locked for external access")
             else:
@@ -2410,7 +2402,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     host_from_ticket = ticket['wrapper']['machine'][1]
                 args.append(host_from_ticket)
             ret = apply(getattr(self,fun), args)
-            if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, e_errors.REJECT)):
+            if ret and (action in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOREAD, e_errors.REJECT)):
                 format = "access restricted for %s : library=%s family=%s requester:%s"
                 Trace.log(e_errors.INFO, format%(ticket['wrapper']['pnfsFilename'],
                                                  ticket["vc"]["library"],
@@ -2505,7 +2497,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.reply_to_caller({'work': 'no_work'})
             return
         
-        if self.lm_lock in ('pause', e_errors.BROKEN):
+        if self.lm_lock in (e_errors.PAUSE, e_errors.BROKEN):
             Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
             self.reply_to_caller({'work': 'no_work'})
             return
@@ -2762,7 +2754,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ## this is for debugging
         movers = self.volumes_at_movers.get_active_movers()
         
-        if self.lm_lock in ('pause', e_errors.BROKEN):
+        if self.lm_lock in (e_errors.PAUSE, e_errors.BROKEN):
             Trace.trace(18,"LM state is %s no mover request processing" % (self.lm_lock,))
             self.reply_to_caller({'work': 'no_work'})
             return
@@ -3122,13 +3114,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # change state of the library manager
     def change_lm_state(self, ticket):
         if ticket.has_key('state'):
-            if ticket['state'] in (e_errors.LOCKED, 'ignore', 'unlocked', 'pause', e_errors.NOREAD, e_errors.NOWRITE):
+            if ticket['state'] in (e_errors.LOCKED, e_errors.IGNORE, e_errors.UNLOCKED, e_errors.PAUSE, e_errors.NOREAD, e_errors.NOWRITE):
                 lock = ticket['state']
-                if ticket['state'] == 'unlocked':
+                if ticket['state'] == e_errors.UNLOCKED:
                     # use the default state if present
                     
                     if ((self.keys.has_key('lock')) and
-                        (self.keys['lock'] in (e_errors.LOCKED, 'unlocked', 'ignore', 'pause',
+                        (self.keys['lock'] in (e_errors.LOCKED, e_errors.UNLOCKED, e_errors.IGNORE, e_errors.PAUSE,
                                                e_errors.NOWRITE, e_errors.NOREAD))):
                         lock = self.keys['lock']
                     
@@ -3242,7 +3234,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         c_lock = self.lm_lock
         self.lm_lock = self.get_lock()
         if not self.lm_lock:
-            self.lm_lock = 'unlocked'
+            self.lm_lock = e_errors.UNLOCKED
         if c_lock != self.lm_lock:
             self.set_lock(self.lm_lock)
             Trace.log(e_errors.INFO,"Library manager state changed to state:%s"%(self.lm_lock,))
