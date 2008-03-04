@@ -239,12 +239,14 @@ group_fd['CD-9940'] = beagle
 ALL_9940 = open('ALL_9940.tapes','a')
 ALL_9940B = open('ALL_9940B.tapes', 'a')
 ALL_LTO3 = open('ALL_LTO3.tapes', 'a')
+ALL_LTO4 = open('ALL_LTO4.tapes', 'a')
 CD_9940B = open('CD-9940B.tapes', 'a')
 CD_LTO3 = open('CD-LTO3.tapes', 'a')
 group_fd['ALL_9940'] = ALL_9940
 group_fd['ALL_9940B'] = ALL_9940B
 group_fd['CD-9940B'] = CD_9940B
 group_fd['ALL_LTO3'] = ALL_LTO3
+group_fd['ALL_LTO4'] = ALL_LTO4
 group_fd['CD-LTO3'] = CD_LTO3
 
 
@@ -255,11 +257,13 @@ beagle_mb = 0L
 eagle_v={}
 beagle_v={}
 all_lto3_mb = 0L
+all_lto4_mb = 0L
 all_9940_mb = 0L
 all_9940b_mb = 0L
 cd_9940b_mb = 0L
 cd_lto3_mb = 0L
 all_lto3_v = {}
+all_lto4_v = {}
 all_9940_v = {}
 all_9940b_v = {}
 cd_9940b_v = {}
@@ -319,6 +323,10 @@ while 1:
         all_lto3_mb = all_lto3_mb +  long(mb)
         all_lto3_v[v] = 1
         ALL_LTO3.write('%s\n' % (ol,))
+    if l in ['CD-LTO4', 'CDF-LTO4', 'D0-LTO4', 'CD-LTO4G1', 'D0-LTO4G1']:
+        all_lto4_mb = all_lto4_mb +  long(mb)
+        all_lto4_v[v] = 1
+        ALL_LTO4.write('%s\n' % (ol,))
     if l in ['mezsilo', 'cdf', '9940']:
        all_9940_mb = all_9940_mb + long(mb)
        all_9940_v[v] = 1
@@ -371,6 +379,9 @@ cd_9940b_su = 0.
 all_lto3_wv = all_lto3_bv = 0
 all_lto3_su = 0.
 
+all_lto4_wv = all_lto4_bv = 0
+all_lto4_su = 0.
+
 cd_lto3_wv = cd_lto3_bv = 0
 cd_lto3_su = 0.
 
@@ -382,6 +393,8 @@ for g in group_fd.keys():
     elif g == 'ALL_9940B':
         pass
     elif g == 'ALL_LTO3':
+        pass
+    elif g == 'ALL_LTO4':
         pass
     elif g == 'CD-9940B':
         pass
@@ -429,6 +442,12 @@ for g in group_fd.keys():
               cd_lto3_wv = cd_lto3_wv + int(wv)
               cd_lto3_bv = cd_lto3_bv + int(bv)
               cd_lto3_su = cd_lto3_su + temp_su
+
+        elif l in ['CD-LTO4', 'CDF-LTO4', 'D0-LTO4', 'CD-LTO4G1', 'CDF-LTO4G1', 'D0-LTO4G1' ]:
+          su = float(su.split("G")[0])
+          all_lto4_wv = all_lto4_wv + int(wv)
+          all_lto4_bv = all_lto4_bv + int(bv)
+          all_lto4_su = all_lto4_su + su
         
 
     elif g == "CD-9840":
@@ -452,12 +471,14 @@ for g in group_fd.keys():
         pass
     elif g == 'ALL_LTO3':
         pass
+    elif g == 'ALL_LTO4':
+        pass
     elif g == 'ALL_9940B':
         pass
     else:
         print 'What group is this',g
         (wv,bv,su) = ('?','?','?')
-    if g in ['ALL_9940', 'ALL_9940B', 'CD-9940B', 'ALL_LTO3', 'CD-LTO3']:
+    if g in ['ALL_9940', 'ALL_9940B', 'CD-9940B', 'ALL_LTO3', 'ALL_LTO4', 'CD-LTO3']:
         pass
     else:
         sort_the_file('%s.tapes'%(g,))
@@ -473,6 +494,12 @@ sort_the_file('ALL_LTO3.tapes')
 cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('ALL_LTO3',d1,d2,all_lto3_wv,all_lto3_bv,all_lto3_su, 400)
 print cmd
 os.system(cmd)
+
+sort_the_file('ALL_LTO4.tapes')
+cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('ALL_LTO4',d1,d2,all_lto4_wv,all_lto4_bv,all_lto4_su, 800)
+print cmd
+os.system(cmd)
+
 sort_the_file('ALL_9940.tapes')
 cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('ALL_9940',d1,d2,_9940_wv,_9940_bv,_9940_su, 60)
 print cmd
