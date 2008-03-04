@@ -288,7 +288,9 @@ def plot_bytes():
             i=i+1
             color=color+1
 
-    while 0 in exitmutexes: pass
+    while 0 in exitmutexes:
+        time.sleep(30)
+        pass
 
     i = 0
     for i in range(len(histograms)/2):
