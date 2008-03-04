@@ -361,6 +361,7 @@ PVOLS = "pvols"                              #volume
 QUERY = "query"                              #info
 RAISE = "raise"                              #alarm
 READ_ONLY = "read-only"                      #volume
+READ_TO_END_OF_TAPE = "read-to-end-of-tape"  #get
 REASON = "reason"                            #inquisitor
 REBUILD_SG_COUNT = "rebuild-sg-count"        #volume
 RECYCLE = "recycle"                          #volume
@@ -508,7 +509,7 @@ valid_option_list = [
     POSITION, PREFIX, PRIORITY, PRINT, PRINT_QUEUE,PROFILE, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,
     QUERY,
-    RAISE, READ_ONLY, REASON, RECURSIVE, RECYCLE, REFRESH,
+    RAISE, READ_ONLY, READ_TO_END_OF_TAPE, REASON, RECURSIVE, RECYCLE, REFRESH,
     REMEDY_TYPE, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RESUBMIT_TIMEOUT, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,

@@ -25,6 +25,7 @@ import host_config
 import Trace
 import checksum
 import option
+import enstore_functions3
 
 #Completion status field values.
 SUCCESS = "SUCCESS"
@@ -58,6 +59,12 @@ encp.EncpInterface.encp_options[option.SEQUENTIAL_FILENAMES] = {
     option.USER_LEVEL:option.USER,}
 encp.EncpInterface.encp_options[option.SKIP_DELETED_FILES] = {
     option.HELP_STRING: "Skip over deleted files.",
+    option.VALUE_USAGE:option.IGNORED,
+    option.VALUE_TYPE:option.INTEGER,
+    option.USER_LEVEL:option.USER,}
+encp.EncpInterface.encp_options[option.READ_TO_END_OF_TAPE] = {
+    option.HELP_STRING: "After the last file known is read keep reading "
+                        "until EOD or EOT.",
     option.VALUE_USAGE:option.IGNORED,
     option.VALUE_TYPE:option.INTEGER,
     option.USER_LEVEL:option.USER,}
@@ -918,7 +925,7 @@ def get_next_request(request_list, e): #, filenumber = None):
         if completion_status == None:
             return request_list[i], i
     else:
-        if e.list:
+        if e.list or not e.read_to_end_of_tape:
             return None, 0
         else:
             filenumber = encp.extract_file_number(request_list[-1]['fc']['location_cookie'])
@@ -1105,7 +1112,7 @@ def readtape_from_hsm(e, tinfo):
 
     while requests_outstanding(requests_per_vol[e.volume]):
 
-        # Establish data socket connection with the mover.
+        # Establish control socket connection with the mover.
 	control_socket, ticket = mover_handshake(listen_socket, udp_socket,
 						 request, e)
 
@@ -1290,7 +1297,7 @@ def readtape_from_hsm(e, tinfo):
                 #If the read mode is "read until end of data", we need to
                 # create the new output file.
                 #if request.get('completion_status', None) == "EOD":
-                if not e.list:
+                if not e.list and e.read_to_end_of_tape:
                     if not os.path.exists(request['outfile']):
                         encp.create_zero_length_local_files(request)
                     
@@ -1472,6 +1479,10 @@ def do_work(intf):
 
 if __name__ == '__main__':
 
+    encp.EncpInterface.list = None                # Used for "get" only.
+    encp.EncpInterface.skip_deleted_files = None  # Used for "get" only.
+    encp.EncpInterface.read_to_end_of_tape = None # Used for "get" only.
+
     #First handle an incorrect command line.
     if len(sys.argv) < 4:
         intf_of_encp = encp.EncpInterface(sys.argv, 1) #one = user
@@ -1481,7 +1492,7 @@ if __name__ == '__main__':
     intf_of_encp.volume = sys.argv[-3] #Hackish
     intf_of_encp.argv = sys.argv[:] #Hackish
 
-    if not encp.is_volume(sys.argv[-3]):
+    if not enstore_functions3.is_volume(sys.argv[-3]):
         try:
             sys.stderr.write("First argument is not a volume name.\n")
             sys.stderr.flush()
