@@ -9306,8 +9306,6 @@ class EncpInterface(option.Interface):
         self.shortcut = 0          # If true, don't extrapolate full file path.
         self.storage_info = None   # Not used yet.
         self.volume = None         # True if it is to read an entire volume.
-        self.list = None           # Used for "get" only.
-        self.skip_deleted_files = None # Used for "get" only.
 
         #Values for specifying which enstore system to contact.
         self.enstore_config_host = enstore_functions2.default_host()
