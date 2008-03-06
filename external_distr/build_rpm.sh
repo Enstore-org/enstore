@@ -35,11 +35,11 @@ if [ -f "rpm_version" ];
 then
     source rpm_version
 fi
-if [ "${EVersion:-x}" != "x" ];
+if [ "${EVersion:-x}" = "x" ];
 then
     EVersion="${1:-1.0.1}"
 fi
-if [ "${ERelease:-x}" != "x" ];
+if [ "${ERelease:-x}" = "x" ];
 then
     ERelease="${2:-10}"
 fi
