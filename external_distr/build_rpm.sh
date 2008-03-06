@@ -25,6 +25,7 @@ for d in BUILD RPMS SOURCES SPECS SRPMS; do
 done
 
 cd /tmp
+rm -rf enstore_build
 mkdir enstore_build
 cd enstore_build
 cvs co -r production enstore
