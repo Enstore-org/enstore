@@ -29,12 +29,24 @@ mkdir enstore_build
 cd enstore_build
 cvs co -r production enstore
 
+cd enstore
+if [ -f "rpm_version" ];
+then
+    source rpm_version
+fi
+if [ "${EVersion:-x}" != "x" ];
+then
+    EVersion="${1:-1.0.1}"
+fi
+if [ "${ERelease:-x}" != "x" ];
+then
+    ERelease="${2:-10}"
+fi
 #cvs does no like dots
-cvs_EVersion=`echo '1.0.1' | sed -e "s/\./_/g"`
+cvs_EVersion=`echo ${EVersion} | sed -e "s/\./_/g"`
 
 cvs tag -F -r production ENSTORE_RPM_${cvs_EVersion}_${ERelease} enstore
 
-cd enstore
 tar czf enstore.tgz *
 cp -f enstore.tgz /usr/src/redhat/SOURCES
 rm -f enstore.tgz  
