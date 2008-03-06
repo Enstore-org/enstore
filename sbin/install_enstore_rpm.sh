@@ -66,11 +66,11 @@ then
 	rpm -U --force ${place}/aci-3.1.2-1.i386.rpm
     fi
     echo "Installing enstore"
-    rpm -Uvh --force ${place}/enstore-1.0.1-10.i386.rpm
+    rpm -Uvh --force ${place}/enstore-1.0.1-11.i386.rpm
     ENSTORE_DIR=`rpm -ql enstore | head -1`
 else
     echo "Installing enstore"
-    rpm -Uvh --force ${place}/enstore_sa-1.0.1-10.i386.rpm
+    rpm -Uvh --force ${place}/enstore_sa-1.0.1-11.i386.rpm
     ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 fi
 
