@@ -44,7 +44,7 @@ fi
 #cvs does no like dots
 cvs_EVersion=`echo ${EVersion} | sed -e "s/\./_/g"`
 
-cvs rtag -F -r production ENSTORE_RPM_${cvs_EVersion}_${ERelease} enstore
+cvs tag -F -r production ENSTORE_RPM_${cvs_EVersion}_${ERelease}
 
 tar czf enstore.tgz *
 cp -f enstore.tgz /usr/src/redhat/SOURCES
