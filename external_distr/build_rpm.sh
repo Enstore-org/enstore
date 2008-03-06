@@ -7,8 +7,6 @@
 
 
 set -u  # force better programming and ability to use check for not set
-EVersion="${1:-1.0.1}"
-ERelease="${2:-10}"
 
 export CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc
 if [ "`whoami`" != 'root' ]
@@ -46,7 +44,7 @@ fi
 #cvs does no like dots
 cvs_EVersion=`echo ${EVersion} | sed -e "s/\./_/g"`
 
-cvs tag -F -r production ENSTORE_RPM_${cvs_EVersion}_${ERelease} enstore
+cvs rtag -F -r production ENSTORE_RPM_${cvs_EVersion}_${ERelease} enstore
 
 tar czf enstore.tgz *
 cp -f enstore.tgz /usr/src/redhat/SOURCES
