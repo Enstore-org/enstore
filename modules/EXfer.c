@@ -215,7 +215,11 @@ const char kernel_mmap_io_error[] =
   "Reverting to POSIX based i/o.\n";
 const char filesystem_mmap_io_error[] = 
   "Memory mapped i/o is not supported by the filesystem.  "
+   "Reverting to POSIX based i/o.\n";
+const char filesize_mmap_io_error[] = 
+  "Writing to memory mapped i/o requires the filesize be known in advance.  "
   "Reverting to POSIX based i/o.\n";
+
 
 const char no_mmap_threaded_implimentation[] =
   "Multithreaded memory mapped i/o to memory mapped i/o is not supported.  "
@@ -278,7 +282,8 @@ struct transfer
   int fd;                 /*file descriptor*/
 
   off_t size;             /*size in bytes*/
-  off_t bytes;            /*bytes left to transfer*/
+  off_t bytes_to_go;      /*bytes left to transfer*/
+  off_t bytes_transfered; /*bytes transfered*/
   size_t block_size;      /*size of block*/
   size_t array_size;      /*number of buffers to use*/
   size_t mmap_size;       /*mmap address space segment lengths*/
@@ -314,8 +319,10 @@ struct transfer
   int cpu_affinity;       /*NICs are tied to CPUs on IRIX nodes*/
 #endif
   short int done;         /* Is zero initially, set to one when the (transfer)
-			   * thread exits and he main thread sets it to -1
+			   * thread exits and the main thread sets it to -1
 			   * when it has collected the thread. */
+  short int other_thread_done; /* Is zero initially, set to one when the
+				* main thread collects the other thread. */
   
   int exit_status;        /*error status*/
   int errno_val;          /*errno of any errors (zero otherwise)*/
@@ -771,6 +778,25 @@ static void sig_alarm(int sig_num)
    siglongjmp(alarm_join, 1);
 }
 
+static int is_other_thread_done(struct transfer* info)
+{
+  int rtn;
+   
+  if((pthread_mutex_lock(&done_mutex)) != 0)
+  {
+     return -1;
+  }
+  
+  rtn = info->other_thread_done;
+  
+  if((pthread_mutex_unlock(&done_mutex)) != 0)
+  {
+     return -1;
+  }
+
+  return rtn;
+}
+
 /* Return 0 for false, >1 for true, <1 for error. */
 static int is_stored_empty(unsigned int bin)
 {
@@ -858,7 +884,7 @@ static struct transfer* pack_return_values(struct transfer* retval,
   retval->filename = filename;           /* Filename an error occured on. */
   retval->done = 1;                      /* Flag saying transfer half done. */
 
-  remove_lock(retval); /* If necessary remove the lock. */
+  remove_lock(retval); /* If necessary remove the file lock. */
   
   /* Putting the following here is just the lazy thing to do. */
   /* For this code to work this must be executed after setting retval->done
@@ -896,7 +922,7 @@ static long long get_fsync_threshold(struct transfer *info)
   unsigned long long temp_value;
 
   /* Find out what one percent of the file size is. */
-  temp_value = (unsigned long long)((double)info->bytes / (double)100.0);
+  temp_value = (unsigned long long)((double)info->bytes_to_go / (double)100.0);
 
   /* Return the largest of these values:
    * 1) One percent of the filesize.
@@ -1208,6 +1234,10 @@ static int setup_mmap_io(struct transfer *info)
   /* If the file descriptor is not a file, don't continue. */
   if(!S_ISREG(file_info.st_mode))
   {
+#ifdef DEBUG_REVERT
+        (void)write(STDERR_FILENO, filesystem_mmap_io_error,
+	      strlen(filesystem_mmap_io_error));
+#endif /*DEBUG_REVERT*/
      info->mmap_io = (bool)0U;
      return 0;
   }
@@ -1216,6 +1246,20 @@ static int setup_mmap_io(struct transfer *info)
    * be there and already have the correct size. */
   if(info->transfer_direction > 0)  /* If true, it is a write. */
   {
+     /* If the size of the transfer is not known, we need revert to another
+      * transfer method.  The output filesize is required to be set,
+      * either by ftruncate() or lseek() with write(1), before mmap() is
+      * called. */
+     if(info->size == -1)
+     {
+#ifdef DEBUG_REVERT
+        (void)write(STDERR_FILENO, filesize_mmap_io_error,
+	      strlen(filesize_mmap_io_error));
+#endif /*DEBUG_REVERT*/
+	info->mmap_io = (bool)0U;
+	return 0;
+     }
+     
      /* Set the size of the file. */
      errno = 0;
      if(ftruncate(fd, bytes) < 0)
@@ -1363,13 +1407,13 @@ static void* get_next_segment(int bin, struct transfer *info)
      }
 
      /* Get the mmap info. */
-     mmap_len = (size_t)min2ull((unsigned long long)info->bytes,
+     mmap_len = (size_t)min2ull((unsigned long long)info->bytes_to_go,
 				(unsigned long long)info->mmap_size);
 
      /* Create the memory mapped file. */
      errno = 0;
      if((mmap_ptr = mmap(NULL, mmap_len, mmap_permissions, MAP_SHARED, fd,
-			 info->size - info->bytes)) == MAP_FAILED)
+			 info->size - info->bytes_to_go)) == MAP_FAILED)
      {
 	pack_return_values(info, 0, errno, FILE_ERROR,
 			   "mmap failed", 0.0, __FILE__, __LINE__);
@@ -1456,7 +1500,7 @@ static int cleanup_segment(int bin, struct transfer *info)
    /* Note: Always make sure that info-> bytes gets updated after
     * cleanup_segment() is called.  Otherwise the wrong size gets
     * unmapped and that causes errors. */
-   size_t mmap_len = (size_t)min2ull((unsigned long long)info->bytes,
+   size_t mmap_len = (size_t)min2ull((unsigned long long)info->bytes_to_go,
 				     (unsigned long long)info->mmap_size);
 
    /* If the file is a local disk, use memory mapped i/o on it. 
@@ -1514,6 +1558,7 @@ static int cleanup_segment(int bin, struct transfer *info)
    }
 }
 
+/* Removes a file loock. (not a mutex lock). */
 static int remove_lock(struct transfer *info)
 {
 #ifdef F_SETLK
@@ -1628,6 +1673,10 @@ static int setup_direct_io(struct transfer *info)
    * turned on the filesystem still has to support it. */
   if(! S_ISREG(file_info.st_mode))
   {
+#ifdef DEBUG_REVERT
+     (void)write(STDERR_FILENO, generic_direct_io_error, 
+		 strlen(generic_direct_io_error));
+#endif /*DEBUG_REVERT*/
      info->direct_io = 0;
      return 0;
   }
@@ -2110,7 +2159,8 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
 		       "fd read error", 0.0, __FILE__, __LINE__);
     return -1;
   }
-  if (sts == 0)
+#if 1
+  if (sts == 0 && info->bytes_to_go > 0U)
   {
     if(fstat(info->fd, &stats) == 0)
     {
@@ -2135,6 +2185,7 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
 		       "fd read timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
+#endif
 
   return sts;
 }
@@ -2145,7 +2196,10 @@ static ssize_t direct_write(void *src, size_t bytes_to_transfer,
 			    struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
-  struct stat stats; 
+  struct stat stats;
+  size_t use_bytes_to_transfer; /* Memaligned number of bytes_to_transfer. */
+  off_t end_of_file;
+  size_t size_diff;
 #if defined ( O_DIRECT ) && defined ( F_DIOINFO )
   int rtn_fcntl;
   struct dioattr direct_io_info;
@@ -2157,7 +2211,7 @@ static ssize_t direct_write(void *src, size_t bytes_to_transfer,
   if(info->direct_io)
   {
     /* If direct io was specified, make sure the location is page aligned. */
-    bytes_to_transfer = align_to_page(bytes_to_transfer);
+    use_bytes_to_transfer = align_to_page(bytes_to_transfer);
 
 #if defined ( O_DIRECT ) && defined ( F_DIOINFO )
 
@@ -2178,20 +2232,29 @@ static ssize_t direct_write(void *src, size_t bytes_to_transfer,
      * and d_maxiosz, adjust them to fit inside. */
     if(bytes_to_transfer < direct_io_info.d_miniosz)
     {
-      bytes_to_transfer = direct_io_info.d_miniosz;
+      use_bytes_to_transfer = direct_io_info.d_miniosz;
     }
     else if(bytes_to_transfer > direct_io_info.d_maxiosz)
     {
-      bytes_to_transfer = direct_io_info.d_maxiosz;
+      use_bytes_to_transfer = direct_io_info.d_maxiosz;
     }
 
 #endif /*O_DIRECT and F_DIOINFO*/
   }
+  else
+  {
+     use_bytes_to_transfer = bytes_to_transfer; /* Should never get here. */
+  }
+
+  /* Determine the size difference between the amount of data we care about
+   * writing and the size that direct i/o says we write extra to be
+   * page alligned. */
+  size_diff = use_bytes_to_transfer - bytes_to_transfer;
 
   /* When faster methods will not work, use read()/write(). */
   errno = 0;
   pthread_testcancel();  /* On Linux, write() isn't a cancelation point. */
-  sts = write(info->fd, src, bytes_to_transfer);
+  sts = write(info->fd, src, use_bytes_to_transfer);
   pthread_testcancel();
 
   if (sts == -1)
@@ -2215,20 +2278,25 @@ static ssize_t direct_write(void *src, size_t bytes_to_transfer,
   /* Only apply after the last write() call.  Also, if the size of the
    * file was a multiple of the alignment used, then everything is correct
    * and attempting to do this file size 'fix' is unnecessary. */
-  if((long long)info->bytes <= (long long)sts)
+  if(size_diff)
   {
-     /* Adjust the write() return value.  After the last call to write()
-      * for the file this is/can be too long.  It needs to be shrunk down
-      *	to the number of bytes written that we actually care about. */
-     sts = (ssize_t)info->bytes;
-     /* Truncate size at end of transfer.  For direct io all writes must be
-      *	a multiple of the page size.  The last write must be truncated down
-      *	to the correct size. */
-     if(ftruncate(info->fd, info->size) < 0)
+     /* We use lseek() here instead of stat() to mitigate the chance that
+      * another process is writing to this file too. */
+     if( (end_of_file = lseek(info->fd, 0, SEEK_CUR)) != -1 )
      {
-	pack_return_values(info, 0, errno, WRITE_ERROR,
-			   "ftruncate failed", 0.0, __FILE__, __LINE__);
-	return -1;
+	/* Adjust the write() return value.  After the last call to write()
+	 * for the file this is/can be too long.  It needs to be shrunk down
+	 *	to the number of bytes written that we actually care about. */
+	sts = (ssize_t)bytes_to_transfer;
+	/* Truncate size at end of transfer.  For direct io all writes must be
+	 *	a multiple of the page size.  The last write must be truncated
+	 *      down to the correct size. */
+	if(ftruncate(info->fd, end_of_file - size_diff) < 0)
+	{
+	   pack_return_values(info, 0, errno, WRITE_ERROR,
+			      "ftruncate failed", 0.0, __FILE__, __LINE__);
+	   return -1;
+	}
      }
   }
 
@@ -2263,7 +2331,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 			"fstat error", 0.0, __FILE__, __LINE__);
      return -1;
   }
-  
+
   if (sts == 0)
   {
     if(S_ISSOCK(stats.st_mode))
@@ -2290,9 +2358,9 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
   {
      /* If the number of bytes of data transfered since the last sync has
       *	passed, do the fdatasync() and record amount completed. */
-     if((info->last_fsync - info->bytes) > info->fsync_threshold)
+     if((info->last_fsync - info->bytes_to_go) > info->fsync_threshold)
      {
-	info->last_fsync = info->bytes - sts;
+	info->last_fsync = info->bytes_to_go - sts;
 	pthread_testcancel(); /* Any sync action will take time. */
 	errno = 0;
 #if defined ( _POSIX_SYNCHRONIZED_IO ) && _POSIX_SYNCHRONIZED_IO > 0L
@@ -2416,11 +2484,20 @@ static int thread_wait(size_t bin, struct transfer *info)
 		       "mutex lock failed", 0.0, __FILE__, __LINE__);
     return 1;
   }
+
   /* If the stored bin is still full (stored[bin] > 0 == 1) when writing or
    * still empty (stored[bin] == 0) when reading, then wait for the other
    * thread to catch up. */
   if((stored[bin] > 0) == expected)  /*if(!stored[bin] == !expected)*/
   {
+    if(info->size == -1 && is_other_thread_done(info))
+    {
+       /* For file transfers of unknown length, only the write thread
+	* should be able to get here.  The write thread should get here
+	* only when it has written out the contents of all of the memory
+	* buffers and the read thread has completed. */
+       return 0;
+    }
     /* Determine the absolute time to wait in pthread_cond_timedwait(). */
     if(gettimeofday(&cond_wait_tv, NULL) < 0)
     {
@@ -2461,18 +2538,26 @@ static int thread_wait(size_t bin, struct transfer *info)
 		       __FILE__, __LINE__);
     return 1;
   }
-
+  
   /* Determine if the main thread sent the signal to indicate the other
    * thread exited early from an error. If this value is still non-zero/zero,
    * then assume there was an error. */
   if((stored[bin] > 0) == expected)  /*if(!stored[bin] == !expected)*/
   {
+    if(info->size == -1 && is_other_thread_done(info))
+    {
+       /* For file transfers of unknown length, only the write thread
+	* should be able to get here.  The write thread should get here
+	* only when it has written out the contents of all of the memory
+	* buffers and the read thread has completed. */
+       return 0;
+    }
     pack_return_values(info, 0, ECANCELED, THREAD_ERROR,
 		       "waiting for condition failed",
 		       0.0, __FILE__, __LINE__);
     return 1;
   }
-  
+
   return 0;
 }
 
@@ -3419,11 +3504,13 @@ static void do_read_write_threaded(struct transfer *reads,
       }
       if(reads->exit_status)
       {
-	/*(void)fprintf(stderr,
+#if 0
+	(void)fprintf(stderr,
 	  "Read thread exited with error(%d) '%s' from %s line %d.\n",
 	  reads->errno_val, strerror(reads->errno_val),
 	  reads->filename, reads->line);*/
-
+#endif
+	   
 	/* Signal the other thread there was an error. We need to lock the
 	 * mutex associated with the next bin to be used by the other thread.
 	 * Since, we don't know which one, get them all. */
@@ -3438,6 +3525,7 @@ static void do_read_write_threaded(struct transfer *reads,
 	}
       }
       reads->done = -1; /* Set to non-positive and non-zero value. */
+      writes->other_thread_done = 1; /* Set true for write thread to know. */
     }
     if(writes->done > 0) /*true when thread_write ends*/
     {
@@ -3466,11 +3554,13 @@ static void do_read_write_threaded(struct transfer *reads,
       }
       if(writes->exit_status)
       {
-	/*(void)fprintf(stderr,
+#if 0
+	(void)fprintf(stderr,
 	  "Write thread exited with error(%d) '%s' from %s line %d.\n",
 	  writes->errno_val, strerror(writes->errno_val),
 	  writes->filename, writes->line);*/
-
+#endif
+	   
 	/* Signal the other thread there was an error. We need to lock the
 	 * mutex associated with the next bin to be used by the other thread.
 	 * Since, we don't know which one, get them all.*/
@@ -3485,6 +3575,7 @@ static void do_read_write_threaded(struct transfer *reads,
 	}
       }
       writes->done = -1; /* Set to non-positive and non-zero value. */
+      reads->other_thread_done = 1; /* Set true for read thread to know. */
     }
   }
   pthread_mutex_unlock(&done_mutex);
@@ -3749,9 +3840,10 @@ static void* thread_monitor(void *monitor_info)
 static void* thread_read(void *info)
 {
   struct transfer *read_info = (struct transfer*)info; /* dereference */
-  size_t bytes_remaining;       /* Number of bytes to move in one loop. */
-  size_t bytes_transfered;      /* Bytes left to transfer in a sub loop. */
-  int sts = 0;                  /* Return value from various C system calls. */
+  size_t segment_to_read;       /* Number of bytes to move in one loop. */
+  size_t segment_read;          /* Number of bytes read in a sub loop. */
+  /*int sts = 0;*/              /* Return value from various C system calls. */
+  int rsts = -1;                /* Return value from read(). */
   size_t bin = 0U;              /* The current bin (bucket) to use. */
   unsigned int crc_ui = 0U;     /* Calculated checksum. */
   void *read_to_addr;           /* Holder for the read to memory address. */
@@ -3831,37 +3923,45 @@ static void* thread_read(void *info)
   }
 #endif /* PTHREAD_SCOPE_BOUND_NP */
 
-  while(read_info->bytes > 0)
+  while( (read_info->bytes_to_go > 0) ||
+	 (read_info->size == -1) ) /* && rsts != 0) )*/
   {
     /* If the other thread is slow, wait for it. */
     if(thread_wait(bin, read_info))
     {
        return NULL;
     }
-
+    /* Allocate the next buffer to place data into. */
     if(get_next_segment(bin, read_info) == NULL)
     {
        return NULL;
     }
-
-    /* Determine the number of bytes to transfer during this inner loop. */
-    if(read_info->other_mmap_io || read_info->mmap_io)
+    
+    /* Number of bytes remaining for this loop. */
+    if(read_info->mmap_io)
     {
-       bytes_remaining = (size_t)min2ull(
-	  (unsigned long long) read_info->bytes,
-	  (unsigned long long) read_info->mmap_size);
+       if(read_info->bytes_to_go > -1)
+	  segment_to_read = (size_t)min2ull(
+	     (unsigned long long)read_info->bytes_to_go,
+	     (unsigned long long)read_info->mmap_size);
+       else
+	  segment_to_read = (unsigned long long)read_info->mmap_size;
     }
     else
     {
-       bytes_remaining = (size_t)min2ull(
-	  (unsigned long long) read_info->bytes,
-	  (unsigned long long) read_info->block_size);
+       if(read_info->bytes_to_go > -1)
+	  segment_to_read = (size_t)min2ull(
+	  (unsigned long long)read_info->bytes_to_go,
+	  (unsigned long long)read_info->block_size);
+       else
+	  segment_to_read = (unsigned long long)read_info->block_size;
     }
-    
-    /* Set this to zero. */
-    bytes_transfered = 0U;
 
-    while(bytes_remaining > 0U)
+    /* Set this to zero. */
+    segment_read = 0U;
+
+    /*while(bytes_remaining > 0U)*/
+    while(segment_to_read > 0U)
     {
       /* Record the time to start waiting for the read to occur. */
       if(gettimeofday(&start_time, NULL) < 0)
@@ -3904,23 +4004,23 @@ static void* thread_read(void *info)
        * is read directly into the memory mapped file. */
       /* These values will change with each iteration, don't get over
        * ambitous and try to move this out of the loop. */
-      read_to_addr = (void*)((uintptr_t)buffer[bin] + bytes_transfered);
+      read_to_addr = (void*)((uintptr_t)buffer[bin] + segment_read);
 
       /* Read in the data. */
       if(read_info->mmap_io)
       {
-	 sts = mmap_read(read_to_addr, bytes_remaining, read_info);
+	 rsts = mmap_read(read_to_addr, segment_to_read, read_info);
       }
       else if(read_info->direct_io)
       {
-	 sts = direct_read(read_to_addr, bytes_remaining, read_info);
+	 rsts = direct_read(read_to_addr, segment_to_read, read_info);
       }
       else
       {
-	 sts = posix_read(read_to_addr, bytes_remaining, read_info);
+	 rsts = posix_read(read_to_addr, segment_to_read, read_info);
       }
       
-      if(sts < 0)
+      if(rsts < 0)
 	 return NULL;
       
       pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
@@ -3957,7 +4057,7 @@ static void* thread_read(void *info)
       case 0:  
 	break;
        case 1:
-	crc_ui = adler32(crc_ui, read_to_addr, (unsigned int)sts);
+	crc_ui = adler32(crc_ui, read_to_addr, (unsigned int)rsts);
 	read_info->crc_ui = crc_ui;
 	break;
       default:  
@@ -3967,20 +4067,21 @@ static void* thread_read(void *info)
       }
 
       /* Update this nested loop's counting variables. */
-      bytes_remaining -= sts;
-      bytes_transfered += sts;
-      /*read_info->mmap_offset += sts;
-	read_info->mmap_left -= sts;*/
+      if(rsts == 0)
+	 segment_to_read = 0U;
+      else
+	 segment_to_read -= rsts;
+      segment_read += rsts;
 
 #ifdef DEBUG
-      print_status(stderr, bytes_transfered, bytes_remaining, read_info);
+      print_status(stderr, segment_read, segment_to_read, read_info);
 #endif /*DEBUG*/
     }
 
     /* Tell the other thread to go. */
-    if(thread_signal(bin, bytes_transfered, read_info))
+    if(thread_signal(bin, segment_read, read_info))
        return NULL;
-
+    
     /* Determine where to put the data. */
     bin = (bin + 1U) % read_info->array_size;
     pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
@@ -3991,12 +4092,20 @@ static void* thread_read(void *info)
 			 "mutex lock failed", 0.0, __FILE__, __LINE__);
       return NULL;
     }
-    read_info->bytes -= bytes_transfered;
+    read_info->bytes_to_go -= segment_read;
+    read_info->bytes_transfered += segment_read;
     if(pthread_mutex_unlock(&monitor_mutex))
     {
       pack_return_values(read_info, 0, errno, THREAD_ERROR,
 			 "mutex unlock failed", 0.0, __FILE__, __LINE__);
       return NULL;
+    }
+
+    if(read_info->size == -1 && segment_read == 0)
+    {
+       /* This will allow the read loop to exit when we are transfering
+	* a file of previously unknown size. */
+       read_info->size = read_info->bytes_transfered;
     }
   }
 
@@ -4036,6 +4145,7 @@ static void* thread_read(void *info)
 
   pack_return_values(read_info, read_info->crc_ui, 0, 0, "",
 		     corrected_time, NULL, 0);
+
   return NULL;
 }
 
@@ -4043,9 +4153,10 @@ static void* thread_read(void *info)
 static void* thread_write(void *info)
 {
   struct transfer *write_info = (struct transfer*)info; /* dereference */
-  size_t bytes_remaining;       /* Number of bytes to move in one loop. */
-  size_t bytes_transfered;      /* Bytes left to transfer in a sub loop. */
-  int sts = 0;                  /* Return value from various C system calls. */
+  size_t segment_to_write;      /* Number of bytes to write in one loop. */
+  size_t segment_written;       /* Number of bytes witten in a sub loop. */
+  /*int sts = 0;*/              /* Return value from various C system calls. */
+  int wsts = -1;                /* Return value from write(). */
   size_t bin = 0U;              /* The current bin (bucket) to use. */
   unsigned int crc_ui = 0U;     /* Calculated checksum. */
   void *write_from_addr;        /* Holder for the write from memory address. */
@@ -4124,7 +4235,8 @@ static void* thread_write(void *info)
   }
 #endif /* PTHREAD_SCOPE_BOUND_NP */
 
-  while(write_info->bytes > 0)
+  while( (write_info->bytes_to_go > 0) ||
+	 (write_info->size == -1) ) /* && wsts != 0) )*/
   {
     /* If the other thread is slow, wait for it. */
     if(thread_wait(bin, write_info))
@@ -4132,12 +4244,12 @@ static void* thread_write(void *info)
        return NULL;
     }
 
-    /* Determine the number of bytes to transfer during this inner loop. */
-    bytes_remaining = stored[bin];
+    /* Number of bytes remaining for this loop. */
+    segment_to_write = stored[bin];
     /* Set this to zero. */
-    bytes_transfered = 0U;
+    segment_written = 0U;
 
-    while(bytes_remaining > 0U)
+    while(segment_to_write > 0U)
     {
       /* Record the time to start waiting for the read to occur. */
       if(gettimeofday(&start_time, NULL) < 0)
@@ -4174,22 +4286,22 @@ static void* thread_write(void *info)
 	return NULL;
       }
 
-      write_from_addr = buffer[bin] + bytes_transfered;
+      write_from_addr = buffer[bin] + segment_written;
       
       if(write_info->mmap_io)
       {
-	 sts = mmap_write(write_from_addr, bytes_remaining, write_info);
+	 wsts = mmap_write(write_from_addr, segment_to_write, write_info);
       }
       else if(write_info->direct_io)
       {
-	 sts = direct_write(write_from_addr, bytes_remaining, write_info);
+	 wsts = direct_write(write_from_addr, segment_to_write, write_info);
       }
       else
       {
-	sts = posix_write(write_from_addr, bytes_remaining, write_info);
+	wsts = posix_write(write_from_addr, segment_to_write, write_info);
       }
 
-      if(sts < 0)
+      if(wsts < 0)
 	 return NULL;
 
       pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
@@ -4227,7 +4339,7 @@ static void* thread_write(void *info)
       case 0:
 	break;
       case 1:
-	crc_ui = adler32(crc_ui, write_from_addr, (unsigned int)sts);
+	crc_ui = adler32(crc_ui, write_from_addr, (unsigned int)wsts);
 	/*to cause intentional crc errors, use the following line instead*/
 	/*crc_ui=adler32(crc_ui, buffer, sts);*/
 	write_info->crc_ui = crc_ui;
@@ -4239,13 +4351,11 @@ static void* thread_write(void *info)
       }
 
       /* Update this nested loop's counting variables. */
-      bytes_remaining -= sts;
-      bytes_transfered += sts;
-      /*write_info->mmap_offset += sts;
-	write_info->mmap_left -= sts;*/
+      segment_to_write -= wsts;
+      segment_written += wsts;
 
 #ifdef DEBUG
-      print_status(stderr, bytes_transfered, bytes_remaining, write_info);
+      print_status(stderr, segment_written, segment_to_write, write_info);
 #endif /*DEBUG*/
     }
 
@@ -4253,9 +4363,17 @@ static void* thread_write(void *info)
      * write_info->bytes gets updated. */
     if(cleanup_segment(bin, write_info))
        return NULL;
-    /* Tell the other thread to go. */
-    if(thread_signal(bin, 0, write_info))
-       return NULL;
+
+    /* Tell the other thread to go if we have more bytes to go for a
+     * file of known size. */
+    /* The test for segment_written not being equal to zero is to exclude
+     * calling thread_signal() when we have written all the bytes read for
+     * a file of unknown length.  Calling thread_signal() beyond the
+     * amount of data read by thread_read() would block, becuase the main
+     * thread has just grabbed *all* the buffer locks.*/
+    if(segment_written != 0U)
+       if(thread_signal(bin, 0, write_info))
+	  return NULL;
 
     /* Determine where to get the data. */
     bin = (bin + 1U) % write_info->array_size;
@@ -4267,12 +4385,20 @@ static void* thread_write(void *info)
 			 "mutex lock failed", 0.0, __FILE__, __LINE__);
       return NULL;
     }
-    write_info->bytes -= bytes_transfered;    
+    write_info->bytes_to_go -= segment_written;
+    write_info->bytes_transfered += segment_written;
     if(pthread_mutex_unlock(&monitor_mutex))
     {
       pack_return_values(write_info, 0, errno, THREAD_ERROR,
 			 "mutex unlock failed", 0.0, __FILE__, __LINE__);
       return NULL;
+    }
+
+    if(write_info->size == -1 && segment_written == 0)
+    {
+       /* This will allow the write loop to exit when we are transfering
+	* a file of previously unknown size. */
+       write_info->size = write_info->bytes_transfered;
     }
   }
 
@@ -4311,6 +4437,7 @@ static void* thread_write(void *info)
       transfer_time;
 
   pack_return_values(info, crc_ui, 0, 0, "", corrected_time, NULL, 0);
+
   return NULL;
 }
 
@@ -4320,9 +4447,12 @@ static void* thread_write(void *info)
 static void do_read_write(struct transfer *read_info,
 			  struct transfer *write_info)
 {
-  ssize_t sts;                  /* Return status from read() and write(). */
-  size_t bytes_remaining;       /* Number of bytes to move in one loop. */
-  size_t bytes_transfered;      /* Number of bytes moved in one loop. */
+  ssize_t wsts = -1;            /* Return status from write(). */
+  ssize_t rsts = -1;            /* Return status from read(). */
+  size_t segment_to_read;       /* Number of bytes to read in one loop. */
+  size_t segment_to_write;      /* Number of bytes to write in one loop. */
+  size_t segment_read;          /* Number of bytes read in one loop. */
+  size_t segment_written;       /* Number of bytes written in one loop. */
 #ifdef PROFILE
   struct profile profile_data[PROFILE_COUNT]; /* profile data array */
   long profile_count = 0;       /* Index of profile array. */
@@ -4421,17 +4551,20 @@ static void do_read_write(struct transfer *read_info,
   read_info->other_fd = write_info->fd;
   write_info->other_fd = read_info->fd;
   
-  while(read_info->bytes > 0 && write_info->bytes > 0)
+  while( (read_info->bytes_to_go > 0 && write_info->bytes_to_go > 0) ||
+	 (read_info->size == -1) )
   {
     /* Get the next memory (either malloc/memalign or mmap) segment. */
     
     if(read_info->mmap_io && write_info->mmap_io)
     {
+       /* Allocate the next mmap() regions. */
        if(get_next_segments(read_info) == 0)
        {
 	  return;
        }
     }
+    /* Allocate the next buffer to place data into. */
     else if(get_next_segment(0, read_info) == NULL)
     {
        return;
@@ -4439,19 +4572,31 @@ static void do_read_write(struct transfer *read_info,
 	
     /* Number of bytes remaining for this loop. */
     if(read_info->mmap_io || write_info->mmap_io)
-       bytes_remaining = (size_t)min2ull((unsigned long long)read_info->bytes,
-				    (unsigned long long)read_info->mmap_size);
+    {
+       if(read_info->bytes_to_go > -1)
+	  segment_to_read = (size_t)min2ull(
+	     (unsigned long long)read_info->bytes_to_go,
+	     (unsigned long long)read_info->mmap_size);
+       else
+	  segment_to_read = (unsigned long long)read_info->mmap_size;
+    }
     else
-       bytes_remaining = (size_t)min2ull((unsigned long long)read_info->bytes,
-				    (unsigned long long)read_info->block_size);
-    
-    /* Set this to zero. */
-    bytes_transfered = 0U;
+    {
+       if(read_info->bytes_to_go > -1)
+	  segment_to_read = (size_t)min2ull(
+	  (unsigned long long)read_info->bytes_to_go,
+	  (unsigned long long)read_info->block_size);
+       else
+	  segment_to_read = (unsigned long long)read_info->block_size;
+    }
 
-    while(bytes_remaining > 0U)
+    /* Set this to zero. */
+    segment_read = 0U;
+
+    while(segment_to_read > 0U)
     {
 #ifdef PROFILE
-      update_profile(1, bytes_remaining, read_info->fd,
+      update_profile(1, segment_to_read, read_info->fd,
 		     profile_data, &profile_count);
 #endif /*PROFILE*/
 
@@ -4460,12 +4605,12 @@ static void do_read_write(struct transfer *read_info,
 	return;
 
 #ifdef PROFILE
-      update_profile(2, bytes_remaining, read_info->fd,
+      update_profile(2, segment_to_read, read_info->fd,
 		     profile_data, &profile_count);
 #endif /*PROFILE*/
 
 #ifdef PROFILE
-      update_profile(3, bytes_remaining, read_info->fd,
+      update_profile(3, segment_to_read, read_info->fd,
 		     profile_data, &profile_count);
 #endif /*PROFILE*/
 
@@ -4477,7 +4622,7 @@ static void do_read_write(struct transfer *read_info,
        */
       /* These values will change with each iteration, don't get over
        * ambitous and try to move this out of the loop. */
-      read_to_addr = (void*)((uintptr_t)buffer[0] + bytes_transfered);
+      read_to_addr = (void*)((uintptr_t)buffer[0] + segment_read);
       
       /* Read in the data. */
       if(read_info->mmap_io && write_info->mmap_io)
@@ -4485,34 +4630,33 @@ static void do_read_write(struct transfer *read_info,
 	 /* In this case buffer[0] holds the destination mmap address
 	  * and buffer[1] holds the source mmap address. */
 	 (void)memcpy(read_to_addr,
-		      (void*)((uintptr_t)buffer[1] + bytes_transfered),
-		      bytes_remaining);
-	 sts = bytes_remaining;
+		      (void*)((uintptr_t)buffer[1] + segment_read),
+		      segment_to_read);
+	 rsts = segment_to_read;
       }
-      else
-      if(read_info->mmap_io)
+      else if(read_info->mmap_io)
       {
 	 /* Tells kernel to preread the file into cache. */
-	 sts = mmap_read(read_to_addr, bytes_remaining, read_info);
+	 rsts = mmap_read(read_to_addr, segment_to_read, read_info);
       }
       else if(read_info->direct_io)
       {
-	 sts = direct_read(read_to_addr, bytes_remaining, read_info);
+	 rsts = direct_read(read_to_addr, segment_to_read, read_info);
       }
       else
       {
-	 sts = posix_read(read_to_addr, bytes_remaining, read_info);
+	 rsts = posix_read(read_to_addr, segment_to_read, read_info);
       }
 
-      if(sts < 0)
-	 return;
+      if(rsts < 0)
+	 return; 
 
       switch (read_info->crc_flag)
       {
       case 0:
 	break;
 	 case 1:
-	 r_crc_ui = adler32(r_crc_ui, read_to_addr, (unsigned int)sts);
+	 r_crc_ui = adler32(r_crc_ui, read_to_addr, (unsigned int)rsts);
 	 break;
       default:
 	r_crc_ui = 0;
@@ -4520,32 +4664,36 @@ static void do_read_write(struct transfer *read_info,
       }
       
 #ifdef PROFILE
-      update_profile(4, sts, read_info->fd,
+      update_profile(4, rsts, read_info->fd,
 		     profile_data, &profile_count);
 #endif /*PROFILE*/
 
       /* Update this nested loop's counting variables. */
-      bytes_remaining -= sts;
-      bytes_transfered += sts;
+      if(rsts == 0)
+	 segment_to_read = 0U;
+      else
+	 segment_to_read -= rsts;
+      segment_read += rsts;
 
 #ifdef DEBUG
-      *stored = bytes_transfered;
+      *stored = segment_read;
       read_info->crc_ui = r_crc_ui;
-      print_status(stderr, bytes_transfered, bytes_remaining, read_info);
+      print_status(stderr, segment_read, segment_to_read, read_info);
 #endif /*DEBUG*/
     }
 
-    read_info->bytes -= bytes_transfered;
+    read_info->bytes_to_go -= segment_read;
+    read_info->bytes_transfered += segment_read;
 
     /* Initialize the write loop variables. */
-    bytes_remaining = bytes_transfered;
-    bytes_transfered = 0U;
+    segment_to_write = segment_read;
+    /* Set this to zero. */
+    segment_written = 0U;
 
-    while (bytes_remaining > 0U)
+    while (segment_to_write > 0U)
     {
-
 #ifdef PROFILE
-      update_profile(5, bytes_remaining, write_info->fd,
+      update_profile(5, segment_to_write, write_info->fd,
 		     profile_data, &profile_count);
 #endif /*PROFILE*/
 
@@ -4554,12 +4702,12 @@ static void do_read_write(struct transfer *read_info,
 	return;
 
 #ifdef PROFILE
-      update_profile(6, bytes_remaining, write_info->fd,
+      update_profile(6, segment_to_write, write_info->fd,
 		     profile_data, &profile_count);
 #endif /*PROFILE*/
 
 #ifdef PROFILE
-      update_profile(7, bytes_remaining, write_info->fd,
+      update_profile(7, segment_to_write, write_info->fd,
 		     profile_data, &profile_count);
 #endif /*PROFILE*/
 
@@ -4571,27 +4719,27 @@ static void do_read_write(struct transfer *read_info,
        */
       /* These values will change with each iteration, don't get over
        * ambitous and try to move this out of the loop. */
-      write_from_addr = (void*)((uintptr_t)buffer[0] + bytes_transfered);
+      write_from_addr = (void*)((uintptr_t)buffer[0] + segment_written);
       
       if(write_info->mmap_io)
       {
 	 /* Tells the kernel to get the information to disk ASAP. */
-	 sts = mmap_write(write_from_addr, bytes_remaining, write_info);
+	 wsts = mmap_write(write_from_addr, segment_to_write, write_info);
       }
       else if(write_info->direct_io)
       {
-	 sts = direct_write(write_from_addr, bytes_remaining, write_info);
+	 wsts = direct_write(write_from_addr, segment_to_write, write_info);
       }
       else
       {
-	 sts = posix_write(write_from_addr, bytes_remaining, write_info);
+	 wsts = posix_write(write_from_addr, segment_to_write, write_info);
       }
       
-      if(sts < 0)
+      if(wsts < 0)
 	 return;
 
 #ifdef PROFILE
-      update_profile(8, sts, write_info->fd,
+      update_profile(8, wsts, write_info->fd,
 		     profile_data, &profile_count);
 #endif /*PROFILE*/
 
@@ -4600,7 +4748,7 @@ static void do_read_write(struct transfer *read_info,
       case 0:
 	break;
 	 case 1:
-	 crc_ui=adler32(crc_ui, write_from_addr, (unsigned int)sts);
+	 crc_ui=adler32(crc_ui, write_from_addr, (unsigned int)wsts);
 	 break;
       default:
 	crc_ui = 0;
@@ -4608,13 +4756,13 @@ static void do_read_write(struct transfer *read_info,
       }
 
       /* Handle calling select to wait on the descriptor. */
-      bytes_remaining -= sts;
-      bytes_transfered += sts;
+      segment_to_write -= wsts;
+      segment_written += wsts;
 
 #ifdef DEBUG
-      *stored = bytes_transfered;
+      *stored = segment_written;
       write_info->crc_ui = crc_ui;
-      print_status(stderr, bytes_transfered, bytes_remaining, write_info);
+      print_status(stderr, segment_written, segment_to_write, write_info);
 #endif /*DEBUG*/
     }
 
@@ -4628,9 +4776,10 @@ static void do_read_write(struct transfer *read_info,
     else if(cleanup_segment(0, write_info))
        return;
 
-    write_info->bytes -= bytes_transfered;
+    write_info->bytes_to_go -= segment_written;
+    write_info->bytes_transfered += segment_written;
   }
-  
+
   /* Sync the data to disk and other 'completion' steps. */
   if(finish_write(write_info))
     return;
@@ -4707,7 +4856,7 @@ raise_exception2(struct transfer *rtn_val)
     /* What does the above comment mean??? */
     v = Py_BuildValue("(s,i,s,i,O,O,O,s,i)",
 		      rtn_val->msg, i, strerror(i), getpid(),
-		      PyLong_FromLongLong(rtn_val->bytes),
+		      PyLong_FromLongLong(rtn_val->bytes_to_go),
 		      PyFloat_FromDouble(rtn_val->transfer_time),
 		      PyFloat_FromDouble(rtn_val->transfer_time),
 		      rtn_val->filename, rtn_val->line);
@@ -4879,7 +5028,9 @@ EXfd_xfer(PyObject *self, PyObject *args)
     if (PyLong_Check(no_bytes_obj))
 	no_bytes = PyLong_AsLongLong(no_bytes_obj);
     else if (PyInt_Check(no_bytes_obj))
-	no_bytes = (long long)PyInt_AsLong(no_bytes_obj);
+        no_bytes = (long long)PyInt_AsLong(no_bytes_obj);
+    else if (no_bytes_obj == Py_None)
+        no_bytes = -1; /* File size not know, likely a FIFO for input. */
     else
 	return(raise_exception("fd_xfer - invalid no_bytes param"));
     
@@ -4907,10 +5058,8 @@ EXfd_xfer(PyObject *self, PyObject *args)
     (void)memset(&reads, 0, sizeof(reads));
     (void)memset(&writes, 0, sizeof(writes));
     reads.fd = fr_fd;
-    /*reads.mmap_ptr = MAP_FAILED;*/
-    /*reads.mmap_len = 0;*/
     reads.size = no_bytes;
-    reads.bytes = no_bytes;
+    reads.bytes_to_go = no_bytes;
     reads.block_size = align_to_page(block_size);
     if(threaded_transfer)
       reads.array_size = array_size;
@@ -4928,10 +5077,8 @@ EXfd_xfer(PyObject *self, PyObject *args)
     reads.mmap_io = mmap_io;
     reads.advisory_locking = 1;
     writes.fd = to_fd;
-    /*writes.mmap_ptr = MAP_FAILED;*/
-    /*writes.mmap_len = 0;*/
     writes.size = no_bytes;
-    writes.bytes = no_bytes;
+    writes.bytes_to_go = no_bytes;
     writes.block_size = align_to_page(block_size);
     if(threaded_transfer)
       writes.array_size = array_size;
@@ -4951,8 +5098,10 @@ EXfd_xfer(PyObject *self, PyObject *args)
     else
       do_read_write(&reads, &writes);
 
-    /*printf("read crc: %ud\n", reads.crc_ui);*/
-    /*printf("write crc: %ud\n", writes.crc_ui);*/
+#if 0
+    printf("read crc: %ud\n", reads.crc_ui);
+    printf("write crc: %ud\n", writes.crc_ui);
+#endif
     
     /*
      * If the write error is ECANCELED then use the read error, because
@@ -4968,7 +5117,7 @@ EXfd_xfer(PyObject *self, PyObject *args)
     rr = Py_BuildValue("(i,O,O,i,s,O,O,s,i)",
 		       writes.exit_status, 
 		       PyLong_FromUnsignedLong(writes.crc_ui),
-                       PyLong_FromLongLong(writes.bytes),
+                       PyLong_FromLongLong(writes.bytes_to_go),
 		       writes.errno_val, writes.msg,
 		       PyFloat_FromDouble(reads.transfer_time),
 		       PyFloat_FromDouble(writes.transfer_time),
@@ -5869,25 +6018,41 @@ int main(int argc, char **argv)
 		   argv[first_file_optind], strerror(errno));
      return 1;
   }
-  errno = 0;
-  if(realpath(argv[first_file_optind], abspath) == NULL)
+  if( (strcmp(argv[first_file_optind], "/dev/zero") == 0) &&
+      (strcmp(argv[first_file_optind], "/dev/random") == 0) &&
+      (strcmp(argv[first_file_optind], "/dev/urandom") == 0) )
   {
-     (void)fprintf(stderr, "input file(%s): %s\n",
-		   argv[first_file_optind], strerror(errno));
-     return 1;
-  }
-  errno = 0;
-  if(!S_ISREG(file_info.st_mode) && (strcmp(abspath, "/dev/zero") != 0))
-  {
-     (void)fprintf(stderr, "input file %s is not a regular file\n", abspath);
-     return 1;
-  }
-  /* If reading from /dev/zero, set the size.  Otherwise, remember the size
-   * of the file. */
-  if(strcmp(abspath, "/dev/zero") == 0)
+     strncpy(abspath, argv[first_file_optind], PATH_MAX);
+     
+      /* If reading from /dev/zero, set the size.  Otherwise, remember the size
+       * of the file. */
      size = 1024*1024*1024;  /* 1GB */
+  }
+  else if ( (strncmp(argv[first_file_optind], "/dev/fd/", 8) == 0) )
+  {
+     strncpy(abspath, argv[first_file_optind], PATH_MAX);
+
+     size = -1LL;
+  }
   else
-    size = file_info.st_size;
+  {
+     errno = 0;
+     if(realpath(argv[first_file_optind], abspath) == NULL)
+     {
+	(void)fprintf(stderr, "input file(%s): %s\n",
+		      argv[first_file_optind], strerror(errno));
+	return 1;
+     }
+     errno = 0;
+     if(!S_ISREG(file_info.st_mode) && (strcmp(abspath, "/dev/zero") != 0))
+     {
+	(void)fprintf(stderr,
+		      "input file %s is not a regular file\n", abspath);
+	return 1;
+     }
+
+     size = file_info.st_size;
+  }
 
   /* Blow away the files cache. */
   if(cache)
@@ -6012,7 +6177,7 @@ int main(int argc, char **argv)
   (void)memset(&writes, 0, sizeof(writes));
   reads.fd = fd_in;
   reads.size = size;
-  reads.bytes = size;
+  reads.bytes_to_go = size;
   reads.block_size = align_to_page(block_size);
   if(threaded_transfer)
     reads.array_size = array_size;
@@ -6035,7 +6200,7 @@ int main(int argc, char **argv)
   reads.mandatory_locking = (bool)mandatory_locking_in;
   writes.fd = fd_out;
   writes.size = size;
-  writes.bytes = size;
+  writes.bytes_to_go = size;
   writes.block_size = align_to_page(block_size);
   if(threaded_transfer)
     writes.array_size = array_size;
@@ -6080,7 +6245,7 @@ int main(int argc, char **argv)
 	(void)printf("Read time: %f  Write time: %f  Size: %lld  CRC: %u\n",
 		     reads.transfer_time,
 		     writes.transfer_time,
-		     size,
+		     writes.bytes_transfered,
 		     writes.crc_ui);
      (void)printf("Read rate: %f MB/s Write rate: %f MB/s\n",
 		  (double)(size/(1024*1024)/reads.transfer_time),
