@@ -73,6 +73,12 @@ def is_volume(volume):
     # and a unique number assigned by the disk mover.
     
     if type(volume) == types.StringType:
+        if is_volume_tape(volume):
+            return 1
+        elif is_volume_disk(volume):
+            return 1
+        
+        """
         if re.search("^[A-Z0-9]{6}$", volume):
             return 1   #If passed a volume.
         elif re.search("^[A-Z0-9]{6}(L)[0-9]{1}$", volume):
@@ -81,6 +87,26 @@ def is_volume(volume):
                       % (charset.hostnamecharset, charset.charset,
                          charset.charset, charset.charset), volume):
             return 1   #If passed a disk volume.
+        """
+        
+    return 0
+
+def is_volume_tape(volume):
+    if type(volume) == types.StringType:
+        if re.search("^[A-Z0-9]{6}$", volume):
+            return 1   #If passed a volume.
+        elif re.search("^[A-Z0-9]{6}(L)[0-9]{1}$", volume):
+            return 1   #If passed a volume.
+
+    return 0
+
+def is_volume_disk(volume):
+    if type(volume) == types.StringType:
+        if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[0-9]+$"
+                      % (charset.hostnamecharset, charset.charset,
+                         charset.charset, charset.charset), volume):
+            return 1   #If passed a disk volume.
+
     return 0
 
 def is_location_cookie_tape(lc):
