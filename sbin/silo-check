@@ -49,20 +49,20 @@ echo -e Brought to You by: `basename $0` "\n"
 if [ $gang = "stken" ]; then
 
 # stken 9310 silos are acs 0 & lsm 0,1
-# stken 8500 rails are acs 0 & lsm 0-3
+# stken 8500 rails are acs 0 & lsm 0-7
 
 # for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
 #   vol   home		acs, lsm, panel, row, col	type
 #   vol   in drive	acs, lsm, panel, drive		type
 #   vol   in transit	acs, lsm, panel, row, col	type
 #   vol   in transit	acs, lsm, panel, drive		type
-# where type is one of STK1R, STK1U, STK2P, STK2W
+# where type is one of STK2P, STK2W
 #
 # for "display" (ACSLS 7), each line in the silo inventory has ten fields:
 #   Vol_id  Acs  Lsm  Panel  Row  Column  Pool   Status    Media     Type
 # where
 #   Status is one of dismount, eject, enter, mount, home, in_drive, move, missing, absent, ejected
-#   Media is one of STK1R, STK1U, STK2P, STK2W
+#   Media is one of STK2P, STK2W
 #   Type is one of data, clean
 #
 # each line in the tower inventory is in this format:
@@ -77,7 +77,7 @@ if [ $gang = "stken" ]; then
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
   awk 'NF==10 || /         0, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
-egrep -v "^$|^<|(TEST|TST|(PR|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
+egrep -v "^$|^<|(TEST|(TST|P[RS][A-Z]|IA[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
   awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
 egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|DECDLT) attrib (Empty|Occupied)" $inventory_dir/AML2-VOLUMES.html |\
@@ -96,7 +96,7 @@ fgrep -f /tmp/silo-not-enstore $inventory_dir/STK-VOLUMES.html
 # tapes in the StreamLine 8500, but not in enstore
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 3) that are not fully declared to enstore"
+echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 7) that are not fully declared to enstore"
 comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
 fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500-VOLUMES.html
 
@@ -148,7 +148,8 @@ echo "--------------------------------------------------------------------------
 
 elif [ $gang = "d0en" ]; then
 
-# d0en silos are acs 1 & lsm 0,1
+# d0en 9310 silos are acs 1 & lsm 0,1
+# d0en 8500 rails are acs 0 & lsm 4-7
 
 # for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
 #   vol   home		acs, lsm, panel, row, col	type
@@ -160,21 +161,31 @@ elif [ $gang = "d0en" ]; then
 # for "display" (ACSLS 7), each line in the silo inventory has ten fields:
 #   Vol_id  Acs  Lsm  Panel  Row  Column  Pool   Status    Media     Type
 # where
-#   Status is one of dismount, eject, enter, mount, home, in_drive, move, missing, absent, ejected
+#   Status is one of dismount, eject, enter, mount, home, in drive,
+#		     move, missing, absent, ejected, in transit
 #   Media is one of STK2P, STK2W
 #   Type is one of data, clean
 #
 # each line in the tower inventory is in this format:
 #   volser xxxnnn[L1] media 3480 attrib {Empty|Ejected|Mounted|Occupied}
 #
-# inventory listed by the stk media changer has 4 columns, after squeezing
-# out the blanks in the comma-separated location:
+# inventory listed by the stk media changer has 4 columns,
+# after squeezing out the blanks in the comma-separated location:
 #   volume type state location
 # where
 #   type is one of STK2P, STK2W
-#   state is one of dismount, eject, enter, mount, home, in drive, move, missing, absent, ejected
+#   state is one of dismount, eject, enter, mount, home, in drive,
+#		    move, missing, absent, ejected, in transit
 #
-# inventory listed by the AML2 media changer has 4 columns:
+# inventory listed by the sl8500 media changer has 4 columns,
+# after squeezing out the blanks in the comma-separated location:
+#   volume type state location
+# where
+#   type is one of LTO-CLNU, LTO-400G, LTO-800G 
+#   state is one of dismount, eject, enter, mount, home, in drive,
+#		    move, missing, absent, ejected, in transit
+#
+# inventory listed by the aml2 media changer has 4 columns:
 #   volume type state location
 # where
 #   type is one of 3480, DECDLT
@@ -187,10 +198,12 @@ elif [ $gang = "d0en" ]; then
 #
 # there should be no deleted volumes in VOLUMES_DEFINED
 
-egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html | sed -e 's/, /,/g' |\
+egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
+  sed -e 's/, /,/g' -e 's/in /in_/' |\
   awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^1,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/silo-volumes
-egrep -v "^$|^<|(TEST|TST|(VO|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html | sed -e 's/, /,/g' |\
+egrep -v "^$|^<|(TEST|(TST|(VO|IA)[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500G1-VOLUMES.html |\
+  sed -e 's/, /,/g' -e 's/in /in_/' |\
   awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/rail-volumes
 egrep -v "^$|^<" $inventory_dir/AML2-VOLUMES.html |\
@@ -209,7 +222,7 @@ fgrep -f /tmp/silo-not-enstore $inventory_dir/STK-VOLUMES.html
 # tapes in the StreamLine 8500, but not in enstore
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 3) that are not fully declared to enstore"
+echo "Tapes in the StreamLine 8500 (acs 0, lsm 4 to 7) that are not fully declared to enstore"
 comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
 fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500-VOLUMES.html
 
@@ -287,7 +300,7 @@ elif [ $gang = "cdfen" ]; then
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
   awk 'NF==10 || /         0, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
-egrep -v "^$|^<|(TEST|TST|(VO|PR)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
+egrep -v "^$|^<|(TEST|(TST|P[RS][A-Z]|VO[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
   awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
