@@ -1681,7 +1681,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print str(detail)
             return 1
 
-    #For legacy perpouses.
+    #For legacy purposes.
     pcat = player
     
     #Snag the cross reference of the file inside self.file.
@@ -1702,7 +1702,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print str(detail)
             return 1
         
-    #For legacy perpouses.
+    #For legacy purposes.
     pinfo = pxref
 
     #Prints out the bfid value for the specified file.
