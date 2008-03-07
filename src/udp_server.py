@@ -158,6 +158,9 @@ class UDPServer:
         """
         return self.server_socket.fileno()
 
+    def get_server_address(self):
+        return self.server_address
+
     def do_request(self):
         # ref udp_client.py (i.e. we may wish to have a udp_client method
         # to get this information)
