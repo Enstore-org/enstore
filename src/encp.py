@@ -4328,9 +4328,12 @@ def submit_one_request(ticket, encp_intf):
 
 #mode should only contain two values, "read", "write".
 #def open_local_file(filename, e):
-def open_local_file(work_ticket, e):
+def open_local_file(work_ticket, tinfo, e):
     
     open_local_file_start_time = time.time()
+
+    Trace.message(5, "Opening local file.")
+    Trace.log(e_errors.INFO, "Opening local file.")
     
     if is_write(e):
         flags = os.O_RDONLY
@@ -4397,12 +4400,17 @@ def open_local_file(work_ticket, e):
 
     done_ticket = {'status':(e_errors.OK, None), 'fd':local_fd}
 
+    Trace.message(TRANSFER_LEVEL, "Output file %s opened.  elapsed=%s" %
+                  (work_ticket['outfile'],
+                   time.time() - tinfo['encp_start_time']))
+        
     #Record this.
     message = "Time to open local file: %s sec." % \
               (time.time() - open_local_file_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
+
     return done_ticket
 
 ############################################################################
@@ -4448,6 +4456,67 @@ def receive_final_dialog(control_socket):
     Trace.log(TIME_LEVEL, message)
     
     return done_ticket
+
+def receive_final_dialog_2(udp_socket, e):
+
+    final_dialog_2_start_time = time.time()
+
+    Trace.message(5, "Waiting for final dialog (2).")
+
+    #Keep the udp socket queues clear.
+    while time.time() < final_dialog_2_start_time + e.mover_timeout:
+        mover_udp_done_ticket = udp_socket.do_request()
+
+        #If requested output the raw 
+        Trace.trace(11, "UDP MOVER MESSAGE:")
+        Trace.trace(11, pprint.pformat(mover_udp_done_ticket))
+
+        #Make sure the messages are what we expect.
+        if mover_udp_done_ticket == None: #Something happened, keep trying.
+            continue
+        #Keep looping until one of these two messages arives.  Ignore
+        # any other that my be received.
+        elif mover_udp_done_ticket['work'] != 'mover_bound_volume' and \
+           mover_udp_done_ticket['work'] != 'mover_error':
+            continue
+        else:
+            break
+        
+    Trace.message(5, "Received final dialog (2).")
+    Trace.message(10, "FINAL DIALOG (udp):")
+    Trace.message(10, pprint.pformat(mover_udp_done_ticket))
+    Trace.log(e_errors.INFO, "Received final dialog (2).")
+
+    Trace.message(TIME_LEVEL, "Time to receive final dialog (2): %s sec." %
+                  (time.time() - final_dialog_2_start_time,))
+
+    return mover_udp_done_ticket
+
+def wait_for_final_dialog(control_socket, udp_socket, e):
+    #Get the final success/failure message from the mover.  If this side
+    # has an error, don't wait for the mover in case the mover is waiting
+    # for "Get" to do something.
+    if control_socket != None:
+        
+        #Trace.message(5, "Waiting for final dialog (1).")
+        mover_done_ticket = receive_final_dialog(control_socket)
+        #Trace.message(5, "Received final dialog (1).")
+        #Trace.message(10, "FINAL DIALOG (tcp):")
+        #Trace.message(10, pprint.pformat(mover_done_ticket))
+        #Trace.log(e_errors.INFO, "Received final dialog (1).")
+    else:
+        mover_done_ticket = {'status' : (e_errors.OK, None)}
+
+    if udp_socket != None:
+        mover_udp_done_ticket = receive_final_dialog_2(udp_socket, e)
+    else:
+        mover_udp_done_ticket = {'status' : (e_errors.OK, None)}
+
+    if not e_errors.is_ok(mover_udp_done_ticket):
+        Trace.log(e_errors.ERROR, "MOVER_UDP_DONE_TICKET")
+        Trace.log(e_errors.ERROR, str(mover_udp_done_ticket))
+
+    return mover_done_ticket
         
 ############################################################################
 
@@ -4455,7 +4524,7 @@ def receive_final_dialog(control_socket):
 # is an integer of the crc value.  On error returns 0.
 #def transfer_file(input_fd, output_fd, contropl_socket, request, tinfo, e):
 def transfer_file(input_file_obj, output_file_obj, control_socket,
-                  request, tinfo, e):
+                  request, tinfo, e, udp_socket = None):
 
     transfer_start_time = time.time() # Start time of file transfer.
 
@@ -4614,7 +4683,8 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
     #Even though the functionality is there for this to be done in
     # handle requests, this should be received outside since there must
     # be one... not only receiving one on error.
-    done_ticket = receive_final_dialog(control_socket)
+    #done_ticket = receive_final_dialog(control_socket)
+    done_ticket = wait_for_final_dialog(control_socket, udp_socket, e)
 
     #Are these necessary???  Yes.  For these two conditions, the error
     # is very much local.  Don't blame the mover.
@@ -4827,7 +4897,38 @@ def check_crc_layer2(done_ticket, encp_crc_1_seeded):
 def verify_file_size(ticket, encp_intf = None):
 
     verify_file_size_start_time = time.time()
-    
+
+    #Before continueing, double check the number bytes said to be
+    # moved by the mover and encp.
+    encp_size = ticket.get('exfer', {}).get('bytes_transfered', None)
+    mover_size = ticket.get('fc', {}).get('size', None)
+    if encp_size == None:
+        ticket['status'] = (e_errors.UNKNOWN,
+                                 "Client does not know number of bytes"
+                                 " transfered.")
+        return ticket
+    elif mover_size == None:
+        ticket['status'] = (e_errors.UNKNOWN,
+                                 "Mover did not report how many bytes"
+                                 " were transfered.")
+        return ticket
+    elif long(encp_size) != long(mover_size):
+        #We get here if the two sizes to not match.  This is a very bad
+        # thing to occur.
+        msg = (e_errors.CONFLICT,
+               "Get bytes read (%s) do not match the mover "
+               "bytes written (%s)." % (encp_size, mover_size))
+        ticket['status'] = msg
+        return ticket
+    else:
+        if ticket['file_size'] == None:
+            #If the number of bytes transfered is consistant with Get and
+            # the mover, then set this value.  This is only necessary
+            # when no file information is available.
+            ticket['file_size'] = long(encp_size)
+
+
+
     #Don't worry about checking when outfile is /dev/null.
     if ticket['outfile'] in ['/dev/null', "/dev/zero",
                              "/dev/random", "/dev/urandom"]:
@@ -6959,7 +7060,7 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
         #maybe this isn't a good idea...
         work_ticket = combine_dict(ticket, work_ticket)
 
-        done_ticket = open_local_file(work_ticket, e)
+        done_ticket = open_local_file(work_ticket, tinfo, e)
 
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e,
@@ -8638,6 +8739,8 @@ def create_read_request(request, file_number,
         request['fc'] = fc_reply
         request['file_size'] = file_size
         request['infile'] = ifullname
+        if udp_callback_addr: #For "get" only.
+            request['method'] = "read_next"
         request['outfile'] = ofullname
         #request['override_noaccess'] = e.override_noaccess #no to this
         request['override_ro_mount'] = e.override_ro_mount
@@ -8761,18 +8864,18 @@ def stall_read_transfer(data_path_socket, work_ticket, e):
 #   did not succeed.  bytes is the total running sum of bytes transfered
 #   for this encp.
 
-def read_hsm_file(listen_socket, request_list, tinfo, e):
+def read_hsm_file(request_ticket, control_socket, data_path_socket,
+                  request_list, tinfo, e, udp_socket = None):
 
     for rq in request_list: 
         Trace.trace(17,"read_hsm_file: %s"%(rq['infile'],))
 
+    """
     #Wait for the mover to establish the control socket.  See if the
     # id matches one of the tickets we submitted.  Establish data socket
     # connection with the mover.
     control_socket, data_path_socket, request_ticket = mover_handshake(
         listen_socket, request_list, e)
-
-    overall_start = time.time() #----------------------------Overall Start
 
     done_ticket = request_ticket #Make sure this exists by this point.
     local_filename = request_ticket.get('wrapper',{}).get('fullname', None)
@@ -8785,7 +8888,9 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
 
     if not e_errors.is_ok(result_dict):
         return combine_dict(result_dict, request_ticket)
-
+    """
+    
+    overall_start = time.time() #----------------------------Overall Start
 
     #Be paranoid.  Check this the ticket again.
     #Dmitry is not paranoid
@@ -8802,18 +8907,16 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
                                      msg.ticket, e)
 
             if not e_errors.is_ok(result_dict):
-                close_descriptors(control_socket, data_path_socket)
+                #close_descriptors(control_socket, data_path_socket)
                 return combine_dict(result_dict, request_ticket)
-            
-        
-        
+                    
     Trace.message(TRANSFER_LEVEL, "Mover called back.  elapsed=%s" %
                   (time.time() - tinfo['encp_start_time'],))
     Trace.message(TICKET_LEVEL, "REQUEST:")
     Trace.message(TICKET_LEVEL, pprint.pformat(request_ticket))
 
     #Open the output file.
-    done_ticket = open_local_file(request_ticket, e)
+    done_ticket = open_local_file(request_ticket, tinfo, e)
 
     result_dict = handle_retries(request_list, request_ticket,
                                  done_ticket, e)
@@ -8821,15 +8924,11 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
                                  #udp_server = route_server)
 
     if not e_errors.is_ok(result_dict):
-        close_descriptors(control_socket, data_path_socket)
+        #close_descriptors(control_socket, data_path_socket)
         return combine_dict(result_dict, request_ticket)
     else:
         out_fd = done_ticket['fd']
     
-    Trace.message(TRANSFER_LEVEL, "Output file %s opened.  elapsed=%s" %
-              (request_ticket['outfile'],
-               time.time() - tinfo['encp_start_time']))
-
     #We need to stall the transfer until the mover is ready.
     done_ticket = stall_read_transfer(data_path_socket, request_ticket, e)
 
@@ -8849,14 +8948,15 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
                                      external_label = external_label)
 
         if not e_errors.is_ok(result_dict):
-            close_descriptors(control_socket, data_path_socket, out_fd)
+            #close_descriptors(control_socket, data_path_socket, out_fd)
+            close_descriptors(out_fd)
             return combine_dict(result_dict, request_ticket)
         
     lap_start = time.time() #----------------------------------------Start
 
     done_ticket = transfer_file(data_path_socket, out_fd,
                                 control_socket, request_ticket,
-                                tinfo, e)
+                                tinfo, e, udp_socket = udp_socket)
     
     lap_end = time.time()  #-----------------------------------------End
     tstring = "%s_transfer_time" % request_ticket['unique_id']
@@ -8873,8 +8973,12 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
 
     if not e_errors.is_ok(result_dict):
         #Close these before they are forgotten.
-        close_descriptors(control_socket, data_path_socket, out_fd)
+        #close_descriptors(control_socket, data_path_socket, out_fd)
+        close_descriptors(out_fd)
         return combine_dict(result_dict, request_ticket)
+
+    #Make sure the exfer sub-ticket gets stored into request_ticket.
+    request_ticket = combine_dict(done_ticket, request_ticket)
     
     #These functions write errors/warnings to the log file and put an
     # error status in the ticket.
@@ -8887,7 +8991,8 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
 
     if not e_errors.is_ok(result_dict):
         #Close these before they are forgotten.
-        close_descriptors(control_socket, data_path_socket, out_fd)
+        #close_descriptors(control_socket, data_path_socket, out_fd)
+        close_descriptors(out_fd)
         return combine_dict(result_dict, request_ticket)
 
     #Check the CRC.
@@ -8898,11 +9003,13 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
 
     if not e_errors.is_ok(result_dict):
         #Close these before they are sforgotten.
-        close_descriptors(control_socket, data_path_socket, out_fd)
+        #close_descriptors(control_socket, data_path_socket, out_fd)
+        close_descriptors(out_fd)
         return combine_dict(result_dict, request_ticket)
 
     #If no error occured, this is safe to close now.
-    close_descriptors(control_socket, data_path_socket, out_fd)
+    #close_descriptors(control_socket, data_path_socket, out_fd)
+    close_descriptors(out_fd)
 
     #Update the last access and modification times respecively.
     update_times(done_ticket['infile'], done_ticket['outfile'])
@@ -8929,13 +9036,7 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
     #Remove the new file from the list of those to be deleted should
     # encp stop suddenly.  (ie. crash or control-C).
     delete_at_exit.unregister(done_ticket['outfile']) #localname
-
-    # remove file requests if transfer completed succesfuly.
-    #del(request_ticket)
-    #del request_list[request_list.index(request_ticket)]
-    #if files_left > 0:
-    #    files_left = files_left - 1
-
+    
     tstring = "%s_overall_time" % done_ticket['unique_id']
     tinfo[tstring] = time.time() - overall_start #-------------Overall End
 
@@ -9058,12 +9159,18 @@ def read_from_hsm(e, tinfo):
         done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer.")}
         return done_ticket, requests_per_vol
 
+    #Sort the requests in increasing order.
+    for vol in requests_per_vol.keys():
+        if enstore_functions3.is_volume_tape(vol):
+            requests_per_vol[vol].sort(
+                lambda x, y: cmp(x['fc']['location_cookie'],
+                                 y['fc']['location_cookie']))
+
     #This will halt the program if everything isn't consistant.
     try:
         if not e.volume: #Skip these tests for volume transfers.
             verify_read_request_consistancy(requests_per_vol, e)
     except EncpError, msg:
-
         if not msg.ticket.get('status', None):
             msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket, requests_per_vol
@@ -9082,21 +9189,33 @@ def read_from_hsm(e, tinfo):
                               'exit_status' : 2 }
             return return_ticket, requests_per_vol
 
-    #Create the zero length file entry.
+    #Create the zero length file entries.
+    Trace.message(4, "Creating zero length output files.")
+    Trace.log(e_errors.INFO, "Creating zero length output files.")
     for vol in requests_per_vol.keys():
-        #for request in requests_per_vol[vol]:
         for i in range(len(requests_per_vol[vol])):
             try:
                create_zero_length_local_files(requests_per_vol[vol][i])
-            except OSError, msg:
-                if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
-                       or (msg.args[0] == errno.EIO and \
-                           msg.args[1].find("corrupt") != -1):
+            except (OSError, IOError, EncpError), msg:
+                if isinstance(msg, EncpError):
+                    requests_per_vol[vol][i]['status'] = (msg.type, str(msg))
+                elif isinstance(msg, OSError):
+                    if msg.args[0] == getattr(errno, "EFSCORRUPTED", None) \
+                           or (msg.args[0] == errno.EIO and \
+                               msg.args[1].find("corrupt") != -1):
+                        requests_per_vol[vol][i]['status'] = \
+                                     (e_errors.FILESYSTEM_CORRUPT, str(msg))
+                    else:
+                        requests_per_vol[vol][i]['status'] = \
+                                     (e_errors.OSERROR, str(msg))
+                elif isinstance(msg, IOError):
                     requests_per_vol[vol][i]['status'] = \
-                                 (e_errors.FILESYSTEM_CORRUPT, str(msg))
+                                     (e_errors.IOERROR, str(msg))
                 else:
                     requests_per_vol[vol][i]['status'] = \
-                                 (e_errors.OSERROR, str(msg))
+                                     (e_errors.UNKNOWN, str(msg))
+
+                requests_per_vol[vol][i]['completion_status'] = FAILURE
                 
                 return requests_per_vol[vol][i], requests_per_vol
     
@@ -9118,11 +9237,71 @@ def read_from_hsm(e, tinfo):
         #If at least one submission succeeded, follow through with it.
         if submitted > 0:
             while requests_outstanding(request_list):
+                #Wait for the mover to establish the control socket.  See
+                # if the id matches one of the tickets we submitted.
+                # Establish data socket connection with the mover.
+                control_socket, data_path_socket, request_ticket = \
+                                mover_handshake(
+                    listen_socket, request_list, e)
+
+                #Make sure done_ticket exists by this point.
+                done_ticket = request_ticket 
+                local_filename = request_ticket.get('wrapper',
+                                                    {}).get('fullname',
+                                                            None)
+                external_label = request_ticket.get('fc',
+                                                    {}).get('external_label',
+                                                            None)
+                result_dict = handle_retries(request_list, request_ticket,
+                                             request_ticket, e,
+                                             listen_socket = listen_socket,
+                                             local_filename = local_filename,
+                                             external_label = external_label)
+
+
+                if e_errors.is_non_retriable(result_dict):
+                    index, unused = get_request_index(request_list,
+                                                      done_ticket)
+                    
+                    #Regardless if index is None or not, make sure that
+                    # exit_status gets set to failure.
+                    exit_status = 1
+
+                    if index == None:
+                        message = "Unknown transfer failed."
+                        try:
+                            sys.stderr.write(message + "\n")
+                            sys.stderr.flush()
+                        except IOError:
+                            pass
+                        Trace.log(e_errors.ERROR,
+                                  message + "  " + str(done_ticket))
+                        
+                    else:
+                        #Combine the dictionaries.
+                        work_ticket = combine_dict(done_ticket,
+                                                   request_list[index])
+                        #Set completion status to successful.
+                        work_ticket['completion_status'] = FAILURE
+                        #Store these changes back into the master list.
+                        request_list[index] = work_ticket
+
+                if not e_errors.is_ok(result_dict):
+                    continue
+
+                ############################################################
+                #In this function call is where most of the work in transfering
+                # a single file is done.
+                #
                 #Since request_list contains all of the entires, submitted must
                 # also be passed so read_hsm_files knows how many elements of
                 # request_list are valid.
-                done_ticket = read_hsm_file(
-                    listen_socket, request_list, tinfo, e)
+                done_ticket = read_hsm_file(request_ticket,
+                    control_socket, data_path_socket, request_list, tinfo, e)
+                ############################################################
+
+                # Close these descriptors before they are forgotten about.
+                close_descriptors(data_path_socket)
 
                 #Sum up the total amount of bytes transfered.
                 exfer_ticket = done_ticket.get('exfer',
