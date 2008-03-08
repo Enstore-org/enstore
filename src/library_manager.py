@@ -1690,7 +1690,7 @@ class LibraryManagerMethods:
                             # before continuing check if it is a request
                             # for v['external_label']
                             if rq.ticket['fc']['external_label'] == external_label:
-                                Trace.trace(22, "exc_limit_rq 1 %"%(rq,))
+                                Trace.trace(22, "exc_limit_rq 1 %s"%(rq,))
                                 exc_limit_rq = rq
                                 break
                             Trace.trace(22, "3333")
