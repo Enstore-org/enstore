@@ -751,6 +751,7 @@ class LibraryManagerMethods:
     ## check if there are any additional restrictions for mounted
     def client_host_busy_2(self, requestor, external_label, vol_family, w):
         ret = 0
+        '''
         rc, fun, args, action = self.restrictor.match_found(w)
         Trace.trace(22,"client_host_busy_2 args %s" %(args,)) 
         if rc and fun and action:
@@ -780,6 +781,7 @@ class LibraryManagerMethods:
                 if ret and (action in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.REJECT)):
                     w["reject_reason"] = ("RESTRICTED_ACCESS",None)
                     Trace.trace(22, "222")
+        '''
         return ret
                         
 
@@ -956,7 +958,8 @@ class LibraryManagerMethods:
         Trace.trace(16,"process_write_request: key %s"%(key_to_check,))
         if key_to_check:
             self.continue_scan = 1
-            #return rq, key_to_check
+            if self.process_for_bound_vol and (key_to_check != self.process_for_bound_vol):
+                return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
         if rq.adminpri > -1:
             if vol_family in self.processed_admin_requests:
@@ -1561,6 +1564,7 @@ class LibraryManagerMethods:
                 rej_reason = rq.ticket['reject_reason'][0]
                 del(rq.ticket['reject_reason'])
             ## check if there are any additional restrictions
+            
             if self.client_host_busy_2(requestor, external_label, vol_family, rq.ticket):
                 rq = self.pending_work.get_admin_request(next=1) # get next request
                 continue
