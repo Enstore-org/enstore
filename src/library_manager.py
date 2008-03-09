@@ -813,6 +813,7 @@ class LibraryManagerMethods:
             ease = 1
         else:
             ease = 0
+        self.sg_exceeded = None
         if rq.ticket['work'] == 'read_from_hsm':
             storage_group = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
             check_key = rq.ticket["fc"]["external_label"]
@@ -830,6 +831,7 @@ class LibraryManagerMethods:
         Trace.trace(16, "SG LIMIT %s"%(self.get_sg_limit(storage_group),))
         if len(active_volumes) >= self.get_sg_limit(storage_group)+ease:
             rq.ticket["reject_reason"] = ("PURSUING",None)
+            self.sg_exceeded = (True, storage_group)
             Trace.trace(12, "fair_share: active work limit exceeded for %s" % (storage_group,))
             if rq.adminpri > -1:
                 self.continue_scan = 1
@@ -844,6 +846,7 @@ class LibraryManagerMethods:
                     if not key in self.checked_keys:
                         self.checked_keys.append(key) 
                         if key != check_key:
+                            Trace.trace(16, "fair_share: key %s"%(key,))
                             return key
         return None
 
@@ -955,11 +958,12 @@ class LibraryManagerMethods:
         Trace.trace(22, "PW_RQ1 %s"%(rq,))
         key_to_check = self.fair_share(rq)
         Trace.trace(22, "PW_RQ2")
-        Trace.trace(16,"process_write_request: key %s"%(key_to_check,))
+        Trace.trace(16,"process_write_request: key %s process for bound %s"%(key_to_check, self.process_for_bound_vol))
         if key_to_check:
             self.continue_scan = 1
             if self.process_for_bound_vol and (key_to_check != self.process_for_bound_vol):
-                return rq, key_to_check
+                Trace.trace(16, "process_write_request: got here")
+                #return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
         if rq.adminpri > -1:
             if vol_family in self.processed_admin_requests:
@@ -1129,6 +1133,10 @@ class LibraryManagerMethods:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
         Trace.trace(22, "PW_RQ12")
+        if self.sg_exceeded and self.process_for_bound_vol:
+            rq = None
+            self.contunue_scan = 0
+            key_to_check = None
         return rq, key_to_check
 
 
