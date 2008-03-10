@@ -131,12 +131,14 @@ class EcronData:
 			q = "(select start as time, 10 from event where name = '%s' and node = '%s') union (select finish as time, status from event where name = '%s' and node = '%s' and not finish is null) order by time;"%(name, node, name, node)
 		return self.db.query(q).getresult()
 
-	def plot(self, file, name, data):
+	def plot(self, file, name, data, start=Null):
 		# get a gnuplot
 		# need to put convert together here to make sure the files
 		# are ready before the conversion
 		(out, gp) = popen2.popen2("gnuplot; convert -rotate 90 %s.ps %s.jpg; convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(file,file,file,file))
-		gp.write(gscript%(file, self.get_duration(name), tomorrow(), name))
+		if not start:
+			start = self.get_duration(name)
+		gp.write(gscript%(file, start, tomorrow(), name))
 		if not data:
 			gp.write("%s -5\n"%(one_year_ago()))
 		else:
