@@ -862,7 +862,7 @@ class LibraryManagerMethods:
 
         mover = requestor.get('mover', None)
     
-        if self.is_vol_busy(rq.ticket["fc"]["external_label"], mover)and self.mover_type(requestor) != 'DiskMover':
+        if self.is_vol_busy(rq.ticket["fc"]["external_label"], mover) and self.mover_type(requestor) != 'DiskMover':
             rq.ticket["reject_reason"] = ("VOL_BUSY",rq.ticket["fc"]["external_label"])
             self.continue_scan = 1
             Trace.trace(12,"process_read_request VOL_BUSY %s"%(rq.ticket["fc"]["external_label"]))
@@ -872,7 +872,11 @@ class LibraryManagerMethods:
         # ok passed criteria. Get request by file location
         if rq.ticket['encp']['adminpri'] < 0: # not a HiPri request
             Trace.trace(22,"PW2")
+            '''
+            rq_e = None
             while 1:
+                if self.process_for_bound_vol and self.process_for_bound_vol == rq.ticket["fc"]["external_label"]:
+                    break
                 rq_e = self.pending_work.get(rq.ticket["fc"]["external_label"], next=1)
                 # check whether client host exceeded a max allowed number of simult. transfers
                 if rq_e:
@@ -889,7 +893,8 @@ class LibraryManagerMethods:
             if rq_e:
                 rq = rq_e
                 Trace.trace(22, 'PW3 %s'%(rq,))
-            
+            '''
+            rq = self.pending_work.get(rq.ticket["fc"]["external_label"])
             if rq.ticket['encp']['adminpri'] >= 0: # got a HIPri request
                 self.continue_scan = 1
                 key_to_check = self.fair_share(rq)
@@ -963,7 +968,7 @@ class LibraryManagerMethods:
             self.continue_scan = 1
             if self.process_for_bound_vol and (key_to_check != self.process_for_bound_vol):
                 Trace.trace(16, "process_write_request: got here")
-                #return rq, key_to_check
+                return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
         if rq.adminpri > -1:
             if vol_family in self.processed_admin_requests:
