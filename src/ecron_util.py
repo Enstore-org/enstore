@@ -131,7 +131,7 @@ class EcronData:
 			q = "(select start as time, 10 from event where name = '%s' and node = '%s') union (select finish as time, status from event where name = '%s' and node = '%s' and not finish is null) order by time;"%(name, node, name, node)
 		return self.db.query(q).getresult()
 
-	def plot(self, file, name, data, start=NULL):
+	def plot(self, file, name, data, start=None):
 		# get a gnuplot
 		# need to put convert together here to make sure the files
 		# are ready before the conversion
