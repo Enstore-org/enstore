@@ -19,8 +19,8 @@ for i in names_and_nodes:
 			os.makedirs(dir)
 		res = edata.get_result(i[0], i[1], ecron_util.one_week_ago())
 		# gid more into history if it is necessary
-		if not res:
+		if res == []:
 			res = edata.get_result(i[0], i[1], ecron_util.one_month_ago())
-			if not res:
+			if res == []:
 				res = edata.get_result(i[0], i[1], ecron_util.six_month_ago())
 		edata.plot(os.path.join(dir, i[0]), i[0], res)
