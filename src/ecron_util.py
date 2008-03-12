@@ -116,7 +116,7 @@ class EcronData:
 
 	def get_all_names_and_nodes(self):
 		if self.all_names_and_nodes == None:
-			q = "select distinct name, node from event;"
+			q = "select distinct name, node from event where comment is null;"
 			res = self.db.query(q).getresult()
 			self.all_names_and_nodes = []
 			for i in res:
@@ -126,9 +126,9 @@ class EcronData:
 	# get_cron_result() -- get result just like old cronHISTOGRAM
 	def get_result(self, name, node, start=None):
 		if start:
-			q = "(select start as time, 10 from event where name = '%s' and node = '%s' and start >= '%s') union (select finish as time, status from event where name = '%s' and node = '%s' and not finish is null and start >= '%s') order by time;"%(name, node, start, name, node, start)
+			q = "(select start as time, 10 from event where name = '%s' and node = '%s' and start >= '%s' and comment is null) union (select finish as time, status from event where name = '%s' and node = '%s' and not finish is null and start >= '%s' and comment is null) order by time;"%(name, node, start, name, node, start)
 		else:
-			q = "(select start as time, 10 from event where name = '%s' and node = '%s') union (select finish as time, status from event where name = '%s' and node = '%s' and not finish is null) order by time;"%(name, node, name, node)
+			q = "(select start as time, 10 from event where name = '%s' and node = '%s' and comment is null) union (select finish as time, status from event where name = '%s' and node = '%s' and not finish is null and comment is null) order by time;"%(name, node, name, node)
 		return self.db.query(q).getresult()
 
 	def plot(self, file, name, data, start=None):
