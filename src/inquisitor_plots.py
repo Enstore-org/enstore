@@ -43,7 +43,7 @@ class InquisitorPlots:
             self.acc_db.close()
             self.acc_db = None
 
-    # create the html file with the inquisitor plot information
+    # create the htl file with the inquisitor plot information
     def	make_plot_html_page(self):
 	for plotfile_t  in self.plotfile_l:
 	    if len(plotfile_t) > 2:
@@ -350,7 +350,7 @@ class InquisitorPlots:
             #
             csc   = configuration_client.ConfigurationClient((server_name, server_port))
             inq_d = csc.get(enstore_constants.INQUISITOR, {})
-            nodes_and_dirs[server_name.split('.')[0]]=inq_d["html_file"]
+            nodes_and_dirs[server_name.split('.')[0]]=inq_d.get("html_file","/fnal/ups/prd/www_pages/enstore")
         files_l = []
         pts_file_only = "%s%s"%(enstore_constants.BPD_FILE, enstore_plots.PTS)
         this_node = enstore_functions2.strip_node(os.uname()[1])
