@@ -6,6 +6,7 @@
 #
 ###############################################################################
 
+# system imports
 import sys
 import os
 import time
@@ -17,6 +18,7 @@ import copy
 import types
 import stat
 
+# enstore modules
 import encp
 import pnfs
 import e_errors
@@ -25,14 +27,27 @@ import host_config
 import Trace
 #import checksum
 import option
-import enstore_functions3
+#import enstore_functions3
+
 
 #Completion status field values.
-SUCCESS = "SUCCESS"
-FAILURE = "FAILURE"
-#EOD = "EOD"  #Don't stop until EOD is reached.
+SUCCESS = encp.SUCCESS    #"SUCCESS"
+FAILURE = encp.FAILURE    #"FAILURE"
 
-TIME_LEVEL = encp.TIME_LEVEL
+#Return values to know if get should stop or keep going.
+CONTINUE_FROM_BEGINNING = encp.CONTINUE_FROM_BEGINNING
+CONTINUE = encp.CONTINUE
+STOP = encp.STOP
+
+DONE_LEVEL     = encp.DONE_LEVEL
+ERROR_LEVEL    = encp.ERROR_LEVEL
+TRANSFER_LEVEL = encp.TRANSFER_LEVEL
+TO_GO_LEVEL    = encp.TO_GO_LEVEL
+INFO_LEVEL     = encp.INFO_LEVEL
+CONFIG_LEVEL   = encp.CONFIG_LEVEL
+TIME_LEVEL     = encp.TIME_LEVEL
+TICKET_LEVEL   = encp.TICKET_LEVEL
+TICKET_1_LEVEL = encp.TICKET_1_LEVEL
 
 def get_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
@@ -42,41 +57,57 @@ def get_client_version():
     if get_file: version_string = version_string + get_file
     return version_string
 
-encp.EncpInterface.parameters = ["<volume> <source dir> <destination dir>"]
-#encp.encp_client_version = get_client_version
-encp.EncpInterface.encp_options[option.LIST] = {
-    option.HELP_STRING: "Takes in a filename of a file containing a list "
-                        "of locations and filenames.",
-    option.VALUE_USAGE:option.REQUIRED,
-    option.VALUE_TYPE:option.STRING,
-    option.VALUE_LABEL:"name_of_list_file",
-    option.USER_LEVEL:option.USER,}
-encp.EncpInterface.encp_options[option.SEQUENTIAL_FILENAMES] = {
-    option.HELP_STRING: "Override known filenames and use sequentially "
-                        "numbered filenames.",
-    option.VALUE_USAGE:option.IGNORED,
-    option.VALUE_TYPE:option.INTEGER,
-    option.USER_LEVEL:option.USER,}
-encp.EncpInterface.encp_options[option.SKIP_DELETED_FILES] = {
-    option.HELP_STRING: "Skip over deleted files.",
-    option.VALUE_USAGE:option.IGNORED,
-    option.VALUE_TYPE:option.INTEGER,
-    option.USER_LEVEL:option.USER,}
-encp.EncpInterface.encp_options[option.READ_TO_END_OF_TAPE] = {
-    option.HELP_STRING: "After the last file known is read keep reading "
-                        "until EOD or EOT.",
-    option.VALUE_USAGE:option.IGNORED,
-    option.VALUE_TYPE:option.INTEGER,
-    option.USER_LEVEL:option.USER,}
-try:
-    del encp.EncpInterface.encp_options[option.EPHEMERAL]
-    del encp.EncpInterface.encp_options[option.FILE_FAMILY]
-except KeyError:
-    pass
+def setup_get_interface():
+
+    encp.EncpInterface.get = 1
+    
+    encp.EncpInterface.parameters = [
+        "--volume <volume> <source dir> <destination dir>",
+        "<source file> [source file [...]] <destination directory>"
+        ]
+    
+    #encp.encp_client_version = get_client_version
+
+    encp.EncpInterface.encp_options[option.LIST] = {
+        option.HELP_STRING: "Takes in a filename of a file containing a list "
+                            "of locations and filenames.",
+        option.VALUE_USAGE:option.REQUIRED,
+        option.VALUE_TYPE:option.STRING,
+        option.VALUE_LABEL:"name_of_list_file",
+        option.USER_LEVEL:option.USER,}
+    encp.EncpInterface.encp_options[option.SEQUENTIAL_FILENAMES] = {
+        option.HELP_STRING: "Override known filenames and use sequentially "
+                            "numbered filenames.",
+        option.VALUE_USAGE:option.IGNORED,
+        option.VALUE_TYPE:option.INTEGER,
+        option.USER_LEVEL:option.USER,}
+    encp.EncpInterface.encp_options[option.SKIP_DELETED_FILES] = {
+        option.HELP_STRING: "Skip over deleted files.",
+        option.VALUE_USAGE:option.IGNORED,
+        option.VALUE_TYPE:option.INTEGER,
+        option.USER_LEVEL:option.USER,}
+    encp.EncpInterface.encp_options[option.READ_TO_END_OF_TAPE] = {
+        option.HELP_STRING: "After the last file known is read keep reading "
+                            "until EOD or EOT.",
+        option.VALUE_USAGE:option.IGNORED,
+        option.VALUE_TYPE:option.INTEGER,
+        option.USER_LEVEL:option.USER,}
+    try:
+        del encp.EncpInterface.encp_options[option.EPHEMERAL]
+    except KeyError:
+        pass
+    try:
+        del encp.EncpInterface.encp_options[option.FILE_FAMILY]
+    except KeyError:
+        pass
+    
+    encp.EncpInterface.list = None                # Used for "get" only.
+    encp.EncpInterface.skip_deleted_files = None  # Used for "get" only.
+    encp.EncpInterface.read_to_end_of_tape = None # Used for "get" only.
 
 def error_output(request):
     #Get the info.
-    lc = request['fc'].get("location_cookie", None)
+    lc = request.get('fc', {}).get("location_cookie", None)
     file_number = encp.extract_file_number(lc)
     message = request.get("status", (e_errors.UNKNOWN, None))
     #Format the output.
@@ -483,6 +514,8 @@ def requests_outstanding(request_list):
 
     return files_left
 
+##############################################################################
+
 #Update the ticket so that next file can be read.
 def next_request_update(work_ticket, file_number, encp_intf):
 
@@ -565,8 +598,164 @@ def get_next_request(request_list, e): #, filenumber = None):
                                           filenumber + 1, e)
             request_list.append(request)
             return request, (len(request_list) - 1)
-        
 
+##############################################################################
+
+#
+def finish_request(done_ticket, request_list, index, e):
+    #Everything is fine.
+    if e_errors.is_ok(done_ticket):
+
+        #Tell the user what happend.
+        Trace.message(e_errors.INFO,
+               "File %s copied successfully." % done_ticket['infile'])
+        Trace.log(e_errors.INFO,
+               "File %s copied successfully." % done_ticket['infile'])
+        #Remember the completed transfer.
+        #files_transfered = files_transfered + 1
+
+        #Set the metadata if it has not already been set.
+        try:
+            p = pnfs.Pnfs(done_ticket['infile'])
+            p.get_bit_file_id()
+        except (IOError, OSError, TypeError):
+            Trace.message(5, "Updating metadata for %s." %
+                          done_ticket['infile'])
+            set_metadata(done_ticket, e)
+
+        #Set completion status to successful.
+        done_ticket['completion_status'] = SUCCESS
+        done_ticket['exit_status'] = 0
+
+        #Store these changes back into the master list.
+        request_list[index] = done_ticket
+
+        #Get the next request before continueing.
+        #request, index = get_next_request(request_list,e)
+        #If the read mode is "read until end of data", we need to
+        # create the new output file.
+        #if request.get('completion_status', None) == "EOD":
+        #if not e.list or e.read_to_end_of_tape:
+        #    if not os.path.exists(request['outfile']):
+        #        encp.create_zero_length_local_files(request)
+
+        return CONTINUE
+        #continue
+
+    #The requested file does not exist on the tape.  (i.e. the
+    # tape has only 6 files and the seventh file was requested.)
+    elif done_ticket['status'] == (e_errors.READ_ERROR,
+                                   e_errors.READ_EOD):
+
+        if e.list:
+            #Tell the user what happend.
+            message = "File %s read failed: %s" % \
+                      (done_ticket['infile'], done_ticket['status'])
+            Trace.message(1, message)
+            Trace.log(e_errors.ERROR, message)
+
+            #Set completion status to failure.
+            done_ticket['completion_status'] = FAILURE
+            done_ticket['exit_status'] = 1
+            #request['status'] = done_ticket['status']
+            #exit_status = 1
+
+            #Tell the calling process, this file failed.
+            error_output(done_ticket)
+        else:
+            #Tell the user what happend.
+            message = "Reached EOD at location %s." % \
+                      (done_ticket['fc']['location_cookie'],)
+            Trace.message(1, message)
+            Trace.log(e_errors.INFO, message)
+
+            #If --list was not used this is a success.
+            done_ticket['completion_status'] = SUCCESS
+            done_ticket['status'] = (e_errors.OK, None)
+            done_ticket['exit_status'] = 0
+
+        #Store these changes back into the master list.
+        request_list[index] = done_ticket
+
+        #We are done with this mover.
+        #end_session(udp_socket, control_socket)
+        #Tell the calling process, of those files not attempted.
+        untried_output(request_list)
+
+        #Perform any necessary file cleanup.
+        #return request
+        return STOP
+
+    #Give up on this file.  If a persistant media problem occurs
+    # skip this and go to the next file.
+    elif done_ticket['status'][0] in [e_errors.POSITIONING_ERROR,
+                                      e_errors.READ_ERROR,
+                                      ]:
+        #Tell the user what happend.
+        message = "File %s read failed: %s" % \
+                      (done_ticket['infile'], done_ticket['status'])
+        Trace.message(1, message)
+        Trace.log(e_errors.ERROR, message)
+
+        #Set completion status to failure.
+        done_ticket['completion_status'] = FAILURE
+        done_ticket['exit_status'] = 1
+        #done_ticket['status'] = done_ticket['status']
+        #exit_status = 1
+        #Store these changes back into the master list.
+        request_list[index] = done_ticket
+
+        #We are done with this mover.
+        #end_session(udp_socket, control_socket)
+        #Tell the calling process, this file failed.
+        error_output(done_ticket)
+
+        #break
+        return CONTINUE_FROM_BEGINNING
+
+    #Give up.
+    elif e_errors.is_non_retriable(done_ticket['status'][0]):
+        #Tell the user what happend.
+        message = "File %s read failed: %s" % \
+                  (done_ticket['infile'], done_ticket['status'])
+        Trace.message(1, message)
+        Trace.log(e_errors.ERROR, message)
+
+        #Set completion status to failure.
+        done_ticket['completion_status'] = FAILURE
+        #request['status'] = done_ticket['status']
+        done_ticket['exit_status'] = 2
+        #exit_status = 2
+        #Store these changes back into the master list.
+        request_list[index] = done_ticket
+
+        #We are done with this mover.
+        #end_session(udp_socket, control_socket)
+        #Tell the calling process, this file failed.
+        error_output(done_ticket)
+        #Tell the calling process, of those files not attempted.
+        untried_output(request_list)
+
+        #return done_ticket
+        return STOP
+
+    #Keep trying.
+    elif e_errors.is_retriable(done_ticket['status'][0]):
+        #On retriable error go back and resubmit what is left
+        # to the LM.
+
+        #Record the intermidiate error.
+        Trace.log(e_errors.WARNING, "File %s read failed: %s" %
+                      (done_ticket['infile'], done_ticket['status']))
+
+        #We are done with this mover.
+        #end_session(udp_socket, control_socket)
+
+        #break
+        return CONTINUE_FROM_BEGINNING
+
+    ### Should never get here!!!
+    return None
 
 def readtape_from_hsm(e, tinfo):
 
@@ -575,7 +764,7 @@ def readtape_from_hsm(e, tinfo):
                                       e.chk_crc, tinfo['encp_start_time']))
     
     #This needs to be defined somewhere.
-    files_transfered = 0
+    #files_transfered = 0
     bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
     exit_status = 0 #Used to determine the final message text.
     number_of_files = 0 #Total number of files where a transfer was attempted.
@@ -595,17 +784,17 @@ def readtape_from_hsm(e, tinfo):
                  encp.prepare_read_from_hsm(tinfo, e)
 
     if not e_errors.is_ok(done_ticket):
-            #Tell the calling process, this file failed.
-            error_output(done_ticket)
-            #Tell the calling process, of those files not attempted.
-            untried_output(requests_per_vol)
-
-            done_ticket['exit_status'] = 2
-            return done_ticket
+        pprint.pprint(done_ticket)
+        #Tell the calling process, this file failed.
+        error_output(done_ticket)
+        #Tell the calling process, of those files not attempted.
+        untried_output(requests_per_vol)
+        
+        done_ticket['exit_status'] = 2
+        return done_ticket
     
     ######################################################################
-    # No more "for request in requests_per_vol[e.volume]:" pieces of code
-    # should appear below this comment.
+    # Time to start reading some files.
     ######################################################################
 
     vols = requests_per_vol.keys()
@@ -617,6 +806,13 @@ def readtape_from_hsm(e, tinfo):
         #Get the next volume in the list to transfer.
         request, index = get_next_request(request_list, e)
 
+        #If the read mode is "read until end of data", we need to
+        # create the new output file.
+        if not e.list or e.read_to_end_of_tape:
+            if not os.path.exists(request['outfile']):
+                encp.create_zero_length_local_files(request)
+
+        #Submit the request to the library manager.
         submitted, reply_ticket = encp.submit_read_requests([request], e)
         Trace.message(4, "Read tape submission sent to LM.")
 
@@ -630,9 +826,9 @@ def readtape_from_hsm(e, tinfo):
             return reply_ticket
         if submitted != 1:
             request['status'] = (e_errors.UNKNOWN,
-                                        "Unknown failure submitting request for " \
-                                        "file %s on volume %s." % \
-                                        (request['infile'], vol))
+                                 "Unknown failure submitting request for " \
+                                 "file %s on volume %s." % \
+                                 (request['infile'], vol))
 
             #Tell the calling process, this file failed.
             error_output(reply_ticket)
@@ -680,7 +876,12 @@ def readtape_from_hsm(e, tinfo):
                 sys.stdout.flush()
                 sys.stderr.flush()
 
+                #Get the next file in the list to transfer.
+                request, index = get_next_request(request_list, e)
+
                 #Grab a new clean udp_socket.
+                ### Note: This should not be necessary after a bug in the
+                ### mover was fixed long ago.
                 #udp_callback_addr, unused = encp.get_udp_callback_addr(
                 #    e, udp_socket)
 
@@ -695,28 +896,27 @@ def readtape_from_hsm(e, tinfo):
                 #The ticket item of 'routing_callback_addr' is a legacy name.
                 request['routing_callback_addr'] = \
                                              udp_socket.get_server_address()
-                #request['routing_callback_addr'] = udp_callback_addr
                 #Encp create_read_request() gives each file a new unique id.
                 # The LM can't deal with multiple mover file requests from one
                 # LM request.  Thus, we need to set this back to the last
                 # unique id sent to the library manager.
                 request['unique_id'] = use_unique_id
                 #Store these changes back into the master list.
-                requests_per_vol[e.volume][index] = request
+                requests_per_vol[vol][index] = request
 
-                Trace.message(4, "Preparing to read %s." % request['infile'])
-                Trace.log(e_errors.INFO,
-                          "Preparing to read %s." % request['infile'])
+                message = "Preparing to read %s." % (request['infile'],)
+                Trace.message(4, message)
+                Trace.log(e_errors.INFO, message)
 
                 data_path_socket, done_ticket = mover_handshake2(request,
                                                                  udp_socket, e)
                 #Give up.
                 if e_errors.is_non_retriable(done_ticket['status'][0]):
                     #Tell the user what happend.
-                    Trace.message(1, "File %s read failed: %s" %
-                                  (request['infile'], done_ticket['status']))
-                    Trace.log(e_errors.ERROR, "File %s read failed: %s" %
-                                  (request['infile'], done_ticket['status']))
+                    message = "File %s read failed: %s" % \
+                              (request['infile'], done_ticket['status'])
+                    Trace.message(1, message)
+                    Trace.log(e_errors.ERROR, message)
 
                     #We are done with this mover.
                     end_session(udp_socket, control_socket)
@@ -728,7 +928,7 @@ def readtape_from_hsm(e, tinfo):
                     #Tell the calling process, this file failed.
                     error_output(request)
                     #Tell the calling process, of those files not attempted.
-                    untried_output(requests_per_vol[e.volume])
+                    untried_output(requests_per_vol[vol])
                     #Perform any necessary file cleanup.
                     return request
 
@@ -738,8 +938,9 @@ def readtape_from_hsm(e, tinfo):
                     # to the LM.
 
                     #Record the intermidiate error.
-                    Trace.log(e_errors.WARNING, "File %s read failed: %s" %
-                                  (request['infile'], done_ticket['status']))
+                    message = "File %s read failed: %s" % \
+                              (request['infile'], done_ticket['status'])
+                    Trace.log(e_errors.WARNING, message)
 
                     #We are done with this mover.
                     end_session(udp_socket, control_socket)
@@ -751,7 +952,8 @@ def readtape_from_hsm(e, tinfo):
 
                 done_ticket = encp.read_hsm_file(request, control_socket,
                                                  data_path_socket, [request],
-                                                 tinfo, e, udp_socket = udp_socket)
+                                                 tinfo, e,
+                                                 udp_socket = udp_socket)
                 #############################################################
 
                 # Close these descriptors before they are forgotten about.
@@ -767,16 +969,42 @@ def readtape_from_hsm(e, tinfo):
                 #Store these changes back into the master list.
                 requests_per_vol[vol][index] = request
 
+                #The completion_status is modified in the request ticket.
+                # what_to_do = 0 for stop
+                #            = 1 for continue
+                #            = 2 for continue after retry
+                what_to_do = finish_request(request, requests_per_vol[vol],
+                                            index, e)
+
+                #If on non-success exit status was returned from
+                # finish_request(), keep it around for later.
+                if request['exit_status']:
+                    #We get here only on an error.  If the value is 1, then
+                    # the error should be transient.  If the value is 2, then
+                    # the error will likely require human intervention to
+                    # resolve.
+                    exit_status = request['exit_status']
+                # Do what finish_request() says to do.
+                if what_to_do == STOP:
+                    #We get here only on a non-retriable error.
+                    end_session(udp_socket, control_socket)
+                    return done_ticket
+                elif what_to_do == CONTINUE_FROM_BEGINNING:
+                    #We get here only on a retriable error.
+                    end_session(udp_socket, control_socket)
+                    break
+                
+                """
                 #Everything is fine.
                 if e_errors.is_ok(done_ticket):
 
                     #Tell the user what happend.
                     Trace.message(e_errors.INFO,
-                              "File %s copied successfully." % request['infile'])
+                           "File %s copied successfully." % request['infile'])
                     Trace.log(e_errors.INFO,
-                              "File %s copied successfully." % request['infile'])
+                           "File %s copied successfully." % request['infile'])
                     #Remember the completed transfer.
-                    files_transfered = files_transfered + 1
+                    #files_transfered = files_transfered + 1
 
                     #Set the metadata if it has not already been set.
                     try:
@@ -789,6 +1017,7 @@ def readtape_from_hsm(e, tinfo):
 
                     #Set completion status to successful.
                     request['completion_status'] = SUCCESS
+                    request['exit_status'] = 0
 
                     #Store these changes back into the master list.
                     requests_per_vol[vol][index] = request
@@ -798,7 +1027,7 @@ def readtape_from_hsm(e, tinfo):
                     #If the read mode is "read until end of data", we need to
                     # create the new output file.
                     #if request.get('completion_status', None) == "EOD":
-                    if not e.list and e.read_to_end_of_tape:
+                    if not e.list or e.read_to_end_of_tape:
                         if not os.path.exists(request['outfile']):
                             encp.create_zero_length_local_files(request)
 
@@ -819,6 +1048,7 @@ def readtape_from_hsm(e, tinfo):
                         #Set completion status to failure.
                         request['completion_status'] = FAILURE
                         request['status'] = done_ticket['status']
+                        request['exit_status'] = 1
                         exit_status = 1
 
                         #Tell the calling process, this file failed.
@@ -833,41 +1063,37 @@ def readtape_from_hsm(e, tinfo):
                         #If --list was not used this is a success.
                         request['completion_status'] = SUCCESS
                         request['status'] = (e_errors.OK, None)
+                        request['exit_status'] = 0
 
                     #We are done with this mover.
                     end_session(udp_socket, control_socket)
-
                     #Tell the calling process, of those files not attempted.
                     untried_output(requests_per_vol[vol])
+
                     #Perform any necessary file cleanup.
                     return request
-                    #halt(0)
-
 
                 #Give up on this file.  If a persistant media problem occurs
                 # skip this and go to the next file.
-                #elif done_ticket['status'][0] == e_errors.TOO_MANY_RETRIES \
-                #     and done_ticket['status'][1][0] in [
-                #    e_errors.POSITIONING_ERROR, e_errors.READ_ERROR, ]:
                 elif done_ticket['status'][0] in [e_errors.POSITIONING_ERROR,
                                                   e_errors.READ_ERROR,
                                                   ]:
-
                     #Tell the user what happend.
-                    Trace.message(1, "File %s read failed: %s" %
-                                  (request['infile'], done_ticket['status']))
-                    Trace.log(e_errors.ERROR, "File %s read failed: %s" %
-                                  (request['infile'], done_ticket['status']))
+                    message = "File %s read failed: %s" % \
+                                  (request['infile'], done_ticket['status'])
+                    Trace.message(1, message)
+                    Trace.log(e_errors.ERROR, message)
 
-                    #We are done with this mover.
-                    end_session(udp_socket, control_socket)
                     #Set completion status to failure.
                     request['completion_status'] = FAILURE
                     request['status'] = done_ticket['status']
+                    request['exit_status'] = 1
                     exit_status = 1
                     #Store these changes back into the master list.
                     requests_per_vol[vol][index] = request
 
+                    #We are done with this mover.
+                    end_session(udp_socket, control_socket)
                     #Tell the calling process, this file failed.
                     error_output(request)
 
@@ -876,27 +1102,28 @@ def readtape_from_hsm(e, tinfo):
                 #Give up.
                 elif e_errors.is_non_retriable(done_ticket['status'][0]):
                     #Tell the user what happend.
-                    Trace.message(1, "File %s read failed: %s" %
-                                  (request['infile'], done_ticket['status']))
-                    Trace.log(e_errors.ERROR, "File %s read failed: %s" %
-                                  (request['infile'], done_ticket['status']))
-
-                    #We are done with this mover.
-                    end_session(udp_socket, control_socket)
+                    message = "File %s read failed: %s" % \
+                              (request['infile'], done_ticket['status'])
+                    Trace.message(1, message)
+                    Trace.log(e_errors.ERROR, message)
+                    
                     #Set completion status to failure.
                     request['completion_status'] = FAILURE
                     request['status'] = done_ticket['status']
                     request['exit_status'] = 2
                     exit_status = 2
+                    #Store these changes back into the master list.
+                    requests_per_vol[vol][index] = request
 
+                    #We are done with this mover.
+                    end_session(udp_socket, control_socket)
                     #Tell the calling process, this file failed.
                     error_output(request)
                     #Tell the calling process, of those files not attempted.
                     untried_output(requests_per_vol[vol])
-                    #Perform any necessary file cleanup.
-                    return request
-                    #halt(2)
 
+                    return request
+                    
                 #Keep trying.
                 elif e_errors.is_retriable(done_ticket['status'][0]):
                     #On retriable error go back and resubmit what is left
@@ -908,9 +1135,9 @@ def readtape_from_hsm(e, tinfo):
 
                     #We are done with this mover.
                     end_session(udp_socket, control_socket)
-                    break
-                    #continue #The retry alread sent request to mover.
 
+                    break
+                """
         else:
             #If we get here, then, we should have a success.
             end_session(udp_socket, control_socket)
@@ -935,9 +1162,6 @@ def readtape_from_hsm(e, tinfo):
     Trace.message(10, pprint.pformat(list_done_ticket))
 
     return list_done_ticket
-    #Perform any necessary file cleanup.
-    #return {'status' : (e_errors.OK, None)}
-    #halt(0)
 
 ##############################################################################
 ##############################################################################
@@ -999,6 +1223,7 @@ def do_work(intf):
         encp.print_data_access_layer_format(None, None, None, ticket)
         #Send to the log server the traceback dump.  If unsuccessful,
         # print the traceback to standard error.
+        print "11111111111111111111111111111111"
         Trace.handle_error(exc, msg, tb)
         del tb #No cyclic references.
         #Remove any zero-length files left haning around.  Also, return
@@ -1007,19 +1232,21 @@ def do_work(intf):
 
 if __name__ == '__main__':
 
-    encp.EncpInterface.list = None                # Used for "get" only.
-    encp.EncpInterface.skip_deleted_files = None  # Used for "get" only.
-    encp.EncpInterface.read_to_end_of_tape = None # Used for "get" only.
+    setup_get_interface()
 
     #First handle an incorrect command line.
     if len(sys.argv) < 4:
         intf_of_encp = encp.EncpInterface(sys.argv, 1) #one = user
         intf_of_encp.print_usage()
 
-    intf_of_encp = encp.EncpInterface(sys.argv[:-3] + sys.argv[-2:], 0)
-    intf_of_encp.volume = sys.argv[-3] #Hackish
-    intf_of_encp.argv = sys.argv[:] #Hackish
+    #intf_of_encp = encp.EncpInterface(sys.argv[:-3] + sys.argv[-2:], 0)
+    intf_of_encp = encp.EncpInterface(sys.argv, 0)
+    #intf_of_encp.volume = sys.argv[-3] #Hackish
+    #intf_of_encp.argv = sys.argv[:] #Hackish
 
+    print "intf_of_encp.volume:", intf_of_encp.volume
+
+    """
     if not enstore_functions3.is_volume(sys.argv[-3]):
         try:
             sys.stderr.write("First argument is not a volume name.\n")
@@ -1027,9 +1254,11 @@ if __name__ == '__main__':
         except IOError:
             pass
         sys.exit(1)
-        
-    if not os.path.exists(sys.argv[-2]) or not os.path.isdir(sys.argv[-2]) \
-       or not pnfs.is_pnfs_path(sys.argv[-2]):
+    """
+
+    if intf_of_encp.volume and \
+       ( not os.path.exists(sys.argv[-2]) or not os.path.isdir(sys.argv[-2]) \
+         or not pnfs.is_pnfs_path(sys.argv[-2]) ):
         try:
             sys.stderr.write("Second argument is not an input directory.\n")
             sys.stderr.flush()
