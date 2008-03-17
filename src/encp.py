@@ -2993,7 +2993,7 @@ def inputfile_check(input_files, e):
                 statinfo = get_stat(inputlist[i])
 
                 # input files can't be directories
-                if not stat.S_ISREG(statinfo[stat.ST_MODE]):
+                if stat.S_ISDIR(statinfo[stat.ST_MODE]):
                     raise EncpError(errno.EISDIR, inputlist[i],
                                     e_errors.USERERROR,
                                     {'infile' : inputlist[i]})
@@ -6891,6 +6891,9 @@ def create_write_request(work_ticket, file_number,
                                                 2147483648L))]
             bound_limits.sort()
             file_size = long(random.uniform(bound_limits[0], bound_limits[1]))
+        #If we are reading from standard in don't set the size.
+        elif ifullname.startswith("/dev/fd"):
+            file_size = None
         else:
             file_size = long(istatinfo[stat.ST_SIZE])
         file_inode = istatinfo[stat.ST_INO]
@@ -7056,10 +7059,10 @@ def submit_write_request(work_ticket, encp_intf):
 
     Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % (1,))
     Trace.message(TRANSFER_LEVEL,
-                  "File queued: %s library: %s family: %s bytes: %d %s" %
+                  "File queued: %s library: %s family: %s bytes: %s %s" %
                   (ticket['infile'], ticket['vc']['library'],
                    ticket['vc']['file_family'],
-                   long(ticket['file_size']),
+                   ticket['file_size'],
                    elapsed_string()))
 
     message = "Time to submit %d write request: %s sec." % \
@@ -7805,7 +7808,7 @@ def write_to_hsm(e, tinfo):
     Trace.message(TICKET_LEVEL, "LIST DONE TICKET")
     Trace.message(TICKET_LEVEL, pprint.pformat(list_done_ticket))
 
-    return list_done_ticket, request_list
+    return list_done_ticket  #, request_list
 
 #######################################################################
 #Support function for reads.
@@ -9576,7 +9579,7 @@ def read_from_hsm(e, tinfo):
                    prepare_read_from_hsm(tinfo, e)
 
     if not e_errors.is_ok(done_ticket):
-        return done_ticket, requests_per_vol
+        return done_ticket   #, requests_per_vol
 
     ######################################################################
     # loop over all volumes that are needed and submit all requests for
@@ -9790,7 +9793,7 @@ def read_from_hsm(e, tinfo):
     Trace.message(TICKET_LEVEL, "LIST DONE TICKET")
     Trace.message(TICKET_LEVEL, pprint.pformat(list_done_ticket))
 
-    return list_done_ticket, requests_per_vol
+    return list_done_ticket  #, requests_per_vol
 
 ##############################################################################
 ##############################################################################
@@ -10288,6 +10291,13 @@ class EncpInterface(option.Interface):
             self.outtype = "hsmfile"  #What should this bee?
             return #Don't continue.
 
+        file_stat=os.fstat(sys.stdin.fileno())
+        if stat.S_ISFIFO(file_stat[stat.ST_MODE]):
+            self.input = ["/dev/fd/%d" % (sys.stdin.fileno(),)]
+            self.output = [self.argv[-1]]
+            self.intype = UNIXFILE
+            self.outtype = HSMFILE  #What should this be?
+            return #Don't continue.
 
         # bomb out if we don't have an input and an output
         self.arglen = len(self.args)
@@ -10831,29 +10841,35 @@ def main(intf):
 
     #Special handling for use with dcache.
     if intf.get_cache:
-        done_ticket, work_list = read_from_hsm(intf, tinfo)
+        #done_ticket, work_list = read_from_hsm(intf, tinfo)
+        done_ticket = read_from_hsm(intf, tinfo)
 
     #Special handling for use with dcache.
     elif intf.put_cache:
-        done_ticket, work_list = write_to_hsm(intf, tinfo)
+        #done_ticket, work_list = write_to_hsm(intf, tinfo)
+        done_ticket = write_to_hsm(intf, tinfo)
         
     ## have we been called "encp unixfile hsmfile" ?
     elif intf.intype == UNIXFILE and intf.outtype == HSMFILE :
-        done_ticket, work_list = write_to_hsm(intf, tinfo)
+        #done_ticket, work_list = write_to_hsm(intf, tinfo)
+        done_ticket = write_to_hsm(intf, tinfo)
         
     ## have we been called "encp hsmfile unixfile" ?
     elif intf.intype == HSMFILE and intf.outtype == UNIXFILE :
-        done_ticket, work_list = read_from_hsm(intf, tinfo)
+        #done_ticket, work_list = read_from_hsm(intf, tinfo)
+        done_ticket = read_from_hsm(intf, tinfo)
 
     ## have we been called "encp rshmfile unixfile" ?
     elif intf.intype == RHSMFILE and intf.outtype == UNIXFILE :
-        done_ticket, work_list = read_from_hsm(intf, tinfo)
-
+        #done_ticket, work_list = read_from_hsm(intf, tinfo)
+        done_ticket = read_from_hsm(intf, tinfo)
+        
     ## have we been called "encp unixfile rhsmfile" ?
     elif intf.intype == UNIXFILE and intf.outtype == RHSMFILE :
 #        emsg = "encp unix to remote hsm  is not implemented."
 #        done_ticket = {'status':("USERERROR", emsg)}
-        done_ticket, work_list = write_to_hsm(intf, tinfo)
+        #done_ticket, work_list = write_to_hsm(intf, tinfo)
+        done_ticket = write_to_hsm(intf, tinfo)
 
     ## have we been called "encp unixfile unixfile" ?
     elif intf.intype == UNIXFILE and intf.outtype == UNIXFILE :
