@@ -96,16 +96,16 @@ case $node in
 	    complain=0
 	    ;;
 
-  *sam*|*d0*)
-	    ENSTORE_CONFIG_HOST=$d0en
-	    ENSTORE_CONFIG_FILE=sam.conf
-	    qualifier=d0en
-	    ;;
-
   *cdf*|*b0*)
 	    ENSTORE_CONFIG_HOST=$cdfen
 	    ENSTORE_CONFIG_FILE=cdf.conf
 	    qualifier=cdfen
+	    ;;
+
+  *sam*|*d0*)
+	    ENSTORE_CONFIG_HOST=$d0en
+	    ENSTORE_CONFIG_FILE=sam.conf
+	    qualifier=d0en
 	    ;;
 
   happy)    #Sasha Moibenko's Desktop
