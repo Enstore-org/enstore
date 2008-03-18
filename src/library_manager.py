@@ -367,6 +367,9 @@ class PostponedRequests:
         self.keep_time = keep_time
         self.start_time = time.time()
 
+    def __repr__(self):
+        return 'rq_list:%s sg_list:%s'%(self.rq_list, self.sg_list,)
+
     def init_rq_list(self):
         self.rq_list = {}
         
@@ -839,15 +842,26 @@ class LibraryManagerMethods:
             # we have saturated system with requests from the same storage group
             # see if there are pending requests for different storage group
             Trace.trace(17,"PW1")
+            start_t=time.time()
             tags = self.pending_work.get_tags()
             Trace.trace(16,"tags: %s"%(tags,))
+            Trace.trace(111, "TAGS TIME %s"%(time.time()-start_t, ))
+            start_t=time.time()
+            Trace.trace(16, 'postponed rqs1 %s'%(self.postponed_requests))
             if len(tags) > 1:
                 for key in tags:
-                    if not key in self.checked_keys:
-                        self.checked_keys.append(key) 
-                        if key != check_key:
-                            Trace.trace(16, "fair_share: key %s"%(key,))
-                            return key
+                    key_sg=[]
+                    #Trace.trace(16, 'key %s sg %s'%(key, self.pending_work.get_sg(key),))
+                    if self.pending_work.get_sg(key) in self.postponed_requests.sg_list.keys():
+                        pass # request for this SG is already in postponed list, no nee to process
+                    else:
+                        if not key in self.checked_keys:
+                            self.checked_keys.append(key) 
+                            if key != check_key:
+                                Trace.trace(16, "fair_share: key %s"%(key,))
+                                Trace.trace(111, "keys TIME %s"%(time.time()-start_t, ))
+                                return key
+                        
         return None
 
     def process_read_request(self, request, requestor):
@@ -895,6 +909,7 @@ class LibraryManagerMethods:
                 Trace.trace(22, 'PW3 %s'%(rq,))
             '''
             rq = self.pending_work.get(rq.ticket["fc"]["external_label"])
+            Trace.trace(22, 'PW212 new rq %s'%(rq.ticket,)) 
             if rq.ticket['encp']['adminpri'] >= 0: # got a HIPri request
                 self.continue_scan = 1
                 key_to_check = self.fair_share(rq)
@@ -946,6 +961,7 @@ class LibraryManagerMethods:
         else:
             sg_limit = self.get_sg_limit(rq_sg)
             self.postponed_requests.put(rq)
+        Trace.trace(16, 'postponed rqs %s'%(self.postponed_requests))
         if self.tmp_rq:
             #tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
             #tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
@@ -955,6 +971,9 @@ class LibraryManagerMethods:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
         Trace.trace(222,'tmp_rq %s rq %s key %s'%(self.tmp_rq, rq, key_to_check))
+        if self.process_for_bound_vol and (rq.ticket["fc"]["external_label"] == self.process_for_bound_vol):
+            # do not continue scan if we have a bound volume.
+            self.continue_scan = 0
         return rq, key_to_check
 
     def process_write_request(self, request, requestor):
@@ -1025,11 +1044,22 @@ class LibraryManagerMethods:
                            #len(matching_movers) == 1:
                             Trace.trace(223, " will let this request go to idle mover")
                         else:
-                            Trace.trace(223, 'will wait with this request go to %s'%
-                                        (mover,))
-                            #rq = self.pending_work.get(next=1) # get next request
-                            self.continue_scan = 1
-                            return rq, key_to_check
+                            # check if file will fit to the volume at mover
+                            fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
+                            ret = self.vcc.is_vol_available(rq.work,  mover['external_label'],
+                                            rq.ticket['vc']['volume_family'],
+                                            fsize)
+                            Trace.trace(223, "check_write_volume returned %s"%(ret,))
+                            if (rq.work == "write_to_hsm" and
+                                (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
+                                 ret['status'][0] == 'full')):
+                                Trace.trace(223, " will let this request go to idle mover")
+                            else:
+                                Trace.trace(223, 'will wait with this request go to %s'%
+                                            (mover,))
+                                #rq = self.pending_work.get(next=1) # get next request
+                                self.continue_scan = 1
+                                return rq, key_to_check
                 
         else:
             vol_veto_list = []
@@ -1731,11 +1761,12 @@ class LibraryManagerMethods:
                 # if storage group limit for this volume has been exceeded
                 # try to get any work with online priority
                 start_t=time.time()
-                sg = volume_family.extract_storage_group(vol_family)
-                rq, status = self.schedule(requestor, bound=external_label, storage_group=sg)
-                Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
-                Trace.trace(111, "SCHEDULE2, time in state %s"%(time.time()-start_t, ))
+                #sg = volume_family.extract_storage_group(vol_family)
+                #rq, status = self.schedule(requestor, bound=external_label, storage_group=sg)
+                #Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
+                #Trace.trace(111, "SCHEDULE2, time in state %s"%(time.time()-start_t, ))
                 # no work means: use what we have
+                status = (e_errors.NOWORK, None)
                 if status[0] == e_errors.NOWORK:
                     rq = exc_limit_rq
                 elif status[0] != e_errors.OK:
@@ -1789,6 +1820,7 @@ class LibraryManagerMethods:
                 return rq, status
         
         # try from the beginning
+        '''
         Trace.trace(14,"try from the beginning")
         Trace.trace(22, "DDD")
         rq = self.pending_work.get(external_label, use_admin_queue=0)
@@ -1809,6 +1841,7 @@ class LibraryManagerMethods:
             return (rq, status)
         if status:
             return (None, status)
+        '''
         return (None, (e_errors.NOWORK, None))
                 
 
@@ -2330,7 +2363,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
 
     def read_from_hsm(self, ticket):
-        Trace.trace(112, "read_from_hasm: ticket %s"%(ticket))
+        Trace.trace(112, "read_from_hsm: ticket %s"%(ticket))
 
         key = encp_ticket.read_request_ok(ticket)
         if key:
