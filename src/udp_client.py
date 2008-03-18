@@ -145,6 +145,13 @@ class UDPClient:
         self.tsd[tid] = tsd
         return tsd
 
+    def get_address(self):
+        if thread_support:
+            tid = thread.get_ident() #Obtain unique identifier.
+        else:
+            tid = 1
+        return self.tsd[tid].socket.getsockname()
+
     def cleanup_tsd(self):
         if thread_support:
             for tid, tsd in self.tsd.items():
