@@ -51,7 +51,9 @@ class Request:
             ticket['encp']['curpri'] = self.pri
             ticket['encp']['agetime'] = self.agetime
             ticket['encp']['delpri'] = self.delpri
-            
+            self.sg = ticket['vc']['storage_group']
+
+           
         self.work = ticket.get('work','')
         wrapper = ticket.get('wrapper','')
         if wrapper:
@@ -497,6 +499,9 @@ class Atomic_Request_Queue:
     def get_tags(self):
         return self.tags.keys
 
+    def get_sg(self, tag):
+        return self.tags[tag]
+
     def put(self, priority, ticket,t_time=0):
         if ticket['work'] == 'write_to_hsm':
             # backward compatibility
@@ -699,6 +704,14 @@ class Request_Queue:
     # needed for fair share distribution
     def get_tags(self):
         return self.admin_queue.tags.keys+self.regular_queue.tags.keys
+
+    def get_sg(self, tag):
+        if self.admin_queue.ref.has_key(tag):
+            return self.admin_queue.ref[tag].sg
+        elif self.regular_queue.ref.has_key(tag):
+            return self.regular_queue.ref[tag].sg
+        else:
+            return None
 
     def put(self,ticket,t_time=0):
 
