@@ -1,13 +1,8 @@
 enstore/cd/ccfsrv2.fnal.gov@FNAL.GOV
-enstore/cd/d0ensrv0.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv0n.fnal.gov@FNAL.GOV
-enstore/cd/d0ensrv1.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv1n.fnal.gov@FNAL.GOV
-enstore/cd/d0ensrv2.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv2n.fnal.gov@FNAL.GOV
-enstore/cd/d0ensrv3.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv3n.fnal.gov@FNAL.GOV
-enstore/cd/d0ensrv4.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv4n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv5.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv5n.fnal.gov@FNAL.GOV
@@ -61,7 +56,6 @@ enstore/cd/d0enmvr153a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr154a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr155a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr156a.fnal.gov@FNAL.GOV
-enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
 enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
@@ -70,9 +64,12 @@ enstore/cd/stkendm5a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm6a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm7a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm8a.fnal.gov@FNAL.GOV
+enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, `d0ensrv2n',
+enstore/cd/cdfensrv2.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `d0ensrv2n',
+enstore/cd/stkensrv2.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
 baisley@FNAL.GOV
@@ -93,5 +90,5 @@ podstvkv@FNAL.GOV
 stan@FNAL.GOV
 swhicks@FNAL.GOV
 timur@FNAL.GOV
-ifelse(HOSTNAME, `d0ensrv4', `vsergeev@FNAL.GOV', `dnl')
+tmesser@FNAL.GOV
 zalokar@FNAL.GOV

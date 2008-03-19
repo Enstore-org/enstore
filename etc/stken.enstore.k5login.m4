@@ -7,12 +7,7 @@ enstore/cd/stkendca2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendca3a.fnal.gov@FNAL.GOV,
 enstore/cd/cmspnfs1.fnal.gov@FNAL.GOV
 enstore/cd/cmspnfs2.fnal.gov@FNAL.GOV
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1,
-enstore/cd/cmsdcdr1.fnal.gov@FNAL.GOV
-enstore/cd/cmsdcdr2.fnal.gov@FNAL.GOV
-enstore/cd/cmssrv28.fnal.gov@FNAL.GOV
-enstore/cd/cmsdcmon1.fnal.gov@FNAL.GOV
-enstore/cd/stkendca3a.fnal.gov@FNAL.GOV,
+enstore/cd/cmspnfs3.fnal.gov@FNAL.GOV
 enstore/cd/eagpnfs1.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv0.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv1.fnal.gov@FNAL.GOV
@@ -77,7 +72,6 @@ enstore/cd/stkenmvr149a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr150a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr151a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr152a.fnal.gov@FNAL.GOV
-enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
 enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
@@ -85,49 +79,40 @@ enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm5a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm6a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm7a.fnal.gov@FNAL.GOV
-enstore/cd/stkendm8a.fnal.gov@FNAL.GOV))
+enstore/cd/stkendm8a.fnal.gov@FNAL.GOV
+enstore/cd/stkenscan1.fnal.gov@FNAL.GOV)
 ifelse(HOSTNAME, `stkensrv1',
 enstore/cd/fndca3a.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `stkensrv1',
 enstore/cd/stkendca3a.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `stkensrv2',
-enstore/cd/d0ensrv2n.fnal.gov@FNAL.GOV, `dnl')
-ifelse(HOSTNAME, `stkensrv2',
+enstore/cd/d0ensrv2n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv4n.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `stkensrv2',
+enstore/cd/cdfensrv2.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
 baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `fagan@FNAL.GOV', `dnl')
 ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
 `fuhrmann@FNAL.GOV', `dnl')
 george@FNAL.GOV
 huangch@FNAL.GOV
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `ifisk@FNAL.GOV', `dnl')
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
 kschu@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `stkendca3a') == 0 || index(HOSTNAME, `fndca3a') == 0 || index(HOSTNAME, `fndca2a') == 0), 1,
 `kurt@FNAL.GOV', `dnl')
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `lisa@FNAL.GOV', `dnl')
 litvinse@FNAL.GOV
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `merina@FNAL.GOV', `dnl')
 mircea@FNAL.GOV
 moibenko@FNAL.GOV
 oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `ptader@FNAL.GOV', `dnl')
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `richt@FNAL.GOV', `dnl')
 stan@FNAL.GOV
 swhicks@FNAL.GOV
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tdh@FNAL.GOV', `dnl')
 timur@FNAL.GOV
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tmesser@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, `stkensrv4', `vsergeev@FNAL.GOV', `dnl')
-ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `yujun@FNAL.GOV', `dnl')
+tmesser@FNAL.GOV
 zalokar@FNAL.GOV
