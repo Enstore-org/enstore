@@ -6,6 +6,29 @@ NUMCOLUMNS=3
 #Make sure to set a timeout.
 timeout='--timeout 10 --retries 3'
 
+is_host()
+{
+   host_to_check=$1
+
+   #Get the IPs of the host the script is running on.
+   ips_to_check=`nslookup $host_to_check | grep -i Address | sed '1d' | cut -f 2- -d " " | tr ',' "\n" | sed 's/ //g'`
+   ip_to_check=`echo "$ips_to_check" | head -n 1`
+
+   #Get the ip addresses on the current machine.  This was been tested on
+   # Linux, Solaris and MacOS X.
+   ip_addrs=`ifconfig -a | egrep "inet " | awk '{print $2}' | sed 's/addr://'`
+
+   #Take the IP of the host we are testing, and compare it with every IP
+   # defined on the current node.
+   for ip in $ip_addrs; do
+      if [ $ip_to_check = $ip ]; then
+         return 1
+      fi
+   done
+
+   return 0
+}
+
 #Make sure we are
 if [ `id -u` -ne 0 ]; then
    echo "Must be user root." 2>&1
@@ -55,16 +78,21 @@ if [ -z "$html_dir" ]; then
    exit 1
 fi
 
-#Get the alias name if available.
+#Get the web alias name if available.
 www_alias=`enstore conf $timeout --show crons www_alias` #optional in config
 if [ $? -ne 0 ]; then
-   www_alias=`hostname | cut -f 1 -d "."`
    #If the alias wasn't available, go with the hostname.
-   if [ -z "$www_alias" ]; then
-      www_alias=`hostanme | cut -f 1 -d "."`
-   fi
+   www_alias=`hostname | cut -f 1 -d "."`
 fi
-f=/tmp/${www_alias}_pnfsExports.html
+
+#Get the pnfs alias name if available.
+pnfs_alias=`enstore conf $timeout --show crons pnfs_alias` #optional in config
+if [ $? -ne 0 || ! `is_host $pnfs_alias` ]; then
+   #If the alias wasn't available or belonged to a different pnfs server
+   # than this one, go with the hostname.
+   pnfs_alias=`hostname | cut -f 1 -d "."`
+fi
+filename=/tmp/${pnfs_alias}_pnfsExports.html
 
 #Send the output for making the web page to the temporary file.
 (
@@ -99,11 +127,11 @@ done
 echo '</table>'
 echo "<h1><center>PNFS ExportList Fetch Done: `date`</center><h1><hr>"
 echo '</html>'
-) > $f
+) > $filename
 
 #This copy should still work if the pnfs and web servers are on the same node.
-chown enstore.enstore $f
-chmod 755 $f
-enrcp $f $web_node:$html_dir
+chown enstore.enstore $filename
+chmod 755 $filename
+enrcp $filename $web_node:$html_dir
 
 
