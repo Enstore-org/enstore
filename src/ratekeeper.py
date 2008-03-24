@@ -289,7 +289,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 q="insert into drive_utilization \
                 (time, tape_library, type, total, busy) values \
                 ('%s', '%s', '%s',  %d,  %d)" % \
-                (time.strftime("%m-%d-%Y %H:%M:%S",
+                (time.strftime("%m-%d-%Y %H:%M:%S %Z",
                                time.localtime(now)),
                  tape_library,
                  drive_type,
@@ -337,7 +337,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 q="insert into tape_library_slots_usage (time, tape_library, \
                 location, media_type, total, free, used, disabled) values \
                 ('%s', '%s', '%s', '%s', %d, %d, %d, %d)" % \
-                   (time.strftime("%m-%d-%Y %H:%M:%S", time.localtime(now)),
+                   (time.strftime("%m-%d-%Y %H:%M:%S %Z", time.localtime(now)),
                     tape_library,
                     slot_info['location'],
                     slot_info['media_type'],
@@ -471,7 +471,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 acc_db_lock.acquire()
                 try:
                     q="insert into rate (time, read, write, read_null, write_null) values \
-                       ('%s', %d,  %d,  %d,  %d)"%(time.strftime("%m-%d-%Y %H:%M:%S",
+                       ('%s', %d,  %d,  %d,  %d)"%(time.strftime("%m-%d-%Y %H:%M:%S %Z",
                                                                  time.localtime(now)),
                                                    bytes_read_dict.get("REAL", 0),
                                                    bytes_written_dict.get("REAL", 0),
