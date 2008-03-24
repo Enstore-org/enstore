@@ -42,6 +42,7 @@ def scan(path, file):	# scanning the file
 # trace(m, imports) -- trace an import chain on m
 
 def trace(m, imports, traced):
+	#print "M",m
 	if not xref.has_key(m):
 		return
 	if m in traced:
@@ -51,6 +52,7 @@ def trace(m, imports, traced):
 		trace(i, imports, traced)
 		if not i in imports:
 			imports.append(i)
+	#print "TRACED",traced
 
 # show(m, result) -- show the result
 

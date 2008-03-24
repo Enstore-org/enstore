@@ -61,6 +61,7 @@ def aci_drivestatus3(clientname):
             #SWIG 1.3
             return x[0], x[1:]
     else:
+        aci_shadow.aci_perror("ACI ERROR :")
         return x, []
 
 def aci_drivestatus4(clientname, drivename):

@@ -7,11 +7,10 @@ import popen2
 import string
 import select
 import time
-from fcntl import fcntl
-from FCNTL import F_SETFL,O_NONBLOCK
+import fcntl
 
 def nonblock(f):
-    fcntl(f.fileno(),F_SETFL,O_NONBLOCK)
+    fcntl.fcntl(f.fileno(),fcntl.F_SETFL,os.O_NONBLOCK)
     
 class Gdb:
     def __init__(self, args):
