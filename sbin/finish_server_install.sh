@@ -17,7 +17,7 @@ rpm -q postgresql > /dev/null
 if [ $? -ne 0 ]; 
 then
     echo "installing postgres"
-    rpm -U --force ${place}/postgresql-libs-8.2.6-1PGDG.rhel4.i686.rpm ${place}/postgresql-8.2.6-1PGDG.rhel4.i686.rpm ${place}/postgresql-server-8.2.6-1PGDG.rhel4.i686.rpm ${place}/postgresql-devel-8.2.6-1PGDG.rhel4.i686.rpm
+    rpm -U --force ${place}/postgresql-libs-8.2.7-1PGDG.rhel4.i686.rpm ${place}/postgresql-8.2.7-1PGDG.rhel4.i686.rpm ${place}/postgresql-server-8.2.7-1PGDG.rhel4.i686.rpm ${place}/postgresql-devel-8.2.7-1PGDG.rhel4.i686.rpm
     #yum update postgres
     rm -f /tmp/postgresql
     mv /etc/rc.d/init.d/postgresql /tmp/postgresql
