@@ -21,7 +21,7 @@ import pprint
 # enstore modules
 import encp
 import get
-import pnfs
+#import pnfs
 import e_errors
 import delete_at_exit
 #import host_config
@@ -193,16 +193,17 @@ def writetape_from_hsm(e, tinfo):
     exit_status = 0 #Used to determine the final message text.
     number_of_files = 0 #Total number of files where a transfer was attempted.
 
+    """
     #Get an ip and port to listen for the mover address for
     # routing purposes.
     udp_callback_addr, udp_socket = encp.get_udp_callback_addr(e)
-    print "udp_socket(1):", udp_socket
     #If the socket does not exist, do not continue.
     if udp_socket.server_socket == None:
         done_ticket = {'exit_status' : 2,
                        'status':(e_errors.NET_ERROR,
                                  "Unable to obtain udp socket.")}
         return done_ticket
+    """
 
     # Get the list of files to read.
     done_ticket, listen_socket, udp_socket, request_list = \
@@ -222,7 +223,6 @@ def writetape_from_hsm(e, tinfo):
     ######################################################################
 
     while encp.requests_outstanding(request_list):
-        print "udp_socket(2):", udp_socket
 
         work_ticket, index, copy = encp.get_next_request(request_list)
 
@@ -236,7 +236,6 @@ def writetape_from_hsm(e, tinfo):
             return work_ticket
 
         # Establish control socket connection with the mover.
-        print "udp_socket(3):", udp_socket
         control_socket, ticket = get.mover_handshake(listen_socket,
                                                      udp_socket,
                                                      work_ticket, e)
@@ -301,7 +300,7 @@ def writetape_from_hsm(e, tinfo):
             request_list[index] = work_ticket
 
             message = "Preparing to write %s." % work_ticket['outfile']
-            Trace.message(4, message)
+            Trace.message(TRANSFER_LEVEL, message)
             Trace.log(e_errors.INFO, message)
 
             data_path_socket, done_ticket = get.mover_handshake2(work_ticket,
@@ -312,7 +311,7 @@ def writetape_from_hsm(e, tinfo):
                 #Tell the user what happend.
                 message = "File %s write failed: %s" % \
                           (work_ticket['outfile'], done_ticket['status'])
-                Trace.message(1, message)
+                Trace.message(DONE_LEVEL, message)
                 Trace.log(e_errors.ERROR, message)
 
                 #We are done with this mover.
@@ -399,7 +398,7 @@ def writetape_from_hsm(e, tinfo):
     encp.close_descriptors(listen_socket)
 
     #Print to screen the exit status.
-    Trace.message(6, "EXIT STATUS: %d" % exit_status)
+    Trace.message(TO_GO_LEVEL, "EXIT STATUS: %d" % exit_status)
 
     #Finishing up with a few of these things.
     calc_ticket = encp.calculate_final_statistics(bytes, number_of_files,
@@ -411,8 +410,8 @@ def writetape_from_hsm(e, tinfo):
     else:
         list_done_ticket = encp.combine_dict(calc_ticket, {})
 
-    Trace.message(10, "LIST DONE TICKET")
-    Trace.message(10, pprint.pformat(list_done_ticket))
+    Trace.message(TICKET_LEVEL, "LIST DONE TICKET")
+    Trace.message(TICKET_LEVEL, pprint.pformat(list_done_ticket))
 
     return list_done_ticket
 
@@ -476,7 +475,6 @@ def do_work(intf):
         encp.print_data_access_layer_format(None, None, None, ticket)
         #Send to the log server the traceback dump.  If unsuccessful,
         # print the traceback to standard error.
-        print "11111111111111111111111111111111"
         import traceback
         traceback.print_tb(tb)
         Trace.handle_error(exc, msg, tb)
@@ -500,7 +498,7 @@ if __name__ == '__main__':
        ( not os.path.exists(sys.argv[-2]) or not os.path.isdir(sys.argv[-2]) \
          or not pnfs.is_pnfs_path(sys.argv[-2]) ):
         try:
-            sys.stderr.write("Second argument is not an input directory.\n")
+            sys.stderr.write("First argument is not an input directory.\n")
             sys.stderr.flush()
         except IOError:
             pass
@@ -511,13 +509,13 @@ if __name__ == '__main__':
         pass  #If the output is /dev/null, this is okay.
     elif not os.path.exists(sys.argv[-1]) or not os.path.isdir(sys.argv[-1]):
         try:
-            sys.stderr.write("Third argument is not an output directory.\n")
+            sys.stderr.write("Last argument is not an output directory.\n")
             sys.stderr.flush()
         except IOError:
             pass
         sys.exit(1)
 
     #print encp.format_class_for_print(intf_of_encp, "intf_of_encp")
-    
+
     do_work(intf_of_encp)
 

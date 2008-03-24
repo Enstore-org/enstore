@@ -890,7 +890,8 @@ def collect_garbage():
     #NEVER FORGET THIS.  Otherwise gc.garbage still contains references.
     del gc.garbage[:]
     if uncollectable_count > 0:
-        Trace.message(1, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
+        Trace.message(DONE_LEVEL,
+                      "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
 
     message = "Time to collect garbage: %s sec." % \
               (time.time() - collect_garbage_start_time,)
@@ -2070,7 +2071,7 @@ def check_library(library, e):
         else:
             status_ticket = {'status' : status}
 
-        Trace.message(1, "LM status: %s" % status_ticket)
+        Trace.message(DONE_LEVEL, "LM status: %s" % status_ticket)
 
         return status_ticket
 
@@ -2105,7 +2106,7 @@ def check_library(library, e):
         # user is only checking, don't give a normal error.
         status_ticket['exit_status'] = 2
 
-    Trace.message(1, "LM status: %s" % status_ticket)
+    Trace.message(DONE_LEVEL, "LM status: %s" % status_ticket)
 
     return status_ticket
 
@@ -4537,7 +4538,7 @@ def receive_final_dialog_2(udp_socket, e):
 
     final_dialog_2_start_time = time.time()
 
-    Trace.message(5, "Waiting for final dialog (2).")
+    Trace.message(TRANSFER_LEVEL, "Waiting for final dialog (2).")
 
     #Keep the udp socket queues clear.
     while time.time() < final_dialog_2_start_time + e.mover_timeout:
@@ -4558,9 +4559,9 @@ def receive_final_dialog_2(udp_socket, e):
         else:
             break
         
-    Trace.message(5, "Received final dialog (2).")
-    Trace.message(10, "FINAL DIALOG (udp):")
-    Trace.message(10, pprint.pformat(mover_udp_done_ticket))
+    Trace.message(TRANSFER_LEVEL, "Received final dialog (2).")
+    Trace.message(TICKET_LEVEL, "FINAL DIALOG (udp):")
+    Trace.message(TICKET_LEVEL, pprint.pformat(mover_udp_done_ticket))
     Trace.log(e_errors.INFO, "Received final dialog (2).")
 
     message = "Time to receive final dialog (2): %s sec." % \
@@ -4573,15 +4574,9 @@ def receive_final_dialog_2(udp_socket, e):
 def wait_for_final_dialog(control_socket, udp_socket, e):
     #Get the final success/failure message from the mover.  If this side
     # has an error, don't wait for the mover in case the mover is waiting
-    # for "Get" to do something.
+    # for "get" or "put" to do something.
     if control_socket != None:
-        
-        #Trace.message(5, "Waiting for final dialog (1).")
         mover_done_ticket = receive_final_dialog(control_socket)
-        #Trace.message(5, "Received final dialog (1).")
-        #Trace.message(10, "FINAL DIALOG (tcp):")
-        #Trace.message(10, pprint.pformat(mover_done_ticket))
-        #Trace.log(e_errors.INFO, "Received final dialog (1).")
     else:
         mover_done_ticket = {'status' : (e_errors.OK, None)}
 
@@ -5248,7 +5243,7 @@ def finish_request(done_ticket, request_list, index):
             #Tell the user what happend.
             message = "File %s transfer failed: %s" % \
                       (done_ticket['outfile'], done_ticket['status'])
-            Trace.message(1, message)
+            Trace.message(DONE_LEVEL, message)
             Trace.log(e_errors.ERROR, message)
 
             #Set completion status to failure.
@@ -7280,22 +7275,26 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         except (IndexError, KeyError):
             pass
             #Trace.log(e_errors.WARNING, "unable to register bfid")
-        
+
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
                       (work_ticket['outfile'],
                        time.time()-tinfo['encp_start_time']))
 
         #Don't need these anymore.
-        close_descriptors(control_socket, data_path_socket, in_fd)
+        #close_descriptors(control_socket, data_path_socket, in_fd)
+        close_descriptors(in_fd)
 
         #Verify that everything is ok on the mover side of the transfer.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e)
-        
-        if e_errors.is_retriable(result_dict['status'][0]):
+
+        if e_errors.is_retriable(result_dict):
             continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            return done_ticket
+        elif e_errors.is_non_retriable(result_dict):
+            return combine_dict(result_dict, work_ticket)
+
+        #Make sure the exfer sub-ticket gets stored into request_ticket.
+        request_ticket = combine_dict(done_ticket, work_ticket)
 
         #Trace.message(TRANSFER_LEVEL, "File %s transfered.  elapsed=%s" %
         #              (done_ticket['outfile'],
@@ -7710,8 +7709,8 @@ def write_to_hsm(e, tinfo):
                                      data_path_socket, tinfo, e)
         ############################################################
 
-        Trace.message(TICKET_LEVEL, "DONE WRITTING TICKET")
-        Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
+        # Close these descriptors before they are forgotten about.
+        close_descriptors(control_socket, data_path_socket)
 
         #Set the value of bytes to the number of bytes transfered before the
         # error occured.
@@ -7726,11 +7725,11 @@ def write_to_hsm(e, tinfo):
         # what_to_do = 0 for stop
         #            = 1 for continue
         #            = 2 for continue after retry
-        what_to_do = finish_request(request_ticket, request_list, index)
+        what_to_do = finish_request(work_ticket, request_list, index)
 
         #If on non-success exit status was returned from
         # finish_request(), keep it around for later.
-        if request_ticket['exit_status']:
+        if request_ticket.get('exit_status', None):
             #We get here only on an error.  If the value is 1, then
             # the error should be transient.  If the value is 2, then
             # the error will likely require human intervention to
@@ -9689,7 +9688,7 @@ def read_from_hsm(e, tinfo):
 
                 #If on non-success exit status was returned from
                 # finish_request(), keep it around for later.
-                if request_ticket['exit_status']:
+                if request_ticket.get('exit_status', None):
                     #We get here only on an error.  If the value is 1, then
                     # the error should be transient.  If the value is 2, then
                     # the error will likely require human intervention to

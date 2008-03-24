@@ -62,7 +62,8 @@ def setup_get_interface():
     encp.EncpInterface.get = 1
     
     encp.EncpInterface.parameters = [
-        "--volume <volume> <source dir> <destination dir>",
+        "--volume <volume> <destination dir>",
+        "--read-to-end-of-tape --volume <volume> <source dir> <destination dir>",
         "<source file> [source file [...]] <destination directory>"
         ]
     
@@ -120,7 +121,7 @@ def error_output(request):
         pass
 
 def halt(exit_code=1):
-    Trace.message(1, "Get exit status: %s" % (exit_code,))
+    Trace.message(DONE_LEVEL, "Get exit status: %s" % (exit_code,))
     Trace.log(e_errors.INFO, "Get exit status: %s" % (exit_code,))
     delete_at_exit.quit(exit_code)
 
@@ -149,7 +150,7 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
     #Open the routing socket.
     try:
 
-	    Trace.message(4, "Opening udp socket.")
+	    Trace.message(TRANSFER_LEVEL, "Opening udp socket.")
 	    Trace.log(e_errors.INFO, "Opening udp socket.")
 	    Trace.log(e_errors.INFO,
 		      "Listening for udp message at: %s." % \
@@ -162,8 +163,8 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
                                            encp_intf)
 
             #If requested output the raw message.
-            Trace.message(10, "RTICKET MESSAGE:")
-            Trace.message(10, pprint.pformat(uticket))
+            Trace.message(TICKET_LEVEL, "RTICKET MESSAGE:")
+            Trace.message(TICKET_LEVEL, pprint.pformat(uticket))
 		
 	    if not e_errors.is_ok(uticket):
 		#Log the error.
@@ -173,7 +174,7 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 		uticket = encp.combine_dict(uticket, request)
 		return None, uticket
 
-	    Trace.message(4, "Opened udp socket.")
+	    Trace.message(TRANSFER_LEVEL, "Opened udp socket.")
 	    Trace.log(e_errors.INFO, "Opened udp socket.")
     except (encp.EncpError,), detail:
 	if getattr(detail, "errno", None) == errno.ETIMEDOUT:
@@ -192,12 +193,12 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 	return None, request
 
     #Print out the final ticket.
-    Trace.message(10, "UDP TICKET:")
-    Trace.message(10, pprint.pformat(uticket))
+    Trace.message(TICKET_LEVEL, "UDP TICKET:")
+    Trace.message(TICKET_LEVEL, pprint.pformat(uticket))
 
     message = "Listening for control socket at: %s" \
               % str(listen_socket.getsockname())
-    Trace.message(1, message)
+    Trace.message(DONE_LEVEL, message)
     Trace.log(e_errors.INFO, message)
 
     try:
@@ -270,13 +271,13 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 	return None, request
 
     #Print out the final ticket.
-    Trace.message(10, "MOVER HANDSHAKE (CONTROL):")
-    Trace.message(10, pprint.pformat(ticket))
+    Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (CONTROL):")
+    Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
     #Recored the receiving of the first control socket message.
     message = "Received callback ticket from mover %s for transfer %s." % \
               (ticket.get('mover', {}).get('name', "Unknown"),
                ticket.get('unique_id', "Unknown"))
-    Trace.message(7, message)
+    Trace.message(INFO_LEVEL, message)
     Trace.log(e_errors.INFO, message)
 
     #Compare expected unique id with the returned unique id.
@@ -298,7 +299,7 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
     #Keep the udp socket queues clear, while waiting for the mover
     # ready message.
     start_time = time.time()
-    Trace.message(5, "Waiting for mover ready message.")
+    Trace.message(TRANSFER_LEVEL, "Waiting for mover ready message.")
     Trace.log(e_errors.INFO, "Waiting for mover ready message.")
     while time.time() < start_time + encp_intf.mover_timeout:
         #Keep looping until the message arives.
@@ -323,7 +324,7 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
         mover_ready = encp.handle_retries([request], request,
                                            error_ticket, encp_intf)
 
-    Trace.message(5, "Received mover ready message.")
+    Trace.message(TRANSFER_LEVEL, "Received mover ready message.")
     Trace.log(e_errors.INFO, "Received mover ready message.")
 
     if not e_errors.is_ok(mover_ready):
@@ -345,12 +346,12 @@ def mover_handshake2(work_ticket, udp_socket, e):
         #Record the event of sending the request to the mover.
         message = "Sending file %s request to the mover." % \
                 encp.extract_file_number(work_ticket['fc']['location_cookie'])
-        Trace.message(5, message)
+        Trace.message(TRANSFER_LEVEL, message)
         Trace.log(e_errors.INFO, message)
 
         #Record this for posterity, if requested.
-        Trace.message(10, "MOVER_REQUEST_SUBMISSION:")
-        Trace.message(10, pprint.pformat(work_ticket))
+        Trace.message(TICKET_LEVEL, "MOVER_REQUEST_SUBMISSION:")
+        Trace.message(TICKET_LEVEL, pprint.pformat(work_ticket))
 
         #Send the actual request to the mover.
         udp_socket.reply_to_caller(work_ticket)
@@ -382,7 +383,7 @@ def mover_handshake2(work_ticket, udp_socket, e):
 	    work_ticket['status'] = (e_errors.EPROTO, str(msg))
 	    return None, work_ticket
 
-        Trace.message(5, "Opening the data socket.")
+        Trace.message(TRANSFER_LEVEL, "Opening the data socket.")
         Trace.log(e_errors.INFO, "Opening the data socket.")
 
         #Open the data socket.
@@ -396,7 +397,7 @@ def mover_handshake2(work_ticket, udp_socket, e):
             work_ticket['status'] = (e_errors.OK, None)
 	    #We need to specifiy which interface will be used on the encp side.
 	    work_ticket['encp_ip'] = data_path_socket.getsockname()[0]
-            Trace.message(5, "Opened the data socket.")
+            Trace.message(TRANSFER_LEVEL, "Opened the data socket.")
             Trace.log(e_errors.INFO, "Opened the data socket.")
         except (encp.EncpError, socket.error), detail:
             msg = "Unable to open data socket with mover: %s" % (str(detail),)
@@ -428,7 +429,7 @@ def mover_handshake2(work_ticket, udp_socket, e):
         message = "Data socket is connected to mover %s for %s. " % \
                       (work_ticket.get('mover', {}).get('name', "Unknown"),
                       work_ticket.get('unique_id', "Unknown"))
-        Trace.message(4, message)
+        Trace.message(TRANSFER_LEVEL, message)
         Trace.log(e_errors.INFO, message)
 
         Trace.message(TIME_LEVEL, "Time to prepare for transfer: %s sec." %
@@ -462,12 +463,12 @@ def set_metadata(ticket, intf):
     except OSError, detail:
         msg = "Pnfs file create failed for %s: %s" % (ticket['infile'],
                                                       str(detail))
-        Trace.message(5, msg)
+        Trace.message(TRANSFER_LEVEL, msg)
         Trace.log(e_errors.ERROR, msg)
         return
 
-    Trace.message(10, "SETTING METADATA WITH:")
-    Trace.message(10, pprint.pformat(ticket))
+    Trace.message(TICKET_LEVEL, "SETTING METADATA WITH:")
+    Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
     
     #Set the metadata for this new file.
     encp.set_pnfs_settings(ticket, intf)
@@ -475,7 +476,7 @@ def set_metadata(ticket, intf):
     if not e_errors.is_ok(ticket):
         msg = "Metadata update failed for %s: %s" % (ticket['infile'],
                                                      ticket['status'])
-        Trace.message(5, msg)
+        Trace.message(ERROR_LEVEL, msg)
         Trace.log(e_errors.ERROR, msg)
 
         #Be sure to cleanup after the metadata error.
@@ -483,7 +484,7 @@ def set_metadata(ticket, intf):
     else:
         delete_at_exit.unregister(ticket['infile']) #Don't delete good file.
         msg = "Successfully updated %s metadata." % ticket['infile']
-        Trace.message(5, msg)
+        Trace.message(INFO_LEVEL, msg)
         Trace.log(e_errors.INFO, msg)
 
 def end_session(udp_socket, control_socket):
@@ -619,7 +620,7 @@ def finish_request(done_ticket, request_list, index, e):
             p = pnfs.Pnfs(done_ticket['infile'])
             p.get_bit_file_id()
         except (IOError, OSError, TypeError):
-            Trace.message(5, "Updating metadata for %s." %
+            Trace.message(TRANSFER_LEVEL, "Updating metadata for %s." %
                           done_ticket['infile'])
             set_metadata(done_ticket, e)
 
@@ -651,7 +652,7 @@ def finish_request(done_ticket, request_list, index, e):
             #Tell the user what happend.
             message = "File %s read failed: %s" % \
                       (done_ticket['infile'], done_ticket['status'])
-            Trace.message(1, message)
+            Trace.message(DONE_LEVEL, message)
             Trace.log(e_errors.ERROR, message)
 
             #Set completion status to failure.
@@ -666,7 +667,7 @@ def finish_request(done_ticket, request_list, index, e):
             #Tell the user what happend.
             message = "Reached EOD at location %s." % \
                       (done_ticket['fc']['location_cookie'],)
-            Trace.message(1, message)
+            Trace.message(DONE_LEVEL, message)
             Trace.log(e_errors.INFO, message)
 
             #If --list was not used this is a success.
@@ -694,7 +695,7 @@ def finish_request(done_ticket, request_list, index, e):
         #Tell the user what happend.
         message = "File %s read failed: %s" % \
                       (done_ticket['infile'], done_ticket['status'])
-        Trace.message(1, message)
+        Trace.message(DONE_LEVEL, message)
         Trace.log(e_errors.ERROR, message)
 
         #Set completion status to failure.
@@ -718,7 +719,7 @@ def finish_request(done_ticket, request_list, index, e):
         #Tell the user what happend.
         message = "File %s read failed: %s" % \
                   (done_ticket['infile'], done_ticket['status'])
-        Trace.message(1, message)
+        Trace.message(DONE_LEVEL, message)
         Trace.log(e_errors.ERROR, message)
 
         #Set completion status to failure.
@@ -769,6 +770,7 @@ def readtape_from_hsm(e, tinfo):
     exit_status = 0 #Used to determine the final message text.
     number_of_files = 0 #Total number of files where a transfer was attempted.
 
+    """
     #Get an ip and port to listen for the mover address for
     # routing purposes.
     udp_callback_addr, udp_socket = encp.get_udp_callback_addr(e)
@@ -778,7 +780,8 @@ def readtape_from_hsm(e, tinfo):
                        'status':(e_errors.NET_ERROR,
                                  "Unable to obtain udp socket.")}
         return done_ticket
-
+    """
+    
     # Get the list of files to read.
     done_ticket, listen_socket, udp_socket, requests_per_vol = \
                  encp.prepare_read_from_hsm(tinfo, e)
@@ -814,7 +817,7 @@ def readtape_from_hsm(e, tinfo):
 
         #Submit the request to the library manager.
         submitted, reply_ticket = encp.submit_read_requests([request], e)
-        Trace.message(4, "Read tape submission sent to LM.")
+        Trace.message(TRANSFER_LEVEL, "Read tape submission sent to LM.")
 
         if not e_errors.is_ok(reply_ticket):
             #Tell the calling process, this file failed.
@@ -905,7 +908,7 @@ def readtape_from_hsm(e, tinfo):
                 requests_per_vol[vol][index] = request
 
                 message = "Preparing to read %s." % (request['infile'],)
-                Trace.message(4, message)
+                Trace.message(TRANSFER_LEVEL, message)
                 Trace.log(e_errors.INFO, message)
 
                 data_path_socket, done_ticket = mover_handshake2(request,
@@ -915,7 +918,7 @@ def readtape_from_hsm(e, tinfo):
                     #Tell the user what happend.
                     message = "File %s read failed: %s" % \
                               (request['infile'], done_ticket['status'])
-                    Trace.message(1, message)
+                    Trace.message(DONE_LEVEL, message)
                     Trace.log(e_errors.ERROR, message)
 
                     #We are done with this mover.
@@ -1146,7 +1149,7 @@ def readtape_from_hsm(e, tinfo):
     encp.close_descriptors(listen_socket)
 
     #Print to screen the exit status.
-    Trace.message(6, "EXIT STATUS: %d" % exit_status)
+    Trace.message(TO_GO_LEVEL, "EXIT STATUS: %d" % exit_status)
 
     #Finishing up with a few of these things.
     calc_ticket = encp.calculate_final_statistics(bytes, number_of_files,
@@ -1158,8 +1161,8 @@ def readtape_from_hsm(e, tinfo):
     else:
         list_done_ticket = encp.combine_dict(calc_ticket, {})
 
-    Trace.message(10, "LIST DONE TICKET")
-    Trace.message(10, pprint.pformat(list_done_ticket))
+    Trace.message(TICKET_LEVEL, "LIST DONE TICKET")
+    Trace.message(TICKET_LEVEL, pprint.pformat(list_done_ticket))
 
     return list_done_ticket
 
@@ -1223,7 +1226,6 @@ def do_work(intf):
         encp.print_data_access_layer_format(None, None, None, ticket)
         #Send to the log server the traceback dump.  If unsuccessful,
         # print the traceback to standard error.
-        print "11111111111111111111111111111111"
         Trace.handle_error(exc, msg, tb)
         del tb #No cyclic references.
         #Remove any zero-length files left haning around.  Also, return
@@ -1235,16 +1237,14 @@ if __name__ == '__main__':
     setup_get_interface()
 
     #First handle an incorrect command line.
-    if len(sys.argv) < 4:
-        intf_of_encp = encp.EncpInterface(sys.argv, 1) #one = user
-        intf_of_encp.print_usage()
+    #if len(sys.argv) < 4:
+    #    intf_of_encp = encp.EncpInterface(sys.argv, 1) #one = user
+    #    intf_of_encp.print_usage()
 
     #intf_of_encp = encp.EncpInterface(sys.argv[:-3] + sys.argv[-2:], 0)
     intf_of_encp = encp.EncpInterface(sys.argv, 0)
     #intf_of_encp.volume = sys.argv[-3] #Hackish
     #intf_of_encp.argv = sys.argv[:] #Hackish
-
-    print "intf_of_encp.volume:", intf_of_encp.volume
 
     """
     if not enstore_functions3.is_volume(sys.argv[-3]):
@@ -1256,7 +1256,7 @@ if __name__ == '__main__':
         sys.exit(1)
     """
 
-    if intf_of_encp.volume and \
+    if intf_of_encp.volume and intf_of_encp.read_to_end_of_tape and \
        ( not os.path.exists(sys.argv[-2]) or not os.path.isdir(sys.argv[-2]) \
          or not pnfs.is_pnfs_path(sys.argv[-2]) ):
         try:
