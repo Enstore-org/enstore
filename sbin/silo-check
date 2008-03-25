@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $id: $
+# $Id$
 
 # Generate the VOLUME_CROSS_CHECK inventory web page.
 # This script is very Fermilab specific.
