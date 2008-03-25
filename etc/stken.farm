@@ -16,6 +16,7 @@ stkenmvr7a	stkenmvr-a	stken-alla	stken-all
 stkenmvr8a	stkenmvr-a	stken-alla	stken-all
 stkenmvr9a	stkenmvr-a	stken-alla	stken-all
 stkenmvr10a	stkenmvr-a	stken-alla	stken-all
+stkenmvr11a	stkenmvr-a	stken-alla	stken-all
 stkenmvr12a	stkenmvr-a	stken-alla	stken-all	stken-null
 stkenmvr13a	stkenmvr-a	stken-alla	stken-all	stken-null
 stkenmvr14a	stkenmvr-a	stken-alla	stken-all	stken-null
@@ -64,7 +65,6 @@ stkenmvr148a	stkenmvr-a	stken-alla	stken-all	stken-lto4
 stkenmvr149a	stkenmvr-a	stken-alla	stken-all	stken-lto4
 stkenmvr150a	stkenmvr-a	stken-alla	stken-all	stken-lto4
 stkenmvr151a	stkenmvr-a	stken-alla	stken-all	stken-lto4
-stkenmvr152a	stkenmvr-a	stken-alla	stken-all	stken-lto4
 REMOVE		stkendca*	fndca*
 fndca2a		stkendca
 fndca3a		stkendca
