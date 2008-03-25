@@ -1,10 +1,10 @@
 REMOVE		cdfensrv*	cdfen-all[ab]	cdfen-all	ssasrv*
 ssasrv1				cdfen-alla	cdfen-all
-cdfensrv0	cdfensrv	cdfen-alla	cdfen-all
-cdfensrv1	cdfensrv	cdfen-alla	cdfen-all
-cdfensrv2	cdfensrv	cdfen-alla	cdfen-all
-cdfensrv3	cdfensrv	cdfen-alla	cdfen-all
-cdfensrv4	cdfensrv	cdfen-alla	cdfen-all
+cdfensrv0n	cdfensrv	cdfen-alla	cdfen-all
+cdfensrv1n	cdfensrv	cdfen-alla	cdfen-all
+cdfensrv2n	cdfensrv	cdfen-alla	cdfen-all
+cdfensrv3n	cdfensrv	cdfen-alla	cdfen-all
+cdfensrv4n	cdfensrv	cdfen-alla	cdfen-all
 cdfensrv5	cdfensrv	cdfen-alla	cdfen-all
 REMOVE		cdfenmvr*[ab]					cdfen-null
 cdfenmvr1a	cdfenmvr-a	cdfen-alla	cdfen-all	cdfen-null
