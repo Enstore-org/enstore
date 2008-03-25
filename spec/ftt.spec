@@ -1,7 +1,7 @@
 Summary: fermi tape tool 
 Name: ftt
 Version: 2.26
-Release: 1
+Release: 2
 License: GPL
 Group: Applications/File
 #URL: 
