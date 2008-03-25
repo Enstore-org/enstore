@@ -89,33 +89,6 @@ raise_exception(char *msg)
     return NULL;
 }
 
-#if 0
-static PyObject *
-raise_exception2(struct transfer *rtn_val)
-{
-    PyObject	*v;
-    int		i = rtn_val->errno_val;
-  
-#   ifdef EINTR
-    if ((i==EINTR) && PyErr_CheckSignals()) return NULL;
-#   endif
-
-    /* note: format should be the same as in FTT.c */
-    /* What does the above comment mean??? */
-    v = Py_BuildValue("(s,i,s,i,O,O,O,s,i)",
-		      rtn_val->msg, i, strerror(i), getpid(),
-		      PyLong_FromLongLong(rtn_val->bytes),
-		      PyFloat_FromDouble(rtn_val->transfer_time),
-		      PyFloat_FromDouble(rtn_val->transfer_time),
-		      rtn_val->filename, rtn_val->line);
-    if (v != NULL)
-    {   PyErr_SetObject(EXErrObject, v);
-	Py_DECREF(v);
-    }
-    return NULL;
-}
-#endif /* 0 */
-
 static PyObject *
 Interfaces_info(PyObject *self, PyObject *args)
 {
