@@ -66,12 +66,16 @@ def delete():
                 except IOError:
                     pass
         else:
-            pac = pnfs_agent_client.PnfsAgentClient(csc)
-            #If pac.remove() had the protections on the pnfs agent side
-            # to make sure only pnfs files were deleted this is_pnfs_path()
-            # check would not be necessary.
-            if pac.is_pnfs_path(f):
-                pac.remove(f)
+            pnfs_agent_answer = csc.get("pnfs_agent", 5, 5)
+            #We need to check if the optional pnfs_agent is even configured.
+            # If it is, then we can continue to try and remove the file.
+            if e_errors.is_ok(pnfs_agent_answer):
+                pac = pnfs_agent_client.PnfsAgentClient(csc)
+                #If pac.remove() had the protections on the pnfs agent side
+                # to make sure only pnfs files were deleted this is_pnfs_path()
+                # check would not be necessary.
+                if pac.is_pnfs_path(f):
+                    pac.remove(f)
             
     # Delete registered bfids.
     for b in _deletion_list_bfids:
