@@ -415,10 +415,26 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                            fullpath(pnfsFilename)
 
             if shortcut and self.id:
+                #We need to determine the .(accesses)() path name to
+                # the directory of the file.
                 parent_id = self.get_parent(id = self.id, directory = self.dir)
-                self.dir = os.path.join(self.dir,
-                                              ".(access)(%s)" % parent_id)
+                use_dir = os.path.join(self.dir,
+                                       ".(access)(%s)" % parent_id)
 
+                #This block of code determines if the use_dir path is a
+                # directory or not.  The parent of a tag file is another
+                # tag file.  So, we leave self.dir alone for these cases and
+                # set it only when we really do have a directory.
+                try:
+                    f_stats = os.stat(use_dir)
+                    if stat.S_ISDIR(f_stats[stat.ST_MODE]):
+                        #We have the pnfs id of a tag file.
+                        self.dir = use_dir
+                except (OSError, IOError), msg:
+                    if msg.args[0] != errno.ENOTDIR:
+                        #We have the pnfs id of a tag file.
+                        self.dir = use_dir
+                
             self.pstatinfo()
 
         try:
@@ -1021,8 +1037,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             #If the mountpoint doesn't know about our database fail now.
             try:
                 N(use_pnfsid_db, directory).get_databaseN(use_pnfsid_db)
-            except (OSError, IOError):
-                raise OSError(errno.ENOENT, "Force PNFS search")
+            except (OSError, IOError), msg:
+                if msg.args[0] == errno.ENOTDIR:
+                    #This can/will happen if the pnfsid is for a tag file.
+                    # The parent of a tag is not a directory, but is
+                    # another tag, hence ENOTDIR.
+                    raise OSError(errno.ENOTDIR, "Force PNFS search")
+                else:
+                    raise OSError(errno.ENOENT, "Force PNFS search")
 
             #
             # Get the requested information from PNFS.
@@ -1035,7 +1057,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             f.close()
 
             #Remember to truncate the original path to just the mount
-            # point
+            # point.
             search_path = self.get_mount_point(directory)
 
             found_db_num = int(self.get_database(search_path).split(":")[1],
@@ -1060,6 +1082,37 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             #         os.geteuid() == 0:
             #    #If we found the non-admin path and are user root.
             #    pass
+            elif msg.args[0] == errno.ENOTDIR:
+                #We can legitly get here if the pnfs id is for a tag file.
+                sfn = os.path.join(directory,
+                                   ".(showid)(%s)" % id)
+                f = open(sfn, 'r')
+                showid_value = f.readlines()
+                f.close()
+
+                for line in showid_value:
+                    if line.find("Tag ( Inode )") != -1:
+                        #Finding the "Tag ( Inode )" string means we have
+                        # a pnfs id.
+                        
+                        #Remember to truncate the original path to just the
+                        # mount point.
+                        search_path = self.get_mount_point(directory)
+                        
+                        found_db_num = int(
+                            self.get_database(search_path).split(":")[1],
+                            16)
+
+                        #Small hack for the admin path.
+                        if found_db_num == 0:
+                            search_path = os.path.join(search_path, "usr")
+
+                        mp_match_list = [search_path]
+                        pnfs_value_match_list = showid_value
+
+                        #We need to return the match for the default
+                        # directory (likely the CWD).
+                        return mp_match_list, pnfs_value_match_list
             elif msg.args[0] != errno.ENOENT:
                 raise OSError(msg.args[0],
                               "%s: %s" % (os.strerror(msg.args[0]), pfn))
@@ -1164,6 +1217,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         db_data = db_pnfsid_cache.get(db_db_info, None)
                     if db_data != None:
                         if found_db_info != db_db_info:
+                            #
+                            # Set these three values to include the found item.
+                            #
                             count = count + 1
                             mp_match_list.append(db_data[1])
                             pnfs_value_match_list.append(pnfs_value)
@@ -1184,12 +1240,89 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                             if os.path.basename(use_mp) == "fs":
                                 parent_fn = os.path.join(use_mp, "usr",
                                                    ".(parent)(%s)" % id)
+                                showid_fn = os.path.join(use_mp, "usr",
+                                                   ".(showid)(%s)" % id)
                             else:
                                 parent_fn = os.path.join(use_mp,
                                                          ".(parent)(%s)" % id)
+                                showid_fn = os.path.join(use_mp,
+                                                         ".(showid)(%s)" % id)
+                                
                             parent_fp = open(parent_fn, "r")
                             parent_id = parent_fp.readlines()
                             parent_fp.close()
+
+                            if parent_id:
+                                #We can't close the book on this just yet.
+                                # If the pnfsid is a tag, then we need to
+                                # handle things special.
+                                showid_fp = open(showid_fn, "r")
+                                showid_data = showid_fp.readlines()
+                                showid_fp.close()
+                                for line in showid_data:
+                                    if line.find("Tag ( Inode )") != -1:
+                                        #If we get here, then we determined
+                                        # that the pnfs is a tag file pnfsid.
+
+                                        #First, construct the access name of
+                                        # the directory that this tag belongs
+                                        # to.
+                                        parent_id_clean = parent_id[0][:-1]
+                                        afn_dir = os.path.join(
+                                            use_mp,
+                                            ".(access)(%s)" % parent_id_clean)
+                                        
+                                        #
+                                        # Set these three values to include
+                                        # the found item.
+                                        #
+                                        count = count + 1
+                                        mp_match_list.append(afn_dir)
+                                        pnfs_value_match_list.append(
+                                            showid_data)
+                                        
+                                        if count == 1:
+                                            #We just found the first one.
+                                            # Remember this to avoid catching
+                                            # it again.
+
+                                            
+                                            #Determine the correct mount
+                                            # point.  Different pnfs database
+                                            # areas can respond for any
+                                            # database on the same machine.
+                                            # The current one knows about the
+                                            # db we are looking for, now just
+                                            # need to find the correctly
+                                            # matching mount point.
+                                            db_dir = \
+                                            self.get_pnfs_db_directory(afn_dir)
+                                            #The target_db_area step is
+                                            # necessary for databases like
+                                            # /pnfs/sdss/db2.  The if below
+                                            # handles things for locations
+                                            # like /pnfs/sdss.
+                                            target_db_area = \
+                                              get_directory_name(db_dir)
+                                            db_db_info = \
+                                              self.get_database(target_db_area)
+                                            db_data = \
+                                              db_pnfsid_cache.get(db_db_info,
+                                                                  None)
+                                            
+                                            
+                                            #We just found the first one.
+                                            # Remember this to avoid catching
+                                            # it again.
+                                            search_path = db_data[1]
+                                            found_db_num = db_data[0]
+                                            #found_fname = pfn
+                                            found_db_info = db_db_info
+
+                                        break
+
+                                continue
+                                
                         except (OSError, IOError):
                             parent_id = None
 
@@ -1197,8 +1330,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         if parent_id:
                             #orphaned file
                             raise OSError(errno.EBADFD,
-                                          "%s: orphaned file" % os.strerror(errno.EBADFD), pfn)
-                        
+                                          "%s: orphaned file" %
+                                          os.strerror(errno.EBADFD), pfn)
+
                     continue
 
             if count == 0:
