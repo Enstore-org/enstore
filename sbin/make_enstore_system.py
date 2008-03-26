@@ -22,31 +22,23 @@ import string
 
 def rchown(dir, uid, gid):
   try:
+    os.chown(dir, uid, gid)
     if (os.path.isdir(dir)):
       direntries=os.listdir(os.path.abspath(dir))
       for direntry in direntries:
         d=os.path.abspath(os.path.join(dir,direntry))
-        if (os.path.isdir(d)):
-          rchown(d, uid, gid)
-        else:
-          os.chown(d, uid, gid)
-    else:
-      os.chown(dir, uid, gid)
+        rchown(d, uid, gid)
   except (IOError, os.error), why:
     print "rchown %s: %s" % (str(dir), str(why))
 
 def rchmod(dir, mode):
   try:
+    os.chmod(dir, mode)
     if (os.path.isdir(dir)):
       direntries=os.listdir(os.path.abspath(dir))
       for direntry in direntries:
         d=os.path.abspath(os.path.join(dir,direntry))
-        if  (os.path.isdir(d)):
-          rchmod(d, mode)
-        else:
-          os.chmod(d, mode)
-    else:
-      os.chmod(dir, mode)
+        rchmod(d, mode)
   except (IOError, os.error), why:
     print "rchmod %s: %s" % (str(dir), str(why))
 
@@ -65,6 +57,7 @@ if __name__ == "__main__":
         print "We are in Fermilab", server.get_system_name()
         remote=False
 
+
     main_web_page=enstore_system_html.EnstoreSystemHtml(server.get_system_name(),
                                                         "0.00", remote)
 
@@ -80,7 +73,7 @@ if __name__ == "__main__":
     if not os.path.exists( os.path.join(html_dir,"index.html")):
         os.symlink(os.path.join(html_dir, enstore_system_html.HTMLFILE), os.path.join(html_dir,"index.html"));
     os.system("cp *.gif %s"%html_dir);
-    os.system("cp *.html %s"%html_dir);
+    os.system("cp *.html %s"%html_dir);3
     uid=server.get_server_getpwuid()[2]
     gid=server.get_server_getpwuid()[3]
     try:
