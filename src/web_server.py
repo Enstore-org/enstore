@@ -54,9 +54,14 @@ class WebServer:
                 ret =configdict['known_config_servers']
  		def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
 			    int(os.environ['ENSTORE_CONFIG_PORT']))
+                match = False
                 for item in ret.items():
                     if socket.getfqdn(item[1][0]) == socket.getfqdn(def_addr[0]):
+                        match = True
                         self.system_name = item[0]
+                        break
+                if not match:
+                    self.system_name=self.this_host_name.split('.')[0]
                 self.web_server = self.config_dict.get(WEB_SERVER, {})
                
             except:
