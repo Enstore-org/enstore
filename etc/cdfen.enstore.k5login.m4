@@ -1,10 +1,16 @@
 enstore/cd/ccfsrv2.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv0.fnal.gov@FNAL.GOV
+enstore/cd/cdfensrv0n.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv1.fnal.gov@FNAL.GOV
+enstore/cd/cdfensrv1n.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv2.fnal.gov@FNAL.GOV
+enstore/cd/cdfensrv2n.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv3.fnal.gov@FNAL.GOV
+enstore/cd/cdfensrv3n.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV
+enstore/cd/cdfensrv4n.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv5.fnal.gov@FNAL.GOV
+enstore/cd/cdfensrv5n.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr1a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr2a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr3a.fnal.gov@FNAL.GOV
@@ -51,14 +57,14 @@ enstore/cd/stkendm6a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm7a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm8a.fnal.gov@FNAL.GOV
 enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
-ifelse(HOSTNAME, `cdfensrv1',
+ifelse(HOSTNAME, `cdfensrv1n',
 enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV, `dnl')
-ifelse(HOSTNAME, `cdfensrv1',
+ifelse(HOSTNAME, `cdfensrv1n',
 enstore/cd/fcdfdcache4.fnal.gov@FNAL.GOV, `dnl')
-ifelse(HOSTNAME, `cdfensrv2',
+ifelse(HOSTNAME, `cdfensrv2n',
 enstore/cd/d0ensrv2n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv4n.fnal.gov@FNAL.GOV, `dnl')
-ifelse(HOSTNAME, `cdfensrv2',
+ifelse(HOSTNAME, `cdfensrv2n',
 enstore/cd/stkensrv2.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
@@ -66,7 +72,7 @@ baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
-ifelse(HOSTNAME, `cdfensrv1', `gcooper@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, `cdfensrv1n', `gcooper@FNAL.GOV', `dnl')
 george@FNAL.GOV
 huangch@FNAL.GOV
 jonest@FNAL.GOV

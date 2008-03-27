@@ -89,6 +89,9 @@ ifelse(HOSTNAME, `stkensrv2',
 enstore/cd/d0ensrv2n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv4n.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `stkensrv2',
+enstore/cd/cdfensrv2n.fnal.gov@FNAL.GOV
+enstore/cd/cdfensrv4n.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `stkensrv2',
 enstore/cd/cdfensrv2.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV

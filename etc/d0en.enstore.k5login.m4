@@ -66,6 +66,9 @@ enstore/cd/stkendm7a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm8a.fnal.gov@FNAL.GOV
 enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, `d0ensrv2n',
+enstore/cd/cdfensrv2n.fnal.gov@FNAL.GOV
+enstore/cd/cdfensrv4n.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `d0ensrv2n',
 enstore/cd/cdfensrv2.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `d0ensrv2n',

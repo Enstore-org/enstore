@@ -149,11 +149,17 @@ host/stkendca18a.fnal.gov@FNAL.GOV
 host/stkendca19a.fnal.gov@FNAL.GOV
 host/stkendca20a.fnal.gov@FNAL.GOV, `dnl')
 host/cdfensrv0.fnal.gov@FNAL.GOV
+host/cdfensrv0n.fnal.gov@FNAL.GOV
 host/cdfensrv1.fnal.gov@FNAL.GOV
+host/cdfensrv1n.fnal.gov@FNAL.GOV
 host/cdfensrv2.fnal.gov@FNAL.GOV
+host/cdfensrv2n.fnal.gov@FNAL.GOV
 host/cdfensrv3.fnal.gov@FNAL.GOV
+host/cdfensrv3n.fnal.gov@FNAL.GOV
 host/cdfensrv4.fnal.gov@FNAL.GOV
+host/cdfensrv4n.fnal.gov@FNAL.GOV
 host/cdfensrv5.fnal.gov@FNAL.GOV
+host/cdfensrv5n.fnal.gov@FNAL.GOV
 host/cdfenmvr1a.fnal.gov@FNAL.GOV
 host/cdfenmvr2a.fnal.gov@FNAL.GOV
 host/cdfenmvr3a.fnal.gov@FNAL.GOV
@@ -203,7 +209,7 @@ host/stkenscan1.fnal.gov@FNAL.GOV)
 ifelse(HOSTNAME, `stkensrv1',
 host/fndca3a.fnal.gov@FNAL.GOV
 host/stkendca3a.fnal.gov@FNAL.GOV, `dnl')
-ifelse(HOSTNAME, `cdfensrv1',
+ifelse(HOSTNAME, `cdfensrv1n',
 host/fcdfdcache1.fnal.gov@FNAL.GOV
 host/fcdfdcache4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
@@ -213,7 +219,7 @@ berg@FNAL.GOV
 berman@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
 `fuhrmann@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, `cdfensrv1', `gcooper@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, `cdfensrv1n', `gcooper@FNAL.GOV', `dnl')
 george@FNAL.GOV
 huangch@FNAL.GOV
 jonest@FNAL.GOV
