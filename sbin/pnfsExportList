@@ -1,5 +1,7 @@
 #!/bin/sh
 
+PATH=$PATH:/sbin:/usr/sbin
+
 #Number of columns to display the output into.
 NUMCOLUMNS=3
 
@@ -22,10 +24,12 @@ is_host()
    # defined on the current node.
    for ip in $ip_addrs; do
       if [ $ip_to_check = $ip ]; then
+         #echo 1
          return 1
       fi
    done
 
+   #echo 0
    return 0
 }
 
@@ -87,7 +91,10 @@ fi
 
 #Get the pnfs alias name if available.
 pnfs_alias=`enstore conf $timeout --show crons pnfs_alias` #optional in config
-if [ $? -ne 0 || ! `is_host $pnfs_alias` ]; then
+alias_rtn=$?
+is_host $pnfs_alias
+is_host_rtn=$?
+if [ $alias_rtn -ne 0 -o $is_host_rtn -eq 0 ]; then
    #If the alias wasn't available or belonged to a different pnfs server
    # than this one, go with the hostname.
    pnfs_alias=`hostname | cut -f 1 -d "."`
