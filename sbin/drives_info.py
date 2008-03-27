@@ -33,7 +33,7 @@ def match_mover_log_name(logname, movers):
     return rc
         
 
-def publish_results(report, out, config_host, system, server, web):
+def publish_results(report, out, config_host, system, server, web_s):
     import HTMLgen
     import enstore_html
     import enstore_functions2
@@ -80,9 +80,9 @@ def publish_results(report, out, config_host, system, server, web):
     of.write(str(html_doc))
     of.close()
 
-    cmd = '$ENSTORE_DIR/sbin/enrcp %s %s:%s'%(out, server, web)    
-    print cmd
-    os.system(cmd)
+    c = '$ENSTORE_DIR/sbin/enrcp %s %s:%s'%(out, server, web_s)    
+    print c
+    os.system(c)
 
 
 config_host = os.getenv('ENSTORE_CONFIG_HOST')
@@ -140,10 +140,10 @@ while 1:
 report_dict = {}
 for rec in recs:
 
-    mv = match_mover_log_name(rec['logname'], movers)
-    if mv:
-        m = mv[0].split('.')[0]
-        report_dict[m] = {'config':mv[1],
+    mov = match_mover_log_name(rec['logname'], movers)
+    if mov:
+        m = mov[0].split('.')[0]
+        report_dict[m] = {'config':mov[1],
                           'stats': rec
                           }
 
