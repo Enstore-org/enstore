@@ -209,6 +209,8 @@ def writetape_from_hsm(e, tinfo):
     done_ticket, listen_socket, udp_socket, request_list = \
                  encp.prepare_write_to_hsm(tinfo, e)
 
+    if e.check:
+        return done_ticket
     if not e_errors.is_ok(done_ticket):
         #Tell the calling process, this file failed.
         get.error_output(done_ticket)

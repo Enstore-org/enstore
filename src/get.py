@@ -786,6 +786,8 @@ def readtape_from_hsm(e, tinfo):
     done_ticket, listen_socket, udp_socket, requests_per_vol = \
                  encp.prepare_read_from_hsm(tinfo, e)
 
+    if e.check:
+        return done_ticket
     if not e_errors.is_ok(done_ticket):
         pprint.pprint(done_ticket)
         #Tell the calling process, this file failed.

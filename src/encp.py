@@ -7294,7 +7294,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
             return combine_dict(result_dict, work_ticket)
 
         #Make sure the exfer sub-ticket gets stored into request_ticket.
-        request_ticket = combine_dict(done_ticket, work_ticket)
+        work_ticket = combine_dict(done_ticket, work_ticket)
 
         #Trace.message(TRANSFER_LEVEL, "File %s transfered.  elapsed=%s" %
         #              (done_ticket['outfile'],
@@ -7527,7 +7527,7 @@ def write_to_hsm(e, tinfo):
     done_ticket, listen_socket, unused, request_list = \
                  prepare_write_to_hsm(tinfo, e)
 
-    if not e_errors.is_ok(done_ticket):
+    if not e_errors.is_ok(done_ticket) or e.check:
         return done_ticket
 
     """
@@ -9577,7 +9577,7 @@ def read_from_hsm(e, tinfo):
     done_ticket, listen_socket, unused, requests_per_vol = \
                    prepare_read_from_hsm(tinfo, e)
 
-    if not e_errors.is_ok(done_ticket):
+    if not e_errors.is_ok(done_ticket) or e.check:
         return done_ticket   #, requests_per_vol
 
     ######################################################################
