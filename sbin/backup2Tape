@@ -71,26 +71,52 @@ ENSTORELOG=${filePath}/enstore-log-backup
 QUIT=$VAULT/QUIT
 TIMEONDISK=1  #days
 
-# Fermi specific stuff
-if [ $node = d0ensrv3 ]; then
-  pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
-  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+## Fermi specific stuff
+#if [ $node = d0ensrv3 ]; then
+#  pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
+#  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+#
+#elif [ $node = d0ensrv3n ]; then
+#  pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
+#  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+#
+#elif [ $node = stkensrv3 ]; then
+#  pnfspath="/pnfs/eagle/backups/`date_string_d`"; export pnfspath
+#
+#elif [ $node = cdfensrv3 ]; then
+#  pnfspath="/pnfs/eagle/cdfen-backups/`date_string_d`"; export pnfspath
+#  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+#
+#elif [ $node = gccensrv2 ]; then
+#  pnfspath="/pnfs/eagle/gccen-backups/`date_string_d`"; export pnfspath
+#  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+#
+#else
+#  doit "echo Do not know about node $node... fix $ENSTORE_DIR/sbin/backup2Tape script"
+#  exit 1
+#fi
 
-elif [ $node = d0ensrv3n ]; then
-  pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
-  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
-
-elif [ $node = stkensrv3 ]; then
-  pnfspath="/pnfs/eagle/backups/`date_string_d`"; export pnfspath
-
-elif [ $node = cdfensrv3 ]; then
-  pnfspath="/pnfs/eagle/cdfen-backups/`date_string_d`"; export pnfspath
-  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
-
-else
-  doit "Do not know about node $node... fix $ENSTORE/sbin/backup2Tape script"
-  exit 1
-fi
+case "$node" in
+	d0en*)
+		pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
+		ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+		;;
+	stken*)
+		pnfspath="/pnfs/eagle/backups/`date_string_d`"; export pnfspath
+		;;
+	cdfen*)
+		pnfspath="/pnfs/eagle/cdfen-backups/`date_string_d`"; export pnfspath
+		ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+		;;
+	gccen*)
+		pnfspath="/pnfs/eagle/gccen-backups/`date_string_d`"; export pnfspath
+		ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+		;;
+	*)
+		doit "echo Do not know about node $node... fix $ENSTORE_DIR/sbin/backup2Tape script"
+		exit 1
+		;;
+esac
 
 rm -f $BACKUP_LOG
 
