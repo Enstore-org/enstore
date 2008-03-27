@@ -10290,6 +10290,7 @@ class EncpInterface(option.Interface):
             self.outtype = "hsmfile"  #What should this bee?
             return #Don't continue.
 
+        """
         file_stat=os.fstat(sys.stdin.fileno())
         if stat.S_ISFIFO(file_stat[stat.ST_MODE]):
             self.input = ["/dev/fd/%d" % (sys.stdin.fileno(),)]
@@ -10297,6 +10298,7 @@ class EncpInterface(option.Interface):
             self.intype = UNIXFILE
             self.outtype = HSMFILE  #What should this be?
             return #Don't continue.
+        """
 
         # bomb out if we don't have an input and an output
         self.arglen = len(self.args)
