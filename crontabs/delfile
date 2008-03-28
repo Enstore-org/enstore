@@ -1,1 +1,1 @@
-0-55/5 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -q -p delfile -D TRASH_CAN=/diska/pnfs/trash/4 delfile.py >/dev/null 2>/dev/null
+0-55/5 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -q -p delfile >/dev/null 2>/dev/null
