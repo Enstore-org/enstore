@@ -806,6 +806,8 @@ class LibraryManagerMethods:
         self.process_for_bound_vol = None # if not None volume is bound
 
     def fair_share(self, rq):
+        self.sg_exceeded = None
+        Trace.trace(22, "fair_share sg_exceeded %s"%(self.sg_exceeded,))
         if (rq.ticket.get('ignore_fair_share', None)):
             # do not count this request against fair share
             # this is an automigration request
@@ -816,7 +818,8 @@ class LibraryManagerMethods:
             ease = 1
         else:
             ease = 0
-        self.sg_exceeded = None
+        Trace.trace(22, "fair_share sg_exceeded %s"%(self.sg_exceeded,))
+
         if rq.ticket['work'] == 'read_from_hsm':
             storage_group = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
             check_key = rq.ticket["fc"]["external_label"]
@@ -981,7 +984,7 @@ class LibraryManagerMethods:
         rq = request
         Trace.trace(22, "PW_RQ1 %s"%(rq,))
         key_to_check = self.fair_share(rq)
-        Trace.trace(22, "PW_RQ2")
+        Trace.trace(22, "PW_RQ2 %s"%(self.sg_exceeded,))
         Trace.trace(16,"process_write_request: key %s process for bound %s"%(key_to_check, self.process_for_bound_vol))
         if key_to_check:
             self.continue_scan = 1
