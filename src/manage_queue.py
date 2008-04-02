@@ -195,10 +195,12 @@ class SortedList:
             index = 0
             self.current_index = index
         else:
-            # find request that has "priority" higher than pri 
+            # find request that has "priority" higher than pri
+            Trace.trace(23, 'SortedList.get:sorted_list %s'%(self.sorted_list,))
             rq = Request(pri, pri, {})
             index = self.sorted_list.bisect(rq)
-        if index < len(self.sorted_list):
+            Trace.trace(23, 'SortedList.get: i %s rq %s'%(index, rq))
+        if index < len(self.sorted_list) and index >= 0:
             Trace.trace(23,"SortedList.get: index %s"%(index,))
             record = self.sorted_list[index]
             record.ticket['at_the_top'] = record.ticket['at_the_top']+1
@@ -212,7 +214,7 @@ class SortedList:
     ##    print msg
         
     def get_next(self):
-        Trace.trace(23, "sorted_list %s stop_rolling %s current_index %s"%(self.sorted_list,self.stop_rolling,self.current_index))
+        Trace.trace(23, "SortedList.get_next %s stop_rolling %s current_index %s"%(self.sorted_list,self.stop_rolling,self.current_index))
         if not self.sorted_list:
             self.start_index = self.current_index
             return None    # list is empty
@@ -225,8 +227,10 @@ class SortedList:
         if old_current_index == self.current_index: # only one element in the list
             self.start_index = self.current_index
             Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
-                        (old_current_index,self.current_index,self.start_index, None))  
-            return None
+                        (old_current_index,self.current_index,self.start_index, None))
+            self.stop_rolling = 1
+            return self.sorted_list[self.current_index]
+            #return None
         try:
             if self.current_index == self.start_index:
                 Trace.trace(33,"!! o_i %s c_i %s s_i %s ret %s"%
@@ -344,6 +348,7 @@ class Queue:
          # label is either a volume label or file family
         #Trace.trace(23, 'Queue.get: Queue list %s'% (self.sprint(),))
         if not label: return None
+        Trace.trace(23, "Queue.get: queue %s"%(self.queue,))
         if not self.queue.has_key(label):
             Trace.trace(23,"Queue.get: label %s is not in the queue"%(label,))
             return None
@@ -591,6 +596,7 @@ class Atomic_Request_Queue:
                     if next: record = self.read_queue.get_next(label)
                     else:
                         record = self.read_queue.get(label, location)
+                        Trace.trace(21, "GET_AA record %s"%(record,))
                         #if not location: record = self.read_queue.get(label)
                         #else: record = self.read_queue.get(label, location)
             else: record = None

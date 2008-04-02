@@ -33,6 +33,8 @@ def _bisect(a, x, compare, lo=0, hi=None):
         mid = (lo+hi)/2
         if compare(x,a[mid])<0: hi = mid
         else: lo = mid+1
+    if lo >= len(a): lo = len(a)
+    return lo-1
     return lo
 
 
