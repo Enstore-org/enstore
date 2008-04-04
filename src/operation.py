@@ -206,7 +206,7 @@ def get_script_host(cluster):
 	elif cluster.upper()[:3] == 'STK':
 		return 'stkensrv4.fnal.gov'
 	elif cluster.upper()[:3] == 'CDF':
-		return 'cdfensrv4.fnal.gov'
+		return 'cdfensrv4n.fnal.gov'
 	elif cluster.upper()[:3] == 'GCC':
 		return 'gccensrv2.fnal.gov'
 	else:
