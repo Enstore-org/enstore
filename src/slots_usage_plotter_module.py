@@ -61,7 +61,7 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         then_time = now_time - self.time_in_days*24*3600
         db.query("begin");
         db.query("declare rate_cursor cursor for select to_char(time,'MM-DD-YYYY HH24:MI:SS'),tape_library,location,media_type,\
-                  total,free,used    from  tape_library_slots_usage\
+                  total,free,used,disabled    from  tape_library_slots_usage\
                   where time between '%s' and '%s'"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(then_time)),
                                                      time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(now_time))))
         while True:
@@ -71,7 +71,7 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 date = row[0]
                 key=self.clean_string(row[1])+"_"+self.clean_string(row[2])+"_"+ self.clean_string(row[3])
                 fd=self.data_files[key]
-                fd.write("%s %s %s %s\n"%(date,row[4],row[5],row[6],))
+                fd.write("%s %s %s %s %s\n"%(date,row[4],row[5],row[6],row[6]+row[7]))
                 self.free[key]=row[5]
             l=len(res)
             if (l < 10000):
@@ -90,14 +90,14 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             fd.write("set xlabel \"Date\"\n")
             fd.write("set timefmt \"%m-%d-%Y %H:%M:%S\"\n")
             fd.write("set xdata time\n")
-            fd.write("set ylabel \"Number Used\"\n")
+            fd.write("set ylabel \"Number of Slots\"\n")
             fd.write("set grid \n")
             fd.write("set yrange [0: ]\n")
             fd.write("set format x \"%m-%d\"\n")
             fd.write("set nokey \n")
             fd.write("set label \"Plotted `date` \" at graph .99,0 rotate font \"Helvetica,10\"\n")
-            fd.write("set label \"%d Free\" at graph .2,.9 font \"Helvetica,80\"\n"%(self.free[d],))
-            fd.write("plot \"%s.pts\" using 1:3 w impulses linetype 2, \"%s.pts\" using 1:5 t \"Used Slots\" w impulses linetype 1"%(d,d,))
+            fd.write("set label \"%d Free\" at graph .2,.9 front font \"Helvetica,80\"\n"%(self.free[d],))
+            fd.write("plot \"%s.pts\" using 1:3 w impulses linetype 2 lw 2, \"%s.pts\"  using 1:6 t \"Disabled Slots\" w impulses linetype 3 lw 2 ,  \"%s.pts\" using 1:5 t \"Used Slots\" w impulses linetype 1 lw 2 \n"%(d,d,d,))
             fd.close()
 
     def plot(self):
