@@ -56,6 +56,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                    user  = acc.get('dbuser', 'enstore'))
         self.install_dir = frame.get_configuration_client().get(enstore_constants.INQUISITOR, 5,2).get('html_file','./')
 
+
         now_time  = time.time()
         then_time = now_time - self.days_ago*24*3600
         db.query("begin");
@@ -88,6 +89,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 d,t,b=string.split(l," ");
                 total=total+float(b)
             if total>0 :
+                h.set_marker_type("points")
                 h.plot("1:3")
                 os.system("mv %s.ps %s"%(h.name,self.install_dir))
                 os.system("mv %s_stamp.jpg %s"%(h.name,self.install_dir))
