@@ -988,9 +988,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     # update statistics
     def update_stat(self):
-        if self.driver_type != 'FTTDriver': return
-        if self.stats_on and self.tape_driver and self.tape_driver.ftt:
+        if self.driver_type != 'FTTDriver':
+            return
+        if self.tape_driver and self.tape_driver.ftt:
             stats = self.tape_driver.get_stats()
+        
+        if self.override_ro_mount and self.tape_driver and self.tape_driver.ftt:
             Trace.log(e_errors.INFO,
                       "volume %s write protection %s  override_ro_mount %s" % \
                       (self.current_volume,
@@ -1006,21 +1009,24 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     volume_db_write_tab_status = 0 #DB says it is not flipped
                 #Compare the two values.  If they don't match raise an alarm.
-                if self.override_ro_mount and \
-                   drive_write_tab_status != volume_db_write_tab_status:
+                if drive_write_tab_status != volume_db_write_tab_status:
                     #Raise an alarm if the DB and the tape values don't
                     # match.
                     Trace.alarm(e_errors.ALARM,
-                              "%s write protection tab inconsistency: tape %s != db %s" % \
-                              (self.current_volume,
-                               stats[self.ftt.WRITE_PROT],
-                               volume_db_write_tab_status))
+                                "%s write protection tab inconsistency: "
+                                "tape %s != db %s" % \
+                                (self.current_volume,
+                                 stats[self.ftt.WRITE_PROT],
+                                 volume_db_write_tab_status),
+                                rest = self.current_work_ticket['vc'],
+                               )
             except:
                 exc, msg, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR,
                           "update_stat(): %s: %s" % (str(exc), str(msg)))
             #### Added by MZ #################
-            
+
+        if self.stats_on and self.tape_driver and self.tape_driver.ftt:    
             try: 
                 user_read = long(stats[self.ftt.USER_READ])/1024.
             except TypeError, detail:
