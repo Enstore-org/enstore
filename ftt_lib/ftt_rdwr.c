@@ -187,7 +187,8 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 			ftt_close_dev(d);
 		}
 		if ( 0 > (res = ftt_open_dev(d))) {
-			return res;
+		  ftt_free_stat(statbuf); /* to avoid memory leaks */
+		  return res;
 		}
 		d->last_operation = FTT_OP_WRITE;
 
@@ -239,5 +240,6 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
     }
     d->nwrites++;
     d->data_direction = FTT_DIR_WRITING;
+    ftt_free_stat(statbuf); /* to avoid memory leaks */
     return res;
 }
