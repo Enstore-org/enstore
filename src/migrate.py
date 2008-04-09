@@ -673,14 +673,7 @@ def migrating():
 				ok_log(MY_TASK, "%s %s %s is copied to %s"%(bfid, src, tmp, dst))
 				log_copied(bfid, bfid2, db)
 
-			# remove tmp file
-			try:
-				os.remove(tmp)
-				ok_log(MY_TASK, "removing %s"%(tmp))
-			except:
-				error_log(MY_TASK, "failed to remove temporary file %s"%(tmp))
-				pass
-
+		keep_file = False
 		# is it swapped?
 		log("SWAPPING_METADATA", "swapping %s %s %s %s"%(bfid, src, bfid2, dst))
 		if not is_swapped(bfid, db):
@@ -707,10 +700,20 @@ def migrating():
 					scan_queue.put((bfid, bfid2, src, deleted), True)
 			else:
 				error_log("SWAPPING_METADATA", "%s %s %s %s failed due to %s"%(bfid, src, bfid2, dst, res))
+				keep_file = True
 		else:
 			ok_log("SWAPPING_METADATA", "%s %s %s %s have already been swapped"%(bfid, src, bfid2, dst))
 			if icheck:
 				scan_queue.put((bfid, bfid2, src, deleted), True)
+
+		if not keep_file:
+			# remove tmp file
+			try:
+				os.remove(tmp)
+				ok_log(MY_TASK, "removing %s"%(tmp))
+			except:
+				error_log(MY_TASK, "failed to remove temporary file %s"%(tmp))
+				pass
 
 		job = copy_queue.get(True)
 
