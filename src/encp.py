@@ -5353,8 +5353,12 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     socket_status = (e_errors.OK, None)
     socket_dict = {'status':socket_status}
     if control_socket:
-        socket_error = control_socket.getsockopt(socket.SOL_SOCKET,
-                                                 socket.SO_ERROR)
+        try:
+            socket_error = control_socket.getsockopt(socket.SOL_SOCKET,
+                                                     socket.SO_ERROR)
+        except socket.error, msg:
+            socket_error = msg.args[0]
+        
         if socket_error:
             socket_status = (e_errors.NET_ERROR, os.strerror(socket_error))
             socket_dict = {'status':socket_status}
@@ -10290,15 +10294,18 @@ class EncpInterface(option.Interface):
             self.outtype = "hsmfile"  #What should this bee?
             return #Don't continue.
 
-        """
+        #If just the output file was specified and standard input is a
+        # FIFO, then set the input file to be read from standard in.
+        # We can't just test for FIFOs here.  In the cron environment,
+        # processes are started with standard in/out/err as pipes
+        # (a.k.a. FIFOs).
         file_stat=os.fstat(sys.stdin.fileno())
-        if stat.S_ISFIFO(file_stat[stat.ST_MODE]):
+        if len(self.args) == 1 and stat.S_ISFIFO(file_stat[stat.ST_MODE]):
             self.input = ["/dev/fd/%d" % (sys.stdin.fileno(),)]
             self.output = [self.argv[-1]]
             self.intype = UNIXFILE
             self.outtype = HSMFILE  #What should this be?
             return #Don't continue.
-        """
 
         # bomb out if we don't have an input and an output
         self.arglen = len(self.args)
