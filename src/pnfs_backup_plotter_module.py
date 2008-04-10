@@ -9,6 +9,7 @@
 import pg
 import os
 import time
+import sys
 
 # enstore imports
 import enstore_plotter_module
@@ -62,7 +63,26 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     #######################################################################
 
     def book(self,frame):
-        pass
+        #Get cron directory information.
+        cron_dict = frame.get_configuration_client().get("crons", {})
+
+        #Pull out just the information we want.
+        temp_dir = cron_dict.get("tmp_dir", "/tmp")
+        html_dir = cron_dict.get("html_dir", "")
+
+        #Handle the case were we don't know where to put the output.
+        if not html_dir:
+            sys.stderr.write("Unable to determine html_dir.\n")
+            sys.exit(1)
+
+        #Define variables that hold the path needed in fill() and plot().
+        self.data_filename = "%s/pnfs_backup.tmp" % (temp_dir,)
+
+        self.output_filename = "%s/pnfs_backup_plot.ps" % (html_dir,)
+        self.output_filename_jpeg = "%s/pnfs_backup_plot.jpg" % (html_dir,)
+        self.output_filename_stamp_jpeg = "%s/pnfs_backup_stamp.jpg" % (html_dir,)
+
+        self.plot_filename = "%s/pnfs_format" % (temp_dir,)
 
     def fill(self,frame):
         
@@ -81,7 +101,8 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         
         res = db.query(sql_cmd).getresult() #Get the values from the DB.
 
-        self.data_file = open("/tmp/pnfs_backup.tmp", "w")
+        #Open the file that will contain the data gnuplot will plot.
+        self.data_file = open(self.data_filename, "w")
 
         # Loop over the SQL query results.
         for row in res:
@@ -112,28 +133,22 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
     def plot(self):
 
-        output_filename = "pnfs_backup_plot.ps"
-        output_filename_jpeg = "pnfs_backup_plot.jpg"
-        output_filename_stamp_jpeg = "pnfs_backup_stamp.jpg"
-
-        plot_filename = "/tmp/pnfs_format"
-
         #Make the file that tells gnuplot what to do.
-        self.write_plot_file(plot_filename, self.data_file.name,
-                             output_filename)
+        self.write_plot_file(self.plot_filename, self.data_filename,
+                             self.output_filename)
         
         # make the plot
-        os.system("gnuplot < %s" % (plot_filename,))
+        os.system("gnuplot < %s" % (self.plot_filename,))
         
         # convert to jpeg
         os.system("convert -rotate 90 -modulate 80 %s %s" %
-                  (output_filename, output_filename_jpeg))
+                  (self.output_filename, self.output_filename_jpeg))
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s" %
-                  (output_filename, output_filename_stamp_jpeg))
+                  (self.output_filename, self.output_filename_stamp_jpeg))
 
         #clean up the temporary files.
         try:
-            os.remove(plot_filename)
+            os.remove(self.plot_filename)
             pass
         except:
             pass
