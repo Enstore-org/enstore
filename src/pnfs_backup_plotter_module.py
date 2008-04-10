@@ -78,9 +78,9 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #Define variables that hold the path needed in fill() and plot().
         self.data_filename = "%s/pnfs_backup.tmp" % (temp_dir,)
 
-        self.output_filename = "%s/pnfs_backup_plot.ps" % (html_dir,)
-        self.output_filename_jpeg = "%s/pnfs_backup_plot.jpg" % (html_dir,)
-        self.output_filename_stamp_jpeg = "%s/pnfs_backup_stamp.jpg" % (html_dir,)
+        self.output_filename = "%s/pnfs_backup_time.ps" % (html_dir,)
+        self.output_filename_jpeg = "%s/pnfs_backup_time.jpg" % (html_dir,)
+        self.output_filename_stamp_jpeg = "%s/pnfs_backup_time_stamp.jpg" % (html_dir,)
 
         self.plot_filename = "%s/pnfs_format" % (temp_dir,)
 
@@ -137,7 +137,6 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         self.write_plot_file(self.plot_filename, self.data_filename,
                              self.output_filename)
        
-	os.system("cat %s" % self.plot_filename)
         # make the plot
 	rtn = os.system("gnuplot < %s" % (self.plot_filename,))
 	if rtn:
