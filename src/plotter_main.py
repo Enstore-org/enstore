@@ -9,17 +9,20 @@
 # Author: Dmitry Litvintsev (litvinse@fnal.gov) 08/05
 #
 ###############################################################################
+
+import getopt
+import sys
+import socket
+import pg
+import traceback
+
 import enstore_plotter_module
 import enstore_plotter_framework
 import ratekeeper_plotter_module
 import drive_utilization_plotter_module
 import slots_usage_plotter_module
 import mounts_plot
-import getopt
-import sys
-import socket
-import pg
-import traceback
+import pnfs_backup_plotter_module
 
 FNAL_DOMAIN="131.225" 
 
@@ -28,13 +31,13 @@ def usage(cmd):
     print "\t -r [--rate]        : plot ratekeeper plots"
     print "\t -m [--mounts]      : plot mount plots "
     print "\t -u [--utilization] : plot drive utilization"
-    print "\t -s [--slots]       : slot utilization"
+    print "\t -s [--slots]       : plot slot utilization"
+    print "\t -p [--pnfs-backup] : plot pnfs backup time"
     print "\t -h [--help]        : show this message"
-
     
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hs:ms:rs:s:ss", ["help","mounts","rate","utilization","slots"])
+        opts, args = getopt.getopt(sys.argv[1:], "phs:ms:rs:s:ss", ["help","mounts","rate","utilization","slots", "pnfs-bakup"])
     except getopt.GetoptError:
         print "Failed to process arguments"
         usage(sys.argv[0])
@@ -76,6 +79,10 @@ if __name__ == "__main__":
         # slot utilization
         if o in ("-s","--slots"):
             aModule   = slots_usage_plotter_module.SlotUsagePlotterModule("slots")
+            f.add(aModule)
+        # pnfs backup time
+        if o in ("-p","--pnfs-backup"):
+            aModule   = pnfs_backup_plotter_module.PnfsBackupPlotterModule("pnfs_backup")
             f.add(aModule)
         
 
