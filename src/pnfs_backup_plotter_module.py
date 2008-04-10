@@ -136,15 +136,25 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #Make the file that tells gnuplot what to do.
         self.write_plot_file(self.plot_filename, self.data_filename,
                              self.output_filename)
-        
+       
+	os.system("cat %s" % self.plot_filename)
         # make the plot
-        os.system("gnuplot < %s" % (self.plot_filename,))
+	rtn = os.system("gnuplot < %s" % (self.plot_filename,))
+	if rtn:
+		sys.stderr.write("gnuplot failed\n")
+		sys.exit(1)
         
         # convert to jpeg
-        os.system("convert -rotate 90 -modulate 80 %s %s" %
+        rtn = os.system("convert -rotate 90 -modulate 80 %s %s" %
                   (self.output_filename, self.output_filename_jpeg))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s" %
+	if rtn:
+		sys.stderr.write("convert failed\n")
+                sys.exit(1)
+        rtn = os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s" %
                   (self.output_filename, self.output_filename_stamp_jpeg))
+	if rtn:
+		sys.stderr.write("convert failed\n")
+                sys.exit(1)
 
         #clean up the temporary files.
         try:
