@@ -7,6 +7,7 @@
 
 #Make sure to set a timeout.
 timeout='--timeout 10 --retries 3'
+file_fallback='--file-fallback' #Set this for SDE.
 
 get_recent_pnfsids()
 {
@@ -54,6 +55,9 @@ parse_id()
     #   00 01    00 00    00 00    00 00    00 00 a9 b0
     # The first four groups are believed to swap the same way as the
     # database number (a.k.a. the first grouping of four bytes).
+    #
+    # Re-running this function on the swapped data, will result in the
+    # original version of the pnfs id.
 
     #Insert spaces every two characters to aid in the swapping of
     # the chunks of pnfsid.
@@ -73,7 +77,7 @@ parse_id()
     pnfsid=`echo $pnfsid | tr -d " "`
 
     echo $pnfsid
-}     
+}
 
 is_reg_file()
 {
@@ -179,6 +183,25 @@ get_filesize()
     fi
 }
 
+get_L2_filesize()
+{
+    dbname=$1
+    pnfsid=$2
+
+    fname="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})"
+    #size=`ls -l $fname | awk '{print $5}'`
+    l2_fname="${fname}(2)"
+    size=`cat $l2_fname | sed -n '2p' | sed 's/.*\(l=[0-9]*\).*/\1/' | cut -c 3- | tr -d ' \t\n'`
+    if [ $? -ne 0 ]; then
+	echo -1
+	return 1
+    else
+	#If the layer is empty, assume that it should go to tape.
+	echo $size
+	return 0
+    fi
+}
+
 get_filepath()
 {
     which pathfinder > /dev/null 2>&1
@@ -249,20 +272,23 @@ check_pnfsids()
 	#
 	#Skip to next file if this file is not to be written to tape.
 	#
-	if [ $L2_status = 'y' -a $hsm_status = 'y' ]; then
+	if [ $L2_status = 'y' -a ! $hsm_status = 'y' ]; then
 	    #This is a file that is not going to be written to tape.
 	    continue
 	fi
 
 	#Get the file size.
 	filesize=`get_filesize $db_name $pnfsid`
-	
+	l2_filesize=`get_L2_filesize $db_name $pnfsid`
+
 	#
-	#Skip to next file if this file is likely no to be written to tape.
+	#Skip to next file if this file is likely not to be written to tape.
 	#
-    	if [ $L2_status = 'y' -a $filesize -eq 0 ]; then
-	    #This is a file that may not be going to be written to tape.
-	    continue
+	if [ $L2_status = 'y' -a -n "$l2_filesize" ]; then
+	    if [ "$l2_filesize" -eq 0 ]; then
+		#This is a file that may not be going to be written to tape.
+		continue
+	    fi
 	fi
 
 	#Get the file path.
@@ -277,7 +303,7 @@ check_pnfsids()
 
 	printf " %-26s | %24s | %6s | %6s | %6s | %s\n" "$timestamp" $pnfsid $L1_status $L2_status $L4_status $path >> $TEMP_OUTPUT_FILE
 
-	#Echo a space (echo inserts one between the quotas and $line), to
+	#Echo a space (echo inserts one between the quotes and $line), to
 	# the beginning to have the same file format as originally.  The
 	# shell eats the leading space up.
 	echo "" $line >> $TEMP_OUTPUT_FILE_2
@@ -303,9 +329,9 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-#Get the alias name if available.
-www_alias=`enstore conf $timeout --show crons www_alias` #optional in config
-if [ $? -ne 0 ]; then
+#Get the alias name if available.  Optional in config.
+www_alias=`enstore conf $timeout $file_fallback --show crons www_alias`
+if [ $? -ne 0 -o -z "$www_alias" ]; then
    www_alias=`hostname | cut -f 1 -d "."`
    #If the alias wasn't available, go with the hostname.
    if [ -z "$www_alias" ]; then
@@ -326,15 +352,15 @@ TEMP_FILE_OLD=/tmp/pm_temp_old
 TEMP_FILE_NEW=/tmp/pm_temp_new
 
 #Obtain the directory to write the output.
-html_dir=`enstore conf $timeout --file-fallback --show crons html_dir`
-if [ -z "$html_dir" ]; then
+html_dir=`enstore conf $timeout $file_fallback --show crons html_dir`
+if [ $? -ne 0 -o -z "$html_dir" ]; then
     echo HTML directory $html_dir not found.
     exit 1
 fi
 
 #Obtain the node to copy the output to.
-web_node=`enstore conf $timeout --file-fallback --show crons web_node`
-if [ -z "$web_node" ]; then
+web_node=`enstore conf $timeout $file_fallback --show crons web_node`
+if [ $? -ne 0 -o -z "$web_node" ]; then
     echo Web hostname $web_node not found.
     exit 1
 fi
@@ -342,7 +368,7 @@ fi
 #
 # Loop over the all of the pnfs databases (excluding admin).
 #
-db_list=`get_pnfs_dbs`
+db_list=`get_pnfs_dbs | sort`
 for db_name in `echo $db_list`; do
 
     #Put the recent pnfsids in the /tmp/recent_pnfids_${db_name} file.
@@ -363,7 +389,7 @@ for db_name in `echo $db_list`; do
     fi
 
     #Send message to standard out.
-    echo "Starting DB: $db_name with $old_count previously known files."
+    echo "Starting DB: $db_name with $new_count recent files to check."
 
     #
     # Output recent broken files.
@@ -374,8 +400,9 @@ for db_name in `echo $db_list`; do
     # $TEMP_OUTPUT_FILE_2.
     check_pnfsids $TEMP_FILE_NEW
     
+    
     #Send message to standard out.
-    echo "Starting DB: $db_name with $new_count recent files to check."
+    echo "Starting DB: $db_name with $old_count previously known files."
 
     #Add space between databases.
     echo >> $TEMP_OUTPUT_FILE
