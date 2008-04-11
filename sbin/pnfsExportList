@@ -41,7 +41,7 @@ fi
 
 #Verify that we can find pnfs.
 if [ ! -f /usr/etc/pnfsSetup ]; then
-   echo "Unable to find /usr/etc/pnfsSetup file." 2>&2
+   echo "Unable to find /usr/etc/pnfsSetup file." 1>&2
    exit 1
 fi
 pnfs_location=`egrep "^pnfs=" /usr/etc/pnfsSetup | cut -f 2 -d "="`
