@@ -608,6 +608,7 @@ def migrating():
 		dst = migration_path(src, sg, deleted)
 		# check if it has already been copied
 		bfid2 = is_copied(bfid, db)
+		has_tmp_file = False
 		if bfid2:
 			ok_log(MY_TASK, "%s has already been copied to %s"%(bfid, bfid2))
 		else:
@@ -660,7 +661,7 @@ def migrating():
 						pass
 					job = copy_queue.get(True)
 					continue
-
+			has_tmp_file = True
 			# get bfid of copied file
 			pf2 = pnfs.File(dst)
 			bfid2 = pf2.bfid
@@ -706,7 +707,7 @@ def migrating():
 			if icheck:
 				scan_queue.put((bfid, bfid2, src, deleted), True)
 
-		if not keep_file:
+		if has_tmp_file and not keep_file:
 			# remove tmp file
 			try:
 				os.remove(tmp)
