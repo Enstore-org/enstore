@@ -339,11 +339,24 @@ if [ $? -ne 0 -o -z "$www_alias" ]; then
    fi
 fi
 
+#Verify that we can find pnfs.
+if [ ! -f /usr/etc/pnfsSetup ]; then
+   echo "Unable to find /usr/etc/pnfsSetup file." 1>&2
+   exit 1
+fi
+trash_location=`egrep "^trash=" /usr/etc/pnfsSetup | cut -f 2 -d "="`
+if [ -z "$trash_location" ]; then
+   echo "Unable to find pnfs installation." 1>&2
+   exit 1
+fi
+#Make the pnfs_monitor directory, where the previous found errors are kept,
+# a peer of trash.
+REMEMBER_OUTPUT_DIR=`dirname $trash_location`/pnfs_monitor
+
 #Specify where the temporary information should go.
-TEMP_OUTUPT_DIR=/var/tmp/pnfs_monitor
-mkdir -p $TEMP_OUTUPT_DIR
+mkdir -p $REMEMBER_OUTPUT_DIR
 TEMP_OUTPUT_FILE=/tmp/${www_alias}_pnfs_monitor      #copied to web server
-TEMP_OUTPUT_FILE_2=/tmp/pnfs_monitor_2  #copied to $TEMP_OUTUPT_DIR/
+TEMP_OUTPUT_FILE_2=/tmp/pnfs_monitor_2  #copied to $REMEMBER_OUTPUT_DIR/
 rm -f $TEMP_OUTPUT_FILE
 #Make sure we know how up-to-date this is.
 echo -e "Missing files in pnfs report:" `date` >> $TEMP_OUTPUT_FILE 2>&1
@@ -380,8 +393,8 @@ for db_name in `echo $db_list`; do
     rm -f /tmp/recent_pnfids_${db_name} #Cleanup
 
     #Add any previously found files to the list to check.
-    if [ -f $TEMP_OUTUPT_DIR/$db_name ]; then
-	cat $TEMP_OUTUPT_DIR/$db_name | sed '/^$/d' > $TEMP_FILE_OLD
+    if [ -f $REMEMBER_OUTPUT_DIR/$db_name ]; then
+	cat $REMEMBER_OUTPUT_DIR/$db_name | sed '/^$/d' > $TEMP_FILE_OLD
 	old_count=`wc -l $TEMP_FILE_OLD | awk {'print $1}'`
     else
 	rm -f $TEMP_FILE_OLD && touch $TEMP_FILE_OLD
@@ -421,10 +434,10 @@ for db_name in `echo $db_list`; do
 
     if [ -f $TEMP_OUTPUT_FILE_2 ]; then
 	#Move the rolling record of what is not written to tape.
-	mv $TEMP_OUTPUT_FILE_2 $TEMP_OUTUPT_DIR/${db_name}
+	mv $TEMP_OUTPUT_FILE_2 $REMEMBER_OUTPUT_DIR/${db_name}
     else
 	#Clear the existing db info.
-	rm -f $TEMP_OUTUPT_DIR/${db_name}
+	rm -f $REMEMBER_OUTPUT_DIR/${db_name}
     fi
 done
 
