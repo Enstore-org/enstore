@@ -14,11 +14,13 @@ class Encp:
 
 	# encp(cmd) -- cmd is the same as the command line
 	# eg. encp("encp --verbose=4 /pnfs/.../file file")
-	def encp(self, cmd):
+	def encp(self, cmd, tid=False):
 		if cmd[:4] != "encp":
 			cmd = "encp "+cmd
 		argv = string.split(cmd)
 		intf = self.my_encp.EncpInterface(argv, 0)
+		if tid:
+			intf.include_thread_name = tid
 		try:
 			res = self.my_encp.main(intf)
 			if res == None:

@@ -65,6 +65,7 @@ import volume_family
 import pg
 import time
 import thread
+import threading
 import Queue
 
 debug = False	# debugging mode
@@ -381,7 +382,8 @@ def copy_files(files):
 	# fcc = file_clerk_client.FileClient(csc)
 
 	# get an encp
-	encp = encp_wrapper.Encp()
+	threading.currentThread().setName('READ')
+	encp = encp_wrapper.Encp(tid='READ')
 
 	# if files is not a list, make a list for it
 	if type(files) != type([]):
@@ -595,7 +597,8 @@ def migrating():
 	fcc = file_clerk_client.FileClient(csc)
 
 	# get an encp
-	encp = encp_wrapper.Encp()
+	threading.currentThread().setName('WRITE')
+	encp = encp_wrapper.Encp(tid='WRITE')
 
 	if debug:
 		log(MY_TASK, "migrating() starts")
