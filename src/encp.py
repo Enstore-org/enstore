@@ -7742,12 +7742,10 @@ def write_to_hsm(e, tinfo):
         # Do what finish_request() says to do.
         if what_to_do == STOP:
             #We get here only on a non-retriable error.
-            #end_session(udp_socket, control_socket)
             return done_ticket
         elif what_to_do == CONTINUE_FROM_BEGINNING:
             #We get here only on a retriable error.
-            #end_session(udp_socket, control_socket)
-            break
+            continue
                 
         """
         #handle_retries() is not required here since write_hsm_file()
@@ -9701,12 +9699,10 @@ def read_from_hsm(e, tinfo):
                 # Do what finish_request() says to do.
                 if what_to_do == STOP:
                     #We get here only on a non-retriable error.
-                    #end_session(udp_socket, control_socket)
                     return done_ticket
                 elif what_to_do == CONTINUE_FROM_BEGINNING:
                     #We get here only on a retriable error.
-                    #end_session(udp_socket, control_socket)
-                    break
+                    continue
                 
                 """
                 #handle_retries() is not required here since read_hsm_file()
