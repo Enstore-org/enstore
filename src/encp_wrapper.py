@@ -8,19 +8,20 @@ import string
 import sys
 
 class Encp:
-	def __init__(self):
+	def __init__(self, tid=None):
 		import encp
 		self.my_encp = encp
+		self.tid = tid
 
 	# encp(cmd) -- cmd is the same as the command line
 	# eg. encp("encp --verbose=4 /pnfs/.../file file")
-	def encp(self, cmd, tid=False):
+	def encp(self, cmd):
 		if cmd[:4] != "encp":
 			cmd = "encp "+cmd
 		argv = string.split(cmd)
 		intf = self.my_encp.EncpInterface(argv, 0)
-		if tid:
-			intf.include_thread_name = tid
+		if self.tid:
+			intf.include_thread_name = self.tid
 		try:
 			res = self.my_encp.main(intf)
 			if res == None:
