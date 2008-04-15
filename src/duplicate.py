@@ -127,6 +127,12 @@ if __name__ == '__main__':
 		sys.argv = sys.argv[2:]
 		sys.argv[0] = cmd1
 
+	# handle library
+	if sys.argv[1] == "--library":
+		migrate.DEFAULT_LIBRARY = sys.argv[2]
+		cmd1 = sys.argv[0]
+		sys.argv = sys.argv[2:]
+		sys.argv[0] = cmd1
 
 	if sys.argv[1] == "--vol":
 		migrate.icheck = False

@@ -1144,6 +1144,12 @@ if __name__ == '__main__':
 		sys.argv = sys.argv[2:]
 		sys.argv[0] = cmd1
 
+	if sys.argv[1] == "--library":
+		DEFAULT_LIBRARY = int(sys.argv[2])
+
+		cmd1 = sys.argv[0]
+		sys.argv = sys.argv[2:]
+		sys.argv[0] = cmd1
 
 	# handle --use-file-family <file_family>
 	if sys.argv[1] == "--use-file-family":
