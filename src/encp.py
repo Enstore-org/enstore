@@ -5020,8 +5020,11 @@ def verify_file_size(ticket, encp_intf = None):
         return
 
     try:
-        p = Pnfs(ticket['wrapper'].get('pnfsFilename', None))
-        pnfs_stat = p.get_stat(ticket['wrapper'].get('pnfsFilename', None))
+        #Don't use p.get_stat() here.  If the file does not exist, p.get_stat()
+        # will default to using the stat of the directory (It's a feature for
+        # create_write_requests).  Most of the time that wasn't a problem,
+        # but was a problem for deleted files read with --override-deleted.
+        pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
         pnfs_filesize = pnfs_stat[stat.ST_SIZE]
         pnfs_inode = pnfs_stat[stat.ST_INO]
         
