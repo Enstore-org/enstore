@@ -999,12 +999,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                       (self.current_volume,
                        stats[self.ftt.WRITE_PROT],
                        self.override_ro_mount))
+            if self.current_work_ticket['vc']['external_label'] != self.current_volume:
+                vol_info = self.vcc.inquire_vol(self.current_volume)
+            else:
+                vol_info = self.current_work_ticket['vc']
+                
             #### Added by MZ #################
             try:
                 #Get the true/false value if write tab if flipped or not
                 # from the drive and the volume DB.
                 drive_write_tab_status = int(stats[self.ftt.WRITE_PROT])
-                if self.current_work_ticket['vc']['write_protected'] == 'y':
+                if vol_info['write_protected'] == 'y':
                     volume_db_write_tab_status = 1 #DB says it is flipped
                 else:
                     volume_db_write_tab_status = 0 #DB says it is not flipped
