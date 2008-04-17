@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 """A priority queue which supports multiple comparison methods"""
-
-
-__rcsid__="$Id"
-
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
 
 # Bisection algorithms
 # Insert item x in list a, and keep it sorted assuming a is sorted
@@ -28,13 +29,12 @@ def _insort(a, x, compare, lo=0, hi=None):
 
 def _bisect(a, x, compare, lo=0, hi=None):
     if hi is None:
-        hi = len(a)
+        hi = len(a)-1
     while lo < hi:
         mid = (lo+hi)/2
         if compare(x,a[mid])<0: hi = mid
         else: lo = mid+1
     if lo >= len(a): lo = len(a)
-    return lo-1
     return lo
 
 
