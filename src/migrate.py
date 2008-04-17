@@ -1145,7 +1145,7 @@ if __name__ == '__main__':
 		sys.argv[0] = cmd1
 
 	if sys.argv[1] == "--library":
-		DEFAULT_LIBRARY = int(sys.argv[2])
+		DEFAULT_LIBRARY = sys.argv[2]
 
 		cmd1 = sys.argv[0]
 		sys.argv = sys.argv[2:]
