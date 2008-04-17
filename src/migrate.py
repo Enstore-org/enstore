@@ -1123,6 +1123,9 @@ def usage():
 	print "  %s --migrated-to <vol>"%(sys.argv[0])
 	print "\nwhere opt is:"
 	print "  --use-file-family <file_family>"
+	print "  --library <library>"
+	print "\nif both --use-file-family and --library are used"
+	print "--use-file-family proceeds --library"
 
 if __name__ == '__main__':
 	if len(sys.argv) < 2 or sys.argv[1] == "--help":
