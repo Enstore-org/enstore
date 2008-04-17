@@ -95,7 +95,7 @@ class Request:
 
 class SortedList:
 # sorted list of requests    
-    def __init__(self, comparison_function, by_pri=1, aging_quantum=60):
+    def __init__(self, comparison_function, by_pri=1, aging_quantum=60, name=None):
         self.sorted_list = mpq.MPQ(comparison_function)
         self.last_aging_time = 0
         self.aging_quantum = 60  #one minute
@@ -106,6 +106,7 @@ class SortedList:
         self.update_flag = by_pri
         self.current_index = 0
         self.stop_rolling = 0
+        self.my_name = name
         
     # check if request with certain  id is in the list
     # and if its outputfile name is in the list flag this
@@ -144,13 +145,13 @@ class SortedList:
             if rescan_list:
                 # temporarily remove records that have changed priorities
                 for record in rescan_list:
-                    Trace.trace(23,"SortedList.update: delete Pri%s Ticket %s"%
-                                (record.pri, record.ticket))
+                    Trace.trace(23,"%s:::SortedList.update: delete Pri%s Ticket %s"%
+                                (self.my_name, record.pri, record.ticket))
                     self.delete(record)
                 # put them pack according to new priority
                 for record in rescan_list:
-                    Trace.trace(23,"SortedList.update: reinsert Pri%s Ticket %s"%
-                                (record.pri, record.ticket))
+                    Trace.trace(23,"%s:::SortedList.update: reinsert Pri%s Ticket %s"%
+                                (self.my_name, record.pri, record.ticket))
                     self.put(record)
             self.last_aging_time = time_now
 
@@ -188,20 +189,21 @@ class SortedList:
             self.start_index = self.current_index
             return None    # list is empty
         self.update()
-        Trace.trace(23,"SortedList.get: pri %s, u_f %s"%
-                    (pri, self.update_flag))
+        Trace.trace(23,"%s:::SortedList.get: pri %s, u_f %s"%
+                    (self.my_name, pri, self.update_flag))
         # update flag is maeaningful only for write list
         if self.update_flag and not pri:
             index = 0
             self.current_index = index
         else:
             # find request that has "priority" higher than pri
-            Trace.trace(23, 'SortedList.get:sorted_list %s'%(self.sorted_list,))
+            Trace.trace(23, '%s:::SortedList.get:sorted_list %s'%(self.my_name,self.sorted_list,))
             rq = Request(pri, pri, {})
             index = self.sorted_list.bisect(rq)
-            Trace.trace(23, 'SortedList.get: i %s rq %s'%(index, rq))
+            Trace.trace(23, '%s:::SortedList.get: i %s rq %s'%(self.my_name, index, rq))
+            #if len(self.sorted_list) == 1: index = 0
         if index < len(self.sorted_list) and index >= 0:
-            Trace.trace(23,"SortedList.get: index %s"%(index,))
+            Trace.trace(23,"%s:::SortedList.get: index %s"%(self.my_name, index,))
             record = self.sorted_list[index]
             record.ticket['at_the_top'] = record.ticket['at_the_top']+1
             self.current_index = index
@@ -214,11 +216,12 @@ class SortedList:
     ##    print msg
         
     def get_next(self):
-        Trace.trace(23, "SortedList.get_next %s stop_rolling %s current_index %s"%(self.sorted_list,self.stop_rolling,self.current_index))
+        Trace.trace(23, "%s:::SortedList.get_next %s stop_rolling %s current_index %s"%(self.my_name, self.sorted_list,self.stop_rolling,self.current_index))
         if not self.sorted_list:
             self.start_index = self.current_index
             return None    # list is empty
         if self.stop_rolling:
+            self.stop_rolling = 0
             return None
         old_current_index = self.current_index
         self.current_index = self.current_index + 1
@@ -226,23 +229,26 @@ class SortedList:
             self.current_index = 0
         if old_current_index == self.current_index: # only one element in the list
             self.start_index = self.current_index
-            Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
-                        (old_current_index,self.current_index,self.start_index, None))
+            Trace.trace(33,"%s:::o_i %s c_i %s s_i %s ret %s"%
+                        (self.my_name, old_current_index,self.current_index,self.start_index, None))
             self.stop_rolling = 1
+            Trace.trace(33,"%s:::stop_rolling for %s"%(self.my_name, self.sorted_list,))
             return self.sorted_list[self.current_index]
             #return None
         try:
             if self.current_index == self.start_index:
-                Trace.trace(33,"!! o_i %s c_i %s s_i %s ret %s"%
-                            (old_current_index,self.current_index,self.start_index, None))
-                self.stop_rolling = 1
+                Trace.trace(33,"%s:::!! o_i %s c_i %s s_i %s ret %s"%
+                            (self.my_name, old_current_index,self.current_index,self.start_index, None))
+                #self.stop_rolling = 1
+                Trace.trace(33,"%s:::stop_rolling for %s"%(self, my_name,self.sorted_list,))
+
                 return None  # came back to where it started
         except AttributeError: # how this happens
             self.start_index = self.current_index
             Trace.trace(33, "ATTR ERR")
             return None
-        Trace.trace(33,"o_i %s c_i %s s_i %s ret %s"%
-                    (old_current_index,self.current_index,self.start_index, self.sorted_list[self.current_index]))  
+        Trace.trace(33,"%s:::o_i %s c_i %s s_i %s ret %s"%
+                    (self.my_name, old_current_index,self.current_index,self.start_index, self.sorted_list[self.current_index]))  
         
         return self.sorted_list[self.current_index]
     
@@ -324,8 +330,8 @@ class Queue:
         if not self.queue.get(key,''):
             # create opt entry in the list. For writes it is Volume Family
             # for reads - volume label. Create by_priority entyr as well
-            self.queue[key] = {'opt':SortedList(compare_value, 0,self.aging_quantum), # no updates
-                              'by_priority':SortedList(compare_priority, 1, self.aging_quantum)
+            self.queue[key] = {'opt':SortedList(compare_value, 0,self.aging_quantum, key), # no updates
+                              'by_priority':SortedList(compare_priority, 1, self.aging_quantum, key)
                               }
                 
         # put requst into both queues
@@ -478,7 +484,7 @@ class Atomic_Request_Queue:
         # based on this list the highest priority volume
         # or volume family is selected
         # only one request per volume or volume family
-        self.tags = SortedList(compare_priority, 1, aging_quantum)
+        self.tags = SortedList(compare_priority, 1, aging_quantum, "%s:::TAGS"%(name,))
         # volume or file family references for fast search
         self.ref = {}
         
