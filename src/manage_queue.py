@@ -240,7 +240,7 @@ class SortedList:
                 Trace.trace(33,"%s:::!! o_i %s c_i %s s_i %s ret %s"%
                             (self.my_name, old_current_index,self.current_index,self.start_index, None))
                 #self.stop_rolling = 1
-                Trace.trace(33,"%s:::stop_rolling for %s"%(self, my_name,self.sorted_list,))
+                Trace.trace(33,"%s:::stop_rolling for %s"%(self.my_name,self.sorted_list,))
 
                 return None  # came back to where it started
         except AttributeError: # how this happens
