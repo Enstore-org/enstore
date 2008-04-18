@@ -1,45 +1,100 @@
 #!/usr/bin/env python
+###############################################################################
 #
 # $Id$ 
 #
+###############################################################################
 
+# system imports
 import pg
 import os
 import time
-import tempfile
 import string
 import sys
 
-import enstore_plotter_framework
+# enstore imports
 import enstore_plotter_module
 import enstore_constants
-import makeplot
 
 BP15S_TO_TBPD = 5.7e-09
 
+WEB_SUB_DIRECTORY = enstore_constants.SLOT_USAGE_PLOTS_SUBDIR
 
 class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def __init__(self,name,isActive=True):
         enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
         self.time_in_days=91
-        self.smooth_num=40
         self.data_files={}
         self.free={}
 
-    @staticmethod
-    def clean_string(var):
+    #staticmethod
+    def clean_string(self, var):
         return string.replace(string.replace(var,'/',''),' ','-')
-    
-    def book(self,frame):
-        
-        if self.get_parameter("smooth_num"):
-            self.smooth_num=self.get_parameter("smooth_num")
+
+    #Write out the file that gnuplot will use to plot the data.
+    # plot_filename = The file that will be read in by gnuplot containing
+    #                 the gnuplot commands.
+    # data_filename = The data file that will be read in by gnuplot
+    #                 containing the data to be plotted.
+    # ps_filename = The postscript file that will be created by gnuplot.
+    def write_plot_file(self, plot_filename, pts_filename, ps_filename, name):
+        try:
+            plot_fp = open(plot_filename, "w")
+            plot_fp.write("set output \"%s\"\n" % (ps_filename,))
+            plot_fp.write("set terminal postscript color solid\n")
+            plot_fp.write("set title \"Used Slots in %s\"\n" % (name,));
+            plot_fp.write("set xlabel \"Date\"\n")
+            plot_fp.write("set timefmt \"%m-%d-%Y %H:%M:%S\"\n")
+            plot_fp.write("set xdata time\n")
+            plot_fp.write("set ylabel \"Number of Slots\"\n")
+            plot_fp.write("set grid \n")
+            plot_fp.write("set yrange [0: ]\n")
+            plot_fp.write("set format x \"%m-%d\"\n")
+            plot_fp.write("set nokey \n")
+            plot_fp.write("set label \"Plotted `date` \" at graph .99,0 rotate font \"Helvetica,10\"\n")
+            plot_fp.write("set label \"%d Free\" at graph .2,.9 front font \"Helvetica,80\"\n" % (self.free[name],))
+            plot_fp.write("plot \"%s\" using 1:3 w impulses linetype 2 lw 2, "
+                          "\"%s\"  using 1:6 t \"Disabled Slots\" w impulses linetype 3 lw 2 , "
+                          "\"%s\" using 1:5 t \"Used Slots\" w impulses linetype 1 lw 2 \n"
+                          % (pts_filename, pts_filename, pts_filename))
+            plot_fp.close()
+        except (OSError, IOError):
+            exc, msg = sys.exc_info()[:2]
+            try:
+                sys.stderr.write("Unable to write plot file: %s: %s\n" %
+                                 (str(exc), str(msg)))
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+            
+    #######################################################################
+    # The following functions must be defined by all plotting modueles.
+    #######################################################################
+            
+    def book(self, frame):
         if self.get_parameter("time_in_days"):
             self.time_in_days=self.get_parameter("time_in_days")
-        inq = {} 
-        inq =  frame.get_configuration_client().get(enstore_constants.INQUISITOR, 5, 2 )
-        self.dest_dir=inq.get('html_file','')
-    def fill(self,frame):
+        
+        cron_dict = frame.get_configuration_client().get("crons", {})
+
+        #Pull out just the information we want.
+        self.temp_dir = cron_dict.get("tmp_dir", "/tmp")
+        html_dir = cron_dict.get("html_dir", "")
+
+        #Handle the case were we don't know where to put the output.
+        if not html_dir:
+            sys.stderr.write("Unable to determine html_dir.\n")
+            sys.exit(1)
+
+        self.web_dir = os.path.join(html_dir, WEB_SUB_DIRECTORY)
+        if not os.path.exists(self.web_dir):
+            os.makedirs(self.web_dir)
+
+        
+        self.dest_dir = self.web_dir
+
+    def fill(self, frame):
         self.data=[]
         acc = {}
         acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER, 5, 2)
@@ -55,7 +110,8 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             self.data.append(self.clean_string(row[0])+"_"+self.clean_string(row[1])+"_"+self.clean_string(row[2]))
 
         for d in self.data:
-            self.data_files[d] = open("/tmp/"+d+".pts",'w')
+            pts_filename = os.path.join(self.temp_dir, d + ".pts")
+            self.data_files[d] = open(pts_filename,'w')
 
         now_time  = time.time()
         then_time = now_time - self.time_in_days*24*3600
@@ -81,36 +137,34 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         for fd in self.data_files.values():
             fd.close()
 
-        for d in self.data:
-            ddd = "/tmp/"+d+".plot"
-            fd = open(ddd,"w")
-            fd.write("set output \"/tmp/%s.ps\"\n"%(d,))
-            fd.write("set terminal postscript color solid\n")
-            fd.write("set title \"Used Slots in %s\"\n"%(d,));
-            fd.write("set xlabel \"Date\"\n")
-            fd.write("set timefmt \"%m-%d-%Y %H:%M:%S\"\n")
-            fd.write("set xdata time\n")
-            fd.write("set ylabel \"Number of Slots\"\n")
-            fd.write("set grid \n")
-            fd.write("set yrange [0: ]\n")
-            fd.write("set format x \"%m-%d\"\n")
-            fd.write("set nokey \n")
-            fd.write("set label \"Plotted `date` \" at graph .99,0 rotate font \"Helvetica,10\"\n")
-            fd.write("set label \"%d Free\" at graph .2,.9 front font \"Helvetica,80\"\n"%(self.free[d],))
-            fd.write("plot \"%s.pts\" using 1:3 w impulses linetype 2 lw 2, \"%s.pts\"  using 1:6 t \"Disabled Slots\" w impulses linetype 3 lw 2 ,  \"%s.pts\" using 1:5 t \"Used Slots\" w impulses linetype 1 lw 2 \n"%(d,d,d,))
-            fd.close()
 
     def plot(self):
         for d in self.data:
-            pf = "/tmp/"+d+".plot"
-            cmd="gnuplot < %s" % pf
-            os.system(cmd)
-            os.system("convert -rotate 90  /tmp/%s.ps /tmp/%s.jpg\n" % (d,d,))
-            os.system("convert  -geometry 120x120 -modulate 80 /tmp/%s.jpg /tmp/%s_stamp.jpg\n"          % (d,d,))
-            os.system("mv -f /tmp/%s.ps %s"%(d,self.dest_dir,))
-            os.system("mv -f /tmp/%s.jpg %s"%(d,self.dest_dir,))
-            os.system("mv -f /tmp/%s_stamp.jpg %s"%(d,self.dest_dir,))
-            os.remove("/tmp/%s.plot"%(d,))
+            #Get some filenames for the various files that get created.
+            plot_filename = os.path.join(self.temp_dir, d + ".plot")
+            pts_filename = os.path.join(self.temp_dir, d + ".pts")
+            ps_filename = os.path.join(self.web_dir, d + ".ps")
+            jpg_filename = os.path.join(self.web_dir, d + ".jpg")
+            stamp_jpg_filename = os.path.join(self.web_dir, d + "_stamp.jpg")
 
-            #Close the files.
+            #Create the file that contains the commands for gnuplot to run.
+            self.write_plot_file(plot_filename, pts_filename,
+                                 ps_filename, d)
+
+            #Make the plot and convert it to jpg.
+            os.system("gnuplot < %s" % (plot_filename,))
+            os.system("convert -rotate 90 %s %s\n" %
+                      (ps_filename, jpg_filename))
+            os.system("convert  -geometry 120x120 -modulate 80 %s %s\n"
+                      % (ps_filename, stamp_jpg_filename))
+           
+            #Cleanup the temporary files.
+            try:
+                os.remove(plot_filename)
+            except:
+                pass
+            try:
+                os.remove(pts_filename)
+            except:
+                pass
 

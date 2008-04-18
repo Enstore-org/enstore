@@ -34,9 +34,9 @@ class EnstorePlotterFramework:
         for module in self.module_list:
             if module.isActive() == True :
                 module.plot()
+
     def do_work(self):
         self.book()
         self.fill()
         self.plot()
-    
     

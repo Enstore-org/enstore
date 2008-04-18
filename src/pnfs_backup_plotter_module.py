@@ -15,6 +15,7 @@ import sys
 import enstore_plotter_module
 import enstore_constants
 
+WEB_SUB_DIRECTORY = enstore_constants.PNFS_BACKUP_TIME_PLOTS_SUBDIR
 
 class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def __init__(self,name,isActive=True):
@@ -74,15 +75,18 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         if not html_dir:
             sys.stderr.write("Unable to determine html_dir.\n")
             sys.exit(1)
+        self.web_dir = os.path.join(html_dir, WEB_SUB_DIRECTORY)
+        if not os.path.exists(self.web_dir):
+            os.makedirs(self.web_dir)
 
         #Define variables that hold the path needed in fill() and plot().
-        self.data_filename = "%s/pnfs_backup.tmp" % (temp_dir,)
+        self.data_filename = "%s/pnfs_backup.pts" % (temp_dir,)
 
-        self.output_filename = "%s/pnfs_backup_time.ps" % (html_dir,)
-        self.output_filename_jpeg = "%s/pnfs_backup_time.jpg" % (html_dir,)
-        self.output_filename_stamp_jpeg = "%s/pnfs_backup_time_stamp.jpg" % (html_dir,)
+        self.output_filename = "%s/pnfs_backup_plot.ps" % (self.web_dir,)
+        self.output_filename_jpeg = "%s/pnfs_backup_plot.jpg" % (self.web_dir,)
+        self.output_filename_stamp_jpeg = "%s/pnfs_backup_stamp.jpg" % (self.web_dir,)
 
-        self.plot_filename = "%s/pnfs_format" % (temp_dir,)
+        self.plot_filename = "%s/pnfs_format.plot" % (temp_dir,)
 
     def fill(self,frame):
         

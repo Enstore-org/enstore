@@ -17,7 +17,7 @@ import enstore_constants
 
 WEB_SUB_DIRECTORY = enstore_constants.MOUNT_PLOTS_SUBDIR
 
-class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
+class MountsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 	def __init__(self,name,isActive=True):
 		enstore_plotter_module.EnstorePlotterModule.__init__(
 			self, name, isActive)

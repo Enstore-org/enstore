@@ -10,12 +10,13 @@
 #
 ###############################################################################
 
+# system imports
 import random
 import math
 import sys
 import os
 import time
-import types
+import errno
 
 class Attribute:
     def __init__(self, name, title):
@@ -30,7 +31,7 @@ class Attribute:
         self.additional_text=""
         self.line_width=1
         self.line_color=1
-        self.data_file=open(self.data_file_name,"w");
+        self.data_file=None  #open(self.data_file_name,"w");
         #
         # atributes
         #
@@ -169,6 +170,9 @@ class Attribute:
         return self.data_file_name;
 
     def get_data_file(self):
+        if self.data_file == None:
+            #When does this file ever get closed?
+            self.data_file = open(self.data_file_name,"w");
         return self.data_file;
 
 class BasicHistogram(Attribute):
@@ -186,14 +190,22 @@ class BasicHistogram(Attribute):
      def get_entries(self):
          return self.entries
 
-     
-     def plot(self,command=""): 
+     def plot(self,command=""):
+         
          print "Plot function is not implemented by BasicHistogram"
         
      def fill(self,command=""):
          print "Fill function is not implemented by BasicHistogram"
 
-
+     def remove(self, filename):
+         #delete the specified file.
+         try:
+             os.remove(filename)
+         except (OSError), msg:
+             if msg.args[0] == errno.ENOENT:
+                 pass
+             else:
+                 sys.stderr.write(str(msg) + "\n")
 
 class Ntuple(BasicHistogram):
 
@@ -203,10 +215,16 @@ class Ntuple(BasicHistogram):
     # "plot" is the act of creating an image
     #
 
-    def plot(self,command):
-        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+    def plot(self, command, directory="./"):
+        #Get some filenames for the various files that get created.
+        ps_file_name = os.path.join(directory, self.name + ".ps")
+        jpg_file_name = os.path.join(directory, self.name + ".jpg")
+        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
+        gnu_file_name = "/tmp/%s_gnuplot.cmd" % (self.name)
+
+        #Create the file that contains the commands for gnuplot to run.
         gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '"+self.name+".ps'\n"+ \
+        long_string="set output '" + ps_file_name + "'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
                      "set xrange [ : ]\n"+ \
@@ -239,15 +257,21 @@ class Ntuple(BasicHistogram):
                     +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
+
+        #Make the plot and convert it to jpg.
         os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+        os.system("convert -rotate 90 -modulate 80 %s %s"
+                  % (ps_file_name, jpg_file_name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+                  % (ps_file_name, stamp_jpg_file_name))
+
+        #Cleanup the temporary files.
+        self.remove(gnu_file_name)  # remove gnu file
 
 
     def __del__(self):
-        if self.is_delete_data_file() == True:
-            os.system("rm -rf %s"%(self.data_file_name,))
+        if self.is_delete_data_file():
+            self.remove(self.data_file_name)
        
     def dump(self):
         print repr(self.__dict__)
@@ -258,6 +282,16 @@ class Plotter:
         self.histogram_list = []
         self.name = name
         self.title = title
+
+    def remove(self, filename):
+        #delete the specified file.
+        try:
+            os.remove(filename)
+        except (OSError), msg:
+            if msg.args[0] == errno.ENOENT:
+                pass
+            else:
+                sys.stderr.write(str(msg) + "\n")
 
     def get_histogram_list(self):
         return  self.histogram_list
@@ -282,10 +316,16 @@ class Plotter:
             i = i + 1 
             j = j - 1 
 
-    def plot(self,dir="./"):
-        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+    def plot(self, directory="./"):
+        #Get some filenames for the various files that get created.
+        ps_file_name = os.path.join(directory, self.name + ".ps")
+        jpg_file_name = os.path.join(directory, self.name + ".jpg")
+        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
+        gnu_file_name = "/tmp/%s_gnuplot.cmd" % (self.name)
+
+        #Create the file that contains the commands for gnuplot to run.
         gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '"+self.name+".ps'\n"+ \
+        long_string="set output '" + ps_file_name + "'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
                      "set xrange [ : ]\n"+ \
@@ -307,35 +347,41 @@ class Plotter:
 #            if ( isinstance(hist,histogram.Histogram1D)) : 
 
         for hist in self.histogram_list:
-            full_file_name=dir+hist.data_file_name            
-            hist.save_data(full_file_name)
+            pts_file_name=os.path.join(directory, hist.data_file_name)
+            hist.save_data(pts_file_name)
             long_string=long_string+hist.get_text()
             
         long_string=long_string+"plot "
         comma = False
 
         for hist in self.histogram_list:
-            full_file_name=dir+hist.data_file_name
+            pts_file_name = os.path.join(directory, hist.data_file_name)
             if ( comma ) :
                 long_string=long_string+" , "
             else:
                 comma = True
             if (hist.get_time_axis()):
-                long_string=long_string+"'"+full_file_name+"' using 1:4 "
+                long_string=long_string+"'"+pts_file_name+"' using 1:4 "
             else :
-                long_string=long_string+"'"+full_file_name+"' using 1:3 "
+                long_string=long_string+"'"+pts_file_name+"' using 1:3 "
             long_string=long_string+" t '"+hist.get_marker_text()+"' with "\
                      +hist.get_marker_type()+" lw "+str(hist.get_line_width())+" lt "+str(hist.get_line_color())+"  "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
+
+        #Make the plot and convert it to jpg.
         os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
+        os.system("convert -rotate 90 -modulate 80 %s %s"
+                  % (ps_file_name, jpg_file_name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+                  % (ps_file_name, stamp_jpg_file_name))
+
+        #Cleanup the temporary files.
         for hist in self.histogram_list:
-            full_file_name=dir+hist.data_file_name
-            if hist.is_delete_data_file() == True:
-                os.system("rm -f %s"%full_file_name) # remove pts file
-        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+            pts_file_name = os.path.join(directory, hist.data_file_name)
+            if hist.is_delete_data_file():
+                self.remove(pts_file_name) # remove pts file
+        self.remove(gnu_file_name)  # remove gnu file
         
 class Histogram1D(BasicHistogram):
 
@@ -373,7 +419,7 @@ class Histogram1D(BasicHistogram):
         self.logy=False
         self.logx=False
         self.time_axis_format="%y-%m-%d"
-        for i in range(self.nbins):
+        for unused in range(self.nbins):
             self.binarray.append(0.)
             self.sumarray.append(0.)
 
@@ -581,7 +627,7 @@ class Histogram1D(BasicHistogram):
         self.sum2=0
         self.maximum=0
         self.minimum=0
-        for i in range(self.nbins):
+        for unused in range(self.nbins):
             self.binarray.append(0.)
             self.sumarray.append(0.)
 
@@ -658,9 +704,9 @@ class Histogram1D(BasicHistogram):
             self.sum2=self.sum2+x*x
             self.entries=self.entries+1
             if ( self.profile ) :
-                sum=self.sumarray[bin]
-                sum=sum+1
-                self.sumarray[bin]=sum
+                summary=self.sumarray[bin]
+                summary=summary+1
+                self.sumarray[bin]=summary
             count=self.binarray[bin]
             count=count+1.*w
             self.binarray[bin]=count
@@ -806,12 +852,20 @@ class Histogram1D(BasicHistogram):
                "\\n Overflow : %d"%(self.overflow)+\
                "\\n Underflow : %d"%(self.underflow)+"\" box\n"
 
-    def plot(self,dir="./"):
-        full_file_name=dir+self.data_file_name
-        self.save_data(full_file_name)
-        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+    def plot(self, directory="./"):
+        #Get some filenames for the various files that get created.
+        pts_file_name = os.path.join(directory, self.data_file_name)
+        ps_file_name = os.path.join(directory, self.name + ".ps")
+        jpg_file_name = os.path.join(directory, self.name + ".jpg")
+        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
+        gnu_file_name = "/tmp/%s_gnuplot.cmd"%(self.name)
+
+        #Polulate the data file that gnuplot will plot.
+        self.save_data(pts_file_name)
+
+        #Create the file that contains the commands for gnuplot to run.
         gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '"+self.name+".ps'\n"+ \
+        long_string="set output '" + ps_file_name + "'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
                      "set xrange [ : ]\n"+ \
@@ -832,7 +886,7 @@ class Histogram1D(BasicHistogram):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+full_file_name+"' using 1:4 "
+            long_string=long_string+"plot '"+pts_file_name+"' using 1:4 "
         else :
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
@@ -840,27 +894,40 @@ class Histogram1D(BasicHistogram):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+full_file_name+"' using 1:3 "
+            long_string=long_string+"plot '"+pts_file_name+"' using 1:3 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                     +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
-        os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        if self.is_delete_data_file() == True:
-            os.system("rm -f %s"%full_file_name) # remove pts file
-        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
 
-    def plot2(self, h,reflect=False,dir="./"):
-        full_file_name=dir+self.data_file_name
-        full_file_name1=dir+h.get_data_file_name()
-        
-        self.save_data(full_file_name)
-        h.save_data(full_file_name1)
+        #Make the plot and convert it to jpg.
+        os.system("gnuplot %s" % (gnu_file_name))
+        os.system("convert -rotate 90 -modulate 80 %s %s"
+                  % (ps_file_name, jpg_file_name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+                  % (ps_file_name, stamp_jpg_file_name))
+
+        #Cleanup the temporary files.
+        if self.is_delete_data_file():
+            self.remove(pts_file_name)
+        self.remove(gnu_file_name)
+
+    def plot2(self, h, reflect=False, directory="./"):
+        #Get some filenames for the various files that get created.
+        pts_file_name = os.path.join(directory, self.data_file_name)
+        pts_file_name1 = os.path.join(directory, h.get_data_file_name())
+        ps_file_name = os.path.join(directory, self.name + ".ps")
+        jpg_file_name = os.path.join(directory, self.name + ".jpg")
+        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
         gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+
+        #Polulate the data file that gnuplot will plot.
+        self.save_data(pts_file_name)
+        h.save_data(pts_file_name1)
+
+        #Create the file that contains the commands for gnuplot to run.
         gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '"+self.name+".ps'\n"+ \
+        long_string="set output '" + ps_file_name + "'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
                      "set xrange [ : ]\n"+ \
@@ -881,7 +948,7 @@ class Histogram1D(BasicHistogram):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+full_file_name+"' using 1:4 "
+            long_string=long_string+"plot '"+pts_file_name+"' using 1:4 "
         else :
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
@@ -889,40 +956,54 @@ class Histogram1D(BasicHistogram):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+full_file_name+"' using 1:3 "
+            long_string=long_string+"plot '"+pts_file_name+"' using 1:3 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                      +self.get_marker_type()+" lw "+str(self.get_line_width())+"  lt "+str(self.get_line_color())+"  "
         if (  self.time_axis ) :
             if (reflect) : 
-                long_string=long_string+",  '"+full_file_name1+"' using 1:(-$4) "
+                long_string=long_string+",  '"+pts_file_name1+"' using 1:(-$4) "
             else :
-                long_string=long_string+",  '"+full_file_name1+"' using 1:4 "
+                long_string=long_string+",  '"+pts_file_name1+"' using 1:4 "
                 
         else:
             if (reflect) :
-                long_string=long_string+",  '"+full_file_name1+"' using 1:(-$3)"
+                long_string=long_string+",  '"+pts_file_name1+"' using 1:(-$3)"
             else :
-                long_string=long_string+",  '"+full_file_name1+"' using 1:3 "
+                long_string=long_string+",  '"+pts_file_name1+"' using 1:3 "
                
         long_string=long_string+" t '"+h.get_marker_text()+"' with "\
                     +h.get_marker_type()+" lw "+str(h.get_line_width())+" lt "+str(h.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
-        os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        if self.is_delete_data_file() == True:
-            os.system("rm -f %s"%full_file_name) # remove pts file
-        os.system("rm -f %s"%full_file_name1) # remove pts file
-        os.system("rm -f %s"%full_file_name) # remove pts file
-        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
 
-    def plot_derivative(self,dir="./"):
-        full_file_name=dir+self.data_file_name
-        self.save_data(full_file_name)
-        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+        #Make the plot and convert it to jpg.
+        os.system("gnuplot %s" % (gnu_file_name))
+        os.system("convert -rotate 90 -modulate 80 %s %s"
+                  % (ps_file_name, jpg_file_name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+                  % (ps_file_name, stamp_jpg_file_name))
+
+        #Cleanup the temporary files.
+        if self.is_delete_data_file():
+            self.remove(pts_file_name) # remove pts file
+        self.remove(pts_file_name1) # remove pts file
+        self.remove(pts_file_name) # remove pts file
+        self.remove(gnu_file_name)  # remove gnu file
+
+    def plot_derivative(self, directory="./"):
+        #Get some filenames for the various files that get created.
+        pts_file_name = os.path.join(dir, self.data_file_name)
+        ps_file_name = os.path.join(directory, self.name + ".ps")
+        jpg_file_name = os.path.join(directory, self.name + ".jpg")
+        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
+        gnu_file_name = "/tmp/%s_gnuplot.cmd"%(self.name)
+
+        #Polulate the data file that gnuplot will plot.
+        self.save_data(pts_file_name)
+        
+        #Create the file that contains the commands for gnuplot to run.
         gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '"+self.name+".ps'\n"+ \
+        long_string="set output '" + ps_file_name + "'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
                      "set xrange [ : ]\n"+ \
@@ -948,7 +1029,7 @@ class Histogram1D(BasicHistogram):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+full_file_name+"' using 1:6 "
+            long_string=long_string+"plot '"+pts_file_name+"' using 1:6 "
         else :
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
@@ -956,16 +1037,22 @@ class Histogram1D(BasicHistogram):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+full_file_name+"' using 1:5 "
+            long_string=long_string+"plot '"+pts_file_name+"' using 1:5 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                     +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
+
+        #Make the plot and convert it to jpg.
         os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        os.system("rm -f %s"%full_file_name) # remove pts file
-        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+        os.system("convert -rotate 90 -modulate 80 %s %s"
+                  % (ps_file_name, jpg_file_name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+                  % (ps_file_name, stamp_jpg_file_name))
+
+        #Cleanup the temporary files.
+        self.remove(pts_file_name) # remove pts file
+        self.remove(gnu_file_name)  # remove gnu file
        
     def dump(self):
         print repr(self.__dict__)
@@ -1109,12 +1196,20 @@ class Histogram2D(Histogram1D):
     # "plot" is the act of creating an image
     #
 
-    def plot(self,dir="./"):
-        full_file_name=dir+self.data_file_name
-        self.save_data(full_file_name)
-        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+    def plot(self, directory="./"):
+        #Get some filenames for the various files that get created.
+        pts_file_name = os.path.join(directory, self.data_file_name)
+        ps_file_name = os.path.join(directory, self.name + ".ps")
+        jpg_file_name = os.path.join(directory, self.name + ".jpg")
+        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
+        gnu_file_name = "/tmp/%s_gnuplot.cmd" % (self.name)
+
+        #Polulate the data file that gnuplot will plot.
+        self.save_data(pts_file_name)
+
+        #Create the file that contains the commands for gnuplot to run.
         gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '"+self.name+".ps'\n"+ \
+        long_string="set output '" + ps_file_name + "'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
                      "set view map \n"+\
@@ -1141,7 +1236,7 @@ class Histogram2D(Histogram1D):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"splot '"+full_file_name+"' using 1:3:4 "
+            long_string=long_string+"splot '"+pts_file_name+"' using 1:3:4 "
         else :
             #                     "set style fill solid 1.000000 \n" (not working:)
             if ( self.get_logy() ) :
@@ -1153,26 +1248,40 @@ class Histogram2D(Histogram1D):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"splot '"+full_file_name+"' using 1:2:3 "
+            long_string=long_string+"splot '"+pts_file_name+"' using 1:2:3 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                      +"points pt 5 ps 2  palette\n"
 
 #                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
-        os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        os.system("rm -f %s"%full_file_name) # remove pts file
-        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+
+        #Make the plot and convert it to jpg.
+        os.system("gnuplot %s" % (gnu_file_name))
+        os.system("convert -rotate 90 -modulate 80 %s %s"
+                  % (ps_file_name, jpg_file_name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+                  % (ps_file_name, stamp_jpg_file_name))
+
+        #Cleanup the temporary files.
+        self.remove(pts_file_name) # remove pts file
+        self.remove(gnu_file_name)  # remove gnu file
 
 
-    def plot_ascii(self,dir="./"):
-        full_file_name=dir+self.data_file_name
-        self.save_data(full_file_name)
-        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+    def plot_ascii(self, directory="./"):
+        #Get some filenames for the various files that get created.
+        pts_file_name = os.path.join(directory, self.data_file_name)
+        ps_file_name = os.path.join(directory, self.name + ".ps")
+        jpg_file_name = os.path.join(directory, self.name + ".jpg")
+        stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
+        gnu_file_name = "/tmp/%s_gnuplot.cmd" % (self.name)
+        
+        #Polulate the data file that gnuplot will plot.
+        self.save_data(pts_file_name)
+
+        #Create the file that contains the commands for gnuplot to run.
         gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '"+self.name+".ps'\n"+ \
+        long_string="set output '" + ps_file_name + "'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
                      "set xrange [  :  ]\n"+\
@@ -1204,7 +1313,7 @@ class Histogram2D(Histogram1D):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+full_file_name+"' using 1:3 "
+            long_string=long_string+"plot '"+pts_file_name+"' using 1:3 "
         else :
             #                     "set style fill solid 1.000000 \n" (not working:)
             if ( self.get_logy() ) :
@@ -1216,16 +1325,23 @@ class Histogram2D(Histogram1D):
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
             long_string=long_string+self.get_text()
-            long_string=long_string+"plot '"+full_file_name+"' using 1:2 "
+            long_string=long_string+"plot '"+pts_file_name+"' using 1:2 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                     +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt  "+str(self.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
-        os.system("gnuplot %s"%(gnu_file_name))
-        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
-        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        os.system("rm -f %s"%full_file_name) # remove pts file
-        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+
+        #Make the plot and convert it to jpg.
+        os.system("gnuplot %s" % (gnu_file_name))
+        os.system("convert -rotate 90 -modulate 80 %s %s"
+                  % (ps_file_name, jpg_file_name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"
+                  % (ps_file_name, stamp_jpg_file_name))
+
+        #Cleanup the temporary files.
+        print "111111111111111eeeeeeee", pts_file_name
+        self.remove(pts_file_name) # remove pts file
+        self.remove(gnu_file_name)  # remove gnu file
 
 
 if __name__ == "__main__":
@@ -1313,13 +1429,13 @@ if __name__ == "__main__":
     plotter = Plotter("plotter","test plotter")
 
 
-    sum=h1+h3
-    sum.plot()
-    os.system("display %s.jpg&"%(sum.get_name()))
+    sum_p=h1+h3
+    sum_p.plot()
+    os.system("display %s.jpg&"%(sum_p.get_name()))
 
     plotter.add(h1)
     plotter.add(h2)
-    plotter.add(sum)
+    plotter.add(sum_p)
     plotter.plot()
     os.system("display %s.jpg&"%(plotter.get_name()))
     
