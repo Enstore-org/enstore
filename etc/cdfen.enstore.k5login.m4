@@ -1,4 +1,6 @@
 enstore/cd/ccfsrv2.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, `cdfensrv4n',
+enstore/cd/ssasrv4.fnal.gov@FNAL.GOV, `dnl')
 enstore/cd/cdfensrv0.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv0n.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv1.fnal.gov@FNAL.GOV

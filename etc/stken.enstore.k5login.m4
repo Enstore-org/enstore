@@ -1,10 +1,12 @@
 enstore/cd/ccfsrv2.fnal.gov@FNAL.GOV
-enstore/cd/stkensrv3.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, `stkensrv4',
+enstore/cd/ssasrv4.fnal.gov@FNAL.GOV, `dnl')
 ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
 enstore/cd/fndca2a.fnal.gov@FNAL.GOV
 enstore/cd/fndca3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendca2a.fnal.gov@FNAL.GOV
-enstore/cd/stkendca3a.fnal.gov@FNAL.GOV,
+enstore/cd/stkendca3a.fnal.gov@FNAL.GOV
+enstore/cd/stkensrv3.fnal.gov@FNAL.GOV,
 enstore/cd/cmspnfs1.fnal.gov@FNAL.GOV
 enstore/cd/cmspnfs2.fnal.gov@FNAL.GOV
 enstore/cd/cmspnfs3.fnal.gov@FNAL.GOV
@@ -12,6 +14,7 @@ enstore/cd/eagpnfs1.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv0.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv1.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv2.fnal.gov@FNAL.GOV
+enstore/cd/stkensrv3.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv4.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv5.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv7.fnal.gov@FNAL.GOV
@@ -91,9 +94,6 @@ enstore/cd/d0ensrv4n.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `stkensrv2',
 enstore/cd/cdfensrv2n.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv4n.fnal.gov@FNAL.GOV, `dnl')
-ifelse(HOSTNAME, `stkensrv2',
-enstore/cd/cdfensrv2.fnal.gov@FNAL.GOV
-enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
 baisley@FNAL.GOV
 bakken@FNAL.GOV
