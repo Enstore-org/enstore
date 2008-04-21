@@ -224,6 +224,10 @@ get_filepath()
 check_pnfsids()
 {
     TEMP_FILE=$1
+    header_name=$2
+
+    header_outputed=0 #Start with this false.  This will be set to 1 if
+                      # a problem files is found (and the header is outputed).
 
     cat $TEMP_FILE |
     while read line; do
@@ -297,8 +301,14 @@ check_pnfsids()
 	#
 	#Skip to next file if this file is a temporary nfs file.
 	#
-	if [ `basename $path | cut -c 1-4` = ".nfs" -a $filesize -eq 0 ]; then
+	if [ `basename "$path" | cut -c 1-4` = ".nfs" -a $filesize -eq 0 ]; then
 	    continue
+	fi
+
+	if [ $header_outputed -eq 0 ]; then
+            echo "$2 PNFS Database $db_name files:" >> $TEMP_OUTPUT_FILE
+	    printf " %-26s | %24s | %6s | %6s | %6s | %s\n" timestamp pnfsid layer1 layer2 layer4 path >> $TEMP_OUTPUT_FILE
+            header_outputed=1  #Don't output this again for this DB category.
 	fi
 
 	printf " %-26s | %24s | %6s | %6s | %6s | %s\n" "$timestamp" $pnfsid $L1_status $L2_status $L4_status $path >> $TEMP_OUTPUT_FILE
@@ -309,6 +319,11 @@ check_pnfsids()
 	echo "" $line >> $TEMP_OUTPUT_FILE_2
 	
     done
+
+    if [ $header_outputed -eq 1 ]; then
+        #Add whitespace between databases.
+        echo -e "\n\n" >> $TEMP_OUTPUT_FILE
+    fi
 }
 
 ############################################################################
@@ -407,30 +422,23 @@ for db_name in `echo $db_list`; do
     #
     # Output recent broken files.
     #
-    echo "Recent PNFS Database $db_name files:" >> $TEMP_OUTPUT_FILE
-    printf " %-26s | %24s | %6s | %6s | %6s | %s\n" timestamp pnfsid layer1 layer2 layer4 path >> $TEMP_OUTPUT_FILE
-    #Check the pnfsids. Appends output to $TEMP_OUTPUT_FILE and 
-    # $TEMP_OUTPUT_FILE_2.
-    check_pnfsids $TEMP_FILE_NEW
-    
+    if [ $new_count -gt 0 ]; then
+	#Check the pnfsids. Appends (headers and) output to $TEMP_OUTPUT_FILE
+        # and $TEMP_OUTPUT_FILE_2.
+	check_pnfsids $TEMP_FILE_NEW "Recent"
+    fi
     
     #Send message to standard out.
     echo "Starting DB: $db_name with $old_count previously known files."
-
-    #Add space between databases.
-    echo >> $TEMP_OUTPUT_FILE
-
+    
     #
     # Output previously found broken files.
     #
-    echo "Previously known PNFS Database $db_name files:" >> $TEMP_OUTPUT_FILE
-    printf " %-26s | %24s | %6s | %6s | %6s | %s\n" timestamp pnfsid layer1 layer2 layer4 path >> $TEMP_OUTPUT_FILE
-    #Check the pnfsids. Appends output to $TEMP_OUTPUT_FILE and 
-    # $TEMP_OUTPUT_FILE_2.
-    check_pnfsids $TEMP_FILE_OLD
-
-    #Add space between databases.
-    echo -e "\n\n" >> $TEMP_OUTPUT_FILE
+    if [ $old_count -gt 0 ]; then
+	#Check the pnfsids. Appends (headers and) output to $TEMP_OUTPUT_FILE
+        # and $TEMP_OUTPUT_FILE_2.
+	check_pnfsids $TEMP_FILE_OLD "Previously known"
+    fi
 
     if [ -f $TEMP_OUTPUT_FILE_2 ]; then
 	#Move the rolling record of what is not written to tape.
