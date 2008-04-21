@@ -3204,45 +3204,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.run_in_thread('client_connect_thread', self.connect_client)
 
     def assert_vol(self):
-                if bloc_loc != self.last_absolute_location:
-                        self.transfer_failed(e_errors.WRITE_ERROR,
-                                             "Wrong position for %s: last %s, current %s"%
-                                             (self.last_absolute_location,
-                                              bloc_loc,),error_source=TAPE)
-                        self.set_volume_noaccess(self.current_volume)
-                        return
-                try:
-                  self.tape_driver.writefm()
-                except:
-                    Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
-                    Trace.handle_error()
-                    self.vcc.set_system_readonly(self.current_volume)
-                    self.return_work_to_lm(ticket)
-                    self.unlock_state()
-                    self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
-                    return
-
-        self.state = SETUP
-        # the following settings are needed by LM to update it's queues
-        self.tmp_vol = ticket['fc'].get('external_label', None)
-        self.tmp_vf = ticket['vc'].get('volume_family', None)
-        self.need_lm_update = (1, self.state, 1, None)
-        self.override_ro_mount = ticket.get('override_ro_mount', None)
-        #prevent a delayed dismount from kicking in right now
-        if self.dismount_time:
-            self.dismount_time = None
-        self.unlock_state()
-        
-        ticket['mover']={}
-        ticket['mover'].update(self.config)
-        ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
-
-        self.current_work_ticket = ticket
-        self.run_in_thread('client_connect_thread', self.connect_client)
-
-    def assert_vol(self):
-        ticket = self.current_work_ticket
-        self.t0 = time.time()
         ticket = self.current_work_ticket
         self.t0 = time.time()
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
@@ -3253,8 +3214,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.mount_volume(ticket['vc']['external_label'])
         if self.state == ERROR:
             Trace.log(e_errors.ERROR, "ASSERT failed %s" % (self.current_work_ticket['status'],))
-            self.current__ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
-                    returnwork_ticket['status'] = (e_errors.MOUNTFAILED, None)
+            self.current_work_ticket['status'] = (e_errors.MOUNTFAILED, None)
             callback.write_tcp_obj(self.control_socket, ticket)
             self.control_socket.close()
             return
