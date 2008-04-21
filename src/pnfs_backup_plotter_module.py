@@ -63,7 +63,7 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     # The following functions must be defined by all plotting modueles.
     #######################################################################
 
-    def book(self,frame):
+    def book(self, frame):
         #Get cron directory information.
         cron_dict = frame.get_configuration_client().get("crons", {})
 
@@ -88,7 +88,7 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
         self.plot_filename = "%s/pnfs_format.plot" % (temp_dir,)
 
-    def fill(self,frame):
+    def fill(self, frame):
         
         #  here we create data points 
         

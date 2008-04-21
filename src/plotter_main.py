@@ -22,6 +22,7 @@ import slots_usage_plotter_module
 import mounts_plotter_module
 import pnfs_backup_plotter_module
 import file_family_analysis_plotter_module
+import encp_rate_multi_plotter_module
 
 
 def usage(cmd):
@@ -33,11 +34,12 @@ def usage(cmd):
     print "\t -s [--slots]       : plot slot utilization"
     print "\t -p [--pnfs-backup] : plot pnfs backup time"
     print "\t -p [--file-family-analysis] : plot file family analysis"
+    print "\t -e [--encp-rate-multi] : plot multiple encp rates"
     print "\t -h [--help]        : show this message"
     
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspf"
+        short_args = "hmrudspfe"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
                      "slots", "pnfs-bakup", "file-family-analysis"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
@@ -76,6 +78,10 @@ if __name__ == "__main__":
         # file family analysis
         if o in ("-f","--file-family-analysis"):
             aModule = file_family_analysis_plotter_module.FileFamilyAnalysisPlotterModule("file_family_analisys")
+            f.add(aModule)
+        # encp rate multi
+        if o in ("-e","--encp-rate-multi"):
+            aModule = encp_rate_multi_plotter_module.EncpRateMultiPlotterModule("encp_rate_multi")
             f.add(aModule)
 
     f.do_work()
