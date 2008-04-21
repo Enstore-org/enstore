@@ -262,11 +262,21 @@ class MountsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 		outf = open(pts_filename, "w")
 		for i in self.mts:
 			count = count + 1
-			outf.write("%d %d\n"%(count, i))
-		outf.close()
-		if count == 0 :
-			return count
+			outf.write("%d %d\n" % (count, i))
 
+		#If there are no valid data points, we need to insert one zero
+		# valued point for gnuplot to plot.  If this file is empty,
+		# gnuplot throws and error.  This will happen, most likely,
+		# when the pnfs backup cronjob has not run at all in the
+		# last month.
+		if not self.mts:
+			outf.write("%d %d\n" % (0, 0))
+
+		outf.close()
+
+		#if count == 0 :
+		return count
+		
 
 	def plot(self):
 
