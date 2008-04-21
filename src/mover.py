@@ -3155,7 +3155,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.unlock_state()
             return
 
-        if self.save_state == HAVE_BOUND and self.single_filemark and self.mode == WRITE:
+        if self.save_state == HAVE_BOUND and self.single_filemark and self.mode == WRITE and self.setup_mode == READ:
             # switching from write to read write additional fm
             Trace.log(e_errors.INFO,"writing a tape mark before switching to READ")
             if self.driver_type == 'FTTDriver':
