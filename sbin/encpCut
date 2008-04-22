@@ -706,7 +706,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
            fi
            ;;
 	15)
-	    echo -n "Step $Step: ups setup -r $build_dir -M $ENSTORE_DIR/ups -m ${productName}.table $productName"
+	    echo "Step $Step: ups setup -r $build_dir -M $ENSTORE_DIR/ups -m ${productName}.table $productName"
 
 	    if [ "$try" = "doit" ] ; then
 
@@ -767,6 +767,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 		     echo version $version
 		     echo build_dir $build_dir
 		     echo product $product
+                     echo OUT_DIR $OUT_DIR
 
 		     #rpmbuild -ba --macros $ENSTORE_DEVEL_DIR/../COMMON/rpmmacros -D "upsflags $QUALIFIERS" -D "upsversion $REV" $ENSTORE_DIR/spec/encp.spec
 		     rpmbuild -bb -D "rpmversion $version"  -D "product $productName" --buildroot $build_dir -D "_rpmdir $OUT_DIR" $ENSTORE_DIR/spec/encp.spec
@@ -794,7 +795,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 		     rm -r /tmp/$PKG
 		     check_status $rtn_save "pkgmk"
 		else
-		     check_status 1 "Step 15 does not support `uname`."
+		     check_status 1 "Step 16 does not support `uname`."
 		fi
 	   fi	
            ;;
