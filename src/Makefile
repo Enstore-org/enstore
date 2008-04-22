@@ -80,12 +80,12 @@ pre_encp_cmd:
 encp_cmd:
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user.py
 	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENCPBIN_TEMP/encp_user	$ENCP_BIN_DIR//encp
+	$(CP) ENCPBIN_TEMP/encp_user	$(ENCP_BIN_DIR)/encp
 
 encp_cmd_for_dcache:
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user2.py
 	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENCPBIN_TEMP/encp_user2	$ENCP_BIN_DIR//encp
+	$(CP) ENCPBIN_TEMP/encp_user2	$(ENCP_BIN_DIR)/encp
 
 post_encp_cmd:
 	$(RM) ENCPBIN_TEMP
@@ -114,19 +114,19 @@ post_encp_cmd:
 enstore_cmd:
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSTORE_USER_BIN_TEMP enstore_user.py
 	(cd ENSTORE_USER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENSTORE_USER_BIN_TEMP/enstore_user      $ENCP_BIN_DIR/enstore
+	cp ENSTORE_USER_BIN_TEMP/enstore_user      $(ENCP_BIN_DIR)/enstore
 
 enstore_cmd_for_dcache:
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSTORE_USER_BIN_TEMP enstore_user2.py
 	(cd ENSTORE_USER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENSTORE_USER_BIN_TEMP/enstore_user2      $ENCP_BIN_DIR/enstore
+	cp ENSTORE_USER_BIN_TEMP/enstore_user2      $(ENCP_BIN_DIR)/enstore
 
 ensync_cmd:
 	- rm -rf ENSYNC_BIN_TEMP
 	mkdir ENSYNC_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSYNC_BIN_TEMP ensync_user.py
 	(cd ENSYNC_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENSYNC_BIN_TEMP/ensync_user      $ENCP_BIN_DIR/ensync
+	cp ENSYNC_BIN_TEMP/ensync_user      $(ENCP_BIN_DIR)/ensync
 	rm -rf ENSYNC_BIN_TEMP
 
 enmv_cmd:
@@ -134,7 +134,7 @@ enmv_cmd:
 	mkdir ENMV_BIN_TEMP
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENMV_BIN_TEMP enmv_user.py
 	(cd ENMV_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENMV_BIN_TEMP/enmv_user      $ENCP_BIN_DIR/enmv
+	cp ENMV_BIN_TEMP/enmv_user      $(ENCP_BIN_DIR)/enmv
 	rm -rf ENMV_BIN_TEMP
 
 encp: pre_encp_cmd encp_cmd enstore_cmd ensync_cmd enmv_cmd post_encp_cmd
