@@ -572,9 +572,11 @@ def check_for_config_defaults():
     # then nothing was set in the environment or passed on the command
     # line. warn the user.
     if enstore_functions2.used_default_host():
-        log_using_default('CONFIG HOST', enstore_constants.DEFAULT_CONF_HOST)
+        log_using_default('ENSTORE_CONFIG_HOST',
+                          enstore_constants.DEFAULT_CONF_HOST)
     if enstore_functions2.used_default_port():
-        log_using_default('CONFIG PORT', enstore_constants.DEFAULT_CONF_PORT)
+        log_using_default('ENSTORE_CONFIG_PORT',
+                          enstore_constants.DEFAULT_CONF_PORT)
 
 def list2(value):
     return [value]
