@@ -455,8 +455,8 @@ for try in list doit; do
 	      # different build.
 	      echo "$QUALIFIERS" | tr ": " "\n" | grep dcache > /dev/null
 	      if [ $? -eq 0 ]; then
-		make clean $product_for_dcache
-		check_status $? "make clean encp_for_dcache"
+		make clean ${product}_for_dcache
+		check_status $? "make clean ${product}_for_dcache"
 	      else
 		make clean $product
 		check_status $? "make clean $product"
