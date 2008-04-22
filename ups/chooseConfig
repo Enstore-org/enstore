@@ -10,6 +10,16 @@ if [ "${1:-}" = "-c" ] ; then dont_complain=1; shift; else dont_complain=0; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
+# This is an FNAL specific script.  Exit early if not running on the 
+# .fnal.gov domain.  Get the full hostname, then check the last 9 characters
+# for ".fnal.gov"
+fqdn=`uname -n`
+domain_index_check=`expr \`echo $fqdn | wc -c\` - 9`
+if [ `echo $fqdn | cut -c ${domain_index_check}-` != ".fnal.gov" ]; then
+   #This is not an FNAL node.
+   exit 0
+fi
+
 d0en=d0ensrv2n.fnal.gov
 #d0en=conf-d0en.fnal.gov
 stken=stkensrv2.fnal.gov
