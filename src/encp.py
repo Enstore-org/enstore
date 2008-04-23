@@ -3862,9 +3862,16 @@ def open_control_socket(listen_socket, mover_timeout):
     start_wait_time = time.time()
     wait_left_time = mover_timeout
     while wait_left_time:
+
+        time_to_select_control_socket = time.time()
         
         read_fds, unused, unused = select.select([listen_socket], [], [],
                                                  wait_left_time)
+
+        message = "Time to select control socket: %s sec." % \
+                  (time.time() - time_to_select_control_socket,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
         
         #If there are no successful connected sockets, then select timedout.
         if not read_fds:
@@ -3872,7 +3879,14 @@ def open_control_socket(listen_socket, mover_timeout):
                             "Mover did not call control back.",
                             e_errors.TIMEDOUT)
 
+        time_to_accept_control_socket = time.time()
+
         control_socket, address = listen_socket.accept()
+
+        message = "Time to accept control socket: %s sec." % \
+                  (time.time() - time_to_accept_control_socket,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
 
         if not hostaddr.allow(address):
             try:
@@ -3888,6 +3902,8 @@ def open_control_socket(listen_socket, mover_timeout):
         #wait_left_time = start_wait_time + mover_timeout - time.time()
         #wait_left_time = max(wait_left_time, 0)
 
+        time_to_setsockopt_control_socket = time.time()
+
         try:
             #This should help the connection.  It also seems to allow the
             # connection to survive the antispoofing/routing problem for
@@ -3902,6 +3918,13 @@ def open_control_socket(listen_socket, mover_timeout):
             except IOError:
                 pass
 
+        message = "Time to setsockopt control socket: %s sec." % \
+                  (time.time() - time_to_setsockopt_control_socket,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
+
+        time_to_read_control_socket = time.time()
+
         try:
             ticket = callback.read_tcp_obj(control_socket)
         except e_errors.TCP_EXCEPTION:
@@ -3914,6 +3937,11 @@ def open_control_socket(listen_socket, mover_timeout):
             wait_left_time = start_wait_time + mover_timeout - time.time()
             wait_left_time = max(wait_left_time, 0)
             continue
+
+        message = "Time to read control socket: %s sec." % \
+                  (time.time() - time_to_read_control_socket,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
 
         if not e_errors.is_ok(ticket):
             #If the mover already returned an error, don't bother checking if
