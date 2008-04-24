@@ -6,6 +6,18 @@
 #
 ###############################################################################
 
+"""
+The following functions are those intended for use by other modules:
+read_obj:          Use for reading python objects from a pipe file descriptor.
+read_tcp_obj:      Use for reading python objects from a tcp socket.
+write_obj:         Use for writing python objects to a pipe file descriptor.
+write_tcp_obj_new: Use for writing python objects to a tcp socket.  
+get_callback:      Use to obtain a tcp socket.
+
+Use of write_tcp_obj() is discouraged for new code.  It uses repr instead
+of pickle.
+"""
+
 # system imports
 import time
 import sys
@@ -18,6 +30,7 @@ import socket
 import cPickle
 import errno
 import fcntl
+import types
 
 # enstore imports
 import Trace
@@ -98,32 +111,38 @@ def get_callback(ip=None):
     host, port = s.getsockname()
     return host, port, s
 
+###############################################################################
+###############################################################################
+
 #send with a timeout
 def timeout_send(sock,msg,timeout=15*60):
     timeout = float(timeout)
     junk,fds,junk = select.select([],[sock],[],timeout)
     if sock not in fds:
         return ""
-    return sock.send(msg)
+    if type(sock) == types.IntType: #In case sock is an fd for a pipe.
+        return os.write(sock, msg)
+    else:
+        return sock.send(msg)
+    #Should never get here.
+    return ""
 
 #send a message, with bytecount and rudimentary security
-def write_tcp_raw(sock,msg,timeout=15*60):
+## Note: Make sure to consider that sock could be a socket object, socket
+##       fd or pipe fd.
+def write_raw(sock,msg,timeout=15*60):
     max_pkt_size=16384
     try:
         l = len(msg)
         ptr=0
-        #sock.send("%08d"%(len(msg),))
         timeout_send(sock, "%08d"%(len(msg),), timeout)
         salt=random.randint(11,99)
-        #sock.send("ENSTOR%s"%(salt,))
         timeout_send(sock, "ENSTOR%s"%(salt,), timeout)
         while ptr<l:
-            #nwritten=sock.send(msg[ptr:ptr+max_pkt_size])
             nwritten=timeout_send(sock, msg[ptr:ptr+max_pkt_size], timeout)
             if nwritten<=0:
                 break
             ptr = ptr+nwritten
-        #sock.send(hex8(checksum.adler32(salt,msg,l)))
         timeout_send(sock, hex8(checksum.adler32(salt,msg,l)), timeout)
         return 0
     except socket.error, detail:
@@ -131,17 +150,84 @@ def write_tcp_raw(sock,msg,timeout=15*60):
         return 1
         ##XXX Further sends will fail, our peer will notice incomplete message
 
+write_tcp_raw = write_raw
 
-# send a message which is a Python object
+# send a message over the network which is a Python object
 def write_tcp_obj(sock,obj,timeout=15*60):
     return write_tcp_raw(sock,repr(obj),timeout)
 ### When we want to go strictly to cPickle use the following line.
 #    return write_tcp_obj_new(sock,obj,timeout)
 
-# send a message which is a Python object
+# send a message over the network which is a Python object
 def write_tcp_obj_new(sock,obj,timeout=15*60):
     return write_tcp_raw(sock,cPickle.dumps(obj),timeout)
 
+# send a message to a co-process which is a Python object
+def write_obj(fd, obj, timeout=15*60):
+    return write_raw(fd, cPickle.dumps(obj), timeout)
+
+###############################################################################
+###############################################################################
+
+def record_recv_error(sock):
+    #if data_string == "":
+        #According to python documentation when recv() returns the empty
+        # string the other end has closed the connection.
+
+        #Log the time spent waiting.
+        #Trace.log(e_errors.ERROR,
+        #          "timeout_recv(): time passed: %s sec of %s sec" %
+        #          (time.time() - total_start_time, timeout))
+
+        try:
+            #Verify if there is an error on the socket.
+            socket_error = sock.getsockopt(socket.SOL_SOCKET,
+                                           socket.SO_ERROR)
+            if socket_error != 0:
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): socket error: %s" % socket_error)
+        except socket.error, msg:
+            Trace.log(e_errors.ERROR,
+                      "timeout_recv(): getsockopt(SO_ERROR): %s" % str(msg))
+
+        try:
+            #Verify if the connection is still up.
+            sock.getpeername()
+        except socket.error, msg:
+            Trace.log(e_errors.ERROR,
+                      "timeout_recv(): getpeername: %s" % str(msg))
+
+        Trace.log(e_errors.ERROR, "timeout_recv(): received no data")
+
+        #Log the current socket state (only works on Linux).
+        socket_state = __get_socket_state(sock.fileno())
+        Trace.log(e_errors.ERROR,
+                  "timeout_recv(): socket state: %s" % str(socket_state))
+
+        # It would be useful to output the number of bytes in the
+        # read buffer.  Python does not yet support it.
+        try:
+            OPT = getattr(fcntl, "FIONREAD", None)
+            if OPT == None:
+                if os.uname()[0] == "Linux":
+                    OPT = 0x541B  #Linux specific hack.
+                if os.uname()[0][:4] == "IRIX" or \
+                   os.uname()[0] == "SunOS" or \
+                   os.uname()[0] == "OSF1":
+                    OPT = 1074030207 #Pulled from header files.
+            if OPT != None:
+                import struct #Only import this when necessary.
+                nbytes = struct.unpack("i",
+                                       fcntl.ioctl(sock, OPT, "    "))[0]
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): fcntl(FIONREAD): %s"
+                          % (str(nbytes),))
+        except AttributeError:
+            #FIONREAD not known on this system.
+            pass
+        except IOError, msg:
+            Trace.log(e_errors.ERROR,
+                      "timeout_recv(): ioctl(FIONREAD): %s" % (str(msg),))
 
 #recv with a timeout
 def timeout_recv(sock, nbytes, timeout = 15 * 60):
@@ -176,151 +262,81 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             # that were all previously lumped together as "error".
             continue
 
-        data_string = sock.recv(nbytes)
+        if type(sock) == types.IntType:
+            data_string = os.read(sock, nbytes)
+        else:
+            data_string = sock.recv(nbytes)
         if data_string == "":
             #According to python documentation when recv() returns the empty
             # string the other end has closed the connection.
-
+            
             #Log the time spent waiting.
             Trace.log(e_errors.ERROR,
                       "timeout_recv(): time passed: %s sec of %s sec" %
                       (time.time() - total_start_time, timeout))
 
-            try:
-                #Verify if there is an error on the socket.
-                socket_error = sock.getsockopt(socket.SOL_SOCKET,
-                                               socket.SO_ERROR)
-                if socket_error != 0:
-                    Trace.log(e_errors.ERROR,
-                              "timeout_recv(): socket error: %s" % socket_error)
-            except socket.error, msg:
-                Trace.log(e_errors.ERROR,
-                          "timeout_recv(): getsockopt(SO_ERROR): %s" % str(msg))
-            
-            try:
-                #Verify if the connection is still up.
-                sock.getpeername()
-            except socket.error, msg:
-                Trace.log(e_errors.ERROR,
-                          "timeout_recv(): getpeername: %s" % str(msg))
-                
-            Trace.log(e_errors.ERROR, "timeout_recv(): received no data")
-
-            #Log the current socket state (only works on Linux).
-            socket_state = __get_socket_state(sock.fileno())
-            Trace.log(e_errors.ERROR,
-                      "timeout_recv(): socket state: %s" % str(socket_state))
-
-            # It would be useful to output the number of bytes in the
-            # read buffer.  Python does not yet support it.
-            try:
-                OPT = getattr(fcntl, "FIONREAD", None)
-                if OPT == None:
-                    if os.uname()[0] == "Linux":
-                        OPT = 0x541B  #Linux specific hack.
-                    if os.uname()[0][:4] == "IRIX" or \
-                       os.uname()[0] == "SunOS" or \
-                       os.uname()[0] == "OSF1":
-                        OPT = 1074030207 #Pulled from header files.
-                if OPT != None:
-                    import struct #Only import this when necessary.
-                    nbytes = struct.unpack("i",
-                                           fcntl.ioctl(sock, OPT, "    "))[0]
-                    Trace.log(e_errors.ERROR,
-                              "timeout_recv(): fcntl(FIONREAD): %s"
-                              % (str(nbytes),))
-            except AttributeError:
-                #FIONREAD not known on this system.
-                pass
-            except IOError, msg:
-                Trace.log(e_errors.ERROR,
-                          "timeout_recv(): ioctl(FIONREAD): %s" % (str(msg),))
-            
         return data_string
         
     #timedout
     Trace.log(e_errors.ERROR, "timeout_recv(): timedout")
     return ""
 
-# read a complete message
-def read_tcp_raw(sock, timeout=15*60):
-    #Trace.log(e_errors.INFO, "read_tcp_raw: starting")
-    tmp = timeout_recv(sock, 8, timeout) # the message length
+#read_raw - return tuple of message read and error string.  One or the other
+# should be returned as an empty string.
+def read_raw(fd, timeout=15*60):
+    #Trace.log(e_errors.INFO, "read_raw: starting")
+    tmp = timeout_recv(fd, 8, timeout) # the message length
     len_tmp = len(tmp)
     if len_tmp != 8:
-        error_string = "read_tcp_raw: wrong bytecount"
-        try:
-            peername = sock.getpeername()
-        except (socket.error, socket.herror, socket.gaierror):
-            peername = "unknown"
-        Trace.log(e_errors.ERROR,
-                 "%s (%d) %s" % (error_string, len_tmp, tmp))
-        Trace.log(e_errors.ERROR,
-                  "%s from %s" % (error_string, peername,))
-        return ""
+        error_string = "read_raw: wrong bytecount (%d) '%s'" % (len_tmp, tmp)
+        return "", error_string
     try:
         bytecount = int(tmp)
     except (ValueError, TypeError):
-        error_string = "read_tcp_raw: bad bytecount"
-        try:
-            peername = sock.getpeername()
-        except (socket.error, socket.herror, socket.gaierror):
-            peername = "unknown"
-        Trace.log(e_errors.ERROR, "%s %s" % (error_string, tmp,))
-        Trace.log(e_errors.ERROR,
-                  "%s from %s" % (error_string, peername,))
-        return ""
-    tmp = timeout_recv(sock,8, timeout) # the 'signature'
+        error_string = "read_tcp_raw: bad bytecount '%s'" % (tmp,)
+        return "", error_string
+    tmp = timeout_recv(fd, 8, timeout) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
-        error_string = "read_tcp_raw: invalid signature"
-        try:
-            peername = sock.getpeername()
-        except (socket.error, socket.herror, socket.gaierror):
-            peername = "unknown"
-        Trace.log(e_errors.ERROR, "%s %s" % (error_string, tmp,))
-        Trace.log(e_errors.ERROR,
-                  "%s from %s" % (error_string, peername,))
-        return ""
+        error_string = "read_tcp_raw: invalid signature '%s'" % (tmp,)
+        return "", error_string
     salt= int(tmp[6:])
     msg = ""
     while len(msg) < bytecount:
-        tmp = timeout_recv(sock,bytecount - len(msg), timeout)
+        tmp = timeout_recv(fd, bytecount - len(msg), timeout)
         if not tmp:
             break
         msg = msg+tmp
     if len(msg)!=bytecount:
-        error_string = "read_tcp_raw: bytecount mismatch"
-        try:
-            peername = sock.getpeername()
-        except (socket.error, socket.herror, socket.gaierror):
-            peername = "unknown"
-        Trace.log(e_errors.ERROR,
-                  "%s %s != %s" % (error_string, len(msg), bytecount))
-        Trace.log(e_errors.ERROR,
-                  "%s from %s" % (error_string, peername,))
-        return ""
-    tmp = timeout_recv(sock,8, timeout)
+        error_string = "read_tcp_raw: bytecount mismatch %s != %s" \
+                       % (len(msg), bytecount)
+        return "", error_string
+    tmp = timeout_recv(fd, 8, timeout)
     crc = long(tmp, 16)  #XXX 
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
-        error_string = "read_tcp_raw: checksum mismatch"
+        error_string = "read_tcp_raw: checksum mismatch %s != %s" \
+                        % (mycrc, crc)
+        return "", error_string
+    return msg, ""
+
+read_tcp_raw = read_raw
+
+# receive a message over the network which is a Python object
+def read_tcp_obj(sock, timeout=15*60) :
+    s, e = read_tcp_raw(sock, timeout)
+    if not s:
+        record_recv_error(s) #Log the state of the socket.
+        
+        #Gather additional information and log the error.
         try:
             peername = sock.getpeername()
         except (socket.error, socket.herror, socket.gaierror):
             peername = "unknown"
-        Trace.log(e_errors.ERROR,
-                  "%s %s != %s" % (error_string, mycrc, crc))
-        Trace.log(e_errors.ERROR,
-                  "%s from %s" % (error_string, peername,))
-        return ""
-    return msg
-
-
-def read_tcp_obj(sock, timeout=15*60) :
-    s=read_tcp_raw(sock, timeout)
-    if not s:
+        error_string = "%s from %s" % (e, peername)
+        Trace.log(e_errors.ERROR, error_string)
+        
         raise e_errors.TCP_EXCEPTION
-    
+
     try:
         obj = cPickle.loads(s)
     except (cPickle.PickleError, cPickle.PicklingError,
@@ -332,12 +348,33 @@ def read_tcp_obj(sock, timeout=15*60) :
     
     return obj
 
+# receive a message over the network which is a Python object
 def read_tcp_obj_new(sock, timeout=15*60) :
-    s=read_tcp_raw(sock, timeout)
+    s, e = read_tcp_raw(sock, timeout)
     if not s:
+        record_recv_error(s) #Log the state of the socket.
+        
+        #Gather additional information and log the error.
+        try:
+            peername = sock.getpeername()
+        except (socket.error, socket.herror, socket.gaierror):
+            peername = "unknown"
+        error_string = "%s from %s" % (e, peername)
+        Trace.log(e_errors.ERROR, error_string)
+        
 	raise e_errors.TCP_EXCEPTION
+    
     return cPickle.loads(s)
 
+# receive a message from a co-process which is a Python object
+def read_obj(fd, timeout=15*60):
+    s, e = read_raw(fd, timeout)
+    if not s:
+        sys.stderr.write(e)
+        
+        raise e_errors.TCP_EXCEPTION #What should this be?
+    return cPickle.loads(s)
+    
 
 if __name__ == "__main__" :
     Trace.init("CALLBACK")
