@@ -23,6 +23,7 @@ import mounts_plotter_module
 import pnfs_backup_plotter_module
 import file_family_analysis_plotter_module
 import encp_rate_multi_plotter_module
+import quotas_plotter_module
 
 
 def usage(cmd):
@@ -35,13 +36,15 @@ def usage(cmd):
     print "\t -p [--pnfs-backup] : plot pnfs backup time"
     print "\t -p [--file-family-analysis] : plot file family analysis"
     print "\t -e [--encp-rate-multi] : plot multiple encp rates"
+    print "\t -q [--quotas]      : plot quotas by storage group"
     print "\t -h [--help]        : show this message"
     
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfe"
+        short_args = "hmrudspfeq"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
-                     "slots", "pnfs-bakup", "file-family-analysis"]
+                     "slots", "pnfs-bakup", "file-family-analysis",
+                     "--quotas", ]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError:
         print "Failed to process arguments"
@@ -82,6 +85,10 @@ if __name__ == "__main__":
         # encp rate multi
         if o in ("-e","--encp-rate-multi"):
             aModule = encp_rate_multi_plotter_module.EncpRateMultiPlotterModule("encp_rate_multi")
+            f.add(aModule)
+        # quotas
+        if o in ("-q","--quotas"):
+            aModule = quotas_plotter_module.QuotasPlotterModule("quotas")
             f.add(aModule)
 
     f.do_work()

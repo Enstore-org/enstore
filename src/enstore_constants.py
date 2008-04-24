@@ -187,6 +187,7 @@ SLOT_USAGE_PLOTS_SUBDIR = ""
 PNFS_BACKUP_TIME_PLOTS_SUBDIR = ""
 FILE_FAMILY_ANALYSIS_PLOT_SUBDIR = "file_family_usage"
 ENCP_RATE_MULTI_PLOTS_SUBDIR = "encp-rates"
+QUOTA_PLOTS_SUBDIR = "quotas"
 
 OUTAGEFILE = "enstore_outage.py"
 SEENDOWNFILE = "enstore_seen_down.py"
