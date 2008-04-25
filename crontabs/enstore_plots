@@ -13,8 +13,8 @@
 10 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; cd /tmp; $ENSTORE_DIR/sbin/ecron -p slotUtilization -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py --slots > /dev/null 2> /dev/null
 # storage grpup activity - instead of make_sg_plot
 50 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p sgPlotUpdate -setup gnuplot $ENSTORE_DIR/sbin/make_sg_plot > /dev/null 2> /dev/null
-25 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi $ENSTORE_DIR/sbin/encp_rate_plot_multi.py >/dev/null 2> /dev/null
-50 23 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p file_family_usage $ENSTORE_DIR/sbin/file_family_analysis.py > /dev/null 2> /dev/null
+25 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi $ENSTORE_DIR/src/plotter_main.py -e >/dev/null 2> /dev/null
+50 23 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p file_family_usage $ENSTORE_DIR/src/plotter_main.py -f > /dev/null 2> /dev/null
 
 
 ##plot the quotas
