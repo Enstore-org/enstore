@@ -1339,7 +1339,6 @@ class Histogram2D(Histogram1D):
                   % (ps_file_name, stamp_jpg_file_name))
 
         #Cleanup the temporary files.
-        print "111111111111111eeeeeeee", pts_file_name
         self.remove(pts_file_name) # remove pts file
         self.remove(gnu_file_name)  # remove gnu file
 
