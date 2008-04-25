@@ -82,9 +82,10 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #Define variables that hold the path needed in fill() and plot().
         self.data_filename = "%s/pnfs_backup.pts" % (temp_dir,)
 
-        self.output_filename = "%s/pnfs_backup_plot.ps" % (self.web_dir,)
-        self.output_filename_jpeg = "%s/pnfs_backup_plot.jpg" % (self.web_dir,)
-        self.output_filename_stamp_jpeg = "%s/pnfs_backup_stamp.jpg" % (self.web_dir,)
+        self.output_filename = "%s/pnfs_backup_time.ps" % (self.web_dir,)
+        self.output_filename_jpeg = "%s/pnfs_backup_time.jpg" % (self.web_dir,)
+        self.output_filename_stamp_jpeg = "%s/pnfs_backup_time_stamp.jpg" % \
+                                          (self.web_dir,)
 
         self.plot_filename = "%s/pnfs_format.plot" % (temp_dir,)
 
