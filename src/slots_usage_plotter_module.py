@@ -155,7 +155,7 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             os.system("gnuplot < %s" % (plot_filename,))
             os.system("convert -rotate 90 %s %s\n" %
                       (ps_filename, jpg_filename))
-            os.system("convert  -geometry 120x120 -modulate 80 %s %s\n"
+            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                       % (ps_filename, stamp_jpg_filename))
            
             #Cleanup the temporary files.
