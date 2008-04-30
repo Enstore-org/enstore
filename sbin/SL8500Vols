@@ -11,7 +11,7 @@ gang=`gang`
 rail_robot="StreamLine 8500"
 case $gang in
   stken) rail_node=fntt-gcc
-	 rail_list="0,0 0,1 0,2 0,3"
+	 rail_list="0,0 0,1 0,2 0,3 0,4 0,5 0,6, 0,7"
 	 rail_acs=" 0"
 	 ;;
       *) echo \"$0\" not supported on $gang
