@@ -74,7 +74,6 @@ enstore/cd/stkenmvr148a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr149a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr150a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr151a.fnal.gov@FNAL.GOV
-enstore/cd/stkenmvr152a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
