@@ -75,10 +75,12 @@ if [ $gang = "stken" ]; then
 # there should be no deleted volumes in VOLUMES_DEFINED
 
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
-  awk 'NF==10 || /         0, [01],/ {print $1}' |\
+  sed -e 's/, /,/g' -e 's/in /in_/' |\
+  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/silo-volumes
 egrep -v "^$|^<|(TEST|(TST|P[RS][A-Z]|IA[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
-  awk 'NF==10 {print $1}' |\
+  sed -e 's/, /,/g' -e 's/in /in_/' |\
+  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/rail-volumes
 egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|DECDLT) attrib (Empty|Occupied)" $inventory_dir/AML2-VOLUMES.html |\
   awk '{print $2}' |\
@@ -198,16 +200,17 @@ elif [ $gang = "d0en" ]; then
 #
 # there should be no deleted volumes in VOLUMES_DEFINED
 
-egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
+egrep -v "^$|^<|(DG |IA[0-9A-Z])[0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
   sed -e 's/, /,/g' -e 's/in /in_/' |\
   awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^1,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/silo-volumes
 egrep -v "^$|^<|(TEST|(TST|(VO|IA)[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500G1-VOLUMES.html |\
   sed -e 's/, /,/g' -e 's/in /in_/' |\
-  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
+  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/rail-volumes
 egrep -v "^$|^<" $inventory_dir/AML2-VOLUMES.html |\
-  awk '(NF==6 && $1=="volser") || (NF==3 && $2=="3480" && $3~/[OME]/) {print $1}' |\
+  awk 'NF==3 && $2=="3480" && $3~/[OME]/ {print $1} \
+       NF==6 && $1=="volser" {print $2}' |\
   sort >/tmp/tower-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
@@ -275,7 +278,7 @@ echo "--------------------------------------------------------------------------
 elif [ $gang = "cdfen" ]; then
 
 # cdfen 9310 silos are acs 0 & lsm 0,1
-# cdfen 8500 rails are acs 0 & lsm 0-3
+# cdfen 8500 rails are acs 0 & lsm 0-7
 
 # for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
 #   vol   home		acs, lsm, panel, row, col	type
@@ -298,12 +301,14 @@ elif [ $gang = "cdfen" ]; then
 # there should be no deleted volumes in VOLUMES_DEFINED
 
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
-  awk 'NF==10 || /         0, [01],/ {print $1}' |\
+  sed -e 's/, /,/g' -e 's/in /in_/' |\
+  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/silo-volumes
 egrep -v "^$|^<|(TEST|(TST|P[RS][A-Z]|VO[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
-  awk 'NF==10 {print $1}' |\
+  sed -e 's/, /,/g' -e 's/in /in_/' |\
+  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/rail-volumes
-awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
+awk 'NR>3 && NF==10 && $7!~/null|disk|shelf|-D0/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
 
 # tapes in the PowderHorn 9310, but not in enstore
@@ -316,7 +321,7 @@ fgrep -f /tmp/silo-not-enstore $inventory_dir/STK-VOLUMES.html
 # tapes in the StreamLine 8500, but not in enstore
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 3) that are not fully declared to enstore"
+echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 7) that are not fully declared to enstore"
 comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
 fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500-VOLUMES.html
 
