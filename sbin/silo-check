@@ -227,7 +227,7 @@ echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes in the StreamLine 8500 (acs 0, lsm 4 to 7) that are not fully declared to enstore"
 comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
-fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500-VOLUMES.html
+fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500G1-VOLUMES.html
 
 # tapes in a D0 AML/2 tower, but not in enstore
 # d0en has only LTOs in the AML/2
@@ -255,7 +255,7 @@ echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes that are apparently in more than one robot"
 sort -m /tmp/{silo,rail,tower}-volumes | uniq -d | while read vol; do
-  grep $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500,STK,AML2}-VOLUMES.html}
+  grep $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500G1,STK,AML2}-VOLUMES.html}
 done
 
 echo
