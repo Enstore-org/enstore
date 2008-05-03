@@ -10,9 +10,9 @@ gang=`gang`
 # rails are StreamLine 8500 robots
 rail_robot="StreamLine 8500"
 case $gang in
-  stken) rail_node=fntt-gcc
-	 rail_list="0,0 0,1 0,2 0,3 0,4 0,5 0,6, 0,7"
-	 rail_acs=" 0"
+  stken) rail_acs_list="0 1"
+	 rail_node_0=fntt-gcc
+	 rail_node_1=fntt2
 	 ;;
       *) echo \"$0\" not supported on $gang
 	 exit 1
@@ -33,7 +33,6 @@ if [ $node = $copy_node ]; then
   volfile=/tmp/SL8500-VOLUMES-$gang
   rm -f $volfile
 
-  select="display volume \* -home $rail_acs,*,*,*,*"
   filter="awk '\$8~/home|move|mount|dismount|in_drive/'"
 
   cat << EOF >>$output
@@ -45,7 +44,12 @@ if [ $node = $copy_node ]; then
 <hr>
 EOF
 
-  /usr/bin/rsh $rail_node -l acsss "echo $select '\r' logoff | bin/cmd_proc -l -q 2>/dev/null" >$volfile
+  for rail_acs in $rail_acs_list
+  do
+    eval rail_node="\$rail_node_$rail_acs"
+    select="display volume \* -home $rail_acs,*,*,*,*"
+    /usr/bin/rsh $rail_node -l acsss "echo $select '\r' logoff | bin/cmd_proc -l -q 2>/dev/null" >>$volfile
+  done
 
   cat << EOF >>$output
 <h1><center>$rail_robot Volume Fetch Done : `date`</center><h1>
@@ -64,13 +68,17 @@ EOF
 </body>
 EOF
 
-  lsms=`/usr/bin/rsh $rail_node -l acsss "echo query lsm all '\r' logoff | bin/cmd_proc -l -q 2>/dev/null" | grep online`
-  now=`date +"%Y-%m-%d:%H:%M:%S"`
-  for rail in $rail_list; do
-    free=`echo "$lsms" | sed 's/, /,/' | awk -v Rail="$rail" '$1 == Rail {print $3}'`
-    used=`eval $filter <$volfile | awk -v Rail="$rail" '{if (sprintf("%s,%s",$2,$3)==Rail) k++}; END {print k}'`
-    tot=`expr ${free:-0} + ${used:-0}`
-    echo "$now $rail $tot ${used:-0} ${free:-0}" >>$HOME/SL8500_USED_SLOTS.$rail
+  for rail_acs in $rail_acs_list
+  do
+    eval rail_node="\$rail_node_$rail_acs"
+    now=`date +"%Y-%m-%d:%H:%M:%S"`
+    /usr/bin/rsh $rail_node -l acsss "echo query lsm all '\r' logoff | bin/cmd_proc -l -q 2>/dev/null" | grep online | sed 's/, /,/' | while read rail state free junk; do
+      if [ `expr $rail : "$rail_acs,"` -gt 0 ]; then
+	used=`eval $filter <$volfile | awk -v Rail="$rail" 'NF==10 {if (sprintf("%s,%s",$2,$3)==Rail) k++}; END {print k}'`
+	tot=`expr ${free:-0} + ${used:-0}`
+	echo "$now $rail $tot ${used:-0} ${free:-0}" >>$HOME/SL8500_USED_SLOTS.$rail
+      fi
+    done
   done
 
   for remote_copy
