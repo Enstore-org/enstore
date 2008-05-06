@@ -54,9 +54,9 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def write_plot_file(self, plot_filename, data_filename, ps_filename, key):
 
         #The first an last to set the x range between.
-        day_start = time.strftime("%m-%d-%Y %H:%M:%S",
+        day_start = time.strftime("%Y-%m-%d",
                  time.localtime(time.time() - DAYS_AGO_START * DAY_IN_SECONDS))
-        day_end = time.strftime("%m-%d-%Y %H:%M:%S",
+        day_end = time.strftime("%Y-%m-%d",
                  time.localtime(time.time() + DAYS_AHEAD_END * DAY_IN_SECONDS))
 
         #The amount of tapes used in the last month and week.
@@ -91,9 +91,8 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                       (label, written, blanks))
         plot_fp.write('set ylabel "Gigabytes Written"\n')
         plot_fp.write('set xdata time\n')
-        #plot_fp.write('set timefmt "%d-%b-%y"\n')
-        plot_fp.write('set timefmt "%m-%d-%Y %H:%M:%S"\n')
-        plot_fp.write('set format x "%m-%d-%y"\n')
+        plot_fp.write('set timefmt "%Y-%m-%d"\n')
+        plot_fp.write('set format x "%Y-%m-%d"\n')
         plot_fp.write('set grid\n')
         plot_fp.write('set nokey\n')
         plot_fp.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (now,))
@@ -108,11 +107,13 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         ## a hole in the data.  The last plot contains three points
         ## representing the bytes written at a month ago to the present and
         ## to the estimated amount a month from now.
+        
         plot_fp.write('plot "%s" using 1:3 with impulses linewidth 10, ' \
                       '"%s" using 1:2 with impulses linewidth 10, ' \
                       '"%s" using 1:3 with lines, ' \
                       '"%s" using 1:4 w lp lt 3 lw 5 pt 5\n' % \
                       (data_filename, data_filename, data_filename, data_filename))
+        
         plot_fp.close()
 
     #######################################################################
@@ -184,17 +185,15 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
 
         #Get the library and storage group for each volume.
-        sql_cmd = "select label,library,storage_group from volume " \
-                  "where label not like '%.deleted';"
+        sql_cmd = "select label,library,storage_group from volume; "# \
+                  #"where label not like '%.deleted';"
 
         edb_res = db.query(sql_cmd).getresult() #Get the values from the DB.
 
         #Stuff the tape information into a dictionary.
         tapes = {}
         for row in edb_res:
-            tapes[row[0]] = {'library' : row[1],
-                             'storage_group': row[2],
-                             }
+            tapes[row[0]] = (row[1], row[2])
 
         ###
         ### Get current tape information for all tapes currently in use.
@@ -286,7 +285,10 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             mb_user_read = int(row[3])
 
             #Get the tapes library and storage group.
-            lm, sg = tapes[volume]
+            try:
+                lm, sg = tapes[volume]
+            except KeyError:
+                lm, sg = tapes[volume + ".deleted"]
             #Get the date.
             date = timestamp.split(" ")[0]
 
@@ -340,11 +342,11 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         ## Now we can write out the data to the pts files that gnuplot
         ## will plot for us.
 
-        month_ago_date = time.strftime("%m-%d-%Y",
+        month_ago_date = time.strftime("%Y-%m-%d",
                  time.localtime(time.time() - DAYS_IN_MONTH * DAY_IN_SECONDS))
-        today_date = time.strftime("%m-%d-%Y",
+        today_date = time.strftime("%Y-%m-%d",
                  time.localtime())
-        month_ahead_date = time.strftime("%m-%d-%Y",
+        month_ahead_date = time.strftime("%Y-%m-%d",
                  time.localtime(time.time() + DAYS_IN_MONTH * DAY_IN_SECONDS))
 
         #for key in bytes_summary.keys():
@@ -363,7 +365,10 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 use_bytes_summary = {today_date : {'mb_read':0, 'mb_write':0}}
             
             #Write out the plot information to the entire librarys' data files.
-            for date, stats in use_bytes_summary.items():
+            summary_keys = use_bytes_summary.keys()
+            summary_keys.sort()
+            for date in summary_keys:
+                stats = use_bytes_summary[date]
                 sum_read = sum_read + stats['mb_read']
                 sum_write = sum_write + stats['mb_write']
 
@@ -389,7 +394,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             #Write out one more line to plot the estimated usage the
             # next month.
             line = "%s %s %s %s\n" % (
-                        month_ahead_date, 0, 0,
+                        month_ahead_date, "skip", "skip",
                         (today_bytes - month_bytes) + today_bytes)
             if self.LM_dict.has_key(key):
                 self.LM_dict[key].write(line)
