@@ -39,6 +39,14 @@ GB=KB*MB
 TB=KB*GB
 PB=KB*TB
 
+# tape capacity in GB
+CAP_9840=20
+CAP_9940=60
+CAP_9940B=200
+CAP_LTO1=100
+CAP_LTO2=200
+CAP_LTO3=400
+CAP_LTO4=800
 
 EXTRA_LINKS = "extra_links"
 ENSTORE_PLOTS = "enstore_plots"
@@ -188,6 +196,8 @@ PNFS_BACKUP_TIME_PLOTS_SUBDIR = ""
 FILE_FAMILY_ANALYSIS_PLOT_SUBDIR = "file_family_usage"
 ENCP_RATE_MULTI_PLOTS_SUBDIR = "encp-rates"
 QUOTA_PLOTS_SUBDIR = "quotas"
+TAPES_BURN_RATE_PLOTS_SUBDIR = "burn-rate"
+
 
 OUTAGEFILE = "enstore_outage.py"
 SEENDOWNFILE = "enstore_seen_down.py"

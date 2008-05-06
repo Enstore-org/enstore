@@ -24,6 +24,7 @@ import pnfs_backup_plotter_module
 import file_family_analysis_plotter_module
 import encp_rate_multi_plotter_module
 import quotas_plotter_module
+import tapes_burn_rate_plotter_module
 
 
 def usage(cmd):
@@ -41,10 +42,10 @@ def usage(cmd):
     
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfeq"
+        short_args = "hmrudspfeqt"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
                      "slots", "pnfs-bakup", "file-family-analysis",
-                     "--quotas", ]
+                     "--quotas", "--tapes-burn-rate"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError:
         print "Failed to process arguments"
@@ -89,6 +90,10 @@ if __name__ == "__main__":
         # quotas
         if o in ("-q","--quotas"):
             aModule = quotas_plotter_module.QuotasPlotterModule("quotas")
+            f.add(aModule)
+        # tapes burn rate
+        if o in ("-t","--tapes-burn-rate"):
+            aModule = tapes_burn_rate_plotter_module.TapesBurnRatePlotterModule("tapes_burn_rate")
             f.add(aModule)
 
     f.do_work()
