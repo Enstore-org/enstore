@@ -293,7 +293,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             #Update the LM and SG byte counts into day increments.
             lm_sg_summary = bytes_summary.get((lm, sg), {})
             if lm_sg_summary == {}:
-                bytes_summary[lm] = {} #Initial value.
+                bytes_summary[(lm, sg)] = {} #Initial value.
             summary = lm_sg_summary.get(date, {'mb_read':0, 'mb_write':0,})
             summary['mb_write'] = summary['mb_write'] + mb_user_write
             summary['mb_read'] = summary['mb_read'] + mb_user_read            
@@ -309,7 +309,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             bytes_summary[lm][date] = summary
 
             this_timestamp = time.mktime(time.strptime(timestamp,
-                                                       "%m-%d-%Y %H:%M:%S"))
+                                                       "%Y-%m-%d %H:%M:%S"))
 
             #Get the tapes used values for monthly and weekly for both
             # the library and library w/ storage group.  The length of the
