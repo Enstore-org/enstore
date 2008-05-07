@@ -42,6 +42,15 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def __init__(self,name,isActive=True):
         enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
 
+        #The keys to this dictionary are either a library or tuple of
+        # library and storage_group.  The values are file handles to the
+        # pts files written out in the fill() function.
+        self.PLOT_dict = {}
+
+        #This one is used by summary_burn_rate_plotter_module.py.  Appears here
+        # only for compatibility.
+        self.output_fname_prefix = ""
+
     #Write out the file that gnuplot will use to plot the data.
     # plot_filename = The file that will be read in by gnuplot containing
     #                 the gnuplot commands.
@@ -70,7 +79,10 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             tapes_written_last_week = 0
 
         #Get the blank and used number of tapes.
-        blanks, written = self.tape_totals[key]
+        try:
+            blanks, written = self.tape_totals[key]
+        except KeyError:
+            blanks, written = 0, 0  #What can cause this???
             
         #Need the current time to add to the plot.
         now = time.strftime("%m-%d-%Y %H:%M:%S")
@@ -117,7 +129,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         plot_fp.close()
 
     #######################################################################
-    # The following functions must be defined by all plotting modueles.
+    # The following functions must be defined by all plotting modules.
     #######################################################################
         
     def book(self, frame):
@@ -356,8 +368,8 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             sum_read = 0
             sum_write = 0
-            month_bytes = 0
-            today_bytes = 0
+            month_g_bytes = 0
+            today_g_bytes = 0
 
             try:
                 use_bytes_summary = bytes_summary[key]
@@ -372,18 +384,22 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 sum_read = sum_read + stats['mb_read']
                 sum_write = sum_write + stats['mb_write']
 
+                #Convert from MB to GB.
+                current_gb = stats['mb_write'] / 1024.0
+                total_gb = sum_write / 1024.0
+
                 #For a month ago and today, plot an extra line conneting them.
                 if month_ago_date == date:
                     line = "%s %s %s %s\n" % (
-                        date, stats['mb_write'], sum_write, sum_write)
-                    month_bytes = sum_write #Remember this for estimating.
+                        date, current_gb, total_gb, total_gb )
+                    month_g_bytes = total_gb #Remember this for estimating.
                 elif today_date == date:
                     line = "%s %s %s %s\n" % (
-                        date, stats['mb_write'], sum_write, sum_write)
-                    today_bytes = sum_write #Remember this for estimating.
+                        date, current_gb, total_gb, total_gb)
+                    today_g_bytes = total_gb #Remember this for estimating.
                 else:
                     line = "%s %s %s\n" % (
-                        date, stats['mb_write'], sum_write)
+                        date, current_gb, total_gb)
 
                 #Write out the information to the correct data file.
                 if self.LM_dict.has_key(key):
@@ -395,7 +411,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             # next month.
             line = "%s %s %s %s\n" % (
                         month_ahead_date, "skip", "skip",
-                        (today_bytes - month_bytes) + today_bytes)
+                        (today_g_bytes - month_g_bytes) + today_g_bytes)
             if self.LM_dict.has_key(key):
                 self.LM_dict[key].write(line)
             elif self.LM_SG_dict.has_key(key):
@@ -407,37 +423,44 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         for pts_file in self.LM_dict.values():
             pts_file.close()
 
-            
+        #For compatiblity with system summary level burn rate plots; combine
+        # these to dictionaries into one.
+        for key in self.LM_dict.keys():
+            self.PLOT_dict[key] = self.LM_dict[key]
+        for key in self.LM_SG_dict.keys():
+            self.PLOT_dict[key] = self.LM_SG_dict[key]
         
     def plot(self):
-
-        for key in self.LM_dict.keys() + self.LM_SG_dict.keys():
+        #for key in self.LM_dict.keys() + self.LM_SG_dict.keys():
+        for key in self.PLOT_dict.keys():
             #Key at this point is either, the library or a tuple consisting
             # of the library and storage group.
 
             #If the plot is for an library with storage group pair, me should
             # make the output a little easier to read.
             if type(key) == types.TupleType:
-                label = string.join(key, "_")
+                label = string.join(key, ".")
             else:
                 label = key
 
             #Get some filenames for the various files that get created.
             plot_filename = os.path.join(self.temp_dir,
                                          "burn_rate.%s.plot" % (label,))
-            if self.LM_dict.has_key(key):
-                pts_filename = self.LM_dict[key].name
-            elif self.LM_SG_dict.has_key(key):
-                pts_filename = self.LM_SG_dict[key].name
+
+            if self.PLOT_dict.has_key(key):
+                pts_filename = self.PLOT_dict[key].name
             else:
                 sys.stderr.write("No pts file for %s.\n" % (key,))
                 continue
             ps_filename = os.path.join(self.web_dir,
-                                       "burn_rate_%s.ps" % (label,))
+                                       "%s%s.ps" % (self.output_fname_prefix,
+                                                    label,))
             jpg_filename = os.path.join(self.web_dir,
-                                        "burn_rate_%s.jpg" % (label,))
+                                        "%s%s.jpg" % (self.output_fname_prefix,
+                                                      label,))
             jpg_stamp_filename = os.path.join(self.web_dir,
-                                        "burn_rate_%s_stamp.jpg" % (label,))
+                                        "%s%s_stamp.jpg" % (self.output_fname_prefix,
+                                                            label,))
 
             #Write the gnuplot command file(s).
             self.write_plot_file(plot_filename, pts_filename, ps_filename, key)
