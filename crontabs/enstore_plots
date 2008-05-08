@@ -25,8 +25,3 @@
 26 00 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfs_backup_time $ENSTORE_DIR/src/plotter_main.py -p > /dev/null 2> /dev/null
 
 30 2,7,16 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_overall_plot python $ENSTORE_DIR/src/plotter.py --total_bytes --pts_nodes=d0ensrv2,stkensrv2,cdfensrv2 --no-plot-html  > /dev/null 2> /dev/null
-
-
-##
-20 1 * * 1 enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p weekly_summary -l $ENSTORE_DIR/src/weekly_summary_report.py /tmp/weekly_report > /dev/null 2> /dev/null
-
