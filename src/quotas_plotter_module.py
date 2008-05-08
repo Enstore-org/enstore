@@ -20,7 +20,7 @@ WEB_SUB_DIRECTORY = enstore_constants.QUOTA_PLOTS_SUBDIR
 
 """
 In the Accounting DB to create the necessary table:
-create table quotas ( time timestamp with time zone PRIMARY KEY DEFAULT CURRENT_TIMESTAMP, library character varying not null, storage_group character varying not null, allocated int not null, blank int not null, written int not null, requested int null, authorized int null, quota int null );
+create table quotas ( time timestamp with time zone DEFAULT CURRENT_TIMESTAMP, library character varying not null, storage_group character varying not null, allocated int, blank int not null, written int not null, requested int null, authorized int null, quota int null,  PRIMARY KEY (time,library,storage_group));
 """
 
 DAYS_AGO = 30*3  #Days in the past to start ploting data from.
@@ -73,8 +73,10 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         plot_fp.write("set xrange ['%s':'%s']\n"
                       % (last_quarter, next_month))
         plot_fp.write("set yrange [0:]\n")
-        plot_fp.write("plot \"%s\" using 1:5 title \"Blanks Left\" with impulses\n" \
+        plot_fp.write("plot \"%s\" using 1:6 title \"Blanks Left\" with impulses\n" \
                       % (data_filename,))
+        #plot_fp.write("plot \"%s\" using 1:6 title \"Blanks Left\" with impulses, \"%s\" using 1:7 title \"Tapes Used\" with impulses\n" \
+        #              % (data_filename,data_filename))
 
         plot_fp.close()
 
@@ -109,7 +111,8 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                    user   = edb.get('dbuser', "enstore")
                    )
 
-        #Get the current volume count and quota information.
+        #Get the current volume count and quota information.  Let's
+        # also skip null and deleted volumes.
         sql_cmd = "select v1.library, v1.storage_group," \
                   "count(v1.library) as allocated," \
                   "count(v2.library) as blank," \
@@ -122,6 +125,7 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                   "as v3 on v3.id=v1.id " \
                   "full join (select * from quota) as q on " \
                   "q.library=v1.library and q.storage_group=v1.storage_group" \
+                  " where v1.media_type != 'null' and v1.label not like '%.deleted'" \
                   " group by v1.library,v1.storage_group,q.requested," \
                   "q.authorized,q.quota,q.significance;"
 
@@ -137,7 +141,6 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                        )
 
         for row in self.db_result:
-            #print row
 
             lib_sg = (row[0], row[1]) #(library, storage group)
 
@@ -197,7 +200,10 @@ class QuotasPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             for row in res:
                 #Strip off the partial seconds information.
                 row_as_list = list(row)
-                row_as_list[0] = row[0].split(".")[0]
+                #First, remove potential parts of seconds.  Then, remove
+                # possible timezone adjustments.
+                row_as_list[0] = row_as_list[0].split(".")[0]
+                row_as_list[0] = string.join(row_as_list[0].split("-")[:3], "-")
                 line = string.join(map(str, row_as_list), " ")
 
                 #Write out to the datafile.
