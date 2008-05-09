@@ -1,6 +1,16 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
+# system imports
 import sys
 import os
 
+# enstore modules
 import inquisitor_plots
 import enstore_files
 import enstore_constants
@@ -19,6 +29,7 @@ import string
 MY_NAME = "Plotter"
 BURN_RATE = "burn-rate"
 ENCP_RATE = "encp-rates"
+QUOTAS = "quotas"
 FILE_FAMILY_USAGE = "file_family_usage"
 
 class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
@@ -96,7 +107,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	dir = "%s/%s"%(self.html_dir, ENCP_RATE)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
-            os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
+        os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
 	if os.path.isdir(dir):
             Trace.trace(enstore_constants.PLOTTING,
                     "adding links to encp rate plots")
@@ -108,10 +119,11 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
             links_to_add.append(("%s/%s"%(ENCP_RATE, 
                                           enstore_files.plot_html_file_name()),
                                  "Encp rates per Storage Group Plots"))
+        # --------------------------------------------------
 	dir = "%s/%s"%(self.html_dir, FILE_FAMILY_USAGE)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
-            os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
+        os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
 	if os.path.isdir(dir):
             Trace.trace(enstore_constants.PLOTTING,
                     "adding links to encp rate plots")
@@ -123,10 +135,11 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
             links_to_add.append(("%s/%s"%(FILE_FAMILY_USAGE, 
                                           enstore_files.plot_html_file_name()),
                                  "Tape occupancies per Storage Group Plots"))
+        # --------------------------------------------------
         dir = "%s/%s"%(self.html_dir, inquisitor_plots.XFER_SIZE)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
-            os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
+        os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
 	if os.path.isdir(dir):
             Trace.trace(enstore_constants.PLOTTING,
                     "adding links to encp size plots")
@@ -142,7 +155,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	dir = "%s/%s"%(self.html_dir, BURN_RATE)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
-            os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
+        os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
 	if os.path.isdir(dir):
 	    Trace.trace(enstore_constants.PLOTTING,
                         "adding links to burn rate plots")
@@ -154,6 +167,23 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	    links_to_add.append(("%s/%s"%(BURN_RATE, 
 					  enstore_files.plot_html_file_name()),
 				 "Bytes Written per Storage Group Plots"))
+        # --------------------------------------------------
+        dir = "%s/%s"%(self.html_dir, QUOTAS)
+        if not os.access(dir, os.F_OK):
+            os.makedirs(dir)
+        os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
+	if os.path.isdir(dir):
+	    Trace.trace(enstore_constants.PLOTTING,
+                        "adding links to quotas plots")
+            # there are plots here
+	    plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
+	    plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+						   self.system_tag, "../")
+	    self.plotfile_l.append([plotfile2, dir])
+	    links_to_add.append(("%s/%s"%(QUOTAS, 
+					  enstore_files.plot_html_file_name()),
+				 "Quota per Storage Group Plots"))
+        # --------------------------------------------------
 	# add any links that are specified in the config file
 	extra_links = self.csc.get(enstore_constants.EXTRA_LINKS)
 	if extra_links.has_key(enstore_constants.ENSTORE_PLOTS):
