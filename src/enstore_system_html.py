@@ -1,14 +1,25 @@
 #!/usr/bin/env python
-import enstore_html
-import enstore_files
-import HTMLgen
-import web_server
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
+##Make the top level web page for an Instance of Enstore.
+
+# system imports
 import os
 import string
 import socket
 import pg
+
+# enstore modules
+import enstore_html
+import enstore_files
+import HTMLgen
+import web_server
 import configuration_client
-import sys
 import Trace
 
 TITLE="ENSTORE SYSTEM INFORMATION"
@@ -39,6 +50,7 @@ class EnstoreSystemHtml:
         self.page.alinkcolor=ALINKCOLOR
         self.page.bgcolor=BGCOLOR
 
+
         global_table=HTMLgen.TableLite(cellpadding=0,cellspacing=0,border=0)
         global_table.append(HTMLgen.TR(enstore_html.empty_data()))
         global_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Center(HTMLgen.EM(
@@ -47,12 +59,16 @@ class EnstoreSystemHtml:
         global_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Center(HTMLgen.Image("ess.gif",align="CENTER")))))
         global_table.append(HTMLgen.TR(enstore_html.empty_data()))
 
+
+        ###
+        ### User Data Table
+        ###
         self.user_data_table=HTMLgen.TableLite(cellpadding=2,cellspacing=2,border=4)
         t2tr1=HTMLgen.TR()
         t2tr1.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font("User Data on Tape &nbsp;:&nbsp;",
                                                           html_escape='OFF',
                                                           size="+2"))))
-        t2tr1.append(HTMLgen.TD(HTMLgen.Font("%s TB"%(bytes),
+        t2tr1.append(HTMLgen.TD(HTMLgen.Font("%s TiB"%(bytes),
                                              html_escape='OFF',
                                              size="+2",color=TITLECOLOR),
                                 bgcolor="#FFFFF0"))
@@ -62,6 +78,9 @@ class EnstoreSystemHtml:
         global_table.append(HTMLgen.TR(enstore_html.empty_data()))
 
 
+        ###
+        ### Status Table
+        ###
         self.status_table=HTMLgen.TableLite(cellpadding=2,bgcolor=TABLECOLOR,cellspacing=5,border=2)
         self.status_table.width="100%"
 
@@ -72,12 +91,12 @@ class EnstoreSystemHtml:
         add_row_to_table(self.status_table,"enstore_alarms.html","Alarms","Active alarms and alarm history")
         add_row_to_table(self.status_table,"enstore_logs.html","Log Files","Hardware and software log files")
         add_row_to_table(self.status_table,"tape_inventory/VOLUME_QUOTAS","Quota and Usage","How tapes are allocated and being used")
-        add_row_to_table(self.status_table,"plot_enstore_system.html","Plots","Inquisitor Plots")
+        add_row_to_table(self.status_table,"plot_enstore_system.html","Plots","Enstore Plots")
+        add_row_to_table(self.status_table,"/cgi-bin/enstore_show_inv_summary_cgi.py","Tape Inventory Summary","Summary of inventory results")
+        add_row_to_table(self.status_table,"/cgi-bin/enstore_show_inventory_cgi.py","Tape Inventory ","Detailed list of tapes and their contents")
+        #add_row_to_table(self.status_table,"enstore_quotas.html","Tape Quotas","Plots of tape quotas")
+        add_row_to_table(self.status_table,"cron_pics.html","Cronjob Status","Lots of cronjob exit status for past week")
         
-        if not remote:
-            add_row_to_table(self.status_table,"http://www-isd.fnal.gov/enstore/enstore_status_only.html",
-                                    "Production System's Overall Status","Status for all production Enstore systems")
-            
                                     
         global_table.append(HTMLgen.TR(self.status_table))
         global_table.append(HTMLgen.TR(enstore_html.empty_data()))
@@ -86,23 +105,20 @@ class EnstoreSystemHtml:
         global_table.append(HTMLgen.TR(enstore_html.empty_data()))
         
 
+        ###
+        ### Info Table
+        ###
         self.info_table=HTMLgen.TableLite(cellpadding=2,bgcolor=TABLECOLOR,cellspacing=5,border=2)
         self.info_table.width="100%"
-
-        add_row_to_table(self.info_table,"/cgi-bin/enstore_show_inv_summary_cgi.py",
-                         "Tape Inventory Summary","Summary of inventory results")
-
-        add_row_to_table(self.info_table,"/cgi-bin/enstore_show_inventory_cgi.py",
-                         "Tape Inventory ","Detailed list of tapes and their contents")
-
-        add_row_to_table(self.info_table,"enstore_quotas.html","Tape Quotas","Plots of tape quotas")
-        add_row_to_table(self.info_table,"cron_pics.html","Cronjob Status","lots of cronjob exit status for past week")
+        
         if not remote:
             add_row_to_table(self.info_table,"http://www-ccf.fnal.gov/enstore","Mass Storage System Main Page","Storage links for Enstore and dCache")
         add_row_to_table(self.info_table,"http://www-ccf.fnal.gov/enstore/documentation.html","Mass Storage System Documentation Page",
                          "Documentation, reports, talks for Enstore and dCache")
-        
-        
+        if not remote:
+            add_row_to_table(self.info_table,"http://www-isd.fnal.gov/enstore/enstore_status_only.html",
+                                    "Production System's Overall Status","Status for all production Enstore systems")
+            
         
         
         global_table.append(HTMLgen.TR(self.info_table))
