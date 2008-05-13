@@ -22,10 +22,8 @@ of pickle.
 import time
 import sys
 import os
-#import string
 import random
 import select
-#import errno
 import socket
 import cPickle
 import errno
@@ -36,7 +34,6 @@ import types
 import Trace
 import e_errors
 import checksum
-#import hostaddr
 import host_config
 from en_eval import en_eval
 
@@ -144,27 +141,38 @@ def write_raw(sock,msg,timeout=15*60):
                 break
             ptr = ptr+nwritten
         timeout_send(sock, hex8(checksum.adler32(salt,msg,l)), timeout)
-        return 0
-    except socket.error, detail:
-        Trace.log(e_errors.ERROR,"write_tcp_raw: socket.error %s"%(detail,))
-        return 1
+        return 0, ""
+    except (socket.error, OSError), detail:
+        error_string = "write_raw: socket.error %s"%(detail,)
+        #Trace.log(e_errors.ERROR, error_string)
+        return 1, error_string
         ##XXX Further sends will fail, our peer will notice incomplete message
 
 write_tcp_raw = write_raw
 
 # send a message over the network which is a Python object
 def write_tcp_obj(sock,obj,timeout=15*60):
-    return write_tcp_raw(sock,repr(obj),timeout)
+    rtn, e = write_tcp_raw(sock,repr(obj),timeout)
 ### When we want to go strictly to cPickle use the following line.
 #    return write_tcp_obj_new(sock,obj,timeout)
 
+    Trace.log(e_errors.ERROR, e)
+    return rtn
+
 # send a message over the network which is a Python object
 def write_tcp_obj_new(sock,obj,timeout=15*60):
-    return write_tcp_raw(sock,cPickle.dumps(obj),timeout)
+    rtn, e = write_tcp_raw(sock,cPickle.dumps(obj),timeout)
+    Trace.log(e_errors.ERROR, e)
+    return rtn
 
 # send a message to a co-process which is a Python object
-def write_obj(fd, obj, timeout=15*60):
-    return write_raw(fd, cPickle.dumps(obj), timeout)
+def write_obj(fd, obj, timeout=15*60, verbose = True):
+    rtn, e = write_raw(fd, cPickle.dumps(obj), timeout)
+
+    if e and verbose:
+        Trace.log(e_errors.ERROR, e)
+
+    return rtn
 
 ###############################################################################
 ###############################################################################
@@ -234,12 +242,14 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
     total_start_time = time.time()
     #time_left = timeout
     timeout_time = time.time() + timeout
+
+    error_string = ""
     
     #Loop until a the timeout has passed, a hard error occurs or
     # the message has really arrived.
     #while time_left > 0.0:
     while timeout_time > time.time():
-        start_time = time.time()
+        #start_time = time.time()
         try:
             time_left = max(timeout_time - time.time(), 0.0)
             fds, junk, junk = select.select([sock], [], [], time_left)
@@ -248,16 +258,16 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
                 #time_left = max(total_start_time + timeout - time.time(), 0.0)
                 continue
             #fds = []
-            Trace.log(e_errors.ERROR, "timeout_recv(): %s" % str(msg))
+            error_string = "timeout_recv(): %s" % str(msg)
+            #Trace.log(e_errors.ERROR, error_string)
             #Return to handle the error.
-            return ""
-        end_time = time.time()
+            return "", error_string
+        #end_time = time.time()
         if sock not in fds:
-            Trace.log(e_errors.ERROR,
-                      "timeout_recv(): select duration: %s  fds: %s  sock: %s"
-                      % (end_time - start_time, fds, sock))
-            #return ""
-            #time_left = max(total_start_time + timeout - time.time(), 0.0)
+            #error_string = "timeout_recv(): select duration: %s  fds: %s  sock: %s"
+            #          % (end_time - start_time, fds, sock)
+            #Trace.log(e_errors.ERROR, error_string)
+
             #Hopefully, this situation is different than other situations
             # that were all previously lumped together as "error".
             continue
@@ -271,51 +281,56 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             # string the other end has closed the connection.
             
             #Log the time spent waiting.
-            Trace.log(e_errors.ERROR,
-                      "timeout_recv(): time passed: %s sec of %s sec" %
-                      (time.time() - total_start_time, timeout))
+            error_string = "timeout_recv(): time passed: %s sec of %s sec" % \
+                           (time.time() - total_start_time, timeout)
+            #Trace.log(e_errors.ERROR, error_string)
 
-        return data_string
+        return data_string, error_string
         
     #timedout
-    Trace.log(e_errors.ERROR, "timeout_recv(): timedout")
-    return ""
+    error_string = "timeout_recv(): timedout"
+    #Trace.log(e_errors.ERROR, error_string)
+    return "", error_string
 
 #read_raw - return tuple of message read and error string.  One or the other
 # should be returned as an empty string.
 def read_raw(fd, timeout=15*60):
     #Trace.log(e_errors.INFO, "read_raw: starting")
-    tmp = timeout_recv(fd, 8, timeout) # the message length
+    tmp, error_string = timeout_recv(fd, 8, timeout) # the message length
     len_tmp = len(tmp)
     if len_tmp != 8:
-        error_string = "read_raw: wrong bytecount (%d) '%s'" % (len_tmp, tmp)
+        
+        error_string = "%s; read_raw: wrong bytecount (%d) '%s'" % \
+                       (error_string, len_tmp, tmp)
         return "", error_string
     try:
         bytecount = int(tmp)
     except (ValueError, TypeError):
-        error_string = "read_tcp_raw: bad bytecount '%s'" % (tmp,)
+        error_string = "%s; read_tcp_raw: bad bytecount '%s'" % \
+                       (error_string, tmp,)
         return "", error_string
-    tmp = timeout_recv(fd, 8, timeout) # the 'signature'
+    tmp, error_string = timeout_recv(fd, 8, timeout) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
-        error_string = "read_tcp_raw: invalid signature '%s'" % (tmp,)
+        error_string = "%s; read_tcp_raw: invalid signature '%s'" % \
+                       (error_string, tmp,)
         return "", error_string
     salt= int(tmp[6:])
     msg = ""
     while len(msg) < bytecount:
-        tmp = timeout_recv(fd, bytecount - len(msg), timeout)
+        tmp, error_string = timeout_recv(fd, bytecount - len(msg), timeout)
         if not tmp:
             break
         msg = msg+tmp
     if len(msg)!=bytecount:
-        error_string = "read_tcp_raw: bytecount mismatch %s != %s" \
-                       % (len(msg), bytecount)
+        error_string = "%s; read_tcp_raw: bytecount mismatch %s != %s" \
+                       % (error_string, len(msg), bytecount)
         return "", error_string
-    tmp = timeout_recv(fd, 8, timeout)
+    tmp, error_string = timeout_recv(fd, 8, timeout)
     crc = long(tmp, 16)  #XXX 
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
-        error_string = "read_tcp_raw: checksum mismatch %s != %s" \
-                        % (mycrc, crc)
+        error_string = "%s; read_tcp_raw: checksum mismatch %s != %s" \
+                        % (error_string, mycrc, crc)
         return "", error_string
     return msg, ""
 
@@ -349,7 +364,7 @@ def read_tcp_obj(sock, timeout=15*60) :
     return obj
 
 # receive a message over the network which is a Python object
-def read_tcp_obj_new(sock, timeout=15*60) :
+def read_tcp_obj_new(sock, timeout=15*60):
     s, e = read_tcp_raw(sock, timeout)
     if not s:
         record_recv_error(s) #Log the state of the socket.
@@ -367,10 +382,11 @@ def read_tcp_obj_new(sock, timeout=15*60) :
     return cPickle.loads(s)
 
 # receive a message from a co-process which is a Python object
-def read_obj(fd, timeout=15*60):
+def read_obj(fd, timeout=15*60, verbose = True):
     s, e = read_raw(fd, timeout)
     if not s:
-        sys.stderr.write(e)
+        if verbose:
+            Trace.log(e_errors.ERROR, e)
         
         raise e_errors.TCP_EXCEPTION #What should this be?
     return cPickle.loads(s)
