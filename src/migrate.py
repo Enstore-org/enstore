@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 """
 migrate.py -- migration
 
@@ -51,22 +57,26 @@ Implementation issues:
     -- checked
 """
 
-import file_clerk_client
-import volume_clerk_client
-import configuration_client
-import pnfs
-import option
-import os
-import sys
-import string
-import e_errors
-import encp_wrapper
-import volume_family
+# system imports
 import pg
 import time
 import thread
 import threading
 import Queue
+import os
+import sys
+import string
+
+# enstore imports
+import file_clerk_client
+import volume_clerk_client
+import configuration_client
+import pnfs
+import option
+import e_errors
+import encp_wrapper
+import volume_family
+import enstore_functions2
 
 debug = False	# debugging mode
 
@@ -82,7 +92,8 @@ no_log_command = ['--migrated-from', '--migrated-to']
 # server in the production version
 
 # SPOOL_DIR='/diskb/Migration_tmp'
-SPOOL_DIR='/data/data2/Migration_Spool'
+#SPOOL_DIR='/data/data2/Migration_Spool'
+SPOOL_DIR=''
 # DEFAULT_LIBRARY='CD-9940B'
 DEFAULT_LIBRARY=''
 
@@ -142,6 +153,7 @@ def time2timestamp(t):
 # initialize csc, db, ... etc.
 def init():
 	global db, csc, log_f, dbhost, dbport, dbname, errors
+	global SPOOL_DIR
 	intf = option.Interface()
 	csc = configuration_client.ConfigurationClient((intf.config_host,
 		intf.config_port))
@@ -152,6 +164,12 @@ def init():
 	dbname = db_info['dbname']
 
 	errors = 0
+
+	if not SPOOL_DIR:
+		SPOOL_DIR = enstore_functions2.default_value("SPOOL_DIR")
+	if not SPOOL_DIR:
+		sys.stderr.write("No spool directory specified.\n")
+		sys.exit(1)
 
 	# check for no_log commands
 	if len(sys.argv) > 2 and not sys.argv[1] in no_log_command:
@@ -1115,13 +1133,15 @@ def usage():
 	print "  %s [opt] <file list>"%(sys.argv[0])
 	print "  %s [opt] --bfids <bfid list>"%(sys.argv[0])
 	print "  %s [opt] --vol <volume list>"%(sys.argv[0])	
-	print "  %s [opt] --vol-with-deleted <volume list>"%(sys.argv[0])	
+	print "  %s [opt] --vol-with-deleted <volume list>"%(sys.argv[0])
 	print "  %s --restore <bfid list>"%(sys.argv[0])
 	print "  %s --restore-vol <volume list>"%(sys.argv[0])
 	print "  %s --scan-vol <volume list>"%(sys.argv[0])
 	print "  %s --migrated-from <vol>"%(sys.argv[0])
 	print "  %s --migrated-to <vol>"%(sys.argv[0])
-	print "\nwhere opt is:"
+	print "\nwhere opt (in this order) is:"
+	print "  --priority <priority>"
+	print "  --spool-dir <dir>"
 	print "  --use-file-family <file_family>"
 	print "  --library <library>"
 	print "\nif both --use-file-family and --library are used"
@@ -1143,6 +1163,13 @@ if __name__ == '__main__':
 	if sys.argv[1] == "--priority":
 		ENCP_PRIORITY = int(sys.argv[2])
 
+		cmd1 = sys.argv[0]
+		sys.argv = sys.argv[2:]
+		sys.argv[0] = cmd1
+
+	if sys.argv[1] == "--spool-dir":
+		SPOOL_DIR = int(sys.argv[2])
+		
 		cmd1 = sys.argv[0]
 		sys.argv = sys.argv[2:]
 		sys.argv[0] = cmd1
