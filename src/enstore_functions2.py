@@ -6,6 +6,7 @@
 #
 ###############################################################################
 
+# system imports
 import sys
 import time
 import string
@@ -21,7 +22,10 @@ import errno
 import socket
 import pwd
 
+# enstore imports
+### enstore_constants should be the only enstore import in this module!
 import enstore_constants
+
 
 ###########################################################################
 ## conversion function for permissions
@@ -383,10 +387,10 @@ def get_status(dict):
 ###########################################################################
 
 def __get_wormhole(lname):
-    if lname not in ["ENSTORE_CONFIG_HOST", "ENSTORE_CONFIG_PORT",
-                     "ENSTORE_CONFIG_FILE"]:
-        raise ValueError("Expected ENSTORE_CONFIG_HOST, ENSTORE_CONFIG_PORT"
-                         " or ENSTORE_CONFIG_FILE")
+    #if lname not in ["ENSTORE_CONFIG_HOST", "ENSTORE_CONFIG_PORT",
+    #                 "ENSTORE_CONFIG_FILE"]:
+    #    raise ValueError("Expected ENSTORE_CONFIG_HOST, ENSTORE_CONFIG_PORT"
+    #                     " or ENSTORE_CONFIG_FILE")
 
     #Read in the /etc/mtab file.
     for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
@@ -455,10 +459,10 @@ def __find_config_file():
     return None
 
 def __get_enstorerc(lname):
-    if lname not in ["ENSTORE_CONFIG_HOST", "ENSTORE_CONFIG_PORT",
-                     "ENSTORE_CONFIG_FILE"]:
-        raise ValueError("Expected ENSTORE_CONFIG_HOST, ENSTORE_CONFIG_PORT"
-                         " or ENSTORE_CONFIG_FILE")
+    #if lname not in ["ENSTORE_CONFIG_HOST", "ENSTORE_CONFIG_PORT",
+    #                 "ENSTORE_CONFIG_FILE"]:
+    #    raise ValueError("Expected ENSTORE_CONFIG_HOST, ENSTORE_CONFIG_PORT"
+    #                     " or ENSTORE_CONFIG_FILE")
 
     list_of_enstore_files = []
 
@@ -541,6 +545,9 @@ def _get_value(requested_val, default_val):
                 return default_val, True
 
     return None, False  #Impossible to get here.
+
+def default_value(requested_val):
+    return _get_value(requested_val, None)[0]
 
 def used_default_host():
     global used_default_config_host
