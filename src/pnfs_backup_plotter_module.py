@@ -118,7 +118,7 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             try:
                 split_time = duration.split(":")
             except AttributeError:
-                #We we get here, it just so happens that a pnfs backup is
+                #When we get here, it just so happens that a pnfs backup is
                 # in progress.  start is set to a time, but duration is
                 # set to None because it is still empty in the DB.
                 continue
