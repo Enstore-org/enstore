@@ -5796,6 +5796,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                                                   0),
                                'queue_size':0}
                 Trace.log(e_errors.ERROR, str(result_dict))
+                #Since, we know which request resend gave this error, we
+                # should include it in the result_dict so that it can
+                # have its retry count incremented correctly.
+                result_dict = combine_dict(result_dict, request_list[i])
+                break
             #If a retriable error occured while resubmitting to LM.
             elif not e_errors.is_ok(internal_result_dict['status'][0]):
                 result_dict = {'status':internal_result_dict['status'],
@@ -5804,6 +5809,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                                                   0),
                                'queue_size':len(request_list)}
                 Trace.log(e_errors.ERROR, str(result_dict))
+                #Since, we know which request resend gave this error, we
+                # should include it in the result_dict so that it can
+                # have its retry count incremented correctly.
+                result_dict = combine_dict(result_dict, request_list[i])
+                break
             #If no error occured while resubmitting to LM.
             else:
                 result_dict = {'status':(e_errors.RESUBMITTING,
@@ -7704,6 +7714,11 @@ def write_to_hsm(e, tinfo):
                                      listen_socket = listen_socket,
                                      local_filename = local_filename,
                                      external_label = external_label)
+
+        #For LM submission errors (i.e. tape went NOACCESS), use
+        # any request information in result_dict to identify which
+        # request gave an error.
+        done_ticket = combine_dict(result_dict, done_ticket)
 
         if e_errors.is_non_retriable(result_dict):
 
@@ -9659,6 +9674,11 @@ def read_from_hsm(e, tinfo):
                                              local_filename = local_filename,
                                              external_label = external_label)
 
+                #For LM submission errors (i.e. tape went NOACCESS), use
+                # any request information in result_dict to identify which
+                # request gave an error.
+                done_ticket = combine_dict(result_dict, done_ticket)
+                
                 #Obtain the index of the returned request.
                 index, unused = get_request_index(request_list, done_ticket)
 
