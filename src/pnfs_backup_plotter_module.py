@@ -115,7 +115,13 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             duration = row[1]  #hh:mm:ss
 
             #Convert the duration into a single numerical value in seconds.
-            split_time = duration.split(":")
+            try:
+                split_time = duration.split(":")
+            except AttributeError:
+                #We we get here, it just so happens that a pnfs backup is
+                # in progress.  start is set to a time, but duration is
+                # set to None because it is still empty in the DB.
+                continue
             seconds = int(split_time[0]) * 3600 + \
                       int(split_time[1]) * 60 + \
                       int(split_time[2])
