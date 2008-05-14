@@ -24,6 +24,6 @@
 # quotas
 5 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p quotas  $ENSTORE_DIR/src/plotter_main.py -q > /dev/null 2> /dev/null
 # pnfs backup time
-26 00 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfs_backup_time $ENSTORE_DIR/src/plotter_main.py -p > /dev/null 2> /dev/null
+15 1,13 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfs_backup_time $ENSTORE_DIR/src/plotter_main.py -p > /dev/null 2> /dev/null
 # tape burn rates
 0 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p burn-rate  $ENSTORE_DIR/src/plotter_main.py -t > /dev/null 2> /dev/null
