@@ -51,6 +51,9 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         # only for compatibility.
         self.output_fname_prefix = ""
 
+        #This is also used by summary_burn_rate_plotter_moduled.py.
+        self.extra_title_info = ""
+
     #Write out the file that gnuplot will use to plot the data.
     # plot_filename = The file that will be read in by gnuplot containing
     #                 the gnuplot commands.
@@ -93,6 +96,10 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             label = string.join(key, ".")
         else:
             label = key
+
+        #In case there is something else we want to add.
+        if hasattr(self, "extra_title_info"):
+            label = "%s %s" % (label, self.extra_title_info)
         
         plot_fp = open(plot_filename, "w+")
 

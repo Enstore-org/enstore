@@ -83,27 +83,39 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
         #del config_servers_dict['cdfen']
         #del config_servers_dict['d0en']
 
-        self.csc_list = []
-        for values in config_servers_dict.values():
-            self.csc_list.append(configuration_client.ConfigurationClient(values))
-
         self.MT_dict = {}
         tapes = {}
         self.tape_totals = {}
         bytes_summary = {}
         self.tapes_summary_week = {}
         self.tapes_summary_month = {}
+        self.extra_title_info = []
         month_ago = time.time() - DAYS_IN_MONTH * DAY_IN_SECONDS
         week_ago = time.time() - DAYS_IN_WEEK * DAY_IN_SECONDS
-        for csc in self.csc_list:
+
+        #Loop over all known configuration servers and obtaining information
+        # from all of them.
+        for name, values in config_servers_dict.items():
+            csc = configuration_client.ConfigurationClient(values)
+            
             ###
             ### Get information from the Enstore Database.
             ###
             edb = csc.get("database", {})
-            db = pg.DB(host  = edb.get('dbhost', "localhost"),
-                       dbname= edb.get('dbname', "enstore"),
-                       port  = edb.get('dbport', 5432),
-                       user  = edb.get('dbuser', "enstore"))
+            try:
+                db = pg.DB(host  = edb.get('dbhost', "localhost"),
+                           dbname= edb.get('dbname', "enstore"),
+                           port  = edb.get('dbport', 5432),
+                           user  = edb.get('dbuser', "enstore"))
+            except pg.InternalError, msg:
+                message = "Unable to contact (%s, %s): %s\n" % \
+                          (edb['dbhost'], edb['dbport'], msg)
+                sys.stderr.write(message)
+                continue
+
+            #Make sure to include a little extra information to name all
+            # systems that were successful at being included.
+            self.extra_title_info.append(name)
 
             #Get the unique library and storage group combinations.
             sql_cmd = "select distinct media_type from volume " \
@@ -238,9 +250,6 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
 
             pts_file = self.MT_dict[key]
             
-            #Key at this point is either, the library or a tuple consisting
-            # of the library and storage group.
-
             sum_read = 0
             sum_write = 0
             month_g_bytes = 0
