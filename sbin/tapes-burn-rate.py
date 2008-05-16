@@ -70,7 +70,6 @@ def get_capacity(volume, system):
 #&orders=Tape_Volser%20Asc%0D%0A
 
 cmd = 'rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.* dstat.*'
-print cmd
 os.system(cmd)
 
 #d1='01-NOV-01'
@@ -88,8 +87,6 @@ for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-
     else:
        d2 = '01-'+dat[0][:-1]
        d2 = string.upper(d2)
-print 'Generating burn-rate plots from', d1, ' to ',d2
-
 intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
 csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
 inq_d = csc.get(enstore_constants.INQUISITOR, {})
@@ -103,7 +100,6 @@ query_cmd='psql -h %s -p %d -U %s -o "drivestat.%s.txt" -c "select time,tape_vol
 
 for server in servers:
     server_name,server_port = servers.get(server)
-    print  server_name,server_port
     if ( server_port != None ):
         config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
         acc = config_server_client.get(enstore_constants.DRIVESTAT_SERVER)
@@ -131,20 +127,6 @@ for system in systems:
     cmd='wget -O  %s.quotas "http://%s/enstore/tape_inventory/VOLUME_QUOTAS"'%(system,system)
     os.system(cmd)
 
-#for cmd in \
-#           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.volumes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-#           '$ENSTORE_DIR/bin/Linux/wget -O d0en.volumes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-#           '$ENSTORE_DIR/bin/Linux/wget -O stken.volumes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-#           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.vol_sizes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
-#           '$ENSTORE_DIR/bin/Linux/wget -O d0en.vol_sizes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
-#           '$ENSTORE_DIR/bin/Linux/wget -O stken.vol_sizes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
-#           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.quotas  "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
-#           '$ENSTORE_DIR/bin/Linux/wget -O d0en.quotas   "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
-#           '$ENSTORE_DIR/bin/Linux/wget -O stken.quotas  "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"':
-#    print cmd
-#    os.system(cmd)
-#
-
 for system in systems:
     libraries[system] = {}
 
@@ -157,7 +139,6 @@ def lib_capacity(g):
             break
     else:
         cap = 0
-    print "CAPACITY %s"%(cap,)
     return cap
 
 for thefile in systems:
@@ -201,8 +182,6 @@ for thefile in systems:
         if not sg in libraries[thefile][l]['storage_groups']:
             libraries[thefile][l]['storage_groups'].append(sg)
     f.close()
-print "QUOTAS"
-pprint.pprint(QUOTAS)
 
 TAPES = {}
 #for thefile in 'cdfen','d0en','stken':
@@ -250,7 +229,6 @@ group_fd['ALL_LTO4'] = ALL_LTO4
 group_fd['CD-LTO3'] = CD_LTO3
 
 
-print 'sorting drivestat into storage group and library'
 f = open('dstat.txt',"r")
 eagle_mb = 0L
 beagle_mb = 0L
@@ -278,10 +256,8 @@ while 1:
         if len(line) > 1:
             i = 1
     if not line[i].isdigit():
-        #print "L",line
         continue
     (d,t,junk,v,junk1,mb) = line.split()
-    #print "qqqqqqqqq",d,junk,v,junk1,mb
     if not TAPES.has_key(v):
         print "Can not find",v
         g = 'UNKNOWN.UNKNOWN'
@@ -355,7 +331,6 @@ while 1:
     #    beagle.write('%s\n' % (ol,))
     else:
         #pass
-#        print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
         print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',l,sg
 
 #sys.exit()
@@ -363,11 +338,6 @@ for g in group_fd.keys():
     o = group_fd[g]
     o.close()
 
-#print "LIBRARIES"
-#pprint.pprint(libraries)
-
-#import pprint
-#pprint.pprint(QUOTAS)
 _9940_wv = _9940_bv = 0
 _9940_su = 0.
 _9940b_wv = _9940b_bv = 0
@@ -400,22 +370,15 @@ for g in group_fd.keys():
         pass
     elif g == 'CD-LTO3':
         pass
-    print "GOT HERE"
     if QUOTAS.has_key(g):
-        print g, QUOTAS[g]
         (wv,bv,su, l) = QUOTAS[g]
         cap = lib_capacity(g)
-        if cap == 0:
-            print "DON'T KNOW WHAT IS CAPACITY FOR %s"(g,)
-        
         if l in ['D0-9940B', 'CDF-9940B', 'CD-9940B']:
-          print "LLLL",l
           _9940b_wv = _9940b_wv + int(wv)
           _9940b_bv = _9940b_bv + int(bv)
           su = float(su.split("G")[0])
           _9940b_su = _9940b_su + su
           if l == 'CD-9940B':
-              print "G %s BV %s"%(g, bv)
               cd_9940b_wv = cd_9940b_wv + int(wv)
               cd_9940b_bv = cd_9940b_bv + int(bv)
               cd_9940b_su = cd_9940b_su + su
@@ -508,6 +471,8 @@ sort_the_file('ALL_9940B.tapes')
 cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('ALL_9940B',d1,d2,_9940b_wv,_9940b_bv,_9940b_su, 200)
 print cmd
 os.system(cmd)
+
+sort_the_file('CD-9940B.tapes')
 cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('CD-9940B',d1,d2,cd_9940b_wv,cd_9940b_bv,cd_9940b_su, 200)
 print cmd
 os.system(cmd)
