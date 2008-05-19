@@ -2743,10 +2743,20 @@ class Tag:
             raise IOError(errno.EINVAL,
                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
 
-
-        f = open(fname,'w')
-        f.write(value)
-        f.close()
+        try:
+            f = open(fname,'w')
+            f.write(value)
+            f.close()
+        except (OSError, IOError):
+            exc, msg = sys.exc_info()[:2]
+            if msg.args[0] == errno.ENOTDIR:
+                #If the error is ENOTDIR, then correct the path returned
+                # to be the directory and not the tag file.
+                use_msg = exc(errno.ENOTDIR, os.strerror(errno.ENOTDIR),
+                              os.path.dirname(fname))
+            else:
+                use_msg = msg
+            raise exc, use_msg, sys.exc_info()[2] #Don't have tb be local!
 
     # read the value stored in the requested tag
     def readtag(self, tag, directory=None):
@@ -2780,9 +2790,21 @@ class Tag:
             raise IOError(errno.EINVAL,
                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
 
-        f = open(fname,'r')
-        t = f.readlines()
-        f.close()
+        try:
+            f = open(fname,'r')
+            t = f.readlines()
+            f.close()
+        except (OSError, IOError):
+            exc, msg = sys.exc_info()[:2]
+            if msg.args[0] == errno.ENOTDIR:
+                #If the error is ENOTDIR, then correct the path returned
+                # to be the directory and not the tag file.
+                use_msg = exc(errno.ENOTDIR, os.strerror(errno.ENOTDIR),
+                              os.path.dirname(fname))
+            else:
+                use_msg = msg
+            raise exc, use_msg, sys.exc_info()[2] #Don't have tb be local!
+            
         return t
 
     ##########################################################################

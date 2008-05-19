@@ -6727,8 +6727,12 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
             else:
                 e_type = e_errors.IOERROR
 
-            raise EncpError(msg.args[0], use_infile, e_type,
-                            {'infile' : use_infile})
+            if getattr(msg, "filename", None):
+                use_error_filename = msg.filename
+            else:
+                use_error_filename = use_infile
+            raise EncpError(msg.args[0], use_error_filename,
+                            e_type, {'infile' : use_infile})
 
         if work_ticket == None:
             #This is a rare possibility.
