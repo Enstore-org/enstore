@@ -203,6 +203,8 @@ def init(intf):
 
 	#Make sure we got the spool directory from command line or
 	# from configuration.
+	if intf.spool_dir:
+		SPOOL_DIR = intf.spool_dir
 	if not SPOOL_DIR:
 		SPOOL_DIR = enstore_functions2.default_value("SPOOL_DIR")
 	if not SPOOL_DIR:
@@ -1498,13 +1500,13 @@ class MigrateInterface(option.Interface):
 		option.MIGRATED_FROM:{option.HELP_STRING:
 				      "Report the volumes that were copied"
 				      " from this volume.",
-				       option.VALUE_USAGE:option.REQUIRED,
+				       option.VALUE_USAGE:option.IGNORED,
 				       option.VALUE_TYPE:option.STRING,
 				       option.USER_LEVEL:option.ADMIN,},
 		option.MIGRATED_TO:{option.HELP_STRING:
 				    "Report the volumes that were copied"
 				    " to this volume.",
-				    option.VALUE_USAGE:option.REQUIRED,
+				    option.VALUE_USAGE:option.IGNORED,
 				    option.VALUE_TYPE:option.STRING,
 				    option.USER_LEVEL:option.ADMIN,},
 		option.PRIORITY:{option.HELP_STRING:
@@ -1550,7 +1552,7 @@ def main(intf):
 	if intf.migrated_from:
 		# get a db connection
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-		for i in sys.argv[2:]:
+		for i in intf.args:
 			from_list = migrated_from(i, db)
 			print "%s %s"%(i, MFROM),
 			for j in from_list:
@@ -1559,7 +1561,7 @@ def main(intf):
 	elif intf.migrated_to:
 		# get a db connection
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-		for i in sys.argv[2:]:
+		for i in intf.args:
 			to_list = migrated_to(i, db)
 			print "%s %s"%(i, MTO),
 			for j in to_list:
@@ -1577,7 +1579,7 @@ def main(intf):
 		exit_status = 0
 		# get a db connection
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-		for v in sys.argv[2:]:
+		for v in intf.args:
 			print "%19s %19s %6s %6s %6s %6s" % \
 			      ("src_bfid", "dst_bfid", "copied", "swapped",
 			       "checked", "closed")
