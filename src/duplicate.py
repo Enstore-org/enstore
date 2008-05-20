@@ -213,14 +213,14 @@ def final_scan_volume(vol):
 				
 	# restore file family only if there is no error
 	if not local_error:
-		ff = migrate.normal_file_family(ff)
-		vf = string.join((sg, ff, wp), '.')
-		res = vcc.modify({'external_label':vol, 'volume_family':vf})
-		if res['status'][0] == e_errors.OK:
-			migrate.ok_log(MY_TASK, "restore file_family of", vol, "to", ff)
-		else:
-			migrate.error_log(MY_TASK, "failed to restore volume_family of", vol, "to", vf)
-			local_error = local_error + 1
+		#ff = migrate.normal_file_family(ff)
+		#vf = string.join((sg, ff, wp), '.')
+		#res = vcc.modify({'external_label':vol, 'volume_family':vf})
+		#if res['status'][0] == e_errors.OK:
+		#	migrate.ok_log(MY_TASK, "restore file_family of", vol, "to", ff)
+		#else:
+		#	migrate.error_log(MY_TASK, "failed to restore volume_family of", vol, "to", vf)
+		#	local_error = local_error + 1
 		# set comment
 		from_list = migrate.migrated_from(vol, db)
 		vol_list = ""
