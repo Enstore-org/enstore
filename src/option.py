@@ -231,7 +231,7 @@ EXTERNAL_TRANSITIONS = "external-transitions" #scanfiles
 FIND_SAME_FILE = "find-same-file"            #info
 FILE = "file"                                #info
 FILE_FALLBACK = "file-fallback"              #configuration
-FILE_FAMILY = "file-family"                  #pnfs, encp
+FILE_FAMILY = "file-family"                  #pnfs, encp, migrate
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs, encp
 FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs, encp
 FILESIZE = "filesize"                        #pnfs
@@ -262,6 +262,7 @@ GET_SUSPECT_VOLS = "get-suspect-vols"        #library
 GET_UPDATE_INTERVAL = "get-update-interval"  #inquisitor
 GET_WORK = "get-work"                        #library, media
 GET_WORK_SORTED = "get-work-sorted"          #library
+GVOL = "gvol"                                #volume
 HELP = "help"
 HISTORY = "history"                          #history
 HOST = "host"                                #monitor
@@ -286,7 +287,7 @@ KEEP_DECLARATION_TIME = "keep-declaration-time"	#volume
 LABEL = "label"                              #plotter
 LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
-LIBRARY = "library"                          #pnfs, encp
+LIBRARY = "library"                          #pnfs, encp, migrate
 LIST = "list"                                #volume, file, get, MC, LM, M
 LIST_CLEAN = "list-clean"                    #media
 LIST_DRIVES = "list-drives"                  #media
@@ -310,6 +311,8 @@ MAX_WORK = "max-work"                        #media(c&s)
 MESSAGE = "message"                          #log, alarm
 MESSAGES_FILE = "messages-file"              #entv
 MIGRATED = "migrated"                        #volume
+MIGRATED_FROM = "migrated-from"              #migrate
+MIGRATED_TO = "migrated-to"                  #migrate
 MMAP_IO = "mmap-io"                          #encp
 MMAP_SIZE = "mmap-size"                      #encp
 MODIFY = "modify"                            #volume
@@ -350,7 +353,7 @@ PNFS_STATE = "pnfs-state"                    #pnfs
 PORT = "port"                                # monitor client, server
 POSITION = "position"                        #pnfs
 PREFIX = "prefix"                            #enstore_make_log_plot
-PRIORITY = "priority"                        #library, encp
+PRIORITY = "priority"                        #library, encp, migrate
 PRINT = "print"                              #conf
 PRINT_QUEUE = "print-queue"                  #library
 PROFILE = "profile"                          #entv
@@ -377,6 +380,7 @@ RM_ACTIVE_VOL = "rm-active-vol"              #library
 RM_SUSPECT_VOL = "rm-suspect-vol"            #library
 ROOT_ERROR = "root-error"                    #alarm
 SAAG_STATUS = "saagstatus"                   #inquisitor
+SCAN_VOLUMES = "scan-volumes"                #migrate
 SENDTO = "sendto"                            #mover
 SEQUENTIAL_FILENAMES = "sequential-filenames"  #get
 SET_CRCS = "set-crcs"                        #file
@@ -403,6 +407,7 @@ SHOW_VOLUME = "show-volume"                  #media
 SIZE = "size"                                #pnfs
 SKIP_DELETED_FILES = "skip-deleted-files"    #get
 SKIP_PNFS = "skip-pnfs"                      #super_remove
+SPOOL_DIR = "spool-dir"                      #migrate
 START_DRAINING = "start-draining"            #library
 START_TIME = "start-time"                    #plotter
 STATUS = "status"                            #mover, library
@@ -437,12 +442,13 @@ USAGE = "usage"
 VERBOSE = "verbose"                          #monitor, ensync, assert, encp
 VERSION = "version"                          #encp, entv
 VOL = "vol"                                  #volume
-GVOL = "gvol"                                #volume
 VOLS = "vols"                                #volume, library
 VOLUME = "volume"                            #pnfs, encp
 VOL1OK = "VOL1OK"                            #volume
 WARM_RESTART = "warm-restart"                #mover
 WEB_HOST = "web-host"                        #enstore_make_log_plot
+WITH_DELETED = "with-deleted"                #migrate
+WITH_FINAL_SCAN = "with-final-scan"          #migrate
 WRITE_PROTECT_STATUS = "write-protect-status" #volume
 WRITE_PROTECT_ON = "write-protect-on"        #volume
 WRITE_PROTECT_OFF = "write-protect-off"      #volume
@@ -496,7 +502,7 @@ valid_option_list = [
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
-    MESSAGE, MESSAGES_FILE, MIGRATED,
+    MESSAGE, MESSAGES_FILE, MIGRATED, MIGRATED_FROM, MIGRATED_TO,
     MMAP_IO, MMAP_SIZE,
     MODIFY, MOUNT, MOUNT_POINT, MOVER_DUMP, MOVER_TIMEOUT, MOVERS_FILE, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NO_CRC, NOT_ALLOWED, NO_MAIL,
@@ -513,7 +519,7 @@ valid_option_list = [
     REMEDY_TYPE, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RESUBMIT_TIMEOUT, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
-    SAAG_STATUS, SENDTO, SEQUENTIAL_FILENAMES,
+    SAAG_STATUS, SCAN_VOLUMES, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,
     SHORTCUT, SHOW, SHOW_BAD, SHOW_BY_LIBRARY, SHOW_DRIVE, SHOW_FILE,
     SHOW_COPIES,
@@ -523,14 +529,15 @@ valid_option_list = [
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
-    STORAGE_GROUP, SUBSCRIBE, SUMMARY,
+    SPOOL_DIR, STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
     TEST, THREADED, THREADED_IMPL, TIME, TIMEOUT, TIMESTAMP, TITLE, TITLE_GIF,
     TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
     UNMARK_BAD, UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL, USAGE,
     VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
-    WARM_RESTART, WEB_HOST, WRITE_PROTECT_STATUS, WRITE_PROTECT_ON,
-    WRITE_PROTECT_OFF, XREF,
+    WARM_RESTART, WEB_HOST, WITH_DELETED, WITH_FINAL_SCAN,
+    WRITE_PROTECT_STATUS, WRITE_PROTECT_ON, WRITE_PROTECT_OFF,
+    XREF,
     ]
 
 ############################################################################

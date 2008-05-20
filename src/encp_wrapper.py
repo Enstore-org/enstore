@@ -12,10 +12,13 @@ class Encp:
 		import encp
 		self.my_encp = encp
 		self.tid = tid
+		self.exit_status = -10
 
 	# encp(cmd) -- cmd is the same as the command line
 	# eg. encp("encp --verbose=4 /pnfs/.../file file")
 	def encp(self, cmd):
+		self.exit_status = -10 #Reset this every time.
+		
 		if cmd[:4] != "encp":
 			cmd = "encp "+cmd
 		argv = string.split(cmd)
@@ -25,19 +28,28 @@ class Encp:
 		try:
 			res = self.my_encp.main(intf)
 			if res == None:
-				return -10
-			return res
+				#return -10
+				res = -10  #Same as initial value.
+			
+			#return res
 		except:
-			return 1
-		# can't be
-		return -10
+			#return 1
+			res = 1
+
+		self.exit_status = res #Return value if used in a thread.
+		return res  #Return value if used directly.
+
+
+		self.exit_status = res #Return value if used in a thread.
+		return res  #Return value if used directly.
+	
 
 if __name__ == '__main__':
-	encp = Encp()
+	test_encp = Encp()
 	for i in sys.argv[1:]:
 		print "copying", i, "...",
 		cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(i)
-		res = encp.encp(cmd)
+		res = test_encp.encp(cmd)
 		if res:
 			print "FAILED"
 		else:
