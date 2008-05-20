@@ -1591,7 +1591,8 @@ def main(intf):
 			res1 = db.query(q).getresult()
 			for row in res1:
 				q2 = "select * from migration " \
-				     "where src_bfid = '%s';" % (row[0],)
+				     "where src_bfid = '%s' or " \
+				     " dst_bfid = '%s';" % (row[0], row[0])
 				res2 = db.query(q2).getresult()
 				for row2 in res2:
 					if row2[2]:
