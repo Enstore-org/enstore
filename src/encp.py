@@ -8903,7 +8903,7 @@ def create_read_request(request, file_number,
                 ofullname = e.output[0]
             elif getattr(e, "sequential_filenames", None):
                 #The user overrode "get" to use numbered filenames.
-                ofullname = os.path.join(e.output[0], lc)
+                ofullname = os.path.join(e.output[0], "%s:%s" (e.volume, lc))
             else:
                 ofullname = os.path.join(e.output[0], filename)
 
