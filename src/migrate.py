@@ -107,7 +107,7 @@ icheck = True	# instant readback check after swap
 
 errors = 0	# over all errors per migration run
 
-no_log_command = ['--migrated-from', '--migrated-to']
+no_log_command = ['--migrated-from', '--migrated-to', '--status']
 
 # This is the configuration part, which might come from configuration
 # server in the production version
@@ -135,7 +135,7 @@ MIGRATION_FILE_FAMILY_KEY = "-MIGRATION"
 DELETED_FILE_FAMILY = "DELETED_FILES"
 
 ENCP_PRIORITY = 0
-csc = None
+#csc = None
 
 io_lock = thread.allocate_lock()
 
@@ -188,11 +188,12 @@ def time2timestamp(t):
 
 # initialize csc, db, ... etc.
 def init(intf):
-	global db, csc, log_f, dbhost, dbport, dbname, errors
+	#global db, csc
+	global log_f, dbhost, dbport, dbname, errors
 	global SPOOL_DIR
-	#intf = option.Interface()
+
 	csc = configuration_client.ConfigurationClient((intf.config_host,
-		intf.config_port))
+							intf.config_port))
 
 	db_info = csc.get('database')
 	dbhost = db_info['db_host']
@@ -207,19 +208,24 @@ def init(intf):
 		SPOOL_DIR = intf.spool_dir
 	if not SPOOL_DIR:
 		SPOOL_DIR = enstore_functions2.default_value("SPOOL_DIR")
-	if not SPOOL_DIR:
-		sys.stderr.write("No spool directory specified.\n")
-		sys.exit(1)
 
 	# check for no_log commands
-	#if len(sys.argv) > 2 and not sys.argv[1] in no_log_command:
-	if not intf.migrated_to or not intf.migrated_from: 
-		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
+	if not intf.migrated_to and not intf.migrated_from and \
+	   not intf.status:
 		# check for directories
-		if not os.access(SPOOL_DIR, os.W_OK):
-			os.makedirs(SPOOL_DIR)
+
+		#log dir
+		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 		if not os.access(LOG_DIR, os.W_OK):
 			os.makedirs(LOG_DIR)
+
+		#spool dir
+		if not SPOOL_DIR:
+			sys.stderr.write("No spool directory specified.\n")
+			sys.exit(1)
+		if not os.access(SPOOL_DIR, os.W_OK):
+			os.makedirs(SPOOL_DIR)
+
 	return
 
 # The following three functions query the state of a migrating file
@@ -523,7 +529,7 @@ def get_queue_item(queue, r_pipe):
 	
 # copy_files(files) -- copy a list of files to disk and mark the status
 # through copy_queue
-def copy_files(files):
+def copy_files(files, intf):
 	MY_TASK = "COPYING_TO_DISK"
 	# get a db connection
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
@@ -686,6 +692,10 @@ def compare_metadata(p, f, pnfsid = None):
 # * to avoid deeply nested "if ... else", it takes early error return
 def swap_metadata(bfid1, src, bfid2, dst):
 	# get its own file clerk client
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient((config_host,
+							config_port))
 	fcc = file_clerk_client.FileClient(csc)
 	# get all metadata
 	p1 = pnfs.File(src)
@@ -744,11 +754,15 @@ def swap_metadata(bfid1, src, bfid2, dst):
 	return None
 
 # migrating() -- second half of migration, driven by copy_queue
-def migrating():
+def migrating(intf):
 	MY_TASK = "COPYING_TO_TAPE"
 	# get a database connection
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 	# get its own file clerk client
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient((config_host,
+							config_port))
 	fcc = file_clerk_client.FileClient(csc)
 
 	# get an encp
@@ -931,9 +945,13 @@ def migrating():
 
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
-def final_scan():
+def final_scan(intf):
 	MY_TASK = "FINAL_SCAN"
 	# get its own file clerk client
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient((config_host,
+							config_port))
 	fcc = file_clerk_client.FileClient(csc)
 
 	#get a database connection
@@ -1006,7 +1024,11 @@ def final_scan():
 def final_scan_volume(vol):
 	MY_TASK = "FINAL_SCAN_VOLUME"
 	local_error = 0
-	# get its own fcc
+	# get its own fcc and vcc
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient((config_host,
+							config_port))
 	fcc = file_clerk_client.FileClient(csc)
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
 
@@ -1147,34 +1169,41 @@ def final_scan_volume(vol):
 	return local_error
 
 # migrate(file_list): -- migrate a list of files
-def migrate(files):
+def migrate(files, intf):
+	#If we don't do this between volumes, the first volume behaves
+	# correctly, while the rest don't.
+	copy_queue.received_count = 0
+	scan_queue.received_count = 0
+	copy_queue.finished = False
+	scan_queue.finished = False
+	
 	if USE_THREADS:
-		return _migrate_threads(files)
+		return _migrate_threads(files, intf)
 	else:
-		return _migrate_processes(files)
+		return _migrate_processes(files, intf)
 
-def _migrate_threads(files):
+def _migrate_threads(files, intf):
 	global errors
 	# reset errors every time
 	errors = 0
 
 	# start a thread to copy files out to disk
-	c_id = thread.start_new_thread(copy_files, (files,))
+	c_id = thread.start_new_thread(copy_files, (files, intf))
 	# main thread finishes the rest
 	# (1) copy disk files to enstore
 	# (2) swap meta-data
 	# (3) final check
 	if icheck:
-		m_id = thread.start_new_thread(migrating, ())
-		final_scan()
+		m_id = thread.start_new_thread(migrating, (intf,))
+		final_scan(intf)
 		m_id.join()
 	else:
-		migrating()
+		migrating(intf)
 
 	c_id.join()
 	return errors
 
-def _migrate_processes(files):
+def _migrate_processes(files, intf):
 	global errors
 	# reset errors every time
 	errors = 0
@@ -1182,16 +1211,18 @@ def _migrate_processes(files):
 	# Start a process to copy files to disk.
 	pid = os.fork()
 	if pid == 0:  #child
-		os.close(migrate_r_pipe)
+		#os.close(migrate_r_pipe)
 
-		print "Starting copy_files.", pid
-		copy_files(files)
+		print "Starting copy_files."
+		copy_files(files, intf)
 		print "Completed copy_files."
 
-		os.close(migrate_w_pipe)
+		#os.close(migrate_w_pipe)
+
+		os._exit(errors)
 
 	elif pid > 0: #parent
-		os.close(migrate_w_pipe)
+		#os.close(migrate_w_pipe)
 
 		# main thread finishes the rest
 		# (1) copy disk files to enstore
@@ -1201,36 +1232,45 @@ def _migrate_processes(files):
 		    # Start a process to copy files to disk.
 		    pid2 = os.fork()
 		    if pid2 == 0:  #child
-			os.close(scan_r_pipe)
+			#os.close(scan_r_pipe)
 
-			print "Starting migrating.", pid
-			migrating()
+			print "Starting migrating."
+			migrating(intf)
 			print "Completed migrating."
 
-			os.close(scan_w_pipe)
+			#os.close(scan_w_pipe)
 
+			os._exit(errors)
+			
 			# Keep the current process to write files to tape.
-		    elif pid > 0: #parent
-			os.close(scan_w_pipe)
+		    elif pid2 > 0: #parent
+			#os.close(scan_w_pipe)
 
 		        #Scan files on tape.
 			print "Starting final_scan."
-			final_scan()
+			final_scan(intf)
 			print "Completed final_scan."
 
-			os.close(scan_r_pipe)
+			#os.close(scan_r_pipe)
 
-			os.wait(pid)
-			os.wait(pid2)
+			done_pid, exit_status = os.waitpid(pid2, 0)
+			if os.WIFEXITED(exit_status):
+				errors = errors + os.WEXITSTATUS(exit_status)
+			else:
+				errors = errors + 1
 		else:
 		    # Keep the current process to write files to tape.
 		    print "Starting migrating."
-		    migrating()
+		    migrating(intf)
 		    print "Completed migrating."
 
-		    os.wait(pid)
-
-		os.close(migrate_r_pipe)
+		done_pid, exit_status = os.waitpid(pid, 0)
+		if os.WIFEXITED(exit_status):
+			errors = errors + os.WEXITSTATUS(exit_status)
+		else:
+			errors = errors + 1
+		
+		#os.close(migrate_r_pipe)
 
 	return errors
 
@@ -1287,11 +1327,15 @@ def is_migrated(vol, db):
 	return True #All files migrated.
 
 # migrate_volume(vol) -- migrate a volume
-def migrate_volume(vol, with_deleted = None):
+def migrate_volume(vol, intf, with_deleted = None):
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 	# get its own vcc
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient((config_host,
+							config_port))
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
 
 	# check if vol is set to "readonly". If not, set it.
@@ -1330,14 +1374,15 @@ def migrate_volume(vol, with_deleted = None):
 	for r in res:
 		bfids.append(r[0])
 
-	res = migrate(bfids)
+	res = migrate(bfids, intf)
 	if res == 0:
 		# mark the volume as migrated
 		ticket = vcc.set_system_migrated(vol)
 		if ticket['status'][0] == e_errors.OK:
 			log(MY_TASK, "set %s to migrated"%(vol))
 		else:
-			error_log(MY_TASK, "failed to set %s migrated"%(vol))
+			error_log(MY_TASK, "failed to set %s migrated: %s" \
+				  % (vol, ticket['status']))
 		# set comment
 		to_list = migrated_to(vol, db)
 		if to_list == []:
@@ -1361,6 +1406,10 @@ def migrate_volume(vol, with_deleted = None):
 # restore(bfids) -- restore pnfs entries using file records
 def restore(bfids):
 	# get its own file clerk client and volume clerk client
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient((config_host,
+							config_port))
 	fcc = file_clerk_client.FileClient(csc)
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
 	if type(bfids) != type([]):
@@ -1616,7 +1665,7 @@ def main(intf):
 						closed = "" 
 						exit_status = 1
 					line = "%19s %19s %6s %6s %6s %6s" % \
-					       (row[0], row2[1], copied,
+					       (row2[0], row2[1], copied,
 						swapped, checked, closed)
 					print line
 				if len(res2) == 0:
@@ -1643,18 +1692,18 @@ def main(intf):
 						raise ValueError(target)
 				except:
 					# abort on error
-					error_log("can not find bifd of",
+					error_log("can not find bfid of",
 						  target)
 					return 1
 
 		if bfid_list:
-			migrate(bfid_list)
+			migrate(bfid_list, intf)
 		for volume in volume_list:
 			if intf.with_final_scan:
 				icheck = True
 			else:
 				icheck = False
-			migrate_volume(volume,
+			migrate_volume(volume, intf,
 				       with_deleted = intf.with_deleted)
 
 
@@ -1669,6 +1718,7 @@ def do_work(intf):
 	except:
 		#Get the uncaught exception.
 		exc, msg, tb = sys.exc_info()
+		print "Uncaught exception:", exc, msg
 		#Send to the log server the traceback dump.  If unsuccessful,
 		# print the traceback to standard error.
 		Trace.handle_error(exc, msg, tb)
