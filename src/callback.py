@@ -130,17 +130,42 @@ def timeout_send(sock,msg,timeout=15*60):
 def write_raw(sock,msg,timeout=15*60):
     max_pkt_size=16384
     try:
-        l = len(msg)
-        ptr=0
-        timeout_send(sock, "%08d"%(len(msg),), timeout)
-        salt=random.randint(11,99)
-        timeout_send(sock, "ENSTOR%s"%(salt,), timeout)
-        while ptr<l:
-            nwritten=timeout_send(sock, msg[ptr:ptr+max_pkt_size], timeout)
-            if nwritten<=0:
+        msg_len = len(msg)
+        
+        msg_msg_len = "%08d" % (len(msg),)
+        msg_len_len = len(str(msg_msg_len))
+
+        salt = random.randint(11, 99)
+        msg_salt = "ENSTOR%s" % (salt,)
+        msg_salt_len = len(msg_salt)
+
+        checksum_msg = hex8(checksum.adler32(salt, msg, msg_len))
+        checksum_len = len(checksum_msg)
+
+        #nwritten = timeout_send(sock, "%08d"%(len(msg),), timeout)
+        nwritten = timeout_send(sock, msg_msg_len, timeout)
+        if type(nwritten) != types.IntType or nwritten != msg_len_len:
+            return 1, "short write: message length"
+
+        #timeout_send(sock, "ENSTOR%s"%(salt,), timeout)
+        nwritten = timeout_send(sock, msg_salt, timeout)
+        if type(nwritten) != types.IntType or nwritten != msg_salt_len:
+            return 1, "short write: salt"
+
+        ptr = 0
+        while ptr < msg_len:
+            nwritten = timeout_send(sock, msg[ptr:ptr+max_pkt_size], timeout)
+            if type(nwritten) != types.IntType or nwritten <= 0:
                 break
-            ptr = ptr+nwritten
-        timeout_send(sock, hex8(checksum.adler32(salt,msg,l)), timeout)
+            ptr = ptr + nwritten
+        if ptr < msg_len:
+            return 1, "short write: message"
+
+        #timeout_send(sock, hex8(checksum.adler32(salt, msg, msg_len)), timeout)
+        nwritten = timeout_send(sock, checksum_msg, timeout)
+        if type(nwritten) != types.IntType or nwritten != checksum_len:
+            return 1, "short write: checksum"
+
         return 0, ""
     except (socket.error, OSError), detail:
         error_string = "write_raw: socket.error %s"%(detail,)
