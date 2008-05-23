@@ -24,6 +24,7 @@ import pg
 import threading
 
 # enstore imports
+import configuration_client
 import file_clerk_client
 import volume_clerk_client
 import pnfs
@@ -31,6 +32,7 @@ import migrate
 import duplication_util
 import e_errors
 import encp_wrapper
+import enstore_functions2
 
 # modifying migrate module
 # migrate.DEFAULT_LIBRARY = 'LTO4'
@@ -48,7 +50,11 @@ migrate.LOG_FILE = migrate.LOG_FILE.replace('Migration', 'Duplication')
 # * to avoid deeply nested "if ... else", it takes early error return
 def duplicate_metadata(bfid1, src, bfid2, dst):
 	# get its own file clerk client
-	fcc = file_clerk_client.FileClient(migrate.csc)
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient((config_host,
+							config_port))
+	fcc = file_clerk_client.FileClient(csc)
 	# get all metadata
 	p1 = pnfs.File(src)
 	f1 = fcc.bfid_info(bfid1)
@@ -104,8 +110,12 @@ def final_scan_volume(vol):
 	MY_TASK = "FINAL_SCAN_VOLUME"
 	local_error = 0
 	# get its own fcc
-	fcc = file_clerk_client.FileClient(migrate.csc)
-	vcc = volume_clerk_client.VolumeClerkClient(migrate.csc)
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient((config_host,
+							config_port))
+	fcc = file_clerk_client.FileClient(csc)
+	vcc = volume_clerk_client.VolumeClerkClient(csc)
 
 	# get a db connection
 	db = pg.DB(host=migrate.dbhost, port=migrate.dbport, dbname=migrate.dbname, user=migrate.dbuser)
