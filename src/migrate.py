@@ -1629,6 +1629,10 @@ def main(intf):
 		# get a db connection
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 		for v in intf.args:
+			#Reset this for each volume.  It flags if the volume
+			# is a src or dst volume for migration.
+			is_dst_volume = False
+			
 			print "%19s %19s %6s %6s %6s %6s" % \
 			      ("src_bfid", "dst_bfid", "copied", "swapped",
 			       "checked", "closed")
@@ -1668,11 +1672,22 @@ def main(intf):
 					       (row2[0], row2[1], copied,
 						swapped, checked, closed)
 					print line
+					if row[0] == row2[1]:
+						is_dst_volume = True
 				if len(res2) == 0:
-					#Not migrated yet.
-					line = "%19s" % (row[0],)
-					print line
-					exit_status = 1
+					#If the volume is a destination
+					# volume that does not have a match
+					# in the migration, print in the
+					# correct spot.
+					if is_dst_volume:
+						line = "%19s %19s" % \
+						       ("", row[0],)
+						print line
+					else:
+						#Not migrated yet.
+						line = "%19s" % (row[0],)
+						print line
+						exit_status = 1
 
 		return exit_status
 	else:
