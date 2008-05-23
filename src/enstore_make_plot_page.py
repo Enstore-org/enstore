@@ -1,14 +1,47 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
+# system imports
 import os
 import sys
 import string
-import stat
 import time
 
+# enstore imports
 import enstore_plots
 import enstore_html
 import enstore_files
+import enstore_functions
+import enstore_functions2
+import enstore_constants
 import generic_client
 import option
+import configuration_client
+
+"""
+The first part of code is the old way this script worked.  It is used from
+under the do_work() function.  The second part of the code works with
+do_work2(), this is a different way of doing this (general idea copied from
+plotter.py).  I don't believe that the old way is capable of creating
+all the sub-directories worth of plots now created.  This file was previously
+last touched in June of 2004 when the plethora of plot sub-directories
+did not exist like they do now (May 2008).
+
+The only reason the old way is still around is because it had more support
+for overriding things on the command line; in case someone still cares.  The
+enstore_html command uses the new way.
+
+MZ - May 23rd, 2008
+"""
+
+#########################################################################
+#  START OF OLD WAY
+#########################################################################
 
 TMP = ".tmp"
 
@@ -87,16 +120,16 @@ ENGLISH_TITLES = {
 def find_jpg_files((jpgs, stamps, pss, input_dir, url), dirname, names):
     ignore = []
     (tjpgs, tstamps, tpss) = enstore_plots.find_files(names, dirname, ignore)
-    dir = string.split(dirname, input_dir)[-1]
+    dir_name = string.split(dirname, input_dir)[-1]
     # when we add the found file to the list of files, we need to add the
     # directory that it was found in to the name
-    for file in tjpgs:
+    for filename in tjpgs:
 	# add the last modification time of the file
-        jpgs.append(("%s%s/%s"%(url, dir, file[0]), file[1]))
-    for file in tstamps:
-        stamps.append(("%s%s/%s"%(url, dir, file[0]), file[1]))
-    for file in tpss:
-        pss.append(("%s%s/%s"%(url, dir, file[0]), file[1]))
+        jpgs.append(("%s%s/%s"%(url, dir_name, filename[0]), filename[1]))
+    for filename in tstamps:
+        stamps.append(("%s%s/%s"%(url, dir_name, filename[0]), filename[1]))
+    for filename in tpss:
+        pss.append(("%s%s/%s"%(url, dir_name, filename[0]), filename[1]))
 
 def do_the_walk(input_dir, url):
     # walk the directory tree structure and return a list of all jpg, stamp
@@ -136,10 +169,11 @@ class PlotPage(enstore_html.EnPlotPage):
 
 class CronPlotPage(PlotPage):
 
-    def __init__(self, title, gif, description, url, outofdate=0):
-        PlotPage.__init__(self, title, gif, description, url, outofdate)
-	self.help_file = "cronHelp.html"
+    def __init__(self, title, gif, description, url, outofdate=0, gif_dir = ""):
+        PlotPage.__init__(self, title, gif, description, url, outofdate, gif_dir = gif_dir)
+        self.help_file = "cronHelp.html"
         self.english_titles = ENGLISH_TITLES
+        
 
     def find_label(self, text):
         l = len(self.url)
@@ -174,7 +208,7 @@ class PlotPageInterface(generic_client.GenericClientInterface):
 	self.description = "Graphical representation of the exit status of Enstore cron jobs."
 	self.title = "Enstore Cron Processes Output"
 	self.title_gif = "en_cron_pics.gif"
-	self.dir = "/fnal/ups/prd/www_pages/enstore"
+        self.dir = enstore_functions.get_html_dir()
 	self.input_dir = "%s/CRONS"%(self.dir,)
 	self.html_file = "%s/cron_pics.html"%(self.dir,)
         self.url = "CRONS/"
@@ -263,8 +297,104 @@ def do_work(intf):
         html_file.close()
         os.rename(tmp_html_file, intf.html_file)
 
+#########################################################################
+#  END OF OLD WAY
+#########################################################################
+
+#########################################################################
+#  START OF NEW WAY
+#########################################################################
+
+# full_subdir_path : Absolute path to the directory containing plots
+#                    to have the a plot page created.
+# url_gif_dir : URL path for finding the gifs for things like the
+#               page background.
+# plot_name : A string describing the contents of the plots in the
+#             plot directory.
+# links_l : Only the top page should specifiy this.  It is a list of
+#           tuples containing the sub-plot-directories and the description
+#           of the plots.
+def make_plot(full_subdir_path, url_gif_dir, plot_name, links_l = None):
+    plot_file = os.path.join(full_subdir_path,
+                             enstore_files.plot_html_file_name())
+
+    #Override use of system_tag to contain the name of the plot page.
+    system_tag = plot_name
+    html_of_plots = enstore_files.HTMLPlotFile(plot_file, system_tag, "../",
+                                               gif_dir = url_gif_dir)
+    html_of_plots.open()
+    # get the list of stamps and jpg files
+    (jpgs, stamps, pss) = enstore_plots.find_jpg_files(full_subdir_path)
+    mount_label = "" #???
+    html_of_plots.write(jpgs, stamps, pss, mount_label, links_l)
+    html_of_plots.close()
+    html_of_plots.install()
+
+
+def do_work2(intf):
+    # Get the configuration server.
+    csc = configuration_client.ConfigurationClient((intf.config_host,
+                                                    intf.config_port))
+    # Get directory information we are going to need.
+    crons_dict = csc.get('crons', {})
+    html_dir = crons_dict.get('html_dir', None)
+    url_dir = crons_dict.get('url_dir', "")
+
+    if not html_dir:
+        sys.stderr.write("Unable to determine html_dir.\n")
+        return
+
+    plots_subdir = os.path.join(html_dir, enstore_constants.PLOTS_SUBDIR)
+
+    #Is there a better place for this list?
+    subdir_description_list = [
+        (enstore_constants.MOUNT_PLOTS_SUBDIR,
+         "Number of Mounts per Media Type"),
+        (enstore_constants.RATEKEEPER_PLOTS_SUBDIR,
+         "Instantaneous Encp Rates"),
+        (enstore_constants.DRIVE_UTILIZATION_PLOTS_SUBDIR,
+         "Tape Drives in Use per Drive Type"),
+        (enstore_constants.SLOT_USAGE_PLOTS_SUBDIR,
+         "Tape Slot usage per Robot"),
+        (enstore_constants.PNFS_BACKUP_TIME_PLOTS_SUBDIR,
+         "Time to Backup PNFS DB"),
+        (enstore_constants.FILE_FAMILY_ANALYSIS_PLOT_SUBDIR,
+         "Tape occupancies per Storage Group Plots"),
+        (enstore_constants.ENCP_RATE_MULTI_PLOTS_SUBDIR,
+         "Encp rates per Storage Group Plots"),
+        (enstore_constants.QUOTA_PLOTS_SUBDIR,
+         "Quota per Storage Group Plots"),
+        (enstore_constants.TAPES_BURN_RATE_PLOTS_SUBDIR,
+         "Bytes Written per Storage Group Plots"),
+        (enstore_constants.BPD_PER_MOVER_PLOTS_SUBDIR,
+         "Bytes/Day per Mover Plots"),
+        (enstore_constants.XFER_SIZE_PLOTS_SUBDIR,
+         "Xfer size per Storage Group Plots"),
+        ]
+
+    #Loop over all the plot subdirs making pages.
+    for subdir, plot_name in subdir_description_list:
+        full_subdir_path = os.path.join(plots_subdir, subdir)
+        #The top plots directory needs some additional attention.
+        if full_subdir_path == plots_subdir:
+            continue
+        #Skip if the directory does not exist.
+        if not os.path.isdir(full_subdir_path):
+            continue
+
+        make_plot(full_subdir_path, url_dir, plot_name)
+
+    #Create the top plot page.
+    make_plot(full_subdir_path, url_dir, "Enstore Plots",
+              subdir_description_list)
+    
+#########################################################################
+#  END OF NEW WAY
+#########################################################################
+
 if __name__ == "__main__" :
 
     intf = PlotPageInterface(user_mode=0)
 
     do_work(intf)
+    #do_work2(intf)
