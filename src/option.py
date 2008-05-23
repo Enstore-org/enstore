@@ -347,6 +347,7 @@ REFRESH = "refresh"                          #inquisitor(c&s)
 PARENT = "parent"                            #pnfs
 PATH = "path"                                #pnfs
 PLOT = "plot"                                #plotter
+PLOTS = "plots"                              #html
 PNFS_IS_AUTOMOUNTED = "pnfs-is-automounted"  #encp
 PNFS_MOUNT_POINT = "pnfs-mount-point"        #encp
 PNFS_STATE = "pnfs-state"                    #pnfs
@@ -379,6 +380,8 @@ RM = "rm"                                    #pnfs
 RM_ACTIVE_VOL = "rm-active-vol"              #library
 RM_SUSPECT_VOL = "rm-suspect-vol"            #library
 ROOT_ERROR = "root-error"                    #alarm
+SAAG = "saag"                                #html
+SAAG_NETWORK = "saag-network"                #html
 SAAG_STATUS = "saagstatus"                   #inquisitor
 SCAN_VOLUMES = "scan-volumes"                #migrate
 SENDTO = "sendto"                            #mover
@@ -416,6 +419,7 @@ STOP_TIME = "stop-time"                      #plotter
 STORAGE_GROUP = "storage-group"              #pnfs, encp
 SUBSCRIBE = "subscribe"                      #inquisitor
 SUMMARY = "summary"                          #monitor, configuration, up_down
+SYSTEM_HTML = "system-html"                  #html
 TAG = "tag"                                  #pnfs
 TAGCHMOD = "tagchmod"                        #pnfs
 TAGCHOWN = "tagchown"                        #pnfs
@@ -510,7 +514,7 @@ valid_option_list = [
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OUTOFDATE, OVERRIDE,
     OVERRIDE_DELETED, OVERRIDE_NOACCESS, OVERRIDE_PATH, OVERRIDE_RO_MOUNT,
-    PARENT, PATH, PLOT,
+    PARENT, PATH, PLOT, PLOTS,
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT,
     POSITION, PREFIX, PRIORITY, PRINT, PRINT_QUEUE,PROFILE, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,
@@ -519,7 +523,8 @@ valid_option_list = [
     REMEDY_TYPE, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RESUBMIT_TIMEOUT, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
-    SAAG_STATUS, SCAN_VOLUMES, SENDTO, SEQUENTIAL_FILENAMES,
+    SAAG, SAAG_NETWORK, SAAG_STATUS,
+    SCAN_VOLUMES, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,
     SHORTCUT, SHOW, SHOW_BAD, SHOW_BY_LIBRARY, SHOW_DRIVE, SHOW_FILE,
     SHOW_COPIES,
@@ -529,7 +534,7 @@ valid_option_list = [
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
-    SPOOL_DIR, STORAGE_GROUP, SUBSCRIBE, SUMMARY,
+    SPOOL_DIR, STORAGE_GROUP, SUBSCRIBE, SUMMARY, SYSTEM_HTML,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
     TEST, THREADED, THREADED_IMPL, TIME, TIMEOUT, TIMESTAMP, TITLE, TITLE_GIF,
     TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
