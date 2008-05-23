@@ -1758,8 +1758,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return
                             
                 if not hasattr(self,'too_long_in_state_sent'):
-                    if not self.state == ERROR:
+                    if self.state != ERROR:
                         try:
+                            
                             Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
                                         (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
                         except TypeError:
@@ -1801,9 +1802,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                         # offline it
                         msg = "mover is stuck in %s. Client host %s" % (self.return_state(),self.current_work_ticket['wrapper']['machine'][1])
                         Trace.alarm(e_errors.ERROR, msg)
-                        #Trace.log(e_errors.ERROR, "marking %s noaccess" % (self.current_volume,))
-                        #self.vcc.set_system_noaccess(self.current_volume)
-                        #self.set_volume_noaccess(self.current_volume)
+                        if self.state == SEEK:
+                            Trace.log(e_errors.ERROR, "marking %s noaccess" % (self.current_volume,))
+                            self.set_volume_noaccess(self.current_volume)
                         self.transfer_failed(e_errors.MOVER_STUCK, msg, error_source=TAPE, dismount_allowed=0)
                         self.offline()
                         return
