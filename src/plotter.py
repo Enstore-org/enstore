@@ -330,11 +330,9 @@ class PlotterInterface(generic_client.GenericClientInterface):
         return (self.plotter_options, self.help_options, self.trace_options)
 
 
-if __name__ == "__main__":
 
-    # get interface
-    intf = PlotterInterface(user_mode=0)
-
+def do_work(intf):
+    
     if intf.do_print:
         Trace.do_print(intf.do_print)
 
@@ -386,3 +384,10 @@ if __name__ == "__main__":
 
     del plotter.csc.u
     del plotter.u     # del now, otherwise get name exception (just for python v1.5???)
+
+if __name__ == "__main__":
+
+    # get interface
+    intf_of_plotter = PlotterInterface(user_mode=0)
+
+    do_work(intf_of_plotter)

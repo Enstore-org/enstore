@@ -21,6 +21,7 @@ import HTMLgen
 import web_server
 import configuration_client
 import Trace
+import option
 
 TITLE="ENSTORE SYSTEM INFORMATION"
 LINKCOLOR="#0000EF" 
@@ -134,8 +135,9 @@ class EnstoreSystemHtml:
         f.close()
 
 
-if __name__ == "__main__":
 
+
+def do_work(intf):
     rc=0
     server = web_server.WebServer()
     remote=True
@@ -146,8 +148,6 @@ if __name__ == "__main__":
         
     q="select coalesce(sum(size)/1024./1024./1024./1024.,0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
 
-    intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
-#    config_server_client  = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
     config_server_client_dict = configuration_client.get_config_dict()
     acc            = config_server_client_dict.get("database", {})
     
@@ -181,3 +181,9 @@ if __name__ == "__main__":
     if not os.path.exists(html_dir):
         os.makedirs(html_dir)
     main_web_page.write_html_page_to_directory(html_dir)
+
+if __name__ == "__main__":
+
+    intf_of_html = option.Interface()
+
+    do_work(intf_of_html)
