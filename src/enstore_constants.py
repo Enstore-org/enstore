@@ -188,16 +188,18 @@ PNFS_AGENT_CLIENT = "PNFS_A_CLIENT"
 
 #The following are directory names appened by the plotter_main.py to
 # the html_dir to put different types of plots in different sub-directories.
-MOUNT_PLOTS_SUBDIR = ""
-RATEKEEPER_PLOTS_SUBDIR = ""
-DRIVE_UTILIZATION_PLOTS_SUBDIR = ""
-SLOT_USAGE_PLOTS_SUBDIR = ""
-PNFS_BACKUP_TIME_PLOTS_SUBDIR = ""
-FILE_FAMILY_ANALYSIS_PLOT_SUBDIR = "file_family_usage"
-ENCP_RATE_MULTI_PLOTS_SUBDIR = "encp-rates"
-QUOTA_PLOTS_SUBDIR = "quotas"
-TAPES_BURN_RATE_PLOTS_SUBDIR = "burn-rate"
-
+PLOTS_SUBDIR = ""  #plots/"
+MOUNT_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
+RATEKEEPER_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
+DRIVE_UTILIZATION_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
+SLOT_USAGE_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
+PNFS_BACKUP_TIME_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
+FILE_FAMILY_ANALYSIS_PLOT_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "file_family_usage")
+ENCP_RATE_MULTI_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "encp-rates")
+QUOTA_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "quotas")
+TAPES_BURN_RATE_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "burn-rate")
+BPD_PER_MOVER_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "bpd_per_mover")
+XFER_SIZE_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "xfer-size")
 
 OUTAGEFILE = "enstore_outage.py"
 SEENDOWNFILE = "enstore_seen_down.py"
