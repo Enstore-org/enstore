@@ -1,17 +1,25 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
 # $Id$
+#
+###############################################################################
 
-import setpath
+#import setpath
 
+# system imports
 import string
 import calendar
 import time
-setpath.addpath("$HTMLGEN_DIR")
+#setpath.addpath("$HTMLGEN_DIR")
 import HTMLgen
 import types
 import os
 import stat
 import sys
 
+# enstore imports
 import enstore_functions2
 import e_errors
 import enstore_constants
@@ -167,10 +175,13 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     # this is the base class for all of the html generated enstore documents
     def __init__(self, refresh=0, background="enstore.gif", help_file="", 
-		 system_tag=""):
+		 system_tag="", url_gif_dir = ""):
 	self.align = YES
 	self.textcolor = DARKBLUE
-	self.background = background
+        ## Allow url_gif_dir to specifiy where the gifs (like background)
+        ## can be found.  (script_title_gif is another example.)
+        self.url_gif_dir = url_gif_dir
+	self.background = os.path.join(url_gif_dir, background)
 	if self.background:
 	    HTMLgen.SimpleDocument.__init__(self, background=self.background, 
 					    textcolor=self.textcolor)
@@ -241,7 +252,11 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
     def script_title(self, tr):
 	# output the script title at the top of the page
         if self.script_title_gif :
-            tr.append(HTMLgen.TD(HTMLgen.Image(self.script_title_gif), 
+            ## Allow url_gif_dir to specifiy where the gifs (like background)
+            ## can be found.
+            use_script_title_gif = os.path.join(self.url_gif_dir,
+                                                self.script_title_gif)
+            tr.append(HTMLgen.TD(HTMLgen.Image(use_script_title_gif), 
 				 align="RIGHT"))
 
     def table_top_b(self, table, td, cols=1):
@@ -1430,16 +1445,16 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
     def make_lm_wam_queue_rows(self, qelem, cols):
 	if qelem[enstore_constants.WORK] == enstore_constants.WRITE:
-	    type = "Writing%s"%(NBSP,)
+	    r_type = "Writing%s"%(NBSP,)
 	else:
-	    type = "Reading%s"%(NBSP,)
+	    r_type = "Reading%s"%(NBSP,)
 	vol = HTMLgen.Href("tape_inventory/%s"%(qelem[enstore_constants.DEVICE]),
 			   qelem[enstore_constants.DEVICE])
 	mover = HTMLgen.Href("%s#%s"%(enstore_functions2.get_mover_status_filename(),
 				      qelem[enstore_constants.MOVER]),
 			     qelem[enstore_constants.MOVER])
         ff = qelem[enstore_constants.FILE_FAMILY]
-	txt = "%s%s(%s)%susing%s%s%sfrom%s%s%sby%s%s"%(type, str(vol), ff, NBSP, NBSP, 
+	txt = "%s%s(%s)%susing%s%s%sfrom%s%s%sby%s%s"%(r_type, str(vol), ff, NBSP, NBSP, 
 						   str(mover), NBSP, NBSP,
 		       enstore_functions2.strip_node(qelem[enstore_constants.NODE]),
 						   NBSP, NBSP, 
@@ -1483,19 +1498,19 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	return rows
 
     def make_lm_pend_read_row(self, qelem, cols):
-	type = "Pending%sread%sof%s"%(NBSP, NBSP, NBSP)
+	r_type = "Pending%sread%sof%s"%(NBSP, NBSP, NBSP)
 	vol = HTMLgen.Href("tape_inventory/%s"%(qelem[enstore_constants.DEVICE]),
 			   qelem[enstore_constants.DEVICE])
-	txt = "%s%s%sfrom%s%s%sby%s%s%s[%s]"%(type, str(vol), NBSP, NBSP,
+	txt = "%s%s%sfrom%s%s%sby%s%s%s[%s]"%(r_type, str(vol), NBSP, NBSP,
 				 enstore_functions2.strip_node(qelem[enstore_constants.NODE]),
 				 NBSP, NBSP, qelem[enstore_constants.USERNAME], NBSP,
 				 qelem.get(enstore_constants.REJECT_REASON, ""))
 	return HTMLgen.TR(HTMLgen.TD(txt, colspan=cols, html_escape='OFF'))
 
     def make_lm_pend_write_row(self, qelem, cols):
-	type = "Pending%swrite%sfor%s%s"%(NBSP, NBSP, NBSP, 
+	r_type = "Pending%swrite%sfor%s%s"%(NBSP, NBSP, NBSP, 
 					  qelem[enstore_constants.FILE_FAMILY])
-	txt = "%s%sfrom%s%s%sby%s%s%s[%s]"%(type, NBSP, NBSP,
+	txt = "%s%sfrom%s%s%sby%s%s%s[%s]"%(r_type, NBSP, NBSP,
 				 enstore_functions2.strip_node(qelem[enstore_constants.NODE]),
 				 NBSP, NBSP, qelem[enstore_constants.USERNAME], NBSP,
 				 qelem.get(enstore_constants.REJECT_REASON, ""))
@@ -2202,9 +2217,10 @@ class EnPlotPage(EnBaseHtmlDoc):
 
     def __init__(self, title="ENSTORE System Plots", gif="en_plots.gif", 
 		 system_tag="", description="", mount_label=None,
-		 links_l=None, nav_link=""):
+		 links_l=None, nav_link="", url_gif_dir = ""):
 	EnBaseHtmlDoc.__init__(self, refresh=0, help_file="plotHelp.html",
-			       system_tag=system_tag)
+			       system_tag=system_tag,
+                               url_gif_dir = url_gif_dir)
 	self.title = title
 	self.script_title_gif = gif
 	self.source_server = THE_INQUISITOR
@@ -2225,8 +2241,8 @@ class EnPlotPage(EnBaseHtmlDoc):
                 # this is a match
 		if file_label[0] == enstore_constants.UTIL_FILE:
 		    # fix up the label
-		    type = string.split(text, "_", 1)
-		    return "%s %s"%(type[0], file_label[1])
+		    p_type = string.split(text, "_", 1)
+		    return "%s %s"%(p_type[0], file_label[1])
 		elif file_label[0] == enstore_constants.BPD_FILE_D:
 		    # this is a mover specific label, pull out the mover name
 		    just_mover = string.replace(text[index:], file_label[0], "")
@@ -2506,12 +2522,12 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    is_offline = 0
 	    td = HTMLgen.TD(h_alt_key)
 	if sched != enstore_constants.NOSCHEDOUT:
-	    if sched is not "":
+	    if sched != "":
 		td.append(" ")
 		td.append(self.checkmark)
 		td.append(HTMLgen.BR())
 		td.append(HTMLgen.Emphasis(HTMLgen.Font("(%s)"%(sched,), size="-1")))
-	if is_offline == 1 and offline_dict[key] is not "":
+	if is_offline == 1 and offline_dict[key] != "":
 	    td.append(HTMLgen.BR())
 	    td.append(HTMLgen.Emphasis(HTMLgen.Font("(%s)"%(offline_dict[key],), 
 						    size="-1")))
@@ -2726,10 +2742,10 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(HTMLgen.Bold(node)))
 	    servers = dict[node]
 	    servers.sort()
-	    list = HTMLgen.List()
+	    l_list = HTMLgen.List()
 	    for server in servers:
-		list.append(server)
-	    tr.append(HTMLgen.TD(list))
+		l_list.append(server)
+	    tr.append(HTMLgen.TD(l_list))
 	else:
 	    while len(tr) < cols:
 		tr.append(empty_data())
@@ -2963,11 +2979,11 @@ class EnSGIngestPage(EnBaseHtmlDoc):
         stamps=[]
         images=[]
         files=os.listdir(plots_dir)
-        for file in files:
-            if file.find("_stamp.jpg") > 0:
-                stamps.append(file)
-            if file.find(".jpg") > 0 and file.find("_stamp") == -1:
-                images.append(file)
+        for filename in files:
+            if filename.find("_stamp.jpg") > 0:
+                stamps.append(filename)
+            if filename.find(".jpg") > 0 and filename.find("_stamp") == -1:
+                images.append(filename)
  
         libraries = {}
         for stamp in stamps:
