@@ -28,6 +28,7 @@ import Trace
 #import checksum
 import option
 #import enstore_functions3
+import callback
 
 
 #Completion status field values.
@@ -140,7 +141,83 @@ def untried_output(requests):
                                      "File transfer not attempted.")
                 error_output(request)
 
-def mover_handshake(listen_socket, udp_socket, request, encp_intf):
+def mover_handshake_new(listen_socket, work_ticket, encp_intf):
+    use_listen_socket = listen_socket
+    ticket = {}
+    
+    message = "Listening for control socket at: %s" \
+              % str(listen_socket.getsockname())
+    Trace.message(INFO_LEVEL, message)
+    Trace.log(e_errors.INFO, message)
+
+    start_time = time.time()
+    while time.time() < start_time + encp_intf.resubmit_timeout:
+        #Attempt to get the control socket connected with the mover.
+        duration = max(start_time + encp_intf.resubmit_timeout - time.time(),0)
+        try:
+            control_socket, mover_address, ticket = \
+                                encp.open_control_socket(
+		    use_listen_socket, duration)
+        except (socket.error, select.error, encp.EncpError), msg:
+
+            if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
+                #If a select (or other call) was interupted,
+                # this is not an error, but should continue.
+                continue
+            elif msg.args[0] == errno.ETIMEDOUT:
+                # Setting the error to RESUBMITTING is important.  If this is
+                # not done, then it would be returned as ETIMEDOUT.
+                # ETIMEDOUT is a retriable error; meaning it would retry
+                # the request to the LM, but it will fail since the ticket only
+                # contains the 'status' field (as set below).  When
+                # handle_retries() is called after mover_handshake() by
+                # having the error be RESUBMITTING, encp will resubmit all
+                # pending requests (instead of failing on retrying one
+                # request).
+                ticket['status'] = (e_errors.RESUBMITTING, None)
+            elif hasattr(msg, "type"):
+                ticket['status'] = (msg.type, str(msg))
+            else:
+                ticket['status'] = (e_errors.NET_ERROR, str(msg))
+
+            #Combine the dictionaries (if possible).
+            if getattr(msg, 'ticket', None) != None:
+                #Do the initial munge.
+                ticket = encp.combine_dict(ticket, msg.ticket, work_ticket)
+
+            #Since an error occured, just return it.
+            return None, ticket
+
+        Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (CONTROL):")
+        Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
+        #Recored the receiving of the first control socket message.
+        message = "Received callback ticket from mover %s for transfer %s." % \
+                  (ticket.get('mover', {}).get('name', "Unknown"),
+                   ticket.get('unique_id', "Unknown")) + encp.elapsed_string()
+        Trace.message(INFO_LEVEL, message)
+        Trace.log(e_errors.INFO, message)
+ 
+        #verify that the id is one that we are excpeting and not one that got
+        # lost in the ether.
+        if ticket['unique_id'] != work_ticket['unique_id']:
+            encp.close_descriptors(control_socket)
+            Trace.log(e_errors.INFO,
+                      "mover handshake: mover impostor called back"
+                      "   mover address: %s   got id: %s   expected: %s"
+                      "   ticket=%s" %
+                      (mover_address, ticket['unique_id'],
+                       work_ticket['unique_id'], ticket))
+            continue
+
+        # ok, we've been called back with a matched id - how's the status?
+        if not e_errors.is_ok(ticket['status']):
+            return None, ticket
+
+        
+        return control_socket, ticket
+
+
+def mover_handshake_original(listen_socket, udp_socket, request, encp_intf):
     #Grab a new clean udp_socket.
     udp_callback_addr, unused = encp.get_udp_callback_addr(encp_intf,
                                                            udp_socket)
@@ -332,7 +409,105 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 
     return control_socket, ticket
 
-def mover_handshake2(work_ticket, udp_socket, e):
+def mover_handshake2_new(control_socket, work_ticket, e):
+
+    prepare_for_transfer_start_time = time.time()
+
+    try:
+        callback.read_tcp_obj(control_socket, work_ticket)
+
+        
+        #Output the info.
+        message = "Sent file request to mover." + encp.elapsed_string()
+        Trace.log(e_errors.INFO, message)
+        Trace.message(TRANSFER_LEVEL, message)
+        
+    except e_errors.TCP_EXCEPTION, msg:
+        work_ticket['status'] = (e_errors.TCP_EXCEPTION, str(msg))
+        return None, work_ticket
+
+    	try:
+	    mover_addr = work_ticket['mover']['callback_addr']
+	except KeyError:
+	    msg = sys.exc_info()[1]
+            try:
+                sys.stderr.write("Sub ticket 'mover' not found.\n")
+                sys.stderr.write("%s: %s\n" % (e_errors.KEYERROR, str(msg)))
+                sys.stderr.write(pprint.pformat(work_ticket)+"\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
+	    if e_errors.is_ok(work_ticket.get('status', (None, None))):
+		work_ticket['status'] = (e_errors.KEYERROR, str(msg))
+	    return None, work_ticket
+
+	#Set the route that the data socket will use.
+	try:
+	    #There is no need to do this on a non-multihomed machine.
+	    config = host_config.get_config()
+	    if config and config.get('interface', None):
+		local_intf_ip = encp.open_routing_socket(mover_addr[0], e)
+	    else:
+		local_intf_ip = work_ticket['callback_addr'][0]
+	except (encp.EncpError,), msg:
+	    work_ticket['status'] = (e_errors.EPROTO, str(msg))
+	    return None, work_ticket
+
+        Trace.message(TRANSFER_LEVEL, "Opening the data socket.")
+        Trace.log(e_errors.INFO, "Opening the data socket.")
+
+        #Open the data socket.
+        try:
+            data_path_socket = encp.open_data_socket(mover_addr, local_intf_ip)
+
+            if not data_path_socket:
+                raise socket.error(errno.ENOTCONN,
+                                   errno.errorcode[errno.ENOTCONN])
+
+            work_ticket['status'] = (e_errors.OK, None)
+	    #We need to specifiy which interface will be used on the encp side.
+	    work_ticket['encp_ip'] = data_path_socket.getsockname()[0]
+            Trace.message(TRANSFER_LEVEL, "Opened the data socket.")
+            Trace.log(e_errors.INFO, "Opened the data socket.")
+        except (encp.EncpError, socket.error), detail:
+            msg = "Unable to open data socket with mover: %s" % (str(detail),)
+            try:
+                sys.stderr.write("%s\n" % str(msg))
+                sys.stderr.flush()
+            except IOError:
+                pass
+            Trace.log(e_errors.ERROR, str(msg))
+            work_ticket['status'] = (e_errors.NET_ERROR, str(msg))
+
+        # Verify that everything went ok with the transfer.
+        result_dict = encp.handle_retries([work_ticket], work_ticket,
+                                          work_ticket, e)
+
+        if not e_errors.is_ok(result_dict):
+            #Log the error.
+            Trace.log(e_errors.ERROR, "Unable to connect data socket: %s %s" %
+                      (str(work_ticket['status']), str(result_dict['status'])))
+            
+            #Don't loose the non-retirable error.
+            if e_errors.is_non_retriable(result_dict):
+                work_ticket = encp.combine_dict(result_dict, work_ticket)
+            # Close these descriptors before they are forgotten about.
+            #encp.close_descriptors(out_fd)
+
+            return None, work_ticket
+
+        message = "Data socket is connected to mover %s for %s. " % \
+                      (work_ticket.get('mover', {}).get('name', "Unknown"),
+                      work_ticket.get('unique_id', "Unknown"))
+        Trace.message(TRANSFER_LEVEL, message)
+        Trace.log(e_errors.INFO, message)
+
+        Trace.message(TIME_LEVEL, "Time to prepare for transfer: %s sec." %
+                      (time.time() - prepare_for_transfer_start_time,))
+
+        return data_path_socket, work_ticket
+
+def mover_handshake2_original(work_ticket, udp_socket, e):
         prepare_for_transfer_start_time = time.time()
 
         #This is an evil hack to modify work_ticket outside of
@@ -437,6 +612,8 @@ def mover_handshake2(work_ticket, udp_socket, e):
 
         return data_path_socket, work_ticket
 
+mover_handshake = mover_handshake_original
+mover_handshake2 = mover_handshake2_original
 
 def set_metadata(ticket, intf):
 
