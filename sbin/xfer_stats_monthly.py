@@ -96,7 +96,7 @@ def fill_histograms(i,server_name,server_port,hlist):
     db = pg.DB(host  = acc.get('db_host', "localhost"),
                dbname= acc.get('dbname', "enstoredb"),
                port  = acc.get('db_port', 5432),
-               user  = acc.get('dbuser', "enstore"))
+               user  = acc.get('dbuser_reader', "enstore_reader"))
     h   = hlist[i]
     res=db.query(SELECT_DELETED_BYTES)
     for row in res.getresult():
@@ -112,7 +112,7 @@ def fill_tape_histograms(i,server_name,server_port,hlist):
     db = pg.DB(host  = acc.get('db_host', "localhost"),
                dbname= acc.get('dbname', "enstoredb"),
                port  = acc.get('db_port', 5432),
-               user  = acc.get('dbuser', "enstore"))
+               user  = acc.get('dbuser_reader', "enstore_reader"))
     h   = hlist[i]
     db.query("begin")
     q="declare file_cursor cursor for select bfid, size from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED'"
@@ -208,7 +208,7 @@ def plot_bpd():
             db = pg.DB(host  = acc.get('dbhost', 'localhost'),
                        dbname= acc.get('dbname', 'accounting'),
                        port  = acc.get('dbport', 5432),
-                       user  = acc.get('dbuser', 'enstore'))
+                       user  = acc.get('dbuser_reader', 'enstore_reader'))
             res=db.query(SELECT_STMT1)
             for row in res.getresult():
                 if not row:
@@ -392,7 +392,9 @@ def plot_bytes():
             i=i+1
             color=color+1
 
-    while 0 in exitmutexes: pass
+    while 0 in exitmutexes:
+        time.sleep(60)
+        pass
     
     i = 0
     for i in range(len(histograms)):
@@ -522,7 +524,9 @@ def plot_tape_bytes():
             i=i+1
             color=color+1
 
-    while 0 in tape_exitmutexes: pass
+    while 0 in tape_exitmutexes:
+        time.sleep(60)
+        pass
     
     i = 0
     for i in range(len(histograms)):
@@ -611,7 +615,7 @@ def plot_tape_bytes():
 if __name__ == "__main__":
     plot_bpd()
     plot_bytes()
-#    plot_tape_bytes()
+    plot_tape_bytes()
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.jpg  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
     os.system(cmd)
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
