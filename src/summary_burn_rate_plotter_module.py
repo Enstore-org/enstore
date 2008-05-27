@@ -188,6 +188,11 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                 drs_res = db.query(sql_cmd).getresult()
             except (pg.InternalError, AttributeError):
                 drs_res = []
+            except pg.ProgrammingError:
+                message = "Unable to select from status (%s, %s): %s\n" % \
+                          (edb['dbhost'], edb['dbport'], msg)
+                sys.stderr.write(message)
+                continue
 
                 
             ##Since the two tables are in seperate databases, we need to join
