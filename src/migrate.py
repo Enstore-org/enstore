@@ -215,9 +215,9 @@ def init(intf):
 		# check for directories
 
 		#log dir
-		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 		if not os.access(LOG_DIR, os.W_OK):
 			os.makedirs(LOG_DIR)
+		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 
 		#spool dir
 		if not SPOOL_DIR:
@@ -1312,14 +1312,16 @@ def is_migrated(vol, db):
 	res1 = db.query(q).getresult()
 	for row in res1:
 		q2 = "select * from migration " \
-		     "where src_bfid = '%s';" % (row[0],)
+		     "where src_bfid = '%s' or dst_bfid = '%s';" % \
+		     (row[0], row[0])
 		res2 = db.query(q2).getresult()
 		if len(res2) == 0:
 			return False  #At least one file is not migrated.
 		else:
+			row2 = res2[0]
 			try:
-				if not res2[2] or not res2[3] or not res2[4] \
-				       or not res2[5]:
+				if not row2[2] or not row2[3] or not row2[4] \
+				       or not row2[5]:
 					return False
 			except IndexError:
 				return False #At least one file is not migrated.
