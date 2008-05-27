@@ -106,7 +106,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                 db = pg.DB(host  = edb.get('dbhost', "localhost"),
                            dbname= edb.get('dbname', "enstore"),
                            port  = edb.get('dbport', 5432),
-                           user  = edb.get('dbuser', "enstore"))
+                           user  = edb.get('dbuser_reader', "enstore_reader"))
             except pg.InternalError, msg:
                 message = "Unable to contact (%s, %s): %s\n" % \
                           (edb['dbhost'], edb['dbport'], msg)
@@ -172,7 +172,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                 db = pg.DB(host  = drs.get('dbhost', "localhost"),
                            dbname= drs.get('dbname', "drivestat"),
                            port  = drs.get('dbport', 5432),
-                           user  = drs.get('dbuser', "enstore"))
+                           user  = drs.get('dbuser_reader', "enstore_reader"))
             except pg.InternalError:
                 db = None
 
