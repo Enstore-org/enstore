@@ -128,7 +128,7 @@ echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes that are apparently in more than one robot"
 sort -m /tmp/{silo,rail,tower}-volumes | uniq -d | while read vol; do
-  grep $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500,STK,AML2}-VOLUMES.html}
+  grep -h $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500,STK,AML2}-VOLUMES.html}
 done
 
 echo
@@ -206,7 +206,7 @@ egrep -v "^$|^<|(DG |IA[0-9A-Z])[0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html
   sort >/tmp/silo-volumes
 egrep -hv "^$|^<|(TEST|(TST|(VO|IA)[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500[FG]1-VOLUMES.html |\
   sed -e 's/, /,/g' -e 's/in /in_/' |\
-  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
+  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^[01],[-0-9,]+$/) {print $1}' |\
   sort >/tmp/rail-volumes
 egrep -v "^$|^<" $inventory_dir/AML2-VOLUMES.html |\
   awk 'NF==3 && $2=="3480" && $3~/[OME]/ {print $1} \
@@ -255,7 +255,7 @@ echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes that are apparently in more than one robot"
 sort -m /tmp/{silo,rail,tower}-volumes | uniq -d | while read vol; do
-  grep $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500[FG]1,STK,AML2}-VOLUMES.html}
+  grep -h $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500[FG]1,STK,AML2}-VOLUMES.html}
 done
 
 echo
@@ -343,7 +343,7 @@ echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes that are apparently in more than one robot"
 sort -m /tmp/{silo,rail}-volumes | uniq -d | while read vol; do
-  grep $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500,STK}-VOLUMES.html}
+  grep -h $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500,STK}-VOLUMES.html}
 done
 
 echo
