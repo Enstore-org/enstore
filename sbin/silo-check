@@ -151,7 +151,7 @@ echo "--------------------------------------------------------------------------
 elif [ $gang = "d0en" ]; then
 
 # d0en 9310 silos are acs 1 & lsm 0,1
-# d0en 8500 rails are acs 0 & lsm 4-7
+# d0en 8500 rails are acs 0 & lsm 4-7, acs 1 & lsm 0-3
 
 # for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
 #   vol   home		acs, lsm, panel, row, col	type
@@ -204,7 +204,7 @@ egrep -v "^$|^<|(DG |IA[0-9A-Z])[0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html
   sed -e 's/, /,/g' -e 's/in /in_/' |\
   awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^1,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/silo-volumes
-egrep -v "^$|^<|(TEST|(TST|(VO|IA)[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500G1-VOLUMES.html |\
+egrep -v "^$|^<|(TEST|(TST|(VO|IA)[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500[FG]1-VOLUMES.html |\
   sed -e 's/, /,/g' -e 's/in /in_/' |\
   awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/rail-volumes
@@ -222,12 +222,12 @@ echo "Tapes in the PowderHorn 9310 (acs 1, lsm 0 and 1) that are not fully decla
 comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
 fgrep -f /tmp/silo-not-enstore $inventory_dir/STK-VOLUMES.html
 
-# tapes in the StreamLine 8500, but not in enstore
+# tapes in a StreamLine 8500, but not in enstore
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the StreamLine 8500 (acs 0, lsm 4 to 7) that are not fully declared to enstore"
+echo "Tapes in a StreamLine 8500 (acs 0, lsm 4 to 7 or acs 1, lsm 0 to 3) that are not fully declared to enstore"
 comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
-fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500G1-VOLUMES.html
+fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500[FG]1-VOLUMES.html
 
 # tapes in a D0 AML/2 tower, but not in enstore
 # d0en has only LTOs in the AML/2
@@ -245,7 +245,7 @@ fgrep -f /tmp/tower-not-enstore $inventory_dir/AML2-VOLUMES.html
 # tapes in enstore, but not in the robots
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in the SL8500, a D0 silo, or a D0 tower"
+echo "Tapes declared to enstore that are not in a SL8500, a D0 silo, or a D0 tower"
 sort -mu /tmp/{silo,rail,tower}-volumes >/tmp/robot-volumes
 comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
 fgrep -f /tmp/enstore-not-robot $inventory_dir/VOLUMES_DEFINED
@@ -255,7 +255,7 @@ echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes that are apparently in more than one robot"
 sort -m /tmp/{silo,rail,tower}-volumes | uniq -d | while read vol; do
-  grep $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500G1,STK,AML2}-VOLUMES.html}
+  grep $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500[FG]1,STK,AML2}-VOLUMES.html}
 done
 
 echo
