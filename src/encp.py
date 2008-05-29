@@ -2116,6 +2116,11 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
 
     if data_access_layer_requested < 0:
         return
+
+    if ticket.get('data_access_layer_printed', None) == 1:
+        #Allready printed this error.  See last line of this function.
+        # Also, a little hack in handle_retries....
+        return
     
     # check if all fields in ticket present
 
@@ -2329,6 +2334,9 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
             Trace.log(e_errors.ERROR,
                       "Unable to update accounting DB with error: (%s, %s)" % \
                       (str(exc), str(msg)))
+
+    #Set this so that final_say() can skip printing this info.
+    ticket['data_access_layer_printed'] = 1
 
 #######################################################################
 
@@ -5530,9 +5538,29 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         Trace.log(e_errors.INFO,
                   "pf_status = %s  skip_layer_cleanup = %s" %
                   (pf_status, skip_layer_cleanup))
-                                
+
+    ## First check for non-retriable errors.
+
     #The volume clerk set the volume NOACCESS.
-    if not e_errors.is_ok(vc_status):
+    if e_errors.is_non_retriable(vc_status):
+        status = vc_status
+    #Set status if there was an error recieved from control socket.
+    elif e_errors.is_non_retriable(socket_status):
+        status = socket_status
+    #Set the status if the local file could not be stat-ed.
+    elif e_errors.is_non_retriable(lf_status):
+        status = lf_status
+    #Set the status if the pnfs file had layers already set.
+    elif e_errors.is_non_retriable(pf_status):
+        status = pf_status
+    #Set the status if the ticket status contained a non-retriable error.
+    elif e_errors.is_non_retriable(dict_status):
+        status = dict_status
+
+    ## If there were no non-retriable errors, look for any error.
+
+    #The volume clerk set the volume NOACCESS.
+    elif not e_errors.is_ok(vc_status):
         status = vc_status
     #Set status if there was an error recieved from control socket.
     elif not e_errors.is_ok(socket_status):
@@ -5673,7 +5701,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         if len(request_dictionary) > 3:
             print_data_access_layer_format(infile, outfile, file_size,
                                            error_dictionary)
-
+            #If error_dictionary is the same dictionary as request_dictionary
+            # then the following line is redundant as
+            # print_data_access_layer_format() has already set it.
+            # However, if they are different we need to set this here, so
+            # that we don't need to increase usage of combine_dict any
+            # more than currently used.
+            request_dictionary['data_access_layer_printed'] = 1
         
         alarm_dict = {'infile':infile, 'outfile':outfile, 'status':status[1]}
         if e_errors.is_emailable(status[0]):
@@ -7118,7 +7152,7 @@ def submit_write_request(work_ticket, encp_intf):
 
 ############################################################################
 
-def stall_write_transfer(data_path_socket, e):
+def stall_write_transfer(data_path_socket, control_socket, e):
     #Stall starting the count until the first byte is ready for writing.
     duration = e.mover_timeout
     while 1:
@@ -7137,8 +7171,23 @@ def stall_write_transfer(data_path_socket, e):
                 break
 
     if data_path_socket not in write_fd:
-        status_ticket = {'status' : (e_errors.UNKNOWN,
-                                     "No data written to mover.")}
+        try:
+            read_control_fd, unused, unused = select.select([control_socket],
+                                                            [], [], 10)
+            if control_socket in read_control_fd:
+                status_ticket = callback.read_tcp_obj(control_socket)
+                return status_ticket
+            else:
+                status_ticket = {'status' : (e_errors.UNKNOWN,
+                                             "No data written to mover.")}
+        except (select.error, e_errors.TCP_EXCEPTION):
+            status_ticket = {'status' : (e_errors.UNKNOWN,
+                                         "No data written to mover.")}
+        ### Why isn't there a return of here like there is in
+        ### stall_read_transfer()?  The return just after
+        ### callback.read_tcp_obj() should be correct in all cases, but
+        ### is there some case that the else and except don't want to
+        ### return right away?
 
     #To achive more accurate rates on writes to enstore when a tape
     # needs to be mounted, wait until the mover has sent a byte as
@@ -7163,13 +7212,20 @@ def stall_write_transfer(data_path_socket, e):
                 read_fd = []
                 break
 
-    if data_path_socket not in read_fd:
-        status_ticket = {'status' : (e_errors.UNKNOWN,
-                                     "No data written to mover.")}
     #If there is no data waiting in the buffer, we have an error.
-    elif len(data_path_socket.recv(1, socket.MSG_PEEK)) == 0:
-        status_ticket = {'status' : (e_errors.UNKNOWN,
-                                     "No data written to mover.")}
+    if (data_path_socket not in read_fd) \
+           or (len(data_path_socket.recv(1, socket.MSG_PEEK)) == 0):
+        try:
+            read_control_fd, unused, unused = select.select([control_socket],
+                                                            [], [], 10)
+            if control_socket in read_control_fd:
+                status_ticket = callback.read_tcp_obj(control_socket)
+            else:
+                status_ticket = {'status' : (e_errors.UNKNOWN,
+                                             "No data written to mover.")}
+        except (select.error, e_errors.TCP_EXCEPTION):
+            status_ticket = {'status' : (e_errors.UNKNOWN,
+                                         "No data written to mover.")}
     else:
         status_ticket = {'status' : (e_errors.OK, None)}
 
@@ -7287,7 +7343,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                        time.time()-tinfo['encp_start_time']))
 
         #We need to stall the transfer until the mover is ready.
-        done_ticket = stall_write_transfer(data_path_socket, e)
+        done_ticket = stall_write_transfer(data_path_socket, control_socket, e)
         
         if not e_errors.is_ok(done_ticket):
             #Make one last check of everything before entering transfer_file().
@@ -9235,7 +9291,7 @@ def submit_read_requests(requests, encp_intf):
 
 #######################################################################
 
-def stall_read_transfer(data_path_socket, work_ticket, e):
+def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
     #Stall starting the count until the first byte is ready for reading.
     duration = e.mover_timeout
     while 1:
@@ -9254,8 +9310,18 @@ def stall_read_transfer(data_path_socket, work_ticket, e):
                 break
 
     if data_path_socket not in read_fd:
-        status_ticket = {'status' : (e_errors.UNKNOWN,
-                                     "No data read from mover.")}
+        try:
+            read_control_fd, unused, unused = select.select([control_socket],
+                                                            [], [], 10)
+            if control_socket in read_control_fd:
+                status_ticket = callback.read_tcp_obj(control_socket)
+            else:
+                status_ticket = {'status' : (e_errors.UNKNOWN,
+                                             "No data read from mover.")}
+        except (select.error, e_errors.TCP_EXCEPTION):
+            status_ticket = {'status' : (e_errors.UNKNOWN,
+                                         "No data read from mover.")}
+
         return status_ticket
 
     if work_ticket['file_size'] == 0:
@@ -9272,8 +9338,17 @@ def stall_read_transfer(data_path_socket, work_ticket, e):
     if target_size == None:
         status_ticket = {'status' : (e_errors.OK, None)}
     elif len(data_path_socket.recv(1, socket.MSG_PEEK)) != target_size:
-        status_ticket = {'status' : (e_errors.UNKNOWN,
-                                     "No data read from mover.")}
+        try:
+            read_control_fd, unused, unused = select.select([control_socket],
+                                                            [], [], 10)
+            if control_socket in read_control_fd:
+                status_ticket = callback.read_tcp_obj(control_socket)
+            else:
+                status_ticket = {'status' : (e_errors.UNKNOWN,
+                                             "No data read from mover.")}
+        except (select.error, e_errors.TCP_EXCEPTION):
+            status_ticket = {'status' : (e_errors.UNKNOWN,
+                                         "No data read from mover.")}
     else:
         status_ticket = {'status' : (e_errors.OK, None)}
 
@@ -9362,7 +9437,8 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         out_fd = done_ticket['fd']
     
     #We need to stall the transfer until the mover is ready.
-    done_ticket = stall_read_transfer(data_path_socket, request_ticket, e)
+    done_ticket = stall_read_transfer(data_path_socket, control_socket,
+                                      request_ticket, e)
 
     if not e_errors.is_ok(done_ticket):
         #Make one last check of everything before entering transfer_file().
