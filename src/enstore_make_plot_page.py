@@ -169,8 +169,8 @@ class PlotPage(enstore_html.EnPlotPage):
 
 class CronPlotPage(PlotPage):
 
-    def __init__(self, title, gif, description, url, outofdate=0, gif_dir = ""):
-        PlotPage.__init__(self, title, gif, description, url, outofdate, gif_dir = gif_dir)
+    def __init__(self, title, gif, description, url, outofdate=0):
+        PlotPage.__init__(self, title, gif, description, url, outofdate)
         self.help_file = "cronHelp.html"
         self.english_titles = ENGLISH_TITLES
         
@@ -321,7 +321,7 @@ def make_plot(full_subdir_path, url_gif_dir, plot_name, links_l = None):
     #Override use of system_tag to contain the name of the plot page.
     system_tag = plot_name
     html_of_plots = enstore_files.HTMLPlotFile(plot_file, system_tag, "../",
-                                               gif_dir = url_gif_dir)
+                                               url_gif_dir = url_gif_dir)
     html_of_plots.open()
     # get the list of stamps and jpg files
     (jpgs, stamps, pss) = enstore_plots.find_jpg_files(full_subdir_path)
