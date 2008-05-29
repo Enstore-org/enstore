@@ -48,6 +48,7 @@ import traceback
 import e_errors
 import volume_clerk_client
 import timeofday
+import enstore_functions2
 
 def _lock(f, op):
         dummy = fcntl.fcntl(f.fileno(), fcntl.F_SETLKW,
