@@ -31,6 +31,7 @@ import socket
 import select
 import edb
 import esgdb
+import enstore_functions2
 
 MY_NAME = enstore_constants.INFO_SERVER   #"info_server"
 MAX_CONNECTION_FAILURE = 5
