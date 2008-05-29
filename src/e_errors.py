@@ -97,6 +97,7 @@ MC_QUEUE_FULL = "MEDIA_CHANGER_QUEUE_FULL" # media changer queue is full
 BAD_FILE_SIZE = "BAD_FILE_SIZE" # file size is bad. For instance < 0
 MEMORY_ERROR = "MEMORY_ERROR" # python exception MemoryError
 NOT_SUPPORTED = "NOT SUPPORTED"
+INVALID_WRAPPER = "INVALID WRAPPER" #The tape wrapper type is not known.
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
@@ -212,6 +213,7 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          NO_FILE,   #FC does not know about requested bfid
                          NO_VOLUME, #VC does not know about requested volume
                          BAD_FILE_SIZE, # file size is bad. For instance < 0
+                         INVALID_WRAPPER, #The tape wrapper type is not known.
                          )
 
 raise_alarm_errors = ( CONFLICT, #Metadata is not consistant.

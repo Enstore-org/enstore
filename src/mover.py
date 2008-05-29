@@ -3363,7 +3363,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "error importing wrapper: %s %s" %(exc,msg))
 
         if not self.wrapper:
-            msg = e_errors.EPROTO, "Illegal wrapper type %s" % (self.wrapper_type)
+            msg = e_errors.INVALID_WRAPPER, "Illegal wrapper type %s" % (self.wrapper_type)
             Trace.log(e_errors.ERROR,  "%s" %(msg,))
             self.transfer_failed(msg[0], msg[1], error_source=TAPE, dismount_allowed=0)
             #self.send_client_done(self.current_work_ticket, msg[0], msg[1])
@@ -6108,7 +6108,7 @@ class DiskMover(Mover):
             Trace.log(e_errors.ERROR, "error importing wrapper: %s %s" %(exc,msg))
 
         if not self.wrapper:
-            msg = e_errors.EPROTO, "Illegal wrapper type %s" % (self.wrapper_type)
+            msg = e_errors.INVALID_WRAPPER, "Illegal wrapper type %s" % (self.wrapper_type)
             Trace.log(e_errors.ERROR,  "%s" %(msg,))
             self.send_client_done(self.current_work_ticket, msg[0], msg[1])
             self.state = self.save_state
