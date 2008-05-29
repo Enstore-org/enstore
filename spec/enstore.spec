@@ -149,6 +149,7 @@ rm -f $ENSTORE_DIR/debugsources.list
 rm /tmp/enstore-setup
 
 %preun
+echo "PRE UNINSTALL"
 $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh
 %clean
 rm -rf $RPM_BUILD_ROOT/*
