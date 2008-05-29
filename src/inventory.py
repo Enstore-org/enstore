@@ -452,7 +452,8 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
                              (bk,) + \
                              volume_quotas[keys][5:7] + \
                              format_storage_size(volume_quotas[keys][7]) + \
-                             volume_quotas[keys][8:13]
+                             volume_quotas[keys][8:13] + \
+                             (volume_quotas[keys][14],)
             vq_file.write(row_format % formated_tuple)
         vq_file.write("\n") #insert newline between sections
     vq_file.close()
@@ -475,37 +476,40 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
         #Get the current (library, storage_group) out of the dict.
         (l, sg, quota, allocated, blank_v, written_v, deleted_v, used,
             active_f, deleted_f, unknown_f, recyclable_v, migrated_v,
-            wp_n) = volume_quotas[key]
+            wp_n, duplicated_v) = volume_quotas[key]
 
+        TUPLE_LEN = 16
         #For each library total up the numbers.
         try: # total up the number of requested tapes.
             requested = int(authorized_tapes.get((l, sg), (0,) * 2)[0]) + \
-                        int(library_dict.get(l, (0,) * 15)[2])
+                        int(library_dict.get(l, (0,) * TUPLE_LEN)[2])
         except ValueError:
-            requested = int(library_dict.get(l, (0,) * 15)[2])
+            requested = int(library_dict.get(l, (0,) * TUPLE_LEN)[2])
         try: # total up the number of authorized tapes.
             authorized = int(authorized_tapes.get((l, sg), (0,) * 2)[1]) + \
-                         int(library_dict.get(l, (0,) * 15)[3])
+                         int(library_dict.get(l, (0,) * TUPLE_LEN)[3])
         except ValueError:
-            authorized = int(library_dict.get(l, (0,) * 15)[3])
+            authorized = int(library_dict.get(l, (0,) * TUPLE_LEN)[3])
         try:
             quota = int(quota) + int(library_dict.get(l, (0,) * 15)[4])
         except:
-            quota = int(library_dict.get(l, (0,) * 15)[4])
-        allocated = allocated + library_dict.get(l, (0,) * 15)[5]
-        blank_v = blank_v + library_dict.get(l, (0,) * 15)[6]
-        written_v =  written_v + library_dict.get(l, (0,) * 15)[7]
-        deleted_v =  deleted_v + library_dict.get(l, (0,) * 15)[8]
-        used = used + library_dict.get(l, (0,) * 15)[9]
-        active_f = active_f + library_dict.get(l, (0,) * 15)[10]
-        deleted_f =  deleted_f + library_dict.get(l, (0,) * 15)[11]
-        unknown_f = unknown_f + library_dict.get(l, (0,) * 15)[12]
-        recyclable_v = recyclable_v + library_dict.get(l, (0,) * 15)[13]
-        migrated_v = migrated_v + library_dict.get(l, (0,) * 15)[14]
+            quota = int(library_dict.get(l, (0,) * TUPLE_LEN)[4])
+        allocated = allocated + library_dict.get(l, (0,) * TUPLE_LEN)[5]
+        blank_v = blank_v + library_dict.get(l, (0,) * TUPLE_LEN)[6]
+        written_v =  written_v + library_dict.get(l, (0,) * TUPLE_LEN)[7]
+        deleted_v =  deleted_v + library_dict.get(l, (0,) * TUPLE_LEN)[8]
+        used = used + library_dict.get(l, (0,) * TUPLE_LEN)[9]
+        active_f = active_f + library_dict.get(l, (0,) * TUPLE_LEN)[10]
+        deleted_f =  deleted_f + library_dict.get(l, (0,) * TUPLE_LEN)[11]
+        unknown_f = unknown_f + library_dict.get(l, (0,) * TUPLE_LEN)[12]
+        recyclable_v = recyclable_v + library_dict.get(l, (0,) * TUPLE_LEN)[13]
+        migrated_v = migrated_v + library_dict.get(l, (0,) * TUPLE_LEN)[14]
+        duplicated_v = duplicated_v + library_dict.get(l, (0,) * TUPLE_LEN)[15]
 
         library_dict[l] = (l, "", requested, authorized, quota, allocated,
                            blank_v, written_v, deleted_v, used, active_f,
-                           deleted_f, unknown_f, recyclable_v, migrated_v)
+                           deleted_f, unknown_f, recyclable_v, migrated_v,
+                           duplicated_v)
 	library_format_dict[l] = used
 
     #Since this info is appened to the same file as the volume quotas, make
