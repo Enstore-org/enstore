@@ -32,6 +32,7 @@ import inquisitor_client
 import cPickle
 import event_relay_messages
 import udp_common
+import enstore_functions2
 
 def hack_match(a,b): #XXX clean this up
     a = string.split(a, '.')
