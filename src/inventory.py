@@ -860,9 +860,9 @@ def inventory(output_dir, cache_dir):
         time.ctime(time.time())))
     mv_file.write("These migrated volumes can be recycled or deleted from system:\n\n")
 
-    mv_file.write("Date this listing was generated: %s\n\n"%(
+    dv_file.write("Date this listing was generated: %s\n\n"%(
         time.ctime(time.time())))
-    mv_file.write("These duplicated volumes can be swapped:\n\n")
+    dv_file.write("These duplicated volumes can be swapped:\n\n")
 
     rc_file.write("Date this listing was generated: %s\n\n"%(
         time.ctime(time.time())))
