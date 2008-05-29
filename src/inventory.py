@@ -47,6 +47,8 @@ def get_vol_filenames(output_dir):
         total_bytes_file = "/dev/stdout"
         declaration_error = "/dev/stdout"
         migrated_volumes = "/dev/stdout"
+        duplicated_volumes = "/dev/stdout"
+        recyclable_volumes = "/dev/stdout"
     else:
         last_access_file = os.path.join(output_dir, "LAST_ACCESS")
         volume_size_file = os.path.join(output_dir, "VOLUME_SIZE")
@@ -58,12 +60,13 @@ def get_vol_filenames(output_dir):
         total_bytes_file = os.path.join(output_dir, "TOTAL_BYTES_ON_TAPE")
         declaration_error = os.path.join(output_dir, "DECLARATION_ERROR")
         migrated_volumes = os.path.join(output_dir, "MIGRATED_VOLUMES")
-        recyclable_volume = os.path.join(output_dir, "RECYCLABLE_VOLUMES")
+        duplicated_volumes = os.path.join(output_dir, "DUPLICATED_VOLUMES")
+        recyclable_volumes = os.path.join(output_dir, "RECYCLABLE_VOLUMES")
     return last_access_file, volume_size_file, volumes_defined_file, \
         volume_quotas_file, volume_quotas_format_file, \
         total_bytes_file, volumes_too_many_mounts_file, \
-        declaration_error, migrated_volumes, recyclable_volume, \
-        write_protect_alert_file
+        declaration_error, migrated_volumes, duplicated_volumes, \
+        recyclable_volumes, write_protect_alert_file
 
 #This is the "magic" class to use when filtering out elements that have the
 # same external label in a list.
@@ -346,8 +349,8 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
               "Authorized", "Quota", "Allocated",
               "Blank", "Used", "Deleted", "Space Used",
               "Active", "Deleted", "Unknown",
-              "Recyclable", "Migrated")
-    fields2 = ("","","","","","","","","","","","Files","Files","Files","","")
+              "Recyclable", "Migrated", "Duplicated")
+    fields2 = ("","","","","","","","","","","","Files","Files","Files","","", "")
 
     fw = []
     for i in fields:
@@ -376,16 +379,17 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
         fw[13] = max(fw[13], len(str(volume_quotas[key][10])))
         fw[14] = max(fw[14], len(str(volume_quotas[key][11])))
         fw[15] = max(fw[15], len(str(volume_quotas[key][12])))
+        fw[16] = max(fw[16], len(str(volume_quotas[key][14])))
 
     tl = 0
     for i in fw:
         tl = tl + i
 
-    header_format = "%%%ds  %%-%ds  %%-%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds\n"%tuple(fw)
+    header_format = "%%%ds  %%-%ds  %%-%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds  %%%ds\n"%tuple(fw)
     # take care of formated size
     fw[10] = fw[10]-2
     fw.insert(11, 2)
-    row_format = "%%%dd  %%-%ds  %%-%ds  %%%ds  %%%ds  %%%ds  %%%dd  %%%ds  %%%dd  %%%dd  %%%d.2f%%%ds  %%%dd  %%%dd  %%%dd  %%%dd  %%%dd\n"%tuple(fw)
+    row_format = "%%%dd  %%-%ds  %%-%ds  %%%ds  %%%ds  %%%ds  %%%dd  %%%ds  %%%dd  %%%dd  %%%d.2f%%%ds  %%%dd  %%%dd  %%%dd  %%%dd  %%%dd  %%%dd\n"%tuple(fw)
 
     vq_file.write(header_format%fields)
     vq_file.write(header_format%fields2)
@@ -763,8 +767,8 @@ def inventory(output_dir, cache_dir):
     last_access_file, volume_size_file, volumes_defined_file, \
         volume_quotas_file, volume_quotas_format_file, \
         total_bytes_file, volumes_too_many_mounts_file, \
-        declaration_error, migrated_volumes, recyclable_volume, \
-        write_protect_alert_file \
+        declaration_error, migrated_volumes, duplicated_volumes, \
+        recyclable_volumes, write_protect_alert_file \
                       = get_vol_filenames(output_dir)
 
     # open volume_summary_cache
@@ -819,7 +823,8 @@ def inventory(output_dir, cache_dir):
     tm_file = open(volumes_too_many_mounts_file, "w")
     de_file = open(declaration_error, "w")
     mv_file = open(migrated_volumes, "w")
-    rc_file = open(recyclable_volume, "w")
+    dv_file = open(duplicated_volumes, "w")
+    rc_file = open(recyclable_volumes, "w")
     rc_file2 = []
 
     vs_file.write("%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n" % ("Label",
@@ -851,6 +856,10 @@ def inventory(output_dir, cache_dir):
         time.ctime(time.time())))
     mv_file.write("These migrated volumes can be recycled or deleted from system:\n\n")
 
+    mv_file.write("Date this listing was generated: %s\n\n"%(
+        time.ctime(time.time())))
+    mv_file.write("These duplicated volumes can be swapped:\n\n")
+
     rc_file.write("Date this listing was generated: %s\n\n"%(
         time.ctime(time.time())))
     rc_file.write("These volumes are full and have only deleted files.\n")
@@ -878,6 +887,7 @@ def inventory(output_dir, cache_dir):
     n_unchanged = 0
     n_changed = 0
     n_migrated = 0
+    n_duplicated = 0
     n_recyclable = 0
     n_recyclable2 = 0
 
@@ -1009,6 +1019,14 @@ def inventory(output_dir, cache_dir):
         else:
             migrated_vol = 0
 
+        # is this a duplication volume?
+        if vv['system_inhibit'][1] == 'duplication' and active == 0:
+            dv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
+            n_duplicated = n_duplicated + 1
+            duplicated_vol = 1
+        else:
+            duplicated_vol = 0
+
         # can it be recycled?
         if (vv['system_inhibit'][1] == 'full' or \
             vv['system_inhibit'][1] == 'migrated') and active == 0 \
@@ -1098,7 +1116,9 @@ def inventory(output_dir, cache_dir):
                 v_info[10] + unknown,
                 v_info[11] + recyclable_vol,
                 v_info[12] + migrated_vol,
-                v_info[13] + wp_n)
+                v_info[13] + wp_n,
+                v_info[14] + duplicated_vol,
+                )
         else:
             volumes_allocated[(library, storage_group)] = (
                 library,
@@ -1114,7 +1134,9 @@ def inventory(output_dir, cache_dir):
                 unknown,
                 recyclable_vol,
                 migrated_vol,
-                wp_n)
+                wp_n,
+                duplicated_vol,
+                )
 
         # statistics stuff
         la_file.write("%f, %s %s\n" % (vv['last_access'],

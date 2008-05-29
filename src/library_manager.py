@@ -38,6 +38,7 @@ import enstore_constants
 import option
 import Trace
 import udp_client
+import enstore_functions2
 
 import manage_queue
 import e_errors
@@ -321,7 +322,7 @@ class AtMovers:
                     # tells if write work can be given out
                     write_enabled = write_enabled + 1
                 elif self.at_movers[rec[0]]['state'] == 'ERROR':
-                    if not (self.at_movers[rec[0]]['volume_status'][0][1] in ("full", "readonly", "migrated")):
+                    if not (enstore_functions2.is_readonly_state(self.at_movers[rec[0]]['volume_status'][0][1])):
                         write_enabled = write_enabled + 1
         return vols, write_enabled
 

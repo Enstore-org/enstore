@@ -84,7 +84,6 @@ DEFAULT_OVERRIDE_INTERVAL = 86400   # (1 day) how long something needs to be
 OVERRIDE_UPDATE_INTERVAL = 3600     # (1 hr) how often it checks the override file
 
 MOVER_ERROR_STATES = ['OFFLINE', 'ERROR', enstore_constants.DEAD]
-VOLUME_STATES = ['full', 'readonly', 'migrated']
 
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
@@ -1014,8 +1013,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    # if this is a read, we will ignore it unless the tape could
 		    # be written to, i.e. not full and not read-only
 		    if qelem['work'] == 'read_from_hsm':
-			if vc['system_inhibit'][1] in VOLUME_STATES or\
-			   vc['user_inhibit'][1] in VOLUME_STATES:
+			if enstore_functions2.is_readonly_state(vc['system_inhibit'][1]) \
+                           or enstore_functions2.is_readonly_state(vc['user_inhibit'][1]):
 			    continue
 		    ff = vc.get('file_family', 
 				volume_family.extract_file_family(vc.get('volume_family', 

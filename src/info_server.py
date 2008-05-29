@@ -649,7 +649,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 				else:
 					q = q + "where %s %s %s"%(key, cond, val)
 		elif state:
-			if state in ['full', 'read_only', 'migrated']:
+			if enstore_functions2.is_readonly_state(state):
 				q = q + "where system_inhibit_1 = '%s'"%(state)
 			else:
 				q = q + "where system_inhibit_0 = '%s'"%(state)
@@ -758,7 +758,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			else:
 				q = q + "and not label like '%%.deleted'"
 		elif state:
-			if state in ['full', 'readonly', 'migrated']:
+			if enstore_functions2.is_readonly_state(state):
 				q = q + "where system_inhibit_1 = '%s'"%(state)
 			else:
 				q = q + "where system_inhibit_0 = '%s'"%(string.upper(state))

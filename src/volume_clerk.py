@@ -1093,18 +1093,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # states it is NOT available for reading
                 if record['system_inhibit'][0] != 'none':
                     ret_stat = (record['system_inhibit'][0], None)
-                elif (record['system_inhibit'][1] != 'none' and
-                      record['system_inhibit'][1] != 'readonly' and
-                      record['system_inhibit'][1] != 'full' and
-                      record['system_inhibit'][1] != 'migrated'):
+                elif not enstore_functions2.is_readable_state(
+                    record['system_inhibit'][1]):
                     ret_stat = (record['system_inhibit'][1], None)
                 # if user_inhibit is NOT in one of the following 
                 # states it is NOT available for reading
                 elif record['user_inhibit'][0] != 'none':
                     ret_stat = (record['user_inhibit'][0], None)
-                elif (record['user_inhibit'][1] != 'none' and
-                      record['user_inhibit'][1] != 'readonly' and
-                      record['user_inhibit'][1] != 'full'):
+                elif not enstore_functions2.is_readable_state(
+                    record['user_inhibit'][1]):
                     ret_stat = (record['user_inhibit'][1], None)
                 else:
                     ret_stat = (e_errors.OK,None)
@@ -1113,6 +1110,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 if record['system_inhibit'][0] != 'none':
                     ret_stat = (record['system_inhibit'][0], None)
                 elif (record['system_inhibit'][1] == 'migrated'):
+                    # treated as readonly
+                    ret_stat = ('readonly', None)
+                elif (record['system_inhibit'][1] == 'duplicated'):
                     # treated as readonly
                     ret_stat = ('readonly', None)
                 elif (record['system_inhibit'][1] == 'readonly' or
@@ -1929,6 +1929,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     def set_system_migrated(self, ticket):
         return self.set_system_inhibit(ticket, "migrated", 1)
 
+    # flag that the current volume is duplicated #### DONE
+    def set_system_duplicated(self, ticket):
+        return self.set_system_inhibit(ticket, "duplicated", 1)
+    
     # flag that the current volume is full #### DONE
     def set_system_full(self, ticket):
         return self.set_system_inhibit(ticket, "full", 1)
@@ -2073,7 +2077,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 else:
                     q = q + "where %s %s %s"%(key, cond, val)
         elif state:
-            if state in ['full', 'read_only', 'migrated']:
+            if enstore_functions2.is_readonly_state(state):
+                #readonly states are the only ones in system_inhibit_1?
                 q = q + "where system_inhibit_1 = '%s'"%(state)
             else:
                 q = q + "where system_inhibit_0 = '%s'"%(state)
@@ -2193,7 +2198,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     q = q + "where %s %s %s"%(key, cond, val)
             q = q + "and not label like '%%.deleted'"
         elif state:
-            if state in ['full', 'readonly', 'migrated']:
+            if enstore_functions2.is_readonly_state(state):
+                #readonly states are the only ones in system_inhibit_1?
                 q = q + "where system_inhibit_1 = '%s'"%(state)
             else:
                 q = q + "where system_inhibit_0 = '%s'"%(string.upper(state))

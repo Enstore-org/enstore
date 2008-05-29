@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
+import time
+import string
+import sys
+
 import option
 import volume_clerk_client
-import time
-import sys
 import e_errors
-import string
+import enstore_functions2
 
-WATCH = ['readonly', 'full', 'migrated']
 
 def usage(s):
 	print 'usage: %s [yyyy-mm-dd [hh:mm:ss]]'%(s)
@@ -62,7 +63,7 @@ if __name__ == '__main__':
 			vol = vcc.inquire_vol(i)
 			if vol['status'][0] == e_errors.OK and \
 				vol['media_type'] != 'null' and \
-				vol['system_inhibit'][1] in WATCH:
+				enstore_functions2.is_readonly_state(vol['system_inhibit'][1]):
 				if vol.has_key('si_time'):
 					t = vol['si_time'][1]
 				else:
