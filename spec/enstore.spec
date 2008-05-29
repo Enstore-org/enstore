@@ -150,7 +150,7 @@ rm /tmp/enstore-setup
 
 %preun
 echo "PRE UNINSTALL"
-$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh
+$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh $1
 %clean
 rm -rf $RPM_BUILD_ROOT/*
 
