@@ -51,17 +51,18 @@ host    all         all         127.0.0.1/32          trust
 # IPv6 local connections:
 host    all         all         ::1/128               trust
 #Private subnet.
-host accounting enstore        192.168.89.0/24 trust
-host accounting enstore_reader 192.168.89.0/24 trust
+host accounting enstore        192.168.89.0/24          trust
+host accounting enstore_reader 192.168.89.0/24          trust
 #Our subnet.
-host accounting enstore     131.225.13.0/24                     trust
+host accounting enstore     131.225.13.0/24             trust
 #Write access from other systems to operation:
+host operation enstore 131.225.13.0/24                  trust
 host operation enstore 131.225.164.0/24                 trust
 host operation enstore 131.225.215.0/24                 trust
 #Read only other systems
-host accounting enstore_reader 131.225.164.0/24                 trust
-host accounting enstore_reader 131.225.215.0/24                 trust
-host accounting enstore_reader 131.225.13.0/24                  trust
+host accounting enstore_reader 131.225.164.0/24         trust
+host accounting enstore_reader 131.225.215.0/24         trust
+host accounting enstore_reader 131.225.13.0/24          trust
 #Include ccfsrv2.
-host accounting enstore_reader 131.225.80.22/32                 trust
+host accounting enstore_reader 131.225.80.22/32         trust
 
