@@ -44,21 +44,22 @@
 
 # TYPE  DATABASE    USER        IP-ADDRESS        IP-MASK           METHOD
 
-local   all         all                                             trust
-host    all         all         127.0.0.1         255.255.255.255   trust
-#host    all         all         131.225.0.0       255.255.0.0       trust
-host    all         enstore     131.225.215.17     255.255.255.255   trust
-host    all         enstore     131.225.215.4      255.255.255.255   trust
-host    all         enstore     131.225.215.5      255.255.255.255   trust
-host    all         enstore     131.225.215.6      255.255.255.255   trust
-host    all         enstore     131.225.13.2      255.255.255.255   trust
-host    all         enstore     131.225.13.3       255.255.255.255   trust
-host    all         huangch     131.225.215.0      255.255.255.0     trust
-host    all         huangch     131.225.84.10     255.255.255.255   trust
-host    all         huangch     131.225.80.208     255.255.255.255   trust
-host    all         root        131.225.13.88     255.255.255.255   trust
-host    all         root        131.225.13.84     255.255.255.255   trust
-#host    all         huangch     131.225.0.0       255.255.0.0       trust
-host    enstoredb   enstore_reader 131.225.0.0    255.255.0.0       trust
-host    all         huangch     131.225.13.0      225.225.225.0     trust
-
+# "local" is for Unix domain socket connections only
+local   all         all                               trust
+# IPv4 local connections:
+host    all         all         127.0.0.1/32          trust
+# IPv6 local connections:
+host    all         all         ::1/128               trust
+#Private subnet.
+host enstoredb enstore        192.168.89.0/24         trust
+host enstoredb enstore_reader 192.168.89.0/24         trust
+#Our subnet.
+host enstoredb enstore        131.225.215.0/24        trust
+host enstoredb enstore        131.225.13.2/32         trust
+host enstoredb enstore        131.225.13.3/32         trust
+#Read only other systems
+host enstoredb enstore_reader 131.225.164.0/24        trust
+host enstoredb enstore_reader 131.225.215.0/24        trust
+host enstoredb enstore_reader 131.225.13.0/24         trust
+#Include ccfsrv2.
+host enstoredb enstore_reader 131.225.80.22/32        trust
