@@ -55,8 +55,9 @@ host enstoredb enstore        192.168.89.0/24        trust
 host enstoredb enstore_reader 192.168.89.0/24        trust
 #Our subnet
 host    enstoredb         enstore     131.225.164.0/24                    trust
-host    enstoredb         enstore     131.225.13.2/32                     trust
-host    enstoredb         enstore     131.225.13.3/32                     trust
+# below we allow access from stk* systems cause stken does a lot of stuff 
+# to other system's dbs 
+host    enstoredb         enstore     131.225.13.0/24                     trust
 #Read only other systems
 host    enstoredb         enstore_reader 131.225.164.0/24                 trust
 host    enstoredb         enstore_reader 131.225.215.0/24                 trust
