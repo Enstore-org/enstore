@@ -189,16 +189,17 @@ def time2timestamp(t):
 # initialize csc, db, ... etc.
 def init(intf):
 	#global db, csc
-	global log_f, dbhost, dbport, dbname, errors
+	global log_f, dbhost, dbport, dbname, dbuser, errors
 	global SPOOL_DIR
 
 	csc = configuration_client.ConfigurationClient((intf.config_host,
 							intf.config_port))
 
 	db_info = csc.get('database')
-	dbhost = db_info['db_host']
-	dbport = db_info['db_port']
+	dbhost = db_info['dbhost']
+	dbport = db_info['dbport']
 	dbname = db_info['dbname']
+	dbuser = db_info['dbuser']
 
 	errors = 0
 
