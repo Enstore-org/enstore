@@ -1218,7 +1218,7 @@ def check_bit_file(bfid, bfid_info = None):
 
     #If this gets set to True later on, then this bfid points to a multiple
     # copy.  Some checks need to be skipped if true.
-    is_multile_copy = False
+    is_multiple_copy = False
 
     if not bfid:
         err.append("no bifd given")
@@ -1311,7 +1311,7 @@ def check_bit_file(bfid, bfid_info = None):
                 
                 if layer1_bfid != file_record['bfid']:
                     #Must be a multiple copy to get to this point.
-                    is_multile_copy = True
+                    is_multiple_copy = True
 
                 if file_record['deleted'] == 'yes':
                     try:
@@ -1624,7 +1624,7 @@ def check_bit_file(bfid, bfid_info = None):
                  "layer1"        : layer1_bfid,
                  "file_record"   : file_record,
                  "pnfsid"        : file_record['pnfsid'],
-                 "is_multiple_copy" : is_multile_copy}
+                 "is_multiple_copy" : is_multiple_copy}
 
     e1, w1, i1 = check_file(pnfs_path, file_info)
     err = err + e1
