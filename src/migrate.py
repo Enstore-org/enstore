@@ -227,6 +227,7 @@ def init(intf):
 			sys.stderr.write(message)
 			sys.exit(1)
 		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
+		log(MIGRATION_NAME, string.join(sys.argv, " "))
 
 		#spool dir
 		if not SPOOL_DIR:
