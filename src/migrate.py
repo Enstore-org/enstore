@@ -194,7 +194,7 @@ def time2timestamp(t):
 def init(intf):
 	#global db, csc
 	global log_f, dbhost, dbport, dbname, dbuser, errors
-	global SPOOL_DIR
+	global SPOOL_DIR, DEFAULT_LIBRARY, use_file_family
 
 	csc = configuration_client.ConfigurationClient((intf.config_host,
 							intf.config_port))
@@ -234,6 +234,12 @@ def init(intf):
 			sys.exit(1)
 		if not os.access(SPOOL_DIR, os.W_OK):
 			os.makedirs(SPOOL_DIR)
+
+	if intf.library:
+		DEFAULT_LIBRARY = intf.LIBRARY
+
+	if intf.file_family:
+		use_file_family = intf.file_family
 
 	return
 
@@ -1269,6 +1275,8 @@ def _migrate_threads(files, intf):
 
 def _migrate_processes(files, intf):
 	global errors
+
+	MY_TASK = "MIGRATE"
 	# reset errors every time
 	errors = 0
 
@@ -1317,23 +1325,36 @@ def _migrate_processes(files, intf):
 
 			#os.close(scan_r_pipe)
 
-			done_pid, exit_status = os.waitpid(pid2, 0)
-			if os.WIFEXITED(exit_status):
-				errors = errors + os.WEXITSTATUS(exit_status)
-			else:
+			try:
+				done_pid, exit_status = os.waitpid(pid2, 0)
+				if os.WIFEXITED(exit_status):
+					errors = errors + os.WEXITSTATUS(exit_status)
+				else:
+					errors = errors + 1
+			except OSError, msg:
+				message = "waitpid(%s, 0) failed: %s" \
+					  % (pid2, str(msg))
+				error_log(MY_TASK, message)
 				errors = errors + 1
 		else:
-		    # Keep the current process to write files to tape.
-		    print "Starting migrating."
-		    migrating(intf)
-		    print "Completed migrating."
+			# Keep the current process to write files to tape.
+			print "Starting migrating."
+			migrating(intf)
+			print "Completed migrating."
 
-		done_pid, exit_status = os.waitpid(pid, 0)
-		if os.WIFEXITED(exit_status):
-			errors = errors + os.WEXITSTATUS(exit_status)
-		else:
-			errors = errors + 1
-		
+			try:
+				done_pid, exit_status = os.waitpid(pid, 0)
+				if os.WIFEXITED(exit_status):
+					errors = errors + \
+						 os.WEXITSTATUS(exit_status)
+				else:
+					errors = errors + 1
+			except OSError, msg:
+				message = "waitpid(%s, 0) failed: %s" \
+					  % (pid, str(msg))
+				error_log(MY_TASK, message)
+				errors = errors + 1
+
 		#os.close(migrate_r_pipe)
 
 	return errors
@@ -1446,10 +1467,10 @@ def migrate_volume(vol, intf, with_deleted = None):
 		#ticket = vcc.set_system_migrated(vol)
 		ticket = set_system_migrated_func(vcc, vol)
 		if ticket['status'][0] == e_errors.OK:
-			log(MY_TASK, "set %s to migrated"%(vol))
+			log(MY_TASK, "set %s to %s"%(vol, INHIBIT_STATE))
 		else:
-			error_log(MY_TASK, "failed to set %s migrated: %s" \
-				  % (vol, ticket['status']))
+			error_log(MY_TASK, "failed to set %s %s: %s" \
+				  % (vol, ticket['status'], INHIBIT_STATE))
 		# set comment
 		to_list = migrated_to(vol, db)
 		if to_list == []:
@@ -1467,7 +1488,7 @@ def migrate_volume(vol, intf, with_deleted = None):
 			else:
 				error_log(MY_TASK, 'failed to set comment of %s to "%s%s"'%(vol, MTO, vol_list))
 	else:
-		error_log(MY_TASK, "do not set %s to migrated due to previous error"%(vol))
+		error_log(MY_TASK, "do not set %s to %S due to previous error"%(vol, INHIBIT_STATE))
 	return res
 
 # restore(bfids) -- restore pnfs entries using file records
