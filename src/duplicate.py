@@ -36,11 +36,12 @@ import enstore_functions2
 
 # modifying migrate module
 # migrate.DEFAULT_LIBRARY = 'LTO4'
-migrate.DEFAULT_LIBRARY = 'D0-LTO4G1'
+#migrate.DEFAULT_LIBRARY = 'D0-LTO4G1'
+migrate.DEFAULT_LIBRARY = ""
 migrate.MIGRATION_FILE_FAMILY_KEY = "_copy_1"
 migrate.INHIBIT_STATE = "duplicated"
 migrate.MIGRATION_NAME = "DUPLICATION"
-set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_duplicated
+migrate.set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_duplicated
 migrate.MFROM = "<-"
 migrate.MTO = "->"
 migrate.LOG_DIR = "/var/duplication"
