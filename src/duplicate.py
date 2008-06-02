@@ -38,6 +38,9 @@ import enstore_functions2
 # migrate.DEFAULT_LIBRARY = 'LTO4'
 migrate.DEFAULT_LIBRARY = 'D0-LTO4G1'
 migrate.MIGRATION_FILE_FAMILY_KEY = "_copy_1"
+migrate.INHIBIT_STATE = "duplicated"
+migrate.MIGRATION_NAME = "DUPLICATION"
+set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_duplicated
 migrate.MFROM = "<-"
 migrate.MTO = "->"
 migrate.LOG_DIR = "/var/duplication"
@@ -258,10 +261,25 @@ def log_swapped_and_closed(bfid1, bfid2, db):
 		exc_type, exc_value = sys.exc_info()[:2]
 		migrate.error_log("LOG_SWAPPED", str(exc_type), str(exc_value), q)
 	return
+
+# The restore operation is not defined for duplication.  So, disable the
+# functionality.
+def restore(bfids, intf):
+	message = "Restore for duplication is not defined.\n"
+	sys.stderr.write(message)
+	sys.exit(1)
+# The restore_volume operation is not defined for duplication.  So, disable the
+# functionality.
+def restore_volume(vol, intf):
+	message = "Restore for duplication is not defined.\n"
+	sys.stderr.write(message)
+	sys.exit(1)
 			
 migrate.swap_metadata = duplicate_metadata
 #migrate.log_swapped = log_swapped_and_closed
 migrate.final_scan_volume = final_scan_volume
+migrate.restore = restore
+migrate.restore_volume = restore_volume
 
 # init() -- initialization
 

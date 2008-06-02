@@ -675,6 +675,12 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
 
+    # mark volume as duplicated
+    def set_system_duplicated(self, external_label, timeout=60, retry=10):
+        ticket= { 'work'           : 'set_system_duplicated',
+                  'external_label' : external_label }
+        return self.send(ticket,timeout,retry)
+
     # set system inhibit to none
     def set_system_none(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_none',

@@ -134,6 +134,10 @@ MTO = "=>"
 MIGRATION_FILE_FAMILY_KEY = "-MIGRATION"
 DELETED_FILE_FAMILY = "DELETED_FILES"
 
+INHIBIT_STATE = "migrated"
+MIGRATION_NAME = "MIGRATION"
+set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_migrated
+
 ENCP_PRIORITY = 0
 #csc = None
 
@@ -212,12 +216,16 @@ def init(intf):
 
 	# check for no_log commands
 	if not intf.migrated_to and not intf.migrated_from and \
-	   not intf.status:
+	   not intf.status and not intf.show:
 		# check for directories
 
 		#log dir
-		if not os.access(LOG_DIR, os.W_OK):
+		if not os.access(LOG_DIR, os.F_OK):
 			os.makedirs(LOG_DIR)
+		if not os.access(LOG_DIR, os.W_OK):
+			message = "Insufficent permissions to open log file.\n"
+			sys.stderr.write(message)
+			sys.exit(1)
 		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 
 		#spool dir
@@ -403,6 +411,60 @@ def log_history(src, dst, db):
 		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
 	return
 
+#Return the volume that the bfid refers to.
+def get_volume_from_bfid(bfid, db):
+	if not enstore_functions3.is_bfid(bfid):
+		return False
+
+	q = "select label from volume,file where file.volume = volume.id " \
+	    " and file.bfid = '%s';" % (bfid,)
+
+	try:
+		res = db.query(q).getresult()
+		return res[0][0]  #volume
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("get_volume_from_bfid", str(exc_type),
+			  str(exc_value), q)
+	
+	return None
+
+#Report if the volume pair was migrated or duplicated.
+def get_migration_type(src_vol, dst_vol, db):
+	try:
+		#The first way will be the prefered way once the volume
+		# clerk (et. al.) get updated.
+		"""
+		q = "select label from volume where " \
+		     " (label = '%s' and system_inhibit_1 = '%s' ) " \
+		     " or (label = '%s' and file_family like '%%%s%%') " \
+		     % (src_vol, INHIBIT_STATE,
+			dst_vol, MIGRATION_FILE_FAMILY_KEY)
+	        res = db.query(q).getresult()
+		if len(res) != 0:
+			return MIGRATION_NAME
+	        """
+		q_d = "select label from volume where " \
+		      " (label = '%s' or label = '%s') and " \
+		      "  (comment like '%%->%%' or comment like '%%<-%%') " \
+		      % (src_vol, dst_vol)
+		q_m =  "select label from volume where " \
+		      " (label = '%s' or label = '%s') and " \
+		      "  (comment like '%%=>%%' or comment like '%%<=%%') " \
+		      % (src_vol, dst_vol)
+		res = db.query(q_m).getresult()
+		if len(res) != 0:
+			return "MIGRATION"
+		res = db.query(q_d).getresult()
+		if len(res) != 0:
+			return "DUPLICATION"
+	except IndexError:
+		return None
+
+	return None
+
+##########################################################################
+
 # migration_path(path) -- convert path to migration path
 # a path is of the format: /pnfs/fs/usr/X/...
 # a migration path is: /pnfs/fs/usr/Migration/X/...
@@ -436,6 +498,7 @@ def deleted_path(path, vol, location_cookie):
 # temp_file(file) -- get a temporary destination file from file
 def temp_file(vol, location_cookie):
 	return os.path.join(SPOOL_DIR, vol+':'+location_cookie)
+
 
 ##########################################################################
 
@@ -1350,7 +1413,7 @@ def migrate_volume(vol, intf, with_deleted = None):
 	if v['system_inhibit'][0] != 'none':
 		error_log(MY_TASK, vol, 'is', v['system_inhibit'][0])
 		return 1
-	if v['system_inhibit'][1] == 'migrated' and is_migrated(vol, db):
+	if v['system_inhibit'][1] == INHIBIT_STATE and is_migrated(vol, db):
 		log(MY_TASK, vol, 'has already been migrated')
 		return 0
 	if v['system_inhibit'][1] != "readonly":
@@ -1380,7 +1443,8 @@ def migrate_volume(vol, intf, with_deleted = None):
 	res = migrate(bfids, intf)
 	if res == 0:
 		# mark the volume as migrated
-		ticket = vcc.set_system_migrated(vol)
+		#ticket = vcc.set_system_migrated(vol)
+		ticket = set_system_migrated_func(vcc, vol)
 		if ticket['status'][0] == e_errors.OK:
 			log(MY_TASK, "set %s to migrated"%(vol))
 		else:
@@ -1407,7 +1471,8 @@ def migrate_volume(vol, intf, with_deleted = None):
 	return res
 
 # restore(bfids) -- restore pnfs entries using file records
-def restore(bfids):
+def restore(bfids, intf):
+	MY_TASK = "RESTORE"
 	# get its own file clerk client and volume clerk client
 	config_host = enstore_functions2.default_host()
 	config_port = enstore_functions2.default_port()
@@ -1418,13 +1483,24 @@ def restore(bfids):
 	if type(bfids) != type([]):
 		bfids = [bfids]
 	for bfid in bfids:
-		MY_TASK = "RESTORE"
 		f = fcc.bfid_info(bfid)
+		#Verify that the file has been deleted.
 		if f['deleted'] != 'yes':
 			error_log(MY_TASK, "%s is not deleted"%(bfid))
 			continue
+		#Verify that the file was copied and swapped.
+		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+		if not is_swapped(bfid, db):
+			error_log(MY_TASK, "bfid %s was not swapped" % (bfid,))
+			continue
 		v = vcc.inquire_vol(f['external_label'])
-		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
+		try:
+			src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
+		except OSError, msg:
+			message = "Failed to restore %s: %s\n" % \
+				  (f['pnfsid'], str(msg))
+			sys.stderr.write(message)
+			sys.exit(1)
 		if type(src) == type([]):
 			src = src[0]
 		p = pnfs.File(src)
@@ -1444,18 +1520,18 @@ def restore(bfids):
 		p.update()
 
 # restore_volume(vol) -- restore all deleted files on vol
-def restore_volume(vol):
+def restore_volume(vol, intf):
 	MY_TASK = "RESTORE_VOLUME"
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 	log(MY_TASK, "restoring", vol, "...")
 	q = "select bfid from file, volume where \
 		file.volume = volume.id and label = '%s' and \
-		deleted = 'y';"%(vol)
+		deleted = 'y' order by location_cookie;"%(vol)
 	res = db.query(q).getresult()
 	bfids = []
 	for i in res:
 		bfids.append(i[0])
-	restore(bfids)
+	restore(bfids, intf)
 
 # nullify_pnfs() -- nullify the pnfs entry so that when the entry is
 #			removed, its layer4 won't be put in trashcan
@@ -1497,12 +1573,15 @@ class MigrateInterface(option.Interface):
 		self.with_deleted = None
 		self.with_final_scan = None
 		self.status = None
-
-		self.bfids = 0
-		self.volumes = 0
+		self.show = None
+		self.restore = None
+		
+		
+		#self.bfids = 0
+		#self.volumes = 0
 		#self.volumes_with_deleted = 0
-		self.restore_bfids = 0
-		self.restore_volumes = 0
+		#self.restore_bfids = 0
+		#self.restore_volumes = 0
 		self.scan_volumes = 0
 		self.migrated_from = None
 		self.migrated_to = None
@@ -1528,8 +1607,7 @@ class MigrateInterface(option.Interface):
 	"""
 	parameters = [
 		"[bfid1 [bfid2 [bfid3 ...]]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]]",
-		"--restore <bfid1 [bfid2 [bfid3 ...]]>",
-		"--restore-vol <vol1 [vol2 [vol3 ...]]>",
+		"--restore [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]]",
 		"--scan-vol <vol1 [vol2 [vol3 ...]]>",
 		"--migrated-from <vol>",
 		"--migrated-to <vol>",
@@ -1553,13 +1631,13 @@ class MigrateInterface(option.Interface):
 				      "Report the volumes that were copied"
 				      " from this volume.",
 				       option.VALUE_USAGE:option.IGNORED,
-				       option.VALUE_TYPE:option.STRING,
+				       option.VALUE_TYPE:option.INTEGER,
 				       option.USER_LEVEL:option.ADMIN,},
 		option.MIGRATED_TO:{option.HELP_STRING:
 				    "Report the volumes that were copied"
 				    " to this volume.",
 				    option.VALUE_USAGE:option.IGNORED,
-				    option.VALUE_TYPE:option.STRING,
+				    option.VALUE_TYPE:option.INTEGER,
 				    option.USER_LEVEL:option.ADMIN,},
 		option.PRIORITY:{option.HELP_STRING:
 				 "Sets the initial job priority."
@@ -1567,16 +1645,43 @@ class MigrateInterface(option.Interface):
 				 option.VALUE_USAGE:option.REQUIRED,
 				 option.VALUE_TYPE:option.INTEGER,
 				 option.USER_LEVEL:option.USER,},
+		option.RESTORE:{option.HELP_STRING:
+				 "Restores the original file or volume.",
+				 option.VALUE_USAGE:option.IGNORED,
+				 option.VALUE_TYPE:option.INTEGER,
+				 option.USER_LEVEL:option.USER,},
 		option.SCAN_VOLUMES:{option.HELP_STRING:
 				 "Scan completed volumes.",
 				 option.VALUE_USAGE:option.IGNORED,
-				 option.VALUE_TYPE:option.STRING,
+				 option.VALUE_TYPE:option.INTEGER,
 				 option.USER_LEVEL:option.USER,},
 		option.SPOOL_DIR:{option.HELP_STRING:
 				  "Specify the directory to use on disk.",
 				  option.VALUE_USAGE:option.REQUIRED,
 				  option.VALUE_TYPE:option.STRING,
 				  option.USER_LEVEL:option.USER,},
+		option.SHOW:{option.HELP_STRING:
+			       "Report on the completion of volumes.",
+				 option.VALUE_USAGE:option.IGNORED,
+				 option.VALUE_TYPE:option.INTEGER,
+				 option.USER_LEVEL:option.USER,
+			     option.EXTRA_VALUES:[
+					 {option.VALUE_NAME:"media_type",
+					  option.VALUE_TYPE:option.STRING,
+					  option.VALUE_USAGE:option.REQUIRED,},
+					 {option.VALUE_NAME:"library",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.OPTIONAL,},
+                                         {option.VALUE_NAME:"storage_group",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.OPTIONAL,},
+                                         {option.VALUE_NAME:"file_family",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.OPTIONAL,},
+                                         {option.VALUE_NAME:"wrapper",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.OPTIONAL,},
+						  ]},
 		option.STATUS:{option.HELP_STRING:
 			       "Report on the completion of a volume.",
 				 option.VALUE_USAGE:option.IGNORED,
@@ -1604,51 +1709,98 @@ def main(intf):
 	if intf.migrated_from:
 		# get a db connection
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-		for i in intf.args:
-			from_list = migrated_from(i, db)
-			print "%s %s"%(i, MFROM),
-			for j in from_list:
-				print j,
+		for vol in intf.args:
+			from_list = migrated_from(vol, db)
+			#We need to know determine if migration or
+			# duplication was used.
+			try:
+				mig_type = get_migration_type(from_list[0], vol, db)
+				if mig_type == "MIGRATION":
+					mfrom = "<="
+				elif mig_type == "DUPLICATION":
+					mfrom = "<-"
+				else:
+					mfrom = "<=-?"
+			except IndexError:
+				mfrom = "<=-?"
+			print "%s %s"%(vol, mfrom),
+			for from_vol in from_list:
+				print from_vol,
 			print
 	elif intf.migrated_to:
 		# get a db connection
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-		for i in intf.args:
-			to_list = migrated_to(i, db)
-			print "%s %s"%(i, MTO),
-			for j in to_list:
-				print j,
+		for vol in intf.args:
+			to_list = migrated_to(vol, db)
+			#We need to know determine if migration or
+			# duplication was used.
+			try:
+				mig_type = get_migration_type(vol, to_list[0], db)
+				if mig_type == "MIGRATION":
+					mto = "=>"
+				elif mig_type == "DUPLICATION":
+					mto = "->"
+				else:
+					mto = "?-=>"
+			except IndexError:
+				mto = "?-=>"
+			print "%s %s"%(vol, mto),
+			for to_vol in to_list:
+				print to_vol,
 			print
-	elif intf.restore_bfids:
-		restore(intf.args)
-	elif intf.restore_volumes:
-		for v in intf.args:
-			restore_volume(v)
+	elif intf.restore:
+		bfid_list = []
+		volume_list = []
+		for target in intf.args:
+			if enstore_functions3.is_bfid(target):
+				bfid_list.append(target)
+			elif enstore_functions3.is_volume(target):
+				volume_list.append(target)
+			else:
+				message = "%s is not a volume or bfid.\n"
+				sys.stderr.write(message % (target,))
+				sys.exit(1)
+				
+		if bfid_list:
+			restore(bfid_list, intf)
+		for volume in volume_list:
+			if intf.with_final_scan:
+				icheck = True
+			else:
+				icheck = False
+			restore_volume(volume, intf)
 	elif intf.scan_volumes:
 		for v in intf.args:
 			final_scan_volume(v)
 	elif intf.status:
 		exit_status = 0
+		mig_type = None  #migration type (MIGRATION or DUPLICATION)
+		
 		# get a db connection
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 		for v in intf.args:
+			
 			#Reset this for each volume.  It flags if the volume
-			# is a src or dst volume for migration.
+			# v is a src or dst volume for migration.
 			is_dst_volume = False
 			
 			print "%19s %19s %6s %6s %6s %6s" % \
 			      ("src_bfid", "dst_bfid", "copied", "swapped",
 			       "checked", "closed")
-			
+
+			#Build the sql query.
 			q = "select bfid,location_cookie from file,volume " \
 			    "where file.volume = volume.id " \
 			    " and volume.label = '%s' " \
 			    "order by location_cookie;" % (v,)
+			#Get the results.
 			res1 = db.query(q).getresult()
 			for row in res1:
+				#Build the sql query.
 				q2 = "select * from migration " \
 				     "where src_bfid = '%s' or " \
 				     " dst_bfid = '%s';" % (row[0], row[0])
+				#Get the results.
 				res2 = db.query(q2).getresult()
 				for row2 in res2:
 					if row2[2]:
@@ -1691,8 +1843,54 @@ def main(intf):
 						line = "%19s" % (row[0],)
 						print line
 						exit_status = 1
+				if not mig_type and len(res2) > 0:
+					src_sample_bfid = res2[0][0]
+					dst_sample_bfid = res2[0][1]
+					src_vol = get_volume_from_bfid(
+						src_sample_bfid, db)
+					dst_vol = get_volume_from_bfid(
+						dst_sample_bfid, db)
+					mig_type = get_migration_type(src_vol,
+								      dst_vol,
+								      db)
+			if mig_type:
+				print "\n%s" % (mig_type,)
+				
 
+				
 		return exit_status
+	elif intf.show:
+		exit_status = 0
+		# get a db connection
+		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+		#Build the sql query.
+		q = "select label,system_inhibit_1 from volume " \
+		    "where system_inhibit_0 != 'DELETED' " \
+		    " and media_type = '%s' " \
+		    % (intf.media_type,)
+		if intf.library and \
+		       intf.library != None and intf.library != "None":
+			q = q + "and library = '%s' " % (intf.library,)
+		if intf.storage_group and \
+		       intf.storage_group != None and \
+		       intf.storage_group != "None":
+			q = q + "and storage_group = '%s' " % \
+			    (intf.storage_group,)
+		if intf.file_family and \
+		       intf.file_family != None and intf.file_family != "None":
+			q = q + "and file_family = '%s' " % (intf.file_family,)
+		if intf.wrapper and \
+		       intf.wrapper != None and intf.wrapper != "None":
+			q = q + "and wrapper = '%s' " % (intf.wrapper,)
+		q = q + ";"
+
+		#Get the results.
+		res = db.query(q).getresult()
+
+		print "%10s %s" % ("volume", "system inhibit")
+		for row in res:
+			print "%10s %s" % (row[0], row[1])
+		
 	else:
 		bfid_list = []
 		volume_list = []
