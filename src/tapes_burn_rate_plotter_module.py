@@ -368,6 +368,13 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         month_ahead_date = time.strftime("%Y-%m-%d",
                  time.localtime(time.time() + DAYS_IN_MONTH * DAY_IN_SECONDS))
 
+        month_ago_timestamp = time.mktime(time.strptime(month_ago_date,
+                                                        "%Y-%m-%d"))
+        #today_timestamp = time.mktime(time.strptime(today_date,
+        #                                             "%Y-%m-%d"))
+        #month_ahead_timestamp = time.mktime(time.strptime(month_ahead_date,
+        #                                                  "%Y-%m-%d"))
+
         #for key in bytes_summary.keys():
         for key in self.LM_dict.keys() + self.LM_SG_dict.keys():
             #Key at this point is either, the library or a tuple consisting
@@ -382,6 +389,11 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 use_bytes_summary = bytes_summary[key]
             except KeyError:
                 use_bytes_summary = {today_date : {'mb_read':0, 'mb_write':0}}
+
+            #Set these so that the extra last column of data is outputed at
+            # the correct points for month ago, today and month ahead.
+            is_month_ago_plotted = False
+            is_today_plotted = False
             
             #Write out the plot information to the entire librarys' data files.
             summary_keys = use_bytes_summary.keys()
@@ -395,27 +407,74 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 current_gb = stats['mb_write'] / 1024.0
                 total_gb = sum_write / 1024.0
 
+                date_timestamp = time.mktime(time.strptime(date, "%Y-%m-%d"))
+
                 #For a month ago and today, plot an extra line conneting them.
+                #First, find the last date that information was written.
+                if month_ago_date >= date:
+                    month_g_bytes = total_gb #Remember this for estimating.
+                if today_date >= date:
+                    today_g_bytes = total_gb #Remember this for estimating.
+                #Second, create the output line.
                 if month_ago_date == date:
                     line = "%s %s %s %s\n" % (
-                        date, current_gb, total_gb, total_gb )
-                    month_g_bytes = total_gb #Remember this for estimating.
+                        date, current_gb, total_gb, total_gb)
+                    is_month_ago_plotted = True
                 elif today_date == date:
                     line = "%s %s %s %s\n" % (
                         date, current_gb, total_gb, total_gb)
-                    today_g_bytes = total_gb #Remember this for estimating.
+                    is_today_plotted = True
                 else:
                     line = "%s %s %s\n" % (
                         date, current_gb, total_gb)
 
+                #Slight diversion.  If we passed a month ago without
+                # finding a data point, we need to insert one.
+                if month_ago_timestamp <= date_timestamp \
+                       and not is_month_ago_plotted:
+                    line2 = "%s %s %s %s\n" % (
+                        month_ago_date, "skip", "skip", total_gb)
+                    is_month_ago_plotted = True
+                    #Write out the information to the correct data file.
+                    if self.LM_dict.has_key(key):
+                        self.LM_dict[key].write(line2)
+                    elif self.LM_SG_dict.has_key(key):
+                        self.LM_SG_dict[key].write(line2)
+                
                 #Write out the information to the correct data file.
                 if self.LM_dict.has_key(key):
                      self.LM_dict[key].write(line)
                 elif self.LM_SG_dict.has_key(key):
                     self.LM_SG_dict[key].write(line)
 
+            #If there hasn't been anything written in th last month we
+            # need to output the month interpolation line point now.
+            if not is_month_ago_plotted:
+                line2 = "%s %s %s %s\n" % (
+                    month_ago_date, "skip", "skip", total_gb)
+                is_month_ago_plotted = True
+                #Write out the information to the correct data file.
+                if self.LM_dict.has_key(key):
+                    self.LM_dict[key].write(line2)
+                elif self.LM_SG_dict.has_key(key):
+                    self.LM_SG_dict[key].write(line2)
+                
+            #If today hasn't been plotted yet (because nothing was written)
+            # then we need to plot the extra interpolation line point.
+            if not is_today_plotted:
+                line2 = "%s %s %s %s\n" % (
+                    today_date, "skip", "skip", total_gb)
+                is_today_plotted = True
+                #Write out the information to the correct data file.
+                if self.LM_dict.has_key(key):
+                    self.LM_dict[key].write(line2)
+                elif self.LM_SG_dict.has_key(key):
+                    self.LM_SG_dict[key].write(line2)
+
             #Write out one more line to plot the estimated usage the
             # next month.
+            ### Not everyone likes the month-ahead projection.
+            """
             line = "%s %s %s %s\n" % (
                         month_ahead_date, "skip", "skip",
                         (today_g_bytes - month_g_bytes) + today_g_bytes)
@@ -423,6 +482,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 self.LM_dict[key].write(line)
             elif self.LM_SG_dict.has_key(key):
                 self.LM_SG_dict[key].write(line)
+            """
 
         #Cleanup after ourselves.
         for pts_file in self.LM_SG_dict.values():
