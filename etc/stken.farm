@@ -1,5 +1,4 @@
 REMOVE		stkensrv*	stken-all[ab]	stken-all	ssasrv*
-ssasrv1				stken-alla	stken-all
 stkensrv0	stkensrv	stken-alla	stken-all
 stkensrv1	stkensrv	stken-alla	stken-all
 stkensrv2	stkensrv	stken-alla	stken-all
@@ -22,7 +21,6 @@ stkenmvr13a	stkenmvr-a	stken-alla	stken-all	stken-null
 stkenmvr14a	stkenmvr-a	stken-alla	stken-all	stken-null
 stkenmvr15a	stkenmvr-a	stken-alla	stken-all
 stkenmvr16a	stkenmvr-a	stken-alla	stken-all
-stkenmvr17a	stkenmvr-a	stken-alla	stken-all
 stkenmvr20a	stkenmvr-a	stken-alla	stken-all
 stkenmvr21a	stkenmvr-a	stken-alla	stken-all
 stkenmvr22a	stkenmvr-a	stken-alla	stken-all
@@ -87,10 +85,6 @@ stkendca18a	stkendca
 stkendca19a	stkendca
 stkendca20a	stkendca
 REMOVE		stkendm*
-stkendm1a	stkendm
-stkendm2a	stkendm
-stkendm3a	stkendm
-stkendm4a	stkendm
 stkendm5a	stkendm
 stkendm6a	stkendm
 stkendm7a	stkendm
