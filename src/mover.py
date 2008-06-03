@@ -4541,6 +4541,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             volume_status = (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                              self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
+            volume_family = self.vol_info.get('volume_family', volume_family)
+            volume_label = self.vol_info.get('external_label', volume_label)
+            
         if self.transfer_deficiency < 1.:
             self.transfer_deficiency = 1.
         ticket =  {
