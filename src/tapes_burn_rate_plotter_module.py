@@ -223,9 +223,9 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                   "count(v2.library) as blank," \
                   "count(v3.library) as written " \
                   "from volume v1 " \
-                  "full join (select * from volume where eod_cookie = 'none')"\
+                  "full join (select * from volume where (eod_cookie = 'none' or eod_cookie = '0000_000000000_0000001') and system_inhibit_0!='DELETED' and wrapper='none' and file_family='none')"\
                   " as v2 on v1.id=v2.id " \
-                  "full join (select * from volume where eod_cookie != 'none')"\
+                  "full join (select * from volume where system_inhibit_0!='DELETED' and ((eod_cookie != 'none' and eod_cookie != '0000_000000000_0000001') or (wrapper!='none' or file_family!='none')))"\
                   " as v3 on v3.id=v1.id " \
                   "group by v1.library,v1.storage_group"
 
@@ -245,9 +245,9 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                   "count(v2.library) as blank," \
                   "count(v3.library) as written " \
                   "from volume v1 " \
-                  "full join (select * from volume where eod_cookie = 'none')"\
+                  "full join (select * from volume where (eod_cookie = 'none' or eod_cookie = '0000_000000000_0000001') and system_inhibit_0!='DELETED' and wrapper='none' and file_family='none')"\
                   " as v2 on v1.id=v2.id " \
-                  "full join (select * from volume where eod_cookie != 'none')"\
+                  "full join (select * from volume where system_inhibit_0!='DELETED' and ((eod_cookie != 'none' and eod_cookie != '0000_000000000_0000001') or (wrapper!='none' or file_family!='none')))"\
                   " as v3 on v3.id=v1.id " \
                   "group by v1.library"
 
