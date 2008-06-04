@@ -1631,8 +1631,10 @@ class MigrateInterface(option.Interface):
 		"[bfid1 [bfid2 [bfid3 ...]]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]]",
 		"--restore [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]]",
 		"--scan-vol <vol1 [vol2 [vol3 ...]]>",
-		"--migrated-from <vol>",
-		"--migrated-to <vol>",
+		"--migrated-from <vol1 [vol2 [vol3 ...]]>",
+		"--migrated-to <vol1 [vol2 [vol3 ...]]>",
+		"--status <vol1 [vol2 [vol3 ...]]>",
+		"--show <media_type> ...",
 		]
 	
 	migrate_options = {
