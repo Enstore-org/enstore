@@ -177,17 +177,20 @@ write_tcp_raw = write_raw
 
 # send a message over the network which is a Python object
 def write_tcp_obj(sock,obj,timeout=15*60):
-    rtn, e = write_tcp_raw(sock,repr(obj),timeout)
 ### When we want to go strictly to cPickle use the following line.
 #    return write_tcp_obj_new(sock,obj,timeout)
 
-    Trace.log(e_errors.ERROR, e)
+    rtn, e = write_tcp_raw(sock,repr(obj),timeout)
+
+    if e:
+        Trace.log(e_errors.ERROR, e)
     return rtn
 
 # send a message over the network which is a Python object
 def write_tcp_obj_new(sock,obj,timeout=15*60):
     rtn, e = write_tcp_raw(sock,cPickle.dumps(obj),timeout)
-    Trace.log(e_errors.ERROR, e)
+    if e:
+        Trace.log(e_errors.ERROR, e)
     return rtn
 
 # send a message to a co-process which is a Python object
