@@ -1718,7 +1718,7 @@ class MigrateInterface(option.Interface):
 				     option.USER_LEVEL:option.USER,},
 		option.WITH_FINAL_SCAN:{option.HELP_STRING:
 					"Do a final scan after all the"
-					"files are recopied to tape.",
+					" files are recopied to tape.",
 					option.VALUE_USAGE:option.IGNORED,
 					option.VALUE_TYPE:option.INTEGER,
 					option.USER_LEVEL:option.USER,},
