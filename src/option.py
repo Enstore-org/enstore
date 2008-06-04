@@ -679,7 +679,7 @@ class Interface:
                             }
     help_options = {
         HELP:{DEFAULT_VALUE:1,
-              HELP_STRING:"prints this messge",
+              HELP_STRING:"prints this message",
               SHORT_OPTION:"h",
               FORCE_SET_DEFAULT:NORMAL},
         USAGE:{DEFAULT_VALUE:1,
