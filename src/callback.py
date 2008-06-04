@@ -368,7 +368,7 @@ read_tcp_raw = read_raw
 def read_tcp_obj(sock, timeout=15*60) :
     s, e = read_tcp_raw(sock, timeout)
     if not s:
-        record_recv_error(s) #Log the state of the socket.
+        record_recv_error(sock) #Log the state of the socket.
         
         #Gather additional information and log the error.
         try:
@@ -395,7 +395,7 @@ def read_tcp_obj(sock, timeout=15*60) :
 def read_tcp_obj_new(sock, timeout=15*60):
     s, e = read_tcp_raw(sock, timeout)
     if not s:
-        record_recv_error(s) #Log the state of the socket.
+        record_recv_error(sock) #Log the state of the socket.
         
         #Gather additional information and log the error.
         try:
