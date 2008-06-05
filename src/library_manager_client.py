@@ -380,7 +380,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                                                         config_port))
         csc.dump_and_save()
         msg_spec = "%25s %15s"
-        print msg_spec % ("library manager", "host")
+        print msg_spec % ("media changer", "host")
         lm_dict = csc.get_library_managers(timeout=5, retry=3)
         for lm_name in lm_dict.values():
             lm_info = csc.get(lm_name['name'])

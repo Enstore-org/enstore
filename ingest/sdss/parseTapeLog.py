@@ -87,35 +87,16 @@ def parseTarTapeParFile(filename):
     
 def parseTapeLogParFile(filename):
     filelist = []
-    filecounts = {}
     f = open(filename)
     line = f.readline()
     while line:
-	if line[0] == '#':
-            pass 
-        elif line.lower().find("tapelog") >= 0:
+        if line.lower().find("tapelog") >= 0:
             #Split "tapelog" lines containing tuples of the following:
             # (tape, filemark, run, frame, ccd)
             try:
                 (unused, filemark, run, frame, ccd) = line.split()
-                filename = makeTapeLogFilename(run, frame, ccd)
-
-                #We need to handle the possibility that the same file
-                # (at least in name) is written on the tape more than once.
-                try:
-                    previous_count = filecounts[filename]
-                except KeyError:
-                    previous_count = 0
-
-                if previous_count:
-                    use_filename = "%s-copy%d" % (filename, previous_count)
-                else:
-                    use_filename = filename
-
-                filelist.append((filemark, use_filename))
-
-                #Store the new tally for occurances for this filename.
-                filecounts[filename] = previous_count + 1 
+                filelist.append((filemark,
+                                 makeTapeLogFilename(run, frame, ccd)))
             except ValueError:
                 pass
 
@@ -330,7 +311,7 @@ def parseFile(filename, tapeStyle):
         return parseTapeLogParFile(filename)
     elif tapeStyle == "PtTape":
         return parsePtTapeTapelogFile(filename)
-     
+    
     sys.stderr.write("%s tape style unknown\n" % tapeStyle)
     sys.exit(1)
 
