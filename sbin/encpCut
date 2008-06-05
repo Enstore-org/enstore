@@ -769,7 +769,15 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 		mkdir -p `dirname $chooseConfig_loc`
 		cp -p $ENSTORE_DIR/ups/chooseConfig $chooseConfig_loc
 
-		if [ `uname` = "Linux" ]; then
+                if [ `uname` = "Linux" ]; then
+
+		     if [ ${ENSTORE_DEVEL_DIR:-x} = "x" ]; then
+                          OUT_DIR=$ENSTORE_DIR/rpmbuild
+                     else
+                          OUT_DIR=$ENSTORE_DEVEL_DIR/rpmbuild
+                     fi
+                     mkdir -p $OUT_DIR/`uname -i`
+
 		    #Take the UPS version and convert it.
 		    version=`echo $REV | sed -e 's/^[vx]//' -e 's/_/\./g'`
 		    echo version $version
@@ -778,7 +786,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 		    # both encp and enstore... One file is simpler; and
 		    # the '-D "product $productName"' part controls which
 		    # product is actually being made.
-		    rpmbuild -bb -D "rpmversion $version" -D "product $productName" $ENSTORE_DIR/spec/encp_conf.spec
+		    rpmbuild -bb -D "_rpmdir $OUT_DIR" -D "rpmversion $version" -D "product $productName" $ENSTORE_DIR/spec/encp_conf.spec
 		elif [ `uname` = "SunOS" ]; then
 		     #Get some key values.
 		     #prefix=/opt/$product
