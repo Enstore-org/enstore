@@ -38,7 +38,8 @@ URL: ftp://ftp.fnal.gov/products/%{product}/%{upsversion}
 #BuildRequires: upsupdbootstrap
 Group: Enstore
 License: GPL
-Buildroot: /var/tmp/%{name}-buildroot
+#Buildroot: /var/tmp/%{name}-buildroot
+Buildroot: %(echo $ENSTORE_DIR/src/ENCPBIN)
 Packager: Enstore Admin <enstore-admin@fnal.gov>
 Vendor: Fermilab
 
@@ -52,5 +53,8 @@ ENCP utility
 %install
 
 %files
-%attr(0755,root,root) /etc/profile.d/%{product}.*
+#%attr(0755,root,root) /etc/profile.d/%{product}.*
 %attr(-,root,root) %{prefix}/*
+
+%ghost %{prefix}/chooseConfig
+%ghost %{prefix}/ups/chooseConfig
