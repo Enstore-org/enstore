@@ -63,7 +63,7 @@ check_installdir() {
     product=$2
     rev=$3
     #setrev=1
-    #puntUPS=0
+    puntUPS=0
     if [ -z "${installdir-}" ] ; then
 	Step="installdir"
 	case `uname -n` in
