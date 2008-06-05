@@ -20,6 +20,7 @@ URL: ftp://ftp.fnal.gov/products/%{product}/%{rpmversion}
 #BuildRequires: upsupdbootstrap
 Group: Enstore
 License: GPL
+BuildArch: noarch
 #Buildroot: /var/tmp/%{name}-buildroot
 %if %{product} == encp
 Buildroot: %(echo $ENSTORE_DIR/src/ENCPBIN)
