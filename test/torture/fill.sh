@@ -1,7 +1,14 @@
 #!/bin/bash 
+#############################################################
+#
+#  $Id$
+#
+#############################################################
 
+pnfs_path="${1:-/pnfs/cdfen/test/sl8500/test/}"
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 suffix="10"
+mail="${ENSTORE_MAIL:-litvinse@fnal.gov}"
 #suffix="6 7 8 9 10"
 #suffix="1 2 3 4"
 
@@ -12,7 +19,7 @@ for s in ${suffix}
 do
   file_family=${node}_${s}
   # destination=/pnfs/cdfen/test/sl8500/${node}/${s}
-  destination=/pnfs/cdfen/sl8500/${node}/${s}
+  destination=${pnfs_path}${node}/${s}
   if [ ! -e ${destination} ] 
   then 
       mkdir -p ${destination}
@@ -27,7 +34,7 @@ do
   encp --threaded $name $destination
   if [ $? -ne 0 ]
       then
-      /bin/mail -s "message from ${node}: encp ${name} ${destination} failed" litvinse@fnal.gov
+      /bin/mail -s "message from ${node}: encp ${name} ${destination} failed" $mail
       rm $name
       exit 1
   fi
@@ -36,5 +43,5 @@ do
 done
 let i=i+1
 done 
-/bin/mail -s "WRITE TEST COMPLETED ON NODE ${node}: " litvinse@fnal.gov
+/bin/mail -s "WRITE TEST COMPLETED ON NODE ${node}: " $mail
 exit 0

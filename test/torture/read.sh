@@ -1,6 +1,12 @@
 #!/bin/bash 
-
+#############################################################
+#
+#  $Id$
+#
+#############################################################
+pnfs_path="${1:-/pnfs/cdfen/test/sl8500/test/}"
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+mail="${ENSTORE_MAIL:-litvinse@fnal.gov}"
 suffix="1 2 3 4"
 RANDOM=$$$(date +"%s")
 rm -f tmp_$$.data
@@ -10,7 +16,7 @@ while [ $i -le 300 ]
 do
   for s in $suffix 
   do 
-    files=`find /pnfs/cdfen/sl8500/${node}/$s -name '*.data'`
+    files=`find ${pnfs_path}/${node}/$s -name '*.data'`
     j=0
     lfiles=()
     for file in ${files}
@@ -30,7 +36,7 @@ do
              encp --threaded $f tmp_$$.data
              if [ $? -ne 0 ]
              then
-               /bin/mail -s "message from ${node}: encp ${f} tmp_$$.data failed ( $r $s $node )" litvinse@fnal.gov
+               /bin/mail -s "message from ${node}: encp ${f} tmp_$$.data failed ( $r $s $node )" $mail
                rm tmp_$$.data
                exit 1
              fi
@@ -44,6 +50,6 @@ do
 let i=i+1
 done 
 
-/bin/mail -s "READ TEST COMPLETED ON NODE ${node}: " litvinse@fnal.gov
+/bin/mail -s "READ TEST COMPLETED ON NODE ${node}: " $mail
 exit 0
 

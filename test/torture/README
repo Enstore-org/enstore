@@ -1,44 +1,37 @@
-Hi Sasha, 
+INSTALLATION
+Have g++ installed.
+You need to login as user "enstore" or setup enstore environment.
+$ cd $ENSTORE_DIR/test/torture
+$ make clean
+$ make install
 
-I put necessary files to :
-enstore/test/torture
+CONFIGURATION
+create pnfs directory for test files
+$ mkdir <pnfs_test_dir>
+set storage group, library, and file_family_wrapper pnfs tags in this directory
+$cd <pnfs_test_dir>
+$ enstore pnfs --storage_group <SG_NAME>
+$ enstore pnfs --library <LIBRARY_NAME>
+$ enstore pnfs --file_family_wrapper <cpio_odc|cern>
 
-drwxrwxr-x 3 litvinse cdf 4096 Feb  6 16:29 .
-drwxrwxr-x 5 litvinse cdf 4096 Feb  6 16:26 ..
--rw-rw-r-- 1 litvinse cdf 1042 Feb  6 16:24 createfile.cc
--rwxr-xr-x 1 litvinse cdf  918 Feb  6 16:29 fill.sh
--rw-rw-r-- 1 litvinse cdf  639 Feb  6 16:24 gauss.cc
--rwxr-xr-x 1 litvinse cdf  392 Feb  6 16:25 read_setup.sh
--rwxr-xr-x 1 litvinse cdf 1037 Feb  6 16:23 read.sh
--rwxr-xr-x 1 litvinse cdf  616 Feb  6 16:22 sl8500_test.sh
--rwxr-xr-x 1 litvinse cdf  404 Feb  6 16:25 torture_setup.sh
--rwxr-xr-x 1 litvinse cdf 1893 Feb  6 16:23 torture.sh
--rwxr-xr-x 1 litvinse cdf  502 Feb  6 16:26 write_setup.sh
-[litvinse@uqbar torture]$ 
+file_family and file_family_widh tags will be created by test scripts.
 
-suppose you are sitting on a node and you want to submit a certain test 
-from a list of nodes
+RUNNING TESTS
+You need to login as user "enstore" or setup enstore environment.
+For write test run $ENSTORE_DIR/test/torture/write_setup.sh
+For read test run $ENSTORE_DIR/test/torture/read_setup.sh
+For read-write test run $ENSTORE_DIR/test/torture/torture_setup.sh
 
-so there are three tests:
-
-1) write 
-2) read
-3) torture read 
-
-you need to modify *_setup.sh files for each of the test, so 3 files:
-
-        write_setup.sh
-        read_setup.sh
-        torture_setup.sh
-
-you need to build too binary files:
-
-        g++ gauss.cc -o gauss
-        g++ createfile.cc -o createfile
+All these scripts take the following arguments:
+s user "enstore" or setup enstore environment.
+For write test run $ENSTORE_DIR/test/torture/write_setup.sh [-p pnfs_path] [-u user] [-d data_files] [node1 node2 node3 ...]
+if agrguments not specified scripts will take default values that represent settings for FNAL tests. 
+So, it is better to explicitely slecify them.
+pnfs_path -- pnfs test dir as defined in CONFIGIRATION section
+user - user who runs the test ---- enstore
+data_files - storage for the tepmorary datafiles on each test node
+node1 node2 .... - nodes where tests run
 
 
-
-*setup.sh files will copy all what they need to execution nodes. 
-write tests will create files with unique names.
 
 

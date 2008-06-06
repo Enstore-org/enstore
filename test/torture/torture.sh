@@ -1,12 +1,13 @@
 #!/bin/bash 
-
+pnfs_path="${1:-/pnfs/cdfen/test/sl8500/test/}"
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+mail="${ENSTORE_MAIL:-litvinse@fnal.gov}"
 RANDOM=$$$(date +"%s")
 
 i=0
 
   file_family=${node}
-  destination=/pnfs/cdfen/sl8500/${node}
+  destination=${pnfs_path}${node}
   if [ ! -e ${destination} ] 
   then 
       mkdir -p ${destination}
@@ -24,7 +25,7 @@ do
   encp --threaded $name $destination
   if [ $? -ne 0 ]
       then
-      /bin/mail -s "message from ${node}: encp ${name} ${destination} failed" litvinse@fnal.gov
+      /bin/mail -s "message from ${node}: encp ${name} ${destination} failed" $mail
       rm $name
       exit 1
   fi
@@ -36,7 +37,7 @@ do
   encp --threaded $name $destination
   if [ $? -ne 0 ]
       then
-      /bin/mail -s "message from ${node}: encp ${name} ${destination} failed" litvinse@fnal.gov
+      /bin/mail -s "message from ${node}: encp ${name} ${destination} failed" $mail
       rm $name
       exit 1
   fi
@@ -69,7 +70,7 @@ do
           encp --threaded $f tmp_$$.data
           if [ $? -ne 0 ]
           then
-            /bin/mail -s "message from ${node}: encp ${f} tmp_$$.data failed ( $r $s $node )" litvinse@fnal.gov
+            /bin/mail -s "message from ${node}: encp ${f} tmp_$$.data failed ( $r $s $node )" $mail
             rm tmp_$$.data
             exit 1
           fi
