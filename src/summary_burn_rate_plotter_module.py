@@ -24,7 +24,7 @@ import configuration_client
 DAYS_IN_MONTH = tapes_burn_rate_plotter_module.DAYS_IN_MONTH
 DAYS_IN_WEEK = tapes_burn_rate_plotter_module.DAYS_IN_WEEK
 
-DAY_IN_SECONDS = tapes_burn_rate_plotter_module.DAY_IN_SECONDS
+SECONDS_IN_DAY = tapes_burn_rate_plotter_module.SECONDS_IN_DAY
 
 WEB_SUB_DIRECTORY = tapes_burn_rate_plotter_module.WEB_SUB_DIRECTORY
 
@@ -90,8 +90,8 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
         self.tapes_summary_week = {}
         self.tapes_summary_month = {}
         self.extra_title_info = []
-        month_ago = time.time() - DAYS_IN_MONTH * DAY_IN_SECONDS
-        week_ago = time.time() - DAYS_IN_WEEK * DAY_IN_SECONDS
+        month_ago = time.time() - DAYS_IN_MONTH * SECONDS_IN_DAY
+        week_ago = time.time() - DAYS_IN_WEEK * SECONDS_IN_DAY
 
         #Loop over all known configuration servers and obtaining information
         # from all of them.
@@ -244,11 +244,11 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
         ## will plot for us.
 
         month_ago_date = time.strftime("%Y-%m-%d",
-              time.localtime(time.time() - DAYS_IN_MONTH * DAY_IN_SECONDS))
+              time.localtime(time.time() - DAYS_IN_MONTH * SECONDS_IN_DAY))
         today_date = time.strftime("%Y-%m-%d",
                                    time.localtime())
         month_ahead_date = time.strftime("%Y-%m-%d",
-              time.localtime(time.time() + DAYS_IN_MONTH * DAY_IN_SECONDS))
+              time.localtime(time.time() + DAYS_IN_MONTH * SECONDS_IN_DAY))
 
         for key in self.MT_dict.keys():
             #key should just be the media type here.
