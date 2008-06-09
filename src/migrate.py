@@ -1489,7 +1489,7 @@ def migrate_volume(vol, intf, with_deleted = None):
 			else:
 				error_log(MY_TASK, 'failed to set comment of %s to "%s%s"'%(vol, MTO, vol_list))
 	else:
-		error_log(MY_TASK, "do not set %s to %S due to previous error"%(vol, INHIBIT_STATE))
+		error_log(MY_TASK, "do not set %s to %s due to previous error"%(vol, INHIBIT_STATE))
 	return res
 
 # restore(bfids) -- restore pnfs entries using file records
