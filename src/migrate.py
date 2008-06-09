@@ -1489,7 +1489,7 @@ def migrate_volume(vol, intf, with_deleted = None):
 			else:
 				error_log(MY_TASK, 'failed to set comment of %s to "%s%s"'%(vol, MTO, vol_list))
 	else:
-		error_log(MY_TASK, "do not set %s to %S due to previous error"%(vol, INHIBIT_STATE))
+		error_log(MY_TASK, "do not set %s to %s due to previous error"%(vol, INHIBIT_STATE))
 	return res
 
 # restore(bfids) -- restore pnfs entries using file records
@@ -1631,8 +1631,10 @@ class MigrateInterface(option.Interface):
 		"[bfid1 [bfid2 [bfid3 ...]]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]]",
 		"--restore [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]]",
 		"--scan-vol <vol1 [vol2 [vol3 ...]]>",
-		"--migrated-from <vol>",
-		"--migrated-to <vol>",
+		"--migrated-from <vol1 [vol2 [vol3 ...]]>",
+		"--migrated-to <vol1 [vol2 [vol3 ...]]>",
+		"--status <vol1 [vol2 [vol3 ...]]>",
+		"--show <media_type> ...",
 		]
 	
 	migrate_options = {
@@ -1716,7 +1718,7 @@ class MigrateInterface(option.Interface):
 				     option.USER_LEVEL:option.USER,},
 		option.WITH_FINAL_SCAN:{option.HELP_STRING:
 					"Do a final scan after all the"
-					"files are recopied to tape.",
+					" files are recopied to tape.",
 					option.VALUE_USAGE:option.IGNORED,
 					option.VALUE_TYPE:option.INTEGER,
 					option.USER_LEVEL:option.USER,},
