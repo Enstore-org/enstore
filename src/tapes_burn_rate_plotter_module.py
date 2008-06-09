@@ -13,6 +13,7 @@ import time
 import string
 import sys
 import types
+import re
 
 # enstore imports
 import enstore_plotter_module
@@ -57,11 +58,14 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #Cache for the capacity of each library.
         self.library_capacity = {}
 
-    #Based on the library name, get the capacity of the tapes.
+    #Based on the library name, get the capacity and media_type of the tapes.
     def get_capacity(self, library, db):
-        media_capacity = self.library_capacity.get(library, None)
-        if media_capacity:
-            return media_capacity
+        media_values = self.library_capacity.get(library, None)
+        if media_values:
+            return media_values
+
+        if db == None:
+            return (None, None)
         
         q = "select distinct library,media_type from volume " \
             " where system_inhibit_0 != 'DELETED' and library = '%s';" \
@@ -77,15 +81,30 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         try:
             media_type = edb_res[0][1]
         except IndexError:
-            return None
+            media_type = None
+        #This is a hack for the ADIC.  Originally, the ADIC didn't know
+        # what an LTO tape was, so every LTO1 and LTO2 was inserted as
+        # a 3480 tape.  Thus, if we find the library is LTO OR LTO2
+        # then we need to use this corrected type.  This only works if
+        # the ADIC never gets LTO3 or LTO4 drives, considering the
+        # end-of-life schedule for it, this shouldn't be a problem.
+        if library.upper().find("LTO2") != -1:
+            media_type = "LTO2"
+        ### Since, LTO1s were the first type, they could be LTO or LTO1.
+        elif re.compile("LTO$").match(library) != None \
+                 or library.upper().find("LTO1") != -1:
+            media_type = "LTO1"
+
         media_capacity = getattr(enstore_constants,
                                  "CAP_%s" % (media_type,),
                                  None)
-
-        #Cache this value for next time.
-        self.library_capacity[library] = media_capacity
         
-        return media_capacity
+        if media_capacity:
+            #Cache this value for next time, but only for libraries we
+            # care about.
+            self.library_capacity[library] = (media_capacity, media_type)
+
+        return media_capacity, media_type
         
 
     #Write out the file that gnuplot will use to plot the data.
@@ -142,8 +161,12 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         # make the output a little easier to read.
         if type(key) == types.TupleType:
             label = string.join(key, ".")
+            library = key[0]
         else:
             label = key
+            library = key
+
+        media_capacity, media_type = self.get_capacity(library, None)
 
         #In case there is something else we want to add.
         if hasattr(self, "extra_title_info"):
@@ -154,8 +177,9 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         plot_fp.write('set terminal postscript color solid\n')
         plot_fp.write('set output "%s"\n' % (ps_filename,))
         plot_fp.write('set title "%s   TotTapesUsed=%s   ' \
-                      'TapesBlank=%s" font "TimesRomanBold,16"\n' % \
-                      (label, written, blanks))
+                      'TapesBlank=%s  MediaType=%s  MediaCapacity=%sGB"' \
+                      'font "TimesRomanBold,16"\n' % \
+                      (label, written, blanks, media_type, media_capacity))
         plot_fp.write('set ylabel "Gigabytes Written"\n')
         plot_fp.write('set xdata time\n')
         plot_fp.write('set timefmt "%Y-%m-%d"\n')
@@ -228,7 +252,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             #Get the capacity in Gigabytes of the tapes belonging to this
             # library.
-            capacity = self.get_capacity(library, edb)
+            capacity, media_type = self.get_capacity(library, edb)
             if capacity == None:
                 #Skip media that does not have a valid media type
                 # for it.  (This usually excludes null and disk libraries.)
@@ -260,7 +284,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 continue
             #Get the capacity in Gigabytes of the tapes belonging to this
             # library.
-            capacity = self.get_capacity(library, edb)
+            capacity, media_type = self.get_capacity(library, edb)
             if capacity == None:
                 #Skip media that does not have a valid media type
                 # for it.  (This usually excludes null and disk libraries.)
@@ -548,7 +572,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 lm = key[0]
             else:
                 lm = key
-            capacity = self.get_capacity(lm, edb)
+            capacity, media_type = self.get_capacity(lm, edb)
             if capacity == None:
                 #Skip media that does not have a valid library defined
                 # for it anymore.
