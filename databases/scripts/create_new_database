@@ -26,31 +26,31 @@ host=`uname -n | cut -d. -f1`
 
 enstore_dir=${ENSTORE_DIR}
 database_scripts=$enstore_dir/databases/scripts
-extract_config=$enstore_dir/external_distr/extract_config_parameters.py
+extract_config="$enstore_dir/bin/enstore configuration --print"
 
 case $1 in
 	enstoredb)
-		database_area=`$extract_config database | grep dbarea | cut -d: -f 2`
-		db_name=`$extract_config database | grep dbname | cut -d: -f 2`
-		db_port=`$extract_config database | grep dbport | cut -d: -f 2`
-		database_owner=`$extract_config database | grep dbserverowner | cut -d: -f 2`
-		db_owner=`$extract_config database | grep dbuser | cut -d: -f 2`
+		database_area=`$extract_config database dbarea | cut -d: -f 2-`
+		db_name=`$extract_config database dbname | cut -d: -f 2-`
+		db_port=`$extract_config database dbport | cut -d: -f 2-`
+		database_owner=`$extract_config database dbserverowner | cut -d: -f 2-`
+		db_owner=`$extract_config database dbuser | cut -d: -f 2-`
 		db_schema=$enstore_dir/databases/schemas/enstoredb.schema
 		;;
 	accounting)
-		database_area=`$extract_config accounting_server | grep dbarea | cut -d: -f 2`
-		db_name=`$extract_config accounting_server | grep dbname | cut -d: -f 2`
-		db_port=`$extract_config accounting_server | grep dbport | cut -d: -f 2`
-		database_owner=`$extract_config accounting_server | grep dbserverowner | cut -d: -f 2`
-		db_owner=`$extract_config accounting_server | grep dbuser | cut -d: -f 2`
+		database_area=`$extract_config accounting_server dbarea | cut -d: -f 2-`
+		db_name=`$extract_config accounting_server dbname | cut -d: -f 2-`
+		db_port=`$extract_config accounting_server dbport | cut -d: -f 2-`
+		database_owner=`$extract_config accounting_server dbserverowner | cut -d: -f 2-`
+		db_owner=`$extract_config accounting_server dbuser | cut -d: -f 2-`
 		db_schema=$enstore_dir/databases/schemas/accounting.schema
 		;;
 	drivestat)
-		database_area=`$extract_config drivestat_server | grep dbarea | cut -d: -f 2`
-		db_name=`$extract_config drivestat_server | grep dbname | cut -d: -f 2`
-		db_port=`$extract_config drivestat_server | grep dbport | cut -d: -f 2`
-		database_owner=`$extract_config drivestat_server | grep dbserverowner | cut -d: -f 2`
-		db_owner=`$extract_config drivestat_server | grep dbuser | cut -d: -f 2`
+		database_area=`$extract_config drivestat_server dbarea | cut -d: -f 2-`
+		db_name=`$extract_config drivestat_server dbname | cut -d: -f 2-`
+		db_port=`$extract_config drivestat_server dbport | cut -d: -f 2-`
+		database_owner=`$extract_config drivestat_server dbserverowner | cut -d: -f 2-`
+		db_owner=`$extract_config drivestat_server dbuser | cut -d: -f 2-`
 		db_schema=$enstore_dir/databases/schemas/drivestat.schema
 		;;
 	*)
