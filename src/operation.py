@@ -85,7 +85,6 @@ Indexes:
     "object_object_idx" btree ("object")
 Foreign-key constraints:
     "object_job_fkey" FOREIGN KEY (job) REFERENCES job(id) ON UPDATE CASCADE ON DELETE CASCADE
- 
 
 """
 
@@ -163,28 +162,29 @@ DATABASENAME = 'operation'
 # This is a hard wired configuration
 def library_type(cluster, lib):
 	if cluster == 'D0':
-		if lib == '9940' or lib == 'D0-9940B' or lib == 'mezsilo':
-			return 'stk'
-		if lib == 'samlto' or lib == 'samlto2':
+		if lib == 'D0-9940B' or lib == 'mezsilo':
+			return '9310'
+		if lib == 'samlto2' or lib == 'samlto':
 			return 'aml2'
-		if lib == 'D0-LTO3':
-			return 'sl8500'
+		if lib == 'D0-LTO4G1':
+			return '8500G1'
+		if lib == 'D0-LTO4F1':
+			return '8500F1'
 	elif cluster == 'STK':
-		if lib == '9940' or lib == 'CD-9940B':
-			return 'stk'
-		if lib == 'CD-LTO3':
-			return 'sl8500'
+		if lib == 'CD-9940B' or lib == '9940':
+			return '9310'
+		if lib == 'CD-LTO3' or lib == 'CD-LTO4G1':
+			return '8500G1'
 	elif cluster == 'CDF':
-		if lib == '9940' or lib == 'CDF-9940B' or lib == 'cdf':
-			return 'stk'
-		if lib == 'CDF-LTO3':
-			return 'sl8500'
+		if lib == 'CDF-9940B' or lib == 'cdf':
+			return '9310'
+		if lib == 'CDF-LTO3' or lib == 'CDF-LTO4G1':
+			return '8500G1'
 	elif cluster == 'GCC':
 		if lib == 'LTO3':
-			return 'sl8500'
+			return '8500G1'
 	else:
 		return None
-	return None
 
 # get_cluster(host) -- determine current cluster
 def get_cluster(host):
@@ -214,23 +214,15 @@ def get_script_host(cluster):
 
 # get_write_protect_script_path(library_type) -- determine script path
 def get_write_protect_script_path(lib_type):
-	if lib_type == 'stk':
-		return  '/home/enstore/isa-tools/9310_write_protect_work'
-	elif lib_type ==  'aml2':
-		return '/home/enstore/isa-tools/aml2_write_protect_work'
-	elif lib_type == 'sl8500':
-		return '/home/enstore/isa-tools/8500_write_protect_work'
+	if lib_type in ['9310', 'aml2', '8500G1', '8500F1']:
+		return  '/home/enstore/isa-tools/' + lib_type + '_write_protect_work'
 	else:
 		return '/tmp'
 
 # get_write_permit_script_path(library_type) -- determine script path
 def get_write_permit_script_path(lib_type):
-	if lib_type == 'stk':
-		return  '/home/enstore/isa-tools/9310_write_permit_work'
-	elif lib_type ==  'aml2':
-		return '/home/enstore/isa-tools/aml2_write_permit_work'
-	elif lib_type == 'sl8500':
-		return '/home/enstore/isa-tools/8500_write_permit_work'
+	if lib_type in ['9310', 'aml2', '8500G1', '8500F1']:
+		return  '/home/enstore/isa-tools/' + lib_type + '_write_permit_work'
 	else:
 		return '/tmp'
 
@@ -251,8 +243,10 @@ def get_default_library(cluster):
 def get_qualifier(lib_type):
 	if lib_type == 'aml2':
 		return 'a'
-	elif lib_type == 'sl8500':
+	elif lib_type == '8500G1':
 		return 's'
+	elif lib_type == '8500F1':
+		return 't'
 	else:
 		return ''
 
@@ -313,7 +307,7 @@ def get_rem_ticket_number(rem_res):
 				return "HELPDESK_TICKET_"+t[5]
 	return 'UNKNOWN_TICKET'
 
-# get_unfinished_job(cluster) -- get unfinish job of certain cluster
+# get_unfinished_job(cluster) -- get unfinished job of certain cluster
 def get_unfinished_job(cluster=None):
 	if cluster:
 		q = "select name from job where name ilike '%s%%' and finish is null;"%(cluster)
@@ -329,35 +323,39 @@ def get_unfinished_job(cluster=None):
 def decode_job(job):
 	if job[:3] == 'STK' or job[:3] == "CDF":
 		cluster = job[:3]
-		if job[3] in ['a', 's']:
+		if job[3] in ['a', 's', 't']:
 			if job[3] == 'a':
 				lt = 'aml2'
 			elif job[3] == 's':
-				lt = 'sl8500'
+				lt = '8500G1'
+			elif job[3] == 't':
+				lt = '8500F1'
 			else:
 				lt = 'unknown'
 			type = job[5]
 			t = job[6:].split('-')
 			job_range = range(int(t[0]), int(t[1])+1)
 		else:
-			lt = 'stk'
+			lt = '9310'
 			type = job[4]
 			t = job[5:].split('-')
 			job_range = range(int(t[0]), int(t[1])+1)
 	elif job[:2] == 'D0':
 		cluster = job[:2]
-		if job[2] in ['a', 's']:
+		if job[2] in ['a', 's', 't']:
 			if job[2] == 'a':
 				lt = 'aml2'
 			elif job[2] == 's':
-				lt = 'sl8500'
+				lt = '8500G1'
+			elif job[2] == 't':
+				lt = '8500F1'
 			else:
 				lt = 'unknown'
 			type = job[4]
 			t = job[5:].split('-')
 			job_range = range(int(t[0]), int(t[1])+1)
 		else:
-			lt = 'stk'
+			lt = '9310'
 			type = job[3]
 			t = job[4:].split('-')
 			job_range = range(int(t[0]), int(t[1])+1) 
@@ -1003,21 +1001,21 @@ def even(i):
 
 # get_caps_per_ticket(lib_type) -- determine caps per ticket
 def caps_per_ticket(lib_type):
-	if lib_type == 'stk':
+	if lib_type == '9310':
 		return 10
 	elif lib_type == 'aml2':
 		return 7
-	elif lib_type == 'sl8500':
+	elif lib_type[:4] == '8500':
 		return 5
 	else:
 		return None
 
 def volumes_per_cap(lib_type):
-	if lib_type == 'stk':
+	if lib_type == '9310':
 		return 21
 	elif lib_type == 'aml2':
 		return 30
-	elif lib_type == 'sl8500':
+	elif lib_type[:4] == '8500':
 		return 39 
 	else:
 		return None
@@ -1070,8 +1068,10 @@ def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
 
 	if lt == 'aml2':
 		op = 'aWP'
-	elif lt == 'sl8500':
+	elif lt == '8500G1':
 		op = 'sWP'
+	elif lt == '8500F1':
+		op = 'tWP'
 	else:
 		op = 'WP'
 	# get max cap number
@@ -1162,8 +1162,10 @@ def recommend_write_permit_job(library=DEFAULT_LIBRARIES, limit=None):
 
 	if lt == 'aml2':
 		op = 'aWE'
-	elif lt == 'sl8500':
+	elif lt == '8500G1':
 		op = 'sWE'
+	elif lt == '8500F1':
+		op = 'tWE'
 	else:
 		op = 'WE'
 
@@ -1247,9 +1249,9 @@ def make_cap_args(d):
 	return res
 
 # make_cap(list)
-def make_cap(l, library_type='stk', cap_n = 0):
+def make_cap(l, library_type='9310', cap_n = 0):
 	cap_script = ""
-	if library_type == 'stk':
+	if library_type == '9310':
 		if cluster == "D0":
 			cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 1,0,0 "
 		elif cluster == "STK":
@@ -1266,7 +1268,7 @@ def make_cap(l, library_type='stk', cap_n = 0):
 		if cap_n % 2:	# odd
 			door = ' E03\n'
 		else:
-			door = ' E05\n'
+			door = ' E06\n'
 		count = 0
 		for i in l:
 			if count == 0:
@@ -1279,17 +1281,13 @@ def make_cap(l, library_type='stk', cap_n = 0):
 				count = 0
 		if count != 0:
 			cap_script = cap_script + door
-	elif library_type == 'sl8500':
-		if cluster == "D0":
-			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
-		elif cluster == "STK":
-			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
-		elif cluster == "CDF":
-			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
-		elif cluster == "GCC":
-			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
-		else:
-			return None
+	elif library_type == '8500G1':
+		cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
+		for i in l:
+			cap_script = cap_script + ' ' + i
+		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
+	elif library_type == '8500F1':
+		cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,1,0 "
 		for i in l:
 			cap_script = cap_script + ' ' + i
 		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
@@ -1308,7 +1306,7 @@ def get_max_cap_number(cluster, op_type=''):
 	else:
 		return 0
 
-def make_help_desk_ticket(n, cluster, script_host, job, library_type='stk'):
+def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 	if job == "protect":
 		action = "lock"
 	elif job == "permit":
@@ -1317,11 +1315,6 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='stk'):
 		action = "do not touch"
 	VOLUMES_PER_CAP = volumes_per_cap(library_type)
 	system_name = script_host
-
-	# take care of 9310
-	# The conventional "stk" library is officially called '9310'
-	if library_type == "stk":
-		library_type = '9310'
 
 	short_message = "write %s %d tapes (flip tabs) in %s %s tape library"%(job, n, cluster.lower()+'en', library_type.upper())
 	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore %s tape library.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster, library_type.upper())
@@ -1777,7 +1770,6 @@ def execute(args):
 			help(args[1])
 	else:
 		return 'unknown command "%s"'%(cmd)
-
 
 
 
