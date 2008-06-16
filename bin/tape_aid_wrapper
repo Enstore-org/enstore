@@ -46,8 +46,8 @@ remove	${robot}_purge_volumes_work
 reload	${robot}_refit_barcode_work
 EOD
 
-	       ns=`find $work -type f -name \*.done -daystart -mtime -1 -print | awk 'END {print NR}'`
-	       nf=`find $work -type f -name \*.fail -daystart -mtime -1 -print | awk 'END {print NR}'`
+	       ns=`find $work -follow -type f -name \*.done -daystart -mtime -1 -print | awk 'END {print NR}'`
+	       nf=`find $work -follow -type f -name \*.fail -daystart -mtime -1 -print | awk 'END {print NR}'`
 	       msg="Today's $node $robot robot $script work: $ns groups ${action%e}ed, $nf groups failed."
 	       echo "`date` $msg"
 	       if [ $ns -gt 0 -o $nf -gt 0 ] && [ ${debug:-0} -eq 0 ]; then
@@ -92,81 +92,81 @@ esac
 until [ -n "${location:-}" ]; do
   echo
   echo "Where are you ?  Choose"
-  echo " 1) GCC  if you are in GCC"
-  echo " 2) FCC2 if you are on the 2nd floor in FCC"
-  if [ $gang = cdfen ]; then
-    locations="GCC FCC2"
-    echo " 3) Quit if you are somewhere else"
-  else
-    locations="GCC FCC2 FCCM"
-    echo " 3) FCCM if you are on the mezzanine in FCC"
-    echo " 4) Quit if you are somewhere else"
-  fi
+  case $gang in
+    d0en)
+      echo " 1) GCC   if you are in GCC"
+      echo " 2) FCCM  if you are on the mezzanine in FCC"
+      echo " 3) FCC2A if you are on the 2nd floor in FCC to work with the AML/2"
+      echo " 4) FCC2S if you are on the 2nd floor in FCC to work with the SL8500"
+      echo " 5) Quit  if you are somewhere else"
+      locations="GCC FCCM FCC2A FCC2S"
+      mezz_acs=1
+      ;;
+    stken)
+      echo " 1) GCC  if you are in GCC"
+      echo " 2) FCCM if you are on the mezzanine in FCC"
+      echo " 3) Quit if you are somewhere else"
+      locations="GCC FCCM"
+      mezz_acs=0
+      ;;
+    cdfen)
+      echo " 1) GCC  if you are in GCC"
+      echo " 2) FCC2 if you are on the 2nd floor in FCC"
+      echo " 3) Quit if you are somewhere else"
+      locations="GCC FCC2"
+      ;;
+  esac
   echo
   EOF=1
   select location in $locations Quit; do EOF=0; break; done
   [ $EOF -gt 0 ] && exit
 done
 
-case $location in
-
-  GCC)
-     robot="8500"
-     icap="0,1,0"	# library 1, rail 2, cap A
+case ${gang}@${location} in
+  *en@GCC)
+     robot="8500G1"
+     icap="0,5,0"	# library 1, rail 6, cap A
      ocap="0,1,0"	# library 1, rail 2, cap A
      sun="fntt-gcc"
      ;;
 
-  FCCM)
+  {d0,stk}en@FCCM)
      robot="9310"
-     case $gang in
-       d0en)
-	  icap="1,1,0"
-	  ocap="1,0,0"
-	  ;;
-       stken)
-	  icap="0,1,0"
-	  ocap="0,0,0"
-	  ;;
-     esac
+     icap="$mezz_acs,1,0"
+     ocap="$mezz_acs,0,0"
      sun=fntt
      ;;
 
-  FCC2)
-     case $gang in
-       d0en)
-	  robot="aml2"
-	  type=3480
-	  ;;
-       stken)
-	  robot="aml2"
-	  type=DECDLT
-	  ;;
-       cdfen)
-	  robot="9310"
-	  icap="0,0,0"
-	  ocap="0,1,0"
-	  sun=fntt2
-	  ;;
-     esac
+  cdfen@FCC2)
+     robot="9310"
+     icap="0,0,0"
+     ocap="0,1,0"
+     sun=fntt2
      ;;
 
-  ADIC)			# shortcut taken when script called as adic_{flip_tab|take_out}
+  d0en@FCC2S)
+     robot="8500F1"
+     icap="1,1,0"	# library 1, rail 2, cap A
+     ocap="1,1,0"	# library 1, rail 2, cap A
+     sun="fntt2"
+     ;;
+
+  d0en@FCC2A)
      robot="aml2"
-     case $gang in
-       d0en)
-	  type=3480
-	  ;;
-       stken)
-	  type=DECDLT
-	  ;;
-       *) usage
-	  exit 1
-	  ;;
-     esac
+     type=3480
      ;;
 
-  *) exit
+  d0en@ADIC)		# shortcut taken when script called as adic_{flip_tab|take_out}
+     robot="aml2"
+     type=3480
+     ;;
+
+  stken@ADIC)		# shortcut taken when script called as adic_{flip_tab|take_out}
+     robot="aml2"
+     type=DECDLT
+     ;;
+
+  *) exit 1
      ;;
 
 esac
@@ -201,12 +201,12 @@ case $script in
        shelve)
 	  work=$HOME/isa-tools/${robot}_shelf_volumes_work
 	  ;;
+       reload)
+	  work=$HOME/isa-tools/${robot}_refit_barcode_work
+	  ;;
        remove)
 	  work=$HOME/isa-tools/${robot}_purge_volumes_work
 	  . $HOME/gettkt
-	  ;;
-       reload)
-	  work=$HOME/isa-tools/${robot}_refit_barcode_work
 	  ;;
        *) usage
 	  exit 1
@@ -240,7 +240,7 @@ else
    fi
    if read ans && expr "$ans" : '[Yy]' >/dev/null; then
       if [ ${debug:-0} -eq 0 ]; then
-	 echo "Starting $script $action $robot on $node." | mail -s "$gang tape aid work" ssa-group@fnal.gov
+	 echo "Starting $script $action $robot on $node." | mail -s "$gang tape aid work" ssa-auto@fnal.gov
       else
 	 echo "Starting $script $action $robot on $node."
       fi
@@ -267,7 +267,7 @@ case $action in
 esac 
 
 case $robot in
-  9310 | 8500)
+  9310 | 8500*)
     api=acsls
     ;;
   aml2)
