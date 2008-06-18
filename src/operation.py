@@ -175,13 +175,17 @@ def library_type(cluster, lib):
 			return '9310'
 		if lib == 'CD-LTO3' or lib == 'CD-LTO4G1':
 			return '8500G1'
+		if lib == 'CD-LTO4F1':
+			return '8500F1'
 	elif cluster == 'CDF':
 		if lib == 'CDF-9940B' or lib == 'cdf':
 			return '9310'
 		if lib == 'CDF-LTO3' or lib == 'CDF-LTO4G1':
 			return '8500G1'
+		if lib == 'CDF-LTO4F1':
+			return '8500F1'
 	elif cluster == 'GCC':
-		if lib == 'LTO3':
+		if lib == 'LTO3' or lib == 'LTO4':
 			return '8500G1'
 	else:
 		return None
@@ -1045,8 +1049,8 @@ def dump():
 
 # complex operations
 
-CAPS_PER_TICKET = 10
-VOLUMES_PER_CAP = 21
+# CAPS_PER_TICKET = 10
+# VOLUMES_PER_CAP = 21
 
 def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
 	# check if they are of the same robot
