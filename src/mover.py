@@ -6102,7 +6102,8 @@ class DiskMover(Mover):
 
         self.buffer.set_blocksize(self.vol_info.get('blocksize',self.default_block_size))
         self.wrapper = None
-        self.wrapper_type = volume_family.extract_wrapper(self.volume_family)
+        #self.wrapper_type = volume_family.extract_wrapper(self.volume_family)
+        self.wrapper_type = 'null'
 
         try:
             self.wrapper = __import__(self.wrapper_type + '_wrapper')
