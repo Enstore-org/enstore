@@ -5,12 +5,13 @@
 
 for i in `ls -vI \*.\*`; do
   t0=`date +'%s'`
-  pid=
-  stat=
   # must wait for this box to finish any previous insert
   ibox=`awk 'NR == 1 {sub("^E","I",$NF); print $NF}' $i`
-  eval `jobs -l | awk -v Ibox=$ibox '$0 ~ Ibox {printf "pid=%s;stat=%s",$2,$3}'`
-  [ "$stat" = Running ] && wait $pid 2>&1
+  if jobs %?$ibox >/dev/null 2>&1 | grep Running >/dev/null
+  then
+     echo "Waiting for I/O box $ibox to be unloaded ..."
+     wait %?$ibox >/dev/null 2>&1
+  fi
   echo "`date` Group $i" >> $output
   . $i |tee -a $output 2>&1
   echo
@@ -23,26 +24,28 @@ for i in `ls -vI \*.\*`; do
   echo That cycle took $deltam minutes $deltas seconds.
   # extract the volumes about to be entered
   set `awk '{gsub(",","\n",$(NF-1)); print $(NF-1)}' $i`
-  /bin/echo -n "Have $# tapes been loaded in I/O box $ibox with tabs in ${action}ed position [y/n]? "
-  if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-     echo "... success acknowledged"
-     echo
-     echo "Now updating write-protect status in enstore..."
-     # set the volumes successfully entered as write-protected or write-permitted
-     for vol; do
-       enstore vol --write-protect-$prot $vol
-     done
-     mv $i ${i}.done
-     secs=40
-  else
-     echo "... failure acknowledged"
-     mv $i ${i}.fail
-     secs=80
-  fi
+  case `YesNo "Have $# tapes been loaded in I/O box $ibox with tabs in ${action}ed position?"` in
+    Yes)
+       echo "`date` ... success acknowledged"
+       echo
+       echo "Now updating write-protect status in enstore..."
+       # set the volumes successfully entered as write-protected or write-permitted
+       for vol; do
+	 enstore vol --write-protect-$prot $vol
+       done
+       mv $i ${i}.done
+       secs=40
+       ;;
+    No)
+       echo "`date` ... failure acknowledged"
+       mv $i ${i}.fail
+       secs=80
+       ;;
+  esac
   echo
   echo "Now inserting volumes from I/O box $ibox..."
   # wait for successful insert in the background
-  until dasadmin insert2 -n $ibox 2>/dev/null 1>&2; do sleep $secs; [ $secs -gt 10 ] && secs=`expr $secs / 2`; done &
+  until dasadmin insert2 -n $ibox >/dev/null 2>&1; do sleep $secs; [ $secs -gt 10 ] && secs=`expr $secs / 2`; done &
   echo
   echo
   rem=`ls -vI \*.\* | awk 'END {print NR}'`
@@ -51,20 +54,23 @@ for i in `ls -vI \*.\*`; do
      break
   else
      if [ $rem -gt 1 ]; then
-       /bin/echo -n "There are $rem groups remaining. Do another [y/n]? "
+       prompt="There are $rem groups remaining. Do another?"
      else
-       /bin/echo -n "There is only one group remaining! Do it [y/n]? "
+       prompt="There is only one group remaining! Do it?"
      fi
-     if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-	continue
-     else
-	break
-     fi
+     case `YesNo "$prompt"` in
+       Yes)
+	  continue
+	  ;;
+       No)
+	  break
+	  ;;
+     esac
   fi
 done
 
 check_work
 
-echo "`date` Waiting for I/O box(es) to be unloaded ..."
+echo "Waiting for I/O box(es) to be unloaded ..."
 jobs
 wait

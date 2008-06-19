@@ -18,18 +18,20 @@ for i in `ls -vI \*.\*`; do
     echo
     echo
     if [ $action = reload ]; then
-      /bin/echo -n "Press Enter when all tapes have been reloaded"
+      prompt="Press Enter when all tapes have been reloaded"
     else
-      /bin/echo -n "Press Enter when all tapes have been loaded with tabs in ${action}ed position"
+      prompt="Press Enter when all tapes have been loaded with tabs in ${action}ed position"
     fi
-    read ans
+    read -p $prompt ans
     msgflag=
     while /bin/true; do
       cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"`
       capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
-      if [ "$capstate" = "available" ]; then break; fi
+      if [ "$capstate" = "available" ]; then
+	 break
+      fi
       if [ -z "$msgflag" ]; then
-	echo "`date` Waiting for cap to be unloaded ..."
+	echo "Waiting for cap to be unloaded ..."
 	msgflag=done
       fi
       sleep 5
@@ -46,29 +48,33 @@ for i in `ls -vI \*.\*`; do
   # extract the volumes about to be entered
   set `awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) print vols[v]}' $i | sort`
   if [ $action = reload ]; then
-    /bin/echo -n "Have $# tapes been reloaded in cap $icap [y/n]? "
-    if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-       echo "... success acknowledged"
-       mv $i ${i}.done
-    else
-       echo "... failure acknowledged"
-       mv $i ${i}.fail
-    fi
+    case `YesNo "Have $# tapes been reloaded in cap $icap?"` in
+      Yes)
+	 echo "`date` ... success acknowledged"
+	 mv $i ${i}.done
+	 ;;
+      No)
+	 echo "`date` ... failure acknowledged"
+	 mv $i ${i}.fail
+	 ;;
+    esac
   else
-    /bin/echo -n "Have $# tapes been loaded in cap $icap with tabs in ${action}ed position [y/n]? "
-    if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-       echo "... success acknowledged"
-       echo
-       echo "Now updating write-protect status in enstore..."
-       # set the volumes successfully entered as write-protected or write-permitted
-       for vol; do
-	 enstore vol --write-protect-$prot $vol
-       done
-       mv $i ${i}.done
-    else
-       echo "... failure acknowledged"
-       mv $i ${i}.fail
-    fi
+    case `YesNo "Have $# tapes been loaded in cap $icap with tabs in ${action}ed position?"` in
+      Yes)
+	 echo "`date` ... success acknowledged"
+	 echo
+	 echo "Now updating write-protect status in enstore..."
+	 # set the volumes successfully entered as write-protected or write-permitted
+	 for vol; do
+	   enstore vol --write-protect-$prot $vol
+	 done
+	 mv $i ${i}.done
+	 ;;
+      No)
+	 echo "`date` ... failure acknowledged"
+	 mv $i ${i}.fail
+	 ;;
+    esac
   fi
   echo
   echo
@@ -78,15 +84,18 @@ for i in `ls -vI \*.\*`; do
      break
   else
      if [ $rem -gt 1 ]; then
-       /bin/echo -n "There are $rem groups remaining. Do another [y/n]? "
+       prompt="There are $rem groups remaining. Do another?"
      else
-       /bin/echo -n "There is only one group remaining! Do it [y/n]? "
+       prompt="There is only one group remaining! Do it?"
      fi
-     if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-	continue
-     else
-	break
-     fi
+     case `YesNo "$prompt"` in
+       Yes)
+	  continue
+	  ;;
+       No)
+	  break
+	  ;;
+     esac
   fi
 done
 
@@ -99,7 +108,7 @@ if [ "$icap" != "$ocap" ]; then
     capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
     if [ "$capstate" = "available" ]; then break; fi
     if [ -z "$msgflag" ]; then
-      echo "`date` Waiting for cap to be unloaded ..."
+      echo "Waiting for cap to be unloaded ..."
       msgflag=done
     fi
     sleep 5

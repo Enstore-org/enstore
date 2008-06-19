@@ -7,11 +7,11 @@ for i in `ls -vI \*.\*`; do
   t0=`date +'%s'`
   echo "`date` Group $i" >> $output
   # extract the volumes about to be ejected
-  set `awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) printf "%s ",vols[v]}' $i`
+  set `awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) print vols[v]}' $i | sort`
   case $action in
     shelve)
       echo "Now moving volumes to be ejected to shelf library..."
-      for vol in $*; do
+      for vol; do
 	if enstore info --check $vol; then
 	  lib=`enstore info --vol $vol | awk -F\' '$2 == "library" {print $4}'`
 	  if ! echo $lib | grep "^shelf-" >/dev/null; then
@@ -26,7 +26,7 @@ for i in `ls -vI \*.\*`; do
 	echo "`date` ERROR. Check kerberos credentials."
 	exit 1
       fi
-      if ! rsh $clerk ". /local/ups/etc/setups.sh; setup enstore; for vol in $*; do enstore vol --delete \$vol; done" 2>/dev/null; then
+      if ! rsh $clerk ". /usr/local/etc/setups.sh; setup enstore; for vol in $*; do enstore vol --delete \$vol; done" 2>/dev/null; then
 	echo "`date` ERROR. Failed to delete volumes!"
 	exit 1
       fi
@@ -43,14 +43,16 @@ for i in `ls -vI \*.\*`; do
   deltam=`expr $delta / 60`
   deltas=`expr $delta % 60`
   echo That cycle took $deltam minutes $deltas seconds.
-  /bin/echo -n "Have $# tapes been ${action%e}ed from cap $ocap [y/n]? "
-  if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-     echo "... success acknowledged"
-     mv $i ${i}.done
-  else
-     echo "... failure acknowledged"
-     mv $i ${i}.fail
-  fi
+  case `YesNo "Have $# tapes been ${action%e}ed from cap $ocap?"` in
+    Yes)
+       echo "`date` ... success acknowledged"
+       mv $i ${i}.done
+       ;;
+    No)
+       echo "`date` ... failure acknowledged"
+       mv $i ${i}.fail
+       ;;
+  esac
   echo
   echo
   rem=`ls -vI \*.\* | awk 'END {print NR}'`
@@ -59,15 +61,18 @@ for i in `ls -vI \*.\*`; do
      break
   else
      if [ $rem -gt 1 ]; then
-       /bin/echo -n "There are $rem groups remaining. Do another [y/n]? "
+       prompt="There are $rem groups remaining. Do another?"
      else
-       /bin/echo -n "There is only one group remaining! Do it [y/n]? "
+       prompt="There is only one group remaining! Do it?"
      fi
-     if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-	continue
-     else
-	break
-     fi
+     case `YesNo "$prompt"` in
+       Yes)
+	  continue
+	  ;;
+       No)
+	  break
+	  ;;
+     esac
   fi
 done
 
