@@ -1381,7 +1381,7 @@ class LibraryManagerMethods:
                         self.send_regret(w)
                     Trace.log(e_errors.ERROR,
                               "next_work_any_volume: cannot do the work for %s status:%s" % 
-                              (rq.ticket['fc']['external_label'], rq.ticket['status'][0]))
+                              (rq.ticket['fc']['external_label'], ret['status'][0]))
                     return (None, (e_errors.NOWORK, None))
             else:
                 if (w['work'] == 'write_to_hsm' and
