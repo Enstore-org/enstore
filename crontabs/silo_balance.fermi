@@ -1,1 +1,1 @@
-13 3 * * * enstore source /usr/local/etc/setups.sh; setup enstore $ENSTORE_DIR/sbin/ecron silo-balance >/dev/null 2>/dev/null
+13 3 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron silo-balance >/dev/null 2>/dev/null
