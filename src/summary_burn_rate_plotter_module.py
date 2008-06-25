@@ -40,6 +40,30 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
         #Override the tapes_burn_rate default value of empty string.
         self.output_fname_prefix = "ALL_"
 
+    #Based on the media, get the capacity and media_type of the tapes.
+    def get_capacity(self, media_type, db):
+
+        #This is a hack for the ADIC.  Originally, the ADIC didn't know
+        # what an LTO tape was, so every LTO1 and LTO2 was inserted as
+        # a 3480 tape.  Thus, if we find the library is LTO OR LTO2
+        # then we need to use this corrected type.  This only works if
+        # the ADIC never gets LTO3 or LTO4 drives, considering the
+        # end-of-life schedule for it, this shouldn't be a problem.
+        if media_type == "3480":
+            media_type = "LTO2"
+
+        media_capacity = getattr(enstore_constants,
+                                 "CAP_%s" % (media_type,),
+                                 None)
+        
+        if media_capacity:
+            #Cache this value for next time, but only for libraries we
+            # care about.
+            self.library_capacity[media_type] = (media_capacity, media_type)
+
+        return media_capacity, media_type
+        
+
     #######################################################################
     # The following functions must be defined by all plotting modules.
     #######################################################################
@@ -64,7 +88,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
         self.web_dir = os.path.join(html_dir, WEB_SUB_DIRECTORY)
         if not os.path.exists(self.web_dir):
             os.makedirs(self.web_dir)
-    
+
     def fill(self, frame):
         
         #  here we create data points
@@ -89,6 +113,10 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
         bytes_summary = {}
         self.tapes_summary_week = {}
         self.tapes_summary_month = {}
+        self.new_tapes_summary_week = {}
+        self.new_tapes_summary_month = {}
+        first_access_cache = {}
+        self.full_tape_cache = {}
         self.extra_title_info = []
         month_ago = time.time() - DAYS_IN_MONTH * SECONDS_IN_DAY
         week_ago = time.time() - DAYS_IN_WEEK * SECONDS_IN_DAY
@@ -103,7 +131,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             ###
             edb = csc.get("database", {})
             try:
-                db = pg.DB(host  = edb.get('dbhost', "localhost"),
+                edb = pg.DB(host  = edb.get('dbhost', "localhost"),
                            dbname= edb.get('dbname', "enstore"),
                            port  = edb.get('dbport', 5432),
                            user  = edb.get('dbuser_reader', "enstore_reader"))
@@ -122,7 +150,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                       " where label not like '%.deleted' and " \
                       " library not like '%shelf';"
 
-            edb_res = db.query(sql_cmd).getresult() #Get the values from the DB.
+            edb_res = edb.query(sql_cmd).getresult() #Get the values from the DB.
 
             for row in edb_res:
                 #row[0] is a distinct media_type
@@ -132,7 +160,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             #Get the library and storage group for each volume.
             sql_cmd = "select label,media_type from volume; "
 
-            edb_res = db.query(sql_cmd).getresult() #Get the values from the DB.
+            edb_res = edb.query(sql_cmd).getresult() #Get the values from the DB.
 
             #Stuff the tape information into a dictionary.
             for row in edb_res:
@@ -153,7 +181,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                       " as v3 on v3.id=v1.id " \
                       "group by v1.media_type"
 
-            edb_res = db.query(sql_cmd).getresult() #Get the values from the DB.
+            edb_res = edb.query(sql_cmd).getresult() #Get the values from the DB.
 
             #Store these for use later.  They are used in the plot titles.
             for row in edb_res:
@@ -204,15 +232,72 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                 mb_user_write = int(row[2])
                 mb_user_read = int(row[3])
 
+                #Convert string into number of seconds since the epoch.
+                this_timestamp = time.mktime(time.strptime(timestamp,
+                                                           "%Y-%m-%d %H:%M:%S"))
+
                 #Get the tapes library and storage group.
                 try:
                     media_type = tapes[volume]
+                    sql_cmd = "select first_access,system_inhibit_1 from volume where label = '%s'"\
+                          % (volume,)
                 except KeyError:
                     media_type = tapes[volume + ".deleted"]
+                    sql_cmd = "select first_access,system_inhibit_1 from volume where label = '%s'"\
+                          % (volume + ".deleted",)
                 #Get the date.
                 date = timestamp.split(" ")[0]
 
-                #Update the LM and SG byte counts into day increments.
+                try:
+                    #Pull the first access time and if the tape is full
+                    # from the cache in memory.
+                    first_access_timestamp = first_access_cache[volume]
+                    is_full_tape = self.full_tape_cache[media_type][volume]
+                except KeyError:
+                    #Get the first access time of this volume.  We need this to
+                    # determine new tapes that have been written to.
+                    fa_res = edb.query(sql_cmd).getresult()
+                    if len(fa_res) > 0:
+
+                        if fa_res[0][1] == "full":
+                            is_full_tape = 1
+                        else:
+                            is_full_tape = 0
+
+                        try:
+                            first_access_timestamp = \
+                                  time.mktime(time.strptime(fa_res[0][0],
+                                                            "%Y-%m-%d %H:%M:%S"))
+                        except OverflowError:
+                            #This error occurs for first access times set to
+                            # -1 seconds since the epoch (they have not been
+                            # used yet).
+                            first_access_timestamp = 0
+                    else:
+                        first_access_timestamp = this_timestamp #punt?
+                        is_full_tape = 0 #punt?
+
+                    #Update the cache for the next time this volume comes
+                    # up in the list.
+                    first_access_cache[volume] = first_access_timestamp
+
+                    #Restrict the full tape count to those filled in the
+                    # last month.
+                    if this_timestamp > month_ago and is_full_tape:
+                        #Update the LM and SG pair for number of tapes filled.
+                        ft_summary = self.full_tape_cache.get(media_type, {})
+                        if ft_summary == {}:
+                            self.full_tape_cache[media_type] = {}
+                        self.full_tape_cache[media_type][volume] = is_full_tape
+
+                        #Update the LM for the number of tapes filled.
+                        ft_summary = self.full_tape_cache.get(media_type, {})
+                        if ft_summary == {}:
+                            self.full_tape_cache[media_type] = {}
+                        self.full_tape_cache[media_type][volume] = is_full_tape
+
+
+                #Update the media_type counts into day increments.
                 mt_summary = bytes_summary.get(media_type, {})
                 if mt_summary == {}:
                     bytes_summary[media_type] = {} #Initial value.
@@ -221,8 +306,6 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                 summary['mb_read'] = summary['mb_read'] + mb_user_read
                 bytes_summary[media_type][date] = summary
 
-                this_timestamp = time.mktime(time.strptime(timestamp,
-                                                           "%Y-%m-%d %H:%M:%S"))
 
                 #Get the tapes used values for monthly and weekly for both
                 # the library and library w/ storage group.  The length of the
@@ -240,6 +323,20 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                         self.tapes_summary_week[media_type] = {}  #Initial value.
                     self.tapes_summary_week[media_type][volume] = 1
 
+                #Get the new tapes that have been written to in the last month
+                # and week.
+                if first_access_timestamp > month_ago:
+                    new_tape_mt_summary = self.new_tapes_summary_month.get(media_type, {})
+                    if new_tape_mt_summary == {}:
+                        self.new_tapes_summary_month[media_type] = {}  #Initial value.
+                    self.new_tapes_summary_month[media_type][volume] = 1
+
+                if first_access_timestamp > week_ago:
+                    new_tape_mt_summary = self.new_tapes_summary_week.get(media_type, {})
+                    if new_tape_mt_summary == {}:
+                        self.new_tapes_summary_week[media_type] = {}  #Initial value.
+                    self.new_tapes_summary_week[media_type][volume] = 1
+
         ## Now we can write out the data to the pts files that gnuplot
         ## will plot for us.
 
@@ -247,23 +344,40 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
               time.localtime(time.time() - DAYS_IN_MONTH * SECONDS_IN_DAY))
         today_date = time.strftime("%Y-%m-%d",
                                    time.localtime())
-        month_ahead_date = time.strftime("%Y-%m-%d",
-              time.localtime(time.time() + DAYS_IN_MONTH * SECONDS_IN_DAY))
 
         for key in self.MT_dict.keys():
             #key should just be the media type here.
 
             pts_file = self.MT_dict[key]
             
-            sum_read = 0
-            sum_write = 0
-            month_g_bytes = 0
-            today_g_bytes = 0
 
             try:
                 use_bytes_summary = bytes_summary[key]
             except KeyError:
                 use_bytes_summary = {today_date : {'mb_read':0, 'mb_write':0}}
+            #Extract the number of (new) tapes written last month.
+            try:
+                new_tapes_written_last_month = \
+                                  len(self.new_tapes_summary_month[key])
+            except KeyError:
+                new_tapes_written_last_month = 0
+
+            #Get the capacity in Gigabytes of the tapes belonging to this
+            # library.
+            capacity, media_type = self.get_capacity(media_type, edb)
+            if capacity == None:
+                #Skip media that does not have a valid library defined
+                # for it anymore.
+                print "DEAD LIBRARY3:", media_type
+                continue
+
+            #
+            sum_read = 0
+            sum_write = 0
+            #Set these so that the extra last column of data is outputed at
+            # the correct points for month ago, today and month ahead.
+            is_month_ago_plotted = False
+            month_ago_total_gb = 0
 
             #Write out the plot information to the entire librarys' data files.
             summary_keys = use_bytes_summary.keys()
@@ -273,34 +387,67 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                 sum_read = sum_read + stats['mb_read']
                 sum_write = sum_write + stats['mb_write']
 
+                date_timestamp = time.mktime(time.strptime(date, "%Y-%m-%d"))
+            
                 #Convert from MB to GB.
                 current_gb = stats['mb_write'] / 1024.0
                 total_gb = sum_write / 1024.0
 
                 #For a month ago and today, plot an extra line conneting them.
+                #The line written to the data file for one month ago
+                # gets an extra point.
                 if month_ago_date == date:
-                    line = "%s %s %s %s\n" % (
-                        date, current_gb, total_gb, total_gb )
-                    month_g_bytes = total_gb #Remember this for estimating.
-                elif today_date == date:
+                    is_month_ago_plotted = True
+                    month_ago_total_gb = total_gb
+
                     line = "%s %s %s %s\n" % (
                         date, current_gb, total_gb, total_gb)
-                    today_g_bytes = total_gb #Remember this for estimating.
                 else:
                     line = "%s %s %s\n" % (
-                        date, current_gb, total_gb)
+                         date, current_gb, total_gb)
 
-                #Write out the information to the correct data file.
+                #Slight diversion.  If we passed a month ago without
+                # finding a data point, we need to insert one.
+                if month_ago <= date_timestamp \
+                       and not is_month_ago_plotted:
+                    is_month_ago_plotted = True
+                    month_ago_total_gb = total_gb
+
+                    #Write out the information to the correct data file.
+                    line2 = "%s %s %s %s\n" % (
+                        date, "skip", "skip", total_gb)
+                    pts_file.write(line2)##    
+
                 pts_file.write(line)
 
-            #Write out one more line to plot the estimated usage for the
-            # next month.
-            line = "%s %s %s %s\n" % (
-                        month_ahead_date, "skip", "skip",
-                        (today_g_bytes - month_g_bytes) + today_g_bytes)
-            pts_file.write(line)
+            #If there hasn't been anything written in the last month we
+            # need to output the month interpolation line point now.
+            if not is_month_ago_plotted:
+                is_month_ago_plotted = True
+                month_ago_total_gb = total_gb
+                    
+                #Write out the information to the correct data file.
+                line2 = "%s %s %s %s\n" % (
+                    month_ago_date, "skip", "skip", total_gb)
+                pts_file.write(line2)
+
+
+            ## Plot the end of the interpolation line.
+            ##
+
+            #The raw value for today is the amount of tapes in GB written.
+            #Where should the 90% come from?
+            raw_value = (new_tapes_written_last_month * (capacity * 0.90))
+            #final_value adds the raw value to GB witten up to that
+            # point in time.
+            final_value = raw_value + month_ago_total_gb
+
+            #Write out the information to the correct data file.
+            line2 = "%s %s %s %s\n" % (
+                today_date, "skip", "skip", final_value)
+            pts_file.write(line2)
 
             pts_file.close()
 
-            #For compatiblity with system level burn rate plots.
-            self.PLOT_dict = self.MT_dict
+        #For compatiblity with system level burn rate plots.
+        self.PLOT_dict = self.MT_dict
