@@ -585,7 +585,6 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             #Set these so that the extra last column of data is outputed at
             # the correct points for month ago, today and month ahead.
             is_month_ago_plotted = False
-            #month_g_bytes = 0
             month_ago_total_gb = 0
             
             #Write out the plot information to the entire librarys' data files.
