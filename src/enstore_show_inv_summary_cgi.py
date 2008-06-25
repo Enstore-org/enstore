@@ -8,12 +8,10 @@ import socket
 inv_dir = "/enstore/tape_inventory"
 
 host = string.split(socket.gethostname(), '.')[0]
-if host[:3] == "rip":
-	cluster = "rip"
+if host[:2] == "d0":
+	cluster = "d0en"
 elif host[:3] == "stk":
 	cluster = "stken"
-elif host[:3] == "d0e":
-	cluster = "d0en"
 elif host[:3] == "cdf":
 	cluster = "cdfen"
 else:
@@ -23,22 +21,26 @@ special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED.html', 'VOLUMES_TO
 
 if cluster == "d0en":
 	special.append('TAB_FLIPPING_WATCH-samlto2')
-	special.append('AML2-VOLUMES.html')
+	special.append('TAB_FLIPPING_WATCH-D0-LTO4G1')
+	special.append('TAB_FLIPPING_WATCH-D0-LTO4F1')
 	special.append('STK-VOLUMES.html')
+	special.append('AML2-VOLUMES.html')
+	special.append('SL8500G1-VOLUMES.html')
+	special.append('SL8500F1-VOLUMES.html')
 	special.append('MIGRATION_SUMMARY.html')
 elif cluster == "stken":
-	special.append('TAB_FLIPPING_WATCH-CD-LTO3')
-	special.append('SL8500-VOLUMES.html')
-	special.append('AML2-VOLUMES.html')
+	special.append('TAB_FLIPPING_WATCH-SL8500G1')
 	special.append('STK-VOLUMES.html')
+	special.append('SL8500-VOLUMES.html')
 	special.append('MIGRATION_STATUS')
 	special.append('QUOTA_ALERT')
 	special.append('VOLUME_QUOTAS_UPDATE')
 	special.append('CMS_VOLUMES_WITH_ONLY_DELETED_FILES')
 elif cluster == "cdfen":
 	special.append('TAB_FLIPPING_WATCH-CDF-LTO3')
-	special.append('SL8500-VOLUMES.html')
 	special.append('STK-VOLUMES.html')
+	special.append('STKD0-VOLUMES.html')
+	special.append('SL8500-VOLUMES.html')
 
 # in the beginning ...
 
@@ -57,7 +59,8 @@ print '<hr>'
 
 # handle special files
 
-print '<p><font size=4>'
+print '<font size=4>'
+print '<p>'
 for i in special:
 	if i == 'COMPLETE_FILE_LISTING':
 		print '<a href="enstore_file_listing_cgi.py">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
@@ -65,6 +68,8 @@ for i in special:
 		print '<a href="'+os.path.join(inv_dir, i)+'">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
 	print '<br>'
 print '<p><a href="'+inv_dir+'">Raw Directory Listing</a>'
-print '<p></font>'
+print '</font>'
+
+# the end
 print '</body>'
 print '</html>'
