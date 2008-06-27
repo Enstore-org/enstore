@@ -48,17 +48,29 @@ QUALIFIERS=cdfen:dcache:x86_64
  _config_host=cdfensrv2.fnal.gov
  _whine=false
 FLAVOR=ANY
-QUALIFIERS=gccen
- _config_host=gccensrv1.fnal.gov
+QUALIFIERS=rip
+ _config_host=rip7.fnal.gov
+ _whine=false
+FLAVOR=ANY
+QUALIFIERS=buffalo
+ _config_host=buffalo.fnal.gov
  _whine=false
 FLAVOR=ANY
 QUALIFIERS=happy
  _config_host=happy.fnal.gov
  _whine=false
 FLAVOR=ANY
+QUALIFIERS=airedale
+ _config_host=airedaile.fnal.gov
+ _whine=false
+FLAVOR=ANY
+QUALIFIERS=sirius
+ _config_host=sirius
+ _whine=false
+FLAVOR=ANY
 QUALIFIERS=""
  _config_host=`$ENCP_DIR/chooseConfig`
- _whine=true
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=x86_64
  _config_host=`$ENCP_DIR/chooseConfig`
@@ -71,7 +83,6 @@ FLAVOR=ANY
 QUALIFIERS="x86_64:dcache"
  _config_host=`$ENCP_DIR/chooseConfig`
  _whine=true
-
 COMMON:
 
         ACTION=SETUP
@@ -81,8 +92,7 @@ COMMON:
                 setupEnv()
                 pathPrepend(PATH, "${UPS_PROD_DIR}")
 
-                # all systems use port 7500 for the well-know port to the
-		# configuration port
+                # all systems use port 7500 for the well-know port to the configuration port
                 envSet(ENSTORE_CONFIG_PORT, 7500)
 
 		###The following lines have been commented out.  They should

@@ -32,7 +32,7 @@ fi
 rpm -q ftt > /dev/null
 if [ $? -ne 0 ]; then
     echo "Installing ftt"
-    rpm -U --force ${place}/ftt-2.26-1.i386.rpm
+    rpm -U --force ${place}/ftt-2.26-2.i386.rpm
 fi
  
 rpm -q tcl > /dev/null
@@ -53,7 +53,7 @@ fi
 echo "Installing enstore"
 
 #rpm -Uvh --force --nodeps ${place}/enstore-1.0b.1-10.i386.rpm
-rpm -Uvh --force --nodeps ${place}/enstore_sa-1.0.1-10.i386.rpm
+rpm -Uvh --force --nodeps ${place}/enstore_sa-1.0.1-11.i386.rpm
 rpm -q enstore > /dev/null
 if [ $? -eq 0 ]; 
 then
