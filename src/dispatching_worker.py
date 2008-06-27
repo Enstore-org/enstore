@@ -350,10 +350,12 @@ class DispatchingWorker(udp_server.UDPServer):
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
 
+        Trace.trace(6, "dispatching_worker:process_request %s"%(ticket,))
         #This checks help process cases where the message was repeated
         # by the client.
         if not ticket:
-            return
+             Trace.log(e_errors.ERROR, "dispatching_worker: no ticket!!!")
+             return
 
         # look in the ticket and figure out what work user wants
         try:
