@@ -2340,8 +2340,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                  ticket['vc']["storage_group"]))
                 return
             
-        if not ticket.has_key('lm'):
-            ticket['lm'] = {'address':self.server_address }
+        #if not ticket.has_key('lm'):
+        ticket['lm'] = {'address':self.server_address }
         # set up priorities
         ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
 	log_add_to_pending_queue(ticket['vc'])
@@ -2493,8 +2493,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.notify("client %s %s %s %s" % (host, work, vol, 'rejected'))
             return
 
-        if not ticket.has_key('lm'):
-            ticket['lm'] = {'address' : self.server_address}
+        #if not ticket.has_key('lm'):
+        ticket['lm'] = {'address' : self.server_address}
 
         # check if work is in the at mover list before inserting it
         format = None
