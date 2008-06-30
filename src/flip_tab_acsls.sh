@@ -22,7 +22,7 @@ for i in `ls -vI \*.\*`; do
     else
       prompt="Press Enter when all tapes have been loaded with tabs in ${action}ed position"
     fi
-    read -p $prompt ans
+    read -p "$prompt" ans
     msgflag=
     while /bin/true; do
       cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"`
