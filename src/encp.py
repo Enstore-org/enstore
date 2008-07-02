@@ -2828,7 +2828,7 @@ def filesystem_check(work_ticket):
 
     #Get the file size from the ticket.
     size = work_ticket['file_size']
-        
+    
     #Not all operating systems support this POSIX limit yet (ie OSF1).
     try:
         #get the maximum filesize the local filesystem allows.
@@ -2947,7 +2947,7 @@ def inputfile_check(input_files, e):
         inputlist = [input_files]
 
     #Get the correct type of pnfs interface to use.
-    p = Pnfs()
+    #p = Pnfs()
 
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(0, len(inputlist)):
@@ -2960,40 +2960,7 @@ def inputfile_check(input_files, e):
             #check to make sure that the filename string doesn't have any
             # wackiness to it.
             filename_check(inputlist[i])
-
-            """
-            # input files must exist - also handle automounting and pnfs agent.
-            if not access_check(inputlist[i], os.F_OK):
-
-                #We don't want to fail immediatly.  On reads it is ok for
-                # encp to check all three paths to the experiment's file:
-                # /pnfs/xyz, /pnfs/fs/usr/xyz and /pnfs/fnal.gov/xyz.
-
-                if not pnfs.is_pnfs_path(inputlist[i]):
-                    raise EncpError(errno.ENOENT, inputlist[i],
-                                    e_errors.USERERROR,
-                                    {'infile' : inputlist[i]})
-                elif access_check(get_enstore_pnfs_path(inputlist[i]),
-                                  os.F_OK):
-                    inputlist[i] = get_enstore_pnfs_path(inputlist[i])
-                elif access_check(get_enstore_fs_path(inputlist[i]),
-                                  os.F_OK):
-                    inputlist[i] = get_enstore_fs_path(inputlist[i])
-                elif access_check(get_enstore_canonical_path(inputlist[i]),
-                                  os.F_OK):
-                    inputlist[i] = get_enstore_canonical_path(inputlist[i])
-                else:
-                    #There is a real problem with the file.  Fail the transfer.
-                    raise EncpError(errno.ENOENT, inputlist[i],
-                                    e_errors.USERERROR,
-                                    {'infile' : inputlist[i]})
-
-            # input files must have read permissions.
-            if not access_check(inputlist[i], os.R_OK):
-                raise EncpError(errno.EACCES, inputlist[i],
-                                e_errors.USERERROR, {'infile' : inputlist[i]})
-            """
-
+            
             if not e.override_deleted:
                     #and request['fc']['deleted'] != 'no'):
             
@@ -3015,10 +2982,10 @@ def inputfile_check(input_files, e):
                 #For Reads make sure the filesystem size and the pnfs size
                 # match.  If the PNFS filesystem and layer 4 sizes are
                 # different, calling this function raises OSError exception.
-                #if p:
                 if is_pnfs_path(inputlist[i]):
-                    p.get_file_size(inputlist[i])
-                
+                    #p.get_file_size(inputlist[i])
+                    pnfs.check_size(inputlist[i], statinfo[stat.ST_SIZE])
+
             # we cannot allow 2 input files to be the same
             # this will cause the 2nd to just overwrite the 1st
             try:
@@ -3031,24 +2998,10 @@ def inputfile_check(input_files, e):
             except ValueError:
                 pass  #There is no error.
 
-        #except KeyboardInterrupt:
-        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except EncpError:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            #msg = sys.exc_info()[1]
-            #size = get_file_size(inputlist[i])
-            #print_data_access_layer_format(inputlist[i], "", size,
-            #                               {'status':(msg.type, msg.strerror)})
-            #quit()
         except (OSError, IOError):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            #msg = sys.exc_info()[1]
-            #size = get_file_size(inputlist[i])
-            #error = errno.errorcode.get(getattr(msg, "errno", None),
-            #                            errno.errorcode[errno.ENODATA])
-            #print_data_access_layer_format(
-            #    inputlist[i], "", size, {'status':(error, str(msg))})
-            #quit()
 
     return
 
@@ -3304,7 +3257,12 @@ def parse_layer_2(data):
         result = size_match.search(line)
         if result != None:
             dcache_string = result.group().split("=")[1]
-            dcache_size_long = long(dcache_string)
+            try:
+                dcache_size_long = long(dcache_string)
+            except ValueError:
+                dcache_size_long = None
+                #We can't trust that the CRC is correct either.
+                #dcache_crc_long = None
 
     return (dcache_crc_long, dcache_size_long)
 
@@ -4523,7 +4481,6 @@ def open_local_file(work_ticket, tinfo, e):
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
 
-
     return done_ticket
 
 ############################################################################
@@ -4675,7 +4632,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
                     #This is were the interface selection magic occurs.
 		    host_config.update_route(mover_ip, ip)
 		except (OSError, IOError, socket.error), msg:
-		    print "SOCKET ERROR:", str(msg)
+		    sys.stderr.write("SOCKET ERROR: %s\n" % (str(msg,))
 		    Trace.log(e_errors.ERROR, str(msg))
 		    #raise EncpError(getattr(msg,"errno",None),
 		    #		    str(msg), e_errors.OSERROR)
@@ -7989,7 +7946,6 @@ def verify_read_request_consistancy(requests_per_vol, e):
                bfid_brand = requests_per_vol[vol][0]['fc']['bfid']
         except (ValueError, AttributeError, TypeError,
                 IndexError, KeyError), msg:
-            pprint.pprint(msg)
             msg = "Error insuring consistancy with request list for " \
                   "volume %s." % (vol,)
             status = (e_errors.CONFLICT, msg)
@@ -8121,7 +8077,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
 
             #Determine if the pnfs layers and the file data are consistant.
             rest = {}
-                
+            
             #First check if the file is deleted and the override deleted
             # switch/flag has been specified by the user.
             if not (e.override_deleted
@@ -9405,7 +9361,9 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     r_encp = None #Dmitry should know better than to not be paranoid.
     if r_encp == None:
         try:
-            if not e.volume: #Skip this test for volume transfers.
+            #Skip this test for volume transfers and migration/duplication
+            # transfers for performance reasons.
+            if not e.volume and not e.migration_or_duplication:
                 verify_read_request_consistancy(
                     {request_ticket.get("external_label","label"):[request_ticket]}, e)
         except EncpError, msg:
@@ -9600,6 +9558,7 @@ def prepare_read_from_hsm(tinfo, e):
         udp_callback_addr = None
     
     #Create all of the request dictionaries.
+    Trace.log(e_errors.INFO, "Before create_read_requests.")
     try:
         requests_per_vol = create_read_requests(callback_addr,
                                                 udp_callback_addr, tinfo, e)
@@ -9622,6 +9581,7 @@ def prepare_read_from_hsm(tinfo, e):
 
         return e_ticket, listen_socket, udp_server, {}
 
+    Trace.log(e_errors.INFO, "After create_read_requests.")
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
         done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer.")}
@@ -9636,7 +9596,9 @@ def prepare_read_from_hsm(tinfo, e):
 
     #This will halt the program if everything isn't consistant.
     try:
-        if not e.volume: #Skip these tests for volume transfers.
+        #Skip this test for volume transfers and migration/duplication
+        # transfers for performane reasons.
+        if not e.volume and not e.migration_or_duplication:
             verify_read_request_consistancy(requests_per_vol, e)
     except EncpError, msg:
         if not msg.ticket.get('status', None):
@@ -9998,6 +9960,8 @@ class EncpInterface(option.Interface):
         self.override_deleted = 0  # If the file has been deleted, this flag
                                    # will ignore the deleted status when
                                    # reading the file back.
+        self.migration_or_duplication = None #Set true if the transfer is
+                                   # called from migrate.py or duplicate.py.
 
         #Special options for operation with a disk cache layer.
         #self.dcache = 0            #obsolete???
@@ -11032,11 +10996,12 @@ def do_work(intf):
 
     try:
         exit_status = main(intf)
-        delete_at_exit.quit(exit_status)
     except (SystemExit, KeyboardInterrupt):
         exc, msg = sys.exc_info()[:2]
-        Trace.log(e_errors.ERROR, "encp aborted from: %s: %s" % (str(exc),str(msg)))
-        delete_at_exit.quit(1)
+        Trace.log(e_errors.ERROR,
+                  "encp aborted from: %s: %s" % (str(exc),str(msg)))
+        
+        exit_status = 1
     except:
         #Get the uncaught exception.
         exc, msg, tb = sys.exc_info()
@@ -11050,14 +11015,17 @@ def do_work(intf):
         # print the traceback to standard error.
         Trace.handle_error(exc, msg, tb)
         del tb #No cyclic references.
-        #Remove any zero-length files left haning around.  Also, return
-        # a non-zero exit status to the calling program/shell.
-        delete_at_exit.quit(1)
 
+        exit_status = 1
+
+    #Remove any zero-length files left haning around.  Also, return
+    # a non-zero exit status to the calling program/shell.
+    delete_at_exit.delete()
+    return exit_status
         
 if __name__ == '__main__':
     delete_at_exit.setup_signal_handling()
 
     intf_of_encp = EncpInterface(sys.argv, 0) # zero means admin
 
-    do_work(intf_of_encp)
+    delete_at_exit.quit(do_work(intf_of_encp))
