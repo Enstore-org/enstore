@@ -17,6 +17,7 @@ import string
 import time
 import re
 import types
+import socket
 
 # enstore imports
 import Trace
@@ -63,6 +64,42 @@ def print_results2(result):
 #Make this shortcut so there is less to type.
 fullpath = enstore_functions2.fullpath
 
+#######################################################################
+
+def layer_file(f, n):
+    pn, fn = os.path.split(f)
+    if is_access_name(fn):
+        return os.path.join(pn, "%s(%d)" % (fn, n))
+    else:
+        return os.path.join(pn, ".(use)(%d)(%s)" % (n, fn))
+
+def id_file(f):
+    #We need to be careful that a .(access)() file does not get passed here. 
+    pn, fn = os.path.split(f)
+    return os.path.join(pn, ".(id)(%s)" % (fn, ))
+
+def parent_file(f, pnfsid = None):
+    pn, fn = os.path.split(f)
+    if pnfsid:
+        return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
+    if is_access_name(f):
+        pnfsid = fn[10:-1]
+        return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
+    else:
+        fname = id_file(f)
+        f = open(fname)
+        pnfsid = f.readline()
+        f.close()
+        return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
+
+def access_file(dn, pnfsid):
+    return os.path.join(dn, ".(access)(%s)" % (pnfsid))
+
+def database_file(directory):
+    return os.path.join(directory, ".(get)(database)")
+
+##############################################################################
+
 def is_access_name(filepath):
     #Determine if it is an ".(access)()" name.
     access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)")
@@ -79,16 +116,6 @@ def is_nameof_name(filepath):
 
     return False
 
-#Remove the /pnfs/ or /pnfs/fs/usr/ from the pnfs path.
-def strip_pnfs_mountpoint(pathname):
-    tmp1 = pathname[pathname.find("/pnfs/"):]
-    tmp2 = tmp1[6:]
-    if tmp2[:7] == "fs/usr/":
-        tmp3 = tmp2[7:]
-    else:
-        tmp3 = tmp2
-    return tmp3
-
 def is_pnfs_path(pathname, check_name_only = None):
 
     if is_access_name(pathname) or is_nameof_name(pathname):
@@ -100,13 +127,17 @@ def is_pnfs_path(pathname, check_name_only = None):
         filename = os.path.join(dirname, basename)
     else:
         #Expand the filename to the absolute path.
-        unused, filename, dirname, unused = fullpath(pathname)
+        #unused, filename, dirname, unused = fullpath(pathname)
+        filename = enstore_functions2.expand_path(pathname)
+        
 
     #Some versions of python have gotten dirname wrong if filename was
     # already a directory.
     if os.path.isdir(filename):
         dirname = filename
         #basename = ""
+    else:
+        dirname = os.path.dirname(filename)
     
     #Determine if the target file or directory is in the pnfs namespace.
     if string.find(dirname,"/pnfs/") < 0:
@@ -166,6 +197,30 @@ def is_pnfsid(pnfsid):
             return 1
     return 0
 
+##############################################################################
+
+#Remove the /pnfs/, /pnfs/fnal.gov/usr or /pnfs/fs/usr/ from the pnfs path.
+def strip_pnfs_mountpoint(pathname):
+    tmp1 = pathname[pathname.find("/pnfs/"):]
+    tmp2 = tmp1[6:]
+    
+    #Determine the canonical path base.  (i.e /pnfs/fnal.gov/usr/)
+    # If the ENCP_CANONICAL_DOMAINNAME overriding environmental variable
+    # is set, use that.
+    if os.environ.get('ENCP_CANONICAL_DOMAINNAME', None):
+        canonical_name = os.environ['ENCP_CANONICAL_DOMAINNAME']
+    else:
+        canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
+    canonical_path = os.path.join(canonical_name, "usr")
+
+    if tmp2[:7] == "fs/usr/":
+        tmp3 = tmp2[7:]
+    elif tmp2[:len(canonical_path)] == canonical_path:
+        tmp3 = tmp2[len(canonical_path):]
+    else:
+        tmp3 = tmp2
+    return tmp3
+
 def get_directory_name(filepath):
 
     if type(filepath) != types.StringType:
@@ -208,16 +263,238 @@ def get_directory_name(filepath):
 
 ###############################################################################
 
+def get_database(f):
+    #err = []
+    #warn = []
+    #info = []
+    
+    db_a_dirpath = get_directory_name(f)
+    database_path = database_file(db_a_dirpath)
+
+    try:
+        database = get_layer(database_path)[0].strip()
+    except (OSError, IOError):
+        database = None
+        #if detail.errno in [errno.EACCES, errno.EPERM]:
+        #    err.append('no read permissions for .(get)(database)')
+        #elif detail.args[0] in [errno.ENOENT, errno.ENOTDIR]:
+        #    pass
+        #else:
+        #    err.append('corrupted .(get)(database) metadata')
+
+    return database
+
+def get_layer(layer_filename, max_lines = None):
+    RETRY_COUNT = 2
+    
+    i = 0
+    while i < RETRY_COUNT:
+        # get info from layer
+        try:
+            fl = open(layer_filename)
+            if max_lines:
+                layer_info = []
+                i = 0
+                while i < max_lines:
+                    layer_info.append(fl.readline())
+                    i = i + 1
+            else:
+                layer_info = fl.readlines()
+            fl.close()
+            break
+        except (OSError, IOError), detail:
+            #Increment the retry count before it is needed to determine if
+            # we should sleep or not sleep.
+            i = i + 1
+            
+            if detail.args[0] in [errno.EACCES, errno.EPERM] and os.getuid() == 0:
+                #If we get here and the real id is user root, we need to reset
+                # the effective user id back to that of root ...
+                try:
+                    os.seteuid(0)
+                    os.setegid(0)
+                except OSError:
+                    pass
+            elif i < RETRY_COUNT:
+                #If the problem wasn't permissions, lets give the system a
+                # moment to catch up.
+                #Skip the sleep if we are not going to try again.
+                ##time.sleep(0.1)
+
+                ##It is known that stat() can return an incorrect ENOENT
+                ## if pnfs is really loaded.  Is this true for open() or
+                ## readline()?  Skipping the time.sleep() makes the scan
+                ## much faster.
+                raise detail
+    else:
+        raise detail
+
+    return layer_info
+
+def get_layer_1(f):
+    # get bfid from layer 1
+    try:
+        bfid = get_layer(layer_file(f, 1))
+    except (OSError, IOError), detail:
+        bfid = None
+        if detail.errno in [errno.EACCES, errno.EPERM]:
+            raise OSError(detail.errno, "no read permissions for layer 1",
+                          detail.filename)
+        elif detail.args[0] in [errno.ENOENT, errno.EISDIR]:
+            pass
+        else:
+            raise OSError(errno.EIO, "corrupted layer 1 metadata",
+                          detail.filename)
+
+    try:
+        bfid = bfid[0].strip()
+    except:
+        bfid = ""
+
+    return bfid
+
+
+def get_layer_2(f):
+    # get dcache info from layer 2
+    try:
+        layer2 = get_layer(layer_file(f, 2))
+    except (OSError, IOError), detail:
+        layer2 = None
+        if detail.errno in [errno.EACCES, errno.EPERM]:
+            raise OSError(detail.errno, "no read permissions for layer 2",
+                          detail.filename)
+        elif detail.args[0] in [errno.ENOENT, errno.EISDIR]:
+            pass
+        else:
+            raise OSError(errno.EIO, "corrupted layer 2 metadata",
+                          detail.filename)
+
+    l2 = {}
+    if layer2:
+        try:
+            l2['line1'] = layer2[0].strip()
+        except IndexError:
+            l2['line1'] = None
+
+        try:
+            line2 = layer2[1].strip()
+        except IndexError:
+            line2 = ""
+
+        try:
+            hsm_match = re.compile("h=(no|yes)")
+            l2['hsm'] = hsm_match.search(line2).group().split("=")[1]
+        except AttributeError:
+            l2['hsm'] = None
+
+        try:
+            crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
+            l2['crc'] = long(crc_match.search(line2).group().split(":")[1], 16)
+        except AttributeError:
+            l2['crc'] = None
+
+        try:
+            size_match = re.compile("l=[0-9]+")
+            l2['size'] = long(size_match.search(line2).group().split("=")[1])
+        except AttributeError:
+            l2['size'] = None
+
+        l2['pools'] = []
+        for item in layer2[2:]:
+            l2['pools'].append(item.strip())
+
+    return l2
+
+def get_layer_4(f, max_lines = None):
+    # get xref from layer 4 (?)
+    try:
+        layer4 = get_layer(layer_file(f, 4), max_lines)
+    except (OSError, IOError), detail:
+        layer4 = None
+        if detail.errno in [errno.EACCES, errno.EPERM]:
+            raise OSError(detail.errno, "no read permissions for layer 4",
+                          detail.filename)
+        elif detail.args[0] in [errno.ENOENT, errno.EISDIR]:
+            pass
+        else:
+            raise OSError(errno.EIO, "corrupted layer 4 metadata",
+                          detail.filename)
+
+    l4 = {}
+    if layer4:
+        try:
+            l4['volume'] = layer4[0].strip()
+        except IndexError:
+            pass
+        try:
+            l4['location_cookie'] = layer4[1].strip()
+        except IndexError:
+            pass
+        try:
+            l4['size'] = layer4[2].strip()
+        except IndexError:
+            pass
+        try:
+            l4['file_family'] = layer4[3].strip()
+        except IndexError:
+            pass
+        try:
+            l4['original_name'] = layer4[4].strip()
+        except IndexError:
+            pass
+        # map file no longer used
+        try:
+            l4['pnfsid'] = layer4[6].strip()
+        except IndexError:
+            pass
+        # map pnfsid no longer used
+        try:
+            l4['bfid'] = layer4[8].strip()
+        except IndexError:
+            pass
+        try:
+            l4['drive'] = layer4[9].strip() #optionally present
+        except IndexError:
+            pass
+        try:
+            l4['crc'] = layer4[10].strip() #optionally present
+        except IndexError:
+            pass
+
+    return l4
+
+def get_pnfsid(f):
+    if is_access_name(f):
+        pnfsid = os.path.basename(f)[10:-1]
+        return pnfsid
+    
+    #Get the id of the file or directory.
+    try:
+        fname = id_file(f)
+        f = open(fname)
+        pnfs_id = f.readline().strip()
+        f.close()
+    except(OSError, IOError), detail:
+        pnfs_id = None
+        if not detail.errno == errno.ENOENT or not os.path.ismount(f):
+            message = "%s: %s" % (os.strerror(detail.errno),
+                                  "unable to obtain pnfs id")
+            raise OSError(detail.errno, message, fname)
+
+    return pnfs_id
+
+###############################################################################
+
 #Global cache.
 db_pnfsid_cache = {}
-search_list = []
+last_db_tried = ("", (-1, ""))
 
+#Get currently mounted pnfs mountpoints.
 def parse_mtab():
-    global db_pnfsid_cache
-    
-    #Clear this out to remove stale entries.
-    db_pnfsid_cache = {}
-
+    #Different systems have different names for this file.
+    # /etc/mtab: Linux, IRIX
+    # /etc/mnttab: SunOS
+    # MacOS doesn't have one.
     for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
         try:
             fp = open(mtab_file, "r")
@@ -232,7 +509,8 @@ def parse_mtab():
     else:
         #Should this raise an error?
         mtab_data = []
-        
+
+    found_mountpoints = {}
     for line in mtab_data:
         #The 2nd and 3rd items in the list are important to us here.
         data = line[:-1].split()
@@ -257,37 +535,63 @@ def parse_mtab():
         #db_datas[2] is the database (???)
         #db_datas[3] is the database enabled or disabled status
         #db_datas[4] is the database (???)
+
         #If the database's id is not in the cache, add it along with the
         # mount point that goes with it.
         db_pnfsid = int(db_datas[1])
-        if db_data not in db_pnfsid_cache.keys():
-            db_pnfsid_cache[db_data] = (db_pnfsid, mp)
+        #if db_data not in db_pnfsid_cache.keys():
+        #    db_pnfsid_cache[db_data] = (db_pnfsid, mp)
+        if db_data not in found_mountpoints.keys():
+            found_mountpoints[db_data] = (db_pnfsid, mp)
+
+    return found_mountpoints
+
+
+def set_last_db(database_values):
+    global last_db_tried
+
+    ## database_info: Should be the pnfs --database output.  Something like:
+    ##   cms:9:r:enabled:/diskb/pnfs/db/cms
+    ##
+    ## database_number: The number of the database.  This should match the
+    ## second part of the database_info line.
+    ##
+    ## mount_point: The current location of the mount point for this
+    ## pnfs database.
+    database_info = database_values[0]
+    database_number = database_values[1][0]
+    mount_point = database_values[1][1]
+    
+    last_db_tried = (database_info, (database_number, mount_point))
+
+def get_last_db():
+    global last_db_tried
+    return last_db_tried
 
 def process_mtab():
     global db_pnfsid_cache
-    global search_list
     
     if not db_pnfsid_cache:
         #Sets global db_pnfsid_cache.
-        parse_mtab()
-        
-    for database_info, (db_num, mp) in db_pnfsid_cache.items():
-        if db_num == 0 or os.path.basename(mp) == "fs":
-            #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
-            p = Pnfs()
-            use_path = os.path.join(mp, "usr")
-            for dname in os.listdir(use_path):
-                tmp_name = os.path.join(use_path, dname)
-                if not os.path.isdir(tmp_name):
-                    continue
-                tmp_db_info = p.get_database(os.path.join(use_path, dname)).strip()
-                if tmp_db_info in db_pnfsid_cache.keys():
-                    continue
-                
-                tmp_db = int(tmp_db_info.split(":")[1])
-                db_pnfsid_cache[tmp_db_info] = (tmp_db, tmp_name)
+        db_pnfsid_cache = parse_mtab()
 
-    return sort_mtab()
+        for database_info, (db_num, mp) in db_pnfsid_cache.items():
+            if db_num == 0 or os.path.basename(mp) == "fs":
+                #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
+                p = Pnfs()
+                use_path = os.path.join(mp, "usr")
+                for dname in os.listdir(use_path):
+                    tmp_name = os.path.join(use_path, dname)
+                    if not os.path.isdir(tmp_name):
+                        continue
+                    tmp_db_info = p.get_database(os.path.join(use_path, dname)).strip()
+                    if tmp_db_info in db_pnfsid_cache.keys():
+                        continue
+
+                    tmp_db = int(tmp_db_info.split(":")[1])
+                    db_pnfsid_cache[tmp_db_info] = (tmp_db, tmp_name)
+
+    return [last_db_tried] + sort_mtab()
 
 def __db_cmp(x, y):
     is_x_fs_usr = x[1][1].find("/fs/usr/") > 0
@@ -318,7 +622,6 @@ def __db_cmp(x, y):
 
 def sort_mtab():
     global db_pnfsid_cache
-    global search_list
 
     search_list = db_pnfsid_cache.items()
     #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
@@ -337,6 +640,158 @@ def add_mtab(db_info, db_num, db_mp):
     if db_info not in db_pnfsid_cache.keys():
         db_pnfsid_cache[db_info] = (db_num, db_mp)
         sort_mtab()
+
+###############################################################################
+
+#Return a list of admin (/pnfs/fs like) mount points.
+def get_enstore_admin_mount_point(pnfsid = None):
+
+    list_of_admin_mountpoints = []
+
+    #Get the list of pnfs mountpoints currently mounted.
+    mtab_results = parse_mtab()
+    
+    for db_num, mount_path in mtab_results.values():
+        if db_num == 0:  #Admin db has number 0.
+            if os.path.basename(mount_path) == "fs":
+                mount_path = os.path.join(mount_path, "usr")
+            
+            if pnfsid == None:
+                list_of_admin_mountpoints.append(mount_path)
+            else:
+                access_path = access_file(mount_path, pnfsid)
+                try:
+                    os.stat(access_path)
+                except OSError, msg:
+                    if msg.errno in [errno.ENOENT]:
+                        continue
+                    else:
+                        list_of_admin_mountpoints.append(mount_path)
+
+                        
+    return list_of_admin_mountpoints
+
+#Return a list of admin (/pnfs/fs like) mount points.
+def get_enstore_mount_point(pnfsid = None):
+
+    list_of_admin_mountpoints = []
+
+    #Get the list of pnfs mountpoints currently mounted.
+    mtab_results = parse_mtab()
+    
+    for db_num, mount_path in mtab_results.values():
+        if db_num != 0:  #Admin db has number 0.
+            #if os.path.basename(mount_path) == "fs":
+            #    mount_path = os.path.join(mount_path, "usr")
+            
+            if pnfsid == None:
+                list_of_admin_mountpoints.append(mount_path)
+            else:
+                access_path = access_file(mount_path, pnfsid)
+                try:
+                    os.stat(access_path)
+                except OSError, msg:
+                    if msg.errno in [errno.ENOENT]:
+                        continue
+                    else:
+                        list_of_admin_mountpoints.append(mount_path)
+
+                        
+    return list_of_admin_mountpoints
+
+###############################################################################
+
+#filepath should refer to a pnfs path.
+#replacement_path should be one of "/pnfs/", "/pnfs/fnal.gov" or "/pnfs/".
+def __get_special_path(filepath, replacement_path):
+    #Make sure this is a string.
+    if type(filepath) != types.StringType:
+        raise TypeError("Expected string filename.",
+                        e_errors.WRONGPARAMETER)
+    #Make sure this is a string.
+    if type(replacement_path) != types.StringType:
+        raise TypeError("Expected string replacement string.",
+                        e_errors.WRONGPARAMETER)
+
+    #Make absolute path.
+    #Note: enstore_functions2.fullpath() does a stat() to determine if filepath
+    # is a directory (it appends a / to filename if so).  We know we don't
+    # need it here.  Just use expand_path here for performance gains.
+    #unused, filename, dirname, unused = enstore_functions2.fullpath(filepath)
+    filename = enstore_functions2.expand_path(filepath)
+
+    #Determine the canonical path base.  (i.e /pnfs/fnal.gov/usr/)
+    # If the ENCP_CANONICAL_DOMAINNAME overriding environmental variable
+    # is set, use that.
+    if os.environ.get('ENCP_CANONICAL_DOMAINNAME', None):
+        canonical_name = os.environ['ENCP_CANONICAL_DOMAINNAME']
+    else:
+        canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
+    canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
+    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
+
+    #Return an error if the file is not a pnfs filename.
+    #if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
+    #    raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
+
+    for pattern in ["/pnfs/fs/usr/", canonical_pathbase, "/pnfs/"]:
+        filename, count = re.subn(pattern, replacement_path, filepath, 1)
+        if count > 0:
+            return filename
+
+    raise TypeError("Unable to return enstore pnfs pathname.",
+                    e_errors.WRONGPARAMETER)
+
+def get_enstore_pnfs_path(filepath):
+    return __get_special_path(filepath, "/pnfs/")
+
+
+def get_enstore_fs_path(filepath):
+    return __get_special_path(filepath, "/pnfs/fs/usr/")
+
+
+def get_enstore_canonical_path(filepath):
+    #Determine the canonical path base.  (i.e /pnfs/fnal.gov/usr/)
+    # If the ENCP_CANONICAL_DOMAINNAME overriding environmental variable
+    # is set, use that.
+    if os.environ.get('ENCP_CANONICAL_DOMAINNAME', None):
+        canonical_name = os.environ['ENCP_CANONICAL_DOMAINNAME']
+    else:
+        canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
+    #Use the canonical_name to determine the canonical pathname base.
+    canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
+    
+    return __get_special_path(filepath, canonical_pathbase)
+
+###############################################################################
+
+def check_size(fname, os_filesize = None, pnfs_filesize = None):
+
+    #Get the file system size.
+    if not os_filesize:
+        os_filesize = long(os.stat(fname)[stat.ST_SIZE])
+
+    #If there is no layer 4, make sure an error occurs.
+    try:
+        if not pnfs_filesize:
+            #pnfs_filesize = long(self.get_xreference(fname)[2].strip())
+            pnfs_filesize = long(get_layer_4(fname, max_lines = 3)['size'])
+    except ValueError:
+        pnfs_filesize = long(-1)
+        #self.file_size = os_filesize
+        #return os_filesize
+
+    #Error checking.  However first ignore large file cases.
+    if os_filesize == 1 and pnfs_filesize > long(2L**31L) - 1:
+        return long(pnfs_filesize)
+    #Make sure they are the same.
+    elif os_filesize != pnfs_filesize:
+        raise OSError(errno.EBADFD,
+                 "%s: filesize corruption: OS size %s != PNFS size %s" % \
+                  (os.strerror(errno.EBADFD), os_filesize, pnfs_filesize))
+
+    return long(os_filesize)
+	
 
 ###############################################################################
 
@@ -1014,8 +1469,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     
     def _get_mount_point2(self, id, directory, pnfsname=None,
                           return_all = False):
-        global search_list
-        
         if id != None:
             if not is_pnfsid(id):
                 raise ValueError("The pnfs id (%s) is not valid." % id)
@@ -1142,7 +1595,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             found_db_info = None
             mp_match_list = []
             pnfs_value_match_list = []
-            #mp_dict = parse_mtab()
             search_list = process_mtab()
             #Search all of the pnfs mountpoints that are mounted.
             for db_info, (db_num, mp) in search_list:
