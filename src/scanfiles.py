@@ -30,9 +30,9 @@ import volume_family
 import e_errors
 import Trace
 import charset
-import enstore_functions3
 import enstore_constants
 import checksum
+import find_pnfs_file
 
 #os.access = e_access   #Hack for effective ids instead of real ids.
 
@@ -1251,12 +1251,6 @@ def check_bit_file(bfid, bfid_info = None):
         errors_and_warnings(prefix, err, warn, info)
         return
 
-    #We will need the pnfs database numbers.
-    if pnfs.is_pnfsid(file_record['pnfsid']):
-        pnfsid_db = int(file_record['pnfsid'][:4], 16)
-    else:
-        pnfsid_db = None
-
     # we can not simply skip deleted files
     #
     # for each deleted file, we have to make sure:
@@ -1268,318 +1262,18 @@ def check_bit_file(bfid, bfid_info = None):
         info = info + ["deleted"]
 
     #Loop over all found mount points.
-    possible_reused_pnfsid = 0
-    afn = ""
-    for database_info, (db_num, mp)  in [last_db_tried] + search_list:
-
-        #If last_db_tried is still set to its initial value, we need to
-        # skip the the next.
-        if db_num < 0:
-            continue
-        
-        #This test is to make sure that the pnfs filesystem we are going
-        # to query has a database N (where N is pnfsid_db).  Otherwise
-        # we hang querying a non-existant database.  If the pnfsid_db
-        # matches the lat one we tried we skip this test as it has
-        # already been done.
-        if last_db_tried[0] != pnfsid_db:
-            try:
-                pnfs.N(pnfsid_db, mp).get_databaseN()
-            except IOError:
-                #This /pnfs/fs doesn't contain a database with the id we
-                # are looking for.
-                continue
-        
-        #We don't need to determine the full path of the file
-        # to know if it exists.  The path could be different
-        # between two machines anyway.
-        afn = access_file(mp, file_record['pnfsid']) #afn =  access file name
-
-        #Check layer 1 to get the bfid.
-        layer1_bfid, (err_l, warn_l, info_l) = get_layer_1(afn)
-        err = err + err_l
-        warn = warn + warn_l
-        info = info + info_l
-        if err or warn:
-            errors_and_warnings(prefix, err, warn, info)
-            return
-        if layer1_bfid:
-            #Make sure this is the correct file or copy thereof.
-            if layer1_bfid == file_record['bfid'] or \
-                   layer1_bfid == \
-                   infc.find_original(file_record['bfid'])['original']:
-                
-                if layer1_bfid != file_record['bfid']:
-                    #Must be a multiple copy to get to this point.
-                    is_multiple_copy = True
-
-                if file_record['deleted'] == 'yes':
-                    try:
-                        tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
-                        #Deal with multiple possible matches.
-                        if len(tmp_name_list) == 1:
-                            err.append("pnfs entry exists")
-                        else:
-                            err.append("to many matches %s" % tmp_name_list)
-                    except (OSError, IOError), detail:
-                        if detail.errno in [errno.EBADFD, errno.EIO]:
-                            err.append("%s orphaned file" % (file_record['pnfsid'],))
-                        else:
-                            err.append("%s error accessing file"%(file_record['pnfsid'],))
-                        
-                    errors_and_warnings(prefix, err, warn, info)
-                    return
-                else:
-                    #p = pnfs.Pnfs()
-                    #db_a_dirpath = pnfs.get_directory_name(afn)
-                    #db_info = p.get_database(db_a_dirpath)
-                    db_info = get_database(afn)
-
-                    #Update the global cache information.
-                    if database_info != db_info:
-
-                        #At this point the database that the file is in
-                        # doesn't match the one that returned a positive hit.
-                        # So, we first check if a known PNFS database is
-                        # a match...
-                        for item in search_list:
-                            if item[0] == db_info:
-                                pnfs_path = access_file(item[1][1],
-                                                        file_record['pnfsid'])
-                                layer1_bfid, unused = get_layer_1(pnfs_path)
-                                if layer1_bfid and \
-                                       layer1_bfid == file_record['bfid']:
-                                    last_db_tried = copy.copy(item)
-                                    pnfsid_mp = item[1][1]
-                                    break
-                        else:
-                            #...if it is not a match then we have a database
-                            # not it our current cached list.  So we need
-                            # to find it.  This is going to be a resource
-                            # hog, but once we find it, we won't need to
-                            # do so for any more files.
-                            
-                            #If this p.get_path() fails, it is most likely,
-                            # because of permission problems of either
-                            # /pnfs/fs or /pnfs/fs/usr.  Especially for
-                            # new pnfs servers.
-                            try:
-                                p = pnfs.Pnfs()
-                                pnfs_path_list = p.get_path(
-                                    file_record['pnfsid'], mp)
-                                #Deal with multiple possible matches.
-                                if len(pnfs_path_list) == 1:
-                                    pnfs_path = pnfs_path_list[0]
-                                else:
-                                    err.append("to many matches %s" %
-                                               (pnfs_path_list,))
-                                    errors_and_warnings(prefix, err, warn, info)
-                                    return
-                                pnfsid_mp = p.get_pnfs_db_directory(pnfs_path)
-                            except (OSError, IOError), msg:
-                                pnfs_path = afn
-                                if msg.errno in [errno.ENOENT]:
-                                    pnfsid_mp = None
-                                else:
-                                    pnfsid_mp = mp #???
-
-                            if pnfsid_mp != None:
-                                #This is just some paranoid checking.
-                                afn = access_file(pnfsid_mp,
-                                                  file_record['pnfsid'])
-                                layer1_bfid, unused = get_layer_1(afn)
-                                if layer1_bfid and \
-                                       layer1_bfid == file_record['bfid']:
-                                    last_db_tried = (db_info, (pnfsid_db, pnfsid_mp))
-                                    add_mtab(db_info, pnfsid_db, pnfsid_mp)
-                            else:
-                                last_db_tried = ("", (-1, ""))
-
-                    else:
-                        last_db_tried = (db_info, (pnfsid_db, mp))
-                        #We found the file, set the pnfs path.
-                        pnfs_path = afn
-                        pnfsid_mp = mp
-
-                    #pnfs_path and pnfsid_mp needs to be set correctly by
-                    # this point.
-                    if pnfsid_mp == None:
-                        continue
-                    break
-
-            #If we found the right bfid brand, we know the right pnfs system
-            # was found.
-            pnfs_brand = enstore_functions3.extract_brand(layer1_bfid)
-            filedb_brand = enstore_functions3.extract_brand(file_record['bfid'])
-            if pnfs_brand and filedb_brand and pnfs_brand == filedb_brand:
-                if file_record['deleted'] == 'yes':
-                    info.append("reused pnfsid")
-                else:
-                    #err.append("reused pnfsid")
-                    ## Need to keep trying in case the wrong pnfs systems
-                    ## pnfsid match was found.
-                    possible_reused_pnfsid = possible_reused_pnfsid + 1
-                    continue
-                errors_and_warnings(prefix, err, warn, info)
-                return
-
-            #If we found a bfid that didn't have the correct id or the
-            # brands did not match, go back to the top and try the next
-            # pnfs filesystem.
-            
-    else:
-        if afn:
-            if file_record['deleted'] != 'yes':
-                #We don't have a layer 1.  As a last ditch effort check layer 4.
-                # There probably won't be anything, but every now and then...
-                layer4_dict, (err_l, warn_l, info_l) = get_layer_4(afn)
-                #We through away the (err_l, warn_l, info_l) values becuase we
-                # expect them to not be there if layer 1 is not there.  It does
-                # not make sense to report what we already know.
-                if layer4_dict.get('bfid', None):
-                     #If we found a bfid in layer 4, report the error about
-                     # layer 1.
-                     err.append("missing layer 1")
-                else:
-                    #Since the file exists, but has no layers, report the error.
-                    err.append("%s does not exist" % (file_record['pnfsid'],))
-
-        if possible_reused_pnfsid > 0:
-            err.append("reused pnfsid")
-
-        layer1_bfid, unused = get_layer_1(file_record['pnfs_name0'])
-        if layer1_bfid and layer1_bfid != file_record['bfid']:
-            #If this is the case that the bfids don't match,
-            # also include this piece of information.
-            info.append("replaced with newer file")
-            errors_and_warnings(prefix, err, warn, info)
-            return
-
+    try:
+        #Obtain the current path.  There are many ways to try and find the
+        # file.  The original pathname is a good start, but there are a
+        # lot of things to try before resorting to get_path().
+        pnfs_path = find_pnfs_file.find_pnfsid_path(file_record['pnfsid'],
+                                                    bfid,
+                                                    file_record = file_record)
+    except (OSError, IOError), msg:
+        err.append(msg.args[1])
         errors_and_warnings(prefix, err, warn, info)
         return
-
-    #Since we know if we are using /pnfs/fs or not, we can maniplate the
-    # original name to the correct pnfs base path.  This will speed things
-    # up when scanning files written to /pnfs/xyz but only having /pnfs/fs
-    # mounted for the scan.
-    #
-    #This won't help for the case of moved or renamed files.  We still
-    # will bite the bullet of calling get_path() for those.
-    if not is_access_name(pnfs_path):
-        #If we have already had to do a full path lookup to find the
-        # correct pnfs database/mountpoint, we don't need to worry about
-        # any of this path munging.
-        use_name = pnfs_path
-        use_mp = pnfsid_mp
-    elif db_num == 0 and file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
-        use_name = get_dcache_pnfs_path(file_record['pnfs_name0'])
-        use_mp = pnfsid_mp.replace("/pnfs/fs", "/pnfs/fs/usr/", 1)
-    elif mp.find("/pnfs/fs/usr/") >= 0 and \
-             file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
-        use_name = get_dcache_pnfs_path(file_record['pnfs_name0'])
-        use_mp = pnfsid_mp
-    elif mp.find("/pnfs/fs/usr/") == -1 and \
-             file_record['pnfs_name0'].find("/pnfs/fs/usr") >= 0:
-        use_name = get_enstore_pnfs_path(file_record['pnfs_name0'])
-        use_mp = pnfsid_mp
-    else:
-        use_name = file_record['pnfs_name0']
-        use_mp = pnfsid_mp
-    
-    use_name = os.path.abspath(use_name)
-    use_mp = os.path.abspath(use_mp)
-
-    ###
-    #for old_value, new_value in external_transitions.items():
-    #    use_name = use_name.replace(old_value, new_value, 1)
-
-    cur_pnfsid = get_pnfsid(use_name)[0]
-    if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
-        #Before jumping off the deep end by calling get_path(), lets try
-        # one more thing.  Here we try and remove any intermidiate
-        # directories that are not present in the current path.
-        #  Example: original path begins: /pnfs/sam/dzero/...
-        #           current use path begins /pnfs/fs/usr/dzero/...
-        #           If we can detect that we need to remove the "/sam/"
-        #           part we can save the time of a full get_path() lookup.
-        just_pnfs_path_part = pnfs.strip_pnfs_mountpoint(
-            file_record['pnfs_name0'])
-        #Skip element zero in dir_list since we already tried it.  No use
-        # wasting time trying something we know will fail.
-        #Also, there are cases were the directory we should skip, just happens
-        # to have another directory with the same name underneath were we
-        # are looking.  The false positive is known to slow D0 down a lot
-        # if we don't avoid it.
-        #Don't check everything... limit this to the first 5 minux 1
-        # directories.
-        dir_list = just_pnfs_path_part.split("/", 5)[1:]
-        for i in range(len(dir_list[:-1])):
-            single_dir = os.path.join(use_mp, dir_list[i])
-            try:
-                os.stat(single_dir)
-                use_name = os.path.join(use_mp,
-                                         string.join(dir_list[i:], "/"))
-                break
-            except (OSError, IOError):
-                pass
-
-        #We need to check if it is an orphaned file.  If the pnfsids match
-        # then the file has not been moved or renamed since it was written.
-        # If they match, then the ".(access)()" filename is passed to
-        # check_file(). check_file() should skip its own check of the
-        # ".(access)()" filenames, since they have been shone to still be
-        # valid.
-        #
-        # If it doesn't match then:
-        # 1) The file is orphaned.  (get_path() gives ENOENT or EIO)
-        # 2) The file is moved.  (get_path() gives the new path)
-        # 3) The file is renamed. (get_path() gives the new name)
-        cur_pnfsid = get_pnfsid(use_name)[0]
-        if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
-            #Since we have no idea in pnfs-land where we will be headed,
-            # lets set things so that we will be able to have access
-            # permissions set if possible.
-            if os.getuid() == 0 and os.geteuid() != 0:
-                try:
-                    os.seteuid(0)
-                    os.setegid(0)
-                except OSError:
-                    pass
-            try:
-                tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], use_mp)
-                #Deal with multiple possible matches.
-                if len(tmp_name_list) == 1:
-                    tmp_name = tmp_name_list[0]
-                else:
-                    err.append("to many matches %s" % (tmp_name_list,))
-                    errors_and_warnings(prefix, err, warn, info)
-                    return
-                
-                if tmp_name[0] == "/":
-                    #Make sure the path is a absolute path.
-                    pnfs_path = tmp_name
-                else:
-                    #If the path is not an absolute path we get here.  What
-                    # happend is that get_path() was able to find a pnfs
-                    # mount point connected to the correct pnfs database,
-                    # but not a mount for the correct database.
-                    #
-                    #The best we can do is use the .(access)() name.
-                    pass
-            except (OSError, IOError), detail:
-                if detail.errno  in [errno.EBADFD, errno.EIO]:
-                    err = err + ["%s orphaned file"%(file_record['pnfsid'])]
-                    errors_and_warnings(prefix, err, warn, info)
-                    return
-                else:
-                    err = err + ["%s error accessing file"%(file_record['pnfsid'])]
-                    errors_and_warnings(prefix, err, warn, info)
-                    return
-        else:
-            pnfs_path = use_name
-    else:
-        pnfs_path = use_name
-
+        
     #Stat the file.
     f_stats, (e2, w2, i2) = get_stat(pnfs_path)
     err = err + e2
@@ -1590,7 +1284,7 @@ def check_bit_file(bfid, bfid_info = None):
         return
     if stat.S_ISREG(f_stats[stat.ST_MODE]):
         file_info = {"f_stats"       : f_stats,
-                     "layer1"        : layer1_bfid,
+                     "layer1"        : bfid, # layer1_bfid,
                      "file_record"   : file_record,
                      "pnfsid"        : file_record['pnfsid']}
     else:
@@ -1621,7 +1315,7 @@ def check_bit_file(bfid, bfid_info = None):
                 pass
 
     file_info = {"f_stats"       : f_stats,
-                 "layer1"        : layer1_bfid,
+                 "layer1"        : bfid, #layer1_bfid,
                  "file_record"   : file_record,
                  "pnfsid"        : file_record['pnfsid'],
                  "is_multiple_copy" : is_multiple_copy}
@@ -1638,7 +1332,7 @@ def check_file(f, file_info):
     f_stats = file_info['f_stats']
     bfid = file_info.get('layer1', None)
     filedb = file_info.get('file_record', None)
-    pnfs_id = file_info.get('pnfsid', None)
+    #pnfs_id = file_info.get('pnfsid', None)
     is_multiple_copy = file_info.get('is_multiple_copy', None)
     volumedb = file_info.get('volume_record', None)
 
@@ -1664,8 +1358,12 @@ def check_file(f, file_info):
         info.append("marked bad")
         return err, warn, info #Non-lists skips any output.
 
+    #Get the correct/current pnfsid for this file.
+    pnfs_id = get_pnfsid(f)[0]
+
     #Get the info from layer 2.
     layer2 = get_layer_2(f)[0]
+    layer_2_from_name = layer2
 
     #If this file is not supposed to be forwarded to tape by dCache,
     # check the parent id and compare the file size from the os
@@ -1689,18 +1387,66 @@ def check_file(f, file_info):
                 err.append("size(%s, %s)" % (layer2_size, real_size))
 
         return err, warn, info
-                
-    #Get information from the layer 1 and layer 4 (if necessary).
-    if not bfid:
-        bfid, (err1, warn1, info1) = get_layer_1(f)
-        err = err + err1
-        warn = warn + warn1
-        info = info + info1
-    layer4, (err4, warn4, info4) = get_layer_4(f)
 
-    err = err + err4
-    warn = warn + warn4
-    info = info + info4
+    #Even though we have the filename, we still need the .(access)() name
+    # for some layer consistancy checks.
+    afn = os.path.join(os.path.dirname(f), ".(access)(%s)" % (pnfs_id,))
+
+    #Get information from the layer 1 (if necessary).
+    ## From a performance stand point, this sucks asking for the same
+    ## information twice.  But it has been observed that asking for this
+    ## information using the id and the name can give two different
+    ## answers.
+    layer_1_bfid_from_name, (err1, warn1, info1) = get_layer_1(f)
+    layer_1_bfid_from_id, (err1a, warn1a, info1a) = get_layer_1(afn)
+    err = err + err1 + err1a
+    warn = warn + warn1 + warn1a
+    info = info + info1 + info1a
+
+    #Check to make sure that PNFS is returning the same information
+    # when getting layer 1 from the pnfsid and from the name.  There is
+    # one known case that this has happened.
+    if layer_1_bfid_from_name != layer_1_bfid_from_id:
+        message = "conflicting layer 1 values " \
+                  "(id %s, name %s)" % \
+                  (layer_1_bfid_from_id, layer_1_bfid_from_name)
+        err.append(message)
+
+    if not bfid:
+        #We know that layer_1_bfid_from_name and layer_1_bfid_from_id must
+        # be equal by this point.  Also, we were originally given a file
+        # not bfid on the command line.
+        bfid = layer_1_bfid_from_name
+
+    layer_2_from_id = get_layer_2(afn)[0]
+
+    #Check to make sure that PNFS is returning the same information
+    # when getting layer 2 from the pnfsid and from the name.  There is
+    # one known case that this has happened.
+    if layer_2_from_name != layer_2_from_id:
+        message = "conflicting layer 2 values " \
+                  "(id %s, name %s)" % \
+                  (layer_2_from_id, layer_2_from_name)
+        err.append(message)
+
+    #Get information from the layer 4.
+    layer4, (err4, warn4, info4) = get_layer_4(f)
+    layer_4_from_name = layer4
+    layer_4_from_id, (err4a, warn4a, info4a) = get_layer_4(afn)
+    err = err + err4 + err4a
+    warn = warn + warn4 + warn4a
+    info = info + info4 + info4a
+
+    #Check to make sure that PNFS is returning the same information
+    # when getting layer 4 from the pnfsid and from the name.  There is
+    # one known case that this has happened.
+    if layer_4_from_name != layer_4_from_id:
+        message = "conflicting layer 4 values " \
+                  "(id %s, name %s)" % \
+                  (layer_4_from_id, layer_4_from_name)
+        err.append(message)
+
+    #If there are errors so far, report them now.
     if err or warn:
         return err, warn, info
 
@@ -1802,7 +1548,7 @@ def check_file(f, file_info):
                              cur_pnfsid))
                 
                 break
-                
+
     if err or warn:
         return err, warn, info
 
@@ -1864,7 +1610,7 @@ def check_file(f, file_info):
             pass
         else:
             err.append('no or corrupted location_cookie')
-        
+
     # size
     try:
         real_size = f_stats[stat.ST_SIZE]
@@ -1887,7 +1633,7 @@ def check_file(f, file_info):
             
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted size')
-        
+
     # file_family and library
     try:
         file_family = volumedb['file_family']
@@ -1906,7 +1652,7 @@ def check_file(f, file_info):
                 err.append('no such library (%s)' % (library))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted file_family')
-        
+
     # drive
     try:
         if not is_multiple_copy:
@@ -1972,9 +1718,6 @@ def check_file(f, file_info):
 
     # pnfsid
     try:
-        if not pnfs_id:
-            pnfs_id = get_pnfsid(f)[0]
-        
         if pnfs_id != layer4['pnfsid'] or pnfs_id != filedb['pnfsid']:
             err.append('pnfsid(%s, %s, %s)' % (layer4['pnfsid'], pnfs_id,
                                                filedb['pnfsid']))
