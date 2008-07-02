@@ -23,25 +23,20 @@ class Encp:
 			cmd = "encp "+cmd
 		argv = string.split(cmd)
 		intf = self.my_encp.EncpInterface(argv, 0)
+		intf.migration_or_duplication = 1 #Set true for performance.
 		if self.tid:
 			intf.include_thread_name = self.tid
 		try:
-			res = self.my_encp.main(intf)
+			res = self.my_encp.do_work(intf)
 			if res == None:
 				#return -10
 				res = -10  #Same as initial value.
-			
-			#return res
 		except:
-			#return 1
 			res = 1
 
 		self.exit_status = res #Return value if used in a thread.
 		return res  #Return value if used directly.
 
-
-		self.exit_status = res #Return value if used in a thread.
-		return res  #Return value if used directly.
 	
 
 if __name__ == '__main__':
