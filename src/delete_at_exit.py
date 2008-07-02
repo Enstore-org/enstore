@@ -11,6 +11,13 @@ import os
 import sys
 import signal
 import Trace
+try:
+    import threading
+    import thread
+    thread_support=1
+except ImportError:
+    thread_support=0
+
 
 # enstore modules
 import configuration_client
@@ -19,32 +26,121 @@ import enstore_functions2
 import e_errors
 import pnfs_agent_client
 
-_deletion_list = []
-_deletion_list_bfids = []
+class Container:
+    pass
+
+thread_specific_data = {}  #global value with each item for a different thread
+deletion_list_lock = threading.Lock()
+
+#Build thread specific data.
+def get_deletion_lists():
+    if thread_support:
+        tid = thread.get_ident() #Obtain unique identifier.
+    else:
+        tid = 1
+
+    rtn_tsd = thread_specific_data.get(tid)
+
+    try:
+        #Cleanup
+        for tid, tsd in thread_specific_data.items():
+            #Loop though all of the active threads searching for
+            # the thread specific data (tsd) that it relates to.
+            for a_thread in threading.enumerate():
+                if not hasattr(a_thread, "tid"):
+                    #If there is no tid attribute, it hasn't used
+                    # this udp_client and thus we don't care.
+                    continue
+                if a_thread.tid == tid:
+                    #If the thread is still active, don't cleanup.
+                    continue
+
+                del thread_specific_data[tid]
+    except (KeyboardInterrupt, SystemExit):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        exc, msg = sys.exc_info()[:2]
+        try:
+            sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
+            sys.stderr.flush()
+        except IOError:
+            pass
+        pass
+             
+               
+            
+    if not rtn_tsd:
+        thread_specific_data[tid] = Container()
+        thread_specific_data[tid].bfids = []
+        thread_specific_data[tid].files = []
+
+        if thread_support:
+            #There is no good way to store which thread this tsd was
+            # create for.  It used to do the following.
+            #     tsd.thread = threading.currentThread()
+            # But this turns out to be a resource leak by creating a
+            # cyclic reference.  Thus, this hack was devised to track
+            # them from the other direction; namely knowing the thread
+            # identify the tsd in the self.tsd dict that it relates to.
+            threading.currentThread().tid = tid
+
+        rtn_tsd = thread_specific_data[tid]
+            
+    return rtn_tsd
+
 
 def register(filename):
     if filename == '/dev/null':
         return
+
+    deletion_list_lock.acquire()
+
+    _deletion_list = get_deletion_lists().files
     if filename not in _deletion_list:
         _deletion_list.append(filename)
 
+    deletion_list_lock.release()    
+
 def register_bfid(bfid):
+    deletion_list_lock.acquire()
+
+    _deletion_list_bfids = get_deletion_lists().bfids
     if bfid not in _deletion_list_bfids:
         _deletion_list_bfids.append(bfid)
+
+    deletion_list_lock.release()
 
 def unregister(filename):
     if filename == '/dev/null':
         return
+
+    deletion_list_lock.acquire()
+    
+    _deletion_list = get_deletion_lists().files
     if filename in _deletion_list:
         _deletion_list.remove(filename)
 
+    deletion_list_lock.release()
+
 def unregister_bfid(bfid):
+    deletion_list_lock.acquire()
+    
+    _deletion_list_bfids = get_deletion_lists().bfids
     if bfid in _deletion_list_bfids:
         _deletion_list_bfids.remove(bfid)
+    
+    deletion_list_lock.release()
+
 
 def delete():
 
+    deletion_list_lock.acquire()
+
+    _deletion_list = get_deletion_lists().files
+    _deletion_list_bfids = get_deletion_lists().bfids
+
     if not _deletion_list and not _deletion_list_bfids:
+        deletion_list_lock.release() # Avoid deadlocks.
         return
 
     # get a configuration server
@@ -92,6 +188,8 @@ def delete():
             except IOError:
                     pass
             
+    deletion_list_lock.release()
+
             
 def signal_handler(sig, frame):
 
