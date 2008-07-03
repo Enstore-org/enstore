@@ -1094,7 +1094,8 @@ def copy_files(files, intf):
 				#Still need to copy.
 				use_bfid = bfid
 				use_file_record = f
-				
+
+			src = None
 			try:
 				src = find_pnfs_file.find_pnfsid_path(
 					f['pnfs_id'], use_bfid,
@@ -1104,16 +1105,36 @@ def copy_files(files, intf):
 				raise (sys.exc_info()[0], sys.exc_info()[1],
 				       sys.exc_info()[2])
 			except:
-				exc_type, exc_value, exc_tb = sys.exc_info()
-				Trace.handle_error(exc_type, exc_value, exc_tb)
-				del exc_tb #avoid resource leaks
-				error_log(MY_TASK, str(exc_type),
-					  str(exc_value),
-					  "%s %s %s %s is not a valid pnfs file" \
-					  % (f['label'], f['bfid'],
-					     f['location_cookie'],
-					     f['pnfs_id']))
-				continue
+				if use_bfid == bfid:
+					use_bfid_2 = dst_bfid
+				else:
+					use_bfid_2 = bfid
+				try:
+					#If the migration is interupted
+					# part way through the swap, we need
+					# to check if the other bfid is
+					# current in layer 1.
+					src = find_pnfs_file.find_pnfsid_path(
+						f['pnfs_id'], use_bfid_2,
+						path_type = find_pnfs_file.FS)
+				except (KeyboardInterrupt, SystemExit):
+					raise (sys.exc_info()[0],
+					       sys.exc_info()[1],
+					       sys.exc_info()[2])
+				except:
+					pass
+
+				if not src:
+					exc_type, exc_value, exc_tb = sys.exc_info()
+					#Trace.handle_error(exc_type, exc_value, exc_tb)
+					del exc_tb #avoid resource leaks
+					error_log(MY_TASK, str(exc_type),
+						  str(exc_value),
+						  "%s %s %s %s is not a valid pnfs file" \
+						  % (f['label'], f['bfid'],
+						     f['location_cookie'],
+						     f['pnfs_id']))
+					continue
 		elif f['deleted'] == 'y' and len(f['pnfs_id']) > 10:
 			log(MY_TASK, "%s %s %s is a DELETED FILE" \
 			    % (f['bfid'], f['pnfs_id'], f['pnfs_path']))
@@ -1237,6 +1258,12 @@ def swap_metadata(bfid1, src, bfid2, dst):
 
 	# check if the metadata are consistent
 	res = compare_metadata(p1, f1)
+	# deal with already swapped metadata
+	if res == "bfid":
+		res = compare_metadata(p1, f2)
+		if not res:
+			#The metadata has already been swapped.
+			return None
 	if res:
 		return "metadata %s %s are inconsistent on %s"%(bfid1, src, res)
 
@@ -1478,9 +1505,9 @@ def migrating(intf):
 		# Get bfid (and layer 4) of copied file.  We need these values
 		# regardless if the file was already copied, or it was
 		# just copied.
-		pf2 = pnfs.File(mig_path)
-		dst_bfid = pf2.bfid
 		if not is_it_copied:
+			pf2 = pnfs.File(mig_path)
+			dst_bfid = pf2.bfid
 			has_tmp_file = True
 			if dst_bfid == None:
 				error_log(MY_TASK, "failed to get bfid of %s" % (mig_path))
@@ -1537,7 +1564,10 @@ def migrating(intf):
 		if intf.with_final_scan:
 			#Even after these files have been "swapped," the
 			# original filename is still the pnfsid we want.
-			pnfsid = pnfs.get_pnfsid(src_path)
+			if 'deleted' == 'n':
+				pnfsid = pnfs.get_pnfsid(src_path)
+			else:
+				pnfsid = None
 			scan_job = (src_bfid, dst_bfid, pnfsid, src_path, deleted)
 			put_request(scan_queue, scan_w_pipe, scan_job)
 
