@@ -1,9 +1,20 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+# Given a pnfsid and bfid find the current path to the file using the
+# fewest possible resources.
+#
+###############################################################################
+
+# system imports
 import errno
 import sys
 import copy
 import os
 import string
-import time
 
 import pnfs
 import enstore_functions2
@@ -299,18 +310,37 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 if layer4_dict.get('bfid', None):
                      #If we found a bfid in layer 4, report the error about
                      # layer 1.
-                     raise OSError(errno.ENOENT, "missing layer 1", afn)
+                     if possible_reused_pnfsid:
+                         #File is not deleted, pnfs id is still valid,
+                         #found a different bfid in layer 1.  Lets fall
+                         # though and report more useful error message.
+                         pass
+                     
+                         #raise OSError(errno.ENOENT, "reused pnfsid", afn)
+                     else:
+                         raise OSError(errno.ENOENT, "missing layer 1", afn)
                 else:
                     #Since the file exists, but has no layers, report the error.
                     raise OSError(errno.ENOENT, os.strerror(errno.ENOENT),
                                   pnfsid)
 
-        layer1_bfid, unused = pnfs.get_layer_1(enstoredb_path)
+        layer1_bfid = pnfs.get_layer_1(enstoredb_path)
         if layer1_bfid and layer1_bfid != file_record['bfid']:
             #If this is the case that the bfids don't match,
             # also include this piece of information.
-            raise OSError(errno.EEXIST, "replaced with newer file",
-                          enstoredb_path)
+            try:
+                layer1_time = int(enstore_functions3.strip_brand(layer1_bfid)[:-5])
+                bfid_time = int(enstore_functions3.strip_brand(file_record['bfid'])[:-5])
+            except (KeyError, ValueError, AttributeError, TypeError):
+                raise OSError(errno.EEXIST, "found different file",
+                              enstoredb_path)
+
+            if bfid_time < layer1_time:
+                raise OSError(errno.EEXIST, "replaced with newer file",
+                              enstoredb_path)
+            else:
+                raise OSError(errno.EEXIST, "replaced with file",
+                              enstoredb_path)
 
         if possible_reused_pnfsid > 0:
             raise OSError(errno.EEXIST, "reused pnfsid",
