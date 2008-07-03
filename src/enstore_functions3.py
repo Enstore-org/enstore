@@ -159,6 +159,32 @@ def extract_brand(bfid):
 
     return None
 
+def strip_brand(bfid):
+
+    if is_bfid(bfid):
+        #Older files that do not have bfid brands should only be digits.
+        #
+        #Some older files (year 2000) have a long() "L" appended to
+        # the bfid.  This seems to be consistant between the file
+        # database and layers one & four.  So, return true in these cases.
+        result = re.search("^[0-9]{13,15}L{0,1}$", bfid)
+        if result != None:
+            return bfid
+
+        #The only part of the bfid that is of constant form is that the last
+        # n characters are all digits.  There are no restrictions on what
+        # is in a brand or how long it can be (though there should be).
+        # Since, the bfid is based on its creation time, as time passes the
+        # number of digits in a bfid will grow.  (Assume 14 as minumum).
+        result = re.search("[0-9]{13,15}$", bfid)
+        if result != None:
+            brand = bfid[:-(len(result.group()))]
+            if brand.isalnum():
+                return bfid[-(len(result.group())):]
+
+    return None
+
+
 def extract_file_number(location_cookie):
 
     if is_location_cookie_tape(location_cookie):
