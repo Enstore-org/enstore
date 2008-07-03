@@ -2489,9 +2489,10 @@ def main(intf):
 			#	icheck = False
 			restore_volume(volume, intf)
 	elif intf.scan_volumes:
+		exit_status = 0
 		for v in intf.args:
-			exit_status = final_scan_volume(v, intf)
-			return exit_status
+			exit_status = exit_status + final_scan_volume(v, intf)
+                return exit_status
 
 	else:
 		bfid_list = []
