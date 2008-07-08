@@ -3303,7 +3303,7 @@ class Tag:
         for line in data:
             try:
                 tag = string.split(line[7:], ")")[0]
-                tag_info = self.readtag(tag)
+                tag_info = self.readtag(tag, directory = cwd)
                 print line[:-1], "=",  tag_info[0]
             except (OSError, IOError, IndexError), detail:
                 print line[:-1], ":", detail
