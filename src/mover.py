@@ -4632,7 +4632,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if bloc_loc != self.last_absolute_location:
                         self.transfer_failed(e_errors.WRITE_ERROR,
                                              "Wrong position for %s: last %s, current %s"%
-                                             (self.last_absolute_location,
+                                             (self.current_volume, self.last_absolute_location,
                                               bloc_loc,),error_source=TAPE)
                         self.set_volume_noaccess(self.current_volume)
                 else:
