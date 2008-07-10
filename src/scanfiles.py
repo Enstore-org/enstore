@@ -1169,11 +1169,13 @@ def check_vol(vol):
                 ### Historical Note: This has been found to have happened
                 ### while importing SDSS DLT data into Enstore due to a
                 ### "get" bug.
+                ### Note2: If the mover writes a tape but is unable to update
+                ### the EOD cookie with the volume clerk, this can happen too.
                 message = 'volume %s has %s duplicate location %s (%s, %s)' % \
                           (vol, age, tape_list[i]['location_cookie'],
                            tape_list[i]['bfid'], tape_list[j]['bfid'])
-                if tape_list[i]['deleted'] == "yes" or \
-                   tape_list[j]['deleted'] == "yes":
+                if tape_list[i]['deleted'] in  ["yes", "unknown"] or \
+                   tape_list[j]['deleted'] in ["yes", "unknown"]:
                     #This is a possible situation:
                     # 1) The file clerk assigns a new bfid.
                     # 2) The volume clerk fails to update the EOD cookie.
@@ -1247,7 +1249,7 @@ def check_bit_file(bfid, bfid_info = None):
                           file_record['location_cookie']], " ")
 
     if file_record['deleted'] == "unknown":
-        info.append("deleted=unkown")
+        info.append("deleted=unknown")
         errors_and_warnings(prefix, err, warn, info)
         return
 
@@ -1270,7 +1272,18 @@ def check_bit_file(bfid, bfid_info = None):
                                                     bfid,
                                                     file_record = file_record)
     except (OSError, IOError), msg:
-        err.append(msg.args[1])
+        if msg.errno == errno.ENOENT and file_record['deleted'] in ['yes',
+                                                                    'unknown']:
+            # There is no error here.  Everything agrees the file is gone.
+            pass
+        elif file_record['deleted'] in ['yes', 'unknown'] and \
+            msg.errno == errno.EEXIST and \
+            msg.args[1] in ["replaced with newer file",
+                            "replaced with another file"]:
+            # The bfid is not active, and it is not active in pnfs.
+            info.append(msg.args[1])
+        else:
+            err.append(msg.args[1])
         errors_and_warnings(prefix, err, warn, info)
         return
         

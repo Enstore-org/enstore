@@ -339,12 +339,15 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 raise OSError(errno.EEXIST, "replaced with newer file",
                               enstoredb_path)
             else:
-                raise OSError(errno.EEXIST, "replaced with file",
+                raise OSError(errno.EEXIST, "replaced with another file",
                               enstoredb_path)
 
         if possible_reused_pnfsid > 0:
             raise OSError(errno.EEXIST, "reused pnfsid",
                           enstoredb_path)
+
+        raise OSError(errno.ENOENT, os.strerror(errno.ENOENT),
+                      enstoredb_path)
 
     #Since we know if we are using /pnfs/fs or not, we can maniplate the
     # original name to the correct pnfs base path.  This will speed things
