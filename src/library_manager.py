@@ -2964,47 +2964,47 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 vol = self.update_suspect_vol_list(mticket['external_label'], 
                                                    mticket['mover'])
                 Trace.alarm(e_errors.INFO,"mover_error updated suspect volume list for %s"%(mticket['external_label'],))
-            if vol:
-                # need a special processing for FTT_EBLANK. For 9940A tape drives
-                # it is mainly a firmware bug, but we need to make tape to not
-                # go NOACCESS in such a case.
-                ftt_eblank_error = (mticket['status'][0] == e_errors.READ_ERROR
-                                    and mticket['status'][1] and
-                                    ((mticket['status'][1] == 'FTT_EBLANK') or mticket['status'][1] == 'FTT_SUCCESS'))
-                if ((len(vol['movers']) >= self.max_suspect_movers and not ftt_eblank_error) or
-                    (len(vol['movers']) >= self.max_suspect_movers + self.blank_error_increment and ftt_eblank_error)):
+                if vol:
+                    # need a special processing for FTT_EBLANK. For 9940A tape drives
+                    # it is mainly a firmware bug, but we need to make tape to not
+                    # go NOACCESS in such a case.
+                    ftt_eblank_error = (mticket['status'][0] == e_errors.READ_ERROR
+                                        and mticket['status'][1] and
+                                        ((mticket['status'][1] == 'FTT_EBLANK') or mticket['status'][1] == 'FTT_SUCCESS'))
+                    if ((len(vol['movers']) >= self.max_suspect_movers and not ftt_eblank_error) or
+                        (len(vol['movers']) >= self.max_suspect_movers + self.blank_error_increment and ftt_eblank_error)):
 
-                    if w:
-                        w['status'] = (e_errors.NOACCESS, None)
+                        if w:
+                            w['status'] = (e_errors.NOACCESS, None)
 
-                    # set volume as noaccess
-                    if mticket.has_key('volume_clerk'):
-                        if mticket['volume_clerk'] == None:
-                            # mover starting, no volume info
-                            return
-                        self.set_vcc(mticket['volume_clerk'])
-                        #self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                        #                                                 server_address=mticket['volume_clerk'])
-                    else:
-                        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-                    self.vcc.set_system_noaccess(mticket['external_label'])
-                    Trace.alarm(e_errors.ERROR, 
-                                "Mover error (%s) caused volume %s to go NOACCESS"%(mticket['mover'],
-                                                                               mticket['external_label']))
-                    # set volume as read only
-                    #v = self.vcc.set_system_readonly(w['fc']['external_label'])
-                    label = mticket['external_label']
+                        # set volume as noaccess
+                        if mticket.has_key('volume_clerk'):
+                            if mticket['volume_clerk'] == None:
+                                # mover starting, no volume info
+                                return
+                            self.set_vcc(mticket['volume_clerk'])
+                            #self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                            #                                                 server_address=mticket['volume_clerk'])
+                        else:
+                            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+                        self.vcc.set_system_noaccess(mticket['external_label'])
+                        Trace.alarm(e_errors.ERROR, 
+                                    "Mover error (%s) caused volume %s to go NOACCESS"%(mticket['mover'],
+                                                                                   mticket['external_label']))
+                        # set volume as read only
+                        #v = self.vcc.set_system_readonly(w['fc']['external_label'])
+                        label = mticket['external_label']
 
-                    #remove entry from suspect volume list
-                    self.suspect_volumes.remove(vol)
-                    Trace.trace(15,"removed from suspect volume list %s"%(vol,))
+                        #remove entry from suspect volume list
+                        self.suspect_volumes.remove(vol)
+                        Trace.trace(15,"removed from suspect volume list %s"%(vol,))
 
-                    #self.send_regret(w)
-                    # send regret to all clients requested this volume and remove
-                    # requests from a queue
-                    self.flush_pending_jobs(e_errors.NOACCESS, label)
-            else:
-                pass
+                        #self.send_regret(w)
+                        # send regret to all clients requested this volume and remove
+                        # requests from a queue
+                        self.flush_pending_jobs(e_errors.NOACCESS, label)
+                else:
+                    pass
 
         #self.reply_to_caller({'work': 'no_work'})
 
