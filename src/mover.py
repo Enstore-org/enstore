@@ -1311,7 +1311,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.check_written_file_period = self.config.get('check_written_file', 0)
         self.files_written_cnt = 0
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
-        self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3) 
+        self.max_in_state_cnt = self.config.get('max_in_state_cnt', 2) 
         Trace.log(e_errors.INFO, "Starting in state %s"%(state_name(self.state),))
         self.rewind_tape = 0
 

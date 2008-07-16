@@ -2029,7 +2029,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                                 # movers across multiple library managers
         self.allow_access = self.keys.get('allow', None) # allow host access on a per storage group
         self.max_time_in_active = self.keys.get('max_in_active', 7200)
-        self.max_time_in_other = self.keys.get('max_in_other', 1200)
+        self.max_time_in_other = self.keys.get('max_in_other', 2000)
         
         LibraryManagerMethods.__init__(self, self.name,
                                        self.csc,
