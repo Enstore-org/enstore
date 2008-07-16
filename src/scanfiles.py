@@ -1262,6 +1262,12 @@ def check_bit_file(bfid, bfid_info = None):
     # [3] in reused pnfsid case, the bfids are not the same
     if file_record['deleted'] == 'yes':
         info = info + ["deleted"]
+    if file_record['deleted'] in ["yes", "unknown"] and \
+       not file_record['pnfsid']:
+        #The file is deleted, no pnfs id was recorded.  Not an error,
+        # so move on to the next file.
+        errors_and_warnings(prefix, err, warn, info)
+        return
 
     #Loop over all found mount points.
     try:
