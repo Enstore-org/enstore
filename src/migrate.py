@@ -2331,8 +2331,14 @@ def restore_volume(vol, intf):
 								config_port))
 		vcc = volume_clerk_client.VolumeClerkClient(csc)
 
+		#
 		#Get and set the volume's metadata.
+		#
+
+		#Get the current data.
 		v = vcc.inquire_vol(vol)
+
+		#Set the new inhibit state and the comment.
 		if v['system_inhibit'][1] in ["readonly", "migrated",
 					      "duplicated"]:
 			system_inhibit = [v['system_inhibit'][0], "none"]
@@ -2340,8 +2346,21 @@ def restore_volume(vol, intf):
 			system_inhibit = v['system_inhibit']
 		comment = "volume restored after %s" % \
 			  (MIGRATION_NAME.lower(),)
-		res = vcc.modify({'external_label':vol, 'comment':comment,
-				  'system_inhibit':system_inhibit})
+		res1 = vcc.modify({'external_label':vol, 'comment':comment,
+				   'system_inhibit':system_inhibit})
+		if not e_errors.is_ok(res1):
+			error_log(MY_TASK,
+				  "failed to update volume %s" \
+				  % (vol,))
+
+		#Update the last access time for the volume, so that the
+		# inventory knows to re-inventory this volume instead of
+		# using the incorrect/obsolete cached information.
+		res2 = vcc.touch(vol)
+		if not e_errors.is_ok(res2):
+			error_log(MY_TASK,
+				  "failed to last access time update %s" \
+				  % (vol,))
 		
 ##########################################################################
 
