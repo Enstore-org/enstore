@@ -3073,6 +3073,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm(self, ticket):
         Trace.log(e_errors.INFO, "WRITE_TO_HSM")
+        Trace.trace(10, "State %s"%(state_name(self.state),))
         if ticket.has_key('copy') and not ticket['fc'].has_key('original_bfid'):
             # this is a file copy request
             self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID. No original_bfid key in ticket")
