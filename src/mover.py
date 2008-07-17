@@ -2368,6 +2368,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(rc[1],), error_source=DRIVE) 
             return
 
+        t1 = time.time()
         #
         if self.tr_failed:
             Trace.log(e_errors.ERROR,"Transfer failed just before writing file marks")
@@ -2430,6 +2431,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                     Trace.log(e_errors.INFO, 'filemarks written. Tape %s absolute location in blocks %s'%(self.current_volume, new_bloc_loc,))
                     self.tape_driver.flush()
+                    self.media_transfer_time = self.media_transfer_time + (time.time()-t1) # include filemarks into drive time
                     Trace.trace(31, "cur %s, initial %s, last %s, blocks %s, headers %s trailers %s"%(new_bloc_loc, self.initial_abslute_location, self.current_absolute_location,self.last_blocks_written, len(self.header_labels), len(self.eof_labels)))
                 if self.header_labels and self.eof_labels:
                     extra = 4
