@@ -3438,7 +3438,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
             self.target_location = None        
 
-        Trace,trace(10, "finish_transfer_setup: label %s state %s"%(volume_label, state_name(self.save_state)))
+        Trace.trace(10, "finish_transfer_setup: label %s state %s"%(volume_label, state_name(self.save_state)))
         if volume_label == self.current_volume and self.save_state == HAVE_BOUND: #no mount needed
             self.timer('mount_time')
             self.position_media(verify_label=0)
