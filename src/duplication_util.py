@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
+import pg
+import sys
+
 import configuration_client
 import option
 import e_errors
 import file_clerk_client
 import volume_clerk_client
-import pg
 import pnfs
+import enstore_functions4
 
 class DuplicationManager:
 	def __init__(self, csc = None):
@@ -66,11 +69,19 @@ class DuplicationManager:
 
 		# get pnfs entry
 		try:
-			pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f1['pnfsid'])
-			if type(pnfs_path) == type([]):
-				pnfs_path = pnfs_path[0]
+			# get the real path			
+			#pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f1['pnfsid'])
+			pnfs_path = enstore_functions4.find_pnfsid_path(
+				f1['pnfsid'], f1['bfid'], file_record = f1)
+		except (KeyboardInterrupt, SystemExit):
+			raise (sys.exc_info()[0],
+			       sys.exc_info()[1],
+			       sys.exc_info()[2])
 		except:
 			return "not a valid pnfs file: %s"%(f1['pnfsid'])
+
+		if type(pnfs_path) == type([]):
+				pnfs_path = pnfs_path[0]
 
 		pf = pnfs.File(pnfs_path)
 
@@ -132,11 +143,19 @@ class DuplicationManager:
 
 		# get pnfs entry
 		try:
-			pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
-			if type(pnfs_path) == type([]):
-				pnfs_path = pnfs_path[0]
+			# get the real path			
+			#pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
+			pnfs_path = enstore_functions4.find_pnfsid_path(
+				f['pnfsid'], f['bfid'], file_record = f)
+		except (KeyboardInterrupt, SystemExit):
+			raise (sys.exc_info()[0],
+			       sys.exc_info()[1],
+			       sys.exc_info()[2])
 		except:
 			return "not a valid pnfs file: %s"%(f['pnfsid'])
+
+		if type(pnfs_path) == type([]):
+			pnfs_path = pnfs_path[0]
 
 		pf = pnfs.File(pnfs_path)
 
