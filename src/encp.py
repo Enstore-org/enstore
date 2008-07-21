@@ -86,6 +86,9 @@ import pnfs_agent_client
 import checksum
 import enstore_functions3
 
+#Hack for migration to report an error, instead of having to go to the log
+# file for every error.
+err_msg = ""
 
 #Add these if missing.
 if not hasattr(socket, "IPTOS_LOWDELAY"):
@@ -10668,6 +10671,8 @@ class EncpInterface(option.Interface):
 ##############################################################################
             
 def log_encp_start(tinfo, intf):        
+    global err_msg #hack for migration to report any error.
+    err_msg = ""
 
     #If verbosity is turned on get the user name(s).
     try:
@@ -10823,11 +10828,19 @@ def log_encp_start(tinfo, intf):
 
 
 def final_say(intf, done_ticket):
+    global err_msg
+    
     try:
         #Log the message that tells us that we are done.
         status = done_ticket.get('status', (e_errors.UNKNOWN,e_errors.UNKNOWN))
         exit_status = done_ticket.get('exit_status',
                                       not e_errors.is_ok(status))
+
+        #Setting this global, will enable the migration to report the
+        # errors directly.  This might keep the admins from having to
+        # constantly looking through the log file.
+        err_msg = str(status) 
+        
         #Determine the filename(s).
         ifilename = done_ticket.get("infile", "")
         ofilename = done_ticket.get("outfile", "")
@@ -10891,6 +10904,12 @@ def final_say(intf, done_ticket):
             sys.stderr.flush()
         except IOError:
             pass
+
+        #Setting this global, will enable the migration to report the
+        # errors directly.  This might keep the admins from having to
+        # constantly looking through the log file.
+        err_msg = str(("UNKNOWN", "UNKNOWN"))
+        
         #delete_at_exit.quit(1)
         return exit_status
 

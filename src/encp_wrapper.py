@@ -13,11 +13,13 @@ class Encp:
 		self.my_encp = encp
 		self.tid = tid
 		self.exit_status = -10
+		self.err_msg = ""
 
 	# encp(cmd) -- cmd is the same as the command line
 	# eg. encp("encp --verbose=4 /pnfs/.../file file")
 	def encp(self, cmd):
 		self.exit_status = -10 #Reset this every time.
+		self.err_msg = ""
 		
 		if cmd[:4] != "encp":
 			cmd = "encp "+cmd
@@ -31,7 +33,13 @@ class Encp:
 			if res == None:
 				#return -10
 				res = -10  #Same as initial value.
+
+			self.err_msg = self.my_encp.err_msg
+		except (KeyboardInterrupt, SystemExit):
+			raise sys.exc_info()[0], sys.exc_info()[1], \
+			      sys.exc_info()[2]
 		except:
+			self.err_msg = str(sys.exc_info()[:2])
 			res = 1
 
 		self.exit_status = res #Return value if used in a thread.
