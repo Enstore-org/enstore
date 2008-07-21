@@ -266,6 +266,9 @@ def init(intf):
 		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 		log(MIGRATION_NAME, string.join(sys.argv, " "))
 
+	# check for spool_dir commands
+	if not intf.migrated_to and not intf.migrated_from and \
+	   not intf.status and not intf.show and not intf.scan_volumes:
 		#spool dir
 		if not SPOOL_DIR:
 			sys.stderr.write("No spool directory specified.\n")
@@ -273,7 +276,7 @@ def init(intf):
 		if not os.access(SPOOL_DIR, os.W_OK):
 			os.makedirs(SPOOL_DIR)
 
-	#if intf.library:
+	#if intf.l.ibrary:
 	#	DEFAULT_LIBRARY = intf.library
 
 	if intf.file_family:
@@ -316,6 +319,9 @@ def set_proceed_number(src_bfids):
 	
 	if src_rate and dst_rate:
 		proceed_number = int(len(src_bfids) * (1 - (src_rate / dst_rate)))
+	#Put some form of bound on this value until its effect on performance
+	# is better understood.
+	proceed_number = min(proceed_number, 25)
 		
 	###############################################################
 	#print "proceed_number:", proceed_number
@@ -1009,7 +1015,7 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 		use_override_deleted = ""
 		use_path = src_path
 	encp_options = " --delayed-dismount 2 --ignore-fair-share" \
-		       " --bypass-filesystem-max-filesize-check"
+		       " --bypass-filesystem-max-filesize-check --threaded"
 	#We need to use --get-bfid here because of multiple copies.
 	# 
 	cmd = "encp %s %s %s %s %s" \
@@ -1026,7 +1032,7 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 	else:
 		error_log(MY_TASK,
 			  "failed to copy %s %s to %s, error = %d" \
-			  % (src_bfid, src_path, tmp_path, res))
+			  % (src_bfid, src_path, tmp_path, encp.err_msg))
 		return 1
 
 	return 0
@@ -1315,7 +1321,7 @@ def swap_metadata(bfid1, src, bfid2, dst):
 # tmp_path refers to the path that the file temporarily exists on disk.
 # mig_path is the path that the file will be written to pnfs.
 def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
-	       sg, ff, wrapper, deleted, encp, intf, db):
+	       sg, ff, wrapper, deleted, encp, intf):
 
 	# check destination path
 	if not mig_path:     # This can not happen!!!
@@ -1372,7 +1378,7 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 	else:
 		use_priority = "--priority %s" % \
 			       (ENCP_PRIORITY,)
-	encp_options = "--delayed-dismount 2 --ignore-fair-share"
+	encp_options = "--delayed-dismount 2 --ignore-fair-share --threaded"
 	dst_options = "--storage-group %s --file-family %s " \
 		      "--file-family-wrapper %s" \
 		      % (sg, ff, wrapper)
@@ -1411,7 +1417,8 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 		del cur_thread #recover resources
 
 	if res:
-		log(MY_TASK, "failed to copy %s %s %s ... (RETRY)" % (src_bfid, tmp_path, mig_path))
+		log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"
+		    % (src_bfid, tmp_path, mig_path))
 		# delete the target and retry once
 		try:
 			
@@ -1420,7 +1427,9 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 			pass
 		res = encp.encp(cmd)
 		if res:
-			error_log(MY_TASK, "failed to copy %s %s %s"%(src_bfid, tmp_path, mig_path))
+			error_log(MY_TASK, "failed to copy %s %s %s error = %s"
+				  % (src_bfid, tmp_path, mig_path,
+				     encp.err_msg))
 			# delete the target and retry once
 			try:
 				os.remove(mig_path)
@@ -1430,8 +1439,14 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 			#		     migrate_r_pipe)
 			#continue
 			return 1
+	else:
+		# log success of coping
+		ok_log(MY_TASK, "%s %s is copied to %s" % \
+		       (src_bfid, tmp_path, mig_path))
+		
 	if debug:
-		log(MY_TASK, "written to tape %s %s %s"%(src_bfid, tmp_path, mig_path))
+		log(MY_TASK, "written to tape %s %s %s"
+		    % (src_bfid, tmp_path, mig_path))
 
 
 	return 0
@@ -1467,13 +1482,14 @@ def migrating(intf):
 		#Wait for the copy_queue to reach a minimal number before
 		# starting to write the files.  If the queue is as full
 		# as it will get; move forward too.
+		if copy_queue.qsize() == 0:
+			initial_wait = True
 		while not copy_queue.finished and initial_wait and \
 			  copy_queue.qsize() < proceed_number:
 			get_requests(copy_queue, migrate_r_pipe)
 			#wait for the read thread to process a bunch first.
 			time.sleep(1)
-		#Now that we are passed the loop, make sure we are never
-		# in the wait to start loop again.
+		#Now that we are past the loop, set it to skip it next time.
 		initial_wait = False
 		
 		if debug:
@@ -1497,7 +1513,7 @@ def migrating(intf):
 			rtn_code = write_file(MY_TASK, src_bfid, tmp_path,
 					      mig_path,
 					      sg, ff, wrapper,
-					      deleted, encp, intf, db)
+					      deleted, encp, intf)
 			if rtn_code:
 				job = copy_queue.get(True)
 				continue
@@ -1514,9 +1530,7 @@ def migrating(intf):
 				job = get_queue_item(copy_queue, migrate_r_pipe)
 				continue
 			else:
-				# log success of coping
-				ok_log(MY_TASK, "%s %s %s is copied to %s" % \
-				       (src_bfid, src_path, tmp_path, mig_path))
+				# update success of coping
 				log_copied(src_bfid, dst_bfid, db)
 		
 
@@ -1582,7 +1596,7 @@ def migrating(intf):
 
 ## src_path doesn't need to be an actuall path in pnfs.  It could be 
 ## "--get-bfid <bfid>" or --get
-def scan_file(MY_TASK, src_bfid, dst_bfid, src_path, dst_path, deleted, intf, encp, db):
+def scan_file(MY_TASK, dst_bfid, src_path, dst_path, deleted, intf, encp):
 	#open_log(MY_TASK, "verifying", dst_bfid, location_cookie, src_path, '...')
 	open_log(MY_TASK, "verifying", dst_bfid, src_path, '...')
 	
@@ -1599,7 +1613,7 @@ def scan_file(MY_TASK, src_bfid, dst_bfid, src_path, dst_path, deleted, intf, en
 		use_override_deleted = ""
 
 	encp_options = "--delayed-dismount 1  --ignore-fair-share " \
-		       "--bypass-filesystem-max-filesize-check"
+		       "--bypass-filesystem-max-filesize-check --threaded"
 	cmd = "encp %s %s %s %s %s" % (encp_options, use_priority,
 				       use_override_deleted, src_path,
 				       dst_path)
@@ -1616,17 +1630,58 @@ def scan_file(MY_TASK, src_bfid, dst_bfid, src_path, dst_path, deleted, intf, en
 	
 	if res == 0:
 		close_log("OK")
-		log(MY_TASK)
-		log_checked(src_bfid, dst_bfid, db)
+		#log_checked(src_bfid, dst_bfid, db) #file_scan_file()?
 		ok_log(MY_TASK, dst_bfid, src_path)
 	else: # error
 		close_log("ERROR")
-		log(MY_TASK)
-		error_log(MY_TASK, "failed on %s %s"%(dst_bfid, src_path))
+		error_log(MY_TASK, "failed on %s %s error = %s"
+			  % (dst_bfid, src_path, encp.err_msg))
 		return 1
 
 	return 0
 
+
+# Return the actual filename and the filename for encp.  The filename for
+# encp may not be a real filename (i.e. --get-bfid <bfid>).
+def get_filenames(MY_TASK, dst_bfid, pnfs_id, likely_path, deleted):
+
+        if deleted == 'y':
+                use_path = "--override-deleted --get-bfid %s" \
+                           % (dst_bfid,)
+                pnfs_path = likely_path #Is anything else more correct?
+        else:
+                try:
+                        # get the real path
+                        pnfs_path = find_pnfs_file.find_pnfsid_path(
+                                pnfs_id, dst_bfid,
+                                likely_path = likely_path,
+                                path_type = find_pnfs_file.FS)
+                except (KeyboardInterrupt, SystemExit):
+                        raise (sys.exc_info()[0],
+                               sys.exc_info()[1],
+                               sys.exc_info()[2])
+                except:
+                        exc_type, exc_value, exc_tb = sys.exc_info()
+                        Trace.handle_error(exc_type, exc_value, exc_tb)
+                        del exc_tb #avoid resource leaks
+                        error_log(MY_TASK, str(exc_type),
+                                  str(exc_value),
+                                  " %s %s is not a valid pnfs file" \
+                                  % (
+                                #vol,
+                                     dst_bfid,
+                                     #location_cookie,
+                                     pnfs_id))
+                        #local_error = local_error + 1
+                        #continue
+                        return (None, None)
+
+                if type(pnfs_path) == type([]):
+                        pnfs_path = pnfs_path[0]
+
+                use_path = pnfs_path
+
+        return (pnfs_path, use_path)
 
 def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
 		    fcc, encp, intf, db):
@@ -1634,64 +1689,40 @@ def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
 	if not ct:
 		#log(MY_TASK, "start checking %s %s"%(dst_bfid, src))
 
-		if deleted == 'y':
-			use_path = "--override-deleted --get-bfid %s" \
-				   % (dst_bfid,)
-		else:
-			try:
-				# get the real path
-				pnfs_path = find_pnfs_file.find_pnfsid_path(
-					pnfs_id, dst_bfid,
-					likely_path = likely_path,
-					path_type = find_pnfs_file.FS)
-			except (KeyboardInterrupt, SystemExit):
-				raise (sys.exc_info()[0],
-				       sys.exc_info()[1],
-				       sys.exc_info()[2])
-			except:
-				exc_type, exc_value, exc_tb = sys.exc_info()
-				Trace.handle_error(exc_type, exc_value, exc_tb)
-				del exc_tb #avoid resource leaks
-				error_log(MY_TASK, str(exc_type),
-					  str(exc_value),
-					  " %s %s is not a valid pnfs file" \
-					  % (
-					#vol,
-					     dst_bfid,
-					     #location_cookie,
-					     pnfs_id))
-				#local_error = local_error + 1
-				#continue
-				return 1
+                (pnfs_path, use_path) = get_filenames(
+                    MY_TASK, dst_bfid, pnfs_id, likely_path, deleted)
 
-			if type(pnfs_path) == type([]):
-				pnfs_path = pnfs_path[0]
-
-			# make sure the path is NOT a migration path
-			if is_migration_path(pnfs_path):
-				error_log(MY_TASK,
-					  'none swapped file %s' % \
-					  (pnfs_path))
-				#local_error = local_error + 1
-				#continue
-				return 1
-
-			use_path = pnfs_path
+                # make sure the path is NOT a migration path
+                if pnfs_path == None or is_migration_path(pnfs_path):
+                        error_log(MY_TASK,
+                                  'none swapped file %s' % \
+                                  (pnfs_path))
+                        #local_error = local_error + 1
+                        #continue
+                        return 1
 
 		rtn_code = scan_file(
-			MY_TASK, src_bfid, dst_bfid, use_path, "/dev/null",
-			deleted, intf, encp, db)
+			MY_TASK, dst_bfid, use_path, "/dev/null",
+			deleted, intf, encp)
 		if rtn_code:
-		    #Error occured.
-		    #continue
-		    return 1
+                    #close_log("ERROR")
+                    #error_log(MY_TASK,
+                    #          "failed on %s %s" % (dst_bfid, pnfs_path))
+                    return 1
+                else:
+                    #Log the file as having been checked/scanned.
+                    #close_log("OK")
+                    log_checked(src_bfid, dst_bfid, db)
+                    #ok_log(MY_TASK, dst_bfid, pnfs_path)
 
+                ########################################################
 		# mark the original deleted
 		rtn_code = mark_deleted(MY_TASK, src_bfid, fcc, db)
 		if rtn_code:
 		    #Error occured.
 		    #continue
 		    return 1
+                ########################################################
 	else:
 		ok_log(MY_TASK, dst_bfid, "is already checked at", ct)
 		# make sure the original is marked deleted
@@ -1800,7 +1831,8 @@ def final_scan_volume(vol, intf):
 	# make sure this is a migration volume
 	sg, ff, wp = string.split(v['volume_family'], '.')
 	if ff.find(MIGRATION_FILE_FAMILY_KEY) == -1:
-		error_log(MY_TASK, "%s is not a migration volume"%(vol))
+		migrate.error_log(MY_TASK, "%s is not a %s volume" %
+				  (vol, migrate.MIGRATION_NAME.lower()))
 		return 1
 
 	q = "select bfid, pnfs_id, pnfs_path, src_bfid, location_cookie, deleted  \
@@ -1823,12 +1855,14 @@ def final_scan_volume(vol, intf):
 			local_error = local_error + 1
 			continue
 
+                ######################################################
 		# make sure the volume is the same
 		pf = pnfs.File(likely_path)
 		if pf.volume != vol:
 			error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf.volume, vol))
 			local_error = local_error + 1
 			continue
+                ######################################################
 
 		## Scan the file by reading it with encp.
 		rtn_code = final_scan_file(MY_TASK, src_bfid, dst_bfid,
@@ -1838,18 +1872,17 @@ def final_scan_volume(vol, intf):
 			local_error = local_error + 1
 			continue
 
-		#############################################
+                # If we get here, then the file has been scaned.  Consider
+		# it closed too.
 		ct = is_closed(dst_bfid, db)
 		if not ct:
 			log_closed(src_bfid, dst_bfid, db)
 			close_log('OK')
-		#############################################
 			
-
 	# restore file family only if there is no error
 	if not local_error and is_migrated(vol, db):
-		rtn_code = set_volume_migrated(MY_TASK, vol, sg, ff, wp,
-					       vcc, db)
+		rtn_code = set_volume_migrated(
+                    MY_TASK, vol, sg, ff, wp, vcc, db)
 		if rtn_code:
 			#Error occured.
 			local_error = local_error + 1
@@ -1898,8 +1931,8 @@ def set_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 			       % (vol, MFROM, vol_list))
 		else:
 			error_log(MY_TASK,
-					  'failed to set comment of %s to "%s%s"' \
-					  % (vol, MFROM, vol_list))
+                                  'failed to set comment of %s to "%s%s"' \
+                                  % (vol, MFROM, vol_list))
 			return 1
 
 	return 0
