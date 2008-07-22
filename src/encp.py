@@ -30,6 +30,10 @@
 #                      from /dev/zero, /dev/random or /dev/urandon.
 # $ENSTORE_RANDOM_UB = Upper limit on the randomly choosen size when reading
 #                      from /dev/zero, /dev/random or /dev/urandon.
+# $REMOTE_ENCP = If this evaluates to anything python true, then if a local
+#                pnfs mount is not found, encp will try the pnfs_agent.
+#                If this is set to "only_pnfs_agent", then only the
+#                will be tried.
 ############################################################################
 
 # system imports
@@ -2550,18 +2554,13 @@ def get_stat(filename):
             elif __is_pnfs_remote_path(pathname, check_name_only = 1):
                 #Also, when using the pnfs_agent, we will get ENOENT becuase
                 # locally the file will not exist.
-                pac = get_pac()
-                statinfo_ticket = pac.get_stat(pathname)
-                if e_errors.is_ok(statinfo_ticket):
-                    statinfo = statinfo_ticket['statinfo']
-                    return statinfo
-                elif statinfo_ticket['status'][0] == e_errors.OSERROR:
-                    raise OSError(statinfo_ticket['status'][1])
-                elif statinfo_ticket['status'][0] == e_errors.IOERROR:
-                    raise IOError(statinfo_ticket['status'][1])
-                else:
-                    raise EncpError(None, str(statinfo_ticket['status'][1]),
-                                    statinfo_ticket['status'][0])
+                try:
+                    pac = get_pac()
+                    statinfo = pac.get_stat(pathname)
+                except (OSError, IOError), msg:
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
+                return statinfo
             elif is_local_path(pathname, check_name_only = 1):
                 #You can only get here by choosing to name your files poorly.
                 # By poorly, this means having the string "pnfs" in your
@@ -2950,7 +2949,7 @@ def inputfile_check(input_files, e):
         inputlist = [input_files]
 
     #Get the correct type of pnfs interface to use.
-    #p = Pnfs()
+    p = Pnfs()
 
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(0, len(inputlist)):
@@ -2986,8 +2985,7 @@ def inputfile_check(input_files, e):
                 # match.  If the PNFS filesystem and layer 4 sizes are
                 # different, calling this function raises OSError exception.
                 if is_pnfs_path(inputlist[i]):
-                    #p.get_file_size(inputlist[i])
-                    pnfs.check_size(inputlist[i], statinfo[stat.ST_SIZE])
+                    p.get_file_size(inputlist[i])
 
             # we cannot allow 2 input files to be the same
             # this will cause the 2nd to just overwrite the 1st
@@ -9987,19 +9985,20 @@ class EncpInterface(option.Interface):
         # by the filesystem; skip the test if that is needed.
         self.bypass_filesystem_max_filesize_check = 0
 
-        option.Interface.__init__(self, args=args, user_mode=user_mode)
-
-        # parse the options
-        #self.parse_options()
-
-        # This is accessed globally...
-        pnfs_is_automounted = self.pnfs_is_automounted
-
+        #If the user wants the pnfs_agent instead of locally mount pnfs,
+        # let them have it.  This needs to be set BEFORE
+        # option.Interface.__init__() since it uses this value.
         r_encp = os.environ.get('REMOTE_ENCP')
         if r_encp != None:
             pnfs_agent_client_allowed = True
         if r_encp == "only_pnfs_agent":
             pnfs_agent_client_requested = True
+
+        # parse the options
+        option.Interface.__init__(self, args=args, user_mode=user_mode)
+
+        # This is accessed globally...
+        pnfs_is_automounted = self.pnfs_is_automounted
 
 
     def __str__(self):
@@ -10449,7 +10448,7 @@ class EncpInterface(option.Interface):
                     pac = get_pac()
                     result = pac.is_pnfs_path(fullname,
                                               check_name_only = 1)
-                except EncpError:
+                except EncpError, msg:
                     result = 0
 
                 if result:
