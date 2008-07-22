@@ -721,6 +721,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._error = None
         self._error_source = None
         self.memory_debug = 0
+        self.saved_mode = None
         
         
     def __setattr__(self, attr, val):
@@ -3124,6 +3125,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._error_source = None
         self.lock_state()
         self.save_state = self.state
+        self.saved_mode = self.mode
         self.udp_cm_sent = 0
         self.unique_id = ticket['unique_id']
         self.uid = -1
@@ -4622,7 +4624,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             # I do not know what kind of exception this can be 
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.ERROR, "in update_stat2: %s %s" % (exc, msg))
-        if self.single_filemark and self.mode == WRITE and self._error != e_errors.WRITE_ERROR and (self._error_source != TAPE or self._error_source != DRIVE):
+        if (self.single_filemark
+            and self.saved_mode == WRITE
+            and self._error != e_errors.WRITE_ERROR
+            and (self._error_source != TAPE or self._error_source != DRIVE)):
             Trace.log(e_errors.INFO,"writing a tape mark before dismount") 
             if self.driver_type == 'FTTDriver':
                 stats = self.tape_driver.get_stats()
