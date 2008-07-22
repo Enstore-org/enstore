@@ -402,8 +402,8 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
     def get_parent_id(self, ticket):
         pnfsid = ticket['pnfsid']
         try:
-            p=pnfs.Pnfs(pnfsid, shorcut=True)
-            ticket['parent_id'] = p.get_parent_id()
+            p=pnfs.Pnfs(pnfsid, shortcut=True)
+            ticket['parent_id'] = p.get_parent()
             ticket['status'] = (e_errors.OK, None)
         except OSError, msg:
             ticket['parent_id'] = None
@@ -416,6 +416,43 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         Trace.log(e_errors.INFO,
                   'get_parent_id pnfs %s'%(ticket['parent_id'],))
+        return
+
+    def readlayer(self, ticket):
+        fname = ticket['fname']
+        layer = ticket['layer']
+        try:
+            p=pnfs.Pnfs(fname)
+            ticket['layer_info'] = p.readlayer(layer, fname)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['layer_info'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['layer_info'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        Trace.log(e_errors.INFO,
+                  'get_layer pnfs %s'%(ticket['layer_info'],))
+        return
+
+    def writelayer(self, ticket):
+        fname = ticket['fname']
+        layer = ticket['layer']
+        value = ticket['value']
+        try:
+            p=pnfs.Pnfs(fname)
+            p.writelayer(layer, value, fname)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
         return
 
     def get_xreference(self, ticket):
@@ -488,9 +525,8 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
     def set_outfile_permissions(self,ticket) :
         work_ticket = ticket['ticket']
         if not ticket.get('copy', None):  #Don't set permissions if copy.
-            set_outfile_permissions_start_time = time.time()
-            #Attempt to get the input files permissions and set the output file to
-            # match them.
+            #Attempt to get the input files permissions and set the output
+            # file to match them.
             if work_ticket['outfile'] != "/dev/null":
                 try:
                     perms = None
@@ -579,7 +615,9 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 
     def is_pnfs_path(self, ticket):
         fname = ticket['fname']
-        ticket['rc'] = pnfs.is_pnfs_path(fname)
+        check_name_only = ticket['check_name_only']
+        ticket['rc'] = pnfs.is_pnfs_path(fname,
+                                         check_name_only = check_name_only)
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
