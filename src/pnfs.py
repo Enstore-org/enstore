@@ -765,36 +765,6 @@ def get_enstore_canonical_path(filepath):
 
 ###############################################################################
 
-def check_size(fname, os_filesize = None, pnfs_filesize = None):
-
-    #Get the file system size.
-    if not os_filesize:
-        os_filesize = long(os.stat(fname)[stat.ST_SIZE])
-
-    #If there is no layer 4, make sure an error occurs.
-    try:
-        if not pnfs_filesize:
-            #pnfs_filesize = long(self.get_xreference(fname)[2].strip())
-            pnfs_filesize = long(get_layer_4(fname, max_lines = 3)['size'])
-    except ValueError:
-        pnfs_filesize = long(-1)
-        #self.file_size = os_filesize
-        #return os_filesize
-
-    #Error checking.  However first ignore large file cases.
-    if os_filesize == 1 and pnfs_filesize > long(2L**31L) - 1:
-        return long(pnfs_filesize)
-    #Make sure they are the same.
-    elif os_filesize != pnfs_filesize:
-        raise OSError(errno.EBADFD,
-                 "%s: filesize corruption: OS size %s != PNFS size %s" % \
-                  (os.strerror(errno.EBADFD), os_filesize, pnfs_filesize))
-
-    return long(os_filesize)
-	
-
-###############################################################################
-
 class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # initialize - we will be needing all these things soon, get them now
     #
