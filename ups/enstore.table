@@ -5,128 +5,156 @@ GROUP:
 
 FLAVOR=ANY
 QUALIFIERS=central_mass_store
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/stk.conf)
-                exeActionRequired(COMMON_SETUP)
+ _config_host=stkensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/stk.conf
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=stken
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/stk.conf)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=stkensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/stk.conf
+ _whine=false
+FLAVOR=ANY
+QUALIFIERS=stken:dcache
+ _config_host=stkensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/stk.conf
+ _whine=false
+FLAVOR=ANY
+QUALIFIERS=stken:x86_64
+ _config_host=stkensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/stk.conf
+ _whine=false
+FLAVOR=ANY
+QUALIFIERS=stken:dcache:x86_64
+ _config_host=stkensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/stk.conf
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=d0en
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, d0ensrv2.fnal.gov)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/sam.conf)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=d0ensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/sam.conf
+ _whine=false
+FLAVOR=ANY
+QUALIFIERS=d0en:x86_64
+ _config_host=d0ensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/sam.conf
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=cdfen
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, cdfensrv2.fnal.gov)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/cdf.conf)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=cdfensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/cdf.conf
+ _whine=false
 FLAVOR=ANY
-QUALIFIERS=rip
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, rip7.fnal.gov)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/rip.conf)
-                exeActionRequired(COMMON_SETUP)
-
+QUALIFIERS=cdfen:dcache
+ _config_host=cdfensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/cdf.conf
+ _whine=false
 FLAVOR=ANY
-QUALIFIERS=cachen
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
-                envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/stk.conf)
-                exeActionRequired(COMMON_SETUP)
-
-
+QUALIFIERS=cdfen:x86_64
+ _config_host=cdfensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/cdf.conf
+ _whine=false
 FLAVOR=ANY
-QUALIFIERS=rain
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, 131.225.84.1)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/water.conf)
-                exeActionRequired(COMMON_SETUP)
-
-FLAVOR=ANY
-QUALIFIERS=happy
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, happy.fnal.gov)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/happy.conf)
-                exeActionRequired(COMMON_SETUP)
-FLAVOR=ANY
-QUALIFIERS=water
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, 131.225.84.1)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/water.conf)
-                exeActionRequired(COMMON_SETUP)
-
-FLAVOR=ANY
-QUALIFIERS=airedale
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, airedale.fnal.gov)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/airedale.conf)
-                exeActionRequired(COMMON_SETUP)
-
-FLAVOR=ANY
-QUALIFIERS=sirius
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, sirius)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/sirius.conf)
-                exeActionRequired(COMMON_SETUP)
-
-FLAVOR=ANY
-QUALIFIERS=woodlawn
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, woodlawn)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/woodlawn.conf)
-                exeActionRequired(COMMON_SETUP)
-
-FLAVOR=ANY
-QUALIFIERS=efb
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, ripsgi.fnal.gov)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/berman.conf)
-		execute("touch /tmp/enstore/berman/ripsgidisk.fake.", NO_UPS_ENV)
-                exeActionRequired(COMMON_SETUP)
-
-#bulk1.workuk is 192.9.200.103 (UK lancaster)
-QUALIFIERS=lancs
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, 192.9.200.103) 
-                envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/lancs.conf)
-                exeActionRequired(COMMON_SETUP)
+QUALIFIERS=cdfen:dcache:x86_64
+ _config_host=cdfensrv2.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/cdf.conf
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=gccen
-	ACTION=SETUP
-		envSet(ENSTORE_CONFIG_HOST, 131.225.13.129)
-		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/gccen.conf)
-		exeActionRequired(COMMON_SETUP)
+ _config_host=gccensrv1.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/gccen.conf
+ _whine=false
+FLAVOR=ANY
+QUALIFIERS=happy
+ _config_host=happy.fnal.gov
+ _config_file=${UPS_PROD_DIR}/etc/happy.conf
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=""
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST,`${UPS_PROD_DIR}/ups/chooseConfig`)
-                envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/`${UPS_PROD_DIR}/ups/chooseConfig file`)
-                exeActionRequired(COMMON_SETUP)
-        ACTION=DECLARE
-                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
-        ACTION=CONFIGURE
-                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
-        ACTION=TAILOR
-                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
-        ACTION=CURRENT
-                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
-
+ _config_host=`$ENSTORE_DIR/ups/chooseConfig`
+ _config_file=`$ENSTORE_DIR/ups/chooseConfig file`
+ _whine=true
+FLAVOR=ANY
+QUALIFIERS=x86_64
+ _config_host=`${UPS_PROD_DIR}/ups/chooseConfig`
+ _config_file=`${UPS_PROD_DIR}/ups/chooseConfig file`
+ _whine=true
+FLAVOR=ANY
+QUALIFIERS=dcache
+ _config_host=`${UPS_PROD_DIR}/ups/chooseConfig`
+ _config_file=`${UPS_PROD_DIR}/ups/chooseConfig file`
+ _whine=true
+FLAVOR=ANY
+QUALIFIERS="x86_64:dcache"
+ _config_host=`${UPS_PROD_DIR}/ups/chooseConfig`
+ _config_file=`${UPS_PROD_DIR}/ups/chooseConfig file`
+ _whine=true
 
 COMMON:
-        ACTION=COMMON_SETUP
+        ACTION=SETUP
+
+		#Define ${ENSTORE_DIR} so that it can be used.
+		proddir()
+
+		##The UPS_REQ_QUALIFIERS variable allows us to process
+		## qualifiers even if they aren't explicitly declared.
+		
+		#
+		#Start with ENSTORE_CONFIG_HOST.
+		#
+		envUnset(ENSTORE_CONFIG_HOST)
+		If( echo ${UPS_REQ_QUALIFIERS} | grep gccen > /dev/null  )
+			envSet(ENSTORE_CONFIG_HOST, gccensrv1.fnal.gov)
+			envSet(_whine, false)
+		EndIf( echo ${UPS_REQ_QUALIFIERS} | grep gccen > /dev/null  )
+		If( echo ${UPS_REQ_QUALIFIERS} | grep d0en > /dev/null  )
+			envSet(ENSTORE_CONFIG_HOST, d0ensrv2.fnal.gov)
+			envSet(_whine, false)
+		EndIf( echo ${UPS_REQ_QUALIFIERS} | grep d0en > /dev/null  )
+		If( echo ${UPS_REQ_QUALIFIERS} | grep cdfen > /dev/null  )
+			envSet(ENSTORE_CONFIG_HOST, cdfensrv2.fnal.gov)
+			envSet(_whine, false)
+		EndIf( echo ${UPS_REQ_QUALIFIERS} | grep cdfen > /dev/null  )
+		If( echo ${UPS_REQ_QUALIFIERS} | grep stken > /dev/null  )
+			envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
+			envSet(_whine, false)
+		EndIf( echo ${UPS_REQ_QUALIFIERS} | grep stken > /dev/null  )
+
+		#Warn the user this may not be what they want.
+#		Q: What is the difference between ${_whine} and $_whine?
+#		A: The curly brace one is the UPS expansion of the _whine value
+#		defined above, while the other refers to the shell variable.
+		#execute('${_whine} && $_whine && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!" || true', NO_UPS_ENV)
+
+		#Set this if not explicitly done.
+		envSetIfNotSet(ENSTORE_CONFIG_HOST, ${_config_host})
+
+		#
+		#The same with ENSTORE_CONFIG_FILE.
+		#
+		envUnset(ENSTORE_CONFIG_FILE)
+		envSet(_whine, true)
+		If( echo ${UPS_REQ_QUALIFIERS} | grep gccen > /dev/null  )
+			envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/gccen.conf)
+			envSet(_whine, false)
+		EndIf( echo ${UPS_REQ_QUALIFIERS} | grep gccen > /dev/null  )
+		If( echo ${UPS_REQ_QUALIFIERS} | grep d0en > /dev/null  )
+			envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/d0ensrv2.fnal.gov)
+			envSet(_whine, false)
+		EndIf( echo ${UPS_REQ_QUALIFIERS} | grep d0en > /dev/null  )
+		If( echo ${UPS_REQ_QUALIFIERS} | grep cdfen > /dev/null  )
+			envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/cdfensrv2.fnal.gov)
+			envSet(_whine, false)
+		EndIf( echo ${UPS_REQ_QUALIFIERS} | grep cdfen > /dev/null  )
+		If( echo ${UPS_REQ_QUALIFIERS} | grep stken > /dev/null  )
+			envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/stkensrv2.fnal.gov)
+			envSet(_whine, false)
+		EndIf( echo ${UPS_REQ_QUALIFIERS} | grep stken > /dev/null  )
+
+		#Set this if not explicitly done.
+		envSetIfNotSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/${_config_file})
 
                 setupEnv()
-                proddir()
+                
                 pathPrepend(PATH, "${UPS_PROD_DIR}/sbin")
                 pathPrepend(PATH, "${UPS_PROD_DIR}/bin")
 
@@ -234,6 +262,8 @@ COMMON:
                 # create some links to put commands into your path
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/encp ];             then ln -s $ENSTORE_DIR/src/encp.py            $ENSTORE_DIR/bin/encp; fi"',            NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/enstore ];          then ln -s $ENSTORE_DIR/src/enstore_admin.py   $ENSTORE_DIR/bin/enstore; fi"',         NO_UPS_ENV)
+		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstore_plots ];          then ln -s $ENSTORE_DIR/src/plotter_main.py   $ENSTORE_DIR/sbin/enstore_plots; fi"',NO_UPS_ENV)
+		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstore_html ];          then ln -s $ENSTORE_DIR/src/html_main.py   $ENSTORE_DIR/sbin/enstore_html; fi"',NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/enmv ];          then ln -s $ENSTORE_DIR/src/enmv.py   $ENSTORE_DIR/bin/enmv; fi"',         NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ];      then ln -s $ENSTORE_DIR/sbin/encpCut           $ENSTORE_DIR/sbin/enstoreCut; fi"',     NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstore_up_down ]; then ln -s $ENSTORE_DIR/src/enstore_up_down.py $ENSTORE_DIR/sbin/enstore_up_down; fi"',NO_UPS_ENV)
@@ -277,7 +307,6 @@ COMMON:
         	execute("uname -n | cut -d '.' -f 1", NO_UPS_ENV, tracehost)
         	envSet(TRACE_KEY, "$ENSTORE_TMP/trace.$tracehost")
         	envUnset(tracehost)
-
 
 END:
 
