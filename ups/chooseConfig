@@ -22,9 +22,12 @@ fi
 
 d0en=d0ensrv2n.fnal.gov
 #d0en=conf-d0en.fnal.gov
-stken=stkensrv2.fnal.gov
+stken=stkensrv2n.fnal.gov
+#stken=conf-stken.fnal.gov
 cdfen=cdfensrv2n.fnal.gov
+#cdfen=conf-cdfen.fnal.gov
 gccen=gccensrv1.fnal.gov
+#gccen=conf-gccen.fnal.gov
 
 happy=happy.fnal.gov
 fndapr=fndapr.fnal.gov
