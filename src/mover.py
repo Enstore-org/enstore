@@ -722,6 +722,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._error_source = None
         self.memory_debug = 0
         self.saved_mode = None
+        self.will_mount = None # this is to indicate that the new volume will be mounted and the current dismounted (HIPR)
+        self.last_absolute_location = 0L
         
         
     def __setattr__(self, attr, val):
@@ -3119,13 +3121,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 Trace.trace(87,"setup_transfer: Thread %s is dead"%(thread_name,))
         
-        #self.log_state(logit=1)
-        
         self._error = None
         self._error_source = None
         self.lock_state()
         self.save_state = self.state
-        self.saved_mode = self.mode
         self.udp_cm_sent = 0
         self.unique_id = ticket['unique_id']
         self.uid = -1
@@ -3380,6 +3379,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         client_filename = self.current_work_ticket['wrapper'].get('fullname','?')
         pnfs_filename = self.current_work_ticket['wrapper'].get('pnfsFilename', '?')
 
+        self.saved_mode = self.mode
         self.mode = self.setup_mode
         if self.mode == READ:
             # for reads alwas set crc_seed to 0
@@ -4602,6 +4602,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     
     def dismount_volume(self, after_function=None):
         Trace.trace(10, "state %s"%(state_name(self.state),))
+        will_mount = self.will_mount
+        self.will_mount = None
         self.just_mounted = 0
         if self.state in (IDLE, OFFLINE):
             Trace.log(e_errors.INFO, "No dismount in the state %s"%(state_name(self.state),))
@@ -4624,33 +4626,42 @@ class Mover(dispatching_worker.DispatchingWorker,
             # I do not know what kind of exception this can be 
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.ERROR, "in update_stat2: %s %s" % (exc, msg))
+
+        Trace.trace(10, 'fm %s mode %s saved_mode %s will_mount %s'%(self.single_filemark,
+                                                                     self.mode,
+                                                                     self.saved_mode,
+                                                                     will_mount))
         if (self.single_filemark
-            and self.saved_mode == WRITE
+            and self.mode == WRITE
             and self._error != e_errors.WRITE_ERROR
             and (self._error_source != TAPE or self._error_source != DRIVE)):
-            Trace.log(e_errors.INFO,"writing a tape mark before dismount") 
-            if self.driver_type == 'FTTDriver':
-                stats = self.tape_driver.get_stats()
-            bloc_loc = 0L
-            if self.driver_type == 'FTTDriver':
-                try:
-                    bloc_loc = long(stats[self.ftt.BLOC_LOC])
-                except  (self.ftt.FTTError, TypeError), detail:
-                    self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
-                    return
-                if bloc_loc != self.last_absolute_location:
-                        self.transfer_failed(e_errors.WRITE_ERROR,
-                                             "Wrong position for %s: last %s, current %s"%
-                                             (self.current_volume, self.last_absolute_location,
-                                              bloc_loc,),error_source=TAPE)
-                        self.set_volume_noaccess(self.current_volume)
-                else:
+            if will_mount and self.saved_mode != WRITE:
+                pass
+            else:
+                # this case is for forced tape dismount request (HIPRI)
+                Trace.log(e_errors.INFO,"writing a tape mark before dismount") 
+                if self.driver_type == 'FTTDriver':
+                    stats = self.tape_driver.get_stats()
+                bloc_loc = 0L
+                if self.driver_type == 'FTTDriver':
                     try:
-                        self.tape_driver.writefm()
-                    except:
-                        Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
-                        Trace.handle_error()
-                        self.vcc.set_system_readonly(self.current_volume)
+                        bloc_loc = long(stats[self.ftt.BLOC_LOC])
+                    except  (self.ftt.FTTError, TypeError), detail:
+                        self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
+                        return
+                    if bloc_loc != self.last_absolute_location:
+                            self.transfer_failed(e_errors.WRITE_ERROR,
+                                                 "Wrong position for %s: last %s, current %s"%
+                                                 (self.current_volume, self.last_absolute_location,
+                                                  bloc_loc,),error_source=TAPE)
+                            self.set_volume_noaccess(self.current_volume)
+                    else:
+                        try:
+                            self.tape_driver.writefm()
+                        except:
+                            Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
+                            Trace.handle_error()
+                            self.vcc.set_system_readonly(self.current_volume)
                 
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
@@ -4833,15 +4844,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.offline()
         return
 
-
-
-    
-    
     def mount_volume(self, volume_label, after_function=None):
         self.dismount_time = None
         self.just_mounted = 0
         if self.current_volume:
             old_volume = self.current_volume
+            if volume_label != self.current_volume:
+                self.will_mount = volume_label
             self.dismount_volume()
             # see if dismount completed successfully
             if self.state in (ERROR, OFFLINE):
