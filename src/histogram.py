@@ -1183,9 +1183,9 @@ class Histogram2D(Histogram1D):
             x,y = self.get_bin_center(i)
             z = float(self.get_bin_content(i));
             dz = math.sqrt(self.get_bin_content(i))
-#            if ( self.entries > 0 ) : 
-#                z =  z / float(self.entries) * 100.
-#                dz = dz / float(self.entries) * 100.
+            if ( self.entries > 0 ) : 
+                z =  z / float(self.entries) * 100.
+                dz = dz / float(self.entries) * 100.
             if ( self.time_axis ) :
                 data_file.write("%s %f %f %f\n"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),y,z,dz,))
             else :
