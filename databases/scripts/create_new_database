@@ -26,7 +26,7 @@ host=`uname -n | cut -d. -f1`
 
 enstore_dir=${ENSTORE_DIR}
 database_scripts=$enstore_dir/databases/scripts
-extract_config="$enstore_dir/bin/enstore configuration --print"
+extract_config="$enstore_dir/bin/enstore configuration --print --file-fallback"
 
 case $1 in
 	enstoredb)
