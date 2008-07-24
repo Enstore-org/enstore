@@ -199,7 +199,7 @@ def __is_pnfs_local_path(filename, check_name_only = None):
         mtab_filename = "/etc/mnttab"
     else:
         mtab_filename = "/etc/mtab"
-
+    rtn = False
     #Search throught the mtab file looking for a matching pnfs filesystem.
     try:
         fp = open(mtab_filename, "r")
