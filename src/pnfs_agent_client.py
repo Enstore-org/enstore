@@ -295,14 +295,14 @@ class PnfsAgentClient(generic_client.GenericClient,
             return ticket['xref']
         raise OSError, ticket['status'][1]
 
-    def readlayer(self, fname, layer):
+    def readlayer(self, layer, fname):
         ticket = {'work' : 'readlayer',
                   'fname' : fname,
                   'layer' : layer
                   }
         ticket = self.send(ticket)
         if e_errors.is_ok(ticket):
-            return ticket['contents']
+            return ticket['layer_info']
         return [] #What sould happen here?
 
     def writelayer(self, layer, value, fname):
