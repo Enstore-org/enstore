@@ -1031,7 +1031,7 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 		       % (src_bfid, src_path, tmp_path))
 	else:
 		error_log(MY_TASK,
-			  "failed to copy %s %s to %s, error = %d" \
+			  "failed to copy %s %s to %s, error = %s" \
 			  % (src_bfid, src_path, tmp_path, encp.err_msg))
 		return 1
 
