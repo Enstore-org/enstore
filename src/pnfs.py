@@ -2079,15 +2079,23 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # get the stat of file/directory
     def get_stat(self, filepath=None):
+
         #Get the xref layer information.
         if filepath:
             fname = filepath
         else:
             fname = self.filepath
             
-        # stat the target
-        pstat = os.stat(fname)
-            
+        try:
+            # first the file itself
+            pstat = os.stat(fname)
+        except OSError, msg:
+            # if that fails, try the directory
+            try:
+                pstat = os.stat(get_directory_name(fname))
+            except OSError:
+                raise msg
+
         pstat = tuple(pstat)
 
         if not filepath:
