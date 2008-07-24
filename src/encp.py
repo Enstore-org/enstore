@@ -2498,12 +2498,42 @@ def get_udp_callback_addr(encp_intf, udps=None):
 
 ##############################################################################
 
-def _get_stat(pathname):
+def isdir(pathname):
+    stat_info = get_stat(pathname)
+    if stat_info != None:
+        return stat.S_ISDIR(stat_info[stat.ST_MODE])
+
+    #If using the pnfs_agent, None gets returned.  This isn't useful for
+    # givin useful error messages.
+    return None
+
+def isfile(pathname):
+    stat_info = get_stat(pathname)
+    if stat_info != None:
+        return stat.S_ISREG(stat_info[stat.ST_MODE])
+
+    #If using the pnfs_agent, None gets returned.  This isn't useful for
+    # givin useful error messages.
+    return None
+
+def islink(pathname):
+    stat_info = get_stat(pathname)
+    if stat_info != None:
+        return stat.S_ISLNK(stat_info[stat.ST_MODE])
+
+    #If using the pnfs_agent, None gets returned.  This isn't useful for
+    # givin useful error messages.
+    return None
+
+
+##############################################################################
+
+def _get_stat(pathname, func=os.stat):
     __pychecker__="unusednames=i"
      
     for i in [0, 1, 2, 3, 4]:
         try:
-            statinfo = os.stat(pathname)
+            statinfo = func(pathname)
             return statinfo
         except (OSError, IOError), msg:
             #Historically all systems have returned ENOENT falsely when
@@ -2535,7 +2565,7 @@ def get_stat(filename):
             # likely a pnfs file.  This test should exclude most local
             # files.  There is nothing that prevents the user from having
             # the string "pnfs" in their (local) file and directory names.
-            # These rare cases are handled with the is_local_path() if
+            # These rare cases are handled with the is_local_path() in
             # test below.
             raise OSError(errno.ENOENT, "Force use of pnfs_agent.")
         else:
@@ -2792,7 +2822,8 @@ def access_check(path, mode):
     # Is there a more performance efficent way?
     if pnfs_agent_client_requested or pnfs_agent_client_allowed:
         pac = get_pac()
-        return  pac.e_access(path, mode)
+        rtn = pac.e_access(path, mode)
+        return rtn
 
     return False
 
@@ -3058,7 +3089,7 @@ def outputfile_check(inputlist, outputlist, e):
                                     e_errors.USERERROR,
                                     {'outfile' : outputlist[i]})
 
-                if not os.path.isdir(directory):
+                if not isdir(directory):
                     raise EncpError(errno.ENOTDIR, directory,
                                     e_errors.USERERROR,
                                     {'outfile' : outputlist[i]})
@@ -5014,24 +5045,10 @@ def verify_file_size(ticket, encp_intf = None):
         return
 
     try:
-        #Don't use p.get_stat() here.  If the file does not exist, p.get_stat()
-        # will default to using the stat of the directory (It's a feature for
-        # create_write_requests).  Most of the time that wasn't a problem,
-        # but was a problem for deleted files read with --override-deleted.
-        pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
+        p = Pnfs()
+        pnfs_stat = p.get_stat(ticket['wrapper'].get('pnfsFilename', None))
         pnfs_filesize = pnfs_stat[stat.ST_SIZE]
         pnfs_inode = pnfs_stat[stat.ST_INO]
-        
-        """
-        #Dmitry
-        if (os.path.exists(ticket['wrapper'].get('pnfsFilename', None))):
-            pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
-            pnfs_filesize = pnfs_stat[stat.ST_SIZE]
-            pnfs_inode = pnfs_stat[stat.ST_INO]
-        else:
-            pnfs_filesize = ticket['wrapper']['pstat'][stat.ST_SIZE]
-            pnfs_inode = ticket['wrapper']['pstat'][stat.ST_INO]
-        """
     except (TypeError), detail:
         ticket['status'] = (e_errors.OK, "No files sizes to verify.")
         return
