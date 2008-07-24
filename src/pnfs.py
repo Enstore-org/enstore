@@ -182,6 +182,15 @@ def is_pnfs_path(pathname, check_name_only = None):
     # not point to a pnfs directory.
     return 0
 
+def isdir(pathname):
+    return os.path.isdir(pathname)
+
+def isfile(pathname):
+    return os.path.isfile(pathname)
+
+def islink(pathname):
+    return os.path.islink(pathname)
+
 def is_pnfsid(pnfsid):
     #This is an attempt to deterime if a string is a pnfsid.
     # 1) Is it a string?
@@ -2068,8 +2077,26 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     ##########################################################################
 
-    # get the stat of file, or if non-existant, its directory
+    # get the stat of file/directory
     def get_stat(self, filepath=None):
+        #Get the xref layer information.
+        if filepath:
+            fname = filepath
+        else:
+            fname = self.filepath
+            
+        # stat the target
+        pstat = os.stat(fname)
+            
+        pstat = tuple(pstat)
+
+        if not filepath:
+            self.pstat = pstat
+
+        return pstat
+
+    # get the stat of file/directory, or if non-existant, its directory
+    def get_pnfsstat(self, filepath=None):
 
         #Get the xref layer information.
         if filepath:
