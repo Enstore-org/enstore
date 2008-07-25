@@ -1048,15 +1048,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # create a new file
     def creat(self, filename=None, mode = None):
-        if not filename:
-            filename = self.pnfsFilename
+        if filename:
+            fname = filename
+        else:
+            fname = self.pnfsFilename
 
         if mode:
-            fd = atomic.open(filename, mode=mode)
+            fd = atomic.open(fname, mode=mode)
         else:
-            fd = atomic.open(filename)
+            fd = atomic.open(fname)
 
-        self.pstatinfo()
+	if not filename:
+            self.pstatinfo()
 
         os.close(fd)
 
@@ -2086,15 +2089,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = self.filepath
             
-        try:
-            # first the file itself
-            pstat = os.stat(fname)
-        except OSError, msg:
-            # if that fails, try the directory
-            try:
-                pstat = os.stat(get_directory_name(fname))
-            except OSError:
-                raise msg
+        # first the file itself
+        pstat = os.stat(fname)
 
         pstat = tuple(pstat)
 
@@ -2253,7 +2249,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def pstatinfo(self, update=1):
         #Get new stat() information if requested.
         if update:
-            self.get_stat()
+            self.get_pnfsstat()
 
         #Set various class values.
         self.pstat_decode()
