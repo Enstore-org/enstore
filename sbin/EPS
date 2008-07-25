@@ -39,8 +39,11 @@ case `uname` in
   IRIX*)
 	x=`ps -ef    $p`
 	;;
+  Darwin*)
+	x=`ps -e -o ruser,pid,%cpu,%mem,vsz,tty,stat,start,time,command $p`
+	;;
       *)
-	x=`ps -ef    $p`
+	x=`ps -ef`
 	;;
 esac
 
