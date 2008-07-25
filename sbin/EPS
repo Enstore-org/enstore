@@ -43,7 +43,7 @@ case `uname` in
 	x=`ps -e -o ruser,pid,%cpu,%mem,vsz,tty,stat,start,time,command $p`
 	;;
       *)
-	x=`ps -ef`
+	x=`ps -ef $p`
 	;;
 esac
 
