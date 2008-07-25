@@ -192,16 +192,10 @@ def plot_bpd():
         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
         tmp.binarray[i_day_max]+delta,))
 
-#    tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
-#        time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
-#        tmp.binarray[i_day_min]+delta,))
 
     tmp.add_text("set label \"Total :  %5d TB (in 30 days) \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
     tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
                                                                                                  time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
-#    tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
-#                                                                                                 time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
-#    tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
 
     plotter.plot()
 
@@ -370,16 +364,10 @@ def plot_bytes():
                                                                                              time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
                                                                                              tmp.binarray[i_day_max]+delta,))
         
-#        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
-#                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
-#                                                                                             tmp.binarray[i_day_min]+delta,))
 
         tmp.add_text("set label \"Total :  %5d TB (in 30 days) \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
         tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
-#        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
-#                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
-#        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
        
         tmp.set_marker_type("impulses")
         p.plot()
@@ -399,9 +387,47 @@ def plot_bytes():
 if __name__ == "__main__":
     plot_bpd()
     plot_bytes()
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.jpg  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
+    intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
+    csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+    retry=0
+    timeout=1
+    system_name = csc.get_enstore_system(1,retry)
+    config_dict={}
+    if system_name:
+        config_dict = csc.dump(timeout, retry)
+        config_dict = config_dict['dump']
+    else:
+        configfile = os.environ.get('ENSTORE_CONFIG_FILE')
+        f = open(configfile,'r')
+        code = string.join(f.readlines(),'')
+        configdict={}
+        exec(code)
+        config_dict=configdict
+        ret =configdict['known_config_servers']
+        def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
+                    int(os.environ['ENSTORE_CONFIG_PORT']))
+        for item in ret.items():
+            if socket.getfqdn(item[1][0]) == socket.getfqdn(def_addr[0]):
+                system_name = item[0]
+
+    inq_d = config_dict.get(enstore_constants.INQUISITOR, {})
+
+    html_dir=None
+    if inq_d.has_key("html_file"):
+        html_dir=inq_d["html_file"]
+    else:
+        html_dir = enstore_files.default_dir
+    
+
+    html_host=None
+    if inq_d.has_key("host"):
+        html_host=inq_d["host"]
+    else:
+        html_host = enstore_files.default_dir
+
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.jpg  %s:%s/bytes_statistics/"%(html_host,html_dir)
     os.system(cmd)
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps   %s:%s/bytes_statistics/"%(html_host,html_dir)
     os.system(cmd)
 
     sys.exit(0)
