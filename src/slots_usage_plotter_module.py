@@ -140,6 +140,11 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
     def plot(self):
         for d in self.data:
+            if d not in self.free.keys():
+                #If a key is in the data list, but not the free list, then
+                # there is not any data from the current time period.
+                continue
+
             #Get some filenames for the various files that get created.
             plot_filename = os.path.join(self.temp_dir, d + ".plot")
             pts_filename = os.path.join(self.temp_dir, d + ".pts")
