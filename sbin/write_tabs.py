@@ -42,6 +42,29 @@ def main():
     html_file.write("<html><head><title>Tape Write Tabs per Library</title></head>")
     html_file.write("<body text=\"#000066\" bgcolor=\"#FFFFFF\" link=\"#0000EF\" vlink=\"#55188A\" alink=\"#FF0000\" background=\"enstore.gif\">")
 
+    html_host = None
+    html_dir  = None
+
+    for server in servers:
+        if server != "stken" : continue
+        server_name,server_port = servers.get(server)
+        if ( server_port != None ):
+            config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
+            inq_d = config_server_client.get(enstore_constants.INQUISITOR, {})
+            if inq_d.has_key("html_file"):
+                html_dir=inq_d["html_file"]
+            else:
+                html_dir = enstore_files.default_dir
+            if inq_d.has_key("host"):
+                html_host=inq_d["host"]
+            else:
+                html_host = enstore_files.default_dir
+
+    if html_host == None or html_dir == None :
+        print "Failed to find html host or html dir"
+        sys.exit(1)
+        
+
     for server in servers:
         server_name,server_port = servers.get(server)
         if ( server_port != None ):
@@ -50,8 +73,9 @@ def main():
             db_server_name = acc.get('dbhost')
             db_name        = acc.get('dbname')
             db_port        = acc.get('dbport')
-            name           = db_server_name.split('.')[0]
-            name=db_server_name.split('.')[0]
+            name           = server
+#            name           = db_server_name.split('.')[0]
+#            name=db_server_name.split('.')[0]
             now_time    = time.time()
             t           = time.ctime(time.time())
             Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
@@ -194,9 +218,9 @@ def main():
                 html_file.write("</font></b></td>")
                 
                 
-                cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/write_tabs/"%(h_1.get_name(),h_1.get_name(),h_1.get_name(),)
+                cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s/write_tabs/"%(h_1.get_name(),h_1.get_name(),h_1.get_name(),html_host,html_dir)
                 os.system(cmd)
-                cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/write_tabs/"%(h_3.get_name(),h_3.get_name(),h_3.get_name(),)
+                cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s/write_tabs/"%(h_3.get_name(),h_3.get_name(),h_3.get_name(),html_host,html_dir)
                 os.system(cmd)
                 cmd = "rm %s.jpg %s.ps %s_stamp.jpg"%(h_1.get_name(),h_1.get_name(),h_1.get_name(),)
                 os.system(cmd)
@@ -275,16 +299,9 @@ def main():
                     derivative2.binarray[i] = math.log10(derivative2.binarray[i])
 
             derivative2.plot2(derivative1, True)
-
-#            h2.set_ylabel("# of tabs flipped per day")
-#            h2.set_xlabel("Date (year-month-day)")
-#            h2.set_marker_text("")
-#            h2.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
-#            h2.plot_derivative()
-
-            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore"%(h.get_name(),h.get_name(),h.get_name(),)
+            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s"%(h.get_name(),h.get_name(),h.get_name(),html_host,html_dir)
             os.system(cmd)
-            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore"%(h2.get_name(),h2.get_name(),h2.get_name(),)
+            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg %s:%s"%(h2.get_name(),h2.get_name(),h2.get_name(),html_host,html_dir)
             os.system(cmd)
             cmd = "rm %s.jpg %s.ps %s_stamp.jpg"%(h.get_name(),h.get_name(),h.get_name(),)
             os.system(cmd)
@@ -293,7 +310,7 @@ def main():
 
     html_file.write("</body></html>")
     html_file.close()
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp write_tabs_by_library.html stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/write_tabs/"
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp write_tabs_by_library.html %s:%s/write_tabs/"%(html_host,html_dir)
     os.system(cmd)
     os.system("rm write_tabs_by_library.html")
     sys.exit(0)
