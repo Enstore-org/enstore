@@ -71,9 +71,10 @@ def main():
         if ( server_port != None ):
             config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
             acc = config_server_client.get(enstore_constants.ACCOUNTING_SERVER)
-            db_server_name = acc.get('dbhost')
-            db_name        = acc.get('dbname')
-            db_port        = acc.get('dbport')
+            db = pg.DB(host  = acc.get('dbhost', "localhost"),
+                       dbname= acc.get('dbname', "accounting"),
+                       port  = acc.get('dbport', 5432),
+                       user  = acc.get('dbuser_reader', "enstore_reader"))
             name           = server
 #            name           = db_server_name.split('.')[0]
 #            name=db_server_name.split('.')[0]
@@ -101,11 +102,6 @@ def main():
             h2.set_profile(True)
             h2.set_ylabel("# of tapes that should have write tabs ON")
             h2.set_xlabel("Date (year-month-day)")
-
-            if db_port:
-                db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
-            else:
-                db = pg.DB(host=db_server_name, dbname=db_name);
 
             #
             # now do by library
