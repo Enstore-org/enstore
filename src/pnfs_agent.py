@@ -128,7 +128,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
     def creat(self, ticket):
         filename = ticket['filename']
         mode = ticket.get('mode', None)
-        p=pnfs.Pnfs(filename)
+        p=pnfs.Pnfs()
         try:
             if mode:
                 p.creat(filename, mode)
@@ -138,7 +138,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
-        except OSError, msg:
+        except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
