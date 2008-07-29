@@ -312,7 +312,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                          total_count[drive_type],
                          busy_count[k],
                          )
-                        print "Executing ",q
+#                        print "Executing ",q
                         acc_db.query(q)
             acc_db.close()
         except:
