@@ -108,7 +108,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                    user  = acc.get('dbuser', 'enstore'))
 
         db.query("begin");
-        db.query("declare rate_cursor cursor for select to_char(time,'YYYY-MM-DD HH24:MI:SS'), type, total, sum(busy), tape_library \
+        db.query("declare rate_cursor cursor for select to_char(time,'YYYY-MM-DD HH24:MI:SS'), type,  sum(busy), tape_library \
         from drive_utilization  where time between '%s' and '%s' group by time, type,tape_library"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.start_day)),
                                                                                           time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.end_day))))
         while True:
@@ -117,7 +117,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 lib=row[4].replace(" ","_").replace("/","")
                 lib_type=row[1].replace(" ","_").replace("/","")
                 h=self.get_histogram("%s-%s-%s"%(lib,lib_type,"ALL"))
-                h.get_data_file().write("%s %d\n"%(row[0],row[3]))
+                h.get_data_file().write("%s %d\n"%(row[0],row[2]))
             l=len(res)
             if (l < 10000):
                 break
