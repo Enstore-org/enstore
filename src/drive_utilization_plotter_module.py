@@ -102,6 +102,11 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 break
         db.close()
 
+        db = pg.DB(host  = acc.get('dbhost', 'localhost'),
+                   dbname= acc.get('dbname', 'accounting'),
+                   port  = acc.get('dbport', 5432),
+                   user  = acc.get('dbuser', 'enstore'))
+
         db.query("begin");
         db.query("declare rate_cursor cursor for select to_char(time,'YYYY-MM-DD HH24:MI:SS'), type, total, sum(busy), tape_library \
         from drive_utilization  where time between '%s' and '%s' group by storage_group"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.start_day)),
