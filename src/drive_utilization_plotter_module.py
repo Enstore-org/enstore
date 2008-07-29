@@ -98,9 +98,6 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 if ( sg == "cms" ) :
                     h=self.get_histogram("%s-%s-%s"%(lib,lib_type,sg))
                     h.get_data_file().write("%s %d\n"%(row[0],row[3]))
-                else :
-                    h=self.get_histogram("%s-%s-%s"%(lib,lib_type,"OTHER"))
-                    h.get_data_file().write("%s %d\n"%(row[0],row[3]))
              l=len(res)
             if (l < 10000):
                 break
@@ -113,14 +110,14 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
         db.query("begin");
         db.query("declare rate_cursor cursor for select to_char(time,'YYYY-MM-DD HH24:MI:SS'), type,  sum(busy), tape_library \
-        from drive_utilization  where time between '%s' and '%s' group by time, type,tape_library"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.start_day)),
+        from drive_utilization  where time between '%s' and '%s' group by time, type,tape_library and storage_group!='cms'"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.start_day)),
                                                                                           time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.end_day))))
         while True:
             res =  db.query("fetch 10000 from rate_cursor").getresult()
             for row in res:
                 lib=row[3].replace(" ","_").replace("/","")
                 lib_type=row[1].replace(" ","_").replace("/","")
-                h=self.get_histogram("%s-%s-%s"%(lib,lib_type,"ALL"))
+                h=self.get_histogram("%s-%s-%s"%(lib,lib_type,"OTHER"))
                 h.get_data_file().write("%s %d\n"%(row[0],row[2]))
             l=len(res)
             if (l < 10000):
