@@ -109,7 +109,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
         db.query("begin");
         db.query("declare rate_cursor cursor for select to_char(time,'YYYY-MM-DD HH24:MI:SS'), type, total, sum(busy), tape_library \
-        from drive_utilization  where time between '%s' and '%s' group by storage_group"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.start_day)),
+        from drive_utilization  where time between '%s' and '%s' group by time, type,tape_library"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.start_day)),
                                                                                           time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.end_day))))
         while True:
             res =  db.query("fetch 10000 from rate_cursor").getresult()
