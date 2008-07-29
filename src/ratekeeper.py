@@ -21,6 +21,7 @@ import pg
 #import configuration_client
 import dispatching_worker
 import generic_server
+import volume_clerk_client
 #import configuration_client
 import timeofday
 #import udp_client
@@ -32,6 +33,7 @@ import event_relay_messages
 import Trace
 import e_errors
 import media_changer_client
+import volume_family
 
 
 MY_NAME = enstore_constants.RATEKEEPER    #"ratekeeper"
@@ -91,6 +93,14 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             dbname = self.acc_conf.get('dbname', "accounting"),
             user   = self.acc_conf.get('dbuser', "enstore"),
             )
+        #
+        # we need volume clerk to get information about volume when filling
+        # drive_utilization table
+        # added 07/29 by litvinse@fnal.gov
+        #
+        self.vcc =  volume_clerk_client.VolumeClerkClient(self.csc,
+                                                          rcv_timeout=5,
+                                                          rcv_tries=2))
         
         #Get the configuration from the configuration server.
         ratekeep = self.csc.get(enstore_constants.RATEKEEPER,
@@ -268,14 +278,18 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 total_count[drive['type']] = 1
                 #If the total did not have this type yet, then just the
                 # busy counts cant have it yet.
-                busy_count[drive['type']] = 0
+                #busy_count[drive['type']] = 0
                 
             if drive['volume']:
+                v_info=self.vcc.inquire_vol(drive['volume'])
+                sg=volume_family.extract_storage_group(v_info['volume_family'])
                 try:
-                    busy_count[drive['type']] = \
-                                              busy_count[drive['type']] + 1
+                    busy_count[(drive['type'], sg)]  =   busy_count[(drive['type'], sg)] + 1
+#                    busy_count[drive['type']] = \
+#                                              busy_count[drive['type']] + 1
                 except:
-                    busy_count[drive['type']] = 1
+                     busy_count[(drive['type'], sg)]  =   1
+#                    busy_count[drive['type']] = 1
 
         try:
             acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
@@ -285,20 +299,21 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
             ## Put the information into the accounting DB.
             for drive_type in total_count.keys():
-
-                q="insert into drive_utilization \
-                (time, tape_library, type, total, busy) values \
-                ('%s', '%s', '%s',  %d,  %d)" % \
-                (time.strftime("%m-%d-%Y %H:%M:%S %Z",
-                               time.localtime(now)),
-                 tape_library,
-                 drive_type,
-                 total_count[drive_type],
-                 busy_count[drive_type],
-                 )
-
-                acc_db.query(q)
-
+                for k in busy_count.keys():
+                    if k[0] == drive_type:
+                        q="insert into drive_utilization \
+                        (time, tape_library, type, storage_group, total, busy) values \
+                        ('%s', '%s', '%s',  '%s', %d,  %d)" % \
+                        (time.strftime("%m-%d-%Y %H:%M:%S %Z",
+                                       time.localtime(now)),
+                         tape_library,
+                         drive_type,
+                         k[1],
+                         total_count[drive_type],
+                         busy_count[k],
+                         )
+                        print "Executing ",q
+                        acc_db.query(q)
             acc_db.close()
         except:
             exc, msg, tb = sys.exc_info()
