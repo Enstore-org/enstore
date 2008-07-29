@@ -1301,7 +1301,7 @@ def inventory(output_dir, cache_dir):
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     if True:
-        if socket.gethostname() == "stkensrv3.fnal.gov":
+        if socket.gethostname()[:8] == "stkensrv":
             cms_volume_with_only_deleted_files = os.path.join(os.path.split(volumes_defined_file)[0], "CMS_VOLUMES_WITH_ONLY_DELETED_FILES")
             # a cheap shot
             os.system("date > %s"%(cms_volume_with_only_deleted_files))
