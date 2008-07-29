@@ -100,7 +100,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         #
         self.vcc =  volume_clerk_client.VolumeClerkClient(self.csc,
                                                           rcv_timeout=5,
-                                                          rcv_tries=2))
+                                                          rcv_tries=2)
         
         #Get the configuration from the configuration server.
         ratekeep = self.csc.get(enstore_constants.RATEKEEPER,
