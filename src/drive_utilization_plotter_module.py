@@ -95,9 +95,13 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 lib_type=row[1].replace(" ","_").replace("/","")
                 sg=row[5]
                 if ( sg == None ) : continue
-                h=self.get_histogram("%s-%s-%s"%(lib,lib_type,sg))
-                h.get_data_file().write("%s %d\n"%(row[0],row[3]))
-            l=len(res)
+                if ( sg == "cms" ) :
+                    h=self.get_histogram("%s-%s-%s"%(lib,lib_type,sg))
+                    h.get_data_file().write("%s %d\n"%(row[0],row[3]))
+                else :
+                    h=self.get_histogram("%s-%s-%s"%(lib,lib_type,"OTHER"))
+                    h.get_data_file().write("%s %d\n"%(row[0],row[3]))
+             l=len(res)
             if (l < 10000):
                 break
         db.close()
