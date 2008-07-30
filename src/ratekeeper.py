@@ -277,12 +277,23 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             except:
                 total_count[drive['type']] = 1
                 #If the total did not have this type yet, then just the
-                # busy counts cant have it yet.
+                #busy counts cant have it yet.
                 #busy_count[drive['type']] = 0
                 
             if drive['volume']:
                 v_info=self.vcc.inquire_vol(drive['volume'])
-                sg=volume_family.extract_storage_group(v_info['volume_family'])
+                sg=None
+                try:
+                    sg=volume_family.extract_storage_group(v_info['volume_family'])
+                except:
+                    exc, msg, tb = sys.exc_info()
+                    try:
+                        sys.stderr.write("Can not extract storage group for volume %s : (%s, %s)\n" %
+                                         (drive['volume'],exc, msg))
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
+                    continue
                 try:
                     busy_count[(drive['type'], sg)]  =   busy_count[(drive['type'], sg)] + 1
 #                    busy_count[drive['type']] = \
