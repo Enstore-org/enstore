@@ -154,7 +154,7 @@ def clean_up_temp_dir():
 	for i in os.listdir(TEMP_DIR):
 		os.remove(os.path.join(TEMP_DIR, i))
 
-DATABASEHOST = 'stkensrv0.fnal.gov'
+DATABASEHOST = 'stkensrv0n.fnal.gov'
 #DATABASEHOST = 'localhost'
 DATABASEPORT = 8800
 DATABASENAME = 'operation'
@@ -208,7 +208,7 @@ def get_script_host(cluster):
 	if cluster.upper()[:2] == 'D0':
 		return 'd0ensrv4n.fnal.gov'
 	elif cluster.upper()[:3] == 'STK':
-		return 'stkensrv4.fnal.gov'
+		return 'stkensrv4n.fnal.gov'
 	elif cluster.upper()[:3] == 'CDF':
 		return 'cdfensrv4n.fnal.gov'
 	elif cluster.upper()[:3] == 'GCC':
