@@ -135,8 +135,8 @@ class Quota:
 					quota.library = sg_count.library and \
 					quota.storage_group = sg_count.storage_group \
 					where \
-					sg_count.library = '%s' and \
-					sg_count.storage_group = '%s';"%(
+					quota.library = '%s' and \
+					quota.storage_group = '%s';"%(
 					library, sg)
 			else:
 				# without specific storage group
@@ -149,7 +149,7 @@ class Quota:
 					quota.library = sg_count.library and \
 					quota.storage_group = sg_count.storage_group \
 					where \
-					sg_count.library = '%s' \
+					quota.library = '%s' \
 					order by storage_group;"%(
 					library)
 		else:
