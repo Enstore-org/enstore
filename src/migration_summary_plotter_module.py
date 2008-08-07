@@ -99,8 +99,6 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         
         plot_fp.close()
 
-        os.system("cat %s" % (data_filename,))
-
     #######################################################################
     # The following functions must be defined by all plotting modueles.
     #######################################################################
@@ -192,9 +190,9 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                       "migration_summary_%s_%s.plot" % (plot_type, key,))
 
             if plot_type == ACCUMULATED:
-                columns = [4, 5]
+                columns = [5, 4]
             elif plot_type == DAILY:
-                columns = [2, 3]
+                columns = [3, 2]
             else:
                 columns = [0]  #What happens when we get here?
             
