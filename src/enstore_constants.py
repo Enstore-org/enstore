@@ -209,6 +209,7 @@ QUOTA_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "quotas")
 TAPES_BURN_RATE_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "burn-rate")
 BPD_PER_MOVER_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "bpd_per_mover")
 XFER_SIZE_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "xfer-size")
+MIGRATION_SUMMARY_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "migration_summary")
 
 OUTAGEFILE = "enstore_outage.py"
 SEENDOWNFILE = "enstore_seen_down.py"

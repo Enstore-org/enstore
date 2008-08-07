@@ -25,10 +25,11 @@ import file_family_analysis_plotter_module
 import encp_rate_multi_plotter_module
 import quotas_plotter_module
 import tapes_burn_rate_plotter_module
+import migration_summary_plotter_module
 
 
 def usage(cmd):
-    print "Usage: %s -m [--mounts] -r [--rate] -u [--utilization] "%(cmd,)
+    print "Usage: %s [options] "%(cmd,)
     print "\t -r [--rate]        : plot ratekeeper plots"
     print "\t -m [--mounts]      : plot mount plots "
     print "\t -u [--utilization] : plot drive utilization (old name)"
@@ -38,16 +39,18 @@ def usage(cmd):
     print "\t -p [--file-family-analysis] : plot file family analysis"
     print "\t -e [--encp-rate-multi] : plot multiple encp rates"
     print "\t -q [--quotas]      : plot quotas by storage group"
+    print "\t -i [--migration-summary] : plot migration progress"
     print "\t -h [--help]        : show this message"
     
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfeqt"
+        short_args = "hmrudspfeqti"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
                      "slots", "pnfs-bakup", "file-family-analysis",
-                     "--quotas", "--tapes-burn-rate"]
+                     "quotas", "tapes-burn-rate", "migration-summary"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
-    except getopt.GetoptError:
+    except getopt.GetoptError, msg:
+        print msg
         print "Failed to process arguments"
         usage(sys.argv[0])
         sys.exit(2)
@@ -94,6 +97,10 @@ if __name__ == "__main__":
         # tapes burn rate
         if o in ("-t","--tapes-burn-rate"):
             aModule = tapes_burn_rate_plotter_module.TapesBurnRatePlotterModule("tapes_burn_rate")
+            f.add(aModule)
+        # migration summary
+        if o in ("-i","--migration-summary"):
+            aModule = migration_summary_plotter_module.MigrationSummaryPlotterModule("migration_summary")
             f.add(aModule)
 
     f.do_work()
