@@ -192,9 +192,9 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                       "migration_summary_%s_%s.plot" % (plot_type, key,))
 
             if plot_type == ACCUMULATED:
-                columns = [3, 5]
+                columns = [4, 5]
             elif plot_type == DAILY:
-                columns = [2, 4]
+                columns = [2, 3]
             else:
                 columns = [0]  #What happens when we get here?
             
