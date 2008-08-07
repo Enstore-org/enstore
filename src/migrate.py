@@ -72,6 +72,7 @@ import types
 import copy
 import errno
 import re
+import stat
 
 # enstore imports
 import file_clerk_client
@@ -530,6 +531,22 @@ def log_history(src, dst, db):
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
 		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
+	return
+
+# undo_log(src, dst) -- remove a source and destination bfid pair from the
+#                       migration table.
+def undo_log(src_bfid, dst_bfid, db):
+	q = "delete from migration where \
+	        src_bfid = '%s' and dst_bfid = '%s';" \
+	    % (src_bfid, dst_bfid)
+	
+	if debug:
+		log("undo_log():", q)
+	try:
+		db.query(q)
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("UNDO_LOG", str(exc_type), str(exc_value), q)
 	return
 
 #Return the volume that the bfid refers to.
@@ -1228,12 +1245,18 @@ def compare_metadata(p, f, pnfsid = None):
 # * return None if succeeds, otherwise, return error message
 # * to avoid deeply nested "if ... else", it takes early error return
 def swap_metadata(bfid1, src, bfid2, dst):
+	MY_TASK = "SWAPPING_METADATA"
+	
 	# get its own file clerk client
 	config_host = enstore_functions2.default_host()
 	config_port = enstore_functions2.default_port()
 	csc = configuration_client.ConfigurationClient((config_host,
 							config_port))
 	fcc = file_clerk_client.FileClient(csc)
+
+	#get a database connection
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+	
 	# get all metadata
 	p1 = pnfs.File(src)
 	f1 = fcc.bfid_info(bfid1)
@@ -1281,12 +1304,19 @@ def swap_metadata(bfid1, src, bfid2, dst):
 		return "metadata %s %s are inconsistent on %s"%(bfid2, dst, res)
 
 	# cross check
+	err_msg = ""
 	if f1['size'] != f2['size']:
-		return "%s and %s have different size"%(bfid1, bfid2)
-	if f1['complete_crc'] != f2['complete_crc']:
-		return "%s and %s have different crc"%(bfid1, bfid2)
-	if f1['sanity_cookie'] != f2['sanity_cookie']:
-		return "%s and %s have different sanity_cookie"%(bfid1, bfid2)
+		err_msg = "%s and %s have different size"%(bfid1, bfid2)
+	elif f1['complete_crc'] != f2['complete_crc']:
+		err_msg = "%s and %s have different crc"%(bfid1, bfid2)
+	elif f1['sanity_cookie'] != f2['sanity_cookie']:
+		err_msg = "%s and %s have different sanity_cookie"%(bfid1, bfid2)
+	if err_msg:
+		if f2['deleted'] == "yes" and not is_swapped(bfid1, db):
+			log(MY_TASK,
+			    "undoing migration of %s to %s do to error" % (bfid1, bfid2))
+			undo_log(bfid1, bfid2, db)
+		return err_msg
 
 	# check if p1 is writable
 	if not os.access(src, os.W_OK):
@@ -1495,6 +1525,27 @@ def migrating(intf):
 		if debug:
 			log(MY_TASK, `job`)
 
+		#Try and catch situations were an error left a zero length
+		# file in the migration spool directory.  We don't want to
+		# 'migrate' this wrong file to tape.
+		try:
+			src_size = os.stat(src_path)[stat.ST_SIZE]
+			tmp_size = os.stat(tmp_path)[stat.ST_SIZE]
+		except OSError:
+			#We likely get here when the file is already
+			# removed from the spooling directory.
+			src_size = None
+			tmp_size = None
+		if src_size != tmp_size:
+			error_log(MY_TASK, "size check mismatch (%s, %s)" % \
+				  (src_size, tmp_size))
+			try:
+				log(MY_TASK, "removing %s" % (tmp_path,))
+				os.remove(tmp_path)
+			except (OSError, IOError), msg:
+				log(MY_TASK, "error removing %s: %s" \
+				    % (tmp_path, str(msg)))
+			continue
 		
 		# check if it has already been copied
 		is_it_copied = is_copied(src_bfid, db)
