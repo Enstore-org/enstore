@@ -23,6 +23,10 @@ CREATE VIEW remaining_blanks AS
 enstoredb-#     SELECT volume.media_type, count(*) AS blanks FROM volume WHERE ((((volume.storage_group)::text = 'none'::text) AND ((volume.file_family)::text = 'none'::text)) AND ((volume.wrapper)::text = 'none'::text)) GROUP BY volume.media_type;
 """
 
+###
+### SQL command to return the number of closed and in progress volumes
+### being migrated.
+###
 SQL_COMMAND = \
 """
 select s2.d2, volume.media_type, s2.closed, s3.started 
@@ -51,6 +55,18 @@ group by s2.d2,volume.media_type,s2.closed,s3.started;
 
 """
 
+SQL_COMMAND2 = \
+"""
+select media_type, count(label) as "remaining_volumes"
+from volume
+left join migration_history mh on mh.src = volume.label
+where (system_inhibit_1 != 'migrated' and system_inhibit_1 != 'duplicated')
+      and label not like '%.deleted'
+      and library not like '%shelf%'
+      and media_type != 'null'
+group by media_type;
+"""
+
 ACCUMULATED = "accumulated"
 DAILY = "daily"
 
@@ -77,24 +93,40 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                       'font "TimesRomanBold,16"\n' % \
                       (plot_type, key,))
         plot_fp.write('set ylabel "Volumes Done"\n')
+        plot_fp.write('set xlabel "Year-month-day"\n')
         plot_fp.write('set xdata time\n')
         plot_fp.write('set timefmt "%Y-%m-%d"\n')
         plot_fp.write('set format x "%Y-%m-%d"\n')
         plot_fp.write('set grid\n')
         plot_fp.write('set nokey\n')
         plot_fp.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (time.ctime(),))
-        plot_fp.write('set yrange[ 0 : ]\n')
+
+        if plot_type == ACCUMULATED:
+            total_volumes = self.summary_remaining[key] + \
+                            self.summary_done[key]
+            plot_fp.write('set yrange [ 0 : %f ]\n' % (total_volumes * 1.1,))
+            plot_fp.write('set label "Left to migrate %s" at graph .05,.95\n' \
+                          % (self.summary_remaining[key],))
+            plot_fp.write('set label "Migrated %s" at graph .05,.90\n' \
+                          % (self.summary_done[key],))
         
-        #First plot is the accumulated volumes.
+        #Build the plot command line.
         plot_line = "plot "
         for column in columns:
             if plot_line != "plot ":
                 #If we are on the first plot, don't append the comma.
                 plot_line = "%s, " % (plot_line,)
+
+            #Add the next set of plots.
             plot_line = plot_line + '"%s" using 1:%d with impulses lw 10' % (data_filename, column)
+        #If the plot is accumulated, plot the total to migrate.
+        if plot_type == ACCUMULATED:
+            plot_line = '%s, x,%s with lines' % (plot_line, total_volumes)
+            pass
+        #Put the whole thing together.
         plot_line = "%s\n" % (plot_line,)
-        
-        #plot_fp.write('plot "%s" using 1:%d with impulses linewidth 10' % (data_filename, column))
+
+        #Write out the plot line.
         plot_fp.write(plot_line)
         
         plot_fp.close()
@@ -161,6 +193,18 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         #Avoid resource leaks.
         for key in self.pts_files.keys():
             self.pts_files[key].close()
+
+
+        ### Now lets get some totals.
+
+        #This query is for volumes that are all done.
+        res2 = db.query(SQL_COMMAND2).getresult()
+
+        self.summary_remaining = {}
+        for row2 in res2:
+            #row2[0] is the media type
+            #row2[1] is the remaing tapes to migrate
+            self.summary_remaining[row2[0]] = row2[1]
 
     def plot(self):
         for key in self.pts_files.keys():
