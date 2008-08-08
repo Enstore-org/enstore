@@ -57,6 +57,19 @@ group by s2.d2,volume.media_type,s2.closed,s3.started;
 
 SQL_COMMAND2 = \
 """
+select date(min(swapped)) as "day", media_type, label
+from volume, migration, file
+where volume.id = file.volume
+      and file.bfid = migration.src_bfid
+      and label not like '%.deleted'
+      and library not like '%shelf%'
+group by media_type, label
+order by day;
+"""
+
+
+SQL_COMMAND3 = \
+"""
 select media_type, count(label) as "remaining_volumes"
 from volume
 left join migration_history mh on mh.src = volume.label
@@ -66,6 +79,7 @@ where (system_inhibit_1 != 'migrated' and system_inhibit_1 != 'duplicated')
       and media_type != 'null'
 group by media_type;
 """
+
 
 ACCUMULATED = "accumulated"
 DAILY = "daily"
@@ -109,6 +123,8 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                           % (self.summary_remaining[key],))
             plot_fp.write('set label "Migrated %s" at graph .05,.90\n' \
                           % (self.summary_done[key],))
+        else: #Daily
+             plot_fp.write('set yrange [ 0 : ]\n')
         
         #Build the plot command line.
         plot_line = "plot "
@@ -121,7 +137,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             plot_line = plot_line + '"%s" using 1:%d with impulses lw 10' % (data_filename, column)
         #If the plot is accumulated, plot the total to migrate.
         if plot_type == ACCUMULATED:
-            plot_line = '%s, x,%s with lines' % (plot_line, total_volumes)
+            plot_line = '%s, x,%s with lines lw 4' % (plot_line, total_volumes)
             pass
         #Put the whole thing together.
         plot_line = "%s\n" % (plot_line,)
@@ -162,6 +178,9 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                    user   = edb.get('dbuser', "enstore")
                    )
 
+        ###
+        ### Lets get the daily values.
+
         #This query is for volumes that are all done.
         res = db.query(SQL_COMMAND).getresult()
 
@@ -179,32 +198,53 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                                      "migration_summary_%s.pts" % (row[1],))
                 self.pts_files[row[1]] = open(fname, "w")
                 self.summary_done[row[1]] = 0L #Set the key values to zeros.
-                self.summary_started[row[1]] = 0L #Set the key values to zeros.
+                self.summary_started[row[1]] = {}
 
+        ###
+        ### Time to acquire accumulated start counts for volumes.
+        ###
+
+        #This query is to obtain the daily count of volumes started to
+        # be migrated.
+        #If there is a way to combine the SQL_COMMAND and SQL_COMMAND2 into
+        # a single sql statement, go for it.  In the meantime, this is
+        # what works.
+        res2 = db.query(SQL_COMMAND2).getresult()
+
+        for row2 in res2:
+            #row3[0] is the date (YYYY-mm-dd)
+            #row3[1] is the media type
+            #row3[2] is the a label started on the date in row3[0]
+            self.summary_started[row[1]][row2[0]] = \
+                     self.summary_started[row[1]].get(row2[0], 0L) + 1
+            
         #Output to temporary files the data that gnuplot needs to plot.
         for row in res:
             self.summary_done[row[1]] = self.summary_done[row[1]] + row[2]
-            self.summary_started[row[1]] = \
-                                         self.summary_started[row[1]] + row[3]
+
+            # Here we write the contents to the file.
             self.pts_files[row[1]].write("%s %s %s %s %s\n" % (
                 row[0], row[2], row[3], self.summary_done[row[1]],
-                self.summary_started[row[1]]))
+                self.summary_started[row[1]][row[0]]))
 
         #Avoid resource leaks.
         for key in self.pts_files.keys():
             self.pts_files[key].close()
 
-
-        ### Now lets get some totals.
+        ###
+        ### Now lets get some totals about what is done right now.
+        ###
 
         #This query is for volumes that are all done.
-        res2 = db.query(SQL_COMMAND2).getresult()
+        res3 = db.query(SQL_COMMAND3).getresult()
 
         self.summary_remaining = {}
-        for row2 in res2:
+        for row3 in res3:
             #row2[0] is the media type
             #row2[1] is the remaing tapes to migrate
-            self.summary_remaining[row2[0]] = row2[1]
+            self.summary_remaining[row3[0]] = row3[1]
+
+
 
     def plot(self):
         for key in self.pts_files.keys():
