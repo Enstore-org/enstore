@@ -211,21 +211,27 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         # what works.
         res2 = db.query(SQL_COMMAND2).getresult()
 
+        total_started = 0L
         for row2 in res2:
-            #row3[0] is the date (YYYY-mm-dd)
-            #row3[1] is the media type
-            #row3[2] is the a label started on the date in row3[0]
-            self.summary_started[row[1]][row2[0]] = \
-                     self.summary_started[row[1]].get(row2[0], 0L) + 1
-            
+            #row2[0] is the date (YYYY-mm-dd)
+            #row2[1] is the media type
+            #row2[2] is the a label started on the date in row3[0]
+            total_started = total_started + 1
+            self.summary_started[row2[1]][row2[0]] = total_started
+
         #Output to temporary files the data that gnuplot needs to plot.
         for row in res:
             self.summary_done[row[1]] = self.summary_done[row[1]] + row[2]
 
             # Here we write the contents to the file.
+            try:
+                summary_started = self.summary_started[row[1]][row[0]]
+            except KeyError, msg:
+                print "KeyError:", str(msg)
+
             self.pts_files[row[1]].write("%s %s %s %s %s\n" % (
                 row[0], row[2], row[3], self.summary_done[row[1]],
-                self.summary_started[row[1]][row[0]]))
+                summary_started))
 
         #Avoid resource leaks.
         for key in self.pts_files.keys():
@@ -240,8 +246,8 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
         self.summary_remaining = {}
         for row3 in res3:
-            #row2[0] is the media type
-            #row2[1] is the remaing tapes to migrate
+            #row3[0] is the media type
+            #row3[1] is the remaing tapes to migrate
             self.summary_remaining[row3[0]] = row3[1]
 
 
