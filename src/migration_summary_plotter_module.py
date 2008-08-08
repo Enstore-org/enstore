@@ -51,7 +51,8 @@ where s2.d2 = s3.d3
    and s2.media_type = s3.media_type
    and volume.label not like '%.deleted'
    and volume.library not like '%shelf%'
-group by s2.d2,volume.media_type,s2.closed,s3.started;
+group by s2.d2,volume.media_type,s2.closed,s3.started
+order by s2.d2;
 
 """
 
@@ -180,6 +181,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
         ###
         ### Lets get the daily values.
+        ###
 
         #This query is for volumes that are all done.
         res = db.query(SQL_COMMAND).getresult()
@@ -188,6 +190,8 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         self.pts_files = {}
         self.summary_done = {}
         self.summary_started = {}
+        summary_started = {}
+        total_started = {}
         for row in res:
             #row[0] is the date (YYYY-mm-dd)
             #row[1] is the media type
@@ -199,7 +203,9 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 self.pts_files[row[1]] = open(fname, "w")
                 self.summary_done[row[1]] = 0L #Set the key values to zeros.
                 self.summary_started[row[1]] = {}
-
+                summary_started[row[1]] = 0L
+                total_started[row[1]] = 0L
+                
         ###
         ### Time to acquire accumulated start counts for volumes.
         ###
@@ -211,27 +217,36 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         # what works.
         res2 = db.query(SQL_COMMAND2).getresult()
 
-        total_started = 0L
         for row2 in res2:
             #row2[0] is the date (YYYY-mm-dd)
             #row2[1] is the media type
-            #row2[2] is the a label started on the date in row3[0]
-            total_started = total_started + 1
-            self.summary_started[row2[1]][row2[0]] = total_started
+            #row2[2] is the a label started on the date in row2[0]
+            total_started[row2[1]] = total_started[row2[1]] + 1
+            self.summary_started[row2[1]][row2[0]] = total_started[row2[1]]
+
+        ###
+        ### Now that the information for each day is obtained, lets output
+        ### the data to the data file.
 
         #Output to temporary files the data that gnuplot needs to plot.
         for row in res:
             self.summary_done[row[1]] = self.summary_done[row[1]] + row[2]
 
-            # Here we write the contents to the file.
+            #It is possible that on a particular day, only previously tried
+            # volumes are tried again.  Thus, there will be datapoints
+            # in res, but not in res2.  Handle the KeyError in this
+            # situation here.
+            #Note: this logic assumes that both res and res2 are sorted
+            # in ascending order by day.
             try:
-                summary_started = self.summary_started[row[1]][row[0]]
-            except KeyError, msg:
-                print "KeyError:", str(msg)
+                summary_started[row[1]] = self.summary_started[row[1]][row[0]]
+            except KeyError:
+                pass
 
+            # Here we write the contents to the file.
             self.pts_files[row[1]].write("%s %s %s %s %s\n" % (
                 row[0], row[2], row[3], self.summary_done[row[1]],
-                summary_started))
+                summary_started[row[1]]))
 
         #Avoid resource leaks.
         for key in self.pts_files.keys():
