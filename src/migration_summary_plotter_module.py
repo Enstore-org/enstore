@@ -71,7 +71,7 @@ order by day;
 
 SQL_COMMAND3 = \
 """
-select media_type, count(label) as "remaining_volumes"
+select media_type, count(distinct label) as "remaining_volumes"
 from volume
 left join migration_history mh on mh.src = volume.label
 where (system_inhibit_1 != 'migrated' and system_inhibit_1 != 'duplicated')
