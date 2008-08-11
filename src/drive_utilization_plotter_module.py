@@ -21,6 +21,16 @@ MINUTE=3600L
 
 WEB_SUB_DIRECTORY = enstore_constants.DRIVE_UTILIZATION_PLOTS_SUBDIR
 
+library_name_map = {
+    'CD PowderHorn 9310'  : 'CD_STK',
+    'D0 AML/2 R1'         : 'D0_AML',
+    'GCC StreamLine 8500' : 'GCC_SL8500',
+    'CDF PowderHorn 9310' : 'CDF_STK',
+    'D0 PowderHorn 9310'  : 'D0_STK',
+    'FCC StreamLine 8500' : 'FCC_SL8500',
+    'D0 AML/2'            : 'D0_AML'
+    }
+
 class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def __init__(self,name,isActive=True):
         enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
@@ -91,12 +101,13 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         while True:
             res =  db.query("fetch 10000 from rate_cursor").getresult()
             for row in res:
-                lib=row[4].replace(" ","_").replace("/","")
+#                lib=row[4].replace(" ","_").replace("/","")
+                lib=library_name_map.get(row[4],row[4].replace(" ","_").replace("/",""))
                 lib_type=row[1].replace(" ","_").replace("/","")
                 sg=row[5]
                 if ( sg == None ) : continue
                 if ( sg == "cms" ) :
-                    h=self.get_histogram("%s-%s-%s"%(lib,lib_type,sg))
+                    h=self.get_histogram("%s-%s-%s-Utilization"%(lib,lib_type,sg))
                     h.get_data_file().write("%s %d\n"%(row[0],row[3]))
             l=len(res)
             if (l < 10000):
@@ -115,9 +126,32 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         while True:
             res =  db.query("fetch 10000 from rate_cursor").getresult()
             for row in res:
-                lib=row[3].replace(" ","_").replace("/","")
+#                lib=row[3].replace(" ","_").replace("/","")
+                lib=library_name_map.get(row[4],row[4].replace(" ","_").replace("/",""))
                 lib_type=row[1].replace(" ","_").replace("/","")
-                h=self.get_histogram("%s-%s-%s"%(lib,lib_type,"OTHER"))
+                h=self.get_histogram("%s-%s-%s-Utilization"%(lib,lib_type,"OTHER"))
+                h.get_data_file().write("%s %d\n"%(row[0],row[2]))
+            l=len(res)
+            if (l < 10000):
+                break
+        db.close()        
+
+        db = pg.DB(host  = acc.get('dbhost', 'localhost'),
+                   dbname= acc.get('dbname', 'accounting'),
+                   port  = acc.get('dbport', 5432),
+                   user  = acc.get('dbuser', 'enstore'))
+
+        db.query("begin");
+        db.query("declare rate_cursor cursor for select to_char(time,'YYYY-MM-DD HH24:MI:SS'), type,  sum(busy), tape_library \
+        from drive_utilization  where time between '%s' and '%s' group by time, type,tape_library"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.start_day)),
+                                                                                                    time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.end_day))))
+        while True:
+            res =  db.query("fetch 10000 from rate_cursor").getresult()
+            for row in res:
+#                lib=row[3].replace(" ","_").replace("/","")
+                lib=library_name_map.get(row[4],row[4].replace(" ","_").replace("/",""))
+                lib_type=row[1].replace(" ","_").replace("/","")
+                h=self.get_histogram("%s-%s-%s-Utilization"%(lib,lib_type,"ALL"))
                 h.get_data_file().write("%s %d\n"%(row[0],row[2]))
             l=len(res)
             if (l < 10000):
