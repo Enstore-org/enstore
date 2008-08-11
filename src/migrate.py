@@ -210,6 +210,8 @@ dbport = None
 dbname = None
 dbuser = "enstore"
 
+FILE_LIMIT = 25 #The maximum number of files to wait for at one time.
+
 ###############################################################################
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
@@ -322,7 +324,7 @@ def set_proceed_number(src_bfids):
 		proceed_number = int(len(src_bfids) * (1 - (src_rate / dst_rate)))
 	#Put some form of bound on this value until its effect on performance
 	# is better understood.
-	proceed_number = min(proceed_number, 25)
+	proceed_number = min(proceed_number, FILE_LIMIT)
 		
 	###############################################################
 	#print "proceed_number:", proceed_number
@@ -749,7 +751,10 @@ def get_requests(queue, r_pipe, timeout = .1):
 
     wait_time = timeout
 
-    while job: # and queue.received_count < NUM_OBJS:
+    #Limit to return to revent reader from overwelming the writer.
+    requests_obtained = 0 
+
+    while job and requests_obtained < FILE_LIMIT and not queue.full():
         try:
             r, w, x = select.select([r_pipe], [], [], wait_time)
         except select.error:
@@ -771,6 +776,9 @@ def get_requests(queue, r_pipe, timeout = .1):
                     queue.finished = True
                 
                 wait_time = 0.1 #Make the followup wait time shorter.
+
+                #increment counter on success
+		requests_obtained = requests_obtained + 1
             except e_errors.TCP_EXCEPTION:
                 #On an error, put the list ending None in the list.
                 queue.put(None)
