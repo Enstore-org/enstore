@@ -31,6 +31,11 @@ library_name_map = {
     'D0 AML/2'            : 'D0_AML'
     }
 
+type_name_map = {
+    'IBM-LTO-3'           : 'LTO3',
+    'IBM-LTO4'            : 'LTO4'
+    }
+
 class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def __init__(self,name,isActive=True):
         enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
@@ -103,7 +108,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             for row in res:
 #                lib=row[4].replace(" ","_").replace("/","")
                 lib=library_name_map.get(row[4],row[4].replace(" ","_").replace("/",""))
-                lib_type=row[1].replace(" ","_").replace("/","")
+                lib_type=type_name_map.get(row[1],row[1].replace(" ","_").replace("/",""))
                 sg=row[5]
                 if ( sg == None ) : continue
                 if ( sg == "cms" ) :
@@ -128,7 +133,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             for row in res:
 #                lib=row[3].replace(" ","_").replace("/","")
                 lib=library_name_map.get(row[3],row[3].replace(" ","_").replace("/",""))
-                lib_type=row[1].replace(" ","_").replace("/","")
+                lib_type=type_name_map.get(row[1],row[1].replace(" ","_").replace("/",""))
                 h=self.get_histogram("%s-%s-%s-Utilization"%(lib,lib_type,"OTHER"))
                 h.get_data_file().write("%s %d\n"%(row[0],row[2]))
             l=len(res)
@@ -150,7 +155,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             for row in res:
 #                lib=row[3].replace(" ","_").replace("/","")
                 lib=library_name_map.get(row[3],row[3].replace(" ","_").replace("/",""))
-                lib_type=row[1].replace(" ","_").replace("/","")
+                lib_type=type_name_map.get(row[1],row[1].replace(" ","_").replace("/",""))
                 h=self.get_histogram("%s-%s-%s-Utilization"%(lib,lib_type,"ALL"))
                 h.get_data_file().write("%s %d\n"%(row[0],row[2]))
             l=len(res)
