@@ -27,3 +27,5 @@
 15 1,13 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfs_backup_time $ENSTORE_DIR/src/plotter_main.py -p > /dev/null 2> /dev/null
 # tape burn rates
 0 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p burn-rate  $ENSTORE_DIR/src/plotter_main.py -t > /dev/null 2> /dev/null
+#migration summary
+30 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p migration_summary $ENSTORE_DIR/src/plotter_main.py --migration-summary > /dev/null 2> /dev/null
