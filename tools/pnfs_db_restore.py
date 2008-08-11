@@ -34,13 +34,13 @@ def get_command_output(command):
     return data[:-1] # (skip '\n' at the end)
 
 def usage(cmd):
-    print "Usage: %s -s [--system=] -t [backup_time=] -p [--pnfs_version=]"%(cmd,)
+    print "Usage: %s -s [--system=] -t [backup_time=] -p [--postgres_version=]"%(cmd,)
     print "\t allowed systems: cms|cdf|d0|stk|eag"
     print "\t specify timestamp YYYY-MM-DD to get backup up to certain date" 
     versions=""
     for p in version2version.keys():
         versions=versions+p+","
-    print "\t allowed pnfs versions: "+versions[:-1]
+    print "\t allowed postgres versions: "+versions[:-1]
     
     
 def get_config(host):
