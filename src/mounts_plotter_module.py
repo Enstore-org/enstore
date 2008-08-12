@@ -14,6 +14,7 @@ import time
 # enstore imports
 import enstore_plotter_module
 import enstore_constants
+import enstore_stop
 
 WEB_SUB_DIRECTORY = enstore_constants.MOUNT_PLOTS_SUBDIR
 
@@ -189,8 +190,15 @@ class MountsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 			   port  = edb.get('db_port', 5432),
 			   user  = edb.get('dbuser', "enstore"))
 
-		res_lib = db.query("select distinct library from volume where media_type!='null'").getresult()
-		
+		# get list of library managers available in config and then select only those to plot
+		libraries = enstore_stop.find_servers_by_type(frame.get_configuration_client(), enstore_constants.LIBRARY_MANAGER)
+		q="select distinct library from volume where media_type!='null'"
+		if len(libraries) > 0 :
+			q = q + " and library in ('"+libraries[0].split('.')[0] +"'"
+			for l in libraries[1:]:
+				q = q + ",'"+l.split('.')[0]+"'"
+			q=q+")"
+		res_lib = db.query(q).getresult()
 		
 		self.libraries = {}
 		for row in res_lib:
