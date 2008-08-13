@@ -1350,13 +1350,20 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
              os.access(os.path.join(search_path, "usr", filepath), os.F_OK):
             filepath = os.path.join(search_path, "usr", filepath)
         else:
-            #If we get here then a mount point exists that belongs to
-            # a pnfs server that knows about the file, but it is not the
-            # correct mount point.  Instead of returning:
-            #   /pnfs/flake/encp_test/100KB_002
-            # you would get
-            #   flake/encp_test/100KB_002
-            pass
+            #One last thing to try, if an admin path is found, try it.
+            for amp in get_enstore_admin_mount_point(): #amp = Admin Mount Path
+                try_path = os.path.join(amp, filepath)
+                if os.access(try_path, os.F_OK):
+                    filepath = try_path
+                    break
+            else:
+                #If we get here then a mount point exists that belongs to
+                # a pnfs server that knows about the file, but it is not the
+                # correct mount point.  Instead of returning:
+                #   /pnfs/flake/encp_test/100KB_002
+                # you would get
+                #   flake/encp_test/100KB_002
+                pass
 
         if not id:
             self.path = filepath

@@ -1218,10 +1218,6 @@ def check_bit_file(bfid, bfid_info = None):
 
     prefix = bfid
 
-    #If this gets set to True later on, then this bfid points to a multiple
-    # copy.  Some checks need to be skipped if true.
-    is_multiple_copy = False
-
     if not bfid:
         err.append("no bifd given")
         errors_and_warnings(prefix, err, warn, info)
@@ -1252,6 +1248,12 @@ def check_bit_file(bfid, bfid_info = None):
         info.append("deleted=unknown")
         errors_and_warnings(prefix, err, warn, info)
         return
+
+    #Determine if this file is a multiple copy.
+    if bfid != infc.find_original(bfid)['original']:
+        is_multiple_copy = True
+    else:
+        is_multiple_copy = False
 
     # we can not simply skip deleted files
     #
@@ -1285,7 +1287,8 @@ def check_bit_file(bfid, bfid_info = None):
         elif file_record['deleted'] in ['yes', 'unknown'] and \
             msg.errno == errno.EEXIST and \
             msg.args[1] in ["replaced with newer file",
-                            "replaced with another file"]:
+                            "replaced with another file",
+                            "found original of copy"]:
             # The bfid is not active, and it is not active in pnfs.
             info.append(msg.args[1])
         else:
@@ -1375,7 +1378,7 @@ def check_file(f, file_info):
     #Skip blacklisted files.
     if fname[:4] == '.bad':
         info.append("marked bad")
-        return err, warn, info #Non-lists skips any output.
+        #return err, warn, info #Non-lists skips any output.
 
     #Get the correct/current pnfsid for this file.
     pnfs_id = get_pnfsid(f)[0]
@@ -1471,8 +1474,9 @@ def check_file(f, file_info):
 
     #Look for missing pnfs information.
     try:
-        if bfid != layer4['bfid']:
-            err.append('bfid(%s, %s)' % (bfid, layer4['bfid']))
+        if not is_multiple_copy:
+            if bfid != layer4['bfid']:
+                err.append('bfidsdf(%s, %s)' % (bfid, layer4['bfid']))
     except (TypeError, ValueError, IndexError, AttributeError, KeyError):
     	age = time.time() - f_stats[stat.ST_MTIME]
         if age < ONE_DAY:

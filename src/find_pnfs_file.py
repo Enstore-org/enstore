@@ -166,9 +166,18 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                                           (layer1_bfid, alt_layer1_bfid)
                                 raise OSError(errno.EBADF, message,
                                               tmp_name_list[0])
-                            
-                            raise OSError(errno.EEXIST, "pnfs entry exists",
-                                          pnfsid)
+
+                            #Remember, that in order to get this far the
+                            # file needs to be marked deleted in the file
+                            # db, thus both cases are both errors.
+                            if not is_multiple_copy:
+                                raise OSError(errno.EEXIST,
+                                              "pnfs entry exists",
+                                              pnfsid)
+                            else:
+                                raise OSError(errno.EEXIST,
+                                              "found original of copy",
+                                              pnfsid)
                         else:
                             raise OSError(errno.EIO, "to many matches",
                                           tmp_name_list)
@@ -461,7 +470,8 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 if detail.errno  in [errno.EBADFD, errno.EIO]:
                     raise OSError(errno.EIO, "orphaned file", pnfsid)
                 else:
-                    raise sys.exc_info()
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
         else:
             pnfs_path = use_name
     else:
