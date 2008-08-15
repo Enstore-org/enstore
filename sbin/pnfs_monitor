@@ -8,15 +8,17 @@
 #Make sure to set a timeout.
 timeout='--timeout 10 --retries 3'
 file_fallback='--file-fallback' #Set this for SDE.
+PNFS_CONFIG_FILE='/usr/etc/pnfsSetup'
 
 get_recent_pnfsids()
 {
     db_name=$1
     fname=/tmp/recent_pnfids_${db_name}
+    db_user=$2
 
     sql_txt="SELECT date,encode(pnfsid,'hex') as pnfsid from pnfs where date > CURRENT_TIMESTAMP - interval '49 hours' and date < CURRENT_TIMESTAMP - interval '24 hours';"
 
-    psql -ae -o $fname $db_name -U enstore -c "$sql_txt" > /dev/null
+    psql -ae -o $fname $db_name -U $db_user -c "$sql_txt" > /dev/null
     if [ $? -ne 0 ]; then
        echo "psql command failed" 1>&2
        exit 1
@@ -26,7 +28,7 @@ get_recent_pnfsids()
 
 get_pnfs_dbs()
 {
-    pnfs_location=`egrep "^pnfs=" /usr/etc/pnfsSetup | cut -f 2 -d "="`
+    pnfs_location=`egrep "^pnfs=" $PNFS_CONFIG_FILE | cut -f 2 -d "="`
     if [ -z "$pnfs_location" ]; then
 	echo "Unable to find pnfs installation." 1>&2
 	exit 1
@@ -38,7 +40,7 @@ get_pnfs_dbs()
     fi
 
 
-    $mdb status | sed '1,2d' | awk '{print $2}' | egrep -v 'admin'
+    $mdb status | sed '1,2d' | awk '{print $6}' | sed 's:.*/::' | egrep -v 'admin'
 }
 
 parse_id()
@@ -355,11 +357,11 @@ if [ $? -ne 0 -o -z "$www_alias" ]; then
 fi
 
 #Verify that we can find pnfs.
-if [ ! -f /usr/etc/pnfsSetup ]; then
-   echo "Unable to find /usr/etc/pnfsSetup file." 1>&2
+if [ ! -f $PNFS_CONFIG_FILE ]; then
+   echo "Unable to find $PNFS_CONFIG_FILE file." 1>&2
    exit 1
 fi
-trash_location=`egrep "^trash=" /usr/etc/pnfsSetup | cut -f 2 -d "="`
+trash_location=`egrep "^trash=" $PNFS_CONFIG_FILE | cut -f 2 -d "="`
 if [ -z "$trash_location" ]; then
    echo "Unable to find pnfs installation." 1>&2
    exit 1
@@ -393,6 +395,12 @@ if [ $? -ne 0 -o -z "$web_node" ]; then
     exit 1
 fi
 
+#Grab the postres username from the pnfs configurationn file.
+db_user=`egrep -o "user=[a-zA-Z0-9]*" /usr/etc/pnfsSetup | cut -f 2 -d "="`
+if [ -z "$db_user" ]; then
+   db_user=`postgres`
+fi
+
 #
 # Loop over the all of the pnfs databases (excluding admin).
 #
@@ -400,7 +408,7 @@ db_list=`get_pnfs_dbs | sort`
 for db_name in `echo $db_list`; do
 
     #Put the recent pnfsids in the /tmp/recent_pnfids_${db_name} file.
-    get_recent_pnfsids $db_name
+    get_recent_pnfsids $db_name $db_user
     #The output is in /tmp/recent_pnfids_${db_name}.  #Remove the 2 header
     # lines for this step, the row total line and any empty lines.
     cat /tmp/recent_pnfids_${db_name} | sed '1,2d' | grep -v " rows" | sed '/^$/d' > $TEMP_FILE_NEW
