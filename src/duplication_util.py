@@ -9,7 +9,7 @@ import e_errors
 import file_clerk_client
 import volume_clerk_client
 import pnfs
-import enstore_functions4
+import find_pnfs_file
 
 class DuplicationManager:
 	def __init__(self, csc = None):
@@ -71,7 +71,7 @@ class DuplicationManager:
 		try:
 			# get the real path			
 			#pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f1['pnfsid'])
-			pnfs_path = enstore_functions4.find_pnfsid_path(
+			pnfs_path = find_pnfs_file.find_pnfsid_path(
 				f1['pnfsid'], f1['bfid'], file_record = f1)
 		except (KeyboardInterrupt, SystemExit):
 			raise (sys.exc_info()[0],
@@ -145,7 +145,7 @@ class DuplicationManager:
 		try:
 			# get the real path			
 			#pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
-			pnfs_path = enstore_functions4.find_pnfsid_path(
+			pnfs_path = find_pnfs_file.find_pnfsid_path(
 				f['pnfsid'], f['bfid'], file_record = f)
 		except (KeyboardInterrupt, SystemExit):
 			raise (sys.exc_info()[0],
