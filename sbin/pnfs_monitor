@@ -241,6 +241,9 @@ check_pnfsids()
 	#Seperate the time and pnfsid.  Remove leading and trailing whitespace.
 	timestamp=`echo $line | cut -f 1 -d"|" | sed -e 's/^ //' -e 's/ $//'`
 	pnfsid=`echo $line | cut -f 2 -d"|" | sed -e 's/^ //' -e 's/ $//'`
+	#Kick it to upper case so enstore pnfs commands will recognized it
+	# as a pnfsid.
+	pnfsid=`echo $pnfsid | tr '[a-z]' '[A-Z]'`
 
 	if [ -z "$timestamp" -o -z "$pnfsid" ]; then
 	    continue
