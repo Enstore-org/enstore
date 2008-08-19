@@ -315,8 +315,19 @@ def do_work(intf):
 #           tuples containing the sub-plot-directories and the description
 #           of the plots.
 def make_plot(full_subdir_path, url_gif_dir, plot_name, links_l = None):
+
+    #Append the plots filename that will be created in this directory.
     plot_file = os.path.join(full_subdir_path,
                              enstore_files.plot_html_file_name())
+
+    #For all the link dirs, we need to append the plots filename that
+    # will be created in this directory.
+    use_links_l = []
+    if links_l:
+        for link_dir,link_name in links_l:
+            use_links_l.append((os.path.join(link_dir,
+                                         enstore_files.plot_html_file_name()),
+                               link_name))
 
     #Override use of system_tag to contain the name of the plot page.
     system_tag = plot_name
@@ -326,7 +337,7 @@ def make_plot(full_subdir_path, url_gif_dir, plot_name, links_l = None):
     # get the list of stamps and jpg files
     (jpgs, stamps, pss) = enstore_plots.find_jpg_files(full_subdir_path)
     mount_label = "" #???
-    html_of_plots.write(jpgs, stamps, pss, mount_label, links_l)
+    html_of_plots.write(jpgs, stamps, pss, mount_label, use_links_l)
     html_of_plots.close()
     html_of_plots.install()
 
@@ -370,8 +381,11 @@ def do_work2(intf):
          "Bytes/Day per Mover Plots"),
         (enstore_constants.XFER_SIZE_PLOTS_SUBDIR,
          "Xfer size per Storage Group Plots"),
+        (enstore_constants.MIGRATION_SUMMARY_PLOTS_SUBDIR,
+         "Migration/Duplication Summary Plots per Media Type"),
         ]
 
+    use_subdir_list = []
     #Loop over all the plot subdirs making pages.
     for subdir, plot_name in subdir_description_list:
         full_subdir_path = os.path.join(plots_subdir, subdir)
@@ -384,9 +398,10 @@ def do_work2(intf):
 
         make_plot(full_subdir_path, url_dir, plot_name)
 
+        use_subdir_list.append((subdir, plot_name))
+
     #Create the top plot page.
-    make_plot(full_subdir_path, url_dir, "Enstore Plots",
-              subdir_description_list)
+    make_plot(plots_subdir, url_dir, "Enstore Plots", use_subdir_list)
     
 #########################################################################
 #  END OF NEW WAY
