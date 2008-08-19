@@ -8830,7 +8830,7 @@ def create_read_request(request, file_number,
             fc_reply = request['fc']
             vc_reply = request['vc']
 
-            #Get the file posistion (aka file number) of the current
+            #Get the file position (aka file number) of the current
             # file on the tape and the name it will have.
             #These two variables should only be used withing the e.volume
             # if statement.  After that their use would break usability
@@ -9129,7 +9129,7 @@ def create_read_request(request, file_number,
             label = fc_reply['external_label'] #short cut for readablility
         except (KeyError, ValueError, TypeError, AttributeError, IndexError):
             raise EncpError(None,
-                            "File clerk resonce did not contain an " \
+                            "File clerk responce did not contain an " \
                             "external label.",
                             e_errors.KEYERROR,
                             {'fc' : fc_reply, 'vc' : vc_reply,
