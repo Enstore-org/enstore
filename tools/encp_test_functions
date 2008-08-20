@@ -131,7 +131,7 @@ absfile()
 #transfer file
 transfer()
 {
-    encp=`eval echo $1`
+    encp_cmd=$1  #`eval echo $1`
     infile=`eval echo $2`
     outfile=`eval echo $3`
     cleanup=`eval echo $4`
@@ -139,7 +139,7 @@ transfer()
     message=`eval echo $6`
     direction=`eval echo $7`
 
-    #echo ENCP $encp
+    #echo ENCP $encp_cmd
     #echo INPUT $infile
     #echo OUTPUT $outfile
     #echo INCLEANUP $cleanup
@@ -147,8 +147,8 @@ transfer()
     #echo MESSAGE $message
     #echo DIRECTION $direction
 
-    #echo "encp $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT"
-    $encp $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
+    #echo "$encp_cmd $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT" | tee $ENCP_OUTPUT 2>&1
+    eval $encp_cmd $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
 
     rtn=$?
     if [ "$rtn" -gt 0 ]; then
@@ -344,6 +344,8 @@ data_access_layer_test()
     grep INFILE "$ENCP_OUTPUT" | grep "$infiles" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
 	echo $message "TEST FAILED ON INFILE"
+	grep INFILE "$ENCP_OUTPUT"
+	echo Expected: "$infiles"
 	rm -f $cleanupfiles || setuid rm -f $cleanupfiles
 	exit 1
     fi
@@ -353,6 +355,8 @@ data_access_layer_test()
     grep OUTFILE "$ENCP_OUTPUT" | grep "$outfiles" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
 	echo $message "TEST FAILED ON OUTFILE"
+	grep OUTFILE "$ENCP_OUTPUT"
+	echo Expected: "$outfiles"
 	rm -f $cleanupfiles || setuid rm -f $cleanupfiles
 	exit 1
     fi
@@ -362,6 +366,8 @@ data_access_layer_test()
     grep LABEL "$ENCP_OUTPUT" | grep "$volume" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
 	echo $message "TEST FAILED ON VOLUME"
+	grep LABEL "$ENCP_OUTPUT"
+	echo Expected: "$volume"
 	rm -f $cleanupfiles || setuid rm -f $cleanupfiles
 	exit 1
     fi
@@ -371,10 +377,11 @@ data_access_layer_test()
     lc=`grep LOCATION "$ENCP_OUTPUT" | tail -n 1 | sed 's/LOCATION=//' | wc -m`
     if [ $lc -eq 0 ]; then
 	echo $message "TEST FAILED ON LOCATION"
+	grep LOCATION "$ENCP_OUTPUT"
+	echo Expected: non-empty string
 	rm -f $cleanupfiles || setuid rm -f $cleanupfiles
 	exit 1
     fi
-
 }
 
 enstore_check_test()
@@ -884,6 +891,8 @@ volume_read_test()
 
     truncate_encp_output
 
+    encp='encp --skip-deleted-files'
+
     #Snag a volume_read_test volume.
     volumes=`enstore info --query "select label from volume where file_family = 'volume_read_test' and label not like '%.deleted' ;" | sed '1,2d'`
     if [ -z "$volumes" ]; then
@@ -894,7 +903,7 @@ volume_read_test()
 
 	outname=/dev/null
 
-	transfer encp '' '$outname' "" "--volume $volume" "$section" READ
+	transfer "$encp" '' '$outname' "" "--volume $volume" "$section" READ
     fi
 }
 
@@ -1060,4 +1069,48 @@ pnfs_agent_read_write_test()
     #Make sure kshell is enabled on the target node.
     rsh $PNFS_HOSTNAME "rm -f $pnfsname" > /dev/null 2>&1
     rm -f $outname
+}
+
+pipe_write_test()
+{
+    section="PIPE WRITE"
+    print_test_name $section
+
+    truncate_encp_output
+
+    #Snag a random file.
+    filelist=`get_file_list "$LOCAL_INPUT_DIR"`
+    if [ -z "$filelist" ]; then
+	echo "Input directory empty.  Skipping test and continuing."
+    else
+	filename=`pick_random_files 1 $filelist`
+	basename=`basename $filename`
+	pnfsname=`echo ${PNFS_AGENT_OUTPUT_DIR}/$basename`
+	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	encp='echo tttt | encp'
+	
+	#First test that encp ingnores the standard in pipe when simulating
+	# a cron environment.
+	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE
+
+	test_layer "$pnfsname" "$section"
+	enstore_check_test '$pnfsname' '$pnfsname' "$section"
+	
+	transfer encp "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
+
+	rm -f $outname
+	rm -f $pnfsname
+
+	#Second test that encp reads from standard in when there is not
+	# an input file on the command line and standard in is a pipe.
+	transfer "$encp" "" "$pnfsname" "$pnfsname" "" "$section" WRITE
+
+	test_layer '$pnfsname' "$section"
+	enstore_check_test '$pnfsname' '$pnfsname' "$section"
+	
+	transfer encp "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
+
+	rm -f $outname
+	rm -f $pnfsname
+    fi
 }
