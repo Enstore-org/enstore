@@ -1114,7 +1114,10 @@ def do_layers_exist(pnfs_filename):
 #As the name implies remove layers 1 and 4 for the indicated file.
 def clear_layers_1_and_4(work_ticket):
 
-    pnfs_filename = work_ticket.get('wrapper', {}).get('pnfsFilename', "")
+    if is_read(work_ticket):
+        pnfs_filename = work_ticket['infile']
+    else: #write
+        pnfs_filename = work_ticket['outfile']
     
     if not pnfs_filename:
         return False
@@ -2120,7 +2123,6 @@ def check_library(library, e):
 ############################################################################
 
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
-
     if data_access_layer_requested < 0:
         return
 
@@ -2225,10 +2227,10 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         inputfile = inputfile[0]
 
     #Secondary information source to use.
-    if not inputfile and ticket.get('infile', None):
-        inputfile = ticket['infile']
-    if not outputfile and ticket.get('outfile', None):
-        outputfile = ticket['outfile']
+    if not inputfile and ticket.get('infilepath', None):
+        inputfile = ticket['infilepath']
+    if not outputfile and ticket.get('outfilepath', None):
+        outputfile = ticket['outfilepath']
     if filesize == None and ticket.get('filesize', None):
         filesize = ticket['filesize']
     #These three values work out better if they are empty strings rather than
@@ -3345,7 +3347,15 @@ def create_zero_length_pnfs_files(filenames, e = None):
                         f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
                         #The pnfs id is used to track down the new paths
                         # to files that were moved before encp completes.
-                        f['fc']['pnfsid'] = pnfs.Pnfs(fname).get_id()
+                        pnfs_id = pnfs.Pnfs(fname).get_id()
+                        f['fc']['pnfsid'] = pnfs_id
+                        #The access name will allow for more efficent
+                        # error handling.  Then do a switcheroo with the
+                        # access name versus the normal name for cleanup.
+                        f['outfile'] = pnfs.access_file(os.path.dirname(fname),
+                                                        pnfs_id)
+                        delete_at_exit.register(f['outfile'])
+                        delete_at_exit.unregister(fname)
 
                     os.close(fd)
                     local_errno = 0
@@ -4306,7 +4316,7 @@ def submit_one_request(ticket, encp_intf):
         # If so, skip getting a new value.
         if not encp_intf.output_file_family_width:
             try:
-                dname = get_directory_name(ticket['wrapper']['pnfsFilename'])
+                dname = get_directory_name(ticket['outfile']) #only for writes.
                 if encp_intf.outtype == RHSMFILE:
                     t = get_pac()
                 else:
@@ -4324,10 +4334,12 @@ def submit_one_request(ticket, encp_intf):
     try:
         if is_write(ticket):
             transfer_type = "write"
-            filename = ticket['outfile']
+            filename = ticket['outfilepath']   #ticket['outfile']
         else:
             transfer_type = "read"
-            filename = ticket['infile']
+            #Since, this is just for show use the fullpath name, not
+            # any .(access)() shortcut names.
+            filename = ticket['infilepath']    #ticket['infile']
 
         if filename == "":
             filename = "unknown filename"
@@ -4373,6 +4385,8 @@ def submit_one_request(ticket, encp_intf):
 
     Trace.message(TICKET_1_LEVEL, "LM SUBMISSION TICKET:")
     Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
+
+    pprint.pprint(ticket)
 
     if is_read(ticket):
         response_ticket = lmc.read_from_hsm(ticket)
@@ -4448,6 +4462,8 @@ def open_local_file(work_ticket, tinfo, e):
         # permissions might be needed later (i.e. --ecrc).
         flags = os.O_RDWR
 
+    #We don't need to worry about using the .(access)() vs true filename.
+    #  This will always be an non-pnfs file.
     filename = work_ticket['wrapper']['fullname']
 
     #Try to open the local file for read/write.
@@ -4503,8 +4519,8 @@ def open_local_file(work_ticket, tinfo, e):
 
     done_ticket = {'status':(e_errors.OK, None), 'fd':local_fd}
 
-    Trace.message(TRANSFER_LEVEL, "Output file %s opened.  elapsed=%s" %
-                  (work_ticket['outfile'],
+    Trace.message(TRANSFER_LEVEL, "Local file %s opened.  elapsed=%s" %
+                  (filename,
                    time.time() - tinfo['encp_start_time']))
         
     #Record this.
@@ -4627,7 +4643,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
     transfer_start_time = time.time() # Start time of file transfer.
 
     Trace.message(TRANSFER_LEVEL, "Starting %s transfer.  elapsed=%s" %
-                  (request['infile'],
+                  (request['infilepath'],
                   time.time() - tinfo['encp_start_time'],))
 
     #Read/Write in/out the data to/from the mover and write/read it out to
@@ -4759,11 +4775,11 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
     if e_errors.is_ok(EXfer_ticket):
         # Print a sucess message.
         Trace.message(TRANSFER_LEVEL, "File %s transfered.  elapsed=%s" %
-                      (request['infile'],
+                      (request['infilepath'],
                        time.time()-tinfo['encp_start_time']))
 
         Trace.log(e_errors.INFO, "File %s transfered for %s in %s seconds." %
-                  (request['infile'], request['unique_id'],
+                  (request['infilepath'], request['unique_id'],
                    time.time() - transfer_start_time))
 
         # Print an additional timming value.
@@ -4775,7 +4791,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
     else:
         Trace.log(e_errors.WARNING,
                   "File %s transfer attempt done for %s after %s seconds." %
-                  (request['infile'], request['unique_id'],
+                  (request['infilepath'], request['unique_id'],
                    time.time() - transfer_start_time))
 
     #Even though the functionality is there for this to be done in
@@ -4951,10 +4967,16 @@ def check_crc_readback(done_ticket, fd):
 
 def check_crc_layer2(done_ticket, encp_crc_1_seeded):
     layer2_crc_start_time = time.time()
+
+    if is_read(done_ticket):
+        pnfs_filename = done_ticket['infile']
+    else: #write
+        pnfs_filename = done_ticket['outfile']
+    
     try:
         # Get the pnfs layer 2 for this file.
-	p = Pnfs(done_ticket['wrapper']['pnfsFilename'])
-	data = p.readlayer(2, done_ticket['wrapper']['pnfsFilename'])
+	p = Pnfs(pnfs_filename)
+	data = p.readlayer(2, pnfs_filename)
     except (IOError, OSError, TypeError, AttributeError):
         #There is no layer 2 to check.  Skip the rest of the check.
 	#If there are ever any later checks added, this return is bad.
@@ -5045,8 +5067,13 @@ def verify_file_size(ticket, encp_intf = None):
         return
 
     try:
+        if is_read(ticket):
+            pnfs_filename = ticket['infile']
+        else: #write
+            pnfs_filename = ticket['outfile']
+        
         p = Pnfs()
-        pnfs_stat = p.get_stat(ticket['wrapper'].get('pnfsFilename', None))
+        pnfs_stat = p.get_stat(pnfs_filename)
         pnfs_filesize = pnfs_stat[stat.ST_SIZE]
         pnfs_inode = pnfs_stat[stat.ST_INO]
     except (TypeError), detail:
@@ -5097,8 +5124,13 @@ def verify_file_size(ticket, encp_intf = None):
         #Until pnfs supports NFS version 3 (for large file support) make
         # sure we are using the correct file_size for the pnfs side.
         try:
-            p = Pnfs(ticket['wrapper']['pnfsFilename'])
-            pnfs_real_size = p.get_file_size(ticket['wrapper']['pnfsFilename'])
+            if is_read(ticket):
+                pnfs_filename = ticket['infile']
+            else: #write
+                pnfs_filename = ticket['outfile']
+            
+            p = Pnfs(pnfs_filename)
+            pnfs_real_size = p.get_file_size(pnfs_filename)
         except (OSError, IOError), detail:
             ticket['status'] = (e_errors.OSERROR, str(detail))
             return
@@ -5142,8 +5174,13 @@ def verify_inode(ticket):
         return
     
     try:
-        p = Pnfs(ticket['wrapper'].get('pnfsFilename', None))
-        pnfs_stat = p.get_stat(ticket['wrapper'].get('pnfsFilename', None))
+        if is_read(ticket):
+            pnfs_filename = ticket['infile']
+        else: #write
+            pnfs_filename = ticket['outfile']
+        
+        p = Pnfs(pnfs_filename)
+        pnfs_stat = p.get_stat(pnfs_filename)
         #pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
         pnfs_inode = pnfs_stat[stat.ST_INO]
     except (TypeError), detail:
@@ -5188,11 +5225,12 @@ def set_outfile_permissions(ticket):
             try:
                 #handle remote file case
                 perms = None
-                p = Pnfs(ticket['wrapper']['pnfsFilename'])
                 if is_write(ticket):
+                    p = Pnfs(ticket['outfile'])
                     perms = os.stat(ticket['infile'])[stat.ST_MODE]
                     p.chmod(perms, ticket['outfile'])
                 else:
+                    p = Pnfs(ticket['infile'])
                     perms = p.get_stat(ticket['infile'])[stat.ST_MODE]
                     os.chmod(ticket['outfile'], perms)
                 ticket['status'] = (e_errors.OK, None)
@@ -5228,7 +5266,7 @@ def finish_request(done_ticket, request_list, index):
         else:
             #Tell the user what happend.
             message = "File %s copied successfully." % \
-                      (done_ticket['outfile'],)
+                      (done_ticket['outfilepath'],)
             Trace.message(e_errors.INFO, message)
             Trace.log(e_errors.INFO, message)
 
@@ -5345,6 +5383,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # exist (although some situations will add others).
     infile = request_dictionary.get('infile', '')
     outfile = request_dictionary.get('outfile', '')
+    infile_print = request_dictionary.get('infilepath', '')
+    outfile_print = request_dictionary.get('outfilepath', '')
     file_size = request_dictionary.get('file_size', 0)
     retry = request_dictionary.get('resend', {}).get('retry', 0)
     resubmits = request_dictionary.get('resend', {}).get('resubmits', 0)
@@ -5579,7 +5619,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             try:
                 Trace.log(e_errors.INFO,
                           "Clearing layers 1 and 4 for file %s (%s): %s" %
-                          (outfile, request_dictionary.get('unique_id', None),
+                          (outfile_print, request_dictionary.get('unique_id', None),
                            str(pf_status)))
                 p = Pnfs(outfile)
                 p.writelayer(1, "", outfile)
@@ -5594,7 +5634,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     if max_submits != None and resubmits >= max_submits \
        and status[0] == e_errors.RESUBMITTING:
         Trace.message(ERROR_LEVEL,
-                      "To many resubmissions for %s -> %s."%(infile,outfile))
+                      "To many resubmissions for %s -> %s." % (infile_print,
+                                                               outfile_print))
         status = (e_errors.TOO_MANY_RESUBMITS, status)
 
     #If the transfer has failed too many times, remove it from the queue.
@@ -5604,7 +5645,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
        and e_errors.is_retriable(status) \
        and status[0] != e_errors.RESUBMITTING:
         Trace.message(ERROR_LEVEL,
-                      "To many retries for %s -> %s."%(infile,outfile))
+                      "To many retries for %s -> %s." % (infile_print,
+                                                         outfile_print))
         status = (e_errors.TOO_MANY_RETRIES, status)
 
     #If we can an error (for example TCP_EXCEPTION), that does not result
@@ -5616,7 +5658,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
              and e_errors.is_retriable(status) \
              and status[0] != e_errors.RESUBMITTING:
         Trace.message(ERROR_LEVEL,
-                      "Treating error like resubmit for %s -> %s."%(infile,outfile))
+                      "Treating error like resubmit for %s -> %s." % \
+                      (infile_print, outfile_print))
         status = (e_errors.RESUBMITTING, status)
 
     #For reads only when a media error occurs.
@@ -5674,8 +5717,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #By checking those that aren't of significant length, we only
         # print these out on writes.
         if len(request_dictionary) > 3:
-            print_data_access_layer_format(infile, outfile, file_size,
-                                           error_dictionary)
+            print_data_access_layer_format(infile_print, outfile_print,
+                                           file_size, error_dictionary)
             #If error_dictionary is the same dictionary as request_dictionary
             # then the following line is redundant as
             # print_data_access_layer_format() has already set it.
@@ -5684,7 +5727,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             # more than currently used.
             request_dictionary['data_access_layer_printed'] = 1
         
-        alarm_dict = {'infile':infile, 'outfile':outfile, 'status':status[1]}
+        alarm_dict = {'infile':infile_print, 'outfile':outfile_print,
+                      'status':status[1]}
         if e_errors.is_emailable(status[0]):
             storage_group = \
                           request_dictionary.get('vc', {}).get('storage_group',
@@ -6042,8 +6086,8 @@ def calculate_rate(done_ticket, tinfo):
                      #"'driver' : '%s', 'storage_group':'%s', " \
                      #"'encp_ip': '%s', 'unique_id': '%s'}"
 
-        print_values = (done_ticket['infile'],
-                        done_ticket['outfile'],
+        print_values = (done_ticket['infilepath'],
+                        done_ticket['outfilepath'],
                         done_ticket['file_size'],
                         preposition,
                         done_ticket["fc"]["external_label"],
@@ -6080,8 +6124,8 @@ def calculate_rate(done_ticket, tinfo):
             }
 
         log_values = (done_ticket['work'],
-                      done_ticket['infile'],
-                      done_ticket['outfile'],
+                      done_ticket['infilepath'],
+                      done_ticket['outfilepath'],
                       done_ticket['file_size'],
                       preposition,
                       done_ticket["fc"]["external_label"],
@@ -6153,8 +6197,8 @@ def calculate_rate(done_ticket, tinfo):
 
         acc = get_acc()
 	acc.log_encp_xfer(None,
-                          done_ticket['infile'],
-                          done_ticket['outfile'],
+                          done_ticket['infilepath'],
+                          done_ticket['outfilepath'],
                           done_ticket['file_size'],
                           done_ticket["fc"]["external_label"],
                           #The accounting db expects the rates in bytes
@@ -6393,14 +6437,22 @@ def set_pnfs_settings(ticket, intf_encp):
 
     location_start_time = time.time() # Start time of verifying pnfs file.
 
+    if is_read(ticket):
+        pnfs_filename = ticket['infile']
+    else: #write
+        pnfs_filename = ticket['outfile']
+
     #Make sure the file is still there.  This check is done with
     # access_check() because it will loop incase pnfs is automounted.
     # If the return is zero, then it wasn't found.
     #Note: There is a possible race condition here if the file is
     #      (re)moved after it is determined to remain in the original
     #      location, but before the metadata is set.
-    
-    if access_check(ticket['wrapper']['pnfsFilename'], os.F_OK) == 0:
+    #Note2: Now that pnfs_filename should only contain the .(access)()
+    # name at this point, most of the detection of where the file located
+    # now is largely obsolete.
+
+    if access_check(pnfs_filename, os.F_OK) == 0:
         #With the remembered pnfsid, try to find out where it was moved to
         # if it was in fact moved.
         pnfsid = ticket['fc'].get('pnfsid', None)
@@ -6410,11 +6462,11 @@ def set_pnfs_settings(ticket, intf_encp):
                        or intf_encp.intype == RHSMFILE: #intype for "get".
                     p = get_pac()
                     path = p.get_path(pnfsid,
-                     get_directory_name(ticket['wrapper']['pnfsFilename']),
+                     get_directory_name(pnfs_filename),
                                       shortcut = intf_encp.shortcut)[0]
                 else:   # HSMFILE
                     p = pnfs.Pnfs(pnfsid,
-                     get_directory_name(ticket['wrapper']['pnfsFilename']),
+                     get_directory_name(pnfs_filename),
                                   shortcut = intf_encp.shortcut)
                     path = p.get_path()[0]  #Find the new path.
                 Trace.log(e_errors.INFO,
@@ -6452,7 +6504,7 @@ def set_pnfs_settings(ticket, intf_encp):
             return
 
         try:
-            p = Pnfs(ticket['wrapper']['pnfsFilename'])
+            p = Pnfs(pnfs_filename)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -6485,8 +6537,7 @@ def set_pnfs_settings(ticket, intf_encp):
                       ticket["fc"]["bfid"])
         try:
             # save the bfid
-            p.set_bit_file_id(ticket["fc"]["bfid"],
-                              ticket['wrapper']['pnfsFilename'])
+            p.set_bit_file_id(ticket["fc"]["bfid"], pnfs_filename)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -6526,7 +6577,7 @@ def set_pnfs_settings(ticket, intf_encp):
         #Perform the following get functions; even if it is a copy.  These,
         # calls set values in the object that are used to also update
         # file db entires for copies.
-        pnfs_id = p.get_id(ticket['wrapper']['pnfsFilename'])
+        pnfs_id = p.get_id(pnfs_filename)
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
@@ -6558,14 +6609,14 @@ def set_pnfs_settings(ticket, intf_encp):
                 ticket["fc"]["location_cookie"],
                 ticket["fc"]["size"],
                 volume_family.extract_file_family(ticket["vc"]["volume_family"]),
-                ticket['wrapper']['pnfsFilename'],
+                ticket['wrapper']['pnfsFilename'],  #Normal path.
                 "", #p.volume_filepath,
                 pnfs_id,
                 "", #p.volume_fileP.id,
                 ticket["fc"]["bfid"],
                 drive,
                 crc,
-                filepath=ticket['wrapper']['pnfsFilename'])
+                filepath=pnfs_filename)             #.(access)() path
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -6646,7 +6697,7 @@ def set_pnfs_settings(ticket, intf_encp):
             if not intf_encp.put_cache:
                 #If the size is already set don't set it again.  Doing so
                 # would set the filesize back to zero.
-                pstat = p.get_stat(ticket['wrapper']['pnfsFilename'])
+                pstat = p.get_stat(pnfs_filename)
                 size = pstat[stat.ST_SIZE]
                 if long(size) == long(ticket['file_size']) or long(size) == 1L:
                     Trace.log(e_errors.INFO,
@@ -6655,8 +6706,7 @@ def set_pnfs_settings(ticket, intf_encp):
                                ticket['wrapper']['pnfsFilename']))
                 else:
                     # set the file size
-                    p.set_file_size(ticket['file_size'],
-                                    ticket['wrapper']['pnfsFilename'])
+                    p.set_file_size(ticket['file_size'], pnfs_filename)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except IOError, msg:
@@ -6834,7 +6884,10 @@ def create_write_request(work_ticket, file_number,
                               "Unable to find correct PNFS file.",
                               e_errors.PNFS_ERROR,
                               {'onfile' : ofullname_list})
-                
+
+            #Determine the access path name.
+            oaccessname = pnfs.access_file(get_directory_name(ofullname),
+                                           e.put_cache)
 
             unused, ifullname, unused, unused = fullpath(e.input[0])
             istatinfo = os.stat(ifullname)
@@ -6853,6 +6906,10 @@ def create_write_request(work_ticket, file_number,
             #inputfile_check(ifullname, e)
             
             ofullname = get_oninfo(ifullname, e.output[0], e)
+
+            #Determine the access path name.  (There isn't one yet, since
+            # the file has not been created.)
+            oaccessname = ofullname
 
             #The existence rules behind the output file are more
             # complicated than those of the input file.  We always need
@@ -7045,10 +7102,12 @@ def create_write_request(work_ticket, file_number,
         work_ticket['file_size'] = file_size
         work_ticket['ignore_fair_share'] = e.ignore_fair_share
         work_ticket['infile'] = ifullname
+        work_ticket['infilepath'] = ifullname
         work_ticket['local_inode'] = file_inode
         if udp_callback_addr: #For "put" only.
             work_ticket['method'] = "write_next"
-        work_ticket['outfile'] = ofullname
+        work_ticket['outfile'] = oaccessname
+        work_ticket['outfilepath'] = ofullname
         work_ticket['override_ro_mount'] = e.override_ro_mount
         work_ticket['resend'] = resend
         work_ticket['retry'] = None #LM legacy requirement.
@@ -7357,7 +7416,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
             #Trace.log(e_errors.WARNING, "unable to register bfid")
 
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
-                      (work_ticket['outfile'],
+                      (work_ticket['outfilepath'],
                        time.time()-tinfo['encp_start_time']))
 
         #Don't need these anymore.
@@ -7570,7 +7629,7 @@ def prepare_write_to_hsm(tinfo, e):
             try:
                 #Yet another os.stat() call.  In the future, need to work on
                 # getting rid of as many of these as possible.
-                pstat = os.stat(request_list[i]['wrapper']['pnfsFilename'])
+                pstat = os.stat(request_list[i]['outfile'])
                 request_list[i]['wrapper']['inode'] = long(pstat[stat.ST_INO])
             except OSError:
                 request_list[i]['wrapper']['inode'] = None
@@ -8064,7 +8123,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 
                     #In case pnfs is automounted, first try this access_check()
                     # call to wait for the filesystem to mount.
-                    access_check(request['wrapper']['pnfsFilename'], os.F_OK)
+                    access_check(request['infile'], os.F_OK)
                     (pnfs_volume,
                      pnfs_location_cookie,
                      pnfs_size,
@@ -8076,14 +8135,14 @@ def verify_read_request_consistancy(requests_per_vol, e):
                      pnfs_bfid,
                      unused, #Drive is ignored by encp.
                      pnfs_crc) \
-                    = p.get_xreference(request['wrapper']['pnfsFilename'])
+                    = p.get_xreference(request['infile'])
                 except (OSError, IOError), msg:
                     raise EncpError(getattr(msg, "errno", errno.EIO),
                                     str(msg), e_errors.PNFS_ERROR, request)
 
                 #If no layer 2 is present continue with the transfer.
                 try:
-                    data = p.readlayer(2, request['wrapper']['pnfsFilename'])
+                    data = p.readlayer(2, request['infile'])
                     dcache_crc, dcache_size = parse_layer_2(data)
                 except (OSError, IOError), msg:
                     dcache_crc, dcache_size = (None, None)
@@ -8798,7 +8857,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         # to get there.
         sys.stdout.flush()
         sys.stderr.flush()
-    
+
     return requests_per_vol
 
 
@@ -8861,7 +8920,7 @@ def create_read_request(request, file_number,
             if deleted_status != None and deleted_status != "no":
                 #If the user has specified the --skip-deleted-files switch
                 # then ignore this file and move onto the next.
-                if e.skip_deleted_files:
+                if getattr(e, "skip_deleted_files", None):
                     sys.stdout.write("Skipping deleted file (%s) %s.\n" %
                                      (number, filename))
                     #continue
@@ -8919,8 +8978,12 @@ def create_read_request(request, file_number,
             if ifullname == None:
                 ifullname = os.path.join(e.input[0], filename)
 
+            #Determine the access path name.
+            iaccessname = pnfs.access_file(get_directory_name(ifullname),
+                                           pnfsid)
+
             #Grab the stat info.
-            istatinfo = p.get_stat(ifullname)
+            istatinfo = p.get_stat(iaccessname)
                 
             #This is an attempt to deal with data that is incomplete
             # from a failed previous transfer.
@@ -9006,6 +9069,10 @@ def create_read_request(request, file_number,
                                     e_errors.PNFS_ERROR,
                                     {'infile' : ifullname_list})
 
+            #Determine the access path name.
+            iaccessname = pnfs.access_file(get_directory_name(ifullname),
+                                           pnfsid)
+
             if e.output[0] in ["/dev/null", "/dev/zero",
                                "/dev/random", "/dev/urandom"]:
                 ofullname = e.output[0]
@@ -9018,7 +9085,7 @@ def create_read_request(request, file_number,
                 # a deleted file using the bfid.
                 if ifullname:
                     try: 
-                        istatinfo = p.get_stat(ifullname)
+                        istatinfo = p.get_stat(iaccessname)
                     except (OSError, IOError), msg:
                         if msg.args[0] == errno.ENOENT:
                             istatinfo = None
@@ -9029,7 +9096,7 @@ def create_read_request(request, file_number,
                 else:
                     istatinfo = None
             else:
-                istatinfo = p.get_stat(ifullname)
+                istatinfo = p.get_stat(iaccessname)
 
             bfid = e.get_bfid
 
@@ -9055,10 +9122,14 @@ def create_read_request(request, file_number,
                               e_errors.PNFS_ERROR,
                               {'infile' : ifullname_list})
 
+            #Determine the access path name.
+            iaccessname = pnfs.access_file(get_directory_name(ifullname),
+                                           e.get_cache)
+
             #Grab the stat info.
-            istatinfo = p.get_stat(ifullname)
+            istatinfo = p.get_stat(iaccessname)
             
-            bfid = p.get_bit_file_id(ifullname)
+            bfid = p.get_bit_file_id(iaccessname)
 
             vc_reply, fc_reply = get_clerks_info(bfid, e)
 
@@ -9109,6 +9180,11 @@ def create_read_request(request, file_number,
                             {'infile' : ifullname, 'outfile' : ofullname,})
             
             vc_reply, fc_reply = get_clerks_info(bfid, e)
+            
+            #Determine the access path name.
+            iaccessname = pnfs.access_file(get_directory_name(ifullname),
+                                           fc_reply['pnfsid'])
+
 
             read_work = 'read_from_hsm'
 
@@ -9200,10 +9276,12 @@ def create_read_request(request, file_number,
         request['encp_daq'] = encp_daq
         request['fc'] = fc_reply
         request['file_size'] = file_size
-        request['infile'] = ifullname
+        request['infile'] = iaccessname   #For file access.
+        request['infilepath'] = ifullname #For reporting.
         if udp_callback_addr: #For "get" only.
             request['method'] = "read_next"
-        request['outfile'] = ofullname
+        request['outfile'] = ofullname    #For file access.
+        request['outfilepath'] = ofullname  #For reporting.
         #request['override_noaccess'] = e.override_noaccess #no to this
         request['override_ro_mount'] = e.override_ro_mount
         request['resend'] = resend
@@ -9447,7 +9525,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     tinfo[tstring] = lap_end - lap_start
 
     Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
-                  (request_ticket['infile'],
+                  (request_ticket['infilepath'],
                    time.time() - tinfo['encp_start_time']))
 
     #Verify that everything went ok with the transfer.
@@ -9978,6 +10056,7 @@ class EncpInterface(option.Interface):
         self.override_deleted = 0  # If the file has been deleted, this flag
                                    # will ignore the deleted status when
                                    # reading the file back.
+        self.skip_deleted_files = None #skip files marked deleted
         self.migration_or_duplication = None #Set true if the transfer is
                                    # called from migrate.py or duplicate.py.
 
@@ -10294,6 +10373,12 @@ class EncpInterface(option.Interface):
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.DEFAULT_VALUE:1,
                          option.USER_LEVEL:option.USER2,},
+        option.SKIP_DELETED_FILES:{option.HELP_STRING:
+                                   "Skip over deleted files.  "
+                                   "Used with --volume",
+                                   option.VALUE_USAGE:option.IGNORED,
+                                   option.VALUE_TYPE:option.INTEGER,
+                                   option.USER_LEVEL:option.USER,},
         option.STORAGE_GROUP:{option.HELP_STRING:
                                "Specify an alternative storage group to "
                                "override the pnfs strorage group tag "
@@ -10858,8 +10943,8 @@ def final_say(intf, done_ticket):
         err_msg = str(status) 
         
         #Determine the filename(s).
-        ifilename = done_ticket.get("infile", "")
-        ofilename = done_ticket.get("outfile", "")
+        ifilename = done_ticket.get("infilepath", "")
+        ofilename = done_ticket.get("outfilepath", "")
         if not ifilename and not ofilename:
             ifilename = intf.input
             ofilename = intf.output
@@ -10879,12 +10964,6 @@ def final_say(intf, done_ticket):
             Trace.alarm(e_errors.ERROR, status[0],
                         {'infile':ifilename, 'outfile':ofilename,
                          'status':status[1]})
-
-        ifilename = done_ticket.get("infile", "")
-        ofilename = done_ticket.get("outfile", "")
-        if not ifilename and not ofilename:
-            ifilename = intf.input
-            ofilename = intf.output
 
         if intf.data_access_layer or not e_errors.is_ok(status):            
             #We only want to print the data access layer if there was an error
