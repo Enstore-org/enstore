@@ -7214,7 +7214,7 @@ def stall_write_transfer(data_path_socket, control_socket, e):
             else:
                 status_ticket = {'status' : (e_errors.UNKNOWN,
                                              "No data written to mover.")}
-        except (select.error, e_errors.TCP_EXCEPTION):
+        except (select.error, socket.error, e_errors.TCP_EXCEPTION):
             status_ticket = {'status' : (e_errors.UNKNOWN,
                                          "No data written to mover.")}
         ### Why isn't there a return of here like there is in
@@ -7257,7 +7257,7 @@ def stall_write_transfer(data_path_socket, control_socket, e):
             else:
                 status_ticket = {'status' : (e_errors.UNKNOWN,
                                              "No data written to mover.")}
-        except (select.error, e_errors.TCP_EXCEPTION):
+        except (select.error, socket.error, e_errors.TCP_EXCEPTION):
             status_ticket = {'status' : (e_errors.UNKNOWN,
                                          "No data written to mover.")}
     else:
@@ -9370,7 +9370,7 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
             else:
                 status_ticket = {'status' : (e_errors.UNKNOWN,
                                              "No data read from mover.")}
-        except (select.error, e_errors.TCP_EXCEPTION):
+        except (select.error, socket.error, e_errors.TCP_EXCEPTION):
             status_ticket = {'status' : (e_errors.UNKNOWN,
                                          "No data read from mover.")}
 
@@ -9398,7 +9398,7 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
             else:
                 status_ticket = {'status' : (e_errors.UNKNOWN,
                                              "No data read from mover.")}
-        except (select.error, e_errors.TCP_EXCEPTION):
+        except (select.error, socket.error, e_errors.TCP_EXCEPTION):
             status_ticket = {'status' : (e_errors.UNKNOWN,
                                          "No data read from mover.")}
     else:
