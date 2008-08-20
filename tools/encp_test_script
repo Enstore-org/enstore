@@ -35,6 +35,7 @@ if [ $# -eq 0 ]; then
     data_access_layer_read_write_test=`expr 1`
     multiple_copies_read_write_test=`expr 1`
     pnfs_agent_read_write_test=`expr 1`
+    pipe_write_test=`expr 1`
 else
     single_read_test=`expr 0`
 #    single_stken_read_test=`expr 0`
@@ -56,6 +57,7 @@ else
     data_access_layer_read_write_test=`expr 0`
     multiple_copies_read_write_test=`expr 0`
     pnfs_agent_read_write_test=`expr 0`
+    pipe_write_test=`expr 0`
 
     for switch in $*; do
 	if [ "single_read_test" = $switch ]; then
@@ -117,6 +119,9 @@ else
 	fi
 	if [ "pnfs_agent_read_write_test" = $switch ]; then
 	    pnfs_agent_read_write_test=`expr 1`
+	fi
+	if [ "pipe_write_test" = $switch ]; then
+	    pipe_write_test=`expr 1`
 	fi
     done
 fi
@@ -266,4 +271,13 @@ fi
 ###
 if [ $pnfs_agent_read_write_test -eq 1 ]; then
     pnfs_agent_read_write_test
+fi
+
+###
+### PIPE WRITE TEST
+###
+if [ $pipe_write_test -eq 1 ]; then
+    #pipe_write_test
+    # Skip the pipe write test until the library manager supports it.
+    echo "Skipping Pipe Write Test"
 fi
