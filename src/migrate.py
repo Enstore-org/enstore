@@ -1890,8 +1890,8 @@ def final_scan_volume(vol, intf):
 	# make sure this is a migration volume
 	sg, ff, wp = string.split(v['volume_family'], '.')
 	if ff.find(MIGRATION_FILE_FAMILY_KEY) == -1:
-		migrate.error_log(MY_TASK, "%s is not a %s volume" %
-				  (vol, migrate.MIGRATION_NAME.lower()))
+		error_log(MY_TASK, "%s is not a %s volume" %
+			  (vol, migrate.MIGRATION_NAME.lower()))
 		return 1
 
 	q = "select bfid, pnfs_id, pnfs_path, src_bfid, location_cookie, deleted  \
@@ -1917,8 +1917,9 @@ def final_scan_volume(vol, intf):
                 ######################################################
 		# make sure the volume is the same
 		pf = pnfs.File(likely_path)
-		if pf.volume != vol:
-			error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf.volume, vol))
+		pf_volume = getattr(pf, "volume", None)
+		if pf_volume == None or pf_volume != vol:
+			error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf_volume, vol))
 			local_error = local_error + 1
 			continue
                 ######################################################
