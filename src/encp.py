@@ -998,6 +998,9 @@ def get_enstore_canonical_path(filepath):
     
 ############################################################################
 
+## mode is one of os.F_OK, os.W_OK, os.R_OK or os.X_OK.
+## file_stats is the return from os.stat()
+
 #The os.access() and the access(2) C library routine use the real id when
 # testing for access.  This function does the same thing but for the
 # effective ID.
@@ -1006,10 +1009,15 @@ def e_access(path, mode):
     #Test for existance.
     try:
         file_stats = os.stat(path)
-        stat_mode = file_stats[stat.ST_MODE]
     except OSError:
         return 0
+    
+    return __e_access(file_stats, mode)
 
+#Check the bits to see if we have the requested mode access.
+def __e_access(file_stats, mode):
+    stat_mode = file_stats[stat.ST_MODE]
+    
     #Make sure a valid mode was passed in.
     if mode & (os.F_OK | os.R_OK | os.W_OK | os.X_OK) != mode:
         return 0
@@ -2973,6 +2981,46 @@ def librarysize_check(work_ticket):
                         % (size, library, library_max),
                         e_errors.USERERROR, work_ticket)
 
+#Make sure that the tags contain sane values for writes.  Raises and exception
+# on error.
+def tag_check(work_ticket):
+    #Consistancy check for valid pnfs tag values.  These values are
+    # placed inside the 'vc' sub-ticket.
+    tags = ["file_family", "wrapper", "file_family_width",
+            "storage_group", "library"]
+    for key in tags:
+        if work_ticket.get('copy', None):
+            #If this is a copy request (via --copies), skip this check,
+            # since checking the original is good enough.  Otherwise,
+            # the lack of 'file_family' (becuase on copies it is
+            # original_file_family) would fail all copies.
+            break
+            
+        try:
+            #check for values that contain letters, digits and _.
+            if not charset.is_in_charset(str(work_ticket['vc'][key])):
+                raise EncpError(None,
+                                "Pnfs tag, %s, contains invalid "
+                                " characters." % (key,),
+                                e_errors.PNFS_ERROR)
+        except (ValueError, AttributeError, TypeError,
+                IndexError, KeyError), msg:
+            msg = "Error checking tag %s: %s" % (key, str(msg))
+            raise EncpError(None, str(msg), e_errors.USERERROR)
+
+    #Verify that the file family width is in fact a non-
+    # negitive integer.
+    try:
+        expression = int(work_ticket['vc']['file_family_width']) < 0
+        if expression:
+            raise ValueError,(e_errors.USERERROR,
+                              work_ticket['vc']['file_family_width'])
+    except ValueError:
+        msg="Pnfs tag, %s, requires a non-negitive integer value."\
+             % ("file_family_width",)
+        raise EncpError(None, str(msg), e_errors.USERERROR)
+
+
 # check the input file list for consistency
 def inputfile_check(input_files, e):
     # create internal list of input unix files even if just 1 file passed in
@@ -2982,12 +3030,12 @@ def inputfile_check(input_files, e):
         inputlist = [input_files]
 
     #Get the correct type of pnfs interface to use.
-    p = Pnfs()
+    #p = Pnfs()
 
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(0, len(inputlist)):
-        #If we already know for the tape read (--volume) that the file
-        # is foobar, then skip this test and move to the next.
+        #If we already know for the tape read (--volume) that the inputlist[i]
+        # filename is foobar, then skip this test and move to the next.
         if enstore_functions3.is_location_cookie(inputlist[i]) and e.volume:
             continue
             
@@ -3017,8 +3065,8 @@ def inputfile_check(input_files, e):
                 #For Reads make sure the filesystem size and the pnfs size
                 # match.  If the PNFS filesystem and layer 4 sizes are
                 # different, calling this function raises OSError exception.
-                if is_pnfs_path(inputlist[i]):
-                    p.get_file_size(inputlist[i])
+                #if is_read(e):
+                #    p.get_file_size(inputlist[i])
 
             # we cannot allow 2 input files to be the same
             # this will cause the 2nd to just overwrite the 1st
@@ -3038,6 +3086,328 @@ def inputfile_check(input_files, e):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     return
+
+def inputfile_check_pnfs(request_list, bfid_brand, e):
+    # create internal list of requests even if just 1 request passed in
+    if type(request_list) != types.ListType:
+        request_list = [request_list]
+
+    #Get the correct type of pnfs interface to use.
+    p = Pnfs()
+
+    # check the input unix file. if files don't exits, we bomb out to the user
+    for i in range(0, len(request_list)):
+
+        request = request_list[i]
+        
+        #If we already know for the tape read (--volume) that the inputlist[i]
+        # filename is foobar, then skip this test and move to the next.
+        if enstore_functions3.is_location_cookie(request_list[i]) and e.volume:
+            continue
+
+        try:
+
+            #If the file was requested by BFID, then check if it is an
+            # original or copy.
+            is_copy = False
+            if e.get_bfid:
+                fcc = get_fcc()
+                #Reminder: request['fc']['bfid'] would contains the copy bfid
+                # if this is a copy, request['bfid'] always contain
+                # the original bfid requested (which maybe original or copy).
+                fcc_response = fcc.find_original(request['fc']['bfid'],
+                                                 timeout=5, retry=2)
+                if e_errors.is_ok(fcc_response):
+                    if fcc_response['original'] != None:
+                        is_copy = True
+            #If copy N was specifically requested, then this is a copy.
+            elif e.copy:
+                is_copy = True
+
+
+            #First check if the file is deleted and the override deleted
+            # switch/flag has been specified by the user.
+            if not (e.override_deleted and
+                    request_list[i]['fc']['deleted'] != 'no'):
+
+                #For Reads make sure the filesystem size and the pnfs size
+                # match.  If the PNFS filesystem and layer 4 sizes are
+                # different, calling this function raises OSError exception.
+                if is_read(e):
+                    p.get_file_size(request_list[i]['infile'])
+                
+                #If no layer 4 is present, then report the error, raise an
+                # alarm, but continue with the transfer.
+                try:
+                    (pnfs_volume,
+                     pnfs_location_cookie,
+                     pnfs_size,
+                     pnfs_origff,
+                     pnfs_origname,
+                     unused, #Mapfile is obsolete.
+                     pnfsid_file,
+                     unused, #Mapfile pnfsid is obsolete.
+                     pnfs_bfid,
+                     unused, #Drive is ignored by encp.
+                     pnfs_crc) \
+                    = p.get_xreference(request_list[i]['infile'])
+                except (OSError, IOError), msg:
+                    raise EncpError(getattr(msg, "errno", errno.EIO),
+                                    str(msg), e_errors.PNFS_ERROR, request_list[i])
+
+                #If no layer 2 is present continue with the transfer.
+                try:
+                    data = p.readlayer(2, request_list[i]['infile'])
+                    dcache_crc, dcache_size = parse_layer_2(data)
+                except (OSError, IOError), msg:
+                    dcache_crc, dcache_size = (None, None)
+
+                #Determine if the pnfs layers and the file data are consistant.
+                rest = {}
+
+                #Start by getting the pnfs layer 4 information.
+                try:
+                    #pnfs_volume = p.volume
+                    if pnfs_volume == pnfs.UNKNOWN:
+                        rest['pnfs_volume'] = p.volume
+                except AttributeError:
+                    pnfs_volume = None
+                    rest['pnfs_volume'] = pnfs.UNKNOWN
+                try:
+                    #pnfs_location_cookie = p.location_cookie
+                    if pnfs_location_cookie == pnfs.UNKNOWN:
+                        rest['pnfs_location_cookie'] = p.location_cookie
+                except AttributeError:
+                    pnfs_location_cookie = None
+                    rest['pnfs_location_cookie'] = pnfs.UNKNOWN
+                try:
+                    #pnfs_size = p.size
+                    if pnfs_size == pnfs.UNKNOWN:
+                        rest['pnfs_size'] = p.size
+                    try:
+                        pnfs_size = long(pnfs_size)
+                    except TypeError:
+                        rest['pnfs_size_type'] = \
+                                        "pnfs_size contains wrong type %s." \
+                                        % type(pnfs_size)
+                except AttributeError:
+                    pnfs_size = None
+                    rest['pnfs_size'] = pnfs.UNKNOWN
+                try:
+                    #pnfs_origff = p.origff
+                    if pnfs_origff == pnfs.UNKNOWN:
+                        rest['pnfs_origff'] = p.origff
+                except AttributeError:
+                    pnfs_origff = None
+                    rest['pnfs_origff'] = pnfs.UNKNOWN
+                try:
+                    #pnfs_origname = p.origname
+                    if pnfs_origname == pnfs.UNKNOWN:
+                        rest['pnfs_origname'] = p.origname
+                except AttributeError:
+                    pnfs_origname = None
+                    rest['pnfs_origname'] = pnfs.UNKNOWN
+                #Mapfile no longer used.
+                try:
+                    #pnfsid_file = p.pnfsid_file
+                    if pnfsid_file == pnfs.UNKNOWN:
+                        rest['pnfsid_file'] = p.pnfsid_file
+                except AttributeError:
+                    pnfsid_file = None
+                    rest['pnfsid_file'] = pnfs.UNKNOWN
+                #Volume map file id no longer used.
+                try:
+                    #pnfs_bfid = p.bfid
+                    if pnfs_bfid == pnfs.UNKNOWN:
+                        rest['pnfs_bfid'] = p.bfid
+                except AttributeError:
+                    pnfs_bfid = None
+                    rest['pnfs_bfid'] = pnfs.UNKNOWN
+                #Origdrive has not always been recored.
+                try:
+                    #pnfs_crc = p.crc
+                    #CRC has not always been recored.
+                    try:
+                        if pnfs_crc != pnfs.UNKNOWN:
+                            pnfs_crc = long(pnfs_crc)
+                    except TypeError:
+                        rest['pnfs_crc_type'] = \
+                                          "pnfs_crc contains wrong type %s." \
+                                          % type(pnfs_crc)
+                except AttributeError:
+                    pnfs_crc = None
+                    rest['pnfs_crc'] = pnfs.UNKNOWN
+
+            #Next get the database information.
+            try:
+                db_volume = request['fc']['external_label']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_volume = None
+                rest['db_volume'] = pnfs.UNKNOWN
+            try:
+                db_location_cookie = request['fc']['location_cookie']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_location_cookie = None
+                rest['db_location_cookie'] = pnfs.UNKNOWN
+            try:
+                db_size = request['fc']['size']
+                try:
+                    db_size = long(db_size)
+                except TypeError:
+                    rest['db_size_type'] = "db_size contains wrong type %s." \
+                                           % type(db_size)
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_size = None
+                rest['db_size'] = pnfs.UNKNOWN
+            try:
+                db_volume_family = request['vc']['volume_family']
+                try:
+                    db_file_family = volume_family.extract_file_family(
+                        db_volume_family)
+                except TypeError:
+                    rest['db_file_family_type'] = \
+                               "db_file_family contains wrong type %s." % \
+                               type(db_file_family)
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_file_family = None
+                rest['db_file_family'] = pnfs.UNKNOWN
+            try:
+                db_pnfs_name0 = request['fc']['pnfs_name0']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_pnfs_name0 = None
+                rest['db_pnfs_name0'] = pnfs.UNKNOWN
+            try:
+                db_pnfsid = request['fc']['pnfsid']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_pnfsid = None
+                rest['db_pnfsid'] = pnfs.UNKNOWN
+            try:
+                db_bfid = request['fc']['bfid']
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_bfid = None
+                rest['db_bfid'] = pnfs.UNKNOWN
+            try:
+                db_crc = request['fc']['complete_crc']
+                #Some files do not have a crc recored.
+                try:
+                    if db_crc != None:
+                        db_crc = long(db_crc)
+                except TypeError:
+                    rest['db_crc_type'] = "db_crc contains wrong type %s." \
+                                          % type(db_crc)
+            except (ValueError, TypeError, IndexError, KeyError):
+                db_crc = None
+                rest['db_crc'] = pnfs.UNKNOWN
+
+            #If there is missing information, 
+            if len(rest.keys()) > 0:
+                conflict_ticket = {}
+                conflict_ticket['infile'] = request['infile']
+                conflict_ticket['outfile'] = request['outfile']
+                conflict_ticket['bfid'] = request['bfid']
+                conflict_ticket['conflict'] = rest
+
+                Trace.alarm(e_errors.ERROR, e_errors.CONFLICT,
+                            conflict_ticket)
+                raise EncpError(None,
+                           "Missing metadata information: %s" % str(rest),
+                                e_errors.CONFLICT, request)
+
+            #First check if the file is deleted and the override deleted
+            # switch/flag has been specified by the user.
+            #Not all fields get compared when reading a copy.
+            if not (e.override_deleted
+                    and request['fc']['deleted'] != 'no'):
+                #For only those conflicting items, include them in
+                # the dictionary.
+                if db_volume != pnfs_volume and not is_copy:
+                    rest['db_volume'] = db_volume
+                    rest['pnfs_volume'] = pnfs_volume
+                    rest['volume'] = "db_volume differs from pnfs_volume"
+                if not same_cookie(db_location_cookie, pnfs_location_cookie) \
+                       and not is_copy:
+                    rest['db_location_cookie'] = db_location_cookie
+                    rest['pnfs_location_cookie'] = pnfs_location_cookie
+                    rest['location_cookie'] = "db_location_cookie differs " \
+                                              "from pnfs_location_cookie"
+                if db_size != pnfs_size:
+                    rest['db_size'] = db_size
+                    rest['pnfs_size'] = pnfs_size
+                    rest['size'] = "db_size differs from pnfs_size"
+                ##The file family check was removed for the migration project.
+                #if db_file_family != pnfs_origff and not is_copy:
+                #    rest['db_file_family'] = db_file_family
+                #    rest['pnfs_origff'] = pnfs_origff
+                #    rest['file_family'] = "db_file_family differs from " \
+                #                          "pnfs_origff"
+                if db_pnfs_name0 != pnfs_origname:
+                    rest['db_pnfs_name0'] = db_pnfs_name0
+                    rest['pnfs_origname'] = pnfs_origname
+                    rest['filename'] = "db_pnfs_name0 differs from " \
+                                       "pnfs_origname"
+                #Mapfile no longer used.
+                if db_pnfsid != pnfsid_file:
+                    rest['db_pnfsid'] = db_pnfsid
+                    rest['pnfsid_file'] = pnfsid_file
+                    rest['pnfsid'] = "db_pnfsid differs from pnfsid_file"
+                #Volume map file id no longer used.
+                if db_bfid != pnfs_bfid and not is_copy:
+                    rest['db_bfid'] = db_bfid
+                    rest['pnfs_bfid'] = pnfs_bfid
+                    rest['bfid'] = "db_bfid differs from pnfs_bfid"
+                #Origdrive has not always been recored.
+                if (pnfs_crc != pnfs.UNKNOWN) and (db_crc != None) \
+                       and (db_crc != pnfs_crc):
+                    #If present in layer 4 and file db compare the CRC too.
+                    rest['db_crc'] = db_crc
+                    rest['pnfs_crc'] = pnfs_crc
+                    rest['crc'] = "db_crc differs from pnfs_crc"
+
+                #Verify if the dcache information in layer 2 matches.
+                crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
+                    db_crc, db_size)
+                if (dcache_crc != None and dcache_crc != crc_1_seeded):
+                    rest['db_crc'] = crc_1_seeded
+                    rest['dcache_crc'] = dcache_crc
+                    rest['layer_2_crc'] = "db_crc differs from dcache_crc"
+                if (dcache_size != None and dcache_size != db_size):
+                    rest['db_size'] = db_size
+                    rest['dcache_size'] = dcache_size
+                    rest['layer_2_size'] = "db_size differs from dcache_size"
+
+                #If there is incorrect information.
+                if len(rest.keys()) > 0:
+                    conflict_ticket = {}
+                    conflict_ticket['infile'] = request['infile']
+                    conflict_ticket['outfile'] = request['outfile']
+                    conflict_ticket['bfid'] = request['bfid']
+                    conflict_ticket['conflict'] = rest
+
+                    Trace.alarm(e_errors.ERROR, e_errors.CONFLICT,
+                                conflict_ticket)
+                    raise EncpError(None,
+                        "Probable database conflict with pnfs: %s" % str(rest),
+                                    e_errors.CONFLICT, request)
+
+            #Test to verify that all the brands are the same.  If not exit.
+            # If so, then the system will function.  If this was not true,
+            # then a lot of file clerk key errors could occur.
+            if extract_brand(db_bfid) != bfid_brand:
+                msg = "All bfids must have the same brand."
+                raise EncpError(None, str(msg), e_errors.USERERROR, request)
+
+            #Raise an EncpError if the (input)file is larger than the
+            # output filesystem supports.
+            if not e.bypass_filesystem_max_filesize_check:
+                filesystem_check(request)
+
+        except EncpError:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except (OSError, IOError):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    return
+    
 
 # check the output file list for consistency
 # generate names based on input list if required
@@ -3069,11 +3439,15 @@ def outputfile_check(inputlist, outputlist, e):
                                  "/dev/random", "/dev/urandom"]:
                 continue
 
-        #try:
-
             #check to make sure that the filename string doesn't have any
             # wackiness to it.
             filename_check(outputlist[i])
+
+            #Grab this stat() once for all the checks about to be run.
+            try:
+                fstatinfo = get_stat(outputlist[i])
+            except (OSError, IOError):
+                fstatinfo = None
 
             #There are four (4) possible senerios for the following test(s).
             #The two conditions are:
@@ -3082,21 +3456,30 @@ def outputfile_check(inputlist, outputlist, e):
 
             #Test case when used by a user and the file does not exist (as is
             # should be).
-            if not access_check(outputlist[i], os.F_OK) and not dcache:
+            #if not access_check(outputlist[i], os.F_OK) and not dcache:
+            if not fstatinfo and not dcache:
                 directory = get_directory_name(outputlist[i])
+
+                try: #Grab the stat once for all of the following tests.
+                    dstatinfo = get_stat(directory)
+                except (OSError, IOError):
+                    dstatinfo = None
                 
                 #Check for existance and write permissions to the directory.
-                if not access_check(directory, os.F_OK):
+                #if not access_check(directory, os.F_OK):
+                if not dstatinfo:
                     raise EncpError(errno.ENOENT, directory,
                                     e_errors.USERERROR,
                                     {'outfile' : outputlist[i]})
 
-                if not isdir(directory):
+                #if not isdir(directory):
+                if not stat.S_ISDIR(dstatinfo[stat.ST_MODE]):
                     raise EncpError(errno.ENOTDIR, directory,
                                     e_errors.USERERROR,
                                     {'outfile' : outputlist[i]})
                                         
-                if not access_check(directory, os.W_OK):
+                #if not access_check(directory, os.W_OK):
+                if not __e_access(dstatinfo, os.W_OK):
                     raise EncpError(errno.EACCES, directory,
                                     e_errors.USERERROR,
                                     {'outfile' : outputlist[i]})
@@ -3105,13 +3488,15 @@ def outputfile_check(inputlist, outputlist, e):
                 outputlist.append(outputlist[i])
                 
             #File exists when run by a normal user.
-            elif access_check(outputlist[i], os.F_OK) and not dcache:
+            #elif access_check(outputlist[i], os.F_OK) and not dcache:
+            elif fstatinfo and not dcache:
                 raise EncpError(errno.EEXIST, outputlist[i],
                                 e_errors.USERERROR,
                                 {'outfile' : outputlist[i]})
 
             #The file does not already exits and it is a dcache transfer.
-            elif not access_check(outputlist[i], os.F_OK) and dcache:
+            #elif not access_check(outputlist[i], os.F_OK) and dcache:
+            elif not fstatinfo and dcache:
                 #Check if the filesystem is corrupted.  This entails looking
                 # for directory entries without valid inodes.
                 directory_listing=os.listdir(get_directory_name(outputlist[i]))
@@ -3128,7 +3513,15 @@ def outputfile_check(inputlist, outputlist, e):
                                     {'outfile' : outputlist[i]})
 
             #The file exits, as it should, for a dache transfer.
-            elif access_check(outputlist[i], os.F_OK) and dcache:
+            #elif access_check(outputlist[i], os.F_OK) and dcache:
+            elif fstatinfo and dcache:
+                #Do we have the ability to set the metadata after the file
+                # written to tape?
+                if not __e_access(fstatinfo, os.W_OK):
+                    raise EncpError(errno.EACCES, outputlist[i],
+                                    e_errors.USERERROR,
+                                    {'outfile' : outputlist[i]})
+                
                 #Before continuing lets check to see if layers 1 and 4 are
                 # empty first.  This check is being added because it appears
                 # that the dcache can (and has) written multiple copies of
@@ -3212,6 +3605,8 @@ def outputfile_check(inputlist, outputlist, e):
                     p.writelayer(1, "", outputlist[i])
 
                     #Get the outfile size.
+                    ofilesize = fstatinfo[stat.ST_SIZE]
+                    """
                     try:
                         ofilesize = long(os.stat(outputlist[i])[stat.ST_SIZE])
                     except OSError, msg:
@@ -3220,7 +3615,11 @@ def outputfile_check(inputlist, outputlist, e):
                                         % (outputlist[i]),
                                         e_errors.OSERROR,
                                         {'outfile' : outputlist[i]})
+                    """
+
                     #Get the infile size.
+                    ### There should be a way to eliminate this stat() call,
+                    ### but that will take a bit of refactoring.
                     try:
                         ifilesize = long(os.stat(inputlist[i])[stat.ST_SIZE])
                     except OSError, msg:
@@ -4385,8 +4784,6 @@ def submit_one_request(ticket, encp_intf):
 
     Trace.message(TICKET_1_LEVEL, "LM SUBMISSION TICKET:")
     Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
-
-    pprint.pprint(ticket)
 
     if is_read(ticket):
         response_ticket = lmc.read_from_hsm(ticket)
@@ -6363,13 +6760,46 @@ def verify_write_request_consistancy(request_list, e):
 
         if request['infile'] not in ["/dev/zero",
                                      "/dev/random", "/dev/urandom"]:
-            inputfile_check(request['infile'], e)
+            try:
+                inputfile_check(request['infile'], e)
+            except IOError, msg:
+                raise EncpError(msg.args, str(msg), e_errors.IOERROR,
+                                {'infile' : request['infile'],
+                                 'outfile' : request['outfile']})
+            except OSError, msg:
+                raise EncpError(msg.args, str(msg), e_errors.OSERROR,
+                                {'infile' : request['infile'],
+                                 'outfile' : request['outfile']})
             
         if request['outfile'] not in ["/dev/null", "/dev/zero",
                                       "/dev/random", "/dev/urandom"]:
             if not request['wrapper']['inode']:
-                #Only test this before the output file is created.
-                outputfile_check(request['infile'], request['outfile'], e)
+                try:
+                    #Only test this before the output file is created.
+                    outputfile_check(request['infile'], request['outfile'], e)
+                except IOError, msg:
+                    raise EncpError(msg.args, str(msg), e_errors.IOERROR,
+                                    {'infile' : request['infile'],
+                                     'outfile' : request['outfile']})
+                except OSError, msg:
+                    raise EncpError(msg.args, str(msg), e_errors.OSERROR,
+                                    {'infile' : request['infile'],
+                                     'outfile' : request['outfile']})
+            else:
+                #We should only get here when called from read_hsm_file()
+                # or write_hsm_file().  In any case, the file should still
+                # exist by this point.  As a simple test, make sure it
+                # still does.
+                try:
+                    unused = get_stat(request['outfile'])
+                except IOError, msg:
+                    raise EncpError(msg.args, str(msg), e_errors.IOERROR,
+                                    {'infile' : request['infile'],
+                                     'outfile' : request['outfile']})
+                except OSError, msg:
+                    raise EncpError(msg.args, str(msg), e_errors.OSERROR,
+                                    {'infile' : request['infile'],
+                                     'outfile' : request['outfile']})
 
         #This block of code makes sure the the user is not moving
         # two files with the same basename in different directories
@@ -6386,42 +6816,9 @@ def verify_write_request_consistancy(request_list, e):
             #Put into one place all of the output names.  This is to check
             # that two file to not have the same output name.
             outputfile_dict[request['outfile']] = request['infile']
-            
-        #Consistancy check for valid pnfs tag values.  These values are
-        # placed inside the 'vc' sub-ticket.
-        tags = ["file_family", "wrapper", "file_family_width",
-                "storage_group", "library"]
-        for key in tags:
-            if request.get('copy', None):
-                #If this is a copy request (via --copies), skip this check,
-                # since checking the original is good enough.  Otherwise,
-                # the lack of 'file_family' (becuase on copies it is
-                # original_file_family) would fail all copies.
-                break
-            
-            try:
-                #check for values that contain letters, digits and _.
-                if not charset.is_in_charset(str(request['vc'][key])):
-                    raise EncpError(None,
-                                    "Pnfs tag, %s, contains invalid "
-                                    " characters." % (key,),
-                                    e_errors.PNFS_ERROR)
-            except (ValueError, AttributeError, TypeError,
-                    IndexError, KeyError), msg:
-                msg = "Error checking tag %s: %s" % (key, str(msg))
-                raise EncpError(None, str(msg), e_errors.USERERROR)
 
-        #Verify that the file family width is in fact a non-
-        # negitive integer.
-        try:
-            expression = int(request['vc']['file_family_width']) < 0
-            if expression:
-                raise ValueError,(e_errors.USERERROR,
-                                  request['vc']['file_family_width'])
-        except ValueError:
-            msg="Pnfs tag, %s, requires a non-negitive integer value."\
-                 % ("file_family_width",)
-            raise EncpError(None, str(msg), e_errors.USERERROR)
+        #Verify that the tags contain 'sane' characters.
+        tag_check(request)
 
         #Verify that the library and wrappers are valid.
         librarysize_check(request)
@@ -8009,30 +8406,44 @@ def verify_read_request_consistancy(requests_per_vol, e):
     sum_size = 0L
     sum_files = 0L
     outputfile_dict = {}
-    p = Pnfs()
+    #p = Pnfs()
+
+    #Get the bfid brand for the first file.  This will be compared with
+    # the brand of each file to make sure they all belong to one Enstore
+    # system.
+    try:
+        vol = requests_per_vol.keys()[0]
+        bfid_brand = extract_brand(requests_per_vol[vol][0]['fc']['bfid'])
+    except (ValueError, AttributeError, TypeError,
+            IndexError, KeyError), msg:
+        msg = "Error insuring consistancy with request list for " \
+              "volume %s." % (vol,)
+        status = (e_errors.CONFLICT, msg)
+        raise EncpError(None, str(msg), e_errors.CONFLICT,
+                        {'status':status})
+
+
+    outfile_name = requests_per_vol[vol][0]['outfile']
+    if outfile_name not in \
+           ["/dev/null", "/dev/zero", "/dev/random", "/dev/urandom"]:
+        #Obtain the maximum amount of free space remaining on the file_system.
+        # Do this once for all files, instead of once per file for performance
+        # reasons.
+        fs_stats = os.statvfs(get_directory_name(outfile_name))
+        bytes_free = long(fs_stats[statvfs.F_BAVAIL]) * \
+                     long(fs_stats[statvfs.F_FRSIZE])
+
+        #Obtain the quota limits for the target directory.
+        fs_quotas = EXfer.quotas(outfile_name)
     
     vols = requests_per_vol.keys()
     vols.sort()
     for vol in vols:
         request_list = requests_per_vol[vol]
-
-        try:
-           #Only aquire the first loop.  This might be a performance hit for
-           # a large number of requests otherwise.
-           if not bfid_brand:
-               bfid_brand = requests_per_vol[vol][0]['fc']['bfid']
-        except (ValueError, AttributeError, TypeError,
-                IndexError, KeyError), msg:
-            msg = "Error insuring consistancy with request list for " \
-                  "volume %s." % (vol,)
-            status = (e_errors.CONFLICT, msg)
-            raise EncpError(None, str(msg), e_errors.CONFLICT,
-                            {'status':status})
-            #print_data_access_layer_format("", "", 0, {'status':status})
-            #quit() #Harsh, but necessary.
-            
+        
         for request in request_list:
 
+            """
             #If the file was requested by BFID, then check if it is an
             # original or copy.
             is_copy = False
@@ -8049,11 +8460,29 @@ def verify_read_request_consistancy(requests_per_vol, e):
             #If copy N was specifically requested, then this is a copy.
             elif e.copy:
                 is_copy = True
+            """
 
             if request['infile'] not in ["/dev/zero",
                                          "/dev/random", "/dev/urandom"]:
+
+                #In case pnfs is automounted, first try this access_check()
+                # call to wait for the filesystem to mount.
+                if e.pnfs_is_automounted:
+                    access_check(request['infile'], os.F_OK)
+
                 try:
                     inputfile_check(request['infile'], e)
+                except IOError, msg:
+                    raise EncpError(msg.args, str(msg), e_errors.IOERROR,
+                                    {'infile' : request['infile'],
+                                     'outfile' : request['outfile']})
+                except OSError, msg:
+                    raise EncpError(msg.args, str(msg), e_errors.OSERROR,
+                                    {'infile' : request['infile'],
+                                     'outfile' : request['outfile']})
+
+                try:
+                    inputfile_check_pnfs(request, bfid_brand, e)
                 except IOError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.IOERROR,
                                     {'infile' : request['infile'],
@@ -8112,285 +8541,6 @@ def verify_read_request_consistancy(requests_per_vol, e):
                                 "for volume %s on external_label check." %
                                 (vol,), e_errors.KEYERROR, request)
 
-            #First check if the file is deleted and the override deleted
-            # switch/flag has been specified by the user.
-            if not (e.override_deleted
-                    and request['fc']['deleted'] != 'no'):
-                
-                #If no layer 4 is present, then report the error, raise an
-                # alarm, but continue with the transfer.
-                try:
-                
-                    #In case pnfs is automounted, first try this access_check()
-                    # call to wait for the filesystem to mount.
-                    access_check(request['infile'], os.F_OK)
-                    (pnfs_volume,
-                     pnfs_location_cookie,
-                     pnfs_size,
-                     pnfs_origff,
-                     pnfs_origname,
-                     unused, #Mapfile is obsolete.
-                     pnfsid_file,
-                     unused, #Mapfile pnfsid is obsolete.
-                     pnfs_bfid,
-                     unused, #Drive is ignored by encp.
-                     pnfs_crc) \
-                    = p.get_xreference(request['infile'])
-                except (OSError, IOError), msg:
-                    raise EncpError(getattr(msg, "errno", errno.EIO),
-                                    str(msg), e_errors.PNFS_ERROR, request)
-
-                #If no layer 2 is present continue with the transfer.
-                try:
-                    data = p.readlayer(2, request['infile'])
-                    dcache_crc, dcache_size = parse_layer_2(data)
-                except (OSError, IOError), msg:
-                    dcache_crc, dcache_size = (None, None)
-
-                #Raise an EncpError if the (input)file is larger than the
-                # output filesystem supports.
-                if not e.bypass_filesystem_max_filesize_check:
-                    filesystem_check(request)
-
-            #Determine if the pnfs layers and the file data are consistant.
-            rest = {}
-            
-            #First check if the file is deleted and the override deleted
-            # switch/flag has been specified by the user.
-            if not (e.override_deleted
-                    and request['fc']['deleted'] != 'no'):
-
-                #Start by getting the pnfs layer 4 information.
-                try:
-                    #pnfs_volume = p.volume
-                    if pnfs_volume == pnfs.UNKNOWN:
-                        rest['pnfs_volume'] = p.volume
-                except AttributeError:
-                    pnfs_volume = None
-                    rest['pnfs_volume'] = pnfs.UNKNOWN
-                try:
-                    #pnfs_location_cookie = p.location_cookie
-                    if pnfs_location_cookie == pnfs.UNKNOWN:
-                        rest['pnfs_location_cookie'] = p.location_cookie
-                except AttributeError:
-                    pnfs_location_cookie = None
-                    rest['pnfs_location_cookie'] = pnfs.UNKNOWN
-                try:
-                    #pnfs_size = p.size
-                    if pnfs_size == pnfs.UNKNOWN:
-                        rest['pnfs_size'] = p.size
-                    try:
-                        pnfs_size = long(pnfs_size)
-                    except TypeError:
-                        rest['pnfs_size_type'] = \
-                                        "pnfs_size contains wrong type %s." \
-                                        % type(pnfs_size)
-                except AttributeError:
-                    pnfs_size = None
-                    rest['pnfs_size'] = pnfs.UNKNOWN
-                try:
-                    #pnfs_origff = p.origff
-                    if pnfs_origff == pnfs.UNKNOWN:
-                        rest['pnfs_origff'] = p.origff
-                except AttributeError:
-                    pnfs_origff = None
-                    rest['pnfs_origff'] = pnfs.UNKNOWN
-                try:
-                    #pnfs_origname = p.origname
-                    if pnfs_origname == pnfs.UNKNOWN:
-                        rest['pnfs_origname'] = p.origname
-                except AttributeError:
-                    pnfs_origname = None
-                    rest['pnfs_origname'] = pnfs.UNKNOWN
-                #Mapfile no longer used.
-                try:
-                    #pnfsid_file = p.pnfsid_file
-                    if pnfsid_file == pnfs.UNKNOWN:
-                        rest['pnfsid_file'] = p.pnfsid_file
-                except AttributeError:
-                    pnfsid_file = None
-                    rest['pnfsid_file'] = pnfs.UNKNOWN
-                #Volume map file id no longer used.
-                try:
-                    #pnfs_bfid = p.bfid
-                    if pnfs_bfid == pnfs.UNKNOWN:
-                        rest['pnfs_bfid'] = p.bfid
-                except AttributeError:
-                    pnfs_bfid = None
-                    rest['pnfs_bfid'] = pnfs.UNKNOWN
-                #Origdrive has not always been recored.
-                try:
-                    #pnfs_crc = p.crc
-                    #CRC has not always been recored.
-                    try:
-                        if pnfs_crc != pnfs.UNKNOWN:
-                            pnfs_crc = long(pnfs_crc)
-                    except TypeError:
-                        rest['pnfs_crc_type'] = \
-                                          "pnfs_crc contains wrong type %s." \
-                                          % type(pnfs_crc)
-                except AttributeError:
-                    pnfs_crc = None
-                    rest['pnfs_crc'] = pnfs.UNKNOWN
-
-            #Next get the database information.
-            try:
-                db_volume = request['fc']['external_label']
-            except (ValueError, TypeError, IndexError, KeyError):
-                db_volume = None
-                rest['db_volume'] = pnfs.UNKNOWN
-            try:
-                db_location_cookie = request['fc']['location_cookie']
-            except (ValueError, TypeError, IndexError, KeyError):
-                db_location_cookie = None
-                rest['db_location_cookie'] = pnfs.UNKNOWN
-            try:
-                db_size = request['fc']['size']
-                try:
-                    db_size = long(db_size)
-                except TypeError:
-                    rest['db_size_type'] = "db_size contains wrong type %s." \
-                                           % type(db_size)
-            except (ValueError, TypeError, IndexError, KeyError):
-                db_size = None
-                rest['db_size'] = pnfs.UNKNOWN
-            try:
-                db_volume_family = request['vc']['volume_family']
-                try:
-                    db_file_family = volume_family.extract_file_family(
-                        db_volume_family)
-                except TypeError:
-                    rest['db_file_family_type'] = \
-                               "db_file_family contains wrong type %s." % \
-                               type(db_file_family)
-            except (ValueError, TypeError, IndexError, KeyError):
-                db_file_family = None
-                rest['db_file_family'] = pnfs.UNKNOWN
-            try:
-                db_pnfs_name0 = request['fc']['pnfs_name0']
-            except (ValueError, TypeError, IndexError, KeyError):
-                db_pnfs_name0 = None
-                rest['db_pnfs_name0'] = pnfs.UNKNOWN
-            try:
-                db_pnfsid = request['fc']['pnfsid']
-            except (ValueError, TypeError, IndexError, KeyError):
-                db_pnfsid = None
-                rest['db_pnfsid'] = pnfs.UNKNOWN
-            try:
-                db_bfid = request['fc']['bfid']
-            except (ValueError, TypeError, IndexError, KeyError):
-                db_bfid = None
-                rest['db_bfid'] = pnfs.UNKNOWN
-            try:
-                db_crc = request['fc']['complete_crc']
-                #Some files do not have a crc recored.
-                try:
-                    if db_crc != None:
-                        db_crc = long(db_crc)
-                except TypeError:
-                    rest['db_crc_type'] = "db_crc contains wrong type %s." \
-                                          % type(db_crc)
-            except (ValueError, TypeError, IndexError, KeyError):
-                db_crc = None
-                rest['db_crc'] = pnfs.UNKNOWN
-
-            #If there is missing information, 
-            if len(rest.keys()) > 0:
-                conflict_ticket = {}
-                conflict_ticket['infile'] = request['infile']
-                conflict_ticket['outfile'] = request['outfile']
-                conflict_ticket['bfid'] = request['bfid']
-                conflict_ticket['conflict'] = rest
-
-                Trace.alarm(e_errors.ERROR, e_errors.CONFLICT,
-                            conflict_ticket)
-                raise EncpError(None,
-                           "Missing metadata information: %s" % str(rest),
-                                e_errors.CONFLICT, request)
-
-            #First check if the file is deleted and the override deleted
-            # switch/flag has been specified by the user.
-            #Not all fields get compared when reading a copy.
-            if not (e.override_deleted
-                    and request['fc']['deleted'] != 'no'):
-                #For only those conflicting items, include them in
-                # the dictionary.
-                if db_volume != pnfs_volume and not is_copy:
-                    rest['db_volume'] = db_volume
-                    rest['pnfs_volume'] = pnfs_volume
-                    rest['volume'] = "db_volume differs from pnfs_volume"
-                if not same_cookie(db_location_cookie, pnfs_location_cookie) \
-                       and not is_copy:
-                    rest['db_location_cookie'] = db_location_cookie
-                    rest['pnfs_location_cookie'] = pnfs_location_cookie
-                    rest['location_cookie'] = "db_location_cookie differs " \
-                                              "from pnfs_location_cookie"
-                if db_size != pnfs_size:
-                    rest['db_size'] = db_size
-                    rest['pnfs_size'] = pnfs_size
-                    rest['size'] = "db_size differs from pnfs_size"
-                ##The file family check was removed for the migration project.
-                #if db_file_family != pnfs_origff and not is_copy:
-                #    rest['db_file_family'] = db_file_family
-                #    rest['pnfs_origff'] = pnfs_origff
-                #    rest['file_family'] = "db_file_family differs from " \
-                #                          "pnfs_origff"
-                if db_pnfs_name0 != pnfs_origname:
-                    rest['db_pnfs_name0'] = db_pnfs_name0
-                    rest['pnfs_origname'] = pnfs_origname
-                    rest['filename'] = "db_pnfs_name0 differs from " \
-                                       "pnfs_origname"
-                #Mapfile no longer used.
-                if db_pnfsid != pnfsid_file:
-                    rest['db_pnfsid'] = db_pnfsid
-                    rest['pnfsid_file'] = pnfsid_file
-                    rest['pnfsid'] = "db_pnfsid differs from pnfsid_file"
-                #Volume map file id no longer used.
-                if db_bfid != pnfs_bfid and not is_copy:
-                    rest['db_bfid'] = db_bfid
-                    rest['pnfs_bfid'] = pnfs_bfid
-                    rest['bfid'] = "db_bfid differs from pnfs_bfid"
-                #Origdrive has not always been recored.
-                if (pnfs_crc != pnfs.UNKNOWN) and (db_crc != None) \
-                       and (db_crc != pnfs_crc):
-                    #If present in layer 4 and file db compare the CRC too.
-                    rest['db_crc'] = db_crc
-                    rest['pnfs_crc'] = pnfs_crc
-                    rest['crc'] = "db_crc differs from pnfs_crc"
-
-                #Verify if the dcache information in layer 2 matches.
-                crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
-                    db_crc, db_size)
-                if (dcache_crc != None and dcache_crc != crc_1_seeded):
-                    rest['db_crc'] = crc_1_seeded
-                    rest['dcache_crc'] = dcache_crc
-                    rest['layer_2_crc'] = "db_crc differs from dcache_crc"
-                if (dcache_size != None and dcache_size != db_size):
-                    rest['db_size'] = db_size
-                    rest['dcache_size'] = dcache_size
-                    rest['layer_2_size'] = "db_size differs from dcache_size"
-
-                #If there is incorrect information.
-                if len(rest.keys()) > 0:
-                    conflict_ticket = {}
-                    conflict_ticket['infile'] = request['infile']
-                    conflict_ticket['outfile'] = request['outfile']
-                    conflict_ticket['bfid'] = request['bfid']
-                    conflict_ticket['conflict'] = rest
-
-                    Trace.alarm(e_errors.ERROR, e_errors.CONFLICT,
-                                conflict_ticket)
-                    raise EncpError(None,
-                        "Probable database conflict with pnfs: %s" % str(rest),
-                                    e_errors.CONFLICT, request)
-
-            #Test to verify that all the brands are the same.  If not exit.
-            # If so, then the system will function.  If this was not true,
-            # then a lot of file clerk key errors could occur.
-            if extract_brand(db_bfid) != extract_brand(bfid_brand):
-                msg = "All bfids must have the same brand."
-                raise EncpError(None, str(msg), e_errors.USERERROR, request)
-
             #sum up the size to verify there is sufficent disk space.
             try:
                 sum_size = sum_size + request['file_size']
@@ -8402,12 +8552,12 @@ def verify_read_request_consistancy(requests_per_vol, e):
 
         if request['outfile'] not in ["/dev/null", "/dev/zero",
                                       "/dev/random", "/dev/urandom"]:
-            fs_stats = os.statvfs(get_directory_name(request['outfile']))
 
-            #Make sure we won't exeed the maximum size of the filesystem.
-            bytes_free = long(fs_stats[statvfs.F_BAVAIL]) * \
-                         long(fs_stats[statvfs.F_FRSIZE])
-            if  bytes_free < sum_size:
+            ## We need to determine if transfering the files will fail
+            ## because of insufficent space.
+
+            #Test if the disk would become full while transfering the file.
+            if bytes_free < sum_size:
                 message = \
                      "Disk is full.  %d bytes available for %d requested." % \
                      (bytes_free, sum_size)
@@ -8415,7 +8565,6 @@ def verify_read_request_consistancy(requests_per_vol, e):
                                 e_errors.USERERROR, request)
 
             #Make sure we won't exeed any quotas.
-            fs_quotas = EXfer.quotas(request['outfile'])
             for quota in fs_quotas:
                 #Transfer bytes into blocks first.
                 sum_blocks = (sum_size / long(fs_stats[statvfs.F_BSIZE])) + 1
