@@ -221,8 +221,15 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             #row2[0] is the date (YYYY-mm-dd)
             #row2[1] is the media type
             #row2[2] is the a label started on the date in row2[0]
-            total_started[row2[1]] = total_started[row2[1]] + 1
-            self.summary_started[row2[1]][row2[0]] = total_started[row2[1]]
+            try:
+                total_started[row2[1]] = total_started[row2[1]] + 1
+            except KeyError:
+                total_started[row2[1]] = 1
+            try:
+                self.summary_started[row2[1]][row2[0]] = total_started[row2[1]]
+            except KeyError:
+                self.summary_started[row2[1]] = {}
+                self.summary_started[row2[1]][row2[0]] = 1
 
         ###
         ### Now that the information for each day is obtained, lets output
