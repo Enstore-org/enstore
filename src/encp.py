@@ -3022,40 +3022,67 @@ def tag_check(work_ticket):
 
 
 # check the input file list for consistency
-def inputfile_check(input_files, e):
+def inputfile_check(work_list, e):
+
+    inputlist = []
+    
+    """
     # create internal list of input unix files even if just 1 file passed in
     if type(input_files)==types.ListType:
         inputlist=input_files
     else:
         inputlist = [input_files]
+    """
+
+    # create internal list of work tickets even if just 1 is passed in
+    if type(work_list)==types.ListType:
+        pass  #work_list = work_list
+    else:
+        work_list = [work_list]
+
 
     #Get the correct type of pnfs interface to use.
     #p = Pnfs()
 
-    # check the input unix file. if files don't exits, we bomb out to the user
-    for i in range(0, len(inputlist)):
+    # Make sure we can open the files. If we can't, we bomb out to user
+    for i in range(len(work_list)):
+        work_ticket = work_list[i]
+
+        #shortcuts.
+        #outputfile_use = work_ticket['outfile']
+        #outputfile_print = work_ticket['outfilepath']
+        inputfile_use = work_ticket['infile']
+        inputfile_print = work_ticket['infilepath']
+        
+        #If output location is /dev/null, skip the checks.
+        if inputfile_use in ["/dev/zero",
+                              "/dev/random", "/dev/urandom"]:
+            continue
+
         #If we already know for the tape read (--volume) that the inputlist[i]
         # filename is foobar, then skip this test and move to the next.
-        if enstore_functions3.is_location_cookie(inputlist[i]) and e.volume:
+        if enstore_functions3.is_location_cookie(inputfile_use) and e.volume:
             continue
             
         try:
             #check to make sure that the filename string doesn't have any
             # wackiness to it.
-            filename_check(inputlist[i])
-            
-            if not e.override_deleted:
-                    #and request['fc']['deleted'] != 'no'):
+            filename_check(inputfile_print)
+
+            # On writes, work_ticket['fc']['deleted'] won't exist yet,
+            # so we handle it.
+            if not e.override_deleted \
+               and work_ticket['fc'].get('deleted', None) not in ['no', None]:
             
                 #Since the file exists, we can get its stats.
                 #     statinfo = os.stat(inputlist[i])
-                statinfo = get_stat(inputlist[i])
+                statinfo = get_stat(inputfile_use)
 
                 # input files can't be directories
                 if stat.S_ISDIR(statinfo[stat.ST_MODE]):
-                    raise EncpError(errno.EISDIR, inputlist[i],
+                    raise EncpError(errno.EISDIR, inputfile_print,
                                     e_errors.USERERROR,
-                                    {'infile' : inputlist[i]})
+                                    {'infile' : inputfile_print})
 
                 ###
                 ### We should have permission checks here, based on the
@@ -3068,6 +3095,8 @@ def inputfile_check(input_files, e):
                 #if is_read(e):
                 #    p.get_file_size(inputlist[i])
 
+            inputlist.append(inputfile_print)
+
             # we cannot allow 2 input files to be the same
             # this will cause the 2nd to just overwrite the 1st
             try:
@@ -3076,7 +3105,7 @@ def inputfile_check(input_files, e):
                 raise EncpError(None,
                                 'Duplicate entry %s'%(inputlist[match_index],),
                                 e_errors.USERERROR,
-                                {'infile' : inputlist[i]})
+                                {'infile' : inputfile_print})
             except ValueError:
                 pass  #There is no error.
 
@@ -3411,11 +3440,12 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
 
 # check the output file list for consistency
 # generate names based on input list if required
-#"inputlist" is the list of input files.  "output" is a list with one element.
-
-def outputfile_check(inputlist, outputlist, e):
+def outputfile_check(work_list, e):
     dcache = e.put_cache #being lazy
 
+    outputlist = []
+
+    """
     # create internal list of input unix files even if just 1 file passed in
     if type(inputlist)==types.ListType:
         pass  #inputlist = inputlist
@@ -3427,25 +3457,39 @@ def outputfile_check(inputlist, outputlist, e):
         pass  #outputlist = outputlist
     else:
         outputlist = [outputlist]
+    """
+
+    # create internal list of work tickets even if just 1 is passed in
+    if type(work_list)==types.ListType:
+        pass  #work_list = work_list
+    else:
+        work_list = [work_list]
 
     #Get the correct type of pnfs interface to use.
     p = Pnfs()
 
     # Make sure we can open the files. If we can't, we bomb out to user
-    for i in range(len(inputlist)):
+    for i in range(len(work_list)):
+            work_ticket = work_list[i]
+
+            #shortcuts.
+            outputfile_use = work_ticket['outfile']
+            outputfile_print = work_ticket['outfilepath']
+            #inputfile_use = work_ticket['infile']
+            #inputfile_print = work_ticket['infilepath']
 
             #If output location is /dev/null, skip the checks.
-            if outputlist[i] in ["/dev/null", "/dev/zero",
-                                 "/dev/random", "/dev/urandom"]:
+            if outputfile_use in ["/dev/null", "/dev/zero",
+                                  "/dev/random", "/dev/urandom"]:
                 continue
 
             #check to make sure that the filename string doesn't have any
             # wackiness to it.
-            filename_check(outputlist[i])
+            filename_check(outputfile_print)
 
             #Grab this stat() once for all the checks about to be run.
             try:
-                fstatinfo = get_stat(outputlist[i])
+                fstatinfo = get_stat(outputfile_use)
             except (OSError, IOError):
                 fstatinfo = None
 
@@ -3458,7 +3502,7 @@ def outputfile_check(inputlist, outputlist, e):
             # should be).
             #if not access_check(outputlist[i], os.F_OK) and not dcache:
             if not fstatinfo and not dcache:
-                directory = get_directory_name(outputlist[i])
+                directory = get_directory_name(outputfile_use)
 
                 try: #Grab the stat once for all of the following tests.
                     dstatinfo = get_stat(directory)
@@ -3470,47 +3514,47 @@ def outputfile_check(inputlist, outputlist, e):
                 if not dstatinfo:
                     raise EncpError(errno.ENOENT, directory,
                                     e_errors.USERERROR,
-                                    {'outfile' : outputlist[i]})
+                                    {'outfile' : outputfile_print})
 
                 #if not isdir(directory):
                 if not stat.S_ISDIR(dstatinfo[stat.ST_MODE]):
                     raise EncpError(errno.ENOTDIR, directory,
                                     e_errors.USERERROR,
-                                    {'outfile' : outputlist[i]})
+                                    {'outfile' : outputfile_print})
                                         
                 #if not access_check(directory, os.W_OK):
                 if not __e_access(dstatinfo, os.W_OK):
                     raise EncpError(errno.EACCES, directory,
                                     e_errors.USERERROR,
-                                    {'outfile' : outputlist[i]})
+                                    {'outfile' : outputfile_print})
 
                 #Looks like the file is good.
-                outputlist.append(outputlist[i])
+                outputlist.append(outputfile_print)
                 
             #File exists when run by a normal user.
             #elif access_check(outputlist[i], os.F_OK) and not dcache:
             elif fstatinfo and not dcache:
-                raise EncpError(errno.EEXIST, outputlist[i],
+                raise EncpError(errno.EEXIST, outputfile_print,
                                 e_errors.USERERROR,
-                                {'outfile' : outputlist[i]})
+                                {'outfile' : outputfile_print})
 
             #The file does not already exits and it is a dcache transfer.
             #elif not access_check(outputlist[i], os.F_OK) and dcache:
             elif not fstatinfo and dcache:
                 #Check if the filesystem is corrupted.  This entails looking
                 # for directory entries without valid inodes.
-                directory_listing=os.listdir(get_directory_name(outputlist[i]))
-                if os.path.basename(outputlist[i]) in directory_listing:
+                directory_listing=os.listdir(get_directory_name(outputfile_use[i]))
+                if os.path.basename(outputfile_print) in directory_listing:
                     #If the platform supports EFSCORRUPTED use it.
                     # Otherwise use the generic EIO.
                     error = getattr(errno, 'EFSCORRUPTED', errno.EIO)
                     raise EncpError(error, "Filesystem is corrupt.",
                                     e_errors.FILESYSTEM_CORRUPT,
-                                    {'outfile' : outputlist[i]})
+                                    {'outfile' : outputfile_print})
                 else:
-                    raise EncpError(errno.ENOENT, outputlist[i],
+                    raise EncpError(errno.ENOENT, outputfile_print,
                                     e_errors.USERERROR,
-                                    {'outfile' : outputlist[i]})
+                                    {'outfile' : outputfile_print})
 
             #The file exits, as it should, for a dache transfer.
             #elif access_check(outputlist[i], os.F_OK) and dcache:
@@ -3518,9 +3562,9 @@ def outputfile_check(inputlist, outputlist, e):
                 #Do we have the ability to set the metadata after the file
                 # written to tape?
                 if not __e_access(fstatinfo, os.W_OK):
-                    raise EncpError(errno.EACCES, outputlist[i],
+                    raise EncpError(errno.EACCES, outputfile_print,
                                     e_errors.USERERROR,
-                                    {'outfile' : outputlist[i]})
+                                    {'outfile' : outputfile_print})
                 
                 #Before continuing lets check to see if layers 1 and 4 are
                 # empty first.  This check is being added because it appears
@@ -3531,8 +3575,8 @@ def outputfile_check(inputlist, outputlist, e):
                     #These to test read access.  They also allow us to
                     # determine if there is already a file written to enstore
                     # with this same filename.
-                    layer1 = p.readlayer(1, outputlist[i])
-                    layer4 = p.readlayer(4, outputlist[i])
+                    layer1 = p.readlayer(1, outputfile_use)
+                    layer4 = p.readlayer(4, outputfile_use)
 
                     #This block of code will log information.  We should
                     # never see this message, but I'm adding it because
@@ -3545,7 +3589,7 @@ def outputfile_check(inputlist, outputlist, e):
                             try:
                                 #So what if we end up reading layers 1 and
                                 # 4 twice.
-                                layer_data = p.readlayer(layer, outputlist[i])
+                                layer_data = p.readlayer(layer, outputfile_use)
                             except:
                                 continue
                                                 
@@ -3579,19 +3623,21 @@ def outputfile_check(inputlist, outputlist, e):
                             raise EncpError(errno.EEXIST,
                                        "Layer 1 and layer 4 are already set.",
                                             e_errors.PNFS_ERROR,
-                                            {'outfile' : outputlist[i]})
+                                            {'outfile' : outputfile_print})
                         elif l1_bfid or l4_line1:
                             #The layers are corrupted.
                             raise EncpError(errno.EEXIST,
                                        "Layer 1 and layer 4 are corrupted.",
                                             e_errors.PNFS_ERROR,
-                                            {'outfile' : outputlist[i]})
+                                            {'outfile' : outputfile_print})
                         else:
                             #We are ignoring the whitespace.
-                            outputlist.append(outputlist[i])
+                            outputlist.append(outputfile_print)
+                            pass
                     else:
                         #The layers are empty.
-                        outputlist.append(outputlist[i])
+                        outputlist.append(outputfile_print)
+                        pass
 
                     #Try to write an empty string to layer 1.  If this fails,
                     # it will most likely fail becuase of:
@@ -3602,32 +3648,35 @@ def outputfile_check(inputlist, outputlist, e):
                     #    list for pnfs (EPERM)
                     # 4) user root is modifying something outside of the
                     #    /pnfs/fs/usr/xyz/ filesystem (EPERM).
-                    p.writelayer(1, "", outputlist[i])
+                    p.writelayer(1, "", outputfile_use)
 
                     #Get the outfile size.
-                    ofilesize = fstatinfo[stat.ST_SIZE]
+                    ofilesize = long(fstatinfo[stat.ST_SIZE])
                     """
                     try:
-                        ofilesize = long(os.stat(outputlist[i])[stat.ST_SIZE])
+                        ofilesize = long(os.stat(outputfile_use)[stat.ST_SIZE])
                     except OSError, msg:
                         raise EncpError(msg.errno,
                                         "Unable to get file size for file %s."
-                                        % (outputlist[i]),
+                                        % (outputfile_print),
                                         e_errors.OSERROR,
-                                        {'outfile' : outputlist[i]})
+                                        {'outfile' : outputfile_print})
                     """
 
                     #Get the infile size.
                     ### There should be a way to eliminate this stat() call,
                     ### but that will take a bit of refactoring.
+                    ifilesize = long(work_ticket['file_size'])
+                    """
                     try:
-                        ifilesize = long(os.stat(inputlist[i])[stat.ST_SIZE])
+                        ifilesize = long(os.stat(inputfile_use)[stat.ST_SIZE])
                     except OSError, msg:
                         raise EncpError(msg.errno,
                                         "Unable to get file size for file %s."
-                                        % (inputlist[i]),
+                                        % (inputfile_print),
                                         e_errors.OSERROR,
-                                        {'outfile' : outputlist[i]})
+                                        {'outfile' : outputfile_print})
+                    """
 
                     if ofilesize == 1 and ifilesize > TWO_G:
                         #If the file is large, there is nothing to compare.
@@ -3640,7 +3689,7 @@ def outputfile_check(inputlist, outputlist, e):
                                         "equal remote file size (%s)." %
                                         (ifilesize, ofilesize),
                                         e_errors.FILE_MODIFIED,
-                                        {'outfile' : outputlist[i]})
+                                        {'outfile' : outputfile_print})
                 except (OSError, IOError), msg:
                     #Some other non-foreseen error has occured.
                     error = getattr(msg, "errno", None)
@@ -3654,9 +3703,9 @@ def outputfile_check(inputlist, outputlist, e):
 
             else:
                 raise EncpError(None,
-                             "Failed outputfile check for: %s" % outputlist[i],
+                         "Failed outputfile check for: %s" % outputfile_print,
                                 e_errors.UNKNOWN,
-                                {'outfile' : outputlist[i]})
+                                {'outfile' : outputfile_print})
 
             # we cannot allow 2 output files to be the same
             # this will cause the 2nd to just overwrite the 1st
@@ -3664,11 +3713,11 @@ def outputfile_check(inputlist, outputlist, e):
             # inputfile_check, but do it again just to make sure in case
             # someone changes protocol
             try:
-                match_index = inputlist[:i].index(inputlist[i])
+                match_index = outputlist[:i].index(outputlist[i])
                 raise EncpError(None,
-                                'Duplicate entry %s'%(inputlist[match_index],),
+                            'Duplicate entry %s' % (outputlist[match_index],),
                                 e_errors.USERERROR,
-                                {'outfile' : outputlist[i]})
+                                {'outfile' : outputfile_print})
             except ValueError:
                 pass  #There is no error.
 
@@ -4840,8 +4889,64 @@ def submit_one_request(ticket, encp_intf):
 
 ############################################################################
 
-#mode should only contain two values, "read", "write".
-#def open_local_file(filename, e):
+"""
+#Verify that the pnfs file is still there and looks okay.
+def check_pnfs_file(work_ticket):
+    
+    check_pnfs_file_start_time = time.time()
+
+    if is_read(work_ticket):
+        pnfs_file = work_ticket['outfile']
+    else: #write
+        pnfs_file = work_ticket['infile']
+
+    try:
+        #work_ticket['outfile'] should contain the .(access)() filename
+        # for this file.  Thus, even if the user moves it, it should still
+        # work correctly.
+        statinfo = get_stat(pnfs_file)
+    except IOError, msg:
+        raise EncpError(msg.args, str(msg), e_errors.IOERROR,
+                        {'infile' : work_ticket['infilepath'],
+                         'outfile' : work_ticket['outfilepath']})
+    except OSError, msg:
+        raise EncpError(msg.args, str(msg), e_errors.OSERROR,
+                        {'infile' : work_ticket['infilepath'],
+                         'outfile' : work_ticket['outfilepath']})
+
+    #With work_ticket['outfile'] containing the .(access)() name, it should
+    # be impossible that the pnfs could be given out to a different
+    # file directory.  Since, work_ticket['outfile'] could still be a
+    # normal file path, we should be prepared to handle this situation
+    # anyway.
+    if stat.S_ISDIR(statinfo[stat.ST_MODE]):
+        raise EncpError(errno.EISDIR, work_ticket['infilepath'],
+                                    e_errors.USERERROR,
+                                    {'infile' : work_ticket['infilepath']})
+
+    filesize = long(statinfo[stat.ST_SIZE])
+    if is_read(work_ticket):
+        if filesize == 1 and work_ticket['file_size'] > TWO_G:
+            pass  #All is good.
+        elif filesize == work_ticket['file_size']:
+            pass #All is good.
+        else:
+            raise EncpError(errno.EISDIR, work_ticket['infilepath'],
+                                    e_errors.USERERROR,
+                                    {'infile' : work_ticket['infilepath']})
+    
+    done_ticket = {'status':(e_errors.OK, None)}
+
+    #Record this.
+    message = "Time to check pnfs file: %s sec." % \
+              (time.time() - check_pnfs_file_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
+    return done_ticket
+"""
+
+#Open the local disk file for reading or writing (as appropriate).
 def open_local_file(work_ticket, tinfo, e):
     
     open_local_file_start_time = time.time()
@@ -6761,30 +6866,31 @@ def verify_write_request_consistancy(request_list, e):
         if request['infile'] not in ["/dev/zero",
                                      "/dev/random", "/dev/urandom"]:
             try:
-                inputfile_check(request['infile'], e)
+                inputfile_check(request, e)
             except IOError, msg:
                 raise EncpError(msg.args, str(msg), e_errors.IOERROR,
-                                {'infile' : request['infile'],
-                                 'outfile' : request['outfile']})
+                                {'infile' : request['infilepath'],
+                                 'outfile' : request['outfilepath']})
             except OSError, msg:
                 raise EncpError(msg.args, str(msg), e_errors.OSERROR,
-                                {'infile' : request['infile'],
-                                 'outfile' : request['outfile']})
+                                {'infile' : request['infilepath'],
+                                 'outfile' : request['outfilepath']})
             
         if request['outfile'] not in ["/dev/null", "/dev/zero",
                                       "/dev/random", "/dev/urandom"]:
             if not request['wrapper']['inode']:
                 try:
                     #Only test this before the output file is created.
-                    outputfile_check(request['infile'], request['outfile'], e)
+                    #outputfile_check(request['infile'], request['outfile'], e)
+                    outputfile_check(request, e)
                 except IOError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.IOERROR,
-                                    {'infile' : request['infile'],
-                                     'outfile' : request['outfile']})
+                                    {'infile' : request['infilepath'],
+                                     'outfile' : request['outfilepath']})
                 except OSError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
-                                    {'infile' : request['infile'],
-                                     'outfile' : request['outfile']})
+                                    {'infile' : request['infilepath'],
+                                     'outfile' : request['outfilepath']})
             else:
                 #We should only get here when called from read_hsm_file()
                 # or write_hsm_file().  In any case, the file should still
@@ -6794,28 +6900,28 @@ def verify_write_request_consistancy(request_list, e):
                     unused = get_stat(request['outfile'])
                 except IOError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.IOERROR,
-                                    {'infile' : request['infile'],
-                                     'outfile' : request['outfile']})
+                                    {'infile' : request['infilepath'],
+                                     'outfile' : request['outfilepath']})
                 except OSError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
-                                    {'infile' : request['infile'],
-                                     'outfile' : request['outfile']})
+                                    {'infile' : request['infilepath'],
+                                     'outfile' : request['outfilepath']})
 
         #This block of code makes sure the the user is not moving
         # two files with the same basename in different directories
         # into the same destination directory.
-        result = outputfile_dict.get(request['outfile'], None)
+        result = outputfile_dict.get(request['outfilepath'], None)
         if result and not request.get('copy', None):
             #If the file is already in the list (and not a copy), give error.
             raise EncpError(None,
                             'Duplicate file entry: %s' % (result,),
                             e_errors.USERERROR,
-                            {'infile' : request['infile'],
-                             'outfile' : request['outfile']})
+                            {'infile' : request['infilepath'],
+                             'outfile' : request['outfilepath']})
         else:
             #Put into one place all of the output names.  This is to check
             # that two file to not have the same output name.
-            outputfile_dict[request['outfile']] = request['infile']
+            outputfile_dict[request['outfile']] = request['infilepath']
 
         #Verify that the tags contain 'sane' characters.
         tag_check(request)
@@ -7732,12 +7838,20 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         """
         overall_start = time.time() #----------------------------Overall Start
 
+        
+        ### 8-22-2008: Commented out the verify_write_request_consistancy()
+        ### call here.  It does a lot of checks that don't need to be done
+        ### that also put a lot of strain on PNFS.  The handle_retries()
+        ### pnfs_filename check just after open_local_file should be
+        ### sufficent.
+        """
         #Be paranoid.  Check this the ticket again.
         try:
             verify_write_request_consistancy([work_ticket], e)
         except EncpError, msg:
             msg.ticket['status'] = (msg.type, msg.strerror)
             return msg.ticket
+        """
 
         #This should be redundant error check.
         if not control_socket or not data_path_socket:
@@ -7754,8 +7868,11 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         #maybe this isn't a good idea...
         #work_ticket = combine_dict(ticket, work_ticket)
 
+        #Open the local file for reading.
         done_ticket = open_local_file(work_ticket, tinfo, e)
 
+        #By adding the pnfs_filename check, we will know if another process
+        # has modified this file.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e,
                                      pnfs_filename = work_ticket['outfile'])
@@ -8471,57 +8588,59 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     access_check(request['infile'], os.F_OK)
 
                 try:
-                    inputfile_check(request['infile'], e)
+                    inputfile_check(request, e)
                 except IOError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.IOERROR,
-                                    {'infile' : request['infile'],
-                                     'outfile' : request['outfile']})
+                                    {'infile' : request['infilepath'],
+                                     'outfile' : request['outfilepath']})
                 except OSError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
-                                    {'infile' : request['infile'],
-                                     'outfile' : request['outfile']})
+                                    {'infile' : request['infilepath'],
+                                     'outfile' : request['outfilepath']})
 
                 try:
                     inputfile_check_pnfs(request, bfid_brand, e)
                 except IOError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.IOERROR,
-                                    {'infile' : request['infile'],
-                                     'outfile' : request['outfile']})
+                                    {'infile' : request['infilepath'],
+                                     'outfile' : request['outfilepath']})
                 except OSError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
-                                    {'infile' : request['infile'],
-                                     'outfile' : request['outfile']})
+                                    {'infile' : request['infilepath'],
+                                     'outfile' : request['outfilepath']})
                 
             if request['outfile'] not in ["/dev/null", "/dev/zero",
                                           "/dev/random", "/dev/urandom"]:
                 if not request.get('local_inode', None):
                     try:
-                        outputfile_check(request['infile'],
-                                         request['outfile'], e)
+                        #outputfile_check(request['infile'],
+                        #                 request['outfile'], e)
+                        outputfile_check(request, e)
                     except IOError, msg:
                         raise EncpError(msg.args, str(msg), e_errors.IOERROR,
-                                        {'infile' : request['infile'],
-                                         'outfile' : request['outfile']})
+                                        {'infile' : request['infilepath'],
+                                         'outfile' : request['outfilepath']})
                     except OSError, msg:
                         raise EncpError(msg.args, str(msg), e_errors.OSERROR,
-                                        {'infile' : request['infile'],
-                                         'outfile' : request['outfile']})
+                                        {'infile' : request['infilepath'],
+                                         'outfile' : request['outfilepath']})
                 
                 #This block of code makes sure the the user is not moving
                 # two files with the same basename in different directories
                 # into the same destination directory.
-                result = outputfile_dict.get(request['outfile'], None)
+                result = outputfile_dict.get(request['outfilepath'], None)
                 if result: 
                     #If the file is already in the list, give error.
                     raise EncpError(None,
                                     'Duplicate file entry: %s' % (result,),
                                     e_errors.USERERROR,
-                                    {'infile' : request['infile'],
-                                     'outfile' : request['outfile']})
+                                    {'infile' : request['infilepath'],
+                                     'outfile' : request['outfilepath']})
                 else:
                     #Put into one place all of the output names.  This is to
                     # check that two file to not have the same output name.
-                    outputfile_dict[request['outfile']] = request['infile']
+                    outputfile_dict[request['outfilepath']] = \
+                                                    request['infilepath']
 
             try:
                 #Verify that file clerk and volume clerk returned the same
@@ -9600,6 +9719,12 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     
     overall_start = time.time() #----------------------------Overall Start
 
+    ### 8-22-2008: Commented out the verify_read_request_consistancy()
+    ### call here.  It does a lot of checks that don't need to be done
+    ### that also put a lot of strain on PNFS.  The handle_retries()
+    ### pnfs_filename check just after open_local_file should be
+    ### sufficent.
+    """
     #Be paranoid.  Check this the ticket again.
     #Dmitry is not paranoid
     #r_encp = os.environ.get('REMOTE_ENCP')
@@ -9619,19 +9744,21 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
             if not e_errors.is_ok(result_dict):
                 #close_descriptors(control_socket, data_path_socket)
                 return combine_dict(result_dict, request_ticket)
+    """
                     
     Trace.message(TRANSFER_LEVEL, "Mover called back.  elapsed=%s" %
                   (time.time() - tinfo['encp_start_time'],))
     Trace.message(TICKET_LEVEL, "REQUEST:")
     Trace.message(TICKET_LEVEL, pprint.pformat(request_ticket))
 
-    #Open the output file.
+    #Open the output file for writing.
     done_ticket = open_local_file(request_ticket, tinfo, e)
 
+    #By adding the pnfs_filename check, we will know if another process
+    # has modified this file.
     result_dict = handle_retries(request_list, request_ticket,
-                                 done_ticket, e)
-                                 #listen_socket = listen_socket,
-                                 #udp_server = route_server)
+                                 done_ticket, e,
+                                 pnfs_filename = request_ticket['infile'])
 
     if not e_errors.is_ok(result_dict):
         #close_descriptors(control_socket, data_path_socket)
