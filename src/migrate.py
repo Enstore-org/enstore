@@ -299,6 +299,14 @@ def nullify_pnfs(pname):
 def set_proceed_number(src_bfids):
 	global proceed_number
 
+	if len(src_bfids) == 0:
+		#If the volume contains only deleted files and --with-deleted
+		# was not used; src_bfids will be an empty list.  In this
+		# case, skip setting this value to avoid raising an
+		# IndexError doing the "get_media_type(src_bfids[0], db)"
+		# below.
+		return
+
 	# get a db connection
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
