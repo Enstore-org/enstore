@@ -408,6 +408,7 @@ SHOW_ROBOT = "show-robot"                    #media
 SHOW_STATE = "show-state"                    #volume, file, info
 SHOW_VOLUME = "show-volume"                  #media
 SIZE = "size"                                #pnfs
+SKIP_BAD = "skip-bad"                        #migrate
 SKIP_DELETED_FILES = "skip-deleted-files"    #get
 SKIP_PNFS = "skip-pnfs"                      #super_remove
 SPOOL_DIR = "spool-dir"                      #migrate
@@ -530,7 +531,7 @@ valid_option_list = [
     SHOW_COPIES,
     SHOWID, SHOW_IGNORED_STORAGE_GROUPS,
     SHOW_QUOTA, SHOW_ROBOT, SHOW_STATE, SHOW_VOLUME,
-    SIZE, SKIP_DELETED_FILES, SKIP_PNFS,
+    SIZE, SKIP_BAD, SKIP_DELETED_FILES, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,

@@ -540,7 +540,11 @@ def log_history(src, dst, db):
 		db.query(q)
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
+		#If the volume is being rerun, ignore the unique constraint
+		# error from postgres.
+		if not str(exc_value).startswith(
+			"ERROR:  duplicate key violates unique constraint"):
+			error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
 	return
 
 # undo_log(src, dst) -- remove a source and destination bfid pair from the
@@ -1883,7 +1887,7 @@ def final_scan_volume(vol, intf):
 	if (v['system_inhibit'][1] != 'full' and \
 		v['system_inhibit'][1] != 'none' and \
 		v['system_inhibit'][1] != 'readonly') \
-		and is_migrated(vol, db):
+		and is_migrated_by_dst_vol(vol, intf, db):
 		error_log(MY_TASK, 'volume %s is "%s"'%(vol, v['system_inhibit'][1]))
 		return 1
 
@@ -1948,8 +1952,8 @@ def final_scan_volume(vol, intf):
 			close_log('OK')
 			
 	# restore file family only if there is no error
-	if not local_error and is_migrated(vol, db):
-		rtn_code = set_volume_migrated(
+	if not local_error and is_migrated_by_dst_vol(vol, intf, db):
+		rtn_code = set_dst_volume_migrated(
                     MY_TASK, vol, sg, ff, wp, vcc, db)
 		if rtn_code:
 			#Error occured.
@@ -1961,7 +1965,7 @@ def final_scan_volume(vol, intf):
 				
 	return local_error
 
-def set_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
+def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 
 	## Prepare to set the file family back to that of the original.
 	ff = normal_file_family(ff)
@@ -2208,42 +2212,93 @@ def migrated_to(vol, db):
 
 	return to_list
 
-def is_migrated(vol, db):
-	is_dst_volume = False
-	
-	q = "select bfid,location_cookie,deleted from file,volume " \
-	    "where file.volume = volume.id " \
-	    " and volume.label = '%s' " \
-	    "order by location_cookie;" % (vol,)
-	res1 = db.query(q).getresult()
-	for row in res1:
-		q2 = "select * from migration " \
-		     "where src_bfid = '%s' or dst_bfid = '%s';" % \
-		     (row[0], row[0])
-		res2 = db.query(q2).getresult()
-		if len(res2) == 0:
-			deleted = row[2]
-			if deleted != "n" and is_dst_volume:
-				#Skipping deleted/unknown files on the
-				# destination volume.
-				continue
-				
-			return False  #At least one file is not migrated.
-		else:
-			row2 = res2[0]
-			if row[0] == row2[1]: #if bfid is the dst_bfid...
-				is_dst_volume = True
-			try:
-				if not row2[2] or not row2[3] or not row2[4] \
-				       or not row2[5]:
-					return False
-			except IndexError:
-				return False #At least one file is not migrated.
-		
-	return True #All files migrated.
+#for copied, swapped, checked and closed, if they are true, that part of
+# the migration table is checked.
+def is_migrated_by_src_vol(vol, intf, db, copied = 1, swapped = 1, checked = 1,
+			   closed = 1):
 
+	return is_migrated(vol, None, intf, db,
+			   copied = copied, swapped = swapped,
+			   checked = checked, closed = closed)
+
+#for copied, swapped, checked and closed, if they are true, that part of
+# the migration table is checked.
+def is_migrated_by_dst_vol(vol, intf, db, copied = 1, swapped = 1, checked = 1,
+			   closed = 1):
+
+	return is_migrated(None, vol, intf, db,
+			   copied = copied, swapped = swapped,
+			   checked = checked, closed = closed)
+
+#Only one of src_vol or dst_vol should be specifed, the other should be
+# set to None.
+def is_migrated(src_vol, dst_vol, intf, db, copied = 1, swapped = 1, checked = 1, closed = 1):
+	check_copied = ""
+	check_swapped = ""
+	check_checked = ""
+	check_closed = ""
+	if copied:
+		check_copied = " or migration.copied is NULL "
+	if swapped:
+		check_swapped = " or migration.swapped is NULL "
+	if checked:
+		check_checked = " or migration.checked is NULL "
+	if closed:
+		check_closed = " or migration.closed is NULL "
+
+	if src_vol and not dst_vol:
+		check_label = "volume.label = '%s'" % (src_vol,)
+	elif dst_vol and not src_vol:
+		check_label = "v2.label = '%s'" % (dst_vol,)
+	elif not dst_vol and not src_vol:
+		return False #should never happen
+	else: # dst_vol and src_vol:
+		return False #should never happen
+
+	#Consider the deleted status the files.  All cases should ignore,
+	# unknown files from transfer failures.
+	if dst_vol:
+		deleted_files = " (file.deleted = 'n') "
+	elif intf.with_deleted and src_vol:
+		deleted_files = " (file.deleted = 'n' or file.deleted = 'y') "
+	elif not intf.with_deleted and src_vol:
+		deleted_files = " (file.deleted = 'n') "
+
+	if dst_vol:
+		bad_files1 = ""
+		bad_files2 = ""
+	elif intf.skip_bad and src_vol:
+		bad_files1 = "left join bad_file on bad_file.bfid = file.bfid"
+		bad_files2 = " and bad_file.bfid is NULL " 
+	elif not intf.skip_bad and src_vol:
+		bad_files1 = ""
+		bad_files2 = ""
+	
+	q1 = "select file.bfid,volume.label,f2.bfid,v2.label," \
+	     "migration.copied,migration.swapped,migration.checked,migration.closed " \
+	     "from file " \
+	     "left join volume on file.volume = volume.id " \
+	     "left join migration on file.bfid = migration.src_bfid " \
+	     "left join file f2 on f2.bfid = migration.dst_bfid " \
+	     "left join volume v2 on f2.volume = v2.id " \
+	     "%s " \
+	     "where (f2.bfid is NULL %s %s %s %s ) " \
+	     "      and %s and %s %s;" % \
+	     (bad_files1,
+	      check_copied, check_swapped, check_checked, check_closed,
+	      check_label, deleted_files, bad_files2)
+
+	#Determine if the volume is the source volume with files to go.
+	res1 = db.query(q1).getresult()
+	if len(res1) == 0:
+		return True
+
+	return False
+
+##########################################################################
+	
 # migrate_volume(vol) -- migrate a volume
-def migrate_volume(vol, intf, with_deleted = None):
+def migrate_volume(vol, intf):
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
@@ -2263,7 +2318,7 @@ def migrate_volume(vol, intf, with_deleted = None):
 	if v['system_inhibit'][0] != 'none':
 		error_log(MY_TASK, vol, 'is', v['system_inhibit'][0])
 		return 1
-	if v['system_inhibit'][1] == INHIBIT_STATE and is_migrated(vol, db):
+	if v['system_inhibit'][1] == INHIBIT_STATE and is_migrated_by_src_vol(vol, intf, db):
 		log(MY_TASK, vol, 'has already been migrated')
 		return 0
 	if v['system_inhibit'][1] != "readonly":
@@ -2273,14 +2328,21 @@ def migrate_volume(vol, intf, with_deleted = None):
 	# now try to copy the file one by one
 	# get all bfids
 
-	if with_deleted:
+	if intf.with_deleted:
 		use_deleted_sql = "or deleted = 'y'"
 	else:
-		use_deleted_sql = ""		
-	q = "select bfid from file, volume " \
+		use_deleted_sql = ""
+	if intf.skip_bad:
+		use_skip_bad = "and bad_file.bfid is NULL"
+	else:
+		use_skip_bad = ""
+	q = "select file.bfid,bad_file.bfid from file " \
+	    "full join bad_file on bad_file.bfid = file.bfid " \
+	    "join volume on file.volume = volume.id " \
 	    "where file.volume = volume.id and label = '%s' " \
-	    "and (deleted = 'n' %s) and pnfs_path != '' " \
-	    "order by location_cookie;" % (vol, use_deleted_sql)
+	    "      and (deleted = 'n' %s) and pnfs_path != '' " \
+	    "%s " \
+	    "order by location_cookie;" % (vol, use_deleted_sql, use_skip_bad)
 	res = db.query(q).getresult()
 
 	bfids = []
@@ -2289,7 +2351,11 @@ def migrate_volume(vol, intf, with_deleted = None):
 		bfids.append(r[0])
 
 	res = migrate(bfids, intf)
-	if res == 0:
+	if res == 0 and is_migrated_by_src_vol(vol, intf, db, checked = 0, closed = 0):
+		set_src_volume_migrated(
+			MY_TASK, vol, vcc, db)
+
+		"""
 		# mark the volume as migrated
 		#ticket = vcc.set_system_migrated(vol)
 		ticket = set_system_migrated_func(vcc, vol)
@@ -2314,9 +2380,39 @@ def migrate_volume(vol, intf, with_deleted = None):
 				ok_log(MY_TASK, 'set comment of %s to "%s%s"'%(vol, MTO, vol_list))
 			else:
 				error_log(MY_TASK, 'failed to set comment of %s to "%s%s"'%(vol, MTO, vol_list))
+		"""
 	else:
 		error_log(MY_TASK, "do not set %s to %s due to previous error"%(vol, INHIBIT_STATE))
 	return res
+
+def set_src_volume_migrated(MY_TASK, vol, vcc, db):
+	# mark the volume as migrated
+	ticket = set_system_migrated_func(vcc, vol)
+	if ticket['status'][0] == e_errors.OK:
+		log(MY_TASK, "set %s to %s"%(vol, INHIBIT_STATE))
+	else:
+		error_log(MY_TASK, "failed to set %s %s: %s" \
+			  % (vol, ticket['status'], INHIBIT_STATE))
+	# set comment
+	to_list = migrated_to(vol, db)
+	if to_list == []:
+		to_list = ['none']
+	vol_list = ""
+	for i in to_list:
+		# log history
+		log_history(vol, i, db)
+		# build comment
+		vol_list = vol_list + ' ' + i
+	if vol_list:
+		res = vcc.set_comment(vol, MTO+vol_list)
+		if res['status'][0] == e_errors.OK:
+			ok_log(MY_TASK, 'set comment of %s to "%s%s"' \
+			       % (vol, MTO, vol_list))
+		else:
+			error_log(MY_TASK, 'failed to set comment of %s to "%s%s"' \
+				  % (vol, MTO, vol_list))
+			return 1
+	return 0
 
 ##########################################################################
 
@@ -2480,6 +2576,7 @@ class MigrateInterface(option.Interface):
 		self.scan_volumes = 0
 		self.migrated_from = None
 		self.migrated_to = None
+		self.skip_bad = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 		
@@ -2537,6 +2634,11 @@ class MigrateInterface(option.Interface):
 				 option.USER_LEVEL:option.USER,},
 		option.SCAN_VOLUMES:{option.HELP_STRING:
 				 "Scan completed volumes.",
+				 option.VALUE_USAGE:option.IGNORED,
+				 option.VALUE_TYPE:option.INTEGER,
+				 option.USER_LEVEL:option.USER,},
+		option.SKIP_BAD:{option.HELP_STRING:
+				 "Skip bad files.",
 				 option.VALUE_USAGE:option.IGNORED,
 				 option.VALUE_TYPE:option.INTEGER,
 				 option.USER_LEVEL:option.USER,},
@@ -2672,8 +2774,7 @@ def main(intf):
 			#	icheck = True
 			#else:
 			#	icheck = False
-			migrate_volume(volume, intf,
-				       with_deleted = intf.with_deleted)
+			migrate_volume(volume, intf)
 
 
 def do_work(intf):
