@@ -175,7 +175,9 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             elif total_only:
                 #Used only for the summary plots of multiple Enstore systems.
                 name = keys[i]
-                #The "lt 1" part is a hack to have all plots values...
+                #Column 6 contains 'corrected' values.  This allows us to
+                # show the summary where the impluses in "back" get bumped
+                # up over the impluses in front.
                 rl = '"%s" using 1:6 t "%s" with impulses linewidth 20 ' % (data_filename, name)
                 wl = ""
             else: #reads and writes seperate.
