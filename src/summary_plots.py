@@ -17,18 +17,17 @@ import sys
 # enstore imports
 import enstore_plotter_framework
 import summary_burn_rate_plotter_module
-
+import summary_bpd_plotter_module
 
 def usage(cmd):
-    print "Usage: %s -t [--tapes-burn-rate] \n"%(cmd,)
-
+    print "Usage: %s [-t | --tapes-burn-rate] \n" \
+          "          [-b | --total-bytes-per-day]\n" \
+          "          [web_dir]\n" % (cmd,)
 
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfeqt"
-        long_args = ["help", "mounts", "rate", "utilization", "drives",
-                     "slots", "pnfs-bakup", "file-family-analysis",
-                     "--quotas", "--tapes-burn-rate"]
+        short_args = "htb"
+        long_args = ["help", "--tapes-burn-rate"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError:
         print "Failed to process arguments"
@@ -48,5 +47,10 @@ if __name__ == "__main__":
                 aModule.add_parameter("web_dir", args[0])
             f.add(aModule)
 
+        if o in ("-b", "--total-bytes-per-day"):
+            aModule = summary_bpd_plotter_module.SummaryBpdPlotterModule("summary_bpd")
+            if len(args) > 0:
+                aModule.add_parameter("web_dir", args[0])
+            f.add(aModule)
         
     f.do_work()

@@ -26,28 +26,32 @@ import encp_rate_multi_plotter_module
 import quotas_plotter_module
 import tapes_burn_rate_plotter_module
 import migration_summary_plotter_module
+import bytes_per_day_plotter_module
 
 
 def usage(cmd):
     print "Usage: %s [options] "%(cmd,)
-    print "\t -r [--rate]        : plot ratekeeper plots"
-    print "\t -m [--mounts]      : plot mount plots "
-    print "\t -u [--utilization] : plot drive utilization (old name)"
-    print "\t -d [--drives]      : plot drive utilization"
-    print "\t -s [--slots]       : plot slot utilization"
-    print "\t -p [--pnfs-backup] : plot pnfs backup time"
-    print "\t -p [--file-family-analysis] : plot file family analysis"
+    print "\t -r [--rate]            : plot ratekeeper plots"
+    print "\t -m [--mounts]          : plot mount plots "
+    print "\t -u [--utilization]     : plot drive utilization (old name)"
+    print "\t -d [--drives]          : plot drive utilization"
+    print "\t -s [--slots]           : plot slot utilization"
+    print "\t -p [--pnfs-backup]     : plot pnfs backup time"
+    print "\t -f [--file-family-analysis] : plot file family analysis"
     print "\t -e [--encp-rate-multi] : plot multiple encp rates"
-    print "\t -q [--quotas]      : plot quotas by storage group"
+    print "\t -q [--quotas]          : plot quotas by storage group"
+    print "\t -t [--tapes-burn-rate] : plot tape usage by storage group"
     print "\t -i [--migration-summary] : plot migration progress"
+    print "\t -b [--bytes-per-day]   : plot bytes transfered per day"
     print "\t -h [--help]        : show this message"
     
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfeqti"
+        short_args = "hmrudspfeqtib"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
                      "slots", "pnfs-bakup", "file-family-analysis",
-                     "quotas", "tapes-burn-rate", "migration-summary"]
+                     "quotas", "tapes-burn-rate", "migration-summary",
+                     "bytes-per-day"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError, msg:
         print msg
@@ -101,6 +105,10 @@ if __name__ == "__main__":
         # migration summary
         if o in ("-i","--migration-summary"):
             aModule = migration_summary_plotter_module.MigrationSummaryPlotterModule("migration_summary")
+            f.add(aModule)
+        # byes per day
+        if o in ("-b","--bytes-per-day"):
+            aModule = bytes_per_day_plotter_module.BytesPerDayPlotterModule("bytes-per-day")
             f.add(aModule)
 
     f.do_work()
