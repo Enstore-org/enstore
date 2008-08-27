@@ -15,3 +15,6 @@
 
 # generate file that contains bytes 
 5,20,35,50 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron  -p user_bytes python $ENSTORE_DIR/src/get_total_bytes_counter.py  > /dev/null 2> /dev/null
+
+# make the web pages that show the generated plots
+0,5,10,15,20,25,30,35,40,45,50,55 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_plot_page  python $ENSTORE_DIR/src/html_main.py --plots > /dev/null 2> /dev/null
