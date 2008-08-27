@@ -1903,7 +1903,7 @@ def final_scan_volume(vol, intf):
 	sg, ff, wp = string.split(v['volume_family'], '.')
 	if ff.find(MIGRATION_FILE_FAMILY_KEY) == -1:
 		error_log(MY_TASK, "%s is not a %s volume" %
-			  (vol, migrate.MIGRATION_NAME.lower()))
+			  (vol, MIGRATION_NAME.lower()))
 		return 1
 
 	q = "select bfid, pnfs_id, pnfs_path, src_bfid, location_cookie, deleted  \
