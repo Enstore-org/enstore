@@ -1160,7 +1160,7 @@ def readtape_from_hsm(e, tinfo):
 
                 #If on non-success exit status was returned from
                 # finish_request(), keep it around for later.
-                if request['exit_status']:
+                if request.get('exit_status', None):
                     #We get here only on an error.  If the value is 1, then
                     # the error should be transient.  If the value is 2, then
                     # the error will likely require human intervention to
