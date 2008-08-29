@@ -72,9 +72,9 @@ if __name__ == '__main__':
 				volume.storage_group = 'cms' and \
 				file.deleted = 'n' \
 				order by update;"%(bfid1, bfid2)
-	cmd = 'psql -p %d -h %s %s -c "%s" >> %s'%(
+	cmd = 'psql -p %d -h %s -U %s %s -c "%s" >> %s'%(
 		database['db_port'], database['db_host'],
-		database['dbname'], query, temp_file)
+		database['dbuser'], database['dbname'], query, temp_file)
 	print cmd
 	os.system(cmd)
 
