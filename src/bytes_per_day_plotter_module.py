@@ -10,10 +10,8 @@
 import pg
 import os
 import time
-import string
 import sys
 import types
-import re
 
 # enstore imports
 import enstore_plotter_module
@@ -106,25 +104,31 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         transfers = 0L
         if writes_only:
             for key in keys:
-                write_aggregates = self.total_values[key].get('w', EMPTY_AGGREGATES)
+                write_aggregates = self.total_values.get(key, {}).get('w', EMPTY_AGGREGATES)
                 
                 total_bytes = total_bytes + write_aggregates['sum']
                 #meansize = write_aggregates['average']
                 transfers = transfers + write_aggregates['count']
 
-            meansize = total_bytes / transfers
+            try:
+                meansize = total_bytes / transfers
+            except ZeroDivisionError:
+                meansize = 0
             
             title_label = "Written"
         else:
             for key in keys:
-                write_aggregates = self.total_values[key].get('w', EMPTY_AGGREGATES)
-                read_aggregates = self.total_values[key].get('r', EMPTY_AGGREGATES)
+                write_aggregates = self.total_values.get(key, {}).get('w', EMPTY_AGGREGATES)
+                read_aggregates = self.total_values.get(key, {}).get('r', EMPTY_AGGREGATES)
                 
                 total_bytes = total_bytes + read_aggregates['sum'] + write_aggregates['sum']
                 #meansize = read_aggregates['average'] + write_aggregates['average']
                 transfers = transfers + read_aggregates['count'] + write_aggregates['count']
 
-            meansize = total_bytes / transfers
+            try:
+                meansize = total_bytes / transfers
+            except ZeroDivisionError:
+                meansize = 0
         
             title_label = "Transfered"
 
@@ -194,7 +198,6 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
     #Get the daily information from the DB and write it to a data file.
     def _fill(self, sql_cmd, adb):
-        
         adb_res = adb.query(sql_cmd).getresult() #Get the values from the DB.
 
         self.store_dict = {}
@@ -452,7 +455,18 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         jpg_stamp_filename = os.path.join(self.plot_dir,
                                           "%senplot_bpd_w_month_stamp.jpg" % (self.output_fname_prefix))        
 
-        pts_filename = self.pts_files_dict["enstore"].name
+        try:
+            pts_filename = self.pts_files_dict["enstore"].name
+        except KeyError:
+            #We get here if there were no encp's in the last month.
+            pts_filename = os.path.join(self.temp_dir, "bpd_dummy.pts")
+            self.pts_files_dict["enstore"] = open(pts_filename, "w")
+            #Write one data point to appease gnuplot.
+            self.pts_files_dict["enstore"].write("%s %s %s %s %s %s\n" %
+                                                 (time.strftime("%Y-%m-%d"),
+                                                  "enstore",
+                                                  0, 0, 0, 0))
+            self.pts_files_dict["enstore"].close()
             
         #Write the gnuplot command file(s).
         self.write_plot_file(plot_filename, pts_filename, ps_filename,
@@ -477,7 +491,18 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         jpg_stamp_filename = os.path.join(self.plot_dir,
                                           "%senplot_bpd_w_stamp.jpg" % (self.output_fname_prefix))        
 
-        pts_filename = self.pts_files_dict["enstore_all"].name
+        try:
+            pts_filename = self.pts_files_dict["enstore_all"].name
+        except KeyError:
+            #We get here if there were no encp's - ever.
+            pts_filename = os.path.join(self.temp_dir, "bpd_dummy.pts")
+            self.pts_files_dict["enstore_all"] = open(pts_filename, "w")
+            #Write one data point to appease gnuplot.
+            self.pts_files_dict["enstore"].write("%s %s %s %s %s %s\n" %
+                                                 (time.strftime("%Y-%m-%d"),
+                                                  "enstore",
+                                                  0, 0, 0, 0))
+            self.pts_files_dict["enstore_all"].close()
             
         #Write the gnuplot command file(s).
         self.write_plot_file(plot_filename, pts_filename, ps_filename,
