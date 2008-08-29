@@ -498,7 +498,7 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             pts_filename = os.path.join(self.temp_dir, "bpd_dummy.pts")
             self.pts_files_dict["enstore_all"] = open(pts_filename, "w")
             #Write one data point to appease gnuplot.
-            self.pts_files_dict["enstore"].write("%s %s %s %s %s %s\n" %
+            self.pts_files_dict["enstore_all"].write("%s %s %s %s %s %s\n" %
                                                  (time.strftime("%Y-%m-%d"),
                                                   "enstore",
                                                   0, 0, 0, 0))
