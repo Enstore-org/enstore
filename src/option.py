@@ -291,6 +291,7 @@ LIBRARY = "library"                          #pnfs, encp, migrate
 LIST = "list"                                #volume, file, get, MC, LM, M
 LIST_CLEAN = "list-clean"                    #media
 LIST_DRIVES = "list-drives"                  #media
+LIST_FAILED_COPIES = "list-failed-copies"    #duplicate
 LIST_LIBRARY_MANAGERS = "list-library-managers" #configuration
 LIST_MEDIA_CHANGERS = "list-media-changers"  #configuration
 LIST_MOVERS = "list-movers"                  #configuration
@@ -502,6 +503,7 @@ valid_option_list = [
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_CLEAN, LIST_DRIVES,
+    LIST_FAILED_COPIES,
     LIST_LIBRARY_MANAGERS, LIST_MEDIA_CHANGERS, LIST_MOVERS,
     LIST_SG_COUNT, LIST_SLOTS, LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,

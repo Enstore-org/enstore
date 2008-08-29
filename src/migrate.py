@@ -256,7 +256,8 @@ def init(intf):
 
 	# check for no_log commands
 	if not intf.migrated_to and not intf.migrated_from and \
-	   not intf.status and not intf.show:
+	   not intf.status and not intf.show and \
+	   not getattr(intf, "list_failed_copies", None):
 		# check for directories
 
 		#log dir
@@ -271,7 +272,8 @@ def init(intf):
 
 	# check for spool_dir commands
 	if not intf.migrated_to and not intf.migrated_from and \
-	   not intf.status and not intf.show and not intf.scan_volumes:
+	   not intf.status and not intf.show and not intf.scan_volumes and \
+	   not getattr(intf, "list_failed_copies", None):
 		#spool dir
 		if not SPOOL_DIR:
 			sys.stderr.write("No spool directory specified.\n")
@@ -1018,6 +1020,17 @@ def show_show(intf, db):
 	print "%10s %s" % ("volume", "system inhibit")
 	for row in res:
 		print "%10s %s" % (row[0], row[1])
+
+#For duplication only.
+def list_failed_copies(intf, db):
+	#Build the sql query.
+	q = "select * from active_file_copying order by time;"
+	#Get the results.
+	res = db.query(q).getresult()
+
+	print "%10s %16s %s" % ("bfid", "copies remaining", "waiting since")
+	for row in res:
+		print "%10s %16s %s" % (row[0], row[1], row[2])
 
 ##########################################################################
 
@@ -2746,6 +2759,14 @@ def main(intf):
 			exit_status = exit_status + final_scan_volume(v, intf)
                 return exit_status
 
+	#For duplicate only.
+	elif getattr(intf, "list_failed_copies", None):
+		
+		# get a db connection
+		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+
+		list_failed_copies(intf, db)
+	
 	else:
 		bfid_list = []
 		volume_list = []

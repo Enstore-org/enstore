@@ -35,6 +35,7 @@ import encp_wrapper
 import enstore_functions2
 import find_pnfs_file
 import Trace
+import option
 
 # modifying migrate module
 # migrate.DEFAULT_LIBRARY = 'LTO4'
@@ -48,6 +49,16 @@ migrate.MFROM = "<-"
 migrate.MTO = "->"
 migrate.LOG_DIR = "/var/duplication"
 migrate.LOG_FILE = migrate.LOG_FILE.replace('Migration', 'Duplication')
+
+DuplicateInterface = migrate.MigrateInterface
+DuplicateInterface.migrate_options[option.LIST_FAILED_COPIES] = {
+	option.HELP_STRING:
+	"List originals where the multiple copy write failed.",
+	option.VALUE_USAGE:option.IGNORED,
+	option.VALUE_TYPE:option.INTEGER,
+	option.USER_LEVEL:option.USER,
+	}
+
 
 # This is to change the behavior of migrate.swap_metadata.
 # duplicate_metadata(bfid1, src, bfid2, dst) -- duplicate metadata for src and dst
@@ -234,7 +245,7 @@ def final_scan_volume(vol, intf):
 	if (v['system_inhibit'][1] != 'full' and \
 		v['system_inhibit'][1] != 'none' and \
 		v['system_inhibit'][1] != 'readonly') \
-		and migrate.is_migrated(vol, db):
+		and migrate.is_migrated_by_dst_vol(vol, intf, db):
 		migrate.error_log(MY_TASK, 'volume %s is "%s"'%(vol, v['system_inhibit'][1]))
 		return 1
 
@@ -303,7 +314,7 @@ def final_scan_volume(vol, intf):
 			migrate.close_log('OK')
 
 	# restore file family only if there is no error
-	if not local_error and migrate.is_migrated(vol, db):
+	if not local_error and migrate.is_migrated_by_dst_vol(vol, intf, db):
 		rtn_code = migrate.set_volume_migrated(
 			MY_TASK, vol, sg, ff, wp, vcc, db)
 		if rtn_code:
