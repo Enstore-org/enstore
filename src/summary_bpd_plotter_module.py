@@ -10,10 +10,8 @@
 import pg
 import os
 import time
-import string
 import sys
 import types
-import copy
 
 # enstore imports
 import enstore_plotter_module
@@ -157,7 +155,20 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
 
         pts_filenames = []
         for key in self.extra_title_info:
-            pts_filenames.append(self.pts_files_dict[key].name)
+            try:
+                pts_filenames.append(self.pts_files_dict[key].name)
+            except KeyError:
+                #We get here if there were no encp's in the last month.
+                pts_filename = os.path.join(self.temp_dir, "bpd_dummy.pts")
+                self.pts_files_dict[key] = open(pts_filename, "w")
+                #Write one data point to appease gnuplot.
+                self.pts_files_dict[key].write("%s %s %s %s %s %s\n" %
+                                               (time.strftime("%Y-%m-%d"),
+                                                "enstore",
+                                                0, 0, 0, 0))
+                self.pts_files_dict[key].close()
+                pts_filenames.append(pts_filename) #Don't forget to add this!
+            
 
         #Need to reverse the order after the reverse in fill() so that they
         # are plotted correctly.
