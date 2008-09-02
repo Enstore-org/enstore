@@ -635,36 +635,39 @@ def get_media_type(bfid_or_volume, db):
 
 #Report if the volume pair was migrated or duplicated.
 def get_migration_type(src_vol, dst_vol, db):
+	migration_result = None
+	duplication_result = None
+	
 	try:
-		#The first way will be the prefered way once the volume
-		# clerk (et. al.) get updated.
-		"""
-		q = "select label from volume where " \
-		     " (label = '%s' and system_inhibit_1 = '%s' ) " \
-		     " or (label = '%s' and file_family like '%%%s%%') " \
-		     % (src_vol, INHIBIT_STATE,
-			dst_vol, MIGRATION_FILE_FAMILY_KEY)
-	        res = db.query(q).getresult()
-		if len(res) != 0:
-			return MIGRATION_NAME
-	        """
 		q_d = "select label from volume where " \
 		      " (label = '%s' or label = '%s') and " \
-		      "  (comment like '%%->%%' or comment like '%%<-%%') " \
+		      "  (comment like '%%->%%' or comment like '%%<-%%' " \
+		      "   or file_family like '%%_copy_%%' " \
+		      "   or system_inhibit_1 = 'duplicated') " \
 		      % (src_vol, dst_vol)
 		q_m =  "select label from volume where " \
 		      " (label = '%s' or label = '%s') and " \
-		      "  (comment like '%%=>%%' or comment like '%%<=%%') " \
+		      "  (comment like '%%=>%%' or comment like '%%<=%%' " \
+		      "   or file_family like '-MIGRATION' " \
+		      "   or system_inhibit_1 = 'migrated') " \
 		      % (src_vol, dst_vol)
 		res = db.query(q_m).getresult()
 		if len(res) != 0:
-			return "MIGRATION"
+			migration_result = "MIGRATION"
 		res = db.query(q_d).getresult()
 		if len(res) != 0:
-			return "DUPLICATION"
+			duplication_result = "DUPLICATION"
 	except IndexError:
 		return None
 
+	if migration_result and duplication_result:
+		return "The metadata is inconsistent between migration " \
+		       "and duplication."
+	elif migration_result:
+		return migration_result
+	elif duplication_result:
+		return duplication_result
+		
 	return None
 
 ##########################################################################
