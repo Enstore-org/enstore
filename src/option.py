@@ -304,6 +304,7 @@ LOGFILE_DIR = "logfile-dir"                  #plotter
 LS = "ls"                                    #pnfs
 LS_ACTIVE = "ls-active"                      #volume, file
 MAKE_HTML = "make-html"                      #up_down
+MAKE_FAILED_COPIES = "make-failed-copies"    #duplicate
 MARK_BAD = "mark-bad"                        #file
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
 MAX_RETRY = "max-retry"                      #encp
@@ -420,7 +421,7 @@ STOP_DRAINING = "stop-draining"              #library
 STOP_TIME = "stop-time"                      #plotter
 STORAGE_GROUP = "storage-group"              #pnfs, encp
 SUBSCRIBE = "subscribe"                      #inquisitor
-SUMMARY = "summary"                          #monitor, configuration, up_down
+SUMMARY = "summary"                          #monitor, configuration, up_down, duplicate
 SYSTEM_HTML = "system-html"                  #html
 TAG = "tag"                                  #pnfs
 TAGCHMOD = "tagchmod"                        #pnfs
@@ -507,7 +508,7 @@ valid_option_list = [
     LIST_LIBRARY_MANAGERS, LIST_MEDIA_CHANGERS, LIST_MOVERS,
     LIST_SG_COUNT, LIST_SLOTS, LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
-    MAKE_HTML, MARK_BAD,
+    MAKE_HTML, MAKE_FAILED_COPIES, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MESSAGES_FILE, MIGRATED, MIGRATED_FROM, MIGRATED_TO,
     MMAP_IO, MMAP_SIZE,
