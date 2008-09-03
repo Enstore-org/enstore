@@ -392,10 +392,10 @@ def encp_client_version():
 #    #os._exit(exit_code)
 
 def print_error(errcode,errmsg):
-    format = str(errcode)+" "+str(errmsg) + '\n'
-    format = "ERROR: "+format
+    message = str(errcode) + " " + str(errmsg) + '\n'
+    message = "ERROR: " + message
     try:
-        sys.stderr.write(format)
+        sys.stderr.write(message)
         sys.stderr.flush()
     except IOError:
         pass
@@ -801,6 +801,7 @@ def update_times(input_path, output_path):
     except OSError:
         pass #This one will fail if the output file is /dev/null.
 
+"""
 def bin(integer):
     if type(integer) != types.IntType:
         print
@@ -819,6 +820,7 @@ def bin(integer):
         temp = temp + ("%s" % i)
 
     return temp
+"""
 
 #Take as parameter the interface class instance or a request ticket.  Determine
 # if the transfer(s) is/are a read or not.
@@ -2300,14 +2302,15 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
             pass
 
     try:
-        format = "INFILE=%s OUTFILE=%s FILESIZE=%s LABEL=%s LOCATION=%s " +\
-                 "DRIVE=%s DRIVE_SN=%s TRANSFER_TIME=%.02f "+ \
-                 "SEEK_TIME=%.02f MOUNT_TIME=%.02f QWAIT_TIME=%.02f " + \
-                 "TIME2NOW=%.02f CRC=%s STATUS=%s"
+        #dalf = Data Access Layer Format
+        dalf = "INFILE=%s OUTFILE=%s FILESIZE=%s LABEL=%s LOCATION=%s " +\
+               "DRIVE=%s DRIVE_SN=%s TRANSFER_TIME=%.02f "+ \
+               "SEEK_TIME=%.02f MOUNT_TIME=%.02f QWAIT_TIME=%.02f " + \
+               "TIME2NOW=%.02f CRC=%s STATUS=%s"
         msg_type=e_errors.ERROR
         if status == e_errors.OK:
             msg_type = e_errors.INFO
-        errmsg=format%(inputfile, outputfile, filesize, 
+        errmsg=dalf % (inputfile, outputfile, filesize, 
                        external_label, location_cookie,
                        device,device_sn,
                        transfer_time, seek_time, mount_time,
@@ -8174,7 +8177,7 @@ def write_to_hsm(e, tinfo):
                  tinfo['encp_start_time']))
 
     # initialize
-    bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
+    byte_sum = 0L #Sum of bytes transfered (when transfering multiple files).
     exit_status = 0 #Used to determine the final message text.
 
     done_ticket, listen_socket, unused, request_list = \
@@ -8373,7 +8376,7 @@ def write_to_hsm(e, tinfo):
         #Set the value of bytes to the number of bytes transfered before the
         # error occured.
         exfer_ticket = done_ticket.get('exfer', {'bytes_transfered' : 0L})
-        bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
+        byte_sum = byte_sum + exfer_ticket.get('bytes_transfered', 0L)
 
         #Store the combined tickets back into the master list.
         work_ticket = combine_dict(done_ticket, work_ticket)
@@ -8446,7 +8449,7 @@ def write_to_hsm(e, tinfo):
     Trace.message(TO_GO_LEVEL, "EXIT STATUS: %d" % exit_status)
 
     #Finishing up with a few of these things.
-    calc_ticket = calculate_final_statistics(bytes, len(request_list),
+    calc_ticket = calculate_final_statistics(byte_sum, len(request_list),
                                              exit_status, tinfo)
 
     #If applicable print new file family.
@@ -10031,7 +10034,7 @@ def read_from_hsm(e, tinfo):
                                       e.chk_crc, tinfo['encp_start_time']))
     
     # initialize
-    bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
+    byte_sum = 0L #Sum of bytes transfered (when transfering multiple files).
     exit_status = 0 #Used to determine the final message text.
     number_of_files = 0 #Total number of files where a transfer was attempted.
 
@@ -10138,7 +10141,7 @@ def read_from_hsm(e, tinfo):
                 #Sum up the total amount of bytes transfered.
                 exfer_ticket = done_ticket.get('exfer',
                                                {'bytes_transfered' : 0L})
-                bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
+                byte_sum = byte_sum + exfer_ticket.get('bytes_transfered', 0L)
 
                 #Combine the tickets.
                 request_ticket = combine_dict(done_ticket, request_ticket)
@@ -10245,7 +10248,7 @@ def read_from_hsm(e, tinfo):
     Trace.message(TO_GO_LEVEL, "EXIT STATUS: %d" % exit_status)
 
     #Finishing up with a few of these things.
-    calc_ticket = calculate_final_statistics(bytes, number_of_files,
+    calc_ticket = calculate_final_statistics(byte_sum, number_of_files,
                                              exit_status, tinfo)
 
     #Volume one ticket is the last request that was processed.
