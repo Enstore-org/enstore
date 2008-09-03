@@ -317,8 +317,18 @@ def set_proceed_number(src_bfids):
 	# top directory.  Second, it assumes that there is a Migration
 	# DB path, instead of using a temporary file in the sam directory
 	# as the original file.
-	mig_path = os.path.join(pnfs.get_enstore_admin_mount_point()[0],
-				MIGRATION_DB)
+	pnfs_fs_paths = pnfs.get_enstore_admin_mount_point()
+	for pnfs_fs_path in pnfs_fs_paths:
+		try:
+			mig_path = os.path.join(pnfs_fs_path,
+						MIGRATION_DB)
+			os.stat(mig_path)
+			#If we get here, then we found a migration path.
+			# Lets use it, hope it is the correct one.
+		except (OSError, IOError):
+			continue
+	else:
+		return
 	
 	###############################################################
 	#Determine the media speeds that the migration will be going at.
@@ -1031,20 +1041,61 @@ def list_failed_copies(intf, db):
 	#Get the results.
 	res = db.query(q).getresult()
 
-	print "%10s %16s %s" % ("bfid", "copies remaining", "waiting since")
+	print "%21s %16s %s" % ("bfid", "copies remaining", "waiting since")
 	for row in res:
-		print "%10s %16s %s" % (row[0], row[1], row[2])
+		print "%21s %16s %s" % (row[0], row[1], row[2])
 
 #For duplication only.
 def make_failed_copies(intf, db):
 	#Build the sql query.
-	q = "select * from active_file_copying where time < date(CURRENT_TIMESTAMP - interval '3 days') order by time;"
+	q = "select * from active_file_copying,volume,file " \
+	    "where file.volume = volume.id " \
+	    "      and active_file_copying.bfid = file.bfid " \
+	    "      and time < CURRENT_TIMESTAMP - interval '3 minutes' " \
+	    "order by volume.id,time;"
 	#Get the results.
 	res = db.query(q).getresult()
 
-	print "%10s %16s %s" % ("bfid", "copies remaining", "waiting since")
+	print "%21s %16s %s" % ("bfid", "copies remaining", "waiting since")
+	bfid_list = []
 	for row in res:
-		print "%10s %16s %s" % (row[0], row[1], row[2])
+		#row[0] is bfid
+		#row[1] is count
+		#row[2] is time
+		for unused in range(1, int(row[1]) + 1):
+			if row[1] > 0:
+				#Limit this to those bfids with positive
+				# remaing copies-to-be-made counts.
+				bfid_list.append(row[0])
+		print "%21s %16s %s" % (row[0], row[1], row[2])
+
+	for bfid in bfid_list[0:1]: #bfid_list:
+		pass
+		exit_status = migrate([bfid_list[0]], intf)
+
+		if not exit_status:
+			### The duplicatation was successfull.
+			
+			#Build the sql query.
+			#Decrement the number of files remaining by one.
+			### Note: What happens when this values reaches zero?
+			q = "update active_file_copying " \
+			    "set remaining = remaining - 1 " \
+			    "where bfid = '%s'" % (bfid,)
+
+			#Get the results.
+			db.query(q)
+
+			#Build the sql query.
+			#Remove this file from the migration table.  We do
+			# not want the source volume to look like it has
+			# started to be migrated/duplicated.
+			q = "delete from migration " \
+			    "where bfid = '%s'" % (bfid,)
+
+			#Get the results.
+			db.query(q)
+
 
 #For duplication only.
 def show_summary(intf, db):
