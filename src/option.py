@@ -1190,7 +1190,7 @@ class Interface:
                 self.print_usage("Option %s requires value." % (long_opt,))
                 
         elif self.options[long_opt].get(VALUE_USAGE, None) == OPTIONAL:
-            next = self.next_argument(long_opt) #Used for optional.
+            next_arg = self.next_argument(long_opt) #Used for optional.
 
             #First, determine if the option, which may or may not have a 
             # sub option, is followed in the command line with
@@ -1202,9 +1202,9 @@ class Interface:
             # find the value (albeit the hard way), set the value and then
             # remove the value from the list of previously unprocessed
             # arguments (self.args).
-            elif next != None and not self.is_option(next):
-                self.set_value(long_opt, next)
-                self.args.remove(next)
+            elif next_arg != None and not self.is_option(next_arg):
+                self.set_value(long_opt, next_arg)
+                self.args.remove(next_arg)
                 
             #Use the default value if none is specified.
             else:
@@ -1243,9 +1243,9 @@ class Interface:
             # arguments (self.args).
             elif self.next_argument(short_opt) != None and \
                  not self.is_option(self.next_argument(short_opt)):
-                next = self.next_argument(short_opt)
-                self.set_value(long_opt, next)
-                self.args.remove(next)
+                next_arg = self.next_argument(short_opt)
+                self.set_value(long_opt, next_arg)
+                self.args.remove(next_arg)
             else:
                 self.set_value(long_opt, None) #Uses 'default'
                 
@@ -1742,32 +1742,32 @@ class Interface:
         extras = self.options[self.trim_option(long_opt)].get(
             EXTRA_VALUES, [])
 
-        next = None
+        next_arg = None
         
         for extra_option in extras:
-            if next:
-                next = self.next_argument(next)
+            if next_arg:
+                next_arg = self.next_argument(next_arg)
             elif value:
-                next = self.next_argument(value)
+                next_arg = self.next_argument(value)
             else:
-                next = self.next_argument(opt)
+                next_arg = self.next_argument(opt)
 
             if extra_option[VALUE_USAGE] == IGNORED:
-                next = None
+                next_arg = None
             elif extra_option[VALUE_USAGE] in [REQUIRED, OPTIONAL] and \
-                 next != None and self.is_option(next) and \
-                 self.is_switch_option(next):
-                next = None
+                 next_arg != None and self.is_option(next_arg) and \
+                 self.is_switch_option(next_arg):
+                next_arg = None
                 
             extra_option[EXTRA_OPTION] = 1 #This is sometimes important...
-            self.set_from_dictionary(extra_option, long_opt, next)
+            self.set_from_dictionary(extra_option, long_opt, next_arg)
             try:
-                if next:
-                    self.args.remove(next)
+                if next_arg:
+                    self.args.remove(next_arg)
             except ValueError:
                 try:
                     sys.stderr.write("Problem processing argument %s." %
-                                     (next,))
+                                     (next_arg,))
                     sys.stderr.flush()
                 except IOError:
                     pass
