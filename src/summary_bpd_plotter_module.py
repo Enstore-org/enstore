@@ -144,6 +144,10 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
     # Enstore systems.
     def plot(self):
 
+        #
+        #Do the total bytes transfered per day.
+        #
+
         plot_filename = os.path.join(self.temp_dir,
                                          "enplot_total_bpd.plot")
         ps_filename = os.path.join(self.plot_dir,
@@ -180,6 +184,59 @@ class SummaryBpdPlotterModule(bytes_per_day_plotter_module.BytesPerDayPlotterMod
         # multiple columns into one plot.
         self.write_plot_file(plot_filename, pts_filenames, ps_filename,
                              self.extra_title_info,
+                             title_target = self.extra_title_info,
+                             total_only = True)
+        
+        #Make the plot and convert it to jpg.
+        os.system("gnuplot < %s" % plot_filename)
+        os.system("convert -rotate 90  %s %s\n"
+                  % (ps_filename, jpg_filename))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
+                  % (ps_filename, jpg_stamp_filename))
+
+
+        #
+        #Do the total bytes written per day.
+        #
+
+        plot_filename = os.path.join(self.temp_dir,
+                                         "enplot_total_bpd_w.plot")
+        ps_filename = os.path.join(self.plot_dir,
+                                   "%senplot_total_bpd_w.ps" % (self.output_fname_prefix))
+        jpg_filename = os.path.join(self.plot_dir,
+                                    "%senplot_total_bpd_w.jpg" % (self.output_fname_prefix))
+        jpg_stamp_filename = os.path.join(self.plot_dir,
+                                          "%senplot_total_bpd_w_stamp.jpg" % (self.output_fname_prefix))
+
+        pts_filenames = []
+        for key in self.extra_title_info:
+            try:
+                pts_filenames.append(self.pts_files_dict[key].name)
+            except KeyError:
+                #We get here if there were no encp's in the last month.
+                pts_filename = os.path.join(self.temp_dir, "bpd_dummy.pts")
+                self.pts_files_dict[key] = open(pts_filename, "w")
+                #Write one data point to appease gnuplot.
+                self.pts_files_dict[key].write("%s %s %s %s %s %s\n" %
+                                               (time.strftime("%Y-%m-%d"),
+                                                "enstore",
+                                                0, 0, 0, 0))
+                self.pts_files_dict[key].close()
+                pts_filenames.append(pts_filename) #Don't forget to add this!
+            
+
+        #Need to reverse the order after the reverse in fill() so that they
+        # are plotted correctly.  We don't need to reverse these here.
+        # They were already reversed when the first plot was made.
+        #pts_filenames.reverse()
+        #self.extra_title_info.reverse()
+
+        #Write the gnuplot command file(s).
+        # Use the self.extra_title_info to also server as a way to pass
+        # multiple columns into one plot.
+        self.write_plot_file(plot_filename, pts_filenames, ps_filename,
+                             self.extra_title_info,
+                             writes_only = True,
                              title_target = self.extra_title_info,
                              total_only = True)
         

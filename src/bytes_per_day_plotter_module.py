@@ -67,6 +67,8 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         # for the summary plots that want to reorder stuff.
         self.store_dict = {}
         self.day_dict = {}
+        self.day_dict_r = {}
+        self.day_dict_w = {}
 
     #Write out the file that gnuplot will use to plot the data.
     # plot_filename = The file that will be read in by gnuplot containing
@@ -172,8 +174,13 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 #After the first loop, append a comma to seperate the
                 # different plots.
                 plot_line = "%s," % (plot_line,)
-            
-            if writes_only:
+
+            if writes_only and total_only:
+                #Used only for the summary plots of multiple Enstore systems.
+                name = keys[i]
+                rl = ""
+                wl = '"%s" using 1:7 t "%s" with impulses linewidth 20 ' % (data_filename, name)
+            elif writes_only:
                 rl = ""
                 wl = '"%s" using 1:4 t "writes" with impulses linewidth 20 ' % (data_filename,)
             elif total_only:
@@ -238,7 +245,14 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 # set of values to be plotted.
                 self.day_dict[day] = self.day_dict.get(day, 0L) + \
                                      read_sum + write_sum
+                self.day_dict_r[day] = self.day_dict_r.get(day, 0L) + \
+                                     read_sum
+                self.day_dict_w[day] = self.day_dict_w.get(day, 0L) + \
+                                     write_sum
+                
                 self.store_dict[key][day]['c'] = self.day_dict[day]
+                self.store_dict[key][day]['cr'] = self.day_dict_r[day]
+                self.store_dict[key][day]['cw'] = self.day_dict_w[day]
 
                 #day
                 #key is mover, drive type or "enstore"
@@ -246,9 +260,14 @@ class BytesPerDayPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 #write sum for the day
                 #read+write sum for the day
                 #corrected read+write sum for the day
-                line = "%s %s %s %s %s %s\n" % (day, key, read_sum, write_sum,
-                                                read_sum + write_sum,
-                                                self.store_dict[key][day]['c'])
+                #corrected write sum for the day
+                #corrected read sum for the day
+                line = "%s %s %s %s %s %s %s %s\n" % (
+                    day, key, read_sum, write_sum,
+                    read_sum + write_sum,
+                    self.store_dict[key][day]['c'],
+                    self.store_dict[key][day]['cw'],
+                    self.store_dict[key][day]['cr'])
                 
                 #Write the information to the correct file.
                 self.pts_files_dict[key].write(line)
