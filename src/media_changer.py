@@ -2658,6 +2658,823 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
             self.name = self.args[0]
 
 
+class IBM_3584_MediaLoader(MediaLoaderMethods):
+
+    def __init__(self, medch, max_work=7, csc=None):
+        MediaLoaderMethods.__init__(self,medch,max_work,csc)
+        self.prepare = self.unload
+        self.DEBUG = 0
+	#self.driveCleanTime = self.mc_config.get('DriveCleanTime',{'9840':[60,1],'9940':[60,1]})
+	self.device = self.mc_config.get('device','Unknown')
+	self.rmchost = self.mc_config.get('rmchost', 'Unknown')
+        print "IBM 3584 MediaLoader initialized"
+
+    # retry function call
+    def retry_function(self,function,*args):
+        count = self.getNretry()
+        sts=("",0,"")
+        # retry every error
+        while count > 0 and sts[0] != e_errors.OK:
+            try:
+                sts=apply(function,args)
+                if sts[1] != 0:
+                   if self.logdetail:
+                      Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count))
+                   if function==self.mount:
+                       time.sleep(60)
+                       fixsts=apply(self.dismount,args)
+                       Trace.log(e_errors.INFO, 'Tried %s %s  status=%s %s  Desperation dismount  status %s %s'%(repr(function),args,sts[1],sts[2],fixsts[1],fixsts[2]))
+                   time.sleep(60)
+                   count = count - 1
+                else:
+                    break
+            except:
+                exc,val,tb = Trace.handle_error()
+                return str(exc),0,""
+        return sts
+
+    # load volume into the drive;
+    def load(self,
+             external_label,    # volume external label
+             drive,             # drive id
+             media_type):       # media type
+        return self.retry_function(self.mount,external_label,drive,media_type)
+
+    # unload volume from the drive
+    def unload(self,
+               external_label,  # volume external label
+               drive,           # drive id
+               media_type):     # media type
+        return self.retry_function(self.dismount,external_label,drive,media_type)
+
+    # see how my good friend the robot is doing
+    def robotQuery(self,ticket):
+        # don't retry this query - want to know current status
+        ticket['status'] =  self.query_robot()
+        self.reply_to_caller(ticket)
+
+
+    #FIXME - what the devil is this?
+    def getVolState(self, ticket):
+        external_label = ticket['external_label']
+        media_type = ticket['media_type']
+        rt = self.retry_function(self.query,external_label,media_type)
+        Trace.trace(11, "getVolState returned %s"%(rt,))
+        if rt[3] == '\000':
+            state=''
+        else :
+            state = rt[3]
+            if not state and rt[2]:  # volumes not in the robot
+                state = rt[2]
+	#Return the correct media type.
+	try:
+	    ticket['media_type'] = rt[2].split()[-1]
+	except (IndexError, ValueError, TypeError, AttributeError):
+	    pass
+
+        return (rt[0], rt[1], rt[2], state)
+
+    def list_volumes(self, ticket):
+        # build the command, and what to look for in the response
+        #command = "query volume all"
+        #answer_lookfor = "query volume all"
+	#command = "query volume VOF111"
+        #answer_lookfor = "query volume VOF111"
+        #command = "
+
+        # execute the command and read the response
+        # FIXME - what if this hangs?
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status,response, delta = self.timed_command(command,4,60)
+        if status != 0:
+            E=4
+            msg = "QUERY_VOLUME %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        volume_list = []
+        for line in response:
+	    if line.find("ACSSA") >= 0 or line.find("Volume Status") >= 0 or \
+		   line.find("Identifier") >= 0 or len(line) == 0:
+	        #This is some other information.
+	        continue
+
+	    volume = line[1:13].strip()
+	    state = line[13:29].strip()
+	    location = line[31:45].strip()
+	    media_type = line[47:].strip()
+	    
+	    volume_list.append({"volume" : volume,
+			       "state" : state,
+			       "location" : location,
+			       "type" : media_type,
+			       })
+
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
+	reply=ticket.copy()
+	reply['volume_list'] = volume_list
+	addr = ticket['callback_addr']
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.connect(ticket['callback_addr'])
+            r = callback.write_tcp_obj(sock,reply)
+            sock.close()
+            if r:
+               Trace.log(e_errors.ERROR,
+			 "Error calling write_tcp_obj. Callback addr. %s"
+			 % (addr,))
+            
+        except:
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
+        return
+
+    def list_slots(self, ticket):
+        # build the command, and what to look for in the response
+        command = "query lsm all"
+        answer_lookfor = "query lsm all"
+
+        # execute the command and read the response
+        # FIXME - what if this hangs?
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status, response, delta = self.timed_command(command,4,60)
+        if status != 0:
+            E=4
+            msg = "QUERY_VOLUME %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        slot_list = []
+        for line in response:
+	    if line.find("ACSSA") >= 0 or line.find("LSM Status") >= 0 or \
+		   line.find("Identifier") >= 0 or line.find("Count") >= 0 \
+		   or len(line) == 0:
+	        #This is some other information.
+	        continue
+
+	    lsm = line[:13].strip().replace(" ", "")
+	    free = int(line[31:42].strip())
+
+	    slot_list.append({"location" : lsm,
+			      "media_type" : "all",
+			      "total" : "0",
+			      "free" : free,
+			      "used" : "0",
+			      "disabled" : "0",
+			      })
+
+	    #Obtain specific full cell/slot count.
+	    command2 = "display cell %s,*,*,* -status full -c" % lsm
+	    answer_lookfor2 = "display cell"
+	    status2, response2, delta2 = self.timed_command(command2, 4, 60)
+	    if status == 0:
+	        for line2 in response2:
+		    if line2.find("ACSSA") >= 0 or \
+		       line2.find("display cell") >= 0 or \
+		       line2.find("Display Cell") >= 0 or \
+		       line2.find("Number of cells selected") >= 0 \
+		       or len(line2) == 0:
+		        #This is some other information.
+			continue
+
+		    try:
+		        used = int(line2)
+			slot_list[-1]['used'] = used
+			break
+		    except TypeError:
+			pass
+
+	    #Obtain specific total cell/slot count.
+	    command2 = "display cell %s,*,*,* -c" % lsm
+	    answer_lookfor2 = "display cell"
+	    status2, response2, delta2 = self.timed_command(command2, 4, 60)
+	    if status == 0:
+	        for line2 in response2:
+		    if line2.find("ACSSA") >= 0 or \
+		       line2.find("display cell") >= 0 or \
+		       line2.find("Display Cell") >= 0 or \
+		       line2.find("Number of cells selected") >= 0 \
+		       or len(line2) == 0:
+		        #This is some other information.
+			continue
+
+		    try:
+		        total = int(line2)
+			slot_list[-1]['total'] = total
+			break
+		    except TypeError:
+			pass
+
+	    #Obtain specific inaccessable/disabled cell/slot count.
+	    command2 = "display cell %s,*,*,* -status inaccessible -c" % lsm
+	    answer_lookfor2 = "display cell"
+	    status2, response2, delta2 = self.timed_command(command2, 4, 60)
+	    if status == 0:
+	        for line2 in response2:
+		    if line2.find("ACSSA") >= 0 or \
+		       line2.find("display cell") >= 0 or \
+		       line2.find("Display Cell") >= 0 or \
+		       line2.find("Number of cells selected") >= 0 \
+		       or len(line2) == 0:
+		        #This is some other information.
+			continue
+
+		    try:
+		        inaccessible = int(line2)
+			#This value is added to the reserved count.
+			break
+		    except TypeError:
+			pass
+
+	    #Obtain specific inaccessable/disabled cell/slot count.
+	    command2 = "display cell %s,*,*,* -status reserved -c" % lsm
+	    answer_lookfor2 = "display cell"
+	    status2, response2, delta2 = self.timed_command(command2, 4, 60)
+	    if status == 0:
+	        for line2 in response2:
+		    if line2.find("ACSSA") >= 0 or \
+		       line2.find("display cell") >= 0 or \
+		       line2.find("Display Cell") >= 0 or \
+		       line2.find("Number of cells selected") >= 0 \
+		       or len(line2) == 0:
+		        #This is some other information.
+			continue
+
+		    try:
+		        reserved = int(line2)
+			break
+		    except TypeError:
+			pass
+
+	    #Sum these two values for the disabled count.
+	    slot_list[-1]['disabled'] = reserved + inaccessible
+
+        ticket['slot_list'] = slot_list
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
+
+    def cleanCycle(self, inTicket):
+        #do drive cleaning cycle
+        Trace.log(e_errors.INFO, 'mc:ticket='+repr(inTicket))
+        classTicket = { 'mcSelf' : self }
+        try:
+            drive = inTicket['moverConfig']['mc_device']
+        except KeyError:
+            Trace.log(e_errors.ERROR, 'mc:no device field found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no device field found in ticket"
+
+        driveType = drive[:2]  # ... need device type, not actual device
+        try:
+            if self.driveCleanTime:
+                cleanTime = self.driveCleanTime[driveType][0]  # clean time in seconds
+                driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
+            else:
+                cleanTime = 60
+                driveCleanCycles = 1
+        except KeyError:
+            cleanTime = 60
+            driveCleanCycles = 1
+
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        min_remaining_bytes = 1
+        vol_veto_list = []
+        first_found = 0
+        libraryManagers = inTicket['moverConfig']['library']
+        if type(libraryManagers) == types.StringType:
+            lm = libraryManagers
+            library = string.split(libraryManagers,".")[0]
+        elif type(libraryManagers) == types.ListType:
+            lm = libraryManagers[0]
+            library = string.split(libraryManagers[0],".")[0]
+        else:
+            Trace.log(e_errors.ERROR, 'mc: library_manager field not found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
+        lm_info = self.csc.get(lm)
+        if not lm_info.has_key('CleanTapeVolumeFamily'):
+            Trace.log(e_errors.ERROR, 'mc: no CleanTapeVolumeFamily field found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no CleanTapeVolumeFamily field found in ticket"
+        cleanTapeVolumeFamily = lm_info['CleanTapeVolumeFamily']
+        v = vcc.next_write_volume(library,
+                                  min_remaining_bytes, cleanTapeVolumeFamily,
+                                  vol_veto_list, first_found, exact_match=1)  # get which volume to use
+        if v["status"][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%
+                      (v["status"][0],v["status"][1]))
+            status = 37
+            return v["status"][0], 0, v["status"][1]
+
+        for i in range(driveCleanCycles):
+            Trace.log(e_errors.INFO, "STK clean drive %s, vol. %s"%(drive,v['external_label']))
+            rt = self.load(v['external_label'], drive, v['media_type'])
+            status = rt[0]
+            if status != e_errors.OK:      # mount returned error
+                return status, 0, None
+
+            time.sleep(cleanTime)  # wait cleanTime seconds
+            rt = self.unload(v['external_label'], drive, v['media_type'])
+            status = rt[0]
+	    if status != e_errors.OK:
+                return status, 0, None
+            Trace.log(e_errors.INFO,"STK Clean returned %s"%(rt,))
+
+        retTicket = vcc.get_remaining_bytes(v['external_label'])
+        remaining_bytes = retTicket['remaining_bytes']-1
+        vcc.set_remaining_bytes(v['external_label'],remaining_bytes,'\0', None)
+        return (e_errors.OK, 0, None)
+
+    # simple elapsed timer
+    def delta_t(self,begin):
+            (ut, st,cut, cst,now) = os.times()
+            return (now-begin, now)
+
+
+    # execute a stk cmd_proc command, but don't wait forever for it to complete
+    #mostly stolen from Demo/tkinter/guido/ShellWindow.py - spawn function
+    def timed_command(self,cmd,min_response_length=0,timeout=60):
+
+        message = ""
+        blanks=0
+        nread=0
+
+        now=timeofday.tod()
+        p2cread, p2cwrite = os.pipe()
+        c2pread, c2pwrite = os.pipe()
+        command = cmd
+        cmd_lookfor = ""
+
+        # can not use dispatching work fork because we are already child.
+        # need to kill explictly and children can't kill
+        (dum,mark) = self.delta_t(0)
+        pid = os.fork()
+
+        if pid == 0:
+            # Child
+            for i in 0, 1, 2:
+                try:
+                    os.close(i)
+                except os.error:
+                    pass
+            if os.dup(p2cread) <> 0:
+                print 'ERROR: timed_command pc2cread bad read dup'
+                Trace.log(e_errors.ERROR, 'timed_command pc2cread bad read dup')
+            if os.dup(c2pwrite) <> 1:
+                print 'ERROR: timed_command c2pwrite bad write dup'
+                Trace.log(e_errors.ERROR, 'timed_command c2pwrite bad write dup')
+            if os.dup(c2pwrite) <> 2:
+                print 'ERROR: timed_command c2pwrite bad error dup'
+                Trace.log(e_errors.ERROR, 'timed_command c2pwrite bad error dup')
+            MAXFD = 100 # Max number of file descriptors (os.getdtablesize()???)
+            for i in range(3, MAXFD):
+                try:
+                    os.close(i)
+                except:
+                    pass
+            try:
+                #I know this is hard-coded and inflexible. That is what I want so as to
+                #prevent any possible security problem.
+
+                os.execv("/bin/bash", ["bash", "-c", command])
+            finally:
+                exc, msg, tb = sys.exc_info()
+                Trace.log(e_errors.ERROR, "timed_command execv failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
+                os._exit(1)
+
+        os.close(p2cread)
+        os.close(c2pwrite)
+        os.close(p2cwrite)
+
+
+        #wait for child to complete, or kill it
+        start = time.time()
+        if self.DEBUG:
+            print timeofday.tod(),cmd
+            Trace.trace(e_errors.INFO,"%s" %(cmd,))
+        active=0
+        (p,r) = (0,0)
+        try:
+            while active<timeout:
+                p,r = os.waitpid(pid,os.WNOHANG)
+                if p!=0:
+                    break
+	        #We need to start reading this now for really long responses.
+		# Otherwise, the buffer fills up with the child waiting
+		# for the parent to read something from the full buffer.
+		# And the parent waits for the child to finish.
+	        msg=os.read(c2pread,2000)
+		if msg:
+		    if self.DEBUG:
+		        print msg,
+		    message = message+msg
+		    #Need to reset the timeout period.
+		    start = time.time()
+		    active = 0
+		else:
+		    if msg == '':
+		        blanks = blanks+1
+		    active = time.time() - start
+		    time.sleep(1)
+            else:
+                msg="killing %d => %s" % (pid,cmd)
+                print timeofday.tod(),msg
+                Trace.trace(e_errors.INFO,msg)
+                os.kill(pid,signal.SIGTERM)
+                time.sleep(1)
+                p,r = os.waitpid(pid,os.WNOHANG)
+                if p==0:
+                    msg="kill -9ing %d => %s" % (pid,cmd)
+                    print timeofday.tod(),msg
+                    Trace.trace(e_errors.INFO,msg)
+                    os.kill(pid,signal.SIGKILL)
+                    time.sleep(2)
+                    p,r = os.waitpid(pid,os.WNOHANG)
+        except:
+            exc, msg, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "timed_command wait for child failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
+	    os.close(c2pread)
+            return -1,[], self.delta_t(mark)[0]
+
+        if p==0:
+	    os.close(c2pread)
+            return -2,[], self.delta_t(mark)[0]
+
+        # now read response from the pipe (Some of
+	if string.find(cmd,'mount') != -1:  # this is a mount or a dismount command
+	    maxread=100  # quick response on queries
+	else:
+	    maxread=10000 # slow respone on mount/dismounts
+
+	nlines=0
+	ntries=0
+	jonflag=0
+        # async message start with a date:  2001-12-20 07:33:17     0    Drive   0, 0,10,12: Cleaned.
+        # unfortunately, not just async messages start with a date.  Alas, each message has to be parsed.
+        async_date=re.compile("20\d\d-\d\d-\d\d \d\d:\d\d:\d\d")  
+        while nlines<4 and ntries<3:
+	  ntries=ntries+1
+          #while blanks<2 and nread<maxread:
+	  while nread<maxread:
+            msg=os.read(c2pread,2000)
+	    message = message + msg
+	    if msg:
+	        if self.DEBUG:
+		    print msg,
+            nread = nread+1
+            if msg == '':
+                blanks = blanks+1
+#	    if self.DEBUG:
+#	        nl=0
+#		ml=string.split(msg,'\012')
+#		for l in ml:
+#                   nl=nl+1
+#		   print "nread=",nread, "line=",nl, l
+          response = []
+          resp = string.split(message,'\012')
+	  nl=0
+	  for l in resp:
+            if async_date.match(l):
+              if string.find(l,'Place cartridges in CAP') != -1 or \
+                 string.find(l,'Remove cartridges from CAP') != -1 or \
+                 string.find(l,'Library error, LSM offline') != -1 or \
+                 string.find(l,'Library error, Transport failure') != -1 or \
+                 string.find(l,'Library error, LMU failure') != -1 or \
+                 string.find(l,'LMU Recovery Complete') != -1 or \
+                 string.find(l,': Offline.') != -1 or \
+                 string.find(l,': Online.') != -1 or \
+                 string.find(l,': Enter operation ') != -1 or \
+                 string.find(l,'Clean drive') != -1 or \
+                 string.find(l,'Cleaned') != -1:
+                if self.DEBUG:
+                  print "DELETED:", l
+                jonflag=1
+                continue
+	    if self.DEBUG:
+              print    "response line =",nl, l
+            response.append(l)
+	    nl=nl+1
+          nlines=len(response)
+
+	  nl=0
+	  if jonflag and self.DEBUG:
+	       for l in response:
+		  print    "parsed lines =",nl, l
+		  nl=nl+1
+
+	os.close(c2pread)
+        size = len(response)
+        #if size <= 19:
+        #    return -3,[], self.delta_t(mark)[0]
+        status = 0
+        for look in range(0,size): # 1st part of response is STK copyright information
+            if string.find(response[look], cmd_lookfor, 0) == 0:
+                break
+        if look == size:
+            status = -4
+            look = 0
+        else:
+            if len(response[look:]) < min_response_length:
+                status = -5
+        if self.DEBUG:
+            rightnow = timeofday.tod() # the times on fntt are not necessarily right, allows us to correlate log time
+            rsp = [now,response[look:],rightnow]
+            pprint.pprint(rsp)
+
+        return status,response[look:], self.delta_t(mark)[0]
+
+    def query(self,volume, media_type=""):
+
+        # build the command, and what to look for in the response
+        #command = "query vol %s" % (volume,)
+        #answer_lookfor = "%s " % (volume,)
+	command = "/usr/bin/smc -h %s -l %s -q V -V '%s'" % (self.rmchost,self.device,volume,)
+	answer_lookfor = "%s" % (volume,)
+
+        # execute the command and read the response
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status,response, delta = self.timed_command(command,1,60)
+        if status != 0:
+            E=1
+            msg = "QUERY %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        # got response, parse it and put it into the standard form
+        answer = string.strip(response[0])
+        if string.find(answer, answer_lookfor,0) != 0:
+            E=2
+            msg = "QUERY %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+        elif string.find(answer,'slot') != -1:
+            msg = "%s => %i,%s" % (command,status,answer)
+            Trace.log(e_errors.INFO, msg)
+            return (e_errors.OK,0,answer, 'O', msg) # occupied
+        elif string.find(answer,'drive') != -1:
+            msg = "%s => %i,%s" % (command,status,answer)
+            Trace.log(e_errors.INFO, msg)
+            return (e_errors.OK,0,answer, 'M', msg) # mounted
+        else:
+            E=3
+            msg = "QUERY %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, answer, '', msg)
+
+    def query_drive(self,drive):
+
+        # build the command, and what to look for in the response
+        #command = "query drive %s" % (drive,)
+        #answer_lookfor = "%s " % (drive,)
+	command = "/usr/bin/smc -h %s -l %s -q D -D %s" % (self.rmchost, self.device, drive,)
+        answer_lookfor = "%s" % (drive,)
+
+        # execute the command and read the response
+        # FIXME - what if this hangs?
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status,response, delta = self.timed_command(command,1,60)
+        if status != 0:
+            E=4
+            msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+
+        # got response, parse it and put it into the standard form
+        answer = string.strip(response[0])
+        answer = string.replace(answer,', ',',') # easier to part drive id
+        if string.find(answer, answer_lookfor,0) != 0:
+            E=5
+            msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,answer)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, answer, '', msg)
+#        elif string.find(answer,' online ') == -1:
+#            E=6
+#            msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,answer)
+#            Trace.log(e_errors.ERROR, msg)
+#            return ("ERROR", E, answer, '', msg)
+        elif string.find(answer,'free') != -1:
+            msg = "%s => %i,%s" % (command,status,answer)
+            Trace.log(e_errors.INFO, msg)
+            return (e_errors.OK,0,answer, '', msg) # empty
+        elif string.find(answer,'loaded') != -1:
+            loc = string.find(answer,'loaded')
+            volume = string.split(answer[loc+7:])[0]
+            msg = "%s => %i,%s" % (command,status,answer)
+            Trace.log(e_errors.INFO, msg)
+            return (e_errors.OK,0,answer, volume, msg) # mounted 
+        else:
+            E=7
+            msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,answer)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, answer, '', msg)
+
+    def mount(self,volume, drive, media_type="",view_first=1):
+
+        # strip out the readonly if present
+	if string.find(media_type,'READONLY')!=-1:
+		media_type=string.replace(media_type,'READONLY','')
+		readonly=1
+	else:
+		readonly=0
+        # build the command, and what to look for in the response
+	# smc command is mute on success, and only says something on failure
+        #command = "mount %s %s" % (volume,drive)
+        command = "/usr/bin/smc -h %s -l %s -m -D %s -V %s" % (self.rmchost, self.device, drive, volume)
+	#if readonly:
+	#	command = command + " readonly"
+        #answer_lookfor = "Mount: %s mounted on " % (volume,)
+        #answer_lookfor = ""
+
+        # check if tape is in the storage location or somewhere else
+        if view_first:
+            status,stat,response,attrib,com_sent = self.query(volume, media_type)
+
+            if stat!=0:
+                E=e_errors.MC_FAILCHKVOL
+                msg = "MOUNT %i: %s => %i,%s" % (E,command,stat,response)
+                Trace.log(e_errors.ERROR, msg)
+                return ("ERROR", E, response, '', msg)
+            if attrib != "O": # look for tape in tower (occupied="O")
+                E=e_errors.MC_VOLNOTHOME
+                msg = "MOUNT %i: Tape is not in home position. %s => %s,%s" % (E,command,status,response)
+                Trace.log(e_errors.ERROR, msg)
+                return ("ERROR", E, response, '', msg)
+
+        # check if any tape is mounted in this drive
+            status,stat,response,volser,com_sent = self.query_drive(drive)
+            if stat!=0:
+                E=e_errors.MC_FAILCHKDRV
+                msg = "MOUNT %i: %s => %i,%s" % (E,command,stat,response)
+                Trace.log(e_errors.ERROR, msg)
+                return ("ERROR", E, response, '', msg)
+            if volser != "": # look for any tape mounted in this drive
+                E=e_errors.MC_DRVNOTEMPTY
+                msg = "MOUNT %i: Drive %s is not empty =>. %s => %s,%s" % (E,drive,command,status,response)
+                Trace.log(e_errors.ERROR, msg)
+                return ("ERROR", E, response, '', msg)
+
+        # execute the command and read the response
+        status,response, delta = self.timed_command(command,1,60*10)
+        if status != 0:
+            E=12
+            msg = "MOUNT %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        # got response, parse it and put it into the standard form
+        answer = string.strip(response[0])
+        if string.find(answer, " " ,0) != -1:
+            E=13
+            msg = "MOUNT %i: %s => %i,%s" % (E,command,status,answer)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+        msg = "%s => %i,%s" % (command,status,answer)
+        Trace.log(e_errors.INFO, msg)
+        return (e_errors.OK, 0,msg)
+
+
+    def dismount(self,volume, drive, media_type="",view_first=1):
+
+        # build the command, and what to look for in the response
+        command = "/usr/bin/smc -h %s -l %s -d -D %s -V %s" % (self.rmchost, self.device, drive, volume)
+
+        #answer_lookfor = "Dismount: Forced dismount of "
+
+        # check if any tape is mounted in this drive
+        if view_first:
+            status,stat,response,volser,com_sent = self.query_drive(drive)
+            if stat!=0:
+                E=e_errors.MC_FAILCHKDRV
+                msg = "DISMOUNT %i: %s => %i,%s" % (E,command,stat,response)
+                Trace.log(e_errors.ERROR, msg)
+                return ("ERROR", E, response, '', msg)
+
+            if volser == "": # look for any tape mounted in this drive
+                if volume!="Unknown":
+                    #FIXME - this should be a real error. mover needs to know which tape it has.
+                    E=14
+                    msg = "Dismount %i ignored: Drive %s is empty. Thought %s was there =>. %s => %s,%s" % (E,drive,volume,command,status,response)
+                    Trace.log(e_errors.INFO, msg)
+                    return (e_errors.OK, 0,response, '',msg)
+                else: #don't know the volume on startup
+                    E=15
+                    msg = "Dismount %i ignored: Drive %s is empty. Thought %s was there =>. %s => %s,%s" % (E,drive,volume,command,status,response)
+                    Trace.log(e_errors.INFO, msg)
+                    return (e_errors.OK, 0,response, '',msg)
+
+        # execute the command and read the response
+        status,response,delta = self.timed_command(command,1,60*10)
+        if status != 0:
+            E=16
+            msg = "DISMOUNT %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        # got response, parse it and put it into the standard form
+        answer = string.strip(response[0])
+        if string.find(answer, " ",0) != -1:
+            E=17
+            msg = "DISMOUNT %i: %s => %i,%s" % (E,command,status,answer)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+        msg = "%s => %i,%s" % (command,status,answer)
+        Trace.log(e_errors.INFO, msg)
+        return (e_errors.OK, 0,msg)
+
+
+    def query_robot(self):
+
+        # build the command, and what to look for in the response
+        command = "query server"
+        answer_lookfor = "run"
+
+        # execute the command and read the response
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response,delta = self.timed_command(command,5,10)
+        status,response,delta = self.timed_command(command,5,60)
+        if status != 0:
+            E=18
+            msg = "query server %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        # got response, parse it and put it into the standard form
+        answer = string.strip(response[4])
+        if string.find(answer, answer_lookfor,0) != 0:
+            E=19
+            msg = "query server %i: %s => %i,%s, %f" % (E,command,status,response,delta)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+        msg = "%s => %i,%s, %f" % (command,status,answer[0:17],delta)
+        Trace.log(e_errors.INFO, msg)
+        return (e_errors.OK, 0,msg)
+
+    query_server = query_robot  #Backward compatiblity. (Still needed?)
+
+    def getDriveState(self, ticket):
+        import aml2
+	drive = ticket['drive']
+	rt = self.retry_function(self.query_drive, drive)
+	#Update the ticket with additional information.
+        info = rt[2].split()
+	drive_info = {}
+	drive_info['state'] = info[0].strip()
+	drive_info['status'] = "N/A"
+	drive_info['volume'] = info[3].strip()
+	drive_info['type'] = "LTO3"
+	ticket['drive_info'] = drive_info
+	return rt[0], rt[1], rt[3], rt[4]
+
+    def list_drives(self, ticket):
+
+        # build the command, and what to look for in the response
+        command = "/usr/bin/smc -h %s -l %s -q D" % (self.rmchost, self.device,)
+        answer_lookfor = ""
+
+        # execute the command and read the response
+        # FIXME - what if this hangs?
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status,response, delta = self.timed_command(command,2,60)
+        if status != 0:
+            E=4
+            msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        drive_list = []
+        for line in response:
+            if len(line) > 1:
+               rc = line.split()
+  
+               name = rc[0]
+               state = "N/A"
+               status = rc[2]
+               if status.find("loaded") != -1:
+   	          volume = rc[3]
+               else:
+                  volume = ""
+	       drive_type = "LTO3"
+	    
+	       drive_list.append({"name" : name,
+	   		          "state" : state,
+			          "status" : status,
+			          "volume" : volume,
+			          "type" : drive_type,
+			          })
+
+	ticket['drive_list'] = drive_list
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
+
+
+
 if __name__ == "__main__" :
     Trace.init("MEDCHANGER")
     Trace.trace(6, "media changer called with args: %s"%(sys.argv,) )
