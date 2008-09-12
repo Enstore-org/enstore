@@ -1539,6 +1539,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         sys.exit(0)
         Trace.alarm(e_errors.ALARM, "Could not exit! Sys.exit did not work")
         
+    def send_error_and_restart(self, err = (None, None), do_restart=1):
+        if err[0]:
+            e = self.error_msg(err)
+        else:
+            e = self.last_error
+        self.send_error_msg(e)  
+        time.sleep(5)
+        self.restart()
+        
+
     # device_dump(self, sendto=[], notify=['enstore-admin@fnal.gov'])
     #   -- internal device dump
     #   Initially, this is mainly for M2 drives. It can be generalized
@@ -1703,7 +1713,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             "Net thread is running in the state %s. Will restart the mover"%
                             (state_name(self.state),))
                 if self.state == HAVE_BOUND:
-                    self.run_in_thread('media_thread', self.dismount_volume, after_function=self.restart)
+                    self.run_in_thread('media_thread', self.dismount_volume, after_function=self.send_error_and_restart)
                     #self.dismount_volume(after_function=self.restart)
                 else:
                     self.restart()
@@ -4766,7 +4776,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 continue
             else:
                 break
-
+        self.need_lm_update = (1, None, 0, None)
         if status and status[0] == e_errors.OK:
             self.asc.log_finish_dismount(self.current_volume)
             tm = time.localtime(time.time())
@@ -4780,6 +4790,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #self.state = OFFLINE
                 self.offline()
             elif after_function:
+                if self.state != ERROR:
+                   self.state = IDLE 
                 Trace.trace(20,"after function %s" % (after_function,))
                 after_function()
 
