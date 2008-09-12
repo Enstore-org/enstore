@@ -738,6 +738,7 @@ SET default_with_oids = false;
 CREATE TABLE drive_utilization (
     "time" timestamp with time zone NOT NULL,
     "type" character varying NOT NULL,
+    "storage_grpup" character varying NULL, 
     total integer,
     busy integer,
     tape_library character varying DEFAULT 'TBA'::character varying NOT NULL
@@ -745,6 +746,11 @@ CREATE TABLE drive_utilization (
 
 
 ALTER TABLE public.drive_utilization OWNER TO enstore;
+
+---
+-- alter table drive_utilization  DROP CONSTRAINT drive_utilization_pkey;
+---
+
 
 SET default_with_oids = true;
 
@@ -1113,9 +1119,10 @@ ALTER TABLE public.xfer_by_month OWNER TO enstore;
 -- Name: drive_utilization_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
-ALTER TABLE ONLY drive_utilization
-    ADD CONSTRAINT drive_utilization_pkey PRIMARY KEY ("time", "type");
-
+--
+-- ALTER TABLE ONLY drive_utilization
+--     ADD CONSTRAINT drive_utilization_pkey PRIMARY KEY ("time", "type");
+-- 
 
 --
 -- Name: event_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
