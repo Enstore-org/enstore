@@ -767,13 +767,15 @@ def is_on_host(host):
 ###########################################################################
 
 def is_readonly_state(state):
-    if str(state) in ['full', 'readonly', 'migrated', 'duplicated']:
+    if str(state) in ['full', 'readonly', 'migrated', 'duplicated',
+                      'migrating', 'duplicating']:
         return 1
 
     return 0
 
 def is_readable_state(state):
-    if str(state) in ['none', 'full', 'readonly', 'migrated', 'duplicated']:
+    if str(state) in ['none', 'full', 'readonly', 'migrated', 'duplicated',
+                      'migrating', 'duplicating']:
         return 1
 
     return 0
