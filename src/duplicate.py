@@ -43,8 +43,10 @@ import option
 #migrate.DEFAULT_LIBRARY = ""
 migrate.MIGRATION_FILE_FAMILY_KEY = "_copy_1"
 migrate.INHIBIT_STATE = "duplicated"
+migrate.IN_PROGRESS_STATE = "duplicating"
 migrate.MIGRATION_NAME = "DUPLICATION"
 migrate.set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_duplicated
+migrate.set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_duplicating
 migrate.MFROM = "<-"
 migrate.MTO = "->"
 migrate.LOG_DIR = "/var/duplication"

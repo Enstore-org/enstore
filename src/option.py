@@ -219,6 +219,7 @@ DONT_SHOW = "dont-show"                      #entv
 DOWN = "down"                                #pnfs, inqusitor, mover
 DUMP = "dump"                                #pnfs, alarm, inquisitor, mover
 DUPLICATE = "duplicate"                      #pnfs
+DUPLICATED = "duplicated"                    #volume
 ECHO = "echo"                                #pnfs
 ECRC = "ecrc"                                #encp
 ENABLE = "enable"                            #quota
@@ -482,7 +483,7 @@ valid_option_list = [
     DIRECT_IO, DISABLE, DISMOUNT, DISPLAY,
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DONT_SHOW,
-    DOWN, DUMP, DUPLICATE,
+    DOWN, DUMP, DUPLICATE, DUPLICATED,
     ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
     EXPORT, EXTERNAL_TRANSITIONS,
     FILE, FILE_FALLBACK,

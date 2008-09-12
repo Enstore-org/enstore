@@ -188,8 +188,10 @@ MIGRATION_FILE_FAMILY_KEY = "-MIGRATION"
 DELETED_FILE_FAMILY = "DELETED_FILES"
 
 INHIBIT_STATE = "migrated"
+IN_PROGRESS_STATE = "migrating"
 MIGRATION_NAME = "MIGRATION"
 set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_migrated
+set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_migrating
 
 # migration log file
 LOG_DIR = '/var/migration'
@@ -544,8 +546,28 @@ def log_closed(bfid1, bfid2, db):
 
 # log_history(src, dst) -- log a migration history
 def log_history(src, dst, db):
-	q = "insert into migration_history (src, dst) values \
-		('%s', '%s');"%(src, dst)
+
+	q = "select id from volume where label = '%s'" % (src,)
+
+	try:
+		res = db.query(q).getresult()
+		src_vol_id = res[0][0]  #volume id
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
+		return
+	q = "select id from volume where label = '%s'" % (dst,)
+
+	try:
+		res = db.query(q).getresult()
+		dst_vol_id =  res[0][0]  #volume id
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
+		return
+
+	q = "insert into migration_history (src, src_vol_id, dst, dst_vol_id) values \
+		('%s', '%s', '%s', '%s');"%(src, src_vol_id, dst, dst_vol_id)
 	if debug:
 		log("log_history():", q)
 	try:
@@ -2431,9 +2453,9 @@ def migrate_volume(vol, intf):
 	if v['system_inhibit'][1] == INHIBIT_STATE and is_migrated_by_src_vol(vol, intf, db):
 		log(MY_TASK, vol, 'has already been migrated')
 		return 0
-	if v['system_inhibit'][1] != "readonly":
-		vcc.set_system_readonly(vol)
-		log(MY_TASK, 'set %s to readonly'%(vol))
+	if v['system_inhibit'][1] != IN_PROGRESS_STATE:
+		set_system_migrating_func(vol)
+		log(MY_TASK, 'set %s to %s' % (vol, IN_PROGRESS_STATE))
 
 	# now try to copy the file one by one
 	# get all bfids
@@ -2646,8 +2668,7 @@ def restore_volume(vol, intf):
 		v = vcc.inquire_vol(vol)
 
 		#Set the new inhibit state and the comment.
-		if v['system_inhibit'][1] in ["readonly", "migrated",
-					      "duplicated"]:
+		if enstore_functions2.is_readonly_state(v['system_inhibit'][1]):
 			system_inhibit = [v['system_inhibit'][0], "none"]
 		else:
 			system_inhibit = v['system_inhibit']

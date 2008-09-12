@@ -126,20 +126,20 @@ def sumup(a):
 		if len(a) == 1:		# character
 			return ord(a)
 		else:			# string
-			sum = 0
+			sumation = 0
 			for i in a:
-				sum = sum + ord(i)
-			return sum
+				sumation = sumation + ord(i)
+			return sumation
 	elif type(a) == type([]):	# list
-		sum = 0
+		sumation = 0
 		for i in a:
-			sum = sum + sumup(i)
-		return sum
+			sumation = sumation + sumup(i)
+		return sumation
 	elif type(a) == type({}):	# dictionary
-		sum = 0
+		sumation = 0
 		for i in a.keys():
-			sum = sum + sumup(i) + sumup(a[i])
-		return sum
+			sumation = sumation + sumup(i) + sumup(a[i])
+		return sumation
 
 	return 0
 
@@ -675,9 +675,21 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
 
+    # mark volume as in progres for migration
+    def set_system_migrating(self, external_label, timeout=60, retry=10):
+        ticket= { 'work'           : 'set_system_migrating',
+                  'external_label' : external_label }
+        return self.send(ticket,timeout,retry)
+
     # mark volume as duplicated
     def set_system_duplicated(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_duplicated',
+                  'external_label' : external_label }
+        return self.send(ticket,timeout,retry)
+
+    # mark volume as in progres for duplication
+    def set_system_duplicating(self, external_label, timeout=60, retry=10):
+        ticket= { 'work'           : 'set_system_duplicating',
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
 
@@ -876,6 +888,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.read_only = ""
         self.no_access = ""
         self.migrated = None
+	self.duplicated = None
         self.not_allowed = None
         self.decr_file_count = 0
         self.rmvol = 0
@@ -1076,6 +1089,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
                       option.USER_LEVEL:option.ADMIN},
+	option.DUPLICATED:{option.HELP_STRING:"set volume to DUPLICATED",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
+                          option.USER_LEVEL:option.ADMIN},
         option.ERASE:{option.HELP_STRING:"erase a volume",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
@@ -1682,6 +1700,8 @@ def do_work(intf):
         ticket = vcc.set_system_full(intf.full) # name of this volume
     elif intf.migrated:
         ticket = vcc.set_system_migrated(intf.migrated) # name of this volume
+    elif intf.duplicated:
+        ticket = vcc.set_system_duplicated(intf.duplicated) # name of this volume
     elif intf.no_access:
         ticket = vcc.set_system_notallowed(intf.no_access)  # name of this volume
     elif intf.not_allowed:

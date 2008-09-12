@@ -1110,10 +1110,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 Trace.trace(35, "is_vol_available: writing")
                 if record['system_inhibit'][0] != 'none':
                     ret_stat = (record['system_inhibit'][0], None)
-                elif (record['system_inhibit'][1] == 'migrated'):
-                    # treated as readonly
-                    ret_stat = ('readonly', None)
-                elif (record['system_inhibit'][1] == 'duplicated'):
+                elif enstore_functions2.is_migration_state(record['system_inhibit'][1]):
                     # treated as readonly
                     ret_stat = ('readonly', None)
                 elif (record['system_inhibit'][1] == 'readonly' or
@@ -1930,9 +1927,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     def set_system_migrated(self, ticket):
         return self.set_system_inhibit(ticket, "migrated", 1)
 
+    # flag that the current volume is being migrated #### DONE
+    def set_system_migrating(self, ticket):
+        return self.set_system_inhibit(ticket, "migrating", 1)
+
     # flag that the current volume is duplicated #### DONE
     def set_system_duplicated(self, ticket):
         return self.set_system_inhibit(ticket, "duplicated", 1)
+
+    # flag that the current volume is being duplicated #### DONE
+    def set_system_duplicating(self, ticket):
+        return self.set_system_inhibit(ticket, "duplicating", 1)
     
     # flag that the current volume is full #### DONE
     def set_system_full(self, ticket):
