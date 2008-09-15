@@ -2519,6 +2519,9 @@ def migrate_volume(vol, intf):
 
 def set_src_volume_migrated(MY_TASK, vol, vcc, db):
 	# mark the volume as migrated
+	## Note: Don't use modify() here.  Doing so would prevent the
+	## plotting and summary scripts from working correctly.  They look
+	## for a state change to system_inhibit_1; not a modify.
 	ticket = set_system_migrated_func(vcc, vol)
 	if ticket['status'][0] == e_errors.OK:
 		log(MY_TASK, "set %s to %s"%(vol, INHIBIT_STATE))
