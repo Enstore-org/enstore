@@ -1,4 +1,0 @@
-$ENSTORE_DIR/test/roll -noread /pnfs/grau/dlt/jon1     $ENSTORE_DIR/test/rip4a-1.in  9 0
-$ENSTORE_DIR/test/roll -noread /pnfs/grau/dlt/jon1     $ENSTORE_DIR/test/rip4b-1.in 10 0
-$ENSTORE_DIR/test/roll -noread /pnfs/grau/mammoth/jon1 $ENSTORE_DIR/test/rip4a-1.in 11 0
-
