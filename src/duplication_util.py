@@ -209,8 +209,8 @@ def make_original_as_duplicate(volume):
 			print "ERROR: no such volume '%s'"%(vol)
 			return
 		# make sure it is a migrated volume
-		if v['system_inhibit'][1] != "migrated":
-			print "ERROR: %s is not a migrated volume."%(vol)
+		if v['system_inhibit'][1] != "duplicated":
+			print "ERROR: %s is not a duplicated volume."%(vol)
 			return
 		q = "select dst_bfid, src_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.src_bfid and not m.closed is null;"%(vol)
 		res = dm.db.query(q).getresult()
