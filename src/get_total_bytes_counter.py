@@ -8,6 +8,8 @@ import os
 import configuration_client
 import enstore_constants
 import inventory
+import Trace
+import pg
 
 CDF = "cdf"
 D0 = "d0"
@@ -18,7 +20,14 @@ LIBRARIES = {CDF : ["cdf", "CDF-9940B", "CDF-LTO3", "CDF-LTO4"],
                    "samlto2", "shelf-samlto", "D0-LTO3", "D0-LTO4"],
 	     STK : ["9940", "CD-9940B", "CD-LTO3", "CD-LTO4"]
 	     }
-
+def work(total_bytes, vq_output_file, vq_output_file2):
+	output_file = open(vq_output_file, 'w')
+	output_file.write("%.3f TB\n"%(total_bytes/1099510000000.0))
+	output_file.close()
+	output_file = open(vq_output_file2, 'w')
+	output_file.write("%.3f\n"%(total_bytes))
+	output_file.close()
+    
 def go(system, vq_file_name, vq_output_file, vq_output_file2):
 
     if system and system in LIBRARIES.keys():
@@ -82,7 +91,28 @@ if __name__ == "__main__":
     system=""
     vq_file_dir = os.path.join(dir,"tape_inventory")
     vq_file_name = os.path.join(vq_file_dir,"VOLUME_QUOTAS_FORMATED")
-    go(system, vq_file_name, vq_output_file, vq_output_file2)
+#    go(system, vq_file_name, vq_output_file, vq_output_file2)
+
+    acc = config_dict.get("database",{})
+    total_bytes=0.
+    q="select coalesce(sum(size),0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
+    
+    try: 
+        db = pg.DB(host  = acc.get('db_host', "localhost"),
+                   dbname= acc.get('dbname', "enstoredb"),
+                   port  = acc.get('db_port', 5432),
+                   user  = acc.get('dbuser', "enstore"))
+        res=db.query(q)
+        for row in res.getresult():
+            if not row:
+                continue
+            total_bytes=row[0]
+        db.close()
+    except:
+        Trace.handle_error()
+        pass
+
+    work(total_bytes, vq_output_file, vq_output_file2)
     
 
 	# get the system from the args
