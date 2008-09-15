@@ -2454,7 +2454,7 @@ def migrate_volume(vol, intf):
 		log(MY_TASK, vol, 'has already been migrated')
 		return 0
 	if v['system_inhibit'][1] != IN_PROGRESS_STATE:
-		set_system_migrating_func(vol)
+		set_system_migrating_func(vcc, vol)
 		log(MY_TASK, 'set %s to %s' % (vol, IN_PROGRESS_STATE))
 
 	# now try to copy the file one by one
