@@ -13,12 +13,14 @@ import os
 import string
 import time
 import math
-import configuration_client
 import pg
-import enstore_constants
-import histogram
 import thread
 import socket
+import configuration_client
+import enstore_constants
+import histogram
+import enstore_files
+
 PB=1024.*1024.*1024.*1024.*1024.
 TB=1024.*1024.*1024.*1024.
 GB=1024.*1024.*1024.
