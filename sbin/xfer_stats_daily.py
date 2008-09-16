@@ -14,6 +14,7 @@ import string
 import time
 import math
 import pg
+import socket
 import configuration_client
 import enstore_constants
 import enstore_files
