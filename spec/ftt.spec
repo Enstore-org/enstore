@@ -54,9 +54,9 @@ rm -rf $RPM_BUILD_ROOT/*
 #/$RPM_BUILD_ROOT/%prefix/%{name}-%{version}/debugfiles.list
 
 %changelog
+* Wed Sep 17 2008 <moibenko@fnal.gov> -
+- Release 3 Added dignostic messages for detecting compression
 * Wed Feb 21 2007  <moibenko@fnal.gov> - 
 - Initial build.
-* Wed Sep 17  <moibenko@fnal.gov> -
-- Release 3 Added dignostic messages for detecting compression
 
 
