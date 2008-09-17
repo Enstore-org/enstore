@@ -1938,6 +1938,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     # flag that the current volume is being duplicated #### DONE
     def set_system_duplicating(self, ticket):
         return self.set_system_inhibit(ticket, "duplicating", 1)
+
+    # flag that the current volume is cloned #### DONE
+    def set_system_cloned(self, ticket):
+        return self.set_system_inhibit(ticket, "cloned", 1)
+
+    # flag that the current volume is being cloned #### DONE
+    def set_system_cloning(self, ticket):
+        return self.set_system_inhibit(ticket, "cloning", 1)
     
     # flag that the current volume is full #### DONE
     def set_system_full(self, ticket):

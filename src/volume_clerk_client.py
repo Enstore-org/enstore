@@ -675,7 +675,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
 
-    # mark volume as in progres for migration
+    # mark volume as in progress for migration
     def set_system_migrating(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_migrating',
                   'external_label' : external_label }
@@ -687,9 +687,21 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
 
-    # mark volume as in progres for duplication
+    # mark volume as in progress for duplication
     def set_system_duplicating(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_duplicating',
+                  'external_label' : external_label }
+        return self.send(ticket,timeout,retry)
+
+    # mark volume as cloned
+    def set_system_cloned(self, external_label, timeout=60, retry=10):
+        ticket= { 'work'           : 'set_system_cloned',
+                  'external_label' : external_label }
+        return self.send(ticket,timeout,retry)
+
+    # mark volume as in progress for cloning
+    def set_system_cloning(self, external_label, timeout=60, retry=10):
+        ticket= { 'work'           : 'set_system_cloning',
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
 

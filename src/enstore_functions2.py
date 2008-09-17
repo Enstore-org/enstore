@@ -767,33 +767,36 @@ def is_on_host(host):
 ###########################################################################
 
 def is_readonly_state(state):
-    if str(state) in ['full', 'readonly', 'migrated', 'duplicated',
-                      'migrating', 'duplicating']:
+    if str(state) in ['full', 'readonly',
+                      'migrated', 'duplicated', 'cloned',
+                      'migrating', 'duplicating', 'cloning']:
         return 1
 
     return 0
 
 def is_readable_state(state):
-    if str(state) in ['none', 'full', 'readonly', 'migrated', 'duplicated',
-                      'migrating', 'duplicating']:
+    if str(state) in ['none', 'full', 'readonly',
+                      'migrated', 'duplicated', 'cloned',
+                      'migrating', 'duplicating', 'cloning']:
         return 1
 
     return 0
 
 def is_migration_state(state):
-    if str(state) in ['migrated', 'duplicated', 'migrating', 'duplicating']:
+    if str(state) in ['migrated', 'duplicated', 'cloned',
+                      'migrating', 'duplicating', 'cloning']:
         return 1
 
     return 0
 
 def is_migrated_state(state):
-    if str(state) in ['migrated', 'duplicated']:
+    if str(state) in ['migrated', 'duplicated', 'cloned']:
         return 1
 
     return 0
 
 def is_migrating_state(state):
-    if str(state) in ['migrating', 'duplicating']:
+    if str(state) in ['migrating', 'duplicating', 'cloning']:
         return 1
 
     return 0
