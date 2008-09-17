@@ -27,58 +27,150 @@ enstoredb-#     SELECT volume.media_type, count(*) AS blanks FROM volume WHERE (
 ### SQL command to return the number of closed and in progress volumes
 ### being migrated.
 ###
+
 SQL_COMMAND = \
 """
-select s2.d2, volume.media_type, s2.closed, s3.started 
-from volume
+select CASE WHEN s1.day is not null THEN s1.day
+            WHEN s2.day is not null THEN s2.day
+            WHEN s3.day is not null THEN s3.day
+            ELSE NULL
+       END as day,
+       CASE WHEN s1.media_type is not null THEN s1.media_type
+            WHEN s2.media_type is not null THEN s2.media_type
+            WHEN S3.media_type is not null THEN s3.media_type
+            ELSE NULL
+       END as media_type,
+       s2.started,
+       s1.completed,
+       s3.closed
+from
 
-right join
-(select date(time) as d2, v2.media_type, count(distinct mh2.src) as closed
-	from volume as v2,migration_history as mh2
-	where v2.label = mh2.src and v2.library not like '%shelf%'
-	group by d2,media_type)
-as s2 on s2.media_type = volume.media_type
+/*Three sub selects get the count for each day and media for number of
+  volumes started, migrated/duplicated and closed. */
 
-right join
-(select date(swapped) as d3,v3.media_type,count(distinct v3.label) as started
-	     from migration as m3,volume as v3,file as f3
-	     where f3.bfid = m3.src_bfid and f3.volume = v3.id and
-                   v3.library not like '%shelf%'
-	     group by d3,media_type)
-as s3 on s3.media_type = volume.media_type
+/****  s1  ****/
+(
+select date(time) as day,
+       media_type,
+       count(distinct CASE WHEN system_inhibit_1 in ('migrated',
+                                                     'duplicated')
+                            THEN label
+                            ELSE NULL
+                      END) as completed
 
-where s2.d2 = s3.d3
-   and s2.media_type = s3.media_type
-   and volume.label not like '%.deleted'
-   and volume.library not like '%shelf%'
-group by s2.d2,volume.media_type,s2.closed,s3.started
-order by s2.d2;
+from volume,migration_history
+where volume.id = migration_history.src_vol_id
+      and volume.library not like '%shelf%'
+      and volume.media_type != 'null'
+      and volume.system_inhibit_1 in ('migrated', 'duplicated')
+      /* This time sub-query is needed to limit test volumes migrated
+         multiple times to be counted only once. */
+      and time = (select max(time)
+                  from migration_history m2
+                  where m2.src_vol_id = volume.id)
+group by day,media_type
+order by day,media_type
+) as s1
+/****  s1  ****/
 
+/****  s2  ****/
+full join (
+select date(state.time) as day,
+       volume.media_type,
+       count(distinct volume.label) as started
+from volume,migration_history,state
+where volume.id = migration_history.src_vol_id
+      and volume.id = state.volume
+      and volume.library not like '%shelf%'
+      and volume.media_type != 'null'
+      and volume.system_inhibit_1 in ('migrating', 'duplicating',
+                                      'migrated', 'duplicated')
+      /* Hopefully, setting state.time like this will correctly handle
+         all vintages of the migration process.  The migrating and duplicating
+         stages were added September of 2008. */
+      and state.time = (select CASE WHEN s2.value in ('migrating',
+                                                      'duplicating')
+                                    THEN min(s2.time)
+                                    WHEN s2.value in ('readonly')
+                                    THEN max(s2.time)
+                                    WHEN s2.value in ('migrated',
+                                                      'duplicated')
+                                    THEN min(s2.time)
+                                    ELSE NULL
+                               END
+                        from state s2
+                        where s2.volume = volume.id
+                              and s2.value in ('migrating', 'duplicating',
+                                               'migrated', 'duplicated',
+                                               'readonly')
+                        group by s2.value, time
+                        order by s2.value, time
+                        limit 1)
+group by day, volume.media_type
+order by day, volume.media_type
+) as s2 on (s1.day, s1.media_type) = (s2.day, s2.media_type)
+/****  s2  ****/
+
+/****  s3  ****/
+full join (
+select date(closed_time) as day,
+       media_type,
+       count(distinct label) as closed
+       /*count(distinct CASE WHEN system_inhibit_1 in ('migrated',
+                                                     'duplicated')
+                            THEN label
+                            ELSE NULL
+                      END) as closed*/
+
+from volume,migration_history
+where volume.id = migration_history.src_vol_id
+      and volume.library not like '%shelf%'
+      and volume.media_type != 'null'
+      and volume.system_inhibit_1 in ('migrated', 'duplicated')
+      /* This time sub-query is needed to limit test volumes migrated
+         multiple times to be counted only once. */
+      and closed_time = (select max(closed_time)
+                         from migration_history m2
+                         where m2.src_vol_id = volume.id)
+group by day,media_type
+order by day,media_type
+) as s3 on (s2.day, s2.media_type) = (s3.day, s3.media_type)
+/****  s3  ****/
+
+group by s1.day,s1.media_type,s1.completed,s2.day,s2.media_type,s2.started,s3.day,s3.media_type,s3.closed
+order by s1.day,s1.media_type;
 """
 
-SQL_COMMAND2 = \
-"""
-select date(min(swapped)) as "day", media_type, label
-from volume, migration, file
-where volume.id = file.volume
-      and file.bfid = migration.src_bfid
-      and label not like '%.deleted'
-      and library not like '%shelf%'
-group by media_type, label
-order by day;
-"""
 
-
+#SQL command to obtain the number of tapes still needing to be migrated.
 SQL_COMMAND3 = \
 """
 select media_type, count(distinct label) as remaining_volumes
 from volume
-left join migration_history mh on mh.src = volume.label
-right join file on file.volume = volume.id
-where (system_inhibit_1 != 'migrated' and system_inhibit_1 != 'duplicated')
-      and label not like '%.deleted'
+left join migration_history on migration_history.src_vol_id = volume.id
+where (system_inhibit_1 not in ('migrated', 'duplicated', 'cloned')
+       or migration_history.closed_time is NULL)
+      and system_inhibit_0 != 'DELETED'
       and library not like '%shelf%'
       and media_type != 'null'
+      and volume.sum_wr_access != 0
+group by media_type;
+"""
+
+#SQL command to obtain the number of non-empty tapes.
+SQL_COMMAND4 = \
+"""
+select media_type, count(distinct label) as non_empty_volumes
+from volume
+where system_inhibit_0 != 'DELETED'
+      and library not like '%shelf%'
+      and media_type != 'null'
+      and sum_wr_access != 0
+      /*and (select count(bfid)
+           from volume v2
+           left join file f2 on v2.id = f2.volume
+           where v2.id = volume.id
+           limit 1) > 0*/ 
 group by media_type;
 """
 
@@ -100,7 +192,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
     # key = The key to access information in the various instance member
     #       variables.  Here it is the media_type.
     def write_plot_file(self, plot_filename, data_filename, ps_filename,
-                        key, plot_type, columns):
+                        key, plot_type, columns, titles):
         plot_fp = open(plot_filename, "w+")
 
         plot_fp.write('set terminal postscript color solid\n')
@@ -114,32 +206,42 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         plot_fp.write('set timefmt "%Y-%m-%d"\n')
         plot_fp.write('set format x "%Y-%m-%d"\n')
         plot_fp.write('set grid\n')
-        plot_fp.write('set nokey\n')
+        #plot_fp.write('set nokey\n')
         plot_fp.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (time.ctime(),))
 
         if plot_type == ACCUMULATED:
-            total_volumes = self.summary_remaining[key] + \
-                            self.summary_done[key]
-            plot_fp.write('set yrange [ 0 : %f ]\n' % (total_volumes * 1.1,))
-            plot_fp.write('set label "Left to migrate %s" at graph .05,.95\n' \
-                          % (self.summary_remaining[key],))
-            plot_fp.write('set label "Migrated %s" at graph .05,.90\n' \
-                          % (self.summary_done[key],))
+            total_volumes = self.summary_total.get(key,
+                                 self.summary_remaining.get(key, 0L) +
+                                 self.summary_started.get(key, 0L))
+            if total_volumes:
+                #Don't set yrange if total_volumes is zero, otherwise the
+                # plot will fail from the error:
+                # "line 0: Can't plot with an empty y range!"
+                plot_fp.write('set yrange [ 0 : %f ]\n' % (total_volumes * 1.1,))
+            plot_fp.write('set label "Remaining %s" at graph .05,.95\n' \
+                          % (self.summary_remaining.get(key, 0L),))
+            plot_fp.write('set label "Started %s" at graph .05,.90\n' \
+                          % (self.summary_started.get(key, 0L),))
+            plot_fp.write('set label "Migrated %s" at graph .05,.85\n' \
+                          % (self.summary_done.get(key, 0L),))
+            plot_fp.write('set label "Closed %s" at graph .05,.80\n' \
+                          % (self.summary_closed.get(key, 0L),))
         else: #Daily
              plot_fp.write('set yrange [ 0 : ]\n')
         
         #Build the plot command line.
         plot_line = "plot "
-        for column in columns:
+        for i in range(len(columns)):
+            column = columns[i]
             if plot_line != "plot ":
                 #If we are on the first plot, don't append the comma.
                 plot_line = "%s, " % (plot_line,)
 
             #Add the next set of plots.
-            plot_line = plot_line + '"%s" using 1:%d with impulses lw 10' % (data_filename, column)
+            plot_line = plot_line + '"%s" using 1:%d title "%s" with impulses lw 10' % (data_filename, column, titles[i])
         #If the plot is accumulated, plot the total to migrate.
         if plot_type == ACCUMULATED:
-            plot_line = '%s, x,%s with lines lw 4' % (plot_line, total_volumes)
+            plot_line = '%s, x,%s title "goal" with lines lw 4' % (plot_line, total_volumes)
             pass
         #Put the whole thing together.
         plot_line = "%s\n" % (plot_line,)
@@ -183,54 +285,30 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         ###
         ### Lets get the daily values.
         ###
+        print "Starting SQL_COMMAND:", time.ctime()
 
         #This query is for volumes that are all done.
         res = db.query(SQL_COMMAND).getresult()
 
         #Open the datafiles.
         self.pts_files = {}
-        self.summary_done = {}
         self.summary_started = {}
-        summary_started = {}
-        total_started = {}
+        self.summary_done = {}
+        self.summary_closed = {}
         for row in res:
             #row[0] is the date (YYYY-mm-dd)
             #row[1] is the media type
-            #row[2] is the number of migrated tapes completed
-            #row[3] is the number of migrated tapes attempted
+            #row[2] is the number of migrated tapes started
+            #row[3] is the number of migrated tapes migrated/duplicated
+            #row[4] is the number of migrated tapes closed
             if not self.pts_files.get(row[1], None):
                 fname = os.path.join(self.temp_dir,
                                      "migration_summary_%s.pts" % (row[1],))
                 self.pts_files[row[1]] = open(fname, "w")
+                self.summary_started[row[1]] = 0L
                 self.summary_done[row[1]] = 0L #Set the key values to zeros.
-                self.summary_started[row[1]] = {}
-                summary_started[row[1]] = 0L
-                total_started[row[1]] = 0L
-                
-        ###
-        ### Time to acquire accumulated start counts for volumes.
-        ###
+                self.summary_closed[row[1]] = 0L
 
-        #This query is to obtain the daily count of volumes started to
-        # be migrated.
-        #If there is a way to combine the SQL_COMMAND and SQL_COMMAND2 into
-        # a single sql statement, go for it.  In the meantime, this is
-        # what works.
-        res2 = db.query(SQL_COMMAND2).getresult()
-
-        for row2 in res2:
-            #row2[0] is the date (YYYY-mm-dd)
-            #row2[1] is the media type
-            #row2[2] is the a label started on the date in row2[0]
-            try:
-                total_started[row2[1]] = total_started[row2[1]] + 1
-            except KeyError:
-                total_started[row2[1]] = 1
-            try:
-                self.summary_started[row2[1]][row2[0]] = total_started[row2[1]]
-            except KeyError:
-                self.summary_started[row2[1]] = {}
-                self.summary_started[row2[1]][row2[0]] = 1
 
         ###
         ### Now that the information for each day is obtained, lets output
@@ -238,31 +316,33 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
         #Output to temporary files the data that gnuplot needs to plot.
         for row in res:
-            self.summary_done[row[1]] = self.summary_done[row[1]] + row[2]
-
-            #It is possible that on a particular day, only previously tried
-            # volumes are tried again.  Thus, there will be datapoints
-            # in res, but not in res2.  Handle the KeyError in this
-            # situation here.
-            #Note: this logic assumes that both res and res2 are sorted
-            # in ascending order by day.
             try:
-                summary_started[row[1]] = self.summary_started[row[1]][row[0]]
-            except KeyError:
+                self.summary_started[row[1]] = self.summary_started[row[1]] + row[2]
+            except TypeError:
                 pass
-
+            try:
+                self.summary_done[row[1]] = self.summary_done[row[1]] + row[3]
+            except TypeError:
+                pass
+            try:
+                self.summary_closed[row[1]] = self.summary_closed[row[1]] + row[4]
+            except TypeError:
+                pass
+            
             # Here we write the contents to the file.
-            self.pts_files[row[1]].write("%s %s %s %s %s\n" % (
-                row[0], row[2], row[3], self.summary_done[row[1]],
-                summary_started[row[1]]))
+            self.pts_files[row[1]].write("%s %s %s %s %s %s %s\n" % (
+                row[0], row[2], row[3], row[4], self.summary_started[row[1]],
+                self.summary_done[row[1]], self.summary_closed[row[1]]))
 
         #Avoid resource leaks.
         for key in self.pts_files.keys():
             self.pts_files[key].close()
 
+
         ###
-        ### Now lets get some totals about what is done right now.
+        ### Now lets get some totals about what is left to go.
         ###
+        print "Starting SQL_COMMAND3:", time.ctime()
 
         #This query is for volumes that are all done.
         res3 = db.query(SQL_COMMAND3).getresult()
@@ -274,13 +354,28 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             self.summary_remaining[row3[0]] = row3[1]
 
 
+        ###
+        ### Now lets get some totals about how many tapes there are.
+        ###
+        print "Starting SQL_COMMAND4:", time.ctime()
+
+        #This query is for volumes that are all done.
+        res4 = db.query(SQL_COMMAND4).getresult()
+
+        self.summary_total = {}
+        for row4 in res4:
+            #row3[0] is the media type
+            #row3[1] is the number of tapes
+            self.summary_total[row4[0]] = row4[1]
+
 
     def plot(self):
         for key in self.pts_files.keys():
             #Key at this point is unique media types (that have been migrated).
 
-            
+            print "Plotting %s accumulated" % (key,)
             self._plot(key, ACCUMULATED)
+            print "Plotting %s dainly" % (key,)
             self._plot(key, DAILY)
 
             #Cleanup the temporary files for this loop.
@@ -302,16 +397,17 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             plot_filename = os.path.join(self.temp_dir,
                       "migration_summary_%s_%s.plot" % (plot_type, key,))
 
+            titles = ['started', 'migrated/duplicated', 'closed']
             if plot_type == ACCUMULATED:
-                columns = [5, 4]
+                columns = [5, 6, 7]
             elif plot_type == DAILY:
-                columns = [3, 2]
+                columns = [2, 3, 4]
             else:
                 columns = [0]  #What happens when we get here?
             
             #Write the gnuplot command file(s).
             self.write_plot_file(plot_filename, self.pts_files[key].name,
-                                 ps_filename, key, plot_type, columns)
+                                 ps_filename, key, plot_type, columns, titles)
 
             #Make the plot and convert it to jpg.
             os.system("gnuplot < %s" % plot_filename)
