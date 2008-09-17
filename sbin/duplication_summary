@@ -55,7 +55,7 @@ if [ -z "$DB_USER" ]; then
 fi
 
 #Create the variables that point to the files to output to.
-fname=MIGRATION_SUMMARY
+fname=DUPLICATION_SUMMARY
 output_file=$inventory_dir/$fname
 temp_file=$output_file.temp
 
@@ -65,16 +65,16 @@ temp_file=$output_file.temp
 rm -f $temp_file
 
 #Make sure we know how up-to-date this is.
-echo -e Migration Report: `date` > $temp_file 2>&1
+echo -e Duplication Report: `date` > $temp_file 2>&1
 echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
 
-echo                     >> $temp_file 2>&1
-echo "=================" >> $temp_file 2>&1
-echo "Migration Summary" >> $temp_file 2>&1
-echo "=================" >> $temp_file 2>&1
-echo                     >> $temp_file 2>&1
+echo                       >> $temp_file 2>&1
+echo "===================" >> $temp_file 2>&1
+echo "Duplication Summary" >> $temp_file 2>&1
+echo "===================" >> $temp_file 2>&1
+echo                       >> $temp_file 2>&1
 
-echo "Creating Migration Summary" `date`
+echo "Creating Duplication Summary" `date`
 
 echo "In the following table:" >> $temp_file 2>&1
 echo "migration_closed + duplication_closed + remaining + blank_volumes = total" >> $temp_file 2>&1
@@ -137,7 +137,6 @@ group by media_type
 order by media_type;
 " >> $temp_file 2>&1
 
-
 echo >> $temp_file 2>&1
 echo >> $temp_file 2>&1
 
@@ -146,7 +145,7 @@ echo "The volumes counted in the following table are also included in the previo
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
 select media_type,system_inhibit_1 as migration_type,count(distinct src) as completed_volumes_with_skipped_bad_files
 from volume
-left join migration_history on migration_history.src_vol_id = volume.id
+left join migration_history on migration_history.src = volume.label
 left join file on file.volume = volume.id
 left join bad_file on bad_file.bfid = file.bfid
 where (system_inhibit_1 = 'migrated' or system_inhibit_1 = 'duplicated')
@@ -157,30 +156,48 @@ where (system_inhibit_1 = 'migrated' or system_inhibit_1 = 'duplicated')
 group by media_type,system_inhibit_1;
 " >> $temp_file 2>&1
 
-echo                     >> $temp_file 2>&1
-echo "=================" >> $temp_file 2>&1
-echo "Migration per Day" >> $temp_file 2>&1
-echo "=================" >> $temp_file 2>&1
-echo                     >> $temp_file 2>&1
+echo                       >> $temp_file 2>&1
+echo "===================" >> $temp_file 2>&1
+echo "Duplication per Day" >> $temp_file 2>&1
+echo "===================" >> $temp_file 2>&1
+echo                       >> $temp_file 2>&1
 
-echo "Creating Migration per Day" `date`
+echo "Creating Duplication per Day" `date`
 
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
 select date(time) as date, media_type, count(distinct src)
 from migration_history,volume 
 where volume.id = migration_history.src_vol_id
-      and volume.system_inhibit_1 = 'migrated'
+      and volume.system_inhibit_1 = 'duplicated'
 group by date,media_type
 order by date;
 " >> $temp_file 2>&1
 
+echo                         >> $temp_file 2>&1
+echo "=====================" >> $temp_file 2>&1
+echo "Multiple Copy Summary" >> $temp_file 2>&1
+echo "=====================" >> $temp_file 2>&1
+echo                         >> $temp_file 2>&1
+
+echo "Creating Multiple Copy Summary" `date`
+
+psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
+select media_type,storage_group,file_family,count(file.bfid) as original_files,count(file_copies_map.alt_bfid) as duplicate_files, count(file.bfid) - count(file_copies_map.alt_bfid) as non_duplicated_files
+from file
+left join file_copies_map on file_copies_map.bfid = file.bfid
+left join volume on file.volume = volume.id
+where volume.file_family not like '%_copy%'
+group by media_type,storage_group,file_family
+order by media_type,storage_group,file_family;
+" >> $temp_file 2>&1
+
 echo                                   >> $temp_file 2>&1
 echo "===============================" >> $temp_file 2>&1
-echo "Migration/Duplication Remaining" >> $temp_file 2>&1
+echo "Duplication/Migration Remaining" >> $temp_file 2>&1
 echo "===============================" >> $temp_file 2>&1
 echo                                   >> $temp_file 2>&1
 
-echo "Creating Migration/Duplication Remaining" `date`
+echo "Creating Duplication/Migration Remaining" `date`
 
 #This first query is just to obtain the list of media types that have
 # at least one tape already migrated or duplicated.
@@ -217,20 +234,20 @@ group by media_type,label
 order by media_type,label;
 " >> $temp_file 2>&1
 
-echo                     >> $temp_file 2>&1
-echo "=================" >> $temp_file 2>&1
-echo "Migration History" >> $temp_file 2>&1
-echo "=================" >> $temp_file 2>&1
-echo                     >> $temp_file 2>&1
+echo                       >> $temp_file 2>&1
+echo "===================" >> $temp_file 2>&1
+echo "Duplication History" >> $temp_file 2>&1
+echo "===================" >> $temp_file 2>&1
+echo                       >> $temp_file 2>&1
 
-echo "Creating Migration History" `date`
+echo "Creating Duplication History" `date`
 
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c " \
-select migration_history.src as src_volume,volume.media_type as src_type,migration_history.dst as dst_volume,v2.media_type as dst_type,volume.system_inhibit_1 as migration,time as time_completed
+select migration_history.src as src_volume,volume.media_type as src_type,migration_history.dst as dst_volume,v2.media_type as dst_type,volume.system_inhibit_1 as duplication,time as time_completed
 from migration_history
 left join volume on volume.id = migration_history.src_vol_id
 left join volume as v2 on v2.id = migration_history.dst_vol_id
-where volume.system_inhibit_1 = 'migrated'
+where volume.system_inhibit_1 = 'duplicated'
 order by time;
 " >> $temp_file 2>&1
 
@@ -238,10 +255,10 @@ order by time;
 mv "$temp_file" "$output_file" #Do the temp file swap.
 
 #For backward compatiblity make an html file too.
-echo Starting to making html file for migration.
+echo Starting to making html file for duplication.
 rm -f $output_file.html
 cat << EOF >> $output_file.html
-<html> <head> <title>$tl_name Migration Summary Page</title> </head>
+<html> <head> <title>$tl_name Duplication Summary Page</title> </head>
 <body>
 <body bgcolor="#ffffff" text=#a0a0ff">
 <meta http-equiv="Refresh" content="900">
