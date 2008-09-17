@@ -1,7 +1,7 @@
 Summary: fermi tape tool 
 Name: ftt
 Version: 2.26
-Release: 2
+Release: 3
 License: GPL
 Group: Applications/File
 #URL: 
@@ -56,4 +56,7 @@ rm -rf $RPM_BUILD_ROOT/*
 %changelog
 * Wed Feb 21 2007  <moibenko@fnal.gov> - 
 - Initial build.
+* Wed Sep 17  <moibenko@fnal.gov> -
+- Release 3 Added dignostic messages for detecting compression
+
 
