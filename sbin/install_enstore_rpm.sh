@@ -39,7 +39,7 @@ fi
 
 
 echo "Installing ftt"
-rpm -U --force ${place}/ftt-2.26-2.i386.rpm 
+rpm -U --force ${place}/ftt-2.26-3.i386.rpm 
 
 rpm -q tcl > /dev/null
 if [ $? -ne 0 ]; then
