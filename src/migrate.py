@@ -275,7 +275,8 @@ def init(intf):
 	# check for spool_dir commands
 	if not intf.migrated_to and not intf.migrated_from and \
 	   not intf.status and not intf.show and not intf.scan_volumes and \
-	   not getattr(intf, "list_failed_copies", None):
+	   not getattr(intf, "list_failed_copies", None) and \
+	   not getattr(intf, "restore", None):
 		#spool dir
 		if not SPOOL_DIR:
 			sys.stderr.write("No spool directory specified.\n")
@@ -547,6 +548,7 @@ def log_closed(bfid1, bfid2, db):
 # log_history(src, dst) -- log a migration history
 def log_history(src, dst, db):
 
+	# Obtain the unique volume id for the source and destination volumes.
 	q = "select id from volume where label = '%s'" % (src,)
 
 	try:
@@ -566,6 +568,7 @@ def log_history(src, dst, db):
 		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
 		return
 
+	# Insert this volume combintation into the migration_history table.
 	q = "insert into migration_history (src, src_vol_id, dst, dst_vol_id) values \
 		('%s', '%s', '%s', '%s');"%(src, src_vol_id, dst, dst_vol_id)
 	if debug:
@@ -579,6 +582,44 @@ def log_history(src, dst, db):
 		if not str(exc_value).startswith(
 			"ERROR:  duplicate key violates unique constraint"):
 			error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
+	return
+
+def log_history_closed(src, dst, db):
+
+	# Obtain the unique volume id for the source and destination volumes.
+	q = "select id from volume where label = '%s'" % (src,)
+
+	try:
+		res = db.query(q).getresult()
+		src_vol_id = res[0][0]  #volume id
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
+		return
+	q = "select id from volume where label = '%s'" % (dst,)
+
+	try:
+		res = db.query(q).getresult()
+		dst_vol_id =  res[0][0]  #volume id
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
+		return
+	
+	#Update the closed_time column in the migration_history table
+	# for these two volumes.
+	q = "update migration_history set closed_time = current_timestamp " \
+	    "where migration_history.src_vol_id = '%s' " \
+            "      and migration_history.dst_vol_id = '%s';" % \
+	    (src_vol_id, dst_vol_id)
+
+	if debug:
+		log("log_history():", q)
+	try:
+		db.query(q)
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("LOG_HISTORY_CLOSED", str(exc_type), str(exc_value), q)
 	return
 
 # undo_log(src, dst) -- remove a source and destination bfid pair from the
@@ -615,7 +656,8 @@ def get_volume_from_bfid(bfid, db):
 	
 	return None
 
-#Return the media_type that the bfid or volume refers to.
+#Return the media_type that the bfid or volume refers to.  The first
+# argument may also be a file path in pnfs.
 def get_media_type(bfid_or_volume, db):
 	if enstore_functions3.is_bfid(bfid_or_volume):
 		q = "select media_type from volume,file where " \
@@ -2049,7 +2091,9 @@ def final_scan_volume(vol, intf):
 	# Determine the list of files that should be scanned.
 	for r in query_res:
 		dst_bfid, pnfs_id, likely_path, src_bfid, location_cookie, deleted = r
-
+		#Make sure we have the admin path.
+		likely_path = pnfs.get_enstore_fs_path(likely_path)
+		
 		st = is_swapped(src_bfid, db)
 		if not st:
 			error_log(MY_TASK,
@@ -2103,7 +2147,7 @@ def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 	ff = normal_file_family(ff)
 	vf = string.join((sg, ff, wp), '.')
 	## Prepare to remove the readonly system inhibit set at the begining
-	## of this function.
+	## of final_scan_volume().
 	v = vcc.inquire_vol(vol)
 	if v['system_inhibit'][1] == "readonly":
 		#only if the volume is currently readonly should this be
@@ -2121,12 +2165,17 @@ def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 		error_log(MY_TASK, "failed to restore volume_family of", vol, "to", vf)
 		return 1
 
+	
+
 	## Set comment with the list of volumes.
 	from_list = migrated_from(vol, db)
 	vol_list = ""
 	for i in from_list:
 		# set last access time to now
 		vcc.touch(i)
+		# log history closed
+                log_history_closed(i, vol, db)
+		# build comment
 		vol_list = vol_list + ' ' + i
 	if vol_list:
 		res = vcc.set_comment(vol, MFROM + vol_list)
@@ -2138,6 +2187,8 @@ def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
                                   'failed to set comment of %s to "%s%s"' \
                                   % (vol, MFROM, vol_list))
 			return 1
+
+	
 
 	return 0
 
@@ -2282,7 +2333,7 @@ def _migrate_processes(files, intf):
 				else:
 					errors = errors + 1
 			except OSError, msg:
-				message = "waitpid(%s, 0) failed: %s" \
+				message = "FS waitpid(%s, 0) failed: %s" \
 					  % (pid2, str(msg))
 				error_log(MY_TASK, message)
 				errors = errors + 1
@@ -2303,7 +2354,7 @@ def _migrate_processes(files, intf):
 			else:
 				errors = errors + 1
 		except OSError, msg:
-			message = "waitpid(%s, 0) failed: %s" \
+			message = "M waitpid(%s, 0) failed: %s" \
 				  % (pid, str(msg))
 			error_log(MY_TASK, message)
 			errors = errors + 1
@@ -2431,6 +2482,11 @@ def is_migrated(src_vol, dst_vol, intf, db, copied = 1, swapped = 1, checked = 1
 	
 # migrate_volume(vol) -- migrate a volume
 def migrate_volume(vol, intf):
+	#These probably should not be constants anymore, now that cloning
+	# is handled differently.
+	global INHIBIT_STATE, IN_PROGRESS_STATE
+	global set_system_migrating_func, set_system_migrated_func
+	
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
@@ -2450,12 +2506,6 @@ def migrate_volume(vol, intf):
 	if v['system_inhibit'][0] != 'none':
 		error_log(MY_TASK, vol, 'is', v['system_inhibit'][0])
 		return 1
-	if v['system_inhibit'][1] == INHIBIT_STATE and is_migrated_by_src_vol(vol, intf, db):
-		log(MY_TASK, vol, 'has already been migrated')
-		return 0
-	if v['system_inhibit'][1] != IN_PROGRESS_STATE:
-		set_system_migrating_func(vcc, vol)
-		log(MY_TASK, 'set %s to %s' % (vol, IN_PROGRESS_STATE))
 
 	# now try to copy the file one by one
 	# get all bfids
@@ -2468,7 +2518,7 @@ def migrate_volume(vol, intf):
 		use_skip_bad = "and bad_file.bfid is NULL"
 	else:
 		use_skip_bad = ""
-	q = "select file.bfid,bad_file.bfid from file " \
+	q = "select file.bfid,bad_file.bfid,file.pnfs_path from file " \
 	    "full join bad_file on bad_file.bfid = file.bfid " \
 	    "join volume on file.volume = volume.id " \
 	    "where file.volume = volume.id and label = '%s' " \
@@ -2477,11 +2527,36 @@ def migrate_volume(vol, intf):
 	    "order by location_cookie;" % (vol, use_deleted_sql, use_skip_bad)
 	res = db.query(q).getresult()
 
+	#Build the list of files to migrate.
 	bfids = []
-	# start to copy the files one by one
-	for r in res:
-		bfids.append(r[0])
+	media_types = []
+	for row in res:
+		bfids.append(row[0])
 
+		#Determine the destination media_type.
+		mig_dir = pnfs.get_directory_name(migration_path(row[2]))
+		media_type = get_media_type(mig_dir, db)
+		if media_type not in media_types:
+			media_types.append(media_type)
+
+	#If we are certain that this is cloning job, not a migration, then
+	# we should handle it accordingly.
+	if len(media_types) > 0 and media_types[0] == v['media_type']:
+		IN_PROGRESS_STATE = "cloning"
+		INHIBIT_STATE = "cloned"
+		set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_cloned
+		set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_cloning
+
+	#Here are some additional checks on the volume.  If necessary, it
+	# will set the system_inhibit_1 value.
+	if v['system_inhibit'][1] == INHIBIT_STATE and is_migrated_by_src_vol(vol, intf, db):
+		log(MY_TASK, vol, 'has already been %s' % INHIBIT_STATE)
+		return 0
+	if v['system_inhibit'][1] != IN_PROGRESS_STATE:
+		set_system_migrating_func(vcc, vol)
+		log(MY_TASK, 'set %s to %s' % (vol, IN_PROGRESS_STATE))
+
+	# start to copy the files one by one
 	res = migrate(bfids, intf)
 	if res == 0 and is_migrated_by_src_vol(vol, intf, db, checked = 0, closed = 0):
 		set_src_volume_migrated(
@@ -2565,6 +2640,9 @@ def restore(bfids, intf):
 		bfids = [bfids]
 	for bfid in bfids:
 		f = fcc.bfid_info(bfid)
+		if not e_errors.is_ok(f):
+			error_log(MY_TASK, f['status'])
+			sys.exit(1)
 		#Verify that the file has been deleted.
 		#if f['deleted'] != 'yes':
 		#	error_log(MY_TASK, "%s is not deleted"%(bfid))
@@ -2592,9 +2670,9 @@ def restore(bfids, intf):
 			error_log(MY_TASK, str(exc_type),
 				  str(exc_value),
 				  "%s %s %s %s is not a valid pnfs file" \
-				  % (f['label'], f['bfid'],
+				  % (f['external_label'], f['bfid'],
 				     f['location_cookie'],
-				     f['pnfs_id']))
+				     f['pnfsid']))
 			sys.exit(1)
 			
 		if type(src) == type([]):
