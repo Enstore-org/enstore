@@ -729,6 +729,17 @@ CREATE TABLE migration_history (
     "time" timestamp without time zone DEFAULT now()
 );
 
+--
+-- The following are additional fields for migration_history.
+--
+ALTER TABLE migration_history ADD COLUMN src_vol_id integer DEFAULT -1;
+ALTER TABLE migration_history ADD COLUMN dst_vol_id integer DEFAULT -1;
+ALTER TABLE migration_history ADD COLUMN closed_time timestamp;
+
+-- Make sure to set the values unique before setting these columns not null.
+ALTER TABLE migration_history ALTER COLUMN src_vol_id SET NOT NULL;
+ALTER TABLE migration_history ALTER COLUMN dst_vol_id SET NOT NULL;
+
 
 ALTER TABLE public.migration_history OWNER TO enstore;
 
@@ -934,9 +945,10 @@ ALTER TABLE ONLY migration
 -- Name: migration_history_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
+-- ALTER TABLE ONLY migration_history
+--     DROP CONSTRAINT migration_history_pkey;
 ALTER TABLE ONLY migration_history
-    ADD CONSTRAINT migration_history_pkey PRIMARY KEY (src, dst);
-
+      ADD CONSTRAINT migration_history_pkey PRIMARY KEY (src_vol_id, dst_vol_id);
 
 --
 -- Name: migration_src_bfid_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
