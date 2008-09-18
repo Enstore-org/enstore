@@ -110,8 +110,8 @@ select media_type,
                       END) AS duplicated_closed,
        count(distinct CASE WHEN (select count(*)
                                  from migration_history
-                                 where migration_history.src_vol_id = volume.id
-                                       and migration_history.closed_time is NULL) > 0
+                                 right join volume v2 on v2.id = migration_history.src_vol_id
+                                 where migration_history.closed_time is NULL) > 0
                                 and volume.sum_wr_access > 0
                            THEN label
                            ELSE NULL
