@@ -177,5 +177,5 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 d,t,b=string.split(l," ");
                 total=total+float(b)
             if total>0 :
-                h.set_marker_type("points")
+                h.set_marker_type("impulses")
                 h.plot("1:3", directory = self.web_dir)
