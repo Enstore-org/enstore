@@ -114,6 +114,7 @@ ftt_scsi_command(
         Linux returns the request sense data in the read packet, we save it each time 
 	and return the data from the previous command if we get a request sense
  */
+	DEBUG2(stderr,"sending scsi command %s:\n", pcOp);
         DEBUG2(stderr,"sending scsi frame:\n");
         DEBUGDUMP2(pcCmd,nCmd);
 	if (writeflag && pcRdWr != 0 && nRdWr != 0){

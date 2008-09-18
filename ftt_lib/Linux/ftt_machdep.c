@@ -73,6 +73,7 @@ ftt_set_compression(ftt_descriptor d, int compression) {
    static int recursing = 0;
    int res=0;
 
+   DEBUG3(stderr,"ftt_set_compression %d\n", compression);
    if ( !recursing ) {
        recursing = 1;
        res = ftt_open_dev(d);

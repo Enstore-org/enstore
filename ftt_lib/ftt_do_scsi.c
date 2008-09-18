@@ -256,14 +256,15 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
         opbuf[512];
     int res = 0;
 
-    ENTERING("ftt_set_compression");
+    ENTERING("ftt_scsi_set_compression");
     CKNULL("ftt_descriptor", d);
     sprintf( opbuf , "2%s", d->prod_id);
 
     if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
 	if (ftt_get_stat_ops(opbuf) & FTT_DO_MS_Px0f) {
-	    DEBUG2(stderr, "V25: Using SCSI Mode sense 0x0f page to set compression\n");
-	    res = ftt_open_scsi_dev(d);        
+	    DEBUG3(stderr, "V25: Using SCSI Mode sense 0x0f page to set compression\n");
+	    res = ftt_open_scsi_dev(d);
+	    DEBUG3(stderr, "V26: ftt_open_scsi_dev returned %d\n",res);
 	    if(res < 0) return res;
 	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen0f, 6, buf, BD_SIZE+16, 5, 0);
 	    if(res < 0) return res;
@@ -273,11 +274,13 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    buf[BD_SIZE + 2] &= ~(1 << 7);
 	    buf[BD_SIZE + 2] |= (compression << 7);
             buf[BD_SIZE + 2] |= (compression << 7);
+	        
+	    DEBUG3(stderr, "V26: ftt_scsi_set_compression %d\n",compression);
 
             if ((0 == strncmp(d->prod_id,"ULT",3))||
 	        (0 == strncmp(d->prod_id,"T9940",5))||
                 (0 == strncmp(d->prod_id,"9840",4))) {
-               res = ftt_set_compression(d,compression);
+		res = ftt_set_compression(d,compression);
             }else{
                res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 220, 1);
             }
