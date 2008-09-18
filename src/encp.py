@@ -10266,6 +10266,17 @@ def read_from_hsm(e, tinfo):
 ##############################################################################
 
 class EncpInterface(option.Interface):
+
+    #  define our specific parameters
+    user_parameters = ["<source file> <destination file>",
+                       "<source file> [source file [...]] <destination directory>"]
+    admin_parameters = user_parameters +  \
+                       ["--get-bfid <bfid> <destination file>",
+                        "--get-cache <pnfsid> <destination file>",
+                        "--put-cache <pnfsid> <source file>"]
+    parameters = user_parameters #gets overridden in __init__().
+
+    
     def __init__(self, args=sys.argv, user_mode=0):
 
         #This is flag is accessed via a global variable.
@@ -10369,6 +10380,11 @@ class EncpInterface(option.Interface):
         if r_encp == "only_pnfs_agent":
             pnfs_agent_client_requested = True
 
+        #Override the default paramater list for admin mode and user2/dcache
+        # mode only.
+        if user_mode in [0, 2]: #admin_mode
+            self.parameters = self.admin_parameters
+
         # parse the options
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -10404,10 +10420,6 @@ class EncpInterface(option.Interface):
     def valid_dictionaries(self):
         return (self.help_options, self.encp_options)
     
-    #  define our specific parameters
-    parameters = ["<source file> <destination file>",
-                 "<source file> [source file [...]] <destination directory>"]
-
     def print_version(self):
         print encp_client_version()
         sys.exit(0)
