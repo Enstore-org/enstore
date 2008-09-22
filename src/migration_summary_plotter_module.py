@@ -30,6 +30,12 @@ enstoredb-#     SELECT volume.media_type, count(*) AS blanks FROM volume WHERE (
 
 SQL_COMMAND = \
 """
+/*This outer select just sorts the merged s1, s2 and s3 'day' columns into
+  a unified sorted order. */
+select * from
+(
+/* This inner select combines three sub selects sorted by day and
+   media type. */
 select CASE WHEN s1.day is not null THEN s1.day
             WHEN s2.day is not null THEN s2.day
             WHEN s3.day is not null THEN s3.day
@@ -40,9 +46,15 @@ select CASE WHEN s1.day is not null THEN s1.day
             WHEN S3.media_type is not null THEN s3.media_type
             ELSE NULL
        END as media_type,
-       s2.started,
-       s1.completed,
-       s3.closed
+       CASE WHEN s2.started is not NULL THEN s2.started
+            ELSE 0
+       END as started,
+       CASE WHEN s1.completed is not NULL THEN s1.completed
+            ELSE 0
+       END as completed,
+       CASE WHEN s3.closed is not NULL THEN s3.closed
+            ELSE 0
+       END as closed
 from
 
 /*Three sub selects get the count for each day and media for number of
@@ -137,8 +149,9 @@ order by day,media_type
 ) as s3 on (s2.day, s2.media_type) = (s3.day, s3.media_type)
 /****  s3  ****/
 
-group by s1.day,s1.media_type,s1.completed,s2.day,s2.media_type,s2.started,s3.day,s3.media_type,s3.closed
-order by s1.day,s1.media_type;
+group by s1.day,s2.day,s3.day,s1.media_type,s1.completed,s2.media_type,s2.started,s3.media_type,s3.closed
+order by s1.day,s2.day,s3.day
+) as inner_result order by day;
 """
 
 
@@ -210,9 +223,32 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         plot_fp.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (time.ctime(),))
 
         if plot_type == ACCUMULATED:
-            total_volumes = self.summary_total.get(key,
-                                 self.summary_remaining.get(key, 0L) +
-                                 self.summary_started.get(key, 0L))
+            
+            started_count = self.summary_started.get(key, 0L)
+            #done_count = self.summary_done.get(key, 0L)
+            closed_count = self.summary_closed.get(key, 0L)
+            remaining_count = self.summary_remaining.get(key, 0L)
+            total_count = self.summary_total.get(key, 0L)
+            
+            #This is possibly used for adjusting the goal line.  See comment
+            # below for possible reasons.
+            if started_count - total_count > 0:
+                goal_adjust = started_count - total_count
+            else:
+                goal_adjust = 0
+
+            #Determine the number of volumes that is the goal.  Basically,
+            # this takes the sum of the number of tapes closed added to the
+            # number of tapes remaining.  However, it is far more complicated.
+            #
+            # Take 9940A tapes.  They can be migrated as 9940As then
+            # clobbered into 9940B tapes.  Thus, more tapes can be migrated
+            # than what summary_total will contain at this point in time
+            # for the total number of 9940As.  This is where goal_adjust
+            # comes into play.
+            total_volumes = max(total_count,
+                                (closed_count + remaining_count + goal_adjust))
+
             if total_volumes:
                 #Don't set yrange if total_volumes is zero, otherwise the
                 # plot will fail from the error:
@@ -328,11 +364,26 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 self.summary_closed[row[1]] = self.summary_closed[row[1]] + row[4]
             except TypeError:
                 pass
+
+            #Get the daily values.  If there isn't one, use zero.
+            if row[2] == None:
+                today_started = 0L
+            else:
+                today_started = row[2]
+            if row[3] == None:
+                today_completed = 0L    #completed = migrated/duplicated
+            else:
+                today_completed = row[3]
+            if row[4] == None:
+                today_closed = 0L
+            else:
+                today_closed = row[4]
             
             # Here we write the contents to the file.
             self.pts_files[row[1]].write("%s %s %s %s %s %s %s\n" % (
-                row[0], row[2], row[3], row[4], self.summary_started[row[1]],
-                self.summary_done[row[1]], self.summary_closed[row[1]]))
+                row[0], today_started, today_completed, today_closed,
+                self.summary_started[row[1]], self.summary_done[row[1]],
+                self.summary_closed[row[1]]))
 
         #Avoid resource leaks.
         for key in self.pts_files.keys():
@@ -375,12 +426,13 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
             print "Plotting %s accumulated" % (key,)
             self._plot(key, ACCUMULATED)
-            print "Plotting %s dainly" % (key,)
+            print "Plotting %s daily" % (key,)
             self._plot(key, DAILY)
 
             #Cleanup the temporary files for this loop.
             try:
-                os.remove(self.pts_files[key].name)
+                #os.remove(self.pts_files[key].name)
+                pass
             except:
                 pass
 
