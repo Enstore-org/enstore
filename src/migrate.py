@@ -2091,8 +2091,6 @@ def final_scan_volume(vol, intf):
 	# Determine the list of files that should be scanned.
 	for r in query_res:
 		dst_bfid, pnfs_id, likely_path, src_bfid, location_cookie, deleted = r
-		#Make sure we have the admin path.
-		likely_path = pnfs.get_enstore_fs_path(likely_path)
 		
 		st = is_swapped(src_bfid, db)
 		if not st:
@@ -2102,10 +2100,18 @@ def final_scan_volume(vol, intf):
 			local_error = local_error + 1
 			continue
 
+                #Make sure we have the admin path.
+                fs_path = pnfs.get_enstore_fs_path(likely_path)
+                normal_path = pnfs.get_enstore_fs_path(likely_path)
+
                 ######################################################
 		# make sure the volume is the same
-		pf = pnfs.File(likely_path)
-		pf_volume = getattr(pf, "volume", None)
+                for possible_path in (fs_path, normal_path):
+			pf = pnfs.File(possible_path)
+			pf_volume = getattr(pf, "volume", None)
+			if pf_volume != None:
+				likely_path = possible_path
+				break
 		if pf_volume == None or pf_volume != vol:
 			error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf_volume, vol))
 			local_error = local_error + 1

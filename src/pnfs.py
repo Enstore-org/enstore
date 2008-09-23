@@ -743,9 +743,32 @@ def __get_special_path(filepath, replacement_path):
     #if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
     #    raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
-    for pattern in ["/pnfs/fs/usr/", canonical_pathbase, "/pnfs/"]:
+    #Build the list of patters to search for.  Start with the three we
+    # know about...
+    pattern_list = ["/pnfs/fs/usr/", canonical_pathbase, "/pnfs/"]
+    
+    ##However, we need to handle paths like matching /pnfs/fs/usr/dzero
+    ## with /pnfs/sam/dzero (instead of the more obvious /pnfs/dzero).
+    
+    #First, remove any preceding directories before /pnfs/.
+    dir_split = filepath.split("/")
+    dir_split_index = dir_split.index("pnfs", 1)
+    #Limit this check to just three directory levels after /pnfs/.  If it 
+    # hasn't been found by then, chances are it will not.  If necessary,
+    # this could be increased.
+    dir_split = dir_split[dir_split_index : dir_split_index + 3]
+
+    #Next, start putting those directories into the pattern match list.
+    current_dir_name = "/"
+    for dir_name in dir_split:
+        current_dir_name = os.path.join(current_dir_name, dir_name) + "/"
+        pattern_list.append(current_dir_name)
+
+    ## Check to make sure that the current pattern exists.  If so, return
+    ## it.
+    for pattern in pattern_list:
         filename, count = re.subn(pattern, replacement_path, filepath, 1)
-        if count > 0:
+        if count > 0 and is_pnfs_path(filename):
             return filename
 
     raise TypeError("Unable to return enstore pnfs pathname.",
