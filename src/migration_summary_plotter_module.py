@@ -96,20 +96,22 @@ where volume.id = migration_history.src_vol_id
       and volume.library not like '%shelf%'
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('migrating', 'duplicating',
-                                      'migrated', 'duplicated')
+                                      'migrated', 'duplicated', 'readonly')
       /* Hopefully, setting state.time like this will correctly handle
          all vintages of the migration process.  The migrating and duplicating
          stages were added September of 2008. */
-      and state.time = (select CASE WHEN s2.value in ('migrating',
+      and state.time = (select min(s5.time) from (
+                        select CASE WHEN s2.value in ('migrating',
                                                       'duplicating')
                                     THEN min(s2.time)
                                     WHEN s2.value in ('readonly')
-                                    THEN max(s2.time)
+                                         and time > current_timestamp - interval '30 days'
+                                    THEN min(s2.time)
                                     WHEN s2.value in ('migrated',
                                                       'duplicated')
                                     THEN min(s2.time)
                                     ELSE NULL
-                               END
+                               END as time
                         from state s2
                         where s2.volume = volume.id
                               and s2.value in ('migrating', 'duplicating',
@@ -117,7 +119,7 @@ where volume.id = migration_history.src_vol_id
                                                'readonly')
                         group by s2.value, time
                         order by s2.value, time
-                        limit 1)
+                        ) as s5)
 group by day, volume.media_type
 order by day, volume.media_type
 ) as s2 on (s1.day, s1.media_type) = (s2.day, s2.media_type)
