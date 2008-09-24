@@ -35,20 +35,22 @@ fi
 
 case $cluster in
 	stken)
-		backup_host=stkensrv3.fnal.gov
+		backup_host=stkensrv3n.fnal.gov
+		backup_dir=/srv3/enstore/backups
 		;;
 	cdfen)
-		backup_host=cdfensrv3.fnal.gov
+		backup_host=cdfensrv3n.fnal.gov
+		backup_dir=/srv3/enstore/backups
 		;;
 	d0en)
-		backup_host=d0ensrv3.fnal.gov
+		backup_host=d0ensrv3n.fnal.gov
+		backup_dir=/srv3/enstore/backups
 		;;
 	*)
-		backup_host=cdfensrv3.fnal.gov
+		backup_host=cdfensrv3n.fnal.gov
+		backup_dir=/srv3/enstore/backups
 		;;
 esac
-
-backup_dir=/diska/enstore-backup
 
 # need to setup enstore first
 if [ "$enstore_dir" == "" ]
