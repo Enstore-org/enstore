@@ -36,19 +36,19 @@ fi
 case $cluster in
 	stken)
 		backup_host=stkensrv3n.fnal.gov
-		backup_dir=/srv3/enstore/backups
+		backup_dir=/srv3/enstore/backups/enstore-backup
 		;;
 	cdfen)
 		backup_host=cdfensrv3n.fnal.gov
-		backup_dir=/srv3/enstore/backups
+		backup_dir=/srv3/enstore/backups/enstore-backup
 		;;
 	d0en)
 		backup_host=d0ensrv3n.fnal.gov
-		backup_dir=/srv3/enstore/backups
+		backup_dir=/srv3/enstore/backups/enstore-backup
 		;;
 	*)
 		backup_host=cdfensrv3n.fnal.gov
-		backup_dir=/srv3/enstore/backups
+		backup_dir=/srv3/enstore/backups/enstore-backup
 		;;
 esac
 
