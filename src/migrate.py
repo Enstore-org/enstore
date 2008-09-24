@@ -672,10 +672,10 @@ def get_media_type(bfid_or_volume, db):
 		try:
 			t = pnfs.Tag(bfid_or_volume)
 			library = t.get_library()
-		except OSError:
+		except (OSError, IOError):
 			exc_type, exc_value = sys.exc_info()[:2]
 			error_log("get_media_type", str(exc_type),
-				  str(exc_value), q)
+				  str(exc_value), bfid_or_volume)
 			return None
 		q = "select media_type from volume where " \
 		    "volume.library = '%s' limit 1;" % (library,)
@@ -2539,11 +2539,36 @@ def migrate_volume(vol, intf):
 	for row in res:
 		bfids.append(row[0])
 
-		#Determine the destination media_type.
+		##
+		## Determine the destination media_type.
+		##
 		mig_dir = pnfs.get_directory_name(migration_path(row[2]))
-		media_type = get_media_type(mig_dir, db)
-		if media_type not in media_types:
-			media_types.append(media_type)
+		search_mig_dir = mig_dir
+		while 1:
+			#We need to go through all this looping to find
+			#a Migration directory that exists, since any new
+			#Migration directory isn't created until the first
+			#new copy is is about to be written to tape for
+			#the corresponding non-Migration directory.
+			try:
+				os.stat(search_mig_dir)  #existance test
+				media_type = get_media_type(search_mig_dir, db)
+			except (OSError, IOError):
+				if os.path.basename(search_mig_dir) == "Migration":
+					break  #Didn't find it.
+
+				#Try the next directory.
+	                        search_mig_dir = os.path.dirname(search_mig_dir)
+
+				if search_mig_dir == "/" \
+                                   or search_mig_dir == "":
+					break  #Didn't find it.
+				continue
+			if media_type not in media_types:
+				media_types.append(media_type)
+			#If we get here, then we found what we were looking
+			# for.
+			break
 
 	#If we are certain that this is cloning job, not a migration, then
 	# we should handle it accordingly.
