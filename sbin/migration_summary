@@ -83,7 +83,18 @@ echo "migration_closed + duplication_closed + remaining + blank_volumes = total"
 ## clerk set_system_migrated()/set_system_duplicated() function(s) to set
 ## the system_inhibit_1 value.  
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
-select media_type,
+select /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
        count(distinct CASE WHEN system_inhibit_1 = 'migrated'
                            THEN label
                            ELSE NULL
@@ -108,10 +119,11 @@ select media_type,
                       THEN label
                       ELSE NULL
                       END) AS duplicated_closed,
-       count(distinct CASE WHEN (select count(*)
+       count(distinct CASE WHEN (select count(v2.id)
                                  from migration_history
                                  right join volume v2 on v2.id = migration_history.src_vol_id
-                                 where migration_history.closed_time is NULL) > 0
+                                 where migration_history.closed_time is NULL
+                                       and v2.id = volume.id) > 0
                                 and volume.sum_wr_access > 0
                            THEN label
                            ELSE NULL
@@ -133,7 +145,8 @@ where (system_inhibit_0 != 'DELETED'
        and label not like '%.deleted')
       and (library not like '%shelf%')
       and media_type != 'null'
-group by media_type
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by media_type,capacity_bytes
 order by media_type;
 " >> $temp_file 2>&1
 
@@ -144,7 +157,20 @@ echo >> $temp_file 2>&1
 echo "The volumes counted in the following table are also included in the previous table." >> $temp_file 2>&1
 
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
-select media_type,system_inhibit_1 as migration_type,count(distinct src) as completed_volumes_with_skipped_bad_files
+select /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
+       system_inhibit_1 as migration_type,
+       count(distinct src) as completed_volumes_with_skipped_bad_files
 from volume
 left join migration_history on migration_history.src_vol_id = volume.id
 left join file on file.volume = volume.id
@@ -154,7 +180,8 @@ where (system_inhibit_1 = 'migrated' or system_inhibit_1 = 'duplicated')
       and library not like '%shelf%'
       and media_type != 'null'
       and bad_file.bfid is not NULL
-group by media_type,system_inhibit_1;
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by media_type,capacity_bytes,system_inhibit_1;
 " >> $temp_file 2>&1
 
 echo                     >> $temp_file 2>&1
@@ -165,13 +192,160 @@ echo                     >> $temp_file 2>&1
 
 echo "Creating Migration per Day" `date`
 
+# Note: This sql command is similar to the daily plots and daily Duplicated
+# table in the src/migration_summary_plotter_module.py and
+# sbin/duplication_summary scripts, respectively.  Be sure to modify them
+# when you modify this sql statement.
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
-select date(time) as date, media_type, count(distinct src)
-from migration_history,volume 
+/*This outer select just sorts the merged s1, s2 and s3 'day' columns into
+  a unified sorted order. */
+select * from
+(
+/* This inner select combines three sub selects sorted by day and
+   media type. */
+select CASE WHEN s1.day is not null THEN s1.day
+            WHEN s2.day is not null THEN s2.day
+            WHEN s3.day is not null THEN s3.day
+            ELSE NULL
+       END as day,
+       CASE WHEN s1.media_type is not null THEN s1.media_type
+            WHEN s2.media_type is not null THEN s2.media_type
+            WHEN S3.media_type is not null THEN s3.media_type
+            ELSE NULL
+       END as media_type,
+       CASE WHEN s2.started is not NULL THEN s2.started
+            ELSE 0
+       END as started,
+       CASE WHEN s1.completed is not NULL THEN s1.completed
+            ELSE 0
+       END as completed,
+       CASE WHEN s3.closed is not NULL THEN s3.closed
+            ELSE 0
+       END as closed
+from
+
+/*Three sub selects get the count for each day and media for number of
+  volumes started, migrated/duplicated and closed. */
+
+/****  s1  ****/
+(
+select date(time) as day,
+       /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
+       count(distinct CASE WHEN system_inhibit_1 in ('migrated')
+                            THEN label
+                            ELSE NULL
+                      END) as completed
+
+from volume,migration_history
 where volume.id = migration_history.src_vol_id
-      and volume.system_inhibit_1 = 'migrated'
-group by date,media_type
-order by date;
+      and volume.library not like '%shelf%'
+      and volume.media_type != 'null'
+      and volume.system_inhibit_1 in ('migrated')
+      /* This time sub-query is needed to limit test volumes migrated
+         multiple times to be counted only once. */
+      and time = (select max(time)
+                  from migration_history m2
+                  where m2.src_vol_id = volume.id)
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by day,media_type,capacity_bytes
+order by day,media_type
+) as s1
+/****  s1  ****/
+
+/****  s2  ****/
+full join (
+select date(state.time) as day,
+       /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
+       count(distinct volume.label) as started
+from volume,migration_history,state
+where volume.id = migration_history.src_vol_id
+      and volume.id = state.volume
+      and volume.library not like '%shelf%'
+      and volume.media_type != 'null'
+      and volume.system_inhibit_1 in ('migrating', 'migrated')
+      /* Hopefully, setting state.time like this will correctly handle
+         all vintages of the migration process.  The migrating and duplicating
+         stages were added September of 2008. */
+      and state.time = (select min(s5.time) from (
+                        select CASE WHEN s2.value in ('migrating')
+                                    THEN min(s2.time)
+                                    WHEN s2.value in ('readonly')
+                                         and time > current_timestamp - interval '30 days'
+                                    THEN min(s2.time)
+                                    WHEN s2.value in ('migrated')
+                                    THEN min(s2.time)
+                                    ELSE NULL
+                               END as time
+                        from state s2
+                        where s2.volume = volume.id
+                              and s2.value in ('migrating', 'migrated',
+                                               'readonly')
+                        group by s2.value, time
+                        order by s2.value, time
+                        ) as s5)
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by day, volume.media_type,capacity_bytes
+order by day, volume.media_type
+) as s2 on (s1.day, s1.media_type) = (s2.day, s2.media_type)
+/****  s2  ****/
+
+/****  s3  ****/
+full join (
+select date(closed_time) as day,
+       /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
+       count(distinct label) as closed
+from volume,migration_history
+where volume.id = migration_history.src_vol_id
+      and volume.library not like '%shelf%'
+      and volume.media_type != 'null'
+      and volume.system_inhibit_1 in ('migrated')
+      /* This time sub-query is needed to limit test volumes migrated
+         multiple times to be counted only once. */
+      and closed_time = (select max(closed_time)
+                         from migration_history m2
+                         where m2.src_vol_id = volume.id)
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by day,media_type,capacity_bytes
+order by day,media_type
+) as s3 on (s2.day, s2.media_type) = (s3.day, s3.media_type)
+/****  s3  ****/
+
+group by s1.day,s2.day,s3.day,s1.media_type,s1.completed,s2.media_type,s2.started,s3.media_type,s3.closed
+order by s1.day,s2.day,s3.day
+) as inner_result order by day;
 " >> $temp_file 2>&1
 
 echo                                   >> $temp_file 2>&1
@@ -185,14 +359,26 @@ echo "Creating Migration/Duplication Remaining" `date`
 #This first query is just to obtain the list of media types that have
 # at least one tape already migrated or duplicated.
 media_types=`psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
-select v2.media_type
+select /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type
 from volume v2
 where (v2.system_inhibit_1 = 'migrated'
        or v2.system_inhibit_1 = 'duplicated')
       and v2.system_inhibit_0 != 'DELETED'
       and v2.library not like '%shelf%'
       and v2.media_type != 'null'
-group by media_type
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by media_type,capacity_bytes
 having count(v2.label) > 0;
 " | sed '1,2d'`  #Remove the first to header lines.
 
@@ -203,17 +389,30 @@ media_list=`echo $media_types | sed -e "s/^/\'/" -e "s/ /\',\'/g" -e "s/$/\'/"`
 
 
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
-select media_type, label
+select /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
+       label
 from volume
 left join migration_history mh on mh.src_vol_id = volume.id
-where ((system_inhibit_1 not in ('migrated', 'duplicated'))
+where ((system_inhibit_1 not in ('migrated', 'duplicated', 'cloned'))
        or
        (mh.closed_time is NULL))
       and label not like '%.deleted'
       and library not like '%shelf%'
       and media_type != 'null'
       and media_type in (${media_list})
-group by media_type,label
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by media_type,capacity_bytes,label
 order by media_type,label;
 " >> $temp_file 2>&1
 
@@ -226,7 +425,34 @@ echo                     >> $temp_file 2>&1
 echo "Creating Migration History" `date`
 
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c " \
-select migration_history.src as src_volume,volume.media_type as src_type,migration_history.dst as dst_volume,v2.media_type as dst_type,volume.system_inhibit_1 as migration,time as time_completed
+select migration_history.src as src_volume,
+       /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*volume.media_type,*/
+       CASE WHEN volume.media_type = '3480' and volume.capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN volume.media_type = '3480' and volume.capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN volume.media_type = '3480' and volume.capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE volume.media_type
+       END as src_type,
+       migration_history.dst as dst_volume,
+       /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*v2.media_type,*/
+       CASE WHEN v2.media_type = '3480' and v2.capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN v2.media_type = '3480' and v2.capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN v2.media_type = '3480' and v2.capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE v2.media_type
+       END as dst_type,
+       volume.system_inhibit_1 as migration,
+       time as time_completed
 from migration_history
 left join volume on volume.id = migration_history.src_vol_id
 left join volume as v2 on v2.id = migration_history.dst_vol_id
