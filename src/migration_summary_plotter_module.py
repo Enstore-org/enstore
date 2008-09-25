@@ -28,6 +28,9 @@ enstoredb-#     SELECT volume.media_type, count(*) AS blanks FROM volume WHERE (
 ### being migrated.
 ###
 
+# Note: This sql command is similar to the daily Migrated/Duplicated tables
+# in the sbin/migration_summary and sbin/duplication_summary scripts.  Be
+# sure to modify them when you modify this sql statement.
 SQL_COMMAND = \
 """
 /*This outer select just sorts the merged s1, s2 and s3 'day' columns into
@@ -63,7 +66,18 @@ from
 /****  s1  ****/
 (
 select date(time) as day,
-       media_type,
+       /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
        count(distinct CASE WHEN system_inhibit_1 in ('migrated',
                                                      'duplicated')
                             THEN label
@@ -80,7 +94,8 @@ where volume.id = migration_history.src_vol_id
       and time = (select max(time)
                   from migration_history m2
                   where m2.src_vol_id = volume.id)
-group by day,media_type
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by day,media_type,capacity_bytes
 order by day,media_type
 ) as s1
 /****  s1  ****/
@@ -88,7 +103,18 @@ order by day,media_type
 /****  s2  ****/
 full join (
 select date(state.time) as day,
-       volume.media_type,
+       /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
        count(distinct volume.label) as started
 from volume,migration_history,state
 where volume.id = migration_history.src_vol_id
@@ -96,7 +122,7 @@ where volume.id = migration_history.src_vol_id
       and volume.library not like '%shelf%'
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('migrating', 'duplicating',
-                                      'migrated', 'duplicated', 'readonly')
+                                      'migrated', 'duplicated')
       /* Hopefully, setting state.time like this will correctly handle
          all vintages of the migration process.  The migrating and duplicating
          stages were added September of 2008. */
@@ -120,7 +146,8 @@ where volume.id = migration_history.src_vol_id
                         group by s2.value, time
                         order by s2.value, time
                         ) as s5)
-group by day, volume.media_type
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by day, volume.media_type,capacity_bytes
 order by day, volume.media_type
 ) as s2 on (s1.day, s1.media_type) = (s2.day, s2.media_type)
 /****  s2  ****/
@@ -128,14 +155,19 @@ order by day, volume.media_type
 /****  s3  ****/
 full join (
 select date(closed_time) as day,
-       media_type,
+       /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
        count(distinct label) as closed
-       /*count(distinct CASE WHEN system_inhibit_1 in ('migrated',
-                                                     'duplicated')
-                            THEN label
-                            ELSE NULL
-                      END) as closed*/
-
 from volume,migration_history
 where volume.id = migration_history.src_vol_id
       and volume.library not like '%shelf%'
@@ -146,7 +178,8 @@ where volume.id = migration_history.src_vol_id
       and closed_time = (select max(closed_time)
                          from migration_history m2
                          where m2.src_vol_id = volume.id)
-group by day,media_type
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by day,media_type,capacity_bytes
 order by day,media_type
 ) as s3 on (s2.day, s2.media_type) = (s3.day, s3.media_type)
 /****  s3  ****/
@@ -160,7 +193,19 @@ order by s1.day,s2.day,s3.day
 #SQL command to obtain the number of tapes still needing to be migrated.
 SQL_COMMAND3 = \
 """
-select media_type, count(distinct label) as remaining_volumes
+select /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
+       count(distinct label) as remaining_volumes
 from volume
 left join migration_history on migration_history.src_vol_id = volume.id
 where (system_inhibit_1 not in ('migrated', 'duplicated', 'cloned')
@@ -169,24 +214,33 @@ where (system_inhibit_1 not in ('migrated', 'duplicated', 'cloned')
       and library not like '%shelf%'
       and media_type != 'null'
       and volume.sum_wr_access != 0
-group by media_type;
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by media_type,capacity_bytes;
 """
 
 #SQL command to obtain the number of non-empty tapes.
 SQL_COMMAND4 = \
 """
-select media_type, count(distinct label) as non_empty_volumes
+select /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
+       count(distinct label) as non_empty_volumes
 from volume
 where system_inhibit_0 != 'DELETED'
       and library not like '%shelf%'
       and media_type != 'null'
       and sum_wr_access != 0
-      /*and (select count(bfid)
-           from volume v2
-           left join file f2 on v2.id = f2.volume
-           where v2.id = volume.id
-           limit 1) > 0*/ 
-group by media_type;
+      and capacity_bytes > 500  --Skip cleaning tapes.
+group by media_type,capacity_bytes;
 """
 
 
@@ -210,11 +264,17 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                         key, plot_type, columns, titles):
         plot_fp = open(plot_filename, "w+")
 
+        if self.enstore_name:
+            use_title = "Migration summary %s for %s on %s" % \
+                        (plot_type, key, self.enstore_name)
+        else:
+            use_title = "Migration summary %s for %s" % \
+                        (plot_type, key)
+
         plot_fp.write('set terminal postscript color solid\n')
         plot_fp.write('set output "%s"\n' % (ps_filename,))
-        plot_fp.write('set title "Migration summary %s for %s" ' \
-                      'font "TimesRomanBold,16"\n' % \
-                      (plot_type, key,))
+        plot_fp.write('set title "%s" font "TimesRomanBold,16"\n' % \
+                      (use_title,))
         plot_fp.write('set ylabel "Volumes Done"\n')
         plot_fp.write('set xlabel "Year-month-day"\n')
         plot_fp.write('set xdata time\n')
@@ -235,7 +295,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             #This is possibly used for adjusting the goal line.  See comment
             # below for possible reasons.
             if started_count - total_count > 0:
-                goal_adjust = started_count - total_count
+                goal_adjust = closed_count - total_count
             else:
                 goal_adjust = 0
 
@@ -248,8 +308,8 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             # than what summary_total will contain at this point in time
             # for the total number of 9940As.  This is where goal_adjust
             # comes into play.
-            total_volumes = max(total_count,
-                                (closed_count + remaining_count + goal_adjust))
+            total_volumes = max(total_count + goal_adjust,
+                                (closed_count + remaining_count))
 
             if total_volumes:
                 #Don't set yrange if total_volumes is zero, otherwise the
@@ -308,6 +368,8 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         self.web_dir = os.path.join(html_dir, WEB_SUB_DIRECTORY)
         if not os.path.exists(self.web_dir):
             os.makedirs(self.web_dir)
+
+        self.enstore_name = cron_dict.get("enstore_name", None)
 
     def fill(self, frame):
 
