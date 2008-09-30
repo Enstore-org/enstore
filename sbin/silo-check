@@ -78,7 +78,7 @@ egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
   sed -e 's/, /,/g' -e 's/in /in_/' |\
   awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/silo-volumes
-egrep -v "^$|^<|(TEST|(TST|P[RS][A-Z]|IA[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
+egrep -v "^$|^<|(TEST|(TST|P[RS][A-Z]|IA[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500[FG]1-VOLUMES.html |\
   sed -e 's/, /,/g' -e 's/in /in_/' |\
   awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/rail-volumes
@@ -100,7 +100,7 @@ echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 7) that are not fully declared to enstore"
 comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
-fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500-VOLUMES.html
+fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500[FG]1-VOLUMES.html
 
 # tapes in the SDSS AML/2 tower, but not in enstore
 # stken has only DLTs in the AML/2
@@ -128,7 +128,7 @@ echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes that are apparently in more than one robot"
 sort -m /tmp/{silo,rail,tower}-volumes | uniq -d | while read vol; do
-  grep -h $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500,STK,AML2}-VOLUMES.html}
+  grep -h $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500[FG]1,STK,AML2}-VOLUMES.html}
 done
 
 echo
