@@ -1,1 +1,5 @@
+#These are FNAL cronjobs specially requested by CMS.
+
 40 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p recent_file_listing_cms $ENSTORE_DIR/src/recent_file_listing.py cms 12 /diska/tape-inventory/RECENT_FILES_ > /dev/null 2> /dev/null
+
+10 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p cms_volume_with_only_deleted_files $ENSTORE_DIR/sbin/cms_volume_with_only_deleted_files > /dev/null 2> /dev/null
