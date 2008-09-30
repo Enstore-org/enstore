@@ -147,13 +147,17 @@ def print_html(catalog, special, cluster):
         print '<h2><font color="#aa0000">Special Files</font></h2>'
 
     print '<p>'
-    for i in special:
-        if i == 'COMPLETE_FILE_LISTING':
+    for fname in special:
+        if fname == 'COMPLETE_FILE_LISTING':
             print '<a href="enstore_file_listing_cgi.py">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
+        elif fname.startswith("COMPLETE_FILE_LISTING"):
+            #We hide these behind the cgi that COMPLETE_FILE_LISTING points to.
+            continue
         else:
-            print '<a href="' + os.path.join(inv_dir, i) + '">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
+            print '<a href="' + os.path.join(inv_dir, fname) + '">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
             
-        if not catalog:  #Only do for summary.
+        if not catalog:
+            #Only do for summary.
             print '<br>'
 
     ### The raw directory listing used to work.  But now that the security
