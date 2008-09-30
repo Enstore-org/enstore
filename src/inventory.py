@@ -16,7 +16,10 @@ import alarm_client
 import e_errors
 import quota as equota
 import accounting
-import socket
+
+#Multiplier to determine if the actual size of the tape is close enough
+# to the the stated capacity of that media type.
+CAPACITY_TOLERANCE = .05
 
 mount_limit = {}
 acc = None
@@ -121,15 +124,15 @@ def remove_files(files, dir):
 # them if they do not exist.  If they already exist, then simply delete
 # everything in the directory.
 def create_clean_dirs(*dirs):
-    for dir in dirs:
+    for dname in dirs:
         #An empty output directory would be nice.
-        if string.find(dir, "/dev/stdout") == -1:
+        if string.find(dname, "/dev/stdout") == -1:
             try:
-                os.stat(dir)
+                os.stat(dname)
             except OSError:
-                os.mkdir(dir, 0755)
+                os.mkdir(dname, 0755)
                 
-            remove_files(os.listdir(dir),dir)
+            remove_files(os.listdir(dname), dname)
 
 #Read in the information from the authorized tapes file.
 def get_authorized_tapes2():
@@ -245,7 +248,19 @@ def print_header(volume, fd):
 #This function print out the footer information.  This data is the
 # data from the volume file formated to be easier to read than just printing
 # out the dictionary.
-def print_footer(volume, fd):
+# volume: from vcc.inq_vol()
+# s_i: Summary Information.  There should be 8 keys in this dictionary.
+#      for active, deleted, unknown and total files; and active_size,
+#      deleted_size, unknown_size, and total_size in bytes.
+def print_footer(volume, s_i, fd):
+
+    #Write out the summary information first.
+    os.write(fd, '\n\n%d/%d/%d/%d (active/deleted/unknown/total) files\n'% \
+             (s_i['active'], s_i['deleted'], s_i['unknown'], s_i['total']))
+    os.write(fd, '%d/%d/%d/%d (active/deleted/unknown/total) bytes\n\n'% \
+             (s_i['active_size'], s_i['deleted_size'], s_i['unknown_size'],
+              s_i['total_size']))
+
     fields_list = volume.keys()
     fields_list.sort()
 
@@ -311,7 +326,7 @@ def print_last_access_status(volume_list, output_file):
                          volume['external_label']))
     la_file.close()
 
-def print_volumes_defind_status(volume_list, output_file):
+def print_volumes_defined_status(volume_list, output_file):
     volume_list.sort(el_sort)
     vd_file = open(output_file, "w")
 
@@ -536,16 +551,134 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
     vq_format_file.close()
 
 def print_total_bytes_on_tape(volume_sums, output_file):
-    sum = 0
+    summation = 0
     for line in volume_sums.keys():
-        sum = volume_sums[line][0] + sum
+        summation = volume_sums[line][0] + summation
 
     tbot_file = open(output_file, "w")
 
-    tbot_file.write("%.2f %s\n" % format_storage_size(sum))
+    tbot_file.write("%.2f %s\n" % format_storage_size(summation))
 
     tbot_file.close()
 
+##############################################################################
+##############################################################################
+
+def print_common_header(fp):
+    command_name = os.path.basename(sys.argv[0])
+    
+    fp.write("Date this listing was generated: %s\n" % \
+        (time.ctime(time.time())))
+    fp.write("Brought to You by: %s\n\n" % (command_name,))
+    
+def print_last_access_header(fp):
+    print_common_header(fp)
+
+def print_last_access_footer(fp):
+    pass
+
+def print_volume_size_header(fp):
+    print_common_header(fp)
+
+    vs_format = "%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n"
+    vs_titles = ("Label", "Actual", "Deleted", "Non-deleted", "Capacity",
+                 "Remaining", "Expected", "active", "deleted", "unknown",
+                 "Volume-Family")
+    fp.write(vs_format % vs_titles)
+
+def print_volume_size_footer(fp):
+    pass
+
+def print_volumes_defined_header(fp):
+    fp.write("<html><pre>\n")
+    
+    print_common_header(fp)
+
+    vd_format = "%-10s %-10s %-25s %-20s %-12s %-3s %6s %-40s\n\n"
+    vd_titles = ("label", "avail.", "system_inhibit", "user_inhibit",
+                 "library", "wp", "mounts",  "volume_family")
+    fp.write(vd_format % vd_titles)
+
+def print_volumes_defined_footer(fp):
+    fp.write("</pre></html>\n")
+    pass
+
+def print_write_protect_alert_header(fp):
+    print_common_header(fp)
+
+    wpa_format = "%-16s %-12s %-16s %-16s %-3s\n\n"
+    wpa_titles = ("volume", "state", "library", "media type", "wp")
+    fp.write(wpa_format % wpa_titles)
+
+#n_vols: total number of volumes
+#n_rf_vols: number of volumes that should be write protected per library
+#n_not_rp_vols: number of volumes that are not write protected, but should be per library
+#n_rp_vols: number of volumes that are write protected and are write protected per library
+#n_vols_lib: number of volumes per library
+def print_write_protect_alert_footer(fp, n_vols, n_rf_vols, n_not_rp_vols,
+                                     n_rp_vols, n_vols_lib):
+    fp.write("\n\n")
+    fp.write("Total: %5d\n"%(n_vols))
+    for i in n_rf_vols.keys():
+        fp.write("\n%s:\n----------------\n"%(i))
+        wpa_format = "  Total: %5d\n Should: %5d\n   Done: %5d\nNot yet: %5d\n  Ratio: %5.2f%%\n"
+        wpa_values = (n_vols_lib[i], n_rf_vols[i], n_rp_vols[i],
+                      n_not_rp_vols[i], float(n_rp_vols[i])*100/n_rf_vols[i])
+        fp.write(wpa_format % wpa_values)
+
+def print_too_many_mounts_header(fp):
+    print_common_header(fp)
+
+def print_too_many_mounts_footer(fp):
+    pass
+
+def print_declaration_error_header(fp):
+    print_common_header(fp)
+
+    de_format = "\t%12s\t%12s\t%12s\t%12s\t%12s\t%s\n\n"
+    de_titles = ("volume", "actual size", "capacity", "library",
+                 "media type", "remark")
+    fp.write(de_format % de_titles)
+
+def print_declaration_error_footer(fp):
+    pass
+
+def print_migrated_volumes_header(fp):
+    print_common_header(fp)
+
+    fp.write("These migrated or cloned volumes MAY be recycled or deleted from system:\n\n")
+
+def print_migrated_volumes_footer(fp, n_migrated):
+    fp.write("\n(%d volumes)"%(n_migrated))
+
+def print_duplicated_volumes_header(fp):
+    print_common_header(fp)
+
+    fp.write("These duplicated volumes can be swapped:\n\n")
+
+def print_duplicated_volumes_footer(fp, n_duplicated):
+    fp.write("\n(%d volumes)"%(n_duplicated))
+
+def print_recyclable_volumes_header(fp):
+    print_common_header(fp)
+
+    fp.write("These volumes are full and have only deleted files.\n")
+    fp.write("They MAY be recycled.\n\n")
+
+#rc_file2 is not really an open file handle.  Instead, it is a list of lines
+# to append to the end of the first rc_file.
+def print_recyclable_volumes_footer(fp, n_recyclable, rc_file2,
+                                    n_recyclable2):
+    # write out the count of recyclable volumes
+    rc_file2.append("\n(%d volumes)\n" % (n_recyclable2))
+    # open it for read
+    fp.write("\n(%d volumes)" % (n_recyclable))
+    fp.write("\n\n\n\n")
+    fp.write("These volumes are readonly and have only deleted files.\n")
+    fp.write("They probably can be recycled.\n\n")
+    for l in rc_file2:
+        fp.write(l)
+    
 ##############################################################################
 ##############################################################################
 
@@ -596,8 +729,8 @@ def process_out_string(short_list, fd):
 
 def parse_time(seconds):
     hour = int(seconds) / 60 / 60
-    min = int(seconds) / 60 % 60
-    sec = int(seconds) % 60
+    minute = int(seconds) / 60 % 60
+    second = int(seconds) % 60
 
     out_string = ""
 
@@ -606,15 +739,15 @@ def parse_time(seconds):
     elif hour > 0:
         out_string = "%d hours " % (hour)
         
-    if min == 1:
-        out_string = "%s%d minute " % (out_string, min)
-    elif min > 0:
-        out_string = "%s%d minutes " % (out_string, min)
+    if minute == 1:
+        out_string = "%s%d minute " % (out_string, minute)
+    elif minute > 0:
+        out_string = "%s%d minutes " % (out_string, minute)
         
-    if sec == 1:
-        out_string = "%s%d second" % (out_string, sec)
-    elif sec >= 0:
-        out_string = "%s%d seconds" % (out_string, sec)
+    if second == 1:
+        out_string = "%s%d second" % (out_string, second)
+    elif second >= 0:
+        out_string = "%s%d seconds" % (out_string, second)
         
     return out_string
 
@@ -642,7 +775,6 @@ def verify_volume_sizes(this_volume_data, volume, volume_sizes):
     except IndexError:
         sum_size = 0 #This exception occurs on empty files. So, these are zero.
         deleted_size = 0
-        non_deleted_string = 0
 
     volume_sizes[volume['external_label']] = (sum_size, deleted_size,
                                               non_deleted_size)
@@ -684,8 +816,8 @@ def verify_volume_quotas(volume_data, volume, volumes_allocated):
     num_active_files = 0
     num_deleted_files = 0
     num_unknown_files = 0
-    for file in volume_data:
-        row = string.split(file)
+    for file_data in volume_data:
+        row = string.split(file_data)
         if row[4] == "no":
             num_active_files = num_active_files + 1
         elif row[4] == "yes":
@@ -753,12 +885,14 @@ def write_protect_status(vol, db):
 	return status
 
 
-# sum(list) -- add up all element in the list
+# sum(list) -- add up all elements in the list
+"""
 def sum(l):
-	total = 0
-	for i in l:
-		total = total + i
-	return total
+    total = 0
+    for i in l:
+        total = total + i
+    return total
+"""
 		
 #Proccess the inventory of the files specified.  This is the main source
 # function where all of the magic starts.
@@ -788,31 +922,41 @@ def inventory(output_dir, cache_dir):
     csc = configuration_client.ConfigurationClient()
     invinfo = csc.get('inventory')
     wpa_states = invinfo.get('wpa_states', [])
-    wpa_media_types = invinfo.get('wpa_media_types', [])
+    #wpa_media_types = invinfo.get('wpa_media_types', [])
+    wpa_excluded_media_types = ['null', 'disk']
     wpa_excluded_libraries = invinfo.get('wpa_excluded_libraries', [])
     dbinfo = csc.get('database')
 
-    vols = edb.VolumeDB(host=dbinfo['db_host'], jou='/tmp')
-    file = edb.FileDB(host=dbinfo['db_host'], jou='/tmp', rdb = vols.db)
+    vol_db = edb.VolumeDB(host=dbinfo['db_host'], jou='/tmp')
+    file_db = edb.FileDB(host=dbinfo['db_host'], jou='/tmp', rdb = vol_db.db)
+    # log to accounting db
+    accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
+    acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
+    # 
+    eq = equota.Quota(vol_db.db)
 
-    eq = equota.Quota(vols.db)
+    #Get the media_types for each library.
+    library_media_types = {}
+    q = "select media_type,library,count(label) from volume where system_inhibit_0 != 'DELETED' group by media_type,library order by count;"
+    res = vol_db.db.query(q).getresult()
+    for row in res:
+        #The key is the (short) library name.  The value is the media type.
+        # The SQL above sorts them by count, so if two libraries get
+        # different media types, the most common one 'wins'.
+        library_media_types[row[1]] = row[0]
 
-    n_vols = 0L
-    n_files = 0L
-    # n_rf_vols = 0L     # number of vols that should be write-protected
-    # n_not_rp_vols = 0L # number of vols in n_rf_vols but are not write-protected
-    # n_rp_vols = 0L     # number of vols that are write-protected
+    n_vols = 0L          # total number of volumes
+    n_files = 0L         # total number of files
+    n_vols_lib = {}      # number of volumes per library
+    n_rf_vols = {}       # number of vols that should be write-protected per library
+    n_not_rp_vols = {}   # number of volumes in n_rp_vols that are not write-protected per library
+    n_rp_vols = {}       # number of volumes that are write-protected per library
 
-    n_vols_lib = {}
-    n_rf_vols = {}
-    n_not_rp_vols = {}
-    n_rp_vols = {}
-
-    volume_sums = {}   #The summation of all of the file sizes on a volume.
+    volume_sums = {}       #The summation of all of the file sizes on a volume.
     volumes_allocated = {} #Stats on usage of storage groups.
 
-    t_now = time.time()
-    two_day_ago = t_now - 60*60*24*2
+    #t_now = time.time()
+    #two_day_ago = t_now - 60*60*24*2
 
     if string.find(output_dir, "/dev/stdout") != -1:
         fd_output = 1
@@ -822,7 +966,7 @@ def inventory(output_dir, cache_dir):
     # open file handles for statistics
     la_file = open(last_access_file, "w")
     vs_file = open(volume_size_file, "w")
-    vd_file = open(volumes_defined_file, "w")
+    vd_file = open(volumes_defined_file, "w")  #html; not text
     wpa_file = open(write_protect_alert_file, "w")
     tm_file = open(volumes_too_many_mounts_file, "w")
     de_file = open(declaration_error, "w")
@@ -831,47 +975,21 @@ def inventory(output_dir, cache_dir):
     rc_file = open(recyclable_volumes, "w")
     rc_file2 = []
 
-    vs_file.write("%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n" % ("Label",
-        "Actual", "Deleted", "Non-deleted", "Capacity", "Remaining",
-        "Expected", "active", "deleted", "unknown",
-        "Volume-Family"))
+    #Print the headers for each type of output file.
+    print_last_access_header(la_file)
+    print_volume_size_header(vs_file)
+    print_volumes_defined_header(vd_file)
+    print_write_protect_alert_header(wpa_file)
+    print_too_many_mounts_header(tm_file)
+    print_declaration_error_header(de_file)
+    print_migrated_volumes_header(mv_file)
+    print_duplicated_volumes_header(dv_file)
+    print_recyclable_volumes_header(rc_file)
 
-    wpa_file.write("Date this listing was generated: %s\n\n" % \
-        (time.ctime(time.time())))
-
+    #
     wpa_format = "%-16s %-12s %-16s %-16s %-3s\n"
-    wpa_file.write(wpa_format%("volume", "state", "library", "media type", "wp"))
-    wpa_file.write('\n')
 
-    vd_file.write("<html><pre>\n")
-    vd_file.write("Date this listing was generated: %s\n\n" % \
-        (time.ctime(time.time())))
-
-    vd_format = "%-10s %-10s %-25s %-20s %-12s %-3s %6s %-40s\n\n"
-    vd_file.write(vd_format % \
-        ("label", "avail.", "system_inhibit", "user_inhibit",
-         "library", "wp", "mounts",  "volume_family"))
-
-    de_file.write("Date this listing was generated: %s\n\n"%(
-        time.ctime(time.time())))
-    de_file.write("\t%12s\t%12s\t%12s\t%12s\t%12s\n\n"%("volume", "actual size", "capacity", "library", "media type"))
-
-    mv_file.write("Date this listing was generated: %s\n\n"%(
-        time.ctime(time.time())))
-    mv_file.write("These migrated volumes can be recycled or deleted from system:\n\n")
-
-    dv_file.write("Date this listing was generated: %s\n\n"%(
-        time.ctime(time.time())))
-    dv_file.write("These duplicated volumes can be swapped:\n\n")
-
-    rc_file.write("Date this listing was generated: %s\n\n"%(
-        time.ctime(time.time())))
-    rc_file.write("These volumes are full and have only deleted files.\n")
-    rc_file.write("They MAY be recycled.\n\n")
-
-    tm_file.write("Date this listing was generated: %s\n\n" % \
-        time.asctime(time.localtime(time.time())))
-
+    #Redefine de_format for printing out the lines.
     de_format = "%6d\t%12s\t%12d\t%12d\t%12s\t%12s\t%s\n"
     de_count = 0
 
@@ -897,17 +1015,18 @@ def inventory(output_dir, cache_dir):
 
     # read volume ... one by one
 
-    for vk in vols.keys():
-        vv = vols[vk]
+    for vk in vol_db.keys():
+        vv = vol_db[vk]
         if not vv: # vk is gone
-            vv = vols[vk+'.deleted']
+            vv = vol_db[vk+'.deleted']
             if not vv:
                 print "%s is missing"%(vk)
                 sys.exit(1)
 
         # skipping deleted volumes
         try:
-            if vk[-8:] == ".deleted" or vv['external_label'][-8:] == ".deleted":    # skip
+            if vv['external_label'][-8:] == ".deleted" \
+               or vk[-8:] == ".deleted":    #skip
                 continue
         except:
             exc_type, exc_value = sys.exc_info()[:2]
@@ -929,10 +1048,12 @@ def inventory(output_dir, cache_dir):
         else:
             vsum = {}
 
-        if vv.has_key('sum_mounts'):
-            mounts = vv['sum_mounts']
-        else:
-            mounts = -1
+        ###
+        ### Address the pages that report on the status(es) of the volume.
+        ###
+
+        #First, skip updating the file information for volumes that have
+        # not been updated recently.
         if vsum and long(vsum['last']) == long(vv['last_access']):
             # good, don't do anything
             active = vsum['active']
@@ -945,6 +1066,8 @@ def inventory(output_dir, cache_dir):
             total_size = active_size+deleted_size+unknown_size
             unchanged.append(vk)
             n_unchanged = n_unchanged + 1
+        #Do update the file information for volumes that have had there
+        # last access time updated.
         else:
             if fd_output != 1:
                 fd_output = os.open(os.path.join(output_dir, vv['external_label']),
@@ -968,14 +1091,11 @@ def inventory(output_dir, cache_dir):
             q = "select bfid from file, volume\
                  where volume.label = '%s' and \
                      file.volume = volume.id;"%(vk)
-            res = file.db.query(q).getresult()
-            bfids = []
-            for i in res:
-                bfids.append(i[0])
-            for pfk in bfids:
+            res = file_db.db.query(q).getresult()
+            for pfk in res:  #bfids:
                 # to work around the infamous missing key error due to
                 # live backup
-                f = file[pfk]
+                f = file_db[pfk]
                 if f.has_key('deleted'):
                     if f['deleted'] == 'yes':
                         deleted = deleted + 1
@@ -997,89 +1117,93 @@ def inventory(output_dir, cache_dir):
                      f.get('pnfs_name0', "unknown")))
     
                 n_files = n_files + 1
+
+            #Sum the volume totals.
             total = active+deleted+unknown
             total_size = active_size+deleted_size+unknown_size
-            os.write(fd_output, '\n\n%d/%d/%d/%d (active/deleted/unknown/total) files\n'% \
-                     (active, deleted, unknown, total))
-            os.write(fd_output, '%d/%d/%d/%d (active/deleted/unknown/total) bytes\n\n'% \
-                     (active_size, deleted_size, unknown_size,
-                      total_size))
-            print_footer(vv, fd_output)
+            vsum = {
+                'last' : vv['last_access'],
+                'active' : active,
+                'deleted' : deleted,
+                'unknown' : unknown,
+                'total' : total,
+                'active_size' : active_size,
+                'deleted_size' : deleted_size,
+                'unknown_size' : unknown_size,
+                'total_size' : total_size,
+                }
+            vol_sum[vk] = vsum
+            
+            #Print out the volume information at the end.
+            print_footer(vv, vsum, fd_output)
+
+            #If the file is real, close it.
             if fd_output != 1:
                 os.close(fd_output)
-            vsum = {'last':vv['last_access'], 'active':active,
-                    'deleted':deleted, 'unknown':unknown,
-                    'active_size':active_size,
-                    'deleted_size':deleted_size,
-                    'unknown_size':unknown_size}
-            vol_sum[vk] = vsum
+
+            #Update the number of volumes changed counter.
             n_changed = n_changed + 1
 
+        ###
+        ### Gather information about the volume's metadata.
+        ###
+
         # is this a migrated volume?
-        if vv['system_inhibit'][1] == 'migrated' and active == 0:
-            mv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
+        if (vv['system_inhibit'][1] == 'migrated' \
+            or vv['system_inhibit'][1] == 'cloned') and active == 0:
+            mv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n" % (
+                vv['external_label'], vv['system_inhibit'][1],
+                active, vv['media_type'], vv['library'], vv['volume_family']))
             n_migrated = n_migrated + 1
             migrated_vol = 1
         else:
             migrated_vol = 0
 
         # is this a duplication volume?
-        if vv['system_inhibit'][1] == 'duplication' and active == 0:
-            dv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
+        if vv['system_inhibit'][1] == 'duplicated' and active == 0:
+            dv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n" % (
+                vv['external_label'], vv['system_inhibit'][1],
+                active, vv['media_type'], vv['library'], vv['volume_family']))
             n_duplicated = n_duplicated + 1
             duplicated_vol = 1
         else:
             duplicated_vol = 0
 
         # can it be recycled?
-        if (vv['system_inhibit'][1] == 'full' or \
-            vv['system_inhibit'][1] == 'migrated') and active == 0 \
-            and vv['media_type'] != "null" and vv['media_type'] != "8MM":
-            rc_file.write("%s\t%8s %6d %8s %10s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], vv['sum_mounts'], vv['media_type'], vv['library'], vv['volume_family']))
+        if vv['system_inhibit'][1] == 'full' \
+            and active == 0 \
+            and vv['media_type'] != "null" \
+            and vv['library'].find("shelf") != -1:
+            rc_file.write("%s\t%8s %6d %8s %10s\t%s\n" % (
+                vv['external_label'], vv['system_inhibit'][1],
+                vv['sum_mounts'], vv['media_type'], vv['library'],
+                vv['volume_family']))
             n_recyclable = n_recyclable + 1
             recyclable_vol = 1
         else:
             recyclable_vol = 0
-
+            
         # can it be recycled?
-        if vv['system_inhibit'][1] == 'readonly' and active == 0 and vv['media_type'] != "null" and vv['media_type'] != '8MM':
-            rc_file2.append("%s\t%8s %6d %8s %10s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], vv['sum_mounts'], vv['media_type'], vv['library'], vv['volume_family']))
+        if vv['system_inhibit'][1] == 'readonly' \
+               and active == 0 \
+               and vv['media_type'] != "null" \
+               and vv['library'].index("shelf") != -1:
+            rc_file2.append("%s\t%8s %6d %8s %10s\t%s\n" % (
+                vv['external_label'], vv['system_inhibit'][1],
+                vv['sum_mounts'], vv['media_type'], vv['library'],
+                vv['volume_family']))
             n_recyclable2 = n_recyclable2 + 1
             recyclable_vol = 1
         else:
             recyclable_vol = 0
 
-        # check if the volume is declared right
-        if vk[:3] != 'CLN':
-            actual_size = total_size+vv['remaining_bytes']
-            if total_size <= 0:
-                remark = 'never written'
-            else:
-                remark = ''
-            if vv['media_type'] == '9940':
-                if actual_size > 80*1048576*1024 or is_b_library(vv['library']) or vv['capacity_bytes'] != 60*1048576*1024:
-                    de_count = de_count + 1
-                    de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
-            elif vv['media_type'] == '9940B':
-                if actual_size and (actual_size < 100*1048576*1024 or actual_size > 250*1048576*1024 or not is_b_library(vv['library']) or vv['capacity_bytes'] != 200*1048576*1024):
-                    de_count = de_count + 1
-                    de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
-            elif is_b_library(vv['library']) and vv['media_type'] != '9940B':
-                    de_count = de_count + 1
-                    de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
-            elif vv['media_type'] == 'LTO3':
-                if actual_size and actual_size < 300*1048576*1024 or vv['capacity_bytes'] != 400*1048576*1024 or not is_lto3_library(vv['library']):
-                    de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
-
-
-        # volume_sums[vk] = {'active':active, 'deleted':deleted,
-        #                    'active_size':active_size,
-        #                    'deleted_size':deleted_size}
-        volume_sums[vk] = (active_size+deleted_size, deleted_size,
-                           active_size)
+        # is this a deleted volume?
+        if vv['system_inhibit'][0] == "DELETED":
+            deleted_vol = 1
+        else:
+            deleted_vol = 0
 
         # check quota stuff
-
         storage_group = string.split(vv['volume_family'], '.')[0]
         library = vv['library']
         try:
@@ -1087,8 +1211,9 @@ def inventory(output_dir, cache_dir):
         except:
             quota = 'N/A'
 
+        # is the volume written to or blank?  If blank, does the
+        # write_protect value allow for writes?
 	wp_n = 0
-        # for the list stuff
         if not total and vv['volume_family'][-10:] == '.none.none':
             written_vol = 0
             blank_vol = 1
@@ -1098,11 +1223,7 @@ def inventory(output_dir, cache_dir):
             written_vol = 1
             blank_vol = 0
 
-        if vv['system_inhibit'][0] == "DELETED":
-            deleted_vol = 1
-        else:
-            deleted_vol = 0
-
+        #Increment the (library, storage_group) combination of counts.
         if volumes_allocated.has_key((library, storage_group)):
             # This is a shallow copy
             v_info = volumes_allocated[(library, storage_group)]
@@ -1142,12 +1263,68 @@ def inventory(output_dir, cache_dir):
                 duplicated_vol,
                 )
 
-        # statistics stuff
+        # declaration errors
+        if vk[:3] != 'CLN':
+            actual_size = total_size+vv['remaining_bytes']
+            if total_size <= 0:
+                remark = 'never written'
+            else:
+                remark = ''
+
+            #At FNAL the AML/2 didn't initially know what LTO tapes were.
+            # So, those LTO tapes were entered as 3480.
+            if vv['media_type'] == '3480' \
+                   and vv['capacity_bytes'] == enstore_constants.CAP_LTO1:
+                media_type = 'LTO1'
+            elif vv['media_type'] == '3480' \
+                   and vv['capacity_bytes'] == enstore_constants.CAP_LTO2:
+                media_type = 'LTO2'
+            else:
+                media_type = vv['media_type']
+
+            #Get the correct capacity based on the corrected media_type.
+            #The raw value is in Gigabytes, so multiple by the number
+            # of bytes in a Gigabyte.
+            capacity = getattr(enstore_constants,
+                               "CAP_" + vv['media_type'], None)
+            try:
+                #This is 1GB in base 2 (1024*1024*1024), or should it
+                # be base 10 (10 ^ 9).  Going with base 2 for now.
+                capacity = capacity * 1073741824
+            except:
+                #We get here if capacity is None.
+                pass
+
+            #lmt = Library Media Type
+            lmt = library_media_types.get(vv['library'], None)
+
+            de_values = (de_count, vk, actual_size, vv['capacity_bytes'],
+                         vv['library'], media_type, remark)
+
+            #Look for declaration errors.  The come in two types, where
+            # the capacity was stated incorrectly and where the media type
+            # of the library doesn't match the majority of the media types
+            # for tapes beloning in that library.
+            if capacity and actual_size \
+               and (actual_size < (1 - CAPACITY_TOLERANCE) * capacity \
+                    or actual_size > (1 + CAPACITY_TOLERANCE) * capacity):
+                de_count = de_count + 1
+                de_file.write(de_format % de_values)
+            elif lmt and lmt != vv['media_type']:
+                de_count = de_count + 1
+                de_file.write(de_format % de_values)
+
+        ###
+        ### statistics stuff
+        ###
+
+        #last access time
+        volume_sums[vk] = (active_size+deleted_size, deleted_size,
+                           active_size)
         la_file.write("%f, %s %s\n" % (vv['last_access'],
                 time.ctime(vv['last_access']), vv['external_label']))
-
         key = vv['external_label']
-        format_tuple = (key,) + \
+        la_values = (key,) + \
                 format_storage_size(volume_sums[key][0]) + \
                 format_storage_size(volume_sums[key][1]) + \
                 format_storage_size(volume_sums[key][2]) + \
@@ -1155,17 +1332,19 @@ def inventory(output_dir, cache_dir):
                 format_storage_size(vv['remaining_bytes']) + \
                 format_storage_size(vv['capacity_bytes'] -
                                     vv['remaining_bytes']) + \
-                (active, deleted, unknown, vv['volume_family'])
-                
-        format_string = \
+                (active, deleted, unknown, vv['volume_family'])                
+        la_format = \
            "%10s %7.2f%-2s %7.2f%-2s %9.2f%-2s %7.2f%-2s %7.2f%-2s %7.2f%-2s %8d %8d %8d %-s\n"
-        
-        vs_file.write(format_string % format_tuple)
+        vs_file.write(la_format % la_values)
         
         formated_size = format_storage_size(vv['remaining_bytes'])
 
-        # handle mounts -- need more work
-        mnts = "%6d"%(mounts)
+        # too many mounts -- need more work
+        if vv.has_key('sum_mounts'):
+            mounts = vv['sum_mounts']
+        else:
+            mounts = -1
+        mnts = "%6d"%(mounts) #This may be overridden to html tag format.
         if mount_limit.has_key(vv['media_type']):
             if mounts > mount_limit[vv['media_type']][0]:
                 if mounts <= mount_limit[vv['media_type']][1]:
@@ -1191,6 +1370,8 @@ def inventory(output_dir, cache_dir):
                       vv['external_label'], vv['media_type'],
                       mount_limit[vv['media_type']][1])
                 acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
+
+        #Determine if the tape is write protected or not.
         if vv['write_protected'] == 'y':
             wp = 'ON'
         elif vv['write_protected'] == 'n':
@@ -1198,23 +1379,29 @@ def inventory(output_dir, cache_dir):
         else:
             wp = '---'
 
+        # write protect alert
         if vv['system_inhibit'][1] in wpa_states and \
-            vv['media_type'] in wpa_media_types and \
-            not vv['library'] in wpa_excluded_libraries and \
-            vv['library'].find("shelf") == -1:
-            if n_rf_vols.has_key(vv['library']):
-                n_rf_vols[vv['library']] = n_rf_vols[vv['library']] + 1
-            else:
-                n_rf_vols[vv['library']] = 1
-                n_not_rp_vols[vv['library']] = 0
-                n_rp_vols[vv['library']] = 0
-            if wp != 'ON':
-                wpa_file.write(wpa_format%(vv['external_label'],
-                    vv['system_inhibit'][1], vv['library'], vv['media_type'], wp))
-                n_not_rp_vols[vv['library']] = n_not_rp_vols[vv['library']] + 1
-            else:
-                n_rp_vols[vv['library']] = n_rp_vols[vv['library']] + 1
+               vv['media_type'] not in wpa_excluded_media_types and \
+               not vv['library'] in wpa_excluded_libraries and \
+               vv['library'].find("shelf") == -1:
+            #vv['media_type'] in wpa_media_types and \
 
+            n_rf_vols[vv['library']] = n_rf_vols.get(vv['library'], 0) + 1
+            #Only set these next two, if the default hasn't already been
+            # assigned.
+            n_not_rp_vols[vv['library']] = n_not_rp_vols.get(vv['library'], 0)
+            n_rp_vols[vv['library']] = n_rp_vols.get(vv['library'], 0)
+
+            if wp != 'ON':
+                wpa_values = (vv['external_label'], vv['system_inhibit'][1],
+                              vv['library'], vv['media_type'], wp)
+                wpa_file.write(wpa_format % wpa_values)
+                n_not_rp_vols[vv['library']] = \
+                                       n_not_rp_vols.get(vv['library'], 0) + 1
+            else:
+                n_rp_vols[vv['library']] = n_rp_vols.get(vv['library'], 0) + 1
+
+        #volumes defined
         vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %-3s %6s %-40s\n" % \
                (vv['external_label'],
                 formated_size[0], formated_size[1],
@@ -1227,40 +1414,53 @@ def inventory(output_dir, cache_dir):
                 mnts,
                 vv['volume_family']))
 
+        #Update the total volume count and the volume count for the library.
         n_vols = n_vols + 1
-	if n_vols_lib.has_key(vv['library']):
-            n_vols_lib[vv['library']] = n_vols_lib[vv['library']] + 1
-        else:
-            n_vols_lib[vv['library']] = 1
+        n_vols_lib[vv['library']] = n_vols_lib.get(vv['library'], 0) + 1
+
         print 'done', time.time()-tt0
 
+    ###
+    ### Dump that summarizes all the volumes metadata.
+    ###
+
     # dump vol_sum
+    print "volume_summary_cache_file:", volume_summary_cache_file
     sum_f = open(volume_summary_cache_file, 'w')
     cPickle.dump(vol_sum, sum_f)
     sum_f.close()
+
+    #Append any summary information to these files.
+    print_last_access_footer(la_file)
+    print_volume_size_footer(vs_file)
+    print_volumes_defined_footer(vd_file)
+    print_write_protect_alert_footer(wpa_file, n_vols, n_rf_vols,
+                                     n_not_rp_vols, n_rp_vols, n_vols_lib)
+    print_too_many_mounts_footer(tm_file)
+    print_migrated_volumes_footer(mv_file, n_migrated)
+    print_duplicated_volumes_footer(dv_file, n_duplicated)
+    print_recyclable_volumes_footer(rc_file, n_recyclable, rc_file2,
+                                    n_recyclable2)
+
+    #Avoiding resource leaks, closing files.
     la_file.close()
     vs_file.close()
-    vd_file.write("</pre></html>\n")
     vd_file.close()
-    wpa_file.write("\n\n")
-    wpa_file.write("Total: %5d\n"%(n_vols))
-    for i in n_rf_vols.keys():
-        wpa_file.write("\n%s:\n----------------\n"%(i))
-        wpa_file.write("  Total: %5d\n Should: %5d\n   Done: %5d\nNot yet: %5d\n  Ratio: %5.2f%%\n"%(n_vols_lib[i], n_rf_vols[i], n_rp_vols[i], n_not_rp_vols[i], float(n_rp_vols[i])*100/n_rf_vols[i]))
     wpa_file.close()
+    tm_file.close()
+    de_file.close()
+    mv_file.close()
+    dv_file.close()
 
-    # log to accounting db
-    accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
-    acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
-
+    # log remaing blanks into accounting db
     print "logging remaining_blanks to accounting db ...",
-    res = file.db.query("select * from remaining_blanks;").getresult()
+    res = file_db.db.query("select * from remaining_blanks;").getresult()
     for i in res:
         q = "insert into blanks values('%s', '%s', %d)"%(time2timestamp(t0), i[0], i[1])
         acs.db.query(q)
     print 'done'
 
-    # log wpa info once a day
+    # log wpa info once a day to the accounting DB
     hour = time.localtime(t0)[3]
     if hour == 22 :
         q = "insert into write_protect_summary (date, total, should, not_yet, done) values('%s', %d, %d, %d, %d);"%(time2timestamp(t0), n_vols, sum(n_rf_vols.values()), sum(n_not_rp_vols.values()), sum(n_rp_vols.values()))
@@ -1269,29 +1469,17 @@ def inventory(output_dir, cache_dir):
         for i in n_rf_vols.keys():
             q = "insert into write_protect_summary_by_library (date, library, total, should, not_yet, done) values('%s', '%s', %d, %d, %d, %d);"%(time2timestamp(t0), i, n_vols_lib[i], n_rf_vols[i], n_not_rp_vols[i], n_rp_vols[i])
             res = acs.db.query(q)
-        acs.db.close()
 
-    tm_file.close()
-    de_file.close()
-    # write out the count of migrated volumes
-    mv_file.write("\n(%d volumes)"%(n_migrated))
-    mv_file.close()
-    # write out the count of recyclable volumes
-    rc_file2.append("\n(%d volumes)\n"%(n_recyclable2))
-    # open it for read
-    rc_file.write("\n(%d volumes)"%(n_recyclable))
-    rc_file.write("\n\n\n\n")
-    rc_file.write("These volumes are readonly and have only deleted files.\n")
-    rc_file.write("They probably can be recycled.\n\n")
-    for l in rc_file2:
-        rc_file.write(l)
-    rc_file.close()
+    #Remember to close the DB connections, too.
+    vol_db.close()
+    #file_db.close() #Linked to vol_db, so closing one closes both.
+    #eq.close() #Linked to vol_db, so closing one closes both.
+    acs.db.close() #Not linked to vol_db.  Must close.
 
     # make a html copy
+    # Do we need both a text and non-HTML version of this file?
     os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
     os.system('sed -e "s/<font color=#FF0000>//g; s/<\/font>//g; s/<blink>//g; s/<\/blink>//g" '+volumes_defined_file+'.html > '+volumes_defined_file)
-    vols.close()
-    # file.close()
 
     #Create files that hold statistical data.
     fmt, tl = print_volume_quotas_status(volumes_allocated, authorized_tapes,
@@ -1300,18 +1488,6 @@ def inventory(output_dir, cache_dir):
                             volume_quotas_file, volume_quotas_format_file, fmt, tl)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
-    if True:
-        if socket.gethostname()[:8] == "stkensrv":
-            cms_volume_with_only_deleted_files = os.path.join(os.path.split(volumes_defined_file)[0], "CMS_VOLUMES_WITH_ONLY_DELETED_FILES")
-            # a cheap shot
-            os.system("date > %s"%(cms_volume_with_only_deleted_files))
-            os.system("echo >> %s"%(cms_volume_with_only_deleted_files))
-            os.system("echo >> %s"%(cms_volume_with_only_deleted_files))
-            # q = "select * from volume_with_only_deleted_files where storage_group = 'cms' order by label;"
-            q = "select * from cms_volume_with_only_deleted_files order by label;"
-            cmd = 'psql -p 8888 -h stkensrv0.fnal.gov enstoredb -c "%s" >> %s'%(q, cms_volume_with_only_deleted_files)
-            print cmd
-            os.system(cmd)
 
     return n_vols, n_files, n_unchanged, n_changed
 
