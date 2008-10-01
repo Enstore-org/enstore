@@ -740,7 +740,7 @@ def get_migration_type(src_vol, dst_vol, db):
 		      "  /* The escaped underscores are for the sql " \
 		      "   * to literally match an underscore, not any " \
 		      "   * single character LIKE usually matches it to. */ " \
-		      "  and (file_family like '%%/_copy/_%%' escape '/'" \
+		      "  and (file_family like '%%/_copy/_[0-9]' escape '/'" \
 		      "       or system_inhibit_1 in ('duplicating', " \
 		      "                               'duplicated')); " \
 		      % (src_vol, dst_vol)
@@ -1196,39 +1196,6 @@ def make_failed_copies(intf, db):
 
 			#Get the results.
 			db.query(q)
-
-
-#For duplication only.
-def show_summary(intf, db):
-	#Build the sql query.
-	q = "select storage_group,file_family,media_type,count(bfid),count(src_bfid),count(bfid)-count(src_bfid) from file " \
-	    "left join volume on file.volume = volume.id " \
-	    "left join migration on migration.src_bfid = file.bfid " \
-	    "where system_inhibit_0 != 'DELETED' " \
-	    "      and file_family not like '%_copy_%' "
-	
-	q2 = "group by storage_group,file_family,media_type " \
-	     "order by storage_group,file_family,media_type "
-
-	#Determine if we need to limit the report to just one storage group.
-	if intf.storage_group and \
-	       intf.storage_group != None and \
-	       intf.storage_group != "None":
-		q = q + "and storage_group = '%s' " % \
-		    (intf.storage_group,)
-
-	#Append the rest of the command together.
-	q = "%s %s" % (q, q2)
-	q = q + ";"
-	
-
-	#Get the results.
-	res = db.query(q).getresult()
-
-	print "%13s %20s %10s %10s %10s %10s" % ("storage_group", "file_family", "media_type", "originals", "duplicates", "non-duplicated")
-	for row in res:
-		print "%13s %20s %10s %10s %10s %10s" % row
-
 
 ##########################################################################
 
@@ -3044,14 +3011,6 @@ def main(intf):
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
 		return make_failed_copies(intf, db)
-
-	#For duplicate only.
-	elif getattr(intf, "summary", None):
-		
-		# get a db connection
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-
-		return show_summary(intf, db)
 	
 	else:
 		bfid_list = []
