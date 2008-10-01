@@ -101,6 +101,7 @@ set key box
 set grid
 set label ' DIS ' at graph 0,.2 right
 set label ' ACT ' at graph 0,.15 right
+set label ' DWN ' at graph 0,.1 right
 set label ' OOB ' at graph 0,.6 right
 #set format x '%m-%d'
 plot '$j' using 1:2 t '$title' with points 13, 0 t '' with lines 2, 10 t '' with lines 2, '$file2' using 1:2 t 'Last Monday' with lines lt 3 lw 4
