@@ -376,7 +376,7 @@ select /* It should be as simple as just using the media_type. However,
 from file
 left join file_copies_map on file_copies_map.bfid = file.bfid
 left join volume on file.volume = volume.id
-where volume.file_family not like '%_copy%'
+where volume.file_family not like '%/_copy/_[0-9]' escape '/'
 group by media_type,storage_group,file_family,capacity_bytes
 order by media_type,storage_group,file_family;
 " >> $temp_file 2>&1
