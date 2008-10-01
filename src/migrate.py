@@ -489,6 +489,22 @@ def log_copied(bfid1, bfid2, db):
 		error_log("LOG_COPIED", str(exc_type), str(exc_value), q)
 	return
 
+# log_uncopied(bfid1, bfid2) -- log a successful uncopy (aka restore)
+def log_uncopied(bfid1, bfid2, db):
+	q = "update migration set copied = NULL where \
+		src_bfid = '%s' and dst_bfid = '%s'; \
+		delete from migration where \
+		src_bfid = '%s' and dst_bfid = '%s';" % \
+	(bfid1, bfid2, bfid1, bfid2)
+	if debug:
+		log("log_uncopied():", q)
+	try:
+		db.query(q)
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		error_log("LOG_UNCOPIED", str(exc_type), str(exc_value), q)
+	return
+
 # log_swapped(bfid1, bfid2) -- log a successful swap
 def log_swapped(bfid1, bfid2, db):
 	q = "update migration set swapped = '%s' where \
@@ -2767,6 +2783,8 @@ def restore(bfids, intf):
 
 		#Remove the swapped timestamp from the migration table.
 		log_unswapped(bfid, dst_bfid, db)
+		#Remove the copied timestamp from the migration table.
+		log_uncopied(bfid, dst_bfid, db)
 
 # restore_volume(vol) -- restore all migrated files on original volume
 def restore_volume(vol, intf):
@@ -2822,7 +2840,7 @@ def restore_volume(vol, intf):
 			error_log(MY_TASK,
 				  "failed to last access time update %s" \
 				  % (vol,))
-		
+
 ##########################################################################
 
 class MigrateInterface(option.Interface):
@@ -3004,6 +3022,7 @@ def main(intf):
 			#else:
 			#	icheck = False
 			restore_volume(volume, intf)
+
 	elif intf.scan_volumes:
 		exit_status = 0
 		for v in intf.args:
