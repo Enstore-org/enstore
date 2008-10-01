@@ -67,7 +67,7 @@ DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
 	option.VALUE_TYPE:option.INTEGER,
 	option.USER_LEVEL:option.USER,
 	}
-
+del DuplicateInterface.migrate_options[option.RESTORE]
 
 # This is to change the behavior of migrate.swap_metadata.
 # duplicate_metadata(bfid1, src, bfid2, dst) -- duplicate metadata for src and dst
