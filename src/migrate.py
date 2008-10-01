@@ -711,26 +711,45 @@ def get_media_type(bfid_or_volume, db):
 def get_migration_type(src_vol, dst_vol, db):
 	migration_result = None
 	duplication_result = None
+	cloning_result = None
 	
 	try:
-		q_d = "select label from volume where " \
-		      " (label = '%s' or label = '%s') and " \
-		      "  (comment like '%%->%%' or comment like '%%<-%%' " \
-		      "   or file_family like '%%_copy_%%' " \
-		      "   or system_inhibit_1 = 'duplicated') " \
+		q_d = "select label " \
+		      "from volume " \
+		      "where (label = '%s' or label = '%s') " \
+		      "  /* In the line below, the double %% signs are for " \
+		      "   * python's parser to leave one literal percent " \
+		      "   * sign to be passed to the sql statement to use " \
+		      "   * as the special pattern matching character. */ " \
+		      "  /* The escaped underscores are for the sql " \
+		      "   * to literally match an underscore, not any " \
+		      "   * single character LIKE usually matches it to. */ " \
+		      "  and (file_family like '%%/_copy/_%%' escape '/'" \
+		      "       or system_inhibit_1 in ('duplicating', " \
+		      "                               'duplicated')); " \
 		      % (src_vol, dst_vol)
-		q_m =  "select label from volume where " \
-		      " (label = '%s' or label = '%s') and " \
-		      "  (comment like '%%=>%%' or comment like '%%<=%%' " \
-		      "   or file_family like '-MIGRATION' " \
-		      "   or system_inhibit_1 = 'migrated') " \
+		q_m = "select label " \
+		      "from volume " \
+		      "where (label = '%s' or label = '%s') " \
+		      "  and (file_family like '%%-MIGRATION' " \
+		      "       or system_inhibit_1 in ('migrating', " \
+		      "                               'migrated')); " \
 		      % (src_vol, dst_vol)
+		q_c = "select label " \
+		      "from volume " \
+		      "where (label = '%s' or label = '%s') " \
+		      "  and system_inhibit_1 in ('cloning', 'cloned'); " \
+		      % (src_vol, dst_vol)
+		
 		res = db.query(q_m).getresult()
 		if len(res) != 0:
 			migration_result = "MIGRATION"
 		res = db.query(q_d).getresult()
 		if len(res) != 0:
 			duplication_result = "DUPLICATION"
+		res = db.query(q_c).getresult()
+		if len(res) != 0:
+			cloning_result = "CLONING"
 	except IndexError:
 		return None
 
@@ -741,6 +760,8 @@ def get_migration_type(src_vol, dst_vol, db):
 		return migration_result
 	elif duplication_result:
 		return duplication_result
+	elif cloning_result:
+		return cloning_result
 		
 	return None
 
