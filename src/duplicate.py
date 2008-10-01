@@ -68,17 +68,6 @@ DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
 	option.USER_LEVEL:option.USER,
 	}
 
-DuplicateInterface.migrate_options[option.SUMMARY] = {
-	option.HELP_STRING:
-	"Report the number of duplicated original files by file_families.",
-	option.VALUE_USAGE:option.IGNORED,
-	option.VALUE_TYPE:option.INTEGER,
-	option.USER_LEVEL:option.USER,
-	option.EXTRA_VALUES:[{option.VALUE_NAME:"storage_group",
-			      option.VALUE_TYPE:option.STRING,
-			      option.VALUE_USAGE:option.OPTIONAL}],
-	}
-
 
 # This is to change the behavior of migrate.swap_metadata.
 # duplicate_metadata(bfid1, src, bfid2, dst) -- duplicate metadata for src and dst
