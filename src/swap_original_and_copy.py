@@ -41,7 +41,7 @@ def swap_volume(vol):
 	# check if all files are primary
 	q = "select bfid from file, volume where file.volume = volume.id and label = '%s' and deleted = 'n';"%(vol)
 	res = dm.db.query(q).getresult()
-	for i in res:
+	for i in range(len(res)):
 		bfid = res[i][0]
 		if not dm.is_primary(bfid):
 			print "%s is not a primary file" % (bfid,)
@@ -76,16 +76,19 @@ def main():
 				sys.stderr.write("can not find bfid of %s\n" % (target,))
 				return 1
 
+
+	rtn1 = 0
+	rtn2 = 0
 	for bfid in bfid_list:
 		rtn1 = swap_bfid(bfid)
 	for volume in volume_list:
 		rtn2 = swap_volume(volume)
 
-	sys.exit(rtn1 + rtn2)
+	return rtn1 + rtn2
 	
 if __name__ == '__main__':
 	if len(sys.argv) < 2:
 		usage()
 		sys.exit()
 
-	main()
+	sys.exit(main())
