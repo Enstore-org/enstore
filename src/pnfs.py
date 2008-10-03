@@ -771,8 +771,7 @@ def __get_special_path(filepath, replacement_path):
         if count > 0 and is_pnfs_path(filename):
             return filename
 
-    raise TypeError("Unable to return enstore pnfs pathname.",
-                    e_errors.WRONGPARAMETER)
+    raise OSError(errno.ENOENT, os.strerror(errno.ENOENT), filepath)
 
 def get_enstore_pnfs_path(filepath):
     return __get_special_path(filepath, "/pnfs/")
