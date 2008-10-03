@@ -2,6 +2,7 @@
 
 import duplication_util
 import sys
+import os
 
 def usage():
 	print "Make files from original volumes as duplicate of the migrated files"
@@ -22,5 +23,9 @@ if __name__ == '__main__':
 	if sys.argv[1] == '--help':
 		usage()
 		sys.exit(0)
+
+	if os.geteuid() != 0:
+		sys.stderr.write("Must run as user root.\n")
+		sys.exit(1)
 
 	duplication_util.make_original_as_duplicate(sys.argv[1:])

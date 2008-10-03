@@ -5,6 +5,7 @@ swap_original_and_copy
 
 # system imports
 import sys
+import os
 
 # enstore imports
 import duplication_util
@@ -21,7 +22,7 @@ def usage():
 
 #Internal swap, that does not do any verification or checking itself.
 def __swap_bfid(bfid):
-	print "swapping %s ..." % (bfid)
+	print "swapping %s ..." % (bfid),
 	res = dm.swap_original_and_copy(bfid)
 	if res:
 		print res, "... ERROR"
@@ -47,7 +48,7 @@ def swap_volume(vol):
 			print "%s is not a primary file" % (bfid,)
 			return 1
 	# now, swap it
-	for i in res:
+	for i in range(len(res)):
 		bfid = res[i][0]
 		rtn = __swap_bfid(bfid)
 		if rtn:
@@ -90,5 +91,9 @@ if __name__ == '__main__':
 	if len(sys.argv) < 2:
 		usage()
 		sys.exit()
+
+	if os.geteuid() != 0:
+		sys.stderr.write("Must run as user root.\n")
+		sys.exit(1)
 
 	sys.exit(main())
