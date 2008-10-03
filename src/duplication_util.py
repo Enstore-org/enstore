@@ -88,7 +88,7 @@ class DuplicationManager:
 		# check for consistency
 		if long(pf.complete_crc) != f1['complete_crc']:
 			return "wrong crc: pnfs(%s), file(%s)"%(`pf.complete_crc`, `f1['complete_crc']`)
-		if pf.path != pnfs.get_abs_pnfs_path(f1['pnfs_name0']):
+		if pnfs.get_enstore_fs_path(pf.path) != pnfs.get_enstore_fs_path(pnfs.get_abs_pnfs_path(f1['pnfs_name0'])):
 			return "wrong pnfs_path: pnfs(%s), file(%s)"%(pf.path, f1['pnfs_name0'])
 		if pf.bfid != f1['bfid'] and pf.bfid != f2['bfid']:
 			return "wrong bfids: pnfs(%s), f1(%s), f2(%s)"%(pf.bfid, f1['bfid'], f2['bfid'])
@@ -199,6 +199,8 @@ class DuplicationManager:
 #	as a duplicate(copy) of the migrated files.
 
 def make_original_as_duplicate(volume):
+	rtn_code = 0
+	
 	dm = DuplicationManager()
 	if type(volume) == type (""):
 		volume = [volume]
@@ -209,24 +211,38 @@ def make_original_as_duplicate(volume):
 			print "ERROR: no such volume '%s'"%(vol)
 			return
 		# make sure it is a migrated volume
-		if v['system_inhibit'][1] != "duplicated":
-			print "ERROR: %s is not a duplicated volume."%(vol)
+		if v['system_inhibit'][1] not in ("migrated", "cloned"):
+			print "ERROR: %s is not a migrated volume."%(vol)
 			return
-		q = "select dst_bfid, src_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.src_bfid and not m.closed is null;"%(vol)
+		q = "select dst_bfid, src_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.src_bfid and not m.closed is null;" % (vol,)
 		res = dm.db.query(q).getresult()
 		for i in res:
 			print "make_duplicate(%s, %s) ..."%(`i[0]`, `i[1]`),
 			res = dm.make_duplicate(i[0], i[1])
 			if res:
 				print res, "... ERROR"
+				rtn_code = 1
 			else:
 				print "OK"
+
+		if not rtn_code: #No errors.
+			#Update the system_inhibit.
+			q = "update volume set system_inhibit_1 = 'duplicated'  where label = '%s';" % (vol,)
+			try:
+				dm.db.query(q)
+			except:
+				print "Unable to set system_inhibit.", " ...ERROR"
+				rtn_code = 1
+
+	return rtn_code
 
 
 # make_migrated_as_duplicate(vol) -- make all files on the migrated-to
 #	volume as a duplicate(copy) of the original files.
 
 def make_migrated_as_duplicate(volume):
+	rtn_code = 0
+	
 	dm = DuplicationManager()
 	if type(volume) == type (""):
 		volume = [volume]
@@ -243,6 +259,8 @@ def make_migrated_as_duplicate(volume):
 			res = dm.make_duplicate(i[0], i[1])
 			if res:
 				print res, "... ERROR"
+				rtn_code = 1
 			else:
 				print "OK"
 
+	return rtn_code
