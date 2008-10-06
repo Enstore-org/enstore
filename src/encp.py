@@ -3810,7 +3810,7 @@ def create_zero_length_pnfs_files(filenames, e = None):
 
                     os.close(fd)
                     local_errno = 0
-                except OSError, msg:
+                except (OSError, IOError), msg:
                     if msg.args[0] == errno.EAGAIN:
                         #If we got here then we just created a 'ghost' file
                         # with the temporary lock filename.  Lets wait
