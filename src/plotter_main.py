@@ -59,12 +59,18 @@ if __name__ == "__main__":
         usage(sys.argv[0])
         sys.exit(2)
 
-    f = enstore_plotter_framework.EnstorePlotterFramework()
+    if len(opts) == 0 :
+        usage(sys.argv[0])
+        sys.exit(1)
 
     for o, a in opts:
         if o in ("-h", "--help"):
             usage(sys.argv[0])
             sys.exit(1)
+
+    f = enstore_plotter_framework.EnstorePlotterFramework()
+
+    for o, a in opts:
             
         # mounts plots
         if o in ("-m", "--mounts"):
