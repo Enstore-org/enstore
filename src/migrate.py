@@ -301,8 +301,17 @@ def nullify_pnfs(pname):
 		f = open(p1.layer_file(i), 'w')
 		f.close()
 
-def set_proceed_number(src_bfids):
+def set_proceed_number(src_bfids, intf):
 	global proceed_number
+	global copy_queue, scan_queue
+
+	#If the user specified that all the files should be read, before
+	# starting to write; achive this by setting the proceed_number
+	# ot the number of files on the tape.
+	if intf.read_to_end_of_tape:
+		proceed_number = len(src_bfids)
+		copy_queue.__init__(proceed_number)
+		scan_queue.__init__(proceed_number)
 
 	if len(src_bfids) == 0:
 		#If the volume contains only deleted files and --with-deleted
@@ -2214,7 +2223,7 @@ def migrate(bfids, intf):
 	scan_queue.finished = False
 
 	#Set the global proceed_number variable.
-	set_proceed_number(bfids)
+	set_proceed_number(bfids, intf)
 
 	if USE_THREADS:
 		return _migrate_threads(bfids, intf)
@@ -2826,6 +2835,7 @@ class MigrateInterface(option.Interface):
 		self.migrated_from = None
 		self.migrated_to = None
 		self.skip_bad = None
+		self.read_to_end_of_tape = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 		
@@ -2874,6 +2884,12 @@ class MigrateInterface(option.Interface):
 				 "Sets the initial job priority."
 				 "  Only knowledgeable users should set this.",
 				 option.VALUE_USAGE:option.REQUIRED,
+				 option.VALUE_TYPE:option.INTEGER,
+				 option.USER_LEVEL:option.USER,},
+		option.READ_TO_END_OF_TAPE:{option.HELP_STRING:
+				 "Read to end of tape before starting "
+				 "to write.",
+				 option.VALUE_USAGE:option.IGNORED,
 				 option.VALUE_TYPE:option.INTEGER,
 				 option.USER_LEVEL:option.USER,},
 		option.RESTORE:{option.HELP_STRING:
