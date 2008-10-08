@@ -392,6 +392,10 @@ def restore_volume(vol, intf):
 	sys.stderr.write(message)
 	sys.exit(1)
 
+#Duplication doesn't do cloning.
+def setup_cloning():
+	pass
+
 ##
 ## Override migration functions with those for duplication.
 ##
@@ -401,6 +405,7 @@ migrate.final_scan_volume = final_scan_volume
 migrate.restore = restore
 migrate.restore_volume = restore_volume
 migrate.set_volume_migrated = set_volume_duplicated
+migrate.setup_cloning = setup_cloning
 
 # init() -- initialization
 
