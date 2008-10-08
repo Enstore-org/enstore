@@ -312,6 +312,7 @@ def set_proceed_number(src_bfids, intf):
 		proceed_number = len(src_bfids)
 		copy_queue.__init__(proceed_number)
 		scan_queue.__init__(proceed_number)
+		return
 
 	if len(src_bfids) == 0:
 		#If the volume contains only deleted files and --with-deleted
@@ -360,6 +361,17 @@ def set_proceed_number(src_bfids, intf):
 		
 	###############################################################
 	#print "proceed_number:", proceed_number
+
+#If the source and destination media_types are the same, set this to be
+# a cloning job rather than a migration.
+def setup_cloning():
+	global IN_PROGRESS_STATE, INHIBIT_STATE
+	global set_system_migrated_func, set_system_migrating_func
+	IN_PROGRESS_STATE = "cloning"
+	INHIBIT_STATE = "cloned"
+	set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_cloned
+	set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_cloning
+
 
 ###############################################################################
 
@@ -2567,7 +2579,7 @@ def migrate_volume(vol, intf):
 				os.stat(search_mig_dir)  #existance test
 				media_type = get_media_type(search_mig_dir, db)
 			except (OSError, IOError):
-				if os.path.basename(search_mig_dir) == "Migration":
+				if os.path.basename(search_mig_dir) == MIGRATION_DB:
 					break  #Didn't find it.
 
 				#Try the next directory.
@@ -2583,14 +2595,11 @@ def migrate_volume(vol, intf):
 			# for.
 			break
 
-	#If we are certain that this is cloning job, not a migration, then
+	#If we are certain that this is a cloning job, not a migration, then
 	# we should handle it accordingly.
-	if len(media_types) > 0 and media_types[0] == v['media_type']:
-		IN_PROGRESS_STATE = "cloning"
-		INHIBIT_STATE = "cloned"
-		set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_cloned
-		set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_cloning
-
+	if len(media_types) == 1 and media_types[0] == v['media_type']:
+		setup_cloning()
+		
 	#Here are some additional checks on the volume.  If necessary, it
 	# will set the system_inhibit_1 value.
 	if v['system_inhibit'][1] == INHIBIT_STATE and is_migrated_by_src_vol(vol, intf, db):
@@ -3000,10 +3009,6 @@ def main(intf):
 		if bfid_list:
 			restore(bfid_list, intf)
 		for volume in volume_list:
-			#if intf.with_final_scan:
-			#	icheck = True
-			#else:
-			#	icheck = False
 			restore_volume(volume, intf)
 
 	elif intf.scan_volumes:
@@ -3052,10 +3057,6 @@ def main(intf):
 		if bfid_list:
 			migrate(bfid_list, intf)
 		for volume in volume_list:
-			#if intf.with_final_scan:
-			#	icheck = True
-			#else:
-			#	icheck = False
 			migrate_volume(volume, intf)
 
 
