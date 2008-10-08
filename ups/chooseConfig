@@ -31,8 +31,7 @@ gccen=gccensrv1.fnal.gov
 
 happy=happy.fnal.gov
 fndapr=fndapr.fnal.gov
-water=131.225.84.1
-rain=rain.fnal.gov
+h2oen=131.225.81.68
 woodlawn=woodlawn.fnal.gov
 kenwood=kenwood.fnal.gov
 airedale=airedale.fnal.gov
@@ -129,10 +128,10 @@ case $node in
 	    complain=0
 	    ;;
 
-  water|rain)
+  water|rain|pool)
 	    #Michael Zalokar's Desktop
 	    ENSTORE_MAIL=zalokar@fnal.gov
-	    ENSTORE_CONFIG_HOST=$water
+	    ENSTORE_CONFIG_HOST=$h2oen
 	    ENSTORE_CONFIG_FILE=water.conf
 	    complain=0
 	    ;;
