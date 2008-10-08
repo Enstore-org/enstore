@@ -33,7 +33,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
     #The paramater 'name' is expected to be something like
     # '9940.library_manager'.
     def __init__(self, csc, name="", flags=0, logc=None, alarmc=None,
-                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES):
+                 rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES,
+                 server_address = None):
         self.name = name  ###This gets clobbered in generic_client???
         self.library_manager = name
         self.log_name = "C_"+string.upper(string.replace(name,
@@ -45,7 +46,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
                                               alarmc = alarmc,
                                               rcv_timeout = rcv_timeout,
                                               rcv_tries = rcv_tries,
-                                              server_name = name)
+                                              server_name = name,
+                                              server_address = server_address)
         self.send_to = rcv_timeout
         self.send_tries = rcv_tries
         #self.server_address = self.get_server_address(name,

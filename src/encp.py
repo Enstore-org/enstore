@@ -1988,6 +1988,34 @@ def get_pac():
                                                   server_address = pac_addr)
         return __pac
 
+def get_lmc(library):
+    #If the shortname was supplied, make it the longname.
+    if library[-16:] != ".library_manager":
+        lib = library + ".library_manager"
+    else:
+        lib = library
+
+    csc = get_csc()
+
+    #Determine which IP and port to use.  By default it will use the standard
+    # 'port' value from the configuration file.  However, if the configuration
+    # key 'encp_port' exists then this port will be used.
+    library_dict = csc.get(lib, 3, 3)
+    server_address = None
+    if e_errors.is_ok(library_dict):
+        server_port = library_dict.get('encp_port',
+                                       library_dict.get('port', None))
+        if server_port:
+            server_host = library_dict.get('hostip',
+                                           library_dict.get('host', None))
+            server_address = (server_host, server_port)
+
+    lmc = library_manager_client.LibraryManagerClient(
+            csc, lib, logc = __logc, alarmc = __alarmc,
+            rcv_timeout = 5, rcv_tries = 20, server_address = server_address)
+
+    return lmc
+
 ############################################################################
             
 def max_attempts(csc, library, encp_intf):
@@ -2063,13 +2091,8 @@ def check_library(library, e):
     else:
         lib = library + ".library_manager"
 
-    # get a configuration server
-    csc = get_csc()
-
     try:
-        lmc = library_manager_client.LibraryManagerClient(
-            csc, lib, logc = __logc, alarmc = __alarmc,
-            rcv_timeout = 5, rcv_tries = 20)
+        lmc = get_lmc(lib)
 
         if lmc.server_address == None:
             status = (e_errors.KEYERROR, "No LM %s found." % lib)
@@ -4803,24 +4826,24 @@ def submit_one_request(ticket, encp_intf):
     #Send work ticket to LM.  As long as a single encp process is restricted
     # to working with one enstore system, not passing get_csc() the ticket
     # as parameter will not cause a problem.
-    csc = get_csc()   #ticket)
+    #csc = get_csc()   #ticket)
+    #Get the name.
+    library = ticket['vc']['library'] + ".library_manager"
+
     #Get the library manager info information.  This also forces an update
     # if the cached configuration information is old.
-    library = ticket['vc']['library'] + ".library_manager"
     try:
-        lmc = library_manager_client.LibraryManagerClient(
-            csc, library, logc = __logc, alarmc = __alarmc,
-            rcv_timeout = 5, rcv_tries = 20)
+        lmc = get_lmc(library)
     except SystemExit:
         #On error the library manager client calls sys.exit().  This
         # should catch that so we can handle it.
         ticket['status'] = (e_errors.USERERROR,
-              "Unable to locate %s.library_manager." % ticket['vc']['library'])
+              "Unable to locate %s." % (library,))
         return ticket
     #If the lmc is not in a valid state, return an error.
     if lmc.server_address == None:
         ticket['status'] = (e_errors.USERERROR,
-              "Unable to locate %s.library_manager." % ticket['vc']['library'])
+              "Unable to locate %s." % (library,))
         return ticket
 
     #Put in the log file a message connecting filenames to unique_ids.
