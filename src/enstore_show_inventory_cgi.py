@@ -149,12 +149,12 @@ def print_html(catalog, special, cluster):
     print '<p>'
     for fname in special:
         if fname == 'COMPLETE_FILE_LISTING':
-            print '<a href="enstore_file_listing_cgi.py">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
+            print '<a href="enstore_file_listing_cgi.py">', string.split(fname, '.')[0], '</a>&nbsp;&nbsp;'
         elif fname.startswith("COMPLETE_FILE_LISTING"):
             #We hide these behind the cgi that COMPLETE_FILE_LISTING points to.
             continue
         else:
-            print '<a href="' + os.path.join(inv_dir, fname) + '">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
+            print '<a href="' + os.path.join(inv_dir, fname) + '">', string.split(fname, '.')[0], '</a>&nbsp;&nbsp;'
             
         if not catalog:
             #Only do for summary.
