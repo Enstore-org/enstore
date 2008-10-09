@@ -301,18 +301,8 @@ def nullify_pnfs(pname):
 		f = open(p1.layer_file(i), 'w')
 		f.close()
 
-def set_proceed_number(src_bfids, intf):
+def set_proceed_number(src_bfids):
 	global proceed_number
-	global copy_queue, scan_queue
-
-	#If the user specified that all the files should be read, before
-	# starting to write; achive this by setting the proceed_number
-	# ot the number of files on the tape.
-	if intf.read_to_end_of_tape:
-		proceed_number = len(src_bfids)
-		copy_queue.__init__(proceed_number)
-		scan_queue.__init__(proceed_number)
-		return
 
 	if len(src_bfids) == 0:
 		#If the volume contains only deleted files and --with-deleted
@@ -361,17 +351,6 @@ def set_proceed_number(src_bfids, intf):
 		
 	###############################################################
 	#print "proceed_number:", proceed_number
-
-#If the source and destination media_types are the same, set this to be
-# a cloning job rather than a migration.
-def setup_cloning():
-	global IN_PROGRESS_STATE, INHIBIT_STATE
-	global set_system_migrated_func, set_system_migrating_func
-	IN_PROGRESS_STATE = "cloning"
-	INHIBIT_STATE = "cloned"
-	set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_cloned
-	set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_cloning
-
 
 ###############################################################################
 
@@ -2235,7 +2214,7 @@ def migrate(bfids, intf):
 	scan_queue.finished = False
 
 	#Set the global proceed_number variable.
-	set_proceed_number(bfids, intf)
+	set_proceed_number(bfids)
 
 	if USE_THREADS:
 		return _migrate_threads(bfids, intf)
@@ -2579,7 +2558,7 @@ def migrate_volume(vol, intf):
 				os.stat(search_mig_dir)  #existance test
 				media_type = get_media_type(search_mig_dir, db)
 			except (OSError, IOError):
-				if os.path.basename(search_mig_dir) == MIGRATION_DB:
+				if os.path.basename(search_mig_dir) == "Migration":
 					break  #Didn't find it.
 
 				#Try the next directory.
@@ -2595,11 +2574,14 @@ def migrate_volume(vol, intf):
 			# for.
 			break
 
-	#If we are certain that this is a cloning job, not a migration, then
+	#If we are certain that this is cloning job, not a migration, then
 	# we should handle it accordingly.
-	if len(media_types) == 1 and media_types[0] == v['media_type']:
-		setup_cloning()
-		
+	if len(media_types) > 0 and media_types[0] == v['media_type']:
+		IN_PROGRESS_STATE = "cloning"
+		INHIBIT_STATE = "cloned"
+		set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_cloned
+		set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_cloning
+
 	#Here are some additional checks on the volume.  If necessary, it
 	# will set the system_inhibit_1 value.
 	if v['system_inhibit'][1] == INHIBIT_STATE and is_migrated_by_src_vol(vol, intf, db):
@@ -2844,7 +2826,6 @@ class MigrateInterface(option.Interface):
 		self.migrated_from = None
 		self.migrated_to = None
 		self.skip_bad = None
-		self.read_to_end_of_tape = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 		
@@ -2893,12 +2874,6 @@ class MigrateInterface(option.Interface):
 				 "Sets the initial job priority."
 				 "  Only knowledgeable users should set this.",
 				 option.VALUE_USAGE:option.REQUIRED,
-				 option.VALUE_TYPE:option.INTEGER,
-				 option.USER_LEVEL:option.USER,},
-		option.READ_TO_END_OF_TAPE:{option.HELP_STRING:
-				 "Read to end of tape before starting "
-				 "to write.",
-				 option.VALUE_USAGE:option.IGNORED,
 				 option.VALUE_TYPE:option.INTEGER,
 				 option.USER_LEVEL:option.USER,},
 		option.RESTORE:{option.HELP_STRING:
@@ -3009,6 +2984,10 @@ def main(intf):
 		if bfid_list:
 			restore(bfid_list, intf)
 		for volume in volume_list:
+			#if intf.with_final_scan:
+			#	icheck = True
+			#else:
+			#	icheck = False
 			restore_volume(volume, intf)
 
 	elif intf.scan_volumes:
@@ -3057,6 +3036,10 @@ def main(intf):
 		if bfid_list:
 			migrate(bfid_list, intf)
 		for volume in volume_list:
+			#if intf.with_final_scan:
+			#	icheck = True
+			#else:
+			#	icheck = False
 			migrate_volume(volume, intf)
 
 

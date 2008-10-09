@@ -282,9 +282,9 @@ class AtMovers:
                     time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
                     state = self.at_movers[mover].get('state', 'unknown') 
                     if time_in_state > self.max_time_in_other:
-                        if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK']:
+                        if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND']:
                             add_to_list = 1
-                        if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK'):
+                        if time_in_state > self.max_time_in_active and state == 'ACTIVE':
                             add_to_list = 1
                         if add_to_list:
                             self.dont_update[mover] = state
