@@ -1187,7 +1187,7 @@ def inventory(output_dir, cache_dir):
         if vv['system_inhibit'][1] == 'readonly' \
                and active == 0 \
                and vv['media_type'] != "null" \
-               and vv['library'].index("shelf") != -1:
+               and vv['library'].find("shelf") != -1:
             rc_file2.append("%s\t%8s %6d %8s %10s\t%s\n" % (
                 vv['external_label'], vv['system_inhibit'][1],
                 vv['sum_mounts'], vv['media_type'], vv['library'],
