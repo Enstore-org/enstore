@@ -24,7 +24,7 @@ class RecentFileListingInterface(option.Interface):
 	def __init__(self, args=sys.argv, user_mode=0):
 		
 		self.duration = DURATION #hours
-		self.out_dir = None
+		self.output_dir = None
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 		
 
