@@ -259,7 +259,8 @@ def init(intf):
 	# check for no_log commands
 	if not intf.migrated_to and not intf.migrated_from and \
 	   not intf.status and not intf.show and \
-	   not getattr(intf, "list_failed_copies", None):
+	   not getattr(intf, "summary", None):
+
 		# check for directories
 
 		#log dir
@@ -1157,6 +1158,7 @@ def show_show(intf, db):
 		print "%10s %s" % (row[0], row[1])
 
 #For duplication only.
+"""
 def list_failed_copies(intf, db):
 	#Build the sql query.
 	q = "select * from active_file_copying order by time;"
@@ -1166,9 +1168,11 @@ def list_failed_copies(intf, db):
 	print "%21s %16s %s" % ("bfid", "copies remaining", "waiting since")
 	for row in res:
 		print "%21s %16s %s" % (row[0], row[1], row[2])
+"""
 
 #For duplication only.
 def make_failed_copies(intf, db):
+	MY_TASK = "MAKE_FAILED_COPIES"
 	#Build the sql query.
 	q = "select * from active_file_copying,volume,file " \
 	    "where file.volume = volume.id " \
@@ -1178,7 +1182,7 @@ def make_failed_copies(intf, db):
 	#Get the results.
 	res = db.query(q).getresult()
 
-	print "%21s %16s %s" % ("bfid", "copies remaining", "waiting since")
+	#print "%21s %16s %s" % ("bfid", "copies remaining", "waiting since")
 	bfid_list = []
 	for row in res:
 		#row[0] is bfid
@@ -1189,14 +1193,17 @@ def make_failed_copies(intf, db):
 				#Limit this to those bfids with positive
 				# remaing copies-to-be-made counts.
 				bfid_list.append(row[0])
-		print "%21s %16s %s" % (row[0], row[1], row[2])
+	#	print "%21s %16s %s" % (row[0], row[1], row[2])
 
-	for bfid in bfid_list[0:1]: #bfid_list:
-		pass
-		exit_status = migrate([bfid_list[0]], intf)
+	
+	for bfid in bfid_list:
+		exit_status = migrate([bfid], intf)
 
 		if not exit_status:
 			### The duplicatation was successfull.
+
+			log(MY_TASK, "Decrementing the remaining count by " \
+				     "one for bfid %s." % (bfid,))
 			
 			#Build the sql query.
 			#Decrement the number of files remaining by one.
@@ -1208,12 +1215,15 @@ def make_failed_copies(intf, db):
 			#Get the results.
 			db.query(q)
 
+			log(MY_TASK, "Removing the bfid from the migration " \
+				     "table for bfid %s." % (bfid,))
+
 			#Build the sql query.
 			#Remove this file from the migration table.  We do
 			# not want the source volume to look like it has
 			# started to be migrated/duplicated.
 			q = "delete from migration " \
-			    "where bfid = '%s'" % (bfid,)
+			    "where src_bfid = '%s'" % (bfid,)
 
 			#Get the results.
 			db.query(q)
@@ -3018,14 +3028,6 @@ def main(intf):
                 return exit_status
 
 	#For duplicate only.
-	elif getattr(intf, "list_failed_copies", None):
-		
-		# get a db connection
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-
-		list_failed_copies(intf, db)
-
-	#For duplicate only.
 	elif getattr(intf, "make_failed_copies", None):
 		
 		# get a db connection
@@ -3055,9 +3057,11 @@ def main(intf):
 					return 1
 
 		if bfid_list:
-			migrate(bfid_list, intf)
+			return migrate(bfid_list, intf)
 		for volume in volume_list:
-			migrate_volume(volume, intf)
+			return migrate_volume(volume, intf)
+
+	return 0
 
 
 def do_work(intf):
@@ -3100,6 +3104,8 @@ def do_work(intf):
 	sys.exit(exit_status)
 
 if __name__ == '__main__':
+
+	Trace.init("MIGRATION")
 
 	intf_of_migrate = MigrateInterface(sys.argv, 0) # zero means admin
 

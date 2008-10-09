@@ -53,6 +53,7 @@ migrate.LOG_DIR = "/var/duplication"
 migrate.LOG_FILE = migrate.LOG_FILE.replace('Migration', 'Duplication')
 
 DuplicateInterface = migrate.MigrateInterface
+"""
 DuplicateInterface.migrate_options[option.LIST_FAILED_COPIES] = {
 	option.HELP_STRING:
 	"List originals where the multiple copy write failed.",
@@ -60,6 +61,7 @@ DuplicateInterface.migrate_options[option.LIST_FAILED_COPIES] = {
 	option.VALUE_TYPE:option.INTEGER,
 	option.USER_LEVEL:option.USER,
 	}
+"""
 DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
 	option.HELP_STRING:
 	"Make duplicates where the multiple copy write failed.",
@@ -422,6 +424,8 @@ def usage():
 """
 
 if __name__ == '__main__':
+
+	Trace.init("DUPLICATION")
 
 	intf_of_migrate = migrate.MigrateInterface(sys.argv, 0) # zero means admin
 
