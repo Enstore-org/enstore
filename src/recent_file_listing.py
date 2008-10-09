@@ -9,16 +9,19 @@ import time
 import sys
 import os
 import pg
+import errno
 
 # enstore modules
 import option
 import configuration_client
 import file_clerk_client
 import e_errors
+import log_trans_fail #for copy_it
 
 
 DURATION = 12 #hours
 PREFIX = 'RECENT_FILES_'
+
 
 class RecentFileListingInterface(option.Interface):
 	def __init__(self, args=sys.argv, user_mode=0):
@@ -94,10 +97,13 @@ def make_recent_file(storage_group, duration, bfid_brand, database,
 		#os.rename(out_file, out_file+'.old')
 		os.remove(out_file)
 
-	print temp_file
-	print out_file
-	#os.system("cat %s" % (temp_file,))
-	os.rename(temp_file, out_file)   #Do the temp file swap.
+	try:
+		os.rename(temp_file, out_file)   #Do the temp file swap.
+	except (OSError, IOError), msg:
+		if msg.errno == errno.EXDEV:
+			log_trans_fail.copy_it(temp_file, out_file)
+		else:
+			raise 
 
 def main(intf):
 	#Get some configuration information.
