@@ -752,7 +752,7 @@ def __get_special_path(filepath, replacement_path):
     
     #First, remove any preceding directories before /pnfs/.
     dir_split = filepath.split("/")
-    dir_split_index = dir_split.index("pnfs", 1)
+    dir_split_index = dir_split.index("pnfs")
     #Limit this check to just three directory levels after /pnfs/.  If it 
     # hasn't been found by then, chances are it will not.  If necessary,
     # this could be increased.
