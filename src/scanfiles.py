@@ -80,6 +80,16 @@ threads_stop = False
 alarm_lock=threading.Lock()
 external_transitions = {} #Ttranslate /pnfs/sam/lto to /pnfs/fs/usr/sam-lto
 
+# union(list_of_sets)
+###copied from file_clerk_client.py
+def union(s):
+    res = []
+    for i in s:
+        for j in i:
+            if not j in res:
+                res.append(j)
+    return res
+
 #For cleanup_objects() to report problems.
 old_list = []
 old_len  = 0
@@ -1114,7 +1124,15 @@ def check_dir(d, dir_info):
             return err, warn, info
 
         #Get the list of files.
-        file_list = os.listdir(d)
+        try:
+            file_list = os.listdir(d)
+        except (OSError, IOError):
+            #If we call check_permissions() above, how can we possibly,
+            # get here?  Clearly, it is possible though...
+
+            err.append("can not access directory")
+            file_list = []
+            
 
         for i in range(0, len(file_list)):
 
@@ -1422,9 +1440,9 @@ def check_file(f, file_info):
     ## answers.
     layer_1_bfid_from_name, (err1, warn1, info1) = get_layer_1(f)
     layer_1_bfid_from_id, (err1a, warn1a, info1a) = get_layer_1(afn)
-    err = err + err1 + err1a
-    warn = warn + warn1 + warn1a
-    info = info + info1 + info1a
+    err = union([err, err1, err1a])
+    warn = union([warn, warn1, warn1a])
+    info = union([info, info1, info1a])
 
     #Check to make sure that PNFS is returning the same information
     # when getting layer 1 from the pnfsid and from the name.  There is
@@ -1456,9 +1474,9 @@ def check_file(f, file_info):
     layer4, (err4, warn4, info4) = get_layer_4(f)
     layer_4_from_name = layer4
     layer_4_from_id, (err4a, warn4a, info4a) = get_layer_4(afn)
-    err = err + err4 + err4a
-    warn = warn + warn4 + warn4a
-    info = info + info4 + info4a
+    err = union([err, err4, err4a])
+    warn = union([warn, warn4, warn4a])
+    info = union([info, info4, info4a])
 
     #Check to make sure that PNFS is returning the same information
     # when getting layer 4 from the pnfsid and from the name.  There is
@@ -1530,6 +1548,8 @@ def check_file(f, file_info):
                         rm_pnfs = True
                     else:
                         rm_pnfs = None  #Unknown
+                except (ValueError,), msg:
+                    rm_pnfs = None #Unknown
 
                 if ffbp['deleted'] == "yes":
                     marked_deleted = True
@@ -1826,7 +1846,11 @@ def start_check(line):
 
     for a_thread in ts_check:
         a_thread.join()
-        err_j, warn_j, info_j = a_thread.get_result()
+        result =  a_thread.get_result()
+        try:
+            err_j, warn_j, info_j = result #Why do we do this?
+        except TypeError:
+            pass #???
         del ts_check[0]
 
 ###############################################################################
