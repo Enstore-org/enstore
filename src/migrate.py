@@ -1758,13 +1758,18 @@ def migrating(intf):
 		# file in the migration spool directory.  We don't want to
 		# 'migrate' this wrong file to tape.
 		try:
-			src_size = os.stat(src_path)[stat.ST_SIZE]
-			tmp_size = os.stat(tmp_path)[stat.ST_SIZE]
-		except OSError:
+			#We want the size in layer 4, since large files
+			# store a 1 for the size in pnfs.
+			src_size = long(pnfs.get_layer_4(src_path).get('size',
+								       None))
+		except (OSError, IOError):
+			src_size = None
+		try:
+			tmp_size = long(os.stat(tmp_path)[stat.ST_SIZE])
+		except (OSError, IOError):
 			#We likely get here when the file is already
 			# removed from the spooling directory.
-			src_size = None
-			tmp_size = None
+			tmp_size = None			
 		if src_size != tmp_size:
 			error_log(MY_TASK, "size check mismatch (%s, %s)" % \
 				  (src_size, tmp_size))
