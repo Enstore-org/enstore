@@ -149,6 +149,8 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 if layer1_bfid != file_record['bfid']:
                     #Must be a multiple copy to get to this point.
                     is_multiple_copy = True
+                else:
+                    is_multiple_copy = False
 
                 if file_record['deleted'] == 'yes':
                     try:
