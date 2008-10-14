@@ -176,6 +176,8 @@ class DuplicationManager:
 		if pf.bfid != copy:
 			pf.bfid = copy
 			pf.volume = f2['external_label']
+			pf.location_cookie = f2['location_cookie']
+			pf.drive = f2['drive']
 			pf.update()
 		return
 
