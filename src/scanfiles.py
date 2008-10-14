@@ -1251,7 +1251,7 @@ def check_bit_file(bfid, bfid_info = None):
 
     #Determine if this file is a multiple copy.
     original_bfid = infc.find_original(bfid)['original']
-    if original_bfid != None and bfid != infc.find_original(bfid)['original']:
+    if original_bfid != None and bfid != original_bfid:
         is_multiple_copy = True
     else:
         is_multiple_copy = False
