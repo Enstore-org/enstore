@@ -1779,6 +1779,9 @@ def migrating(intf):
 			except (OSError, IOError), msg:
 				log(MY_TASK, "error removing %s: %s" \
 				    % (tmp_path, str(msg)))
+			#Get the next file to copy and swap from the
+			# reading thread.
+			job = get_queue_item(copy_queue, migrate_r_pipe)
 			continue
 		
 		# check if it has already been copied
@@ -1800,7 +1803,11 @@ def migrating(intf):
 					      sg, ff, wrapper,
 					      deleted, encp, intf)
 			if rtn_code:
-				job = copy_queue.get(True)
+				#Get the next file to copy and swap from the
+				# reading thread.
+				job = get_queue_item(copy_queue,
+						     migrate_r_pipe)
+				#job = copy_queue.get(True)
 				continue
 
 		# Get bfid (and layer 4) of copied file.  We need these values
