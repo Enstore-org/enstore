@@ -803,6 +803,42 @@ def get_migration_type(src_vol, dst_vol, db):
 		
 	return None
 
+#Look for the media type that the file would be written to.
+def search_media_type(original_path):
+	##
+	## Determine the destination media_type.
+	##
+	mig_dir = pnfs.get_directory_name(migration_path(original_path))
+	search_mig_dir = mig_dir
+	while 1:
+		#We need to go through all this looping to find
+		#a Migration directory that exists, since any new
+		#Migration directory isn't created until the first
+		#new copy is is about to be written to tape for
+		#the corresponding non-Migration directory.
+		try:
+			os.stat(search_mig_dir)  #existance test
+			media_type = get_media_type(search_mig_dir, db)
+		except (OSError, IOError):
+			if os.path.basename(search_mig_dir) == MIGRATION_DB:
+				break  #Didn't find it.
+
+			#Try the next directory.
+			search_mig_dir = os.path.dirname(search_mig_dir)
+
+			if search_mig_dir == "/" \
+			   or search_mig_dir == "":
+				break  #Didn't find it.
+			continue
+		#if media_type not in media_types:
+		#	media_types.append(media_type)
+		#If we get here, then we found what we were looking
+		# for.
+		#break
+		return media_type
+
+	return None
+
 ##########################################################################
 
 def mark_deleted(MY_TASK, src_bfid, fcc, db):
@@ -1055,8 +1091,8 @@ def show_status(volume_list, intf, db):
 				is_dst_volume = True
 
 		#Output the header.
-		print "%19s %19s %6s %6s %6s %6s" % \
-		      ("src_bfid", "dst_bfid", "copied", "swapped",
+		print "%19s %1s %19s %1s %6s %6s %6s %6s" % \
+		      ("src_bfid", "S", "dst_bfid", "S", "copied", "swapped",
 		       "checked", "closed")
 
 		q = "select bfid from file, volume " \
@@ -1066,10 +1102,22 @@ def show_status(volume_list, intf, db):
 		#Get the results.
 		res1 = db.query(q).getresult()
 		for row in res1:
-			#Build the sql query.
-			q2 = "select * from migration " \
+			#Build the sql query.  The * just pulls all the columns
+			# from the migration table.  The two selects
+			# handle detection of duplicated files, specifically
+			# which file is currently considered the primary
+			# and copy file.
+			q2 = "select *, " \
+			     "       (select bfid " \
+			     "        from file_copies_map " \
+			     "        where bfid = '%s'), " \
+			     "       (select alt_bfid " \
+			     "        from file_copies_map " \
+			     "        where alt_bfid = '%s') " \
+			     "from migration " \
 			     "where src_bfid = '%s' or " \
-			     " dst_bfid = '%s';" % (row[0], row[0])
+			     " dst_bfid = '%s';" % (row[0], row[0],
+						    row[0], row[0])
 			#Get the results.
 			res2 = db.query(q2).getresult()
 			for row2 in res2:
@@ -1093,8 +1141,22 @@ def show_status(volume_list, intf, db):
 				else:
 					closed = "" 
 					exit_status = 1
-				line = "%19s %19s %6s %6s %6s %6s" % \
-				       (row2[0], row2[1], copied,
+
+				#Duplicated files were detected.
+				src_status = " "
+				dst_status = " "
+				if row2[6] and row2[0] == row[0]:
+					src_status = 'P'
+				elif row2[6] and row2[1] == row[0]:
+					dst_status = 'P'
+				elif row2[7] and row2[0] == row[0]:
+					src_status = 'C'
+				elif row2[7] and row2[1] == row[0]:
+					dst_status = 'C'
+
+				line = "%19s %1s %19s %1s %6s %6s %6s %6s" % \
+				       (row2[0], src_status, row2[1],
+					dst_status, copied,
 					swapped, checked, closed)
 				print line
 				if row[0] == row2[1]:
@@ -2593,36 +2655,14 @@ def migrate_volume(vol, intf):
 	for row in res:
 		bfids.append(row[0])
 
-		##
-		## Determine the destination media_type.
-		##
-		mig_dir = pnfs.get_directory_name(migration_path(row[2]))
-		search_mig_dir = mig_dir
-		while 1:
-			#We need to go through all this looping to find
-			#a Migration directory that exists, since any new
-			#Migration directory isn't created until the first
-			#new copy is is about to be written to tape for
-			#the corresponding non-Migration directory.
-			try:
-				os.stat(search_mig_dir)  #existance test
-				media_type = get_media_type(search_mig_dir, db)
-			except (OSError, IOError):
-				if os.path.basename(search_mig_dir) == MIGRATION_DB:
-					break  #Didn't find it.
-
-				#Try the next directory.
-	                        search_mig_dir = os.path.dirname(search_mig_dir)
-
-				if search_mig_dir == "/" \
-                                   or search_mig_dir == "":
-					break  #Didn't find it.
-				continue
-			if media_type not in media_types:
+		if intf.library:
+			if intf.library not in media_types:
+				media_types.append(intf.library)
+		else:
+			original_path = row[2]
+			media_type = search_media_type(original_path)
+			if media_type and media_type not in media_types:
 				media_types.append(media_type)
-			#If we get here, then we found what we were looking
-			# for.
-			break
 
 	#If we are certain that this is a cloning job, not a migration, then
 	# we should handle it accordingly.
