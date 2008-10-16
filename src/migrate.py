@@ -1754,36 +1754,6 @@ def migrating(intf):
 		if debug:
 			log(MY_TASK, `job`)
 
-		#Try and catch situations were an error left a zero length
-		# file in the migration spool directory.  We don't want to
-		# 'migrate' this wrong file to tape.
-		try:
-			#We want the size in layer 4, since large files
-			# store a 1 for the size in pnfs.
-			src_size = long(pnfs.get_layer_4(src_path).get('size',
-								       None))
-		except (OSError, IOError):
-			src_size = None
-		try:
-			tmp_size = long(os.stat(tmp_path)[stat.ST_SIZE])
-		except (OSError, IOError):
-			#We likely get here when the file is already
-			# removed from the spooling directory.
-			tmp_size = None			
-		if src_size != tmp_size:
-			error_log(MY_TASK, "size check mismatch (%s, %s)" % \
-				  (src_size, tmp_size))
-			try:
-				log(MY_TASK, "removing %s" % (tmp_path,))
-				os.remove(tmp_path)
-			except (OSError, IOError), msg:
-				log(MY_TASK, "error removing %s: %s" \
-				    % (tmp_path, str(msg)))
-			#Get the next file to copy and swap from the
-			# reading thread.
-			job = get_queue_item(copy_queue, migrate_r_pipe)
-			continue
-		
 		# check if it has already been copied
 		is_it_copied = is_copied(src_bfid, db)
 		dst_bfid = is_it_copied
@@ -1792,6 +1762,43 @@ def migrating(intf):
 			ok_log(MY_TASK, "%s has already been copied to %s" \
 			       % (src_bfid, dst_bfid))
 		else:
+			#Try and catch situations were an error left a zero
+			# length file in the migration spool directory.  We
+			# don't want to 'migrate' this wrong file to tape.
+			try:
+				#We want the size in layer 4, since large files
+				# store a 1 for the size in pnfs.
+				src_size = long(
+					pnfs.get_layer_4(src_path).get('size',
+								       None))
+		        except (OSError, IOError):
+				src_size = None
+			try:
+				tmp_size = long(
+					os.stat(tmp_path)[stat.ST_SIZE])
+			except (OSError, IOError):
+				#We likely get here when the file is already
+				# removed from the spooling directory.
+				tmp_size = None			
+			if src_size != tmp_size:
+				error_log(MY_TASK,
+					  "size check mismatch (%s, %s)" % \
+					  (src_size, tmp_size))
+				try:
+					log(MY_TASK,
+					    "removing %s" % (tmp_path,))
+					os.remove(tmp_path)
+				except (OSError, IOError), msg:
+					log(MY_TASK, "error removing %s: %s" \
+					    % (tmp_path, str(msg)))
+				#Get the next file to copy and swap from the
+				# reading thread.
+				job = get_queue_item(copy_queue,
+						     migrate_r_pipe)
+				continue
+		
+
+			
 			## At this point src_path points to the original file's
 			## location in pnfs, tmp_path points to the temporary
 			## location on disk and mig_path points to the
