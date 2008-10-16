@@ -5,8 +5,11 @@
 0-59/15 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p noaccess $ENSTORE_DIR/sbin/noaccess-tapes > /dev/null 2> /dev/null
 30 1,7,13,19 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p robot_inventory $ENSTORE_DIR/sbin/Vols > /dev/null 2> /dev/null
 30 8,16 * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p quota_alert $ENSTORE_DIR/sbin/quota_alert > /dev/null 2> /dev/null
-30 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p migration_summary $ENSTORE_DIR/sbin/migration_summary > /dev/null 2> /dev/null
-30 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p duplication_summary $ENSTORE_DIR/sbin/duplication_summary > /dev/null 2> /dev/null
+
+31 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p migration_summary $ENSTORE_DIR/sbin/migration_summary > /dev/null 2> /dev/null
+32 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p duplication_summary $ENSTORE_DIR/sbin/duplication_summary > /dev/null 2> /dev/null
+33 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p multiple_copies_summary $ENSTORE_DIR/sbin/multiple_copies_summary > /dev/null 2> /dev/null
+
 
 ##
 20 1 * * 1 enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p weekly_summary -l $ENSTORE_DIR/src/weekly_summary_report.py /tmp/weekly_report > /dev/null 2> /dev/null
