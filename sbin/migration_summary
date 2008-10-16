@@ -54,10 +54,16 @@ if [ -z "$DB_USER" ]; then
     exit 1
 fi
 
+#Get the temporary directory to use.
+temp_dir=`enstore conf $timeout --show crons tmp_dir`
+if [ ! -d "$temp_dir" ]; then
+    temp_dir=/tmp
+fi
+
 #Create the variables that point to the files to output to.
 fname=MIGRATION_SUMMARY
 output_file=$inventory_dir/$fname
-temp_file=$output_file.temp
+temp_file=$temp_dir/$fname.temp
 
 #If we write to a temp file, and swap in it when we are done, there will
 # not any time when the page is empty becuase the scipt is still writing
