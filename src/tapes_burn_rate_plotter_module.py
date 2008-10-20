@@ -176,10 +176,9 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
         plot_fp.write('set terminal postscript color solid\n')
         plot_fp.write('set output "%s"\n' % (ps_filename,))
-        plot_fp.write('set title "%s   TotTapesUsed=%s   ' \
-                      'TapesBlank=%s  MediaType=%s  MediaCapacity=%sGB"' \
+        plot_fp.write('set title "%s   MediaType=%s"' \
                       'font "TimesRomanBold,16"\n' % \
-                      (label, written, blanks, media_type, media_capacity))
+                      (label, media_type))
         plot_fp.write('set ylabel "Gigabytes Written"\n')
         plot_fp.write('set xdata time\n')
         plot_fp.write('set timefmt "%Y-%m-%d"\n')
@@ -195,6 +194,9 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         plot_fp.write('set label "%s new tapes drawn last month" at graph .05,.85\n' % (int(new_tapes_written_last_month),))
         plot_fp.write('set label "%s new tapes drawn last week" at graph .05,.80\n' % (int(new_tapes_written_last_week),))
         plot_fp.write('set label "%s tapes filled last month" at graph .05,.75\n' % (int(full_tapes),))
+        plot_fp.write('set label "%s total tapes used" at graph .05,.70\n' % (int(written),))
+        plot_fp.write('set label "%s tapes blank" at graph .05,.65\n' % (int(blanks),))
+        plot_fp.write('set label "%sGB media capacity" at graph .05,.60\n' % (media_capacity,))
         
         ## The first plot is the summation of bytes written over the last 4
         ## months.  The second plot is the daily bytes written.  The third
