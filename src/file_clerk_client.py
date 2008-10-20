@@ -343,7 +343,7 @@ class FileClient(generic_client.GenericClient,
 
         return ticket
 
-    def mark_bad(self, path):
+    def mark_bad(self, path, specified_bfid = None):
         # get the full absolute path
         a_path = os.path.abspath(path)
         dir, file = os.path.split(a_path)
@@ -364,6 +364,28 @@ class FileClient(generic_client.GenericClient,
         bfid = string.strip(f.readline())
         f.close()
 
+        #Detect if the suplied bfid is a multiple copy of the primary bfid.
+        is_multiple_copy = False
+        if specified_bfid:
+            copy_dict = self.find_all_copies(bfid)
+            if e_errors.is_ok(copy_dict):
+                copy_bfids = copy_dict['copies']
+            else:
+                return copy_dict
+            try:
+                #Remove the primary bfid from the list.  file_copies()
+                # can miss copies of copies, so we don't want to use that.
+                del copy_bfids[copy_bfids.index(bfid)]
+            except IndexError:
+                pass
+            #If the bfid is in the list, we have a valid mupltiple copy.
+            if specified_bfid in copy_bfids:
+                bfid = specified_bfid
+                is_multiple_copy = True
+            else:
+                msg = "%s bfid is not a copy of %s" % (specified_bfid, path)
+                return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
+
         if len(bfid) < 12:
             msg = "can not find bfid for %s"%(path)
             return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
@@ -372,30 +394,28 @@ class FileClient(generic_client.GenericClient,
         if record['status'][0] != e_errors.OK:
             return record
 
-        bad_file = os.path.join(dir, ".bad."+file)
-	# rename it
-        try:
-            os.rename(a_path, bad_file)
-        except:
-            msg = "failed to rename %s to %s"%(a_path, bad_file)
-            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
+        if is_multiple_copy:
+            bad_file = path
+        else:
+            bad_file = os.path.join(dir, ".bad."+file)
+            # rename it
+            try:
+                os.rename(a_path, bad_file)
+            except:
+                msg = "failed to rename %s to %s"%(a_path, bad_file)
+                return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
-        # log it
+        # log it in the bad_file table of the database
         ticket = {'work': 'mark_bad', 'bfid': bfid, 'path': bad_file};
         ticket = self.send(ticket)
         if ticket['status'][0] == e_errors.OK:
             print bfid, a_path, "->", bad_file
         return ticket
 
-    def unmark_bad(self, path):
+    def unmark_bad(self, path, specified_bfid = None):
         # get the full absolute path
         a_path = os.path.abspath(path)
         dir, file = os.path.split(a_path)
-
-        # is it a "bad" file?
-	if file[:5] != ".bad.":
-            msg = "%s is not officially a bad file"%(path)
-            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
 	# does it exist?
         if not os.access(path, os.F_OK):
@@ -416,17 +436,46 @@ class FileClient(generic_client.GenericClient,
             msg = "can not find bfid for %s"%(path)
             return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
+        #Detect if the suplied bfid is a multiple copy of the primary bfid.
+        is_multiple_copy = False
+        if specified_bfid:
+            copy_dict = self.find_all_copies(bfid)
+            if e_errors.is_ok(copy_dict):
+                copy_bfids = copy_dict['copies']
+            else:
+                return copy_dict
+            try:
+                #Remove the primary bfid from the list.  file_copies()
+                # can miss copies of copies, so we don't want to use that.
+                del copy_bfids[copy_bfids.index(bfid)]
+            except IndexError:
+                pass
+            if specified_bfid in copy_bfids:
+                bfid = specified_bfid
+                is_multiple_copy = True
+            else:
+                msg = "%s bfid is not a copy of %s" % (specified_bfid, path)
+                return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
+
+        # is it a "bad" file?
+	if file[:5] != ".bad." and not is_multiple_copy:
+            msg = "%s is not officially a bad file"%(path)
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
+
         record = self.bfid_info(bfid)
         if record['status'][0] != e_errors.OK:
             return record
 
-        good_file = os.path.join(dir, file[5:])
-	# rename it
-        try:
-            os.rename(a_path, good_file)
-        except:
-            msg = "failed to rename %s to %s"%(a_path, good_file)
-            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
+        if is_multiple_copy:
+            good_file = path
+        else:
+            good_file = os.path.join(dir, file[5:])
+            # rename it
+            try:
+                os.rename(a_path, good_file)
+            except:
+                msg = "failed to rename %s to %s"%(a_path, good_file)
+                return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # log it
         ticket = {'work': 'unmark_bad', 'bfid': bfid}
@@ -755,32 +804,25 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"volume_name",
                      option.USER_LEVEL:option.USER},
-        option.MARK_BAD:{option.HELP_STRING:"mark the file bad",
-                     option.VALUE_TYPE:option.STRING,
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_LABEL:"path",
-                     option.USER_LEVEL:option.ADMIN},
-        option.UNMARK_BAD:{option.HELP_STRING:"unmark a bad file",
-                     option.VALUE_TYPE:option.STRING,
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_LABEL:"path",
-                     option.USER_LEVEL:option.ADMIN},
-        option.SHOW_BAD:{option.HELP_STRING:"list all bad files",
-                     option.DEFAULT_VALUE:option.DEFAULT,
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.USER_LEVEL:option.USER},
-        option.SHOW_STATE:{option.HELP_STRING:
-                       "show internal state of the server",
-                       option.DEFAULT_VALUE:option.DEFAULT,
-                       option.DEFAULT_TYPE:option.INTEGER,
-                       option.VALUE_USAGE:option.IGNORED,
-                       option.USER_LEVEL:option.ADMIN},
         option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.USER},
+        option.MARK_BAD:{option.HELP_STRING:"mark the file bad",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_LABEL:"path",
+                         option.USER_LEVEL:option.ADMIN,
+                         option.EXTRA_VALUES:[{
+                              option.VALUE_NAME:"bfid",
+                              option.VALUE_LABEL:"bfid",
+                              option.VALUE_TYPE:option.STRING,
+                              option.VALUE_USAGE:option.OPTIONAL,
+                              option.DEFAULT_TYPE:None,
+                              option.DEFAULT_VALUE:None,
+                              }]
+                         },
         option.MODIFY:{option.HELP_STRING:
                     "modify file record (dangerous!)",
                     option.VALUE_TYPE:option.STRING,
@@ -811,6 +853,30 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.USER_LEVEL:option.ADMIN},
+        option.SHOW_BAD:{option.HELP_STRING:"list all bad files",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER},
+        option.SHOW_STATE:{option.HELP_STRING:
+                       "show internal state of the server",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.UNMARK_BAD:{option.HELP_STRING:"unmark a bad file",
+                           option.VALUE_TYPE:option.STRING,
+                           option.VALUE_USAGE:option.REQUIRED,
+                           option.VALUE_LABEL:"path",
+                           option.USER_LEVEL:option.ADMIN,
+                           option.EXTRA_VALUES:[{
+                              option.VALUE_NAME:"bfid",
+                              option.VALUE_LABEL:"bfid",
+                              option.VALUE_TYPE:option.STRING,
+                              option.VALUE_USAGE:option.OPTIONAL,
+                              option.DEFAULT_TYPE:None,
+                              option.DEFAULT_VALUE:None,
+                              }]},
         }
 
 
@@ -871,10 +937,10 @@ def do_work(intf):
                     record['pnfs_name0'])
 
     elif intf.mark_bad:
-        ticket = fcc.mark_bad(intf.mark_bad)
+        ticket = fcc.mark_bad(intf.mark_bad, intf.bfid)
 
     elif intf.unmark_bad:
-        ticket = fcc.unmark_bad(intf.unmark_bad)
+        ticket = fcc.unmark_bad(intf.unmark_bad, intf.bfid)
 
     elif intf.show_bad:
         ticket = ifc.show_bad()
