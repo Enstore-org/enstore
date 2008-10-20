@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 
 ###############################################################################
@@ -188,8 +189,18 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                 # row[0] == media_type
                 # row[1] == total blank tapes
                 # row[2] == total written tapes
-                self.tape_totals[row[0]] = (row[1], row[2])
 
+                #Sum these values across all known enstore systems.
+                try:
+                    blank = row[1] + self.tape_totals[row[0]][0]
+                except KeyError:
+                    blank = row[1] #No previous value for this media_type.
+                try:
+                    written = row[2] + self.tape_totals[row[0]][1]
+                except KeyError:
+                    written = row[2] #No previous value for this media_type.
+
+                self.tape_totals[row[0]] = (blank, written)
 
             ###
             ### Get the bytes written for recent write transfers from the
