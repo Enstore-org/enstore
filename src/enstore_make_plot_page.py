@@ -331,7 +331,7 @@ def make_plot(full_subdir_path, url_gif_dir, plot_name, links_l = None):
 
     #Override use of system_tag to contain the name of the plot page.
     system_tag = plot_name
-    html_of_plots = enstore_files.HTMLPlotFile(plot_file, system_tag, "../",
+    html_of_plots = enstore_files.HTMLPlotFile(plot_file, system_tag, url_gif_dir,
                                                url_gif_dir = url_gif_dir)
     html_of_plots.open()
     # get the list of stamps and jpg files
