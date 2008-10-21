@@ -6198,14 +6198,18 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # full request dictionary is_read() will through an EncpError that
     # becomes an 'UNCAUGHT EXCEPTION'.  One know case of a non-full
     # request dictionary is for a (RESUBMITTING, None) 'error'.
-    if e_errors.is_media(status) and is_read(request_dictionary):
+    #
+    #This only makes sense if the user specified the filename.  If they
+    # specified the bfid or volume specifically, then we should not do this.
+    if (not encp_intf.get_bfid and not encp_intf.volume) and \
+           e_errors.is_media(status) and is_read(request_dictionary):
         #Note: request_dictionary['bfid'] should always carry the
         # original bfid string while (request_dictionary['fc']['bfid']
         # should contain the bfid of the copy (original included) that
         # was just tried.
         
         fcc = get_fcc()
-        vcc = get_vcc()
+        #vcc = get_vcc()
 
         copy_list_dict = fcc.find_copies(request_dictionary['bfid'])
         if e_errors.is_ok(copy_list_dict):
@@ -6217,15 +6221,25 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             copy_index = random.randint(0, len(copy_list) - 1)
             next_bfid = copy_list[copy_index]
 
-            fc_info = fcc.bfid_info(next_bfid, 5, 20)
-            if e_errors.is_ok(fc_info):
-                vc_info = vcc.inquire_vol(fc_info['external_label'], 5, 20)
-                if e_errors.is_ok(vc_info):
-                    request_dictionary['fc'] = fc_info
-                    request_dictionary['vc'] = vc_info
-                    retry_non_retriable_media_error = True
-                    break
-
+            #Use the values from get_clerks_info() instead of fcc.bfid_info()
+            # and vcc.inquire_vol() directly.  The reason is that this
+            # function inserts the address field into the dictionary, while
+            # bfid_info() and inquire_vol() do not.
+            vc_ticket, fc_ticket = get_clerks_info(next_bfid, encp_intf)
+            if e_errors.is_ok(vc_ticket) and e_errors.is_ok(fc_ticket):
+                request_dictionary['fc'] = fc_ticket
+                request_dictionary['vc'] = vc_ticket
+                retry_non_retriable_media_error = True
+                message = "Trying alternate BFID %s after media error.  %s" \
+                          % (next_bfid, elapsed_string())
+                Trace.message(ERROR_LEVEL, message)
+                Trace.log(e_errors.WARNING, message)
+                break
+            #elif not e_errors.is_ok(vc_ticket):
+            #    print "Not using %s: %s" % (next_bfid, vc_ticket['status'])
+            #elif not e_errors.is_ok(fc_ticket):
+            #    print "Not using %s: %s" % (next_bfid, fc_ticket['status'])
+                
             del copy_list[copy_index]
         
     #If the error is not retriable, remove it from the request queue.  There
