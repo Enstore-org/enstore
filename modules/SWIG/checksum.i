@@ -12,14 +12,6 @@ unsigned long int adler32_o(unsigned long int crc, char *buf, int offset, int nb
 
 %}
 
-/* Since SWIG 1.1 doesn't recognize "long long" as a data type, we
- * need to play some trickery to get it to work with large files.*/
-#ifndef SWIG_VERSION
-%{
-#define off_t_2 long long
-%}
-#endif
-
 /* Include in the generated wrapper file */
 %include "typemaps.i"
 
@@ -75,9 +67,23 @@ typedef long long off_t_2;
  * care to differentiate between 1.3.x and 1.1.y, though an issue exists
  * for 1.3 versions with a patch level 10 or less. */
 
+/* Since SWIG 1.1 doesn't recognize "long long" as a data type, we
+ * need to play some trickery to get it to work with large files.*/
+%{
+#define double long long
+
+%}
+
 %typedef unsigned int zint;
 %typedef char * cptr;
 %typedef double off_t_2; /*Swig 1.1 doesn't have "long long" */
+
+/* Since SWIG 1.1 doesn't recognize "long long" as a data type, we
+ * need to play some trickery to get it to work with large files.*/
+%{
+#undef double
+
+%}
 
 %typemap(python,in) zint {
     if (PyLong_Check($source))
