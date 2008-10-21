@@ -6,12 +6,6 @@
 #include <stdint.h>
 #endif
 
-/* Since SWIG 1.1 doesn't recognize "long long" as a data type, we
- * need to play some trickery to get it to work with large files.*/
-#ifndef SWIG_VERSION
-#define off_t_2 long long
-#endif
-
 unsigned long int adler32_o(unsigned long int crc, char *buf, int offset, int nbytes){
 	return adler32(crc, buf+offset, nbytes);
 }
@@ -73,7 +67,7 @@ typedef long long off_t_2;
  * care to differentiate between 1.3.x and 1.1.y, though an issue exists
  * for 1.3 versions with a patch level 10 or less. */
 
-%typedef unsigned int zint;
+%typedef unsigned long int zint;
 %typedef char * cptr;
 %typedef double off_t_2; /*Swig 1.1 doesn't have "long long" */
 
@@ -94,14 +88,20 @@ typedef long long off_t_2;
         $target= PyString_AsString($source);
 }
 %typemap(python,in) off_t_2 {
+    long long temp;
     /* Since SWIG 1.1 doesn't recognize "long long" as a data type, we
      * need to play some trickery to get it to work with large files.
-     * There is a C #define macro that sets off_t_2 to be long long. */
+     * Pretend it is a double, then pack the double with the bits from
+     * the long long we really want.  When the double, which is really
+     * the long long, is passed to convert_0_adler32_to_1_adler32 we get
+     * the desired effect. */
     if (PyLong_Check($source)) {
-        $target = (long long) PyLong_AsLongLong($source);
+	temp = (long long) PyLong_AsLongLong($source);
+        memcpy(&($target), &temp, sizeof(long long));
     }	
     else if (PyInt_Check($source)) {
-        $target = (long long) PyInt_AsLong($source);
+	temp = (long long) PyInt_AsLong($source);
+        memcpy(&($target), &temp, sizeof(long long));
     }
     else {
 	PyErr_SetString(PyExc_TypeError, "expected integral type");

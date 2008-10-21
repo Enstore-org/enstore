@@ -144,8 +144,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
             if string.find(key, lmname) != -1:
                self.name = key
                lst = self.getwork()
-               if lst['status'][0] != e_errors.OK:
-                   break
                pw_list = lst["pending_work"]
                at_list = lst["at movers"]
                pend_writes = []
@@ -604,5 +602,5 @@ if __name__ == "__main__" :
 
     # fill in the interface
     intf = LibraryManagerClientInterface(user_mode=0)
-    print "AAAAAAAAAAA"
+
     do_work(intf)

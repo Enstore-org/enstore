@@ -282,9 +282,9 @@ class AtMovers:
                     time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
                     state = self.at_movers[mover].get('state', 'unknown') 
                     if time_in_state > self.max_time_in_other:
-                        if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK']:
+                        if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND']:
                             add_to_list = 1
-                        if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK'):
+                        if time_in_state > self.max_time_in_active and state == 'ACTIVE':
                             add_to_list = 1
                         if add_to_list:
                             self.dont_update[mover] = state
@@ -912,12 +912,12 @@ class LibraryManagerMethods:
                 rq = rq_e
                 Trace.trace(22, 'PW3 %s'%(rq,))
             '''
-            rq_tmp = self.pending_work.get(rq.ticket["fc"]["external_label"])
-            Trace.trace(22, 'PW212 new rq %s'%(rq_tmp.ticket,)) 
-            if rq_tmp.ticket['encp']['adminpri'] >= 0: # got a HIPri request
+            rq = self.pending_work.get(rq.ticket["fc"]["external_label"])
+            Trace.trace(22, 'PW212 new rq %s'%(rq.ticket,)) 
+            if rq.ticket['encp']['adminpri'] >= 0: # got a HIPri request
                 self.continue_scan = 1
-                key_to_check = self.fair_share(rq_tmp)
-                return rq_tmp,key_to_check 
+                key_to_check = self.fair_share(rq)
+                return rq,key_to_check 
         ########################################################
         ### from old idle_mover
         # check if the volume for this work had failed on this mover
