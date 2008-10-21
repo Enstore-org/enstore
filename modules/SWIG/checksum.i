@@ -6,17 +6,19 @@
 #include <stdint.h>
 #endif
 
-/* Since SWIG 1.1 doesn't recognize "long long" as a data type, we
- * need to play some trickery to get it to work with large files.*/
-#ifndef SWIG_VERSION
-#define off_t_2 long long
-#endif
-
 unsigned long int adler32_o(unsigned long int crc, char *buf, int offset, int nbytes){
 	return adler32(crc, buf+offset, nbytes);
 }
 
 %}
+
+/* Since SWIG 1.1 doesn't recognize "long long" as a data type, we
+ * need to play some trickery to get it to work with large files.*/
+#ifndef SWIG_VERSION
+%{
+#define off_t_2 long long
+%}
+#endif
 
 /* Include in the generated wrapper file */
 %include "typemaps.i"
