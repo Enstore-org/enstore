@@ -4444,9 +4444,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # bind to device only if data interface card and host interface card are different
                     # otherwise the connection on the same host is refused
                     if data_interface and (data_interface != host_interface):
-                        status=socket_ext.bindtodev(self.client_socket.fileno(),interface)
+                        status=socket_ext.bindtodev(self.client_socket.fileno(),data_interface)
                         if status:
-                            Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
+                            Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(data_interface,os.strerror(status)))
 
                 if (not self.method) or (self.method and self.method != 'read_next'):
                     # close sockets only for general case
