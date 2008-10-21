@@ -4434,8 +4434,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
                 if data_ip:
-                    interface=hostaddr.interface_name(data_ip)
-                    if interface:
+                    # binding to socket to device if data_ip is the same as host ip
+                    # results in connection reset if file is trasferred on the same machine
+                    # where mover runs.
+                    # this is why we bind to device only if network interfaces are different
+                    data_interface=hostaddr.interface_name(data_ip)
+                    host_interface=hostaddr.interface_name(host)
+                    
+                    # bind to device only if data interface card and host interface card are different
+                    # otherwise the connection on the same host is refused
+                    if data_interface and (data_interface != host_interface):
                         status=socket_ext.bindtodev(self.client_socket.fileno(),interface)
                         if status:
                             Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
@@ -5884,7 +5892,7 @@ class DiskMover(Mover):
 
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
-                
+    '''
     def write_client(self):
         Trace.trace(8, "write_client starting, bytes_to_write=%s" % (self.bytes_to_write,))
         if not self.buffer.client_crc_on:
@@ -5991,7 +5999,7 @@ class DiskMover(Mover):
                 
             self.transfer_completed()
 
-        
+    '''    
     def create_volume_name(self, ip_map, volume_family):
         return string.join((ip_map,volume_family,'%s'%(long(time.time()*1000),)),':')
 
