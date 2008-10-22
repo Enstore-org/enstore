@@ -188,6 +188,7 @@ class DispatchingWorker(udp_server.UDPServer):
                     del self.interval_funcs[func]
                 else: #record last call time
                     self.interval_funcs[func][1] =  now
+                Trace.trace(6, "do_one_request: calling %s"%(func,))
                 func()
 
         if request is None: #Invalid request sent in
@@ -289,6 +290,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
             #handle pending I/O operations first
             for fd in r + w:
+                Trace.trace(5, 'dw: get_request cb %s'%(fd,))
                 if self.callback.has_key(fd) and self.callback[fd]:
                     self.callback[fd](fd)
 
@@ -302,6 +304,7 @@ class DispatchingWorker(udp_server.UDPServer):
                     #for old usage in media_changer
 
                     (request, addr) = self.read_fd(fd)
+                    Trace.trace(5, 'dw: get_request special')
                     return (request, addr)
                 
                 elif fd == self.server_socket:
@@ -414,6 +417,9 @@ class DispatchingWorker(udp_server.UDPServer):
         self.reply_to_caller(ticket)
 
 
+    def _do_print(self, ticket):
+        Trace.do_print(ticket['levels'])
+        
     def do_print(self, ticket):
         Trace.do_print(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
