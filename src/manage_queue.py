@@ -134,6 +134,8 @@ class SortedList:
 
     # update the sorted request list
     def update(self, now=None):
+        MAX_RESCAN=100
+        rescan_buf_counter=0
         if not self.update_flag: return  # no need to update by_location list
         time_now = time.time()
         rescan_list = []
@@ -147,7 +149,12 @@ class SortedList:
                 if record.agetime > 0:
                     old_pri,new_pri = record.update_pri()
                     if new_pri != old_pri:
-                        rescan_list.append(record)
+                        # do not allow more than MAX_RESCAN entries get updated for better performance
+                        if rescan_buf_counter < MAX_RESCAN:  
+                            rescan_list.append(record)
+                            rescan_buf_counter = rescan_buf_counter + 1
+                        else:
+                            break
             Trace.trace(5, "update priority %s"%(len(rescan_list),))
             if rescan_list:
                 Trace.trace(5, "update priority delete")
@@ -206,7 +213,7 @@ class SortedList:
         if not self.sorted_list:
             self.start_index = self.current_index
             return None    # list is empty
-        self.update()
+        #self.update()
         Trace.trace(TR+23,"%s:::SortedList.get: pri %s, u_f %s"%
                     (self.my_name, pri, self.update_flag))
         # update flag is maeaningful only for write list
