@@ -2479,6 +2479,42 @@ def clients(intf):
 
 ##############################################################################
 
+def get_callback_addresses(encp_intf):
+
+    get_callback_addresses_start_time = time.time()
+
+    done_ticket = {'status': (e_errors.OK, None)}
+    
+    # get a port to talk on and listen for connections
+    callback_addr, listen_socket = get_callback_addr()
+    #If the socket does not exist, do not continue.
+    if listen_socket == None:
+        done_ticket = {'status':(e_errors.NET_ERROR,
+                                 "Unable to obtain control socket.")}
+        return done_ticket, listen_socket, callback_addr, None, None
+
+    #If put or get is there, then do this for the "get" or "put" request.
+    if hasattr(encp_intf, 'put') or hasattr(encp_intf, 'get'):
+        #Get an ip and port to listen for the mover address for routing purposes.
+        udp_callback_addr, udp_server = get_udp_callback_addr(encp_intf)
+        #If the socket does not exist, do not continue.
+        if udp_server.server_socket == None:
+            done_ticket = {'status':(e_errors.NET_ERROR,
+                                     "Unable to obtain udp socket.")}
+            return done_ticket, listen_socket, callback_addr, \
+                   udp_server, udp_callback_addr
+    else:
+        udp_server = None
+        udp_callback_addr = None
+
+    message = "Time to get callback addresses: %s sec." % \
+              (time.time() - get_callback_addresses_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
+    return done_ticket, listen_socket, callback_addr, \
+           udp_server, udp_callback_addr
+
 def get_callback_addr(ip = None):  #encp_intf, ip=None):
     # get a port to talk on and listen for connections
     try:
@@ -6898,6 +6934,8 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 #Verifies that various information in the tickets are correct, valid, spelled
 # correctly, etc.
 def verify_write_request_consistancy(request_list, e):
+
+    verify_write_request_consistancy_start_time = time.time()
     
     outputfile_dict = {}
 
@@ -6969,6 +7007,11 @@ def verify_write_request_consistancy(request_list, e):
         #Verify that the library and wrappers are valid.
         librarysize_check(request)
         wrappersize_check(request)
+
+    message = "Time to verify write request consistancy: %s sec." % \
+              (time.time() - verify_write_request_consistancy_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 
@@ -7278,6 +7321,8 @@ def set_pnfs_settings(ticket, intf_encp):
 
 def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
+    create_write_requests_start_time = time.time()
+    
     request_list = []
 
     #Initialize these, so that they can be set only once.
@@ -7401,6 +7446,11 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 ##We need to update the intent of this original to include
                 ## the number of copies we are going to make.
                 work_ticket['fc']['copies'] = use_copies
+
+    message = "Time to create write requests: %s sec." % \
+              (time.time() - create_write_requests_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     return request_list + request_copy_list
 
@@ -8106,26 +8156,10 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
 ############################################################################
 
 def prepare_write_to_hsm(tinfo, e):
-        # get a port to talk on and listen for connections
-    callback_addr, listen_socket = get_callback_addr()
-    #If the socket does not exist, do not continue.
-    if listen_socket == None:
-        done_ticket = {'status':(e_errors.NET_ERROR,
-                                 "Unable to obtain control socket.")}
-        return done_ticket, listen_socket, None, None
-
-    #If put is there, then do this for the "put" request.
-    if hasattr(e, 'put'):
-        #Get an ip and port to listen for the mover address for routing purposes.
-        udp_callback_addr, udp_server = get_udp_callback_addr(e)
-        #If the socket does not exist, do not continue.
-        if udp_server.server_socket == None:
-            done_ticket = {'status':(e_errors.NET_ERROR,
-                                     "Unable to obtain udp socket.")}
-            return done_ticket, listen_socket, udp_server, None
-    else:
-        udp_server = None
-        udp_callback_addr = None
+    done_ticket, listen_socket, callback_addr, \
+                 udp_server, udp_callback_addr = get_callback_addresses(e)
+    if not e_errors.is_ok(done_ticket):
+        return done_ticket, listen_socket, udp_server, None
     
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
@@ -8559,6 +8593,8 @@ def sort_cookie(r1, r2):
 # correctly, etc.
 def verify_read_request_consistancy(requests_per_vol, e):
 
+    verify_read_request_consistancy_start_time = time.time()
+
     bfid_brand = None
     sum_size = 0L
     sum_files = 0L
@@ -8773,6 +8809,11 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     except IOError:
                         pass
 
+    message = "Time to verify read request consistancy: %s sec." % \
+              (time.time() - verify_read_request_consistancy_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
 #######################################################################
 
 def get_file_clerk_info(bfid_or_ticket, encp_intf=None):
@@ -8928,6 +8969,8 @@ def get_clerks_info(bfid, e):
 
 
 def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
+
+    create_read_requests_start_time = time.time()
 
     nfiles = 0
     requests_per_vol = {}
@@ -9165,6 +9208,11 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         # to get there.
         sys.stdout.flush()
         sys.stderr.flush()
+
+    message = "Time to create read requests: %s sec." % \
+              (time.time() - create_read_requests_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     return requests_per_vol
 
@@ -9948,29 +9996,12 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
 #######################################################################
 
 def prepare_read_from_hsm(tinfo, e):
-    # get a port to talk on and listen for connections
-    callback_addr, listen_socket = get_callback_addr()
-    #If the socket does not exist, do not continue.
-    if listen_socket == None:
-        done_ticket = {'status':(e_errors.NET_ERROR,
-                                 "Unable to obtain control socket.")}
-        return done_ticket, listen_socket, None, None
-
-    #If get is there, then do this for the "get" request.
-    if hasattr(e, 'get'):
-        #Get an ip and port to listen for the mover address for routing purposes.
-        udp_callback_addr, udp_server = get_udp_callback_addr(e)
-        #If the socket does not exist, do not continue.
-        if udp_server.server_socket == None:
-            done_ticket = {'status':(e_errors.NET_ERROR,
-                                     "Unable to obtain udp socket.")}
-            return done_ticket, listen_socket, udp_server, None
-    else:
-        udp_server = None
-        udp_callback_addr = None
+    done_ticket, listen_socket, callback_addr, \
+                 udp_server, udp_callback_addr = get_callback_addresses(e)
+    if not e_errors.is_ok(done_ticket):
+        return done_ticket, listen_socket, udp_server, None
     
     #Create all of the request dictionaries.
-    Trace.log(e_errors.INFO, "Before create_read_requests.")
     try:
         requests_per_vol = create_read_requests(callback_addr,
                                                 udp_callback_addr, tinfo, e)
@@ -9993,7 +10024,6 @@ def prepare_read_from_hsm(tinfo, e):
 
         return e_ticket, listen_socket, udp_server, {}
 
-    Trace.log(e_errors.INFO, "After create_read_requests.")
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
         done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer.")}
@@ -11103,6 +11133,8 @@ def log_encp_start(tinfo, intf):
     global err_msg #hack for migration to report any error.
     err_msg = ""
 
+    log_encp_start_time = time.time()
+
     #If verbosity is turned on get the user name(s).
     try:
         user_name = pwd.getpwuid(os.geteuid())[0]
@@ -11254,6 +11286,10 @@ def log_encp_start(tinfo, intf):
         Trace.log(e_errors.INFO, "%s  %s, %s  %s  %s" %
                   (version_line, os_line, id_line, cwd_line, command_line))
 
+    message = "Time to log encp start: %s sec." % \
+              (time.time() - log_encp_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
 
 def final_say(intf, done_ticket):
