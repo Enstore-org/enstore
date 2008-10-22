@@ -72,11 +72,13 @@ DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
 del DuplicateInterface.migrate_options[option.RESTORE]
 
 # This is to change the behavior of migrate.swap_metadata.
-# duplicate_metadata(bfid1, src, bfid2, dst) -- duplicate metadata for src and dst
+# duplicate_metadata(bfid1, src, bfid2, dst, db) -- duplicate metadata for src and dst
 #
 # * return None if succeeds, otherwise, return error message
 # * to avoid deeply nested "if ... else", it takes early error return
-def duplicate_metadata(bfid1, src, bfid2, dst):
+def duplicate_metadata(bfid1, src, bfid2, dst, db):
+	MY_TASK = "DUPLICATE_METADATA"
+
 	# get its own file clerk client
 	config_host = enstore_functions2.default_host()
 	config_port = enstore_functions2.default_port()
@@ -103,11 +105,17 @@ def duplicate_metadata(bfid1, src, bfid2, dst):
 
 	# cross check
 	if f1['size'] != f2['size']:
-		return "%s and %s have different size"%(bfid1, bfid2)
-	if f1['complete_crc'] != f2['complete_crc']:
-		return "%s and %s have different crc"%(bfid1, bfid2)
-	if f1['sanity_cookie'] != f2['sanity_cookie']:
-		return "%s and %s have different sanity_cookie"%(bfid1, bfid2)
+		err_msg = "%s and %s have different size"%(bfid1, bfid2)
+	elif f1['complete_crc'] != f2['complete_crc']:
+		err_msg = "%s and %s have different crc"%(bfid1, bfid2)
+	elif f1['sanity_cookie'] != f2['sanity_cookie']:
+		err_msg = "%s and %s have different sanity_cookie"%(bfid1, bfid2)
+	if err_msg:
+		if f2['deleted'] == "yes" and not migrate.is_swapped(bfid1, db):
+			migrate.log(MY_TASK,
+			    "undoing duplication of %s to %s do to error"         % (bfid1, bfid2))
+			migrate.undo_log(bfid1, bfid2, db)
+		return err_msg
 
 	# check if p1 is writable
 	if not os.access(src, os.W_OK):
