@@ -804,7 +804,7 @@ def get_migration_type(src_vol, dst_vol, db):
 	return None
 
 #Look for the media type that the file would be written to.
-def search_media_type(original_path):
+def search_media_type(original_path, db):
 	##
 	## Determine the destination media_type.
 	##
@@ -1535,7 +1535,7 @@ def compare_metadata(p, f, pnfsid = None):
 #
 # * return None if succeeds, otherwise, return error message
 # * to avoid deeply nested "if ... else", it takes early error return
-def swap_metadata(bfid1, src, bfid2, dst):
+def swap_metadata(bfid1, src, bfid2, dst, db):
 	MY_TASK = "SWAPPING_METADATA"
 	
 	# get its own file clerk client
@@ -1546,7 +1546,7 @@ def swap_metadata(bfid1, src, bfid2, dst):
 	fcc = file_clerk_client.FileClient(csc)
 
 	#get a database connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+	#db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 	
 	# get all metadata
 	p1 = pnfs.File(src)
@@ -1904,7 +1904,7 @@ def migrating(intf):
 		    (src_bfid, src_path, dst_bfid, mig_path))
 		if not is_swapped(src_bfid, db):
 			res = swap_metadata(src_bfid, src_path,
-					    dst_bfid, mig_path)
+					    dst_bfid, mig_path, db)
 
 			if not res:
 				ok_log(MY_TASK2,
@@ -2660,7 +2660,7 @@ def migrate_volume(vol, intf):
 				media_types.append(intf.library)
 		else:
 			original_path = row[2]
-			media_type = search_media_type(original_path)
+			media_type = search_media_type(original_path, db)
 			if media_type and media_type not in media_types:
 				media_types.append(media_type)
 
@@ -3115,10 +3115,13 @@ def main(intf):
 						  target)
 					return 1
 
+		rtn = 0
 		if bfid_list:
-			return migrate(bfid_list, intf)
+			rtn = rtn + migrate(bfid_list, intf)
 		for volume in volume_list:
-			return migrate_volume(volume, intf)
+			rtn = rtn +  migrate_volume(volume, intf)
+
+		return rtn
 
 	return 0
 
