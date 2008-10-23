@@ -2217,17 +2217,14 @@ def final_scan_volume(vol, intf):
 			continue
 
                 #Make sure we have the admin path.
-                fs_path = pnfs.get_enstore_fs_path(likely_path)
-                normal_path = pnfs.get_enstore_fs_path(likely_path)
+		likely_path = find_pnfs_file.find_pnfsid_path(
+			pnfs_id, dst_bfid, likely_path = likely_path,
+			path_type = find_pnfs_file.FS)
 
                 ######################################################
 		# make sure the volume is the same
-                for possible_path in (fs_path, normal_path):
-			pf = pnfs.File(possible_path)
-			pf_volume = getattr(pf, "volume", None)
-			if pf_volume != None:
-				likely_path = possible_path
-				break
+		pf = pnfs.File(likely_path)
+		pf_volume = getattr(pf, "volume", None)
 		if pf_volume == None or pf_volume != vol:
 			error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf_volume, vol))
 			local_error = local_error + 1
