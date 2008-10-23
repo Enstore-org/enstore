@@ -374,15 +374,27 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
         use_name = pnfs_path
         use_mp = pnfsid_mp
     elif db_num == 0 and enstoredb_path.find("/pnfs/fs/usr") == -1:
-        use_name = pnfs.get_enstore_fs_path(enstoredb_path)
+        try:
+            use_name = pnfs.get_enstore_fs_path(enstoredb_path)
+        except (OSError):
+            #We can get here when the file has been moved/renamed.
+            use_name = enstoredb_path
         use_mp = pnfsid_mp.replace("/pnfs/fs", "/pnfs/fs/usr/", 1)
     elif mp.find("/pnfs/fs/usr/") >= 0 and \
              enstoredb_path.find("/pnfs/fs/usr") == -1:
-        use_name = pnfs.get_enstore_fs_path(enstoredb_path)
+        try:
+            use_name = pnfs.get_enstore_fs_path(enstoredb_path)
+        except (OSError):
+            #We can get here when the file has been moved/renamed.
+            use_name = enstoredb_path
         use_mp = pnfsid_mp
     elif mp.find("/pnfs/fs/usr/") == -1 and \
              enstoredb_path.find("/pnfs/fs/usr") >= 0:
-        use_name = pnfs.get_enstore_pnfs_path(enstoredb_path)
+        try:
+            use_name = pnfs.get_enstore_pnfs_path(enstoredb_path)
+        except (OSError):
+            #We can get here when the file has been moved/renamed.
+            use_name = enstoredb_path
         use_mp = pnfsid_mp
     else:
         use_name = enstoredb_path
