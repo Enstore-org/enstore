@@ -8210,7 +8210,10 @@ def prepare_write_to_hsm(tinfo, e):
 
     #This will halt the program if everything isn't consistant.
     try:
-        verify_write_request_consistancy(request_list, e)
+        #Skip this test for volume transfers and migration/duplication
+        # transfers for performane reasons.
+        if not e.volume and not e.migration_or_duplication:
+            verify_write_request_consistancy(request_list, e)
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket, listen_socket, udp_server, request_list
