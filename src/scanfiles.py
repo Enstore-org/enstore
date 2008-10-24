@@ -1495,7 +1495,7 @@ def check_file(f, file_info):
     try:
         if not is_multiple_copy:
             if bfid != layer4['bfid']:
-                err.append('bfidsdf(%s, %s)' % (bfid, layer4['bfid']))
+                err.append('bfid(%s, %s)' % (bfid, layer4['bfid']))
     except (TypeError, ValueError, IndexError, AttributeError, KeyError):
     	age = time.time() - f_stats[stat.ST_MTIME]
         if age < ONE_DAY:
