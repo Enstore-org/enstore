@@ -243,7 +243,7 @@ if [ "${1:-x}" = "x" ]; then
   if [ $complain -eq 1 ]; then
     # note that these warnings go to stderr
     echo "WARNING: based on your node, `uname -n`, ENSTORE_CONFIG_HOST has been set to $ENSTORE_CONFIG_HOST" 1>&2
-    echo "WARNING: If this is not correct, either set ENSTORE_CONFIG_HOST by hand or use a qualifier in your setup command!" 1>&2
+    echo "WARNING: If this is not correct; either reset ENSTORE_CONFIG_HOST by hand, set ENSTORE_USER_DEFINED_CONFIG_HOST by hand before running setup or use a qualifier in your setup command!" 1>&2
   fi
   # need to feed this back up to the en*.table file on stdout to set it in the users's environment
   echo $ENSTORE_CONFIG_HOST
@@ -251,7 +251,7 @@ elif [ "${1:-x}" = "file" ]; then
   if [ $complain -eq 1 ]; then
     # note that these warnings go to stderr
     echo "WARNING: based on your node, `uname -n`, ENSTORE_CONFIG_FILE has been set to $ENSTORE_CONFIG_FILE" 1>&2
-    echo "WARNING: If this is not correct, either set ENSTORE_CONFIG_FILE by hand or use a qualifier in your setup command!" 1>&2
+    echo "WARNING: If this is not correct; either reset ENSTORE_CONFIG_FILE by hand, set ENSTORE_USER_DEFINED_CONFIG_FILE by hand before running setup or use a qualifier in your setup command!" 1>&2
   fi
   # need to feed this back up to the en*.table file on stdout to set it in the users's environment
   echo $ENSTORE_CONFIG_FILE
@@ -259,7 +259,7 @@ elif [ "${1:-x}" = "mail" ]; then
   if [ $complain -eq 1 ]; then
     # note that these warnings go to stderr
     echo "WARNING: based on your node, `uname -n`, ENSTORE_MAIL has been set to $ENSTORE_MAIL" 1>&2
-    echo "WARNING: If this is not correct, either set ENSTORE_MAIL by hand or use a qualifier in your setup command!" 1>&2
+    echo "WARNING: If this is not correct, either reset ENSTORE_MAIL by hand, set ENSTORE_USER_DEFINED_MAIL by had before running setup or use a qualifier in your setup command!" 1>&2
   fi
   # need to feed this back up to the en*.table file on stdout to set it in the users's environment
   echo $ENSTORE_MAIL

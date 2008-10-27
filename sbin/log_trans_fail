@@ -53,21 +53,57 @@ rm -f $temp_vol_fname
 rm -f $temp_drv_fname
 rm -f $temp_fname
 
-#Put the history at the beginning of the list.
-cp -p $LOGS/log_trans_fail_vol $temp_vol_fname 2> /dev/null
-cp -p $LOGS/log_trans_fail_drv $temp_drv_fname 2> /dev/null
+keep_recent_cached_info()
+{
+  cached_file="$1"
+  temp_file="$2"  
 
-#If these don't exist yet, create them.
+  cat "$cached_file" | 
+  while read line; do
+     time=`echo $line | cut -f 4 -d " "`
+     year=`echo "$time" | cut -f 1 -d "-"`
+     month=`echo "$time" | cut -f 2 -d "-"`
+     
+     lastYear=`expr $thisYear - 1`
+     lastMonth=`expr $thisMonth - 1`
+     if [ $lastMonth -eq 0 ]; then lastMonth=12; fi
+
+     #Skip really old errors.
+     if [ $year -lt $lastYear ]; then
+        continue
+     elif [ $year -eq $lastYear -a $thisMonth -ge 2 ]; then
+	continue
+     elif [ $year -eq $thisYear -a $thisMonth -gt $month ]; then
+	continue
+     fi
+     echo $line >> "$temp_file"
+  done
+}
+
+#Loop over all the cached items.
+# First for the volume sorted information.
+keep_recent_cached_info "$LOGS/log_trans_fail_vol" "$temp_vol_fname"
+# Second for the drive storted information.
+keep_recent_cached_info "$LOGS/log_trans_fail_drv" "$temp_drv_fname"
+
+#Create the temporary files or update the times as necessary...
+# ...for volume info...
 remake_cached_info=0
-if [ ! -f $temp_vol_fname ]; then
+if [ ! -f $LOGS/log_trans_fail_vol ]; then
   touch $temp_vol_fname
   remake_cached_info=1
+else
+  touch -r $LOGS/log_trans_fail_vol $temp_vol_fname
 fi
-if [ ! -f $temp_drv_fname ]; then
+# ...and for or drive info.
+if [ ! $LOGS/log_trans_fail_drv ]; then
   touch $temp_drv_fname
   remake_cached_info=1
+else
+  touch -r $LOGS/log_trans_fail_drv $temp_drv_fname
 fi
 
+#Loop over all the log files.
 logfiles=`ls -1 LOG-*`
 for log in $logfiles; do
 
