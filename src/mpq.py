@@ -13,15 +13,21 @@
 # __cmp__ method.  We want to be able to put the *same* object
 #into multiple queues, without changing the object's class definition
 #to overload __cmp__
+import sys
+import Trace
 
 def _insort(a, x, compare, lo=0, hi=None):
     if hi is None:
         hi = len(a)
     while lo<hi:
         mid = (lo+hi)/2
-        if compare(x, a[mid])<0:
-            hi = mid
-        else: lo = mid+1
+        try:
+            if compare(x, a[mid])<0:
+                hi = mid
+            else: lo = mid+1
+        except IndexError:
+            Trace.trace(5, "(Trace)mpq: insort index error %s %s %s"%(lo, mid, hi))
+            return
     a.insert(lo, x)
 
 
@@ -50,7 +56,11 @@ class MPQ:
     def bisect(self, item):
         return _bisect(self.items, item, self.comparator)
     def remove(self, item):
-        self.items.remove(item)
+        try:
+            self.items.remove(item)
+        except ValueError:
+            exc, msg = sys.exc_info()[:2]
+            print "remove: error", exc,msg
 
     def __getitem__(self, index):
         return self.items[index]
