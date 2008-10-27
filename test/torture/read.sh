@@ -4,22 +4,19 @@
 #  $Id$
 #
 #############################################################
-pnfs_path="${1:-/pnfs/cdfen/test/sl8500/test/}";shift;
-n_cycles="${1:-300}"
+pnfs_path="${1:-/pnfs/cdfen/test/sl8500/test/}"
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 mail="${ENSTORE_MAIL:-litvinse@fnal.gov}"
 suffix="1 2 3 4"
 RANDOM=$$$(date +"%s")
 rm -f tmp_$$.data
-echo $n_cycles
 
 i=0
-while [ $i -le $n_cycles ] 
+while [ $i -le 300 ] 
 do
   for s in $suffix 
   do 
-    #files=`find ${pnfs_path}/$s/$node -name '*.data'`
-    files=`find ${pnfs_path}/$s -name '*.data'`
+    files=`find ${pnfs_path}/${node}/$s -name '*.data'`
     j=0
     lfiles=()
     for file in ${files}
@@ -51,9 +48,8 @@ do
     fi
   done
 let i=i+1
-echo $i
 done 
-echo "sending mail"
-echo "READ TEST COMPLETED ON NODE ${node}" | /bin/mail -s "READ TEST COMPLETED ON NODE ${node}: " $mail
+
+/bin/mail -s "READ TEST COMPLETED ON NODE ${node}: " $mail
 exit 0
 

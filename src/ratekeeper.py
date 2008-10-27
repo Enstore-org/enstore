@@ -261,8 +261,10 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         config_dict = self.csc.dump_and_save()
         for conf_key in config_dict.keys():
             if conf_key[-6:] == ".mover":
-                if config_dict[conf_key].has_key("mc_device"):
-                    valid_drives.append(config_dict[conf_key]['mc_device'])
+                if config_dict[conf_key]['media_changer'] == mcc.server_name:
+                    if config_dict[conf_key].has_key("mc_device"):
+                        valid_drives.append(config_dict[conf_key]['mc_device'])
+                    
 
         for drive in drives_list:
             if drive['name'] not in valid_drives:
@@ -278,7 +280,6 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 total_count[drive['type']] = 1
                 #If the total did not have this type yet, then just the
                 #busy counts cant have it yet.
-                #busy_count[drive['type']] = 0
                 
             if drive['volume']:
                 v_info=self.vcc.inquire_vol(drive['volume'])
@@ -296,11 +297,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                     continue
                 try:
                     busy_count[(drive['type'], sg)]  =   busy_count[(drive['type'], sg)] + 1
-#                    busy_count[drive['type']] = \
-#                                              busy_count[drive['type']] + 1
                 except:
                      busy_count[(drive['type'], sg)]  =   1
-#                    busy_count[drive['type']] = 1
 
         try:
             acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
