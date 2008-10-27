@@ -2217,9 +2217,23 @@ def final_scan_volume(vol, intf):
 			continue
 
                 #Make sure we have the admin path.
-		likely_path = find_pnfs_file.find_pnfsid_path(
-			pnfs_id, dst_bfid, likely_path = likely_path,
-			path_type = find_pnfs_file.FS)
+                try:
+			likely_path = find_pnfs_file.find_pnfsid_path(
+				pnfs_id, dst_bfid, likely_path = likely_path,
+				path_type = find_pnfs_file.FS)
+		except (OSError, IOError), msg:
+			if msg.errno in [errno.ENOENT]:
+				bfid_info = fcc.bfid_info(dst_bfid)
+				if e_errors.is_ok(bfid_info) and \
+				   bfid_info['deleted'] == 'yes':
+					log(MY_TASK,
+					    "Since migration file was deleted.")
+					continue
+
+			local_error = local_error + 1	
+			error_log(MY_TASK, "Unable to determine path:",
+				  dst_bfid, str(msg))
+			continue
 
                 ######################################################
 		# make sure the volume is the same
