@@ -1150,7 +1150,10 @@ def inventory(output_dir, cache_dir):
 
         # is this a migrated volume?
         if (vv['system_inhibit'][1] == 'migrated' \
-            or vv['system_inhibit'][1] == 'cloned') and active == 0:
+            or vv['system_inhibit'][1] == 'cloned') \
+            and active == 0 \
+            and vv['media_type'] != "null" \
+            and vv['library'].find("shelf") == -1:
             mv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n" % (
                 vv['external_label'], vv['system_inhibit'][1],
                 active, vv['media_type'], vv['library'], vv['volume_family']))
@@ -1160,7 +1163,10 @@ def inventory(output_dir, cache_dir):
             migrated_vol = 0
 
         # is this a duplication volume?
-        if vv['system_inhibit'][1] == 'duplicated' and active == 0:
+        if vv['system_inhibit'][1] == 'duplicated' \
+               and active == 0 \
+               and vv['media_type'] != "null" \
+               and vv['library'].find("shelf") == -1:
             dv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n" % (
                 vv['external_label'], vv['system_inhibit'][1],
                 active, vv['media_type'], vv['library'], vv['volume_family']))
@@ -1170,32 +1176,29 @@ def inventory(output_dir, cache_dir):
             duplicated_vol = 0
 
         # can it be recycled?
+        recyclable_vol = 0
         if vv['system_inhibit'][1] == 'full' \
             and active == 0 \
             and vv['media_type'] != "null" \
-            and vv['library'].find("shelf") != -1:
+            and vv['library'].find("shelf") == -1:
             rc_file.write("%s\t%8s %6d %8s %10s\t%s\n" % (
                 vv['external_label'], vv['system_inhibit'][1],
                 vv['sum_mounts'], vv['media_type'], vv['library'],
                 vv['volume_family']))
             n_recyclable = n_recyclable + 1
             recyclable_vol = 1
-        else:
-            recyclable_vol = 0
             
         # can it be recycled?
         if vv['system_inhibit'][1] == 'readonly' \
                and active == 0 \
                and vv['media_type'] != "null" \
-               and vv['library'].find("shelf") != -1:
+               and vv['library'].find("shelf") == -1:
             rc_file2.append("%s\t%8s %6d %8s %10s\t%s\n" % (
                 vv['external_label'], vv['system_inhibit'][1],
                 vv['sum_mounts'], vv['media_type'], vv['library'],
                 vv['volume_family']))
             n_recyclable2 = n_recyclable2 + 1
             recyclable_vol = 1
-        else:
-            recyclable_vol = 0
 
         # is this a deleted volume?
         if vv['system_inhibit'][0] == "DELETED":
