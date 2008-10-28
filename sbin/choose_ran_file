@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# $Id$
+
 #
 # Script to return a random file name(s) for tapes in the current inventory.
 #  Optionaly, attempt to copy the files from tape using encp (see
@@ -29,6 +31,14 @@ if [ "$ENSTORE_CONFIG_HOST"x == x ]; then
    else
       setup enstore
    fi
+fi
+
+#Verify that all of the pnfs mount points in /etc/fstab are mounted before
+# continueing.  If /etc/fstab is missing a new mount point, this check
+# will still miss it.
+check_pnfs_mounts
+if [ $? -gt 0 ]; then
+   exit 9
 fi
 
 here=`pwd`
