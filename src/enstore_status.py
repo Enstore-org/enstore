@@ -168,9 +168,14 @@ class SgLine:
 	    self.pending = 1
 	else:
 	    self.pending = None
-	# get the storage group
-	dummy, sg = string.split(self.text, ":")
-	self.sg = string.strip(sg)
+        # get the storage group
+        self.sg = None
+        try:
+            dummy, sg = string.split(self.text, ":")
+            self.sg = string.strip(sg)
+        except ValueError:
+            # the text was not in the right format so ignore it
+            pass
 
 class EnStatus:
 

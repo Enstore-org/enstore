@@ -928,6 +928,7 @@ class SgDataFile(EnPlot):
 	offset = .3
 	# create the data files
 	for sg in sgs:
+            if sg is None : continue
 	    self.ptsfile = "%s%s"%(sg, PTS)
 	    self.ptsfiles.append([self.ptsfile, sg, index])
 	    self.open()
