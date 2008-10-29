@@ -2227,7 +2227,8 @@ def final_scan_volume(vol, intf):
 				if e_errors.is_ok(bfid_info) and \
 				   bfid_info['deleted'] == 'yes':
 					log(MY_TASK,
-					    "Since migration file was deleted.")
+					    "Since migration %s was deleted." \
+					    % (dst_bfid,))
 					continue
 
 			local_error = local_error + 1	
@@ -2573,8 +2574,10 @@ def is_migrated(src_vol, dst_vol, intf, db, copied = 1, swapped = 1, checked = 1
 
 	#Consider the deleted status the files.  All cases should ignore,
 	# unknown files from transfer failures.
-	if dst_vol:
-		deleted_files = " (file.deleted = 'n') "
+	if intf.with_deleted and dst_vol:
+		deleted_files = " (f2.deleted = 'n' or f2.deleted = 'y') "
+	elif not intf.with_deleted and dst_vol:
+		deleted_files = " (f2.deleted = 'n') "
 	elif intf.with_deleted and src_vol:
 		deleted_files = " (file.deleted = 'n' or file.deleted = 'y') "
 	elif not intf.with_deleted and src_vol:
