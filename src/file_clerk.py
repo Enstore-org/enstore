@@ -680,6 +680,46 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    # find any information if this file has been involved in migration
+    # or duplication
+    def __find_migrated(self, bfid):
+        src_list = []
+        dst_list = []
+        
+        q = "select src_bfid,dst_bfid from migration where (dst_bfid = '%s' or src_bfid = '%s') ;" % (bfid, bfid)
+        
+        res = self.db.query(q).getresult()
+        for row in res:
+            src_list.append(row[0])
+            dst_list.append(row[1])
+            
+        return src_list, dst_list
+
+    # report if this file has been migrated to or from another volume
+    def find_migrated(self, ticket):
+        try:
+            bfid = ticket["bfid"]
+        except KeyError, detail:
+            msg = "find_migrated_to(): key %s is missing" % \
+                  (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        try:
+            src_bfid, dst_bfid = self.__find_migrated(bfid)
+            ticket["src_bfid"] = src_bfid
+            ticket["dst_bfid"] = dst_bfid
+            ticket["status"] = (e_errors.OK, None)
+        except:
+            ticket["src_bfid"] = None
+            ticket["dst_bfid"] = None
+            ticket["status"] = (e_errors.INFO_SERVER_ERROR,
+                                    "inquiry failed")
+        self.reply_to_caller(ticket)
+        return
+
     #### DONE
     # __has_undeleted_file(self, vol) -- check if all files are deleted
 

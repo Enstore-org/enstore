@@ -222,6 +222,14 @@ class infoClient(generic_client.GenericClient):
 			return self.find_all_copies(res['original'])
 		return res
 
+        # get all pairs of bfids relating to migration/duplication of
+        # the specified bfid
+	def find_migrated(self, bfid):
+		r = self.send({"work" : "find_migrated", "bfid" : bfid})
+		if r.has_key('work'):
+			del r['work']
+		return r
+
 	def find_file_by_path(self, pnfs_name0):
 		r = self.send({"work" : "find_file_by_path", "pnfs_name0" : pnfs_name0})
 		if r.has_key('work'):

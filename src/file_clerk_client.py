@@ -163,6 +163,14 @@ class FileClient(generic_client.GenericClient,
             return self.find_all_copies(res['original'])
         return res
 
+    # get all pairs of bfids relating to migration/duplication of
+    # the specified bfid
+    def find_migrated(self, bfid):
+        r = self.send({"work" : "find_migrated", "bfid" : bfid})
+        if r.has_key('work'):
+            del r['work']
+        return r
+
     # def set_delete(self, ticket):
     #     #Is this really set_deleted or set_delete?
     #     ticket['work'] = "set_deleted"
