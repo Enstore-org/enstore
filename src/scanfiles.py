@@ -1326,6 +1326,12 @@ def check_bit_file(bfid, bfid_info = None):
     # [3] in reused pnfsid case, the bfids are not the same
     if file_record['deleted'] == 'yes':
         info = info + ["deleted"]
+    if is_migrated_copy and file_record['deleted'] == 'yes':
+        #The file is migrated.  The file was already deleted (and
+        # --with-deleted was used) or the newly migrated to copy has been
+        # scanned.  Either way there is no error.
+        errors_and_warnings(prefix, err, warn, info)
+        return
     if file_record['deleted'] in ["yes", "unknown"] and \
        not file_record['pnfsid']:
         #The file is deleted, no pnfs id was recorded.  Not an error,
