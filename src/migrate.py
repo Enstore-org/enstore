@@ -839,6 +839,27 @@ def search_media_type(original_path, db):
 
 	return None
 
+def get_file_info(MY_TASK, bfid, db):
+	# get file info
+	q = "select bfid, label, location_cookie, pnfs_id, \
+		storage_group, file_family, deleted, \
+		pnfs_path, size, crc as complete_crc, \
+		wrapper \
+		from file, volume \
+		where file.volume = volume.id and \
+			bfid = '%s';"%(bfid)
+	if debug:
+		log(MY_TASK, q)
+	res = db.query(q).dictresult()
+
+	# does it exist?
+	if not len(res):
+		error_log(MY_TASK, "%s does not exists"%(bfid))
+		return None
+
+	return res[0]
+
+
 ##########################################################################
 
 def mark_deleted(MY_TASK, src_bfid, fcc, db):
@@ -1369,23 +1390,10 @@ def copy_files(files, intf):
 	for bfid in files:
 		log(MY_TASK, "processing %s" % (bfid,))
 		# get file info
-		q = "select bfid, label, location_cookie, pnfs_id, \
-			storage_group, file_family, deleted, \
-			pnfs_path, size, crc as complete_crc, \
-			wrapper \
-                        from file, volume \
-			where file.volume = volume.id and \
-				bfid = '%s';"%(bfid)
-		if debug:
-			log(MY_TASK, q)
-		res = db.query(q).dictresult()
-
-		# does it exist?
-		if not len(res):
+		f = get_file_info(MY_TASK, bfid, db)
+		if not f:
 			error_log(MY_TASK, "%s does not exists"%(bfid))
 			continue
-
-		f = res[0]
 
 		if debug:
 			log(MY_TASK, `f`)
@@ -1419,6 +1427,9 @@ def copy_files(files, intf):
 				raise (sys.exc_info()[0], sys.exc_info()[1],
 				       sys.exc_info()[2])
 			except:
+				exc_type, exc_value, exc_tb = sys.exc_info()
+				del exc_tb #avoid resource leaks
+				
 				if use_bfid == bfid:
 					use_bfid_2 = dst_bfid
 				else:
@@ -1435,13 +1446,29 @@ def copy_files(files, intf):
 					raise (sys.exc_info()[0],
 					       sys.exc_info()[1],
 					       sys.exc_info()[2])
+				except OSError, msg:
+					if msg.errno == exc_value.errno \
+					   and msg.errno == errno.ENOENT \
+					   and is_it_copied \
+					   and is_it_swapped:
+						#The file has been migrated,
+						# however the file has been
+						# deleted; removing the entry
+						# from pnfs for both.  Prove
+						# this by checking the
+						# deleted status of the new
+						# copy.
+						f2 = get_file_info(MY_TASK,
+								 dst_bfid, db)
+						if f2 and f2['deleted'] == 'y':
+							src = "deleted-%s-%s"%(bfid, tmp) # for debug
+						else:
+							error_log(MY_TASK, "%s does not exists" % (f['dst_bfid'],))
+							continue
 				except:
 					pass
 
 				if not src:
-					exc_type, exc_value, exc_tb = sys.exc_info()
-					#Trace.handle_error(exc_type, exc_value, exc_tb)
-					del exc_tb #avoid resource leaks
 					error_log(MY_TASK, str(exc_type),
 						  str(exc_value),
 						  "%s %s %s %s is not a valid pnfs file" \
