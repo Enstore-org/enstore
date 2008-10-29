@@ -33,6 +33,7 @@ import charset
 import enstore_constants
 import checksum
 import find_pnfs_file
+import enstore_functions2
 
 #os.access = e_access   #Hack for effective ids instead of real ids.
 
@@ -1161,8 +1162,8 @@ def check_vol(vol):
     if not e_errors.is_ok(tape_ticket):
         errors_and_warnings(vol, ['can not get tape_list info'], [], [])
         return
-    volume_ticket = infc.inquire_vol(vol)
-    if not e_errors.is_ok(volume_ticket):
+    volume_ticket, (err1, warn1, info1) = get_volumedb_info(vol)
+    if err1 or warn1:
         errors_and_warnings(vol, ['can not get inquire_vol info'], [], [])
         return
     
@@ -1215,7 +1216,8 @@ def check_vol(vol):
         else:
             #Continue on with checking the bfid.
             check_bit_file(tape_list[i]['bfid'],
-                           {'file_record' : tape_list[i]})
+                           {'file_record' : tape_list[i],
+                            'volume_record' : volume_ticket})
                 
 last_db_tried = ("", (-1, ""))
 search_list = []
@@ -1243,11 +1245,13 @@ def check_bit_file(bfid, bfid_info = None):
 
     if bfid_info:
         file_record = bfid_info.get('file_record', None)
+        volume_record = bfid_info.get('volume_record', None)
     else:
         file_record = None
+        volume_record = None
 
     if not file_record:
-        #If we don't have the file record already, to get it.
+        #If we don't have the file record already, go get it.
         file_record, (err1, warn1, info1) = get_filedb_info(bfid)
         if err1 or warn1:
             errors_and_warnings(prefix, err + err1, warn + warn1, info + info1)
@@ -1255,6 +1259,14 @@ def check_bit_file(bfid, bfid_info = None):
     else:
         #Verify the file record is correct.  (From volume tape_list().)
         (err1, warn1, info1) = verify_filedb_info(file_record)
+        if err1 or warn1:
+            errors_and_warnings(prefix, err + err1, warn + warn1, info + info1)
+            return
+
+    if not volume_record:
+        #If we don't have the volume record already, go get it.
+        volume_record, (err1, warn1, info1) = \
+                       get_volumedb_info(file_record['external_label'])
         if err1 or warn1:
             errors_and_warnings(prefix, err + err1, warn + warn1, info + info1)
             return
@@ -1273,6 +1285,37 @@ def check_bit_file(bfid, bfid_info = None):
         is_multiple_copy = True
     else:
         is_multiple_copy = False
+
+    #Determine if this file has been migrated/duplicated.  (Some early,
+    # volumes were set to readonly instead of 'migrating', so include those
+    # volumes.)  Just because the variable name is is_migrated_copy,
+    # any cloned or duplicated files will also have this set true.
+    vol_state = volume_record['system_inhibit'][1]
+    if volume_record and \
+       (enstore_functions2.is_migration_state(vol_state) or \
+        vol_state == 'readonly'):
+        
+        response_dict = infc.find_migrated(bfid)
+        if not e_errors.is_ok(response_dict):
+            # We should simply be able to give the following warning if we
+            # get this far.  However, to allow this scan to work on systems
+            # that do not have the updated information server with
+            # find_migrated(), we need guess that if the system inhibit
+            # says that the migration/duplication/cloning is done, that
+            # we should just list the bfid as a migrated bfid.
+            #      info.append("unable to determine migration status")
+            if enstore_functions2.is_migrated_state(vol_state):
+                src_bfids = [bfid]
+            else:
+                src_bfids = [] #If nothing is found, an empty list is returned.
+        else:
+            src_bfids = response_dict['src_bfid']
+        if src_bfids and bfid in src_bfids:
+            is_migrated_copy = True
+        else:
+            is_migrated_copy = False
+    else:
+        is_migrated_copy = False
 
     # we can not simply skip deleted files
     #
@@ -1312,6 +1355,10 @@ def check_bit_file(bfid, bfid_info = None):
             info.append(msg.args[1])
         else:
             err.append(msg.args[1])
+        errors_and_warnings(prefix, err, warn, info)
+        return
+    except (ValueError,), msg:
+        err.append(str(msg))
         errors_and_warnings(prefix, err, warn, info)
         return
         
@@ -1359,7 +1406,10 @@ def check_bit_file(bfid, bfid_info = None):
                  "layer1"        : bfid, #layer1_bfid,
                  "file_record"   : file_record,
                  "pnfsid"        : file_record['pnfsid'],
-                 "is_multiple_copy" : is_multiple_copy}
+                 "is_multiple_copy" : is_multiple_copy,
+                 "volume_record" : volume_record,
+                 "is_migrated_copy" : is_migrated_copy,
+                 }
 
     e1, w1, i1 = check_file(pnfs_path, file_info)
     err = err + e1
@@ -1376,6 +1426,7 @@ def check_file(f, file_info):
     #pnfs_id = file_info.get('pnfsid', None)
     is_multiple_copy = file_info.get('is_multiple_copy', None)
     volumedb = file_info.get('volume_record', None)
+    is_migrated_copy = file_info.get('is_migrated_copy', None)
 
     err = []
     warn = []
@@ -1415,6 +1466,7 @@ def check_file(f, file_info):
         warn = warn + warn
         info = info + info_p
 
+        #Check for size.
         real_size = long(f_stats[stat.ST_SIZE])
         layer2_size = layer2.get('size', None)
         if layer2_size != None:
@@ -1426,6 +1478,12 @@ def check_file(f, file_info):
                 pass
             else:
                 err.append("size(%s, %s)" % (layer2_size, real_size))
+        elif layer2_size == None:
+            warn.append("no layer 2 size")
+
+        #Check to make sure that the CRC is present.
+        if layer2.get('crc', None) == None:
+            warn.append("no layer 2 crc")
 
         return err, warn, info
 
@@ -1493,7 +1551,7 @@ def check_file(f, file_info):
 
     #Look for missing pnfs information.
     try:
-        if not is_multiple_copy:
+        if not is_multiple_copy and not is_migrated_copy:
             if bfid != layer4['bfid']:
                 err.append('bfid(%s, %s)' % (bfid, layer4['bfid']))
     except (TypeError, ValueError, IndexError, AttributeError, KeyError):
@@ -1619,7 +1677,7 @@ def check_file(f, file_info):
 
     # volume label
     try:
-        if not is_multiple_copy:
+        if not is_multiple_copy and not is_migrated_copy:
             if layer4['volume'] != filedb['external_label']:
                 err.append('label(%s, %s)' % (layer4['volume'],
                                               filedb['external_label']))
@@ -1628,7 +1686,7 @@ def check_file(f, file_info):
         
     # location cookie
     try:
-        if not is_multiple_copy:
+        if not is_multiple_copy and not is_migrated_copy:
             #The location cookie is split into three sections.  All but
             # the eariest files use only the last of these three sections.
             # Thus, this check makes sure that (1) the length of both
@@ -1668,13 +1726,14 @@ def check_file(f, file_info):
                                              long(real_size),
                                              long(filedb['size'])))
 
-        if layer2.get('size', None) != None:
+        if layer2 and layer2.get('size', None) == None:
+            warn.append("no layer 2 size")
+        elif layer2.get('size', None) != None:
             if long(layer2['size']) != long(filedb['size']):
                 # Report if Enstore DB and the dCache size in PNFS layer 2
                 # are not the same.
                 err.append('dcache_size(%s, %s)' % (layer2['size'],
                                                     filedb['size']))
-            
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted size')
 
@@ -1683,12 +1742,12 @@ def check_file(f, file_info):
         file_family = volumedb['file_family']
         library =  volumedb['library']
 
-        # File Family check.  Take care of MIGRATION, too.
-        if not is_multiple_copy:
-            if layer4['file_family'] != file_family and \
-                layer4['file_family'] + '-MIGRATION' != file_family:
-                info.append('file_family(%s, %s)' % (layer4['file_family'],
-                                                     file_family))
+        # File Family check.  Take care of MIGRATION and duplication, too.
+        if layer4['file_family'] != file_family and \
+               layer4['file_family'] + '-MIGRATION' != file_family and \
+               not file_family.startswith(layer4['file_family'] + "_copy_"):
+            info.append('file_family(%s, %s)' % (layer4['file_family'],
+                                                 file_family))
         # Library Manager check.
         if library not in lm:
             #Skip reporting on shelf libraries.
@@ -1699,7 +1758,7 @@ def check_file(f, file_info):
 
     # drive
     try:
-        if not is_multiple_copy:
+        if not is_multiple_copy and not is_migrated_copy:
             # some do not have this field
             if filedb.has_key('drive') and layer4.has_key('drive'):
                 if layer4['drive'] != filedb['drive']:
@@ -1721,7 +1780,9 @@ def check_file(f, file_info):
                                             filedb['complete_crc']))
         # Comparing the Enstore and dCache CRCs must be skipped if the
         # volume in question is a null volume.
-        if volumedb['media_type'] != "null" and \
+        if layer2 and layer2.get('size', None) == None:
+            warn.append("no layer 2 size")
+        elif volumedb['media_type'] != "null" and \
                layer2.get('crc', None) != None: # some do not have this field
             crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
                 filedb['complete_crc'], filedb['size'])
@@ -1739,18 +1800,23 @@ def check_file(f, file_info):
 
     # path
     try:
-        if layer4['original_name'] != filedb['pnfs_name0']: #layer 4 vs. file db
-            #print layer 4, current name, file database.  ERROR
-            err.append("filename(%s, %s, %s)" %
-                       (layer4['original_name'], f, filedb['pnfs_name0']))
+        layer4_name = get_enstore_pnfs_path(layer4['original_name'])
+        current_name = get_enstore_pnfs_path(f)
+        filedb_name = get_enstore_pnfs_path(filedb['pnfs_name0'])
+        if layer4['original_name'] != filedb['pnfs_name0']: #layer4 vs filedb
+            if is_multiple_copy and layer4_name == filedb_name:
+                #If the corrected paths match, then there really isn't
+                # any problem.
+                pass
+            else:
+                #print layer 4, current name, file database.  ERROR
+                err.append("filename(%s, %s, %s)" %
+                           (layer4['original_name'], f, filedb['pnfs_name0']))
         elif is_access_name(f):
-            #Skip the renamed and moved tests if the filename of of
+            #Skip the renamed and moved tests if the filename of
             # the type ".(access)()".
             pass
         elif f != layer4['original_name']: # current pathname vs. layer 4
-            layer4_name = get_enstore_pnfs_path(layer4['original_name'])
-            current_name = get_enstore_pnfs_path(f)
-
             if os.path.basename(current_name) != os.path.basename(layer4_name):
                 #print current name, then original name.  INFORMATIONAL
                 info.append('renamed(%s, %s)' % (f, layer4['original_name']))
@@ -1804,6 +1870,9 @@ def check_file(f, file_info):
 
     if is_multiple_copy:
         info.append("is multiple copy")
+
+    if is_migrated_copy:
+        info.append("is migrated copy")
         
     return err, warn, info
 
