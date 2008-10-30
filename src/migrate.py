@@ -2217,8 +2217,10 @@ def final_scan_volume(vol, intf):
 		log(MY_TASK, 'set %s to readonly'%(vol))
 
 	# make sure this is a migration volume
+	#If the volume has already been scanned, print message and stop.
 	sg, ff, wp = string.split(v['volume_family'], '.')
-	if ff.find(MIGRATION_FILE_FAMILY_KEY) == -1:
+	if ff.find(MIGRATION_FILE_FAMILY_KEY) == -1 \
+	       and not getattr(intf, "force", None):
 		error_log(MY_TASK, "%s is not a %s volume" %
 			  (vol, MIGRATION_NAME.lower()))
 		return 1
@@ -2243,35 +2245,39 @@ def final_scan_volume(vol, intf):
 			local_error = local_error + 1
 			continue
 
-                #Make sure we have the admin path.
-                try:
-			likely_path = find_pnfs_file.find_pnfsid_path(
-				pnfs_id, dst_bfid, likely_path = likely_path,
-				path_type = find_pnfs_file.FS)
-		except (OSError, IOError), msg:
-			if msg.errno in [errno.ENOENT]:
-				bfid_info = fcc.bfid_info(dst_bfid)
-				if e_errors.is_ok(bfid_info) and \
-				   bfid_info['deleted'] == 'yes':
-					log(MY_TASK,
-					    "Since migration %s was deleted." \
-					    % (dst_bfid,))
-					continue
-
-			local_error = local_error + 1	
-			error_log(MY_TASK, "Unable to determine path:",
-				  dst_bfid, str(msg))
+		#If the user deleted the files, require --with-deleted be
+		# used on the command line.
+		if deleted == 'y' and not intf.with_deleted:
+			log(MY_TASK,
+			    "Since migration %s was deleted." \
+			    % (dst_bfid,))
 			continue
+		elif deleted == 'y' and intf.with_deleted:
+			pass #Just use likely_path; the file is deleted anyway.
+		else:
+			#Make sure we have the admin path.
+			try:
+				likely_path = find_pnfs_file.find_pnfsid_path(
+					pnfs_id, dst_bfid,
+					likely_path = likely_path,
+					path_type = find_pnfs_file.FS)
+			except (OSError, IOError), msg:
+				local_error = local_error + 1	
+				error_log(MY_TASK, "Unable to determine path:",
+					  dst_bfid, str(msg))
+				continue
 
-                ######################################################
-		# make sure the volume is the same
-		pf = pnfs.File(likely_path)
-		pf_volume = getattr(pf, "volume", None)
-		if pf_volume == None or pf_volume != vol:
-			error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf_volume, vol))
-			local_error = local_error + 1
-			continue
-                ######################################################
+			######################################################
+			# make sure the volume is the same
+			pf = pnfs.File(likely_path)
+			pf_volume = getattr(pf, "volume", None)
+			if pf_volume == None or pf_volume != vol:
+				error_log(MY_TASK,
+					  'wrong volume %s (expecting %s)' \
+					  % (pf_volume, vol))
+				local_error = local_error + 1
+				continue
+			######################################################
 
 		## Scan the file by reading it with encp.
 		rtn_code = final_scan_file(MY_TASK, src_bfid, dst_bfid,
@@ -2669,6 +2675,12 @@ def migrate_volume(vol, intf):
 	if v['system_inhibit'][0] != 'none':
 		error_log(MY_TASK, vol, 'is', v['system_inhibit'][0])
 		return 1
+	#If volume is migrated, report that it is done and stop.
+	if enstore_functions2.is_migrated_state(v['system_inhibit'][1]) \
+	       and not getattr(intf, "force", None):
+		log(MY_TASK, vol, " is already migrated")
+		return 0
+		
 
 	# now try to copy the file one by one
 	# get all bfids
@@ -2955,6 +2967,7 @@ class MigrateInterface(option.Interface):
 		self.migrated_to = None
 		self.skip_bad = None
 		self.read_to_end_of_tape = None
+		self.force = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 		
@@ -2980,6 +2993,11 @@ class MigrateInterface(option.Interface):
 				    option.VALUE_USAGE:option.REQUIRED,
 				    option.VALUE_TYPE:option.STRING,
 				    option.USER_LEVEL:option.USER,},
+		option.FORCE:{option.HELP_STRING:
+			      "Allow migration on already migrated volume.",
+			      option.VALUE_USAGE:option.IGNORED,
+			      option.VALUE_TYPE:option.INTEGER,
+			      option.USER_LEVEL:option.HIDDEN},
 		option.LIBRARY:{option.HELP_STRING:
 				"Specify an alternative library to override "
 				"the pnfs library tag.",
