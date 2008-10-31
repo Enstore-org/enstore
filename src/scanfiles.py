@@ -79,7 +79,6 @@ ts_check = []
 stop_threads_lock=threading.Lock()
 threads_stop = False
 alarm_lock=threading.Lock()
-external_transitions = {} #Ttranslate /pnfs/sam/lto to /pnfs/fs/usr/sam-lto
 
 # union(list_of_sets)
 ###copied from file_clerk_client.py
@@ -1957,19 +1956,6 @@ class ScanfilesInterface(option.Interface):
                          option.DEFAULT_VALUE:option.DEFAULT,
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.USER_LEVEL:option.USER},
-        option.EXTERNAL_TRANSITIONS:{option.HELP_STRING:
-                                     "User hints for directory searches. "
-                                     "ie. --external_transitions "
-                                     "sam/lto sam-lto",
-                                     option.VALUE_NAME:"old_path",
-                                     option.VALUE_USAGE:option.REQUIRED,
-                                     option.VALUE_TYPE:option.LIST,
-                                     option.USER_LEVEL:option.USER,
-
-                                     option.EXTRA_VALUES:[{option.VALUE_NAME:"new_path",
-                                          option.VALUE_TYPE:option.LIST,
-                                          option.VALUE_USAGE:option.REQUIRED,},
-                                         ],},
         option.FILE_THREADS:{option.HELP_STRING:"Number of threads in files.",
                          option.VALUE_USAGE:option.REQUIRED,
                          option.VALUE_TYPE:option.INTEGER,
@@ -2058,13 +2044,6 @@ def do_work(intf_of_scanfiles):
 
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
-
-    #For processing certain storage_groups/mount_points.  This allows
-    # the user to give scanfiles.py some hints to avoid performing
-    # get_path() calls for every file.
-    for i in range(len(intf_of_scanfiles.old_path)):
-        external_transitions[intf_of_scanfiles.old_path[i]] = \
-                                         intf_of_scanfiles.new_path[i]
 
     if intf_of_scanfiles.infile:
         file_object = open(intf_of_scanfiles.infile)
