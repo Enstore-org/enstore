@@ -3192,6 +3192,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return
                 try:
                   self.tape_driver.writefm()
+                  self.tape_driver.skipfm(-1)
                 except:
                     Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
                     Trace.handle_error()
