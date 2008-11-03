@@ -70,7 +70,7 @@ temp_file=$temp_dir/$fname.temp
 rm -f $temp_file
 
 #Make sure we know how up-to-date this is.
-echo -e Clongin Report: `date` > $temp_file 2>&1
+echo -e Cloning Report: `date` > $temp_file 2>&1
 echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
 
 
