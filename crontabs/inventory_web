@@ -9,6 +9,7 @@
 31 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p migration_summary $ENSTORE_DIR/sbin/migration_summary > /dev/null 2> /dev/null
 32 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p duplication_summary $ENSTORE_DIR/sbin/duplication_summary > /dev/null 2> /dev/null
 33 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p multiple_copies_summary $ENSTORE_DIR/sbin/multiple_copy_summary > /dev/null 2> /dev/null
+34 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p cloning_summary $ENSTORE_DIR/sbin/cloning_summary > /dev/null 2> /dev/null
 
 
 ##
