@@ -23,7 +23,7 @@ return $rtn
 
 #Detect if /etc/fstab exists on this platform.
 if [ -f /etc/fstab ]; then
-    mount_points=`grep pnfs $FSTAB | awk '{print $2}'`
+    mount_points=`grep pnfs $FSTAB | grep -v "#" | awk '{print $2}'`
 else
     echo "$FSTAB does not exist on `hostname`." 1>&2
     exit 1
