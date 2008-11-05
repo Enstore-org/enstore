@@ -63,4 +63,5 @@ host enstoredb enstore_reader 131.225.13.0/24                  trust
 host enstoredb enstore_reader 131.225.80.22/32                 trust
 #include two cms hosts, needed for migration
 host enstoredb enstore        131.225.207.112/32               trust
-host enstoredb enstore        131.225.207.13/32               trust
+host enstoredb enstore        131.225.207.13/32                trust
+host enstoredb enstore_reader 131.225.206.33/32                trust
