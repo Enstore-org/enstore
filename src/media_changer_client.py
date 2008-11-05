@@ -18,6 +18,7 @@ import string
 import types
 import pprint
 import time
+import socket
 import select
 
 #enstore imports
@@ -85,32 +86,86 @@ class MediaChangerClient(generic_client.GenericClient):
         rt = self.send(ticket)
         return rt
 
+
     def list_volumes(self, rcv_timeout = 0, rcv_tries = 0):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-        
-        ticket = {'work' : 'list_volumes',
+
+        #We want to attempt to try the 'list_volumes2' protocol.  However,
+        #only STK has been updated to use it.  AML2 will set this back to
+        # "list_volumes" before sending back its reply.
+        ticket = {'work' : 'list_volumes2',
                   'callback_addr'  : (host,port)
                   }
         rt = self.send(ticket, rcv_timeout, rcv_tries)
         if not e_errors.is_ok(rt):
             #print "ERROR", rt
             return rt
-        
+
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
             reply = {'status' : (e_errors.TIMEDOUT,
                          "timeout waiting for media changer callback")}
             return reply
         control_socket, address = listen_socket.accept()
-        
+
+        if rt['work'] == "list_volumes":
+            try:
+                reply = self.__list_volumes(control_socket, rt)
+            except:
+                Trace.log(e_errors.UNKNOWN, str(sys.exc_info()[1]))
+        elif rt['work'] == "list_volumes2":
+            try:
+                reply = self.__list_volumes2(control_socket, rt)
+            except:
+                Trace.log(e_errors.UNKNOWN, str(sys.exc_info()[1]))
+        else:
+            reply = {'status' : (e_errors.TIMEDOUT,
+                                 "Invalid list_volumes protocol returned.")}
+
+        listen_socket.close()
+        control_socket.close()
+
+        return reply
+
+    def __list_volumes(self, control_socket, ticket):
         try:
             d = callback.read_tcp_obj(control_socket)
         except e_errors.TCP_EXCEPTION:
             d = {'status':(e_errors.TCP_EXCEPTION, e_errors.TCP_EXCEPTION)}
-        listen_socket.close()
-        control_socket.close()
+
         return d
+
+    def __list_volumes2(self, control_socket, ticket):
+        #Keep getting each volume's information one at a time.
+        ticket['volume_list'] = []
+        t = -1
+        while t:
+            try:
+                t = callback.read_tcp_obj(control_socket)
+                if t and type(t) == type(()) and not t[0]:
+                    ticket['status'] = (e_errors.OK, None)
+                    break #received sentinal
+
+                #convert the tuple into a dictionary.
+                d = {'volume' : t[0],
+                     'state' : t[1],
+                     'type' : t[2],
+                     'location' : t[3],
+                     }
+                
+                ticket['volume_list'].append(d)
+            except (select.error, socket.error), msg:
+                ticket['status'] = (e_errors.NET_ERROR, str(msg))
+                break
+            except e_errors.TCP_EXCEPTION:
+                ticket['status'] = (e_errors.TCP_EXCEPTION,
+                                    e_errors.TCP_EXCEPTION)
+                break
+        else:
+            ticket['status'] = (e_errors.OK, None)
+                
+        return ticket
 
     def list_clean(self, rcv_timeout = 0, rcv_tries = 0):
         host, port, listen_socket = callback.get_callback()
@@ -415,7 +470,6 @@ def do_work(intf):
         except:
             print tod, -999, ticket
     elif intf.show_volume:
-        t0 = time.time()
         ticket = mcc.viewvol(intf.volume, intf.media_type)
         if e_errors.is_ok(ticket):
             print "%17s %10s %20s %20s" % ("volume", "type",
@@ -423,7 +477,6 @@ def do_work(intf):
             print "%17s %10s %20s %20s" % (intf.volume, ticket['media_type'],
                                            ticket['status'][3], "")
     elif intf.show_drive:
-        t0 = time.time()
         ticket = mcc.viewdrive(intf.drive)
         if e_errors.is_ok(ticket) and ticket.get("drive_info", None):
             drive_info = ticket['drive_info']

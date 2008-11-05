@@ -37,6 +37,7 @@ import fcntl
 #    fcntl.F_SETFL = FCNTL.F_UNLCK
 import pprint
 import re
+import subprocess
 
 # enstore imports
 import configuration_client
@@ -848,6 +849,11 @@ class AML2_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
         return
 
+    def list_volumes2(self, ticket):
+        ticket['work'] = 'list_volumes' #Use old method for AML2.
+        self.list_volumes(ticket)
+	
+
     def list_slots(self, ticket):
 	# A bug in aci_getcellinfo() requires forking in list_slots().
 	# If we are the parent, just return and keep on going.  This isn't
@@ -1120,6 +1126,106 @@ class STK_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
         return
 
+    def list_volumes2(self, ticket):
+	
+        acsls_cmd = "query volume all"
+	acsls_look_for = "query volume all"
+	
+        command = "(echo %s;echo logoff)|/export/home/ACSSS/bin/cmd_proc 2>&1"\
+		  % (acsls_cmd,)
+        cmd_lookfor = "ACSSA> %s" % (acsls_cmd,)
+
+	args = [self.acls_host, '-l', self.acls_uname, command]
+
+	try:
+	    lv_proc = subprocess.Popen(args, executable = "/usr/bin/rsh",
+				       stdin = None,
+				       stdout = subprocess.PIPE,
+				       stderr = subprocess.STDOUT,
+				       shell = False)
+	    ticket['status'] = (e_errors.OK, None)
+        except:
+	    ticket['status'] = (e_errors.OSERROR, str(sys.exc_info()[1]))
+
+	#Tell the client over udp that we are about to connect using TCP.
+	self.reply_to_caller(ticket)
+	if not e_errors.is_ok(ticket['status']):
+	    return
+
+       	#Connect using TCP.
+	try:
+	    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect(ticket['callback_addr'])
+        except (socket.error):
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR,
+		      "Callback address %s" % (ticket['callback_addr'],))
+
+	    #Close opened sockets.
+	    lv_proc.stdout.close()
+	    return
+
+        #This functionality takes a while to complete.
+        pid = self.fork(ttl = None)
+	if pid != 0: # parent
+	    lv_proc.stdout.close()
+	    sock.close()
+	    return
+
+	# ... else this is the child.
+
+	#We need to skip the header here.  Normally, timed_command() will
+	# skip this for us, but since we are not using it due to the
+	#performance problems, we need to do this ourselves.
+	try:
+		line = -1
+		while line:
+		    line = lv_proc.stdout.readline()
+		    if line.find(cmd_lookfor) > -1:
+			break
+	except:
+		#Close opened sockets.
+		lv_proc.stdout.close()
+		sock.close()
+		return
+	    	    
+	line = -1
+	err = 0
+	while line:
+	    line = lv_proc.stdout.readline()
+
+	    if line.find("ACSSA") >= 0 or line.find("Volume Status") >= 0 \
+		   or line.find("Identifier") >= 0 or len(line) == 0:
+	        #This is some other information.
+		continue
+
+	    volume = line[1:13].strip()
+	    state = line[13:29].strip()
+	    location = line[31:45].strip()
+	    media_type = line[47:].strip()
+
+	    volume_tuple = (volume, state, media_type, location)
+
+	    #Send the information to the client one at a time.
+	    err = callback.write_tcp_obj(sock, volume_tuple)
+	    if err:
+	        Trace.log(e_errors.ERROR,
+			  "Error calling write_tcp_obj. Callback addr. %s"
+			  % (ticket['callback_addr'],))
+		break
+
+	if not err:
+	    #Send a sentinal.
+	    #Note: For some reason using (None, None, None, None) confuses
+	    # the pickle/unpickle code.  Use empty strings instead.
+	    volume_tuple = ("", "", "", "")
+	    callback.write_tcp_obj(sock, volume_tuple)
+
+	#Don't forget to close the sockets and FIFOs.
+	lv_proc.stdout.close()
+	sock.close()
+	sys.exit(0)  #Remember we are the child here.
+	
     def list_slots(self, ticket):
         # build the command, and what to look for in the response
         command = "query lsm all"
