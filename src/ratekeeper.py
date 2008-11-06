@@ -261,7 +261,9 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         config_dict = self.csc.dump_and_save()
         for conf_key in config_dict.keys():
             if conf_key[-6:] == ".mover":
-                if config_dict[conf_key]['media_changer'] == mcc.server_name:
+                #Disk movers don't have 'media_changer'.
+                conf_mc = config_dict[conf_key].get('media_changer', None)
+                if conf_mc == mcc.server_name:
                     if config_dict[conf_key].has_key("mc_device"):
                         valid_drives.append(config_dict[conf_key]['mc_device'])
                     
