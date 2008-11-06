@@ -679,6 +679,8 @@ class Histogram1D(BasicHistogram):
             dy_dx = (  y - previous_bin  )
             if ( only_positive and dy_dx<0 ):
                 dy_dx=0
+            if ( previous_bin == 0 ):
+                dy_dx=0
             h.binarray[i]=dy_dx
             previous_bin=y
             
