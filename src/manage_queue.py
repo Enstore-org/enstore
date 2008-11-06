@@ -111,6 +111,7 @@ class SortedList:
         self.current_index = 0
         self.stop_rolling = 0
         self.my_name = name
+        self.last_deleted = None # to be used for read requests
         
     # check if request with certain  id is in the list
     # and if its outputfile name is in the list flag this
@@ -160,8 +161,8 @@ class SortedList:
                 Trace.trace(5, "update priority delete")
                 # temporarily remove records that have changed priorities
                 for record in rescan_list:
-                    Trace.trace(TR+23,"%s:::SortedList.update: delete Pri%s Ticket %s"%
-                                (self.my_name, record.pri, record.ticket))
+                    #Trace.trace(TR+23,"%s:::SortedList.update: delete Pri%s Ticket %s"%
+                    #            (self.my_name, record.pri, record.ticket))
                     #self.delete(record)
                     self.sorted_list.remove(record)
                 Trace.trace(5, "update priority deleted")
@@ -216,7 +217,7 @@ class SortedList:
         #self.update()
         Trace.trace(TR+23,"%s:::SortedList.get: pri %s, u_f %s"%
                     (self.my_name, pri, self.update_flag))
-        # update flag is maeaningful only for write list
+        # update flag is meaningful only for write list
         if self.update_flag and not pri:
             index = 0
             self.current_index = index
@@ -225,7 +226,21 @@ class SortedList:
             Trace.trace(TR+23, '%s:::SortedList.get:sorted_list %s'%(self.my_name,self.sorted_list,))
             rq = Request(pri, pri, {})
             index = self.sorted_list.bisect(rq)
-            Trace.trace(TR+23, '%s:::SortedList.get: i %s rq %s'%(self.my_name, index, rq))
+            #index = len(self.sorted_list)-1
+            #if index < 0: index = 0
+            #rq = self.sorted_list[index]
+            Trace.trace(TR+23, '%s:::SortedList.get: i %s rq %s rec %s'%(self.my_name, index, rq, self.sorted_list[index]))
+            if not self.update_flag:
+                # must be a read request
+                # check if request location is less than current
+                Trace.trace(TR+23, 'SortedList.get: pri %s value %s last deleted %s'%(pri, self.sorted_list[index].value, self.last_deleted))
+                Trace.trace(TR+23, 'SortedList.get: comparing %s %s'%(pri, self.sorted_list[index].value))
+                if pri > 0 and cmp(pri, self.sorted_list[index].value) == 1:
+                    if self.last_deleted and self.last_deleted.value == pri:
+                        Trace.trace(TR+23, 'SortedList.get: setting index to 0 %s'%(self.sorted_list[0],))
+                        # if yes we rolled over the top of the list
+                        # go to its beginning
+                        index = 0
             #if len(self.sorted_list) == 1: index = 0
         if index < len(self.sorted_list) and index >= 0:
             Trace.trace(TR+23,"%s:::SortedList.get: index %s"%(self.my_name, index,))
@@ -282,12 +297,14 @@ class SortedList:
         Trace.trace(TR+23,"SortedList.rm: %s %s"%(record.pri, record.ticket))
         if record in self.sorted_list:
             self.sorted_list.remove(record)
+            self.last_deleted = record
         if record.unique_id in self.ids: self.ids.remove(record.unique_id)
         if record.ofn in self.of_names: self.of_names.remove(record.ofn)
         record.ticket['times']['in_queue'] = time.time() - \
                                              record.ticket['times']['job_queued']
         if key and key in self.keys:
             self.keys.remove(key)
+
             
     # same as remove but with updates
     def delete(self, record, key=''):
@@ -380,6 +397,7 @@ class Queue:
         #Trace.trace(TR+23, 'Queue.get: Queue list %s'% (self.sprint(),))
         if not label: return None
         Trace.trace(TR+23, "Queue.get: queue %s"%(self.queue,))
+        Trace.trace(TR+23, "Queue.get: label %s location %s"%(label, location))
         if not self.queue.has_key(label):
             Trace.trace(TR+23,"Queue.get: label %s is not in the queue"%(label,))
             return None
@@ -392,7 +410,9 @@ class Queue:
             # and file size for write request
             record = sublist.get(location)
         else:
-            if self.queue_type == 'read_from_hsm': record = sublist.get()
+            if self.queue_type == 'read_from_hsm':
+                record = sublist.get()
+                Trace.trace(TR+23,"Queue.get:read_from_hsm %s %s"%(sublist, record))
             else: record = self.queue[label]['by_priority'].get()
         Trace.trace(TR+23,"Queue.get: %s"%(repr(record),))
         return record
