@@ -417,6 +417,7 @@ where ((system_inhibit_1 not in ('migrated', 'duplicated'))
       and media_type != 'null'
       and media_type in (${media_list})
       and capacity_bytes > 500  --Skip cleaning tapes.
+      and sum_wr_access > 0
 group by media_type,capacity_bytes,label
 order by media_type,label;
 " >> $temp_file 2>&1
