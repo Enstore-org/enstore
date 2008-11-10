@@ -307,7 +307,7 @@ check_pnfsids()
 	#Skip to next file if this file is a temporary nfs file.
 	#
 	if [ `basename "$path" | cut -c 1-4` = ".nfs" -a $filesize -eq 0 ]; then
-	    continue
+            continue
 	fi
 
 	if [ $header_outputed -eq 0 ]; then
@@ -325,11 +325,33 @@ check_pnfsids()
 	
     done
 
-    if [ `wc -l $TEMP_OUTPUT_FILE_2 | awk '{print $1}'` -gt 1 ]; then
+    file_count=`wc -l $TEMP_OUTPUT_FILE_2 | awk '{print $1}' 2> /dev/null`
+    if [ ${file_count:-0} -gt 0 ]; then
         #Add whitespace between databases.
         echo -e "\n\n" >> $TEMP_OUTPUT_FILE
     fi
 }
+
+############################################################################
+
+# This section allows for a user to pass a filename to this script, and
+# have this script output to standard out the information necessary for
+# that file in the pnfs_monitor cache file format.
+
+format_cache()
+{
+timestamp=`stat $1 | grep Modify | cut -f 2-3 -d " " | cut -c 1-25`
+pnfsid=`enstore pnfs --id $1`
+pnfsid=`parse_id $pnfsid`
+echo "" $timestamp "|" $pnfsid
+}
+
+if [ -n "$1" ]; then
+    for item in $*; do
+        format_cache $item
+    done
+    exit 0
+fi
 
 ############################################################################
 
@@ -426,6 +448,11 @@ for db_name in `echo $db_list`; do
 	rm -f $TEMP_FILE_OLD && touch $TEMP_FILE_OLD
 	old_count=0
     fi
+
+    #The following are useful for debugging a specific storage group.
+    #if [ $db_name != 'test' ]; then
+    #    continue
+    #fi
 
     #Send message to standard out.
     echo "Starting DB: $db_name with $new_count recent files to check."
