@@ -7,6 +7,8 @@ instantiated in the same program, probably in different threads.
 import string
 import sys
 
+import Trace
+
 class Encp:
 	def __init__(self, tid=None):
 		import encp
@@ -28,6 +30,7 @@ class Encp:
 		intf.migration_or_duplication = 1 #Set true for performance.
 		if self.tid:
 			intf.include_thread_name = self.tid
+		logname=Trace.logname #Grab this to reset this after encp.
 		try:
 			res = self.my_encp.do_work(intf)
 			if res == None:
@@ -36,12 +39,14 @@ class Encp:
 
 			self.err_msg = self.my_encp.err_msg
 		except (KeyboardInterrupt, SystemExit):
+			Trace.logname = logname #Reset the log file name.
 			raise sys.exc_info()[0], sys.exc_info()[1], \
 			      sys.exc_info()[2]
 		except:
 			self.err_msg = str(sys.exc_info()[:2])
 			res = 1
 
+		Trace.logname = logname #Reset the log file name.
 		self.exit_status = res #Return value if used in a thread.
 		return res  #Return value if used directly.
 
