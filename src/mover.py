@@ -3192,6 +3192,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return
                 try:
                   self.tape_driver.writefm()
+                  # skip back one position in case when next read fails
+                  # in this case tape is in the right position for the next write
                   self.tape_driver.skipfm(-1)
                 except:
                     Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
@@ -3291,15 +3293,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             ## Connecting to client failed
             if self.state == HAVE_BOUND:
                 self.dismount_time = time.time() + self.default_dismount_delay
-            ### set saved_mode and mode
-            ### otherwise there will be another attempt to write
-            ### fm when using single fm
-            ### when switching from write to read
-            ### the second fm gets written when switching from write to read in a single fm mode
-            ### it gets written before connection to encp is established
-            ### so if 1st read after write fails the 2nd fm is written anyway.
-            self.saved_mode = self.mode
-            self.mode = self.setup_mode
             self.need_lm_update = (1, self.state, 1, None)
             self.send_error_msg(error_info=(e_errors.ENCP_GONE, "no client socket"), error_source=NETWORK) 
             #self.update_lm(reset_timer=1)
