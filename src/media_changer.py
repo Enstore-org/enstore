@@ -1234,6 +1234,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         # execute the command and read the response
         # FIXME - what if this hangs?
         # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+
         #status,response, delta = self.timed_command(command,4,10)
         status, response, delta = self.timed_command(command,4,60)
         if status != 0:
@@ -1371,6 +1372,19 @@ class STK_MediaLoader(MediaLoaderMethods):
 	    self.reply_to_caller(ticket)
             return ("ERROR", E, response, '', msg)
 
+        #Send reply and Establish the connection first.
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
+	addr = ticket['callback_addr']
+        try:
+		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		sock.connect(addr)
+	except:
+	    Trace.handle_error()
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,))
+	    return
+
+        #Get the information from the robot.
         clean_list = []
         for line in response:
 	    if line.find("ACSSA") >= 0 or \
@@ -1397,14 +1411,10 @@ class STK_MediaLoader(MediaLoaderMethods):
 			       "type" : media_type,
 			       })
 
-	ticket['status'] = (e_errors.OK, 0, "")
-	self.reply_to_caller(ticket)
+	#Send the information.
 	reply=ticket.copy()
 	reply['clean_list'] = clean_list
-	addr = ticket['callback_addr']
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            sock.connect(ticket['callback_addr'])
+	try:
             r = callback.write_tcp_obj(sock,reply)
             sock.close()
             if r:
