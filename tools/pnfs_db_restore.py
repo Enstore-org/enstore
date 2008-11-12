@@ -64,9 +64,6 @@ class PnfsDbRestore:
                 self.pnfs_host=config_server_client.get('pnfs_server').get('host')
         pnfs_db, pgdb, trash, backup_host, backup_dir, pnfs_dir, backup_name = get_config(self.pnfs_host)
 
-        return 0;
-    
-
         cmd='umount /pnfs/fs'
         print 'Unmounting pnfs: %s'% (cmd,)
         os.system(cmd)
