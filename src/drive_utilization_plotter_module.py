@@ -25,6 +25,7 @@ library_name_map = {
     'CD PowderHorn 9310'  : 'CD_STK',
     'D0 AML/2 R1'         : 'D0_AML',
     'GCC StreamLine 8500' : 'GCC_SL8500',
+    'GCC StreamLine 8500' : 'FCC_SL8500',
     'CDF PowderHorn 9310' : 'CDF_STK',
     'D0 PowderHorn 9310'  : 'D0_STK',
     'FCC StreamLine 8500' : 'FCC_SL8500',
