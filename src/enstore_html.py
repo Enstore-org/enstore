@@ -2261,8 +2261,7 @@ class EnPlotPage(EnBaseHtmlDoc):
                     index = string.find(tmp2, enstore_constants.STAMP)
                     return "%s "%(tmp2[0:index])
 		elif file_label[0] == enstore_constants.MPD_FILE or \
-		     file_label[0] == enstore_constants.MPD_MONTH_FILE or \
-		     file_label[0] == enstore_constants.MLAT_FILE:
+		     file_label[0] == enstore_constants.MPD_MONTH_FILE:
 		    # add the mount_label to the front
 		    if self.mount_label:
 			return "%s %s"%(self.mount_label, file_label[1])
@@ -2271,6 +2270,8 @@ class EnPlotPage(EnBaseHtmlDoc):
                 elif file_label[0] == enstore_constants.D_MPD_FILE:
                     # we must add in the drive type
                     return "%s %s"%(text[0:index], file_label[1])
+                elif file_label[0] == enstore_constants.MLAT_FILE:
+                    return "%s %s"%(text[index:-1].split('_')[0], file_label[1])
 		else:
 		    return file_label[1]
         else:
