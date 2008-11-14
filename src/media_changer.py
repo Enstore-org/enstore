@@ -1359,18 +1359,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         command = "query clean all"
         answer_lookfor = "query clean all"
 
-        # execute the command and read the response
-        # FIXME - what if this hangs?
-        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
-        #status,response, delta = self.timed_command(command,4,10)
-        status, response, delta = self.timed_command(command,4,60)
-        if status != 0:
-            E=4
-            msg = "QUERY_CLEAN %i: %s => %i,%s" % (E,command,status,response)
-            Trace.log(e_errors.ERROR, msg)
-	    ticket['status'] = ("ERROR", E, response, '', msg)
-	    self.reply_to_caller(ticket)
-            return ("ERROR", E, response, '', msg)
+	clean_list = []
 
         #Send reply and Establish the connection first.
 	ticket['status'] = (e_errors.OK, 0, "")
@@ -1384,36 +1373,49 @@ class STK_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR,"Callback address %s"%(addr,))
 	    return
 
-        #Get the information from the robot.
-        clean_list = []
-        for line in response:
-	    if line.find("ACSSA") >= 0 or \
-		   line.find("Cleaning Cartridge Status") >= 0 or \
-		   line.find("Identifier") >= 0 \
-		   or len(line) == 0:
-	        #This is some other information.
-	        continue
+        reply=ticket.copy() #Make a copy to keep things clean.  But why?
+    
+        # execute the command and read the response
+        # FIXME - what if this hangs?
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status, response, delta = self.timed_command(command,4,60)
+        if status != 0:
+            E=4
+            msg = "QUERY_CLEAN %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+	    reply['status'] = ("ERROR", E, response, '', msg)
+        else:
+	    #Get the information from the robot.
+	    for line in response:
+	        if line.find("ACSSA") >= 0 or \
+		       line.find("Cleaning Cartridge Status") >= 0 or \
+		       line.find("Identifier") >= 0 \
+		       or len(line) == 0:
+		    #This is some other information.
+		    continue
 
-	    volume = line[1:13].strip()
-	    location = line[13:29].strip()
-	    max_usage = int(line[30:39].strip())
-	    current_usage = int(line[41:55].strip())
-	    status = line[56:66].strip()
-	    media_type = line[67:].strip()
+	        volume = line[1:13].strip()
+		location = line[13:29].strip()
+		max_usage = int(line[30:39].strip())
+		current_usage = int(line[41:55].strip())
+		status = line[56:66].strip()
+		media_type = line[67:].strip()
 
-	    remaining_usage = max_usage - current_usage #AML2 compatibility
-	    clean_list.append({"volume" : volume,
-			       "location" : location,
-			       "max_usage" : max_usage,
-			       "current_usage" : current_usage,
-			       "remaining_usage" : remaining_usage,
-			       "status" : status,
-			       "type" : media_type,
-			       })
+		remaining_usage = max_usage - current_usage #AML2 compatibility
+		clean_list.append({"volume" : volume,
+				   "location" : location,
+				   "max_usage" : max_usage,
+				   "current_usage" : current_usage,
+				   "remaining_usage" : remaining_usage,
+				   "status" : status,
+				   "type" : media_type,
+				   })
 
-	#Send the information.
-	reply=ticket.copy()
-	reply['clean_list'] = clean_list
+	    #Put the list of cleaning tapes into the reply ticket.
+	    reply['clean_list'] = clean_list
+
+	#Send the information.  (success or failure)
 	try:
             r = callback.write_tcp_obj(sock,reply)
             sock.close()
@@ -1424,8 +1426,12 @@ class STK_MediaLoader(MediaLoaderMethods):
             
         except:
             Trace.handle_error()
-            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
-        return
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,))
+
+	if e_errors.is_ok(reply['status']):
+	    return
+        else:
+	    return reply['status']
 
     def cleanCycle(self, inTicket):
         #do drive cleaning cycle
