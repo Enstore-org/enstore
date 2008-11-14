@@ -4884,8 +4884,7 @@ def submit_one_request_send(ticket, encp_intf):
 
     return transaction_id, lmc
 
-    ################################################################
-def submit_one_request_recv(transaction_id, ticket, lmc, encp_intf):
+def submit_one_request_recv(transaction_id, ticket, lmc):
 
     submit_one_request_recv_start_time = time.time()
 
@@ -4955,7 +4954,7 @@ def submit_one_request_recv(transaction_id, ticket, lmc, encp_intf):
 
 def submit_one_request(ticket, encp_intf):
     transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
-    return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf)
+    return submit_one_request_recv(transaction_id, ticket, lmc)
     
 
 def resubmit_one_request(ticket, encp_intf):
@@ -8307,7 +8306,7 @@ def write_to_hsm(e, tinfo):
         external_label = request_ticket.get('fc',
                                             {}).get('external_label',
                                                     None)
-        result_dict = handle_retries(request_list, work_ticket,
+        result_dict = handle_retries([work_ticket], work_ticket,
                                      request_ticket, e,
                                      listen_socket = listen_socket,
                                      local_filename = local_filename,
