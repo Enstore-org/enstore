@@ -3465,8 +3465,19 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
                 #Verify if the dcache information in layer 2 matches.
                 crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
                     db_crc, db_size)
-                if (dcache_crc != None and dcache_crc != crc_1_seeded):
-                    rest['db_crc'] = crc_1_seeded
+                if (dcache_crc != None and \
+                    (dcache_crc != crc_1_seeded and dcache_crc != db_crc)):
+                    #At this point we know there was a CRC mismatch.  Get
+                    # the current CRC value.  If the seed is set to 1,
+                    # only report that CRC; if it is zero, report 0 and
+                    # 1 seeded.
+                    encp_dict = get_csc().get('encp')
+                    if e_errors.is_ok(encp_dict) and \
+                           encp_dict.get('crc_seed') == 1:
+                        rest['db_crc'] = db_crc
+                    else:
+                        rest['db_crc_1'] = crc_1_seeded
+                        rest['db_crc_0'] = db_crc
                     rest['dcache_crc'] = dcache_crc
                     rest['layer_2_crc'] = "db_crc differs from dcache_crc"
                 if (dcache_size != None and dcache_size != db_size):
