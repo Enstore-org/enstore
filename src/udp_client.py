@@ -398,15 +398,20 @@ class UDPClient:
         return txn_id
 
     # Recieve a reply, timeout has the same meaning as in select
-    def recv_deferred(self, txn_id, timeout):
+    def recv_deferred(self, txn_ids, timeout):
+        #Make the target a list of txn_id to consider.
+        if type(txn_ids) != types.ListType:
+            txn_ids = [txn_ids]
+            
         tsd = self.get_tsd()
-        if tsd.reply_queue.has_key(txn_id):
-            reply = tsd.reply_queue[txn_id]
-            del  tsd.reply_queue[txn_id]
-            return reply
+        for txn_id in txn_ids:
+            if tsd.reply_queue.has_key(txn_id):
+                reply = tsd.reply_queue[txn_id]
+                del  tsd.reply_queue[txn_id]
+                return reply
         else:
             rcvd_txn_id=None
-            while rcvd_txn_id != txn_id: #look for reply
+            while rcvd_txn_id not in txn_ids: #look for reply
                 reply = None
                 r, w, x, timeout = cleanUDP.Select( [tsd.socket], [], [], timeout)
                 if r:
@@ -439,7 +444,8 @@ class UDPClient:
                     rcvd_txn_id=None
                     continue
                 
-                if rcvd_txn_id != txn_id: #Queue it up, somebody else wants it
+                if rcvd_txn_id not in txn_ids:
+                    #Queue it up, somebody else wants it
                     tsd.reply_queue[rcvd_txn_id] = out
             else: # we got a good reply
                 return out
