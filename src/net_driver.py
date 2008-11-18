@@ -62,7 +62,12 @@ class NetDriver(generic_driver.Driver):
         ## Give up if the client does not send us data for 5 minutes
         ready, junk, junk= select.select([self.fileno()], [], [], 5*60)
         if ready:
-            r =  strbuffer.buf_recv(self.fileno(), buf, offset, nbytes)
+            try:
+                r =  strbuffer.buf_recv(self.fileno(), buf, offset, nbytes)
+            except MemoryError:
+                Trace.log(e_errors.ERROR, "Memory error calling buf_recv with fileno %s offset %s nbytes %s"%
+                          (self.fileno(), offset, nbytes))
+                raise MemoryError
         else:
             r = 0
         
