@@ -538,20 +538,39 @@ class Buffer:
             self._reading_block = self._getspace()
             self._read_ptr = 0
         bytes_to_read = min(self.blocksize - self._read_ptr, nbytes)
-        bytes_read = driver.read(self._reading_block, self._read_ptr, bytes_to_read)
+        try:
+            bytes_read = driver.read(self._reading_block, self._read_ptr, bytes_to_read)
+        except MemoryError:
+            Trace.log(e_errors.ERROR, "memory error calling driver.read bytes to read %s"%(bytes_to_read,))
+            raise MemoryError
         if do_crc:
             #Trace.trace(22,"nbytes %s, bytes_to_read %s, bytes_read %s" %
             #            (nbytes, bytes_to_read, bytes_read))
-            self.complete_crc = checksum.adler32_o(self.complete_crc, self._reading_block,
-                                                   self._read_ptr, bytes_read)
+            try:
+                self.complete_crc = checksum.adler32_o(self.complete_crc, self._reading_block,
+                                                       self._read_ptr, bytes_read)
+            except MemoryError:
+                Trace.log(e_errors.ERROR, "memory error calling adler32_o")
+                raise MemoryError
+                
             if self.sanity_bytes < SANITY_SIZE:
                 nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_read)
-                self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._reading_block,
-                                                     self._read_ptr, nbytes)
+                try:
+                    self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._reading_block,
+                                                         self._read_ptr, nbytes)
+                except MemoryError:
+                    Trace.log(e_errors.ERROR, "memory error calling adler32_o for sanity bytes")
+                    raise MemoryError
+                
                 self.sanity_bytes = self.sanity_bytes + nbytes
         self._read_ptr = self._read_ptr + bytes_read
         if self._read_ptr == self.blocksize: #we filled up  a block
-            self.push(self._reading_block)
+            try:
+                self.push(self._reading_block)
+            except MemoryError:
+                Trace.log(e_errors.ERROR, "memory error calling push, buffered bytes %s"%(self._buf_bytes,))
+                raise MemoryError
+            
             self._reading_block = None
             self._read_ptr = 0
         return bytes_read
@@ -3669,7 +3688,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return          ## this function has been alredy called in the other thread
         self.tr_failed = 1
         broken = ""
-        ftt_eio =0 
+        ftt_eio =0
 
         if type(msg) != type(""):
             msg = str(msg)
@@ -4657,6 +4676,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             and self.mode == WRITE
             and self._error != e_errors.WRITE_ERROR
             and (self._error_source != TAPE or self._error_source != DRIVE)):
+            if (self._error == e_errors.MEMORY_ERROR and self._error_source ==  NETWORK):
+                # write was interrupted in the middle by memory error in the network thread
+                # do not write file mark
+                pass
             if will_mount and self.saved_mode != WRITE:
                 pass
             else:
@@ -4669,19 +4692,20 @@ class Mover(dispatching_worker.DispatchingWorker,
                     try:
                         bloc_loc = long(stats[self.ftt.BLOC_LOC])
                     except  (self.ftt.FTTError, TypeError), detail:
+                        # Modify this to not call transfer_failed because this method can be called from transfer_called
                         self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
                         return
                     if bloc_loc != self.last_absolute_location:
-                            self.transfer_failed(e_errors.WRITE_ERROR,
-                                                 "Wrong position for %s: last %s, current %s"%
-                                                 (self.current_volume, self.last_absolute_location,
-                                                  bloc_loc,),error_source=TAPE)
-                            self.set_volume_noaccess(self.current_volume)
+                        # Modify this to not call transfer_failed because this method can be called from transfer_called
+                        Trace.log(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set NOACCESS"%
+                                  (self.current_volume, self.last_absolute_location,
+                                   bloc_loc,),error_source=TAPE)
+                        self.set_volume_noaccess(self.current_volume)
                     else:
                         try:
                             self.tape_driver.writefm()
                         except:
-                            Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
+                            Trace.log(e_errors.ERROR,"error writing file mark, will set %s readonly"%(self.current_volume,))
                             Trace.handle_error()
                             self.vcc.set_system_readonly(self.current_volume)
                 
@@ -4862,6 +4886,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if broken:
                 # error out and do not allow dismount as nothing has
                 # been mounted yet
+                # Modify this to not call transfer_failed because this method can be called from transfer_called
                 self.transfer_failed(exc=e_errors.DISMOUNTFAILED, msg=broken,error_source=ROBOT, dismount_allowed=0)
                 self.broken(broken, e_errors.DISMOUNTFAILED) # this is to address AML2 dismount failures
             time.sleep(3)
