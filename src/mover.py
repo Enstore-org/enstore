@@ -4676,11 +4676,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             and self.mode == WRITE
             and self._error != e_errors.WRITE_ERROR
             and (self._error_source != TAPE or self._error_source != DRIVE)):
+
             if (self._error == e_errors.MEMORY_ERROR and self._error_source ==  NETWORK):
                 # write was interrupted in the middle by memory error in the network thread
                 # do not write file mark
                 pass
-            if will_mount and self.saved_mode != WRITE:
+            elif will_mount and self.saved_mode != WRITE:
                 pass
             else:
                 # this case is for forced tape dismount request (HIPRI)
@@ -4699,7 +4700,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         # Modify this to not call transfer_failed because this method can be called from transfer_called
                         Trace.log(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set NOACCESS"%
                                   (self.current_volume, self.last_absolute_location,
-                                   bloc_loc,),error_source=TAPE)
+                                   bloc_loc,))
                         self.set_volume_noaccess(self.current_volume)
                     else:
                         try:
