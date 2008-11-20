@@ -3806,8 +3806,8 @@ def outputfile_check(work_list, e):
 def parse_layer_2(data):
     # Define the match/search once before the loop.  Enstore knows only how
     # to deal with c=1 (aka adler32) checksums.
-    crc_match = re.compile("c=1:[a-zA-Z0-9]{8}")
-    size_match = re.compile("l=[0-9]*")
+    crc_match = re.compile("[:;]c=1:[a-zA-Z0-9]{8}")
+    size_match = re.compile("[:;]l=[0-9]*")
 
     dcache_crc_long = None
     dcache_size_long = None
