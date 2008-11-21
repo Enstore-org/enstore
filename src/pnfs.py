@@ -42,6 +42,8 @@ UNKNOWN = "unknown"
 #DIREXISTS = "directory exists"
 ERROR = -1
 
+PATH_MAX = 199
+
 ##############################################################################
 
 #This is used to print out some of the results to the terminal that are more
@@ -1945,7 +1947,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # report the original file.
         self.verify_existance(use_filepath)
         fname = self.fset_file(use_filepath, size)
-
         f = open(fname,'w')
         f.close()
 
