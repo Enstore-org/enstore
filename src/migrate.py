@@ -3226,7 +3226,7 @@ def do_work(intf):
 
 if __name__ == '__main__':
 
-	Trace.init("MIGRATION")
+	Trace.init(MIGRATION_NAME)
 
 	intf_of_migrate = MigrateInterface(sys.argv, 0) # zero means admin
 
