@@ -91,6 +91,7 @@ import checksum
 import enstore_functions3
 import find_pnfs_file
 import udp_client
+import file_utils
 
 #Hack for migration to report an error, instead of having to go to the log
 # file for every error.
@@ -1003,6 +1004,7 @@ def get_enstore_canonical_path(filepath):
     
 ############################################################################
 
+"""
 ## mode is one of os.F_OK, os.W_OK, os.R_OK or os.X_OK.
 ## file_stats is the return from os.stat()
 
@@ -1103,6 +1105,7 @@ def __e_access(file_stats, mode):
             return 0
 
     return 1
+"""
 
 ############################################################################
 
@@ -2886,15 +2889,15 @@ def access_check(path, mode):
         # automatically retry 6 times, one second delay each
         i = 0
         while i < 6:
-            if e_access(path, mode):
+            if file_utils.e_access(path, mode):
                 return 1
             time.sleep(1)
             i = i + 1
 
         #use the effective ids and not the reals used by os.access().
-        return e_access(path, mode)
+        return file_utils.e_access(path, mode)
     else:
-        rtn = e_access(path, mode)
+        rtn = file_utils.e_access(path, mode)
         if rtn:
             return rtn
 
@@ -3604,7 +3607,7 @@ def outputfile_check(work_list, e):
                                     {'outfilepath' : outputfile_print})
                                         
                 #if not access_check(directory, os.W_OK):
-                if not __e_access(dstatinfo, os.W_OK):
+                if not file_utils.e_access_cmp(dstatinfo, os.W_OK):
                     raise EncpError(errno.EACCES, directory,
                                     e_errors.USERERROR,
                                     {'outfilepath' : outputfile_print})
@@ -3642,7 +3645,7 @@ def outputfile_check(work_list, e):
             elif fstatinfo and dcache:
                 #Do we have the ability to set the metadata after the file
                 # written to tape?
-                if not __e_access(fstatinfo, os.W_OK):
+                if not file_utils.e_access_cmp(fstatinfo, os.W_OK):
                     raise EncpError(errno.EACCES, outputfile_print,
                                     e_errors.USERERROR,
                                     {'outfilepath' : outputfile_print})
@@ -3896,7 +3899,7 @@ def create_zero_length_pnfs_files(filenames, e = None):
                         # a moment before trying again.
                         time.sleep(2)
                         continue
-                    
+
                     raise OSError, msg
 
 def create_zero_length_local_files(filenames):
@@ -3920,7 +3923,6 @@ def create_zero_length_local_files(filenames):
             else:
                 fname = f
             
-        #try:
         delete_at_exit.register(fname)
         fd = atomic.open(fname, mode=0666) #raises OSError on error.
         
@@ -4913,7 +4915,14 @@ def submit_one_request_recv(transaction_id, ticket, lmc):
                     continue
 
             raise (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2])
-
+        except errno.errorcode[errno.ETIMEDOUT]:
+            #Handle this string exception until udp_client is fixed.
+            transaction_id = lmc.u.send_deferred(ticket, lmc.server_address)
+            count = count + 1
+            if count <= 360:
+                continue
+            
+            
     Trace.message(TICKET_1_LEVEL, "LM RESPONCE TICKET:")
     Trace.message(TICKET_1_LEVEL, pprint.pformat(response_ticket))
 
@@ -5092,10 +5101,15 @@ def open_local_file(work_ticket, tinfo, e):
     #  This will always be an non-pnfs file.
     filename = work_ticket['wrapper']['fullname']
 
+    #set the effective uid and gid.
+    file_utils.match_euid_egid(work_ticket['infile'])
+
     #Try to open the local file for read/write.
     try:
         local_fd = os.open(filename, flags)
     except OSError, detail:
+        file_utils.end_euid_egid() #Release the lock.
+        
         if getattr(detail, "errno", None) in \
                [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
             done_ticket = {'status':(e_errors.FILE_MODIFIED, str(detail))}
@@ -5107,12 +5121,16 @@ def open_local_file(work_ticket, tinfo, e):
     try:
         stats = os.fstat(local_fd)
     except OSError, detail:
+        file_utils.end_euid_egid() #Release the lock.
+        
         if getattr(detail, "errno", None) in \
                [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
             done_ticket = {'status':(e_errors.FILE_MODIFIED, str(detail))}
         else:
             done_ticket = {'status':(e_errors.OSERROR, str(detail))}
         return done_ticket
+
+    file_utils.end_euid_egid() #Release the lock.
 
     if filename in ["/dev/zero", "/dev/random", "/dev/urandom"]:
         #Handle these character devices a little differently.
@@ -5452,6 +5470,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         #If we get here then the transfer was a success.
         rtn_ticket = combine_dict({'exfer':EXfer_ticket}, done_ticket, request)
 
+    Trace.log(e_errors.INFO, "leaving transfer_file().") #1111111111111111
     return rtn_ticket
 
 ############################################################################
@@ -7367,6 +7386,8 @@ def set_pnfs_settings(ticket, intf_encp):
                                ticket['wrapper']['pnfsFilename']))
                 else:
                     # set the file size
+                    print "ticket['file_size']:", ticket['file_size']
+                    print "pnfs_filename:", pnfs_filename
                     p.set_file_size(ticket['file_size'], pnfs_filename)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -8047,6 +8068,9 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                       (work_ticket['outfilepath'],
                        time.time()-tinfo['encp_start_time']))
 
+        #Set the effective uid and gid of the file before closing the file.
+        file_utils.match_euid_egid(in_fd)
+
         #Don't need these anymore.
         #close_descriptors(control_socket, data_path_socket, in_fd)
         close_descriptors(in_fd)
@@ -8056,19 +8080,14 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                                      done_ticket, e)
 
         if e_errors.is_retriable(result_dict):
+            file_utils.end_euid_egid() #Release the lock.
             continue
         elif e_errors.is_non_retriable(result_dict):
+            file_utils.end_euid_egid() #Release the lock.
             return combine_dict(result_dict, work_ticket)
 
         #Make sure the exfer sub-ticket gets stored into request_ticket.
         work_ticket = combine_dict(done_ticket, work_ticket)
-
-        #Trace.message(TRANSFER_LEVEL, "File %s transfered.  elapsed=%s" %
-        #              (done_ticket['outfile'],
-        #               time.time()-tinfo['encp_start_time']))
-
-        #Trace.message(TICKET_LEVEL, "FINAL DIALOG")
-        #Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
 
         #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
@@ -8077,10 +8096,12 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e)
-        
+
         if e_errors.is_retriable(result_dict['status'][0]):
+            file_utils.end_euid_egid() #Release the lock.
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
+            file_utils.end_euid_egid() #Release the lock.
             return combine_dict(result_dict, work_ticket)
 
         #Update the last access and modification times respecively.
@@ -8097,10 +8118,12 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                                      pnfs_filename = done_ticket['outfile'])
 
         if e_errors.is_retriable(result_dict['status'][0]):
+            file_utils.end_euid_egid() #Release the lock.
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
+            file_utils.end_euid_egid() #Release the lock.        
             return combine_dict(result_dict, work_ticket)
-        
+
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
         set_pnfs_settings(done_ticket, e)
@@ -8108,12 +8131,14 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         #Verify that the pnfs info was set correctly.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e)
-        
+
         if e_errors.is_retriable(result_dict['status'][0]):
             clear_layers_1_and_4(done_ticket) #Reset this.
+            file_utils.end_euid_egid() #Release the lock.
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
             clear_layers_1_and_4(done_ticket) #Reset this.
+            file_utils.end_euid_egid() #Release the lock.
             return combine_dict(result_dict, work_ticket)
 
         #Set the UNIX file permissions.
@@ -8128,6 +8153,8 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         # but it is still treated like a failed transfer.  Worst case senerio
         # on a failure is that the file is left with full permissions.
         set_outfile_permissions(done_ticket)
+
+        file_utils.end_euid_egid() #Release the lock.
 
         ###What kind of check should be done here?
         #This error should result in the file being left where it is, but it
@@ -8250,10 +8277,16 @@ def prepare_write_to_hsm(tinfo, e):
                 request_list[i]['wrapper']['inode'] = None
                 
         else:
+            if getattr(e, 'migration_or_duplication', None):
+                #set the effective uid and gid.
+                file_utils.match_euid_egid(request_list[i]['infile'])
+            
             #Create the zero length file entry and grab the inode.
             try:
                 create_zero_length_pnfs_files(request_list[i], e)
             except OSError, msg:
+                file_utils.end_euid_egid() #Release the lock.
+                
                 if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
                        or (msg.args[0] == errno.EIO and \
                            msg.args[1].find("corrupt") != -1):
@@ -8263,6 +8296,8 @@ def prepare_write_to_hsm(tinfo, e):
                     request_list[i]['status'] = \
                                    (e_errors.OSERROR, msg.strerror)
                 return request_list[i], listen_socket, udp_server, request_list
+
+            file_utils.end_euid_egid() #Release the lock.
 
     return_ticket = { 'status' : (e_errors.OK, None)}
     return return_ticket, listen_socket, udp_server, request_list
@@ -9801,6 +9836,9 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     #These functions write errors/warnings to the log file and put an
     # error status in the ticket.
 
+    #set the effective uid and gid.
+    file_utils.match_euid_egid(out_fd)
+    
     #Verify size is the same.
     verify_file_size(done_ticket, e)
 
@@ -9811,6 +9849,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         #Close these before they are forgotten.
         #close_descriptors(control_socket, data_path_socket, out_fd)
         close_descriptors(out_fd)
+        file_utils.end_euid_egid() #Release the lock.
         return combine_dict(result_dict, request_ticket)
 
     #Check the CRC.
@@ -9823,11 +9862,8 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         #Close these before they are sforgotten.
         #close_descriptors(control_socket, data_path_socket, out_fd)
         close_descriptors(out_fd)
+        file_utils.end_euid_egid() #Release the lock.
         return combine_dict(result_dict, request_ticket)
-
-    #If no error occured, this is safe to close now.
-    #close_descriptors(control_socket, data_path_socket, out_fd)
-    close_descriptors(out_fd)
 
     #Update the last access and modification times respecively.
     update_times(done_ticket['infile'], done_ticket['outfile'])
@@ -9850,6 +9886,11 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         #We want to set this here, just in case the error isn't technically
         # non-retriable.
         done_ticket['completion_status'] = FAILURE
+
+    #If no error occured, this is safe to close now.
+    #close_descriptors(control_socket, data_path_socket, out_fd)
+    close_descriptors(out_fd)
+    file_utils.end_euid_egid() #Release the lock.
 
     #Remove the new file from the list of those to be deleted should
     # encp stop suddenly.  (ie. crash or control-C).
@@ -9959,8 +10000,29 @@ def prepare_read_from_hsm(tinfo, e):
     for vol in requests_per_vol.keys():
         for i in range(len(requests_per_vol[vol])):
             try:
-               create_zero_length_local_files(requests_per_vol[vol][i])
+                #set the effective uid and gid.
+                file_utils.match_euid_egid(requests_per_vol[vol][i]['infile'])
+
+                if os.getuid() == 0 and os.geteuid() != 0:
+                    #If we are user root and the effecting ids are not,
+                    # then we need to handle this special to be able to
+                    # write to a root owned local directory.
+                    new_uid = os.geteuid()
+                    new_gid = os.getegid()
+                    os.seteuid(0)
+                    os.setegid(0)
+                    create_zero_length_local_files(requests_per_vol[vol][i])
+                    os.chown(requests_per_vol[vol][i]['outfile'],
+                             new_uid, new_gid)
+                    os.setegid(new_gid)
+                    os.seteuid(new_uid)
+                else:
+                    create_zero_length_local_files(requests_per_vol[vol][i])
+                        
+                file_utils.end_euid_egid()  #Release the lock.
             except (OSError, IOError, EncpError), msg:
+                file_utils.end_euid_egid() #Release the lock.
+
                 if isinstance(msg, EncpError):
                     requests_per_vol[vol][i]['status'] = (msg.type, str(msg))
                 elif isinstance(msg, OSError):
@@ -11344,9 +11406,19 @@ def do_work(intf):
 
         exit_status = 1
 
+    file_utils.euid_lock.acquire()
+
     #Remove any zero-length files left haning around.  Also, return
     # a non-zero exit status to the calling program/shell.
     delete_at_exit.delete()
+
+    #The only thing that would be effected by not setting this back would be
+    if os.getuid() == 0 and os.geteuid() != 0:
+        os.seteuid(0)
+        os.setegid(0)
+        
+    file_utils.euid_lock.release()
+    
     return exit_status
         
 if __name__ == '__main__':

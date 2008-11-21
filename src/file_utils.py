@@ -12,30 +12,31 @@
 
 # system imports
 import sys
-import string
-import time
-import errno
-import socket
-import select
-import pprint
 import os
 import stat
-import Trace
-import e_errors
+import threading
+import types
+
+## mode is one of os.F_OK, os.W_OK, os.R_OK or os.X_OK.
+## file_stats is the return from os.stat()
 
 #The os.access() and the access(2) C library routine use the real id when
 # testing for access.  This function does the same thing but for the
 # effective ID.
-
 def e_access(path, mode):
-    
+
     #Test for existance.
     try:
         file_stats = os.stat(path)
-        stat_mode = file_stats[stat.ST_MODE]
     except OSError:
         return 0
+    
+    return e_access_cmp(file_stats, mode)
 
+#Check the bits to see if we have the requested mode access.
+def e_access_cmp(file_stats, mode):
+    stat_mode = file_stats[stat.ST_MODE]
+    
     #Make sure a valid mode was passed in.
     if mode & (os.F_OK | os.R_OK | os.W_OK | os.X_OK) != mode:
         return 0
@@ -117,30 +118,61 @@ def e_access(path, mode):
 
     return 1
 
-def set_outfile_permissions(ticket):
+#############################################################################
 
-    if not ticket.get('copy', None):  #Don't set permissions if copy.
-        set_outfile_permissions_start_time = time.time()
+#If root is running the process, we may need to change the euid.  Is this
+# only applicable to migration?
+euid_lock = threading.RLock()
 
-        #Attempt to get the input files permissions and set the output file to
-        # match them.
-        if ticket['outfile'] != "/dev/null":
-            try:
-                #Dmitry handle remote file case
-                perms = None
-                if ( os.path.exists(ticket['infile']) ):
-                    perms = os.stat(ticket['infile'])[stat.ST_MODE]
-                else:
-                    perms = ticket['wrapper']['pstat'][stat.ST_MODE]
-                os.chmod(ticket['outfile'], perms)
-                ticket['status'] = (e_errors.OK, None)
-            except OSError, msg:
-                Trace.log(e_errors.INFO, "chmod %s failed: %s" % \
-                          (ticket['outfile'], msg))
-                ticket['status'] = (e_errors.USERERROR,
-                                    "Unable to set permissions.")
+#Match the effective uid/gid of a file.
+# arg: could be a pathname, fileno or file object.
+#
+# We need to do this when user root, so that migration modify non-/pnfs/fs
+# (and non-trusted) pnfs mount points.
+def match_euid_egid(arg):
 
-#        Trace.message(TIME_LEVEL, "Time to set_outfile_permissions: %s sec." %
-#                      (time.time() - set_outfile_permissions_start_time,))
-    return
-    
+    if os.getuid() == 0:# and getattr(e, 'migration_or_duplication', None):
+
+        if type(arg) == types.StringType:
+            f_stat = os.stat(arg)
+        elif type(arg) == types.IntType:
+            f_stat = os.fstat(arg)
+        elif type(arg) == types.FileType:
+            f_stat = os.fstat(arg.fileno())
+        else:
+            raise TypeError("Expected path, file descriptor or file object; "
+                            "not %s" % (type(arg),))
+
+        euid_lock.acquire()
+
+        try:
+            #First look at the gid.
+            if f_stat[stat.ST_GID] != os.getegid():
+                if os.getegid() != 0:
+                    os.setegid(0)
+                os.setegid(f_stat[stat.ST_GID])
+            #Then look a the uid.
+            if f_stat[stat.ST_UID] != os.geteuid():
+                if os.geteuid() != 0:
+                    os.seteuid(0)
+                os.seteuid(f_stat[stat.ST_UID])
+        except:
+            euid_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+
+#Release the lock.
+def end_euid_egid(reset_ids_back = False):
+
+    if os.getuid() == 0 or os.getgid() == 0:
+        if reset_ids_back:
+            os.seteuid(0)
+            os.setegid(0)
+        
+        try:
+            euid_lock.release()
+        except RuntimeError:
+            pass  #Already unlocked.
+
+#############################################################################
+        

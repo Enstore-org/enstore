@@ -25,6 +25,7 @@ import file_clerk_client
 import enstore_functions2
 import e_errors
 import pnfs_agent_client
+import file_utils
 
 class Container:
     pass
@@ -155,12 +156,21 @@ def delete():
             try:
                 os.unlink(f)
             except:
-                Trace.log(e_errors.ERROR, "Can not delete file %s.\n" % (f,))
+                #Reset the euid and egid.
+                file_utils.match_euid_egid(f)
+                
                 try:
-                    sys.stderr.write("Can not delete file %s.\n" % (f,))
-                    sys.stderr.flush()
-                except IOError:
-                    pass
+                    os.unlink(f)
+                except:
+                    Trace.log(e_errors.ERROR, "Can not delete file %s.\n" % (f,))
+                    try:
+                        sys.stderr.write("Can not delete file %s.\n" % (f,))
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
+
+                #Release the lock.
+                file_utils.end_euid_egid()
         else:
             pnfs_agent_answer = csc.get("pnfs_agent", 5, 5)
             #We need to check if the optional pnfs_agent is even configured.

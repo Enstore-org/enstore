@@ -89,6 +89,7 @@ import enstore_functions2
 import enstore_functions3
 import find_pnfs_file
 import enstore_constants
+import file_utils
 
 ###############################################################################
 
@@ -161,18 +162,6 @@ MIGRATION_DB = 'Migration'
 ENCP_PRIORITY = 0
 # If all else fails, guess with this mount point.
 DEFAULT_FS_PNFS_PATH = "/pnfs/fs/usr"
-
-
-# SPOOL_DIR='/diskb/Migration_tmp'
-#SPOOL_DIR='/data/data2/Migration_Spool'
-# DEFAULT_LIBRARY='CD-9940B'
-#DEFAULT_LIBRARY=''
-# CMS_MIGRATION_DB = 'cms/WAX/repairing2bstayout/Migration'
-#CMS_MIGRATION_DB = 'cms/MIGRATION-9940A-TO-9940B'
-#CMS_MIGRATION_DB = MIGRATION_DB
-#f_prefix = '/pnfs/fs/usr'
-#f_p = string.split(f_prefix, '/')
-#f_n = len(f_p)
 
 DELETED_TMP = 'DELETED'
 
@@ -260,6 +249,10 @@ def init(intf):
 	if not intf.migrated_to and not intf.migrated_from and \
 	   not intf.status and not intf.show and \
 	   not getattr(intf, "summary", None):
+		#First, verify for these commands we are user root.
+		if os.geteuid() != 0:
+			sys.stderr.write("Must run as user root.\n")
+			sys.exit(1)
 
 		# check for directories
 
@@ -302,6 +295,7 @@ def nullify_pnfs(pname):
 		f = open(p1.layer_file(i), 'w')
 		f.close()
 
+#Update the proceed_number global variable.
 def set_proceed_number(src_bfids, intf):
 	global proceed_number
 	global copy_queue, scan_queue
@@ -326,28 +320,20 @@ def set_proceed_number(src_bfids, intf):
 	# get a db connection
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
-	#This value of mig_path isn't the greatest.  First, it assumes that
-	# the values underneath the Migration DB path all reference this
-	# top directory.  Second, it assumes that there is a Migration
-	# DB path, instead of using a temporary file in the sam directory
-	# as the original file.
-	pnfs_fs_paths = pnfs.get_enstore_admin_mount_point()
-	for pnfs_fs_path in pnfs_fs_paths:
-		try:
-			mig_path = os.path.join(pnfs_fs_path,
-						MIGRATION_DB)
-			os.stat(mig_path)
-			#If we get here, then we found a migration path.
-			# Lets use it, hope it is the correct one.
-		except (OSError, IOError):
-			continue
-	else:
-		return
-	
 	###############################################################
 	#Determine the media speeds that the migration will be going at.
 	src_media_type = get_media_type(src_bfids[0], db)
-	dst_media_type = get_media_type(mig_path, db)
+	if intf.library and intf.library == types.StringType:
+		dst_media_type = get_media_type(intf.library, db)
+	else:
+		mig_path = get_migration_db_path()
+		if mig_path != None:
+			dst_media_type = get_media_type(mig_path, db)
+		else:
+			#If we get here, we would need to look at the tags
+			# in the original directory, but since we don't have
+			# that available here, lets just drop it for now.
+			return
 	
 	src_rate = getattr(enstore_constants,
 			       "RATE_" + str(src_media_type), None)
@@ -373,9 +359,35 @@ def setup_cloning():
 	set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_cloned
 	set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_cloning
 
-
 ###############################################################################
 
+def get_migration_db_path():
+	#This value of mig_path isn't the greatest.  First, it assumes that
+	# the values underneath the Migration DB path all reference this
+	# top directory.  Second, it assumes that there is a Migration
+	# DB path, instead of using a temporary file in the sam directory
+	# as the original file.
+	#
+	#The function get_enstore_admin_mount_point() can return more than
+	# one fs path if more are mounted.  Loop accordingly.
+	pnfs_fs_paths = pnfs.get_enstore_admin_mount_point()
+	for pnfs_fs_path in pnfs_fs_paths:
+		try:
+			mig_path = os.path.join(pnfs_fs_path,
+						MIGRATION_DB)
+			os.stat(mig_path)
+			#If we get here, then we found a migration path.
+			# Lets use it, hope it is the correct one.
+			break
+		except (OSError, IOError):
+			continue
+	else:
+		return
+
+	return mig_path
+
+###############################################################################
+	
 def is_migration_path(filepath):
 	#Make sure this is a string.
 	if type(filepath) != types.StringType:
@@ -386,6 +398,22 @@ def is_migration_path(filepath):
 	# be used.
 	if filepath.find(MIGRATION_DB) != -1:
 		return 1
+
+	if os.path.basename(filepath).startswith(".m."):
+		return 1
+
+	return 0
+
+def is_library(library):
+	# get its own configuration server client
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient((config_host,
+							config_port))
+	lm_list = csc.get_library_managers2()
+	for lm_conf_dict in lm_list:
+		if lm_conf_dict['library_manager'] == library:
+			return 1
 
 	return 0
 
@@ -695,25 +723,30 @@ def get_volume_from_bfid(bfid, db):
 	return None
 
 #Return the media_type that the bfid or volume refers to.  The first
-# argument may also be a file path in pnfs.
-def get_media_type(bfid_or_volume, db):
-	if enstore_functions3.is_bfid(bfid_or_volume):
+# argument may also be a file path in pnfs.  It may also be a (short) library
+# name now too.
+def get_media_type(arguement, db):
+	if enstore_functions3.is_bfid(arguement):
 		q = "select media_type from volume,file where " \
 		    " file.volume = volume.id and file.bfid = '%s';" % \
-		    (bfid_or_volume,)
+		    (arguement,)
 		library = ""  #set empty to skip
-	elif enstore_functions3.is_volume(bfid_or_volume):
+	elif enstore_functions3.is_volume(arguement):
 		q = "select media_type from volume where " \
-		    " label = '%s';" % (bfid_or_volume,)
+		    " label = '%s';" % (arguement,)
 		library = ""  #set empty to skip
-	elif pnfs.is_pnfs_path(bfid_or_volume, check_name_only = 1):
+	elif is_library(arguement):
+		library = arguement
+		q = "select media_type from volume where " \
+		    "volume.library = '%s' limit 1;" % (library,)
+	elif pnfs.is_pnfs_path(arguement, check_name_only = 1):
 		try:
-			t = pnfs.Tag(bfid_or_volume)
+			t = pnfs.Tag(arguement)
 			library = t.get_library()
 		except (OSError, IOError):
 			exc_type, exc_value = sys.exc_info()[:2]
 			error_log("get_media_type", str(exc_type),
-				  str(exc_value), bfid_or_volume)
+				  str(exc_value), arguement)
 			return None
 		q = "select media_type from volume where " \
 		    "volume.library = '%s' limit 1;" % (library,)
@@ -905,8 +938,14 @@ def mark_undeleted(MY_TASK, src_bfid, fcc, db):
 def migration_path(path, deleted = 'n'):
 	admin_mount_points = pnfs.get_enstore_admin_mount_point()
 	if len(admin_mount_points) == 0:
-		return None
-	elif len(admin_mount_points) == 1:
+		#If the admin path is not mounted, use the normal path...
+		dname, fname = os.path.split(path)
+		#...just be sure to stick .m. at the beginning and to
+		# limit the character count.
+		use_fname = ".m.%s" % (fname,)[:pnfs.PATH_MAX]
+		mig_path = os.path.join(dname, use_fname)
+		return mig_path
+	elif len(admin_mount_points) >= 1:
 		admin_mount_point = admin_mount_points[0]
 	else:
 		return None
@@ -924,7 +963,8 @@ def migration_path(path, deleted = 'n'):
 			    MIGRATION_DB,
 			    pnfs.strip_pnfs_mountpoint(path))
 
-def deleted_path(path, vol, location_cookie):
+"""
+def deleted_path(vol, location_cookie):
 	admin_mount_points = pnfs.get_enstore_admin_mount_point()
 	if len(admin_mount_points) == 0:
 		return None
@@ -940,6 +980,7 @@ def deleted_path(path, vol, location_cookie):
 			    MIGRATION_DB,
 			    DELETED_TMP,
 			    vol + ':' + location_cookie)
+"""
 
 # temp_file(file) -- get a temporary destination file from file
 def temp_file(vol, location_cookie):
@@ -1083,7 +1124,7 @@ def show_migrated_to(volume_list, db):
 			print to_vol,
 		print
 
-def show_status(volume_list, intf, db):
+def show_status(volume_list, db):
 	exit_status = 0
 	mig_type = None  #migration type (MIGRATION or DUPLICATION)
 
@@ -1188,8 +1229,8 @@ def show_status(volume_list, intf, db):
 				# in the migration, print in the
 				# correct spot.
 				if is_dst_volume:
-					line = "%19s %19s" % \
-					       ("", row[0],)
+					line = "%19s %1s %19s" % \
+					       ("", "", row[0],)
 					print line
 				else:
 					#Not migrated yet.
@@ -1324,6 +1365,7 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 			  % (src_bfid, src_path))
 		#continue
 		return 1
+
 	# make sure the tmp file is not there
 	if os.access(tmp_path, os.F_OK):
 		log(MY_TASK, "tmp file %s exists, removing it first" \
@@ -1476,6 +1518,7 @@ def copy_files(files, intf):
 						     f['location_cookie'],
 						     f['pnfs_id']))
 					continue
+
 		elif f['deleted'] == 'y' and len(f['pnfs_id']) > 10:
 			log(MY_TASK, "%s %s %s is a DELETED FILE" \
 			    % (f['bfid'], f['pnfs_id'], f['pnfs_path']))
@@ -1678,9 +1721,19 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 		#continue
 		return 1
 	# check if the directory is witeable
-	(dst_directory, dst_basename) = os.path.split(mig_path)
+	try:
+		(dst_directory, dst_basename) = os.path.split(mig_path)
+		d_stat = os.stat(dst_directory)
+	except OSError, msg:
+		if msg.errno == errno.ENOENT:
+			d_stat = None
+		else:
+			error_log(MY_TASK, "failure stating %s: %s" % \
+				  (mig_path, str(msg)))
+			return 1
 	# does the parent directory exist?
-	if not os.access(dst_directory, os.F_OK):
+	#if not os.access(dst_directory, os.F_OK):
+	if not d_stat: # or not file_utils.e_access_cmp(d_stat, os.F_OK):
 		try:
 			os.makedirs(dst_directory)
 			ok_log(MY_TASK, "making path %s" % (dst_directory,))
@@ -1690,7 +1743,8 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 			#job = copy_queue.get(True)
 			#continue
 			return 1
-	if not os.access(dst_directory, os.W_OK):
+	#if not os.access(dst_directory, os.W_OK):
+	if not file_utils.e_access_cmp(d_stat, os.W_OK):
 		# can not create the file in that directory
 		error_log(MY_TASK, "%s is not writable" % (dst_directory,))
 		#job = copy_queue.get(True)
@@ -1698,16 +1752,52 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 		return 1
 
 	# make sure the migration file is not there
-	if os.access(mig_path, os.F_OK):
+	try:
+		mig_stat = os.stat(mig_path)
+	except OSError, msg:
+		if msg.errno == errno.ENOENT:
+			mig_stat = None
+		else:
+			error_log(MY_TASK, "failure stating %s: %s" % \
+				  (mig_path, str(msg)))
+			return 1
+	#if os.access(mig_path, os.F_OK):
+	if mig_stat: # and file_utils.e_access_cmp(mig_stat, os.F_OK):
 		log(MY_TASK, "migration file %s exists, removing it first" \
 		    % (mig_path,))
 		try:
+			#For trusted pnfs systems, there isn't a problem,
+			# but for untrusted we need to set the effective
+			# IDs to the owner of the file.
+			#NOTE: Modify file_utils.match_euid_egid() to accept
+			# stat() results as an arguement.  Then mig_stat
+			# could be passed in saving a stat() call.
+			file_utils.match_euid_egid(mig_path)
+			"""
+			if (mig_stat[stat.ST_UID] != os.geteuid() and
+			    os.getuid() == 0) or \
+			    (mig_stat[stat.ST_GID] != os.getegid() and
+			     os.getgid() == 0):
+				os.seteuid(0)
+				os.setegid(0)
+				os.setegid(mig_stat[stat.ST_GID])
+				os.seteuid(mig_stat[stat.ST_UID])
+			"""
+				
 			#Should the layers be nullified first?  When
 			# migrating the same files over and over again the
 			# answer is yes to avoid delfile complaing.
 			# But what about production?
 			nullify_pnfs(mig_path)
 			os.remove(mig_path)
+
+			#Now set the root ID's back.
+			file_utils.end_euid_egid(reset_ids_back = True)
+			"""
+			if os.getuid() == 0 or os.getgid() == 0:
+				os.seteuid(0)
+				os.setegid(0)
+			"""
 		except (OSError, IOError), msg:
 			error_log(MY_TASK,
 				  "failed to delete migration file %s: %s" \
@@ -1726,7 +1816,7 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 	else:
 		use_priority = "--priority %s" % \
 			       (ENCP_PRIORITY,)
-	encp_options = "--delayed-dismount 2 --ignore-fair-share --threaded"
+	encp_options = "--verbose 4 --delayed-dismount 2 --ignore-fair-share --threaded"
 	dst_options = "--storage-group %s --file-family %s " \
 		      "--file-family-wrapper %s" \
 		      % (sg, ff, wrapper)
@@ -1930,8 +2020,32 @@ def migrating(intf):
 		log(MY_TASK2, "swapping %s %s %s %s" % \
 		    (src_bfid, src_path, dst_bfid, mig_path))
 		if not is_swapped(src_bfid, db):
+			#For trusted pnfs systems, there isn't a problem,
+			# but for untrusted we need to set the effective
+			# IDs to the owner of the file.
+			file_utils.match_euid_egid(src_path)
+			"""
+			src_stat = os.stat(src_path)
+			if (src_stat[stat.ST_UID] != os.geteuid() and
+			    os.getuid() == 0) or \
+			    (src_stat[stat.ST_GID] != os.getegid() and
+			     os.getgid() == 0):
+				os.seteuid(0)
+				os.setegid(0)
+				os.setegid(src_stat[stat.ST_GID])
+				os.seteuid(src_stat[stat.ST_UID])
+			"""
+			
 			res = swap_metadata(src_bfid, src_path,
 					    dst_bfid, mig_path, db)
+
+			#Now set the root ID's back.
+			file_utils.end_euid_egid(reset_ids_back = True)
+			"""
+			if os.getuid() == 0 or os.getgid() == 0:
+				os.seteuid(0)
+				os.setegid(0)
+			"""
 
 			if not res:
 				ok_log(MY_TASK2,
@@ -2110,9 +2224,30 @@ def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
 		    #Error occured.
 		    #continue
 		    return 1
+
+	        # rm the migration path.  It could be argued, that if we
+		# do this that we don't need to explicitly mark the bfied
+		# deleted above, but there is the delay between delfile
+		# running for that to happen.  It's cleaner to do both.
+		mig_path = migration_path(pnfs_path)
+		try:
+			os.remove(mig_path)
+		except OSError:
+			error_log(MY_TASK,
+				  "migration path %s was not deleted" \
+				  % (mig_path,))
                 ########################################################
 	else:
 		ok_log(MY_TASK, dst_bfid, "is already checked at", ct)
+		# make sure the migration path has been removed
+		mig_path = migration_path(pnfs_path)
+		try:
+			os.stat(mig_path)
+			error_log(MY_TASK,
+				  "migration path %s was not deleted" \
+				  % (mig_path,))
+		except OSError:
+			pass
 		# make sure the original is marked deleted
 		f = fcc.bfid_info(src_bfid)
 		if f['status'] == e_errors.OK and f['deleted'] != 'yes':
@@ -2724,7 +2859,9 @@ def migrate_volume(vol, intf):
 		
 	#Here are some additional checks on the volume.  If necessary, it
 	# will set the system_inhibit_1 value.
-	if v['system_inhibit'][1] == INHIBIT_STATE and is_migrated_by_src_vol(vol, intf, db):
+	if v['system_inhibit'][1] == INHIBIT_STATE and \
+	       is_migrated_by_src_vol(vol, intf, db) and \
+	       not getattr(intf, "force", None):
 		log(MY_TASK, vol, 'has already been %s' % INHIBIT_STATE)
 		return 0
 	if v['system_inhibit'][1] != IN_PROGRESS_STATE:
@@ -2868,6 +3005,22 @@ def restore(bfids, intf):
 				  % (bfid, src,))
 			continue
 
+		#For trusted pnfs systems, there isn't a problem,
+		# but for untrusted we need to set the effective
+		# IDs to the owner of the file.
+		file_utils.match_euid_egid(src)
+		"""
+		restore_stat = os.stat(src)
+		if (restore_stat[stat.ST_UID] != os.geteuid() and
+		    os.getuid() == 0) or \
+		    (restore_stat[stat.ST_GID] != os.getegid() and
+		     os.getgid() == 0):
+			os.seteuid(0)
+			os.setegid(0)
+			os.setegid(restore_stat[stat.ST_GID])
+			os.seteuid(restore_stat[stat.ST_UID])
+		"""
+
 		# set layer 1 and layer 4 to point to the original file
 		p.update()
 
@@ -2880,6 +3033,14 @@ def restore(bfids, intf):
 			error_log(MY_TASK,
 				  "failed to delete migration file %s: %s" \
 				  % (mig_path, str(msg)))
+
+		#Now set the root ID's back.
+		file_utils.end_euid_egid(reset_ids_back = True)
+		"""
+		if os.getuid() == 0 or os.getgid() == 0:
+			os.seteuid(0)
+			os.setegid(0)
+		"""
 
 		# mark the migration copy of the file deleted
 		rtn_code = mark_deleted(MY_TASK, dst_bfid, fcc, db)
@@ -3112,7 +3273,7 @@ def main(intf):
 		# get a db connection
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 		
-		exit_status = show_status(intf.args, intf, db)
+		exit_status = show_status(intf.args, db)
 		return exit_status
 
 	elif intf.show:
@@ -3179,6 +3340,7 @@ def main(intf):
 			rtn = rtn + migrate(bfid_list, intf)
 		for volume in volume_list:
 			rtn = rtn +  migrate_volume(volume, intf)
+			print "rtn:", rtn
 
 		return rtn
 
@@ -3220,8 +3382,7 @@ def do_work(intf):
 		if msg.args[0] != errno.ESRCH:
 			sys.stderr.write("Unable to kill %d: %s\n" %
 					 (pid2, str(msg)))
-			
-
+	
 	sys.exit(exit_status)
 
 if __name__ == '__main__':
@@ -3232,3 +3393,4 @@ if __name__ == '__main__':
 
 	do_work(intf_of_migrate)
 
+	
