@@ -27,19 +27,16 @@ def location_to_cookie(location):
     return '%04d_%09d_%07d' % (0, 0, loc)
 
 class FileEntry:
-    def __init__(self, fcc, file_path, report, castor_path):
+    def __init__(self, fcc, file_path, report):
         self.file_path = file_path
         self.report = report
-	self.old_castor_path= castor_path
         self.fd = copy.deepcopy(self.file_entry)
         self.atime = 0.
         self.mtime = 0.
         self.ctime = 0.
         self.fcc = fcc
     
-    name_map={'fileid': 'fileid',
-              'parent_fileid': 'parent_fileid',
-              'name': 'pnfs_name0',
+    name_map={'name': 'pnfs_name0',
               'owner_uid':'uid',
               'gid': 'gid',
               'filesize': 'size',
@@ -59,6 +56,7 @@ class FileEntry:
                   'location_cookie': '',
                   'pnfs_name0': '',
                   'pnfsid': '',
+                  #                  'sanity_cookie': None,
                   'sanity_cookie': (None,None),
                   'size': 0L,
                   'uid': 0,
@@ -70,6 +68,7 @@ class FileEntry:
         
     def read_castor_entry(self, f):
         l = f.readline()
+        #print "L %s"%(l,)
         if l:
             if l.find('+--') != -1:
                 l = f.readline()
@@ -85,49 +84,31 @@ class FileEntry:
                     lst1.append(i.strip())
             return lst1
 
-    def get_castor_parent(self, fid):
-        cmd='mysql -h castorsrv1 -s --user=enstore --password=enstore -e "select parent_fileid,name from Cns_file_metadata where fileid = '+"'"+str(fid)+"';"+'" cns_db'
-        f = os.popen(cmd)
-        op = f.readlines()
-        f.close()
-        l = op[0].split('\t')
-        
-        return { 'pfid': l[0], 'name': l[1].strip('\n') }
-
-
-    def get_castor_name(self, fid):
-        if fid != str(0):
-            pea = self.get_castor_parent(fid)
-            path = self.get_castor_name(pea['pfid'])
-            path = os.path.join(path, pea['name'])
-            return path
-        
-
     def create_file_entry(self, src_keys, lst):
-        print "LST (2)"
-	print self.old_castor_path
-        print lst
         if int(lst[src_keys.index('fsec')]) != 1:
             # file is spread across multiple tapes. Enstore can not read this file
             self.report.write("File is spread across multiple tapes. File %s, position %s, full record %s. Will not be imported \n"%(lst[0], lst[4], lst,))
             return 1
         for src_key in src_keys:
+            #if src_key == 'name':
+            #    name = os.path.join(self.file_path, lst.index('name'))
             if src_key == 'owner_uid':
+                #print "UID", src_keys.index('owner_uid'), lst[src_keys.index('owner_uid')]
                 self.fd['uid'] = int(lst[src_keys.index('owner_uid')])
-            elif src_key == 'fileid':
-                self.fd['fileid'] = int (lst[src_keys.index('fileid')])
-            elif src_key == 'parent_fileid':
-                self.fd['parent_fileid'] = int (lst[src_keys.index('parent_fileid')])
             elif src_key == 'gid':
+                #print "GID", src_keys.index('gid'), lst[src_keys.index('gid')]
                 self.fd['gid'] = int(lst[src_keys.index('gid')])
             elif src_key == 'filesize':
+                #print "FSIZE", src_keys.index('filesize'), lst[src_keys.index('filesize')]
                 self.fd['size'] = long(lst[src_keys.index('filesize')])
             elif src_key == 'fseq':
                 print "FSEQ", src_keys.index('fseq'),lst[src_keys.index('fseq')] 
                 self.fd['location_cookie'] = location_to_cookie(lst[src_keys.index('fseq')])
             elif src_key == 'vid':
+                #print "VID", src_keys.index('vid'), lst[src_keys.index('vid')]
                 self.fd['external_label'] = lst[src_keys.index('vid')]
             elif src_key == 'checksum':
+                #print "CHECKSUM",src_keys.index('checksum'), lst[src_keys.index('checksum')] 
                 self.fd['complete_crc'] = castor2enstoreadler32(long(lst[src_keys.index('checksum')]))
             elif src_key == 'mtime':
                 self.mtime = float(lst[src_keys.index('mtime')])
@@ -138,27 +119,7 @@ class FileEntry:
                 self.ctime = float(lst[src_keys.index('ctime')])
             
     
-        castor_file_path = self.get_castor_name(self.fd['fileid'])
-        print "DEBUG CASTOR PATH FILE: %s"%(castor_file_path)
-	print "DEBUG CASTOR PATH PATTERN: %s"%(self.old_castor_path)
-	list_path_file = castor_file_path.split("/")
-	list_castor_pattern = self.old_castor_path.split("/")
-        for i in range(len(list_castor_pattern)):
-	    if list_path_file[0]==list_castor_pattern[0]:
-		list_castor_pattern.pop(0);
-		list_path_file.pop(0)
-		print list_path_file
-	    else:
-		print "Not path match. Can not proceed"
-		return 1
-        list_path_file.pop(len(list_path_file)-1)
-	internal_path="/".join(list_path_file)
-        self.fd['pnfs_name0'] = os.path.join(self.file_path,internal_path,lst[src_keys.index('name')])
-	print "DEBUG PNFS PATH: %s"%(self.fd['pnfs_name0'])
-        ## some translation from the "castor file path" to the
-        ## "enstore file path" is needed
-
-
+        self.fd['pnfs_name0'] = os.path.join(self.file_path,self. fd['external_label'],lst[src_keys.index('name')])
         # create bit file entry
         if os.path.exists(self.fd['pnfs_name0']):
             print "File %s exists. Can not proceed"%(self.fd['pnfs_name0'],)
@@ -167,6 +128,7 @@ class FileEntry:
         ticket = {'fc':self.fd}
         print "Create BFID for %s"%(self.fd['pnfs_name0'],)
         rticket = self.fcc.create_bit_file(ticket['fc'])
+        #print 'File clerk returned', rticket
         if rticket['status'][0] == e_errors.OK:
             print 'BFID', rticket['fc']['bfid']
 
@@ -175,7 +137,6 @@ class FileEntry:
             dir_name = os.path.dirname(self.fd['pnfs_name0'])
             if not os.path.exists(dir_name):
                 os.makedirs(dir_name)
-            print "CREATE FILE %s, %s"%(self.fd['pnfs_name0'], dir_name)
             p = pnfs.Pnfs(self.fd['pnfs_name0'])
             p.creat(mode=0666)
             p.set_file_size(self.fd['size'])
@@ -202,15 +163,27 @@ class FileEntry:
         
     def create_entry(self, src_keys, f):
         lst = self.read_castor_entry(f)
+        #print "LST", lst
         if lst:
             if not src_keys:
                 return lst
+                #src_keys = []
+                #for i in self.name_map.keys():
+                #    if i in lst:
+                #        src_keys.append(i)
+                #    else:
+                #        return None
+                #return src_keys
             else:
                self.create_file_entry(src_keys, lst)
+               #print self.fd
                return []
         else:
             return -1
 
+            
+                    
+        
 
 class CastorTape:
 
@@ -237,30 +210,31 @@ class CastorTape:
                     'wrapper': 'cern',
                     'write_protected': 'n'}
 
-    def __init__(self, volume_name, library, volume_size, media, file_entry_path, pnfs_path, castor_path, vo_name):
+    def __init__(self, volume_name, library, volume_size, media, file_entry_path, pnfs_path):
         print "INIT", volume_name, volume_size, media, file_entry_path, pnfs_path, report_path,library
-        self.f = os.path.join("/tmp", volume_name);
+        self.f = os.path.join(file_entry_path,volume_name, volume_name)
         print "F", self.f
         self.path = pnfs_path
-	self.old_castor_path = castor_path
-	self.voname = vo_name
-	print "INIT CASTOR: %s"%(self.old_castor_path)
 	vol_path = os.path.join(file_entry_path, volume_name)
 	if not os.path.exists(vol_path):
 	       os.makedirs(vol_path)
         if not os.path.exists(self.f):
-            cmd='mysql -h castorsrv1 --user=enstore --password=enstore -e "select fileid,parent_fileid,name,owner_uid,gid,filesize,fseq,atime,mtime,ctime,vid,checksum,fsec from Cns_file_metadata f, Cns_seg_metadata s where f.fileid = s.s_fileid and vid='+"'"+volume_name+"';"+'" cns_db>'+ self.f
+            cmd='mysql -h castorsrv1 --user=enstore --password=enstore -e "select name,owner_uid,gid,filesize,fseq,atime,mtime,ctime,vid,checksum,fsec from Cns_file_metadata f, Cns_seg_metadata s where f.fileid = s.s_fileid and vid='+"'"+volume_name+"';"+'" cns_db>'+ self.f
+            #print "CMD",cmd
             rstat = os.system(cmd)
+            #print "STAT",rstat
             if rstat != 0:
                 print "Error. check %s"(self.f,)
                 self.empty=1
                 return
+        #print "STAT", os.stat(self.f)
         if os.stat(self.f)[stat.ST_SIZE] == 0:
             print "Castor volume %s is empty"%(self.f,)
             self.empty = 1
             return
         self.empty = 0
-        self.report = open(os.path.join("/tmp", "report"), 'w')
+        #print "PATH",os.path.join(vol_path, "report") 
+        self.report = open(os.path.join(vol_path, "report"), 'w')
         csc = (os.environ['ENSTORE_CONFIG_HOST'],
                int(os.environ['ENSTORE_CONFIG_PORT']))
 
@@ -271,14 +245,13 @@ class CastorTape:
         self.vd['capacity_bytes'] = volume_size
         self.vd['media_type'] = media
         self.vd['library'] = library
-	self.vd['volume_family'] = 'vo-'+vo_name+'.castor.cern',
            
                     
     def create_volume_entry(self):
-        print "VOL", self.vd
+        #print "VOL", self.vd
         rc = self.vcc.add(self.vd['library'],
                           'castor',           # volume family the media is in
-                          'vo-'+vo_name,         # storage group for this volume
+                          'castor',         # storage group for this volume
                           self.vd['media_type'],            # media
                           self.vd['external_label'],        # label as known to the system
                           self.vd['capacity_bytes'],        #
@@ -322,10 +295,14 @@ class CastorTape:
         f_entry = None
         while 1:
             last_f_entry = f_entry
-            f_entry = FileEntry(self.fcc, self.path, self.report, self.old_castor_path)
+            f_entry = FileEntry(self.fcc, self.path, self.report)
             rc = f_entry.create_entry(src_keys, f)
+            #print "RC",rc
             if rc and rc != -1:
                  src_keys = rc
+                 #print "SRC_KEYS",src_keys
+                 #for k in src_keys:
+                 #    print k,src_keys.index(k) 
             elif rc == -1:
                 break
             else:
@@ -343,11 +320,13 @@ def vsize(s):
 def read_volume_entry(f):
     l1 = f.readline()
     l = l1.strip()
+    #print "L %s"%(l,)
     if l:
         if l.find('+--') != -1:
             l = f.readline()
             if not l: return None
             l=l[:-1]
+        #lst = l.split('\t')
         lst = l.split(' ')
         lst1 = []
         for i in lst:
@@ -355,7 +334,8 @@ def read_volume_entry(f):
                 lst1.append(i.strip())
         return lst1
 
-def create_volume_entry(src_keys, lst, file_entry_path, path, report, castor_path, library=None, vo_name=None):
+def create_volume_entry(src_keys, lst, file_entry_path, path, report, library=None):
+    #print 'SRC_KEYS', src_keys
     for src_key in src_keys:
         if src_key == 'vid':
             vol = lst[src_keys.index('vid')]
@@ -366,10 +346,11 @@ def create_volume_entry(src_keys, lst, file_entry_path, path, report, castor_pat
     work_dir=os.path.join(file_entry_path,vol)
     if not os.path.exists(work_dir):
         os.makedirs(work_dir)
-    outf = os.path.join("/tmp", vol+".out")
+    outf = os.path.join(work_dir, vol+".out")
     saved_stdout = sys.stdout
     sys.stdout = open(outf, "w")
     try:
+        #print vol,capacity, media
         s='-'
         if library == None:
             lib = s.join(('castor', media))
@@ -377,7 +358,7 @@ def create_volume_entry(src_keys, lst, file_entry_path, path, report, castor_pat
             lib = library
         print "LIBRARY", lib
 
-        tape = CastorTape(vol, lib, capacity, media, file_entry_path, path, castor_path, vo_name)
+        tape = CastorTape(vol, lib, capacity, media, file_entry_path, path)
         if tape.empty:
             print "tape is empty"
         else:
@@ -391,25 +372,26 @@ def create_volume_entry(src_keys, lst, file_entry_path, path, report, castor_pat
     sys.stdout = saved_stdout
             
         
-def create_entry(src_keys, f, file_entry_path, path, report, castor_path, library=None, vo_name=None):
+def create_entry(src_keys, f, file_entry_path, path, report, library=None):
     lst = read_volume_entry(f)
+    #print "LST", lst
     if lst:
         if not src_keys:
             return lst
         else:
-            create_volume_entry(src_keys, lst, file_entry_path, path, report, castor_path, library, vo_name)
+            create_volume_entry(src_keys, lst, file_entry_path, path, report, library)
             return []
     else:
         return -1
 
 def usage():
-    print "usage: %s [-h] [-l library] [-p pnfs_path] [-v vo_name]"%(sys.argv[0],)
- 
+    print "usage: %s [-h] [-l library] [-p pnfs_path]"%(sys.argv[0],)
+
 if __name__ == "__main__":
     library = None
     pnfs_path = None
-    opts, args = getopt.getopt(sys.argv[1:], "l:p:v:hs",[])
- 
+    opts, args = getopt.getopt(sys.argv[1:], "l:p:hs",[])
+
     for opt, arg in opts:
         if opt == '-h':
             usage()
@@ -418,29 +400,13 @@ if __name__ == "__main__":
             library = arg
         if opt == '-p':
             pnfs_path = arg
-        if opt == '-v':
-            vo_name = arg
     print library
     print pnfs_path
-     
+    
     v='/home/enstore/castor_tapes/castor_volumes'
     file_list_path = "/home/enstore/castor_tapes"
     if pnfs_path == None:
-     #    pnfs_path = "/pnfs/fs/usr/tape/test/imported_from_castor"
-     #   pnfs_path = "/pnfs/fs/usr/tape/test/castor"
-        ifile='/home/enstore/castor_tapes/VO_path'
-        df = open(ifile, 'r')
-        for line in df.readlines():
-            line = line.strip()
-            if line == "":
-                continue
-            list = line.split(' ')
-            if list[0] != vo_name:
-                continue
-            else:
-                castor_path=list[1]
-                pnfs_path=list[2]
-             
+        pnfs_path = "/pnfs/fs/usr/tape/test/imported_from_castor"
         print "will use default pnfs path", pnfs_path
     if library == None:
         print "will use default library"
@@ -449,9 +415,14 @@ if __name__ == "__main__":
     f = open(v, 'r')
     while 1:
         stdout = sys.stdout
-        rc = create_entry(src_keys, f, file_list_path, pnfs_path, report_path, castor_path, library, vo_name)
+        rc = create_entry(src_keys, f,  file_list_path, pnfs_path, report_path, library)
         sys.stdout = stdout
+        #print "RC",rc
         if rc and rc != -1:
             src_keys = rc
+            print "SRC_KEYS",src_keys
         elif rc == -1:
             break
+    #ct = CastorTape('/home/enstore/PIC/G03040/G03040', "/pnfs/data1/imported_from_castor", "9940B-castor", "9940B", '/home/enstore/PIC/G03040/report')
+    #ct.create_file_entries()
+    
