@@ -1816,7 +1816,7 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 	else:
 		use_priority = "--priority %s" % \
 			       (ENCP_PRIORITY,)
-	encp_options = "--verbose 4 --delayed-dismount 2 --ignore-fair-share --threaded"
+	encp_options = "--delayed-dismount 2 --ignore-fair-share --threaded"
 	dst_options = "--storage-group %s --file-family %s " \
 		      "--file-family-wrapper %s" \
 		      % (sg, ff, wrapper)
