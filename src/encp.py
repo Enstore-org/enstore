@@ -3819,7 +3819,7 @@ def parse_layer_2(data):
     for line in data:
         result = crc_match.search(line)
         if result != None:
-            hex_dcache_string = "0x" + result.group().split(":")[1]
+            hex_dcache_string = "0x" + result.group().split(":")[-1]
             dcache_crc_long = long(hex_dcache_string, 16)
         result = size_match.search(line)
         if result != None:
