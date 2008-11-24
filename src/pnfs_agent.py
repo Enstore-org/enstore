@@ -348,7 +348,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
-    def ser_file_family_wrapper(self, ticket):
+    def set_file_family_wrapper(self, ticket):
         dirname = ticket['dirname']
         if ( os.path.exists(dirname) ) :
             if ( os.path.isdir(dirname) ) :

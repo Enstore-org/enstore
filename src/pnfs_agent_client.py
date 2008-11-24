@@ -129,6 +129,17 @@ class PnfsAgentClient(generic_client.GenericClient,
             return ticket['library']
         else:
             return None
+
+    def set_library(self,,library,dirname):
+        ticket = {'work'          : 'set_library',
+                  'dirname'       : dirname,
+                  'library'       : library
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['library']
+        else:
+            return None
         
     def get_file_family(self,dirname):
         ticket = {'work'          : 'get_file_family',
