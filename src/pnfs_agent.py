@@ -232,6 +232,26 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
+    def set_library(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                t.set_library(ticket['library'], dirname)
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+            
+        self.reply_to_caller(ticket)
+        return
+
     def get_file_family(self, ticket):
         dirname = ticket['dirname']
         if ( os.path.exists(dirname) ) :
@@ -251,12 +271,50 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
+    def set_file_family(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                t.set_file_family(ticket['file_family'], dirname)
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+        self.reply_to_caller(ticket)
+        return
+
     def get_file_family_width(self, ticket):
         dirname = ticket['dirname']
         if ( os.path.exists(dirname) ) :
             if ( os.path.isdir(dirname) ) :
                 t = pnfs.Tag(dirname)
                 ticket['file_family_width']=t.get_file_family_width()
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def set_file_family_width(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                t.set_file_family_width(ticket['file_family_width'], dirname)
                 ticket['status']   = (e_errors.OK, None)
             else:
                 msg="%s not a directory"%dirname
@@ -290,12 +348,50 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
+    def ser_file_family_wrapper(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                t.set_file_family_wrapper(ticket['file_family_wrapper'], dirname)
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+        self.reply_to_caller(ticket)
+        return
+
     def get_storage_group(self, ticket):
         dirname = ticket['dirname']
         if ( os.path.exists(dirname) ) :
             if ( os.path.isdir(dirname) ) :
                 t = pnfs.Tag(dirname)
                 ticket['storage_group']=t.get_storage_group()
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def set_storage_group(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                t.set_storage_group(ticket['storage_group'], dirname)
                 ticket['status']   = (e_errors.OK, None)
             else:
                 msg="%s not a directory"%dirname
