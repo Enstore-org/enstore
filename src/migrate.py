@@ -836,8 +836,51 @@ def get_migration_type(src_vol, dst_vol, db):
 		
 	return None
 
+#
+def search_directory(original_path):
+	##
+	## Determine the deepest directory that exists.
+	##
+	mig_dir = pnfs.get_directory_name(migration_path(original_path))
+	search_mig_dir = mig_dir
+	while 1:
+		#We need to go through all this looping to find
+		#a Migration directory that exists, since any new
+		#Migration directory isn't created until the first
+		#new copy is is about to be written to tape for
+		#the corresponding non-Migration directory.
+		try:
+			os.stat(search_mig_dir)  #existance test
+		except (OSError, IOError):
+			if os.path.basename(search_mig_dir) == MIGRATION_DB:
+				return search_mig_dir
+				#break  #Didn't find it.
+
+			#Try the next directory.
+			search_mig_dir = os.path.dirname(search_mig_dir)
+
+			if search_mig_dir == "/" \
+			   or search_mig_dir == "":
+				break  #Didn't find it.
+			continue
+		#If we get here, then we found what we were looking
+		# for.
+		return search_mig_dir
+
+	return None
+
+
 #Look for the media type that the file would be written to.
 def search_media_type(original_path, db):
+	search_dir = search_directory(original_path)
+	if search_dir:
+		media_type = get_media_type(search_dir, db)
+	else:
+		media_type = None
+
+	return media_type
+
+	"""
 	##
 	## Determine the destination media_type.
 	##
@@ -871,6 +914,7 @@ def search_media_type(original_path, db):
 		return media_type
 
 	return None
+	"""
 
 def get_file_info(MY_TASK, bfid, db):
 	# get file info
@@ -959,9 +1003,14 @@ def migration_path(path, deleted = 'n'):
 				    DELETED_TMP,
 				    os.path.basename(path))
 
+	stripped_name = pnfs.strip_pnfs_mountpoint(path)
+
+	#Already had the migration path.
+	if stripped_name.startswith(MIGRATION_DB + "/"):
+		return os.path.join(admin_mount_point, stripped_name)
+
 	return os.path.join(admin_mount_point,
-			    MIGRATION_DB,
-			    pnfs.strip_pnfs_mountpoint(path))
+			    MIGRATION_DB, stripped_name)
 
 """
 def deleted_path(vol, location_cookie):
@@ -1717,8 +1766,6 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 	# check destination path
 	if not mig_path:     # This can not happen!!!
 		error_log(MY_TASK, "%s is not a pnfs entry" % (mig_path,))
-		#job = copy_queue.get(True)
-		#continue
 		return 1
 	# check if the directory is witeable
 	try:
@@ -1732,23 +1779,31 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 				  (mig_path, str(msg)))
 			return 1
 	# does the parent directory exist?
-	#if not os.access(dst_directory, os.F_OK):
-	if not d_stat: # or not file_utils.e_access_cmp(d_stat, os.F_OK):
+	if not d_stat:
 		try:
+			#We don't need to worry about being root here.
+			# If the deepest directory is owned by root,
+			# only root can create the subdirectory.  For
+			# untrusted PNFSes, we can only fail and give
+			# a good error message.  Trusted PNFSes will succeed.
+			
+			#Remove the file
 			os.makedirs(dst_directory)
 			ok_log(MY_TASK, "making path %s" % (dst_directory,))
 		except:
-			# can not do it
-			error_log(MY_TASK, "can not make path %s" % (dst_directory))
-			#job = copy_queue.get(True)
-			#continue
+			error_log(MY_TASK,
+				  "can not make path %s: %s" % \
+				  (dst_directory, str(sys.exc_info()[1])))
+			if sys.exc_info()[1].errno == errno.EPERM and \
+			   os.geteuid() == 0:
+				log(MY_TASK, "Question: Is PNFS trusted?")
+				sys.exit(1)
+				
 			return 1
 	#if not os.access(dst_directory, os.W_OK):
 	if not file_utils.e_access_cmp(d_stat, os.W_OK):
 		# can not create the file in that directory
 		error_log(MY_TASK, "%s is not writable" % (dst_directory,))
-		#job = copy_queue.get(True)
-		#continue
 		return 1
 
 	# make sure the migration file is not there
@@ -1761,8 +1816,7 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 			error_log(MY_TASK, "failure stating %s: %s" % \
 				  (mig_path, str(msg)))
 			return 1
-	#if os.access(mig_path, os.F_OK):
-	if mig_stat: # and file_utils.e_access_cmp(mig_stat, os.F_OK):
+	if mig_stat:
 		log(MY_TASK, "migration file %s exists, removing it first" \
 		    % (mig_path,))
 		try:
@@ -1773,16 +1827,6 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 			# stat() results as an arguement.  Then mig_stat
 			# could be passed in saving a stat() call.
 			file_utils.match_euid_egid(mig_path)
-			"""
-			if (mig_stat[stat.ST_UID] != os.geteuid() and
-			    os.getuid() == 0) or \
-			    (mig_stat[stat.ST_GID] != os.getegid() and
-			     os.getgid() == 0):
-				os.seteuid(0)
-				os.setegid(0)
-				os.setegid(mig_stat[stat.ST_GID])
-				os.seteuid(mig_stat[stat.ST_UID])
-			"""
 				
 			#Should the layers be nullified first?  When
 			# migrating the same files over and over again the
@@ -1793,12 +1837,10 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 
 			#Now set the root ID's back.
 			file_utils.end_euid_egid(reset_ids_back = True)
-			"""
-			if os.getuid() == 0 or os.getgid() == 0:
-				os.seteuid(0)
-				os.setegid(0)
-			"""
 		except (OSError, IOError), msg:
+			#Now set the root ID's back.
+			file_utils.end_euid_egid(reset_ids_back = True)
+			
 			error_log(MY_TASK,
 				  "failed to delete migration file %s: %s" \
 				  % (mig_path, str(msg)))
@@ -1873,9 +1915,6 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 				os.remove(mig_path)
 			except:
 				pass
-			#job = get_queue_item(copy_queue,
-			#		     migrate_r_pipe)
-			#continue
 			return 1
 	else:
 		# log success of coping
