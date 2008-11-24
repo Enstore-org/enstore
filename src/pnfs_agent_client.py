@@ -141,10 +141,32 @@ class PnfsAgentClient(generic_client.GenericClient,
         else:
            return None
 
+    def set_file_family(self,file_family, dirname):
+        ticket = {'work'          : 'set_file_family',
+                  'dirname'       : dirname,
+                  'file_family'   : file_family
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['file_family']
+        else:
+           return None
+
     def get_file_family_width(self,dirname):
         ticket = {'work'                : 'get_file_family_width',
                   'dirname'             : dirname,
                   'file_family_width'   : None
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['file_family_width']
+        else:
+           return None
+
+    def set_file_family_width(self,file_family_width, dirname):
+        ticket = {'work'                : 'set_file_family_width',
+                  'dirname'             : dirname,
+                  'file_family_width'   : file_family_width
                   }
         ticket=self.send(ticket)
         if ( ticket['status'][0] == e_errors.OK ):
@@ -163,10 +185,32 @@ class PnfsAgentClient(generic_client.GenericClient,
         else:
            return None
 
+    def set_file_family_wrapper(self,file_family_wrapper, dirname):
+        ticket = {'work'                : 'set_file_family_wrapper',
+                  'dirname'             : dirname,
+                  'file_family_wrapper'   : file_family_wrapper
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['file_family_wrapper']
+        else:
+           return None
+
     def get_storage_group(self,dirname):
         ticket = {'work'                : 'get_storage_group',
                   'dirname'             : dirname,
                   'storage_group'      : None
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['storage_group']
+        else:
+           return None
+
+    def set_storage_group(self,storage_group,dirname):
+        ticket = {'work'                : 'set_storage_group',
+                  'dirname'             : dirname,
+                  'storage_group'      : storage_group
                   }
         ticket=self.send(ticket)
         if ( ticket['status'][0] == e_errors.OK ):
@@ -364,6 +408,17 @@ class PnfsAgentClient(generic_client.GenericClient,
             return None
         else:
             return stat.S_ISDIR(ticket['statinfo'][stat.ST_MODE])
+
+    def mkdir(self, path):
+        ticket = {'work': 'mkdir',
+                  'path': path,
+                  }
+        ticket=self.send(ticket)
+        if not e_errors.is_ok(ticket):
+            return False
+        else:
+            return True
+
 
     def isfile(self, filename):
         ticket = {'work'          : 'get_stat',
