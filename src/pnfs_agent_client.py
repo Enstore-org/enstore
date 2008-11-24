@@ -130,7 +130,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         else:
             return None
 
-    def set_library(self,,library,dirname):
+    def set_library(self,library,dirname):
         ticket = {'work'          : 'set_library',
                   'dirname'       : dirname,
                   'library'       : library
