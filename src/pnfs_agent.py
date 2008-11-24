@@ -145,6 +145,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def mkdir(self, ticket):
+        ticket['status'] = (e_errors.OK, None)
         try:
             os.mkdir(ticket['path'])
         except OSError, msg:
