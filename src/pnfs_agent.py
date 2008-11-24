@@ -144,6 +144,18 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
+    def mkdir(self, ticket):
+        try:
+            os.mkdir(ticket['path'])
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
 
     def get_file_stat(self, ticket):
         filename = ticket['filename']
