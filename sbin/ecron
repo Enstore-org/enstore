@@ -134,7 +134,7 @@ products=
 job=
 cwd=`pwd`
 cntlimit=1
-need_enstore="yes"
+need_enstore="no"
 logit="yes"
 
 while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ] || [ $1 = "-need-enstore" ] || [ $1 = "-no-enstore" ] || [ $1 = "-no-log" ]
