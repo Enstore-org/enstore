@@ -148,6 +148,8 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         ticket['status'] = (e_errors.OK, None)
         try:
             os.makedirs(ticket['path'])
+            if ticket['uid'] and ticket['gid']:
+                os.chown(work_ticket['outfile'],ticket['uid'], ticket['gid'])
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
@@ -665,6 +667,24 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         p=pnfs.Pnfs(fname)
         try:
             p.chmod(mode)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    # change the ownership of the existing file
+    def chown(self, ticket):
+        fname = ticket['fname']
+        uid = ticket['uid']
+        gid = tucket['gid']
+        p=pnfs.Pnfs(fname)
+        try:
+            p.chown(uid, gid, fname)
             ticket['status'] = (e_errors.OK, None)
         except OSError, msg:
             ticket['errno'] = msg.args[0]
