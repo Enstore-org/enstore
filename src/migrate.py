@@ -1800,8 +1800,7 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 				sys.exit(1)
 				
 			return 1
-	#if not os.access(dst_directory, os.W_OK):
-	if not file_utils.e_access_cmp(d_stat, os.W_OK):
+	if not d_stat and not os.access(dst_directory, os.W_OK):
 		# can not create the file in that directory
 		error_log(MY_TASK, "%s is not writable" % (dst_directory,))
 		return 1
