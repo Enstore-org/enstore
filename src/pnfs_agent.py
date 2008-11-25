@@ -149,7 +149,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         try:
             os.makedirs(ticket['path'])
             if ticket['uid'] and ticket['gid']:
-                os.chown(work_ticket['outfile'],ticket['uid'], ticket['gid'])
+                os.chown(ticket['path'],ticket['uid'], ticket['gid'])
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
