@@ -5887,6 +5887,28 @@ def set_outfile_permissions(ticket):
                 ticket['status'] = (e_errors.USERERROR,
                                     "Unable to set permissions.")
 
+            #For root only, if an error hasn't already occured.
+            if os.getuid() == 0 and e_errors.is_ok(ticket):
+                try:
+                    #handle remote file case
+                    perms = None
+                    if is_write(ticket):
+                        p = Pnfs(ticket['outfile'])
+                        uid = os.stat(ticket['infile'])[stat.ST_UID]
+                        gid = os.stat(ticket['infile'])[stat.ST_GID]
+                        p.chown(uid, gid, ticket['outfile'])
+                    else:
+                        p = Pnfs(ticket['infile'])
+                        uid = p.get_stat(ticket['infile'])[stat.ST_UID]
+                        gid = p.get_stat(ticket['infile'])[stat.ST_GID]
+                        os.chown(ticket['outfile'], uid, gid)
+                    ticket['status'] = (e_errors.OK, None)
+                except OSError, msg:
+                    Trace.log(e_errors.INFO, "chown %s failed: %s" % \
+                              (ticket['outfile'], msg))
+                    ticket['status'] = (e_errors.USERERROR,
+                                        "Unable to set owner.")
+
         message = "Time to set_outfile_permissions: %s sec." % \
                       (time.time() - set_outfile_permissions_start_time,)
         Trace.message(TIME_LEVEL, message)
@@ -7386,8 +7408,6 @@ def set_pnfs_settings(ticket, intf_encp):
                                ticket['wrapper']['pnfsFilename']))
                 else:
                     # set the file size
-                    print "ticket['file_size']:", ticket['file_size']
-                    print "pnfs_filename:", pnfs_filename
                     p.set_file_size(ticket['file_size'], pnfs_filename)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -8069,7 +8089,13 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                        time.time()-tinfo['encp_start_time']))
 
         #Set the effective uid and gid of the file before closing the file.
-        file_utils.match_euid_egid(in_fd)
+        if os.getuid() == 0:
+            #For root only, we need to match the current owner of the output
+            # file.  The correct owner gets set in set_outfile_permissions()
+            # for root.
+            file_utils.match_euid_egid(done_ticket['outfile'])
+        else:
+            file_utils.match_euid_egid(in_fd)
 
         #Don't need these anymore.
         #close_descriptors(control_socket, data_path_socket, in_fd)
@@ -8277,7 +8303,11 @@ def prepare_write_to_hsm(tinfo, e):
                 request_list[i]['wrapper']['inode'] = None
                 
         else:
-            if getattr(e, 'migration_or_duplication', None):
+            if os.getuid() == 0:
+                #For root we need to handle things special.
+                dname = os.path.dirname(request_list[i]['infile'])
+                file_utils.match_euid_egid(dname)
+            else:
                 #set the effective uid and gid.
                 file_utils.match_euid_egid(request_list[i]['infile'])
             
