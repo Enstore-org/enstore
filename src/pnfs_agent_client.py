@@ -420,16 +420,17 @@ class PnfsAgentClient(generic_client.GenericClient,
         else:
             return stat.S_ISDIR(ticket['statinfo'][stat.ST_MODE])
 
-    def mkdir(self, path):
+    def mkdir(self, path, uid=None, gid=None):
         ticket = {'work': 'mkdir',
                   'path': path,
+                  'uid': uid,
+                  'gid':gid
                   }
         ticket=self.send(ticket)
         if not e_errors.is_ok(ticket):
             return False
         else:
             return True
-
 
     def isfile(self, filename):
         ticket = {'work'          : 'get_stat',
