@@ -421,6 +421,10 @@ class PnfsAgentClient(generic_client.GenericClient,
             return stat.S_ISDIR(ticket['statinfo'][stat.ST_MODE])
 
     def mkdir(self, path, uid=None, gid=None):
+        if uid == None:
+            uid = os.getuid()
+        if gid == None:
+            gid = os.getgid()
         ticket = {'work': 'mkdir',
                   'path': path,
                   'uid': uid,
