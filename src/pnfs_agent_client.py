@@ -12,17 +12,11 @@
 
 # system imports
 import sys
-import string
-# import time
-import errno
-import socket
-# import select
 import pprint
 import stat
+import os
 
 # enstore imports
-#import setpath
-import hostaddr
 import option
 import generic_client
 import backup_client
@@ -30,8 +24,8 @@ import backup_client
 import Trace
 import e_errors
 # import cPickle
-import info_client
 import enstore_constants
+
 
 MY_NAME = enstore_constants.PNFS_AGENT_CLIENT  #"PNFS_A_CLIENT"
 MY_SERVER = enstore_constants.PNFS_AGENT     #"pnfs_agent"
