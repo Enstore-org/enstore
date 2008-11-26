@@ -170,12 +170,14 @@ class UDPClient:
                     else:
                         #After testing all the active threads this thread
                         # was found to be gone.
+                        '''
                         for server in self.tsd[tid].send_done.keys() :
                             try:
                                 self.send_no_wait({"work":"done_cleanup"},
                                                   server)
                             except:
                                 pass
+                        '''
 
                         #Cleanup system resources now.
                         self.tsd[tid].socket.close()
@@ -233,12 +235,14 @@ class UDPClient:
                 tid = 1
             tsd = self.tsd.get(tid)
             if tsd:
+                '''
                 #Send any final messages for this threads socket.
                 for server in tsd.send_done.keys():
                     try:
                         self.send_no_wait({"work" : "done_cleanup"}, server)
                     except:
                         pass
+                '''
 
                 #Cleanup system resources now.
                 self.tsd[tid].socket.close()
@@ -350,8 +354,10 @@ class UDPClient:
                     rcvd_txn_id=None
             else: # we got a good reply
                 ##Trace.log(e_errors.INFO,"done cleanup %s"%(dst,))
+                '''
                 if send_done:
                     self.send_no_wait({"work":"done_cleanup"}, dst)
+                '''
                 try:
                     del tsd.send_done[dst]
                 except KeyError:
