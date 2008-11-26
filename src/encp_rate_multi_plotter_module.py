@@ -183,7 +183,7 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                   "from encp_xfer_average_by_storage_group " \
                   "where unix_time between %s and %s;" \
                   % (str(now_time - DELTA_TIME), str(now_time))
-        
+         
         res = db.query(sql_cmd).getresult() #Get the values from the DB.
 
         #Open the datafiles.
@@ -208,7 +208,10 @@ class EncpRateMultiPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                        (d,a_or,s_o_r,a_nr,s_n_r,a_dsk_r,s_dsk_r,a_t_r,s_t_r,
                         a_drv_r,s_drv_r,a_s,s_s,counter)
             
-            open_files['%s_%s' % (sg, rw)].write(out_line)
+            try: 
+                open_files['%s_%s' % (sg, rw)].write(out_line)
+            except KeyError:
+                continue
 
         for each_file in open_files.values():
             #If the size of the file is zero, then there were no valid
