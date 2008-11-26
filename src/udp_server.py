@@ -33,7 +33,11 @@ import udp_common
 import Trace
 import e_errors
 import host_config
-import rawUDP
+try:
+    import rawUDP
+    can_use_raw = True
+except ImportError:
+    can_use_raw = False
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -46,7 +50,8 @@ class UDPServer:
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
         self._lock = threading.Lock()
-        self.current_id = None 
+        self.current_id = None
+        self.use_raw = use_raw and can_use_raw
         if use_raw:
             self.server_address = server_address
             if getattr(self, "server_socket", None):
@@ -125,7 +130,7 @@ class UDPServer:
         # to use receiver implemented in c
         # to increase the performance
         self.raw_requests = None;
-        if use_raw:
+        if self.use_raw:
             self.raw_requests = rawUDP.create_list(port)
             # start raw udp receiver
             # it creates internal receiver thread and runs it in a loop
