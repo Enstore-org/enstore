@@ -133,6 +133,8 @@ scan_queue.finished = False
 migrate_r_pipe, migrate_w_pipe = os.pipe()
 scan_r_pipe, scan_w_pipe = os.pipe()
 
+SENTINEL = "SENTINEL"
+
 #Define the lock so that the output is not split on each line of log output.
 io_lock = thread.allocate_lock()
 
@@ -1051,7 +1053,8 @@ def get_requests(queue, r_pipe, timeout = .1):
     #Limit to return to revent reader from overwelming the writer.
     requests_obtained = 0 
 
-    while job and requests_obtained < FILE_LIMIT and not queue.full():
+    while job and requests_obtained < FILE_LIMIT and not queue.full() \
+	      and not queue.finished:
         try:
             r, w, x = select.select([r_pipe], [], [], wait_time)
         except select.error:
@@ -1069,7 +1072,7 @@ def get_requests(queue, r_pipe, timeout = .1):
 #                print "Queued request:", job
 
                 #Set a flag indicating that we have read the last item.
-                if job == None:
+                if job == SENTINEL:
                     queue.finished = True
                 
                 wait_time = 0.1 #Make the followup wait time shorter.
@@ -1119,8 +1122,15 @@ def get_queue_item(queue, r_pipe):
         get_requests(queue, r_pipe, timeout = wait_time)
 
         try:
-            job = queue.get(False)
-            break
+            job = queue.get(True, 1)
+	    if job == SENTINEL:
+	        return None  #We are really done.
+	    if job == None:
+	        #Queue.get() should only return None if it was put in the
+		# queue, however, it appears to return None on its own.
+		# So, we go back to waiting for something we are looking for.
+		continue
+	    break
         except Queue.Empty:
             job = None
             wait_time = 10*60 #Make the initial wait time longer.
@@ -1597,7 +1607,7 @@ def copy_files(files, intf):
 
 	# terminate the copy_queue
 	log(MY_TASK, "no more to copy, terminating the copy queue")
-	put_request(copy_queue, migrate_w_pipe, None)
+	put_request(copy_queue, migrate_w_pipe, SENTINEL)
 
 ##########################################################################
 
@@ -2130,7 +2140,7 @@ def migrating(intf):
 
 	if intf.with_final_scan:
 		log(MY_TASK, "no more to copy, terminating the scan queue")
-		put_request(scan_queue, scan_w_pipe, None)
+		put_request(scan_queue, scan_w_pipe, SENTINEL)
 
 ##########################################################################
 
@@ -2605,7 +2615,7 @@ def _migrate_processes(files, intf):
 					os.kill(pid, signal.SIGTERM)
 			except:
 				pass
-			put_request(scan_queue, scan_w_pipe, None)
+			put_request(scan_queue, scan_w_pipe, SENTINEL)
 			errors = errors + 1
 
 		#os.close(migrate_w_pipe)
@@ -2645,7 +2655,7 @@ def _migrate_processes(files, intf):
 						os.kill(pid, signal.SIGTERM)
 				except:
 					pass
-				put_request(scan_queue, scan_w_pipe, None)
+				put_request(scan_queue, scan_w_pipe, SENTINEL)
 				errors = errors + 1
 
 			#os.close(scan_w_pipe)
