@@ -33,9 +33,10 @@ DEFAULT_TTL = 60 #One minute lifetime for child processes
 
 class DispatchingWorker(udp_server.UDPServer):
     
-    def __init__(self, server_address):
+    def __init__(self, server_address, use_raw=None):
+        self.use_raw = use_raw
         udp_server.UDPServer.__init__(self, server_address,
-                                      receive_timeout=60.0)
+                                      receive_timeout=60.0, use_raw=use_raw)
         #If the UDPServer socket failed to open, stop the server.
         if self.server_socket == None:
             msg = "The udp server socket failed to open.  Aborting.\n"
@@ -265,15 +266,26 @@ class DispatchingWorker(udp_server.UDPServer):
         #      string is a stringified ticket, after CRC is removed
         # There are three cases:
         #   read from socket where crc is stripped and return address is valid
-        #   read from pipe where there is no crc and no r.a.     
+        #   read from pipe where there is no crc and no r.a.
         #   time out where there is no string or r.a.
 
         gotit = 0
+        t0 = time.time()
+        rcv_timeout = self.rcv_timeout
         while not gotit:
             r = self.read_fds + [self.server_socket]
             w = self.write_fds
 
             rcv_timeout = self.rcv_timeout
+
+            if self.use_raw:
+                rc = udp_server.UDPServer.get_message(self)
+                if rc:
+                    return rc
+                else:
+                    # process timeout
+                    if time.time()-t0 > rcv_timeout:
+                        return ('',()) #timeout
 
             if self.interval_funcs:
                 now = time.time()
@@ -296,7 +308,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
             #now handle other incoming requests
             for fd in r:
-                
+
                 if type(fd) == type(1) \
                        and fd in self.read_fds \
                        and self.callback[fd]==None:
@@ -306,7 +318,7 @@ class DispatchingWorker(udp_server.UDPServer):
                     (request, addr) = self.read_fd(fd)
                     Trace.trace(5, 'dw: get_request special')
                     return (request, addr)
-                
+
                 elif fd == self.server_socket:
                     #Get the 'raw' request and the address from whence it came.
                     (request, addr) = udp_server.UDPServer.get_message(self)
@@ -338,7 +350,7 @@ class DispatchingWorker(udp_server.UDPServer):
                                   % (addr[0],))
                         request = None
                         return (request, addr)
-                    
+
                     return (request, addr)
 
         return (None, ())
@@ -353,12 +365,13 @@ class DispatchingWorker(udp_server.UDPServer):
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
 
-        Trace.trace(6, "dispatching_worker:process_request %s"%(ticket,))
+        Trace.trace(6, "dispatching_worker:process_request %s; %s"%(request, ticket,))
         #This checks help process cases where the message was repeated
         # by the client.
         if not ticket:
-             Trace.log(e_errors.ERROR, "dispatching_worker: no ticket!!!")
-             return
+            Trace.trace(6, "dispatching_worker: no ticket!!!")
+            Trace.log(e_errors.ERROR, "dispatching_worker: no ticket!!!")
+            return
 
         # look in the ticket and figure out what work user wants
         try:
@@ -391,6 +404,7 @@ class DispatchingWorker(udp_server.UDPServer):
         t = time.time()
         Trace.trace(5,"process_request: function %s"%(function_name, ))
         apply(function, (ticket,))
+        self._done_cleanup()
         Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
 
     def handle_error(self, request, client_address):
@@ -465,16 +479,7 @@ class DispatchingWorker(udp_server.UDPServer):
         #The parameter ticket is necessary since that is part of the
         # interface.  All other 'work' related functions also have it.
         __pychecker__ = "unusednames=ticket"
-        
-        try:
-            Trace.trace(6,"done_cleanup id %s %s " %
-                        (self.current_id, self.request_dict[self.current_id]))
-            ##Trace.trace(6,"done_cleanup %s"%(self.request_dict,))
-            del self.request_dict[self.current_id]
-            ##Trace.trace(6,"done_cleanup after %s"%(self.request_dict,))
-        except KeyError, detail:
-            Trace.trace(6,"done_cleanup exception %s"%(detail,))
-            pass
+        self._done_cleanup()
 
     # send back our response
     def send_reply(self, t):

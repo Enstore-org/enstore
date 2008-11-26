@@ -33,58 +33,66 @@ import udp_common
 import Trace
 import e_errors
 import host_config
-
+import rawUDP
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
 
 class UDPServer:
     
-    def __init__(self, server_address, receive_timeout=60.):
+    def __init__(self, server_address, receive_timeout=60., use_raw=None):
         self.socket_type = socket.SOCK_DGRAM
         self.max_packet_size = 16384
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
         self._lock = threading.Lock()
-
-        try:
-            #If we already have a server_socket...
+        self.current_id = None 
+        if use_raw:
+            self.server_address = server_address
             if getattr(self, "server_socket", None):
-                if type(server_address) == type(()) \
-                   and type(server_address[0]) == type("") \
-                   and type(server_address[1]) == type(0):
-                    ssa = self.server_socket.getsockname()
-                    if ssa == server_address:
-                        self.server_address = ssa
-                    else:
-                        self.server_socket.close()
-                        ip, port, self.server_socket = udp_common.get_callback(
-                            server_address[0], server_address[1])
-                        self.server_address = (ip, port)
-                else:
-                    ip, port, self.server_socket = \
-                        udp_common.get_default_callback()
-                    self.server_address = (ip, port)
-            #If an address was not specified.
-            elif type(server_address) != type(()) or \
-               (type(server_address) != type(()) and len(server_address) != 2):
-                ip,port,self.server_socket = udp_common.get_default_callback()
-                self.server_address = (ip, port)
-	    #If an address was specified.                
-            elif (type(server_address[0]) == type("")
-                 and type(server_address[1]) == type(0)):
-                ip, port, self.server_socket = udp_common.get_callback(
-                    server_address[0], server_address[1])
-                self.server_address = (ip, port)
-            #If an address was not specified.
+                pass
             else:
-                ip,port,self.server_socket = udp_common.get_default_callback()
-                self.server_address = (ip, port)
-	    
-        except socket.error, msg:
-            self.server_address = ("", 0)
-            self.server_socket = None
-	    Trace.log(e_errors.ERROR, str(msg))
+                self.server_socket = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
+            port = self.server_address[1]
+        else:
+            try:
+                #If we already have a server_socket...
+                if getattr(self, "server_socket", None):
+                    if type(server_address) == type(()) \
+                       and type(server_address[0]) == type("") \
+                       and type(server_address[1]) == type(0):
+                        ssa = self.server_socket.getsockname()
+                        if ssa == server_address:
+                            self.server_address = ssa
+                        else:
+                            self.server_socket.close()
+                            ip, port, self.server_socket = udp_common.get_callback(
+                                server_address[0], server_address[1])
+                            self.server_address = (ip, port)
+                    else:
+                        ip, port, self.server_socket = \
+                            udp_common.get_default_callback()
+                        self.server_address = (ip, port)
+                #If an address was not specified.
+                elif type(server_address) != type(()) or \
+                   (type(server_address) != type(()) and len(server_address) != 2):
+                    ip,port,self.server_socket = udp_common.get_default_callback()
+                    self.server_address = (ip, port)
+                #If an address was specified.                
+                elif (type(server_address[0]) == type("")
+                     and type(server_address[1]) == type(0)):
+                    ip, port, self.server_socket = udp_common.get_callback(
+                        server_address[0], server_address[1])
+                    self.server_address = (ip, port)
+                #If an address was not specified.
+                else:
+                    ip,port,self.server_socket = udp_common.get_default_callback()
+                    self.server_address = (ip, port)
+
+            except socket.error, msg:
+                self.server_address = ("", 0)
+                self.server_socket = None
+                Trace.log(e_errors.ERROR, str(msg))
             
         try:
             self.node_name, self.aliaslist, self.ipaddrlist = \
@@ -114,6 +122,26 @@ class UDPServer:
             fcntl.fcntl(self.server_socket.fileno(), fcntl.F_SETFD,
                         fcntl.FD_CLOEXEC)
 
+        # to use receiver implemented in c
+        # to increase the performance
+        self.raw_requests = None;
+        if use_raw:
+            self.raw_requests = rawUDP.create_list(port)
+            # start raw udp receiver
+            # it creates internal receiver thread and runs it in a loop
+            if self.raw_requests:
+                rawUDP.receiver(self.raw_requests)
+            
+
+    # cleanup if we are done with this unique id
+    def _done_cleanup(self):
+        if self.current_id and self.request_dict.has_key(self.current_id):
+            try:
+                del self.request_dict[self.current_id]
+            except KeyError:
+                pass
+
+
     def __del__(self):
         self.server_socket.close()
         self.server_socket = None
@@ -128,11 +156,16 @@ class UDPServer:
     
     def purge_stale_entries(self):
         stale_time = time.time() - self.request_dict_ttl
-        count = 0 
+        count = 0
         for key, value in self.request_dict.items():
             if  value[2] < stale_time:
-                del self.request_dict[key]
-                count = count+1
+                try:
+                    del self.request_dict[key]
+                    count = count+1
+                except KeyError:
+                    exc, msg = sys.exc_info()[:2]
+                    Trace.trace(20, "purge_stale_entries: error %s %s"%(exc, msg))
+
         Trace.trace(20,"purge_stale_entries count=%d"%(count,))
 
     #Not used???
@@ -172,7 +205,8 @@ class UDPServer:
 
         return self.process_request(request, client_address)
 
-    def get_message(self):
+    # old get_message
+    def _get_message(self):
         # returns  (string, socket address)
         #      string is a stringified ticket, after CRC is removed
         # There are three cases:
@@ -194,6 +228,7 @@ class UDPServer:
 
                 req, client_addr = self.server_socket.recvfrom(
                     self.max_packet_size, self.rcv_timeout)
+                #print "REQ", req
 
                 try:
                     request, inCRC = udp_common.r_eval(req)
@@ -228,6 +263,63 @@ class UDPServer:
                     request=None
 
         return (request, client_addr)
+
+    def _get_raw_message(self):
+       # returns  (string, socket address)
+       #      string is a stringified ticket, after CRC is removed
+       # There are three cases:
+       #   read from socket where crc is stripped and return address is valid
+       #   read from pipe where there is no crc and no r.a.     
+       #   time out where there is no string or r.a.
+
+       request, client_addr = '',()
+       rcv_timeout = self.rcv_timeout
+       rc = rawUDP.get(self.raw_requests)
+       if rc:
+           client_addr = (rc[0], rc[1])
+           req = rc[2]
+           queue_size = rc[3]
+           Trace.trace(5, "REQ %s %s"%(req,queue_size)) 
+           try:
+               request, inCRC = udp_common.r_eval(req)
+           except (SyntaxError, TypeError):
+               #If TypeError occurs, keep retrying.  Most likely it is
+               # an "expected string without null bytes".
+               #If SyntaxError occurs, also keep trying, most likely
+               # it is from and empty UDP datagram.
+               exc, msg = sys.exc_info()[:2]
+               try:
+                   message = "%s: %s: From client %s:%s" % \
+                             (exc, msg, client_addr, request[:100])
+               except IndexError:
+                   message = "%s: %s: From client %s: %s" % \
+                             (exc, msg, client_addr, request)
+               Trace.log(10, message)
+
+               #Set these to something.
+               request, inCRC = (None, None)
+
+           if request == None:
+               return (request, client_addr)
+           # calculate CRC
+           crc = checksum.adler32(0L, request, len(request))
+           if (crc != inCRC) :
+               Trace.log(e_errors.INFO,
+                         "BAD CRC request: %s " % (request,))
+               Trace.log(e_errors.INFO,
+                         "CRC: %s calculated CRC: %s" %
+                         (repr(inCRC), repr(crc)))
+               
+               request=None
+
+       return (request, client_addr)
+
+    def get_message(self):
+        if self.raw_requests:
+            return self._get_raw_message()
+        else:
+            return self._get_message()
+        
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
@@ -301,7 +393,7 @@ class UDPServer:
             # handled it if we have a record of it in our dict
             lst = self.request_dict[idn]
             if lst[0] == number:
-                Trace.trace(16,
+                Trace.trace(6,
                             "process_request %s from %s already handled" % \
                             (repr(idn), client_address))
                 self.reply_with_list(lst, client_address, idn)
@@ -310,7 +402,7 @@ class UDPServer:
             # if the request number is smaller, then there has been a timing
             # race and we've already handled this as much as we are going to.
             elif number < lst[0]: 
-                Trace.trace(16,
+                Trace.trace(6,
                             "process_request %s from %s old news" % \
                             (repr(idn), client_address))
                 return None #old news, timing race....
@@ -332,9 +424,14 @@ class UDPServer:
         
         else:
             #Can we ever get here?  If we do it isn't thread safe.
-            reply_address = self.reply_address
-            client_number = self.client_number
-            current_id    = self.current_id
+            try:
+                reply_address = self.reply_address
+                client_number = self.client_number
+                current_id    = self.current_id
+            except AttributeError:
+                exc, msg = sys.exc_info()[:2]
+                print "reply_to_caller: error", exc, msg
+                return
 
         reply = (client_number, ticket, time.time())
         self.reply_with_list(reply, reply_address, current_id)
@@ -362,6 +459,7 @@ class UDPServer:
     def reply_with_list(self, list, reply_address, current_id,
                         interface_ip = None):
 
+        #print "reply_with_list interface_ip %s reply_address %s current_id %s"%(interface_ip, reply_address, current_id)
         self._lock.acquire()
         list_copy = copy.deepcopy(list)
         self._lock.release()
@@ -402,12 +500,12 @@ if __name__ == "__main__":
     # test program.  This test program will process any message send to
     # the correct port (including other tests than udp_client.py).
     
-    udpsrv = UDPServer(('', 7700), receive_timeout = 60.0)
+    udpsrv = UDPServer(('', 7700), receive_timeout = 60.0, use_raw=1)
     while 1:
         ticket = udpsrv.do_request()
         if ticket:
             print "Message %s"%(ticket,)
             udpsrv.reply_to_caller(ticket)
-            break
+            #break
     del(udpsrv)
     print "finished"
