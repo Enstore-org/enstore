@@ -152,7 +152,7 @@ class ConfigurationClient(generic_client.GenericClient):
                 #Old format.
                 self.saved_dict[key] = ret
                 ret_val = ret
-            Trace.trace(23, "Get %s config info from server"%(key,))
+            #Trace.trace(23, "Get %s config info from server"%(key,))
         else:
             ret_val = ret
 
@@ -185,8 +185,8 @@ class ConfigurationClient(generic_client.GenericClient):
                 # there was no new config loaded, just return what we have.
                 # if we do not have a stashed copy, go get it.
 		if self.saved_dict.has_key(key):
-		    Trace.trace(23, "Returning %s config info from saved_dict"%(key,))
-		    Trace.trace(23, "saved_dict - %s"%(self.saved_dict,))
+		    #Trace.trace(23, "Returning %s config info from saved_dict"%(key,))
+		    #Trace.trace(23, "saved_dict - %s"%(self.saved_dict,))
 		    ret = self.saved_dict[key]
 		else:
 		    ret = self.do_lookup(key, timeout, retry)
