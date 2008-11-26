@@ -28,7 +28,6 @@ MY_NAME = ".LM"
 RCV_TIMEOUT = 20
 RCV_TRIES = 3
 
-
 class LibraryManagerClient(generic_client.GenericClient) :
     #The paramater 'name' is expected to be something like
     # '9940.library_manager'.
@@ -308,6 +307,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
     # get active volume known to LM
     def get_active_volumes(self, timeout=0, tries=0):
         return self.send({"work":"get_active_volumes"}, timeout, tries)
+
+    # get pending queue length
+    def get_pending_queue_length(self, timeout=0, tries=0):
+        return self.send({"work":"get_pending_queue_length"}, timeout, tries)
             
     def storage_groups(self, timeout=0, tries=0):
         return self.send({"work":"storage_groups"}, timeout, tries)
@@ -347,6 +350,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.unique_id = ''
         self.print_queue = 0
         self.list = 0
+        self.queue_length = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -446,6 +450,12 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                                                                option.REQUIRED,
                                                option.VALUE_NAME:"priority",
                                                },]},
+        option.QL:{option.HELP_STRING:
+                     "get length of pending requests",
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+
         option.RM_ACTIVE_VOL:{option.HELP_STRING:
                               "remove volume from the list of active volumes",
                               option.VALUE_TYPE:option.STRING,
@@ -568,6 +578,9 @@ def do_work(intf):
              time.strftime('%m-%d-%y %X', time.localtime(mover['updated'])),
              mover['volume_family'],
              )
+    elif intf.queue_length:
+        ticket = lmc.get_pending_queue_length()
+        print ticket['queue_length']
     elif intf.storage_groups:
         ticket = lmc.storage_groups()
 	print "%-14s %-12s" % ('storage group', 'limit')
@@ -604,5 +617,4 @@ if __name__ == "__main__" :
 
     # fill in the interface
     intf = LibraryManagerClientInterface(user_mode=0)
-    print "AAAAAAAAAAA"
     do_work(intf)
