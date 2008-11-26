@@ -795,13 +795,15 @@ def update_times(input_path, output_path):
     time_now = time.time()
     try:
         #Update the last access time; set last modified time to existing value.
-        os.utime(input_path, (time_now, os.stat(input_path)[stat.ST_MTIME]))
+        os.utime(input_path,
+                 (time_now, file_utils.get_stat(input_path)[stat.ST_MTIME]))
     except OSError:
         pass
 
     try:
         #Update the last modified time; set last access time to existing value.
-        os.utime(output_path, (os.stat(input_path)[stat.ST_ATIME], time_now))
+        os.utime(output_path,
+                 (file_utils.get_stat(input_path)[stat.ST_ATIME], time_now))
     except OSError:
         pass #This one will fail if the output file is /dev/null.
 
@@ -2611,7 +2613,7 @@ def islink(pathname):
 
 ##############################################################################
 
-def _get_stat(pathname, func=os.stat):
+def _get_stat(pathname, func=file_utils.get_stat):
     __pychecker__="unusednames=i"
      
     for i in [0, 1, 2, 3, 4]:
@@ -2652,7 +2654,7 @@ def get_stat(filename):
             # test below.
             raise OSError(errno.ENOENT, "Force use of pnfs_agent.")
         else:
-            statinfo = os.stat(pathname)
+            statinfo = file_utils.get_stat(pathname)
         return statinfo
     except (OSError, IOError), msg:
         if getattr(msg, "errno", None) in [errno.ENOENT, errno.EIO]:
@@ -2680,7 +2682,7 @@ def get_stat(filename):
                 # local (aka not in pnfs) path.  The only penalty is this
                 # is a little slower, because a greater number of os.stat()
                 # calls are needed to sort out the situation.
-                statinfo = os.stat(pathname)
+                statinfo = file_utils.get_stat(pathname)
                 return statinfo
 
         #If this is a local file that we got an error on, raise it back to
@@ -2834,7 +2836,7 @@ def is_local_path(filename, check_name_only = None):
     pathname = os.path.abspath(filename)
 
     try:
-        fstats = os.stat(pathname)
+        fstats = file_utils.get_stat(pathname)
         if stat.S_ISREG(fstats[stat.ST_MODE]):
             dname = os.path.dirname(pathname)
         elif stat.S_ISDIR(fstats[stat.ST_MODE]):
@@ -2849,7 +2851,7 @@ def is_local_path(filename, check_name_only = None):
     const_name = os.path.join(dname, ".(get)(const)")
     
     try:
-        os.stat(const_name)
+        file_utils.get_stat(const_name)
         return False
     except (OSError, IOError):
         pass
@@ -3739,39 +3741,21 @@ def outputfile_check(work_list, e):
                     try:
                         p.writelayer(1, "", outputfile_use)
 
-                        file_utils.end_euid_egid() #Release the lock.
+                        #Release the lock.
+                        file_utils.end_euid_egid(reset_ids_back = True)
                     except:
-                        file_utils.end_euid_egid() #Release the lock.
+                        #Release the lock.
+                        file_utils.end_euid_egid(reset_ids_back = True)
                         raise sys.exc_info()[0], sys.exc_info()[1], \
                               sys.exc_info()[2]
 
                     #Get the outfile size.
                     ofilesize = long(fstatinfo[stat.ST_SIZE])
-                    """
-                    try:
-                        ofilesize = long(os.stat(outputfile_use)[stat.ST_SIZE])
-                    except OSError, msg:
-                        raise EncpError(msg.errno,
-                                        "Unable to get file size for file %s."
-                                        % (outputfile_print),
-                                        e_errors.OSERROR,
-                                        {'outfile' : outputfile_print})
-                    """
 
                     #Get the infile size.
                     ### There should be a way to eliminate this stat() call,
                     ### but that will take a bit of refactoring.
                     ifilesize = long(work_ticket['file_size'])
-                    """
-                    try:
-                        ifilesize = long(os.stat(inputfile_use)[stat.ST_SIZE])
-                    except OSError, msg:
-                        raise EncpError(msg.errno,
-                                        "Unable to get file size for file %s."
-                                        % (inputfile_print),
-                                        e_errors.OSERROR,
-                                        {'outfile' : outputfile_print})
-                    """
 
                     if ofilesize == 1 and ifilesize > TWO_G:
                         #If the file is large, there is nothing to compare.
@@ -3925,7 +3909,7 @@ def create_zero_length_local_files(filenames):
             if fname in ["/dev/null", "/dev/zero",
                          "/dev/random", "/dev/urandom"]:
                 #If this raises an error, there are massive problems going on.
-                f['local_inode'] = os.stat(fname)[stat.ST_INO]
+                f['local_inode'] = file_utils.get_stat(fname)[stat.ST_INO]
                 return
         else:
             if f in ["/dev/null", "/dev/zero",
@@ -4155,7 +4139,7 @@ def get_finfo(inputfile, outputfile, e):
 
     #Append these for writes.
     if is_write(e):
-        finfo['mode'] = os.stat(local_file)[stat.ST_MODE]
+        finfo['mode'] = file_utils.get_stat(local_file)[stat.ST_MODE]
         finfo['mtime'] = int(time.time())
     
     return finfo
@@ -5691,7 +5675,7 @@ def verify_file_size(ticket, encp_intf = None):
                                  " were transfered.")
         return ticket
     elif long(encp_size) != long(mover_size):
-        #We get here if the two sizes to not match.  This is a very bad
+        #We get here if the two sizes do not match.  This is a very bad
         # thing to occur.
         msg = (e_errors.CONFLICT,
                "Get bytes read (%s) do not match the mover "
@@ -5714,7 +5698,7 @@ def verify_file_size(ticket, encp_intf = None):
 
     #Get the stat info for each file.
     try:
-        full_stat = os.stat(ticket['wrapper'].get('fullname', None))
+        full_stat = file_utils.get_stat(ticket['wrapper'].get('fullname',None))
         full_inode = full_stat[stat.ST_INO]
         if ticket['infile'] in [ "/dev/zero", "/dev/random", "/dev/urandom"]:
             full_filesize = ticket['file_size']
@@ -5825,7 +5809,7 @@ def verify_inode(ticket):
 
     #Get the stat info for each file.
     try:
-        full_stat = os.stat(ticket['wrapper'].get('fullname', None))
+        full_stat = file_utils.get_stat(ticket['wrapper'].get('fullname',None))
         full_inode = full_stat[stat.ST_INO]
     except (OSError, IOError), detail:
         ticket['status'] = (e_errors.OSERROR, str(detail))
@@ -5839,7 +5823,6 @@ def verify_inode(ticket):
         
         p = Pnfs(pnfs_filename)
         pnfs_stat = p.get_stat(pnfs_filename)
-        #pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
         pnfs_inode = pnfs_stat[stat.ST_INO]
     except (TypeError), detail:
         ticket['status'] = (e_errors.OK, "No inodes to verify.")
@@ -5881,45 +5864,59 @@ def set_outfile_permissions(ticket, encp_intf):
         if ticket['outfile'] not in ["/dev/null", "/dev/zero",
                                      "/dev/random", "/dev/urandom"]:
             try:
-                #handle remote file case
-                perms = None
                 if is_write(ticket):
                     p = Pnfs(ticket['outfile'])
-                    perms = os.stat(ticket['infile'])[stat.ST_MODE]
-                    p.chmod(perms, ticket['outfile'])
+                    in_stat_info = file_utils.get_stat(ticket['infile'])
                 else:
                     p = Pnfs(ticket['infile'])
-                    perms = p.get_stat(ticket['infile'])[stat.ST_MODE]
-                    os.chmod(ticket['outfile'], perms)
-                ticket['status'] = (e_errors.OK, None)
+                    in_stat_info = p.get_stat(ticket['infile'])
             except OSError, msg:
+                Trace.log(e_errors.INFO, "stat %s failed: %s" % \
+                          (ticket['infilepath'], msg))
+                ticket['status'] = (e_errors.USERERROR,
+                                    "Unable to stat() file: %s" % (str(msg),))
+                return
+
+            try:
+                perms = in_stat_info[stat.ST_MODE]
+
+                file_utils.match_euid_egid(ticket['outfile'])
+
+                #handle remote file case
+                if is_write(ticket):
+                    p = Pnfs(ticket['outfile'])
+                    p.chmod(perms, ticket['outfile'])
+                else:
+                    os.chmod(ticket['outfile'], perms)
+
+                ticket['status'] = (e_errors.OK, None)
+                file_utils.end_euid_egid()
+            except OSError, msg:
+                file_utils.end_euid_egid()
                 Trace.log(e_errors.INFO, "chmod %s failed: %s" % \
                           (ticket['outfile'], msg))
                 ticket['status'] = (e_errors.USERERROR,
-                                    "Unable to set permissions.")
+                               "Unable to set permissions: %s" % (str(msg),))
 
             #For root only, if an error hasn't already occured.
             if os.getuid() == 0 and e_errors.is_ok(ticket) and \
                    not encp_intf.put_cache:
                 try:
+                    uid = in_stat_info[stat.ST_UID]
+                    gid = in_stat_info[stat.ST_GID]
+                    
                     #handle remote file case
-                    perms = None
                     if is_write(ticket):
                         p = Pnfs(ticket['outfile'])
-                        uid = os.stat(ticket['infile'])[stat.ST_UID]
-                        gid = os.stat(ticket['infile'])[stat.ST_GID]
                         p.chown(uid, gid, ticket['outfile'])
                     else:
-                        p = Pnfs(ticket['infile'])
-                        uid = p.get_stat(ticket['infile'])[stat.ST_UID]
-                        gid = p.get_stat(ticket['infile'])[stat.ST_GID]
                         os.chown(ticket['outfile'], uid, gid)
                     ticket['status'] = (e_errors.OK, None)
                 except OSError, msg:
                     Trace.log(e_errors.INFO, "chown %s failed: %s" % \
                               (ticket['outfile'], msg))
                     ticket['status'] = (e_errors.USERERROR,
-                                        "Unable to set owner.")
+                                      "Unable to set owner: %s" % (str(msg),))
 
         message = "Time to set_outfile_permissions: %s sec." % \
                       (time.time() - set_outfile_permissions_start_time,)
@@ -6159,6 +6156,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     if local_filename:
         try:
             #First determine if stat-ing the file produces any errors.
+            
             stats = os.stat(local_filename)
 
             #Check to make sure that the inode has not changed either.
@@ -8312,7 +8310,7 @@ def prepare_write_to_hsm(tinfo, e):
             try:
                 #Yet another os.stat() call.  In the future, need to work on
                 # getting rid of as many of these as possible.
-                pstat = os.stat(request_list[i]['outfile'])
+                pstat = file_utils.get_stat(request_list[i]['outfile'])
                 request_list[i]['wrapper']['inode'] = long(pstat[stat.ST_INO])
             except OSError:
                 request_list[i]['wrapper']['inode'] = None
