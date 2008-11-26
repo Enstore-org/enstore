@@ -6197,6 +6197,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #These four error are likely due to an outside process/user.
             if getattr(msg, "errno", None) in [errno.EACCES, errno.ENOENT,
                                                errno.EFBIG, errno.EPERM]:
+                #For debugging.
+                Trace.log(40, "euid = %s  egid = %s  uid = %s  gid = %s" % \
+                          (os.geteuid(), os.getegid(), os.getuid(), os.getgid()))
                 #Local File status.
                 lf_status = (e_errors.FILE_MODIFIED,
                              "Noticed the local file changed: " + str(msg))
