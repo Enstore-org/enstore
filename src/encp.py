@@ -4851,12 +4851,12 @@ def submit_one_request_send(ticket, encp_intf):
         # should catch that so we can handle it.
         ticket['status'] = (e_errors.USERERROR,
               "Unable to locate %s." % (library,))
-        return ticket
+        return ticket, None, None
     #If the lmc is not in a valid state, return an error.
     if lmc.server_address == None:
         ticket['status'] = (e_errors.USERERROR,
               "Unable to locate %s." % (library,))
-        return ticket
+        return ticket, None, None
 
     #Put in the log file a message connecting filenames to unique_ids.
     message = "Sending %s %s request to LM: unique_id: %s inputfile: %s " \
@@ -4889,8 +4889,10 @@ def submit_one_request_send(ticket, encp_intf):
               (time.time() - submit_one_request_send_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
+    
+    ticket['status'] = (e_errors.OK, None)
 
-    return transaction_id, lmc
+    return ticket, transaction_id, lmc
 
 def submit_one_request_recv(transaction_id, ticket, lmc):
 
@@ -4968,7 +4970,9 @@ def submit_one_request_recv(transaction_id, ticket, lmc):
 
 
 def submit_one_request(ticket, encp_intf):
-    transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
+    rticket, transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
+    if not e_errors.is_ok(rticket):
+        return ticket
     return submit_one_request_recv(transaction_id, ticket, lmc)
     
 
