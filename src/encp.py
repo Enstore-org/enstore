@@ -3723,6 +3723,10 @@ def outputfile_check(work_list, e):
                         outputlist.append(outputfile_print)
                         pass
 
+
+                    #Match the effective IDs of the file.
+                    file_utils.match_euid_egid(outputfile_use)
+
                     #Try to write an empty string to layer 1.  If this fails,
                     # it will most likely fail becuase of:
                     # 1) a lack of permission access to the file (EACCES)
@@ -3732,7 +3736,14 @@ def outputfile_check(work_list, e):
                     #    list for pnfs (EPERM)
                     # 4) user root is modifying something outside of the
                     #    /pnfs/fs/usr/xyz/ filesystem (EPERM).
-                    p.writelayer(1, "", outputfile_use)
+                    try:
+                        p.writelayer(1, "", outputfile_use)
+
+                        file_utils.end_euid_egid() #Release the lock.
+                    except:
+                        file_utils.end_euid_egid() #Release the lock.
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
 
                     #Get the outfile size.
                     ofilesize = long(fstatinfo[stat.ST_SIZE])
@@ -5860,7 +5871,7 @@ def verify_inode(ticket):
 
 ############################################################################
 
-def set_outfile_permissions(ticket):
+def set_outfile_permissions(ticket, encp_intf):
 
     if not ticket.get('copy', None):  #Don't set permissions if copy.
         set_outfile_permissions_start_time = time.time()
@@ -5888,7 +5899,8 @@ def set_outfile_permissions(ticket):
                                     "Unable to set permissions.")
 
             #For root only, if an error hasn't already occured.
-            if os.getuid() == 0 and e_errors.is_ok(ticket):
+            if os.getuid() == 0 and e_errors.is_ok(ticket) and \
+                   not encp_intf.put_cache:
                 try:
                     #handle remote file case
                     perms = None
@@ -8178,7 +8190,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         # however, if setting the permissions fails the file is left alone
         # but it is still treated like a failed transfer.  Worst case senerio
         # on a failure is that the file is left with full permissions.
-        set_outfile_permissions(done_ticket)
+        set_outfile_permissions(done_ticket, e)
 
         file_utils.end_euid_egid() #Release the lock.
 
@@ -9903,7 +9915,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     if not (e.override_deleted and done_ticket['fc']['deleted'] != 'no'):
         #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
-        set_outfile_permissions(done_ticket) #Writes errors to log file.
+        set_outfile_permissions(done_ticket, e) #Writes errors to log file.
     ###What kind of check should be done here?
     #This error should result in the file being left where it is, but it
     # is still considered a failed transfer (aka. exit code = 1 and
