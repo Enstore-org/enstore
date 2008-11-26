@@ -366,6 +366,7 @@ PUT_CACHE = "put-cache"                      #encp
 PTS_DIR = "pts_dir"                          #plotter
 PTS_NODES = "pts_nodes"                      #plotter
 PVOLS = "pvols"                              #volume
+QL='queue-length'                            #library
 QUERY = "query"                              #info
 RAISE = "raise"                              #alarm
 READ_ONLY = "read-only"                      #volume
@@ -524,7 +525,7 @@ valid_option_list = [
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT,
     POSITION, PREFIX, PRIORITY, PRINT, PRINT_QUEUE,PROFILE, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,
-    QUERY,
+    QUERY, QL,
     RAISE, READ_ONLY, READ_TO_END_OF_TAPE, REASON, RECURSIVE, RECYCLE, REFRESH,
     REMEDY_TYPE, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RESUBMIT_TIMEOUT, RETRIES, REBUILD_SG_COUNT,
