@@ -20,6 +20,7 @@ import socket
 import stat
 import types
 import traceback
+import threading
 
 # enstore imports
 import hostaddr
@@ -34,8 +35,10 @@ import pnfs
 import atomic
 import enstore_functions2
 import file_utils
+import udp_server
 
 MY_NAME = enstore_constants.PNFS_AGENT   #"pnfs_agent"
+MAX_THREADS = 50
 
 default_pinfo = {"inode" : 0,
                 #"gid" : None,
@@ -62,13 +65,17 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.name       = name
         self.shortname  = name
         self.keys       = self.csc.get(self.name)
-        dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], self.keys['port']))
-        self.dict       = None
+        dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], self.keys['port']),
+                                                      use_raw=1)
+        self.conf = self.csc.get(name)
+        self.max_threads = self.conf.get('max_threads', MAX_THREADS)
+        
         #self.set_error_handler(self.handle_error)
         Trace.init(self.log_name)
 	self.alive_interval = monitored_server.get_alive_interval(self.csc,
 								  MY_NAME,
 								  self.keys)
+
     """
     def handle_error(self, exc, msg, tb):
         x = tb 
@@ -750,7 +757,94 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
-        
+
+
+    # this is a thread wrapper
+    # it calls a function and then - after function if needed 
+    def thread_wrapper(self, function, args=(), after_function=None):
+        function(args)
+        if after_function:
+            after_function()
+
+            
+    def run_in_thread(self, function, args=(), after_function=None):
+        _args = (function,)+ args
+        if after_function:
+            _args = _args + (after_function,)
+        Trace.trace(5, "create thread: target %s args %s" % (function, args))
+        thread = threading.Thread(group=None, target=self.thread_wrapper,
+                                  name=None, args=_args, kwargs={})
+        Trace.trace(5, "starting thread %s"%(dir(thread,)))
+        try:
+            thread.start()
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "starting thread: %s" % (detail))
+        return 0
+
+
+    # Process the  request that was (generally) sent from UDPClient.send
+    # overrides dispatching worker method
+    # the difference: creates a thread
+    # if number of threads is maximal waits until a running thread exits
+    def process_request(self, request, client_address):
+
+        #Since get_request() gets requests from UDPServer.get_message()
+        # and self.read_fd(fd).  Thusly, some care needs to be taken
+        # from within UDPServer.process_request() to be tolerent of
+        # requests not originally read with UDPServer.get_message().
+        ticket = udp_server.UDPServer.process_request(self, request,
+                                                      client_address)
+
+        Trace.trace(6, "dispatching_worker:process_request %s; %s"%(request, ticket,))
+        #This checks help process cases where the message was repeated
+        # by the client.
+        if not ticket:
+            Trace.trace(6, "dispatching_worker: no ticket!!!")
+            Trace.log(e_errors.ERROR, "dispatching_worker: no ticket!!!")
+            return
+
+        # look in the ticket and figure out what work user wants
+        try:
+            function_name = ticket["work"]
+        except (KeyError, AttributeError, TypeError), detail:
+            ticket = {'status' : (e_errors.KEYERROR, 
+                                  "cannot find any named function")}
+            msg = "%s process_request %s from %s" % \
+                (detail, ticket, client_address)
+            Trace.trace(6, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        try:
+            Trace.trace(5,"process_request: function %s"%(function_name,))
+            function = getattr(self,function_name)
+        except (KeyError, AttributeError, TypeError), detail:
+            ticket = {'status' : (e_errors.KEYERROR, 
+                                  "cannot find requested function `%s'"
+                                  % (function_name,))}
+            msg = "%s process_request %s %s from %s" % \
+                (detail, ticket, function_name, client_address) 
+            Trace.trace(6, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        # call the user function
+        t = time.time()
+        while 1:
+            c = threading.activeCount()
+            if c < self.max_threads:
+                Trace.trace(5, "threads %s"%(c,))
+                self.run_in_thread(function, (ticket,), after_function=self._done_cleanup)
+                #self.run_in_thread(function, (ticket,))
+                #self.run_in_thread(function, (ticket,self._done_cleanup))
+                break
+                
+        #apply(function, (ticket,))
+        Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
+   
         
 
 class PnfsAgentInterface(generic_server.GenericServerInterface):
@@ -765,7 +859,7 @@ if __name__ == "__main__":
     vc.handle_generic_commands(intf)
     
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
-
+    #vc._do_print({'levels':[5,6,]})
 
     while 1:
         try:
