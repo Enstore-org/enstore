@@ -423,7 +423,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             else:
                 fname = f
             try:
-                Trace.log(e_errors.INFO, 'opening file %s'%fname)
+                Trace.trace(10, 'opening file %s'%fname)
                 fd = atomic.open(fname, mode=0666) #raises OSError on error.
 
                 if type(f) == types.DictType:
@@ -475,7 +475,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         path = ticket['path']
         mode = ticket['mode']
         rc = file_utils.e_access(path, mode)
-        Trace.log(e_errors.INFO, 'e_access for file %s mode %s rc=%s'%(path,mode,rc,))
+        Trace.trace(10, 'e_access for file %s mode %s rc=%s'%(path,mode,rc,))
         ticket['rc'] = rc
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -495,7 +495,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         p = pnfs.Pnfs(fname)
         ticket['bfid'] = p.get_bit_file_id()
         ticket['status'] = (e_errors.OK, None)
-        Trace.log(e_errors.INFO, 'get_bit_file_id %s %s'%(fname,ticket['bfid'],))
+        Trace.tarce(10, 'get_bit_file_id %s %s'%(fname,ticket['bfid'],))
         self.reply_to_caller(ticket)
         return
 
@@ -514,7 +514,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
-        Trace.log(e_errors.INFO, 'get_id %s %s'%(fname,ticket['file_id'],))
+        Trace.trace(10, 'get_id %s %s'%(fname,ticket['file_id'],))
         return
 
     def get_parent_id(self, ticket):
@@ -532,8 +532,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
-        Trace.log(e_errors.INFO,
-                  'get_parent_id pnfs %s'%(ticket['parent_id'],))
+        Trace.trace(10, 'get_parent_id pnfs %s'%(ticket['parent_id'],))
         return
 
     def readlayer(self, ticket):
@@ -552,8 +551,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
-        Trace.log(e_errors.INFO,
-                  'get_layer pnfs %s'%(ticket['layer_info'],))
+        Trace.trace(10, 'get_layer pnfs %s'%(ticket['layer_info'],))
         return
 
     def writelayer(self, ticket):
@@ -588,8 +586,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
-        Trace.log(e_errors.INFO,
-                  'get_xreference pnfs %s'%(ticket['xref'],))
+        Trace.trace(10, 'get_xreference pnfs %s'%(ticket['xref'],))
         return
         
     def set_xreference(self, ticket):
@@ -636,7 +633,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         p.get_id()
         p.set_file_size(ticket['size'])
         ticket['status']   = (e_errors.OK, None)
-        Trace.log(e_errors.INFO, 'set_file_size %s %s'%(fname,ticket['size'],))
+        Trace.trace(10, 'set_file_size %s %s'%(fname,ticket['size'],))
         self.reply_to_caller(ticket)
         return
 
@@ -658,7 +655,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
                     os.chown(work_ticket['outfile'],uid,gid)
                     work_ticket['status'] = (e_errors.OK, None)
                 except OSError, msg:
-                    Trace.log(e_errors.INFO, "chmod %s failed %s:" % \
+                    Trace.log(e_errors.ERROR, "chmod %s failed %s:" % \
                               (work_ticket['outfile'], msg))
                     work_ticket['status'] = (e_errors.USERERROR,
                                         "Unable to set permissions.")
@@ -688,7 +685,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
     def chown(self, ticket):
         fname = ticket['fname']
         uid = ticket['uid']
-        gid = tucket['gid']
+        gid = ticket['gid']
         p=pnfs.Pnfs(fname)
         try:
             p.chown(uid, gid, fname)
