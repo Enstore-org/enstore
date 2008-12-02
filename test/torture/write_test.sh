@@ -8,11 +8,20 @@
 pnfs_path=''
 data=''
 ff_width=3
+sg='TEST'
+lib='null1'
+wrap='null'
+ff='test'
+
 batch=10
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-p" ] ; then shift; pnfs_path=$1; shift; fi
 if [ "${1:-}" = "-d" ] ; then shift; data=$1; shift; fi
 if [ "${1:-}" = "-f" ] ; then shift; ff_width=$1; shift; fi
+if [ "${1:-}" = "-g" ] ; then shift; sg=$1; shift; fi
+if [ "${1:-}" = "-l" ] ; then shift; lib=$1; shift; fi
+if [ "${1:-}" = "-f" ] ; then shift; ff=$1; shift; fi
+if [ "${1:-}" = "-w" ] ; then shift; ff_width=$1; shift; fi
 if [ "${1:-}" = "-b" ] ; then shift; batch=$1; shift; fi
 
 if [ -z $pnfs_path ]; then pnfs_path="/pnfs/cdfen/test/sl8500/test"; fi
@@ -29,14 +38,9 @@ date=`date +%F`
 #echo fsz $fsz
 for s in $sizes
   do
-  if [ ! -e $pnfs_path/$date/${host}/$s ] 
-      then 
-      mkdir -p $pnfs_path/$date/${host}/${s}
-      cd $pnfs_path/$date/${host}/$s 
-      enstore pnfs --file_family=test
-      enstore pnfs --file_family_width=$ff_width
-      cd - > /dev/null 2>&1
-  fi
+     # check anf if needed create pnfs path
+     $ENSTORE_DIR/test/torture/make_pnfs_dir.py $pnfs_path/$date/${host}/${s} $sg $lib $ff $ff_width $wrap 
+     cd - > /dev/null 2>&1
 done
 
 if [ $fsz -eq 0 ]; then
