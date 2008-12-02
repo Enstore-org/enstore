@@ -2288,7 +2288,7 @@ def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
 	else:
 		ok_log(MY_TASK, dst_bfid, "is already checked at", ct)
 		# make sure the migration path has been removed
-		mig_path = migration_path(pnfs_path)
+		mig_path = migration_path(likely_path)
 		try:
 			os.stat(mig_path)
 			error_log(MY_TASK,
@@ -2487,7 +2487,7 @@ def final_scan_volume(vol, intf):
 
 	else:
 		error_log(MY_TASK,
-			  "skipping volume metadata update sinnce not all files have been scanned")
+			  "skipping volume metadata update since not all files have been scanned")
 				
 	return local_error
 
