@@ -8105,15 +8105,22 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                       (work_ticket['outfilepath'],
                        time.time()-tinfo['encp_start_time']))
 
-        #Set the effective uid and gid of the file before closing the file.
-        if os.getuid() == 0:
-            #For root only, we need to match the current owner of the output
-            # file.  The correct owner gets set in set_outfile_permissions()
-            # for root.
-            file_utils.match_euid_egid(done_ticket['outfile'])
-        else:
-            file_utils.match_euid_egid(in_fd)
-
+        try:
+            #Set the effective uid and gid of the file before closing the file.
+            if os.getuid() == 0:
+                #For root only, we need to match the current owner of the
+                # output file.  The correct owner gets set in
+                # set_outfile_permissions() for root.
+                file_utils.match_euid_egid(done_ticket['outfile'])
+            else:
+                file_utils.match_euid_egid(in_fd)
+        except OSError, msg:
+            if e_errors.is_ok(done_ticket):
+                done_ticket['status'] = (e_errors.OSERROR, str(msg))
+                #The read version calls handle_retries() here.  We don't
+                # need to here because the execution order allows
+                # for piggy-backing the handle_retries() for transfer_files().
+                
         #Don't need these anymore.
         #close_descriptors(control_socket, data_path_socket, in_fd)
         close_descriptors(in_fd)
@@ -9883,8 +9890,17 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     #These functions write errors/warnings to the log file and put an
     # error status in the ticket.
 
-    #set the effective uid and gid.
-    file_utils.match_euid_egid(out_fd)
+    try:
+        #set the effective uid and gid.
+        file_utils.match_euid_egid(out_fd)
+    except OSError, msg:
+        close_descriptors(out_fd)
+        error_ticket = {'status' : (e_errors.OSERROR, str(msg))}
+        #Handle the error.
+        result_dict = handle_retries(request_list, request_ticket,
+                                     error_ticket, e)
+        
+        return combine_dict(result_dict, request_ticket)
     
     #Verify size is the same.
     verify_file_size(done_ticket, e)
