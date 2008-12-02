@@ -2279,6 +2279,7 @@ def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
 		# running for that to happen.  It's cleaner to do both.
 		mig_path = migration_path(pnfs_path)
 		try:
+                        nullify_pnfs(mig_path)
 			os.remove(mig_path)
 		except OSError:
 			error_log(MY_TASK,
