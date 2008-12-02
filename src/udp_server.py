@@ -51,6 +51,7 @@ class UDPServer:
         self.address_family = socket.AF_INET
         self._lock = threading.Lock()
         self.current_id = None
+        self.queue_size = 0L
         self.use_raw = use_raw and can_use_raw
         if use_raw:
             self.server_address = server_address
@@ -283,8 +284,8 @@ class UDPServer:
        if rc:
            client_addr = (rc[0], rc[1])
            req = rc[2]
-           queue_size = rc[3]
-           Trace.trace(5, "REQ %s %s"%(req,queue_size)) 
+           self.queue_size = rc[3]
+           Trace.trace(5, "REQ %s %s %s"%(self.server_address, req,self.queue_size)) 
            try:
                request, inCRC = udp_common.r_eval(req)
            except (SyntaxError, TypeError):
