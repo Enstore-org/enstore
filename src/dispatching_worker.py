@@ -276,12 +276,10 @@ class DispatchingWorker(udp_server.UDPServer):
         while not gotit:
             r = self.read_fds + [self.server_socket]
             w = self.write_fds
-            if self.queue_size < 2:
-                time.sleep(.2)
             rcv_timeout = self.rcv_timeout
             if self.use_raw:
-                rc = udp_server.UDPServer.get_message(self)
-                
+                rc = self.get_message()
+                Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
                 if rc and rc != ('',()):
                     Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
                     return rc
@@ -325,7 +323,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
                     elif fd == self.server_socket:
                         #Get the 'raw' request and the address from whence it came.
-                        (request, addr) = udp_server.UDPServer.get_message(self)
+                        (request, addr) = self.get_message(self)
 
                         #Skip these if there is nothing to do.
                         if request == None or addr in [None, ()]:
