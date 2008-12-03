@@ -133,7 +133,7 @@ class UDPServer:
         self.raw_requests = None;
         if self.use_raw:
             #self.raw_requests = rawUDP.create_list(port)
-            self.raw_requests = rawUDP.RawUDP(port)
+            self.raw_requests = rawUDP.RawUDP(port, receive_timeout=self.rcv_timeout)
             # start raw udp receiver
             # it creates internal receiver thread and runs it in a loop
             if self.raw_requests:
