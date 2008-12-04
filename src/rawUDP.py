@@ -44,13 +44,16 @@ class RawUDP:
     def get(self):
         if self.queue_size == 0:
             self.arrived.wait()
-            
-        self._lock.acquire()
-        self.arrived.clear()
-        ret = self.buffer.pop(0)
-        self.queue_size = self.queue_size - 1 
-        self._lock.release()
-        return ret[0], ret[1], ret[2], self.queue_size 
+            self.arrived.clear()
+        if self.queue_size > 0:
+              self._lock.acquire()
+              #self.arrived.clear()
+              ret = self.buffer.pop(0)
+              self.queue_size = self.queue_size - 1 
+              self._lock.release()
+              return ret[0], ret[1], ret[2], self.queue_size
+        else:
+            return None
         
     
     def _receiver(self):
@@ -74,6 +77,12 @@ class RawUDP:
                         if req:
                             message = (client_addr[0], client_addr[1], req)
                             self.put(message)
+            else:
+                # time out
+                # set event to allow get to proceed
+                # this can be used in dispatching worker to run interva functions
+                self.arrived.set()
+
 
     def receiver(self):
         #thread = threading.Thread(group=None, target='_receiver', args=(), kwargs={})

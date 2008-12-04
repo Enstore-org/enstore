@@ -190,7 +190,7 @@ class DispatchingWorker(udp_server.UDPServer):
                     del self.interval_funcs[func]
                 else: #record last call time
                     self.interval_funcs[func][1] =  now
-                Trace.trace(6, "do_one_request: calling %s"%(func,))
+                Trace.trace(6, "do_one_request: calling interval_function %s"%(func,))
                 func()
 
         if request is None: #Invalid request sent in
@@ -277,6 +277,14 @@ class DispatchingWorker(udp_server.UDPServer):
             r = self.read_fds + [self.server_socket]
             w = self.write_fds
             rcv_timeout = self.rcv_timeout
+            if self.interval_funcs:
+                now = time.time()
+                for func, time_data in self.interval_funcs.items():
+                    interval, last_called, one_shot = time_data
+                    rcv_timeout = min(rcv_timeout,
+                                      interval - (now - last_called))
+
+                rcv_timeout = max(rcv_timeout, 0)
             if self.use_raw:
                 rc = self.get_message()
                 Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
@@ -287,15 +295,6 @@ class DispatchingWorker(udp_server.UDPServer):
                     # process timeout
                     if time.time()-t0 > rcv_timeout:
                         return ('',()) #timeout
-
-            if self.interval_funcs:
-                now = time.time()
-                for func, time_data in self.interval_funcs.items():
-                    interval, last_called, one_shot = time_data
-                    rcv_timeout = min(rcv_timeout,
-                                      interval - (now - last_called))
-
-                rcv_timeout = max(rcv_timeout, 0)
 
             if not self.use_raw:
                 r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
