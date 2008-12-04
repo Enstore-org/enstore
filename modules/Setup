@@ -112,4 +112,4 @@ enroutec enroute_wrap.c enroute.c -I$(PYTHONINC) $(BITS_FLAG)
 _enroute enroute_wrap.c enroute.c -I$(PYTHONINC) $(BITS_FLAG)
 
 Interfaces Interfaces.c  -I$(PYTHONINC) $(BITS_FLAG)
-rawUDP rawUDP.c  -I$(PYTHONINC) $(QUOTAS) $(POSIX4) $(RT) $(GEN) $(BITS_FLAG)
+#rawUDP rawUDP.c  -I$(PYTHONINC) $(QUOTAS) $(POSIX4) $(RT) $(GEN) $(BITS_FLAG)
