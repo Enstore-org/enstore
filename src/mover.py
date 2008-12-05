@@ -5212,7 +5212,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             failed=1
         self.timer('seek_time')
         try:
-            self.log_state(1)
             self.current_location, block = self.tape_driver.tell()
         except  self.ftt.FTTError, detail:
             self.transfer_failed(e_errors.POSITIONING_ERROR, 'Positioning error, can not get drive info %s' % (detail,),
