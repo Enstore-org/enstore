@@ -2840,12 +2840,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                         location, block = self.tape_driver.tell()
                     except  self.ftt.FTTError, detail:
                         self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s' % (detail,),
-                                             error_source=DRIVE)
+                                             error_source=TAPE)
                         return
                     except:
                         exc, detail, tb = sys.exc_info()
                         self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s %s' % (exc, detail,),
-                                             error_source=DRIVE)
+                                             error_source=TAPE)
                         return
                     
                     Trace.log(e_errors.INFO, "location %s block %s cur_loc %s"%(location, block, self.current_location))
@@ -2861,12 +2861,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             location, block = self.tape_driver.tell()
         except  self.ftt.FTTError, detail:
             self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s' % (detail,),
-                                 error_source=DRIVE)
+                                 error_source=TAPE)
             return
         except:
             exc, detail, tb = sys.exc_info()
             self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s %s' % (exc, detail,),
-                                 error_source=DRIVE)
+                                 error_source=TAPE)
             return
         
         block_n = tot_blocks = bloc_loc = block_size = bot = 0L
@@ -4000,13 +4000,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.current_location, block = self.tape_driver.tell()
         except  self.ftt.FTTError, detail:
             self.transfer_failed(e_errors.DRIVEERROR, 'Can not get drive info %s' % (detail,),
-                                 error_source=DRIVE)
+                                 error_source=TAPE)
             self.dismount_volume(after_function=self.offline)
             return
         except:
             exc, detail, tb = sys.exc_info()
             self.transfer_failed(e_errors.DRIVEERROR, 'Can not get drive info %s %s' % (exc, detail,),
-                                 error_source=DRIVE)
+                                 error_source=TAPE)
             self.dismount_volume(after_function=self.offline)
             return
         
