@@ -2514,7 +2514,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
 
                     return
-                save_location, block = self.tape_driver.tell()
+                try:
+                    save_location, block = self.tape_driver.tell()
+                except  self.ftt.FTTError, detail:
+                    self.transfer_failed(e_errors.WRITE_ERROR, 'Can not get drive info %s' % (detail,),
+                                         error_source=TAPE)
+                    return
+                except:
+                    exc, detail, tb = sys.exc_info()
+                    self.transfer_failed(e_errors.WRITE_ERROR, 'Can not get drive info %s %s' % (exc, detail,),
+                                         error_source=TAPE)
+                    return
+                
                 Trace.trace(22,"save location %s" % (save_location,))
                 if have_tape != 1:
                     Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
@@ -2825,16 +2836,39 @@ class Mover(dispatching_worker.DispatchingWorker,
             if bytes_read < nbytes and self.method == 'read_next':
                 # end of file?
                 if bytes_read == 0:
-                    location, block = self.tape_driver.tell()
+                    try:
+                        location, block = self.tape_driver.tell()
+                    except  self.ftt.FTTError, detail:
+                        self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s' % (detail,),
+                                             error_source=DRIVE)
+                        return
+                    except:
+                        exc, detail, tb = sys.exc_info()
+                        self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s %s' % (exc, detail,),
+                                             error_source=DRIVE)
+                        return
+                    
                     Trace.log(e_errors.INFO, "location %s block %s cur_loc %s"%(location, block, self.current_location))
                     break_here = 1
                     break
+                    
             if break_here:
                 break
 
 
         Trace.log(e_errors.INFO, "read bytes %s/%s, blocks %s header %s" %(self.bytes_read, self.bytes_to_read, nblocks, header_size))
-        location, block = self.tape_driver.tell()
+        try:
+            location, block = self.tape_driver.tell()
+        except  self.ftt.FTTError, detail:
+            self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s' % (detail,),
+                                 error_source=DRIVE)
+            return
+        except:
+            exc, detail, tb = sys.exc_info()
+            self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s %s' % (exc, detail,),
+                                 error_source=DRIVE)
+            return
+        
         block_n = tot_blocks = bloc_loc = block_size = bot = 0L
         if self.driver_type == 'FTTDriver':
             try:
@@ -3959,10 +3993,24 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
         self.net_driver.close()
-        self.current_location, block = self.tape_driver.tell()
         now = time.time()
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
+        try:
+            self.current_location, block = self.tape_driver.tell()
+        except  self.ftt.FTTError, detail:
+            self.transfer_failed(e_errors.DRIVEERROR, 'Can not get drive info %s' % (detail,),
+                                 error_source=DRIVE)
+            self.dismount_volume(after_function=self.offline)
+            return
+        except:
+            exc, detail, tb = sys.exc_info()
+            self.transfer_failed(e_errors.DRIVEERROR, 'Can not get drive info %s %s' % (exc, detail,),
+                                 error_source=DRIVE)
+            self.dismount_volume(after_function=self.offline)
+            return
+        
+
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
         
@@ -4036,7 +4084,18 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.header_labels:
            eod_increment = eod_increment + 1
             
-        self.current_location, block = self.tape_driver.tell()
+        try:
+            self.current_location, block = self.tape_driver.tell()
+        except  self.ftt.FTTError, detail:
+            self.transfer_failed(e_errors.WRITE_ERROR, 'Can not get drive info %s' % (detail,),
+                                 error_source=TAPE)
+            return
+        except:
+            exc, detail, tb = sys.exc_info()
+            self.transfer_failed(e_errors.WRITE_ERROR, 'Can not get drive info %s %s' % (exc, detail,),
+                                 error_source=TAPE)
+            return
+        
         if self.current_location <= previous_eod:
             Trace.log(e_errors.ERROR, " current location %s <= eod %s" %
                       (self.current_location, previous_eod))
@@ -5123,6 +5182,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver.seek(location, eot_ok) #XXX is eot_ok needed?
         except:
             exc, detail, tb = sys.exc_info()
+           
             ########## Zalokar: April 1, 2004 ##########################
             # If the error is FTT_EBLANK, do a similar action to that in
             # Mover.read_tape() to return (READ_ERROR, READ_EOD) instead
@@ -5151,7 +5211,18 @@ class Mover(dispatching_worker.DispatchingWorker,
             ########## Zalokar: April 1, 2004 ##########################
             failed=1
         self.timer('seek_time')
-        self.current_location, block = self.tape_driver.tell()
+        try:
+            self.log_state(1)
+            self.current_location, block = self.tape_driver.tell()
+        except  self.ftt.FTTError, detail:
+            self.transfer_failed(e_errors.POSITIONING_ERROR, 'Positioning error, can not get drive info %s' % (detail,),
+                                 error_source=DRIVE)
+            return
+        except:
+            exc, detail, tb = sys.exc_info()
+            self.transfer_failed(e_errors.POSITIONING_ERROR, 'Positioning error, can not get drive info %s %s' % (exc, detail,),
+                                 error_source=DRIVE)
+            return
         if self.mode is WRITE:
             previous_eod = cookie_to_long(self.vol_info['eod_cookie'])
             Trace.trace(10,"seek_to_location: current location %s, eod %s"%
@@ -6694,7 +6765,7 @@ if __name__ == '__main__':
     mover.handle_generic_commands(intf)
     mover.start()
     mover.starting = 0
-    
+
     while 1:
         try:
             mover.serve_forever()
