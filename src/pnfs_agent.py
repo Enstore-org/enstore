@@ -495,7 +495,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         p = pnfs.Pnfs(fname)
         ticket['bfid'] = p.get_bit_file_id()
         ticket['status'] = (e_errors.OK, None)
-        Trace.tarce(10, 'get_bit_file_id %s %s'%(fname,ticket['bfid'],))
+        Trace.trace(10, 'get_bit_file_id %s %s'%(fname,ticket['bfid'],))
         self.reply_to_caller(ticket)
         return
 
