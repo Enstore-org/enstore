@@ -1716,12 +1716,17 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 	if res:
 		return "metadata %s %s are inconsistent on %s"%(bfid1, src, res)
 
-	res = compare_metadata(p2, f2)
-	# deal with already swapped file record
-	if res == 'pnfsid':
-		res = compare_metadata(p2, f2, p1.pnfs_id)
-	if res:
-		return "metadata %s %s are inconsistent on %s"%(bfid2, dst, res)
+	if not p2.bfid and not p2.volume:
+		#The migration path has already been deleted.  There is
+		# no file to compare with.
+		pass
+	else:
+		res = compare_metadata(p2, f2)
+		# deal with already swapped file record
+		if res == 'pnfsid':
+			res = compare_metadata(p2, f2, p1.pnfs_id)
+	       	if res:
+			return "metadata %s %s are inconsistent on %s"%(bfid2, dst, res)
 
 	# cross check
 	err_msg = ""
@@ -1832,10 +1837,10 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 			#For trusted pnfs systems, there isn't a problem,
 			# but for untrusted we need to set the effective
 			# IDs to the owner of the file.
-			#NOTE: Modify file_utils.match_euid_egid() to accept
-			# stat() results as an arguement.  Then mig_stat
-			# could be passed in saving a stat() call.
-			file_utils.match_euid_egid(mig_path)
+			#Remember, unlink()/remove() permissions are based
+			# on the directory, not the file.
+			mig_dir = pnfs.get_directory_name(mig_path)
+			file_utils.match_euid_egid(mig_dir)
 				
 			#Should the layers be nullified first?  When
 			# migrating the same files over and over again the
