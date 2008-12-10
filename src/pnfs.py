@@ -754,7 +754,12 @@ def __get_special_path(filepath, replacement_path):
     
     #First, remove any preceding directories before /pnfs/.
     dir_split = filepath.split("/")
-    dir_split_index = dir_split.index("pnfs")
+    try:
+        dir_split_index = dir_split.index("pnfs")
+    except ValueError:
+        #The file is not a pnfs file.
+        raise OSError(errno.ENOENT, os.strerror(errno.ENOENT), filename)
+        
     #Limit this check to just three directory levels after /pnfs/.  If it 
     # hasn't been found by then, chances are it will not.  If necessary,
     # this could be increased.
@@ -770,9 +775,10 @@ def __get_special_path(filepath, replacement_path):
     ## it.
     for pattern in pattern_list:
         filename, count = re.subn(pattern, replacement_path, filepath, 1)
-        if count > 0 and is_pnfs_path(filename):
+        if count > 0 and is_pnfs_path(filename, check_name_only = 1):
             return filename
 
+    #The file is not a pnfs file.
     raise OSError(errno.ENOENT, os.strerror(errno.ENOENT), filepath)
 
 def get_enstore_pnfs_path(filepath):
@@ -1055,20 +1061,23 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # create a new file or update its times
     def touch(self, filename=None):
         if not filename:
-            filename = self.pnfsFilename
+            use_filename = self.pnfsFilename
+        else:
+            use_filename = filename
             
         try:
-            self.utime(filename)
+            self.utime(use_filename)
         except os.error, msg:
             if msg.errno == errno.ENOENT:
-                f = open(filename,'w')
+                f = open(use_filename,'w')
                 f.close()
             else:
                 Trace.log(e_errors.INFO,
-                          "problem with pnfsFilename = " + filename)
+                          "problem with pnfsFilename = " + use_filename)
                 raise os.error, msg
 
-        self.pstatinfo()
+        if not filename:
+            self.pstatinfo()
 
     # create a new file
     def creat(self, filename=None, mode = None):

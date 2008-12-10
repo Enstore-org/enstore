@@ -32,9 +32,10 @@ import enstore_constants
 import monitored_server
 import event_relay_messages
 import pnfs
-import atomic
+#import atomic
 import enstore_functions2
 import file_utils
+import find_pnfs_file
 import udp_server
 
 MY_NAME = enstore_constants.PNFS_AGENT   #"pnfs_agent"
@@ -76,6 +77,15 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 								  MY_NAME,
 								  self.keys)
 
+        #If the pnfs_agent is started without /pnfs/fs mounted, give
+        # error and exit.
+        admin_mp_list = pnfs.get_enstore_admin_mount_point()
+        if len(admin_mp_list) == 0:
+            message = "No PNFS admin mount point found.  Exiting."
+            Trace.log(e_errors.ERROR, message)
+            sys.stderr.write("%s\n" % (message,))
+            sys.exit(1)
+        
     """
     def handle_error(self, exc, msg, tb):
         x = tb 
@@ -99,7 +109,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def get_pnfsstat(self, ticket):
-        filename = ticket['filename']
+        filename = pnfs.get_enstore_fs_path(ticket['filename'])
         p=pnfs.Pnfs(filename)
         try:
             ticket['statinfo']=p.get_stat()
@@ -116,8 +126,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def get_stat(self, ticket):
-        filename = ticket['filename']
-        #p=pnfs.Pnfs(filename)
+        filename = pnfs.get_enstore_fs_path(ticket['filename'])
         try:
             ticket['statinfo']=tuple(os.stat(filename))
             ticket['status'] = (e_errors.OK, None)
@@ -132,10 +141,51 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
-    def creat(self, ticket):
-        filename = ticket['filename']
+    def touch(self, ticket):
+        filename = pnfs.get_enstore_fs_path(ticket['filename'])
         mode = ticket.get('mode', None)
         p=pnfs.Pnfs()
+
+        #Address the issue of ownership.
+        file_utils.euid_lock.acquire()
+        if ticket['gid'] and ticket['gid'] >= 0 and os.getgid() == 0:
+            os.setegid(ticket['gid'])
+        if ticket['uid'] and ticket['uid'] >= 0 and os.getuid() == 0:
+            os.seteuid(ticket['uid'])
+            
+        try:
+            if mode:
+                p.touch(filename)  #, mode)
+            else:
+                p.touch(filename)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+
+        #Address the issue of ownership.
+        os.seteuid(0)
+        os.setegid(0)
+        file_utils.euid_lock.release()
+        
+        self.reply_to_caller(ticket)
+        return
+
+    def creat(self, ticket):
+        filename = pnfs.get_enstore_fs_path(ticket['filename'])
+        mode = ticket.get('mode', None)
+        p=pnfs.Pnfs()
+
+        #Address the issue of ownership.
+        file_utils.euid_lock.acquire()
+        if ticket['gid'] and ticket['gid'] >= 0 and os.getgid() == 0:
+            os.setegid(ticket['gid'])
+        if ticket['uid'] and ticket['uid'] >= 0 and os.getuid() == 0:
+            os.seteuid(ticket['uid'])
+        
         try:
             if mode:
                 p.creat(filename, mode)
@@ -148,27 +198,17 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
+
+        #Address the issue of ownership.
+        os.seteuid(0)
+        os.setegid(0)
+        file_utils.euid_lock.release()
+        
         self.reply_to_caller(ticket)
         return
-
-    def mkdir(self, ticket):
-        ticket['status'] = (e_errors.OK, None)
-        try:
-            os.makedirs(ticket['path'])
-            if ticket['uid'] and ticket['gid']:
-                os.chown(ticket['path'],ticket['uid'], ticket['gid'])
-        except OSError, msg:
-            ticket['errno'] = msg.args[0]
-            ticket['status'] = (e_errors.OSERROR, str(msg))
-        except IOError, msg:
-            ticket['errno'] = msg.args[0]
-            ticket['status'] = (e_errors.IOERROR, str(msg))
-        self.reply_to_caller(ticket)
-        return
-
 
     def get_file_stat(self, ticket):
-        filename = ticket['filename']
+        filename = pnfs.get_enstore_fs_path(ticket['filename'])
         if ( os.path.exists(filename) ) :
             if ( pnfs.is_pnfs_path(filename) ):
                 tmp = os.stat(filename)
@@ -205,24 +245,8 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
-    def get_pinfo(self, ticket):
-        pin = pnfs.Pnfs(ticket['filename'])
-        pinfo = {}
-        for k in [ 'pnfsFilename', 'gid', 'gname', 'uid', 'uname',
-                   'major', 'minor', 'rmajor', 'rminor',
-                   'mode', 'pstat', 'inode' ]:
-            try:
-                pinfo[k] = getattr(pin, k)
-            except AttributeError:
-                if default_pinfo.has_key(k):
-                    pinfo[k] = default_pinfo[k]
-        ticket['pinfo'] = pinfo
-        ticket['status']   = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        return
-
     def get_library(self, ticket):
-        dirname = ticket['dirname']
+        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
         if ( os.path.exists(dirname) ) :
             if ( os.path.isdir(dirname) ) :
                 t = pnfs.Tag(dirname)
@@ -262,7 +286,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def get_file_family(self, ticket):
-        dirname = ticket['dirname']
+        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
         if ( os.path.exists(dirname) ) :
             if ( os.path.isdir(dirname) ) :
                 t = pnfs.Tag(dirname)
@@ -300,7 +324,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def get_file_family_width(self, ticket):
-        dirname = ticket['dirname']
+        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
         if ( os.path.exists(dirname) ) :
             if ( os.path.isdir(dirname) ) :
                 t = pnfs.Tag(dirname)
@@ -339,7 +363,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 
 
     def get_file_family_wrapper(self, ticket):
-        dirname = ticket['dirname']
+        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
         if ( os.path.exists(dirname) ) :
             if ( os.path.isdir(dirname) ) :
                 t = pnfs.Tag(dirname)
@@ -377,7 +401,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def get_storage_group(self, ticket):
-        dirname = ticket['dirname']
+        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
         if ( os.path.exists(dirname) ) :
             if ( os.path.isdir(dirname) ) :
                 t = pnfs.Tag(dirname)
@@ -414,65 +438,25 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
-    def create_zero_length_pnfs_files(self,ticket):
-        if type(ticket['filenames']) != types.ListType:
-            ticket['filenames'] = [ticket['filenames']]
-        for f in ticket['filenames']:
-            if type(f) == types.DictType:
-                fname = f['wrapper']['pnfsFilename']
-            else:
-                fname = f
-            try:
-                Trace.trace(10, 'opening file %s'%fname)
-                fd = atomic.open(fname, mode=0666) #raises OSError on error.
-
-                if type(f) == types.DictType:
-                    #The inode is used later on to determine if another process
-                    # has deleted or removed the remote pnfs file.
-                    f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
-                    #The pnfs id is used to track down the new paths to files
-                    # that were moved before encp completes.
-                    f['fc']['pnfsid'] = pnfs.Pnfs(fname).get_id()
-                os.close(fd)
-            except OSError, msg:
-                Trace.log(e_errors.ERROR, msg)
-                ticket['status'] = (e_errors.OSERROR, None)
-                ticket['msg'] = msg
-                self.reply_to_caller(ticket)
-                return
-        ticket['status']   = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        return
-
-    def get_ninfo(self,ticket) :
-        unused, ifullname, unused, ibasename = fullpath(ticket['inputfile']) #e.input[i])
-        unused, ofullname, unused, unused = fullpath(ticket['outputfile']) #e.output[0])
-        inlen = ticket['inlen']
-        if ofullname == "/dev/null": #if /dev/null is target, skip elifs.
-            pass
-        elif ifullname == "/dev/zero":
-            pass
-        elif ( inlen > 1) or \
-         (inlen == 1 and os.path.isdir(ofullname)):
-            ofullname = os.path.join(ofullname, ibasename)
-            unused, ofullname, unused, unused = fullpath(ofullname)
-        ticket['inputfile']=ifullname
-        ticket['outputfile']=ofullname
-        ticket['status']   = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        return
-
     def get_path(self, ticket):
         pnfs_id = ticket['pnfs_id']
-        dirname = ticket['dirname']
-        p = pnfs.Pnfs(pnfs_id, dirname)
-        ticket['path'] = p.get_path()
-        ticket['status'] = (e_errors.OK, None)
+        shortcut = ticket['shortcut']
+        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
+        p = pnfs.Pnfs()
+        try:
+            ticket['path'] = p.get_path(pnfs_id, dirname, shortcut)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
         return
 
     def e_access(self, ticket):
-        path = ticket['path']
+        path = pnfs.get_enstore_fs_path(ticket['path'])
         mode = ticket['mode']
         rc = file_utils.e_access(path, mode)
         Trace.trace(10, 'e_access for file %s mode %s rc=%s'%(path,mode,rc,))
@@ -483,7 +467,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 
     def set_bit_file_id(self, ticket):
         bfid = ticket['bfid']
-        fname = ticket['fname']
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
         p = pnfs.Pnfs(fname)
         p.set_bit_file_id(bfid)
         ticket['status'] = (e_errors.OK, None)
@@ -491,7 +475,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def get_bit_file_id(self, ticket):
-        fname = ticket['fname']
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
         p = pnfs.Pnfs(fname)
         ticket['bfid'] = p.get_bit_file_id()
         ticket['status'] = (e_errors.OK, None)
@@ -500,10 +484,10 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def get_id(self, ticket):
-        fname = ticket['fname']
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
         try:
-            p=pnfs.Pnfs(fname)
-            ticket['file_id'] = p.get_id()
+            p=pnfs.Pnfs()
+            ticket['file_id'] = p.get_id(fname)
             ticket['status']  = (e_errors.OK, None)
         except OSError, msg:
             ticket['file_id']=None
@@ -520,8 +504,25 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
     def get_parent_id(self, ticket):
         pnfsid = ticket['pnfsid']
         try:
-            p=pnfs.Pnfs(pnfsid, shortcut=True)
-            ticket['parent_id'] = p.get_parent()
+            p=pnfs.Pnfs()
+            admin_mp_list = pnfs.get_enstore_admin_mount_point()
+            parent_list = []
+            for mp in admin_mp_list:
+                try:
+                    parent_id = p.get_parent(pnfsid, mp)
+                    parent_list.append(parent_id)
+                except:
+                    pass
+            if len(parent_list) == 0:
+                raise OSError(errno.ENOENT,
+                              "%s: %s" % (errno.errorcode[errno.ENOENT],
+                                          pnfs.parent_file("/pnfs/fs/usr/",
+                                                 ".(parent)(%s)" % (pnfsid,))))
+            elif len(parent_list) > 1:
+                raise OSError(errno.EEXIST, "To many matches: %s" % (pnfsid,))
+
+            else: #len(parent_list) == 1
+                ticket['parent_id'] = parent_list[0]
             ticket['status'] = (e_errors.OK, None)
         except OSError, msg:
             ticket['parent_id'] = None
@@ -536,7 +537,14 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def readlayer(self, ticket):
-        fname = ticket['fname']
+        print "ticket['fname']:", ticket['fname']
+        try:
+            fname = pnfs.get_enstore_fs_path(ticket['fname'])
+        except OSError, msg:
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+            self.reply_to_caller(ticket)
+            return
+                
         layer = ticket['layer']
         try:
             p=pnfs.Pnfs(fname)
@@ -555,7 +563,13 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def writelayer(self, ticket):
-        fname = ticket['fname']
+        try:
+            fname = pnfs.get_enstore_fs_path(ticket['fname'])
+        except OSError, msg:
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+            self.reply_to_caller(ticket)
+            return
+            
         layer = ticket['layer']
         value = ticket['value']
         try:
@@ -572,7 +586,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def get_xreference(self, ticket):
-        fname = ticket['fname']
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
         try:
             p=pnfs.Pnfs(fname)
             ticket['xref'] = p.get_xreference()
@@ -586,32 +600,41 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
+        #Trace.log(e_errors.INFO,
+        #          'get_xreference pnfs %s'%(ticket['xref'],))
         Trace.trace(10, 'get_xreference pnfs %s'%(ticket['xref'],))
         return
         
     def set_xreference(self, ticket):
-        fname = ticket['pnfsFilename']
-        p=pnfs.Pnfs(fname)
-        p.get_bit_file_id()
-        p.get_id()
-        p.set_xreference(ticket['volume'],
-                         ticket['location_cookie'],
-                         ticket['size'],
-                         ticket['file_family'],
-                         ticket['pnfsFilename'],
-                         ticket['volume_filepath'],
-                         ticket['id'],
-                         ticket['volume_fileP'],
-                         ticket['bit_file_id'],
-                         ticket['drive'],
-                         ticket['crc'],
-                         ticket['filepath'])
-        ticket['status']   = (e_errors.OK, None)
+        fname = pnfs.get_enstore_fs_path(ticket['filepath'])
+        try:
+            p=pnfs.Pnfs(fname)
+            p.set_xreference(ticket['volume'],
+                             ticket['location_cookie'],
+                             ticket['size'],
+                             ticket['file_family'],
+                             ticket['pnfsFilename'],
+                             ticket['volume_filepath'],
+                             ticket['id'],
+                             ticket['volume_fileP'],
+                             ticket['bit_file_id'],
+                             ticket['drive'],
+                             ticket['crc'],
+                             fname)
+            ticket['status']   = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['xref'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['xref'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
         return
 
     def get_file_size(self, ticket):
-        fname = ticket['fname']
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
         try:
             ticket['size']=tuple(os.stat(fname))[stat.ST_SIZE]
             ticket['status'] = (e_errors.OK, None)
@@ -627,16 +650,25 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def set_file_size(self, ticket):
-        fname = ticket['fname']
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
         p=pnfs.Pnfs(fname)
-        p.get_bit_file_id()
-        p.get_id()
-        p.set_file_size(ticket['size'])
-        ticket['status']   = (e_errors.OK, None)
-        Trace.trace(10, 'set_file_size %s %s'%(fname,ticket['size'],))
+        try:
+            p.set_file_size(ticket['size'])
+            ticket['status']   = (e_errors.OK, None)
+            Trace.log(e_errors.INFO,
+                      'set_file_size %s %s' % (fname, ticket['size'],))
+        except OSError, msg:
+            ticket['size'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['size'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
         return
 
+    """
     def set_outfile_permissions(self,ticket) :
         work_ticket = ticket['ticket']
         if not ticket.get('copy', None):  #Don't set permissions if copy.
@@ -664,9 +696,10 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         ticket['ticket']   = work_ticket
         self.reply_to_caller(ticket)
         return
+    """
 
     def chmod(self,ticket) :
-        fname = ticket['fname']
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
         mode = ticket['mode']
         p=pnfs.Pnfs(fname)
         try:
@@ -717,7 +750,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 
     #Delete the file while clobbering layers.
     def rm(self,ticket):
-        fname = ticket['fname']
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
         p=pnfs.Pnfs(fname)
         try:
             p.rm()
@@ -733,7 +766,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         
     #Delete the file.
     def remove(self,ticket):
-        fname = ticket['fname']
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
         try:
             os.remove(fname)
             ticket['status'] = (e_errors.OK, None)
@@ -747,14 +780,132 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def is_pnfs_path(self, ticket):
-        fname = ticket['fname']
-        check_name_only = ticket['check_name_only']
-        ticket['rc'] = pnfs.is_pnfs_path(fname,
-                                         check_name_only = check_name_only)
+        try:
+            fname = pnfs.get_enstore_fs_path(ticket['fname'])
+        except ValueError:
+            #This will happen for non-pnfs files where "/pnfs/" is not
+            # found.
+            ticket['rc'] = 0
+            fname = None
+        except OSError, msg:
+            fname = None
+            if msg.args[0] in [errno.ENOENT]:
+                #The path was a local path that contained a directory
+                # named "pnfs".  This pnfs is not the mount point for
+                # PNFS, just a regular directory with the name "pnfs".
+                ticket['rc'] = 0
+            else:
+                ticket['rc'] = None #Error.
+
+        if fname != None:
+            check_name_only = ticket['check_name_only']
+            ticket['rc'] = pnfs.is_pnfs_path(fname,
+                                             check_name_only = check_name_only)
+
+        #Send the info.
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
+        
+    #Make a directory.
+    def mkdir(self,ticket):
+        fname = pnfs.get_enstore_fs_path(ticket['fname'])
+        try:
+            os.mkdir(fname)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
 
+    #Make a directory.  (Make any missing directories in the path.)
+    def mkdirs(self,ticket):
+        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
+        try:
+            os.makedirs(dirname)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    #Remove a directory.
+    def rmdir(self,ticket):
+        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
+        try:
+            os.rmdir(dirname)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    #List directory contents.
+    def list_dir(self,ticket):
+        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
+        try:
+            dir_list = os.listdir(dirname)
+
+            #Stuff the filenames to be sent back.
+            ticket['dir_list'] = []
+            for fname in dir_list:
+                fname = os.path.join(dirname, fname)
+                #If the user only wants regular files, weed out the others.
+                if ticket.get('just_files', None):
+                    try:
+                        fstat = file_utils.get_stat(fname)
+                        if not stat.S_ISREG(fstat[stat.ST_MODE]):
+                            continue
+                    except OSError, msg:
+                        ticket['status'] = (e_errors.OSERROR, str(msg))
+                        break
+                    
+                ticket['dir_list'].append({'name':fname})
+            else:
+                ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    #Find file knowing bfid and pnfsid.
+    def find_pnfsid_path(self, ticket):
+        try:
+            paths = find_pnfs_file.find_pnfsid_path(
+                ticket['pnfsid'], ticket['bfid'],
+                ticket.get('file_record', None),
+                ticket.get('likely_path', None),
+                ticket.get('path_type', find_pnfs_file.BOTH))
+
+            #Stuff the filenames to be sent back.
+            ticket['paths'] = paths
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+###############################################################################
 
     # this is a thread wrapper
     # it calls a function and then - after function if needed 
