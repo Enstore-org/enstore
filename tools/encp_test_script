@@ -16,7 +16,6 @@ source encp_test_functions
 
 if [ $# -eq 0 ]; then
     single_read_test=`expr 1`
-#    single_stken_read_test=`expr 0`
     single_read_write_test=`expr 1`
     multiple_read_write_test=`expr 1`
     dcache_read_write_test=`expr 1`
@@ -38,7 +37,6 @@ if [ $# -eq 0 ]; then
     pipe_write_test=`expr 1`
 else
     single_read_test=`expr 0`
-#    single_stken_read_test=`expr 0`
     single_read_write_test=`expr 0`
     multiple_read_write_test=`expr 0`
     dcache_read_write_test=`expr 0`
@@ -63,9 +61,6 @@ else
 	if [ "single_read_test" = $switch ]; then
 	    single_read_test=`expr 1`
 	fi
-	#if [ "single_stken_read_test" = $switch ]; then
-	#    single_stken_read_test=`expr 1`
-	#fi
 	if [ "single_read_write_test" = $switch ]; then
 	    single_read_write_test=`expr 1`
 	fi
@@ -132,13 +127,6 @@ fi
 if [ $single_read_test -eq 1 ]; then
     single_read_test
 fi
-
-###
-### SINGLE STKEN READ TEST
-###
-#if [ $single_stken_read_test -eq 1 ]; then
-#    single_stken_read_test
-#fi
 
 ###
 ### SINGLE READ & WRITE TEST
