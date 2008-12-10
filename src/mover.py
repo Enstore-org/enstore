@@ -743,6 +743,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.saved_mode = None
         self.will_mount = None # this is to indicate that the new volume will be mounted and the current dismounted (HIPR)
         self.last_absolute_location = 0L
+        self.write_in_progress = False # set this to True before tape write, if write comletes successfuly it will be set to False
         
         
     def __setattr__(self, attr, val):
@@ -1371,6 +1372,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if have_tape == 1:
                     self.init_stat(self.logname)
                     status = self.tape_driver.verify_label(None)
+                    #self.first_write = 0 # this flag is used in write_tape to verify tape position
                     if status[0]==e_errors.OK:
                         self.current_volume = status[1]
                         if self.state == OFFLINE:
@@ -1385,7 +1387,21 @@ class Mover(dispatching_worker.DispatchingWorker,
                                 self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
                             except:
                                 self.vcc == None
-                        
+                                
+                            '''
+                            Let tape get dismounted
+                            if self.vcc:
+                                # get volume and library information
+                                v = self.vcc.inquire_vol(self.current_volume)
+                                if v['status'][0] == e_errors.OK:
+                                    lm_config = self.csc.get("%s.library_manager"%(v["library"],), None)
+                                    if lm_config:
+                                        a1 = lm_config.get('hostip')
+                                        a2 = lm_config.get('port')
+                                        self.lm_address = (a1, a2)
+                                        self.lm_address_saved = self.lm_address
+                            '''
+                            
                     else:
                         # failed to read label eject tape
                         good_label = 0
@@ -2218,9 +2234,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
             return
         
-            
+        self.write_in_progress = True # set it here
         if self.header_labels:
             t1 = time.time()
+            
             try:
                 bytes_written = driver.write(self.header_labels, 0, len(self.header_labels))
             except:
@@ -2638,6 +2655,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_completed()
                 if self.first_write == 0: # this is a first write since tape has been mounted
                     self.first_write = 1  # first successful write was done
+                    self.write_in_progress = False
 
             else:
                 self.transfer_failed(e_errors.EPROTO)
@@ -3228,21 +3246,33 @@ class Mover(dispatching_worker.DispatchingWorker,
             # switching from write to read write additional fm
             Trace.log(e_errors.INFO,"writing a tape mark before switching to READ")
             if self.driver_type == 'FTTDriver':
-                stats = self.tape_driver.get_stats()
-            bloc_loc = 0L
-            if self.driver_type == 'FTTDriver':
+                bloc_loc = 0L
+                if self.write_in_progress:
+                    # Write was interrupted on the client side
+                    # position the tape to the last fm
+                    try:
+                        self.tape_driver.seek(self.current_location, 0)
+                    except:
+                        exc, detail, tb = sys.exc_info()
+                        self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s %s' % (exc, detail,), error_source=DRIVE)
+                        self.unlock_state()
+                        return
                 try:
+                    stats = self.tape_driver.get_stats()
                     bloc_loc = long(stats[self.ftt.BLOC_LOC])
                 except  (self.ftt.FTTError, TypeError), detail:
-                    self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
+                    self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s"%(detail, ), error_source=DRIVE)
+                    self.unlock_state()
                     return
+
                 if bloc_loc != self.last_absolute_location:
-                        self.transfer_failed(e_errors.WRITE_ERROR,
-                                             "Wrong position for %s: last %s, current %s"%
-                                             (self.current_volume, self.last_absolute_location,
-                                              bloc_loc,),error_source=TAPE)
-                        self.set_volume_noaccess(self.current_volume)
-                        return
+                    self.transfer_failed(e_errors.WRITE_ERROR,
+                                         "Wrong position for %s: last %s, current %s"%
+                                         (self.current_volume, self.last_absolute_location,
+                                          bloc_loc,),error_source=TAPE)
+                    self.vcc.set_system_readonly(self.current_volume)
+                    self.unlock_state()
+                    return
                 try:
                   self.tape_driver.writefm()
                   # skip back one position in case when next read fails
@@ -4744,23 +4774,30 @@ class Mover(dispatching_worker.DispatchingWorker,
                 pass
             else:
                 # this case is for forced tape dismount request (HIPRI)
+                # and interrupted write on the client side
                 Trace.log(e_errors.INFO,"writing a tape mark before dismount") 
                 if self.driver_type == 'FTTDriver':
-                    stats = self.tape_driver.get_stats()
-                bloc_loc = 0L
-                if self.driver_type == 'FTTDriver':
+                    bloc_loc = 0L
+                    if self.write_in_progress:
+                        # Write was interrupted on the client side
+                        # position the tape to the last fm
+                        try:
+                            self.tape_driver.seek(self.current_location, 0)
+                        except:
+                            exc, detail, tb = sys.exc_info()
+                            Trace.log(e_errors.ERROR, "error positioning to last fm %s %s"%(exc, detail,))
+                            return
                     try:
+                        stats = self.tape_driver.get_stats()
                         bloc_loc = long(stats[self.ftt.BLOC_LOC])
                     except  (self.ftt.FTTError, TypeError), detail:
-                        # Modify this to not call transfer_failed because this method can be called from transfer_called
-                        self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
+                        Trace.log(e_errors.WRITE_ERROR, "error getting stats before write %s"%(detail,))
                         return
                     if bloc_loc != self.last_absolute_location:
-                        # Modify this to not call transfer_failed because this method can be called from transfer_called
-                        Trace.log(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set NOACCESS"%
+                        Trace.log(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set readonly"%
                                   (self.current_volume, self.last_absolute_location,
                                    bloc_loc,))
-                        self.set_volume_noaccess(self.current_volume)
+                        self.vcc.set_system_readonly(self.current_volume)
                     else:
                         try:
                             self.tape_driver.writefm()
@@ -5096,7 +5133,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # the requested tape was actually mouted in this drive
                     status[0] = e_errors.OK
                      
-            
+        Trace.trace(e_errors.INFO, "AM STAT %s"%(status,))
         if status[0] == e_errors.OK:
             self.vcc.update_counts(self.current_volume, mounts=1)
             self.asc.log_finish_mount(self.current_volume)
