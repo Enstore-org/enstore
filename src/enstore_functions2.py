@@ -675,7 +675,9 @@ def fullpath(filename):
     return machine, filepath, dirname, basename
 
 # generate the full path name to the file
-def fullpath2(filename):
+#No no_split is true, the last two paramaters for directory and basename
+# are returned as None, to avoid calling stat() (via os.path.isdir()).
+def fullpath2(filename, no_split = None):
     if not filename:
         return None, None, None, None, None, None
     elif type(filename) != types.StringType:
@@ -739,8 +741,11 @@ def fullpath2(filename):
     #Expand the path to the complete absolute path.
     filepath = expand_path(filename)
 
+    #If the user doesn't want the path split into directories and the filename.
+    if no_split:
+        dirname, basename = (None, None)
     #If the target was a directory, handle it slightly differently.
-    if filename[-1] == "/" or os.path.isdir(filename):
+    elif filename[-1] == "/" or os.path.isdir(filename):
         dirname, basename = (filepath, "")
     else:
         dirname, basename = os.path.split(filepath)
