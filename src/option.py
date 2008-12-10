@@ -228,6 +228,7 @@ ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
 EPHEMERAL = "ephemeral"                      #encp
 ERASE = "erase"                              #volume, file
+EXISTS = "exists"                            #pnfs_agent
 EXPORT = "export"                            #volume
 EXTERNAL_TRANSITIONS = "external-transitions" #scanfiles
 FIND_SAME_FILE = "find-same-file"            #info
@@ -282,6 +283,7 @@ IO = "io"                                    #pnfs
 IS_UP = "is-up"                              #inquisitor
 JOUHOME = "jouHome"                          #restore
 JUST = "just"                                #start, stop
+JUST_FILES = "just-files"                    #pnfs_agent
 KEEP = "keep"                                #plotter
 KEEP_DIR = "keep-dir"                        #plotter
 KEEP_VOL = "keep-vol"                        #super-remove
@@ -292,6 +294,7 @@ LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs, encp, migrate
 LIST = "list"                                #volume, file, get, MC, LM, M
 LIST_CLEAN = "list-clean"                    #media
+LIST_DIR = "list-dir"                        #pnfs_agent
 LIST_DRIVES = "list-drives"                  #media
 LIST_FAILED_COPIES = "list-failed-copies"    #duplicate
 LIST_LIBRARY_MANAGERS = "list-library-managers" #configuration
@@ -317,6 +320,8 @@ MESSAGES_FILE = "messages-file"              #entv
 MIGRATED = "migrated"                        #volume
 MIGRATED_FROM = "migrated-from"              #migrate
 MIGRATED_TO = "migrated-to"                  #migrate
+MKDIR = "mkdir"                              #pnfs_agent
+MKDIRS = "mkdirs"                            #pnfs_agent
 MMAP_IO = "mmap-io"                          #encp
 MMAP_SIZE = "mmap-size"                      #encp
 MODIFY = "modify"                            #volume
@@ -346,8 +351,6 @@ OVERRIDE_DELETED = "override-deleted"        #encp
 OVERRIDE_NOACCESS = "override-noaccess"      #encp
 OVERRIDE_PATH = "override-path"              #encp
 OVERRIDE_RO_MOUNT = "override-ro-mount"      #encp
-RECURSIVE = "recursive"                      #file
-REFRESH = "refresh"                          #inquisitor(c&s)
 PARENT = "parent"                            #pnfs
 PATH = "path"                                #pnfs
 PLOT = "plot"                                #plotter
@@ -373,8 +376,11 @@ READ_ONLY = "read-only"                      #volume
 READ_TO_END_OF_TAPE = "read-to-end-of-tape"  #get, migrate
 REASON = "reason"                            #inquisitor
 REBUILD_SG_COUNT = "rebuild-sg-count"        #volume
+RECURSIVE = "recursive"                      #file
 RECYCLE = "recycle"                          #volume
+REFRESH = "refresh"                          #inquisitor(c&s)
 REMEDY_TYPE = "remedy_type"                  #alarm_server
+REMOVE = "remove"                            #pnfs_agent
 RESET_LIB = "reset-lib"                      #volume
 RESOLVE = "resolve"                          #alarm
 RESTORE = "restore"                          #volume, file
@@ -383,6 +389,7 @@ RESUBMIT_TIMEOUT = "resubmit-timeout"        #encp
 RETRIES ="retries"
 RM = "rm"                                    #pnfs
 RM_ACTIVE_VOL = "rm-active-vol"              #library
+RMDIR = "rmdir"                              #pnfs_agent
 RM_SUSPECT_VOL = "rm-suspect-vol"            #library
 ROOT_ERROR = "root-error"                    #alarm
 SAAG = "saag"                                #html
@@ -487,7 +494,7 @@ valid_option_list = [
     DONT_SHOW,
     DOWN, DUMP, DUPLICATE, DUPLICATED, DURATION,
     ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
-    EXPORT, EXTERNAL_TRANSITIONS,
+    EXISTS, EXPORT, EXTERNAL_TRANSITIONS,
     FILE, FILE_FALLBACK,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FILE_THREADS, FIND_SAME_FILE, FORCE, FULL,
@@ -504,9 +511,9 @@ valid_option_list = [
     HELP, HISTORY, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_FAIR_SHARE, IGNORE_STORAGE_GROUP,
     IMPORT, INFILE, INFO, INPUT_DIR, IO, IS_UP,
-    JOUHOME, JUST,
+    JOUHOME, JUST, JUST_FILES,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
-    LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_CLEAN, LIST_DRIVES,
+    LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_CLEAN, LIST_DIR, LIST_DRIVES,
     LIST_FAILED_COPIES,
     LIST_LIBRARY_MANAGERS, LIST_MEDIA_CHANGERS, LIST_MOVERS,
     LIST_SG_COUNT, LIST_SLOTS, LIST_VOLUMES,
@@ -514,7 +521,7 @@ valid_option_list = [
     MAKE_HTML, MAKE_FAILED_COPIES, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MESSAGES_FILE, MIGRATED, MIGRATED_FROM, MIGRATED_TO,
-    MMAP_IO, MMAP_SIZE,
+    MKDIR, MKDIRS, MMAP_IO, MMAP_SIZE,
     MODIFY, MOUNT, MOUNT_POINT, MOVER_DUMP, MOVER_TIMEOUT, MOVERS_FILE, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NO_CRC, NOT_ALLOWED, NO_MAIL,
     NO_PLOT_HTML,
@@ -527,9 +534,9 @@ valid_option_list = [
     PTS_NODES, PUT_CACHE, PVOLS,
     QUERY, QL,
     RAISE, READ_ONLY, READ_TO_END_OF_TAPE, REASON, RECURSIVE, RECYCLE, REFRESH,
-    REMEDY_TYPE, RESET_LIB, RESOLVE,
+    REMEDY_TYPE, REMOVE, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RESUBMIT_TIMEOUT, RETRIES, REBUILD_SG_COUNT,
-    RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
+    RM, RM_ACTIVE_VOL, RMDIR, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG, SAAG_NETWORK, SAAG_STATUS,
     SCAN_VOLUMES, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,

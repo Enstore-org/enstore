@@ -644,7 +644,7 @@ def get_directory_name(filepath):
             f = open(parent_id_name)
             parent_id = f.readlines()[0].strip()
             f.close()
-        except OSError, msg:
+        except (OSError, IOError), msg:
             if msg.args[0] == errno.ENOENT and \
                    (pnfs_agent_client_requested or pnfs_agent_client_allowed):
                 pac = get_pac()
@@ -2465,10 +2465,25 @@ def clients(intf):
             alarm_server_address = (alarm_server_ip, alarm_server_port)
         else:
             alarm_server_address = None
+
+        if pnfs_agent_client_requested or pnfs_agent_client_allowed:
+            pnfs_agent_config = config.get('pnfs_agent', {})
+        
+            pnfs_agent_ip = pnfs_agent_config.get('hostip', None)
+            pnfs_agent_port = pnfs_agent_config.get('port', None)
+            
+            if pnfs_agent_ip and pnfs_agent_port:
+                pnfs_agent_address = (pnfs_agent_ip, pnfs_agent_port)
+            elif pnfs_agent_client_requested:
+                return {'status' : (e_errors.PNFS_ERROR,
+                                    "PNFS agent not found in configuration.")}
+            else:
+                pnfs_agent_address = None
     else:
         log_server_address = None
         alarm_server_address = None
-    
+        pnfs_agent_address = None
+
     #Get a logger client, this will set the global log client Trace module
     # variable.  If this is not done here, it would get done while
     # creating the client classes for the csc, vc, fc, etc.  This however
@@ -5469,7 +5484,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         #If we get here then the transfer was a success.
         rtn_ticket = combine_dict({'exfer':EXfer_ticket}, done_ticket, request)
 
-    Trace.log(e_errors.INFO, "leaving transfer_file().") #1111111111111111
+    Trace.log(e_errors.INFO, "leaving transfer_file().")
     return rtn_ticket
 
 ############################################################################
@@ -8321,7 +8336,7 @@ def prepare_write_to_hsm(tinfo, e):
             try:
                 #Yet another os.stat() call.  In the future, need to work on
                 # getting rid of as many of these as possible.
-                pstat = file_utils.get_stat(request_list[i]['outfile'])
+                pstat = get_stat(request_list[i]['outfile'])
                 request_list[i]['wrapper']['inode'] = long(pstat[stat.ST_INO])
             except OSError:
                 request_list[i]['wrapper']['inode'] = None
@@ -8329,7 +8344,7 @@ def prepare_write_to_hsm(tinfo, e):
         else:
             if os.getuid() == 0:
                 #For root we need to handle things special.
-                dname = os.path.dirname(request_list[i]['infile'])
+                dname = pnfs.get_directory_name(request_list[i]['infile'])
                 file_utils.match_euid_egid(dname)
             else:
                 #set the effective uid and gid.
@@ -8664,7 +8679,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
-                
+
             if request['outfile'] not in ["/dev/null", "/dev/zero",
                                           "/dev/random", "/dev/urandom"]:
                 if not request.get('local_inode', None):
@@ -9284,9 +9299,15 @@ def create_read_request(request, file_number,
 
             ifullname = None
             if pnfs_name0 != None:
-                found_name = find_pnfs_file.find_pnfsid_path(
-                    pnfsid, bfid, file_record = fc_reply,
-                    likely_path = pnfs_name0)
+                if pnfs_agent_client_requested or pnfs_agent_client_allowed:
+                    pac = get_pac()
+                    found_name = pac.find_pnfsid_path(
+                        pnfsid, bfid, file_record = fc_reply,
+                        likely_path = pnfs_name0)
+                else:
+                    found_name = find_pnfs_file.find_pnfsid_path(
+                        pnfsid, bfid, file_record = fc_reply,
+                        likely_path = pnfs_name0)
                 stat_info = p.get_stat(found_name)
                 if stat.S_ISREG(stat_info[stat.ST_MODE]):
                     ifullname = found_name
@@ -9459,10 +9480,10 @@ def create_read_request(request, file_number,
                 if len(ifullname_list) == 1:
                     ifullname = ifullname_list[0]
                 else:
-                    EncpError(errno.ENOENT,
-                              "Unable to find correct PNFS file.",
-                              e_errors.PNFS_ERROR,
-                              {'infilepath' : ifullname_list})
+                    raise EncpError(errno.ENOENT,
+                                    "Unable to find correct PNFS file.",
+                                    e_errors.PNFS_ERROR,
+                                    {'infilepath' : ifullname_list})
 
             #Determine the access path name.
             iaccessname = pnfs.access_file(get_directory_name(ifullname),
@@ -9498,7 +9519,18 @@ def create_read_request(request, file_number,
                 ifullname = get_ininfo(request['infile'])
                 istatinfo = p.get_stat(ifullname)
 
+            #Need to verify the input file is a file and not a directory.
+            # There should be a cleaner way to do this, but this will
+            # work for now.
             #inputfile_check(ifullname, e)
+            if stat.S_ISDIR(istatinfo[stat.ST_MODE]):
+                raise EncpError(errno.EISDIR, ifullname,
+                                e_errors.USERERROR,
+                                {'infilepath' : ifullname})
+            elif not stat.S_ISREG(istatinfo[stat.ST_MODE]):
+                raise EncpError(errno.EINVAL, ifullname,
+                                e_errors.USERERROR,
+                                {'infilepath' : ifullname})
 
             ofullname = get_oninfo(ifullname, e.output[0], e)
 
@@ -10788,29 +10820,44 @@ class EncpInterface(option.Interface):
         if self.volume:
             self.input = self.argv[:-1]  #None   #[self.args[0]]
             self.output = self.argv[-1]  #[self.args[self.arglen-1]]
-            self.intype = "hsmfile"   #"hsmfile"
-            self.outtype = "unixfile"
-            return #Don't continue.
+            #self.intype = "hsmfile"   #"hsmfile"
+            #self.outtype = "unixfile"
+            #return #Don't continue.
 
         if self.get_bfid:
             self.input = None #[self.args[0]]
             self.output = self.argv[-1] #[self.args[self.arglen-1]]
-            self.intype = "hsmfile"  #What should this bee?
-            self.outtype = "unixfile"
-            return #Don't continue.
+            #self.intype = "hsmfile"  #What should this bee?
+            #self.outtype = "unixfile"
+            #return #Don't continue.
         
         if self.get_cache:
             self.input = None  #[self.args[0]]
             self.output = self.argv[-1]  #[self.args[self.arglen-1]]
-            self.intype = "hsmfile"   #What should this bee?
-            self.outtype = "unixfile"
-            return #Don't continue.
+            #self.intype = "hsmfile"   #What should this bee?
+            #self.outtype = "unixfile"
+            #return #Don't continue.
+
+        self.outtype = UNIXFILE
+        if self.volume or self.get_bfid or self.get_cache:
+            if pnfs_agent_client_requested:
+                self.intype = RHSMFILE
+            elif pnfs_agent_client_allowed:
+                self.intype = HSMFILE #Is this correct?
+            else:
+                self.intype = HSMFILE
+            return
         
         if self.put_cache:
             self.input = self.argv[-1]  #[self.args[0]]
             self.output = None  #[self.args[self.arglen-1]]
-            self.intype = "unixfile"
-            self.outtype = "hsmfile"  #What should this bee?
+            self.intype = UNIXFILE
+            if pnfs_agent_client_requested:
+                self.outtype = RHSMFILE
+            elif pnfs_agent_client_allowed:
+                self.outtype = HSMFILE #Is this correct?
+            else:
+                self.outtype = HSMFILE
             return #Don't continue.
 
         #If just the output file was specified and standard input is a
@@ -10839,9 +10886,23 @@ class EncpInterface(option.Interface):
         e = []  #e stand for does this exist on local host
         for i in range(0, self.arglen):
             #Get fullpaths to the files.
-            #machine, fullname, unused, unused = fullpath(self.args[i])
-            protocol, host, port, fullname, dirname, basename = \
-                      enstore_functions2.fullpath2(self.args[i])
+            if pnfs_agent_client_requested:
+                protocol, host, port, fullname, dirname, basename = \
+                          enstore_functions2.fullpath2(self.args[i],
+                                                       no_split = True)
+                #Pnfs Agent.
+                pac = get_pac()
+                if pac.is_pnfs_path(fullname, check_name_only = 1) and \
+                       pac.isdir(fullname):
+                    dirname = fullname
+                    basename = ""
+                else:
+                    dirname, basename = os.path.split(fullname)
+            else:
+                #machine, fullname, unused, unused = fullpath(self.args[i])
+                protocol, host, port, fullname, dirname, basename = \
+                          enstore_functions2.fullpath2(self.args[i])
+
             #Store the name into this list.
             self.args[i] = fullname
 
