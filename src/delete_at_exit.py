@@ -26,6 +26,7 @@ import enstore_functions2
 import e_errors
 import pnfs_agent_client
 import file_utils
+import pnfs
 
 class Container:
     pass
@@ -157,7 +158,8 @@ def delete():
                 os.unlink(f)
             except:
                 #Reset the euid and egid.
-                file_utils.match_euid_egid(f)
+                directory = pnfs.get_directory_name(f)
+                file_utils.match_euid_egid(directory)
                 
                 try:
                     os.unlink(f)
