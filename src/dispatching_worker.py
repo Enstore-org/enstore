@@ -322,7 +322,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
                     elif fd == self.server_socket:
                         #Get the 'raw' request and the address from whence it came.
-                        (request, addr) = self.get_message(self)
+                        (request, addr) = self.get_message()
 
                         #Skip these if there is nothing to do.
                         if request == None or addr in [None, ()]:
