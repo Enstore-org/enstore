@@ -456,7 +456,13 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def e_access(self, ticket):
-        path = pnfs.get_enstore_fs_path(ticket['path'])
+        try:
+            path = pnfs.get_enstore_fs_path(ticket['path'])
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+            self.reply_to_caller(ticket)
+            return
         mode = ticket['mode']
         rc = file_utils.e_access(path, mode)
         Trace.trace(10, 'e_access for file %s mode %s rc=%s'%(path,mode,rc,))
@@ -537,12 +543,18 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         return
 
     def readlayer(self, ticket):
-        print "ticket['fname']:", ticket['fname']
+        #print "ticket['fname']:", ticket['fname']
         try:
             fname = pnfs.get_enstore_fs_path(ticket['fname'])
         except OSError, msg:
             ticket['status'] = (e_errors.OSERROR, str(msg))
             self.reply_to_caller(ticket)
+            print "No FN", ticket
+        except KeyError, msg:
+            ticket['status'] = (KeyError, str(msg))
+            self.reply_to_caller(ticket)
+            print "No FN", ticket
+            
             return
                 
         layer = ticket['layer']
@@ -782,6 +794,8 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
     def is_pnfs_path(self, ticket):
         try:
             fname = pnfs.get_enstore_fs_path(ticket['fname'])
+        except KeyError:
+            print "is_pnfs_path", ticket
         except ValueError:
             #This will happen for non-pnfs files where "/pnfs/" is not
             # found.
@@ -809,7 +823,13 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         
     #Make a directory.
     def mkdir(self,ticket):
-        fname = pnfs.get_enstore_fs_path(ticket['fname'])
+        try:
+            fname = pnfs.get_enstore_fs_path(ticket['path'])
+        except KeyError, msg:
+            ticket['status'] = (e_errors.KEYERROR, str(msg))
+            print "MKDIR", ticket
+            self.reply_to_caller(ticket)
+            return
         try:
             os.mkdir(fname)
             ticket['status'] = (e_errors.OK, None)
