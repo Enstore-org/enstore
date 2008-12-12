@@ -25,10 +25,8 @@ class MakePnfsDir:
                                                              config_port))
         self.pac = None
         self.use_pnfs_agent=os.getenv('REMOTE_ENCP')
-        print "IN", self.use_pnfs_agent
         if self.use_pnfs_agent:         
             info = self.csc.get('pnfs_agent', {})
-            print "INFO", info
             if info:
                 flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
                 pac_addr = (info.get('hostip', None),
@@ -43,13 +41,12 @@ class MakePnfsDir:
     def mkdir(self, dirname):
         
         if self.use_pnfs_agent and self.use_pnfs_agent=="only_pnfs_agent":
-            print "AA", dirname
             if self.pac.isdir(dirname):
                 
                 return 0
             else:
                 # try to create directory
-                if self.pac.mkdir(dirname):
+                if self.pac.p_mkdirs(dirname):
                     ret = 0
                     p = self.pac
                 else:
