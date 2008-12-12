@@ -432,9 +432,11 @@ class PnfsAgentClient(generic_client.GenericClient,
         return ticket
 
     # make a directory
-    def p_mkdirs(self, dirname):
+    def p_mkdirs(self, dirname, uid=None, gid=None):
         ticket = {'work'          : 'mkdirs',
                   'dirname'       : dirname,
+                  'uid':uid,
+                  'gid':gid
                   }
         ticket=self.send(ticket)
         return ticket
