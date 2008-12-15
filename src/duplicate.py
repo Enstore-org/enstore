@@ -433,7 +433,7 @@ def usage():
 
 if __name__ == '__main__':
 
-	Trace.init(MIGRATION_NAME)
+	Trace.init("DUPLICATION")
 
 	intf_of_migrate = migrate.MigrateInterface(sys.argv, 0) # zero means admin
 

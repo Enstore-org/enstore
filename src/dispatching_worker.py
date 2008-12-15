@@ -36,8 +36,7 @@ class DispatchingWorker(udp_server.UDPServer):
     def __init__(self, server_address, use_raw=None):
         self.use_raw = use_raw
         udp_server.UDPServer.__init__(self, server_address,
-                                      receive_timeout=60.0,
-                                      use_raw=use_raw)
+                                      receive_timeout=60.0, use_raw=use_raw)
         #If the UDPServer socket failed to open, stop the server.
         if self.server_socket == None:
             msg = "The udp server socket failed to open.  Aborting.\n"
@@ -190,7 +189,7 @@ class DispatchingWorker(udp_server.UDPServer):
                     del self.interval_funcs[func]
                 else: #record last call time
                     self.interval_funcs[func][1] =  now
-                Trace.trace(6, "do_one_request: calling interval_function %s"%(func,))
+                Trace.trace(6, "do_one_request: calling %s"%(func,))
                 func()
 
         if request is None: #Invalid request sent in
@@ -272,11 +271,22 @@ class DispatchingWorker(udp_server.UDPServer):
 
         gotit = 0
         t0 = time.time()
-
+        rcv_timeout = self.rcv_timeout
         while not gotit:
             r = self.read_fds + [self.server_socket]
             w = self.write_fds
+
             rcv_timeout = self.rcv_timeout
+
+            if self.use_raw:
+                rc = udp_server.UDPServer.get_message(self)
+                if rc:
+                    return rc
+                else:
+                    # process timeout
+                    if time.time()-t0 > rcv_timeout:
+                        return ('',()) #timeout
+
             if self.interval_funcs:
                 now = time.time()
                 for func, time_data in self.interval_funcs.items():
@@ -285,74 +295,63 @@ class DispatchingWorker(udp_server.UDPServer):
                                       interval - (now - last_called))
 
                 rcv_timeout = max(rcv_timeout, 0)
-            if self.use_raw:
-                rc = self.get_message()
-                Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
-                if rc and rc != ('',()):
-                    Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
-                    return rc
-                else:
-                    # process timeout
-                    if time.time()-t0 > rcv_timeout:
-                        return ('',()) #timeout
 
-            if not self.use_raw:
-                r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
-                if not r + w:
-                    return ('',()) #timeout
+            r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
+            if not r + w:
+                return ('',()) #timeout
 
-                #handle pending I/O operations first
-                for fd in r + w:
-                    Trace.trace(5, 'dw: get_request cb %s'%(fd,))
-                    if self.callback.has_key(fd) and self.callback[fd]:
-                        self.callback[fd](fd)
+            #handle pending I/O operations first
+            for fd in r + w:
+                Trace.trace(5, 'dw: get_request cb %s'%(fd,))
+                if self.callback.has_key(fd) and self.callback[fd]:
+                    self.callback[fd](fd)
 
-                #now handle other incoming requests
-                for fd in r:
+            #now handle other incoming requests
+            for fd in r:
 
-                    if type(fd) == type(1) \
-                           and fd in self.read_fds \
-                           and self.callback[fd]==None:
-                        #XXX this is special-case code,
-                        #for old usage in media_changer
+                if type(fd) == type(1) \
+                       and fd in self.read_fds \
+                       and self.callback[fd]==None:
+                    #XXX this is special-case code,
+                    #for old usage in media_changer
 
-                        (request, addr) = self.read_fd(fd)
-                        Trace.trace(5, 'dw: get_request special')
+                    (request, addr) = self.read_fd(fd)
+                    Trace.trace(5, 'dw: get_request special')
+                    return (request, addr)
+
+                elif fd == self.server_socket:
+                    #Get the 'raw' request and the address from whence it came.
+                    (request, addr) = udp_server.UDPServer.get_message(self)
+
+                    #Skip these if there is nothing to do.
+                    if request == None or addr in [None, ()]:
+                        #These conditions could be caught when
+                        # hostaddr.allow() raises an exception.  Since,
+                        # these are obvious conditions, we stop here to avoid
+                        # the Trace.log() that would otherwise fill the
+                        # log file with useless error messages.
                         return (request, addr)
 
-                    elif fd == self.server_socket:
-                        #Get the 'raw' request and the address from whence it came.
-                        (request, addr) = self.get_message()
-
-                        #Skip these if there is nothing to do.
-                        if request == None or addr in [None, ()]:
-                            #These conditions could be caught when
-                            # hostaddr.allow() raises an exception.  Since,
-                            # these are obvious conditions, we stop here to avoid
-                            # the Trace.log() that would otherwise fill the
-                            # log file with useless error messages.
-                            return (request, addr)
-
-                        #Determine if the address the request came from is
-                        # one that we should be responding to.
-                        try:
-                            is_valid_address = hostaddr.allow(addr)
-                        except (IndexError, TypeError), detail:
-                            Trace.log(e_errors.ERROR,
-                                      "hostaddr failed with %s Req.= %s, addr= %s"\
-                                      % (detail, request, addr))
-                            request = None
-                            return (request, addr)
-
-                        #If it should not be responded to, handle the error.
-                        if not is_valid_address:
-                            Trace.log(e_errors.ERROR,
-                                   "attempted connection from disallowed host %s" \
-                                      % (addr[0],))
-                            request = None
-                            return (request, addr)
-
+                    #Determine if the address the request came from is
+                    # one that we should be responding to.
+                    try:
+                        is_valid_address = hostaddr.allow(addr)
+                    except (IndexError, TypeError), detail:
+                        Trace.log(e_errors.ERROR,
+                                  "hostaddr failed with %s Req.= %s, addr= %s"\
+                                  % (detail, request, addr))
+                        request = None
                         return (request, addr)
+
+                    #If it should not be responded to, handle the error.
+                    if not is_valid_address:
+                        Trace.log(e_errors.ERROR,
+                               "attempted connection from disallowed host %s" \
+                                  % (addr[0],))
+                        request = None
+                        return (request, addr)
+
+                    return (request, addr)
 
         return (None, ())
 
@@ -385,7 +384,6 @@ class DispatchingWorker(udp_server.UDPServer):
             Trace.trace(6, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
-            self._done_cleanup()
             return
 
         try:
@@ -400,7 +398,6 @@ class DispatchingWorker(udp_server.UDPServer):
             Trace.trace(6, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
-            self._done_cleanup()
             return
 
         # call the user function
