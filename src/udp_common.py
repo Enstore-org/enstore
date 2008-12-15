@@ -12,7 +12,6 @@ import sys
 import exceptions
 #import rexec
 import errno
-import time
 
 # enstore imports
 import host_config
@@ -77,13 +76,7 @@ def r_eval(message_to_decode):
     try:
         #This is uses the restricted eval.  The unstricted eval could have
         #  been used by doing: return eval(message_to_decode)
-        t=time.time()
-        rc = en_eval(message_to_decode)
-        t1=time.time()
-        Trace.trace(5,"r_eval %s"%(t1-t,))
-        return rc
-        #return en_eval(message_to_decode)
-    
+        return en_eval(message_to_decode)
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:

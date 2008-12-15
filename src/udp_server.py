@@ -51,7 +51,6 @@ class UDPServer:
         self.address_family = socket.AF_INET
         self._lock = threading.Lock()
         self.current_id = None
-        self.queue_size = 0L
         self.use_raw = use_raw and can_use_raw
         if use_raw:
             self.server_address = server_address
@@ -132,13 +131,12 @@ class UDPServer:
         # to increase the performance
         self.raw_requests = None;
         if self.use_raw:
-            #self.raw_requests = rawUDP.create_list(port)
-            self.raw_requests = rawUDP.RawUDP(port, receive_timeout=self.rcv_timeout)
+            self.raw_requests = rawUDP.create_list(port)
             # start raw udp receiver
             # it creates internal receiver thread and runs it in a loop
             if self.raw_requests:
-                #rawUDP.receiver(self.raw_requests)
-                self.raw_requests.receiver()
+                rawUDP.receiver(self.raw_requests)
+            
 
     # cleanup if we are done with this unique id
     def _done_cleanup(self):
@@ -281,13 +279,12 @@ class UDPServer:
 
        request, client_addr = '',()
        rcv_timeout = self.rcv_timeout
-       #rc = rawUDP.get(self.raw_requests)
-       rc = self.raw_requests.get()
+       rc = rawUDP.get(self.raw_requests)
        if rc:
            client_addr = (rc[0], rc[1])
            req = rc[2]
-           self.queue_size = rc[3]
-           Trace.trace(5, "REQ %s %s %s"%(self.server_address, req,self.queue_size)) 
+           queue_size = rc[3]
+           Trace.trace(5, "REQ %s %s"%(req,queue_size)) 
            try:
                request, inCRC = udp_common.r_eval(req)
            except (SyntaxError, TypeError):
@@ -319,10 +316,6 @@ class UDPServer:
                          (repr(inCRC), repr(crc)))
                
                request=None
-       else:
-           if self.queue_size != 0:
-               print "Nonsense rc=%s size=%s"%(rc, self.queue_size)
-               sys.exit(1)
 
        return (request, client_addr)
 
@@ -366,7 +359,6 @@ class UDPServer:
             except IndexError:
                 message = "%s: %s: From client %s: %s" % \
                           (exc, msg, client_address, request)
-            #rint message
             Trace.log(10, message)
 
             #Set these to something.
@@ -514,7 +506,6 @@ if __name__ == "__main__":
     # the correct port (including other tests than udp_client.py).
     
     udpsrv = UDPServer(('', 7700), receive_timeout = 60.0, use_raw=1)
-    #udpsrv = UDPServer(('', 7700), receive_timeout = 60.0)
     while 1:
         ticket = udpsrv.do_request()
         if ticket:

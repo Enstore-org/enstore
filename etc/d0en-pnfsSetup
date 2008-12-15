@@ -25,5 +25,5 @@ dbserverLevel=6
 #hardlinks=on
 #netmask=16
 levelmask=0:-1:-1:-1:-1:0:0:0
-remotebackup=131.225.164.17:/srv3/pnfs-backup
+remotebackup=131.225.164.23:/srv3/pnfs-backup
 export dbConnectString="user=enstore"
