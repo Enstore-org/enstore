@@ -46,7 +46,7 @@ class MakePnfsDir:
                 return 0
             else:
                 # try to create directory
-                if self.pac.p_mkdirs(dirname):
+                if self.pac.p_mkdirs(dirname, uid=os.getuid(), gid=os.getgid()):
                     ret = 0
                     p = self.pac
                 else:
