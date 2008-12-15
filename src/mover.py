@@ -1317,7 +1317,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             lib_list = [lib_list]
         for lib in lib_list:
             lib_config = self.csc.get(lib)
-            self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
+            if lib_config.has_key('mover_port'):
+                port = lib_config['mover_port']
+            else:
+                port = lib_config['port']
+            self.libraries.append((lib, (lib_config['hostip'], port)))
         self.saved_libraries = self.libraries ## needed for tape ingest
 
         #how often to send a message to the library manager
@@ -5656,7 +5660,11 @@ class DiskMover(Mover):
             lib_list = [lib_list]
         for lib in lib_list:
             lib_config = self.csc.get(lib)
-            self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
+            if lib_config.has_key('mover_port'):
+                port = lib_config['mover_port']
+            else:
+                port = lib_config['port']
+            self.libraries.append((lib, (lib_config['hostip'], port)))
 
         #how often to send a message to the library manager
         self.update_interval = self.config.get('update_interval', 15)
