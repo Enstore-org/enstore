@@ -226,7 +226,6 @@ def do_work(intf):
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
 		print str(exc_type)+' '+str(exc_value)
-		print 'has to be user "enstore" on *srv0!'
 		sys.exit(0)
 	tfe = TabFlippingExemption(db)
 	logc = log_client.LoggerClient(csc)
