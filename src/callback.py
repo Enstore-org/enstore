@@ -272,6 +272,7 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
     timeout_time = time.time() + timeout
 
     error_string = ""
+    data_string = ""
     
     #Loop until a the timeout has passed, a hard error occurs or
     # the message has really arrived.
@@ -300,10 +301,12 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             # that were all previously lumped together as "error".
             continue
 
+        read_len = nbytes - len(data_string)
         if type(sock) == types.IntType:
-            data_string = os.read(sock, nbytes)
+            data_string = data_string + os.read(sock, read_len)
         else:
-            data_string = sock.recv(nbytes)
+            data_string = data_string + sock.recv(read_len)
+
         if data_string == "":
             #According to python documentation when recv() returns the empty
             # string the other end has closed the connection.
@@ -312,6 +315,9 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             error_string = "timeout_recv(): time passed: %s sec of %s sec" % \
                            (time.time() - total_start_time, timeout)
             #Trace.log(e_errors.ERROR, error_string)
+        if len(data_string) != nbytes:
+            #Keep trying until we get everything we want.
+            continue
 
         return data_string, error_string
         
@@ -334,12 +340,12 @@ def read_raw(fd, timeout=15*60):
     try:
         bytecount = int(tmp)
     except (ValueError, TypeError):
-        error_string = "%s; read_tcp_raw: bad bytecount '%s'" % \
+        error_string = "%s; read_raw: bad bytecount '%s'" % \
                        (error_string, tmp,)
         return "", error_string
     tmp, error_string = timeout_recv(fd, 8, timeout) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
-        error_string = "%s; read_tcp_raw: invalid signature '%s'" % \
+        error_string = "%s; read_raw: invalid signature '%s'" % \
                        (error_string, tmp,)
         return "", error_string
     salt= int(tmp[6:])
@@ -350,14 +356,14 @@ def read_raw(fd, timeout=15*60):
             break
         msg = msg+tmp
     if len(msg)!=bytecount:
-        error_string = "%s; read_tcp_raw: bytecount mismatch %s != %s" \
+        error_string = "%s; read_raw: bytecount mismatch %s != %s" \
                        % (error_string, len(msg), bytecount)
         return "", error_string
     tmp, error_string = timeout_recv(fd, 8, timeout)
     crc = long(tmp, 16)  #XXX 
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
-        error_string = "%s; read_tcp_raw: checksum mismatch %s != %s" \
+        error_string = "%s; read_raw: checksum mismatch %s != %s" \
                         % (error_string, mycrc, crc)
         return "", error_string
     return msg, ""
