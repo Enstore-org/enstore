@@ -72,7 +72,8 @@ def show_query_result(res, msg=None):
 # try to identify the user using LOGNAME and kerberos principal
 def whoami():
 	# find the principal of kerberos ticket
-	kmsg = os.popen("klist -5").readlines()
+	# taking only from stdout, ignoring stderr
+	kmsg = os.popen3("klist")[1].readlines()
 	kk = 'unknown'
 	for i in kmsg:
 		if i[:18] == "Default principal:":
