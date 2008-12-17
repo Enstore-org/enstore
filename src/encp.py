@@ -2429,9 +2429,12 @@ def clients(intf):
     global __alarmc
 
     # get a configuration server client
+    csc_addr = (getattr(intf, "enstore_config_host",
+                        enstore_functions2.default_host()),
+                getattr(intf, "enstore_config_port",
+                        enstore_functions2.default_port()))
     try:
-        csc, config = __get_csc((intf.enstore_config_host,
-                                 intf.enstore_config_port))
+        csc, config = __get_csc(csc_addr)
     except EncpError, msg:
         return {'status' : (msg.type, str(msg))}
 
@@ -2441,7 +2444,7 @@ def clients(intf):
 
     #If we are only performing a check if a transfer will succeed (at least
     # start) we should turn off logging and alarming.
-    if intf.check:
+    if getattr(intf, "check", None):
         log_client.LoggerClient.log_func = check_log_func
         alarm_client.AlarmClient.alarm_func = check_alarm_func
 
