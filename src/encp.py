@@ -8133,11 +8133,16 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
             else:
                 file_utils.match_euid_egid(in_fd)
         except OSError, msg:
+            close_descriptors(in_fd)
             if e_errors.is_ok(done_ticket):
-                done_ticket['status'] = (e_errors.OSERROR, str(msg))
-                #The read version calls handle_retries() here.  We don't
-                # need to here because the execution order allows
-                # for piggy-backing the handle_retries() for transfer_files().
+                error_ticket = {'status' : (e_errors.OSERROR, str(msg))}
+            else:
+                error_ticket = {'status' : done_ticket['status']}
+            #Handle the error.
+            result_dict = handle_retries([work_ticket], work_ticket,
+                                         error_ticket, e)
+            
+            return combine_dict(result_dict, work_ticket)
                 
         #Don't need these anymore.
         #close_descriptors(control_socket, data_path_socket, in_fd)
