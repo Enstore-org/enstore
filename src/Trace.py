@@ -170,6 +170,8 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
             if th_name:
                new_msg = "%s Thread %s"%(new_msg, th_name) 
             log_func(time.time(), os.getpid(), logname, (severity, new_msg))
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, detail = sys.exc_info()[:2]
             try:
@@ -183,6 +185,8 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
         try:
             print msg
             sys.stdout.flush()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
         
@@ -237,6 +241,8 @@ def trace(severity, msg):
 	    #os.system("a=`ps -ef |grep '/inq'|grep -v grep|xargs echo|cut -f2 -d' '`;ps -el|grep $a|grep python")
 	    #print "================================="  # a usefull divider
             sys.stdout.flush()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
     if log_levels.has_key(severity):
@@ -250,6 +256,8 @@ def message(severity, msg):
         try:
             print msg
             sys.stdout.flush()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
