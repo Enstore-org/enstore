@@ -190,6 +190,7 @@ COPY = "copy"                                #encp
 COUNTERS = "counters"                        #pnfs
 COUNTERSN = "countersN"                      #pnfs
 CP = "cp"                                    #pnfs
+CRC_CHECK = "crc-check"                      #assert
 CREATE = "create"                            #quota
 CURSOR = "cursor"                            #pnfs
 DATABASE = "database"                        #pnfs
@@ -485,7 +486,7 @@ valid_option_list = [
     CAPTION_TITLE, CAPTURE_TIMEOUT, CAT, CHECK,
     CLEAN_DRIVE, CLEAR, CLEAR_SG, CLIENT_NAME,
     CONDITION, CONFIG_FILE, CONFIG_HOSTS, CONST, COPIES, COPY,
-    COUNTERS, COUNTERSN, CP, CURSOR, CREATE,
+    COUNTERS, COUNTERSN, CP, CRC_CHECK, CREATE, CURSOR,
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
     DESCRIPTION, DESTROY,
