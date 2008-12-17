@@ -55,6 +55,8 @@ import socket_ext
 import hostaddr
 import string_driver
 import disk_driver
+import net_driver
+import null_driver
 import accounting_client
 import drivestat_client
 import Trace
@@ -603,6 +605,7 @@ class Buffer:
         
         if driver:
             bytes_written = driver.write(self._writing_block, self._write_ptr, bytes_to_write)
+            Trace.trace(24, "BYTES WRITTEN %s"%(bytes_written,))
             if bytes_written != bytes_to_write:
                 msg="encp gone? bytes to write %s, bytes written %s"%(bytes_to_write, bytes_written)
                 Trace.log(e_errors.ERROR, msg)
@@ -744,6 +747,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.will_mount = None # this is to indicate that the new volume will be mounted and the current dismounted (HIPR)
         self.last_absolute_location = 0L
         self.write_in_progress = False # set this to True before tape write, if write comletes successfuly it will be set to False
+        self.assert_ok = threading.Event() # for synchronization in ASSERT mode
+
         
         
     def __setattr__(self, attr, val):
@@ -1288,7 +1293,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.client_ip = None  #NB: a client may have multiple interfaces, this is
                                          ##the IP of the interface we're using
         
-        import net_driver
+        #import net_driver
         self.net_driver = net_driver.NetDriver()
         self.client_socket = None
 
@@ -1347,7 +1352,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.device = None
             self.single_filemark = 1 #need this to cause EOD cookies to update.
             ##XXX should this be more encapsulated in the driver class?
-            import null_driver
+            #import null_driver
             self.tape_driver = null_driver.NullDriver()
         elif self.driver_type == 'FTTDriver':
             self.stat_file = self.config.get('statistics_path', None)
@@ -2690,6 +2695,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                      (self.shortname, -self.bytes_read,
                       self.bytes_to_read, self.buffer.nbytes(), time.time()))
 
+        Trace.trace(24, "state %s read %s to_read %s"%(state_name(self.state),self.bytes_read, self.bytes_to_read))
         t_started = time.time()
         break_here = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
@@ -2731,6 +2737,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 buffer_full_t = 0
                 buffer_full_cnt = 0
             
+            Trace.trace(24, "btr %s br %s bs %s"%(self.bytes_to_read, self.bytes_read, self.buffer.blocksize))
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
             self.buffer.bytes_for_crc = nbytes
             if self.bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
@@ -3006,13 +3013,20 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.buffer.complete_crc = crc_1_seeded
                         crc_error = 0
                     if crc_error:
-                        Trace.alarm(e_errors.ERROR, "read_tape CRC error",
-                                    {'outfile':self.current_work_ticket['outfile'],
-                                     'infile':self.current_work_ticket['infile'],
-                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                     'external_label':self.current_work_ticket['vc']['external_label'],
-                                     'complete_crc':complete_crc, 'buffer_crc':self.buffer.complete_crc,
-                                     '_bytes_read':self.file_info['size']})
+                        # this is for crc check in ASSERT mode
+                        Trace.trace(24, "MODE %s"%(mode_name(self.mode),))
+                        if self.mode == ASSERT:
+                            self.assert_return = e_errors.CRC_ERROR
+                            return
+                        ####
+                        else:
+                            Trace.alarm(e_errors.ERROR, "read_tape CRC error",
+                                        {'outfile':self.current_work_ticket['outfile'],
+                                         'infile':self.current_work_ticket['infile'],
+                                         'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                         'external_label':self.current_work_ticket['vc']['external_label'],
+                                         'complete_crc':complete_crc, 'buffer_crc':self.buffer.complete_crc,
+                                         '_bytes_read':self.file_info['size']})
                         self.read_tape_running = 0
                         self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                         return
@@ -3024,6 +3038,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.time_in_state = time.time()- t_started
         Trace.log(e_errors.INFO, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
+
+        # this is for crc check in ASSERT mode
+        if self.mode == ASSERT:
+            self.assert_return = e_errors.OK
+        #####
 
         self.read_tape_running = 0
                 
@@ -3157,8 +3176,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.read_tape_running == 0:
                     break
                 time.sleep(1)
-        self.transfer_completed()
+        # this is for crc check in ASSERT mode
+        # do not call transfer_completed
+        # it will be done by volume_assert
         Trace.log(e_errors.INFO, "write_client exits")
+        if self.mode != ASSERT:
+            self.transfer_completed()
+        else:
+            self.assert_ok.set()
+        #
+ 
 
         
     # the library manager has asked us to write a file to the hsm
@@ -3207,6 +3234,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 Trace.trace(87,"setup_transfer: Thread %s is dead"%(thread_name,))
         
+        self.net_driver = net_driver.NetDriver()
         self._error = None
         self._error_source = None
         self.lock_state()
@@ -3310,6 +3338,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.run_in_thread('client_connect_thread', self.connect_client)
 
     def assert_vol(self):
+        self.net_driver = null_driver.NullDriver()
         ticket = self.current_work_ticket
         self.t0 = time.time()
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
@@ -3367,23 +3396,101 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_failed(status[0], status[1], error_source=TAPE)
             return
 
-        self.dismount_volume(after_function=self.idle)
+        if ticket.has_key('action'):
+            self.current_work_ticket = ticket
+            self.mode = ASSERT
+            failed = False
+            if (ticket['action'] == 'crc_check'):
+                read_whole_tape = True
+                ticket['return_file_list'] = {}
+                Trace.trace(24, 'ticket %s'%(ticket,))
+                if ticket.has_key('parameters') and type(ticket['parameters']) == type([]) and ticket['parameters']:
+                    read_whole_tape = False
+                    # Initialize return list
+                    for lc in ticket['parameters']:
+                       ticket['return_file_list'][lc] = e_errors.UNKNOWN 
+                else:
+                    # get file list for the whole tape from file clerk
+                    try:
+                        fcc = file_clerk_client.FileClient(self.csc, bfid=0,
+                                                           server_address=ticket['fc']['address'])
+                        file_list = fcc.tape_list(ticket['vc']['external_label'])
+                        fc_address = ticket['fc']['address']
+                        Trace.trace(24, "file List %s:: %s"%(type(file_list), file_list))
+                    except:
+                        exc, msg, tb = sys.exc_info()
+                        self.transfer_failed(exc, msg, error_source=USER)
+                        failed = True
+                    if failed == False:
+                        # create the list of location cookies
+                        file_info = {}
+                        for entry in file_list['tape_list']:
+                            ticket['return_file_list'][entry['location_cookie']] = e_errors.UNKNOWN
+                            file_info[entry['location_cookie']] = entry
+                        Trace.trace(24, "file_info %s"%(file_info,))
+                            
+                Trace.trace(24, 'ticket %s'%(ticket,))
+                        
+                if failed == False:
+                    keys = ticket['return_file_list'].keys()
+                    keys.sort()
+                    Trace.trace(24, 'keys %s'%(keys,))
+                    for loc_cookie in keys:
+                        location = cookie_to_long(loc_cookie)
+                        self.file_info =  file_info[loc_cookie]
+                        self.assert_return = e_errors.OK
+                        self.reset(None, 1)
+                        self.current_work_ticket = ticket
+                        Trace.trace(24, "t1 %s"%(type(self.current_work_ticket),))
+                        Trace.trace(24, "t11 %s"%(type(self.current_work_ticket['fc']),))
+                        Trace.trace(24, "t2 %s"%(type(file_info),))
+                        Trace.trace(24, "t21 %s"%(type(file_info[loc_cookie]),))
+                        self.current_work_ticket['fc'] = file_info[loc_cookie]
+                        self.current_work_ticket['fc']['address'] = fc_address
+                        self.finish_transfer_setup()
+                        self.run_in_thread('seek_thread', self.seek_to_location,
+                                           args = (location, self.mode==WRITE),
+                                           after_function=self.start_transfer)
+                        self.net_driver.open('/dev/null', WRITE)
+                        self.assert_ok.wait()
+                        self.assert_ok.clear()
+                        '''
+                        while 1:
+                            alive_count = threading.activeCount()
+                            Trace.trace(24, "alive_count %s"%(alive_count,))
+                            if alive_count == 2:
+                                # includes current and main threads
+                                
+                                Trace.trace(24, "assert return: %s"%(self.assert_return,))
+                                ticket['return_file_list'][loc_cookie] = self.assert_return 
+                                break
+                            else:
+                                time.sleep(1)
+                        '''
+                    self.transfer_completed()
+                                
+
+        else:
+            # read tape and 
+            self.dismount_volume(after_function=self.idle)
 
         
         
     def finish_transfer_setup(self):
         Trace.trace(10, "client connect returned: %s %s" % (self.control_socket, self.client_socket))
+        Trace.trace(24, "finish_transfer_setup %s %s"%(mode_name(self.mode), mode_name(self.setup_mode)))
         ticket = self.current_work_ticket
         if not self.client_socket:
-            Trace.trace(20, "finish_transfer_setup: connection to client failed")
-            self.state = self.save_state
-            ## Connecting to client failed
-            if self.state == HAVE_BOUND:
-                self.dismount_time = time.time() + self.default_dismount_delay
-            self.need_lm_update = (1, self.state, 1, None)
-            self.send_error_msg(error_info=(e_errors.ENCP_GONE, "no client socket"), error_source=NETWORK) 
-            #self.update_lm(reset_timer=1)
-            return
+            if self.mode != ASSERT:
+                Trace.trace(20, "finish_transfer_setup: connection to client failed")
+                self.state = self.save_state
+                ## Connecting to client failed
+                if self.state == HAVE_BOUND:
+                    self.dismount_time = time.time() + self.default_dismount_delay
+                self.need_lm_update = (1, self.state, 1, None)
+                self.send_error_msg(error_info=(e_errors.ENCP_GONE, "no client socket"), error_source=NETWORK) 
+                #self.update_lm(reset_timer=1)
+                return
 
         self.t0 = time.time()
         self.crc_seed = self.initial_crc_seed
@@ -3400,6 +3507,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         vc = ticket['vc']
         self.vol_info.update(vc)
         self.file_info.update(fc)
+        Trace.trace(24, "VOL_INFO %s"%(self.vol_info,))
+        Trace.trace(24, "FILE_INFO %s"%(self.file_info,))
         self.volume_family=vc['volume_family']
         delay = 0
         sanity_cookie = ticket['fc'].get('sanity_cookie', None)
@@ -3488,6 +3597,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             # in case if seed 0 crc check fails
             self.buffer.set_crc_seed(0L)
             
+        Trace.trace(24, "FC %s"%(fc,))
         bytes = fc.get('size', None)
         if bytes == None:
             self.bytes_to_transfer = None
@@ -3501,6 +3611,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.expected_transfer_time = self.bytes_to_transfer / self.max_rate
         self.bytes_to_write = self.bytes_to_transfer
         self.bytes_to_read = self.bytes_to_transfer
+        Trace.trace(24, "BYTES TO READ %s"%(self.bytes_to_read,))
         self.real_transfer_time  = 0.
         self.transfer_deficiency = 1.
         if (self.bytes_to_transfer == None) or (self.bytes_to_transfer < 0L) :
@@ -3542,6 +3653,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.target_location = None        
 
         Trace.trace(10, "finish_transfer_setup: label %s state %s"%(volume_label, state_name(self.save_state)))
+        # this is for crc check in ASSERT mode
+        Trace.trace(24, "finish_transfer_setup MODE %s"%(mode_name(self.mode),))
+        if self.mode == ASSERT:
+            return
+        #######
         if volume_label == self.current_volume and self.save_state == HAVE_BOUND: #no mount needed
             self.timer('mount_time')
             self.position_media(verify_label=0)
@@ -3731,6 +3847,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=1):
+        if self.mode == ASSERT:
+            self.assert_ok.set()
+        
         if self.state == OFFLINE:
             # transfer failed should not get called in OFFLINE state
             return
@@ -4007,6 +4126,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.lock_file_info = 0
         self.consecutive_failures = 0
         self.timer('transfer_time')
+        Trace.trace(24, "transfer_completed. ticket %s"%(self.current_work_ticket,)) 
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
@@ -5137,7 +5257,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # the requested tape was actually mouted in this drive
                     status[0] = e_errors.OK
                      
-        Trace.trace(e_errors.INFO, "AM STAT %s"%(status,))
         if status[0] == e_errors.OK:
             self.vcc.update_counts(self.current_volume, mounts=1)
             self.asc.log_finish_mount(self.current_volume)
@@ -5327,10 +5446,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = ACTIVE
         if self.draining:
             self.state = DRAINING
-        if self.mode is WRITE:
+        if self.mode == WRITE:
             self.run_in_thread('net_thread', self.read_client)
             self.run_in_thread('tape_thread', self.write_tape)
-        elif self.mode is READ:
+        elif self.mode == READ or self.mode == ASSERT:
             self.run_in_thread('tape_thread', self.read_tape)
             self.run_in_thread('net_thread', self.write_client)
         else:
@@ -5631,7 +5750,7 @@ class DiskMover(Mover):
                                          ##the IP of the interface we're using
         
         self.tape_driver = disk_driver.DiskDriver()
-        import net_driver
+        #import net_driver
         self.net_driver = net_driver.NetDriver()
         self.client_socket = None
 
@@ -6141,7 +6260,11 @@ class DiskMover(Mover):
                     self.transfer_failed(e_errors.CRC_ERROR, None)
                     return
                 
-            self.transfer_completed()
+            # this is for crc check in ASSERT mode
+            # do not call transfer_completed
+            # it will be done by volume_assert
+            if self.mode != ASSERT:
+                self.transfer_completed()
 
     '''    
     def create_volume_name(self, ip_map, volume_family):
