@@ -36,7 +36,6 @@ def e_access(path, mode):
 
 #Check the bits to see if we have the requested mode access.
 def e_access_cmp(file_stats, mode):
-    print type(file_stats)
     stat_mode = file_stats[stat.ST_MODE]
     
     #Make sure a valid mode was passed in.
