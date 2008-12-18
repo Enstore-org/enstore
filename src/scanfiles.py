@@ -1786,7 +1786,7 @@ def check_file(f, file_info):
         # Comparing the Enstore and dCache CRCs must be skipped if the
         # volume in question is a null volume.
         if layer2 and layer2.get('size', None) == None:
-            warn.append("no layer 2 size")
+            warn.append("no layer 2 crc")
         elif volumedb['media_type'] != "null" and \
                layer2.get('crc', None) != None: # some do not have this field
             crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
