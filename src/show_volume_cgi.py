@@ -1,13 +1,45 @@
 #!/usr/bin/env python
 import cgi
-import enstore_utils_cgi
 import os
 import string
 import time
+import sys
+import pprint
+
+import enstore_utils_cgi
+import enstore_constants
+import info_client
+import e_errors
 
 kk = 1024
 mm = kk * kk
 gg = mm * kk
+
+def print_error(volume):
+    print "Content-Type: text/html"     # HTML is following
+    print                               # blank line, end of headers
+    print "<html>"
+    print "<head>"
+    print "<title> Volume "+volume+"</title>"
+    print "</head>"
+    print "<body bgcolor=#ffffd0>"
+    print "<font color=\"red\" size=10> No Such volume "+ volume + "</font>"
+    print "</body>"
+    print "</html>"
+
+def print_header(txt):
+    print "Content-Type: text/html"     # HTML is following
+    print                               # blank line, end of headers
+    print "<html>"
+    print "<head>"
+    print "<title> " + txt +" </title>"
+    print "</head>"
+    print "<body bgcolor=#ffffd0>"
+
+def print_footer():
+    print "</body>"
+    print "</html>"
+
 
 def show_size(s):
     if s > gg:
@@ -19,93 +51,84 @@ def show_size(s):
     else:
         return "%7d Bytes"%(s)
 
-# default values
-capacity = 0
-remaining_bytes = 0
-system_inhibit = ""
-
-la_time = '(unknown)'   
-form = cgi.FieldStorage()
-volume = form.getvalue("volume", "unknown")
-
-print "Content-Type: text/html"     # HTML is following
-print                               # blank line, end of headers
-print "<html>"
-print "<head>"
-print "<title> Volume "+volume+"</title>"
-print "</head>"
-print "<body bgcolor=#ffffd0>"
-
-# setup enstore environment
-config_host, config_port = enstore_utils_cgi.find_enstore()
-os.environ['ENSTORE_CONFIG_HOST'] = config_host
-os.environ['ENSTORE_CONFIG_PORT'] = config_port
-print '<h1><font color=#aa0000>', volume, '</font></h1>'
-# res1 = os.popen('enstore vol --gvol '+volume).readlines()
-res1 = os.popen('enstore info --gvol '+volume).readlines()
-
-# extract information
-for i in res1:
-    tk = string.split(i, ':')
-    k = tk[0]
-    v = tk[1]
-    if k == " 'last_access'":
-        if int(tk[-1][-7:-3]) < 1970:
-            la_time = '(never)'
+def print_volume_summary(ticket,total):
+    la_time='(unknown)'
+    if ticket['last_access'] :
+        if int(ticket['last_access'].split(' ')[-1])<1970:
+            la_time='(never)'
         else:
-            la_time = string.join(tk[1:], ':')[2:-3]
-    if k == " 'capacity_bytes'":
-        capacity = long(v[:-2])
-    if k == " 'remaining_bytes'":
-        remaining_bytes = long(v[:-2])
-    if k == " 'system_inhibit'":
-        si = string.split(string.replace(string.replace(v[2:-3], "'", ""), ",", ""))
-        for i in [0, 1]:
-            if si[i] != 'none':
-                si[i] = '<font color=#ff0000>'+si[i]+'</font>'
-        system_inhibit = si[0]+'+'+si[1]
-        # system_inhibit = string.replace(string.replace(v[2:-3], "'", ""), ', ', '+')
+            la_time=ticket['last_access']
+    print "<font size=5 color=#0000aa><b>"
+    print "<pre>"
+    print "          Volume:", ticket['external_label']
+    print "Last accessed on:", la_time
+    print "      Bytes free:", show_size(ticket['remaining_bytes'])
+    print "   Bytes written:", total
+    print "        Inhibits:", ticket['system_inhibit'][0],"+",ticket['system_inhibit'][1]
+    print '</b><hr></pre>'
+    print "</font>"
+    print "<pre>"
+    pprint.pprint(ticket)
+    print "<hr></pre>"
+    
 
-fileout = []
-# res = os.popen('enstore file --list '+volume).readlines()
-res = os.popen('enstore info --list '+volume).readlines()
-res = res[2:]	# get rid of header
-total = 0L
+def print_volume_content(ticket,list):
+    format = "%%-%ds <a href=/cgi-bin/show_file_cgi.py?bfid=%%s>%%-19s</a> %%10s %%-22s %%-7s %%s"%(len(list))
+    header = " volume         bfid             size      location cookie     status           original path"
+    print '<pre>'
+    print '<font color=#aa0000>'+header+'</font>'
+    print '<p>'
+    tape=ticket['tape_list']
+    for record in tape:
+        color='#ff0000'
+        deleted='unlnown'
+        if record['deleted'] == 'yes':
+            deleted = 'deleted'
+        elif record['deleted'] == 'no':
+            deleted = 'active'
+            color='#0000ff'
+        else:
+            deleted = 'unknown'
+        print '<font color=\"'+color+'\">', format % (intf.list,
+                         record['bfid'],record['bfid'], record['size'],
+                         record['location_cookie'], deleted,
+                           record['pnfs_name0']), "</font>"
+    print '</pre>'
+    
 
-for i in res:
-    if string.find(i, 'active') != -1:
-        h1 = '<font color="#0000ff">'
+if __name__ == "__main__":
+    form   = cgi.FieldStorage()
+    volume = form.getvalue("volume", "unknown")
+    intf   =   info_client.InfoClientInterface(user_mode=0)
+    intf.gvol = volume
+    intf.list = volume
+    ifc    = info_client.infoClient((intf.config_host, intf.config_port), None, intf.alive_rcv_timeout, intf.alive_retries)
+    ticket = ifc.handle_generic_commands(enstore_constants.INFO_SERVER ,intf)
+    ticket = ifc.inquire_vol(intf.gvol)
+    if ticket['status'][0] == e_errors.OK:
+        status = ticket['status']
+        del ticket['status']
+        del ticket['non_del_files']
+        ticket['declared'] = time.ctime(ticket['declared'])
+        ticket['first_access'] = time.ctime(ticket['first_access'])
+        ticket['last_access'] = time.ctime(ticket['last_access'])
+        if ticket.has_key('si_time'):
+            ticket['si_time'] = (time.ctime(ticket['si_time'][0]),
+                                 time.ctime(ticket['si_time'][1]))
+        ticket['status'] = status
     else:
-        h1 = '<font color="#ff0000">'
-    fr = string.split(i)
-    bfid = fr[1]
-    total = total + long(fr[2])
-    i = string.strip(i)
-    i = string.replace(i, bfid, '<a href=/cgi-bin/show_file_cgi.py?bfid='+bfid+'>'+bfid+'</a>')
-    fileout.append(h1+i+'</font>')
+        print_error(volume)
+        sys.exit(1)
+    print_header ("Volume %s"%(volume),)
+    print '<h1><font color=#aa0000>', volume, '</font></h1>'
+    f_ticket = ifc.tape_list(intf.list)
+    total=0L
+    if f_ticket['status'][0] == e_errors.OK:
+        tape = f_ticket['tape_list']
+        for record in tape:
+            total=total+long(record['size'])
+    print_volume_summary(ticket,total)
+    if f_ticket['status'][0] == e_errors.OK:
+        print_volume_content(f_ticket,intf.list)
 
-print "<font size=5 color=#0000aa><b>"
-print "<pre>"
-print "          Volume:", volume
-print "Last accessed on:", la_time
-print "      Bytes free:", show_size(remaining_bytes)
-print "   Bytes written:", show_size(total)
-print "        Inhibits:", system_inhibit
-print '</b><hr></pre>'
-print "</font><pre>"
-
-for i in res1:
-    print i,
-print '<p>'
-print '<hr>'
-
-header = " volume         bfid             size      location cookie     status           original path"
-
-print '<font color=#aa0000>'+header+'</font>'
-print '<p>'
-
-for i in fileout:
-    print i
-
-print "</body>"
-print "</html>"
+    print_footer()
