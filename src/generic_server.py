@@ -66,7 +66,7 @@ class GenericServer(generic_client.GenericClient):
             #The configuration server itself will fall here.
             # It can't create a client to itself.  However, the
             # configuration server should never call this function
-            # eiter.
+            # either.
             pass
         
         #Individually defined actions for each Enstore server.
