@@ -73,7 +73,7 @@ def print_volume_summary(ticket,total):
     
 
 def print_volume_content(ticket,list):
-    format = "%%-%ds <a href=/cgi-bin/show_file_cgi.py?bfid=%%s>%%-19s</a> %%10s %%-22s %%-7s %%s"%(len(list))
+    format = "%%-%ds <a href=/cgi-bin/show_file_cgi.py?bfid=%%s>%%s</a> %%10s %%-22s %%-7s %%s"%(len(list))
     header = " volume         bfid             size      location cookie     status           original path"
     print '<pre>'
     print '<font color=#aa0000>'+header+'</font>'
