@@ -63,7 +63,7 @@ def print_volume_summary(ticket,total):
     print "          Volume:", ticket['external_label']
     print "Last accessed on:", la_time
     print "      Bytes free:", show_size(ticket['remaining_bytes'])
-    print "   Bytes written:", total
+    print "   Bytes written:", show_size(total)
     print "        Inhibits:", ticket['system_inhibit'][0],"+",ticket['system_inhibit'][1]
     print '</b><hr></pre>'
     print "</font>"
