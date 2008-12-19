@@ -1117,7 +1117,13 @@ def check_dir(d, dir_info):
         #   fname[:3] == '.A_' or \
         #fname[:8] == '.removed':
         return err, warn, info
-        
+   
+    if not check_permissions(d_stats, os.R_OK | os.X_OK) and \
+       os.getuid() == 0 and os.geteuid() != 0:
+        #We might need to switch back to root, since the user might not
+        # have given themselves eXecute permissions on the directory.
+        os.seteuid(0)
+        os.setegid(0)
     if check_permissions(d_stats, os.R_OK | os.X_OK):
         err, warn, info = check_parent(d)
         if err or warn:
