@@ -251,15 +251,15 @@ class GenericClient:
         csc = self._get_csc()
         try:
             t = csc.get(server, timeout=rcv_timeout, retry=tries)
-        except errno.errorcode[errno.ETIMEDOUT]:
-            return {'status' : (e_errors.TIMEDOUT,
-                                enstore_constants.CONFIGURATION_SERVER)}
         except udp_client.UDPError, msg:
             if msg.errno == errno.ETIMEDOUT:
                 return {'status' : (e_errors.TIMEDOUT,
                                     enstore_constants.CONFIGURATION_SERVER)}
             else:
                 return {'status' : (e_errors.BROKEN, str(msg))}
+        except errno.errorcode[errno.ETIMEDOUT]:
+            return {'status' : (e_errors.TIMEDOUT,
+                                enstore_constants.CONFIGURATION_SERVER)}
         
         #Check for errors.
         if e_errors.is_timedout(t['status']):
@@ -272,9 +272,6 @@ class GenericClient:
         try:
             x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
                             rcv_timeout, tries)
-        except errno.errorcode[errno.ETIMEDOUT]:
-            Trace.trace(14,"alive - ERROR, alive timed out")
-            x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
         except udp_client.UDPError, msg:
             if msg.errno == errno.ETIMEDOUT:
                 return {'status' : (e_errors.TIMEDOUT, self.server_name)}
@@ -287,6 +284,9 @@ class GenericClient:
             except IOError:
                 pass
             os._exit(1)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            Trace.trace(14,"alive - ERROR, alive timed out")
+            x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
         return x
 
 
@@ -294,13 +294,16 @@ class GenericClient:
         csc = self._get_csc()
         try:
             t = csc.get(server)
+        except udp_client.UDPError, msg:
+            if msg.errno == errno.ETIMEDOUT:
+                return {'status' : (e_errors.TIMEDOUT, "configuration_server")}
+            else:
+                return {'status' : (e_errors.BROKEN, str(msg))}
         except errno.errorcode[errno.ETIMEDOUT]:
             return {'status' : (e_errors.TIMEDOUT, None)}
         try:
             x = self.u.send({'work': work,
                              'levels':levels}, (t['hostip'], t['port']))
-        except errno.errorcode[errno.ETIMEDOUT]:
-            x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
         except udp_client.UDPError, msg:
             if msg.errno == errno.ETIMEDOUT:
                 return {'status' : (e_errors.TIMEDOUT, self.server_name)}
@@ -313,6 +316,8 @@ class GenericClient:
             except IOError:
                 pass
             sys.exit(1)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
         return x
     
     
@@ -343,8 +348,8 @@ class GenericClient:
             Trace.trace(14, 'exit ok' )
             sys.exit(0)
         else:
-            sys.stderr.write("BAD STATUS %s\n" % ticket['status'])
-            Trace.trace(14, " BAD STATUS - "+repr(ticket['status']))
+            sys.stderr.write("BAD STATUS %s\n" % (ticket['status'],))
+            #Trace.trace(14, "BAD STATUS - " + repr(ticket['status']))
             sys.exit(1)
         return None
 
