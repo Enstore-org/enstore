@@ -42,7 +42,7 @@ import configuration_client
 #import library_manager_client
 import log_client
 #import media_changer_client
-import mover_client
+#import mover_client
 #import monitor_client
 #import volume_clerk_client
 #import ratekeeper_client
@@ -126,6 +126,8 @@ def find_servers_by_type(csc, type):
                 config_dict['status'] = status
         else:
             config_dict = {'status':(e_errors.TIMEDOUT, None)}
+    except udp_client.UDPError, msg:
+        config_dict = {'status':(e_errors.NET_ERROR, str(msg))}
     except errno.errorcode[errno.ETIMEDOUT]:
         config_dict = {'status':(e_errors.TIMEDOUT, None)}
     if not e_errors.is_ok(config_dict) and \
@@ -206,6 +208,8 @@ def quit_process(gc, use_alias=0):
     try:
         #rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
         rtn = gc.quit(SEND_TO, SEND_TM)
+    except udp_client.UDPError, msg:
+        rtn = {'status':(e_errors.NET_ERROR, str(msg))}
     except errno.errorcode[errno.ETIMEDOUT]:
         rtn = {'status':(e_errors.TIMEDOUT, None)}
     if e_errors.is_ok(rtn):
@@ -237,10 +241,15 @@ def stop_server(gc, servername):
         u = udp_client.UDPClient()
 	try:
             rtn1 = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
+        except udp_client.UDPError, msg:
+            rtn1 = {'status':(e_errors.NET_ERROR, str(msg))}
+            if not e_errors.is_ok(rtn1):
+                return 1
         except errno.errorcode[errno.ETIMEDOUT]:
             rtn1 = {'status':(e_errors.TIMEDOUT, None)}
             if not e_errors.is_ok(rtn1):
                 return 1
+        
         try:
             if rtn1['state'] == 'DRAINING':
                 print "%s will stop when transfer is finished"%(servername,)
@@ -402,6 +411,8 @@ def check_event_relay(csc):
             try:
                 #rtn = 0 implies alive, rtn = 1 implies dead.
                 rtn = erc.alive()
+            except udp_client.UDPError, msg:
+                rtn = {'status':(e_errors.NET_ERROR, str(msg))}
             except errno.errorcode[errno.ETIMEDOUT]:
                 rtn = {'status':(e_errors.TIMEDOUT,
                                  errno.errorcode[errno.ETIMEDOUT])}
