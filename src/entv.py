@@ -1080,6 +1080,8 @@ def handle_messages(csc_addr, system_name, intf):
                             send_request_dict[tx_id]['name'], mstatus)
 
                         del send_request_dict[tx_id]
+                    except udp_client.UDPError:
+                        pass
                     except errno.errorcode[errno.ETIMEDOUT]:
                         pass
             #Remove items that are in the queue without having recieved a
