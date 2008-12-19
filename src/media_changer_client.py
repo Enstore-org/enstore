@@ -287,6 +287,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.list_drives = 0
         self.list_volumes = 0
         self.list_slots = 0
+        self.list_clean = 0
         self.list = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
