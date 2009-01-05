@@ -509,7 +509,7 @@ def get_layer_2(f):
         try:
             crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
             l2['crc'] = long(crc_match.search(line2).group().split(":")[1], 16)
-        except AttributeError:
+        except (AttributeError, ValueError):
             l2['crc'] = None
 
         try:
