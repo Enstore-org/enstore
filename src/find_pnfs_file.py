@@ -50,8 +50,6 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
     else:
         pnfsid_db = None
 
-    search_list = pnfs.process_mtab()
-
     #Get the configuration server and file info server clients.
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
@@ -108,20 +106,26 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 return try_path
 
     #Loop over all found mount points.
+    search_list = pnfs.process_mtab()
     for database_info, (db_num, mp)  in search_list:
 
         #If last_db_tried is still set to its initial value, we need to
         # skip the the next.
         if db_num < 0:
             continue
+
+        #If we want a specific type of pnfs path, ignore the others.
+        if path_type == FS and pnfs.is_normal_pnfs_path(mp):
+            continue
+        elif path_type == NONFS and pnfs.is_admin_pnfs_path(mp):
+            continue
         
         #This test is to make sure that the pnfs filesystem we are going
         # to query has a database N (where N is pnfsid_db).  Otherwise
         # we hang querying a non-existant database.  If the pnfsid_db
-        # matches the lat one we tried we skip this test as it has
+        # matches the last one we tried we skip this test as it has
         # already been done.
         if pnfs.get_last_db()[0] != pnfsid_db:
-        #if last_db_tried[0] != pnfsid_db:
             try:
                 pnfs.N(pnfsid_db, mp).get_databaseN()
             except IOError:
@@ -132,7 +136,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
         #We don't need to determine the full path of the file
         # to know if it exists.  The path could be different
         # between two machines anyway.
-        #afn =  access file name
+        #afn =  Access File Name
         afn = pnfs.access_file(mp, enstoredb_pnfsid)
 
         #Check layer 1 to get the bfid.
