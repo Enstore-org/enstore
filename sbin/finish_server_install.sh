@@ -25,8 +25,8 @@ then
     sed -e 's/postgres:postgres/enstore:enstore/' -e 's/l postgres/l enstore/' /tmp/postgresql > /etc/init.d/postgresql 
     chmod a+x /etc/init.d/postgresql
     echo "Change shared memory settings"
-    echo "kernel.shmmax=268435456" >> /etc/sysctl.conf
-    echo "kernel.shmall=268435456" >> /etc/sysctl.conf
+    echo "kernel.shmmax=1073741824" >> /etc/sysctl.conf
+    echo "kernel.shmall=1073741824" >> /etc/sysctl.conf
 fi
 
 echo "installing pnfs"
