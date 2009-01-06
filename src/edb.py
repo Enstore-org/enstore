@@ -71,7 +71,7 @@ def str_value(v):
 		args = args + str_value(v[-1])
 		return v[0]+'('+args+')'
 	else:
-		return `v`
+		return "'" + v + "'"
 
 # from a dictionary, get field name and values
 def get_fields_and_values(s):
@@ -326,6 +326,16 @@ class FileDB(DbTable):
 		else:
 			crc = s['complete_crc']
 
+		escape_string = getattr(pg, "escape_string", None)
+		if escape_string:
+			#For pg.py 3.8.1 and later.  This escapes the SQL
+			# special characters.
+			pnfs_path = escape_string(s['pnfs_name0'])
+		else:
+			#At least handle this one character if using too old
+			# of a version of pg.py.
+			pnfs_path = s['pnfs_name0'].replace("'", "''")
+
 		record = {
 			'bfid': s['bfid'],
 			'crc': crc,
@@ -333,7 +343,7 @@ class FileDB(DbTable):
 			'drive': s['drive'],
 			'volume': ('lookup_vol', s['external_label']),
 			'location_cookie': s['location_cookie'],
-			'pnfs_path': s['pnfs_name0'],
+			'pnfs_path': pnfs_path,
 			'pnfs_id': s['pnfsid'],
 			'sanity_size': sanity_size,
 			'sanity_crc': sanity_crc,
