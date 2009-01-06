@@ -738,7 +738,7 @@ SET default_with_oids = false;
 CREATE TABLE drive_utilization (
     "time" timestamp with time zone NOT NULL,
     "type" character varying NOT NULL,
-    "storage_grpup" character varying NULL, 
+    "storage_group" character varying NULL, 
     total integer,
     busy integer,
     tape_library character varying DEFAULT 'TBA'::character varying NOT NULL
