@@ -751,6 +751,9 @@ ALTER TABLE public.drive_utilization OWNER TO enstore;
 -- alter table drive_utilization  DROP CONSTRAINT drive_utilization_pkey;
 ---
 
+---
+-- alter table drive_utilization add column storage_group character varying NULL;
+--
 
 SET default_with_oids = true;
 
