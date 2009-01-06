@@ -469,6 +469,38 @@ def get_layer_1(f):
 
     return bfid, (err, warn, info)
 
+## Take the return from the regualar expression and check to make sure that
+## everything is okay.
+#
+#all_matches is the return value from re.findall().
+#check_type_string is the name used for error strings.
+def __l2_match_check(all_matches, check_type_string):
+    err = []
+    warn = []
+    info = []
+
+    if len(all_matches) > 1:
+        for current_match in all_matches[1:]:
+            if current_match != all_matches[0]:
+                err.append("multiple layer 2 %ss found (%s, %s)" % \
+                           (check_type_string, all_matches[0], current_match))
+                #Set the CRC to something other than None, to
+                # supress the "no layer 2 crc" error reported
+                # elsewhere if the CRC is None.
+                rtn = ""
+                break
+        else:
+            warn.append("layer 2 %ss repeated %s times" % \
+                        (check_type_string, len(all_matches),))
+            #Even though we have too many CRCs they all match, so
+            # we can return the CRC.
+            rtn = all_matches[0]
+    elif len(all_matches) == 1:
+        rtn = all_matches[0]
+    else:
+        rtn = None
+
+    return rtn, (err, warn, info)
 
 def get_layer_2(f):
 
@@ -502,19 +534,31 @@ def get_layer_2(f):
 
         try:
             hsm_match = re.compile("h=(no|yes)")
-            l2['hsm'] = hsm_match.search(line2).group().split("=")[1]
+            all_hsms = hsm_match.findall(line2)
+            l2['hsm'], (err_hsm, warn_hsm, info_hsm) = \
+               __l2_match_check(all_hsms, "HSM")
+            #l2['hsm'] = hsm_match.search(line2).group().split("=")[1]
         except AttributeError:
             l2['hsm'] = None
 
         try:
-            crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
-            l2['crc'] = long(crc_match.search(line2).group().split(":")[1], 16)
+            crc_match = re.compile("c=1:[a-zA-Z0-9]{1,8}")
+            all_crcs = crc_match.findall(line2)
+            crc, (err_crc, warn_crc, info_crc) = \
+               __l2_match_check(all_crcs, "CRC")
+            if crc:
+                l2['crc'] = long(crc.split(":")[1], 16)
+            #l2['crc'] = long(crc_match.search(line2).group().split(":")[1], 16)
         except (AttributeError, ValueError):
             l2['crc'] = None
 
         try:
             size_match = re.compile("l=[0-9]+")
-            l2['size'] = long(size_match.search(line2).group().split("=")[1])
+            all_sizes = size_match.findall(line2)
+            size, (err_size, warn_size, info_size) = \
+               __l2_match_check(all_sizes, "size")
+            l2['size'] = long(size.split("=")[1])
+            #l2['size'] = long(size_match.search(line2).group().split("=")[1])
         except AttributeError:
             l2['size'] = None
 
@@ -522,6 +566,9 @@ def get_layer_2(f):
         for item in layer2[2:]:
             l2['pools'].append(item.strip())
 
+    err = union([err, err_hsm, err_crc, err_size])
+    warn = union([warn, warn_hsm, warn_crc, warn_size])
+    info = union([info, info_hsm, info_crc, info_size])
     return l2, (err, warn, info)
 
 def get_layer_4(f):
@@ -1465,8 +1512,11 @@ def check_file(f, file_info):
     pnfs_id = get_pnfsid(f)[0]
 
     #Get the info from layer 2.
-    layer2 = get_layer_2(f)[0]
+    layer2, (err_2, warn_2, info_2) = get_layer_2(f)
     layer_2_from_name = layer2
+    err = err + err_2
+    warn = warn + warn_2
+    info = info + info_2
 
     #If this file is not supposed to be forwarded to tape by dCache,
     # check the parent id and compare the file size from the os
@@ -1474,7 +1524,7 @@ def check_file(f, file_info):
     if layer2.get('hsm', None) == "no":
         err_p, warn_p, info_p = check_parent(f)
         err = err + err_p
-        warn = warn + warn
+        warn = warn + warn_p
         info = info + info_p
 
         #Check for size.
@@ -1884,7 +1934,7 @@ def check_file(f, file_info):
 
     if is_migrated_copy:
         info.append("is migrated copy")
-        
+
     return err, warn, info
 
 
