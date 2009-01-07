@@ -1224,11 +1224,11 @@ def show_status(volume_list, db):
 				is_dst_volume = True
 
 		#Output the header.
-		print "%19s %1s %19s %1s %6s %6s %6s %6s" % \
-		      ("src_bfid", "S", "dst_bfid", "S", "copied", "swapped",
-		       "checked", "closed")
+		print "%19s %1s%1s %19s %1s%1s %6s %6s %6s %6s" % \
+		      ("src_bfid", "S", "D", "dst_bfid", "S", "D",
+		       "copied", "swapped", "checked", "closed")
 
-		q = "select bfid from file, volume " \
+		q = "select bfid,deleted from file, volume " \
 		    "where file.volume = volume.id and label = '%s' " \
 		    "and deleted != 'u' and pnfs_path != '' " \
 		    "order by location_cookie;" % (v,)
@@ -1275,7 +1275,30 @@ def show_status(volume_list, db):
 					closed = "" 
 					exit_status = 1
 
-				#Duplicated files were detected.
+				#Get the deleted status for the other file.
+				src_del = " "
+				dst_del = " "
+				if row[0] == row2[0]: # we have src_bfid
+					print "row2[1]:", row2[1]
+					q3 = "select deleted from file where bfid = '%s'" % (row2[1],)
+					#Get the results.
+					res3 = db.query(q3).getresult()
+					if len(res3):
+						src_del = row[1].upper()
+						dst_del = res3[0][0].upper()
+					else:
+						print res3
+				else: #we have dst_bfid
+					q3 = "select deleted from file where bfid = '%s'" % (row2[0],)
+					#Get the results.
+					res3 = db.query(q3).getresult()
+					if len(res3):
+						src_del = res3[0][0].upper()
+						dst_del = row[1].upper()
+					else:
+						print res3
+
+				#Report if duplicate files were detected.
 				src_status = " "
 				dst_status = " "
 				if row2[6] and row2[0] == row[0]:
@@ -1287,9 +1310,9 @@ def show_status(volume_list, db):
 				elif row2[7] and row2[1] == row[0]:
 					dst_status = 'C'
 
-				line = "%19s %1s %19s %1s %6s %6s %6s %6s" % \
-				       (row2[0], src_status, row2[1],
-					dst_status, copied,
+				line = "%19s %1s%1s %19s %1s%1s %6s %6s %6s %6s" % \
+				       (row2[0], src_status, src_del, row2[1],
+					dst_status, dst_del, copied,
 					swapped, checked, closed)
 				print line
 				if row[0] == row2[1]:
@@ -1300,8 +1323,8 @@ def show_status(volume_list, db):
 				# in the migration, print in the
 				# correct spot.
 				if is_dst_volume:
-					line = "%19s %1s %19s" % \
-					       ("", "", row[0],)
+					line = "%19s %1s%1s %19s" % \
+					       ("", "", "", row[0],)
 					print line
 				else:
 					#Not migrated yet.
