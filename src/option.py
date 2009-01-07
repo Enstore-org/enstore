@@ -458,6 +458,7 @@ UPDATE_INTERVAL = "update-interval"          #inquisitor(c&s)
 URL = "url"                                  #plotter
 USAGE = "usage"
 VERBOSE = "verbose"                          #monitor, ensync, assert, encp
+USE_DISK_FILES = "use-disk-files"            #migrate
 VERSION = "version"                          #encp, entv
 VOL = "vol"                                  #volume
 VOLS = "vols"                                #volume, library
@@ -553,7 +554,8 @@ valid_option_list = [
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
     TEST, THREADED, THREADED_IMPL, TIME, TIMEOUT, TIMESTAMP, TITLE, TITLE_GIF,
     TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
-    UNMARK_BAD, UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL, USAGE,
+    UNMARK_BAD, UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL,
+    USAGE, USE_DISK_FILES,
     VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST, WITH_DELETED, WITH_FINAL_SCAN,
     WRITE_PROTECT_STATUS, WRITE_PROTECT_ON, WRITE_PROTECT_OFF,
