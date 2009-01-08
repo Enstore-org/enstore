@@ -1119,11 +1119,21 @@ def do_layers_exist(pnfs_filename):
     if not pnfs_filename:
         return False
 
-    p = Pnfs(pnfs_filename)
+    p = Pnfs()
 
-    if p.readlayer(1, pnfs_filename) or p.readlayer(4, pnfs_filename):
-        #Layers found for the file!
-        return True
+    #Match the effective IDs of the file.
+    file_utils.match_euid_egid(pnfs_filename)
+
+    try:
+        if p.readlayer(1, pnfs_filename) or p.readlayer(4, pnfs_filename):
+            #Layers found for the file!
+            return True
+    except (OSError, IOError):
+        file_utils.end_euid_egid(reset_ids_back = True)
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    #Release the lock.
+    file_utils.end_euid_egid(reset_ids_back = True)
 
     #The pnfs files does not exist, or it does exist and does not have
     # any layer information.
@@ -3794,7 +3804,9 @@ def outputfile_check(work_list, e):
                         enstore_error = e_errors.USERERROR
                     else:
                         enstore_error = e_errors.PNFS_ERROR
-                    raise EncpError(error, msg.filename, enstore_error)
+                    raise EncpError(error,
+                        "Unable to verify output file: %s" % (msg.filename),
+                        enstore_error)
                 except EncpError, msg:
                     raise msg
 
