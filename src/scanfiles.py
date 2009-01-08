@@ -521,6 +521,9 @@ def get_layer_2(f):
             err.append('corrupted layer 2 metadata')
 
     l2 = {}
+    (err_hsm, warn_hsm, info_hsm) = ([], [], [])
+    (err_crc, warn_crc, info_crc) = ([], [], [])
+    (err_size, warn_size, info_size) = ([], [], [])
     if layer2:
         try:
             l2['line1'] = layer2[0].strip()
