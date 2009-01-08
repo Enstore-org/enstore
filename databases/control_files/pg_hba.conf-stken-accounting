@@ -68,4 +68,5 @@ host accounting enstore_reader 131.225.80.22/32         trust
 #include cmsstor12.fnal.gov and cmsstor16.fnal.gov
 host accounting enstore_reader 131.225.207.112/32       trust
 host accounting enstore_reader 131.225.207.13/32        trust
-
+#include cmsdcam3
+host accounting enstore_reader 131.225.189.91/32        trust
