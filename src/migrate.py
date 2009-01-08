@@ -73,6 +73,7 @@ import copy
 import errno
 import re
 import stat
+import socket
 
 # enstore imports
 import file_clerk_client
@@ -120,9 +121,11 @@ USE_THREADS = False #True
 		# this is turned on by default for file based migration
 		# It is turned off by default for volume based migration
 
+DEFUALT_QUEUE_SIZE = 1024
+
 # job queue for coping files
-copy_queue = Queue.Queue(1024)
-scan_queue = Queue.Queue(1024)
+copy_queue = Queue.Queue(DEFUALT_QUEUE_SIZE)
+scan_queue = Queue.Queue(DEFUALT_QUEUE_SIZE)
 #We add these items to the two queues.
 copy_queue.received_count = 0
 scan_queue.received_count = 0
@@ -262,12 +265,12 @@ def init(intf):
 		if not os.access(LOG_DIR, os.F_OK):
 			os.makedirs(LOG_DIR)
 		if not os.access(LOG_DIR, os.W_OK):
-			message = "Insufficent permissions to open log file.\n"
-			sys.stderr.write(message)
+			message = "Insufficent permissions to open log file."
+			error_log(message)
 			sys.exit(1)
 		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 		log(MIGRATION_NAME, string.join(sys.argv, " "))
-
+	
 	# check for spool_dir commands
 	if not intf.migrated_to and not intf.migrated_from and \
 	   not intf.status and not intf.show and not intf.scan_volumes and \
@@ -275,10 +278,37 @@ def init(intf):
 	   not getattr(intf, "restore", None):
 		#spool dir
 		if not SPOOL_DIR:
-			sys.stderr.write("No spool directory specified.\n")
+			message = "No spool directory specified."
+			error_log(message)
 			sys.exit(1)
 		if not os.access(SPOOL_DIR, os.W_OK):
 			os.makedirs(SPOOL_DIR)
+
+		#migration dir - Make sure it has correct permissions.
+		admin_mount_points = pnfs.get_enstore_admin_mount_point()
+		for mp in admin_mount_points:
+			mig_dir = os.path.join(mp, MIGRATION_DB)
+			try:
+				d_stat = os.stat(mig_dir)
+				stat_mode = d_stat[stat.ST_MODE]
+			except (OSError, IOError):
+				continue
+
+			if not stat_mode & stat.S_IRUSR or \
+			   not stat_mode & stat.S_IWUSR or \
+			   not stat_mode & stat.S_IXUSR or \
+			   not stat_mode & stat.S_IRGRP or \
+			   not stat_mode & stat.S_IWGRP or \
+			   not stat_mode & stat.S_IXGRP or \
+			   not stat_mode & stat.S_IROTH or \
+			   not stat_mode & stat.S_IWOTH or \
+			   not stat_mode & stat.S_IXOTH:
+				message = "Bad permissions for %s.  " \
+					  "Expected 0777." % \
+					  (mig_dir,)
+				log(message)
+				sys.exit(1)
+
 
 	#if intf.l.ibrary:
 	#	DEFAULT_LIBRARY = intf.library
@@ -309,6 +339,12 @@ def set_proceed_number(src_bfids, intf):
 		proceed_number = len(src_bfids)
 		copy_queue.__init__(proceed_number)
 		scan_queue.__init__(proceed_number)
+		return
+	elif type(intf.proceed_number) == types.IntType:
+		#Map the user supplied proceed number to be within the
+		# bounds of 1 and the default queue size.
+		proceed_number = min(intf.proceed_number, DEFUALT_QUEUE_SIZE)
+		proceed_number = max(proceed_number, 1)
 		return
 
 	if len(src_bfids) == 0:
@@ -992,7 +1028,8 @@ def mark_undeleted(MY_TASK, src_bfid, fcc, db):
 
 # migration_path(path) -- convert path to migration path
 # a path is of the format: /pnfs/fs/usr/X/...
-# a migration path is: /pnfs/fs/usr/Migration/X/...
+#                          a migration path is: /pnfs/fs/usr/Migration/X/...
+# deleted is either 'n' or 'y'; anything else is equal to 'n'
 def migration_path(path, deleted = 'n'):
 	admin_mount_points = pnfs.get_enstore_admin_mount_point()
 	if len(admin_mount_points) == 0:
@@ -1073,6 +1110,7 @@ def get_requests(queue, r_pipe, timeout = .1):
             #On an error, put the list ending None in the list.
             queue.put(None)
             queue.received_count = queue.received_count + 1
+	    queue.finished = True
             break
 
         if r:
@@ -1087,10 +1125,16 @@ def get_requests(queue, r_pipe, timeout = .1):
                 if job == SENTINEL:
                     queue.finished = True
                 
-                wait_time = 0.1 #Make the followup wait time shorter.
+                wait_time = 0.1 #Make the follow up wait time shorter.
 
                 #increment counter on success
 		requests_obtained = requests_obtained + 1
+	    except (socket.error):
+	        #On an error, put the list ending None in the list.
+                queue.put(None)
+                queue.received_count = queue.received_count + 1
+		queue.finished = True
+                break
             except e_errors.TCP_EXCEPTION:
                 #On an error, put the list ending None in the list.
                 queue.put(None)
@@ -1279,15 +1323,12 @@ def show_status(volume_list, db):
 				src_del = " "
 				dst_del = " "
 				if row[0] == row2[0]: # we have src_bfid
-					print "row2[1]:", row2[1]
 					q3 = "select deleted from file where bfid = '%s'" % (row2[1],)
 					#Get the results.
 					res3 = db.query(q3).getresult()
 					if len(res3):
 						src_del = row[1].upper()
 						dst_del = res3[0][0].upper()
-					else:
-						print res3
 				else: #we have dst_bfid
 					q3 = "select deleted from file where bfid = '%s'" % (row2[0],)
 					#Get the results.
@@ -1295,8 +1336,6 @@ def show_status(volume_list, db):
 					if len(res3):
 						src_del = res3[0][0].upper()
 						dst_del = row[1].upper()
-					else:
-						print res3
 
 				#Report if duplicate files were detected.
 				src_status = " "
@@ -1729,13 +1768,19 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 							config_port))
 	fcc = file_clerk_client.FileClient(csc)
 
-	#get a database connection
-	#db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+	#For trusted pnfs systems, there isn't a problem,
+	# but for untrusted we need to set the effective
+	# IDs to the owner of the file.
 	
-	# get all metadata
+	# get all pnfs metadata
+	file_utils.match_euid_egid(src)
 	p1 = pnfs.File(src)
-	f1 = fcc.bfid_info(bfid1)
+	file_utils.end_euid_egid(reset_ids_back = True)
+	file_utils.match_euid_egid(dst)
 	p2 = pnfs.File(dst)
+	file_utils.end_euid_egid(reset_ids_back = True)
+	# get all the file db metadata
+	f1 = fcc.bfid_info(bfid1)
 	f2 = fcc.bfid_info(bfid2)
 
 	##################################################################
@@ -1828,7 +1873,6 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 	# the best solution is to have encp ignore sanity check on file_family
 	# p1.file_family = p2.file_family
 	p1.update()
-	# p1.show()
 
 	if reset_permissions:
 		try:
@@ -1997,7 +2041,7 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 			error_log(MY_TASK, "failed to copy %s %s %s error = %s"
 				  % (src_bfid, tmp_path, mig_path,
 				     encp.err_msg))
-			# delete the target and retry once
+			# delete the target and give up
 			try:
 				os.remove(mig_path)
 			except:
@@ -2146,11 +2190,7 @@ def migrating(intf):
 		log(MY_TASK2, "swapping %s %s %s %s" % \
 		    (src_bfid, src_path, dst_bfid, mig_path))
 		if not is_swapped(src_bfid, db):
-			#For trusted pnfs systems, there isn't a problem,
-			# but for untrusted we need to set the effective
-			# IDs to the owner of the file.
-			file_utils.match_euid_egid(src_path)
-
+			
 			#We want to ignore these signals while swapping.
 			old_int_handler = signal.signal(signal.SIGINT,
 							signal.SIG_IGN)
@@ -2166,9 +2206,6 @@ def migrating(intf):
 			signal.signal(signal.SIGINT, old_int_handler)
 			signal.signal(signal.SIGTERM, old_term_handler)
 			signal.signal(signal.SIGTERM, old_quit_handler)
-
-			#Now set the root ID's back.
-			file_utils.end_euid_egid(reset_ids_back = True)
 
 			if not res:
 				ok_log(MY_TASK2,
@@ -3227,6 +3264,7 @@ class MigrateInterface(option.Interface):
 		self.read_to_end_of_tape = None
 		self.force = None
 		self.use_disk_files = None
+		self.proceed_number = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 		
@@ -3282,6 +3320,11 @@ class MigrateInterface(option.Interface):
 				 option.VALUE_USAGE:option.REQUIRED,
 				 option.VALUE_TYPE:option.INTEGER,
 				 option.USER_LEVEL:option.USER,},
+		option.PROCEED_NUMBER:{option.HELP_STRING:
+			      "The number of files to wait before writing.",
+			      option.VALUE_USAGE:option.REQUIRED,
+			      option.VALUE_TYPE:option.INTEGER,
+			      option.USER_LEVEL:option.HIDDEN},
 		option.READ_TO_END_OF_TAPE:{option.HELP_STRING:
 				 "Read to end of tape before starting "
 				 "to write.",
@@ -3456,7 +3499,7 @@ def do_work(intf):
 		exit_status = main(intf)
 	except (SystemExit, KeyboardInterrupt):
 		exc, msg = sys.exc_info()[:2]
-		Trace.log(e_errors.ERROR, "migrate aborted from: %s: %s" % (str(exc),str(msg)))
+		#Trace.log(e_errors.ERROR, "migrate aborted from: %s: %s" % (str(exc),str(msg)))
 		exit_status = 1
 	except:
 		#Get the uncaught exception.
