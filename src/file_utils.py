@@ -155,8 +155,8 @@ def get_stat(arg):
                 euid_lock.release()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            os.seteuid(current_euid)
             os.setegid(current_egid)
+            os.seteuid(current_euid)
 
             euid_lock.release()
         else:
