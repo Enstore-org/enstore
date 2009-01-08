@@ -365,6 +365,7 @@ PREFIX = "prefix"                            #enstore_make_log_plot
 PRIORITY = "priority"                        #library, encp, migrate
 PRINT = "print"                              #conf
 PRINT_QUEUE = "print-queue"                  #library
+PROCEED_NUMBER = "proceed-number"            #migrate
 PROFILE = "profile"                          #entv
 PUT_CACHE = "put-cache"                      #encp
 PTS_DIR = "pts_dir"                          #plotter
@@ -531,8 +532,8 @@ valid_option_list = [
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OUTOFDATE, OVERRIDE,
     OVERRIDE_DELETED, OVERRIDE_NOACCESS, OVERRIDE_PATH, OVERRIDE_RO_MOUNT,
     PARENT, PATH, PLOT, PLOTS,
-    PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT,
-    POSITION, PREFIX, PRIORITY, PRINT, PRINT_QUEUE,PROFILE, PTS_DIR,
+    PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT, POSITION,
+    PROCEED_NUMBER, PREFIX, PRIORITY, PRINT, PRINT_QUEUE,PROFILE, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,
     QUERY, QL,
     RAISE, READ_ONLY, READ_TO_END_OF_TAPE, REASON, RECURSIVE, RECYCLE, REFRESH,
