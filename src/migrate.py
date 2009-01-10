@@ -1089,7 +1089,8 @@ def temp_file(vol, location_cookie):
 
 ##########################################################################
 
-def get_requests(queue, r_pipe, timeout = .1):
+def get_requests(queue, r_pipe, timeout = .1, r_debug = False):
+    MY_TASK = "GET_REQUESTS"
 
     if USE_THREADS:
 	    return
@@ -1102,11 +1103,25 @@ def get_requests(queue, r_pipe, timeout = .1):
     #Limit to return to revent reader from overwelming the writer.
     requests_obtained = 0 
 
+    if r_debug:
+	    log(MY_TASK, "job:", str(job),
+		"requests_obtained:", str(requests_obtained),
+		"queue.full():", str(queue.full()),
+		"queue.finished:", str(queue.finished))
+
     while job and requests_obtained < FILE_LIMIT and not queue.full() \
 	      and not queue.finished:
+        if r_debug:
+	    log(MY_TASK, "getting next file", str(wait_time))
+	    
         try:
             r, w, x = select.select([r_pipe], [], [], wait_time)
-        except select.error:
+        except select.error, msg:
+	    if msg.args[0] in (errno.EINTR, errno.EAGAIN):
+                #If a select (or other call) was interupted,
+                # this is not an error, but should continue.
+                continue
+	
             #On an error, put the list ending None in the list.
             queue.put(None)
             queue.received_count = queue.received_count + 1
@@ -1119,7 +1134,8 @@ def get_requests(queue, r_pipe, timeout = .1):
                 job = callback.read_obj(r_pipe, verbose = False)
                 queue.put(job)
                 queue.received_count = queue.received_count + 1
-#                print "Queued request:", job
+		if r_debug:
+		    log(MY_TASK, "Queued request:", str(job))
 
                 #Set a flag indicating that we have read the last item.
                 if job == SENTINEL:
@@ -1129,13 +1145,17 @@ def get_requests(queue, r_pipe, timeout = .1):
 
                 #increment counter on success
 		requests_obtained = requests_obtained + 1
-	    except (socket.error):
+	    except (socket.error), msg:
+	        if r_debug:
+		    log(MY_TASK, str(msg))
 	        #On an error, put the list ending None in the list.
                 queue.put(None)
                 queue.received_count = queue.received_count + 1
 		queue.finished = True
                 break
             except e_errors.TCP_EXCEPTION:
+	        if r_debug:
+		    log(MY_TASK, e_errors.TCP_EXCEPTION)
                 #On an error, put the list ending None in the list.
                 queue.put(None)
                 queue.received_count = queue.received_count + 1
@@ -1145,7 +1165,11 @@ def get_requests(queue, r_pipe, timeout = .1):
         else:
             break
 
-    return    #queue.received_count
+    if r_debug:
+	    log(MY_TASK, "queue.qsize():", str(queue.qsize()),
+		"queue.received_count:", str(queue.received_count))
+
+    return
 
 def put_request(queue, w_pipe, job):
     if USE_THREADS:
@@ -1175,7 +1199,7 @@ def get_queue_item(queue, r_pipe):
 
     job = None
     while not job:
-        get_requests(queue, r_pipe, timeout = wait_time)
+        get_requests(queue, r_pipe, timeout = wait_time, r_debug = debug)
 
         try:
             job = queue.get(True, 1)
@@ -1697,7 +1721,12 @@ def copy_files(files, intf):
 			       file_record['storage_group'],
 			       file_record['deleted'],
 			       file_record['wrapper'])
+			if debug:
+				log(MY_TASK, "Passing job %s to write step." \
+				    % (job,))
 			put_request(copy_queue, migrate_w_pipe, job)
+			if debug:
+				log(MY_TASK, "Done passing job.")
 
 	# terminate the copy_queue
 	log(MY_TASK, "no more to copy, terminating the copy queue")
@@ -2248,7 +2277,12 @@ def migrating(intf):
 			put_request(scan_queue, scan_w_pipe, scan_job)
 
 		#Get the next file to copy and swap from the reading thread.
+		if debug:
+			log(MY_TASK, "Getting next job for write.")
 		job = get_queue_item(copy_queue, migrate_r_pipe)
+		if debug:
+			log(MY_TASK, "Recieved job %s for write." % \
+			    (job,))
 
 	if intf.with_final_scan:
 		log(MY_TASK, "no more to copy, terminating the scan queue")
