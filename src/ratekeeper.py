@@ -86,13 +86,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         # information to contact it here.  The access to the DBs needs to
         # be done locally in the code to avoid threading/forking releated
         # problems.
-        self.acc_conf = self.csc.get(enstore_constants.ACCOUNTING_SERVER)
-        self.acc_db   = pg.DB(
-            host   = self.acc_conf.get('dbhost', "localhost"),
-            port   = self.acc_conf.get('dbport', 5432),
-            dbname = self.acc_conf.get('dbname', "accounting"),
-            user   = self.acc_conf.get('dbuser', "enstore"),
-            )
+        self.connect()
+
         #
         # we need volume clerk to get information about volume when filling
         # drive_utilization table
@@ -117,12 +112,12 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         #    print "  (ratekeeper_dir)"
         #    sys.exit(1)
         if ratekeeper_host == 'MISSING' or not ratekeeper_host:
-            print "Error: Missing ratekeeper configdict directory.",
-            print "  (ratekeeper_host)"
+            sys.stderr.write("Error: Missing ratekeeper configdict directory.")
+            sys.stderr.write("  (ratekeeper_host)\n")
             sys.exit(1)
         if ratekeeper_port == 'MISSING' or not ratekeeper_port:
-            print "Error: Missing ratekeeper configdict directory.",
-            print "  (ratekeeper_port)"
+            sys.stderr.write("Error: Missing ratekeeper configdict directory.")
+            sys.stderr.write("  (ratekeeper_port)\n")
             sys.exit(1)
         #if ratekeeper_nodes == 'MISSING':
         #    ratekeeper_nodes = ''
@@ -157,9 +152,11 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         self.add_interval_func(self.slots_interval_func, SLOTS_INTERVAL,
                                one_shot=0, align_interval = True)
 
+        self.set_error_handler(self.ratekeeper_error_handler)
+
         
     def reinit(self):
-        Trace.log(e_errors.INFO, "(Re)loading configuration")
+        Trace.log(e_errors.INFO, "(Re)initializing server")
         
         rate_lock.acquire()
 
@@ -171,7 +168,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         
         ###We shouldn't need to stop the rk_main thread here.  It will
         ### pick up any relavent configuration changes every 15 seconds.
-        
+
         self.__init__(self.csc)
 
         rate_lock.release()
@@ -183,6 +180,67 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         acc_db_lock.release()
         return
 
+    #This function is called when dispatching_worker.process_request()
+    # throws a traceback (if it is set as the error handler in __init__).
+    # This function was copied from file_clerk.py.
+    #
+    #This function is not reqally used however, since the ratekeeper
+    # does not access the database based on user commands.  Should it need
+    # to in the future, then this function is ready to go.
+    def ratekeeper_error_handler(self, exc, msg, tb):
+        __pychecker__ = "unusednames=tb"
+        # is it PostgreSQL connection error?
+        #
+        # This is indeed a OR condition implemented in if-elif-elif-...
+        # so that each one can be specified individually
+        if exc == pg.ProgrammingError and str(msg)[:13] == 'server closed':
+            self.reconnect()
+        elif exc == ValueError and str(msg)[:13] == 'server closed':
+            self.reconnect()
+        elif exc == TypeError and str(msg)[:10] == 'Connection':
+            self.reconnect()
+        elif exc == ValueError and str(msg)[:13] == 'no connection':
+            self.reconnect()
+        self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
+            'exc_type':str(exc), 'exc_value':str(msg)} )
+
+    # reconnect() -- re-establish connection to database
+    def reconnect(self):
+        print time.ctime(), "Reconnecting to database."
+        self.acc_db.close()
+        self.connect()
+        print time.ctime(), "Done reestablishing connection to database."
+
+    # establish connection to the database
+    def connect(self):
+        self.acc_db = None
+        while not self.acc_db:
+            self.acc_conf = self.csc.get(enstore_constants.ACCOUNTING_SERVER)
+            if not e_errors.is_ok(self.acc_conf):
+                message = "Unable to get accounting database information: %s" \
+                          (self.acc_conf['status'],)
+                Trace.log(e_errors.ERROR, message)
+            try:
+                self.acc_db   = pg.DB(
+                    host   = self.acc_conf.get('dbhost', "localhost"),
+                    port   = self.acc_conf.get('dbport', 5432),
+                    dbname = self.acc_conf.get('dbname', "accounting"),
+                    user   = self.acc_conf.get('dbuser', "enstore"),
+                    )
+            except (pg.ProgrammingError, pg.InternalError):
+                exc_type, exc_value = sys.exc_info()[:2]
+                message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+                Trace.log(e_errors.ERROR, message.replace("\n", "  "))
+                time.sleep(30)
+                continue
+            except:
+                exc_type, exc_value = sys.exc_info()[:2]
+                message = str(exc_type)+' '+str(exc_value)
+                Trace.log(e_errors.ERROR, message)
+                message = "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!"
+                Trace.log(e_errors.ERROR, message)
+                sys.exit(1)
+        
     # These need confirmation
     def quit(self, ticket):
         #Collect children.
@@ -326,11 +384,11 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 #                        print "Executing ",q
                         acc_db.query(q)
             acc_db.close()
-        except:
+        except (pg.ProgrammingError, pg.InternalError):
             exc, msg, tb = sys.exc_info()
             try:
-                sys.stderr.write("Can not update DB: (%s, %s)\n" %
-                                 (exc, msg))
+                sys.stderr.write("%s: Can not update DB: (%s, %s)\n" %
+                                 (time.ctime(), exc, msg))
                 sys.stderr.flush()
             except IOError:
                 pass
@@ -375,11 +433,11 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 acc_db.query(q)
 
             acc_db.close()
-        except:
+        except (pg.ProgrammingError, pg.InternalError):
             exc, msg, tb = sys.exc_info()
             try:
-                sys.stderr.write("Can not update DB: (%s, %s)\n" %
-                                 (exc, msg))
+                sys.stderr.write("%s: Can not update DB: (%s, %s)\n" %
+                                 (time.ctime(), exc, msg))
                 sys.stderr.flush()
             except IOError:
                 pass
@@ -437,24 +495,36 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             num_0 = denom_0 = 0
 
         #Caluclate the number of bytes transfered at this time.
-        bytes = num - num_0
+        bytes_transfered = num - num_0
         if writing:
-            bytes_written_dict[group] = bytes_written_dict.get(group,0L)+bytes
+            bytes_written_dict[group] = \
+                bytes_written_dict.get(group,0L) + bytes_transfered
         else:
-            bytes_read_dict[group] = bytes_read_dict.get(group,0L) + bytes
+            bytes_read_dict[group] = \
+                bytes_read_dict.get(group,0L) + bytes_transfered
 
         #If the file is known to be transfered, reset these to zero.
         if num == denom:
             num_0 = denom_0 = 0
 
-    #main() runs in its own thread.
-    def main(self):
+    # return when it is at the beginning of the next minute.
+    # Make sure that rate_lock() is locked before calling this function.
+    def start_next_minute(self):
         now = time.time()
         self.start_time = next_minute(now)
         wait = self.start_time - now
-        print "waiting %.2f seconds" % (wait,)
+        print time.ctime(), "waiting %.2f seconds" % (wait,)
         time.sleep(wait)
-        print "starting"
+        print time.ctime(), "starting"
+
+    #main() runs in its own thread.
+    def main(self):
+
+        #Wait for the next minute to begin.
+        rate_lock.acquire()
+        self.start_next_minute()
+        rate_lock.release()
+        
         N = 1L
         bytes_read_dict = {} # = 0L
         bytes_written_dict = {} #0L
@@ -476,6 +546,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
                 rate_lock.acquire()
 
+                ############################################################
                 # [DEPRICATED] Write the rate data to the rate log file.
                 try:
                     if self.outfile:
@@ -493,6 +564,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                         sys.stderr.flush()
                     except IOError:
                         pass
+                ###########################################################
                 # Insert the rate data into the DB.
                 acc_db_lock.acquire()
                 try:
@@ -503,15 +575,26 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                                    bytes_written_dict.get("REAL", 0),
                                                    bytes_read_dict.get("NULL", 0),
                                                    bytes_written_dict.get("NULL", 0),)
+                    print q
                     self.acc_db.query(q)
-                except:
+                except (pg.ProgrammingError, pg.InternalError):
                     exc, msg, tb = sys.exc_info()
                     try:
-                        sys.stderr.write("Can not update DB: (%s, %s)\n" %
-                                         (exc, msg))
+                        sys.stderr.write("%s: Can not update DB: (%s, %s)\n" %
+                                         (time.ctime(), exc, msg))
                         sys.stderr.flush()
                     except IOError:
                         pass
+                    #Attempt to reconnect in 5 seconds.
+                    time.sleep(5)
+                    self.reconnect()
+                    #Wait for the next minute.
+                    self.start_next_minute()
+                    N = 1L #Reset this back now that self.start_time is reset.
+                    #Avoid resource leaks, release the locks.
+                    acc_db_lock.release()
+                    rate_lock.release()
+                    continue
 
                 acc_db_lock.release()
                 rate_lock.release()
