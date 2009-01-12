@@ -131,9 +131,9 @@ if __name__ == "__main__" :
                       action="store_true", dest="dump", default=False,
                       help="run pg_dump on specified database")
     parser.add_option("-p", "--port",
-                      metavar="PORT",
+                      metavar="PORT",type=int,
                       help="database port if it should be different from setup file")
-    parser.add_option("-f", "--filename",
+    parser.add_option("-f", "--filename",type=str,
                       metavar="FILE", help="output or sourvce datbase backup"),
     (options, args) = parser.parse_args()
 
