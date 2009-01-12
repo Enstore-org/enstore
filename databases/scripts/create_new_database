@@ -116,24 +116,40 @@ echo chmod go-rwx $database_area
 chmod go-rwx $database_area
 echo su $database_owner -c \"initdb -D $database_area\"
 su $database_owner -c "initdb -D $database_area"
-
-#  modify create pg_hba.conf
-
+#
+# take generic pg_hba.conf file first 
+#
+hba_file=${enstore_dir}/databases/control_files/pg_hba.conf
 case $host in
-	stkensrv0|cdfensrv0|d0ensrv0)
-		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-$host-$1
-		echo su $database_owner cp \"$hba_file $database_area/pg_hba.conf\"
-		su $database_owner -c "cp $hba_file $database_area/pg_hba.conf"
-		;;
-	*)
-		# modify pg_hba.conf in place
-		for i in `/sbin/ifconfig | grep "inet addr:" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d":" -f 2`
-		do
-			echo "host $db_name enstore $i/24 trust" >> $database_area/pg_hba.conf
-			echo "host $db_name enstore_reader $i/24 trust" >> $database_area/pg_hba.conf
-		done
-		;;
+    stken*)
+	hba_file=$enstore_dir/databases/control_files/pg_hba.conf-stken-$1
+	;;
+    d0en*)
+	hba_file=$enstore_dir/databases/control_files/pg_hba.conf-d0en-$1
+       ;;
+    cdfen*)
+	hba_file=$enstore_dir/databases/control_files/pg_hba.conf-cdfen-$1
+	;;
+    *)
+	hba_file=${enstore_dir}/databases/control_files/pg_hba.conf
+	;;
 esac
+
+echo su $database_owner cp \"$hba_file $database_area/pg_hba.conf\"
+su $database_owner -c "cp $hba_file $database_area/pg_hba.conf"
+#
+# modify pg_hba.conf in place
+#
+for i in `/sbin/ifconfig | grep "inet addr:" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d":" -f 2`
+do
+  echo "host $db_name enstore $i/24 trust" >> $database_area/pg_hba.conf
+  echo "host $db_name enstore_reader $i/24 trust" >> $database_area/pg_hba.conf
+done
+#
+# copy "right" postgresql.conf to datbase area 
+#
+ech su ${database_owner} -c \"cp ${enstore_dir}/databases/control_files/postgresql.conf ${database_area}/postgresql.conf\"
+su ${database_owner} -c "cp ${enstore_dir}/databases/control_files/postgresql.conf ${database_area}/postgresql.conf"
 
 # bring up database server
 echo su $database_owner -c \"postmaster -D $database_area -p $db_port -i \&\"
