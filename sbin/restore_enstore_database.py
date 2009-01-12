@@ -93,7 +93,11 @@ def get_server_name(name):
     server=name_to_servermap.get(name,None)
     if not server:
         txt="Unknown database name is specified: %s\n"%(name)
-        txt=txt+"Known databases : "+str([x for x in name_to_servermap.keys()])
+        txt=txt+"Known databases : [" 
+        for db in name_to_servermap.keys():
+            txt=txt+db+", "
+        txt=txt[:-2]
+        txt=txt+"]"
         print_error(txt)
     return server
 
@@ -110,7 +114,12 @@ def restore_database(dbname,dbuser,dbport,backup_file):
     return os.system(cmd)
 
 if __name__ == "__main__" :
-    usage = "usage %prog [options] database_name "+str([x for x in name_to_servermap.keys()])
+    txt = "usage %prog [options] database_name ["
+    for db in name_to_servermap.keys():
+        txt=txt+db+", "
+    txt=txt[:-2]
+    txt=txt+"]"
+    usage=txt
     parser = OptionParser(usage=usage)
     parser.add_option("-b", "--backup",
                       action="store_true", dest="backup", default=False,
