@@ -59,6 +59,8 @@ class GenericServer(generic_client.GenericClient):
         self._reinit()
 
     def _reinit(self):
+        Trace.log(e_errors.INFO, "(Re)loading configuration")
+        
         self.csc.new_config_obj.new_config_msg()
         try:
             hostaddr.update_domains(self.csc)
@@ -121,7 +123,7 @@ class GenericServer(generic_client.GenericClient):
             Trace.do_alarm(intf.do_alarm)
         if intf.dont_alarm:
             Trace.dont_alarm(intf.dont_alarm)
-           
+
     # given a server name, return the name mutated into a name appropriate for
     # identification in log and trace. this means, upcase the name and possibly
     # shorten it.  so if the name can be split into 'part1.part2', shorten
