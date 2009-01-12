@@ -106,6 +106,15 @@ class ConfigurationClient(generic_client.GenericClient):
 
         result = self.config_load_time(5, 5)
         if e_errors.is_ok(result):
+            ##############################################################
+            # This check added because a traceback was found 1-12-2009
+            # on STKen where config_load_timestamp was not in result.
+            if not result.has_key('config_load_timestamp'):
+                Trace.log(e_errors.ERROR,
+                          "ticket missing config_load_timestamp is: %s" % \
+                          (result,))
+            ##############################################################
+            
             if result['config_load_timestamp'] <= self.config_load_timestamp:
                 return True
 
