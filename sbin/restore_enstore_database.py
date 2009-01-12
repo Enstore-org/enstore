@@ -121,6 +121,9 @@ if __name__ == "__main__" :
     parser.add_option("-d", "--dump",
                       action="store_true", dest="dump", default=False,
                       help="run pg_dump on specified database")
+    parser.add_option("-p", "--port",
+                      metavar="PORT",
+                      help="database port if it should be different from setup file")
     parser.add_option("-f", "--filename",
                       metavar="FILE", help="output or sourvce datbase backup"),
     (options, args) = parser.parse_args()
@@ -150,6 +153,8 @@ if __name__ == "__main__" :
     dbarea=server.get("dbarea",None)
     dbserverowner = server.get("dbserverowner","products")
     dbhost=server.get("dbhost")
+    if options.port:
+        dbport=options.port
     if not dbarea :
         print_error("Failed to extract dbarea for database %s"%(dbname))
     if options.dump==True:
