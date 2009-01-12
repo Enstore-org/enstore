@@ -148,7 +148,7 @@ done
 #
 # copy "right" postgresql.conf to datbase area 
 #
-ech su ${database_owner} -c \"cp ${enstore_dir}/databases/control_files/postgresql.conf ${database_area}/postgresql.conf\"
+echo su ${database_owner} -c \"cp ${enstore_dir}/databases/control_files/postgresql.conf ${database_area}/postgresql.conf\"
 su ${database_owner} -c "cp ${enstore_dir}/databases/control_files/postgresql.conf ${database_area}/postgresql.conf"
 
 # bring up database server
