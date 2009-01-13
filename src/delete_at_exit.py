@@ -11,6 +11,7 @@ import os
 import sys
 import signal
 import Trace
+import errno
 try:
     import threading
     import thread
@@ -153,26 +154,51 @@ def delete():
     # Delete registered files.
     for f in _deletion_list:
         Trace.log(e_errors.INFO, "Performing file cleanup for file: %s" % (f,))
+
         if os.path.exists(f):
+            #We need to obtain the parent directory for .(access)() file names.
+            # The unlink() fails (without an error) if the parent directory is
+            # not included in the path.  This also requires that the basename
+            # not be a .(access)() name, so convert its real name.
+            if pnfs.is_access_name(f):
+                pnfsid = os.path.basename(f)[10:-1]
+                use_f = os.path.join(pnfs.get_directory_name(f),
+                                     pnfs.Pnfs().get_nameof(pnfsid))
+            else:
+                use_f = f
             try:
-                os.unlink(f)
-            except:
-                #Reset the euid and egid.
-                directory = pnfs.get_directory_name(f)
-                file_utils.match_euid_egid(directory)
+                os.unlink(use_f)
+                _deletion_list.remove(f) #Remove from the list.
+            except OSError, msg:
+                if msg.errno in [errno.EPERM, errno.EACCES] \
+                   and os.getuid() == 0 and os.geteuid() != 0:
+                    #Reset the euid and egid.
+                    directory = pnfs.get_directory_name(f)
+                    file_utils.match_euid_egid(directory)
                 
-                try:
-                    os.unlink(f)
-                except:
-                    Trace.log(e_errors.ERROR, "Can not delete file %s.\n" % (f,))
                     try:
-                        sys.stderr.write("Can not delete file %s.\n" % (f,))
+                        os.unlink(f)
+                        _deletion_list.remove(f) #Remove from the list.
+                    except OSError, msg2:
+                        message = "Can not delete file %s. (%s)" % (f, msg2)
+                        Trace.log(e_errors.ERROR, message)
+                        try:
+                            sys.stderr.write("%s%s" % (message, "\n"))
+                            sys.stderr.flush()
+                        except IOError:
+                            pass
+
+                    #Release the lock.
+                    file_utils.end_euid_egid()
+                else:
+                    message = "Can not delete file %s. (%s)" % (f, msg)
+                    Trace.log(e_errors.ERROR, message)
+                    try:
+                        sys.stderr.write("%s%s" % (message, "\n"))
                         sys.stderr.flush()
                     except IOError:
                         pass
 
-                #Release the lock.
-                file_utils.end_euid_egid()
         else:
             pnfs_agent_answer = csc.get("pnfs_agent", 5, 5)
             #We need to check if the optional pnfs_agent is even configured.
@@ -184,6 +210,7 @@ def delete():
                 # check would not be necessary.
                 if pac.is_pnfs_path(f):
                     pac.remove(f)
+                    _deletion_list.remove(f) #Remove from the list.
             
     # Delete registered bfids.
     for b in _deletion_list_bfids:
