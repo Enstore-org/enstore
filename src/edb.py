@@ -71,7 +71,7 @@ def str_value(v):
 		args = args + str_value(v[-1])
 		return v[0]+'('+args+')'
 	else:
-		return "'" + v + "'"
+		return "'" + str(v) + "'"
 
 # from a dictionary, get field name and values
 def get_fields_and_values(s):
