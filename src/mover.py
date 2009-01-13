@@ -3435,6 +3435,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     keys = ticket['return_file_list'].keys()
                     keys.sort()
                     Trace.trace(24, 'keys %s'%(keys,))
+                    stat = e_errors.OK 
                     for loc_cookie in keys:
                         location = cookie_to_long(loc_cookie)
                         self.file_info =  file_info[loc_cookie]
@@ -3454,6 +3455,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.net_driver.open('/dev/null', WRITE)
                         self.assert_ok.wait()
                         self.assert_ok.clear()
+                        Trace.trace(24, "assert return: %s"%(self.assert_return,))
+                        ticket['return_file_list'][loc_cookie] = self.assert_return
+                        if self.assert_return != e_errors.OK:
+                           stat = self.assert_return 
                         '''
                         while 1:
                             alive_count = threading.activeCount()
@@ -3467,7 +3472,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             else:
                                 time.sleep(1)
                         '''
-                    self.transfer_completed()
+                    self.transfer_completed(stat)
                                 
 
         else:
@@ -4112,7 +4117,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         #self.tr_failed = 0
         self.dont_update_lm = 0
         
-    def transfer_completed(self):
+    def transfer_completed(self, error=None):
         self.init_data_buffer() # reset (buffer)
         # simple synchonizatin between tape and network threads.
         # without this not updated file info is transferred to get
@@ -4149,7 +4154,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.net_driver.close()
         now = time.time()
         self.dismount_time = now + self.delay
-        self.send_client_done(self.current_work_ticket, e_errors.OK)
+        if error:
+            ret_err = error
+        else:
+            ret_err = e_errors.OK
+        self.send_client_done(self.current_work_ticket, ret_err)
         try:
             self.current_location, block = self.tape_driver.tell()
         except  self.ftt.FTTError, detail:
