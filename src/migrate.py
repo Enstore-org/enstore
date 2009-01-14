@@ -91,6 +91,7 @@ import enstore_functions3
 import find_pnfs_file
 import enstore_constants
 import file_utils
+import volume_assert_wrapper
 
 ###############################################################################
 
@@ -116,6 +117,13 @@ debug = False	# debugging mode
 # The workaround (not all of the above was known about EXfer and the time
 # work on the workaround began) is to use fork and pipes instead of threads.
 USE_THREADS = False #True
+
+#Instead of reading all the files with encp when scaning, we have a new
+# mode where volume_assert checks the CRCs for all files on a tape.  Using
+# this volume_assert functionality should significantly reduce the [networking]
+# resources required to run the migration scan; while at the same time
+# increasing performance.
+USE_VOLUME_ASSERT = True
 
 #icheck = True	# instant readback check after swap
 		# this is turned on by default for file based migration
@@ -2307,12 +2315,16 @@ def scan_file(MY_TASK, dst_bfid, src_path, dst_path, deleted, intf, encp):
 		use_override_deleted = "--override-deleted"
 	else:
 		use_override_deleted = ""
+	if USE_VOLUME_ASSERT:
+		use_check = "--check" #Use encp to check the metadata.
+	else:
+		use_check = ""
 
 	encp_options = "--delayed-dismount 1  --ignore-fair-share " \
 		       "--bypass-filesystem-max-filesize-check --threaded"
-	cmd = "encp %s %s %s %s %s" % (encp_options, use_priority,
-				       use_override_deleted, src_path,
-				       dst_path)
+	cmd = "encp %s %s %s %s %s %s" % \
+	      (encp_options, use_check, use_priority, use_override_deleted,
+	       src_path, dst_path)
 
 	#Read the file.
 	try:
@@ -2508,6 +2520,8 @@ def final_scan_volume(vol, intf):
 	# get an encp
 	threading.currentThread().setName('FINAL_SCAN')
 	encp = encp_wrapper.Encp(tid='FINAL_SCAN')
+	volume_assert = volume_assert_wrapper.VolumeAssert(tid='FINAL_SCAN')
+
 
 	log(MY_TASK, "verifying volume", vol)
 
@@ -2544,6 +2558,37 @@ def final_scan_volume(vol, intf):
 		error_log(MY_TASK, "%s is not a %s volume" %
 			  (vol, MIGRATION_NAME.lower()))
 		return 1
+
+	#
+	assert_errors = {}
+	if USE_VOLUME_ASSERT:
+		log(MY_TASK, "asserting %s" % (vol,))
+		volume_assert_options = "--crc-check"
+		cmd = "volume_assert --volume %s %s" % (vol,
+							volume_assert_options)
+		try:
+			res = volume_assert.volume_assert(cmd)
+		except:
+			exc, msg, tb = sys.exc_info()
+			import traceback
+			traceback.print_tb(tb)
+			print exc, msg
+			local_error = local_error + 1
+			return local_error
+
+		if res == 0:
+			#close_log("OK")
+			ok_log(MY_TASK, vol)
+			#This is a dictionary, keyed by location cookie of
+			# any errors that occured reading the files.
+			assert_errors = volume_assert.err_msgs[0]['return_file_list']
+		else: # error
+			#close_log("ERROR")
+			error_log(MY_TASK, "failed on %s error = %s"
+				  % (vol, volume_assert.err_msgs[0]['status']))
+			local_error = local_error + 1
+			return local_error
+
 
 	q = "select bfid, pnfs_id, pnfs_path, src_bfid, location_cookie, deleted  \
 		from file, volume, migration \
@@ -2598,8 +2643,24 @@ def final_scan_volume(vol, intf):
 				local_error = local_error + 1
 				continue
 			######################################################
+		
+		#If we are using volume_assert, check what the assert returned.
+		if USE_VOLUME_ASSERT:
+			if not e_errors.is_ok(assert_errors[location_cookie]):
+				error_log(MY_TASK,
+					  "assert of %s %s:%s failed" % \
+					  (dst_bfid, vol, location_cookie))
+				local_error = local_error + 1
+				continue
+			else:
+				log(MY_TASK,
+				    "assert of %s %s:%s succeeded" % \
+				    (dst_bfid, vol, location_cookie))
 
 		## Scan the file by reading it with encp.
+		## Note: if we are using volume assert, then final_scan_file()
+		##       uses --check with the encp to avoid redundant
+		##       reading of the file.
 		rtn_code = final_scan_file(MY_TASK, src_bfid, dst_bfid,
 					   pnfs_id, likely_path, deleted,
 					   fcc, encp, intf, db)
