@@ -304,7 +304,9 @@ def report_assert_results(done_ticket):
     Trace.log(e_errors.ERROR, message)
 
     #If CRC checks were requested, report the results.
-    for key in done_ticket.get('return_file_list', {}).keys():
+    lc_keys = done_ticket.get('return_file_list', {}).keys()
+    lc_keys.sort() #Sort them in order.
+    for key in lc_keys:
         message = "file %s:%s status is %s" % (
             done_ticket.get('volume', e_errors.UNKNOWN), key,
             done_ticket['return_file_list'][key])
