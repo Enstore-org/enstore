@@ -564,11 +564,44 @@ def main(intf):
     exit_status = handle_assert_requests(unique_id_list, assert_list,
                                          listen_socket, intf)
 
-    sys.exit(exit_status)
+    #sys.exit(exit_status)
+    return exit_status
     
 ############################################################################
 ############################################################################
+
+def do_work(intf):
+
+    try:
+        exit_status = main(intf)
+    except (SystemExit, KeyboardInterrupt):
+        exc, msg = sys.exc_info()[:2]
+        Trace.log(e_errors.ERROR,
+                  "encp aborted from: %s: %s" % (str(exc),str(msg)))
         
+        exit_status = 1
+    except:
+        #Get the uncaught exception.
+        exc, msg, tb = sys.exc_info()
+        ticket = {'status' : (e_errors.UNCAUGHT_EXCEPTION,
+                              "%s: %s" % (str(exc), str(msg)))}
+        try:
+            sys.stderr.write("%s\n" % (ticket['status'],))
+            sys.stderr.flush()
+        except IOError:
+            pass
+        #Send to the log server the traceback dump.  If unsuccessful,
+        # print the traceback to standard error.
+        Trace.handle_error(exc, msg, tb)
+        del tb #No cyclic references.
+
+        exit_status = 1
+
+    return exit_status
+
+############################################################################
+############################################################################
+
 if __name__ == "__main__":
 
     delete_at_exit.setup_signal_handling()
@@ -577,11 +610,4 @@ if __name__ == "__main__":
 
     intf._mode = "admin"
 
-    try:
-	main(intf)
-    except KeyboardInterrupt:
-        try:
-            sys.stderr.write("KeyboardInterrupt\n")
-            sys.stderr.flush()
-        except IOError:
-            pass
+    do_work(intf)
