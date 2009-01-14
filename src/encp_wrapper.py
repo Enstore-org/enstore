@@ -22,9 +22,12 @@ class Encp:
 	def encp(self, cmd):
 		self.exit_status = -10 #Reset this every time.
 		self.err_msg = ""
-		
-		if cmd[:4] != "encp":
-			cmd = "encp "+cmd
+
+		#Insert the command if it is not already there.
+                CMD = "encp"
+		if cmd[:len(CMD)] != CMD:
+			cmd = CMD + " " + cmd
+			
 		argv = string.split(cmd)
 		intf = self.my_encp.EncpInterface(argv, 0)
 		intf.migration_or_duplication = 1 #Set true for performance.
