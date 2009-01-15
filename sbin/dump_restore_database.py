@@ -34,7 +34,7 @@ name_to_servermap = {
     "accounting" : enstore_constants.ACCOUNTING_SERVER,
     "drivestat"  : enstore_constants.DRIVESTAT_SERVER,
     "operation"  : "operation_db",
-    "enstore-db" : "database",
+    "enstoredb"  : "database",
     }
 
 def usage(cmd):
@@ -113,14 +113,18 @@ def restore_database(dbname,dbuser,dbport,backup_file):
     cmd=pg_restore+" -p %d -U %s  -d %s %s"%(dbport,dbuser,dbname,backup_file)
     return os.system(cmd)
 
-if __name__ == "__main__" :
+def help():
     txt = "usage %prog [options] database_name ["
     for db in name_to_servermap.keys():
         txt=txt+db+", "
     txt=txt[:-2]
     txt=txt+"]"
-    usage=txt
-    parser = OptionParser(usage=usage)
+    return txt
+
+
+
+if __name__ == "__main__" :
+    parser = OptionParser(usage=help())
     parser.add_option("-b", "--backup",
                       action="store_true", dest="backup", default=False,
                       help="extract database from backup. Location of backup is defined in configuration")
