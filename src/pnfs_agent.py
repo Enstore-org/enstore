@@ -823,11 +823,11 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         
     #Make a directory.
     def mkdir(self,ticket):
+        err = False
         try:
             fname = pnfs.get_enstore_fs_path(ticket['path'])
         except KeyError, msg:
             ticket['status'] = (e_errors.KEYERROR, str(msg))
-            print "MKDIR", ticket
             self.reply_to_caller(ticket)
             return
         try:
@@ -836,24 +836,46 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
+            err = True
         except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
+            err = True
+        if err == False:
+            uid = ticket.get('uid',None)
+            gid = ticket.get('gid',None)
+            if uid and gid:
+                os.chown(fname,uid,gid)
         self.reply_to_caller(ticket)
         return
 
     #Make a directory.  (Make any missing directories in the path.)
     def mkdirs(self,ticket):
-        dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
+        err = False
+        try:
+            dirname = pnfs.get_enstore_fs_path(ticket['dirname'])
+        except KeyError, msg:
+            ticket['status'] = (e_errors.KEYERROR, str(msg))
+            self.reply_to_caller(ticket)
+            return
         try:
             os.makedirs(dirname)
             ticket['status'] = (e_errors.OK, None)
+            
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
+            err = True
         except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
+            err = True
+        if err == False:
+            uid = ticket.get('uid',None)
+            gid = ticket.get('gid',None)
+            if uid and gid:
+                os.chown(dirname,uid,gid)
+            
         self.reply_to_caller(ticket)
         return
 
@@ -1001,6 +1023,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 
         # call the user function
         t = time.time()
+	'''
         while 1:
             c = threading.activeCount()
             if c < self.max_threads:
@@ -1009,6 +1032,17 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
                 #self.run_in_thread(function, (ticket,))
                 #self.run_in_thread(function, (ticket,self._done_cleanup))
                 break
+	'''
+	c = threading.activeCount()
+	Trace.trace(5, "threads %s"%(c,))
+	if c < self.max_threads:
+	    Trace.trace(5, "threads %s"%(c,))
+	    self.run_in_thread(function, (ticket,), after_function=self._done_cleanup)
+	    #self.run_in_thread(function, (ticket,))
+	    #self.run_in_thread(function, (ticket,self._done_cleanup))
+	else:
+	    function(ticket)
+	
                 
         #apply(function, (ticket,))
         Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
@@ -1027,7 +1061,7 @@ if __name__ == "__main__":
     vc.handle_generic_commands(intf)
     
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
-    #vc._do_print({'levels':[5,6,]})
+    vc._do_print({'levels':[5,6,]})
 
     while 1:
         try:
