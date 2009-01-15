@@ -123,7 +123,7 @@ USE_THREADS = False #True
 # this volume_assert functionality should significantly reduce the [networking]
 # resources required to run the migration scan; while at the same time
 # increasing performance.
-USE_VOLUME_ASSERT = True
+USE_VOLUME_ASSERT = False
 
 #icheck = True	# instant readback check after swap
 		# this is turned on by default for file based migration
