@@ -28,6 +28,7 @@ import volume_family
 import pnfs
 import info_client
 import enstore_constants
+import file_utils
 from en_eval import en_eval
 
 MY_NAME = enstore_constants.FILE_CLERK_CLIENT   #"FILE_C_CLIENT"
@@ -598,7 +599,8 @@ class FileClient(generic_client.GenericClient,
 		       "external_label" : vol } )
 	return r
 
-    def restore(self, bfid, uid = None, gid = None):
+    def restore(self, bfid, uid = None, gid = None, force = None):
+        # get the file information from the file clerk
         bit_file = self.bfid_info(bfid)
         if bit_file['status'][0] != e_errors.OK:
             return bit_file
@@ -619,24 +621,14 @@ class FileClient(generic_client.GenericClient,
 
         # check if the volume is deleted
         if bit_file["external_label"][-8:] == '.deleted':
-            return {'status': (e_errors.FILE_CLERK_ERROR, "volume %s is deleted"%(bit_file["external_label"]))}
+            message = "volume %s is deleted" % (bit_file["external_label"],)
+            return {'status': (e_errors.FILE_CLERK_ERROR, message)}
 
-        # make sure the file has to be deleted
-        if bit_file['deleted'] != 'yes':
-            return {'status': (e_errors.FILE_CLERK_ERROR, "%s is not deleted"%(bfid))}
-
-        # check if the path is a valid pnfs path
-        if bit_file['pnfs_name0'][:5] != '/pnfs':
-            return {'status': (e_errors.FILE_CLERK_ERROR, "%s is not a valid pnfs path"%(bit_file['pnfs_name0']))}
-
-        # check if the file has already existed
-        if os.access(bit_file['pnfs_name0'], os.F_OK): # file exists
-            return {'status': (e_errors.FILE_CLERK_ERROR, "%s exists"%(bit_file['pnfs_name0']))}
-
-        # its path has to exist
-        pp, pf = os.path.split(bit_file['pnfs_name0'])
-        if not os.access(pp, os.W_OK):
-            return {'status': (e_errors.FILE_CLERK_ERROR, "can not write in directory %s"%(pp))}
+        # make sure the file has to be deleted (if --force was specified,
+        # allow for the restore to update the file)
+        if bit_file['deleted'] != 'yes' and force == None:
+            message = "%s is not deleted" % (bfid,)
+            return {'status': (e_errors.FILE_CLERK_ERROR, message)}
 
         # find out file_family
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
@@ -646,26 +638,64 @@ class FileClient(generic_client.GenericClient,
         file_family = volume_family.extract_file_family(vol['volume_family'])
         del vcc
 
+        # check if the path is a valid pnfs path
+        #if bit_file['pnfs_name0'][:5] != '/pnfs':
+        if not pnfs.is_pnfs_path(bit_file['pnfs_name0'], check_name_only = 1):
+            message = "%s is not a valid pnfs path" % (bit_file['pnfs_name0'],)
+            return {'status': (e_errors.FILE_CLERK_ERROR, message)}
+
+        # its directory has to exist
+        p_p, p_f = os.path.split(bit_file['pnfs_name0'])
+        rtn_code2 = file_utils.e_access(p_p, os.F_OK)
+        if not rtn_code2:
+            message = "can not write in directory %s" % (p_p,)
+            return {'status': (e_errors.FILE_CLERK_ERROR, message)}
+
+        # check if the file has already existed (if --force was specified,
+        # allow for the restore to update the file)
+        rtn_code = file_utils.e_access(bit_file['pnfs_name0'], os.F_OK)
+        if rtn_code and force == None: # file exists
+            message = "%s exists" % (bit_file['pnfs_name0'],)
+            return {'status': (e_errors.FILE_CLERK_ERROR, message)}
+        if rtn_code and force != None:
+            #check if any file has the same pnfs_id
+            pnfs_id = pnfs.get_pnfsid(bit_file['pnfs_name0'])
+            if pnfs_id != bit_file['pnfsid']:
+                message = "file pnfs id (%s) does not match database pnfs id (%s)"\
+                          % (bit_file['pnfs_name0'], pnfs_id)
+                return {'status': (e_errors.FILE_CLERK_ERROR, message)}
+
+
+        #Setup the File class to do the update.
         bit_file['file_family'] = file_family
         pf = pnfs.File(bit_file)
         # pf.show()
 
-        # Has it already existed?
-        if pf.exists():
-            return {'status': (e_errors.FILE_CLERK_ERROR, "%s already exists"%(bit_file['pnfs_name0']))}
-
-        # To Do: check if any file has the same pnfs_id
-
-        # Now create it; catch any error
-        try:
-            pf.create()
-        except:
-            return {'status': (e_errors.FILE_CLERK_ERROR, "can not create %s"%(pf.path))}
-
-        pnfs_id = pf.get_pnfs_id()
-        if pnfs_id != pf.pnfs_id:
-            # update file record
-            return self.modify({'bfid': bfid, 'pnfsid':pnfs_id, 'deleted':'no'})
+        # Now create/update it; catch any error
+        if not rtn_code:  #DOES NOT EXIST
+            # Has it already existed?
+            if pf.exists() and force == None:
+                message = "%s already exists" % (bit_file['pnfs_name0'],)
+                return {'status': (e_errors.FILE_CLERK_ERROR, message)}
+            
+            try:
+                pf.create()
+            except:
+                message = "can not create %s" % (pf.path,)
+                return {'status': (e_errors.FILE_CLERK_ERROR, message)}
+            
+            pnfs_id = pf.get_pnfs_id()
+            if pnfs_id != pf.pnfs_id:
+                # update file record
+                return self.modify({'bfid': bfid, 'pnfsid':pnfs_id,
+                                    'deleted':'no'})
+        else: #DOES EXIST
+            try:
+                pf.update()
+            except:
+                message = "can not update %s: %s" % (pf.path,
+                                                     sys.exc_info()[1])
+                return {'status': (e_errors.FILE_CLERK_ERROR, message)}
 
         return {'status':(e_errors.OK, None)}
 
@@ -736,6 +766,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.find_original = None
         self.find_the_original = None
         self.find_duplicates = None
+        self.force = None
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -802,6 +833,12 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"file",
                      option.USER_LEVEL:option.ADMIN},
+        option.FORCE:{option.HELP_STRING:
+			      "Force restore of file from DB that still exists"
+                              " (in some capacity) in PNFS.",
+			      option.VALUE_USAGE:option.IGNORED,
+			      option.VALUE_TYPE:option.INTEGER,
+			      option.USER_LEVEL:option.HIDDEN},
         option.GET_CRCS:{option.HELP_STRING:"get crc of a file",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
@@ -984,7 +1021,8 @@ def do_work(intf):
             uid = int(owner[0])
             if len(owner) > 1:
                 gid = int(owner[1])
-        ticket = fcc.restore(intf.restore, uid=uid, gid=gid)
+        ticket = fcc.restore(intf.restore, uid=uid, gid=gid,
+                             force = intf.force)
 
     elif intf.add:
         d={}
@@ -1038,7 +1076,7 @@ def do_work(intf):
                 print i
     elif intf.erase:
         # Make this a hidden option -- this is too dangerous otherwise
-        ALLOW_ERASE = False
+        ALLOW_ERASE = True
         if ALLOW_ERASE:
             ticket = fcc.del_bfid(intf.erase)
         else:
