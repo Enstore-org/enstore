@@ -895,7 +895,7 @@ ALTER TABLE public.enstore_tables OWNER TO enstore;
 
 CREATE TABLE event (
     tag character varying(48) NOT NULL,
-    name character varying(32) NOT NULL,
+    name character varying(64) NOT NULL,
     node character varying(32) NOT NULL,
     username character varying(32) NOT NULL,
     "start" timestamp without time zone NOT NULL,
@@ -907,6 +907,7 @@ CREATE TABLE event (
 
 ALTER TABLE public.event OWNER TO enstore;
 
+-- alter table  event ALTER column  name type  varchar(64);
 --
 -- Name: lock_status; Type: VIEW; Schema: public; Owner: enstore
 --
