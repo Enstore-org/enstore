@@ -36,6 +36,7 @@ import e_errors
 import checksum
 import host_config
 from en_eval import en_eval
+import Interfaces
 
 def hex8(x):
     s=hex(x)[2:]  #kill the 0x
@@ -44,6 +45,25 @@ def hex8(x):
     if l>8:
         raise OverflowError, x
     return '0'*(8-l)+s
+
+def get_socket_read_queue_length(sock):
+    OPT = getattr(fcntl, "FIONREAD", None)
+    if OPT == None:
+        if os.uname()[0] == "Linux":
+            OPT = 0x541B  #Linux specific hack.
+        if os.uname()[0][:4] == "IRIX" or \
+           os.uname()[0] == "SunOS" or \
+           os.uname()[0] == "OSF1":
+            OPT = 1074030207 #Pulled from header files.
+    if OPT != None:
+        import struct #Only import this when necessary.
+        nbytes = struct.unpack("i",
+                               fcntl.ioctl(sock, OPT, "    "))[0]
+
+    else:
+        raise AttributeError("FIONREAD")
+
+    return nbytes
 
 def __get_socket_state(fd):
     if os.uname()[0] == "Linux":
@@ -206,7 +226,6 @@ def write_obj(fd, obj, timeout=15*60, verbose = True):
 ###############################################################################
 
 def record_recv_error(sock):
-    #if data_string == "":
         #According to python documentation when recv() returns the empty
         # string the other end has closed the connection.
 
@@ -228,8 +247,9 @@ def record_recv_error(sock):
 
         try:
             #Verify if the connection is still up.
-            sock.getpeername()
+            peer_name = sock.getpeername()
         except socket.error, msg:
+            peer_name = None
             Trace.log(e_errors.ERROR,
                       "timeout_recv(): getpeername: %s" % str(msg))
 
@@ -243,6 +263,9 @@ def record_recv_error(sock):
         # It would be useful to output the number of bytes in the
         # read buffer.  Python does not yet support it.
         try:
+            nbytes = get_socket_read_queue_length(sock)
+
+            """
             OPT = getattr(fcntl, "FIONREAD", None)
             if OPT == None:
                 if os.uname()[0] == "Linux":
@@ -255,15 +278,32 @@ def record_recv_error(sock):
                 import struct #Only import this when necessary.
                 nbytes = struct.unpack("i",
                                        fcntl.ioctl(sock, OPT, "    "))[0]
-                Trace.log(e_errors.ERROR,
-                          "timeout_recv(): fcntl(FIONREAD): %s"
-                          % (str(nbytes),))
+            """
+                       
+            Trace.log(e_errors.ERROR,
+                      "timeout_recv(): fcntl(FIONREAD): %s"
+                      % (str(nbytes),))
         except AttributeError:
             #FIONREAD not known on this system.
             pass
         except IOError, msg:
             Trace.log(e_errors.ERROR,
                       "timeout_recv(): ioctl(FIONREAD): %s" % (str(msg),))
+
+        #Get any mac addresses.
+        arpGetFunc = getattr(Interfaces, "arpGet", None)
+        if peer_name and arpGetFunc:
+            try:
+                mac_addresses = arpGetFunc(peer_name[0])
+                if mac_addresses:
+                    Trace.log(e_errors.ERROR, 
+                              "timeout_recv(): arp get[%s]: %s" % \
+                              (peer_name[0], str(mac_addresses)))
+
+            except:
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): arp get[%s]: %s" % \
+                          (peer_name[0], str(msg)))
 
 #recv with a timeout
 def timeout_recv(sock, nbytes, timeout = 15 * 60):
