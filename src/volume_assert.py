@@ -10,8 +10,8 @@
 import os
 import sys
 import string
-#import socket
-#import select
+import socket
+import select
 import pprint
 import time
 import errno
@@ -24,7 +24,7 @@ import library_manager_client
 import volume_clerk_client
 import option
 import e_errors
-#import callback
+import callback
 import Trace
 import hostaddr
 import encp
@@ -320,6 +320,31 @@ def report_assert_results(done_ticket):
                 pass
             Trace.log(e_errors.ERROR, message) #log files only on error
         
+def stall_volume_assert(control_socket):
+    while 1:
+        try:
+            read_control_fd, unused, unused = select.select([control_socket],
+                                                            [], [], None)
+            status_ticket = {'status' : (e_errors.OK, None)}
+        except (select.error, socket.error), msg:
+            if msg.errno in [errno.EINTR, errno.EAGAIN]:
+                #select() was interupted by a signal.
+                continue
+            
+            status_ticket = {'status' : (e_errors.NET_ERROR,
+                                         "%s: %s" % (str(msg),
+                                               "No data read from mover."))}
+            break
+        except e_errors.TCP_EXCEPTION:
+            status_ticket = {'status' : (e_errors.NET_ERROR,
+                                         e_errors.TCP_EXCEPTION)}
+            break
+
+        if control_socket in read_control_fd \
+               and callback.get_socket_read_queue_length(control_socket):
+            break
+
+    return status_ticket
 
 #Unique_id_list is a list of just the unique ids.  Assert_list is a list of
 # the complete tickets.
@@ -396,6 +421,10 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
             Trace.log(e_errors.ERROR, message2)
             continue
 
+        if intf.crc_check:
+            stall_volume_assert(socket)
+            
+
         try:
             #Obtain the results of the volume assert by the mover.
             done_ticket = encp.receive_final_dialog(socket)
@@ -457,6 +486,7 @@ class VolumeAssertInterface(generic_client.GenericClientInterface):
         self.volume = ""
         self.mover_timeout = 60*60
         self.crc_check = None
+        self.location_cookies = None
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -471,15 +501,19 @@ class VolumeAssertInterface(generic_client.GenericClientInterface):
     parameters = ["volume_list_file"]
     
     volume_assert_options = {
-        option.CRC_CHECK:{option.HELP_STRING:"crc check specific file(s), " \
-                          "seperate multiple location cookies with commas",
-                          option.DEFAULT_NAME:'crc_check',
-                          option.DEFAULT_TYPE:option.INTEGER,
-                          option.VALUE_USAGE:option.OPTIONAL,
-                          option.VALUE_TYPE:option.STRING,
-                          option.VALUE_NAME:'location_cookies',
-                          option.USER_LEVEL:option.USER,
-                          option.FORCE_SET_DEFAULT:option.FORCE,},
+        #option.CRC_CHECK:{option.HELP_STRING:"crc check specific file(s), " \
+        #                  "seperate multiple location cookies with commas",
+        #                  option.DEFAULT_NAME:'crc_check',
+        #                  option.DEFAULT_TYPE:option.INTEGER,
+        #                  option.VALUE_USAGE:option.OPTIONAL,
+        #                  option.VALUE_TYPE:option.STRING,
+        #                  option.VALUE_NAME:'location_cookies',
+        #                  option.USER_LEVEL:option.USER,
+        #                  option.FORCE_SET_DEFAULT:option.FORCE,},
+        option.CRC_CHECK:{option.HELP_STRING:"crc check for volume(s)",
+                          option.VALUE_TYPE:option.INTEGER,
+                          option.VALUE_USAGE:option.IGNORED,
+                          option.USER_LEVEL:option.ADMIN},
         option.MOVER_TIMEOUT:{option.HELP_STRING:"set mover timeout period "\
                               " in seconds (default 1 hour)",
                               option.VALUE_USAGE:option.REQUIRED,
