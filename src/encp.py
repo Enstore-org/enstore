@@ -4536,19 +4536,39 @@ def open_control_socket(listen_socket, mover_timeout):
     #Perform one last test of the socket.  This should never fail, but
     # on occasion does...
     fds, unused, unused = select.select([control_socket], [], [], 0.0)
-    try:
-        if fds:
-            ticket = callback.read_tcp_obj(control_socket)
+    if fds:
+        try:
+            bytes_queued = callback.get_socket_read_queue_length(control_socket)
+            if bytes_queued == 0:
+                Trace.log(e_errors.INFO, "No socket read queued count.")
+                
+        except AttributeError:
+            #FIONREAD not known on this system.
+            bytes_queued = 0
+        except IOError, msg:
+            Trace.log(e_errors.ERROR,
+                      "timeout_recv(): ioctl(FIONREAD): %s" % (str(msg),))
+            bytes_queued = 0
 
-            Trace.log(e_errors.INFO,
-                      "Received second ticket in open_control_socket: %s" %
-                      (str(ticket),))
-    except (select.error, socket.error), msg:
-        raise EncpError(msg.errno, str(msg), e_errors.NET_ERROR, ticket)
-    except e_errors.TCP_EXCEPTION:
-        raise EncpError(errno.ENOTCONN,
-                        "Control socket no longer usable after initalization.",
-                        e_errors.TCP_EXCEPTION, ticket)
+        if bytes_queued > 0:
+            try:
+                ticket = callback.read_tcp_obj(control_socket)
+
+                Trace.log(e_errors.INFO,
+                          "Received second ticket in open_control_socket: %s" %
+                          (str(ticket),))
+            except (select.error, socket.error), msg:
+                raise EncpError(msg.errno, str(msg), e_errors.NET_ERROR, ticket)
+            except e_errors.TCP_EXCEPTION:
+                raise EncpError(errno.ENOTCONN,
+                                "Control socket no longer usable after initalization.",
+                                e_errors.TCP_EXCEPTION, ticket)
+
+    #Check for additional connection attempts we aren't ready for.
+    read_fds, unused, unused = select.select([listen_socket], [], [], 0)
+    if read_fds:
+        message = "Detected additional connection attempt that is not expected."
+        Trace.log(e_errors.INFO, message)
 
     return control_socket, address, ticket
     
@@ -7943,6 +7963,9 @@ def submit_write_request(work_ticket, encp_intf):
 ############################################################################
 
 def stall_write_transfer(data_path_socket, control_socket, e):
+
+    stall_write_transfer_start_time = time.time()
+    
     #Stall starting the count until the first byte is ready for writing.
     duration = e.mover_timeout
     while 1:
@@ -8026,6 +8049,11 @@ def stall_write_transfer(data_path_socket, control_socket, e):
                                          e_errors.TCP_EXCEPTION)}
     else:
         status_ticket = {'status' : (e_errors.OK, None)}
+
+    message = "Time to stall %d write transfer: %s sec." % \
+              (1, time.time() - stall_write_transfer_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     return status_ticket
 
@@ -9740,6 +9768,9 @@ def submit_read_requests(requests, encp_intf):
 #######################################################################
 
 def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
+
+    stall_read_transfer_start_time = time.time()
+    
     #Stall starting the count until the first byte is ready for reading.
     duration = e.mover_timeout
     while 1:
@@ -9807,6 +9838,11 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
                                          e_errors.TCP_EXCEPTION)}
     else:
         status_ticket = {'status' : (e_errors.OK, None)}
+
+    message = "Time to stall %d read transfer: %s sec." % \
+              (1, time.time() - stall_read_transfer_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     return status_ticket
 
