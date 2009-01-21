@@ -4741,7 +4741,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if state is None:
             state = self.state
         Trace.trace(20,"format_lm_ticket: state %s error_info %s error_source %s"%
-                    (state, error_info, error_source))
+                    (state_name(state), error_info, error_source))
         volume_label = self.current_volume
         if self.current_volume:
             volume_label = self.current_volume
