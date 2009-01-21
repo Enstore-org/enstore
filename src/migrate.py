@@ -125,10 +125,13 @@ USE_THREADS = False #True
 # increasing performance.
 USE_VOLUME_ASSERT = False
 
-#icheck = True	# instant readback check after swap
-		# this is turned on by default for file based migration
-		# It is turned off by default for volume based migration
+#When true, fork off a new process that will handle migrating one file.
+# Then keep multiple process going.
+USE_PROCESS_PER_FILE_MIGRATION = False
 
+###############################################################################
+
+#
 DEFUALT_QUEUE_SIZE = 1024
 
 # job queue for coping files
@@ -140,9 +143,9 @@ scan_queue.received_count = 0
 copy_queue.finished = False
 scan_queue.finished = False
 
-#These are the pipes that will send jobs between the processes.
-migrate_r_pipe, migrate_w_pipe = os.pipe()
-scan_r_pipe, scan_w_pipe = os.pipe()
+#These will be set to the pipes that will send jobs between the processes.
+migrate_r_pipe, migrate_w_pipe = (None, None)
+scan_r_pipe, scan_w_pipe = (None, None)
 
 SENTINEL = "SENTINEL"
 
@@ -150,8 +153,11 @@ SENTINEL = "SENTINEL"
 io_lock = thread.allocate_lock()
 
 #Make these global so we can kill them if necessary.
+#  When USE_PROCESS_PER_FILE_MIGRATION is False.
 pid = None
 pid2 = None
+#  When USE_PROCESS_PER_FILE_MIGRATION is True.
+pid_list = []
 
 ##
 ## End multiple_threads / forked_processes global variables.
@@ -369,7 +375,7 @@ def set_proceed_number(src_bfids, intf):
 	###############################################################
 	#Determine the media speeds that the migration will be going at.
 	src_media_type = get_media_type(src_bfids[0], db)
-	if intf.library and intf.library == types.StringType:
+	if intf.library and type(intf.library) == types.StringType:
 		dst_media_type = get_media_type(intf.library, db)
 	else:
 		mig_path = get_migration_db_path()
@@ -391,9 +397,11 @@ def set_proceed_number(src_bfids, intf):
 	#Put some form of bound on this value until its effect on performance
 	# is better understood.
 	proceed_number = min(proceed_number, FILE_LIMIT)
+	proceed_number = max(proceed_number, 1)
 		
 	###############################################################
-	#print "proceed_number:", proceed_number
+	if debug:
+		log("proceed_number:", proceed_number)
 
 #If the source and destination media_types are the same, set this to be
 # a cloning job rather than a migration.
@@ -537,7 +545,7 @@ def open_log(*args):
 	if log_f:
 		log_f.write(time.ctime(t)+' ')
 		for i in args:
-			log_f.write(i+' ')
+			log_f.write(str(i)+' ')
 		log_f.flush()
 		
 # error_log(s) -- handling error message
@@ -882,15 +890,15 @@ def get_migration_type(src_vol, dst_vol, db):
 	except IndexError:
 		return None
 
-	if migration_result and duplication_result:
+	if (migration_result or cloning_result) and duplication_result:
 		return "The metadata is inconsistent between migration " \
 		       "and duplication."
+	elif cloning_result:
+		return cloning_result
 	elif migration_result:
 		return migration_result
 	elif duplication_result:
 		return duplication_result
-	elif cloning_result:
-		return cloning_result
 		
 	return None
 
@@ -1395,11 +1403,12 @@ def show_status(volume_list, db):
 				# correct spot.
 				if is_dst_volume:
 					line = "%19s %1s%1s %19s" % \
-					       ("", "", "", row[0],)
+					       ("", "", row[1].upper(), row[0])
 					print line
 				else:
 					#Not migrated yet.
-					line = "%19s" % (row[0],)
+					line = "%19s %1s%1s %19s" % \
+					       (row[0], "", row[1].upper(), "")
 					print line
 					exit_status = 1
 			if not mig_type and len(res2) > 0:
@@ -1532,10 +1541,14 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 		return 1
 
 	# make sure the tmp file is not there
-	if os.access(tmp_path, os.F_OK):
+	if file_utils.e_access(tmp_path, os.F_OK):
 		log(MY_TASK, "tmp file %s exists, removing it first" \
 		    % (tmp_path,))
-		os.remove(tmp_path)
+		try:
+			os.remove(tmp_path)
+		except (OSError, IOError), msg:
+			error_log(MY_TASK, "unable to remove %s: %s" % (tmp_path, str(msg)))
+			return 1
 
 	## Build the encp command line.
 	if intf.priority:
@@ -1554,14 +1567,18 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 		       " --bypass-filesystem-max-filesize-check --threaded"
 	#We need to use --get-bfid here because of multiple copies.
 	# 
-	cmd = "encp %s %s %s %s %s" \
+	cmd = "encp --verbose 4 %s %s %s %s %s" \
 	      % (encp_options, use_priority, use_override_deleted,
 		 use_path, tmp_path)
 
 	if debug:
 		log(MY_TASK, "cmd =", cmd)
 
-	res = encp.encp(cmd)
+	try:
+		res = encp.encp(cmd)
+	except:
+		res = 1
+		error_log(MY_TASK, "Unable to execute encp", sys.exc_info()[1])
 	if res == 0:
 		ok_log(MY_TASK, "%s %s to %s" \
 		       % (src_bfid, src_path, tmp_path))
@@ -2069,10 +2086,10 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 		    % (src_bfid, tmp_path, mig_path))
 		# delete the target and retry once
 		try:
-			
 			os.remove(mig_path)
-		except:
-			pass
+		except (OSError, IOError), msg:
+			error_log(MY_TASK, "failed to remove %s" % (mig_path,))
+			return 1
 		res = encp.encp(cmd)
 		if res:
 			error_log(MY_TASK, "failed to copy %s %s %s error = %s"
@@ -2081,8 +2098,9 @@ def write_file(MY_TASK, src_bfid, tmp_path, mig_path,
 			# delete the target and give up
 			try:
 				os.remove(mig_path)
-			except:
-				pass
+			except (OSError, IOError), msg:
+				error_log(MY_TASK,
+					  "failed to remove %s" % (mig_path,))
 			return 1
 	else:
 		# log success of coping
@@ -2446,7 +2464,7 @@ def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
 
 	# make sure the original is marked deleted
 	f = fcc.bfid_info(src_bfid)
-	if f['status'] == e_errors.OK and f['deleted'] != 'yes':
+	if e_errors.is_ok(f['status']) and f['deleted'] != 'yes':
 		rtn_code = mark_deleted(MY_TASK, src_bfid, fcc, db)
 		if rtn_code:
 			#Error occured.
@@ -2744,12 +2762,20 @@ def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 
 # migrate(bfid_list): -- migrate a list of files
 def migrate(bfids, intf):
+	global migrate_r_pipe, migrate_w_pipe
+	global scan_r_pipe, scan_w_pipe
+	
 	#If we don't do this between volumes, the first volume behaves
 	# correctly, while the rest don't.
 	copy_queue.received_count = 0
 	scan_queue.received_count = 0
 	copy_queue.finished = False
 	scan_queue.finished = False
+
+	#Set these here for each process if USE_PROCESS_PER_FILE_MIGRATION
+	# is true.
+	migrate_r_pipe, migrate_w_pipe = os.pipe()
+	scan_r_pipe, scan_w_pipe = os.pipe()
 
 	#Set the global proceed_number variable.
 	set_proceed_number(bfids, intf)
@@ -3036,6 +3062,8 @@ def migrate_volume(vol, intf):
 	# is handled differently.
 	global INHIBIT_STATE, IN_PROGRESS_STATE
 	global set_system_migrating_func, set_system_migrated_func
+
+	global pid_list
 	
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
@@ -3064,8 +3092,6 @@ def migrate_volume(vol, intf):
 		
 
 	# now try to copy the file one by one
-	# get all bfids
-
 	if intf.with_deleted:
 		use_deleted_sql = "or deleted = 'y'"
 	else:
@@ -3114,8 +3140,81 @@ def migrate_volume(vol, intf):
 		set_system_migrating_func(vcc, vol)
 		log(MY_TASK, 'set %s to %s' % (vol, IN_PROGRESS_STATE))
 
-	# start to copy the files one by one
-	res = migrate(bfids, intf)
+	#Start to copy the files by starting a process per file.
+	if USE_PROCESS_PER_FILE_MIGRATION:
+		res = 0
+		copy_bfids_list = copy.copy(bfids)
+		while len(copy_bfids_list):
+			while len(pid_list) < FILE_LIMIT and \
+				  len(copy_bfids_list) > 0:
+				pid_v = os.fork()
+				bfid = copy_bfids_list[0]
+				if pid_v < 0: #error
+					try:
+						sys.stderr.write("fork() failed\n")
+						sys.stderr.flush()
+					except IOError:
+						pass
+				elif pid_v:  #parent
+					#Add this to the list.
+					pid_list.append(pid_v)
+					#Remove from the remaing to start list.
+					copy_bfids_list.remove(bfid)
+					time.sleep(1) #Give child a moment.
+				else: #child
+					res = migrate([bfid], intf)
+					try:
+						sys.stdout.flush()
+						sys.stderr.flush()
+					except IOError:
+						pass
+					try:
+						log_f.flush()
+						os.fsync(log_f.fileno())
+					except (IOError, OSError):
+						pass
+					os._exit(res) #child exit
+			
+			if len(pid_list) >= 1: #PROC_NUMBER:
+				#We need to wait for a process to finsish.
+				done_pid, done_exit_status = os.wait()
+				print done_pid, done_exit_status
+				#Remember the error.
+				if done_exit_status:
+					res = res + 1
+				#Remove the pid from the list of active pids.
+				try:
+					pid_list.remove(done_pid)
+				except (IndexError), msg:
+					try:
+						sys.stderr.write("%s\n" % (msg,))
+						sys.stderr.flush()
+					except IOError:
+						pass
+			
+		while len(pid_list):
+			#We need to wait for a process to finsish.
+			done_pid, done_exit_status = os.wait()
+			#Remember the error.
+			if done_exit_status:
+				res = res + 1
+			#Remove the pid from the list of active pids.
+			try:
+				pid_list.remove(done_pid)
+			except (IndexError), msg:
+				try:
+					sys.stderr.write("%s\n" % (msg,))
+					sys.stderr.flush()
+				except IOError:
+					pass
+					
+				
+	#Start to copy the files one by starting a process for all reads
+	# and leaving the main thread for writes.
+	else:
+		res = migrate(bfids, intf)
+
+	#Do one last volume wide check.
 	if res == 0 and is_migrated_by_src_vol(vol, intf, db, checked = 0, closed = 0):
 		set_src_volume_migrated(
 			MY_TASK, vol, vcc, db)
@@ -3199,11 +3298,13 @@ def restore(bfids, intf):
 		#If swapped, the current bfid is the new copy, ...
 		if is_swapped(bfid, db):
 			active_bfid = dst_bfid
+			nonactive_bfid = bfid
 		# ... otherwise we have a copied file that is not swapped
 		# (probably something is very wrong, after all the user is
 		# trying to set the original file back as the active file).
 		else:
 			active_bfid = bfid
+			nonactive_bfid = dst_bfid
 
 		#Find the current location of the file.
 		try:
@@ -3213,6 +3314,10 @@ def restore(bfids, intf):
 		except (KeyboardInterrupt, SystemExit):
 			raise (sys.exc_info()[0], sys.exc_info()[1],
 			       sys.exc_info()[2])
+		except OSError, msg:
+			src = find_pnfs_file.find_pnfsid_path(
+				f['pnfsid'], nonactive_bfid,
+				path_type = find_pnfs_file.FS)
 		except:
 			exc_type, exc_value, exc_tb = sys.exc_info()
 			Trace.handle_error(exc_type, exc_value, exc_tb)
@@ -3250,26 +3355,59 @@ def restore(bfids, intf):
 				  % (bfid, src,))
 			continue
 
-		#For trusted pnfs systems, there isn't a problem,
-		# but for untrusted we need to set the effective
-		# IDs to the owner of the file.
-		file_utils.match_euid_egid(src)
-
-		# set layer 1 and layer 4 to point to the original file
-		p.update()
-
-		# remove the migration file in pnfs
+		#Knowing the parth in pnfs, we can determine the special
+		# temporary migration path in PNFS.
 		mig_path = migration_path(src)
-		try:
-			nullify_pnfs(mig_path)
-			os.remove(mig_path)
-		except (OSError, IOError), msg:
-			error_log(MY_TASK,
-				  "failed to delete migration file %s: %s" \
-				  % (mig_path, str(msg)))
 
-		#Now set the root ID's back.
-		file_utils.end_euid_egid(reset_ids_back = True)
+		if os.path.exists(mig_path):
+			#For trusted pnfs systems, there isn't a problem,
+			# but for untrusted we need to set the effective
+			# IDs to the owner of the file.
+			file_utils.match_euid_egid(src)
+
+			# set layer 1 and layer 4 to point to the original file
+			p.update()
+
+			#Now set the root ID's back.
+			file_utils.end_euid_egid(reset_ids_back = True)
+
+			###############################################
+			
+			#For trusted pnfs systems, there isn't a problem,
+			# but for untrusted we need to set the effective
+			# IDs to the owner of the file.
+			file_utils.match_euid_egid(mig_path)
+
+			# remove the migration file in pnfs
+			try:
+				nullify_pnfs(mig_path)
+			except (OSError, IOError), msg:
+				#Don't worry if the file is already gone.
+				if msg.errno not in [errno.ENOENT]:
+					error_log(MY_TASK,
+						  "failed to clear layers for file %s: %s" \
+						  % (mig_path, str(msg)))
+					continue
+
+			#Now set the root ID's back.
+			file_utils.end_euid_egid(reset_ids_back = True)
+
+			#To delete the file, we need to match the owner of the
+			# directory.
+			file_utils.match_euid_egid(pnfs.get_directory_name(mig_path))
+
+			try:
+				os.remove(mig_path)
+			except (OSError, IOError), msg:
+				#Don't worry if the file is already gone.
+				if msg.errno not in [errno.ENOENT]:
+					error_log(MY_TASK,
+						  "failed to delete migration file %s: %s" \
+						  % (mig_path, str(msg)))
+					continue
+
+			#Now set the root ID's back.
+			file_utils.end_euid_egid(reset_ids_back = True)
 
 		# mark the migration copy of the file deleted
 		rtn_code = mark_deleted(MY_TASK, dst_bfid, fcc, db)
@@ -3277,6 +3415,7 @@ def restore(bfids, intf):
 			error_log(MY_TASK,
 			     "failed to mark undeleted migration file %s %s" \
 				  % (dst_bfid, mig_path,))
+			continue
 
 		#Remove the swapped timestamp from the migration table.
 		log_unswapped(bfid, dst_bfid, db)
@@ -3624,6 +3763,14 @@ def do_work(intf):
 		if msg.args[0] != errno.ESRCH:
 			sys.stderr.write("Unable to kill %d: %s\n" %
 					 (pid2, str(msg)))
+
+	for pid_l in pid_list:
+		try:
+			os.kill(pid_l, signal.SIGTERM)
+			os.waitpid(pid_l, 0)
+		except OSError, msg:
+			sys.stderr.write("Unable to kill %d: %s\n" %
+					 (pid_l, str(msg)))
 	
 	sys.exit(exit_status)
 
