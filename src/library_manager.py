@@ -2009,8 +2009,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.startup_flag = 1   # this flag means that LM is in the startup state
 
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'],
-                                                             self.keys['port']),
-                                                      use_raw=1)
+                                                             self.keys['port']))
         
         # setup the communications with the event relay task
         self.resubscribe_rate = 300
@@ -3201,13 +3200,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-    def get_pending_queue_length(self, ticket):
-        ticket['queue_length'] = self.pending_work.queue_length
-        #ticket['rqs'] = self.rqs
-        ticket['status'] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-
-
     # get active volume known to LM
     def get_active_volumes(self, ticket):
         movers = self.volumes_at_movers.get_active_movers()
@@ -3289,7 +3281,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # overrides GEnericServer reinit when received notification of new configuration file.
     def reinit(self):
-        Trace.log(e_errors.INFO, "(Re)initializing server")
+        Trace.log(e_errors.INFO, "(Re)loading configuration")
         self.keys = self.csc.get(self.name)
         self.allow_access = self.keys.get('allow', None)
         self.pri_sel.read_config()
