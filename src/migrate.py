@@ -1731,7 +1731,7 @@ def copy_files(files, intf):
 				except (OSError, IOError), msg:
 					error_log(MY_TASK, "can not find temporary file %s" % (tmp,))
 					continue
-				if tfstat[stat.ST_MODE] == file_record['size']:
+				if tfstat[stat.ST_SIZE] == file_record['size']:
 					res = 0
 				else:
 					res = 1
