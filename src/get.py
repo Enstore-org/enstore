@@ -995,6 +995,7 @@ def readtape_from_hsm(e, tinfo):
                 encp.create_zero_length_local_files(request)
 
         #Submit the request to the library manager.
+        request['method'] = "read_tape_start"
         submitted, reply_ticket = encp.submit_read_requests([request], e)
         Trace.message(TRANSFER_LEVEL, "Read tape submission sent to LM.")
 
