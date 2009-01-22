@@ -4441,11 +4441,13 @@ class Mover(dispatching_worker.DispatchingWorker,
     def connect_client(self):
         self.client_socket = None
         # run this in a thread
+        self.host = None
         try:
             ticket = self.current_work_ticket
             data_ip=self.config.get("data_ip",None)
             if (not self.method) or self.method and self.method != 'read_next':
                 host, port, self.listen_socket = callback.get_callback(ip=data_ip)
+                self.host = host
             #self.listen_socket.listen(1)
             #if self.method and self.method == 'read_tape_start':
             #    self.udp_control_address = ticket.get('routing_callback_addr', None)
@@ -4458,9 +4460,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             #        self.udp_ext_control_address =("get", self.lm_address) 
             #        self.libraries = [self.udp_ext_control_address]
                 
-            self.listen_socket.listen(1)
+            #self.listen_socket.listen(1)
             if (not self.method) or (self.method and self.method != 'read_next'):
-                #self.listen_socket.listen(1)
+                self.listen_socket.listen(1)
                 # need a control connection setup
                 # otherwise: not because it must be left open
                 
@@ -4683,7 +4685,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # where mover runs.
                     # this is why we bind to device only if network interfaces are different
                     data_interface=hostaddr.interface_name(data_ip)
-                    host_interface=hostaddr.interface_name(host)
+                    host_interface=hostaddr.interface_name(self.host)
                     
                     # bind to device only if data interface card and host interface card are different
                     # otherwise the connection on the same host is refused
