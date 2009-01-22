@@ -1567,7 +1567,7 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 		       " --bypass-filesystem-max-filesize-check --threaded"
 	#We need to use --get-bfid here because of multiple copies.
 	# 
-	cmd = "encp --verbose 4 %s %s %s %s %s" \
+	cmd = "encp %s %s %s %s %s" \
 	      % (encp_options, use_priority, use_override_deleted,
 		 use_path, tmp_path)
 
