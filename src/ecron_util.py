@@ -127,9 +127,9 @@ class EcronData:
 	# get_cron_result() -- get result just like old cronHISTOGRAM
 	def get_result(self, name, node, start=None):
 		if start:
-			q = "(select start as time, 10 from event where name = '%s' and node = '%s' and start >= '%s' and comment is null) union (select finish as time, status from event where name = '%s' and node = '%s' and not finish is null and start >= '%s' and comment is null) order by time;"%(name, node, start, name, node, start)
+			q = "(select start as time, 10 from event where name = '%s' and split_part(node,'.',1) = '%s' and start >= '%s' and comment is null) union (select finish as time, status from event where name = '%s' and split_part(node,'.',1) = '%s' and not finish is null and start >= '%s' and comment is null) order by time;"%(name, node.split('.')[0], start, name, node.split('.')[0], start)
 		else:
-			q = "(select start as time, 10 from event where name = '%s' and node = '%s' and comment is null) union (select finish as time, status from event where name = '%s' and node = '%s' and not finish is null and comment is null) order by time;"%(name, node, name, node)
+			q = "(select start as time, 10 from event where name = '%s' and split_part(node,'.',1) and comment is null) union (select finish as time, status from event where name = '%s' and split_part(node,'.',1) and not finish is null and comment is null) order by time;"%(name, node.split('.')[0], name, node.split('.')[0])
 		return self.db.query(q).getresult()
 
 	def plot(self, file, name, data, start=None):
