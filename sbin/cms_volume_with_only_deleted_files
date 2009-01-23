@@ -64,8 +64,10 @@ rm -f $temp_file
 echo -e Migration Report: `date` > $temp_file 2>&1
 echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
 
-psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
-select * from cms_volume_with_only_deleted_files order by label;
-" >> $temp_file 2>&1
+#psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
+#select * from cms_volume_with_only_deleted_files order by label;
+#" >> $temp_file 2>&1
+
+psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "select * from cms_volume_with_only_deleted_files order by label" -o  $temp_file
 
 mv "$temp_file" "$output_file" #Do the temp file swap.
