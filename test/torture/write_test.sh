@@ -35,8 +35,8 @@ if [ "${1:-}" = "-b" ] ; then shift; batch=$1; shift; fi
 if [ -z $pnfs_path ]; then pnfs_path="/pnfs/cdfen/test/sl8500/test"; fi
 if [ ! -z $data ]; then data=${data}/; fi
 #sizes="1 10 50 100 200 500 800 1000 2000 3000 4000 5000"
-#sizes="3 4 5 6 7 8 9 10 11 12"
-sizes="3 4 5 6 7 8"
+sizes="3 4 5 6 7 8 9 10 11 12"
+#sizes="3 4 5 6 7 8"
 
 if [ ! -d $data ]; then mkdir -p $data;fi
 #echo  $data*$$.data
@@ -61,7 +61,7 @@ if [ $fsz -eq 0 ]; then
       for s in $sizes
       do
 	i=1
-	while [ $i -lt $batch ] 
+	while [ $i -le $batch ] 
 	do
 	  #name=test_${s}_`date +"%s"`.data
 	  name=${host}_test_${s}_`date +"%s"`_$$.data
