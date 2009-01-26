@@ -150,28 +150,54 @@ def timeout_send(sock,msg,timeout=15*60):
 def write_raw(sock,msg,timeout=15*60):
     max_pkt_size=16384
     try:
+        #Determine the length of the payload.
         msg_len = len(msg)
-        
-        msg_msg_len = "%08d" % (len(msg),)
+
+        #First part of the message sent is 8 characters consisiting of the
+        # length of the payload part of the message.  Put these bytes together
+        # and determine the length.
+        msg_msg_len = "%08d" % (msg_len,)
         msg_len_len = len(str(msg_msg_len))
 
+        #Second part of the message sent is 8 characters of Enstore
+        # specific bytes.  Put these bytes together and determine the length.
         salt = random.randint(11, 99)
-        msg_salt = "ENSTOR%s" % (salt,)
-        msg_salt_len = len(msg_salt)
+        msg_signature = "ENSTOR%s" % (salt,)
+        msg_signature_len = len(msg_signature)
 
+        #Forth part of the message sent is the 32bit adler32 CRC of the
+        # payload of the message.  Put these bytes together and determine
+        # the length.
         checksum_msg = hex8(checksum.adler32(salt, msg, msg_len))
         checksum_len = len(checksum_msg)
 
-        #nwritten = timeout_send(sock, "%08d"%(len(msg),), timeout)
-        nwritten = timeout_send(sock, msg_msg_len, timeout)
-        if type(nwritten) != types.IntType or nwritten != msg_len_len:
-            return 1, "short write: message length"
+        #Now actually write out the length of the payload to the socket.
+        ptr = 0
+        while ptr < msg_len_len:
+            nwritten = timeout_send(sock, msg_msg_len[ptr:], timeout)
+            if type(nwritten) != types.IntType or nwritten <= 0:
+                break
+            ptr = ptr + nwritten
+        if ptr < msg_len_len:
+            return 1, "short write: message length (expected 8, received %s)" \
+                   % (ptr,)
+        if ptr != msg_len_len:
+            return 1, "bad write: message length (expected 8, received %s)" \
+                   % (ptr,)
 
-        #timeout_send(sock, "ENSTOR%s"%(salt,), timeout)
-        nwritten = timeout_send(sock, msg_salt, timeout)
-        if type(nwritten) != types.IntType or nwritten != msg_salt_len:
-            return 1, "short write: salt"
+        #This time write out the 'signature'.
+        ptr = 0
+        while ptr < msg_signature_len:
+            nwritten = timeout_send(sock, msg_signature[ptr:], timeout)
+            if type(nwritten) != types.IntType or nwritten <= 0:
+                break
+            ptr = ptr + nwritten
+        if ptr < msg_signature_len:
+            return 1, "short write: salt (expected 8, received %s)" % (ptr,)
+        if ptr != msg_signature_len:
+            return 1, "bad write: salt (expected 8, received %s)" % (ptr,)
 
+        #Write the payload to the socket.
         ptr = 0
         while ptr < msg_len:
             nwritten = timeout_send(sock, msg[ptr:ptr+max_pkt_size], timeout)
@@ -179,12 +205,26 @@ def write_raw(sock,msg,timeout=15*60):
                 break
             ptr = ptr + nwritten
         if ptr < msg_len:
-            return 1, "short write: message"
+            return 1, "short write: message (expected %d, received %s)" \
+                   % (msg_len, ptr,)
+        if ptr != msg_len:
+            return 1, "bad write: message (expected %d, received %s)" \
+                   % (msg_len, ptr,)
 
-        #timeout_send(sock, hex8(checksum.adler32(salt, msg, msg_len)), timeout)
-        nwritten = timeout_send(sock, checksum_msg, timeout)
-        if type(nwritten) != types.IntType or nwritten != checksum_len:
-            return 1, "short write: checksum"
+        #Lastly, write out the checksum of the payload.
+        ptr = 0
+        while ptr < checksum_len:
+            nwritten = timeout_send(sock, checksum_msg[ptr:], timeout)
+            if type(nwritten) != types.IntType or nwritten <= 0:
+                break
+            ptr = ptr + nwritten
+        if ptr < checksum_len:
+            return 1, "short write: checksum (expected 4, received %s)" \
+                   % (ptr,)
+        if ptr != checksum_len:
+            return 1, "bad write: checksum (expected 4, received %s)" \
+                   % (ptr,)
+            
 
         return 0, ""
     except (socket.error, OSError), detail:
@@ -265,21 +305,6 @@ def record_recv_error(sock):
         try:
             nbytes = get_socket_read_queue_length(sock)
 
-            """
-            OPT = getattr(fcntl, "FIONREAD", None)
-            if OPT == None:
-                if os.uname()[0] == "Linux":
-                    OPT = 0x541B  #Linux specific hack.
-                if os.uname()[0][:4] == "IRIX" or \
-                   os.uname()[0] == "SunOS" or \
-                   os.uname()[0] == "OSF1":
-                    OPT = 1074030207 #Pulled from header files.
-            if OPT != None:
-                import struct #Only import this when necessary.
-                nbytes = struct.unpack("i",
-                                       fcntl.ioctl(sock, OPT, "    "))[0]
-            """
-                       
             Trace.log(e_errors.ERROR,
                       "timeout_recv(): fcntl(FIONREAD): %s"
                       % (str(nbytes),))
@@ -316,27 +341,17 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
     
     #Loop until a the timeout has passed, a hard error occurs or
     # the message has really arrived.
-    #while time_left > 0.0:
     while timeout_time > time.time():
-        #start_time = time.time()
         try:
             time_left = max(timeout_time - time.time(), 0.0)
             fds, junk, junk = select.select([sock], [], [], time_left)
         except select.error, msg:
             if msg.args[0] == errno.EINTR:
-                #time_left = max(total_start_time + timeout - time.time(), 0.0)
                 continue
-            #fds = []
             error_string = "timeout_recv(): %s" % str(msg)
-            #Trace.log(e_errors.ERROR, error_string)
             #Return to handle the error.
             return "", error_string
-        #end_time = time.time()
         if sock not in fds:
-            #error_string = "timeout_recv(): select duration: %s  fds: %s  sock: %s"
-            #          % (end_time - start_time, fds, sock)
-            #Trace.log(e_errors.ERROR, error_string)
-
             #Hopefully, this situation is different than other situations
             # that were all previously lumped together as "error".
             continue
@@ -363,13 +378,12 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
         
     #timedout
     error_string = "timeout_recv(): timedout"
-    #Trace.log(e_errors.ERROR, error_string)
     return "", error_string
 
 #read_raw - return tuple of message read and error string.  One or the other
 # should be returned as an empty string.
 def read_raw(fd, timeout=15*60):
-    #Trace.log(e_errors.INFO, "read_raw: starting")
+    # Read in the length of the payload part of the message.
     tmp, error_string = timeout_recv(fd, 8, timeout) # the message length
     len_tmp = len(tmp)
     if len_tmp != 8:
@@ -383,12 +397,18 @@ def read_raw(fd, timeout=15*60):
         error_string = "%s; read_raw: bad bytecount '%s'" % \
                        (error_string, tmp,)
         return "", error_string
+
+    #Read in the signature.
     tmp, error_string = timeout_recv(fd, 8, timeout) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
         error_string = "%s; read_raw: invalid signature '%s'" % \
                        (error_string, tmp,)
         return "", error_string
+
+    #Extract the salt from the signature.
     salt= int(tmp[6:])
+
+    #Read in the payload and verify it is consistant with what we expected.
     msg = ""
     while len(msg) < bytecount:
         tmp, error_string = timeout_recv(fd, bytecount - len(msg), timeout)
@@ -399,6 +419,9 @@ def read_raw(fd, timeout=15*60):
         error_string = "%s; read_raw: bytecount mismatch %s != %s" \
                        % (error_string, len(msg), bytecount)
         return "", error_string
+
+    #Read in the adler32 CRC and verify it is consistant with what we
+    # expected.
     tmp, error_string = timeout_recv(fd, 8, timeout)
     crc = long(tmp, 16)  #XXX 
     mycrc = checksum.adler32(salt,msg,len(msg))
