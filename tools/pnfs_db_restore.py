@@ -54,6 +54,7 @@ class PnfsDbRestore:
         print "\t allowed postgres versions: "+versions[:-1]
 
     def recover(self,name,backup_time=None):
+        pnfsSetupFile=os.path.join(os.getenv("ENSTORE_DIR"),"etc/%-pnfsSetup"%(name))
         if sys2host.has_key(name):
             self.pnfs_host = sys2host[name][0]
         for s in self.systems:
@@ -62,6 +63,8 @@ class PnfsDbRestore:
             config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
             if config_server_client.get('pnfs_server',None) != None:
                 self.pnfs_host=config_server_client.get('pnfs_server').get('host')
+        cmd = "cp %s /tmp/pnfsSetup.%s"%(pnfsSetupFile, host)
+        os.system(cmd)
         pnfs_db, pgdb, trash, backup_host, backup_dir, pnfs_dir, backup_name = get_config(self.pnfs_host)
 
         cmd='umount /pnfs/fs'
@@ -185,17 +188,17 @@ def get_command_output(command):
     
     
 def get_config(host):
-    print "get_config PNFS HOST ",host
-    cmd = "rcp %s:/usr/etc/pnfsSetup pnfsSetup.%s"%(host, host)
-    pipeObj = popen2.Popen3(cmd, 0, 0)
-    if pipeObj is None:
-        print "%s failed"%(cmd, )
-        sys.exit(1) 
-    stat = pipeObj.wait()
-    result = pipeObj.fromchild.readlines()  # result has returned string
-
-    f = open("pnfsSetup.%s"%(host,), 'r')
-    of = open("pnfsSetup.%s.tmp"%(host,), 'w')
+    #    print "get_config PNFS HOST ",host
+    #    cmd = "rcp %s:/usr/etc/pnfsSetup pnfsSetup.%s"%(host, host)
+    #    pipeObj = popen2.Popen3(cmd, 0, 0)
+    #    if pipeObj is None:
+    #        print "%s failed"%(cmd, )
+    #        sys.exit(1) 
+    #    stat = pipeObj.wait()
+    #    result = pipeObj.fromchild.readlines()  # result has returned string
+    #
+    f = open("/tmp/pnfsSetup.%s"%(host,), 'r')
+    of = open("/tmp/pnfsSetup.%s.tmp"%(host,), 'w')
     while 1:
         l = f.readline()
         
@@ -219,8 +222,8 @@ def get_config(host):
         of.write(l)
     of.close()
     f.close()
-    os.system("mv pnfsSetup.%s.tmp pnfsSetup.%s"%(host, host))
-    os.system("cp -f pnfsSetup.%s /usr/etc/pnfsSetup"%(host, ))
+    os.system("mv /tmp/pnfsSetup.%s.tmp /tmp/pnfsSetup.%s"%(host, host))
+    os.system("cp -f /tmp/pnfsSetup.%s /usr/etc/pnfsSetup"%(host, ))
     # get local pnfs directory
     pnfs_dir=os.popen('. /usr/local/etc/setups.sh; setup pnfs; echo $PNFS_DIR').readlines()[0][:-1]
     #
