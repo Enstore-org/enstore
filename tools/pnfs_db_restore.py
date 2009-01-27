@@ -63,7 +63,7 @@ class PnfsDbRestore:
             config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
             if config_server_client.get('pnfs_server',None) != None:
                 self.pnfs_host=config_server_client.get('pnfs_server').get('host')
-        cmd = "cp %s /tmp/pnfsSetup.%s"%(pnfsSetupFile, host)
+        cmd = "cp %s /tmp/pnfsSetup.%s"%(pnfsSetupFile, self.pnfs_host)
         os.system(cmd)
         pnfs_db, pgdb, trash, backup_host, backup_dir, pnfs_dir, backup_name = get_config(self.pnfs_host)
 
