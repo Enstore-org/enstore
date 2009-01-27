@@ -183,7 +183,6 @@ if __name__ == "__main__" :
     server=csc.get(server_name,None)
     if not server :
         sys.exit(1)
-    #extract all what we need for the database connection
     dbport = server.get("dbport",5432)
     dbname = server.get("dbname",dbname)
     dbuser = server.get("dbuser","enstore")
