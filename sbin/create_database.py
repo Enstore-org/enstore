@@ -28,7 +28,7 @@ import dump_restore_database
 
 USERID=1342
 GROUPID=4525
-creatgroup="/usr/sbin/groupadd"
+creategroup="/usr/sbin/groupadd"
 createuser="/usr/sbin/useradd"
 dbserver_cmd = "postmaster"
 pid_file = dbserver_cmd+".pid"
