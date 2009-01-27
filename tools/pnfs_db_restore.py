@@ -54,7 +54,7 @@ class PnfsDbRestore:
         print "\t allowed postgres versions: "+versions[:-1]
 
     def recover(self,name,backup_time=None):
-        pnfsSetupFile=os.path.join(os.getenv("ENSTORE_DIR"),"etc/%-pnfsSetup"%(name))
+        pnfsSetupFile=os.path.join(os.getenv("ENSTORE_DIR"),"etc/%s-pnfsSetup"%(name))
         if sys2host.has_key(name):
             self.pnfs_host = sys2host[name][0]
         for s in self.systems:
