@@ -189,16 +189,16 @@ def writetape_from_hsm(e, tinfo):
     
     #This needs to be defined somewhere.
     #files_transfered = 0
-    bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
+    byte_sum = 0L #Sum of bytes transfered (when transfering multiple files).
     exit_status = 0 #Used to determine the final message text.
     number_of_files = 0 #Total number of files where a transfer was attempted.
 
     """
     #Get an ip and port to listen for the mover address for
     # routing purposes.
-    udp_callback_addr, udp_socket = encp.get_udp_callback_addr(e)
+    udp_callback_addr, udp_serv = encp.get_udp_callback_addr(e)
     #If the socket does not exist, do not continue.
-    if udp_socket.server_socket == None:
+    if udp_serv.server_socket == None:
         done_ticket = {'exit_status' : 2,
                        'status':(e_errors.NET_ERROR,
                                  "Unable to obtain udp socket.")}
@@ -206,7 +206,7 @@ def writetape_from_hsm(e, tinfo):
     """
 
     # Get the list of files to read.
-    done_ticket, listen_socket, udp_socket, request_list = \
+    done_ticket, listen_socket, udp_serv, request_list = \
                  encp.prepare_write_to_hsm(tinfo, e)
 
     if e.check:
@@ -229,7 +229,8 @@ def writetape_from_hsm(e, tinfo):
         work_ticket, index, copy = encp.get_next_request(request_list)
 
         #Send the request to write the file to the library manager.
-        done_ticket = encp.submit_write_request(work_ticket, e)
+        work_ticket['method'] = "write_tape_start"
+        done_ticket, lmc = encp.submit_write_request(work_ticket, e)
 
         work_ticket = encp.combine_dict(done_ticket, work_ticket)
         #handle_retries() is not required here since submit_write_request()
@@ -239,7 +240,7 @@ def writetape_from_hsm(e, tinfo):
 
         # Establish control socket connection with the mover.
         control_socket, ticket = get.mover_handshake(listen_socket,
-                                                     udp_socket,
+                                                     udp_serv,
                                                      work_ticket, e)
 
         # Verify that everything went ok with the handshake.
@@ -280,7 +281,7 @@ def writetape_from_hsm(e, tinfo):
             ### Note: This should not be necessary after a bug in the
             ### mover was fixed long ago.
             #udp_callback_addr, unused = encp.get_udp_callback_addr(
-            #    e, udp_socket)
+            #    e, udp_serv)
 
             #Combine the ticket from the mover with the current
             # information.  Remember the ealier dictionaries 'win'
@@ -292,7 +293,7 @@ def writetape_from_hsm(e, tinfo):
             work_ticket['callback_addr'] = listen_socket.getsockname()
             #The ticket item of 'routing_callback_addr' is a legacy name.
             work_ticket['routing_callback_addr'] = \
-                                         udp_socket.get_server_address()
+                                         udp_serv.get_server_address()
             #Encp create_read_request() gives each file a new unique id.
             # The LM can't deal with multiple mover file requests from one
             # LM request.  Thus, we need to set this back to the last
@@ -306,7 +307,7 @@ def writetape_from_hsm(e, tinfo):
             Trace.log(e_errors.INFO, message)
 
             data_path_socket, done_ticket = get.mover_handshake2(work_ticket,
-                                                                 udp_socket, e)
+                                                                 udp_serv, e)
 
             #Give up.
             if e_errors.is_non_retriable(done_ticket['status'][0]):
@@ -317,7 +318,7 @@ def writetape_from_hsm(e, tinfo):
                 Trace.log(e_errors.ERROR, message)
 
                 #We are done with this mover.
-                get.end_session(udp_socket, control_socket)
+                get.end_session(udp_serv, control_socket)
                 #Set completion status to failure.
                 work_ticket['completion_status'] = FAILURE
                 work_ticket['status'] = done_ticket['status']
@@ -342,7 +343,7 @@ def writetape_from_hsm(e, tinfo):
                 Trace.log(e_errors.WARNING, message)
 
                 #We are done with this mover.
-                get.end_session(udp_socket, control_socket)
+                get.end_session(udp_serv, control_socket)
                 break
 
             #############################################################
@@ -351,7 +352,7 @@ def writetape_from_hsm(e, tinfo):
             done_ticket = encp.write_hsm_file(work_ticket, control_socket,
                                               data_path_socket,
                                               tinfo, e,
-                                              udp_socket = udp_socket)
+                                              udp_serv = udp_serv)
             #############################################################
 
             # Close these descriptors before they are forgotten about.
@@ -360,7 +361,7 @@ def writetape_from_hsm(e, tinfo):
             #Sum up the total amount of bytes transfered.
             exfer_ticket = done_ticket.get('exfer',
                                            {'bytes_transfered' : 0L})
-            bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
+            byte_sum = byte_sum + exfer_ticket.get('bytes_transfered', 0L)
 
             #Combine the tickets.
             work_ticket = encp.combine_dict(done_ticket, work_ticket)
@@ -385,16 +386,16 @@ def writetape_from_hsm(e, tinfo):
             # Do what finish_request() says to do.
             if what_to_do == STOP:
                 #We get here only on a non-retriable error.
-                get.end_session(udp_socket, control_socket)
+                get.end_session(udp_serv, control_socket)
                 return done_ticket
             elif what_to_do == CONTINUE_FROM_BEGINNING:
                 #We get here only on a retriable error.
-                get.end_session(udp_socket, control_socket)
+                get.end_session(udp_serv, control_socket)
                 break
 
     else:
         #If we get here, then, we should have a success.
-        get.end_session(udp_socket, control_socket)
+        get.end_session(udp_serv, control_socket)
 
     # we are done transferring - close out the listen socket
     encp.close_descriptors(listen_socket)
@@ -403,7 +404,7 @@ def writetape_from_hsm(e, tinfo):
     Trace.message(TO_GO_LEVEL, "EXIT STATUS: %d" % exit_status)
 
     #Finishing up with a few of these things.
-    calc_ticket = encp.calculate_final_statistics(bytes, number_of_files,
+    calc_ticket = encp.calculate_final_statistics(byte_sum, number_of_files,
                                                   exit_status, tinfo)
 
     #Volume one ticket is the last request that was processed.

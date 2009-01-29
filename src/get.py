@@ -217,26 +217,45 @@ def mover_handshake_new(listen_socket, work_ticket, encp_intf):
         return control_socket, ticket
 
 
-def mover_handshake_original(listen_socket, udp_socket, request, encp_intf):
+def mover_handshake_original(listen_socket, udp_serv, work_tickets, encp_intf):
+
+    control_socket, ticket = encp.mover_handshake_part1(
+        listen_socket, udp_serv, work_tickets, encp_intf)
+
+    if not e_errors.is_ok(ticket):
+        return None, ticket
+
+    """
+
+    ticket = {}
+    #config = host_config.get_config()
+    unique_id_list = []
+    for work_ticket in work_list:
+        unique_id_list.append(work_ticket['unique_id'])
+
+    ##################################################################
+    #This udp_server code is depricated.
+    ##################################################################
     #Grab a new clean udp_socket.
-    udp_callback_addr, unused = encp.get_udp_callback_addr(encp_intf,
-                                                           udp_socket)
+    ###udp_callback_addr, unused = encp.get_udp_callback_addr(encp_intf,
+    ###                                                       udp_serv)
     #The ticket item of 'routing_callback_addr' is a legacy name.
-    request['routing_callback_addr'] = udp_callback_addr
+    ###request['routing_callback_addr'] = udp_callback_addr
 
     #Open the routing socket.
-    try:
+    if udp_serv:
+        try:
 
 	    Trace.message(TRANSFER_LEVEL, "Opening udp socket.")
 	    Trace.log(e_errors.INFO, "Opening udp socket.")
 	    Trace.log(e_errors.INFO,
 		      "Listening for udp message at: %s." % \
-		      str(udp_socket.server_socket.getsockname()))
+		      str(udp_serv.server_socket.getsockname()))
 
             #Keep looping until one of these two messages arives.
             # Ignore any other that my be received.
-            uticket = encp.open_udp_socket(udp_socket,
-                                           [request['unique_id']],
+            uticket = encp.open_udp_socket(udp_serv,
+                                           unique_id_list,
                                            encp_intf)
 
             #If requested output the raw message.
@@ -248,30 +267,31 @@ def mover_handshake_original(listen_socket, udp_socket, request, encp_intf):
 		Trace.log(e_errors.ERROR,
 			  "Unable to connect udp socket: %s" %
 			  (str(uticket['status'])))
-		uticket = encp.combine_dict(uticket, request)
 		return None, uticket
 
 	    Trace.message(TRANSFER_LEVEL, "Opened udp socket.")
 	    Trace.log(e_errors.INFO, "Opened udp socket.")
-    except (encp.EncpError,), detail:
-	if getattr(detail, "errno", None) == errno.ETIMEDOUT:
-	    #Handle retries needs to be called to update various values
-	    # and to perfrom the resubmition itself.
-	    request['status'] = (e_errors.RESUBMITTING,
-				 request['unique_id'])
-	else:
-	    #Handle retries needs to be called to update various values
-	    # and to perfrom the resubmition itself.
-	    request['status'] = (detail.type, str(detail))
+        except (encp.EncpError,), detail:
+            if getattr(detail, "errno", None) == errno.ETIMEDOUT:
+	        #Handle retries needs to be called to update various values
+                # and to perfrom the resubmition itself.
+                ticket['status'] = (e_errors.RESUBMITTING, None)
+            else:
+	        #Handle retries needs to be called to update various values
+                # and to perfrom the resubmition itself.
+                ticket['status'] = (detail.type, str(detail))
 
-	#Log the error.
-	Trace.log(e_errors.ERROR, "Unable to connect udp socket: %s" %
-		  (str(request['status']),))
-	return None, request
+	    #Log the error.
+            Trace.log(e_errors.ERROR, "Unable to connect udp socket: %s" %
+                      (str(ticket['status']),))
+            return None, ticket
 
-    #Print out the final ticket.
-    Trace.message(TICKET_LEVEL, "UDP TICKET:")
-    Trace.message(TICKET_LEVEL, pprint.pformat(uticket))
+        #Print out the final ticket.
+        Trace.message(TICKET_LEVEL, "UDP TICKET:")
+        Trace.message(TICKET_LEVEL, pprint.pformat(uticket))
+    ##################################################################
+    #End of depricated udp_server code.
+    ##################################################################
 
     message = "Listening for control socket at: %s" \
               % str(listen_socket.getsockname())
@@ -306,7 +326,7 @@ def mover_handshake_original(listen_socket, udp_socket, request, encp_intf):
 		elif msg.args[0] == errno.ETIMEDOUT:
 		    #udp_socket.reply_to_caller_using_interface_ip(
                     #rticket, listen_socket.getsockname()[0])
-                    udp_socket.reply_to_caller(uticket)
+                    udp_serv.reply_to_caller(uticket)
 		else:
 		    if isinstance(msg, (socket.error, select.error)):
 			ticket = {'status' : (e_errors.NET_ERROR,
@@ -329,24 +349,24 @@ def mover_handshake_original(listen_socket, udp_socket, request, encp_intf):
 	    Trace.log(e_errors.ERROR,
 		      "Unable to connect control socket: %s" %
 		      (str(ticket['status'])))
-	    ticket = encp.combine_dict(ticket, request)
 	    return None, ticket
 
     except (encp.EncpError,), detail:
 	if getattr(detail, "errno", None) == errno.ETIMEDOUT:
 	    #Handle retries needs to be called to update various values
 	    # and to perfrom the resubmition itself.
-	    request['status'] = (e_errors.RESUBMITTING, request['unique_id'])
+	    ticket['status'] = (e_errors.RESUBMITTING, ticket['unique_id'])
 	else:
 	    #Handle retries needs to be called to update various values
 	    # and to perfrom the resubmition itself.
-	    request['status'] = (detail.type, str(detail))
+	    ticket['status'] = (detail.type, str(detail))
 
 	#Log the error.
 	Trace.log(e_errors.ERROR, "Unable to connect control socket: %s" %
-		  (str(request['status']),))
-	return None, request
+		  (str(ticket['status']),))
+	return None, ticket
 
+    """
     #Print out the final ticket.
     Trace.message(TICKET_LEVEL, "MOVER HANDSHAKE (CONTROL):")
     Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
@@ -357,8 +377,9 @@ def mover_handshake_original(listen_socket, udp_socket, request, encp_intf):
     Trace.message(INFO_LEVEL, message)
     Trace.log(e_errors.INFO, message)
 
+    """
     #Compare expected unique id with the returned unique id.
-    if ticket.get('unique_id', None) != request['unique_id']:
+    if ticket.get('unique_id', None) not in unique_id_list:
 	#Build the error messages.
 	msg = "Unexpected unique_id received from %s.  Expected " \
 	      "unique id %s, received %s instead." % \
@@ -372,6 +393,7 @@ def mover_handshake_original(listen_socket, udp_socket, request, encp_intf):
         except IOError:
             pass
 	Trace.log(e_errors.ERROR, str(msg))
+    """
 
     #Keep the udp socket queues clear, while waiting for the mover
     # ready message.
@@ -380,7 +402,7 @@ def mover_handshake_original(listen_socket, udp_socket, request, encp_intf):
     Trace.log(e_errors.INFO, "Waiting for mover ready message.")
     while time.time() < start_time + encp_intf.mover_timeout:
         #Keep looping until the message arives.
-        mover_ready = udp_socket.do_request()
+        mover_ready = udp_serv.do_request()
 
         #If requested output the raw message.
         Trace.trace(11, "UDP MOVER READY MESSAGE:")
@@ -398,8 +420,8 @@ def mover_handshake_original(listen_socket, udp_socket, request, encp_intf):
     else:
         #We timed out.  Handle the error.
         error_ticket = {'status' : (e_errors.RESUBMITTING, None)}
-        mover_ready = encp.handle_retries([request], request,
-                                           error_ticket, encp_intf)
+        mover_ready = encp.handle_retries([ticket], ticket,
+                                          error_ticket, encp_intf)
 
     Trace.message(TRANSFER_LEVEL, "Received mover ready message.")
     Trace.log(e_errors.INFO, "Received mover ready message.")
@@ -613,6 +635,7 @@ def mover_handshake2_original(work_ticket, udp_socket, e):
         return data_path_socket, work_ticket
 
 mover_handshake = mover_handshake_original
+encp.mover_handshake = mover_handshake  #For encp.wait_for_message().
 mover_handshake2 = mover_handshake2_original
 
 def set_metadata(ticket, intf):
@@ -943,16 +966,16 @@ def readtape_from_hsm(e, tinfo):
     
     #This needs to be defined somewhere.
     #files_transfered = 0
-    bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
+    byte_sum = 0L #Sum of bytes transfered (when transfering multiple files).
     exit_status = 0 #Used to determine the final message text.
     number_of_files = 0 #Total number of files where a transfer was attempted.
 
     """
     #Get an ip and port to listen for the mover address for
     # routing purposes.
-    udp_callback_addr, udp_socket = encp.get_udp_callback_addr(e)
+    udp_callback_addr, udp_serv = encp.get_udp_callback_addr(e)
     #If the socket does not exist, do not continue.
-    if udp_socket.server_socket == None:
+    if udp_serv.server_socket == None:
         done_ticket = {'exit_status' : 2,
                        'status':(e_errors.NET_ERROR,
                                  "Unable to obtain udp socket.")}
@@ -960,7 +983,7 @@ def readtape_from_hsm(e, tinfo):
     """
     
     # Get the list of files to read.
-    done_ticket, listen_socket, udp_socket, requests_per_vol = \
+    done_ticket, listen_socket, udp_serv, requests_per_vol = \
                  encp.prepare_read_from_hsm(tinfo, e)
 
     if e.check:
@@ -985,7 +1008,7 @@ def readtape_from_hsm(e, tinfo):
         request_list = requests_per_vol[vol]
         number_of_files = number_of_files + len(request_list)
 
-        #Get the next volume in the list to transfer.
+        #Get the first request on the next volume to transfer.
         request, index = get_next_request(request_list, e)
 
         #If the read mode is "read until end of data", we need to
@@ -996,7 +1019,8 @@ def readtape_from_hsm(e, tinfo):
 
         #Submit the request to the library manager.
         request['method'] = "read_tape_start"
-        submitted, reply_ticket = encp.submit_read_requests([request], e)
+        submitted, reply_ticket, lmc = encp.submit_read_requests([request], e)
+
         Trace.message(TRANSFER_LEVEL, "Read tape submission sent to LM.")
 
         if not e_errors.is_ok(reply_ticket):
@@ -1011,7 +1035,7 @@ def readtape_from_hsm(e, tinfo):
             request['status'] = (e_errors.UNKNOWN,
                                  "Unknown failure submitting request for " \
                                  "file %s on volume %s." % \
-                                 (request['infile'], vol))
+                                (request['infile'], vol))
 
             #Tell the calling process, this file failed.
             error_output(reply_ticket)
@@ -1021,19 +1045,64 @@ def readtape_from_hsm(e, tinfo):
             request['exit_status'] = 2
             return request
 
+        #If encp.USE_NEW_EVENT_LOOP is true, we need this cleared.
+        transaction_id_list = []
 
         while requests_outstanding(request_list):
 
-            # Establish control socket connection with the mover.
-            control_socket, ticket = mover_handshake(listen_socket, udp_socket,
-                                                     request, e)
+            ticket, control_socket, unused = \
+                    encp.wait_for_message(listen_socket, lmc,
+                                          request_list,
+                                          transaction_id_list, e,
+                                          udp_serv = udp_serv)
 
+            """
+            # Establish control socket connection with the mover.
+            control_socket, ticket = mover_handshake(listen_socket, udp_serv,
+                                                     request, e)
+            """
+            
             # Verify that everything went ok with the handshake.
             external_label = request.get('fc', {}).get('external_label', None)
             result_dict = encp.handle_retries([request], request,
                                               ticket, e,
-                                              external_label = external_label)
+                                              external_label = external_label,
+                                              udp_serv = udp_serv)
 
+            #If USE_NEW_EVENT_LOOP is true, we need these ids.
+            transaction_id_list = result_dict.get('transaction_id_list',[])
+
+            #For LM submission errors (i.e. tape went NOACCESS), use
+            # any request information in result_dict to identify which
+            # request gave an error.
+            done_ticket = encp.combine_dict(result_dict, done_ticket)
+
+
+            if e_errors.is_non_retriable(result_dict):
+
+                #Regardless if index is None or not, make sure that
+                # exit_status gets set to failure.
+                exit_status = 1
+
+                if index == None:
+                    message = "Unknown transfer failed."
+                    try:
+                        sys.stderr.write(message + "\n")
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
+                    Trace.log(e_errors.ERROR,
+                              message + "  " + str(done_ticket))
+
+                else:
+                    #Combine the dictionaries.
+                    work_ticket = encp.combine_dict(done_ticket,
+                                                    request_list[index])
+                    #Set completion status to successful.
+                    work_ticket['completion_status'] = FAILURE
+                    #Store these changes back into the master list.
+                    request_list[index] = work_ticket
+            
             if not e_errors.is_ok(result_dict):
                 # Close these descriptors before they are forgotten about.
                 if control_socket != None:
@@ -1044,6 +1113,14 @@ def readtape_from_hsm(e, tinfo):
                     return request
 
                 continue
+
+            if not control_socket:
+                #We only got a response from the LM, we did not connect
+                # with the mover yet.
+                continue
+
+            #If encp.USE_NEW_EVENT_LOOP is true, we need these ids.
+            transaction_id_list = result_dict.get('transaction_id_list',[])
 
             #maybe this isn't a good idea...
             request = encp.combine_dict(ticket, request)
@@ -1062,11 +1139,11 @@ def readtape_from_hsm(e, tinfo):
                 #Get the next file in the list to transfer.
                 request, index = get_next_request(request_list, e)
 
-                #Grab a new clean udp_socket.
+                #Grab a new clean udp_server.
                 ### Note: This should not be necessary after a bug in the
                 ### mover was fixed long ago.
                 #udp_callback_addr, unused = encp.get_udp_callback_addr(
-                #    e, udp_socket)
+                #    e, udp_serv)
 
                 #Combine the ticket from the mover with the current
                 # information.  Remember the ealier dictionaries 'win'
@@ -1078,7 +1155,7 @@ def readtape_from_hsm(e, tinfo):
                 request['callback_addr'] = listen_socket.getsockname()
                 #The ticket item of 'routing_callback_addr' is a legacy name.
                 request['routing_callback_addr'] = \
-                                             udp_socket.get_server_address()
+                                             udp_serv.get_server_address()
                 #Encp create_read_request() gives each file a new unique id.
                 # The LM can't deal with multiple mover file requests from one
                 # LM request.  Thus, we need to set this back to the last
@@ -1092,7 +1169,7 @@ def readtape_from_hsm(e, tinfo):
                 Trace.log(e_errors.INFO, message)
 
                 data_path_socket, done_ticket = mover_handshake2(request,
-                                                                 udp_socket, e)
+                                                                 udp_serv, e)
                 #Give up.
                 if e_errors.is_non_retriable(done_ticket['status'][0]):
                     #Tell the user what happend.
@@ -1102,7 +1179,7 @@ def readtape_from_hsm(e, tinfo):
                     Trace.log(e_errors.ERROR, message)
 
                     #We are done with this mover.
-                    end_session(udp_socket, control_socket)
+                    end_session(udp_serv, control_socket)
                     #Set completion status to failure.
                     request['completion_status'] = FAILURE
                     request['status'] = done_ticket['status']
@@ -1126,7 +1203,7 @@ def readtape_from_hsm(e, tinfo):
                     Trace.log(e_errors.WARNING, message)
 
                     #We are done with this mover.
-                    end_session(udp_socket, control_socket)
+                    end_session(udp_serv, control_socket)
                     break
 
                 #############################################################
@@ -1136,7 +1213,7 @@ def readtape_from_hsm(e, tinfo):
                 done_ticket = encp.read_hsm_file(request, control_socket,
                                                  data_path_socket, [request],
                                                  tinfo, e,
-                                                 udp_socket = udp_socket)
+                                                 udp_serv = udp_serv)
                 #############################################################
 
                 # Close these descriptors before they are forgotten about.
@@ -1145,7 +1222,7 @@ def readtape_from_hsm(e, tinfo):
                 #Sum up the total amount of bytes transfered.
                 exfer_ticket = done_ticket.get('exfer',
                                                {'bytes_transfered' : 0L})
-                bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
+                byte_sum = byte_sum + exfer_ticket.get('bytes_transfered', 0L)
 
                 #Combine the tickets.
                 request = encp.combine_dict(done_ticket, request)
@@ -1170,11 +1247,11 @@ def readtape_from_hsm(e, tinfo):
                 # Do what finish_request() says to do.
                 if what_to_do == STOP:
                     #We get here only on a non-retriable error.
-                    end_session(udp_socket, control_socket)
+                    end_session(udp_serv, control_socket)
                     return done_ticket
                 elif what_to_do == CONTINUE_FROM_BEGINNING:
                     #We get here only on a retriable error.
-                    end_session(udp_socket, control_socket)
+                    end_session(udp_serv, control_socket)
                     break
                 
                 """
@@ -1323,7 +1400,7 @@ def readtape_from_hsm(e, tinfo):
                 """
         else:
             #If we get here, then, we should have a success.
-            end_session(udp_socket, control_socket)
+            end_session(udp_serv, control_socket)
 
     # we are done transferring - close out the listen socket
     encp.close_descriptors(listen_socket)
@@ -1332,7 +1409,7 @@ def readtape_from_hsm(e, tinfo):
     Trace.message(TO_GO_LEVEL, "EXIT STATUS: %d" % exit_status)
 
     #Finishing up with a few of these things.
-    calc_ticket = encp.calculate_final_statistics(bytes, number_of_files,
+    calc_ticket = encp.calculate_final_statistics(byte_sum, number_of_files,
                                                   exit_status, tinfo)
 
     #Volume one ticket is the last request that was processed.
