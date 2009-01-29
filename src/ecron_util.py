@@ -117,7 +117,7 @@ class EcronData:
 
 	def get_all_names_and_nodes(self):
 		if self.all_names_and_nodes == None:
-			q = "select distinct name, node from event where comment is null;"
+			q = "select distinct name, split_part(node,'.',1) from event where comment is null;"
 			res = self.db.query(q).getresult()
 			self.all_names_and_nodes = []
 			for i in res:
