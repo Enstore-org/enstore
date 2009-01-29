@@ -144,7 +144,7 @@ def check_database(dbport, dbserverowner):
     return 1
 
 def create_database_user(dbport,dbuser):
-    return os.system("psql template1 -p %d -c \"create user superuser %s password \'enstore_user\' createdb;\""%(dbport,dbuser))
+    return os.system("psql template1 -p %d -c \"create user %s with superuser password \'enstore_user\' createdb;\""%(dbport,dbuser))
 
 def create_database_read_user(dbport,dbuser):
     return os.system("psql template1 -p %d -c \"create user %s password \'enstore_user\';\""%(dbport,dbuser))
