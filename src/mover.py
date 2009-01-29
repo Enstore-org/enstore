@@ -4599,13 +4599,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                             self.state = self.save_state
                             null_err = 1
                         if not null_err:
-                            wrapper_type = volume_family.extract_wrapper(self.tmp_vf)
-                            if ticket['work'] == 'write_to_hsm' and wrapper_type != "null":
-                                ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for NULL mover')
-                                #self.send_client_done(ticket, e_errors.USERERROR,
-                                #                      'only "null" wrapper is allowed for NULL mover')
-                                self.state = self.save_state
-                                null_err = 1
+                            if ticket['work'] == 'write_to_hsm':
+                                #self.tmp_vf is only set for writes
+                                wrapper_type = volume_family.extract_wrapper(self.tmp_vf)
+                                if wrapper_type != "null":
+                                    ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for NULL mover')
+                                    #self.send_client_done(ticket, e_errors.USERERROR,
+                                    #                      'only "null" wrapper is allowed for NULL mover')
+                                    self.state = self.save_state
+                                    null_err = 1
 
                     if self.setup_mode == ASSERT:
                         ticket['status'] = (e_errors.OK, None)
