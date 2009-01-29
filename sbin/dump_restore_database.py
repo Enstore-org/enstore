@@ -165,7 +165,7 @@ if __name__ == "__main__" :
     dbuser_reader = server.get("dbuser_reader","enstore_reader")
     dbarea=server.get("dbarea",None)
     dbserverowner = server.get("dbserverowner","products")
-    dbhost=server.get("dbhost")
+    dbhost=server.get("dbhost","localhost")
     if options.port:
         dbport=options.port
     if not dbarea :
