@@ -989,7 +989,6 @@ def readtape_from_hsm(e, tinfo):
     if e.check:
         return done_ticket
     if not e_errors.is_ok(done_ticket):
-        pprint.pprint(done_ticket)
         #Tell the calling process, this file failed.
         error_output(done_ticket)
         #Tell the calling process, of those files not attempted.
