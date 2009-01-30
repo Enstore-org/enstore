@@ -154,8 +154,8 @@ io_lock = thread.allocate_lock()
 
 #Make these global so we can kill them if necessary.
 #  When USE_PROCESS_PER_FILE_MIGRATION is False.
-pid = None
-pid2 = None
+###pid = None
+###pid2 = None
 #  When USE_PROCESS_PER_FILE_MIGRATION is True.
 pid_list = []
 
@@ -1402,8 +1402,8 @@ def show_status(volume_list, db):
 				# in the migration, print in the
 				# correct spot.
 				if is_dst_volume:
-					line = "%19s %1s%1s %19s" % \
-					       ("", "", row[1].upper(), row[0])
+					line = "%19s %1s%1s %19s %1s%1s" % \
+					       ("", "", "", row[0], "", row[1].upper())
 					print line
 				else:
 					#Not migrated yet.
@@ -2809,7 +2809,8 @@ def _migrate_threads(files, intf):
 
 def _migrate_processes(files, intf):
 	global errors
-	global pid, pid2
+	#global pid, pid2
+	global pid_list
 
 	MY_TASK = "MIGRATE"
 	# reset errors every time
@@ -2847,6 +2848,7 @@ def _migrate_processes(files, intf):
 		os._exit(errors)
 
 	elif pid > 0: #parent
+		pid_list.append(pid)
 		#os.close(migrate_w_pipe)
 
 		# main thread finishes the rest
@@ -2888,6 +2890,7 @@ def _migrate_processes(files, intf):
 			
 			# Keep the current process to write files to tape.
 		    elif pid2 > 0: #parent
+		        pid_list.append(pid)
 			#os.close(scan_w_pipe)
 
 		        #Scan files on tape.
@@ -2906,6 +2909,7 @@ def _migrate_processes(files, intf):
 					errors = errors + os.WEXITSTATUS(exit_status)
 				else:
 					errors = errors + 1
+				pid_list.remove(pid2)
 			except OSError, msg:
 				message = "FS waitpid(%s, 0) failed: %s" \
 					  % (pid2, str(msg))
@@ -2927,6 +2931,7 @@ def _migrate_processes(files, intf):
 					 os.WEXITSTATUS(exit_status)
 			else:
 				errors = errors + 1
+			pid_list.remove(pid)
 		except OSError, msg:
 			message = "M waitpid(%s, 0) failed: %s" \
 				  % (pid, str(msg))
@@ -3355,24 +3360,11 @@ def restore(bfids, intf):
 				  % (bfid, src,))
 			continue
 
-		#Knowing the parth in pnfs, we can determine the special
+		#Knowing the path in pnfs, we can determine the special
 		# temporary migration path in PNFS.
 		mig_path = migration_path(src)
 
 		if os.path.exists(mig_path):
-			#For trusted pnfs systems, there isn't a problem,
-			# but for untrusted we need to set the effective
-			# IDs to the owner of the file.
-			file_utils.match_euid_egid(src)
-
-			# set layer 1 and layer 4 to point to the original file
-			p.update()
-
-			#Now set the root ID's back.
-			file_utils.end_euid_egid(reset_ids_back = True)
-
-			###############################################
-			
 			#For trusted pnfs systems, there isn't a problem,
 			# but for untrusted we need to set the effective
 			# IDs to the owner of the file.
@@ -3408,6 +3400,24 @@ def restore(bfids, intf):
 
 			#Now set the root ID's back.
 			file_utils.end_euid_egid(reset_ids_back = True)
+
+		#For trusted pnfs systems, there isn't a problem,
+		# but for untrusted we need to set the effective
+		# IDs to the owner of the file.
+		file_utils.match_euid_egid(src)
+		
+		# set layer 1 and layer 4 to point to the original file
+		try:
+			p.update()
+		except (IOError, OSError), msg:
+			error_log(MY_TASK,
+			     "failed to restore layers 1 and 4 for %s %s" \
+				  % (bfid, src))
+			continue
+		
+		#Now set the root ID's back.
+		file_utils.end_euid_egid(reset_ids_back = True)
+
 
 		# mark the migration copy of the file deleted
 		rtn_code = mark_deleted(MY_TASK, dst_bfid, fcc, db)
@@ -3747,6 +3757,7 @@ def do_work(intf):
 		exit_status = 1
 
 	#We should try and kill our child processes.
+	"""
 	try:
 		if pid:
 			os.kill(pid, signal.SIGTERM)
@@ -3763,7 +3774,7 @@ def do_work(intf):
 		if msg.args[0] != errno.ESRCH:
 			sys.stderr.write("Unable to kill %d: %s\n" %
 					 (pid2, str(msg)))
-
+	"""
 	for pid_l in pid_list:
 		try:
 			os.kill(pid_l, signal.SIGTERM)
