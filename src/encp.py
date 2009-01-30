@@ -4903,7 +4903,7 @@ def mover_handshake_part2(ticket, encp_intf):
         #Attempt to get the data socket connected with the mover.
         try:
             Trace.log(e_errors.INFO,
-                      "Atempting to connect data socket to mover at %s." \
+                      "Attempting to connect data socket to mover at %s." \
                       % (mover_addr,))
             data_path_socket = open_data_socket(mover_addr, local_intf_ip)
 
@@ -5230,6 +5230,8 @@ def submit_one_request(ticket, encp_intf):
 def adjust_resubmit_request(ticket, encp_intf):
     ##start of resubmit block
 
+    resubmission_update_start_time = time.time()
+
     #These two lines of code are for get retries to work properly.
     if is_read(ticket) and ticket.get('method', None) != None:
         ticket['method'] = "read_tape_start"
@@ -5272,6 +5274,11 @@ def adjust_resubmit_request(ticket, encp_intf):
         del ticket['transaction_id_list']
     except KeyError:
         pass
+
+    message = "Time to update request for resubmission: %s sec." % \
+              (time.time() - resubmission_update_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     #Now do what we would do for any initial submition.
     return ticket
