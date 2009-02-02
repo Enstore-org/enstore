@@ -238,6 +238,7 @@ COMMON:
                 # dropits.   dropit does not support > 1 substring to drop on a line
                 envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src")
                 envAppend(PYTHONPATH,"${UPS_PROD_DIR}/modules")
+                envAppend(PYTHONPATH,"${UPS_PROD_DIR}/modules/PyGreSQL")
 
                 # now setup the product with the python support for HTML
                 # setupRequired("HTMLgen") # old style
