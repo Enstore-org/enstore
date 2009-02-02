@@ -70,7 +70,7 @@ Modules:
 	else \
 		make BITS_FLAG=$(BITS_FLAG) -f Makefile.modules oldsharedmods; \
 	fi
-
+	cd PyGreSQL && make 
 adler32.o: adler32.c
 	$(CC) $(CFLAGS) -c $(PIC) adler32.c
 
@@ -139,3 +139,4 @@ clean:
 	-rm -rf $(ALL_TARGETS) autologinenstore mouse_move
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
 	cd SWIG && make clean
+	cd PyGreSQL && make clean
