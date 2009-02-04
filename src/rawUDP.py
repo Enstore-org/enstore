@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# $Id$
+# $Id: 
 #
 ###############################################################################
 import sys
@@ -41,12 +41,6 @@ class RawUDP:
         self._lock.release()
         self.arrived.set()
         
-    # get message from FIFO buffer
-    # return values:
-    # client_ip
-    # client port
-    # request
-    # number of requests in the buffer
     def get(self):
         if self.queue_size == 0:
             self.arrived.wait()

@@ -1,0 +1,575 @@
+<html><body><pre>
+                      ENCP release notes, from RELEASE-2007-10-01 to ENSTORE_RPM_1_0_1_10
+
+Encp changes:
+=============
+
+
+Misc.:
+======
+
+
+                      Detailed cvs commit logs
+
+
+========== alarm.py ====================================================================================
+
+remove rexec dependency 
+
+========== manage_queue.py ====================================================================================
+
+added trace 
+
+bug fixed 
+
+Add file family counters for write requests. If file family counter is bigger than file family width let idle mover to pick up the request, rather than wait for the mover with bound volume. 
+
+fixed updating proirity 
+
+========== checkdb.py ====================================================================================
+
+create missing directories 
+
+remove /diskc dependency 
+
+========== info_server.py ====================================================================================
+
+Added a log message to reinit() saying that it is reconfiguring itself after being notified by the configuration server there is a new configuration. 
+
+========== configuration_client.py ====================================================================================
+
+Support the new --print switch for the configuration client. 
+
+removed extra print that broke tools/service_ips 
+
+Added support for --file-fallback in the configuration client. This switch alters the use of --show to read from the local copy of the configuration file (if present), when the configuration server is down. 
+
+more logick added to get_config_dict 
+
+added get_config_dict to get config dict ether from config server or from config file in case when server does not respond 
+
+========== inventory.py ====================================================================================
+
+replace cms_volume_with_all_deleted_files 
+
+use makedirs() 
+
+take care of missing directories 
+
+========== show_volume_cgi.py ====================================================================================
+
+WARNING I changed "cgi-bin/enstore" to "cgi-bin" 
+
+========== histogram.py ====================================================================================
+
+created plottre framework, a module used by framework, example main module and example ratekeeper plotter (to replace makeplot) 
+
+re-arrange classes for better maintainability 
+
+========== get_all_bytes_counter.py ====================================================================================
+
+chmod +x 
+
+get_all_bytes_counter is compatible with SDE 
+
+========== accounting_query.py ====================================================================================
+
+removed unnecessary subclassing of accounting.accDB 
+
+========== get_total_bytes_counter.py ====================================================================================
+
+fix it so it no longer depends on external parameters 
+
+========== enstore_show_inventory_cgi.py ====================================================================================
+
+WARNING I changed "cgi-bin/enstore" to "cgi-bin" 
+
+========== enstore_system_html.py ====================================================================================
+
+restore code accidentally removed before 
+
+count all bytes that not on media_type='null' 
+
+remove link to NGOP 
+
+reinstate missing link 
+
+unifying db initialization code 
+
+format pizzbytes nicely 
+
+========== volume_assert.py ====================================================================================
+
+Added more logging. Most error messages only went to stderr. 
+
+========== weekly_summary_report.py ====================================================================================
+
+fix a typo 
+
+eliminate /diska dependency 
+
+========== web_server.py ====================================================================================
+
+use log_server parameter to get log directory path 
+
+added creation of link to log files 
+
+make sure we add "Deny from all" stanza 
+
+fix typo 
+
+handle PYTHON related variables 
+
+========== inquisitor_plots.py ====================================================================================
+
+fix typo caught by bless.py 
+
+make sure we are not using any external argument to get points directory and points nodes (so it is SDE compliant) 
+
+extract username from accounting server and pass it to modified accounting_query 
+
+========== pnfs_backup_plot.py ====================================================================================
+
+copy data from pnfs server and then plot. Still partially hardcoded 
+
+========== enstore_overall_status.py ====================================================================================
+
+Added --html-dir and --config-hosts switches. 
+
+Fixed this to obtain the known_config_servers section of the default configuration. The loop over it to find the configuration server list to obtain each systems status. Then make the web page using this information (this part didn't change). 
+
+temporary fix for d0en, remove hardcoded values 
+
+put into prodiuction local changes 
+
+change red ball to question mark for communication timeout 
+
+========== enstore_display.py ====================================================================================
+
+Reduced the frequency that the messages get processed. There was a math error that was doubling the intended numbers of calls to process_messages(). 
+
+========== configuration_server.py ====================================================================================
+
+Allow the configuration_server to listen on all IPs configured for the machine. 
+
+========== library_manager_client.py ====================================================================================
+
+fixed a bug 
+
+moved thread start 
+
+========== Trace.py ====================================================================================
+
+add fractions of the second to do-print 
+
+========== entv.py ====================================================================================
+
+Turn off the alarm() when leaving mainloop(). I believe that alarms live accross exec()s and the alarm is triggering before the new entv process gets a chance to set the signal handler. 
+
+========== udp_common.py ====================================================================================
+
+remove rexec dependency 
+
+========== media_changer.py ====================================================================================
+
+process the message received during cap operations 
+
+Fixed aci wrapper to build with swig 1.3 
+
+the comment added 
+
+Added mtx class for accessing Overland library. The code was taken from Vanderbilt implementation that uses mtx command line interface. 
+
+========== enstore_stop.py ====================================================================================
+
+stop the log server just before stopping congig server 
+
+removed a debug print statement 
+
+fixed to stop configuration_server 
+
+some mods for dealing with service IPs 
+
+========== backup.py ====================================================================================
+
+log making JOURNALS directory 
+
+do not rely on the return code of enrsh any more 
+
+fix the bug in making remote directory 
+
+create JOURNALS directory if it is not there 
+
+use copy instead of mv for archiving on the same node 
+
+========== enstore_pg.py ====================================================================================
+
+revert to 1.5 
+
+bugs fixed 
+
+use accounting server, not direct query, which may hang inquisitor 
+
+========== operation.py ====================================================================================
+
+d0ensrv4 --> d0ensrv4n 
+
+add configuration for database server 
+
+========== option.py ====================================================================================
+
+Support the new --print switch for the configuration client. 
+
+Added --html-dir and --config-hosts switches for enstore_overall_status.py. 
+
+Added support for --file-fallback in the configuration client. This switch alters the use of --show to read from the local copy of the configuration file (if present), when the configuration server is down. 
+
+========== enstore_status.py ====================================================================================
+
+remove rexec dependency 
+
+========== generic_client.py ====================================================================================
+
+Support the new --print switch for the configuration client. 
+
+========== enstore_start.py ====================================================================================
+
+mods 
+
+small mod 
+
+small mod 
+
+move the output file instead of copying 
+
+removed print statement 
+
+some more mods 
+
+use Intrefaces to detect what network ifaces are up on this host 
+
+some mods for dealing with service IPs 
+
+removed prints 
+
+make enstore start starting configyuration server through service name (alias) 
+
+========== aci.py ====================================================================================
+
+Fixed aci wrapper to build with swig 1.3 
+
+========== recent_file_listing.py ====================================================================================
+
+delay creating *.old to the last second 
+
+Made SDE ready. 
+
+========== aml2.py ====================================================================================
+
+Fixed aci wrapper to build with swig 1.3 
+
+========== dispatching_worker.py ====================================================================================
+
+added reset_interval method 
+
+========== encp.py ====================================================================================
+
+bumping version to v3_7 because of encpCut 
+
+Allow FQDN in the disk volume labels. For charset, hostnamecharset is now defined. 
+
+On Solaris 10 /tmp is a swap partition. os.pathconf(PC_FILESIZEBITS) returns -1 instead of the number of bits. In this case use 32 for the number of bits that can store the size of a file. 
+
+Include the user_level (ADMIN, USER or USER2) in the tickets for possible future use. 
+
+Fixed the bug in encp that was preventing the RESUBMITS count from being incremented correctly. 
+
+When --get-bfid and --override-deleted are test filename to be longer than 0. 
+
+When sending an original request (with more copies to follow) update the work_ticket to include the number of copies still to come. 
+
+Modified the "encp aborted from" output to include more info. 
+
+The patch fixes a bug if --get-bfid matches to to many files for the pnfsid. It uses the bfid in layer 1 to determine which one it really wants. 
+
+Use getattr(errno, 'EFSCORRUPTED', errno.EIO) instead of errno.EFSCORRUPTED to avoid pychecker warnings. Added a check in librarysize_check() to check the result of the returned library info from the config server. Currently, goes stait into pulling out data, when the error saying the library does not exist is ignored. 
+
+========== ratekeeper.py ====================================================================================
+
+Cleanup acc_daily_summary() and filler() functionality in accounting_server and update_DRVBusy() and update_slots() in ratekeeper. These changes have forks to execute the updates to avoid pauses to requests. 
+
+========== enstore_html.py ====================================================================================
+
+workaround to make lint happy. list[::N] does not pass our lint but is perfectly legal 
+
+cast to list to make link happy 
+
+sort encp list in reverse order 
+
+fixed path to log files 
+
+fixed getting configuration ether from config server of from config file 
+
+debugging issues on ccfsrv2 
+
+get html directory from config server 
+
+modify location of log files 
+
+bug fixed 
+
+WARNING I changed "cgi-bin/enstore" to "cgi-bin" 
+
+remove rexec dependency 
+
+========== scanfiles.py ====================================================================================
+
+handle duplicate location errors better 
+
+Remove skipping of "volmap", ".A" and ".B" files or directories. 
+
+Add an age specifier to duplicate location. Also, fixed a missing layer 1 error. 
+
+Address duplicate location errors with one of the files marked deleted. 
+
+If a location is duplicated and the tape is in a shelf library, then the information is not flagged as an error. 
+
+If one of the files flagged for a "duplicate location" is deleted, consider it a warning, not an error. 
+
+Handle the case where a reverse scan finds a file without layer 1, but does have layer 4. 
+
+Fixed a problem with handling some orphan files. Also, ignored some false errors if a user creates multiple hardlinks to a file, then deletes the original. 
+
+========== mover.py ====================================================================================
+
+additional check for eod cookie 
+
+Include a patch for DiskMover (Mover already has it) to pass along the number of copies to follow. 
+
+set mover to offline state with tape in it if set_volume_no_access has failed. 
+
+Set volume to NOACCESS and generate alarm if set_remaining_bytes failed. 
+
+fixed a bug in read_tape 
+
+bug fixed 
+
+fixed crc processing for disk mover reads 
+
+fixed bug 
+
+in disk mover if data directory does not exist create it 
+
+increase LM poll interval 3 times if not in IDLE or HAVE_BOUND 
+
+Raise an alarm if the write tab status reported by the drive does not match the write tab status recorded in the volume DB. 
+
+========== plotter_main.py ====================================================================================
+
+make sure we delete pts files 
+
+make module that does ratekeeper active 
+
+fix typo 
+
+fix typo 
+
+make sure we close connection to the database 
+
+re-implemented mounts plot so it shows all libraries (non null media type) 
+
+========== callback.py ====================================================================================
+
+We need to catch IOError or OSError incase the open of /proc/net/tcp fails. On 9-10-2007, an encp gave a traceback opening /proc/net/tcp because of "No such file or directory". How that can happen to a file in /proc, I don't know. 
+
+remove rexec dependency 
+
+========== movcmd_mc.py ====================================================================================
+
+remove rexec dependency 
+
+========== media_changer_client.py ====================================================================================
+
+Fixed aci wrapper to build with swig 1.3 
+
+========== mounts_plot.py ====================================================================================
+
+introduce drive utilization plot 
+
+re-implemented mounts plot so it shows all libraries (non null media type) 
+
+========== volume_clerk_client.py ====================================================================================
+
+remove rexec dependency 
+
+========== charset.py ====================================================================================
+
+Allow FQDN in the disk volume labels. For charset, hostnamecharset is now defined. 
+
+========== mover-nanny.py ====================================================================================
+
+1. do not restart or reboot movers by default. 2. do not check null movers by default. 
+
+remove rexec dependency 
+
+========== plotter.py ====================================================================================
+
+fix typo 
+
+define pts_dir from config server 
+
+fill destination directories with *gifs 
+
+========== accounting_server.py ====================================================================================
+
+revert to 1.25 
+
+[1] fix last_xfers() and last_bad_xfers() [2] reconnect whenever it restarts 
+
+added some queries for encp transfers and encp errors 
+
+Fixed syntax error from prvious commit. 
+
+Cleanup acc_daily_summary() and filler() functionality in accounting_server and update_DRVBusy() and update_slots() in ratekeeper. These changes have forks to execute the updates to avoid pauses to requests. 
+
+========== inquisitor.py ====================================================================================
+
+if mover in wam_queue is None do not process it 
+
+========== enstore_file_listing_cgi.py ====================================================================================
+
+remove hard coded path 
+
+========== file_clerk_client.py ====================================================================================
+
+remove rexec dependency 
+
+These changes allow for --erase to be usable for the file clerk client. Support for hidden options now exist in option.py. --erase for the "enstore file" command is now a hidden option. This means that it is not shone in the --help or --usage output and is avaliable only to adminstrators. Currently, the code has the constant ALLOW_ERASE set to false, to enable this command this constant only needs to be set to true. 
+
+========== library_manager.py ====================================================================================
+
+bug fixed 
+
+fixed bugs 
+
+bug fixed 
+
+bug fixed 
+
+bug fixed 
+
+bug fixed 
+
+do not update at movers list if the mover has been removed from it because it did not change its state for a long period of time. 
+
+bug fixed 
+
+bug fixed 
+
+bug fixed 
+
+bug fixed 
+
+bug fixed 
+
+bug fixed 
+
+apply some conditions before calling restrict_host_access in next_work_this volume 
+
+For bound volumes allow requests for machines that exceed the number of ongoing transfers. For this the max_permitted argument in restrict_host_access and the coppersponding arg in the discipline section of configuration dictionary can be set a tuple (n1,n2,n3) where n1 - as before max permitted n2 - add this for bound volume for read requests n3 - add this for bound volume for write requests 
+
+back to not considerng SG for exceeded limits. It has proven to improve the performance 
+
+set lock state from configuration on reinit 
+
+reload LM configuration dictionary in reinit 
+
+reload LM configuration dictionary in reinit 
+
+back to considerng SG for exceeded limits 
+
+better vcc creation procedure 
+
+typo fixed 
+
+In next_work_this_volume if the number of requests exceedded the SG limit, do not consider requests for this SG 
+
+bugs fixed 
+
+timing added 
+
+check for how long the mover is in its state and generate alarm if time is expired 
+
+keep the local list of write volumes to not send excess requests to volume clerk 
+
+buf fixed 
+
+fixed the problem exposed at cdf. In this_volume cycles through the samee requests near "BBB". Fixed by breaking if the same request was already processed. 
+
+fixed a logic bug 
+
+some additional fixes 
+
+some additional fixes 
+
+some additional fixes 
+
+fixed a bug 
+
+bug fixed 
+
+bug fixed 
+
+bug fixed 
+
+Add file family counters for write requests. If file family counter is bigger than file family width let idle mover to pick up the request, rather than wait for the mover with bound volume. 
+
+if no pstponed requests check the last one 
+
+if no requests left take tmp_rq 
+
+midifed output 
+
+fixed a bug 
+
+fixed a bug 
+
+fixed a bug 
+
+fixed a bug 
+
+fixed a bug 
+
+fixed a bug 
+
+fixed a bug 
+
+fixed a bug 
+
+check how log the mover does not update at_movers list and if for more than 10 minutes remove it from the list 
+
+========== accounting_client.py ====================================================================================
+
+revert to 1.18 
+
+bugs fixed 
+
+added some queries for encp transfers and encp errors 
+
+========== log_trans_fail.py ====================================================================================
+
+Get the FAILED Transfers log page going again. 
+
+Made SDE ready. 
+
+Made SDE ready. 
+
+========== pnfs_agent_client.py ====================================================================================
+
+remove rexec dependency 
+
+========== file_utils.py ====================================================================================
+
+remove rexec dependency 
+
+</pre></body></html>
