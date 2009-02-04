@@ -543,8 +543,10 @@ class Buffer:
         try:
             bytes_read = driver.read(self._reading_block, self._read_ptr, bytes_to_read)
         except MemoryError:
-            Trace.log(e_errors.ERROR, "memory error calling driver.read bytes to read %s"%(bytes_to_read,))
-            raise MemoryError
+            message = "memory error calling driver.read bytes to read %s" \
+                      % (bytes_to_read,)
+            Trace.log(e_errors.ERROR, message)
+            raise MemoryError(message)
         if do_crc:
             #Trace.trace(22,"nbytes %s, bytes_to_read %s, bytes_read %s" %
             #            (nbytes, bytes_to_read, bytes_read))
@@ -552,8 +554,9 @@ class Buffer:
                 self.complete_crc = checksum.adler32_o(self.complete_crc, self._reading_block,
                                                        self._read_ptr, bytes_read)
             except MemoryError:
-                Trace.log(e_errors.ERROR, "memory error calling adler32_o")
-                raise MemoryError
+                message = "memory error calling adler32_o"
+                Trace.log(e_errors.ERROR, message)
+                raise MemoryError(message)
                 
             if self.sanity_bytes < SANITY_SIZE:
                 nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_read)
@@ -561,8 +564,9 @@ class Buffer:
                     self.sanity_crc = checksum.adler32_o(self.sanity_crc, self._reading_block,
                                                          self._read_ptr, nbytes)
                 except MemoryError:
-                    Trace.log(e_errors.ERROR, "memory error calling adler32_o for sanity bytes")
-                    raise MemoryError
+                    message = "memory error calling adler32_o for sanity bytes"
+                    Trace.log(e_errors.ERROR, message)
+                    raise MemoryError(message)
                 
                 self.sanity_bytes = self.sanity_bytes + nbytes
         self._read_ptr = self._read_ptr + bytes_read
@@ -570,8 +574,10 @@ class Buffer:
             try:
                 self.push(self._reading_block)
             except MemoryError:
-                Trace.log(e_errors.ERROR, "memory error calling push, buffered bytes %s"%(self._buf_bytes,))
-                raise MemoryError
+                message = "memory error calling push, buffered bytes %s" \
+                          % (self._buf_bytes,)
+                Trace.log(e_errors.ERROR, message)
+                raise MemoryError(message)
             
             self._reading_block = None
             self._read_ptr = 0
