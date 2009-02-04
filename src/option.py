@@ -204,6 +204,7 @@ DELETED = "deleted"                          #file
 DELETE_WORK = "delete-work"                  #library
 DELPRI = "delpri"                            #encp
 DESCRIPTION = "description"                  #enstore_make_log_plot
+DESTINATION_ONLY = "destination-only"        #migrate
 DESTROY = "destroy"                          #volume
 DIRECT_IO = "direct-io"                      #encp
 DISABLE = "disable"                          #quota
@@ -224,6 +225,7 @@ DUPLICATED = "duplicated"                    #volume
 DURATION = "duration"                        #recent_file_listing
 ECHO = "echo"                                #pnfs
 ECRC = "ecrc"                                #encp
+EJECT = "eject"                              #media
 ENABLE = "enable"                            #quota
 ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
@@ -280,6 +282,7 @@ IMPORT = "import"                            #volume
 INFILE = "infile"                            #scanfiles
 INFO = "info"                                #pnfs
 INPUT_DIR = "input_dir"                      #plotter
+INSERT = "insert"                            #media
 IO = "io"                                    #pnfs
 IS_UP = "is-up"                              #inquisitor
 JOUHOME = "jouHome"                          #restore
@@ -425,6 +428,7 @@ SIZE = "size"                                #pnfs
 SKIP_BAD = "skip-bad"                        #migrate
 SKIP_DELETED_FILES = "skip-deleted-files"    #get
 SKIP_PNFS = "skip-pnfs"                      #super_remove
+SOURCE_ONLY = "source_only"                  #migrate
 SPOOL_DIR = "spool-dir"                      #migrate
 START_DRAINING = "start-draining"            #library
 START_TIME = "start-time"                    #plotter
@@ -491,12 +495,12 @@ valid_option_list = [
     COUNTERS, COUNTERSN, CP, CRC_CHECK, CREATE, CURSOR,
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
-    DESCRIPTION, DESTROY,
+    DESCRIPTION, DESTINATION_ONLY, DESTROY,
     DIRECT_IO, DISABLE, DISMOUNT, DISPLAY,
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DONT_SHOW,
     DOWN, DUMP, DUPLICATE, DUPLICATED, DURATION,
-    ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
+    ECHO, ECRC, EJECT, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
     EXISTS, EXPORT, EXTERNAL_TRANSITIONS,
     FILE, FILE_FALLBACK,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
@@ -513,7 +517,7 @@ valid_option_list = [
     GVOL, 
     HELP, HISTORY, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_FAIR_SHARE, IGNORE_STORAGE_GROUP,
-    IMPORT, INFILE, INFO, INPUT_DIR, IO, IS_UP,
+    IMPORT, INFILE, INFO, INPUT_DIR, INSERT, IO, IS_UP,
     JOUHOME, JUST, JUST_FILES,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_CLEAN, LIST_DIR, LIST_DRIVES,
@@ -548,6 +552,7 @@ valid_option_list = [
     SHOWID, SHOW_IGNORED_STORAGE_GROUPS,
     SHOW_QUOTA, SHOW_ROBOT, SHOW_STATE, SHOW_VOLUME,
     SIZE, SKIP_BAD, SKIP_DELETED_FILES, SKIP_PNFS,
+    SOURCE_ONLY,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
