@@ -8830,6 +8830,8 @@ def write_to_hsm(e, tinfo):
                 #Store these changes back into the master list.
                 request_list[index] = work_ticket
 
+            return done_ticket
+
         if not e_errors.is_ok(result_dict):
             continue
 
