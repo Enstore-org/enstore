@@ -322,4 +322,11 @@ def handle_error(exc=None, value=None, tb=None, msg_type=MSG_DEFAULT):
         return sys.exc_info()
 
 
-
+#log the current stack trace
+# Normally, severity is e_errors.INFO, e_errors.ERROR, et. al.  Here, we
+# jst want it to go to the DEBUGLOG, not the normal log; so we use 99 as
+# the default.
+def log_stack_trace(severity = 99, msg_type = MSG_DEFAULT):
+    # log it
+    for l in traceback.format_stack():
+	log(severity, l, msg_type, "STACKTRACE")
