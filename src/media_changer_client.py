@@ -82,7 +82,7 @@ class MediaChangerClient(generic_client.GenericClient):
         ticket = {'work' : 'viewvol',
                   'external_label' : volume,
                   'media_type' : m_type
-                     }
+                  }
         rt = self.send(ticket)
         return rt
 
@@ -94,9 +94,13 @@ class MediaChangerClient(generic_client.GenericClient):
         #We want to attempt to try the 'list_volumes2' protocol.  However,
         #only STK has been updated to use it.  AML2 will set this back to
         # "list_volumes" before sending back its reply.
-        ticket = {'work' : 'list_volumes2',
-                  'callback_addr'  : (host,port)
-                  }
+        #12-16-2008: Go back to just list_volumes for all; make list_volumes2
+        # obsolete.
+        ticket = {
+            #'work' : 'list_volumes2',
+            'work' : 'list_volumes',
+            'callback_addr'  : (host, port)
+            }
         rt = self.send(ticket, rcv_timeout, rcv_tries)
         if not e_errors.is_ok(rt):
             #print "ERROR", rt
@@ -130,12 +134,13 @@ class MediaChangerClient(generic_client.GenericClient):
 
     def __list_volumes(self, control_socket, ticket):
         try:
-            d = callback.read_tcp_obj(control_socket)
+            d = callback.read_tcp_obj(control_socket, 1800) # 30 min
         except e_errors.TCP_EXCEPTION:
             d = {'status':(e_errors.TCP_EXCEPTION, e_errors.TCP_EXCEPTION)}
 
         return d
 
+    # OBSOLETE
     def __list_volumes2(self, control_socket, ticket):
         #Keep getting each volume's information one at a time.
         ticket['volume_list'] = []
@@ -176,7 +181,7 @@ class MediaChangerClient(generic_client.GenericClient):
                   }
         rt = self.send(ticket, rcv_timeout, rcv_tries)
         if not e_errors.is_ok(rt):
-            print "ERROR", rt
+            #print "ERROR", rt
             return rt
         
         r, w, x = select.select([listen_socket], [], [], 15)
@@ -274,8 +279,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.get_work=0
         self.max_work=-1
         self.volume = 0
-        self._import = 0
-        self._export = 0
+        self.insert = 0 #from robot, not drive
+        self.eject = 0  #from robot, not drive
         self.mount = 0
         self.dismount = 0
         self.viewattrib = 0
@@ -310,11 +315,21 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                                             option.VALUE_NAME:"drive",
                                             option.VALUE_TYPE:option.STRING}],
                       },
+        #option.EJECT:{option.HELP_STRING:"",
+        #              option.DEFAULT_VALUE:option.DEFAULT,
+        #              option.DEFAULT_TYPE:option.INTEGER,
+        #              option.VALUE_USAGE:option.IGNORED,
+        #              option.USER_LEVEL:option.HIDDEN},
         option.GET_WORK:{option.HELP_STRING:"",
                          option.DEFAULT_VALUE:option.DEFAULT,
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.IGNORED,
                          option.USER_LEVEL:option.ADMIN},
+        #option.INSERT:{option.HELP_STRING:"",
+        #              option.DEFAULT_VALUE:option.DEFAULT,
+        #              option.DEFAULT_TYPE:option.INTEGER,
+        #              option.VALUE_USAGE:option.IGNORED,
+        #              option.USER_LEVEL:option.HIDDEN},
         option.LIST:{option.HELP_STRING: "list all media changers in "
                      "configuration",
                      option.DEFAULT_VALUE:option.DEFAULT,
@@ -452,9 +467,9 @@ def do_work(intf):
         vol_ticket = vcc.inquire_vol(intf.volume)
         ticket = mcc.unloadvol(vol_ticket, intf.drive, intf.drive)
         del vcc
-    elif intf._import:
+    elif intf.insert:
         ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
-    elif intf._export:
+    elif intf.eject:
         ticket=mcc.ejectvol(intf.media_type, intf.volumeList)
     elif intf.max_work  >= 0:
         ticket=mcc.set_max_work(intf.max_work)
