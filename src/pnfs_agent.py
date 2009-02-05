@@ -844,7 +844,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
             err = True
-        if err == False:
+        if not err:
             uid = ticket.get('uid',None)
             gid = ticket.get('gid',None)
             if uid and gid:
@@ -873,7 +873,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
             err = True
-        if err == False:
+        if not err:
             uid = ticket.get('uid',None)
             gid = ticket.get('gid',None)
             if uid and gid:
