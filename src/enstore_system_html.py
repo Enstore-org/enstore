@@ -145,8 +145,10 @@ def do_work(intf):
     if socket.gethostbyname(socket.gethostname())[0:7] == "131.225" :
         print "We are in Fermilab", server.get_system_name()
         remote=False
-        
-    q="select coalesce(sum(size)/1024./1024./1024./1024.,0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
+    q="select coalesce(sum(size),0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
+    
+    if server.get_system_name().find("stken") != -1:
+         q="select sum(deleted_bytes+unknown_bytes+active_bytes)  from volume where system_inhibit_0!='DELETED' and media_type!='null'"
 
     config_server_client_dict = configuration_client.get_config_dict()
     acc            = config_server_client_dict.get("database", {})
@@ -161,7 +163,7 @@ def do_work(intf):
         for row in res.getresult():
             if not row:
                 continue
-            bytes=row[0]
+            bytes=float(row[0])/(1024.*1024.*1024.*1024.)
         db.close()
     except:
         Trace.handle_error()
