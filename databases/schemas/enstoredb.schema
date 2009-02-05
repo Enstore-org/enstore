@@ -576,9 +576,14 @@ ALTER TABLE public.volume OWNER TO enstore;
 -- Name: cms_volume_with_only_deleted_files; Type: VIEW; Schema: public; Owner: enstore
 --
 
-CREATE VIEW cms_volume_with_only_deleted_files AS
-    SELECT volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1 AS state, volume.media_type, volume.library FROM volume WHERE ((((volume.storage_group)::text = 'cms'::text) AND ((volume.system_inhibit_0)::text = 'none'::text)) AND (all_deleted(volume.id) = 1));
+-- CREATE VIEW cms_volume_with_only_deleted_files AS
+--    SELECT volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1 AS state, volume.media_type, volume.library FROM volume WHERE ((((volume.storage_group)::text = 'cms'::text) AND ((volume.system_inhibit_0)::text = 'none'::text)) AND (all_deleted(volume.id) = 1));
+--
 
+CREATE VIEW cms_volume_with_only_deleted_files AS
+   SELECT volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1 AS state, volume.media_type, volume.library
+   FROM volume
+   WHERE volume.storage_group::text = 'cms'::text AND volume.system_inhibit_0::text = 'none'::text AND volume.active_files+volume.unknown_files=0 and volume.deleted_files>0 ;
 
 ALTER TABLE public.cms_volume_with_only_deleted_files OWNER TO enstore;
 
