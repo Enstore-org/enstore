@@ -26,7 +26,7 @@ class RawUDP:
 
         ip, port, self.server_socket = udp_common.get_callback('', port)
         self.server_address = (ip, port)
-        print "addr %s sock %s"%(self.server_address, self.server_socket)
+        #print "addr %s sock %s"%(self.server_address, self.server_socket)
         
         # set this socket to be closed in case of an exec
         if self.server_socket != None:
@@ -63,22 +63,22 @@ class RawUDP:
         
     
     def _receiver(self):
+        rcv_timeout = self.rcv_timeout
         while 1:
             
-            request, client_addr = '',()
-            r = [self.server_socket]
+            #r = [self.server_socket]
 
-            rcv_timeout = self.rcv_timeout
             #print "wait"
-            r, w, x, remaining_time = cleanUDP.Select(r, [], [], rcv_timeout)
+            r, w, x, remaining_time = cleanUDP.Select([self.server_socket], [], [], rcv_timeout)
             #print "got it", r, w, self.server_socket
+            #print "got it", self.queue_size
 
             if r:
                 for fd in r:
                     if fd == self.server_socket:
                         req, client_addr = self.server_socket.recvfrom(
                             self.max_packet_size, self.rcv_timeout)
-                        #print "REQ", req
+                       # print "REQ", req
 
                         if req:
                             message = (client_addr[0], client_addr[1], req)
