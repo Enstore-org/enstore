@@ -132,7 +132,7 @@ USE_PROCESS_PER_FILE_MIGRATION = False
 
 #When true, start PROC_LIMIT number of processes for reading and PROC_LIMIT
 # number of processes for writing.
-USE_PROCESS_PER_FILE_TRANSFER = True
+USE_PROCESS_PER_FILE_TRANSFER = False
 
 ##
 ## End multiple_threads / forked_processes global variables.
