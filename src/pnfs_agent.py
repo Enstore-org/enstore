@@ -72,7 +72,6 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.max_threads = self.conf.get('max_threads', MAX_THREADS)
         
         #self.set_error_handler(self.handle_error)
-        Trace.init(self.log_name)
 	self.alive_interval = monitored_server.get_alive_interval(self.csc,
 								  MY_NAME,
 								  self.keys)
@@ -147,7 +146,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         p=pnfs.Pnfs()
 
         #Address the issue of ownership.
-        file_utils.euid_lock.acquire()
+        #file_utils.euid_lock.acquire() should work without locking 
         if ticket['gid'] and ticket['gid'] >= 0 and os.getgid() == 0:
             os.setegid(ticket['gid'])
         if ticket['uid'] and ticket['uid'] >= 0 and os.getuid() == 0:
@@ -162,6 +161,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
+            Trace.trace(5, "OSError: %s"%(ticket,))
         except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
@@ -169,7 +169,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         #Address the issue of ownership.
         os.seteuid(0)
         os.setegid(0)
-        file_utils.euid_lock.release()
+        #file_utils.euid_lock.release() should work without locking
         
         self.reply_to_caller(ticket)
         return
@@ -177,32 +177,33 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
     def creat(self, ticket):
         filename = pnfs.get_enstore_fs_path(ticket['filename'])
         mode = ticket.get('mode', None)
+        Trace.trace(5, "creat 0_1")
         p=pnfs.Pnfs()
+        Trace.trace(5, "creat 0_2")
 
         #Address the issue of ownership.
-        file_utils.euid_lock.acquire()
-        if ticket['gid'] and ticket['gid'] >= 0 and os.getgid() == 0:
-            os.setegid(ticket['gid'])
-        if ticket['uid'] and ticket['uid'] >= 0 and os.getuid() == 0:
-            os.seteuid(ticket['uid'])
-        
+        #file_utils.euid_lock.acquire() should work without locking
         try:
             if mode:
+                Trace.trace(5, "creat 1")
                 p.creat(filename, mode)
             else:
+                Trace.trace(5, "creat 2")
                 p.creat(filename)
+            if ticket['gid'] and ticket['gid'] >= 0 and ticket['uid'] and ticket['uid'] >= 0:
+                os.chown(filename ,ticket['gid'], ticket['uid'])
             ticket['status'] = (e_errors.OK, None)
         except OSError, msg:
+            Trace.trace(5, "creat 3")
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
+            Trace.trace(5, "OSError: %s"%(ticket,))
         except IOError, msg:
+            Trace.trace(5, "creat 4")
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
-
-        #Address the issue of ownership.
-        os.seteuid(0)
-        os.setegid(0)
-        file_utils.euid_lock.release()
+            # file_utils.euid_lock.release() should work without locking
+        Trace.trace(5, "creat 5")
         
         self.reply_to_caller(ticket)
         return
@@ -720,6 +721,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
+            Trace.trace(5, "OSError: %s"%(ticket,))
         except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
@@ -738,6 +740,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
+            Trace.trace(5, "OSError: %s"%(ticket,))
         except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
@@ -874,7 +877,15 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             uid = ticket.get('uid',None)
             gid = ticket.get('gid',None)
             if uid and gid:
-                os.chown(dirname,uid,gid)
+                try:
+                    os.chown(dirname,uid,gid)
+                except OSError, msg:
+                    ticket['errno'] = msg.args[0]
+                    ticket['status'] = (e_errors.OSERROR, str(msg))
+
+                except IOError, msg:
+                    ticket['errno'] = msg.args[0]
+                    ticket['status'] = (e_errors.IOERROR, str(msg))
             
         self.reply_to_caller(ticket)
         return
@@ -961,10 +972,14 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         _args = (function,)+ args
         if after_function:
             _args = _args + (after_function,)
-        Trace.trace(5, "create thread: target %s args %s" % (function, args))
+        #thread_name = str(threading.activeCount()+1)
+        thread_name = None
+        Trace.trace(5, "create thread: name %s target %s args %s" % (thread_name, function, args))
+        #thread = threading.Thread(group=None, target=self.thread_wrapper,
+        #                          name=thread_name, args=_args, kwargs={})
         thread = threading.Thread(group=None, target=self.thread_wrapper,
-                                  name=None, args=_args, kwargs={})
-        Trace.trace(5, "starting thread %s"%(dir(thread,)))
+                                  args=_args, kwargs={})
+        Trace.trace(5, "starting thread %s name=%s"%(dir(thread,), thread.getName()))
         try:
             thread.start()
         except:
@@ -986,12 +1001,12 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
 
-        Trace.trace(6, "dispatching_worker:process_request %s; %s"%(request, ticket,))
+        Trace.trace(6, "pnfs_agent:process_request %s; %s"%(request, ticket,))
         #This checks help process cases where the message was repeated
         # by the client.
         if not ticket:
-            Trace.trace(6, "dispatching_worker: no ticket!!!")
-            Trace.log(e_errors.ERROR, "dispatching_worker: no ticket!!!")
+            Trace.trace(6, "pnfs_agent: no ticket!!!")
+            Trace.log(e_errors.ERROR, "pnfs_agent: no ticket!!!")
             return
 
         # look in the ticket and figure out what work user wants
@@ -1053,12 +1068,13 @@ class PnfsAgentInterface(generic_server.GenericServerInterface):
         pass
 
 if __name__ == "__main__":
-    Trace.init(string.upper(MY_NAME))
 
     # get the interface
     intf = PnfsAgentInterface()
     vc   = PnfsAgent((intf.config_host, intf.config_port))
     vc.handle_generic_commands(intf)
+    Trace.init(vc.log_name, 'yes')
+    #Trace.init(vc.log_name)
     
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
     vc._do_print({'levels':[5,6,]})
