@@ -10,6 +10,7 @@ import errno
 #import delete_at_exit
 #import exceptions
 import time
+import Trace
 
 def _open1(pathname,mode=0666):
     #delete_at_exit.register(pathname)
@@ -31,13 +32,28 @@ def _open1(pathname,mode=0666):
 ##               2, in which case the lock is also successful.
 
 
+def unique_id():
+    t=time.time()
+    dp=("%10.9f"%(t-int(t),)).split('.')[1]
+    a=time.ctime(t).split(" ")
+    b="."
+    c=b.join((a[4],dp))
+    a[4]=c
+    b=" "
+    tm=b.join(a)
+    return tm.replace(" ", "_")
+
+    
 def _open2(pathname,mode=0666):
     __pychecker__ = "unusednames=i"
 
     #Create a unique temporary filename.
+    #tmpname = "%s_%s_%s_%s_%s_%s_%s_lock" % (
+    #    os.uname()[1], os.getpid(), os.getuid(), os.getgid(),
+    #    os.geteuid(), os.getegid(), time.ctime(time.time()).replace(" ", "_"))
     tmpname = "%s_%s_%s_%s_%s_%s_%s_lock" % (
         os.uname()[1], os.getpid(), os.getuid(), os.getgid(),
-        os.geteuid(), os.getegid(), time.ctime(time.time()).replace(" ", "_"))
+        os.geteuid(), os.getegid(), unique_id())
     tmpname = os.path.join(os.path.dirname(pathname), tmpname)
 
     #Record encp to delete this temporary file on (failed) exit.
@@ -45,8 +61,10 @@ def _open2(pathname,mode=0666):
 
     #Create and open the temporary file.
     try:
+        Trace.trace(5, "atomic.open 0 %s"%(tmpname,))
         fd_tmp = os.open(tmpname, os.O_CREAT|os.O_EXCL|os.O_RDWR, mode)
     except OSError, msg:
+        Trace.trace(5, "atomic.open 1 %s"%(msg,))
         #If the newly created file exists, try opening it without the
         # exclusive create.  This is probably a symptom of the O_EXCL
         # race condition mentioned above.  Since, this is a unique filename
@@ -66,6 +84,7 @@ def _open2(pathname,mode=0666):
         os.link(tmpname, pathname)
         ok = 1
     except OSError, detail:
+        Trace.trace(5, "atomic.open 2 %s"%(detail,))
         #If the output file already exists, we should be able to stop now.
         # However, EEXIST is given for three cases.
         # 1) The first is that the file does already exist.
@@ -94,7 +113,8 @@ def _open2(pathname,mode=0666):
                 if detail.args[0] == errno.EEXIST:
                     #We now know it is case 1.
                     raise OSError, detail
-        except OSError:
+        except OSError, detail:
+            Trace.trace(5, "atomic.open 3 %s"%(detail,))
             #ok = 0
             os.close(fd_tmp)
             os.unlink(tmpname)
@@ -103,11 +123,14 @@ def _open2(pathname,mode=0666):
             raise OSError, detail
 
     if ok:
-        fd=os.open(pathname, os.O_RDWR, mode)
-        os.unlink(tmpname)
-        os.close(fd_tmp)
-        #delete_at_exit.unregister(tmpname)
-        return fd
+        try:
+            fd=os.open(pathname, os.O_RDWR, mode)
+            os.unlink(tmpname)
+            os.close(fd_tmp)
+            return fd
+        except OSError, detail:
+            Trace.trace(5, "atomic.open 4 %s"%(detail,))
+            raise OSError, detail
     else:
         #delete_at_exit.unregister(pathname)
         """
