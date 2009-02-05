@@ -404,7 +404,14 @@ class UDPServer:
             # UDPClient resends messages if it doesn't get a response
             # from us, see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
-            lst = self.request_dict[idn]
+            try:
+                lst = self.request_dict[idn]
+            except KeyError:
+                Trace.trace(6,
+                            "process_request %s from %s: no such key in request dictionary" % \
+                            (repr(idn), client_address))
+                return None
+                
             if lst[0] == number:
                 Trace.trace(6,
                             "process_request %s from %s already handled" % \
