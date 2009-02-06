@@ -78,7 +78,21 @@ def unlock(f):
         _lock(f, fcntl.F_UNLCK)
 
 
+#Set the default log level for routine operations to 88.  This will send
+# the output to the DEBUGLOG but not the LOG file (by default).  Using
+# --do-print this can be overridden.
+ACTION_LOG_LEVEL = 88
 
+#There exists two work queues.  One involves tape operations.  The other
+# involves queries.
+QUEUE_COUNT = 2
+
+#Make sure the number of max_work is within bounds.  The 
+def bound_max_work(unbound_max_work):
+	max_work = min(int(dispatching_worker.MAX_CHILDREN / QUEUE_COUNT),
+		       int(unbound_max_work))
+        return max(0, max_work)  #Allow zero for "pausing".
+	
 
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
@@ -100,7 +114,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         generic_server.GenericServer.__init__(self, csc, medch,
                                               function = self.handle_er_msg)
         Trace.init(self.log_name)
-        self.max_work = max_work
+        self.max_work = bound_max_work(max_work)
         self.workQueueClosed = 0
         self.insertRA = None
         #   pretend that we are the test system
@@ -238,11 +252,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         return self.DoWork( self.cleanCycle, ticket)
 
     def set_max_work(self, ticket):
-        self.max_work = ticket['max_work']
+        self.max_work = bound_max_work(ticket['max_work'])
 	ticket['status'] = (e_errors.OK, 0, None)
         self.reply_to_caller(ticket)
 
-    def getwork(self, ticket):
+    def __getwork(self):
         # Pack info for the tape handling operations. 
         result = []
         for i in self.work_list:
@@ -251,21 +265,47 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 		    external_label = i['vol_ticket']['external_label']
 	    except KeyError:
 		    external_label = ""
-		    #Trace.log(e_errors.INFO,
-			      #"self.work_list item is missing vol_ticket: %s: %s from work_list: %s" % (msg, i, self.work_list))
 	    try:
 	        if i['drive_id']:
 		    drive_id = i['drive_id']
 	    except KeyError:
 		    drive_id = ""
 	    
-            result.append((i['function'], external_label, drive_id, i.get('pid', None)))
+            result.append((i['function'], external_label, drive_id,
+			   i.get('pid', None), i['r_a'][0], i['timestamp']))
 
 	# Pack info for information request operations.
 	query_result = []
 	for i in self.work_query_list:
-	    query_result.append((i['function'], i['r_a']))
+	    try:
+	        if i['external_label']:
+		    external_label = i['external_label']
+	    except KeyError:
+		    external_label = ""
+	    try:
+	        if i['drive']:
+		    drive_id = i['drive']
+	    except KeyError:
+		    drive_id = ""
+	    
+	    query_result.append((i['function'], external_label, drive_id,
+				 i.get('pid', None), i['r_a'][0],
+				 i['timestamp']))
 
+	#The order for both lists is:
+	# 1: type of operation (aka function)
+	# 2: external_label (if it applies)
+	# 3: drive (if it applies)
+	# 4: process id
+	# 5: requesting IP address and port number
+	# 6: human readable timestamp
+
+	return result, query_result
+
+    def getwork(self, ticket):
+
+	result, query_result = self.__getwork()
+	
 	ticket['work_list'] = result
 	ticket['work_query_list'] = query_result
 	ticket['max_work'] = self.max_work
@@ -413,6 +453,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    if i['r_a'] == ticket['r_a']:
 		break
 	else:
+	    ticket['timestamp'] = time.ctime()
 	    queue.append(ticket)
 
     def remove_from_work_list(self, ticket):
@@ -450,6 +491,24 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    queue = self.work_query_list
 
 	return len(queue)
+
+    def log_work_list(self, ticket = None):
+	    result, query_result = self.__getwork()
+	    if ticket and ticket['function'] in self.work_functions:
+		    Trace.log(ACTION_LOG_LEVEL,
+			      "work_list: %s" % \
+			      (str(result),))
+	    elif ticket and ticket['function'] in self.query_functions:
+		    Trace.log(ACTION_LOG_LEVEL,
+			      "work_query_list: %s" % \
+			      (str(query_result),))
+	    else:
+		    Trace.log(ACTION_LOG_LEVEL,
+			      "work_list: %s" % \
+			      (str(result),))
+		    Trace.log(ACTION_LOG_LEVEL,
+			      "work_query_list: %s" % \
+			      (str(query_result),))
 
     #Used in DoWork() and WorkDone() to create consistent message strings.
     def get_common_message_string(self, ticket):
@@ -497,13 +556,13 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         # if this a duplicate request, drop it
 	if self.exists_in_work_list(ticket):
 	    message = "duplicate request, drop it %s %s" % \
-		      (repr(ticket["r_a"]), repr(ticket["r_a"]))
-	    Trace.log(e_errors.INFO, message)
+		      (repr(ticket['r_a']), repr(ticket['r_a']))
+	    Trace.log(ACTION_LOG_LEVEL, message)
 	    return
 
         #Output what we intend to do.
 	common_message = self.get_common_message_string(ticket)
-	Trace.log(e_errors.INFO, "REQUESTED %s" % (common_message,))
+	Trace.log(ACTION_LOG_LEVEL, "REQUESTED %s" % (common_message,))
 
 	###
 	### Determine if we need to drop the request for one reason or another.
@@ -514,12 +573,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    pass
         #elif ticket['function'] in ["homeAndRestart"]:
 	#    pass
-        elif ticket['function'] in ('load', 'unload', 'eject', 'insert'):
+        elif ticket['function'] in ("mount", "dismount", "eject", "insert"):
             # If we have max number of working children processes, assume
 	    # client will resend the request.
             if len(self.work_list) >= self.max_work:
 	        message = "MC Overflow: %s %s" % \
-			  (repr(self.max_work), ticket['function'])
+			  (repr(self.max_work), common_message)
                 Trace.log(e_errors.INFO, message)
 		
 		#Need to call reply_to_caller() here since the request has
@@ -533,7 +592,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    # will resend the request.
             elif self.workQueueClosed and len(self.work_list) > 0:
 	        message = "MC Queue Closed: %s %s" % \
-			  (repr(len(self.work_list)), ticket['function'])
+			  (repr(len(self.work_list)), common_message)
                 Trace.log(e_errors.INFO, message)
                 return
 
@@ -564,6 +623,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
         ### Otherwise, we can process work.
 
+	#Output what we are going to do.
+	Trace.log(e_errors.INFO, "PROCESSING %s" % (common_message,))
+
         # If function is insert and queue not empty: close work queue and
 	# set values to prepare for completing this operation once all
 	# pending requests are fullfilled.
@@ -572,7 +634,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                self.workQueueClosed = 1
                self.timeInsert = time.time()
                self.insertRA = ticket['r_a']
-               Trace.log(e_errors.INFO, "RET1 %s" % ( ticket['function'],))
                return
             else:
                self.workQueueClosed = 0
@@ -588,11 +649,14 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             os.close(pipe[1]) #close writing half of pipe.
             # add entry to outstanding work
 	    self.add_to_work_list(ticket)
-            Trace.trace(11, "mcDoWork< Parent")
+	    # log the new work list
+	    self.log_work_list(ticket)
             return
 
         #  in child process
-        Trace.trace(11, "mcDoWork> child begin %s" % (common_message,))
+	message = "mcDoWork> child begin %s" % (common_message,)
+        Trace.trace(ACTION_LOG_LEVEL, message)
+	#Trace.log(ACTION_LOG_LEVEL, message) 
 	
         os.close(pipe[0]) #Close reading half of pipe.
 	
@@ -602,26 +666,34 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         if ticket['function'] == "mount":
 	    message = "mcDoWork> child prepare dismount for %s" % \
 			(common_message,)
-            Trace.trace(11, message)
+            Trace.trace(ACTION_LOG_LEVEL, message)
+	    Trace.log(ACTION_LOG_LEVEL, message)
+	    
 	    # don't print a failure  (no tape mounted) message that is
 	    # really a success
             self.logdetail = 0 
-            #sts = self.prepare("Unknown", ticket['drive_id'],
-	    #		       ticket['vol_ticket']['media_type'])
 	    dismount_ticket = {'work'           : 'unloadvol',
 			       'vol_ticket'     : ticket['vol_ticket'],
 			       'drive_id'       : ticket['drive_id'],
 			       }
 	    sts = self.prepare(dismount_ticket)
             self.logdetail = 1 # back on
-            Trace.trace(11, "%s returned %s" % (message, sts[2]))
+
+	    message = "%s returned %s" % (message, sts[2])
+            Trace.trace(ACTION_LOG_LEVEL, message)
+	    Trace.log(ACTION_LOG_LEVEL, message)
 
 	    # XXX - Why isn't sts processed for errors here?
 
-	Trace.trace(11, "mcDoWork> child doing %s" % (common_message,))
+	message = "mcDoWork> child doing %s" % (common_message,)
+	Trace.trace(ACTION_LOG_LEVEL, message)
+	Trace.log(ACTION_LOG_LEVEL, message)
+	
 	sts = function(ticket) #Call the function!
-	Trace.trace(11,
-		    "mcDoWork> child %s returned %s" % (common_message, sts))
+
+	message = "mcDoWork> child %s returned %s" % (common_message, sts)
+	Trace.trace(ACTION_LOG_LEVEL, message)
+	Trace.log(ACTION_LOG_LEVEL, message)
 
         ticket["status"] = sts
         # Send status back to MC parent via pipe then via dispatching_worker
@@ -631,10 +703,16 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         #There must be a better way to write to the pipe connected to the
 	# parent process.  Probably with callback.py.
 	msg = repr(('0','0',ticket))
-        bytecount = "%08d" % (len(msg),)
-        os.write(pipe[1], bytecount)
-        os.write(pipe[1], msg)
-        os.close(pipe[1])
+	bytecount = "%08d" % (len(msg),)
+	try:
+		os.write(pipe[1], bytecount)
+		os.write(pipe[1], msg)
+		os.close(pipe[1])
+	except (OSError, IOError), msg:
+		message = "mcDoWork> child %s failed reporting to parent: %s" \
+			  % (common_message, str(msg))
+		Trace.trace(ACTION_LOG_LEVEL, message)
+		Trace.log(ACTION_LOG_LEVEL, message)
 
         os._exit(0)
 
@@ -644,7 +722,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	
         # remove work from outstanding work list
 	self.remove_from_work_list(ticket)
-      
+
         # log what was done
         status = ticket.get('status', None)
         if status and e_errors.is_ok(status[0]):
@@ -653,6 +731,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             level = e_errors.ERROR
 	common_message = self.get_common_message_string(ticket)
 	Trace.log(level, "FINISHED %s returned %s" % (common_message, status))
+	# log the new work list
+	self.log_work_list(ticket)
 
         # report back to original client - probably a mover
 	#
