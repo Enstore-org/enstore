@@ -15,15 +15,17 @@ import udp_common
 
 class RawUDP:
     
-    def __init__(self, port, receive_timeout=60.):
-        self.socket_type = socket.SOCK_DGRAM
+    def __init__(self, receive_timeout=60.):
         self.max_packet_size = 16384
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
-        self.address_family = socket.AF_INET
         self._lock = threading.Lock()
         self.arrived = threading.Event()
         self.queue_size = 0L
-
+        self.buffer = []
+        
+    def init_port(self, port):
+        self.socket_type = socket.SOCK_DGRAM
+        self.address_family = socket.AF_INET
         ip, port, self.server_socket = udp_common.get_callback('', port)
         self.server_address = (ip, port)
         #print "addr %s sock %s"%(self.server_address, self.server_socket)
@@ -32,7 +34,9 @@ class RawUDP:
         if self.server_socket != None:
             fcntl.fcntl(self.server_socket.fileno(), fcntl.F_SETFD, fcntl.FD_CLOEXEC)
 
-        self.buffer = []
+    def init_socket(self, socket):
+        self.server_socket = socket
+        
 
     def put(self, message):
         self._lock.acquire()

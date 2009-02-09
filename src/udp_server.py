@@ -54,12 +54,14 @@ class UDPServer:
         self.queue_size = 0L
         self.use_raw = use_raw and can_use_raw
         if use_raw:
-            self.server_address = server_address
+            #self.server_address = server_address
             if getattr(self, "server_socket", None):
+                self.server_address = server_address
                 pass
             else:
-                self.server_socket = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
-            port = self.server_address[1]
+                ip, port, self.server_socket = udp_common.get_callback(
+                    server_address[0], server_address[1])
+                self.server_address = (ip, port)
         else:
             try:
                 #If we already have a server_socket...
@@ -132,8 +134,8 @@ class UDPServer:
         # to increase the performance
         self.raw_requests = None;
         if self.use_raw:
-            #self.raw_requests = rawUDP.create_list(port)
-            self.raw_requests = rawUDP.RawUDP(port, receive_timeout=self.rcv_timeout)
+            self.raw_requests = rawUDP.RawUDP(receive_timeout=self.rcv_timeout)
+            self.raw_requests.init_socket(self.server_socket)
             # start raw udp receiver
             # it creates internal receiver thread and runs it in a loop
             if self.raw_requests:
