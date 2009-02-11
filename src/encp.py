@@ -10973,7 +10973,7 @@ class EncpInterface(option.Interface):
                       option.DEFAULT_TYPE:option.INTEGER,
                       option.USER_LEVEL:option.USER,},
         option.COPY:{option.HELP_STRING:
-                     "Read copy N of the file.  (0 = original)",
+                     "Read copy N of the file.  (0 = primary)",
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_TYPE:option.INTEGER,
                      option.USER_LEVEL:option.USER,},
