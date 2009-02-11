@@ -443,7 +443,9 @@ def mover_handshake2_new(control_socket, work_ticket, e):
         message = "Sent file request to mover." + encp.elapsed_string()
         Trace.log(e_errors.INFO, message)
         Trace.message(TRANSFER_LEVEL, message)
-        
+    except (select.error, socket.error), msg:
+        work_ticket['status'] = (e_errors.NET_ERROR, str(msg))
+        return None, work_ticket
     except e_errors.TCP_EXCEPTION, msg:
         work_ticket['status'] = (e_errors.TCP_EXCEPTION, str(msg))
         return None, work_ticket

@@ -26,6 +26,11 @@ import enstore_constants
 import enstore_erc_functions
 import hostaddr
 
+
+class ServerError(generic_client.ClientError):
+    def __repr__(self):
+        return "ServerError"
+
 class GenericServerInterface(option.Interface):
 
     def __init__(self):
@@ -157,9 +162,9 @@ class GenericServer(generic_client.GenericClient):
     def serve_forever_error(self, id):
         exc,msg,tb=sys.exc_info()
         traceback.print_exc()
-        format = "%s %s %s %s %s: serve_forever continuing" % (
+        message = "%s %s %s %s %s: serve_forever continuing" % (
             timeofday.tod(),sys.argv,exc,msg,id)
-        Trace.log(e_errors.ERROR, str(format))
+        Trace.log(e_errors.ERROR, str(message))
         filename = tb.tb_frame.f_code.co_filename
         if not filename or type(filename)!=type(""):
             filename="???"

@@ -34,6 +34,8 @@ import enstore_functions2
 import generic_client
 import option
 import Trace
+import Interfaces
+import udp_client
 
 #import alarm_client
 import configuration_client
@@ -48,7 +50,6 @@ import configuration_client
 #import volume_clerk_client
 #import ratekeeper_client
 import event_relay_client
-import Interfaces
 
 #Less hidden side effects to call this?  Also, pychecker perfers it.
 ### What does this give us?
@@ -342,6 +343,8 @@ def check_event_relay(csc, intf, cmd):
             try:
                 #rtn = 0 implies alive, rtn = 1 implies dead.
                 rtn = erc.alive()
+            except (socket.error, udp_client.UDPError), msg:
+                rtn = {'status':(e_errors.NET_ERROR, str(msg))}
             except errno.errorcode[errno.ETIMEDOUT]:
                 rtn = {'status':(e_errors.TIMEDOUT,
                                  errno.errorcode[errno.ETIMEDOUT])}
@@ -455,6 +458,8 @@ def check_server(csc, name, intf, cmd):
         try:
             # Determine if the host is alive.
             rtn = gc.alive(name, SEND_TO, SEND_TM)
+        except (socket.error, udp_client.UDPError), msg:
+            rtn = {'status':(e_errors.NET_ERROR, str(msg))}
         except errno.errorcode[errno.ETIMEDOUT]:
             rtn = {'status':(e_errors.TIMEDOUT,
                              errno.errorcode[errno.ETIMEDOUT])}

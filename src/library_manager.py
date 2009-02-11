@@ -515,9 +515,15 @@ class LibraryManagerMethods:
                 Trace.trace(10, "sending IP %s to %s" % (host, ticket['routing_callback_addr']))
                 try:
                     x= u.send(ticket,ticket['routing_callback_addr'] , 15, 3, 0)
+                except (socket.error, udp_client.UDPError), msg:
+                    Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
+                              (ticket['routing_callback_addr'], str(msg)))
+                    self.del_udp_client(u)
+                    return
                 except errno.errorcode[errno.ETIMEDOUT]:
                     Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
-                              (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
+                              (ticket['routing_callback_addr'],
+                               os.strerror(errno.ETIMEDOUT)))
                     self.del_udp_client(u)
                     return
                 if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']

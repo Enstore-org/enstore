@@ -26,6 +26,56 @@ import enstore_constants
 DEFAULT_TIMEOUT = 0
 DEFAULT_TRIES = 0
 
+class ClientError(Exception):
+    # error_message: any string explaining the error
+    # errno: any valid errno value
+    # enstore_error: one of the errors from e_errors.py
+    def __init__(self, error_message, errno = None, enstore_error = None):
+
+        Exception.__init__(self)
+
+        #Set the member values.
+        self.error_message = str(error_message)
+        if type(errno) != types.IntType:
+            self.errno = None
+        else:
+            self.errno = errno
+        self.enstore_error = enstore_error
+
+        #Set the string representation.
+        self._string()
+
+        #Put the argument list value together.
+        self.args = (self.error_message,)
+        if errno:
+            self.args.append(self.errno)
+        if self.enstore_error:
+            self.args.append(enstore_error)
+
+
+    def __str__(self):
+        return self.strerror
+
+    def __repr__(self):
+        return "ClientError"
+
+    def _string(self):
+        if self.errno in errno.errorcode.keys():
+            errno_name = errno.errorcode[self.errno]
+            errno_description = os.strerror(self.errno)
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
+                                                        self.errno,
+                                                        errno_description,
+                                                        self.error_message)
+        elif self.enstore_error in dir(e_errors):
+            self.strerror = "[%s]: %s" % (self.enstore_error,
+                                          self.error_message)
+        else:
+            self.strerror = self.error_message
+
+        return self.strerror
+
+
 class GenericClientInterface(option.Interface):
 
     def __init__(self, args=sys.argv, user_mode=1):
@@ -232,13 +282,14 @@ class GenericClient:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            exc, msg = sys.exc_info()[:2]
-            if exc == errno.errorcode[errno.ETIMEDOUT] or \
-                   isinstance(exc, udp_client.UDPError):
+        except udp_client.UDPError, msg:
+            if msg.errno and msg.errno == errno.ETIMEDOUT:
                 x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
             else:
-                x = {'status' : (str(exc), str(msg))}
+                x = {'status' : (e_errors.NET_ERROR,
+                                 "%s: %s" % (self.server_name, str(msg)))}
+        except errno.errorcode[errno.ETIMEDOUT]:
+            x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
         return x
         
     # return the name used for this client/server #XXX what is this nonsense? cgw

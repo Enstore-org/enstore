@@ -39,6 +39,7 @@ import www_server
 import volume_family
 import option
 import cleanUDP
+import udp_client
 
 server_map = {"log_server" : enstore_constants.LOGS,
 	      "alarm_server" : enstore_constants.ALARMS,
@@ -579,14 +580,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		 "get new suspect vol list from %s"%(lib_man.name,))
 	try:
 	    state = lib_man.client.get_suspect_volumes()
-	except (e_errors.TCP_EXCEPTION, socket.error), detail:
-	    msg = "Error while getting suspect vols from %s (%s)"%(lib_man.name,
-								   detail)
+        except (socket.error, udp_client.UDPError, callback.TCPError), detail:
+            if detail.errno == errno.ETIMEDOUT:
+                message = "Timeout while getting suspect vols from %s (%s)" \
+                          % (lib_man.name, str(detail))
+            else:
+                message = "Error while getting suspect vols from %s (%s)" \
+                          % (lib_man.name, str(detail))
+            Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
+            return None
+	except e_errors.TCP_EXCEPTION, detail:
+	    message = "Error while getting suspect vols from %s (%s)" \
+                      % (lib_man.name, str(detail))
 	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
 	    return None
 	except errno.errorcode[errno.ETIMEDOUT], detail:
-	    msg = "Timeout while getting suspect vols from %s (%s)"%(lib_man.name, detail)
-	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    msg = "Timeout while getting suspect vols from %s (%s)" \
+                  % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
 	    return None
 
 	lib_man.check_suspect_vols(state)
@@ -730,13 +741,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				  "get new work queue from %s"%(lib_man.name,))
 	try:
 	    self.lm_queues[lib_man.name] = lib_man.client.getworks_sorted()
-	except (e_errors.TCP_EXCEPTION, socket.error), detail:
-	    msg = "Error while getting sorted work queue from %s (%s)"%(lib_man.name, detail)
-	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+        except (socket.error, udp_client.UDPError, callback.TCPError), detail:
+            if detail.errno == errno.ETIMEDOUT:
+                message = "Timeout while getting sorted work queue from %s (%s)" \
+                          % (lib_man.name, str(detail))
+            else:
+                 message = "Error while getting sorted work queue from %s (%s)" \
+                           % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
+	    return None
+	except e_errors.TCP_EXCEPTION, detail:
+	    message = "Error while getting sorted work queue from %s (%s)" \
+                      % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
 	    return None
 	except errno.errorcode[errno.ETIMEDOUT], detail:
-	    msg = "Timeout while getting sorted work queue from %s (%s)"%(lib_man.name, detail)
-	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    message = "Timeout while getting sorted work queue from %s (%s)" \
+                      % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
 	    return None
 
 	lib_man.check_work_queue(self.lm_queues[lib_man.name])
@@ -775,13 +797,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    ticket = lib_man.client.get_active_volumes(self.alive_rcv_timeout,
 						       self.alive_retries)
-	except (e_errors.TCP_EXCEPTION, socket.error), detail:
-	    msg = "Error while getting active volumes from %s (%s)"%(lib_man.name, detail)
-	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+        except (socket.error, udp_client.UDPError, callback.TCPError), detail:
+            if detail.errno == errno.ETIMEDOUT:
+                message = "Timeout while getting active volumes from %s (%s)" \
+                      % (lib_man.name, str(detail))
+            else:
+                message = "Error while getting active volumes from %s (%s)" \
+                      % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
+	    return None
+	except e_errors.TCP_EXCEPTION, detail:
+	    message = "Error while getting active volumes from %s (%s)" \
+                      % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
 	    return None
 	except errno.errorcode[errno.ETIMEDOUT], detail:
-	    msg = "Timeout while getting active volumes from %s (%s)"%(lib_man.name, detail)
-	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    message = "Timeout while getting active volumes from %s (%s)" \
+                      % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
 	    return None
 
 	lib_man.check_active_vols(ticket)
@@ -812,13 +845,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    state = lib_man.client.get_lm_state(self.alive_rcv_timeout,
 						self.alive_retries)
-	except (e_errors.TCP_EXCEPTION, socket.error), detail:
-	    msg = "Error while getting state from %s (%s)"%(lib_man.name, detail)
-	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+        except (socket.error, udp_client.UDPError, callback.TCPError), detail:
+            if detail.errno == errno.ETIMEDOUT:
+                message = "Timeout while getting state from %s (%s)" \
+                      % (lib_man.name, str(detail))
+            else:
+                message = "Error while getting state from %s (%s)" \
+                      % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
+	    return None
+	except e_errors.TCP_EXCEPTION, detail:
+	    message = "Error while getting state from %s (%s)" \
+                      % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
 	    return None
 	except errno.errorcode[errno.ETIMEDOUT], detail:
-	    msg = "Timeout while getting state from %s (%s)"%(lib_man.name, detail)
-	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    message = "Timeout while getting state from %s (%s)" \
+                      % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
 	    return None
 
 	lib_man.check_state(state)

@@ -4489,6 +4489,21 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(10, "callback socket %s" % (u.get_tsd().socket.getsockname(),))
                     try:
                         x= u.send(ticket,ticket['routing_callback_addr'] , self.connect_to, self.connect_retry, 0)
+                    except (socket.error, udp_client.UDPError), msg:
+                        Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
+                                  (ticket['routing_callback_addr'], str(msg)))
+                        self.del_udp_client(u)
+                        #del u
+                        # just for a case
+                        try:
+                            self.control_socket.close()
+                            self.listen_socket.close()
+                            self.control_socket,self.listen_socket = None, None 
+                        except:
+                            pass
+                        self.client_socket = None
+                        self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                        return
                     except errno.errorcode[errno.ETIMEDOUT]:
                         Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
                                   (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))

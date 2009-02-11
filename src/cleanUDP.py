@@ -93,7 +93,7 @@ class cleanUDP :
 
         def __init__(self, protocol, kind) :
                 if kind != socket.SOCK_DGRAM :
-                        raise e_errors.CLEANUDP_EXCEPTION
+                        raise socket.error(errno.EINVAL, "expected SOCK_DGRAM")
                 self.socket = socket.socket(protocol, kind)
 		if os.uname()[0] == "Linux":
 			#Enable UDP checksums.  These should be on by default.

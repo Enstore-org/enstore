@@ -208,7 +208,7 @@ def quit_process(gc, use_alias=0):
     try:
         #rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
         rtn = gc.quit(SEND_TO, SEND_TM)
-    except udp_client.UDPError, msg:
+    except (socket.error, udp_client.UDPError), msg:
         rtn = {'status':(e_errors.NET_ERROR, str(msg))}
     except errno.errorcode[errno.ETIMEDOUT]:
         rtn = {'status':(e_errors.TIMEDOUT, None)}
@@ -241,7 +241,7 @@ def stop_server(gc, servername):
         u = udp_client.UDPClient()
 	try:
             rtn1 = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
-        except udp_client.UDPError, msg:
+        except (socket.error, udp_client.UDPError), msg:
             rtn1 = {'status':(e_errors.NET_ERROR, str(msg))}
             if not e_errors.is_ok(rtn1):
                 return 1
@@ -411,7 +411,7 @@ def check_event_relay(csc):
             try:
                 #rtn = 0 implies alive, rtn = 1 implies dead.
                 rtn = erc.alive()
-            except udp_client.UDPError, msg:
+            except (socket.error, udp_client.UDPError), msg:
                 rtn = {'status':(e_errors.NET_ERROR, str(msg))}
             except errno.errorcode[errno.ETIMEDOUT]:
                 rtn = {'status':(e_errors.TIMEDOUT,

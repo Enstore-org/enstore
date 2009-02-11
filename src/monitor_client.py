@@ -9,7 +9,7 @@
 # system imports
 import os
 import sys
-import string
+#import string
 import time
 import errno
 import pprint
@@ -24,17 +24,14 @@ import fcntl
 # enstore imports
 import callback
 import option
-import hostaddr
-#import socket_ext
+#import hostaddr
 import generic_client
-#import backup_client
-#import udp_client
+import udp_client
 import Trace
 import e_errors
 import configuration_client
 import enstore_constants
 import enstore_functions2
-#import log_client
 
 MY_NAME = enstore_constants.MONITOR_CLIENT       #"MNTR_CLI"
 MY_SERVER = enstore_constants.MONITOR_SERVER
@@ -42,6 +39,7 @@ MY_SERVER = enstore_constants.MONITOR_SERVER
 SEND_TO_SERVER = "send_to_server"
 SEND_FROM_SERVER = "send_from_server"
 
+"""
 class MonitorError(Exception):
     def __init__(self, error_message):
 
@@ -54,7 +52,7 @@ class MonitorError(Exception):
 
     def __repr__(self):
         return "MonitorError"
-
+"""
 
 #SERVER_CONNECTION_ERROR = "Server connection error"
 #CLIENT_CONNECTION_ERROR = "Client connection error"
@@ -108,6 +106,9 @@ class MonitorServerClient(generic_client.GenericClient):
     def _send_measurement (self, ticket):
         try:
             x = self.u.send( ticket, self.html_server_addr, self.timeout, 10 )
+        except (socket.error, udp_client.UDPError), msg:
+            x = {'status' : (e_errors.NET_ERROR,
+                             "%s: %s" % (msg.strerror, self.html_server_addr))}
         except errno.errorcode[errno.ETIMEDOUT]:
             x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
@@ -151,7 +152,7 @@ class MonitorServerClient(generic_client.GenericClient):
                                        [data_sock], wait_time)
             except (KeyboardInterrupt, SystemExit):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:
+            except (select.error, socket.error):
                 r, w, ex = (None, None, None)
 
             if w or r or ex:
@@ -179,9 +180,7 @@ class MonitorServerClient(generic_client.GenericClient):
                         # somthing bad happened (which makes return_value
                         # equal to zero).
                         data_sock.close()
-                        #raise CLIENT_CONNECTION_ERROR, \
-                        #      os.strerror(errno.ECONNRESET)
-                        raise MonitorError(os.strerror(errno.ECONNRESET))
+                        raise generic_client.ClientError(os.strerror(errno.ECONNRESET))
                     
                     #Get the new number of bytes sent.
                     bytes_transfered = bytes_transfered + return_value
@@ -191,14 +190,13 @@ class MonitorServerClient(generic_client.GenericClient):
                 except socket.error, detail:
                     data_sock.close()
                     #raise SERVER_CONNECTION_ERROR, detail[1]
-                    raise MonitorError(str(detail))
+                    raise generic_client.ClientError(str(detail))
 
             #If there hasn't been any traffic in the last timeout number of
             # seconds, then timeout the connection.
             elif time.time() - t1 > self.timeout:
                 data_sock.close()
-                #raise SERVER_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
-                raise MonitorError(os.strerror(errno.ETIMEDOUT))
+                raise generic_client.ClientError(os.strerror(errno.ETIMEDOUT))
 
         return time.time() - t0
 
@@ -212,7 +210,7 @@ class MonitorServerClient(generic_client.GenericClient):
             sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, detail:
             #raise CLIENT_CONNECTION_ERROR, detail[1]
-            raise MonitorError(str(detail))
+            raise generic_client.ClientError(str(detail))
 
         #Put the socket into non-blocking mode.
         flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFL)
@@ -233,7 +231,7 @@ class MonitorServerClient(generic_client.GenericClient):
             else:
                 Trace.trace(10, "connect failed: " + detail[1])
                 #raise CLIENT_CONNECTION_ERROR, detail[1]
-                raise MonitorError(str(detail))
+                raise generic_client.ClientError(str(detail))
 
         Trace.trace(10, "Obtaining error status for data socket.")
         #Check if the socket is open for reading and/or writing.
@@ -244,14 +242,13 @@ class MonitorServerClient(generic_client.GenericClient):
             rtn = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         else:
             Trace.trace(10, "Timedout.")
-            #raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
-            raise MonitorError(os.strerror(errno.ETIMEDOUT))
+            raise generic_client.ClientError(os.strerror(errno.ETIMEDOUT))
 
         #...if it is zero then success, otherwise it failed.
         if rtn != 0:
             Trace.trace(10, os.strerror(rtn))
             #raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
-            raise MonitorError(os.strerror(rtn))
+            raise generic_client.ClientError(os.strerror(rtn))
         
         #Restore flag values to blocking mode.
         fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, flags)
@@ -270,8 +267,7 @@ class MonitorServerClient(generic_client.GenericClient):
 
         if not r:
             Trace.trace(10, "Waiting for control socket timed out.")
-            #raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
-            raise MonitorError(os.strerror(errno.ETIMEDOUT))
+            raise generic_client.ClientError(os.strerror(errno.ETIMEDOUT))
 
         Trace.trace(10, "Accepting control socket connetion.")
         #Wait for the client to connect creating the control socket.
@@ -314,10 +310,10 @@ class MonitorServerClient(generic_client.GenericClient):
 
             if not data_sock:
                 #raise CLIENT_CONNECTION_ERROR, "no connection established"
-                raise MonitorError("no connection established")
+                raise generic_client.ClientError("no connection established")
             
         #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-        except MonitorError, msg:
+        except generic_client.ClientError, msg:
             raise msg
 
         #Now that all of the socket connections have been opened, let the
@@ -335,7 +331,7 @@ class MonitorServerClient(generic_client.GenericClient):
                     "recv")
 
         #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-        except MonitorError, msg:
+        except generic_client.ClientError, msg:
             raise msg
 
         #If we get here, the status is ok.
@@ -381,7 +377,9 @@ class MonitorServerClient(generic_client.GenericClient):
             elif transfer == SEND_FROM_SERVER:
                 reply = read_measurment
             else:
-                reply['status'] = ('INVALIDACTION', "failed to simulate encp")
+                reply = {}
+                reply['status'] = (e_errors.INVALID_ACTION,
+                                   "failed to simulate encp")
 
         #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
         #    exc, msg = sys.exc_info()[:2]
@@ -389,19 +387,24 @@ class MonitorServerClient(generic_client.GenericClient):
         #    reply['status'] = (exc, msg)
         #    reply['elapsed'] = self.timeout*10
         #    reply['block_count'] = 0
+        except udp_client.UDPError, detail:
+            reply = {}
+            reply['status'] = (e_errors.NET_ERROR, str(detail))
+            reply['elapsed'] = self.timeout*10
+            reply['block_count'] = 0
+        except generic_client.ClientError, detail:
+            #exc, msg = sys.exc_info()[:2]
+            reply = {}
+            reply['status'] = (str(detail), None)
+            reply['elapsed'] = self.timeout*10
+            reply['block_count'] = 0
         except (errno.ETIMEDOUT,  errno.errorcode[errno.ETIMEDOUT]):
             #exc, msg = sys.exc_info()[:2]
             reply = {}
-            reply['status'] = (e_errors.TIMEDOUT, None)  #(SERVER_CONNECTION_ERROR, detail)
+            reply['status'] = (e_errors.TIMEDOUT, None)
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
-        except MonitorError, detail:
-            #exc, msg = sys.exc_info()[:2]
-            reply = {}
-            reply['status'] = (str(detail), None)  #(SERVER_CONNECTION_ERROR, detail)
-            reply['elapsed'] = self.timeout*10
-            reply['block_count'] = 0
-
+            
         return reply
 
     #Take the elapsed time and the amount of data sent/recieved and calculate
@@ -429,7 +432,10 @@ class MonitorServerClient(generic_client.GenericClient):
             #Try to acquire the host name from the host ip.
             client_addr = socket.gethostbyaddr(self.localaddr[0])[0]
             server_addr = socket.gethostbyaddr(self.monitor_server_addr[0])[0]
-        except:
+        except (socket.error,):
+            client_addr = self.localaddr[0]
+            server_addr = self.monitor_server_addr
+        except (socket.gaierror, socket.herror):
             client_addr = self.localaddr[0]
             server_addr = self.monitor_server_addr
 
@@ -503,13 +509,16 @@ class MonitorServerClient(generic_client.GenericClient):
                             rcv_timeout, tries)
             x['address'] = (ip, x['address'][1])
             print "Server %s found at %s." % (server, x['address'])
-        except errno.errorcode[errno.ETIMEDOUT]:
-            Trace.trace(14,"alive - ERROR, alive timed out")
-            x = {'status' : (e_errors.TIMEDOUT, None)}
+        except (socket.error, udp_client.UDPError), msg:
+            message = "alive - ERROR, connection failed to %s: %s" \
+                      % (ip, str(msg))
+            Trace.trace(14, message)
+            x = {'status' : (e_errors.NET_ERROR, message)}
             print x
-        except socket.error, message:
-            Trace.trace(14,"alive - ERROR, connection failed")
-            x = {'status' : (message.args[0], ip)}
+        except errno.errorcode[errno.ETIMEDOUT]:
+            message = "alive - ERROR, alive timed out"
+            Trace.trace(14, message)
+            x = {'status' : (e_errors.TIMEDOUT, message)}
             print x
         return x
 
@@ -615,8 +624,12 @@ def get_all_ips(config_host, config_port, csc):
     ## What if we cannot get to config server
     x = csc.u.send({"work":"reply_serverlist"},
                    (config_host, config_port))
-    if x['status'][0] != e_errors.OK:
-        raise MonitorError("error from config server")
+    if not e_errors.is_ok(x):
+        raise generic_client.ClientError("error from config server: %s" % (x['status'],))
+    if not x.has_key('server_list'):
+        message = "no 'server_list' in returned server_list: %s" % (x,) 
+        Trace.log(e_errors.ERROR, message)
+        raise generic_client.ClientError(message)
     server_dict = x['server_list']
     ip_dict = {}
     for k in server_dict.keys():
@@ -691,7 +704,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
         else:
             print "Item \'%s\' not found in config dictionary." % \
                   enstore_constants.MONITOR_SERVER
-            return
+            return None
 
     #Get a list of hosts, and a class instance of host to avoid.
     host_list, vetos = get_host_list(csc, config_host, config_port, hostip)
@@ -816,6 +829,6 @@ def do_work(intf):
 
 if __name__ == "__main__":
     
-    intf = MonitorServerClientInterface(user_mode=0)
+    intf_of_monitor_client = MonitorServerClientInterface(user_mode=0)
     
-    do_work(intf)
+    do_work(intf_of_monitor_client)

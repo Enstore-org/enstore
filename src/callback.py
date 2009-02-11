@@ -38,6 +38,104 @@ import host_config
 from en_eval import en_eval
 import Interfaces
 
+class TCPError(socket.error):
+
+    def __init__(self, e_errno, e_message = None):
+
+        socket.error.__init__(self)
+
+        #If only a message is present, it is in the e_errno spot.
+        if e_message == None:
+            if type(e_errno) == types.IntType:
+                self.errno = e_errno
+                self.e_message = None
+            elif type(e_errno) == types.StringType:
+                self.errno = None
+                self.e_message = e_errno
+            else:
+                self.errno = None
+                self.e_message = "Unknown error"
+        #If both are there then we have both to use.
+        else:
+            self.errno = e_errno
+            self.e_message = e_message
+
+        #Generate the string that stringifying this obeject will give.
+        self.strerror = "" #Define this to make pychecker happy.
+        self._string()
+
+        self.args = (self.errno, self.e_message)
+        
+    def __str__(self):
+        self._string()
+        return self.strerror
+
+    def __repr__(self):
+        return "TCPError"  #String value.
+
+    def _string(self):
+        if self.errno in errno.errorcode.keys():
+            errno_name = errno.errorcode[self.errno]
+            errno_description = os.strerror(self.errno)
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
+                                                        self.errno,
+                                                        errno_description,
+                                                        self.e_message)
+        else:
+            self.strerror = self.e_message
+
+        return self.strerror
+
+
+class FIFOError(OSError):
+    
+    def __init__(self, e_errno, e_message = None):
+
+        OSError.__init__(self)
+
+        #If only a message is present, it is in the e_errno spot.
+        if e_message == None:
+            if type(e_errno) == types.IntType:
+                self.errno = e_errno
+                self.e_message = None
+            elif type(e_errno) == types.StringType:
+                self.errno = None
+                self.e_message = e_errno
+            else:
+                self.errno = None
+                self.e_message = "Unknown error"
+        #If both are there then we have both to use.
+        else:
+            self.errno = e_errno
+            self.e_message = e_message
+
+        #Generate the string that stringifying this obeject will give.
+        self.strerror = "" #Define this to make pychecker happy.
+        self._string()
+
+        self.args = (self.errno, self.e_message)
+        
+    def __str__(self):
+        self._string()
+        return self.strerror
+
+    def __repr__(self):
+        return "FIFOError"  #String value.
+
+    def _string(self):
+        if self.errno in errno.errorcode.keys():
+            errno_name = errno.errorcode[self.errno]
+            errno_description = os.strerror(self.errno)
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
+                                                        self.errno,
+                                                        errno_description,
+                                                        self.e_message)
+        else:
+            self.strerror = self.e_message
+
+        return self.strerror
+    
+
 def hex8(x):
     s=hex(x)[2:]  #kill the 0x
     if type(x)==type(1L): s=s[:-1]  # kill the L
@@ -306,26 +404,29 @@ def write_raw(sock,msg,timeout=15*60):
 write_tcp_raw = write_raw
 
 # send a message over the network which is a Python object
-def write_tcp_obj(sock,obj,timeout=15*60):
+def write_tcp_obj(sock, obj, timeout=15*60):
 ### When we want to go strictly to cPickle use the following line.
-#    return write_tcp_obj_new(sock,obj,timeout)
+#    return write_tcp_obj_new(sock, obj, timeout)
 
-    rtn, e = write_tcp_raw(sock,repr(obj),timeout)
+    rtn, e = write_tcp_raw(sock, repr(obj), timeout)
 
     if e:
         log_socket_state(sock) #Log the state of the socket.
         Trace.log(e_errors.ERROR, e)
-        raise e_errors.TCP_EXCEPTION
+        #raise e_errors.TCP_EXCEPTION
+        raise TCPError(e)
 
     return rtn
 
 # send a message over the network which is a Python object
 def write_tcp_obj_new(sock,obj,timeout=15*60):
-    rtn, e = write_tcp_raw(sock,cPickle.dumps(obj),timeout)
+    rtn, e = write_tcp_raw(sock, cPickle.dumps(obj), timeout)
+    
     if e:
         log_socket_state(sock) #Log the state of the socket.
         Trace.log(e_errors.ERROR, e)
-        raise e_errors.TCP_EXCEPTION
+        #raise e_errors.TCP_EXCEPTION
+        raise TCPError(e)
 
     return rtn
 
@@ -335,7 +436,8 @@ def write_obj(fd, obj, timeout=15*60, verbose = True):
 
     if e and verbose:
         Trace.log(e_errors.ERROR, e)
-        raise e_errors.TCP_EXCEPTION #What should this be?
+        #raise e_errors.TCP_EXCEPTION #What should this be?
+        raise FIFOError(e)
     
     return rtn
 
@@ -459,7 +561,8 @@ def read_tcp_obj(sock, timeout=15*60) :
         error_string = "%s from %s" % (e, peername)
         Trace.log(e_errors.ERROR, error_string)
         
-        raise e_errors.TCP_EXCEPTION
+        #raise e_errors.TCP_EXCEPTION
+        raise TCPError(e)
 
     try:
         obj = cPickle.loads(s)
@@ -486,7 +589,8 @@ def read_tcp_obj_new(sock, timeout=15*60):
         error_string = "%s from %s" % (e, peername)
         Trace.log(e_errors.ERROR, error_string)
         
-	raise e_errors.TCP_EXCEPTION
+	#raise e_errors.TCP_EXCEPTION
+        raise TCPError(e)
     
     return cPickle.loads(s)
 
@@ -497,7 +601,9 @@ def read_obj(fd, timeout=15*60, verbose = True):
         if verbose:
             Trace.log(e_errors.ERROR, e)
         
-        raise e_errors.TCP_EXCEPTION #What should this be?
+        #raise e_errors.TCP_EXCEPTION #What should this be?
+        raise FIFOError(e)
+    
     return cPickle.loads(s)
     
 

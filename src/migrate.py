@@ -1340,7 +1340,7 @@ def get_requests(queue, r_pipe, timeout = .1, r_debug = False):
 
                 #increment counter on success
 		requests_obtained = requests_obtained + 1
-	    except (socket.error), msg:
+	    except (socket.error, select.error, callback.TCPError), msg:
 	        if r_debug:
 		    log(MY_TASK, str(msg))
 	        #On an error, put the list ending None in the list.
