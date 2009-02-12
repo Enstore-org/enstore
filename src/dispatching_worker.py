@@ -469,12 +469,18 @@ class DispatchingWorker(udp_server.UDPServer):
         
         
     def quit(self,ticket):
+        if sys.version_info >= (2, 6):
+            import multiprocessing
+            children = multiprocessing.active_children()
+            for p in children:
+                p.terminate()
         Trace.trace(10,"quit address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = os.getpid()
         Trace.log( e_errors.INFO, 'QUITTING... via os._exit')
         self.reply_to_caller(ticket)
+        sys.stdout.flush()
         os._exit(0) ##MWZ: Why not sys.exit()?  No servers fork() anymore...
 
     # cleanup if we are done with this unique id
