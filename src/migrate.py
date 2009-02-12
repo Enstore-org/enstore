@@ -60,7 +60,7 @@ Implementation issues:
 # system imports
 import pg
 import time
-import thread
+#import thread
 import threading
 import Queue
 import os
@@ -126,13 +126,13 @@ USE_THREADS = False #True
 # increasing performance.
 USE_VOLUME_ASSERT = False
 
-#When true, fork off a new process that will handle migrating one file.
+#When true, fork off a new process/thread that will handle migrating one file.
 # Then keep multiple process going.
-USE_PROCESS_PER_FILE_MIGRATION = False
+PARALLEL_FILE_MIGRATION = False
 
-#When true, start PROC_LIMIT number of processes for reading and PROC_LIMIT
-# number of processes for writing.
-USE_PROCESS_PER_FILE_TRANSFER = False
+#When true, start PROC_LIMIT number of processes/threads for reading and
+# PROC_LIMIT number of processes/threads for writing.
+PARALLEL_FILE_TRANSFER = False
 
 ##
 ## End multiple_threads / forked_processes global variables.
@@ -140,38 +140,28 @@ USE_PROCESS_PER_FILE_TRANSFER = False
 
 ###############################################################################
 
-#
+#Number of processes/threads to juggle at once.
 PROC_LIMIT = 3
 
 
-#
+#Default size of the Queue class objects.
 DEFUALT_QUEUE_SIZE = 1024
 
-"""
-# job queue for coping files
-copy_queue = Queue.Queue(DEFUALT_QUEUE_SIZE)
-scan_queue = Queue.Queue(DEFUALT_QUEUE_SIZE)
-#We add these items to the two queues.
-copy_queue.received_count = 0
-scan_queue.received_count = 0
-copy_queue.finished = False
-scan_queue.finished = False
-
-#These will be set to the pipes that will send jobs between the processes.
-migrate_r_pipe, migrate_w_pipe = (None, None)
-scan_r_pipe, scan_w_pipe = (None, None)
-"""
-
+#The value sent over a pipe to signal the receiving end there are no more
+# comming.
 SENTINEL = "SENTINEL"
+
+FILE_LIMIT = 25 #The maximum number of files to wait for at one time.
 
 ###############################################################################
 
 #Define the lock so that the output is not split on each line of log output.
-io_lock = thread.allocate_lock()
+#io_lock = thread.allocate_lock()
+io_lock = threading.Lock()
 
 #Make this global so we can kill processes if necessary.
 pid_list = []
-#If we want to use threads again...
+#Make this global so we can join threads if necessary.
 tid_list = []
 
 
@@ -195,6 +185,8 @@ ENCP_PRIORITY = 0
 DEFAULT_FS_PNFS_PATH = "/pnfs/fs/usr"
 
 DELETED_TMP = 'DELETED'
+
+###############################################################################
 
 ##
 ## The following constants define migration specific values.  This should
@@ -222,13 +214,15 @@ log_f = None
 ## End migration specific global variables.
 ##
 
+###############################################################################
+
 #Make a list of migrating states.
 MIGRATION_STATES = ["migrating", "duplicating", "cloning"]
 #Make a list of migrated states.
 MIGRATED_STATES = ["migrated", "duplicated", "cloned"]
 
 #If the tape speeds for the new media are faster then the old media; this
-# should: int(NUM_OBJS * (1 - (old_rape_rate / new_tape_rate)))
+# should be: int(NUM_OBJS * (1 - (old_rape_rate / new_tape_rate)))
 #If they are the same speed then go with 2.
 proceed_number = 2
 
@@ -236,8 +230,6 @@ dbhost = None
 dbport = None
 dbname = None
 dbuser = "enstore"
-
-FILE_LIMIT = 25 #The maximum number of files to wait for at one time.
 
 ###############################################################################
 
@@ -413,7 +405,7 @@ def set_proceed_number(src_bfids, copy_queue, scan_queue, intf):
 		proceed_number = int(len(src_bfids) * (1 - (src_rate / dst_rate)))
 
 	#Adjust the file limit to account for the number of processes/threads.
-	if USE_PROCESS_PER_FILE_TRANSFER:
+	if PARALLEL_FILE_TRANSFER:
 		use_limit = FILE_LIMIT / PROC_LIMIT
 	else:
 		use_limit = FILE_LIMIT
@@ -439,7 +431,6 @@ def setup_cloning():
 
 
 ###############################################################################
-
 
 #function: is a string name of the function to call using apply()
 #arg_list: is the argument list to pass to the function using apply()
@@ -484,10 +475,16 @@ def run_in_process(function, arg_list, my_task = "RUN_IN_PROCESS",
 			del tb #Avoid cyclic references.
 			error_log(my_task, str(exc), str(msg))
 
-			#Execute this function only if an e
+			#Execute this function only if an exception occurs.
 			if type(on_exception) == types.TupleType \
 			   and len(on_exception) == 2:
-				apply(on_exception[0], on_exception[1])
+				try:
+					apply(on_exception[0], on_exception[1])
+				except:
+					message = "exception handler: %s: %s"\
+						  % (sys.exc_info()[0],
+						     sys.exc_info()[1])
+					Trace.log(e_errors.ERROR, message)
 
 			try:
 				#Make an attempt to tell the parent
@@ -547,6 +544,11 @@ def wait_for_processes(kill = False):
 
 	return rtn
 
+#function: is a string name of the function to call using apply()
+#arg_list: is the argument list to pass to the function using apply()
+#my_task: overrides the default step name for logging errors
+#on_exception: 2-tuple consisting of function and arugument list to execute
+#          if function throws an exception.
 def run_in_thread(function, arg_list, my_task = "RUN_IN_THREAD"):
 	global tid_list
 	
@@ -554,8 +556,11 @@ def run_in_thread(function, arg_list, my_task = "RUN_IN_THREAD"):
 	if debug:
 		print "Starting %s." % (str(function),)
 	try:
-		tid = thread.start_new_thread(function, arg_list)
+		#tid = thread.start_new_thread(function, arg_list)
+		tid = threading.Thread(target=function, name=my_task,
+				       args=arg_list)
 		tid_list.append(tid)  #append to the list of thread ids.
+		tid.start()
 	except (KeyboardInterrupt, SystemExit):
 		pass
 	except:
@@ -563,7 +568,7 @@ def run_in_thread(function, arg_list, my_task = "RUN_IN_THREAD"):
 		error_log(my_task, "start_new_thread() failed: %s: %s\n" \
 			  % (str(exc), str(msg)))
 	if debug:
-		print "Startied %s [%s]." % (str(function), str(tid))
+		print "Started %s [%s]." % (str(function), str(tid))
 
 def wait_for_threads():
 	global errors
@@ -583,6 +588,21 @@ def wait_for_threads():
 
 	return errors
 
+#Run in either threads or processes depending on the value of USE_THREADS.
+def run_in_parallel(function, arg_list, my_task = "RUN_IN_PARALLEL",
+		    on_exception = None):
+	if USE_THREADS:
+		run_in_thread(function, arg_list, my_task = my_task)
+	else:
+		run_in_process(function, arg_list, my_task = my_task,
+			       on_exception = on_exception)
+
+def wait_for_parallel(kill = False):
+	if USE_THREADS:
+		return wait_for_threads()
+	else:
+		return wait_for_processes(kill = kill)
+	
 ###############################################################################
 
 def get_migration_db_path():
@@ -1358,7 +1378,7 @@ def get_requests(queue, r_pipe, timeout = .1, r_debug = False):
                 break
 
         else:
-            break
+		break
 
     if r_debug:
 	    log(MY_TASK, "queue.qsize():", str(queue.qsize()),
@@ -1373,7 +1393,7 @@ def put_request(queue, w_pipe, job):
 	if job == None:
 		queue.finished = True
 	return
-	
+
     callback.write_obj(w_pipe, job)
 
 ##########################################################################
@@ -1972,7 +1992,8 @@ def copy_file(bfid, encp, intf, db):
 
 # copy_files(files) -- copy a list of files to disk and mark the status
 # through copy_queue
-def copy_files(files, copy_queue, migrate_w_pipe, intf):
+def copy_files(files, copy_queue, migrate_w_pipe,
+	       grab_lock, release_lock, intf):
 	
 	MY_TASK = "COPYING_TO_DISK"
 
@@ -1990,6 +2011,13 @@ def copy_files(files, copy_queue, migrate_w_pipe, intf):
 	
 	# copy files one by one
 	for bfid in files:
+		#print "grabbing grab_lock", os.getpid(), grab_lock
+		#grab_lock.acquire()
+		#print "grabbed grab_lock", os.getpid(), grab_lock
+		#print "releasing release_lock", os.getpid(), release_lock
+		#release_lock.release()
+		#print "moving on", os.getpid(), release_lock
+		
 		pass_along_job = copy_file(bfid, encp, intf, db)
 		if pass_along_job:
 			#If we succeeded, pass the job on to the write
@@ -2000,6 +2028,9 @@ def copy_files(files, copy_queue, migrate_w_pipe, intf):
 			put_request(copy_queue, migrate_w_pipe, pass_along_job)
 			if debug:
 				log(MY_TASK, "Done passing job.")
+
+		#Give others some time.
+		time.sleep(0.1)
 
 	# terminate the copy_queue
 	log(MY_TASK, "no more to copy, terminating the copy queue")
@@ -3018,28 +3049,39 @@ def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 # migrate(bfid_list): -- migrate a list of files
 def migrate(bfids, intf):
 	global errors
-	
-	## Depending on what we need to do generate a list of lists.
-	if USE_PROCESS_PER_FILE_TRANSFER:
-		i = 0
-		#Make a list of PROC_LIMIT length.  Each element should
-		# itself be an empty list.
-		#
-		# Don't do "[[]] * PROC_LIMIT"!!!  That will only succeed
-		# in creating PROC_LIMIT references to the same list.
-		use_bfids_lists = []
-		while i < PROC_LIMIT:
-			use_bfids_lists.append([])
-			i = i + 1
 
-		#Put each bfid in one of the bfid lists.  This should resemble
-		# a round-robin effect.
-		i = 0
-		for bfid in bfids:
-			use_bfids_lists[i].append(bfid)
-			i = (i + 1) % PROC_LIMIT
+	errors = 0
+
+	if PARALLEL_FILE_TRANSFER:
+		use_proc_limit = PROC_LIMIT
 	else:
-		use_bfids_lists = [bfids]
+		use_proc_limit = 1
+	
+	i = 0
+	#Make a list of PROC_LIMIT length.  Each element should
+	# itself be an empty list.
+	#
+	# Don't do "[[]] * PROC_LIMIT"!!!  That will only succeed
+	# in creating PROC_LIMIT references to the same list.
+	use_bfids_lists = []
+	while i < use_proc_limit:
+		use_bfids_lists.append([])
+		i = i + 1
+
+	#Put each bfid in one of the bfid lists.  This should resemble
+	# a round-robin effect.
+	i = 0
+	for bfid in bfids:
+		use_bfids_lists[i].append(bfid)
+		i = (i + 1) % use_proc_limit
+
+	#
+	sequential_locks = []
+	for unused in range(use_proc_limit):
+		sequential_locks.append(threading.Semaphore(1))
+	#Lock all but the first lock.
+	#for lock in sequential_locks[1:]:
+	#	lock.acquire()
 
 	#Get scan pipes and queue once if volume assert is being used.
 	if USE_VOLUME_ASSERT:
@@ -3049,24 +3091,27 @@ def migrate(bfids, intf):
 		scan_queue.finished = False
 		
 	#For each list of bfids start the migrations.
-	for bfid_list in use_bfids_lists:
+	for i in range(len(use_bfids_lists)):
+		bfid_list = use_bfids_lists[i]
+		
 		#Get new pipes for each set of processes.
 		migrate_r_pipe, migrate_w_pipe = os.pipe()
-	        #Get new queues for each set of processes.
+	        #Get new queues for each set of processes/threads.
 		copy_queue = Queue.Queue(DEFUALT_QUEUE_SIZE)
 		copy_queue.received_count = 0
 		copy_queue.finished = False
 		if not USE_VOLUME_ASSERT:
 			#Get new pipes for each set of processes.
 			scan_r_pipe, scan_w_pipe = os.pipe()
-			#Get new queues for each set of processes.
+			#Get new queues for each set of processes/threads.
 			scan_queue = Queue.Queue(DEFUALT_QUEUE_SIZE)
 			scan_queue.received_count = 0
 			scan_queue.finished = False
 
 		#Set the global proceed_number variable.
-		set_proceed_number(bfids, copy_queue, scan_queue, intf)
+		set_proceed_number(bfid_list, copy_queue, scan_queue, intf)
 
+		"""
 		#Pack the queues and pipes.
 		pipes = (migrate_r_pipe, migrate_w_pipe,
 			 scan_r_pipe, scan_w_pipe)
@@ -3077,18 +3122,50 @@ def migrate(bfids, intf):
 			_migrate_threads(bfid_list, pipes, queues, intf)
 		else:
 			_migrate_processes(bfid_list, pipes, queues, intf)
+		"""
+		
+		# Start the reading in parallel.
+		run_in_parallel(copy_files,
+		       (bfid_list, copy_queue, migrate_w_pipe,
+			sequential_locks[i],
+			sequential_locks[(i - 1) % use_proc_limit], intf),
+		       my_task = "COPY_TO_DISK",
+		       on_exception = (handle_process_exception,
+				       (copy_queue, migrate_w_pipe, SENTINEL)))
 
-	#$If using volume_assert, we only want one call to final_scan():
+		# Start the writing in parallel
+		run_in_parallel(write_new_files,
+		       (copy_queue, scan_queue, migrate_r_pipe,
+			scan_w_pipe, intf),
+		       my_task = "COPY_TO_TAPE",
+		       on_exception = (handle_process_exception,
+				       (scan_queue, scan_w_pipe, SENTINEL)))
+
+		# Only the parent should get here.
+
+		#If we are scanning too, start the scan in parallel.
+		if intf.with_final_scan and not USE_VOLUME_ASSERT:
+			run_in_parallel(handle_process_exception,
+					(scan_queue, scan_r_pipe, intf),
+					my_task = "FINAL_SCAN")
+
+
+	#If using volume_assert, we only want one call to final_scan():
 	if intf.with_final_scan and USE_VOLUME_ASSERT:
+		run_in_parallel(handle_process_exception,
+					(scan_queue, scan_r_pipe, intf),
+					my_task = "FINAL_SCAN")
+		"""
 		arg_list = (scan_queue, scan_r_pipe, intf)
 		if USE_THREADS:
 			run_in_thread(final_scan, arg_list)
-			#s_id = thread.start_new_thread(final_scan, arg_list)
-			#tid_list.append(s_id)  #append to the list of thread ids.
 		else:
 			run_in_process(final_scan, arg_list,
 				       my_task = "FINAL_SCAN")
+		"""
 
+	done_exit_status = wait_for_parallel()
+	"""
 	if USE_THREADS:
 		wait_for_threads()
 		#return errors
@@ -3096,9 +3173,11 @@ def migrate(bfids, intf):
 		#Wait for the processes to get done.
 		done_exit_status = wait_for_processes()
 		errors = done_exit_status + errors
-
+	"""
+	errors = done_exit_status + errors
 	return errors
 
+"""
 def _migrate_threads(bfids, pipes, queues, intf):
 	global errors
 	global tid_list
@@ -3151,18 +3230,24 @@ def _migrate_processes(bfids, pipes, queues, intf):
 		       (copy_queue, scan_queue, migrate_r_pipe,
 			scan_w_pipe, intf),
 		       my_task = "COPY_TO_TAPE",
-		       on_exception = (put_request,
+		       on_exception = (handle_process_exception,
 				       (scan_queue, scan_w_pipe, SENTINEL)))
 
 	# Only the parent should get here.
 
 	#If we are scanning too, start the scan process.
 	if intf.with_final_scan and not USE_VOLUME_ASSERT:
-		run_in_process(final_scan,
+		run_in_process(handle_process_exception,
 			       (scan_queue, scan_r_pipe, intf),
 			       my_task = "FINAL_SCAN")
+"""
+##########################################################################
 
-
+def handle_process_exception(queue, pipe, write_value):
+	
+	put_request(queue, pipe, write_value)
+	os.close(pipe)
+	
 ##########################################################################
 
 # migrated_from(vol, db) -- list all volumes that have migrated to vol
@@ -3337,16 +3422,21 @@ def migrate_volume(vol, intf):
 
 	#Build the list of files to migrate.
 	bfids = []
-	media_types = []
 	for row in res:
 		bfids.append(row[0])
 
-		if intf.library:
-			if intf.library not in media_types:
-				media_types.append(intf.library)
-		else:
+	media_types = []
+	#Need to obtain the output media_type.  If --library
+	# was used on the command line, go with that.  Otherwise,
+	# set the media_type.
+	if intf.library:
+		media_type = get_media_type(intf.library, db)
+		media_types = [media_type]
+	else:
+		for row in res:
 			original_path = row[2]
 			media_type = search_media_type(original_path, db)
+
 			if media_type and media_type not in media_types:
 				media_types.append(media_type)
 
@@ -3375,7 +3465,7 @@ def migrate_volume(vol, intf):
 		log(MY_TASK, 'set %s to %s' % (vol, IN_PROGRESS_STATE))
 
 	#Start to copy the files by starting a process per file.
-	if USE_PROCESS_PER_FILE_MIGRATION:
+	if PARALLEL_FILE_MIGRATION:
 		res = 0
 		copy_bfids_list = copy.copy(bfids)
 		while len(copy_bfids_list):
@@ -3383,12 +3473,12 @@ def migrate_volume(vol, intf):
 				  len(copy_bfids_list) > 0:
 
 				bfid = copy_bfids_list[0]
-				run_in_process(migrate, ([bfid], intf))
+				run_in_parallel(migrate, ([bfid], intf))
 				#Remove from the remaing to start list.
 				copy_bfids_list.remove(bfid)
 				time.sleep(1) #give some break in between
 
-			if len(pid_list) >= 1: #PROC_NUMBER:
+			if len(pid_list) >= 1:
 				done_exit_status = wait_for_process()
                                 #Remember the error.
 				if done_exit_status:
@@ -3963,7 +4053,7 @@ def do_work(intf):
 	if USE_THREADS:
 		wait_for_threads()
 	else:
-		wait_for_processes()
+		wait_for_processes(kill = True)
 	
 	sys.exit(exit_status)
 
