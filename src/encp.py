@@ -10461,6 +10461,12 @@ def prepare_read_from_hsm(tinfo, e):
         if not msg.ticket.get('status', None):
             msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket, listen_socket, udp_serv, requests_per_vol
+    except OSError, msg:
+        if msg.errno in [errno.ENOENT, errno.EPERM, errno.EACCES]:
+            return_ticket = {'status' : (e_errors.USERERROR, str(msg))}
+        else:
+            return_ticket = {'status' : (e_errors.OSERROR, str(msg))}
+        return return_ticket, listen_socket, udp_serv, requests_per_vol
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
