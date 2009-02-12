@@ -33,11 +33,22 @@ import udp_common
 import Trace
 import e_errors
 import host_config
-try:
-    import rawUDP
-    can_use_raw = True
-except ImportError:
-    can_use_raw = False
+# for python 2.6 and later use
+# rawUDP_p -- process based rawUDP for better use of multiprocessor ensvoronment
+# and to avoid GIL
+if sys.version_info >= (2, 6):
+    try:
+        import rawUDP_p as rawUDP
+        can_use_raw = True
+    except ImportError:
+        can_use_raw = False
+else:
+    try:
+        import rawUDP
+        can_use_raw = True
+    except ImportError:
+        can_use_raw = False
+        
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
