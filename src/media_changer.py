@@ -671,7 +671,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    
 	    # don't print a failure  (no tape mounted) message that is
 	    # really a success
-            self.logdetail = 0 
+            self.logdetail = 0
+	    # To Do: The downside to passing the volume we want to mount is
+	    # that there is a warning message about the MC expecting to
+	    # unmount that tape.  Some blank value should be passed to
+	    # avoid that false warning.
 	    dismount_ticket = {'work'           : 'unloadvol',
 			       'vol_ticket'     : ticket['vol_ticket'],
 			       'drive_id'       : ticket['drive_id'],
