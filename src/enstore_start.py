@@ -22,7 +22,6 @@ import socket
 import grp
 import pwd
 import time
-import popen2
 
 # enstore imports
 import setpath
@@ -393,7 +392,9 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         # see if EPS returns config_server"
         #cmd = 'EPS | egrep "%s|%s" | grep python | grep -v %s'%(name,"configuration_server.py", "grep")
         cmd = 'EPS | egrep "%s" | egrep -v "%s|%s"'%(name, "grep", "enstore st")
-        pipeObj = popen2.Popen3(cmd, 0, 0)
+        # popen is deprecated in last python releases
+        #pipeObj = popen2.Popen3(cmd, 0, 0)
+        pipeObj = subprocess.Popen([cmd], bufsize=0, stdin=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True)
         if pipeObj:
             #stat = pipeObj.wait()
             pipeObj.wait()
