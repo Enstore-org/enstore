@@ -105,11 +105,14 @@ def duplicate_metadata(bfid1, src, bfid2, dst, db):
 
 	# cross check
 	if f1['size'] != f2['size']:
-		err_msg = "%s and %s have different size"%(bfid1, bfid2)
+		err_msg = "%s and %s have different size" % (bfid1, bfid2)
 	elif f1['complete_crc'] != f2['complete_crc']:
-		err_msg = "%s and %s have different crc"%(bfid1, bfid2)
+		err_msg = "%s and %s have different crc" % (bfid1, bfid2)
 	elif f1['sanity_cookie'] != f2['sanity_cookie']:
-		err_msg = "%s and %s have different sanity_cookie"%(bfid1, bfid2)
+		err_msg = "%s and %s have different sanity_cookie" \
+			  % (bfid1, bfid2)
+	else:
+		err_msg = None
 	if err_msg:
 		if f2['deleted'] == "yes" and not migrate.is_swapped(bfid1, db):
 			migrate.log(MY_TASK,
