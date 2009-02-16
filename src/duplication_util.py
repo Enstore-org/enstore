@@ -88,14 +88,22 @@ class DuplicationManager:
 		# check for consistency
 		if long(pf.complete_crc) != f1['complete_crc']:
 			return "wrong crc: pnfs(%s), file(%s)"%(`pf.complete_crc`, `f1['complete_crc']`)
-		if pnfs.get_enstore_fs_path(pf.path) != pnfs.get_enstore_fs_path(pnfs.get_abs_pnfs_path(f1['pnfs_name0'])):
-			return "wrong pnfs_path: pnfs(%s), file(%s)"%(pf.path, f1['pnfs_name0'])
+		# npp means Normalized Pnfs Path.
+		npp = pnfs.get_enstore_fs_path(pnfs.get_abs_pnfs_path(pf.path))
+		# ndp means Normalized Database Path.
+		ndp = pnfs.get_enstore_fs_path(pnfs.get_abs_pnfs_path(f1['pnfs_name0']))
+		if npp != ndp:
+			return "wrong pnfs_path: pnfs(%s), file(%s)" \
+			       % (pf.path, f1['pnfs_name0'])
 		if pf.bfid != f1['bfid'] and pf.bfid != f2['bfid']:
-			return "wrong bfids: pnfs(%s), f1(%s), f2(%s)"%(pf.bfid, f1['bfid'], f2['bfid'])
+			return "wrong bfids: pnfs(%s), f1(%s), f2(%s)" \
+			       % (pf.bfid, f1['bfid'], f2['bfid'])
 		if long(pf.size) != f1['size']:
-			return "wrong size: pnfs(%s), file(%s))"%(pf.size, `f1['size']`)
+			return "wrong size: pnfs(%s), file(%s))" \
+			       % (pf.size, `f1['size']`)
 		if pf.pnfs_id != f1['pnfsid']:
-			return "wrong pnfsids: pnfs(%s), file(%s)"%(pf.pnfs_id, f1['pnfsid'])
+			return "wrong pnfsids: pnfs(%s), file(%s)" \
+			       % (pf.pnfs_id, f1['pnfsid'])
 
 		# NEED TO CHECK SOMETHING ELSE
 
@@ -103,18 +111,19 @@ class DuplicationManager:
 		if f1['deleted'] == 'yes':
 			res = self.fcc.modify({'bfid':bfid1, 'deleted':'no'})
 			if res['status'][0] != e_errors.OK:
-				return "failed to undelete file %s"%(bfid1)
+				return "failed to undelete file %s" % (bfid1,)
 		if f2['deleted'] == 'yes':
 			res = self.fcc.modify({'bfid':bfid2, 'deleted':'no'})
 			if res['status'][0] != e_errors.OK:
-				return "failed to undelete file %s"%(bfid2)
+				return "failed to undelete file %s" % (bfid2,)
 
 		# register
 		q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');"%(bfid1, bfid2)
 		try:
 			res = self.db.query(q)
 		except:
-			return "failed to register copy (%s, %s)"%(bfid1, bfid2)
+			return "failed to register copy (%s, %s)" \
+			       % (bfid1, bfid2)
 
 		# set pnfs entry
 		if pf.bfid != bfid1:
