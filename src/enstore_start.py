@@ -22,7 +22,7 @@ import socket
 import grp
 import pwd
 import time
-import subrocess
+import subprocess
 
 # enstore imports
 import setpath
