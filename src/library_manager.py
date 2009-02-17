@@ -49,6 +49,8 @@ import mover_constants
 import charset
 import discipline
 import encp_ticket
+import event_relay_client
+
 
 KB=1L<<10
 MB=1L<<20
@@ -515,9 +517,15 @@ class LibraryManagerMethods:
                 Trace.trace(10, "sending IP %s to %s" % (host, ticket['routing_callback_addr']))
                 try:
                     x= u.send(ticket,ticket['routing_callback_addr'] , 15, 3, 0)
+                except (socket.error, udp_client.UDPError), msg:
+                    Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
+                              (ticket['routing_callback_addr'], str(msg)))
+                    self.del_udp_client(u)
+                    return
                 except errno.errorcode[errno.ETIMEDOUT]:
                     Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
-                              (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
+                              (ticket['routing_callback_addr'],
+                               os.strerror(errno.ETIMEDOUT)))
                     self.del_udp_client(u)
                     return
                 if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']
@@ -754,8 +762,11 @@ class LibraryManagerMethods:
 
     ## check if there are any additional restrictions for mounted
     def client_host_busy_2(self, requestor, external_label, vol_family, w):
+        Trace.trace(22,"client_host_busy:restrict_access_in_bound %s"%(self.restrict_access_in_bound))
         ret = 0
-        '''
+        if not self.restrict_access_in_bound:
+            return 0
+        
         rc, fun, args, action = self.restrictor.match_found(w)
         Trace.trace(22,"client_host_busy_2 args %s" %(args,)) 
         if rc and fun and action:
@@ -785,7 +796,7 @@ class LibraryManagerMethods:
                 if ret and (action in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.REJECT)):
                     w["reject_reason"] = ("RESTRICTED_ACCESS",None)
                     Trace.trace(22, "222")
-        '''
+        
         return ret
                         
 
@@ -2014,8 +2025,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
         # setup the communications with the event relay task
         self.resubscribe_rate = 300
+        self.erc = event_relay_client.EventRelayClient(self, function = self.handle_er_msg, sock=self.server_socket)
         self.erc.start([event_relay_messages.NEWCONFIGFILE],
                        self.resubscribe_rate)
+        
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(self.name, self.alive_interval, 
                                  self.return_state)
@@ -3291,10 +3304,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def reinit(self):
         Trace.log(e_errors.INFO, "(Re)initializing server")
         self.keys = self.csc.get(self.name)
+        Trace.trace(22,"reinit:new keys %s"%(self.keys,))
+
         self.allow_access = self.keys.get('allow', None)
         self.pri_sel.read_config()
         self.restrictor.read_config()
         self.max_requests = self.keys.get('max_requests', 2000) # maximal number of requests in the queue
+        # if restrict_access_in_bound is True then restrict simultaneos host access
+        # as specified in discipline
+        self.restrict_access_in_bound = self.keys.get('restrict_access_in_bound', None)
+        Trace.trace(22,"reinit:restrict_access_in_bound %s"%(self.restrict_access_in_bound,))
         c_lock = self.lm_lock
         self.lm_lock = self.get_lock()
         if not self.lm_lock:
@@ -3344,7 +3363,7 @@ if __name__ == "__main__":
     # get a library manager
     lm = LibraryManager(intf.name, (intf.config_host, intf.config_port))
     lm.handle_generic_commands(intf)
-
+    
     while 1:
         try:
             #Trace.init(intf.name[0:5]+'.libm')
