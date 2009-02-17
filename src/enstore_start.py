@@ -395,11 +395,9 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         cmd = 'EPS | egrep "%s" | egrep -v "%s|%s"'%(name, "grep", "enstore st")
         # popen is deprecated in last python releases
         #pipeObj = popen2.Popen3(cmd, 0, 0)
-        pipeObj = subprocess.Popen([cmd], bufsize=0, stdin=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True)
+        pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
         if pipeObj:
-            #stat = pipeObj.wait()
-            pipeObj.wait()
-            result = pipeObj.fromchild.readlines()  # result has returned string
+            result = pipeObj.communicate()[0]
             if len(result) >= 1:
                 # running, don't start
                 rtn = {'status':(e_errors.OK,"running")}
@@ -418,11 +416,11 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         for unused in (0, 1, 2, 3, 4, 5):
             time.sleep(2)
             cmd = 'EPS | egrep "%s|%s" | grep -v %s'%(name,"configuration_server.py", "grep")
-            pipeObj = popen2.Popen3(cmd, 0, 0)
+            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+            #pipeObj = popen2.Popen3(cmd, 0, 0)
             if pipeObj:
                 #stat = pipeObj.wait()
-                pipeObj.wait()
-                result = pipeObj.fromchild.readlines()  # result has returned string
+                result = pipeObj.communicate()[0]
                 if len(result) >= 1:
                     rtn = {'status':(e_errors.OK,"running")}
                     break
