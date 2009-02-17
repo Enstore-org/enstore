@@ -33,10 +33,10 @@ import udp_common
 import Trace
 import e_errors
 import host_config
-# for python 2.6 and later use
+# for python 2.6 and latter use
 # rawUDP_p -- process based rawUDP for better use of multiprocessor ensvoronment
 # and to avoid GIL
-if sys.version_info >= (2, 6):
+if sys.version_info >= (2, 6, 0):
     try:
         import rawUDP_p as rawUDP
         can_use_raw = True
@@ -44,7 +44,7 @@ if sys.version_info >= (2, 6):
         can_use_raw = False
 else:
     try:
-        import rawUDP
+        import rawUDP as rawUDP
         can_use_raw = True
     except ImportError:
         can_use_raw = False
@@ -293,8 +293,6 @@ class UDPServer:
        #   time out where there is no string or r.a.
 
        request, client_addr = '',()
-       rcv_timeout = self.rcv_timeout
-       #rc = rawUDP.get(self.raw_requests)
        rc = self.raw_requests.get()
        if rc:
            client_addr = (rc[0], rc[1])
