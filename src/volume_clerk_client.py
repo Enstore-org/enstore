@@ -12,12 +12,11 @@ import string
 import time
 import errno
 import socket
-import select
+#import select
 import pprint
 
 # enstore imports
-#import setpath
-import callback
+#import callback
 import hostaddr
 import option
 import generic_client
@@ -216,19 +215,25 @@ def extract_volume(v):    # v is a string
             'volume_family': volume_family,
             'comment': comment}
 		
-class VolumeClerkClient(generic_client.GenericClient,
+class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericClient,
                         backup_client.BackupClient):
 
     def __init__( self, csc, server_address=None, flags=0, logc=None,
                   alarmc=None, rcv_timeout = RCV_TIMEOUT,
                   rcv_tries = RCV_TRIES):
-        generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
-                                              flags=flags, logc=logc,
-                                              alarmc=alarmc,
-                                              rcv_timeout=rcv_timeout,
-                                              rcv_tries=rcv_tries,
-                                              server_name = MY_SERVER)
-
+        #generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
+        #                                      flags=flags, logc=logc,
+        #                                      alarmc=alarmc,
+        #                                      rcv_timeout=rcv_timeout,
+        #                                      rcv_tries=rcv_tries,
+        #                                      server_name = MY_SERVER)
+	info_client.volumeInfoMethods.__init__(self,csc,MY_NAME,
+					       server_address = server_address,
+					       flags=flags, logc=logc,
+					       alarmc=alarmc,
+					       rcv_timeout=rcv_timeout,
+					       rcv_tries=rcv_tries,
+					       server_name = MY_SERVER)
         #if self.server_address == None:
         #    self.server_address = self.get_server_address(
         #        MY_SERVER, rcv_timeout=rcv_timeout, tries=rcv_tries)
@@ -326,6 +331,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   "restore"         : restore_vm}
         return self.send(ticket,timeout,retry)
 
+    """
     # get a list of all volumes
     def get_vols(self, key=None,state=None, not_cond=None, print_list=1):
         # get a port to talk on and listen for connections
@@ -388,7 +394,9 @@ class VolumeClerkClient(generic_client.GenericClient,
                 
         ticket['volumes'] = volumes.get('volumes',[])
         return ticket
+    """
 
+    """
     def get_pvols(self):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
@@ -434,6 +442,7 @@ class VolumeClerkClient(generic_client.GenericClient,
 
         ticket['volumes'] = volumes.get('volumes',[])
         return ticket
+    """
 
     # rebuild sg scounts
     def rebuild_sg_count(self, timeout=300, retry=1):
@@ -454,6 +463,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'storage_group': sg}
         return(self.send(ticket,timeout,retry))
 
+    """
     # list all sg counts
     def list_sg_count(self):
         # get a port to talk on and listen for connections
@@ -500,7 +510,9 @@ class VolumeClerkClient(generic_client.GenericClient,
 
         ticket['sgcnt'] = sgcnt
         return ticket
+    """
 
+    """
     # get a list of all volumes
     def get_vol_list(self):
         # get a port to talk on and listen for connections
@@ -548,6 +560,7 @@ class VolumeClerkClient(generic_client.GenericClient,
 
         ticket['volumes'] = volumes
         return ticket
+    """
 
     # what is the current status of a specified volume?
     def inquire_vol(self, external_label, timeout=60, retry=10):
@@ -567,6 +580,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label' : external_label }
         return self.send(ticket,timeout, retry)
 
+    """
     # show_history
     def show_history(self, vol):
         host, port, listen_socket = callback.get_callback()
@@ -611,6 +625,7 @@ class VolumeClerkClient(generic_client.GenericClient,
             return done_ticket
 
         return ticket
+    """
 
     def write_protect_on(self, vol):
         ticket = {"work"            : "write_protect_on",
@@ -987,52 +1002,13 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_LABEL:"volume_name",
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED}]},
-        option.GET_SG_COUNT:{
-                    option.HELP_STRING: 'check allocated count for lib,sg',
-                    option.VALUE_TYPE:option.STRING,
-                    option.VALUE_USAGE:option.REQUIRED,
-                    option.VALUE_LABEL:"library",
-                    option.USER_LEVEL:option.ADMIN,
-                    option.EXTRA_VALUES:[{
-                        option.VALUE_NAME:"storage_group",
-                        option.VALUE_LABEL:"storage_group",
-                        option.VALUE_TYPE:option.STRING,
-                        option.VALUE_USAGE:option.REQUIRED}]},
-        option.SET_SG_COUNT:{
-                    option.HELP_STRING: 'set allocated count of lib,sg',
-                    option.VALUE_TYPE:option.STRING,
-                    option.VALUE_USAGE:option.REQUIRED,
-                    option.VALUE_LABEL:"library",
-                    option.USER_LEVEL:option.ADMIN,
-                    option.EXTRA_VALUES:[{
-                        option.VALUE_NAME:"storage_group",
-                        option.VALUE_LABEL:"storage_group",
-                        option.VALUE_TYPE:option.STRING,
-                        option.VALUE_USAGE:option.REQUIRED},
-                       {option.VALUE_NAME:"count",
-                        option.VALUE_LABEL:"count",
-                        option.VALUE_TYPE:option.INTEGER,
-                        option.VALUE_USAGE:option.REQUIRED},
-                        ]},
         option.BACKUP:{option.HELP_STRING:
                        "backup voume journal -- part of database backup",
                        option.DEFAULT_VALUE:option.DEFAULT,
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.VALUE_USAGE:option.IGNORED,
                        option.USER_LEVEL:option.ADMIN},
-        option.SHOW_STATE:{option.HELP_STRING:
-                       "show internal state of the server",
-                       option.DEFAULT_VALUE:option.DEFAULT,
-                       option.DEFAULT_TYPE:option.INTEGER,
-                       option.VALUE_USAGE:option.IGNORED,
-                       option.USER_LEVEL:option.ADMIN},
-        option.SHOW_QUOTA:{option.HELP_STRING:
-                       "show quota information",
-                       option.DEFAULT_VALUE:option.DEFAULT,
-                       option.DEFAULT_TYPE:option.INTEGER,
-                       option.VALUE_USAGE:option.IGNORED,
-                       option.USER_LEVEL:option.ADMIN},
-        option.BYPASS_LABEL_CHECK:{
+	option.BYPASS_LABEL_CHECK:{
                        option.HELP_STRING:
                        "skip syntatical label check when adding new volumes",
                        option.DEFAULT_VALUE:option.DEFAULT,
@@ -1044,32 +1020,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
                       option.USER_LEVEL:option.ADMIN},
-        option.HISTORY:{option.HELP_STRING:"show state change history of volume",
-                      option.VALUE_TYPE:option.STRING,
-                      option.VALUE_USAGE:option.REQUIRED,
-                      option.VALUE_LABEL:"volume_name",
-                      option.USER_LEVEL:option.ADMIN},
-        option.WRITE_PROTECT_ON:{option.HELP_STRING:"set write protect on",
-                      option.VALUE_TYPE:option.STRING,
-                      option.VALUE_USAGE:option.REQUIRED,
-                      option.VALUE_LABEL:"volume_name",
-                      option.USER_LEVEL:option.ADMIN},
-        option.WRITE_PROTECT_OFF:{option.HELP_STRING:"set write protect off",
-                      option.VALUE_TYPE:option.STRING,
-                      option.VALUE_USAGE:option.REQUIRED,
-                      option.VALUE_LABEL:"volume_name",
-                      option.USER_LEVEL:option.ADMIN},
-        option.WRITE_PROTECT_STATUS:{option.HELP_STRING:"show write protect status",
-                      option.VALUE_TYPE:option.STRING,
-                      option.VALUE_USAGE:option.REQUIRED,
-                      option.VALUE_LABEL:"volume_name",
-                      option.USER_LEVEL:option.ADMIN},
-        option.TRIM_OBSOLETE:{option.HELP_STRING:"trim obsolete fields",
-                      option.VALUE_TYPE:option.STRING,
-                      option.VALUE_USAGE:option.REQUIRED,
-                      option.VALUE_LABEL:"volume_name",
-                      option.USER_LEVEL:option.ADMIN},
-        option.CLEAR:{option.HELP_STRING:"clear a volume",
+	option.CLEAR:{option.HELP_STRING:"clear a volume",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
@@ -1078,17 +1029,6 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_TYPE:option.INTEGER,
                       option.DEFAULT_VALUE:option.DEFAULT,
                       option.VALUE_USAGE:option.IGNORED,
-                      option.USER_LEVEL:option.ADMIN},
-        option.FORGET_IGNORED_STORAGE_GROUP:{option.HELP_STRING:
-                      "clear a ignored storage group",
-                      option.VALUE_TYPE:option.STRING,
-                      option.VALUE_USAGE:option.REQUIRED,
-                      option.VALUE_LABEL:"storage_group",
-                      option.USER_LEVEL:option.ADMIN},
-        option.FORGET_ALL_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
-                      "clear all ignored storage groups",
-                      option.VALUE_TYPE:option.INTEGER,
-                      option.DEFAULT_VALUE:option.DEFAULT,
                       option.USER_LEVEL:option.ADMIN},
         option.DECR_FILE_COUNT:{option.HELP_STRING:
                                 "decreases file count of a volume",
@@ -1117,6 +1057,43 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_LABEL:"volume_name",
                        option.USER_LEVEL:option.ADMIN},
+	option.FORGET_IGNORED_STORAGE_GROUP:{option.HELP_STRING:
+                      "clear a ignored storage group",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"storage_group",
+                      option.USER_LEVEL:option.ADMIN},
+        option.FORGET_ALL_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
+                      "clear all ignored storage groups",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.USER_LEVEL:option.ADMIN},
+	option.FULL:{option.HELP_STRING:"set volume to full",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
+                          option.USER_LEVEL:option.ADMIN},
+	option.GET_SG_COUNT:{
+                    option.HELP_STRING: 'check allocated count for lib,sg',
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.VALUE_LABEL:"library",
+                    option.USER_LEVEL:option.ADMIN,
+                    option.EXTRA_VALUES:[{
+                        option.VALUE_NAME:"storage_group",
+                        option.VALUE_LABEL:"storage_group",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED}]},
+	option.GVOL:{option.HELP_STRING:"get info of a volume in human readable time format",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"volume_name",
+                          option.USER_LEVEL:option.USER},
+	option.HISTORY:{option.HELP_STRING:"show state change history of volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
         option.IGNORE_STORAGE_GROUP:{option.HELP_STRING:
                       'ignore a storage group. The format is "<library>.<storage_group>"',
                       option.VALUE_TYPE:option.STRING,
@@ -1130,31 +1107,38 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        option.VALUE_NAME:"_import",
                        option.VALUE_LABEL:"exported_volume_object",
                        option.USER_LEVEL:option.ADMIN},
+        option.JUST:{option.HELP_STRING:"used with --pvols to list problem",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER},
+	option.KEEP_DECLARATION_TIME:{option.HELP_STRING:
+                      "keep declared time when recycling",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN},
+	option.LABELS:{
+                option.HELP_STRING:"list all volume labels",
+                option.DEFAULT_VALUE:option.DEFAULT,
+                option.DEFAULT_TYPE:option.INTEGER,
+                option.VALUE_USAGE:option.IGNORED,
+                option.USER_LEVEL:option.ADMIN},
         option.LIST:{option.HELP_STRING:"list the files in a volume",
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_LABEL:"volume_name",
                         option.USER_LEVEL:option.USER},
+	option.LIST_SG_COUNT:{
+                     option.HELP_STRING:"list all sg counts",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER},
         option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.USER},
-        option.SET_COMMENT:{
-                        option.HELP_STRING:"set comment for a volume",
-                        option.VALUE_TYPE:option.STRING,
-                        option.VALUE_USAGE:option.REQUIRED,
-                        option.VALUE_LABEL:"comment",
-                        option.USER_LEVEL:option.ADMIN,
-                        option.EXTRA_VALUES:[{option.VALUE_NAME:"volume",
-                                          option.VALUE_LABEL:"volume_name",
-                                          option.VALUE_TYPE:option.STRING,
-                                          option.VALUE_USAGE:option.REQUIRED}]},
-        option.SHOW_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
-                      "show all ignored storage group",
-                      option.VALUE_TYPE:option.INTEGER,
-                      option.VALUE_USAGE:option.IGNORED,
-                      option.USER_LEVEL:option.ADMIN},
         option.MIGRATED:{option.HELP_STRING:"set volume to MIGRATED",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
@@ -1181,25 +1165,26 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
+        option.PVOLS:{option.HELP_STRING:"list all problem volumes",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER},
         option.READ_ONLY:{option.HELP_STRING:"set volume to readonly",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
-        option.FULL:{option.HELP_STRING:"set volume to full",
-                          option.VALUE_TYPE:option.STRING,
-                          option.VALUE_USAGE:option.REQUIRED,
-                          option.VALUE_LABEL:"volume_name",
-                          option.USER_LEVEL:option.ADMIN},
+        option.REBUILD_SG_COUNT:{
+                     option.HELP_STRING:"rebuild sg count db",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
         option.RECYCLE:{option.HELP_STRING:"recycle a volume",
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
-                      option.USER_LEVEL:option.ADMIN},
-        option.KEEP_DECLARATION_TIME:{option.HELP_STRING:
-                      "keep declared time when recycling",
-                      option.VALUE_TYPE:option.INTEGER,
-                      option.VALUE_USAGE:option.IGNORED,
                       option.USER_LEVEL:option.ADMIN},
         option.RESET_LIB:{option.HELP_STRING:"reset library manager",
                           option.VALUE_NAME:"lm_to_clear",
@@ -1212,50 +1197,80 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_LABEL:"volume_name",
                         option.USER_LEVEL:option.ADMIN},
-        option.TOUCH:{option.HELP_STRING:"set last_access time as now",
+	option.SET_COMMENT:{
+                        option.HELP_STRING:"set comment for a volume",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"comment",
+                        option.USER_LEVEL:option.ADMIN,
+                        option.EXTRA_VALUES:[{option.VALUE_NAME:"volume",
+                                          option.VALUE_LABEL:"volume_name",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.REQUIRED}]},
+        option.SHOW_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
+                      "show all ignored storage group",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN},
+	option.SET_SG_COUNT:{
+                    option.HELP_STRING: 'set allocated count of lib,sg',
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.VALUE_LABEL:"library",
+                    option.USER_LEVEL:option.ADMIN,
+                    option.EXTRA_VALUES:[{
+                        option.VALUE_NAME:"storage_group",
+                        option.VALUE_LABEL:"storage_group",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED},
+                       {option.VALUE_NAME:"count",
+                        option.VALUE_LABEL:"count",
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.VALUE_USAGE:option.REQUIRED},
+                        ]},
+	option.SHOW_STATE:{option.HELP_STRING:
+                       "show internal state of the server",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.SHOW_QUOTA:{option.HELP_STRING:
+                       "show quota information",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+	option.TOUCH:{option.HELP_STRING:"set last_access time as now",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
-        option.VOL:{option.HELP_STRING:"get info of a volume",
+        option.TRIM_OBSOLETE:{option.HELP_STRING:"trim obsolete fields",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.WRITE_PROTECT_ON:{option.HELP_STRING:"set write protect on",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.WRITE_PROTECT_OFF:{option.HELP_STRING:"set write protect off",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.WRITE_PROTECT_STATUS:{option.HELP_STRING:"show write protect status",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+	option.VOL:{option.HELP_STRING:"get info of a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.USER},
-        option.GVOL:{option.HELP_STRING:"get info of a volume in human readable time format",
-                          option.VALUE_TYPE:option.STRING,
-                          option.VALUE_USAGE:option.REQUIRED,
-                          option.VALUE_LABEL:"volume_name",
-                          option.USER_LEVEL:option.USER},
-        option.LABELS:{
-                option.HELP_STRING:"list all volume labels",
-                option.DEFAULT_VALUE:option.DEFAULT,
-                option.DEFAULT_TYPE:option.INTEGER,
-                option.VALUE_USAGE:option.IGNORED,
-                option.USER_LEVEL:option.ADMIN},
         option.VOLS:{option.HELP_STRING:"list all volumes",
-                     option.DEFAULT_VALUE:option.DEFAULT,
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.USER_LEVEL:option.USER},
-        option.PVOLS:{option.HELP_STRING:"list all problem volumes",
-                     option.DEFAULT_VALUE:option.DEFAULT,
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.USER_LEVEL:option.USER},
-        option.JUST:{option.HELP_STRING:"used with --pvols to list problem",
-                     option.DEFAULT_VALUE:option.DEFAULT,
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.USER_LEVEL:option.USER},
-        option.REBUILD_SG_COUNT:{
-                     option.HELP_STRING:"rebuild sg count db",
-                     option.DEFAULT_VALUE:option.DEFAULT,
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.USER_LEVEL:option.ADMIN},
-        option.LIST_SG_COUNT:{
-                     option.HELP_STRING:"list all sg counts",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
@@ -1319,6 +1334,19 @@ def do_work(intf):
             key = None
             in_state = None 
         ticket = ifc.get_vols(key, in_state, not_cond)
+
+	# print out the answer
+        if ticket.has_key("header"):		# full info
+            show_volume_header()
+            print
+            for v in ticket["volumes"]:
+                show_volume(v)
+        else:
+            vlist = ''
+            for v in ticket.get("volumes",[]):
+                vlist = vlist + v['label'] + " "
+            print vlist
+
     elif intf.pvols:
         ticket = ifc.get_pvols()
         problem_vol = {}
@@ -1724,8 +1752,6 @@ def do_work(intf):
         ticket = ifc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
             format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s"%(len(intf.list))
-            # print "%-8s %-16s %10s %-22s %-7s %s\n"%(
-            #    "label", "bfid", "size", "location_cookie", "delflag", "original_name")
             print format%("label", "bfid", "size", "location_cookie", "delflag", "original_name")
             print
             tape = ticket['tape_list']
@@ -1736,7 +1762,6 @@ def do_work(intf):
                     deleted = 'active'
                 else:
                     deleted = 'unknown'
-                # print "%-8s %-16s %10i %-22s %-7s %s" % (intf.list,
                 print format % (intf.list,
                     record['bfid'], record['size'],
                     record['location_cookie'], deleted,

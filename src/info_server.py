@@ -32,11 +32,12 @@ import select
 import edb
 import esgdb
 import enstore_functions2
+import enstore_functions3
+import volume_clerk
+import file_clerk
 
 MY_NAME = enstore_constants.INFO_SERVER   #"info_server"
 MAX_CONNECTION_FAILURE = 5
-
-default_host = 'stkensrv0.fnal.gov'
 
 # err_msg(fucntion, ticket, exc, value) -- format error message from
 # exceptions
@@ -51,16 +52,26 @@ class Interface(generic_server.GenericServerInterface):
 	def valid_dictionary(self):
 		return (self.help_options)
 
-class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
+class Server(file_clerk.FileClerkInfoMethods,
+	     volume_clerk.VolumeClerkInfoMethods,
+	     generic_server.GenericServer):
+
 	def __init__(self, csc):
 		self.debug = 0
 		generic_server.GenericServer.__init__(self, csc, MY_NAME,
 						function = self.handle_er_msg)
 		Trace.init(self.log_name)
 		self.connection_failure = 0
-		att = self.csc.get(MY_NAME)
-		dispatching_worker.DispatchingWorker.__init__(self,
-			(att['hostip'], att['port']))
+		## We no longer need to call __init__() from dispatching
+		## worker since it is called from the file and volume clerk
+		## inits below.
+		#   att = self.csc.get(MY_NAME)
+		#   dispatching_worker.DispatchingWorker.__init__(self,
+		#	   (att['hostip'], att['port']))
+		file_clerk.MY_NAME = MY_NAME
+		volume_clerk.MY_NAME = MY_NAME
+		file_clerk.FileClerkInfoMethods.__init__(self, csc)
+		volume_clerk.VolumeClerkInfoMethods.__init__(self, csc)
 
 		# get database connection
 		dbInfo = self.csc.get("database")
@@ -137,384 +148,6 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 				pass	# place holder for future RED BALL
 
 	# The following are local methods
-
-	# close the database connection
-	def close(self):
-		self.db.close()
-		return
-
-	# turn on/off the debugging
-	def debugging(self, ticket):
-		self.debug = ticket.get('level', 0)
-		print 'debug =', self.debug
-
-	# These need confirmation
-	def quit(self, ticket):
-		self.db.close()
-		dispatching_worker.DispatchingWorker.quit(self, ticket)
-		# can't go this far
-		# self.reply_to_caller({'status':(e_errors.OK, None)})
-		# sys.exit(0)
-
-	# return all info about a certain bfid - this does everything that the
-	# read_from_hsm method does, except send the ticket to the library manager
-	def bfid_info(self, ticket):
-		try:
-			bfid = ticket["bfid"]
-		except KeyError, detail:
-			msg = "File Clerk: key %s is missing"%(detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		# look up in our dictionary the request bit field id
-		try:
-			finfo = self.file[bfid]
-		except:
-			exc, msg = sys.exc_info()[:2]
-			status = str(exc), str(msg)
-			ticket["status"] = (e_errors.NO_FILE,
-				"Info Clerk: bfid %s not found"%(bfid,))
-			Trace.log(e_errors.ERROR, "bfid_info() exception: %s %s"%(status, ticket,))
-			self.reconnect(msg)
-			self.reply_to_caller(ticket)
-			return
-
-		if not finfo:
-			ticket["status"] = (e_errors.NO_FILE,
-				"Info Clerk: bfid %s not found"%(bfid,))
-			Trace.log(e_errors.ERROR, "%s"%(ticket,))
-			self.reply_to_caller(ticket)
-			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
-			return
-
-		#Copy all file information we have to user's ticket.  Copy the info
-		# one key at a time to avoid cyclic dictionary references.
-		for key in finfo.keys():
-			ticket[key] = finfo[key]
-
-		ticket["status"] = (e_errors.OK, None)
-		self.reply_to_caller(ticket)
-		Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
-		return
-
-	def file_info(self, ticket):
-		try:
-			bfid = ticket["bfid"]
-		except KeyError, detail:
-			msg = "File Clerk: key %s is missing"%(detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		q = "select * from file_info where bfid = '%s';"%(bfid)
-		res = self.db.query(q).dictresult()
-		if len(res) == 0:
-			ticket["status"] = (e_errors.NO_FILE,
-				"Info Clerk: bfid %s not found"%(bfid,))
-			Trace.log(e_errors.ERROR, "%s"%(ticket,))
-			self.reply_to_caller(ticket)
-			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
-			return
-		ticket['file_info'] = res[0];
-		ticket["status"] = (e_errors.OK, None)
-		self.reply_to_caller(ticket)
-		return
-
-	# find_file_by_path() -- find a file using pnfs_path
-	def find_file_by_path(self, ticket):
-		try:
-			pnfs_path = ticket["pnfs_name0"]
-		except KeyError, detail:
-			msg = "Info Server: key %s is missing"%(detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		q = "select \
-			bfid, crc, deleted, drive, \
-			volume.label, location_cookie, pnfs_path, \
-			pnfs_id, sanity_size, sanity_crc, size, \
-			uid, gid, update \
-			from file, volume \
-			where \
-				file.volume = volume.id and \
-				pnfs_path = '%s';"%(pnfs_path)
-
-		res = self.db.query(q).dictresult()
-		if len(res) == 0:
-			ticket["status"] = (e_errors.NO_FILE,
-				"Info Server: path %s not found"%(pnfs_path))
-			Trace.log(e_errors.ERROR, "%s"%(ticket,))
-			self.reply_to_caller(ticket)
-			return
-
-		finfo = self.file.export_format(res[0])
-
-		for key in finfo.keys():
-			ticket[key] = finfo[key]
-	
-		ticket["status"] = (e_errors.OK, None)
-		self.reply_to_caller(ticket)
-		return
-				
-	# find_file_by_pnfsid() -- find a file using pnfs_path
-	def find_file_by_pnfsid(self, ticket):
-		try:
-			pnfs_id = ticket["pnfsid"]
-		except KeyError, detail:
-			msg = "Info Server: key %s is missing"%(detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		q = "select \
-			bfid, crc, deleted, drive, \
-			volume.label, location_cookie, pnfs_path, \
-			pnfs_id, sanity_size, sanity_crc, size, \
-			uid, gid, update \
-			from file, volume \
-			where \
-				file.volume = volume.id and \
-				pnfs_id = '%s';"%(pnfs_id)
-
-		res = self.db.query(q).dictresult()
-		if len(res) == 0:
-			ticket["status"] = (e_errors.NO_FILE,
-				"Info Server: pnfsid %s not found"%(pnfs_id))
-			Trace.log(e_errors.ERROR, "%s"%(ticket,))
-			self.reply_to_caller(ticket)
-			return
-
-		finfo = self.file.export_format(res[0])
-
-		for key in finfo.keys():
-			ticket[key] = finfo[key]
-	
-		ticket["status"] = (e_errors.OK, None)
-		self.reply_to_caller(ticket)
-		return
-				
-	# find_file_by_location() -- find a file using pnfs_path
-	def find_file_by_location(self, ticket):
-		try:
-			label = ticket['external_label']
-			location_cookie = ticket['location_cookie']
-		except KeyError, detail:
-			msg = "Info Server: key %s is missing"%(detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		q = "select \
-			bfid, crc, deleted, drive, \
-			volume.label, location_cookie, pnfs_path, \
-			pnfs_id, sanity_size, sanity_crc, size, \
-			uid, gid, update \
-			from file, volume \
-			where \
-				file.volume = volume.id and \
-				label = '%s' and \
-				location_cookie = '%s';"%(label,
-				location_cookie)
-
-		res = self.db.query(q).dictresult()
-		if len(res) == 0:
-			ticket["status"] = (e_errors.NO_FILE,
-				"Info Server: location %s:%s not found"%(label, location_cookie))
-			Trace.log(e_errors.ERROR, "%s"%(ticket,))
-			self.reply_to_caller(ticket)
-			return
-
-		finfo = self.file.export_format(res[0])
-
-		for key in finfo.keys():
-			ticket[key] = finfo[key]
-	
-		ticket["status"] = (e_errors.OK, None)
-		self.reply_to_caller(ticket)
-		return
-				
-
-
-	def find_same_file(self, ticket):
-		try:
-			
-			bfid = ticket["bfid"]
-		except KeyError, detail:
-			msg = "File Clerk: key %s is missing"%(detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		# look up in our dictionary the request bit field id
-		finfo = self.file[bfid] 
-		if not finfo:
-			ticket["status"] = (e_errors.NO_FILE,
-				"Info Clerk: bfid %s not found"%(bfid,))
-			Trace.log(e_errors.ERROR, "%s"%(ticket,))
-			self.reply_to_caller(ticket)
-			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
-			return
-
-		#Copy all file information we have to user's ticket.  Copy the info
-		# one key at a time to avoid cyclic dictionary references.
-
-		q = "select bfid from file where size = %d and crc = %d and sanity_size = %d and sanity_crc = %d order by bfid asc;"%(finfo['size'], finfo['complete_crc'], finfo['sanity_cookie'][0], finfo['sanity_cookie'][1])
-
-		res = self.db.query(q).getresult()
-
-		files = []
-		for i in res:
-			files.append(self.file[i[0]])
-		ticket["files"] = files
-		ticket["status"] = (e_errors.OK, None)
-		self.reply_to_caller(ticket)
-		return
-
-	# __find_copies(bfid) -- find all copies
-	def __find_copies(self, bfid):
-		q = "select alt_bfid from file_copies_map where bfid = '%s';"%(bfid)
-		bfids = []
-		try:
-			for i in self.db.query(q).getresult():
-				bfids.append(i[0])
-		except:
-			pass
-		return bfids
-
-	# find_copies(self, ticket) -- find all copies of bfid
-	# this might need recurrsion in the future!
-	def find_copies(self, ticket):
-		try:
-			bfid = ticket["bfid"]
-		except KeyError, detail:
-			msg = "find_copies(): key %s is missing" % (detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		try:
-			bfids = self.__find_copies(bfid)
-			ticket["copies"] = bfids
-			ticket["status"] = (e_errors.OK, None)
-		except:
-			ticket["copies"] = []
-			ticket["status"] = (e_errors.INFO_SERVER_ERROR, "inquiry failed")
-		self.reply_to_caller(ticket)
-		return
-
-	# __find_original(bfid) -- find its original
-	# there should eb at most one original!
-	def __find_original(self, bfid):
-		q = "select bfid from file_copies_map where alt_bfid = '%s';"%(bfid)
-		try:
-			res = self.db.query(q).getresult()
-			if len(res):
-				return res[0][0]
-		except:
-			pass
-		return None
-
-	# find_original(bfid) -- server version
-	def find_original(self, ticket):
-		try:
-			bfid = ticket["bfid"]
-		except KeyError, detail:
-			msg = "find_original(): key %s is missing" % (detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		try:
-			original = self.__find_original(bfid)
-			ticket["original"] = original
-			ticket["status"] = (e_errors.OK, None)
-		except:
-			ticket["original"] = None
-			ticket["status"] = (e_errors.INFO_SERVER_ERROR, "inquiry failed")
-		self.reply_to_caller(ticket)
-		return
-
-	# find any information if this file has been involved in migration
-	# or duplication
-	def __find_migrated(self, bfid):
-		src_list = []
-		dst_list = []
-		
-		q = "select src_bfid,dst_bfid from migration where (dst_bfid = '%s' or src_bfid = '%s') ;" % (bfid, bfid)
-
-		res = self.db.query(q).getresult()
-		for row in res:
-			src_list.append(row[0])
-			dst_list.append(row[1])
-
-		return src_list, dst_list
-
-	# report if this file has been migrated to or from another volume
-	def find_migrated(self, ticket):
-		try:
-			bfid = ticket["bfid"]
-		except KeyError, detail:
-			msg = "find_migrated_to(): key %s is missing" % \
-			      (detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		try:
-			src_bfid, dst_bfid = self.__find_migrated(bfid)
-			ticket["src_bfid"] = src_bfid
-			ticket["dst_bfid"] = dst_bfid
-			ticket["status"] = (e_errors.OK, None)
-		except:
-			ticket["src_bfid"] = None
-			ticket["dst_bfid"] = None
-			ticket["status"] = (e_errors.INFO_SERVER_ERROR,
-					    "inquiry failed")
-		self.reply_to_caller(ticket)
-		return
-
-	# get the current database volume about a specific entry #### DONE
-	def inquire_vol(self, ticket):
-		try:
-			external_label = ticket["external_label"]
-		except KeyError, detail:
-			msg="Volume Clerk: key %s is missing" % (detail,)
-			ticket["status"] = (e_errors.KEYERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
-		# guarded against external_label == None
-		if external_label:
-			# get the current entry for the volume
-			record = self.volume[external_label]
-			if not record:
-				msg="Info Clerk: no such volume %s" % (external_label,)
-				ticket["status"] = (e_errors.NO_VOLUME, msg)
-				Trace.log(e_errors.ERROR, msg)
-				self.reply_to_caller(ticket)
-				return
-			record["status"] = (e_errors.OK, None)
-			self.reply_to_caller(record)
-			return
-		else:
-			msg = "Info Clerk::inquire_vol(): external_label == None"
-			ticket["status"] = (e_errors.INFO_SERVER_ERROR, msg)
-			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
-			return
-
 	# get a port for the data transfer
 	# tell the user I'm your info clerk and here's your ticket
 	def get_user_sockets(self, ticket):
@@ -547,6 +180,518 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			return 0
 		return 1
 
+	# close the database connection
+	def close(self):
+		self.db.close()
+		return
+
+	####################################################################
+
+	# turn on/off the debugging
+	def debugging(self, ticket):
+		self.debug = ticket.get('level', 0)
+		print 'debug =', self.debug
+
+	# These need confirmation
+	def quit(self, ticket):
+		self.db.close()
+		dispatching_worker.DispatchingWorker.quit(self, ticket)
+		# can't go this far
+		# self.reply_to_caller({'status':(e_errors.OK, None)})
+		# sys.exit(0)
+
+	def file_info(self, ticket):
+
+		bfid, record = self.extract_bfid_from_ticket(ticket)
+		if not bfid:
+			return #extract_bfid_from_ticket handles its own errors.
+
+		q = "select * from file_info where bfid = '%s';" % (bfid,)
+
+		# Obtain the file record(s).
+		self.__find_file(q, ticket, item_name = "file_info")
+		
+		self.reply_to_caller(ticket)
+		return
+
+	#Underlying function that powers find_file_by_path(),
+	# find_file_by_pnfsid() and find_file_by_location().
+	#
+	# item_name is used by file_info() to set the information into
+	# as a tuple that is a member of the ticket with item_name as the
+	# key.
+	#
+	# error_target is a string describing what is being looked for.
+	def __find_file(self, q, ticket, error_target, item_name = None):
+		try:
+			res = self.db.query(q).dictresult()
+		except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+			ticket['status'] = (e_errors.DATABASE_ERROR,
+					    "looking for %s: %s" % \
+					    (error_target, str(msg)))
+
+			return
+			
+		if len(res) == 0:
+			ticket['status'] = (e_errors.NO_FILE,
+				"%s: %s not found" % (MY_NAME, error_target))
+			Trace.log(e_errors.ERROR, "%s" % (ticket,))
+			return
+		if len(res) > 1:
+			ticket['status'] = (e_errors.TOO_MANY_FILES,
+				"%s: %s %s matches found" % \
+					    (MY_NAME, error_target, len(res)))
+			Trace.log(e_errors.ERROR, "%s" % (ticket,))
+			#return the entire list for future use.
+			ticket['file_list'] = []
+			for db_info in res:
+				if item_name:
+					ticket['file_list'].append(db_info)
+				else:
+					ticket['file_list'].append(self.file.export_format(db_info))
+			return
+
+		#We get here when there is only one match.
+
+		finfo = self.file.export_format(res[0])
+
+		if item_name:
+			ticket[item_name] = res[0]
+		else:
+			#Copy all file information we have to user's ticket.
+			# Copy the info one key at a time to avoid cyclic
+			# dictionary references.
+			for key in finfo.keys():
+				ticket[key] = finfo[key]
+	
+		ticket["status"] = (e_errors.OK, None)
+		return ticket
+
+	# find_file_by_path() -- find a file using pnfs_path
+	def __find_file_by_path(self, ticket):
+
+		pnfs_path = self.extract_value_from_ticket("pnfs_name0", ticket,
+							  fail_None = True)
+		if not pnfs_path:
+			return #extract_value_from_ticket handles its own errors.
+
+		q = "select \
+			bfid, crc, deleted, drive, \
+			volume.label, location_cookie, pnfs_path, \
+			pnfs_id, sanity_size, sanity_crc, size, \
+			uid, gid, update \
+			from file, volume \
+			where \
+				file.volume = volume.id and \
+				pnfs_path = '%s';" % (pnfs_path,)
+
+		# Obtain the file record(s).
+		self.__find_file(q, ticket, pnfs_path)
+		
+		return ticket
+
+	# find_file_by_path() -- find a file using pnfs id
+	def find_file_by_path(self, ticket):
+		self.__find_file_by_path(ticket)
+
+		self.reply_to_caller(ticket)
+		return
+
+	#This version can handle replying with a large number of file matches.
+	def find_file_by_path2(self, ticket):
+		self.__find_file_by_path(ticket)
+
+		self.reply_to_caller_with_long_answer(ticket, ["file_list"])
+		return
+		
+	# find_file_by_pnfsid() -- find a file using pnfs id
+	def __find_file_by_pnfsid(self, ticket):
+
+		pnfs_id = self.extract_value_from_ticket("pnfsid", ticket,
+							  fail_None = True)
+		if not pnfs_id:
+			return #extract_value_from_ticket handles its own errors.
+		if not enstore_functions3.is_pnfsid(pnfs_id):
+			message = "pnfsid %s not valid" % \
+				  (pnfs_id,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		q = "select \
+			bfid, crc, deleted, drive, \
+			volume.label, location_cookie, pnfs_path, \
+			pnfs_id, sanity_size, sanity_crc, size, \
+			uid, gid, update \
+			from file, volume \
+			where \
+				file.volume = volume.id and \
+				pnfs_id = '%s';" % (pnfs_id,)
+
+		# Obtain the file record(s).
+		self.__find_file(q, ticket, pnfs_id)
+		
+		return ticket
+
+	# find_file_by_pnfsid() -- find a file using pnfs id
+	def find_file_by_pnfsid(self, ticket):
+		self.__find_file_by_pnfsid(ticket)
+
+		self.reply_to_caller(ticket)
+		return
+
+	#This version can handle replying with a large number of file matches.
+	def find_file_by_pnfsid2(self, ticket):
+		self.__find_file_by_pnfsid(ticket)
+
+		self.reply_to_caller_with_long_answer(ticket, ["file_list"])
+		return
+				
+	
+	# find_file_by_location() -- find a file using pnfs_path
+	def __find_file_by_location(self, ticket):
+
+		#label = self.extract_external_label_from_ticket(ticket):
+		external_label, record = self.extract_external_label_from_ticket(ticket)
+		if not external_label:
+			return #extract_external_lable_from_ticket handles its own errors.
+
+		location_cookie = self.extract_value_from_ticket(
+			"location_cookie", ticket, fail_None = True)
+		if not location_cookie:
+			return #extract_value_from_ticket handles its own errors.
+		if not enstore_functions3.is_location_cookie(location_cookie):
+			message = "volume location %s not valid" % \
+				  (location_cookie,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		q = "select \
+			bfid, crc, deleted, drive, \
+			volume.label, location_cookie, pnfs_path, \
+			pnfs_id, sanity_size, sanity_crc, size, \
+			uid, gid, update \
+			from file, volume \
+			where \
+				file.volume = volume.id and \
+				label = '%s' and \
+				location_cookie = '%s';" % \
+		(external_label, location_cookie)
+
+		# Obtain the file record(s).
+		self.__find_file(q, ticket, "%s:%s" % (external_label, location_cookie))
+		
+		return ticket
+
+	# find_file_by_location() -- find a file using pnfs_path
+	def find_file_by_location(self, ticket):
+		self.__find_file_by_location(ticket)
+
+		self.reply_to_caller(ticket)
+		return
+
+	#This version can handle replying with a large number of file matches.
+	def find_file_by_location2(self, ticket):
+		self.__find_file_by_location(ticket)
+
+		self.reply_to_caller_with_long_answer(ticket, ["file_list"])
+		return
+				
+	# find_same_file() -- find files that match the size and crc
+	def __find_same_file(self, ticket):
+		bfid, record = self.extract_bfid_from_ticket(ticket)
+		if not bfid:
+			return #extract_bfid_from_ticket handles its own errors.
+
+		q = "select bfid from file " \
+		    "where size = %d and crc = %d and sanity_size = %d " \
+		    "and sanity_crc = %d order by bfid asc;" \
+		    % (record['size'], record['complete_crc'],
+		       record['sanity_cookie'][0], record['sanity_cookie'][1])
+
+		res = self.db.query(q).getresult()
+
+		files = []
+		for i in res:
+			files.append(self.file[i[0]])
+		ticket["files"] = files
+		ticket["status"] = (e_errors.OK, None)
+
+		return ticket
+
+	# find_same_file() -- find files that match the size and crc
+	def find_same_file(self, ticket):
+		self.__find_same_file(ticket)
+		
+		self.reply_to_caller(ticket)
+		return
+
+	#This version can handle replying with a large number of file matches.
+	def find_same_file2(self, ticket):
+		self.__find_same_file(ticket)
+		
+		self.reply_to_caller_with_long_answer(ticket, ["files"])
+		return
+
+	# return all info about a certain bfid - this does everything that the
+	# read_from_hsm method does, except send the ticket to the library manager
+	"""
+	def bfid_info(self, ticket):
+		try:
+			bfid = ticket["bfid"]
+		except KeyError, detail:
+			msg = "Info Server: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check volume format.
+		if not enstore_functions3.is_bfid(bfid):
+			message = "bfid %s not valid" % (bfid,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+
+		# look up in our dictionary the request bit field id
+		try:
+			finfo = self.file[bfid]
+		except:
+			exc, msg = sys.exc_info()[:2]
+			status = str(exc), str(msg)
+			ticket["status"] = (e_errors.NO_FILE,
+				"Info Server: bfid %s not found"%(bfid,))
+			Trace.log(e_errors.ERROR, "bfid_info() exception: %s %s"%(status, ticket,))
+			self.reconnect(msg)
+			self.reply_to_caller(ticket)
+			return
+
+		if not finfo:
+			ticket["status"] = (e_errors.NO_FILE,
+				"Info Server: bfid %s not found"%(bfid,))
+			Trace.log(e_errors.ERROR, "%s"%(ticket,))
+			self.reply_to_caller(ticket)
+			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
+			return
+
+		#Copy all file information we have to user's ticket.  Copy the info
+		# one key at a time to avoid cyclic dictionary references.
+		for key in finfo.keys():
+			ticket[key] = finfo[key]
+
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+		Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
+		return
+	"""
+
+	"""
+	# __find_copies(bfid) -- find all copies
+	def __find_copies(self, bfid):
+		q = "select alt_bfid from file_copies_map where bfid = '%s';"%(bfid)
+		bfids = []
+		try:
+			for i in self.db.query(q).getresult():
+				bfids.append(i[0])
+		except:
+			pass
+		return bfids
+
+	# find_copies(self, ticket) -- find all copies of bfid
+	# this might need recurrsion in the future!
+	def find_copies(self, ticket):
+		try:
+			bfid = ticket["bfid"]
+		except KeyError, detail:
+			msg = "find_copies(): key %s is missing" % (detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+		
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check bfid format.
+		if not enstore_functions3.is_bfid(bfid):
+			message = "bfid %s not valid" % (bfid,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+
+		try:
+			bfids = self.__find_copies(bfid)
+			ticket["copies"] = bfids
+			ticket["status"] = (e_errors.OK, None)
+		except:
+			ticket["copies"] = []
+			ticket["status"] = (e_errors.INFO_SERVER_ERROR, "inquiry failed")
+		self.reply_to_caller(ticket)
+		return
+	"""
+
+	"""
+	# __find_original(bfid) -- find its original
+	# there should eb at most one original!
+	def __find_original(self, bfid):
+		q = "select bfid from file_copies_map where alt_bfid = '%s';"%(bfid)
+		try:
+			res = self.db.query(q).getresult()
+			if len(res):
+				return res[0][0]
+		except:
+			pass
+		return None
+
+	# find_original(bfid) -- server version
+	def find_original(self, ticket):
+		try:
+			bfid = ticket["bfid"]
+		except KeyError, detail:
+			msg = "find_original(): key %s is missing" % (detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check bfid format.
+		if not enstore_functions3.is_bfid(bfid):
+			message = "bfid %s not valid" % (bfid,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+
+		try:
+			original = self.__find_original(bfid)
+			ticket["original"] = original
+			ticket["status"] = (e_errors.OK, None)
+		except:
+			ticket["original"] = None
+			ticket["status"] = (e_errors.INFO_SERVER_ERROR, "inquiry failed")
+		self.reply_to_caller(ticket)
+		return
+	"""
+
+	"""
+	# find any information if this file has been involved in migration
+	# or duplication
+	def __find_migrated(self, bfid):
+		src_list = []
+		dst_list = []
+		
+		q = "select src_bfid,dst_bfid from migration where (dst_bfid = '%s' or src_bfid = '%s') ;" % (bfid, bfid)
+
+		res = self.db.query(q).getresult()
+		for row in res:
+			src_list.append(row[0])
+			dst_list.append(row[1])
+
+		return src_list, dst_list
+
+	# report if this file has been migrated to or from another volume
+	def find_migrated(self, ticket):
+		try:
+			bfid = ticket["bfid"]
+		except KeyError, detail:
+			msg = "find_migrated_to(): key %s is missing" % \
+			      (detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check bfid format.
+		if not enstore_functions3.is_bfid(bfid):
+			message = "bfid %s not valid" % (bfid,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+
+		try:
+			src_bfid, dst_bfid = self.__find_migrated(bfid)
+			ticket["src_bfid"] = src_bfid
+			ticket["dst_bfid"] = dst_bfid
+			ticket["status"] = (e_errors.OK, None)
+		except:
+			ticket["src_bfid"] = None
+			ticket["dst_bfid"] = None
+			ticket["status"] = (e_errors.INFO_SERVER_ERROR,
+					    "inquiry failed")
+		self.reply_to_caller(ticket)
+		return
+	"""
+
+	"""
+	# get the current database volume about a specific entry #### DONE
+	def inquire_vol(self, ticket):
+		try:
+			external_label = ticket["external_label"]
+		except KeyError, detail:
+			msg="Volume Server: key %s is missing" % (detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+		
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check volume format.
+		if not enstore_functions3.is_volume(external_label):
+			message = "volume %s not valid" % (external_label,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		
+		# guarded against external_label == None
+		if external_label:
+			# get the current entry for the volume
+			record = self.volume[external_label]
+			if not record:
+				msg="Info Server: no such volume %s" % (external_label,)
+				ticket["status"] = (e_errors.NO_VOLUME, msg)
+				Trace.log(e_errors.ERROR, msg)
+				self.reply_to_caller(ticket)
+				return
+			record["status"] = (e_errors.OK, None)
+			self.reply_to_caller(record)
+			return
+		else:
+			msg = "Info Server: inquire_vol(): external_label == None"
+			ticket["status"] = (e_errors.INFO_SERVER_ERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+	"""
+
+	"""
 	# __history(vol) -- show state change history of vol
 	def __history(self, vol):
 		q = "select time, label, state_type.name as type, state.value \
@@ -570,13 +715,27 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		try:
 			vol = ticket['external_label']
 			ticket["status"] = (e_errors.OK, None)
-			self.reply_to_caller(ticket)
 		except KeyError, detail:
 			msg =  "Info Server: key %s is missing"  % (detail)
 			ticket["status"] = (e_errors.KEYERROR, msg)
 			Trace.log(e_errors.ERROR, msg)
 			self.reply_to_caller(ticket)
 			return
+
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check volume format.
+		if not enstore_functions3.is_volume(vol):
+			message = "Info Server: volume %s not valid" % (vol,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+
+		self.reply_to_caller(ticket)
 
 		# get a user callback
 		if not self.get_user_sockets(ticket):
@@ -588,7 +747,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		callback.write_tcp_obj(self.control_socket,ticket)
 		self.control_socket.close() 
 		return
+	"""
 
+	"""
 	# write_protect_status(self, ticket):
 	def write_protect_status(self, ticket):
 		try:
@@ -599,7 +760,20 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			Trace.log(e_errors.ERROR, msg)
 			self.reply_to_caller(ticket)
 			return
+		
+		##########################################################
+		#Extra checks to make sure everything is correct.
 
+		#Check volume format.
+		if not enstore_functions3.is_volume(vol):
+			message = "volume %s not valid" % (vol,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		
 		q = "select write_protected from volume where label = '%s';"%(vol)
 
 		try:
@@ -621,7 +795,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			ticket["status"] = (e_errors.INFO_SERVER_ERROR, msg)
 		self.reply_to_caller(ticket)
 		return
+	"""
 
+	"""
 	# return all the volumes in our dictionary.  Not so useful!
 	#
 	# This is the old and inefficient implementation in which the
@@ -862,13 +1038,15 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 		Trace.log(e_errors.INFO, "stop listing all problematic volumes")
 		return
+	"""
 
+	"""
 	def get_sg_count(self, ticket):
 		try:
 			lib = ticket['library']
 			sg = ticket['storage_group']
 		except KeyError, detail:
-			msg= "Info Clerk: key %s is missing"%(detail,)
+			msg= "Info Server: key %s is missing"%(detail,)
 			ticket["status"] = (e_errors.KEYERROR, msg)
 			Trace.log(e_errors.ERROR, msg)
 			self.reply_to_caller(ticket)
@@ -900,7 +1078,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			exc, msg = sys.exc_info()[:2]
 			Trace.handle_error(exc,msg)
 		return
+	"""
 
+	"""
 	def __get_vol_list(self):
 		q = "select label from volume order by label;"
 		res2 = self.db.query(q).getresult()
@@ -928,7 +1108,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			exc, msg = sys.exc_info()[:2]
 			Trace.handle_error(exc,msg)
 		return
+	"""
 
+	"""
 	# get_bfids(self, ticket) -- get bfids of a certain volume
 	#		This is almost the same as tape_list() yet it does not
 	#		retrieve any information from primary file database
@@ -939,12 +1121,25 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			ticket["status"] = (e_errors.OK, None)
 			self.reply_to_caller(ticket)
 		except KeyError, detail:
-			msg = "Info Clerk: key %s is missing"%(detail,)
+			msg = "Info Server: key %s is missing"%(detail,)
 			ticket["status"] = (e_errors.KEYERROR, msg)
 			Trace.log(e_errors.ERROR, msg)
 			self.reply_to_caller(ticket)
 			return
 
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check volume format.
+		if not enstore_functions3.is_volume(external_label):
+			message = "volume %s not valid" % (external_label,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		
 		# get a user callback
 		if not self.get_user_sockets(ticket):
 			return
@@ -978,13 +1173,26 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			ticket["status"] = (e_errors.OK, None)
 			self.reply_to_caller(ticket)
 		except KeyError, detail:
-			msg = "Info Clerk: key %s is missing"%(detail,)
+			msg = "Info Server: key %s is missing"%(detail,)
 			ticket["status"] = (e_errors.KEYERROR, msg)
 			Trace.log(e_errors.ERROR, msg)
 			self.reply_to_caller(ticket)
 			####XXX client hangs waiting for TCP reply
 			return
 
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check volume format.
+		if not enstore_functions3.is_volume(external_label):
+			message = "volume %s not valid" % (external_label,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		
 		# get a user callback
 		if not self.get_user_sockets(ticket):
 			return
@@ -1027,13 +1235,26 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			ticket["status"] = (e_errors.OK, None)
 			self.reply_to_caller(ticket)
 		except KeyError, detail:
-			msg = "Info Clerk: key %s is missing"%(detail,)
+			msg = "Info Server: key %s is missing"%(detail,)
 			ticket["status"] = (e_errors.KEYERROR, msg)
 			Trace.log(e_errors.ERROR, msg)
 			self.reply_to_caller(ticket)
 			####XXX client hangs waiting for TCP reply
 			return
 
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check volume format.
+		if not enstore_functions3.is_volume(external_label):
+			message = "volume %s not valid" % (external_label,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		
 		# get a user callback
 		if not self.get_user_sockets(ticket):
 			return
@@ -1070,13 +1291,26 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			ticket["status"] = (e_errors.OK, None)
 			self.reply_to_caller(ticket)
 		except KeyError, detail:
-			msg = "Info Clerk: key %s is missing"%(detail,)
+			msg = "Info Server: key %s is missing"%(detail,)
 			ticket["status"] = (e_errors.KEYERROR, msg)
 			Trace.log(e_errors.ERROR, msg)
 			self.reply_to_caller(ticket)
 			####XXX client hangs waiting for TCP reply
 			return
 
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check volume format.
+		if not enstore_functions3.is_volume(external_label):
+			message = "volume %s not valid" % (external_label,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		
 		# get a user callback
 		if not self.get_user_sockets(ticket):
 			return
@@ -1119,13 +1353,26 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			ticket["status"] = (e_errors.OK, None)
 			self.reply_to_caller(ticket)
 		except KeyError, detail:
-			msg = "Info Clerk: key %s is missing"%(detail,)
+			msg = "Info Server: key %s is missing"%(detail,)
 			ticket["status"] = (e_errors.KEYERROR, msg)
 			Trace.log(e_errors.ERROR, msg)
 			self.reply_to_caller(ticket)
 			####XXX client hangs waiting for TCP reply
 			return
 
+		##########################################################
+		#Extra checks to make sure everything is correct.
+
+		#Check volume format.
+		if not enstore_functions3.is_volume(external_label):
+			message = "volume %s not valid" % (external_label,)
+			ticket["status"] = (e_errors.WRONG_FORMAT, message)
+			Trace.log(e_errors.ERROR, message)
+			self.reply_to_caller(ticket)
+			return
+
+		##########################################################
+		
 		# get a user callback
 		if not self.get_user_sockets(ticket):
 			return
@@ -1149,7 +1396,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		callback.write_tcp_obj(self.control_socket,ticket)
 		self.control_socket.close()
 		return
+	"""
 
+	"""
 	def show_bad(self, ticket):
 		ticket["status"] = (e_errors.OK, None)
 		self.reply_to_caller(ticket)
@@ -1173,8 +1422,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		callback.write_tcp_obj(self.control_socket,ticket)
 		self.control_socket.close()
 		return
+	"""
 
-	def query_db(self, ticket):
+	def __query_db_part1(self, ticket):
 		try:
 			q = ticket["query"]
 			# only select is allowed
@@ -1182,24 +1432,25 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			query_parts = string.split(qu)
 
 			if query_parts[0] != "SELECT" or "INTO" in query_parts:
+				#Don't use e_errors.DATABASE_ERROR, since
+				# this really is a situation for the info
+				# server and is not a general database error.
 				msg = "only simple select statement is allowed"
-				ticket["status"] = (e_errors.INFO_SERVER_ERROR, msg)
-			else:
-				ticket["status"] = (e_errors.OK, None)
-			self.reply_to_caller(ticket)
+				ticket["status"] = (e_errors.INFO_SERVER_ERROR,
+						    msg)
+				#self.reply_to_caller(ticket)
+				return True
 		except KeyError, detail:
-			msg = "Info Clerk: key %s is missing"%(detail,)
+			msg = "%s: key %s is missing" % (MY_NAME, detail)
 			ticket["status"] = (e_errors.KEYERROR, msg)
 			Trace.log(e_errors.ERROR, msg)
-			self.reply_to_caller(ticket)
+			#self.reply_to_caller(ticket)
 			####XXX client hangs waiting for TCP reply
-			return
+			return True
+		return False
 
-		# get a user callback
-		if not self.get_user_sockets(ticket):
-			return
-		callback.write_tcp_obj(self.data_socket,ticket)
-
+	def __query_db_part2(self, ticket):
+		q = ticket["query"]
 		result = {}
 		try:
 			res = self.db.query(q)
@@ -1207,10 +1458,29 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			result['fields'] = res.listfields()
 			result['ntuples'] = res.ntuples()
 			result['status'] = (e_errors.OK, None)
-		except:
+		except (edb.pg.ProgrammingError, edb.pg.InternalError):
 			exc_type, exc_value = sys.exc_info()[:2]
 			msg = 'query_db(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
-			result['status'] = (e_errors.INFO_SERVER_ERROR, msg)
+			result['status'] = (e_errors.DATABASE_ERROR, msg)
+
+		return result
+
+	def query_db(self, ticket):
+
+		if self.__query_db_part1(ticket):
+			#Errors are send back to the client.
+			self.reply_to_caller(ticket)
+			return
+
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+
+		# get a user callback
+		if not self.get_user_sockets(ticket):
+			return
+		callback.write_tcp_obj(self.data_socket,ticket)
+
+		result =  self.__query_db_part2(ticket)
 
 		# finishing up
 
@@ -1220,6 +1490,34 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.control_socket.close()
 		return
 
+	# This is even newer and better implementation that replaces
+	# query_db().  Now the network communications are done using
+	# reply_to_caller_with_long_answer().
+	def query_db2(self, ticket):
+		#Determine if the SQL statement is allowed.
+		if self.__query_db_part1(ticket):
+			#Errors are send back to the client.
+			self.reply_to_caller(ticket)
+			return
+		
+		# start communication
+		ticket["status"] = (e_errors.OK, None)
+		try:
+		    control_socket = self.reply_to_caller_with_long_answer_part1(ticket)
+		except (socket.error, select.error), msg:
+		    Trace.log(e_errors.INFO, "query_db2(): %s" % (str(msg),))
+		    return
+
+		# get reply
+		reply = self.__query_db_part2(ticket)
+
+		# send the reply
+		try:
+		    self.reply_to_caller_with_long_answer_part2(control_socket, reply)
+		except (socket.error, select.error), msg:
+		    Trace.log(e_errors.INFO, "query_db2(): %s" % (str(msg),))
+		    return
+	
 if __name__ == '__main__':
 	Trace.init(string.upper(MY_NAME))
 	intf = Interface()
