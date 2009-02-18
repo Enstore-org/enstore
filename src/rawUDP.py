@@ -11,7 +11,8 @@ import fcntl
 import socket
 import cleanUDP
 import udp_common
-
+import Trace
+import checksum 
 
 class RawUDP:
     
@@ -22,6 +23,7 @@ class RawUDP:
         self.arrived = threading.Event()
         self.queue_size = 0L
         self.buffer = []
+        self.movers = {}
         
     def init_port(self, port):
         self.socket_type = socket.SOCK_DGRAM
@@ -38,11 +40,67 @@ class RawUDP:
         self.server_socket = socket
         
 
+    def is_mover_request(self, request):
+        if type(request) == type(""):
+            start_index =  request.find("'mover':")
+            if start_index != -1:
+                # extract mover name
+                end_index =request.find(",", start_index)
+                if end_index > start_index:
+                    substr = request[start_index:end_index]
+                    return substr.split(":")[1]
+        return None
+        
     def put(self, message):
+        req = message[2]
+        request=None
+        try:
+            request, inCRC = udp_common.r_eval(req)
+        except (SyntaxError, TypeError):
+            #If TypeError occurs, keep retrying.  Most likely it is
+            # an "expected string without null bytes".
+            #If SyntaxError occurs, also keep trying, most likely
+            # it is from and empty UDP datagram.
+            exc, msg = sys.exc_info()[:2]
+            try:
+                message = "%s: %s: From client %s:%s" % \
+                          (exc, msg, client_addr, request[:100])
+            except IndexError:
+                message = "%s: %s: From client %s: %s" % \
+                          (exc, msg, client_addr, request)
+            Trace.log(5, message)
+
+            #Set these to something.
+            request, inCRC = (None, None)
+
+        if request == None:
+            return (request, client_addr)
+        # calculate CRC
+        crc = checksum.adler32(0L, request, len(request))
+        if (crc != inCRC) :
+            Trace.log(e_errors.INFO,
+                      "BAD CRC request: %s " % (request,))
+            Trace.log(e_errors.INFO,
+                      "CRC: %s calculated CRC: %s" %
+                      (repr(inCRC), repr(crc)))
+
+            request=None
+        if not request:
+            return
+
+        mover_request = self.is_mover_request(request)
+            
         self._lock.acquire()
-        self.buffer.append(message)
+        if mover_request:
+            # put the latest request into the queue
+            if self.movers.has_key(mover_request) and self.movers[mover_request] !="":
+                self.buffer.remove(self.movers[mover_request])
+                self.movers[mover_request] = (message[0], message[1], request)
+                
         self.queue_size = self.queue_size + 1
+        self.buffer.append((message[0], message[1], request))
         self._lock.release()
+        print "SET ARRIVED"
         self.arrived.set()
         
     # get message from FIFO buffer
@@ -53,15 +111,21 @@ class RawUDP:
     # number of requests in the buffer
     def get(self):
         if self.queue_size == 0:
+            print "WAIT ARRIVED"
             self.arrived.wait()
             self.arrived.clear()
+        print "GOT ARRIVED",self.queue_size 
         if self.queue_size > 0:
               self._lock.acquire()
               #self.arrived.clear()
               ret = self.buffer.pop(0)
-              self.queue_size = self.queue_size - 1 
+              self.queue_size = self.queue_size - 1
+              mover_request = self.is_mover_request(ret[2])
+              if self.movers.has_key(mover_request) and self.movers[mover_request] !="":
+                  self.movers[mover_request] = ""
+             
               self._lock.release()
-              return ret[0], ret[1], ret[2], self.queue_size
+              return ret[0], ret[1], ret[2]
         else:
             return None
         
@@ -82,7 +146,7 @@ class RawUDP:
                     if fd == self.server_socket:
                         req, client_addr = self.server_socket.recvfrom(
                             self.max_packet_size, self.rcv_timeout)
-                       # print "REQ", req
+                        #print "rawUDP:REQ", req
 
                         if req:
                             message = (client_addr[0], client_addr[1], req)
