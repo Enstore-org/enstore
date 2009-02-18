@@ -3258,11 +3258,17 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
             elif e.copy:
                 is_copy = True
 
+            #Holds the "rest" of the error strings.
+            rest = {}
 
             #First check if the file is deleted and the override deleted
             # switch/flag has been specified by the user.
+            #
+            # If the user has elected to skip pnfs access (with --get-bfid
+            # only) we skip this part too.
             if not (e.override_deleted and
-                    request_list[i]['fc']['deleted'] != 'no'):
+                    request_list[i]['fc']['deleted'] != 'no') and \
+                    not e.skip_pnfs:
 
                 #For Reads make sure the filesystem size and the pnfs size
                 # match.  If the PNFS filesystem and layer 4 sizes are
@@ -3297,7 +3303,6 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
                     dcache_crc, dcache_size = (None, None)
 
                 #Determine if the pnfs layers and the file data are consistant.
-                rest = {}
 
                 #Start by getting the pnfs layer 4 information.
                 try:
@@ -3449,9 +3454,13 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
 
             #First check if the file is deleted and the override deleted
             # switch/flag has been specified by the user.
+            #
+            # If the user has elected to skip pnfs access (with --get-bfid
+            # only) we skip this part too.
+            #
             #Not all fields get compared when reading a copy.
-            if not (e.override_deleted
-                    and request['fc']['deleted'] != 'no'):
+            if not (e.override_deleted and request['fc']['deleted'] != 'no') \
+                   and not e.skip_pnfs:
                 #For only those conflicting items, include them in
                 # the dictionary.
                 if db_volume != pnfs_volume and not is_copy:
@@ -4689,6 +4698,9 @@ def open_data_socket(mover_addr, interface_ip = None):
 def mover_handshake(listen_socket, udp_serv, work_tickets, encp_intf):
     control_socket, ticket = mover_handshake_part1(listen_socket, udp_serv,
                                                    work_tickets, encp_intf)
+
+    if not e_errors.is_ok(ticket):
+        return None, None, ticket
 
     data_path_socket, ticket = mover_handshake_part2(ticket, encp_intf)
 
@@ -9771,9 +9783,14 @@ def create_read_request(request, file_number,
                 # --shortcut is used, the filename name will be recored as
                 # a /.(access)(<pnfsid>) style filename.
                 ifullname = e.override_path
+                use_dir = get_directory_name(ifullname)
             elif e.override_deleted and fc_reply['deleted'] != "no":
                 #Handle reading deleted files differently.
                 ifullname = fc_reply['pnfs_name0']
+                use_dir = ""
+            elif e.skip_pnfs:
+                ifullname = ""
+                use_dir = ""
             else:
                 if e.pnfs_mount_point:
                     use_mount_point = e.pnfs_mount_point
@@ -9794,17 +9811,19 @@ def create_read_request(request, file_number,
                                         e_errors.OSERROR,
                                         {'infilepath' : ifullname_list})
 
-                #If we did find to many matching files to the pnfsid,
+                #If we did find too many matching files to the pnfsid,
                 # we need to check the file bfids in layer 1 to determine
                 # which one we are looking for.
                 for cur_fname in ifullname_list:
                     if p.get_bit_file_id(cur_fname) == e.get_bfid:
                         ifullname = cur_fname
+                        use_dir = get_directory_name(ifullname)
                         break
                     elif get_fcc().find_original(e.get_bfid).get("original",
                                                                  None) == \
                                                  p.get_bit_file_id(cur_fname):
                         ifullname = cur_fname
+                        use_dir = get_directory_name(ifullname)
                         break
                 else:
                     raise EncpError(errno.ENOENT,
@@ -9813,8 +9832,7 @@ def create_read_request(request, file_number,
                                     {'infilepath' : ifullname_list})
 
             #Determine the access path name.
-            iaccessname = pnfs.access_file(get_directory_name(ifullname),
-                                           pnfsid)
+            iaccessname = pnfs.access_file(use_dir, pnfsid)
 
             if e.output[0] in ["/dev/null", "/dev/zero",
                                "/dev/random", "/dev/urandom"]:
@@ -9838,6 +9856,8 @@ def create_read_request(request, file_number,
                     
                 else:
                     istatinfo = None
+            elif e.skip_pnfs:
+                istatinfo = None
             else:
                 istatinfo = p.get_stat(iaccessname)
 
@@ -10871,6 +10891,7 @@ class EncpInterface(option.Interface):
                                    # will ignore the deleted status when
                                    # reading the file back.
         self.skip_deleted_files = None #skip files marked deleted
+        self.skip_pnfs = None      #Ignore pnfs when --get-bfid is used.
         self.migration_or_duplication = None #Set true if the transfer is
                                    # called from migrate.py or duplicate.py.
 
@@ -11195,6 +11216,12 @@ class EncpInterface(option.Interface):
                                    option.VALUE_USAGE:option.IGNORED,
                                    option.VALUE_TYPE:option.INTEGER,
                                    option.USER_LEVEL:option.USER,},
+        option.SKIP_PNFS:{option.HELP_STRING:
+                                   "Skip checking with PNFS.  "
+                                   "Used with --get-bfid",
+                                   option.VALUE_USAGE:option.IGNORED,
+                                   option.VALUE_TYPE:option.INTEGER,
+                                   option.USER_LEVEL:option.HIDDEN,},
         option.STORAGE_GROUP:{option.HELP_STRING:
                                "Specify an alternative storage group to "
                                "override the pnfs strorage group tag "
@@ -11243,6 +11270,10 @@ class EncpInterface(option.Interface):
             self.print_usage()
         if hasattr(self, "version") and self.version:
             self.print_version()
+
+        #Sanity check.  Only allow skip_pnfs to work if --get-bfid was used.
+        if not self.get_bfid:
+            self.skip_pnfs = None
 
         #The values for --max-retry and --max-resubmit need special processing.
         # This is so that the special non integer value of 'None' gets
