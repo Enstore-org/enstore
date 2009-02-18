@@ -38,6 +38,104 @@ import host_config
 from en_eval import en_eval
 import Interfaces
 
+class TCPError(socket.error):
+
+    def __init__(self, e_errno, e_message = None):
+
+        socket.error.__init__(self)
+
+        #If only a message is present, it is in the e_errno spot.
+        if e_message == None:
+            if type(e_errno) == types.IntType:
+                self.errno = e_errno
+                self.e_message = None
+            elif type(e_errno) == types.StringType:
+                self.errno = None
+                self.e_message = e_errno
+            else:
+                self.errno = None
+                self.e_message = "Unknown error"
+        #If both are there then we have both to use.
+        else:
+            self.errno = e_errno
+            self.e_message = e_message
+
+        #Generate the string that stringifying this obeject will give.
+        self.strerror = "" #Define this to make pychecker happy.
+        self._string()
+
+        self.args = (self.errno, self.e_message)
+        
+    def __str__(self):
+        self._string()
+        return self.strerror
+
+    def __repr__(self):
+        return "TCPError"  #String value.
+
+    def _string(self):
+        if self.errno in errno.errorcode.keys():
+            errno_name = errno.errorcode[self.errno]
+            errno_description = os.strerror(self.errno)
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
+                                                        self.errno,
+                                                        errno_description,
+                                                        self.e_message)
+        else:
+            self.strerror = self.e_message
+
+        return self.strerror
+
+
+class FIFOError(OSError):
+    
+    def __init__(self, e_errno, e_message = None):
+
+        OSError.__init__(self)
+
+        #If only a message is present, it is in the e_errno spot.
+        if e_message == None:
+            if type(e_errno) == types.IntType:
+                self.errno = e_errno
+                self.e_message = None
+            elif type(e_errno) == types.StringType:
+                self.errno = None
+                self.e_message = e_errno
+            else:
+                self.errno = None
+                self.e_message = "Unknown error"
+        #If both are there then we have both to use.
+        else:
+            self.errno = e_errno
+            self.e_message = e_message
+
+        #Generate the string that stringifying this obeject will give.
+        self.strerror = "" #Define this to make pychecker happy.
+        self._string()
+
+        self.args = (self.errno, self.e_message)
+        
+    def __str__(self):
+        self._string()
+        return self.strerror
+
+    def __repr__(self):
+        return "FIFOError"  #String value.
+
+    def _string(self):
+        if self.errno in errno.errorcode.keys():
+            errno_name = errno.errorcode[self.errno]
+            errno_description = os.strerror(self.errno)
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
+                                                        self.errno,
+                                                        errno_description,
+                                                        self.e_message)
+        else:
+            self.strerror = self.e_message
+
+        return self.strerror
+    
+
 def hex8(x):
     s=hex(x)[2:]  #kill the 0x
     if type(x)==type(1L): s=s[:-1]  # kill the L
@@ -195,29 +293,46 @@ def get_callback(ip=None):
 ###############################################################################
 
 #send with a timeout
+# Normally, this should return the number of bytes written/sent.  However,
+# it will return the empty string for error conditions.
 def timeout_send(sock,msg,timeout=15*60):
-    timeout = float(timeout)
-    junk,fds,junk = select.select([],[sock],[],timeout)
-    if sock not in fds:
-        #Send to the debug log the current stack trace.  Hopefully, this will
-        # be useful in debugging hanging connections.
+    total_start_time = time.time()
+    timeout_time = total_start_time + timeout
+
+    error_string = ""
+    
+    #Loop until the timeout has passed, a hard error occurs (AKA where an
+    # exception is raised) or the message has really arrived.
+    while timeout_time > time.time():
+        time_left = max(timeout_time - time.time(), 0.0)
         try:
-            if "log_stack_trace" in dir(Trace):
-                Trace.log_stack_trace()
-        except:
-            Trace.handle_error()
-        return ""
+            junk, fds, junk = select.select([], [sock], [], time_left)
+        except (select.error, socket.error), msg:
+            if msg.args[0] in [errno.EINTR, errno.EAGAIN]:
+                continue
+
+            #Re-raise the exception for write_raw() to handle.
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        
+        if sock in fds:
+            #We got our socket.
+            break
+
+        #Current theory: On Linux the pipe buffer needs to be completely
+        # empty for select to return that the pipe is writable.
+        # So lets keep looping for a while.
+
     if type(sock) == types.IntType: #In case sock is an fd for a pipe.
-        return os.write(sock, msg)
+        nwritten = os.write(sock, msg) 
     else:
-        return sock.send(msg)
-    #Should never get here.
-    return ""
+        nwritten = sock.send(msg)
+
+    return nwritten, error_string
 
 #send a message, with bytecount and rudimentary security
 ## Note: Make sure to consider that sock could be a socket object, socket
 ##       fd or pipe fd.
-def write_raw(sock,msg,timeout=15*60):
+def write_raw(sock, msg, timeout=15*60):
     max_pkt_size=16384
     try:
         #Determine the length of the payload.
@@ -241,64 +356,80 @@ def write_raw(sock,msg,timeout=15*60):
         checksum_msg = hex8(checksum.adler32(salt, msg, msg_len))
         checksum_len = len(checksum_msg)
 
+        #This value will hold any errors returned from timeout_send().
+        error_string = ""
+
         #Now actually write out the length of the payload to the socket.
         ptr = 0
         while ptr < msg_len_len:
-            nwritten = timeout_send(sock, msg_msg_len[ptr:], timeout)
+            nwritten, error_string = timeout_send(sock, msg_msg_len[ptr:],
+                                                  timeout)
             if type(nwritten) != types.IntType or nwritten <= 0:
                 break
             ptr = ptr + nwritten
         if ptr < msg_len_len:
-            return 1, "short write: message length (expected 8, sent %s)" \
-                   % (ptr,)
+            error_string = "short write: message length (expected 8, sent %s) %s"\
+                           % (ptr, error_string)
+            return 1, error_string
         if ptr != msg_len_len:
-            return 1, "bad write: message length (expected 8, sent %s)" \
-                   % (ptr,)
+            error_string = "bad write: message length (expected 8, sent %s) %s" \
+                           % (ptr, error_string)
+            return 1, error_string
 
         #This time write out the 'signature'.
         ptr = 0
         while ptr < msg_signature_len:
-            nwritten = timeout_send(sock, msg_signature[ptr:], timeout)
+            nwritten, error_string = timeout_send(sock, msg_signature[ptr:],
+                                                  timeout)
             if type(nwritten) != types.IntType or nwritten <= 0:
                 break
             ptr = ptr + nwritten
         if ptr < msg_signature_len:
-            return 1, "short write: salt (expected 8, sent %s)" % (ptr,)
+            error_string = "short write: salt (expected 8, sent %s) %s" \
+                           % (ptr, error_string)
+            return 1, error_string
         if ptr != msg_signature_len:
-            return 1, "bad write: salt (expected 8, sent %s)" % (ptr,)
+            error_string = "bad write: salt (expected 8, sent %s) %s" \
+                           % (ptr, error_string)
+            return 1, error_string
 
         #Write the payload to the socket.
         ptr = 0
         while ptr < msg_len:
-            nwritten = timeout_send(sock, msg[ptr:ptr+max_pkt_size], timeout)
+            nwritten, error_string = timeout_send(sock,
+                                         msg[ptr:ptr+max_pkt_size], timeout)
             if type(nwritten) != types.IntType or nwritten <= 0:
                 break
             ptr = ptr + nwritten
         if ptr < msg_len:
-            return 1, "short write: message (expected %d, sent %s)" \
-                   % (msg_len, ptr,)
+            error_string = "short write: message (expected %d, sent %s) %s" \
+                           % (msg_len, ptr, error_string)
+            return 1, error_string
         if ptr != msg_len:
-            return 1, "bad write: message (expected %d, sent %s)" \
-                   % (msg_len, ptr,)
+            error_string = "bad write: message (expected %d, sent %s) %s" \
+                           % (msg_len, ptr, error_string)
+            return 1, error_string
 
         #Lastly, write out the checksum of the payload.
         ptr = 0
         while ptr < checksum_len:
-            nwritten = timeout_send(sock, checksum_msg[ptr:], timeout)
+            nwritten, error_string = timeout_send(sock, checksum_msg[ptr:],
+                                                  timeout)
             if type(nwritten) != types.IntType or nwritten <= 0:
                 break
             ptr = ptr + nwritten
         if ptr < checksum_len:
-            return 1, "short write: checksum (expected 4, sent %s)" \
-                   % (ptr,)
+            error_string = "short write: checksum (expected 4, sent %s) %s" \
+                            % (ptr, error_string)
+            return 1, error_string
         if ptr != checksum_len:
-            return 1, "bad write: checksum (expected 4, sent %s)" \
-                   % (ptr,)
-            
+            error_string = "bad write: checksum (expected 4, sent %s) %s" \
+                           % (ptr, error_string)
+            return 1, error_string
 
         return 0, ""
     except (socket.error, select.error, OSError), detail:
-        error_string = "write_raw: socket.error %s"%(detail,)
+        error_string = "write_raw: socket.error %s" % (detail,)
         #Trace.log(e_errors.ERROR, error_string)
         return 1, error_string
         ##XXX Further sends will fail, our peer will notice incomplete message
@@ -306,26 +437,29 @@ def write_raw(sock,msg,timeout=15*60):
 write_tcp_raw = write_raw
 
 # send a message over the network which is a Python object
-def write_tcp_obj(sock,obj,timeout=15*60):
+def write_tcp_obj(sock, obj, timeout=15*60):
 ### When we want to go strictly to cPickle use the following line.
-#    return write_tcp_obj_new(sock,obj,timeout)
+#    return write_tcp_obj_new(sock, obj, timeout)
 
-    rtn, e = write_tcp_raw(sock,repr(obj),timeout)
+    rtn, e = write_tcp_raw(sock, repr(obj), timeout)
 
     if e:
         log_socket_state(sock) #Log the state of the socket.
         Trace.log(e_errors.ERROR, e)
-        raise e_errors.TCP_EXCEPTION
+        #raise e_errors.TCP_EXCEPTION
+        raise TCPError(e)
 
     return rtn
 
 # send a message over the network which is a Python object
 def write_tcp_obj_new(sock,obj,timeout=15*60):
-    rtn, e = write_tcp_raw(sock,cPickle.dumps(obj),timeout)
+    rtn, e = write_tcp_raw(sock, cPickle.dumps(obj), timeout)
+    
     if e:
         log_socket_state(sock) #Log the state of the socket.
         Trace.log(e_errors.ERROR, e)
-        raise e_errors.TCP_EXCEPTION
+        #raise e_errors.TCP_EXCEPTION
+        raise TCPError(e)
 
     return rtn
 
@@ -335,7 +469,8 @@ def write_obj(fd, obj, timeout=15*60, verbose = True):
 
     if e and verbose:
         Trace.log(e_errors.ERROR, e)
-        raise e_errors.TCP_EXCEPTION #What should this be?
+        #raise e_errors.TCP_EXCEPTION #What should this be?
+        raise FIFOError(e)
     
     return rtn
 
@@ -345,8 +480,7 @@ def write_obj(fd, obj, timeout=15*60, verbose = True):
 #recv with a timeout
 def timeout_recv(sock, nbytes, timeout = 15 * 60):
     total_start_time = time.time()
-    #time_left = timeout
-    timeout_time = time.time() + timeout
+    timeout_time = total_start_time + timeout
 
     error_string = ""
     data_string = ""
@@ -357,8 +491,8 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
         try:
             time_left = max(timeout_time - time.time(), 0.0)
             fds, junk, junk = select.select([sock], [], [], time_left)
-        except select.error, msg:
-            if msg.args[0] == errno.EINTR:
+        except (select.error, socket.error), msg:
+            if msg.args[0] in [errno.EINTR, errno.EAGAIN]:
                 continue
             error_string = "timeout_recv(): %s" % str(msg)
             #Return to handle the error.
@@ -459,7 +593,8 @@ def read_tcp_obj(sock, timeout=15*60) :
         error_string = "%s from %s" % (e, peername)
         Trace.log(e_errors.ERROR, error_string)
         
-        raise e_errors.TCP_EXCEPTION
+        #raise e_errors.TCP_EXCEPTION
+        raise TCPError(e)
 
     try:
         obj = cPickle.loads(s)
@@ -486,7 +621,8 @@ def read_tcp_obj_new(sock, timeout=15*60):
         error_string = "%s from %s" % (e, peername)
         Trace.log(e_errors.ERROR, error_string)
         
-	raise e_errors.TCP_EXCEPTION
+	#raise e_errors.TCP_EXCEPTION
+        raise TCPError(e)
     
     return cPickle.loads(s)
 
@@ -497,7 +633,9 @@ def read_obj(fd, timeout=15*60, verbose = True):
         if verbose:
             Trace.log(e_errors.ERROR, e)
         
-        raise e_errors.TCP_EXCEPTION #What should this be?
+        #raise e_errors.TCP_EXCEPTION #What should this be?
+        raise FIFOError(e)
+    
     return cPickle.loads(s)
     
 

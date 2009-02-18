@@ -116,52 +116,60 @@ class EventRelayClient:
     SUCCESS = 1
     ERROR = 0
 
-    def setup(self):
+    def setup(self, sock=None):
         self.invalid = 0
         self.error_msg = ""
-        self.sock = None
-        try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            set_max_recv_buffersize(self.sock)
-            default_ip = host_config.get_default_interface_ip()
-            self.sock.bind((default_ip, 0))    # let the system pick a port
-            self.addr = self.sock.getsockname()
-            self.host = self.addr[0]
-            self.port = self.addr[1]
-            self.subscribe_time = 0
-            self.notify_msg = None
-            self.unsubscribe_msg = None
+        if sock:
+            self.sock = sock
+        else:
+            self.sock = None
+            try:
+                self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                set_max_recv_buffersize(self.sock)
+                default_ip = host_config.get_default_interface_ip()
+                self.sock.bind((default_ip, 0))    # let the system pick a port
+            except socket.error, msg:
+                # this can happen rarely, it can mean too many open files
+                self.invalid = 1
+                self.error_msg = msg
+                if self.sock:
+                    self.sock.close()
+                return self.ERROR
 
-            # get the address of the event relay process.
-            import configuration_client
+        self.addr = self.sock.getsockname()
+        self.host = self.addr[0]
+        self.port = self.addr[1]
+        self.subscribe_time = 0
+        self.notify_msg = None
+        self.unsubscribe_msg = None
+
+        # get the address of the event relay process.
+        import configuration_client
+        if not self.event_relay_host:
+            self.csc = configuration_client.ConfigurationClient()
+            self.event_relay_host = get_event_relay_host(self.csc)
             if not self.event_relay_host:
-                self.csc = configuration_client.ConfigurationClient()
-                self.event_relay_host = get_event_relay_host(self.csc)
-                if not self.event_relay_host:
-                    self.event_relay_host = os.environ.get(
+                self.event_relay_host = os.environ.get(
                                                      "ENSTORE_CONFIG_HOST","")
-            if not self.event_relay_port:
-                # try to get it from the config file
-                self.event_relay_port = DEFAULT_PORT
-            self.event_relay_addr = (self.event_relay_host, self.event_relay_port)
-            return self.SUCCESS
-        except socket.error, msg:
-            # this can happen rarely, it can mean too many open files
-            self.invalid = 1
-            self.error_msg = msg
-            if self.sock:
-                self.sock.close()
-            return self.ERROR
+        if not self.event_relay_port:
+            # try to get it from the config file
+            self.event_relay_port = DEFAULT_PORT
+        self.event_relay_addr = (self.event_relay_host, self.event_relay_port)
+        self.invalid = 0
+        return self.SUCCESS
 
     def unsetup(self):
         self.invalid = 1
         self.error_msg = ""
+        self.addr = None
+        self.host = None
+        self.port = None
         if self.sock:
             self.sock.close()
         return self.SUCCESS
 
     def __init__(self, server=None, function=None, event_relay_host=None, 
-                 event_relay_port=None):
+                 event_relay_port=None, sock=None):
         # get a socket on which to talk to the event relay process
         # we do this setup in a subroutine, so if it doesn't work
         # we can try again later.
@@ -175,8 +183,11 @@ class EventRelayClient:
         self.event_relay_host = event_relay_host
         self.event_relay_port = event_relay_port
         self.do_interval = 1
-        self.do_select_fd = 1
-        self.setup()
+        if sock:
+            self.do_select_fd = 0
+        else:
+            self.do_select_fd = 1
+        self.setup(sock)
 
     # set value to not register interval functions with dispatching worker
     def no_interval(self):
@@ -188,10 +199,10 @@ class EventRelayClient:
 
     # this method must be called if we want to have the event relay forward 
     # messages to us.
-    def start(self, subscribe_msgs=None, resubscribe_rate=600):
+    def start(self, subscribe_msgs=None, resubscribe_rate=600, sock=None):
         if self.invalid:
             # we could not bind to a socket, try again.
-            self.setup()
+            self.setup(sock)
             if self.invalid:
                 # nope, didn't work
                 return self.ERROR
@@ -218,10 +229,13 @@ class EventRelayClient:
     def stop(self):
         if not self.invalid:
             if self.server is not None:
-                if self.do_interval:
-                    self.server.remove_interval_func(self.subscribe)
-                if self.do_select_fd:
-                    self.server.remove_select_fd(self.sock)
+                try:
+                    if self.do_interval:
+                        self.server.remove_interval_func(self.subscribe)
+                    if self.do_select_fd:
+                        self.server.remove_select_fd(self.sock)
+                except:
+                    pass
                 
         self.unsubscribe()
         self.unsetup()
@@ -241,6 +255,12 @@ class EventRelayClient:
 
     # read a message from the socket
     def read(self, fd=None):
+        if self.do_select_fd == 0:
+
+            decoded_msg = event_relay_messages.decode(self.error_msg)
+            self.error_msg = ""
+            if decoded_msg:
+                return decoded_msg
         if not self.invalid:
             if not fd:
                 fd = self.sock

@@ -69,6 +69,7 @@ NOWRITE="nowrite"
 REJECT='reject'
 PAUSE='pause'
 IGNORE='ignore'
+# end of LM statues
 OSERROR = "OS ERROR"                    #Blanket error for caught OSError.
 PNFS_ERROR = "PNFS ERROR"               #Encp to Pnfs specific error.
 ENCP_STUCK = "ENCP STUCK"               #Mover detected no encp progress.
@@ -83,7 +84,9 @@ UNCAUGHT_EXCEPTION = "UNCAUGHT EXCEPTION" #An exception was not caught in encp.
 
 BFID_EXISTS = "BFID EXISTS"
 NO_FILE = "NO SUCH FILE/BFID"
+TOO_MANY_FILES = "TOO MANY FILES MATCH"
 NO_VOLUME = "NO SUCH VOLUME"
+TOO_MANY_VOLUMES = "TOO MANY VOLUMES MATCH"
 RESTRICTED_SERVICE = "RESTRICTED SERVICE"
 FILE_CLERK_ERROR = "F-ERROR"
 VOLUME_CLERK_ERROR = "V-ERROR"
@@ -91,6 +94,7 @@ INFO_SERVER_ERROR = "I-ERROR"
 NO_SG = "NO SUCH STORAGE GROUP"
 VOLUME_EXISTS = "VOLUME EXISTS"
 WRONG_FORMAT = "WRONG FORMAT"
+DATABASE_ERROR = "DATABASE ERROR"
 
 FILESYSTEM_CORRUPT = "Filesystem is corrupt" #Encp finds pnfs corrupted.
 MC_QUEUE_FULL = "MEDIA_CHANGER_QUEUE_FULL" # media changer queue is full
@@ -98,6 +102,7 @@ BAD_FILE_SIZE = "BAD_FILE_SIZE" # file size is bad. For instance < 0
 MEMORY_ERROR = "MEMORY_ERROR" # python exception MemoryError
 NOT_SUPPORTED = "NOT SUPPORTED"
 INVALID_WRAPPER = "INVALID WRAPPER" #The tape wrapper type is not known.
+INVALID_ACTION = "INVALID ACTION" 
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
@@ -124,7 +129,7 @@ sevdict = { ALARM      : 'A',
 DEFAULT_SEVERITY = sevdict[WARNING]
 DEFAULT_ROOT_ERROR = UNKNOWN
 
-# Exceptions that are raised
+# Exceptions that are raised (now obsolete)
 #-------------------------------------
 TCP_EXCEPTION = "TCP connection closed"
 NOT_ALWD_EXCEPTION = "Not allowed"

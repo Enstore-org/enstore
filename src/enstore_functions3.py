@@ -132,6 +132,8 @@ def is_location_cookie(lc):
         
     return 0
 
+from pnfs import is_pnfsid
+
 ############################################################################
 
 def extract_brand(bfid):

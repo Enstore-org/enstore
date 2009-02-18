@@ -286,8 +286,15 @@ class DispatchingWorker(udp_server.UDPServer):
 
                 rcv_timeout = max(rcv_timeout, 0)
             if self.use_raw:
-                rc = self.get_message()
-                Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
+                try:
+                    rc = self.get_message()
+                    Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
+                except NameError, detail:
+                    Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
+                    self.erc.error_msg = str(detail)
+                    Trace.trace
+                    self.handle_er_msg(None)
+                    return None, None
                 if rc and rc != ('',()):
                     Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
                     return rc
@@ -322,7 +329,15 @@ class DispatchingWorker(udp_server.UDPServer):
 
                     elif fd == self.server_socket:
                         #Get the 'raw' request and the address from whence it came.
-                        (request, addr) = self.get_message()
+                        try:
+                            (request, addr) = self.get_message()
+                        except NameError, detail:
+                            Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
+                            self.erc.error_msg = str(detail)
+                            Trace.trace
+                            self.handle_er_msg(fd)
+                            return None, None
+                            
 
                         #Skip these if there is nothing to do.
                         if request == None or addr in [None, ()]:
@@ -469,12 +484,18 @@ class DispatchingWorker(udp_server.UDPServer):
         
         
     def quit(self,ticket):
+        if sys.version_info >= (2, 6):
+            import multiprocessing
+            children = multiprocessing.active_children()
+            for p in children:
+                p.terminate()
         Trace.trace(10,"quit address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
         ticket['pid'] = os.getpid()
         Trace.log( e_errors.INFO, 'QUITTING... via os._exit')
         self.reply_to_caller(ticket)
+        sys.stdout.flush()
         os._exit(0) ##MWZ: Why not sys.exit()?  No servers fork() anymore...
 
     # cleanup if we are done with this unique id
