@@ -36,7 +36,6 @@ import host_config
 # for python 2.6 and latter use
 # rawUDP_p -- process based rawUDP for better use of multiprocessor ensvoronment
 # and to avoid GIL
-'''
 if sys.version_info >= (2, 6, 0):
     try:
         import rawUDP_p as rawUDP
@@ -49,11 +48,6 @@ else:
         can_use_raw = True
     except ImportError:
         can_use_raw = False
-'''
-import rawUDP as rawUDP
-can_use_raw = True
-
-        
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
