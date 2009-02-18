@@ -71,6 +71,7 @@ def en_eval(expr, debug=False):
 		raise SyntaxError, msg
 	except NameError, detail:
 		Trace.trace(5, "NameError %s %s"%(detail, expr))
-		raise NameError, expr
+		val = expr
+		#raise NameError, expr
 
 	return val
