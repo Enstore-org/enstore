@@ -56,8 +56,6 @@ class RawUDP:
             #print "QUEUE SIZE", self.queue_size.value
         if self.queue_size.value > 0:
               self._lock.acquire()
-              #self.arrived.clear()
-              #ret = self.buffer.pop(0)
               ret = self.buffer.get()
               self.queue_size.value = self.queue_size.value - 1 
               self._lock.release()
@@ -77,14 +75,47 @@ class RawUDP:
             print detail
         
 def put(lock, event, buffer, queue_size, message):
-    #print "PUT", message
+        req = message[2]
+        request=None
+        try:
+            request, inCRC = udp_common.r_eval(req)
+        except (SyntaxError, TypeError):
+            #If TypeError occurs, keep retrying.  Most likely it is
+            # an "expected string without null bytes".
+            #If SyntaxError occurs, also keep trying, most likely
+            # it is from and empty UDP datagram.
+            exc, msg = sys.exc_info()[:2]
+            try:
+                message = "%s: %s: From client %s:%s" % \
+                          (exc, msg, client_addr, request[:100])
+            except IndexError:
+                message = "%s: %s: From client %s: %s" % \
+                          (exc, msg, client_addr, request)
+            Trace.log(5, message)
+
+            #Set these to something.
+            request, inCRC = (None, None)
+
+        if request == None:
+            return (request, client_addr)
+        # calculate CRC
+        crc = checksum.adler32(0L, request, len(request))
+        if (crc != inCRC) :
+            Trace.log(e_errors.INFO,
+                      "BAD CRC request: %s " % (request,))
+            Trace.log(e_errors.INFO,
+                      "CRC: %s calculated CRC: %s" %
+                      (repr(inCRC), repr(crc)))
+
+            request=None
+        if not request:
+            return
+
+    buffer.put((message[0], message[1], request))
     lock.acquire()
-    #buffer.append(message)
-    buffer.put(message)
     queue_size.value = queue_size.value + 1
     lock.release()
     event.set()
-    #print "EXIT PUT"
         
 
 def _receiver(self):
