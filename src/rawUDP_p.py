@@ -12,6 +12,8 @@ import socket
 import cleanUDP
 import udp_common
 import os
+import checksum
+import Trace
 
 MAX_PACKET_SIZE = 16384
 
@@ -23,9 +25,10 @@ class RawUDP:
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self._lock = multiprocessing.Lock()
         self.arrived = multiprocessing.Event()
-        self.queue_size = multiprocessing.Value("l",0L)
+        self.queue_size_p = multiprocessing.Value("l",0L)
+        self.queue_size = 0L
         self.buffer = multiprocessing.Queue()
-        print "QUEUE SIZE", self.buffer.qsize()
+        #print "QUEUE SIZE", self.buffer.qsize()
         
     def init_port(self, port):
         self.socket_type = socket.SOCK_DGRAM
@@ -49,17 +52,18 @@ class RawUDP:
     # request
     # number of requests in the buffer
     def get(self):
-        if self.queue_size.value == 0:
+        if self.queue_size_p.value == 0:
             self.arrived.wait()
             #print "ARRIVED"
             self.arrived.clear()
-            #print "QUEUE SIZE", self.queue_size.value
-        if self.queue_size.value > 0:
+            #print "QUEUE SIZE", self.queue_size_p.value
+        if self.queue_size_p.value > 0:
               self._lock.acquire()
               ret = self.buffer.get()
-              self.queue_size.value = self.queue_size.value - 1 
+              self.queue_size_p.value = self.queue_size_p.value - 1
+              self.queue_size = self.queue_size_p.value
               self._lock.release()
-              return ret[0], ret[1], ret[2], self.queue_size.value
+              return ret[0], ret[1], ret[2]
         else:
             return None
         
@@ -75,51 +79,51 @@ class RawUDP:
             print detail
         
 def put(lock, event, buffer, queue_size, message):
-        req = message[2]
-        request=None
+    req = message[2]
+    request=None
+    try:
+        request, inCRC = udp_common.r_eval(req)
+    except (SyntaxError, TypeError):
+        #If TypeError occurs, keep retrying.  Most likely it is
+        # an "expected string without null bytes".
+        #If SyntaxError occurs, also keep trying, most likely
+        # it is from and empty UDP datagram.
+        exc, msg = sys.exc_info()[:2]
         try:
-            request, inCRC = udp_common.r_eval(req)
-        except (SyntaxError, TypeError):
-            #If TypeError occurs, keep retrying.  Most likely it is
-            # an "expected string without null bytes".
-            #If SyntaxError occurs, also keep trying, most likely
-            # it is from and empty UDP datagram.
-            exc, msg = sys.exc_info()[:2]
-            try:
-                message = "%s: %s: From client %s:%s" % \
-                          (exc, msg, client_addr, request[:100])
-            except IndexError:
-                message = "%s: %s: From client %s: %s" % \
-                          (exc, msg, client_addr, request)
-            Trace.log(5, message)
+            message = "%s: %s: From client %s:%s" % \
+                      (exc, msg, client_addr, request[:100])
+        except IndexError:
+            message = "%s: %s: From client %s: %s" % \
+                      (exc, msg, client_addr, request)
+        Trace.log(5, message)
 
-            #Set these to something.
-            request, inCRC = (None, None)
+        #Set these to something.
+        request, inCRC = (None, None)
 
-        if request == None:
-            return (request, client_addr)
-        # calculate CRC
-        crc = checksum.adler32(0L, request, len(request))
-        if (crc != inCRC) :
-            Trace.log(e_errors.INFO,
-                      "BAD CRC request: %s " % (request,))
-            Trace.log(e_errors.INFO,
-                      "CRC: %s calculated CRC: %s" %
-                      (repr(inCRC), repr(crc)))
+    if request == None:
+        return (request, client_addr)
+    # calculate CRC
+    crc = checksum.adler32(0L, request, len(request))
+    if (crc != inCRC) :
+        Trace.log(e_errors.INFO,
+                  "BAD CRC request: %s " % (request,))
+        Trace.log(e_errors.INFO,
+                  "CRC: %s calculated CRC: %s" %
+                  (repr(inCRC), repr(crc)))
 
-            request=None
-        if not request:
-            return
+        request=None
+    if not request:
+        return
 
-    buffer.put((message[0], message[1], request))
     lock.acquire()
+    buffer.put((message[0], message[1], request))
     queue_size.value = queue_size.value + 1
     lock.release()
     event.set()
         
 
 def _receiver(self):
-    print "RECEIVER PROCESS", os.getpid()
+    #print "RECEIVER PROCESS", os.getpid()
     rcv_timeout = self.rcv_timeout
     while 1:
 
@@ -128,7 +132,7 @@ def _receiver(self):
         #print "wait"
         r, w, x, remaining_time = cleanUDP.Select([self.server_socket], [], [], rcv_timeout)
         #print "got it", r, w, self.server_socket
-        #print "got it", self.queue_size.value
+        #print "got it", self.queue_size_p.value
 
         if r:
             for fd in r:
@@ -139,7 +143,7 @@ def _receiver(self):
 
                     if req:
                         message = (client_addr[0], client_addr[1], req)
-                        put(self._lock, self.arrived, self.buffer, self.queue_size, message)
+                        put(self._lock, self.arrived, self.buffer, self.queue_size_p, message)
         else:
             # time out
             # set event to allow get to proceed
