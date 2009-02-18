@@ -36,6 +36,7 @@ import host_config
 # for python 2.6 and latter use
 # rawUDP_p -- process based rawUDP for better use of multiprocessor ensvoronment
 # and to avoid GIL
+'''
 if sys.version_info >= (2, 6, 0):
     try:
         import rawUDP_p as rawUDP
@@ -48,6 +49,10 @@ else:
         can_use_raw = True
     except ImportError:
         can_use_raw = False
+'''
+import rawUDP as rawUDP
+can_use_raw = True
+
         
 
 # Generic request response server class, for multiple connections
@@ -296,40 +301,9 @@ class UDPServer:
        rc = self.raw_requests.get()
        if rc:
            client_addr = (rc[0], rc[1])
-           req = rc[2]
-           self.queue_size = rc[3]
-           Trace.trace(5, "REQ %s %s %s"%(self.server_address, req,self.queue_size)) 
-           try:
-               request, inCRC = udp_common.r_eval(req)
-           except (SyntaxError, TypeError):
-               #If TypeError occurs, keep retrying.  Most likely it is
-               # an "expected string without null bytes".
-               #If SyntaxError occurs, also keep trying, most likely
-               # it is from and empty UDP datagram.
-               exc, msg = sys.exc_info()[:2]
-               try:
-                   message = "%s: %s: From client %s:%s" % \
-                             (exc, msg, client_addr, request[:100])
-               except IndexError:
-                   message = "%s: %s: From client %s: %s" % \
-                             (exc, msg, client_addr, request)
-               Trace.log(10, message)
-
-               #Set these to something.
-               request, inCRC = (None, None)
-
-           if request == None:
-               return (request, client_addr)
-           # calculate CRC
-           crc = checksum.adler32(0L, request, len(request))
-           if (crc != inCRC) :
-               Trace.log(e_errors.INFO,
-                         "BAD CRC request: %s " % (request,))
-               Trace.log(e_errors.INFO,
-                         "CRC: %s calculated CRC: %s" %
-                         (repr(inCRC), repr(crc)))
-               
-               request=None
+           request = rc[2]
+           self.queue_size = self.raw_requests.queue_size
+           Trace.trace(5, "REQ %s %s %s"%(self.server_address, request,self.queue_size)) 
        else:
            if self.queue_size != 0:
                print "Nonsense rc=%s size=%s"%(rc, self.queue_size)
