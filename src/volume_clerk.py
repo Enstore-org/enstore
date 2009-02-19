@@ -827,6 +827,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         # get reply
         reply = self.__get_vols2(ticket)
+        reply['status'] = (e_errors.OK, None)
 
         # send the reply
         try:
@@ -900,6 +901,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         # get reply
         reply = self.__get_pvols()
+        reply['status'] = (e_errors.OK, None)
 
         # send the reply
         try:
