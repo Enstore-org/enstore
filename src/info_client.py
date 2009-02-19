@@ -15,6 +15,7 @@ import pwd
 import socket
 import errno
 import copy
+import select
 
 # enstore import
 import generic_client
@@ -236,10 +237,20 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "get_bfids2",
                   #"callback_addr" : (host, port),
                   "external_label": external_label}
-        return self.send_with_long_answer(ticket)
-        
-    """
-    def get_bfids(self, external_label):
+        done_ticket = self.send_with_long_answer(ticket)
+
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.get_bfids_old(external_label)
+            return done_ticket #Avoid duplicate "convert to external format"
+        if not e_errors.is_ok(done_ticket):
+            return done_ticket
+
+        return done_ticket
+
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def get_bfids_old(self, external_label):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"          : "get_bfids",
@@ -281,7 +292,6 @@ class fileInfoMethods(generic_client.GenericClient):
             return done_ticket
 
         return ticket
-    """
 
     def list_active(self, external_label):
         ticket = {"work"           : "list_active3",
@@ -290,6 +300,14 @@ class fileInfoMethods(generic_client.GenericClient):
 
         done_ticket = self.send_with_long_answer(ticket)
 
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.list_active_old(external_label)
+            return done_ticket #Avoid duplicate "convert to external format"
+        if not e_errors.is_ok(done_ticket):
+            return done_ticket
+        
         # convert to external format
         active_list = copy.copy(done_ticket['active_list'])
         done_ticket['active_list'] = []
@@ -298,8 +316,8 @@ class fileInfoMethods(generic_client.GenericClient):
 
         return done_ticket
 
-    """
-    def list_active(self, external_label):
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def list_active_old(self, external_label):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"           : "list_active2",
@@ -337,19 +355,30 @@ class fileInfoMethods(generic_client.GenericClient):
         if done_ticket["status"][0] != e_errors.OK:
             return done_ticket
 
+        # convert to external format
         ticket['active_list'] = []
         for i in active_list:
             ticket['active_list'].append(i[0])
         data_path_socket.close()
 
         return ticket
-    """
 
     def tape_list(self, external_label):
         ticket = {"work"           : "tape_list3",
                   #"callback_addr"  : (host, port),
                   "external_label" : external_label}
         done_ticket = self.send_with_long_answer(ticket)
+
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.tape_list_old(external_label)
+            return done_ticket #Avoid duplicate "convert to external format"
+        if not e_errors.is_ok(done_ticket):
+            return done_ticket
+        
+        return done_ticket
+
 
         # convert to external format
         vol = copy.copy(done_ticket['tape_list'])
@@ -397,8 +426,9 @@ class fileInfoMethods(generic_client.GenericClient):
             done_ticket['tape_list'].append(record)
 
         return done_ticket
-    """
-    def tape_list(self, external_label):
+
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def tape_list_old(self, external_label):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"           : "tape_list2",
@@ -483,16 +513,24 @@ class fileInfoMethods(generic_client.GenericClient):
             ticket['tape_list'].append(record)
 
         return ticket
-    """
 
     def show_bad(self):
         ticket = {"work"          : "show_bad2",
                   #"callback_addr" : (host, port),
                   }
-        return self.send_with_long_answer(ticket)
+        done_ticket = self.send_with_long_answer(ticket)
 
-    """
-    def show_bad(self):
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.show_bad_old()
+        if not e_errors.is_ok(done_ticket):
+            return done_ticket
+        
+        return done_ticket
+
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def show_bad_old(self):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"          : "show_bad",
@@ -532,7 +570,6 @@ class fileInfoMethods(generic_client.GenericClient):
         if done_ticket["status"][0] != e_errors.OK:
             return done_ticket
         return ticket
-    """
 
     ## End file clerk functions.
     ###################################################################
@@ -609,14 +646,18 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         done_ticket = self.send_with_long_answer(ticket)
 
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.get_vols_old()
         if not e_errors.is_ok(done_ticket):
             return done_ticket
 
         return done_ticket
 
-    """
     # get a list of all volumes
-    def get_vols(self, key=None, state=None, not_cond=None, print_list=1):
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def get_vols_old(self, key=None, state=None, not_cond=None):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -655,7 +696,7 @@ class volumeInfoMethods(generic_client.GenericClient):
         volumes = callback.read_tcp_obj_new(data_path_socket)
         data_path_socket.close()
 
-
+        """
         # Work has been read - wait for final dialog with volume clerk
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
@@ -674,10 +715,11 @@ class volumeInfoMethods(generic_client.GenericClient):
                 vlist = vlist+v['label']+" "
             if print_list:
                 print vlist
+        """
 
         ticket['volumes'] = volumes.get('volumes',[])
+        ticket['header'] = volumes.get('header', None)
         return ticket
-    """
 
     # get a list of all problem volumes
     def get_pvols(self):
@@ -687,14 +729,18 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         done_ticket = self.send_with_long_answer(ticket)
 
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.get_pvols_old()
         if not e_errors.is_ok(done_ticket):
             return done_ticket
 
         return done_ticket
 
-
-    """
-    def get_pvols(self):
+    # get a list of all problem volumes
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def get_pvols_old(self):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -739,7 +785,6 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         ticket['volumes'] = volumes.get('volumes',[])
         return ticket
-    """
 
     def get_sg_count(self, lib, sg, timeout=60, retry=10):
         ticket = {'work':'get_sg_count',
@@ -755,14 +800,18 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         done_ticket = self.send_with_long_answer(ticket)
 
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.list_sg_count_old()
         if not e_errors.is_ok(done_ticket):
             return done_ticket
 
         return done_ticket
 
-    """
     # list all sg counts
-    def list_sg_count(self):
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def list_sg_count_old(self):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -805,7 +854,6 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         ticket['sgcnt'] = sgcnt
         return ticket
-    """
 
     # get a list of all volumes
     def get_vol_list(self):
@@ -815,14 +863,18 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         done_ticket = self.send_with_long_answer(ticket)
 
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.get_vol_list_old()
         if not e_errors.is_ok(done_ticket):
             return done_ticket
 
         return done_ticket
 
-    """
     # get a list of all volumes
-    def get_vol_list(self):
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def get_vol_list_old(self):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -866,7 +918,7 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         ticket['volumes'] = volumes
         return ticket
-    """
+
     # show_history
     def show_history(self, vol):
         ticket = {"work"          : "history2",
@@ -876,14 +928,18 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         done_ticket = self.send_with_long_answer(ticket)
 
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.show_history_old(vol)
         if not e_errors.is_ok(done_ticket):
             return done_ticket
 
         return done_ticket
 
-    """
     # show_history
-    def show_history(self, vol):
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def show_history_old(self, vol):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"           : "history",
@@ -913,7 +969,7 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         data_path_socket.connect(ticket['info_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
+        ticket = callback.read_tcp_obj(data_path_socket)
         res = callback.read_tcp_obj_new(data_path_socket)
         ticket['history'] = res
 
@@ -926,7 +982,6 @@ class volumeInfoMethods(generic_client.GenericClient):
             return done_ticket
 
         return ticket
-    """
 
     def write_protect_status(self, vol):
         ticket = {"work"           : "write_protect_status",
@@ -1000,48 +1055,95 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
     ## Begin info server functions.
 
     def file_info(self, bfid):
-        r = self.send({"work" : "file_info", "bfid" : bfid})
+        ticket = {"work" : "file_info",
+                  "bfid" : bfid}
+        r = self.send(ticket)
         return r
     
     def find_file_by_path(self, pnfs_name0):
-        ## The old way.  
-        #r = self.send({"work" : "find_file_by_path", "pnfs_name0" : pnfs_name0})
-
         ticket = {"work" : "find_file_by_path2",
                   "pnfs_name0" : pnfs_name0}
         r = self.send_with_long_answer(ticket)
+
+        #Try old way if the server is old too.
+        if r['status'][0] == e_errors.KEYERROR and \
+               r['status'][1].startswith("cannot find requested function"):
+            r = self.find_file_by_path_old(pnfs_name0)
+        
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def find_file_by_path_old(self, pnfs_name0):
+        ticket = {"work" : "find_file_by_path",
+                  "pnfs_name0" : pnfs_name0}
+        r = self.send(ticket)
         if r.has_key('work'):
             del r['work']
         return r
 
     def find_file_by_pnfsid(self, pnfsid):
-        ## The old way.
-        #r = self.send({"work" : "find_file_by_pnfsid", "pnfsid" : pnfsid})
-
         ticket = {"work" : "find_file_by_pnfsid2", "pnfsid" : pnfsid}
         r = self.send_with_long_answer(ticket)
+
+        #Try old way if the server is old too.
+        if r['status'][0] == e_errors.KEYERROR and \
+               r['status'][1].startswith("cannot find requested function"):
+            r = self.find_file_by_pnfsid_old(pnfsid)
+        
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def find_file_by_pnfsid_old(self, pnfsid):
+        ticket = {"work" : "find_file_by_pnfsid",
+                  "pnfsid" : pnfsid}
+        r = self.send(ticket)
         if r.has_key('work'):
             del r['work']
         return r
 
     def find_file_by_location(self, vol, loc):
-        ## The old way.
-        #r = self.send({"work" : "find_file_by_location",
-        #	"external_label" : vol, "location_cookie" : loc})
-
         ticket = {"work" : "find_file_by_location2",
                   "external_label" : vol, "location_cookie" : loc}
         r = self.send_with_long_answer(ticket)
+
+        #Try old way if the server is old too.
+        if r['status'][0] == e_errors.KEYERROR and \
+               r['status'][1].startswith("cannot find requested function"):
+            r = self.find_file_by_location_old(vol, loc)
+        
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def find_file_by_location_old(self, vol, loc):
+        ticket = {"work" : "find_file_by_location",
+                  "external_label" : vol,
+                  "location_cookie" : loc}
+        r = self.send(ticket)
         if r.has_key('work'):
             del r['work']
         return r
 
     def find_same_file(self, bfid):
-        ## The old way.   
-        #return self.send({"work": "find_same_file", "bfid": bfid})
+        ticket = {"work": "find_same_file2",
+                  "bfid": bfid}
+        done_ticket = self.send_with_long_answer(ticket)
 
-        ticket = {"work": "find_same_file2", "bfid": bfid}
-        return self.send_with_long_answer(ticket)
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            return self.find_same_file_old(bfid)
+            
+        return done_ticket
+
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def find_same_file_old(self, bfid):
+        return self.send({"work": "find_same_file", "bfid": bfid})
 
     def query_db(self, q):
         ticket = {"work"          : "query_db2",
@@ -1051,8 +1153,8 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         return self.send_with_long_answer(ticket)
         
 
-    """
-    def query_db(self, q):
+    ### For backward compatiblility with old servers.  (2-19-2009)
+    def query_db_old(self, q):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"          : "query_db",
@@ -1093,7 +1195,6 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         if done_ticket["status"][0] != e_errors.OK:
             return done_ticket
         return ticket
-    """
 
     ## End info server functions.
     ###################################################################
@@ -1496,13 +1597,20 @@ def do_work(intf):
                 print f['label'], f['bfid'], f['size'], f['path']
     elif intf.query:
         ticket = ifc.query_db(intf.query)
-        if e_errors.is_ok(ticket):
-            show_query_result(ticket)
-        #if ticket['status'][0] == e_errors.OK:
-        #    if ticket['result']['status'][0] != e_errors.OK:
-        #        ticket['status'] = ticket['result']['status']
-        #    else:
-        #        show_query_result(ticket['result'])
+        #Try the old protocol if the server doesn't know about this one.
+        if ticket['status'][0] == e_errors.KEYERROR and \
+               ticket['status'][1].startswith("cannot find requested function"):
+            ticket = ifc.query_db_old(intf.query)
+            if ticket['status'][0] == e_errors.OK:
+                if ticket['result']['status'][0] != e_errors.OK:
+                    ticket['status'] = ticket['result']['status']
+                else:
+                    show_query_result(ticket['result'])
+        else:
+            #Do the new way.
+            if e_errors.is_ok(ticket):
+                show_query_result(ticket)
+        
     elif intf.ls_sg_count:
         ticket = ifc.list_sg_count()
         sgcnt = ticket['sgcnt']
