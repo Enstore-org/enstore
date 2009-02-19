@@ -251,6 +251,17 @@ class UDPServer:
 
                 try:
                     request, inCRC = udp_common.r_eval(req)
+                except ValueError, detail:
+                    # must be an event relay message
+                    # it has a different format
+                    try:
+                        request = udp_common.r_eval(req)
+                        raise NameError, request # dispatching_worker will take care of this
+                    except:
+                        exc, msg = sys.exc_info()[:2]
+                        # reraise exception
+                        raise exc, msg
+                        
                 except (SyntaxError, TypeError):
                     #If TypeError occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
@@ -333,6 +344,19 @@ class UDPServer:
        
         try:
             idn, number, ticket = udp_common.r_eval(request)
+        except (NameError, ValueError), detail:
+            # must be an event relay message
+            # it has a different format
+            try:
+                rq = udp_common.r_eval(request)
+                self.erc.error_msg = str(rq)
+                self.handle_er_msg(None)
+                return None
+                #raise NameError, rq # dispatching_worker will take care of this
+            except:
+                exc, msg = sys.exc_info()[:2]
+                # reraise exception
+                raise exc, msg
         except (SyntaxError, TypeError):
             #If TypeError occurs, keep retrying.  Most likely it is
             # an "expected string without null bytes".
