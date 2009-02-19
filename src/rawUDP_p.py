@@ -20,7 +20,7 @@ MAX_PACKET_SIZE = 16384
 class RawUDP:
     
     def __init__(self, receive_timeout=60.):
-        print "I am rawUDP_p", os.getpid()
+        #print "I am rawUDP_p", os.getpid()
         self.max_packet_size = MAX_PACKET_SIZE
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self._lock = multiprocessing.Lock()
@@ -80,9 +80,30 @@ class RawUDP:
         
 def put(lock, event, buffer, queue_size, message):
     req = message[2]
+    client_addr = (message[0], message[1])
     request=None
+    #print "MESSAGE", type(req), message
     try:
         request, inCRC = udp_common.r_eval(req)
+        # calculate CRC
+        crc = checksum.adler32(0L, request, len(request))
+        if (crc != inCRC) :
+            Trace.log(e_errors.INFO,
+                      "BAD CRC request: %s " % (request,))
+            Trace.log(e_errors.INFO,
+                      "CRC: %s calculated CRC: %s" %
+                      (repr(inCRC), repr(crc)))
+            
+            request=None
+    except ValueError, detail:
+        # must be an event relay message
+        # it has a different format
+        try:
+            request = udp_common.r_eval(req)
+        except:
+            exc, msg = sys.exc_info()[:2]
+            # reraise exception
+            raise exc, msg
     except (SyntaxError, TypeError):
         #If TypeError occurs, keep retrying.  Most likely it is
         # an "expected string without null bytes".
@@ -98,23 +119,11 @@ def put(lock, event, buffer, queue_size, message):
         Trace.log(5, message)
 
         #Set these to something.
-        request, inCRC = (None, None)
+        request = None
 
-    if request == None:
-        return (request, client_addr)
-    # calculate CRC
-    crc = checksum.adler32(0L, request, len(request))
-    if (crc != inCRC) :
-        Trace.log(e_errors.INFO,
-                  "BAD CRC request: %s " % (request,))
-        Trace.log(e_errors.INFO,
-                  "CRC: %s calculated CRC: %s" %
-                  (repr(inCRC), repr(crc)))
-
-        request=None
     if not request:
         return
-
+        
     lock.acquire()
     buffer.put((message[0], message[1], request))
     queue_size.value = queue_size.value + 1

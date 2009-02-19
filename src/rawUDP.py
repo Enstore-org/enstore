@@ -53,9 +53,29 @@ class RawUDP:
         
     def put(self, message):
         req = message[2]
+        client_addr = (message[0], message[1])
         request=None
         try:
             request, inCRC = udp_common.r_eval(req)
+            # calculate CRC
+            crc = checksum.adler32(0L, request, len(request))
+            if (crc != inCRC) :
+                Trace.log(e_errors.INFO,
+                          "BAD CRC request: %s " % (request,))
+                Trace.log(e_errors.INFO,
+                          "CRC: %s calculated CRC: %s" %
+                          (repr(inCRC), repr(crc)))
+            
+                request=None
+        except ValueError, detail:
+            # must be an event relay message
+            # it has a different format
+            try:
+                request = udp_common.r_eval(req)
+            except:
+                exc, msg = sys.exc_info()[:2]
+                # reraise exception
+                raise exc, msg
         except (SyntaxError, TypeError):
             #If TypeError occurs, keep retrying.  Most likely it is
             # an "expected string without null bytes".
@@ -73,18 +93,6 @@ class RawUDP:
             #Set these to something.
             request, inCRC = (None, None)
 
-        if request == None:
-            return (request, client_addr)
-        # calculate CRC
-        crc = checksum.adler32(0L, request, len(request))
-        if (crc != inCRC) :
-            Trace.log(e_errors.INFO,
-                      "BAD CRC request: %s " % (request,))
-            Trace.log(e_errors.INFO,
-                      "CRC: %s calculated CRC: %s" %
-                      (repr(inCRC), repr(crc)))
-
-            request=None
         if not request:
             return
 
@@ -100,7 +108,6 @@ class RawUDP:
         self.queue_size = self.queue_size + 1
         self.buffer.append((message[0], message[1], request))
         self._lock.release()
-        print "SET ARRIVED"
         self.arrived.set()
         
     # get message from FIFO buffer
@@ -111,10 +118,8 @@ class RawUDP:
     # number of requests in the buffer
     def get(self):
         if self.queue_size == 0:
-            print "WAIT ARRIVED"
             self.arrived.wait()
             self.arrived.clear()
-        print "GOT ARRIVED",self.queue_size 
         if self.queue_size > 0:
               self._lock.acquire()
               #self.arrived.clear()

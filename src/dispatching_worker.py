@@ -180,7 +180,11 @@ class DispatchingWorker(udp_server.UDPServer):
     def do_one_request(self):
         """Receive and process one request, possibly blocking."""
         # request is a "(idn,number,ticket)"
-        request, client_address = self.get_request()
+        try:
+            request, client_address = self.get_request()
+        except:
+            exc, msg = sys.exc_info()[:2]
+             
         now=time.time()
 
         for func, time_data in self.interval_funcs.items():
@@ -289,10 +293,9 @@ class DispatchingWorker(udp_server.UDPServer):
                 try:
                     rc = self.get_message()
                     Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
-                except NameError, detail:
+                except (NameError, ValueError), detail:
                     Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
                     self.erc.error_msg = str(detail)
-                    Trace.trace
                     self.handle_er_msg(None)
                     return None, None
                 if rc and rc != ('',()):
@@ -331,7 +334,7 @@ class DispatchingWorker(udp_server.UDPServer):
                         #Get the 'raw' request and the address from whence it came.
                         try:
                             (request, addr) = self.get_message()
-                        except NameError, detail:
+                        except (NameError, ValueError), detail:
                             Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
                             self.erc.error_msg = str(detail)
                             Trace.trace
