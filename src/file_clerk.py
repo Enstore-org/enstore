@@ -573,6 +573,26 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         return
 
+    def __tape_list(self, external_label):
+        q = "select bfid, crc, deleted, drive, volume.label, \
+                    location_cookie, pnfs_path, pnfs_id, \
+                    sanity_size, sanity_crc, size \
+             from file, volume \
+             where \
+                 file.volume = volume.id and volume.label = '%s' \
+             order by location_cookie;" % (external_label,)
+
+        res = self.filedb_dict.db.query(q).dictresult()
+
+        # convert to external format
+        file_list = []
+        for file_info in res:
+            value = self.filedb_dict.export_format(file_info)
+            if not value.has_key('pnfs_name0'):
+                value['pnfs_name0'] = "unknown"
+            file_list.append(value)
+
+        return file_list
 
     #### DONE
     def tape_list(self, ticket):
@@ -592,23 +612,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # log the activity
         Trace.log(e_errors.INFO, "start listing " + external_label)
         
-        q = "select bfid, crc, deleted, drive, volume.label, \
-                    location_cookie, pnfs_path, pnfs_id, \
-                    sanity_size, sanity_crc, size \
-             from file, volume \
-             where \
-                 file.volume = volume.id and volume.label = '%s' \
-             order by location_cookie;"%(external_label)
-
-        res = self.filedb_dict.db.query(q).dictresult()
-
-        vol = []
-
-        for ff in res:
-            value = self.filedb_dict.export_format(ff)
-            if not value.has_key('pnfs_name0'):
-                value['pnfs_name0'] = "unknown"
-            vol.append(value)
+        vol = self.__tape_list(external_label)
 
         # finishing up
 
@@ -619,17 +623,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, "finish listing " + external_label)
         return
 
-    def __tape_list2(self, external_label):
-        q = "select bfid, crc, deleted, drive, volume.label, \
-                    location_cookie, pnfs_path, pnfs_id, \
-                    sanity_size, sanity_crc, size \
-             from file, volume \
-             where \
-                 file.volume = volume.id and volume.label = '%s' order by location_cookie;"%(
-             external_label)
 
-        return self.filedb_dict.db.query(q).dictresult()
-    
     # This is the newer implementation that off load to client
     def tape_list2(self, ticket):
 
@@ -649,7 +643,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # log the activity
         Trace.log(e_errors.INFO, "start listing " + external_label + " (2)")
 
-        vol = self.__tape_list2(external_label)
+        vol = self.__tape_list(external_label)
 
         # finishing up
 
@@ -684,7 +678,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             return
 
         # get reply
-        file_info = self.__tape_list2(external_label)
+        file_info = self.__tape_list(external_label)
         ticket['tape_list'] = file_info
 
         # send the reply
