@@ -9789,7 +9789,10 @@ def create_read_request(request, file_number,
                 ifullname = fc_reply['pnfs_name0']
                 use_dir = ""
             elif e.skip_pnfs:
-                ifullname = ""
+                # When told to skip PNFS, we should avoid all PNFS information.
+                # Unfortuanately, NullMovers insist on verfifying the that
+                # the pnfs path contains the string "NULL" in it.
+                ifullname = fc_reply['pnfs_name0']
                 use_dir = ""
             else:
                 if e.pnfs_mount_point:
