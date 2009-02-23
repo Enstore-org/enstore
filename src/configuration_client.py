@@ -313,6 +313,9 @@ class ConfigurationClient(generic_client.GenericClient):
         return self.send(request, timeout, retry)
 
     # get list of the Library manager movers with full config info
+    #
+    # The library_manager parameter should be the full "name.library_manager"
+    # style name.  If all movers are to be returned, pass None instead.
     def get_movers2(self, library_manager, timeout=0, retry=0):
         mover_list = []
         
@@ -320,6 +323,26 @@ class ConfigurationClient(generic_client.GenericClient):
         if e_errors.is_ok(conf_dict):
             for item in conf_dict.items():
                 if item[0][-6:] == ".mover":
+
+                    #If a library_manager was provided, make sure only
+                    # movers that use it are returned.
+                    if library_manager:
+                        if type(item[1]['library']) == types.StringType:
+                            lib_list = [item[1]['library']]
+                        elif type(item[1]['library']) == types.ListType:
+                            lib_list = item[1]['library']
+                        else:
+                            #Not an expected type, so it will never match.
+                            continue
+                        for library in lib_list:
+                            if library_manager == library:
+                                #Found a match for this mover to the
+                                # requested library_manager.
+                                break
+                        else:
+                            #No match.
+                            continue
+                        
                     item[1]['name'] = item[0]
                     item[1]['mover'] = item[0][:-6]
                     mover_list.append(item[1])
