@@ -36,6 +36,7 @@ import host_config
 # for python 2.6 and latter use
 # rawUDP_p -- process based rawUDP for better use of multiprocessor ensvoronment
 # and to avoid GIL
+'''
 if sys.version_info >= (2, 6, 0):
     try:
         import rawUDP_p as rawUDP
@@ -48,6 +49,10 @@ else:
         can_use_raw = True
     except ImportError:
         can_use_raw = False
+'''
+import rawUDP
+can_use_raw = True
+
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -308,7 +313,8 @@ class UDPServer:
            client_addr = (rc[0], rc[1])
            request = rc[2]
            self.queue_size = self.raw_requests.queue_size
-           Trace.trace(5, "REQ %s %s %s"%(self.server_address, request,self.queue_size)) 
+           #Trace.trace(5, "REQ %s %s %s"%(self.server_address, request,self.queue_size)) 
+           Trace.trace(5, "REQ %s %s"%(client_addr, self.queue_size)) 
        else:
            if self.queue_size != 0:
                print "Nonsense rc=%s size=%s"%(rc, self.queue_size)
