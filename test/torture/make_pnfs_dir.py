@@ -25,7 +25,7 @@ class MakePnfsDir:
                                                              config_port))
         self.pac = None
         self.use_pnfs_agent=os.getenv('REMOTE_ENCP')
-        print "U",self.use_pnfs_agent 
+
         if self.use_pnfs_agent:         
             info = self.csc.get('pnfs_agent', {})
             if info:
