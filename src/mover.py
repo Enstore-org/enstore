@@ -2837,7 +2837,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if len(self.buffer._buf) != 1:
                     Trace.log(e_errors.ERROR,
                               "read_tape: error skipping over cpio header, len(buf)=%s"%(len(self.buffer._buf)))
-                b0 = self.buffer._buf[0]
+                try:
+                    b0 = self.buffer._buf[0]
+                except IndexError, detail:
+                    self.transfer_failed(e_errors.READ_ERROR, "%s"%(detail,), error_source=TAPE)
+                    failed = 1
+                    break
                 if len(b0) >= self.wrapper.min_header_size:
                     try:
                         header_size = self.wrapper.header_size(b0)
@@ -6519,7 +6524,12 @@ class DiskMover(Mover):
         have_tape = 0
         err = None
         Trace.trace(10, "position media")
-        have_tape = self.tape_driver.open(self.file, self.mode, retry_count=30)
+        try:
+            have_tape = self.tape_driver.open(self.file, self.mode, retry_count=30)
+        except OSError, err:
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
+            self.idle()
+            return
         if have_tape == 1:
             err = None
         else:
