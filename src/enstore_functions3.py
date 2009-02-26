@@ -26,7 +26,7 @@ def is_bfid(bfid):
     if type(bfid) == types.StringType:
 
         #Older files that do not have bfid brands should only be digits.
-        result = re.search("^[0-9]{13,15}$", bfid)
+        result = re.search("^[0-9]{11,16}$", bfid)
         if result != None:
             return 1
         
@@ -34,8 +34,8 @@ def is_bfid(bfid):
         # n characters are all digits.  There are no restrictions on what
         # is in a brand or how long it can be (though there should be).
         # Since, the bfid is based on its creation time, as time passes the
-        # number of digits in a bfid will grow.  (Assume 14 as minumum).
-        result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}$", bfid)
+        # number of digits in a bfid will grow.  (Assume 12 as minumum).
+        result = re.search("^[a-zA-Z0-9]*[0-9]{11,16}$", bfid)
         if result != None:
             return 1
 
@@ -47,9 +47,17 @@ def is_bfid(bfid):
         #Some older files (year 2000) have a long() "L" appended to
         # the bfid.  This seems to be consistant between the file
         # database and layers one & four.  So, return true in these cases.
-        result = re.search("^[0-9]{13,15}L{1}$", bfid)
+        result = re.search("^[0-9]{11,16}L{1}$", bfid)
         if result != None:
             return 1
+
+        #6 files on D0en have brands and the "L" appended to them.  They
+        # belong to PRF355, PRF532 and PRF545.
+        ## This part of the function should go away when those bfids go.
+        result = re.search("^[a-zA-Z0-9]*[0-9]{11,16}L{1}$", bfid)
+        if result != None:
+            return 1
+
 
     return 0
 
