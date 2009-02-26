@@ -4,8 +4,13 @@
 #  $Id$
 #
 #############################################################
+#check if there are any encp processes running
 if [ "${OSG_APP:-x}" != "x" ]
 then
+    # check if there are any encp processes running
+    # and if yes exit
+    ps -ef | grep encp
+    if [ $? -ne 0 ]; then echo "found running encp processes. Will exit"; exit 0; fi
     . $OSG_APP/moibenko/config/setup-enstore 
 else
     . ~/site_specific/config/setup-enstore 
@@ -28,7 +33,6 @@ read_by_filename() {
   suffix="3 4 5"
   RANDOM=$$$(date +"%s")
   rm -f tmp_$$.data
-  echo $n_cycles
 
   i=0
   while [ $i -le $n_cycles ] 
@@ -61,7 +65,7 @@ read_by_filename() {
       fi
     done
     let i=i+1
-    echo $i
+    #echo $i
   done 
   wait
 }
@@ -71,9 +75,9 @@ read_by_bf_id() {
   i=0
   for entry in $(cat $bfid_list_file)
   do
-    echo $entry
+    #echo $entry
     let i=i+1
-    echo $i
+    #echo $i
     encp --get_bfid $entry /dev/null &
     if [ $i -gt $n_cycles ]; then break;fi
   done
