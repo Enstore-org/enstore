@@ -35,15 +35,22 @@ NONFS="NONFS"
 #file_record is file information from the file_clerk's bfid_info() function.
 def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                      path_type = BOTH):
-    #global last_db_tried
 
     if not pnfs.is_pnfsid(pnfsid):
         raise ValueError("Expected pnfsid not: %s" % (pnfsid,))
     if not enstore_functions3.is_bfid(bfid):
         raise ValueError("Expected bfid not: %s" % (bfid,))
 
+    #Remember if a file with matching pnfsid (and unmatching bfid) was found
+    # after all pnfs databases have been checked.
     possible_reused_pnfsid = 0
+    #Remember if a file with found layers 1 and 4 has not had a directory
+    # entry found after all pnfs databases have been checked.
+    possible_orphaned_file = 0
+
+    #afn = Access File Name   (aka .(access)())
     afn = ""
+    
     #We will need the pnfs database numbers.
     if pnfs.is_pnfsid(pnfsid):
         pnfsid_db = int(pnfsid[:4], 16)
@@ -245,6 +252,12 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                                 pnfs_path = afn
                                 if msg.errno in [errno.ENOENT]:
                                     pnfsid_mp = None
+                                    #Using the current mountpoint, we
+                                    # were able to obtain layer 1, but the
+                                    # file does not exists?  Let's flag this
+                                    # as a possible orphan file. 
+                                    possible_orphaned_file = \
+                                                   possible_orphaned_file + 1
                                 else:
                                     pnfsid_mp = mp #???
 
@@ -262,11 +275,9 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                                     pnfs.add_mtab(db_info, pnfsid_db,
                                                   pnfsid_mp)
                             else:
-                                #last_db_tried = ("", (-1, ""))
                                 pnfs.set_last_db(("", (-1, "")))
 
                     else:
-                        #last_db_tried = (db_info, (pnfsid_db, mp))
                         pnfs.set_last_db((db_info, (pnfsid_db, mp)))
                         #We found the file, set the pnfs path.
                         pnfs_path = afn
@@ -288,23 +299,6 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
 
                 possible_reused_pnfsid = possible_reused_pnfsid + 1
                 continue
-
-                #raise OSError(errno.ENOENT,
-                #     "%s: %s" % (os.strerror(errno.ENOENT), "reused pnfsid",),
-                #              bfid)
-
-                """
-                if file_record['deleted'] == 'yes':
-                    info.append("reused pnfsid")
-                else:
-                    #err.append("reused pnfsid")
-                    ## Need to keep trying in case the wrong pnfs systems
-                    ## pnfsid match was found.
-                    possible_reused_pnfsid = possible_reused_pnfsid + 1
-                    continue
-                errors_and_warnings(prefix, err, warn, info)
-                return
-                """
 
             #If we found a bfid that didn't have the correct id or the
             # brands did not match, go back to the top and try the next
@@ -332,6 +326,15 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                          pass
                      
                          #raise OSError(errno.ENOENT, "reused pnfsid", afn)
+                     elif possible_orphaned_file:
+                         #File is not deleted, pnfs id is still valid, found
+                         # the right layer 1 but the file does not have a
+                         # directory entry in PNFS.
+                         raise OSError(errno.ENOENT, "orphaned file",
+                                       pnfsid)
+                     elif layer4_dict.get('bfid', None) != bfid:
+                         raise OSError(errno.ENOENT, "found non-matching file",
+                                       afn)
                      else:
                          raise OSError(errno.ENOENT, "missing layer 1", afn)
                 else:
