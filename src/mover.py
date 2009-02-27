@@ -1025,7 +1025,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.driver_type != 'FTTDriver':
             return
         if self.tape_driver and self.tape_driver.ftt:
-            stats = self.tape_driver.get_stats()
+            try:
+                stats = self.tape_driver.get_stats()
+            except  (self.ftt.FTTError, TypeError), detail:
+                Trace.log(e_errors.ERROR, "error getting stats %s"%(detail,))
+                return
+            
         
         if self.override_ro_mount and self.tape_driver and self.tape_driver.ftt:
             Trace.log(e_errors.INFO,
@@ -1379,10 +1384,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                     time.sleep(5)
                     sys.exit(-1)
 
-                stats = self.tape_driver.get_stats()
-                self.config['product_id'] = stats[self.ftt.PRODUCT_ID]
-                self.config['serial_num'] = stats[self.ftt.SERIAL_NUM]
-                self.config['vendor_id'] = stats[self.ftt.VENDOR_ID]
+                try:
+                    stats = self.tape_driver.get_stats()
+                    self.config['product_id'] = stats[self.ftt.PRODUCT_ID]
+                    self.config['serial_num'] = stats[self.ftt.SERIAL_NUM]
+                    self.config['vendor_id'] = stats[self.ftt.VENDOR_ID]
+                except  (self.ftt.FTTError, TypeError), detail:
+                    Trace.alarm(e_errors.ALARM, "Can not start: %s"%(detail,))
+                    print "Can not start: %s"%(detail,)
+                    sys.exit(-1)
 
                 if have_tape == 1:
                     self.init_stat(self.logname)
@@ -2190,15 +2200,18 @@ class Mover(dispatching_worker.DispatchingWorker,
         defer_write = 1
         failed = 0
         self.media_transfer_time = 0.
+        bloc_loc = 0L
 
         if self.driver_type == 'FTTDriver':
-            stats = self.tape_driver.get_stats()
-        bloc_loc = 0L
-        if self.driver_type == 'FTTDriver':
             try:
+                # to test the case uncomment 2 lines below
+                #import ftt2
+                #raise self.ftt.FTTError(("partial stats", ftt2.FTT_EPARTIALSTAT,""))
+                stats = self.tape_driver.get_stats()
                 bloc_loc = long(stats[self.ftt.BLOC_LOC])
             except  (self.ftt.FTTError, TypeError), detail:
-                self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
+                self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%
+                                     (detail, bloc_loc), error_source=DRIVE)
                 return
         Trace.log(e_errors.INFO, 'Write starting. Tape %s absolute location in blocks %s'%(self.current_volume, bloc_loc))
 
