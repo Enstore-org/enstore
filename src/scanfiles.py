@@ -1613,11 +1613,51 @@ def check_file(f, file_info):
     if err or warn:
         return err, warn, info
 
+    # Get file database information.
+    if not filedb:
+        filedb, (err_f, warn_f, info_f) = get_filedb_info(bfid)
+        # Get file database errors.
+        err = err + err_f
+        warn = warn + warn_f
+        info = info + info_f
+        if err or warn:
+            return err, warn, info
+
+    # Get volume database information.
+    if not volumedb and filedb:
+        volumedb, (err_v, warn_v, info_v) = get_volumedb_info(
+            filedb['external_label'])
+        # Get file database errors.
+        err = err + err_v
+        warn = warn + warn_v
+        info = info + info_v
+        if err or warn:
+            return err, warn, info
+
     #Look for missing pnfs information.
     try:
+        #First we need to know if the file is deleted or not.
+        if filedb:
+            is_deleted = filedb.get("deleted", "unknown")
+        else:
+            is_deleted = "unknown"
+
+        #Skip this check for situations where there are more copies of
+        # this file.
         if not is_multiple_copy and not is_migrated_copy:
-            if bfid != layer4['bfid']:
-                err.append('bfid(%s, %s)' % (bfid, layer4['bfid']))
+            #Handle the case where the file is active and the bfid conflicts.
+            if bfid != layer4['bfid'] and is_deleted != "yes":
+                err.append("bfid(%s, %s)" % (bfid, layer4['bfid']))
+            #Handle the case where the file is deleted, but a matching
+            # bfid was found in the pnfs layers.
+            if bfid == layer4['bfid'] and is_deleted != "no":
+                err.append("pnfs entry exists")
+
+            #If the file is deleted and does not exist, there is no
+            # reason to continue
+            if is_deleted != "no":
+                info.append("deleted(%s)" % (is_deleted,))
+                return err, warn, info
     except (TypeError, ValueError, IndexError, AttributeError, KeyError):
     	age = time.time() - f_stats[stat.ST_MTIME]
         if age < ONE_DAY:
@@ -1718,26 +1758,6 @@ def check_file(f, file_info):
     if err or warn:
         return err, warn, info
 
-    # Get file database information.
-    if not filedb:
-        filedb, (err_f, warn_f, info_f) = get_filedb_info(bfid)
-        # Get file database errors.
-        err = err + err_f
-        warn = warn + warn_f
-        info = info + info_f
-        if err or warn:
-            return err, warn, info
-
-    # Get volume database information.
-    if not volumedb:
-        volumedb, (err_v, warn_v, info_v) = get_volumedb_info(
-            filedb['external_label'])
-        # Get file database errors.
-        err = err + err_v
-        warn = warn + warn_v
-        info = info + info_v
-        if err or warn:
-            return err, warn, info
 
     # volume label
     try:
