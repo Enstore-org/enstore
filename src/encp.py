@@ -795,19 +795,47 @@ def get_queue_size(request_list):
 
 def update_times(input_path, output_path):
     time_now = time.time()
+
+    update_last_access_time(input_path, time_now)
+    update_modification_time(output_path, time_now)
+
+def update_modification_time(output_path, time_now = None):
+
+    update_modification_time = time.time()
+    
+    if time_now == None:
+        time_now = update_modification_time
+    
+    try:
+        #Update the last modified time; set last access time to existing value.
+        os.utime(output_path,
+                 (file_utils.get_stat(output_path)[stat.ST_ATIME], time_now))
+    except OSError:
+        return #This one will fail if the output file is /dev/null.
+
+    message = "Time to update modification time: %s sec." % \
+              (time.time() - update_modification_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
+def update_last_access_time(input_path, time_now = None):
+
+    update_last_access_start_time = time.time()
+
+    if time_now == None:
+        time_now = update_last_access_start_time
+    
     try:
         #Update the last access time; set last modified time to existing value.
         os.utime(input_path,
                  (time_now, file_utils.get_stat(input_path)[stat.ST_MTIME]))
     except OSError:
-        pass
+        return
 
-    try:
-        #Update the last modified time; set last access time to existing value.
-        os.utime(output_path,
-                 (file_utils.get_stat(input_path)[stat.ST_ATIME], time_now))
-    except OSError:
-        pass #This one will fail if the output file is /dev/null.
+    message = "Time to update last_access_time: %s sec." % \
+              (time.time() - update_last_access_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
 """
 def bin(integer):
@@ -3125,6 +3153,20 @@ def tag_check(work_ticket):
              % ("file_family_width",)
         raise EncpError(None, str(msg), e_errors.USERERROR)
 
+#Prevent null mover requests from proceeding without NULL in the directory
+# path.
+def null_mover_check(work_ticket, e):
+    csc = get_csc(work_ticket)
+    library_name = work_ticket['vc']['library'] + ".library_manager"
+    mover_list = csc.get_movers2(library_name)
+
+    #There is a chance that the configuration has a mover in the wrong
+    # library, but we'll assume that the configuration is corrent for the
+    # first one in the list.
+    if mover_list[0]['driver'] == "NullDriver":
+        if work_ticket['wrapper']['pnfsFilename'].find("/NULL") == -1:
+            raise EncpError(None, "NULL not in PNFS path", e_errors.USERERROR)
+        
 
 # check the input file list for consistency
 def inputfile_check(work_list, e):
@@ -3554,6 +3596,9 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
             # output filesystem supports.
             if not e.bypass_filesystem_max_filesize_check:
                 filesystem_check(request)
+
+            #If using null movers, make sure of a few things.
+            null_mover_check(request, e)
 
         except EncpError:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -7458,6 +7503,8 @@ def verify_write_request_consistancy(request_list, e):
         #Verify that the library and wrappers are valid.
         librarysize_check(request)
         wrappersize_check(request)
+        #If using null movers, make sure of a few things.
+        null_mover_check(request, e)
 
     message = "Time to verify write request consistancy: %s sec." % \
               (time.time() - verify_write_request_consistancy_start_time,)
@@ -8486,7 +8533,8 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
             return combine_dict(result_dict, work_ticket)
 
         #Update the last access and modification times respecively.
-        update_times(done_ticket['infile'], done_ticket['outfile'])
+        #update_times(done_ticket['infile'], done_ticket['outfile'])
+        update_modification_time(done_ticket['outfile'])
 
         #Verify that setting times has been done successfully.
         #
@@ -8535,6 +8583,12 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         # on a failure is that the file is left with full permissions.
         set_outfile_permissions(done_ticket, e)
 
+        file_utils.end_euid_egid() #Release the lock.
+
+        #Update the source files times.  We need to do this after we
+        # are done with the locking around the euid for the output file.
+        file_utils.match_euid_egid(done_ticket['infile'])
+        update_last_access_time(done_ticket['infile'])
         file_utils.end_euid_egid() #Release the lock.
 
         ###What kind of check should be done here?
@@ -10371,7 +10425,8 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         return combine_dict(result_dict, request_ticket)
 
     #Update the last access and modification times respecively.
-    update_times(done_ticket['infile'], done_ticket['outfile'])
+    #update_times(done_ticket['infile'], done_ticket['outfile'])
+    update_modification_time(done_ticket['outfile'])
 
     #If this is a read of a deleted file, leave the outfile permissions
     # to the defaults.
@@ -10395,6 +10450,12 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     #If no error occured, this is safe to close now.
     #close_descriptors(control_socket, data_path_socket, out_fd)
     close_descriptors(out_fd)
+    file_utils.end_euid_egid() #Release the lock.
+
+    #Update the source files times.  We need to do this after we
+    # are done with the locking around the euid for the output file.
+    file_utils.match_euid_egid(done_ticket['infile'])
+    update_last_access_time(done_ticket['infile'])
     file_utils.end_euid_egid() #Release the lock.
 
     #Remove the new file from the list of those to be deleted should
