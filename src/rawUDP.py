@@ -23,7 +23,7 @@ class RawUDP:
         self.arrived = threading.Event()
         self.queue_size = 0L
         self.buffer = []
-        self.movers = {}
+        self.requests = {}
         
     def init_port(self, port):
         self.socket_type = socket.SOCK_DGRAM
@@ -38,25 +38,21 @@ class RawUDP:
 
     def init_socket(self, socket):
         self.server_socket = socket
+
+    def get_id(self, request):
+        rarr = request.split("'")
+        try:
+            return rarr[1]
+        except:
+            return None
         
 
-    def is_mover_request(self, request):
-        if type(request) == type(""):
-            start_index =  request.find("'mover':")
-            if start_index != -1:
-                # extract mover name
-                end_index =request.find(",", start_index)
-                if end_index > start_index:
-                    substr = request[start_index:end_index]
-                    return substr.split(":")[1]
-        return None
-        
     def put(self, message):
         req = message[2]
         client_addr = (message[0], message[1])
         request=None
         try:
-            request, inCRC = udp_common.r_eval(req)
+            request, inCRC = udp_common.r_eval(req, check=True)
             # calculate CRC
             crc = checksum.adler32(0L, request, len(request))
             if (crc != inCRC) :
@@ -71,7 +67,7 @@ class RawUDP:
             # must be an event relay message
             # it has a different format
             try:
-                request = udp_common.r_eval(req)
+                request = udp_common.r_eval(req,check=True)
             except:
                 exc, msg = sys.exc_info()[:2]
                 # reraise exception
@@ -96,17 +92,22 @@ class RawUDP:
         if not request:
             return
 
-        mover_request = self.is_mover_request(request)
-            
+        request_id = self.get_id(request)
+
         self._lock.acquire()
-        if mover_request:
+        do_put = True
+        if request_id:
             # put the latest request into the queue
-            if self.movers.has_key(mover_request) and self.movers[mover_request] !="":
-                self.buffer.remove(self.movers[mover_request])
-                self.movers[mover_request] = (message[0], message[1], request)
+            if self.requests.has_key(request_id) and self.requests[request_id] !="":
+                print "DUPLICATE",request 
+                #self.buffer.remove(self.requests[request_id])
+                do_put = False # duplicate request, do not put into the queue
+            else:
+                self.requests[request_id] = (message[0], message[1], request)
                 
-        self.queue_size = self.queue_size + 1
-        self.buffer.append((message[0], message[1], request))
+        if do_put:
+            self.queue_size = self.queue_size + 1
+            self.buffer.append((message[0], message[1], request))
         self._lock.release()
         self.arrived.set()
         
@@ -117,22 +118,29 @@ class RawUDP:
     # request
     # number of requests in the buffer
     def get(self):
+        rc = None
         if self.queue_size == 0:
             self.arrived.wait()
             self.arrived.clear()
         if self.queue_size > 0:
-              self._lock.acquire()
-              #self.arrived.clear()
-              ret = self.buffer.pop(0)
-              self.queue_size = self.queue_size - 1
-              mover_request = self.is_mover_request(ret[2])
-              if self.movers.has_key(mover_request) and self.movers[mover_request] !="":
-                  self.movers[mover_request] = ""
+            self._lock.acquire()
+            #self.arrived.clear()
+            try:
+                ret = self.buffer.pop(0)
+                request_id = self.get_id(ret[2])
+                self.queue_size = self.queue_size - 1
+            
+                if self.requests.has_key(request_id):
+                    #print "DELETE ID",request_id 
+                    del(self.requests[request_id])
+            except IndexError, detail:
+                print "IndexError", detail
+            except:
+                pass
              
-              self._lock.release()
-              return ret[0], ret[1], ret[2]
-        else:
-            return None
+            self._lock.release()
+            rc = ret[0], ret[1], ret[2]
+        return rc
         
     
     def _receiver(self):
