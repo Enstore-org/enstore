@@ -272,6 +272,11 @@ def init(intf):
 		SPOOL_DIR = intf.spool_dir
 	if not SPOOL_DIR:
 		SPOOL_DIR = enstore_functions2.default_value("SPOOL_DIR")
+	if not SPOOL_DIR and getattr(intf, 'make_failed_copies', None):
+		crons_dict = csc.get('crons')
+		SPOOL_DIR = crons_dict.get("spool_dir", None)
+		if SPOOL_DIR and not os.path.exists(SPOOL_DIR):
+			os.makedirs(SPOOL_DIR)
 
 	# check for no_log commands
 	if not intf.migrated_to and not intf.migrated_from and \
@@ -297,7 +302,6 @@ def init(intf):
 	# check for spool_dir commands
 	if not intf.migrated_to and not intf.migrated_from and \
 	   not intf.status and not intf.show and not intf.scan_volumes and \
-	   not getattr(intf, "list_failed_copies", None) and \
 	   not getattr(intf, "restore", None):
 		#spool dir
 		if not SPOOL_DIR:
@@ -443,7 +447,6 @@ def run_in_process(function, arg_list, my_task = "RUN_IN_PROCESS",
 	global errors
 	global log_f
 	
-
 	try:
 		pid = os.fork()
 	except OSError, msg:
@@ -1297,9 +1300,15 @@ def deleted_path(vol, location_cookie):
 			    vol + ':' + location_cookie)
 """
 
-# temp_file(file) -- get a temporary destination file from file
-def temp_file(vol, location_cookie):
-	return os.path.join(SPOOL_DIR, vol + ':' + location_cookie)
+# temp_file(file_record) -- get a temporary destination file from file
+def temp_file(file_record):
+	if enstore_functions3.is_volume_disk(file_record['label']):
+		#We need to treat disk files differently.
+		return os.path.join(SPOOL_DIR, file_record['bfid'])
+	
+	return os.path.join(SPOOL_DIR,
+			    "%s:%s" % (file_record['label'],
+				       file_record['location_cookie']))
 
 
 ##########################################################################
@@ -1585,7 +1594,7 @@ def show_status(volume_list, db, intf):
 				# any migration, report that nothing
 				# currently has been migrated.
 				show_list.append(res1a)
-			
+
 		for rows in show_list:
 			#Output the header.
 			print "%19s %1s%1s%1s %19s %1s%1s%1s %6s %6s %6s %6s" % \
@@ -1676,6 +1685,7 @@ def show_status(volume_list, db, intf):
 					mig_type = get_migration_type(src_vol,
 								      dst_vol,
 								      db)
+
 			if mig_type:
 				print "\n%s" % (mig_type,)
 
@@ -1711,19 +1721,6 @@ def show_show(intf, db):
 		print "%10s %s" % (row[0], row[1])
 
 #For duplication only.
-"""
-def list_failed_copies(intf, db):
-	#Build the sql query.
-	q = "select * from active_file_copying order by time;"
-	#Get the results.
-	res = db.query(q).getresult()
-
-	print "%21s %16s %s" % ("bfid", "copies remaining", "waiting since")
-	for row in res:
-		print "%21s %16s %s" % (row[0], row[1], row[2])
-"""
-
-#For duplication only.
 def make_failed_copies(intf, db):
 	MY_TASK = "MAKE_FAILED_COPIES"
 	#Build the sql query.
@@ -1748,7 +1745,6 @@ def make_failed_copies(intf, db):
 				bfid_list.append(row[0])
 	#	print "%21s %16s %s" % (row[0], row[1], row[2])
 
-	
 	for bfid in bfid_list:
 		exit_status = migrate([bfid], intf)
 
@@ -1867,8 +1863,7 @@ def copy_file(bfid, encp, intf, db):
 	is_it_swapped = is_swapped(bfid, db)
 
 	#Define the directory for the temporary file on disk.
-	tmp = temp_file(file_record['label'],
-			file_record['location_cookie'])
+	tmp = temp_file(file_record)
 
 	#
 	if file_record['deleted'] == 'n':
@@ -2395,25 +2390,42 @@ def write_file(MY_TASK,
 	return 0
 
 
-def write_new_file(job, encp, copy_queue, migrate_r_pipe, intf, db):
+def write_new_file(job, encp, copy_queue, migrate_r_pipe, fcc, intf, db):
 	MY_TASK = "COPYING_TO_TAPE"
-	
+
 	#Get information about the files to copy and swap.
 	(src_bfid, src_path, tmp_path, ff, sg, deleted, wrapper) = job
-	mig_path = migration_path(src_path, deleted)
-
 
 	if debug:
 		log(MY_TASK, `job`)
 
 	# check if it has already been copied
 	is_it_copied = is_copied(src_bfid, db)
-	dst_bfid = is_it_copied
+	dst_bfid = is_it_copied  #side effect: this is also the dst bfid
 	has_tmp_file = False
 	if is_it_copied:
 		ok_log(MY_TASK, "%s has already been copied to %s" \
 		       % (src_bfid, dst_bfid))
+
+		# We need to be this draconian if we had to restart the
+		# migration processes.
+		file_record = fcc.bfid_info(dst_bfid, timeout = 10, retry = 4)
+		if not e_errors.is_ok(file_record):
+			error_log(MY_TASK,
+				  "no file record found(%s)" % (dst_bfid,))
+			return
+
+		try:
+			mig_path = find_pnfs_file.find_pnfsid_path(
+				file_record['pnfsid'], dst_bfid,
+				file_record = file_record)
+		except (OSError, IOError), msg:
+			error_log(MY_TASK, "Unable to determine path:",
+				  dst_bfid, str(msg))
+			return
 	else:
+		mig_path = migration_path(src_path, deleted)
+		
 		#Try and catch situations were an error left a zero
 		# length file in the migration spool directory.  We
 		# don't want to 'migrate' this wrong file to tape.
@@ -2547,6 +2559,13 @@ def write_new_files(copy_queue, scan_queue, migrate_r_pipe, scan_w_pipe, intf):
 	threading.currentThread().setName('WRITE')
 	encp = encp_wrapper.Encp(tid='WRITE')
 
+	#Get a file clerk client.
+	config_host = enstore_functions2.default_host()
+	config_port = enstore_functions2.default_port()
+	csc = configuration_client.ConfigurationClient(
+		(config_host, config_port))
+	fcc = file_clerk_client.FileClient(csc)
+
 	if debug:
 		log(MY_TASK, "write_new_files() starts")
 
@@ -2574,7 +2593,7 @@ def write_new_files(copy_queue, scan_queue, migrate_r_pipe, scan_w_pipe, intf):
 
 		# Make the mew copy.
 		dst_bfid = write_new_file(job, encp, copy_queue,
-					  migrate_r_pipe, intf, db)
+					  migrate_r_pipe, fcc, intf, db)
 
 		#At this point dst_bfid equals None if there was an error.
 		
@@ -2621,7 +2640,7 @@ def scan_file(MY_TASK, dst_bfid, src_path, dst_path, deleted, intf, encp):
 		use_override_deleted = "--override-deleted"
 	else:
 		use_override_deleted = ""
-	if USE_VOLUME_ASSERT:
+	if intf.use_volume_assert or USE_VOLUME_ASSERT:
 		use_check = "--check" #Use encp to check the metadata.
 	else:
 		use_check = ""
@@ -2865,7 +2884,7 @@ def final_scan_volume(vol, intf):
 
 	#
 	assert_errors = {}
-	if USE_VOLUME_ASSERT:
+	if intf.use_volume_assert or USE_VOLUME_ASSERT:
 		log(MY_TASK, "asserting %s" % (vol,))
 		volume_assert_options = "--crc-check"
 		cmd = "volume_assert --volume %s %s" % (vol,
@@ -2949,7 +2968,7 @@ def final_scan_volume(vol, intf):
 			######################################################
 		
 		#If we are using volume_assert, check what the assert returned.
-		if USE_VOLUME_ASSERT:
+		if intf.use_volume_assert or USE_VOLUME_ASSERT:
 			if not e_errors.is_ok(assert_errors[location_cookie]):
 				error_log(MY_TASK,
 					  "assert of %s %s:%s failed" % \
@@ -3084,7 +3103,7 @@ def migrate(bfids, intf):
 	#	lock.acquire()
 
 	#Get scan pipes and queue once if volume assert is being used.
-	if USE_VOLUME_ASSERT:
+	if intf.use_volume_assert or USE_VOLUME_ASSERT:
 		scan_r_pipe, scan_w_pipe = os.pipe()
 		scan_queue = Queue.Queue(DEFUALT_QUEUE_SIZE)
 		scan_queue.received_count = 0
@@ -3100,7 +3119,7 @@ def migrate(bfids, intf):
 		copy_queue = Queue.Queue(DEFUALT_QUEUE_SIZE)
 		copy_queue.received_count = 0
 		copy_queue.finished = False
-		if not USE_VOLUME_ASSERT:
+		if not (intf.use_volume_assert or USE_VOLUME_ASSERT):
 			#Get new pipes for each set of processes.
 			scan_r_pipe, scan_w_pipe = os.pipe()
 			#Get new queues for each set of processes/threads.
@@ -3144,14 +3163,16 @@ def migrate(bfids, intf):
 		# Only the parent should get here.
 
 		#If we are scanning too, start the scan in parallel.
-		if intf.with_final_scan and not USE_VOLUME_ASSERT:
+		if intf.with_final_scan and \
+		       not (intf.use_volume_assert or USE_VOLUME_ASSERT):
 			run_in_parallel(handle_process_exception,
 					(scan_queue, scan_r_pipe, intf),
 					my_task = "FINAL_SCAN")
 
 
 	#If using volume_assert, we only want one call to final_scan():
-	if intf.with_final_scan and USE_VOLUME_ASSERT:
+	if intf.with_final_scan and \
+	       (intf.use_volume_assert or USE_VOLUME_ASSERT):
 		run_in_parallel(handle_process_exception,
 					(scan_queue, scan_r_pipe, intf),
 					my_task = "FINAL_SCAN")
@@ -3788,6 +3809,7 @@ class MigrateInterface(option.Interface):
 		self.proceed_number = None
 		self.destination_only = None
 		self.source_only = None
+		self.use_volume_assert = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 		
@@ -3921,6 +3943,12 @@ class MigrateInterface(option.Interface):
 				       option.VALUE_USAGE:option.IGNORED,
 				       option.VALUE_TYPE:option.INTEGER,
 				       option.USER_LEVEL:option.ADMIN,},
+		option.USE_VOLUME_ASSERT:{option.HELP_STRING:
+					  "Use volume assert when scanning "
+					  "destination files.",
+					  option.VALUE_USAGE:option.IGNORED,
+					  option.VALUE_TYPE:option.INTEGER,
+					  option.USER_LEVEL:option.ADMIN,},
 		option.WITH_DELETED:{option.HELP_STRING:
 				     "Include deleted files.",
 				     option.VALUE_USAGE:option.IGNORED,
