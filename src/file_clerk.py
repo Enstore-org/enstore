@@ -871,7 +871,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         # find the brand
         Trace.log(e_errors.INFO, "find the brand")
         try:
-            brand = csc.get('file_clerk')['brand']
+            brand = self.csc.get('file_clerk')['brand']
             Trace.log(e_errors.INFO, "The brand is %s" % (brand))
         except:
             brand = string.upper(string.split(os.uname()[1], ".")[0][:2])+'MS'
