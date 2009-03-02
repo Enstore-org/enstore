@@ -291,6 +291,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     #This functions uses an acitve protocol.  This function uses UDP and TCP.
     def reply_to_caller_with_long_answer_part1(self, ticket, long_items = []):
 
+        if e_errors.is_ok(ticket):
+            #If we have an error, then we only need to reply and skip the rest.
+            self.reply_to_caller(ticket)
+            return None
+
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
