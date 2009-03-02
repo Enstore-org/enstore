@@ -148,7 +148,9 @@ class UDPServer:
         # to use receiver implemented in c
         # to increase the performance
         self.raw_requests = None;
+        self.check_request = True # check request in r_eval
         if self.use_raw:
+            self.check_request = False # dont check request in r_eval, it is checked in rawUDP receiver
             self.raw_requests = rawUDP.RawUDP(receive_timeout=self.rcv_timeout)
             self.raw_requests.init_socket(self.server_socket)
             # start raw udp receiver
@@ -253,14 +255,13 @@ class UDPServer:
                 req, client_addr = self.server_socket.recvfrom(
                     self.max_packet_size, self.rcv_timeout)
                 #print "REQ", req
-
                 try:
-                    request, inCRC = udp_common.r_eval(req)
+                    request, inCRC = udp_common.r_eval(req, check=self.check_request)
                 except ValueError, detail:
                     # must be an event relay message
                     # it has a different format
                     try:
-                        request = udp_common.r_eval(req)
+                        request = udp_common.r_eval(req, check=self.check_request)
                         raise NameError, request # dispatching_worker will take care of this
                     except:
                         exc, msg = sys.exc_info()[:2]
@@ -349,12 +350,12 @@ class UDPServer:
         ### the media_changer and udp_server.
        
         try:
-            idn, number, ticket = udp_common.r_eval(request)
+            idn, number, ticket = udp_common.r_eval(request, check=self.check_request)
         except (NameError, ValueError), detail:
             # must be an event relay message
             # it has a different format
             try:
-                rq = udp_common.r_eval(request)
+                rq = udp_common.r_eval(request, check=self.check_request)
                 self.erc.error_msg = str(rq)
                 self.handle_er_msg(None)
                 return None
