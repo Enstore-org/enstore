@@ -464,6 +464,7 @@ URL = "url"                                  #plotter
 USAGE = "usage"
 VERBOSE = "verbose"                          #monitor, ensync, assert, encp
 USE_DISK_FILES = "use-disk-files"            #migrate
+USE_VOLUME_ASSERT = "use-volume-assert"      #migrate
 VERSION = "version"                          #encp, entv
 VOL = "vol"                                  #volume
 VOLS = "vols"                                #volume, library
@@ -561,7 +562,7 @@ valid_option_list = [
     TEST, THREADED, THREADED_IMPL, TIME, TIMEOUT, TIMESTAMP, TITLE, TITLE_GIF,
     TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
     UNMARK_BAD, UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL,
-    USAGE, USE_DISK_FILES,
+    USAGE, USE_DISK_FILES, USE_VOLUME_ASSERT,
     VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST, WITH_DELETED, WITH_FINAL_SCAN,
     WRITE_PROTECT_STATUS, WRITE_PROTECT_ON, WRITE_PROTECT_OFF,
