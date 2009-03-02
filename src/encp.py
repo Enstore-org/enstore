@@ -8490,7 +8490,11 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         except OSError, msg:
             close_descriptors(in_fd)
             if e_errors.is_ok(done_ticket):
-                error_ticket = {'status' : (e_errors.OSERROR, str(msg))}
+                error_ticket = {'status' : (e_errors.OSERROR,
+                                            "Unable to set euid/egid: %s" % \
+                                            (str(msg),))}
+                Trace.log(e_errors.ERROR,
+                          "euid: %s  egid: %s" % (os.geteuid(), os.getegid()))
             else:
                 error_ticket = {'status' : done_ticket['status']}
             #Handle the error.
@@ -8725,7 +8729,7 @@ def prepare_write_to_hsm(tinfo, e):
                 create_zero_length_pnfs_files(request_list[i], e)
             except OSError, msg:
                 file_utils.end_euid_egid() #Release the lock.
-                
+
                 if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
                        or (msg.args[0] == errno.EIO and \
                            msg.args[1].find("corrupt") != -1):
@@ -10391,7 +10395,11 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         file_utils.match_euid_egid(out_fd)
     except OSError, msg:
         close_descriptors(out_fd)
-        error_ticket = {'status' : (e_errors.OSERROR, str(msg))}
+        error_ticket = {'status' : (e_errors.OSERROR,
+                                    "Unable to set euid/egid: %s" % \
+                                    (str(msg),))}
+        Trace.log(e_errors.ERROR,
+                  "euid: %s  egid: %s" % (os.geteuid(), os.getegid()))
         #Handle the error.
         result_dict = handle_retries(request_list, request_ticket,
                                      error_ticket, e)
