@@ -12,7 +12,16 @@ import time
 import Trace
 
 # looking for "CallFunc("
+# to be used with compiler
 re_CallFunc = re.compile("CallFunc\(")
+
+# any alphanum character,
+# followed by 0 or more of "_",
+# followed by 0 or more whitespaces,
+# followed by "("
+# to be used without complier
+# this takes abut 20 times less time for executon
+re_func=re.compile("[A-Za-z0-9_ ] *\(")
 
 # en_eval(expr) -- safer eval
 #
@@ -20,7 +29,11 @@ re_CallFunc = re.compile("CallFunc\(")
 #            (2) function invocation
 # and it does not allow access to any local or global symbols
 
-def en_eval(expr, debug=False):
+def en_eval(expr, debug=False, check=True, compile=False):
+	# check - check message
+	# if checked once there is no need to check again
+	# compile - use complier - compiler is deprecated anyway
+	
 	Trace.trace(5,"en_eval %s"%(expr,))
 	t0=time.time()
 	# reject anything that is NOT a string
@@ -31,17 +44,25 @@ def en_eval(expr, debug=False):
 		raise TypeError("expected string not %s" % (type(expr),))
 
 	# reject function invocation
-	t01=time.time()
-	fun = str(compiler.parse(expr).node.nodes)
-	t02=time.time()
-	#if re_CallFunc.search(str(compiler.parse(expr).node.nodes)) != None:
-	if re_CallFunc.search(fun) != None:
-		if debug:
-			sys.stderr.write("en_eval Error: function invocation\n")
-		#return None
-		raise SyntaxError("functions not allowed")
-	
-	t03=time.time()
+	if check:
+		t01=time.time()
+		if compile:
+			fun = str(compiler.parse(expr).node.nodes)
+		t02=time.time()
+		if compile:
+			rc = re_CallFunc.search(fun)
+		else:
+			rc = re_func.search(expr)	
+		if rc != None:
+
+			if debug:
+				sys.stderr.write("en_eval Error: function invocation\n")
+				#return None
+				raise SyntaxError("functions not allowed")
+
+		t03=time.time()
+		Trace.trace(5,"en_eval %s %s %s"%(t01-t0, t02-t01,t03-t02))
+
 	# reject empty UDP datagrams.
 	#
 	## On Wednesday, January 30th 2008, it was discovered that 
@@ -63,7 +84,7 @@ def en_eval(expr, debug=False):
 		t=time.time()
 		val = eval(expr, {}, {})
 		t1=time.time()
-		Trace.trace(5,"en_eval %s %s %s %s"%(t01-t0, t02-t01,t03-t02,t1-t,))
+		Trace.trace(5,"en_eval:eval %s"%(t1-t,))
 	except SyntaxError, msg:
 		if debug:
 			sys.stderr.write("en_eval Error: %s parsing string: %s\n" % (str(msg), expr))
@@ -75,3 +96,4 @@ def en_eval(expr, debug=False):
 		#raise NameError, expr
 
 	return val
+
