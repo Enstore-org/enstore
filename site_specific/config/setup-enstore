@@ -72,6 +72,8 @@ if [ ! -r $ENSTORE_DIR/bin/volume_assert ];    then ln -s $ENSTORE_DIR/src/volum
 if [ ! -r $ENSTORE_DIR/bin/ensync ];	       then ln -s $ENSTORE_DIR/src/ensync.py   $ENSTORE_DIR/bin/ensync; fi
 if [ ! -r $ENSTORE_DIR/bin/get ];	       then ln -s $ENSTORE_DIR/src/get.py   $ENSTORE_DIR/bin/get; fi
 if [ ! -r $ENSTORE_DIR/sbin/quickquota ];      then ln -s $ENSTORE_DIR/src/quickquota.py   $ENSTORE_DIR/sbin/quickquota; fi
+if [ ! -r $ENSTORE_DIR/bin/migrate ];          then ln -s $ENSTORE_DIR/src/gmigrate.py   $ENSTORE_DIR/bin/migrate; fi
+if [ ! -r $ENSTORE_DIR/bin/duplicate ];        then ln -s $ENSTORE_DIR/src/duplicate.py   $ENSTORE_DIR/bin/duplicate; fi
 ###
 ### Enstore server links.
 ###
