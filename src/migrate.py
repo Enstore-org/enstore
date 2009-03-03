@@ -272,11 +272,11 @@ def init(intf):
 		SPOOL_DIR = intf.spool_dir
 	if not SPOOL_DIR:
 		SPOOL_DIR = enstore_functions2.default_value("SPOOL_DIR")
-	if not SPOOL_DIR and getattr(intf, 'make_failed_copies', None):
-		crons_dict = csc.get('crons')
-		SPOOL_DIR = crons_dict.get("spool_dir", None)
-		if SPOOL_DIR and not os.path.exists(SPOOL_DIR):
-			os.makedirs(SPOOL_DIR)
+	##if not SPOOL_DIR and getattr(intf, 'make_failed_copies', None):
+	##	crons_dict = csc.get('crons')
+	##	SPOOL_DIR = crons_dict.get("spool_dir", None)
+	##	if SPOOL_DIR and not os.path.exists(SPOOL_DIR):
+	##		os.makedirs(SPOOL_DIR)
 
 	# check for no_log commands
 	if not intf.migrated_to and not intf.migrated_from and \
@@ -1061,7 +1061,8 @@ def get_migration_type(src_vol, dst_vol, db):
 		      "           from file,file_copies_map " \
                       "           where volume.id = file.volume " \
                       "            and (file.bfid = file_copies_map.bfid or " \
-		      "            file.bfid = file_copies_map.alt_bfid)) " \
+		      "            file.bfid = file_copies_map.alt_bfid) " \
+		      "           limit 1) " \
 	              "          > 0); " \
 		      % (src_vol, dst_vol)
 		q_m = "select label " \
@@ -1069,12 +1070,20 @@ def get_migration_type(src_vol, dst_vol, db):
 		      "where (label = '%s' or label = '%s') " \
 		      "  and (file_family like '%%-MIGRATION' " \
 		      "       or system_inhibit_1 in ('migrating', " \
-		      "                               'migrated')); " \
+		      "                               'migrated') " \
+		      "       or (select count(dst_bfid) " \
+		      "           from file,migration " \
+		      "           where volume.id = file.volume " \
+		      "           and (file.bfid = migration.src_bfid or " \
+                      "           file.bfid = migration.dst_bfid) " \
+		      "          limit 1) " \
+		      "          > 0);" \
 		      % (src_vol, dst_vol)
-		q_c = "select label " \
-		      "from volume " \
-		      "where (label = '%s' or label = '%s') " \
-		      "  and system_inhibit_1 in ('cloning', 'cloned'); " \
+		q_c = "select v1.label " \
+		      "from volume v1, volume v2 " \
+		      "where v1.label = '%s' and v2.label = '%s' " \
+		      "  and (v1.system_inhibit_1 in ('cloning', 'cloned') " \
+		      "       or v1.media_type = v2.media_type); " \
 		      % (src_vol, dst_vol)
 		
 		res = db.query(q_m).getresult()
@@ -1491,7 +1500,8 @@ def show_status(volume_list, db, intf):
 	exit_status = 0
 	
 	for v in volume_list:
-		mig_type = None  #migration type (MIGRATION or DUPLICATION)
+		#migration type (MIGRATION, DUPLICATION or CLONING)
+		mig_type = None
 
 		q1a = "select f1.bfid, f1.deleted as src_del, " \
 		      "       case when b1.bfid is not NULL then 'B' " \
@@ -1569,16 +1579,19 @@ def show_status(volume_list, db, intf):
 		      "  and volume.label = '%s' " \
 		      "order by f2.location_cookie;" % (v,)
 		
-		#Get the results.
-		res1a = db.query(q1a).getresult()
-		res1b = db.query(q1b).getresult()
-
+		
 		show_list = []
 		if intf.source_only:
+			res1a = db.query(q1a).getresult() #Get the results.
 			show_list.append(res1a)
 		elif intf.destination_only:
+			res1b = db.query(q1b).getresult() #Get the results.
 			show_list.append(res1b)
 		else:
+			#Get the results.
+			res1a = db.query(q1a).getresult()
+			res1b = db.query(q1b).getresult()
+			
 			for row in res1a:
 				if row[4]:
 					#We found a source volume.
@@ -3812,7 +3825,6 @@ class MigrateInterface(option.Interface):
 		self.use_volume_assert = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
-		
 
 	def valid_dictionaries(self):
 		return (self.help_options, self.migrate_options)
