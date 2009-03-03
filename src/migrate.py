@@ -1737,28 +1737,32 @@ def show_show(intf, db):
 def make_failed_copies(intf, db):
 	MY_TASK = "MAKE_FAILED_COPIES"
 	#Build the sql query.
-	q = "select * from active_file_copying,volume,file " \
+	q = "select * from active_file_copying, volume, file " \
 	    "where file.volume = volume.id " \
+	    "      and remaining > 0 " \
 	    "      and active_file_copying.bfid = file.bfid " \
-	    "      and time < CURRENT_TIMESTAMP - interval '3 minutes' " \
+	    "      and time < CURRENT_TIMESTAMP - interval '24 hours' " \
 	    "order by volume.id,time;"
 	#Get the results.
 	res = db.query(q).getresult()
 
-	#print "%21s %16s %s" % ("bfid", "copies remaining", "waiting since")
 	bfid_list = []
 	for row in res:
 		#row[0] is bfid
 		#row[1] is count
 		#row[2] is time
+
+		#Loop over the remaining count to insert the bfid N times
+		# into the bfid list to duplicate.
 		for unused in range(1, int(row[1]) + 1):
 			if row[1] > 0:
 				#Limit this to those bfids with positive
 				# remaing copies-to-be-made counts.
 				bfid_list.append(row[0])
-	#	print "%21s %16s %s" % (row[0], row[1], row[2])
 
+	#Loop over each file making a multiple copy each time.
 	for bfid in bfid_list:
+		#Do the duplication.
 		exit_status = migrate([bfid], intf)
 
 		if not exit_status:
