@@ -28,6 +28,9 @@ import cleanUDP
 import udp_common
 import host_config
 
+
+MAX_EXPONENT=6 # do not increase reeive TO in send beyond this
+
 #UDPError = "UDP Error"
 class UDPError(socket.error):
 
@@ -320,13 +323,19 @@ class UDPClient:
             host_config.setup_interface(dst[0], tsd.host)
 
         n_sent = 0
+        exp = 0
+        timeout=rcv_timeout
         while max_send==0 or n_sent<max_send:
             tsd.socket.sendto( msg, dst )
+            
+            timeout = timeout*(pow(2,exp))
+            if exp < MAX_EXPONENT:
+                exp = exp + 1
             n_sent=n_sent+1
             rcvd_txn_id=None
-            timeout=rcv_timeout
+
             while rcvd_txn_id != txn_id: #look for reply while rejecting "stale" responses
-                reply, server_addr, timeout = \
+                reply, server_addr, timeout_1 = \
                        wait_rsp( tsd.socket, dst, timeout)
                 if not reply: # receive timed out
                     break #resend
@@ -510,7 +519,7 @@ if __name__ == "__main__" :
             print "Sent message."
 
         else:
-            back = u.send(msg, address, rcv_timeout = 10)
+            back = u.send(msg, address, rcv_timeout = 10, max_send=3)
             print "Recieved message %s." % (back)
 
     except:
