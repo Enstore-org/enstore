@@ -1039,14 +1039,19 @@ def get_media_type(arguement, db):
 
 #Report if the volume pair was migrated or duplicated.
 def get_migration_type(src_vol, dst_vol, db):
+	if not src_vol or not dst_vol:
+		#For tapes that are not yet migrated/duplicated, the dst_vol
+		# will be None here.
+		return
+	
 	migration_result = None
 	duplication_result = None
 	cloning_result = None
 	
 	try:
-		q_d = "select label " \
-		      "from volume " \
-		      "where (label = '%s' or label = '%s') " \
+		q_d = "select v1.label, v2.label " \
+		      "from volume v1, volume v2 " \
+		      "where v1.label = '%s' and v2.label = '%s' " \
 		      "  /* In the line below, the double %% signs are for " \
 		      "   * python's parser to leave one literal percent " \
 		      "   * sign to be passed to the sql statement to use " \
@@ -1054,32 +1059,38 @@ def get_migration_type(src_vol, dst_vol, db):
 		      "  /* The escaped underscores are for the sql " \
 		      "   * to literally match an underscore, not any " \
 		      "   * single character LIKE usually matches it to. */ " \
-		      "  and (file_family like '%%/_copy/_[0-9]' escape '/'" \
-		      "       or system_inhibit_1 in ('duplicating', " \
-		      "                               'duplicated') " \
-                      "       or (select count(alt_bfid) " \
-		      "           from file,file_copies_map " \
-                      "           where volume.id = file.volume " \
-                      "            and (file.bfid = file_copies_map.bfid or " \
-		      "            file.bfid = file_copies_map.alt_bfid) " \
-		      "           limit 1) " \
-	              "          > 0); " \
+		      "  and (v2.file_family like '%%/_copy/_[0-9]' escape '/'" \
+		      "      or " \
+		      "       (v1.system_inhibit_1 in ('duplicating', " \
+		      "                                'duplicated') " \
+                      "        or (select count(alt_bfid) " \
+		      "            from file,file_copies_map " \
+                      "            where v1.id = file.volume " \
+                      "              and (file.bfid = file_copies_map.bfid or " \
+		      "                   file.bfid = file_copies_map.alt_bfid) " \
+		      "            limit 1) " \
+	              "           > 0)); " \
 		      % (src_vol, dst_vol)
-		q_m = "select label " \
-		      "from volume " \
-		      "where (label = '%s' or label = '%s') " \
-		      "  and (file_family like '%%-MIGRATION' " \
-		      "       or system_inhibit_1 in ('migrating', " \
-		      "                               'migrated') " \
-		      "       or (select count(dst_bfid) " \
-		      "           from file,migration " \
-		      "           where volume.id = file.volume " \
-		      "           and (file.bfid = migration.src_bfid or " \
-                      "           file.bfid = migration.dst_bfid) " \
-		      "          limit 1) " \
-		      "          > 0);" \
+		q_m = "select v1.label, v2.label " \
+		      "from volume v1, volume v2 " \
+		      "where v1.label = '%s' and v2.label = '%s' " \
+		      "  and (v2.file_family like '%%-MIGRATION' " \
+		      "      or " \
+		      "       (v1.system_inhibit_1 in ('migrating', " \
+		      "                                'migrated') " \
+		      "        or (select count(dst_bfid) " \
+		      "            from file, migration " \
+		      "            where v1.id = file.volume " \
+		      "            and (file.bfid = migration.src_bfid or " \
+                      "                 file.bfid = migration.dst_bfid) " \
+		      "            /* Be sure to exclude duplication! */" \
+		      "            and v1.system_inhibit_1 not in " \
+		      "                                  ('duplicating', " \
+		      "                                   'duplicated') " \
+		      "            limit 1) " \
+		      "           > 0));" \
 		      % (src_vol, dst_vol)
-		q_c = "select v1.label " \
+		q_c = "select v1.label, v2.label " \
 		      "from volume v1, volume v2 " \
 		      "where v1.label = '%s' and v2.label = '%s' " \
 		      "  and (v1.system_inhibit_1 in ('cloning', 'cloned') " \
