@@ -129,6 +129,7 @@ class UDPClient:
         tsd.port = port
         tsd.socket = socket
         tsd.txn_counter = 0L
+        tsd.send_queue = {}  #For deferred messages.
         tsd.reply_queue = {}
         tsd.ident = self._mkident(host, port, pid)
         tsd.send_done = {}
@@ -295,7 +296,7 @@ class UDPClient:
         return message, tsd.txn_counter
 
         
-    def send(self, data, dst, rcv_timeout=0, max_send=0,send_done=1):
+    def send(self, data, dst, rcv_timeout=0, max_send=0, send_done=1):
         """send msg to dst address, up to `max_send` times, each time
         waiting `rcv_timeout' seconds for reply
         A value of 0 for max_send means retry forever"""
@@ -394,8 +395,27 @@ class UDPClient:
 	
 	return reply
 
+    ### send_deferred()
+    ### repeat_deferred()
+    ### recv_deferred()
+    ### recv_deferred_with_repeat_send()
+    ### drop_deferred()
+    ###
+    ### The *_deferred() functions allow for asymetric processing of messages.
+    ###
+    ### There are two recv_deferred() functions.  recv_deferred() does
+    ### what it has always been done; only wait for the perscribed time
+    ### without any automatic resending of messages where a response has not
+    ### returned after too long of a time period.  This means that the caller
+    ### of the recv_deferred() function needs to handle their own retrying
+    ### with geometric timeout backoff.
+    ### 
+    ### The other recv_deffered function, recv_deferred_with_repeat_send(),
+    ### performs automatic resending/retrying of messages.  This function
+    ### does gemotric backoff of retransmitted messages.
+
     # send message, return an ID that can be used in the recv_deferred function
-    def send_deferred(self, data, address) :
+    def send_deferred(self, data, address):
         tsd = self.get_tsd()
         tsd.send_done[address] = 1
         message, txn_id = self.protocolize( data )
@@ -409,7 +429,33 @@ class UDPClient:
 	
         if bytes_sent < 0:
             return -1
+
+        #Remember the message in case we need to repeat it.
+        tsd.send_queue[txn_id] = (message, address, time.time())
+
         return txn_id
+
+    # Resend any messages that have not yet yielded a reply.
+    def repeat_deferred(self, txn_ids):
+        #Make the target a list of txn_id to consider.
+        if type(txn_ids) != types.ListType:
+            txn_ids = [txn_ids]
+        
+        tsd = self.get_tsd()
+
+        TEN_MINUTES = 10 * 60  #Time limit.
+        
+        for txn_id in txn_ids:
+            message, address, timestamp = tsd.send_queue[txn_id]
+
+            #After 10 minutes, assume we are not going to get a response.
+            # Remove the item from the queue to prevent it from growing
+            # without bound.
+            if timestamp < time.time() - TEN_MINUTES:
+                del tsd.send_queue[txn_id]
+                continue
+
+            tsd.socket.sendto( message, address )
 
     # Recieve a reply, timeout has the same meaning as in select
     def recv_deferred(self, txn_ids, timeout):
@@ -421,7 +467,8 @@ class UDPClient:
         for txn_id in txn_ids:
             if tsd.reply_queue.has_key(txn_id):
                 reply = tsd.reply_queue[txn_id]
-                del  tsd.reply_queue[txn_id]
+                del tsd.reply_queue[txn_id]
+                del tsd.send_queue[txn_id]
                 return reply
         else:
             rcvd_txn_id=None
@@ -437,6 +484,7 @@ class UDPClient:
                     rcvd_txn_id, out, t = udp_common.r_eval(reply)
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
+                        del tsd.send_queue[rcvd_txn_id]
                         return out
                 except (SyntaxError, TypeError):
                     #If a this error occurs, keep retrying.  Most likely it is
@@ -462,13 +510,76 @@ class UDPClient:
                     #Queue it up, somebody else wants it
                     tsd.reply_queue[rcvd_txn_id] = out
             else: # we got a good reply
+                del tsd.send_queue[rcvd_txn_id]
                 return out
 
         ##If we got here, it's because we didn't receive a response to the
         ## message we sent.
-        #raise errno.errorcode[errno.ETIMEDOUT]
         raise UDPError(errno.ETIMEDOUT)
-        
+
+    # Recieve a reply, timeout has the same meaning as in select.  This
+    # version is different from recv_deferred(); entire_timeout refers to the
+    # entire timeout period just like recv_deferred(), but a geometric backoff
+    # of resending the original message is performed up to entire_timeout
+    # number of seconds.
+    #
+    #Note: This function not fully verified to work yet.
+    def recv_deferred_with_repeat_send(self, txn_ids, entire_timeout):
+        #Make the target a list of txn_id to consider.
+        if type(txn_ids) != types.ListType:
+            txn_ids = [txn_ids]
+            
+        tsd = self.get_tsd()
+        for txn_id in txn_ids:
+            if tsd.reply_queue.has_key(txn_id):
+                reply = tsd.reply_queue[txn_id]
+                del tsd.reply_queue[txn_id]
+                del tsd.send_queue[txn_id]
+                return reply
+        else:
+            loop_start_time = time.time()
+            exp = 0
+            base_timeout = 5 #seconds
+            while loop_start_time + entire_timeout > time.time():
+                #We need to do this geometric timeout ourselves.
+                timeout = base_timeout * (pow(2, exp))
+                if exp < MAX_EXPONENT:
+                    exp = exp + 1
+                #Limit the timeout to what is left of the entire resubmit
+                # timeout.
+                upper_limit = max(0,
+                           loop_start_time + entire_timeout - time.time())
+                timeout = min(timeout, upper_limit)
+
+                try:
+                    return self.recv_deferred(txn_ids, timeout)
+                except (socket.error, UDPError), msg:
+                    if msg.errno == errno.ETIMEDOUT:
+                        #Since we are still waiting for a response, resend
+                        # the original message.
+                        self.repeat_deferred(txn_ids)
+                        continue
+                    else:
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+                    
+    #If we are giving up on a reponse, we can remove it from the send and 
+    # receive lists explicitly.
+    def drop_deferred(self, txn_ids):
+        #Make the target a list of txn_id to consider.
+        if type(txn_ids) != types.ListType:
+            txn_ids = [txn_ids]
+
+        tsd = self.get_tsd()
+        for txn_id in txn_ids:
+            try:
+                del tsd.reply_queue[txn_id]
+            except KeyError:
+                pass
+            try:
+                del tsd.send_queue[txn_id]
+            except KeyError:
+                pass
     
         
 if __name__ == "__main__" :
