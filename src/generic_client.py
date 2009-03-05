@@ -280,6 +280,7 @@ class GenericClient:
     def send(self, ticket, rcv_timeout=0, tries=0):
         try:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
+
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except udp_client.UDPError, msg:
@@ -288,8 +289,13 @@ class GenericClient:
             else:
                 x = {'status' : (e_errors.NET_ERROR,
                                  "%s: %s" % (self.server_name, str(msg)))}
+        except TypeError, detail:
+             x = {'status' : (e_errors.ERROR,
+                                 "%s: %s" % (self.server_name, str(detail)))}
+        
         except errno.errorcode[errno.ETIMEDOUT]:
             x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
+        
         return x
         
     # return the name used for this client/server #XXX what is this nonsense? cgw
