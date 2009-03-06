@@ -1868,7 +1868,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         record={}
 
         external_label = self.extract_external_label_from_ticket(
-            ticket, key = "vol", check_exists = False)
+            ticket, check_exists = False)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
 
