@@ -2,9 +2,7 @@
 
 # $Id$
 
-#Dump the the summary information for the last 7 days to the inventory
-# summary.
-
+#Dump the the summary information for the last 7 days to the weekly summary.
 #An old version of this would send e-mail to a hardcoded list of people.
 
 #Make sure to set a timeout.
@@ -16,10 +14,16 @@ if [ ! -d "$html_dir" ]; then
     echo HTML directory $html_dir not found.
     exit 1
 fi
-#If the inventory directory does not exist, create it.
-inventory_dir=$html_dir/tape_inventory
-if [ ! -d "$inventory_dir" ]; then
-    mkdir -p $inventory_dir
+#If the weekly summary directory does not exist, create it.
+# Note: generated_html/weekly_summary must match the WEEKLY_SUMMARY_SUBDIR
+#       value in enstore_constants.py.
+weekly_summary_dir=$html_dir/generated_html/weekly_summary
+if [ ! -d "$weekly_summary_dir" ]; then
+    mkdir -p $weekly_summary_dir
+    if [ $? -ne 0 ]; then
+        echo Unable to make ${weekly_summary_dir}.
+        exit 1
+    fi
 fi
 
 #Obtain the Enstore DB port number.
@@ -44,7 +48,7 @@ if [ -z "$EDB_HOST" ]; then
 fi
 
 #Obtain the Enstore DB user/role.
-EDB_USER=`enstore conf $timeout --show database dbuser`   #dbuser_reader?
+EDB_USER=`enstore conf $timeout --show database dbuser_reader`   #dbuser_reader?
 if [ -z "$EDB_USER" ]; then
     echo "dbuser not found in configuration."
     exit 1
@@ -84,10 +88,6 @@ if [ ! -d "$temp_dir" ]; then
     temp_dir=/tmp
 fi
 
-output_basename=WEEKLY_SUMMARY
-output_file=$inventory_dir/$output_basename
-temp_file=$temp_dir/$output_basename.tmp
-
 #Extract the beginning timestamp for seven days ago in human readable format.
 t1=`psql -p $ADB_PORT -h $ADB_HOST -U $ADB_USER $ADB_NAME -c "
 select to_char(current_date - interval '7 days', 'Dy Mon DD HH24:MI:SS YYYY');
@@ -96,16 +96,23 @@ select to_char(current_date - interval '7 days', 'Dy Mon DD HH24:MI:SS YYYY');
 t2=`psql -p $ADB_PORT -h $ADB_HOST -U $ADB_USER $ADB_NAME -c "
 select to_char(current_date - interval '1 second', 'Dy Mon DD HH24:MI:SS YYYY');
 " | sed -n '3p'`
+#Extract the start date.
+start_date=`psql -p $ADB_PORT -h $ADB_HOST -U $ADB_USER $ADB_NAME -c "
+select to_char(current_date - interval '7 days', 'MM-DD-YYYY');
+" | sed -n '3p' | tr -d " "`
 
+output_basename=WEEKLY_SUMMARY_STARTING_${start_date}
+output_file=$weekly_summary_dir/$output_basename
+temp_file=$temp_dir/$output_basename.tmp
 
 #If we write to a temp file, and swap it in when we are done, there will
-# not any time when the page is empty becuase the scipt is still writing
+# not be any time when the page is empty becuase the scipt is still writing
 # the file.
 rm -f $temp_file
 
 
 #Make sure we know how up-to-date this is.
-echo -e Cleaning Report: `date` >> $temp_file 2>&1
+echo -e Weekly Summary Report: `date` >> $temp_file 2>&1
 echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
 
 echo  >> $temp_file 2>&1
