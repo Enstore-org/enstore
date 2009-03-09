@@ -212,6 +212,16 @@ XFER_SIZE_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "xfer-size")
 MIGRATION_SUMMARY_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "migration_summary")
 BYTES_PER_DAY_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "bpd_per_mover")
 
+#The following are directory names appened by the html_main.py to
+# the html_dir to put different types of pages in different sub-directories.
+WEB_SUBDIR = "generated_html/"
+OLD_WEB_SUBDIR = ""
+WEEKLY_SUMMARY_SUBDIR = "%s%s" % (WEB_SUBDIR, "weekly_summary") #hardcoded!
+SERVER_HTML_SUBDIR = "%s%s" % (OLD_WEB_SUBDIR, "")
+TAPE_INVENTORY_SUBDIR = "%s%s" % (OLD_WEB_SUBDIR, "tape_inventory")
+MISC_HTML_SUBDIR = "%s%s" % (WEB_SUBDIR, "miscellaneous")
+
+
 OUTAGEFILE = "enstore_outage.py"
 SEENDOWNFILE = "enstore_seen_down.py"
 SAAGHTMLFILE = "enstore_saag.html"
@@ -325,8 +335,9 @@ VC = "vc"
 NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
 GENERIC_SERVERS = [ ACCOUNTING_SERVER, ALARM_SERVER, CONFIGURATION_SERVER,
-                    DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INFO_SERVER, INQUISITOR,
-		    LOG_SERVER, VOLUME_CLERK, PNFS_AGENT, RATEKEEPER ]
+                    DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INFO_SERVER,
+                    INQUISITOR, LOG_SERVER, PNFS_AGENT, RATEKEEPER,
+                    VOLUME_CLERK ]
 
 # Trace.trace output levels used by the inquisitor
 INQFILEDBG = 6
