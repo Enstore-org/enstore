@@ -180,6 +180,7 @@ class DispatchingWorker(udp_server.UDPServer):
     def do_one_request(self):
         """Receive and process one request, possibly blocking."""
         # request is a "(idn,number,ticket)"
+        request = None
         try:
             request, client_address = self.get_request()
         except:
