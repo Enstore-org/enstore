@@ -355,6 +355,7 @@ OVERRIDE_DELETED = "override-deleted"        #encp
 OVERRIDE_NOACCESS = "override-noaccess"      #encp
 OVERRIDE_PATH = "override-path"              #encp
 OVERRIDE_RO_MOUNT = "override-ro-mount"      #encp
+PAGES = "pages"                              #html
 PARENT = "parent"                            #pnfs
 PATH = "path"                                #pnfs
 PLOT = "plot"                                #plotter
@@ -536,7 +537,7 @@ valid_option_list = [
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OUTOFDATE, OVERRIDE,
     OVERRIDE_DELETED, OVERRIDE_NOACCESS, OVERRIDE_PATH, OVERRIDE_RO_MOUNT,
-    PARENT, PATH, PLOT, PLOTS,
+    PAGES, PARENT, PATH, PLOT, PLOTS,
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT, POSITION,
     PROCEED_NUMBER, PREFIX, PRIORITY, PRINT, PRINT_QUEUE,PROFILE, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,

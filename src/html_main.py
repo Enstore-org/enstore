@@ -8,31 +8,34 @@
 
 # system imports
 import sys
-import re
+#import re
 import os
-import grp
-import pwd
+#import grp
+#import pwd
 
 # enstore imports
-import configuration_client
+#import configuration_client
 import option
-import enstore_up_down
+#import enstore_up_down
 import e_errors
 import Trace
-import enstore_functions2
+#import enstore_functions2
 import enstore_constants
-import enstore_files
-import enstore_plots
+#import enstore_files
+#import enstore_plots
 
 import enstore_saag
 import enstore_saag_network
 import enstore_system_html
 import enstore_make_plot_page
+import enstore_make_generated_page
 
 
 class HtmlInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
         #for html options
+        self.pages = None
+        self.plots = None
         self.saag_network = None
         self.saag = None
         self.system_html = None
@@ -49,6 +52,11 @@ class HtmlInterface(option.Interface):
     parameters = []
 
     html_options = {
+        option.PAGES:{option.HELP_STRING:
+                      "Make the generated pages web pages.",
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.USER_LEVEL:option.USER,},
         option.PLOTS:{option.HELP_STRING:
                       "Make the plot web pages.",
                       option.VALUE_USAGE:option.IGNORED,
@@ -97,7 +105,10 @@ def main(intf):
     if intf.plots:
         print "Making the plot web pages."
         enstore_make_plot_page.do_work2(intf)
-
+    if intf.pages:
+        print "Making the generated web pages web pages."
+        enstore_make_generated_page.do_work(intf)
+        
 
 def do_work(intf):
 

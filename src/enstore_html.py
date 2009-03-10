@@ -3048,3 +3048,59 @@ class EnSGIngestPage(EnBaseHtmlDoc):
 
             self.append(en_table)
             
+
+class EnGeneratedWebPage(EnBaseHtmlDoc):
+
+    def __init__(self, title="Generated Enstore Web Pages", gif="", 
+		 system_tag="", description="", mount_label=None,
+		 links_l=None, nav_link="", url_gif_dir = ""):
+	EnBaseHtmlDoc.__init__(self, refresh=0,
+                               #help_file = "",
+			       system_tag=system_tag,
+                               url_gif_dir = url_gif_dir)
+	self.title = title
+	self.script_title_gif = gif
+	self.source_server = THE_ENSTORE
+	self.description = description
+	self.mount_label = mount_label
+	self.links_l = links_l
+	self.nav_link = nav_link
+        # this will be set in the child class
+        self.outofdate = 0
+
+        self.TEXTSIZE="+2"
+        self.TEXTCOLOR="#000066"
+
+    def add_row_to_table(self,table,link,name,explanation):
+        tr=HTMLgen.TR()
+        tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(HTMLgen.Href(link,name), size=self.TEXTSIZE,color=self.TEXTCOLOR),align="LEFT")))
+        tr.append(HTMLgen.TD(HTMLgen.Font(explanation,size=self.TEXTSIZE,color=self.TEXTCOLOR),valign="CENTER"))
+        table.append(tr)
+        
+    def body(self, directory_list):
+	table = self.table_top()
+	# create a grid of jpg stamp files 3 stamps wide.  attach a link to
+	# the associated postscript file too
+	plot_table = HTMLgen.TableLite(width="100%", cols="3", align="CENTER",
+                                       cellspacing=0, cellpadding=0)
+	# add any links to other directory's pages
+	if self.links_l:
+	    for link,txt in self.links_l:
+		tr = HTMLgen.TR()
+		tr.append(HTMLgen.TD(HTMLgen.Href(link, 
+						  HTMLgen.Font(txt, size="+2")),
+				     colspan=3, align="LEFT"))
+		plot_table.append(tr)
+	    else:
+		plot_table.append(empty_row(3))
+		plot_table.append(empty_row(3))
+
+        for filename in directory_list:
+            basename = os.path.basename(filename)
+            explanation = ""  #What should this be?
+            self.add_row_to_table(plot_table, basename, basename, explanation)
+                
+        table.append(HTMLgen.TR(HTMLgen.TD(plot_table)))
+	self.trailer(table)
+	self.append(table)
+

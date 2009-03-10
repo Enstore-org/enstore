@@ -82,6 +82,12 @@ def plot_html_file_name():
 def default_plot_html_file():
     return "%s%s"%(default_dir, plot_html_file_name())
 
+def generated_web_page_html_file_name():
+    return "generated_web_pages.html"
+
+def default_generated_web_page_html_file():
+    return "%s%s"%(default_dir, generated_web_page_html_file_name())
+
 def status_html_file_name():
     return "status_%s"%(inq_file_name(),)
 
@@ -509,6 +515,25 @@ class HTMLPlotFile(EnFile):
 					  nav_link=self.nav_link,
                                           url_gif_dir=self.url_gif_dir)
             doc.body(jpgs, stamps, pss)
+	    self.do_write(str(doc))
+
+class HTMLGeneratedFile(EnFile):
+
+    def __init__(self, file, system_tag="", nav_link="", url_gif_dir = ""):
+        EnFile.__init__(self, file, system_tag)
+        self.file_name = "%s.new"%(file,)
+	self.nav_link = nav_link
+        self.url_gif_dir = url_gif_dir
+
+    # format the config entry and write it to the file
+    def write(self, directory_list, mount_label, links_l=None):
+        if self.openfile:
+            doc = enstore_html.EnGeneratedWebPage(system_tag=self.system_tag,
+					  mount_label=mount_label, 
+					  links_l=links_l,
+					  nav_link=self.nav_link,
+                                          url_gif_dir=self.url_gif_dir)
+            doc.body(directory_list)
 	    self.do_write(str(doc))
 
 class HTMLMiscFile(EnFile):
