@@ -1893,12 +1893,37 @@ class STK_MediaLoader(MediaLoaderMethods):
         # execute the command and read the response
         # FIXME - what if this hangs?
         # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+	#Obtain the list of movers so that we can build a list of valid
+	# locations to report slots for.
+	try:
+		movers_list = self.csc.get_movers2(None, 5, 3)
+	except KeyError:
+		E = 20
+		message = "Unable to obtain list of movers."
+		Trace.log(e_errors.ERROR, msg)
+		ticket['status'] = (e_errors.NET_ERROR, E, "", "", msg)
+		self.reply_to_caller(ticket)
+		return (e_errors.NET_ERROR, E, "", "", message)
+
+	#Build the list of ACSes that we have movers configured in.  ACSes
+	# are the first number in the list like 0,0,1,27.
+	#
+	# FYI:  The second number is the LSM, the third is the cabinet and
+	# the 4th is the position within the cabinet.
+	valid_locations = []
+	for mover_info in movers_list:
+		if mover_info.get('media_changer', None) == self.name:
+			valid_robot_location = \
+			               mover_info['mc_device'].split(",")[0]
+			if valid_robot_location not in valid_locations:
+				valid_locations.append(valid_robot_location)
 
         #status,response, delta = self.timed_command(command,4,10)
         status, response, delta = self.timed_command(command,4,60)
         if status != 0:
             E=4
-            msg = "QUERY_VOLUME %i: %s => %i,%s" % (E,command,status,response)
+            message = "QUERY_SLOTS %i: %s => %i,%s" % \
+		      (E, command, status, response)
             Trace.log(e_errors.ERROR, msg)
 	    ticket['status'] = ("ERROR", E, response, "", msg)
 	    self.reply_to_caller(ticket)
@@ -1912,7 +1937,15 @@ class STK_MediaLoader(MediaLoaderMethods):
 	        #This is some other information.
 	        continue
 
+	    #Extract the LSM from the line of robot output.
 	    lsm = line[:13].strip().replace(" ", "")
+	    #Make sure the first number in the location, which is the ACS,
+	    # matches the list of valid ACSes in the valid_locations list.
+	    if lsm.split(",")[0] not in valid_locations:
+		    #This robot is not configured for this Enstore instance.
+		    continue
+
+	    #The number of free tapes in this ACS/LSM.
 	    free = int(line[31:42].strip())
 
 	    slot_list.append({"location" : lsm,
