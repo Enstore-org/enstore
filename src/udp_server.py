@@ -34,9 +34,9 @@ import Trace
 import e_errors
 import host_config
 # for python 2.6 and latter use
-# rawUDP_p -- process based rawUDP for better use of multiprocessor ensvoronment
+# rawUDP_p -- process based rawUDP for better use of multiprocessor environment
 # and to avoid GIL
-'''
+
 if sys.version_info >= (2, 6, 0):
     try:
         import rawUDP_p as rawUDP
@@ -52,7 +52,7 @@ else:
 '''
 import rawUDP
 can_use_raw = True
-
+'''
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -523,19 +523,96 @@ class UDPServer:
         #    self.client_number,
         #    reply))
         self.reply_to_caller(ticket)
+        
 
+
+        
+    
 if __name__ == "__main__":
+
+    def monitor(udp_srv):
+        import subprocess
+        import os
+        print "udp_server monitor starting"
+        rqs1=0.
+        t1=time.time()
+        first = True
+        f=open("udp_server_test_%s"%(os.getpid(),), "w")
+        while 1:
+            cmd = 'netstat -npl | grep %s'%(udp_srv.server_address[1],)
+            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+            if pipeObj:
+                result = pipeObj.communicate()[0]
+            l=result 
+            l.strip()
+
+            if l.find('udp') != -1:
+                a=l.split(' ')
+                c = 0
+                for i in a:
+                    if i == '':
+                        c = c + 1
+                for i in range(c):
+                    a.remove('')
+                r_queue = a[1]
+
+            cmd = 'netstat -s | grep "packet receive errors"'
+            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+            if pipeObj:
+                result = pipeObj.communicate()[0]
+
+            l=result
+            l.strip(' ')
+            if l.find('errors') != -1:
+                r_err = long(l.split(' ')[4])
+            t=time.time()
+            if first:
+                first = False
+                error_rate = 0
+                t1 = t
+                r_err0 = r_err 
+            else:
+                error_rate = (r_err-r_err0)/(t-t1)
+                t1 = t
+                r_err0 = r_err 
+
+
+            t=time.time()
+            #print rqs
+            #print rqs-rqs1
+            #print t
+            #print t1
+            msg= '%s %s'%(time.ctime(time.time()), udp_srv.queue_size)
+            msg = '%s %s'%(msg, r_queue)
+            msg = '%s %s %s'%(msg, r_err, error_rate)
+            f.write("%s\n"%(msg,))
+            f.flush()
+            time.sleep(10)
 
     #This test program can be run in conjuction with the udp_client.py
     # test program.  This test program will process any message send to
     # the correct port (including other tests than udp_client.py).
     
+    if len(sys.argv) > 1:
+        monitor_server = True
+    else:
+       monitor_server = False
     udpsrv = UDPServer(('', 7700), receive_timeout = 60.0, use_raw=1)
     #udpsrv = UDPServer(('', 7700), receive_timeout = 60.0)
+
+    if monitor_server:
+        thread = threading.Thread(group=None, target=monitor,
+                              args=(udpsrv,), kwargs={})
+        thread.start()
+        
+        
     while 1:
-        ticket = udpsrv.do_request()
+        try:
+            ticket = udpsrv.do_request()
+        except KeyboardInterrupt:
+            sys.exit(0)
         if ticket:
-            print "Message %s"%(ticket,)
+            #print "Message %s"%(ticket,)
             udpsrv.reply_to_caller(ticket)
             #break
     del(udpsrv)
