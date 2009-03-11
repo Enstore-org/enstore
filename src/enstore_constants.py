@@ -220,6 +220,7 @@ WEEKLY_SUMMARY_SUBDIR = "%s%s" % (WEB_SUBDIR, "weekly_summary") #hardcoded!
 SERVER_HTML_SUBDIR = "%s%s" % (OLD_WEB_SUBDIR, "")
 TAPE_INVENTORY_SUBDIR = "%s%s" % (OLD_WEB_SUBDIR, "tape_inventory")
 MISC_HTML_SUBDIR = "%s%s" % (WEB_SUBDIR, "miscellaneous")
+CGI_BIN_SUBDIR = "%s%s" % (OLD_WEB_SUBDIR, "cgi-bin")
 
 
 OUTAGEFILE = "enstore_outage.py"
@@ -230,6 +231,8 @@ REDSAAGHTMLFILE = "enstore_red.html"
 ENSTORESTATUSFILE = "enstore_status_only.py"
 STATUSONLYHTMLFILE = "enstore_status_only.html"
 SAAGNETWORKHTMLFILE = "enstore_saag_network.html"
+ALARM_HTML_FILE = "enstore_alarms.html"
+LOG_HTML_FILE = "enstore_logs.html"
 BASENODE = "base_node"
 UP = 0
 WARNING = 2

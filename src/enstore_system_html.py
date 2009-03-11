@@ -17,6 +17,7 @@ import pg
 # enstore modules
 import enstore_html
 import enstore_files
+import enstore_constants
 import HTMLgen
 import web_server
 import configuration_client
@@ -82,21 +83,75 @@ class EnstoreSystemHtml:
         ###
         ### Status Table
         ###
-        self.status_table=HTMLgen.TableLite(cellpadding=2,bgcolor=TABLECOLOR,cellspacing=5,border=2)
+        self.status_table=HTMLgen.TableLite(cellpadding=2,
+                                            bgcolor=TABLECOLOR,
+                                            cellspacing=5, border=2)
         self.status_table.width="100%"
 
-        add_row_to_table(self.status_table,"enstore_saag.html","Enstore System Summary","Enstore System Status-At-A-Glance")
-        add_row_to_table(self.status_table,"status_enstore_system.html","Enstore Server Status","Current status of the Enstore servers")
-        add_row_to_table(self.status_table,"encp_enstore_system.html","encp History","History of recent encp requests")
-        add_row_to_table(self.status_table,"config_enstore_system.html","Configuration","Current Enstore System Configuration")
-        add_row_to_table(self.status_table,"enstore_alarms.html","Alarms","Active alarms and alarm history")
-        add_row_to_table(self.status_table,"enstore_logs.html","Log Files","Hardware and software log files")
-        add_row_to_table(self.status_table,"tape_inventory/VOLUME_QUOTAS","Quota and Usage","How tapes are allocated and being used")
-        add_row_to_table(self.status_table,"plot_enstore_system.html","Plots","Enstore Plots")
-        add_row_to_table(self.status_table,"/cgi-bin/enstore_show_inv_summary_cgi.py","Tape Inventory Summary","Summary of inventory results")
-        add_row_to_table(self.status_table,"/cgi-bin/enstore_show_inventory_cgi.py","Tape Inventory ","Detailed list of tapes and their contents")
-        #add_row_to_table(self.status_table,"enstore_quotas.html","Tape Quotas","Plots of tape quotas")
-        add_row_to_table(self.status_table,"cron_pics.html","Cronjob Status","Lots of cronjob exit status for past week")
+        add_row_to_table(
+            self.status_table,
+            os.path.join(enstore_constants.OLD_WEB_SUBDIR,
+                         enstore_constants.SAAGHTMLFILE), #enstore_saag.html
+            "Enstore System Summary",
+            "Enstore System Status-At-A-Glance")
+        add_row_to_table(
+            self.status_table,
+            os.path.join(enstore_constants.OLD_WEB_SUBDIR,
+                         enstore_files.status_html_file_name()), #status_enstore_system.html
+            "Enstore Server Status",
+            "Current status of the Enstore servers")
+        add_row_to_table(
+            self.status_table,
+            os.path.join(enstore_constants.OLD_WEB_SUBDIR,
+                         enstore_files.encp_html_file_name()), #encp_enstore_system.html
+            "encp History",
+            "History of recent encp requests")
+        add_row_to_table(
+            self.status_table,
+            os.path.join(enstore_constants.OLD_WEB_SUBDIR,
+                         enstore_files.config_html_file_name()), #config_enstore_system.html
+            "Configuration",
+            "Current Enstore System Configuration")
+        add_row_to_table(self.status_table,
+                         "enstore_alarms.html",  #enstore_constants.ALARM_HTML_FILE
+                         "Alarms",
+                         "Active alarms and alarm history")
+        add_row_to_table(self.status_table,
+                         "enstore_logs.html",   #enstore_constants.ALARM_HTML_FILE
+                         "Log Files",
+                         "Hardware and software log files")
+        add_row_to_table(
+            self.status_table,
+            os.path.join(enstore_constants.TAPE_INVENTORY_SUBDIR,
+                         "VOLUME_QUOTAS"),  #Need constant???
+                         "Quota and Usage",
+                         "How tapes are allocated and being used")
+        add_row_to_table(self.status_table,
+                         os.path.join(enstore_constants.PLOTS_SUBDIR,
+                                      enstore_files.plot_html_file_name()),  #plot_enstore_system.html
+                         "Plots",
+                         "Enstore Plots")
+        add_row_to_table(self.status_table,
+                         "%s/%s" % (enstore_constants.WEB_SUBDIR,
+                                    enstore_files.generated_web_page_html_file_name()), #generated_web_pages.html
+                         "Web Pages",
+                         "Enstore Web Pages")
+        add_row_to_table(self.status_table,
+                         "/cgi-bin/enstore_show_inv_summary_cgi.py", #Need constant???
+                         "Tape Inventory Summary",
+                         "Summary of inventory results")
+        add_row_to_table(self.status_table,
+                         "/cgi-bin/enstore_show_inventory_cgi.py", #Need constant???
+                         "Tape Inventory",
+                         "Detailed list of tapes and their contents")
+        #add_row_to_table(self.status_table,
+        #                 "enstore_quotas.html",
+        #                 "Tape Quotas",
+        #                 "Plots of tape quotas")
+        add_row_to_table(self.status_table,
+                         "cron_pics.html",  #Need constant???
+                         "Cronjob Status",
+                         "Lots of cronjob exit status for past week")
         
                                     
         global_table.append(HTMLgen.TR(self.status_table))
@@ -138,7 +193,7 @@ class EnstoreSystemHtml:
 
 
 def do_work(intf):
-    rc=0
+    #rc=0
     server = web_server.WebServer()
     remote=True
 
@@ -153,7 +208,7 @@ def do_work(intf):
     config_server_client_dict = configuration_client.get_config_dict()
     acc            = config_server_client_dict.get("database", {})
     
-    bytes=0.
+    byte_count = 0.0
     try: 
         db = pg.DB(host  = acc.get('db_host', "localhost"),
                    dbname= acc.get('dbname', "enstoredb"),
@@ -163,7 +218,7 @@ def do_work(intf):
         for row in res.getresult():
             if not row:
                 continue
-            bytes=float(row[0])/(1024.*1024.*1024.*1024.)
+            byte_count = float(row[0])/(1024.*1024.*1024.*1024.)
         db.close()
     except:
         Trace.handle_error()
@@ -173,7 +228,7 @@ def do_work(intf):
     if not name:
         name="unknown"
         
-    main_web_page=EnstoreSystemHtml(name,"%8.2f"%(bytes), remote)
+    main_web_page=EnstoreSystemHtml(name, "%8.2f" % (byte_count), remote)
 
     html_dir=None
     if server.inq_d.has_key("html_file"):
