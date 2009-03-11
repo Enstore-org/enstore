@@ -1,10 +1,13 @@
-#!/bin/sh -xv
+#!/bin/sh
 ###############################################################################
 #
-# $Id:
+# $Id$
 #
 ###############################################################################
 
+cvs_tag=""
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ "${1:-}" = "-t" ] ; then shift; cvs_tag=$1;shift; fi
 
 set -u  # force better programming and ability to use check for not set
 
@@ -26,7 +29,8 @@ cd /tmp
 rm -rf enstore_build
 mkdir enstore_build
 cd enstore_build
-cvs co -r production enstore
+if [ -z $cvs_tag ]; then cvs_tag="production";fi
+cvs co -r $cvs_tag enstore
 
 cd enstore
 if [ -f "rpm_version" ];
@@ -44,7 +48,11 @@ fi
 #cvs does no like dots
 cvs_EVersion=`echo ${EVersion} | sed -e "s/\./_/g"`
 
-cvs tag -F -r production ENSTORE_RPM_${cvs_EVersion}_${ERelease}
+if [ $cvs_tag = "production" ]; then
+    # tag cvs files only if we cheked out production tag
+    # this is needed to build rpm from the same cvs tag on different platforms
+    cvs tag -F -r production ENSTORE_RPM_${cvs_EVersion}_${ERelease}
+fi
 
 tar czf enstore.tgz *
 cp -f enstore.tgz /usr/src/redhat/SOURCES
