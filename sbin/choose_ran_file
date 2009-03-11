@@ -234,11 +234,25 @@ while [ $done -gt 0 ]; do
     library=`enstore info  --vol $tape | grep library | cut -d' ' -f3`
     library=`echo $library | tr ",'" "  " | sed "s/ //g"`
 
+    #Verify that there is a library manager for this library.
+    is_lib_known=`enstore conf --list-library-manager | grep $library | wc -l`
+    if [ "$is_lib_known" -eq 0 ]; then
+        echo "Unable to find ${library}.library_manager." 1>&2
+        #Update the return value and the number of volumes done count.
+        RC=`expr $RC + 1`
+        done=`expr $done - 1`
+        continue
+    fi
+
     #List the number of active volumes.  This will give more meaningful
     # output for the administrators.
     cmd="enstore lib --vols $library"
     echo $cmd
     vols_at_movers=`eval $cmd`
+    if [ $? -ne 0 ]; then
+        continue
+    fi
+    
     echo "$vols_at_movers"
     #If the system is busy, don't start encp.
     busy_movers=`echo "$vols_at_movers" | wc -l`
