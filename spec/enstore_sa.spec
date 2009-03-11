@@ -2,7 +2,8 @@ Summary: Enstore: Mass Storage System
 Name: enstore_sa
 Version: 1.0.1
 Release: 9
-Copyright: GPL
+#Copyright: GPL
+License: GPL
 Group: System Environment/Base
 Source: enstore_sa.tgz
 BuildRoot: /usr/src/redhat/BUILD
