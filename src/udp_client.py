@@ -131,7 +131,7 @@ class UDPClient:
         tsd.txn_counter = 0L
         tsd.send_queue = {}  #For deferred messages.
         tsd.reply_queue = {}
-        tsd.ident = self._mkident(host, port, pid)
+        tsd.ident = self._mkident(host, port, pid, tid)
         tsd.send_done = {}
         tsd.tid = tid
         if thread_support:
@@ -212,8 +212,8 @@ class UDPClient:
             tsd = self.reinit()
         return tsd
     
-    def _mkident(self, host, port, pid):
-        return "%s-%d-%f-%d" % (host, port, time.time(), pid )
+    def _mkident(self, host, port, pid, tid):
+        return "%s-%d-%f-%d-%d" % (host, port, time.time(), pid, abs(tid) )
         
     def __del__(self):
         # tell server we're done - this allows it to delete our unique id in
@@ -328,7 +328,6 @@ class UDPClient:
         timeout=rcv_timeout
         while max_send==0 or n_sent<max_send:
             tsd.socket.sendto( msg, dst )
-            
             timeout = timeout*(pow(2,exp))
             if exp < MAX_EXPONENT:
                 exp = exp + 1
@@ -375,9 +374,16 @@ class UDPClient:
                     # first place?
                     pass
                 return out
-	    
         #If we got here, it's because we didn't receive a response to the
 	# message we sent.
+        try:
+            del tsd.send_done[dst]
+        except KeyError:
+            #If the send_done entry for this key is already gone,
+            # is this an error?  How does it get empty in the
+            # first place?
+            pass
+        
         #raise errno.errorcode[errno.ETIMEDOUT]
         raise UDPError(errno.ETIMEDOUT)
         
