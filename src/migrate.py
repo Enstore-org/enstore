@@ -446,7 +446,7 @@ def run_in_process(function, arg_list, my_task = "RUN_IN_PROCESS",
 	global pid_list
 	global errors
 	global log_f
-	
+
 	try:
 		pid = os.fork()
 	except OSError, msg:
@@ -468,7 +468,7 @@ def run_in_process(function, arg_list, my_task = "RUN_IN_PROCESS",
 			apply(function, arg_list)
 			res = errors
 			if debug:
-				print "Completed %s." % (str(function),)
+				print "NNN Completed %s." % (str(function),)
 		except (KeyboardInterrupt, SystemExit):
 			res = 1
 		except:
@@ -670,6 +670,7 @@ def is_library(library):
 # If true, the timestamp is returned, other wise, None is returned
 
 # is_copied(bfid) -- has the file already been copied?
+#	we check the source file
 def is_copied(bfid, db):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
@@ -681,6 +682,7 @@ def is_copied(bfid, db):
 		return res[0]['dst_bfid']
 
 # is_swapped(bfid) -- has the file already been swapped?
+#	we check the source file
 def is_swapped(bfid, db):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
@@ -1874,7 +1876,6 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 def copy_file(bfid, encp, intf, db):
 	MY_TASK = "COPYING_TO_DISK"
 
-
 	log(MY_TASK, "processing %s" % (bfid,))
 	# get file info
 	file_record = get_file_info(MY_TASK, bfid, db)
@@ -1886,6 +1887,7 @@ def copy_file(bfid, encp, intf, db):
 		log(MY_TASK, `file_record`)
 
 	# check if it has been copied and swapped
+	print "bfid:", bfid
 	is_it_copied = is_copied(bfid, db)
 	dst_bfid = is_it_copied  #side effect
 	is_it_swapped = is_swapped(bfid, db)
@@ -1893,7 +1895,9 @@ def copy_file(bfid, encp, intf, db):
 	#Define the directory for the temporary file on disk.
 	tmp = temp_file(file_record)
 
-	#
+	#Handle finding the name differently for deleted and non-deleted files.
+	
+	#Start with non-deleted files.
 	if file_record['deleted'] == 'n':
 		if is_it_copied and is_it_swapped:
 			#Already copied.
@@ -1966,6 +1970,25 @@ def copy_file(bfid, encp, intf, db):
 					     file_record['pnfs_id']))
 				return
 
+	#If the file has already been copied, swapped, checked and closed
+	# handle this better than to put fear into the user with false
+	# warning messags.  The most likely scenario for getting here is
+	# that the user used --force on an already completed migration.
+	elif file_record['deleted'] == 'y' and is_it_copied and is_it_swapped \
+		 and is_checked(dst_bfid, db) and is_closed(dst_bfid, db):
+		try:
+			src = find_pnfs_file.find_pnfsid_path(
+				file_record['pnfs_id'], dst_bfid,
+				path_type = find_pnfs_file.FS)
+		except (KeyboardInterrupt, SystemExit):
+			raise (sys.exc_info()[0],
+			       sys.exc_info()[1],
+			       sys.exc_info()[2])
+		except OSError, msg:
+			src = "deleted-%s-%s"%(bfid, tmp) # for debug
+
+	#Lastly, we need to handle user deleted files by making up some
+	# information.
 	elif file_record['deleted'] == 'y' and \
 		 len(file_record['pnfs_id']) > 10:
 		log(MY_TASK, "%s %s %s is a DELETED FILE" \
@@ -2129,12 +2152,18 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 	# IDs to the owner of the file.
 	
 	# get all pnfs metadata
-	file_utils.match_euid_egid(src)
-	p1 = pnfs.File(src)
-	file_utils.end_euid_egid(reset_ids_back = True)
-	file_utils.match_euid_egid(dst)
-	p2 = pnfs.File(dst)
-	file_utils.end_euid_egid(reset_ids_back = True)
+	try:
+		file_utils.match_euid_egid(src)
+		p1 = pnfs.File(src)
+		file_utils.end_euid_egid(reset_ids_back = True)
+	except (OSError, IOError), msg:
+		return str(msg)
+	try:
+		file_utils.match_euid_egid(dst)
+		p2 = pnfs.File(dst)
+		file_utils.end_euid_egid(reset_ids_back = True)
+	except (OSError, IOError), msg:
+		return str(msg)
 	# get all the file db metadata
 	f1 = fcc.bfid_info(bfid1)
 	f2 = fcc.bfid_info(bfid2)
@@ -3193,7 +3222,7 @@ def migrate(bfids, intf):
 		#If we are scanning too, start the scan in parallel.
 		if intf.with_final_scan and \
 		       not (intf.use_volume_assert or USE_VOLUME_ASSERT):
-			run_in_parallel(handle_process_exception,
+			run_in_parallel(final_scan,
 					(scan_queue, scan_r_pipe, intf),
 					my_task = "FINAL_SCAN")
 
@@ -3201,7 +3230,7 @@ def migrate(bfids, intf):
 	#If using volume_assert, we only want one call to final_scan():
 	if intf.with_final_scan and \
 	       (intf.use_volume_assert or USE_VOLUME_ASSERT):
-		run_in_parallel(handle_process_exception,
+		run_in_parallel(final_scan,
 					(scan_queue, scan_r_pipe, intf),
 					my_task = "FINAL_SCAN")
 		"""
@@ -3293,9 +3322,16 @@ def _migrate_processes(bfids, pipes, queues, intf):
 ##########################################################################
 
 def handle_process_exception(queue, pipe, write_value):
-	
-	put_request(queue, pipe, write_value)
-	os.close(pipe)
+
+	try:
+		put_request(queue, pipe, write_value)
+	except (OSError, IOError), msg:
+		sys.stderr.write("AAAA %s\n" % (str(msg),))
+	try:
+		os.close(pipe)
+	except (OSError, IOError), msg:
+		sys.stderr.write("BBBB %s\n" % (str(msg),))
+		
 	
 ##########################################################################
 
@@ -3454,6 +3490,8 @@ def migrate_volume(vol, intf):
 	# now try to copy the file one by one
 	if intf.with_deleted:
 		use_deleted_sql = "or deleted = 'y'"
+	elif intf.force:
+		use_deleted_sql = "or (deleted = 'y' and migration.dst_bfid is not NULL)"
 	else:
 		use_deleted_sql = ""
 	if intf.skip_bad:
@@ -3461,7 +3499,8 @@ def migrate_volume(vol, intf):
 	else:
 		use_skip_bad = ""
 	q = "select file.bfid,bad_file.bfid,file.pnfs_path from file " \
-	    "full join bad_file on bad_file.bfid = file.bfid " \
+	    "left join bad_file on bad_file.bfid = file.bfid " \
+	    "left join migration on migration.src_bfid = file.bfid " \
 	    "join volume on file.volume = volume.id " \
 	    "where file.volume = volume.id and label = '%s' " \
 	    "      and (deleted = 'n' %s) and pnfs_path != '' " \
