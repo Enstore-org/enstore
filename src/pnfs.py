@@ -1249,10 +1249,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         fname = self.nameof_file(directory, id)
 
         f = open(fname,'r')
-        nameof = f.readlines()
+        nameof = f.readline()
         f.close()
 
-        return nameof[0].replace("\n", "")
+        return nameof.replace("\n", "")
         
     # get the nameof information, given the id
     def get_nameof(self, id=None, directory=""):
