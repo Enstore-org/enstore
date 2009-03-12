@@ -2125,7 +2125,11 @@ def do_work(intf_of_scanfiles):
     signal.signal(signal.SIGINT, handle_signal)
 
     if intf_of_scanfiles.infile:
-        file_object = open(intf_of_scanfiles.infile)
+        try:
+            file_object = open(intf_of_scanfiles.infile)
+        except (OSError, IOError), msg:
+            sys.stderr.write("%s\n" % (str(msg),))
+            sys.exit(1)
         file_list = None
     elif len(intf_of_scanfiles.args) == 0:
         file_object = sys.stdin
