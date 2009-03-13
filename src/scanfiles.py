@@ -452,9 +452,9 @@ def get_layer_1(f):
 
     # get bfid from layer 1
     try:
-        bfid = get_layer(layer_file(f, 1))
+        layer1 = get_layer(layer_file(f, 1))
     except (OSError, IOError), detail:
-        bfid = None
+        layer1 = None
         if detail.errno in [errno.EACCES, errno.EPERM]:
             err.append('no read permissions for layer 1')
         elif detail.args[0] in [errno.ENOENT, errno.EISDIR]:
@@ -463,9 +463,12 @@ def get_layer_1(f):
             err.append('corrupted layer 1 metadata')
 
     try:
-        bfid = bfid[0].strip()
+        bfid = layer1[0].strip()
     except:
         bfid = ""
+
+    if layer1 and len(layer1) > 1:
+        err.append("extra layer 1 lines detected")
 
     return bfid, (err, warn, info)
 
@@ -632,6 +635,10 @@ def get_layer_4(f):
             l4['crc'] = layer4[10].strip() #optionally present
         except IndexError:
             pass
+
+	MAX_L4_LINES = 11
+        if len(layer4) > MAX_L4_LINES:
+            err.append("extra layer 4 lines detected")            
 
     return l4, (err, warn, info)
 
@@ -1335,7 +1342,7 @@ def check_bit_file(bfid, bfid_info = None):
         return
 
     #Determine if this file is a multiple copy.
-    original_bfid = infc.find_original(bfid)['original']
+    original_bfid = infc.find_original(bfid).get('original', None)
     if original_bfid != None and bfid != original_bfid:
         is_multiple_copy = True
     else:
