@@ -272,19 +272,41 @@ def final_scan_volume(vol, intf):
 		return 1
 
 	if v['system_inhibit'][1] != 'full':
-		migrate.log(MY_TASK, 'volume %s is not "full"'%(vol), "... WARNING")
+		migrate.log(MY_TASK, 'volume %s is not "full"'%(vol,), "... WARNING")
 
 	if v['system_inhibit'][1] != "readonly" and \
 	       v['system_inhibit'][1] != 'full':
 		vcc.set_system_readonly(vol)
-		migrate.log(MY_TASK, 'set %s to readonly'%(vol))
+		migrate.log(MY_TASK, 'set %s to readonly'%(vol,))
 
 	# make sure this is a duplication volume
 	sg, ff, wp = string.split(v['volume_family'], '.')
 	if ff.find(migrate.MIGRATION_FILE_FAMILY_KEY) == -1:
-		migrate.error_log(MY_TASK, "%s is not a %s volume" %
-				  (vol, migrate.MIGRATION_NAME.lower()))
-		return 1
+		query_len = 0
+		if intf.force:
+			#If --force was used, try a more involved process
+			# for determining if a volume was a duplicated to
+			# volume or not.
+			q = "select dst " \
+			    "from migration_history mh, volume v_s, volume v_d " \
+			    "where mh.dst_vol_id = v_d.id " \
+			    "  and v_d.label = '%s' " \
+			    "  and v_s.id = mh.src_vol_id " \
+			    "  and v_s.system_inhibit_1 in ('duplicated','duplicating');" \
+			    % (vol,)
+			query_res = db.query(q).getresult()
+			query_len = len(query_res)
+			
+		if query_len == 0:
+			message = "%s is not a %s volume" % \
+				  (vol, migrate.MIGRATION_NAME.lower())
+			migrate.error_log(MY_TASK, message)
+			return 1
+		else:
+			#If we get here, then the file is still needing to
+			# be duplicated (or --force was used on a supposidly
+			# completed duplication destination volume).
+			pass
 
 	q = "select bfid, pnfs_id, pnfs_path, src_bfid, location_cookie, deleted  \
 		from file, volume, migration \
@@ -305,19 +327,34 @@ def final_scan_volume(vol, intf):
 			continue
 
 		######################################################
-		#Get the original
-		original_file_info = fcc.bfid_info(src_bfid)
-		if not e_errors.is_ok(original_file_info):
-			migrate.error_log(MY_TASK, 'No file info for original bfid (%s) of duplicate %s.' % (src_bfid, dst_bfid))
-			local_error = local_error + 1
-			continue
 
-		# make sure the original volume is the same
+		#Confirm that the destination volume matches the volume that
+		# pnfs is pointing to.  This is true for swapped duplicate
+		# files.
 		pf = pnfs.File(likely_path)
-		if pf.volume != original_file_info['external_label']:
-			migrate.error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf.volume, vol))
-			local_error = local_error + 1
-			continue
+		if pf.volume != vol:
+			#Get the original and make sure the original volume
+			# is the same.  This is true for non-swapped duplicate
+			# files.
+			original_file_info = fcc.bfid_info(src_bfid)
+			if not e_errors.is_ok(original_file_info):
+				message = "No file info for original bfid " \
+					  "(%s) of duplicate %s." % \
+					  (src_bfid, dst_bfid)
+				migrate.error_log(MY_TASK, message)
+				local_error = local_error + 1
+				continue
+
+			#If the original volume and the volume we are scaning
+			# does not match the volume in pnfs layer 4, report
+			# the error.
+			if pf.volume != original_file_info['external_label']:
+				message = "wrong volume %s (expecting %s or %s)" % \
+					  (pf.volume, vol,
+					   original_file_info['external_label'])
+				migrate.error_log(MY_TASK, message)
+				local_error = local_error + 1
+				continue
 		#######################################################
 		
 		## Scan the file by reading it with encp.
@@ -337,7 +374,7 @@ def final_scan_volume(vol, intf):
 
 	# restore file family only if there is no error
 	if not local_error and migrate.is_migrated_by_dst_vol(vol, intf, db):
-		rtn_code = migrate.set_volume_migrated(
+		rtn_code = migrate.set_dst_volume_migrated(
 			MY_TASK, vol, sg, ff, wp, vcc, db)
 		if rtn_code:
 			#Error occured.
@@ -348,32 +385,6 @@ def final_scan_volume(vol, intf):
 				  "skipping volume metadata update sinnce not all files have been scanned")
 				
 	return local_error
-
-#The sg, ff and wp arguments are passed for compatibility with
-# migrate.set_volume_migrated().
-def set_volume_duplicated(MY_TASK, vol, sg, ff, wp, vcc, db):
-	__pychecker__ = "unusednames=sg,ff,wp"
-	
-	# set comment
-	from_list = migrate.migrated_from(vol, db)
-	vol_list = ""
-	for i in from_list:
-		# set last access time to now
-		vcc.touch(i)
-		vol_list = vol_list + ' ' + i
-	if vol_list:
-		res = vcc.set_comment(vol, migrate.MFROM+vol_list)
-		if res['status'][0] == e_errors.OK:
-			migrate.ok_log(MY_TASK,
-				       'set comment of %s to "%s%s"'
-				       % (vol, migrate.MFROM, vol_list))
-		else:
-			migrate.error_log(MY_TASK,
-				       'failed to set comment of %s to "%s%s"'
-					  % (vol, migrate.MFROM, vol_list))
-			return 1
-
-	return 0
 
 # This is to change the behavior of migrate.log_swapped()
 # log_swapped_and_closed(bfid1, bfid2, db)
@@ -417,13 +428,8 @@ migrate.swap_metadata = duplicate_metadata
 migrate.final_scan_volume = final_scan_volume
 migrate.restore = restore
 migrate.restore_volume = restore_volume
-migrate.set_volume_migrated = set_volume_duplicated
 migrate.setup_cloning = setup_cloning
 
-# init() -- initialization
-
-#def init():
-#	migrate.init()
 
 """
 def usage():
