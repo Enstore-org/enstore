@@ -468,7 +468,7 @@ def run_in_process(function, arg_list, my_task = "RUN_IN_PROCESS",
 			apply(function, arg_list)
 			res = errors
 			if debug:
-				print "NNN Completed %s." % (str(function),)
+				print "Completed %s." % (str(function),)
 		except (KeyboardInterrupt, SystemExit):
 			res = 1
 		except:
@@ -1045,7 +1045,7 @@ def get_migration_type(src_vol, dst_vol, db):
 		#For tapes that are not yet migrated/duplicated, the dst_vol
 		# will be None here.
 		return
-	
+
 	migration_result = None
 	duplication_result = None
 	cloning_result = None
@@ -1066,10 +1066,11 @@ def get_migration_type(src_vol, dst_vol, db):
 		      "       (v1.system_inhibit_1 in ('duplicating', " \
 		      "                                'duplicated') " \
                       "        or (select count(alt_bfid) " \
-		      "            from file,file_copies_map " \
-                      "            where v1.id = file.volume " \
-                      "              and (file.bfid = file_copies_map.bfid or " \
-		      "                   file.bfid = file_copies_map.alt_bfid) " \
+		      "            from file f1,file f2,file_copies_map " \
+                      "            where f1.volume = v1.id " \
+		      "              and f1.bfid = file_copies_map.bfid" \
+		      "              and f2.volume = v2.id " \
+		      "              and f2.bfid = file_copies_map.alt_bfid " \
 		      "            limit 1) " \
 	              "           > 0)); " \
 		      % (src_vol, dst_vol)
@@ -1513,20 +1514,19 @@ def show_status(volume_list, db, intf):
 	exit_status = 0
 	
 	for v in volume_list:
-		#migration type (MIGRATION, DUPLICATION or CLONING)
-		mig_type = None
-
 		q1a = "select f1.bfid, f1.deleted as src_del, " \
 		      "       case when b1.bfid is not NULL then 'B' " \
 		      "            else ' ' " \
 		      "       end as src_bad, " \
 		      "       case when (select fcm.bfid " \
 		      "                  from file_copies_map fcm " \
-		      "                  where f1.bfid = fcm.bfid) is not NULL" \
+		      "                  where f1.bfid = fcm.bfid " \
+		      "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
 		      "            then 'P'" \
 		      "            when (select fcm.bfid" \
 		      "                  from file_copies_map fcm" \
-		      "                  where f1.bfid = fcm.alt_bfid) is not NULL" \
+		      "                  where f1.bfid = fcm.alt_bfid " \
+		      "                    and f2.bfid = fcm.bfid) is not NULL" \
 		      "            then 'C'" \
 		      "            else NULL" \
 		      "       end as src_dup, " \
@@ -1536,11 +1536,13 @@ def show_status(volume_list, db, intf):
 		      "       end as dst_bad, " \
 		      "       case when (select fcm.bfid " \
 		      "                  from file_copies_map fcm " \
-		      "                  where f2.bfid = fcm.bfid) is not NULL" \
+		      "                  where f1.bfid = fcm.alt_bfid " \
+		      "                    and f2.bfid = fcm.bfid) is not NULL" \
 		      "            then 'P'" \
 		      "            when (select fcm.bfid" \
 		      "                  from file_copies_map fcm" \
-		      "                  where f2.bfid = fcm.alt_bfid) is not NULL" \
+		      "                  where f1.bfid = fcm.bfid " \
+		      "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
 		      "            then 'C'" \
 		      "            else NULL" \
 		      "       end as dst_dup, " \
@@ -1560,11 +1562,13 @@ def show_status(volume_list, db, intf):
 		      "       end as src_bad, " \
 		      "       case when (select fcm.bfid " \
 		      "                  from file_copies_map fcm " \
-		      "                  where f1.bfid = fcm.bfid) is not NULL" \
+		      "                  where f1.bfid = fcm.bfid " \
+		      "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
 		      "            then 'P'" \
 		      "            when (select fcm.bfid" \
 		      "                  from file_copies_map fcm" \
-		      "                  where f1.bfid = fcm.alt_bfid) is not NULL" \
+		      "                  where f1.bfid = fcm.alt_bfid " \
+		      "                    and f2.bfid = fcm.bfid) is not NULL" \
 		      "            then 'C'" \
 		      "            else NULL" \
 		      "       end as src_dup, " \
@@ -1574,11 +1578,13 @@ def show_status(volume_list, db, intf):
 		      "       end as dst_bad, " \
 		      "       case when (select fcm.bfid " \
 		      "                  from file_copies_map fcm " \
-		      "                  where f2.bfid = fcm.bfid) is not NULL" \
+		      "                  where f1.bfid = fcm.alt_bfid " \
+		      "                    and f2.bfid = fcm.bfid) is not NULL" \
 		      "            then 'P'" \
-		      "            when (select fcm.bfid" \
-		      "                  from file_copies_map fcm" \
-		      "                  where f2.bfid = fcm.alt_bfid) is not NULL" \
+		      "            when (select fcm.bfid " \
+		      "                  from file_copies_map fcm " \
+		      "                  where f1.bfid = fcm.bfid " \
+		      "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
 		      "            then 'C'" \
 		      "            else NULL" \
 		      "       end as dst_dup, " \
@@ -1622,6 +1628,9 @@ def show_status(volume_list, db, intf):
 				show_list.append(res1a)
 
 		for rows in show_list:
+			#migration type (MIGRATION, DUPLICATION or CLONING)
+			mig_type = None
+
 			#Output the header.
 			print "%19s %1s%1s%1s %19s %1s%1s%1s %6s %6s %6s %6s" % \
 			      ("src_bfid", "S", "D", "B",
