@@ -4166,6 +4166,15 @@ if __name__ == '__main__':
 
 	intf_of_migrate = MigrateInterface(sys.argv, 0) # zero means admin
 
-	do_work(intf_of_migrate)
+	try:
+		do_work(intf_of_migrate)
+	except (OSError, IOError), msg:
+		if msg.errno == errno.EPIPE:
+			#User piped the output to another process, but
+			# didn't read all the data from the migrate process.
+			pass  
+		else:
+			raise sys.exc_info()[0], sys.exc_info()[1], \
+			      sys.exc_info()[2]
 
 	
