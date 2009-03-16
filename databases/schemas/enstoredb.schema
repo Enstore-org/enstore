@@ -1192,6 +1192,18 @@ CREATE INDEX volume_wrapper_idx ON volume USING btree (wrapper);
 
 CREATE INDEX volume_write_protected_idx ON volume USING btree (write_protected);
 
+--
+-- Name: volume_write_protected_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX volume_write_protected_idx ON volume USING btree (write_protected);
+
+--
+-- Name: declared_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX declared_idx ON volume USING btree (declared);
+
 
 --
 -- Name: set_update; Type: TRIGGER; Schema: public; Owner: enstore
