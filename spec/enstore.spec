@@ -64,9 +64,10 @@ fi
 %build
 . /tmp/enstore-setup
 echo "BUILD"
-cd $RPM_BUILD_ROOT/%{prefix}/modules
+#cd $RPM_BUILD_ROOT/%{prefix}/modules
+cd $RPM_BUILD_ROOT/%{prefix}
 make clean
-make
+make all
 #cp -r /%{prefix}/external_distr/setups.sh %{build_root}/usr/local/etc/setups.sh
 
 %install

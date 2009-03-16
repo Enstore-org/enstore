@@ -43,9 +43,10 @@ echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 %build
 . /tmp/enstore-setup
 echo "BUILD"
-cd $RPM_BUILD_ROOT/%{prefix}/modules
+#cd $RPM_BUILD_ROOT/%{prefix}/modules
+cd $RPM_BUILD_ROOT/%{prefix}
 make clean
-make
+make all
 
 %install
 if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
