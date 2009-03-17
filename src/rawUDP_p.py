@@ -19,23 +19,26 @@ import checksum
 import Trace
 import time
 
+
+DEBUG = False
 MAX_PACKET_SIZE = 16384
 
 def get_id(request):
-    rarr = request.split("'")
+    rarr = request.split(",")
+    id=(rarr[0].strip(),rarr[1].strip()) 
     try:
-        return rarr[1]
+        return id
     except:
         return None
 
 def _print(f, msg):
-    f.write("%s\n"%(msg,))
-    f.flush()
+    if DEBUG:
+        f.write("%s %s\n"%(time.time(),msg))
+        f.flush()
     
 class RawUDP:
     
     def __init__(self, receive_timeout=60.):
-        #print "I am rawUDP_p", os.getpid()
         self.max_packet_size = MAX_PACKET_SIZE
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self.manager = multiprocessing.Manager()
@@ -101,6 +104,7 @@ class RawUDP:
         
 
     def receiver(self):
+        print "STARTING RECEIVER", os.getpid()
         #thread = threading.Thread(group=None, target='_receiver', args=(), kwargs={})
         proc = multiprocessing.Process(target=_receiver, args = (self,))
         try:
@@ -110,7 +114,7 @@ class RawUDP:
             exc, detail, tb = sys.exc_info()
             print detail
         
-def put(lock, event, buffer, queue_size, message, requests):
+def put(lock, event, buffer, queue_size, message, requests, f):
     #print "REQUESTS", requests
     req = message[2]
     client_addr = (message[0], message[1])
@@ -158,6 +162,7 @@ def put(lock, event, buffer, queue_size, message, requests):
         return
 
     request_id = get_id(request)
+    #_print (f, "REQUEST %s"% (request,)) 
     lock.acquire()
     t0 = time.time()
     request_id = get_id(request)
@@ -176,13 +181,18 @@ def put(lock, event, buffer, queue_size, message, requests):
         buffer.append((message[0], message[1], request))
         queue_size.value = queue_size.value + 1
         event.set()
-        #print "PUT", time.time(), request_id, time.time() - t0
+        _print (f, "PUT %s %s %s"% (time.time(), request_id, time.time() - t0))
     lock.release()
 
         
 
 def _receiver(self):
+    print "I am rawUDP_p", os.getpid()
+    self.f = open("/tmp/p_%s"%(os.getpid(),), "w")
     #print "RECEIVER PROCESS", os.getpid()
+    
+    #_print(self.f, "RECEVER %s STARTS on %s"%(os.getpid(), self.server_socket.getsockname(),))
+    print"RECEVER %s STARTS on %s"%(os.getpid(), self.server_socket.getsockname(),)
     rcv_timeout = self.rcv_timeout
     while 1:
 
@@ -202,8 +212,8 @@ def _receiver(self):
 
                     if req:
                         message = (client_addr[0], client_addr[1], req)
-                        #print "MESSAGE", message
-                        put(self._lock, self.arrived, self.buffer, self.queue_size_p, message, self.requests)
+                        #print "MESSAGE", time.time(), message
+                        put(self._lock, self.arrived, self.buffer, self.queue_size_p, message, self.requests, self.f)
         else:
             # time out
             # set event to allow get to proceed
