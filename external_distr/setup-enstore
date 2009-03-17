@@ -40,7 +40,7 @@ fi
 PYTHONINC=`ls -d $PYTHON_DIR/include/python*`; export PYTHONINC
 PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*`;export PYTHONLIB
 PATH=$PYTHON_DIR/bin:$PATH
-PYTHONPATH=$ENSTORE_DIR/src:$ENSTORE_DIR/modules:$ENSTORE_DIR/HTMLgen:$ENSTORE_DIR/modules/PyGreSQL; export PYTHONPATH
+PYTHONPATH=$ENSTORE_DIR/src:$ENSTORE_DIR/modules:$ENSTORE_DIR/HTMLgen:$ENSTORE_DIR/PyGreSQL; export PYTHONPATH
 PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
 
 # if using ssh for enstore node communications for discribution, upgade, and maintenance 
