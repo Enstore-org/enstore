@@ -1114,7 +1114,7 @@ def get_migration_type(src_vol, dst_vol, db):
 
 	#print "migration_result:", migration_result
 	#print "duplication_result:", duplication_result
-	#print "clonging_result:", cloning_result
+	#print "cloning_result:", cloning_result
 	if (migration_result or cloning_result) and duplication_result:
 		return "The metadata is inconsistent between migration " \
 		       "and duplication."
@@ -1896,7 +1896,6 @@ def copy_file(bfid, encp, intf, db):
 		log(MY_TASK, `file_record`)
 
 	# check if it has been copied and swapped
-	print "bfid:", bfid
 	is_it_copied = is_copied(bfid, db)
 	dst_bfid = is_it_copied  #side effect
 	is_it_swapped = is_swapped(bfid, db)
@@ -3686,28 +3685,41 @@ def restore(bfids, intf):
 			nonactive_bfid = dst_bfid
 
 		#Find the current location of the file.
-		try:
-			src = find_pnfs_file.find_pnfsid_path(
-				f['pnfsid'], active_bfid,
-				path_type = find_pnfs_file.FS)
-		except (KeyboardInterrupt, SystemExit):
-			raise (sys.exc_info()[0], sys.exc_info()[1],
-			       sys.exc_info()[2])
-		except OSError, msg:
-			src = find_pnfs_file.find_pnfsid_path(
-				f['pnfsid'], nonactive_bfid,
-				path_type = find_pnfs_file.FS)
-		except:
-			exc_type, exc_value, exc_tb = sys.exc_info()
-			Trace.handle_error(exc_type, exc_value, exc_tb)
-			del exc_tb #avoid resource leaks
-			error_log(MY_TASK, str(exc_type),
-				  str(exc_value),
-				  "%s %s %s %s is not a valid pnfs file" \
-				  % (f['external_label'], f['bfid'],
-				     f['location_cookie'],
-				     f['pnfsid']))
-			sys.exit(1)
+		pairs_to_search = [(f['pnfsid'], active_bfid),
+				   (f['pnfsid'], nonactive_bfid)]
+		for search_pnfsid, search_bfid in pairs_to_search:
+			try:
+				src = find_pnfs_file.find_pnfsid_path(
+					search_pnfsid, search_bfid,
+					path_type = find_pnfs_file.FS)
+			except (KeyboardInterrupt, SystemExit):
+				raise (sys.exc_info()[0], sys.exc_info()[1],
+				       sys.exc_info()[2])
+			except OSError, msg:
+				continue
+				#src = find_pnfs_file.find_pnfsid_path(
+				#	f['pnfsid'], nonactive_bfid,
+				#	path_type = find_pnfs_file.FS)
+			except:
+				exc_type, exc_value, exc_tb = sys.exc_info()
+				Trace.handle_error(exc_type, exc_value, exc_tb)
+				del exc_tb #avoid resource leaks
+				error_log(MY_TASK, str(exc_type),
+					  str(exc_value),
+					  "%s %s %s %s is not a valid pnfs file" \
+					  % (f['external_label'], f['bfid'],
+					     f['location_cookie'],
+					     f['pnfsid']))
+				sys.exit(1)
+
+			break
+		else:
+			#Neither file matched.
+			message = "Neither %s nor %s correlate to %s." \
+				  % (active_bfid, nonactive_bfid, f['pnfsid'])
+			error_log(MY_TASK, message)
+			#continue
+			src = f['pnfs_name0']
 
 		#This would be used if get_path() was used, since it only
 		# matches for pnfsid.  find_pnfs_file.find_pnfsid_path()
@@ -3775,23 +3787,29 @@ def restore(bfids, intf):
 			#Now set the root ID's back.
 			file_utils.end_euid_egid(reset_ids_back = True)
 
-		#For trusted pnfs systems, there isn't a problem,
-		# but for untrusted we need to set the effective
-		# IDs to the owner of the file.
-		file_utils.match_euid_egid(src)
-		
-		# set layer 1 and layer 4 to point to the original file
-		try:
-			p.update()
-		except (IOError, OSError), msg:
-			error_log(MY_TASK,
-			     "failed to restore layers 1 and 4 for %s %s" \
-				  % (bfid, src))
-			continue
-		
-		#Now set the root ID's back.
-		file_utils.end_euid_egid(reset_ids_back = True)
+		#For some failures, the swap never truly happens.  If this
+		# is the case skip the pnfs layer update.
+		if not is_migration_path(src):
+			#For trusted pnfs systems, there isn't a problem,
+			# but for untrusted we need to set the effective
+			# IDs to the owner of the file.
+			try:
+				file_utils.match_euid_egid(src)
+			except (OSError, IOError), msg:
+				error_log(MY_TASK, str(msg))
+				continue
 
+			# set layer 1 and layer 4 to point to the original file
+			try:
+				p.update()
+			except (IOError, OSError), msg:
+				error_log(MY_TASK,
+				     "failed to restore layers 1 and 4 for %s %s" \
+					  % (bfid, src))
+				continue
+
+			#Now set the root ID's back.
+			file_utils.end_euid_egid(reset_ids_back = True)
 
 		# mark the migration copy of the file deleted
 		rtn_code = mark_deleted(MY_TASK, dst_bfid, fcc, db)
