@@ -2,6 +2,7 @@
 
 import pg
 import sys
+import errno
 
 import configuration_client
 import option
@@ -10,6 +11,7 @@ import file_clerk_client
 import volume_clerk_client
 import pnfs
 import find_pnfs_file
+import Trace
 
 class DuplicationManager:
 	def __init__(self, csc = None):
@@ -137,31 +139,52 @@ class DuplicationManager:
 	def swap_original_and_copy(self, bfid):
 		# get file information
 		f = self.fcc.bfid_info(bfid)
-		if f['status'][0] != e_errors.OK:
-			return "no such file %s"%(bfid)
+		if not e_errors.is_ok(f['status']):
+			return "no such file %s" % (bfid,)
 		# get the copy information
-		q = "select bfid, alt_bfid from file_copies_map where bfid = '%s';"%(bfid)
+		q = "select bfid, alt_bfid from file_copies_map where bfid = '%s';" % (bfid,)
 		res = self.db.query(q).getresult()
 		if not res:
-			return "%s does not have a copy"%(bfid)
+			return "%s does not have a copy" % (bfid,)
 		copy = res[0][1]
 
 		f2 = self.fcc.bfid_info(copy)
-		if f2['status'][0] != e_errors.OK:
-			return "no such file %s"%(copy)
+		if not e_errors.is_ok(f2['status']):
+			return "no such file %s" % (copy,)
 
-		# get pnfs entry
-		try:
-			# get the real path			
-			#pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
-			pnfs_path = find_pnfs_file.find_pnfsid_path(
-				f['pnfsid'], f['bfid'], file_record = f)
-		except (KeyboardInterrupt, SystemExit):
-			raise (sys.exc_info()[0],
-			       sys.exc_info()[1],
-			       sys.exc_info()[2])
-		except:
-			return "not a valid pnfs file: %s"%(f['pnfsid'])
+		# get pnfs entry - pnfsids should be equal - check both files
+		pairs_to_search = [(f['pnfsid'], f['bfid']),
+				   (f['pnfsid'], f2['bfid'])]
+		for search_pnfsid, search_bfid in pairs_to_search:
+			try:
+				# get the real path			
+				pnfs_path = find_pnfs_file.find_pnfsid_path(
+					f['pnfsid'], f['bfid'], file_record = f)
+			except (KeyboardInterrupt, SystemExit):
+				raise (sys.exc_info()[0],
+				       sys.exc_info()[1],
+				       sys.exc_info()[2])
+			except (OSError, IOError), msg:
+				if msg.errno == errno.EEXIST and \
+				   msg.args[1].find("replaced with") > -1:
+					pnfs_path = msg.filename
+					break
+				else:
+					continue
+			except:
+				exc_type, exc_value, exc_tb = sys.exc_info()
+				Trace.handle_error(exc_type, exc_value, exc_tb)
+				del exc_tb #avoid resource leaks
+				return "%s %s %s %s is not a valid pnfs file" \
+				       ": (%s, %s)" \
+				       % (f['external_label'], f['bfid'],
+					  f['location_cookie'],
+					  f['pnfsid'], str(exc_type),
+					  str(exc_value))
+
+			break #Sucess in finding one of the files.
+		else:
+			return "not a valid pnfs file: %s" % (f['pnfsid'],)
 
 		if type(pnfs_path) == type([]):
 			pnfs_path = pnfs_path[0]
@@ -176,18 +199,20 @@ class DuplicationManager:
 			self.db.query(q)
 			q = "update file_copies_map set alt_bfid = '%s' where alt_bfid = '%s';"%(bfid, copy)
 			self.db.query(q)
+
+			# set pnfs entry
+			if pf.bfid != copy:
+				pf.bfid = copy
+				pf.volume = f2['external_label']
+				pf.location_cookie = f2['location_cookie']
+				pf.drive = f2['drive']
+				pf.update()
 		except:
 			self.db.query('rollback transaction;')
-			return "failed to swap %s and %s"%(bfid, copy)
+			return "failed to swap %s and %s: %s" % \
+			       (bfid, copy, str(sys.exc_info()[1]))
 		self.db.query('commit transaction;')
 
-		# set pnfs entry
-		if pf.bfid != copy:
-			pf.bfid = copy
-			pf.volume = f2['external_label']
-			pf.location_cookie = f2['location_cookie']
-			pf.drive = f2['drive']
-			pf.update()
 		return
 
 	# is_primary(bfid) check if bfid is a primary
