@@ -13,17 +13,28 @@ import cleanUDP
 import udp_common
 import Trace
 import checksum 
+import time
+
+MAX_PACKET_SIZE = 16384
+
+def get_id(request):
+    rarr = request.split(",")
+    id=(rarr[0].strip(),rarr[1].strip()) 
+    try:
+        return id
+    except:
+        return None
 
 class RawUDP:
     
     def __init__(self, receive_timeout=60.):
-        self.max_packet_size = 16384
+        self.max_packet_size = MAX_PACKET_SIZE
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self._lock = threading.Lock()
         self.arrived = threading.Event()
         self.queue_size = 0L
         self.buffer = []
-        self.requests = {}
+        self.requests = {} # this is to avoid multiple requests with the same id
         
     def init_port(self, port):
         self.socket_type = socket.SOCK_DGRAM
@@ -39,13 +50,6 @@ class RawUDP:
     def init_socket(self, socket):
         self.server_socket = socket
 
-    def get_id(self, request):
-        rarr = request.split("'")
-        try:
-            return rarr[1]
-        except:
-            return None
-        
 
     def put(self, message):
         req = message[2]
@@ -92,7 +96,7 @@ class RawUDP:
         if not request:
             return
 
-        request_id = self.get_id(request)
+        request_id = get_id(request)
 
         self._lock.acquire()
         do_put = True
@@ -106,10 +110,13 @@ class RawUDP:
                 self.requests[request_id] = (message[0], message[1], request)
                 
         if do_put:
+            t0 = time.time()
             self.queue_size = self.queue_size + 1
             self.buffer.append((message[0], message[1], request))
+            self.arrived.set()
+            #print "PUT", time.time() - t0
         self._lock.release()
-        self.arrived.set()
+
         
     # get message from FIFO buffer
     # return values:
@@ -123,11 +130,12 @@ class RawUDP:
             self.arrived.wait()
             self.arrived.clear()
         if self.queue_size > 0:
+            t0 = time.time()
             self._lock.acquire()
             #self.arrived.clear()
             try:
                 ret = self.buffer.pop(0)
-                request_id = self.get_id(ret[2])
+                request_id = get_id(ret[2])
                 self.queue_size = self.queue_size - 1
             
                 if self.requests.has_key(request_id):
@@ -137,9 +145,11 @@ class RawUDP:
                 print "IndexError", detail
             except:
                 pass
-             
-            self._lock.release()
+
             rc = ret[0], ret[1], ret[2]
+            self._lock.release()
+            #print "GET", time.time()-t0
+
         return rc
         
     
