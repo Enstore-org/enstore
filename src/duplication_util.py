@@ -5,24 +5,26 @@ import sys
 import errno
 
 import configuration_client
-import option
 import e_errors
 import file_clerk_client
 import volume_clerk_client
 import pnfs
 import find_pnfs_file
 import Trace
+import enstore_functions2
 
 class DuplicationManager:
 	def __init__(self, csc = None):
 		self.good = True
-		intf = option.Interface()
 
 		# get configuration client
 		if csc:
 			self.csc = csc
 		else:
-			self.csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+			csc_addr = (enstore_functions2.default_host(),
+				    enstore_functions2.default_port())
+			self.csc = configuration_client.ConfigurationClient(
+				csc_addr)
 
 		self.fcc = file_clerk_client.FileClient(self.csc)
 		self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
