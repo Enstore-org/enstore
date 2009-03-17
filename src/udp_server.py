@@ -34,9 +34,8 @@ import Trace
 import e_errors
 import host_config
 # for python 2.6 and latter use
-# rawUDP_p -- process based rawUDP for better use of multiprocessor environment
+# rawUDP_p -- process based rawUDP for better use of multiprocessor ensvoronment
 # and to avoid GIL
-
 if sys.version_info >= (2, 6, 0):
     try:
         import rawUDP_p as rawUDP
@@ -49,10 +48,7 @@ else:
         can_use_raw = True
     except ImportError:
         can_use_raw = False
-'''
-import rawUDP
-can_use_raw = True
-'''
+        
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -148,9 +144,7 @@ class UDPServer:
         # to use receiver implemented in c
         # to increase the performance
         self.raw_requests = None;
-        self.check_request = True # check request in r_eval
         if self.use_raw:
-            self.check_request = False # dont check request in r_eval, it is checked in rawUDP receiver
             self.raw_requests = rawUDP.RawUDP(receive_timeout=self.rcv_timeout)
             self.raw_requests.init_socket(self.server_socket)
             # start raw udp receiver
@@ -255,19 +249,9 @@ class UDPServer:
                 req, client_addr = self.server_socket.recvfrom(
                     self.max_packet_size, self.rcv_timeout)
                 #print "REQ", req
+
                 try:
-                    request, inCRC = udp_common.r_eval(req, check=self.check_request)
-                except ValueError, detail:
-                    # must be an event relay message
-                    # it has a different format
-                    try:
-                        request = udp_common.r_eval(req, check=self.check_request)
-                        raise NameError, request # dispatching_worker will take care of this
-                    except:
-                        exc, msg = sys.exc_info()[:2]
-                        # reraise exception
-                        raise exc, msg
-                        
+                    request, inCRC = udp_common.r_eval(req)
                 except (SyntaxError, TypeError):
                     #If TypeError occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
@@ -312,10 +296,40 @@ class UDPServer:
        rc = self.raw_requests.get()
        if rc:
            client_addr = (rc[0], rc[1])
-           request = rc[2]
-           self.queue_size = self.raw_requests.queue_size
-           #Trace.trace(5, "REQ %s %s %s"%(self.server_address, request,self.queue_size)) 
-           Trace.trace(5, "REQ %s %s"%(client_addr, self.queue_size)) 
+           req = rc[2]
+           self.queue_size = rc[3]
+           Trace.trace(5, "REQ %s %s %s"%(self.server_address, req,self.queue_size)) 
+           try:
+               request, inCRC = udp_common.r_eval(req)
+           except (SyntaxError, TypeError):
+               #If TypeError occurs, keep retrying.  Most likely it is
+               # an "expected string without null bytes".
+               #If SyntaxError occurs, also keep trying, most likely
+               # it is from and empty UDP datagram.
+               exc, msg = sys.exc_info()[:2]
+               try:
+                   message = "%s: %s: From client %s:%s" % \
+                             (exc, msg, client_addr, request[:100])
+               except IndexError:
+                   message = "%s: %s: From client %s: %s" % \
+                             (exc, msg, client_addr, request)
+               Trace.log(10, message)
+
+               #Set these to something.
+               request, inCRC = (None, None)
+
+           if request == None:
+               return (request, client_addr)
+           # calculate CRC
+           crc = checksum.adler32(0L, request, len(request))
+           if (crc != inCRC) :
+               Trace.log(e_errors.INFO,
+                         "BAD CRC request: %s " % (request,))
+               Trace.log(e_errors.INFO,
+                         "CRC: %s calculated CRC: %s" %
+                         (repr(inCRC), repr(crc)))
+               
+               request=None
        else:
            if self.queue_size != 0:
                print "Nonsense rc=%s size=%s"%(rc, self.queue_size)
@@ -350,20 +364,7 @@ class UDPServer:
         ### the media_changer and udp_server.
        
         try:
-            idn, number, ticket = udp_common.r_eval(request, check=self.check_request)
-        except (NameError, ValueError), detail:
-            # must be an event relay message
-            # it has a different format
-            try:
-                rq = udp_common.r_eval(request, check=self.check_request)
-                self.erc.error_msg = str(rq)
-                self.handle_er_msg(None)
-                return None
-                #raise NameError, rq # dispatching_worker will take care of this
-            except:
-                exc, msg = sys.exc_info()[:2]
-                # reraise exception
-                raise exc, msg
+            idn, number, ticket = udp_common.r_eval(request)
         except (SyntaxError, TypeError):
             #If TypeError occurs, keep retrying.  Most likely it is
             # an "expected string without null bytes".
@@ -523,96 +524,19 @@ class UDPServer:
         #    self.client_number,
         #    reply))
         self.reply_to_caller(ticket)
-        
 
-
-        
-    
 if __name__ == "__main__":
-
-    def monitor(udp_srv):
-        import subprocess
-        import os
-        print "udp_server monitor starting"
-        rqs1=0.
-        t1=time.time()
-        first = True
-        f=open("udp_server_test_%s"%(os.getpid(),), "w")
-        while 1:
-            cmd = 'netstat -npl | grep %s'%(udp_srv.server_address[1],)
-            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-            if pipeObj:
-                result = pipeObj.communicate()[0]
-            l=result 
-            l.strip()
-
-            if l.find('udp') != -1:
-                a=l.split(' ')
-                c = 0
-                for i in a:
-                    if i == '':
-                        c = c + 1
-                for i in range(c):
-                    a.remove('')
-                r_queue = a[1]
-
-            cmd = 'netstat -s | grep "packet receive errors"'
-            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-            if pipeObj:
-                result = pipeObj.communicate()[0]
-
-            l=result
-            l.strip(' ')
-            if l.find('errors') != -1:
-                r_err = long(l.split(' ')[4])
-            t=time.time()
-            if first:
-                first = False
-                error_rate = 0
-                t1 = t
-                r_err0 = r_err 
-            else:
-                error_rate = (r_err-r_err0)/(t-t1)
-                t1 = t
-                r_err0 = r_err 
-
-
-            t=time.time()
-            #print rqs
-            #print rqs-rqs1
-            #print t
-            #print t1
-            msg= '%s %s'%(time.ctime(time.time()), udp_srv.queue_size)
-            msg = '%s %s'%(msg, r_queue)
-            msg = '%s %s %s'%(msg, r_err, error_rate)
-            f.write("%s\n"%(msg,))
-            f.flush()
-            time.sleep(10)
 
     #This test program can be run in conjuction with the udp_client.py
     # test program.  This test program will process any message send to
     # the correct port (including other tests than udp_client.py).
     
-    if len(sys.argv) > 1:
-        monitor_server = True
-    else:
-       monitor_server = False
     udpsrv = UDPServer(('', 7700), receive_timeout = 60.0, use_raw=1)
     #udpsrv = UDPServer(('', 7700), receive_timeout = 60.0)
-
-    if monitor_server:
-        thread = threading.Thread(group=None, target=monitor,
-                              args=(udpsrv,), kwargs={})
-        thread.start()
-        
-        
     while 1:
-        try:
-            ticket = udpsrv.do_request()
-        except KeyboardInterrupt:
-            sys.exit(0)
+        ticket = udpsrv.do_request()
         if ticket:
-            #print "Message %s"%(ticket,)
+            print "Message %s"%(ticket,)
             udpsrv.reply_to_caller(ticket)
             #break
     del(udpsrv)

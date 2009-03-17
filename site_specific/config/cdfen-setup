@@ -36,7 +36,7 @@ unset CVS_RSH 2>//dev/null;
 PYTHONINC=`ls -d $PYTHON_DIR/include/python*`; export PYTHONINC
 PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*`;export PYTHONLIB
 PATH=$PYTHON_DIR/bin:$PATH
-PYTHONPATH=$ENSTORE_DIR/src:$ENSTORE_DIR/modules:$ENSTORE_DIR/HTMLgen:$ENSTORE_DIR/modules/PyGreSQL; export PYTHONPATH
+PYTHONPATH=$ENSTORE_DIR/src:$ENSTORE_DIR/modules:$ENSTORE_DIR/HTMLgen; export PYTHONPATH
 PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
 
 
@@ -61,8 +61,6 @@ if [ ! -r $ENSTORE_DIR/bin/volume_assert ];    then ln -s $ENSTORE_DIR/src/volum
 if [ ! -r $ENSTORE_DIR/bin/ensync ];           then ln -s $ENSTORE_DIR/src/ensync.py   $ENSTORE_DIR/bin/ensync; fi
 if [ ! -r $ENSTORE_DIR/bin/get ];              then ln -s $ENSTORE_DIR/src/get.py   $ENSTORE_DIR/bin/get; fi
 if [ ! -r $ENSTORE_DIR/sbin/quickquota ];      then ln -s $ENSTORE_DIR/src/quickquota.py   $ENSTORE_DIR/sbin/quickquota; fi
-if [ ! -r $ENSTORE_DIR/bin/migrate ];          then ln -s $ENSTORE_DIR/src/gmigrate.py   $ENSTORE_DIR/bin/migrate; fi
-if [ ! -r $ENSTORE_DIR/bin/duplicate ];        then ln -s $ENSTORE_DIR/src/duplicate.py   $ENSTORE_DIR/bin/duplicate; fi
 ###
 ### Enstore server links.
 ###
