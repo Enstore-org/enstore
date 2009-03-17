@@ -131,9 +131,11 @@ class UDPClient:
         tsd.txn_counter = 0L
         tsd.send_queue = {}  #For deferred messages.
         tsd.reply_queue = {}
-        tsd.ident = self._mkident(host, port, pid, tid)
-        tsd.send_done = {}
         tsd.tid = tid
+        tsd.pid = pid
+        tsd.ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid, tsd.txn_counter)
+        tsd.send_done = {}
+
         if thread_support:
             #There is no good way to store which thread this tsd was
             # create for.  It used to do the following.
@@ -212,8 +214,8 @@ class UDPClient:
             tsd = self.reinit()
         return tsd
     
-    def _mkident(self, host, port, pid, tid):
-        return "%s-%d-%f-%d-%d" % (host, port, time.time(), pid, abs(tid) )
+    def _mkident(self, host, port, pid, tid, txn_counter):
+        return "%s-%d-%f-%d-%d-%d" % (host, port, time.time(), pid, abs(tid), txn_counter)
         
     def __del__(self):
         # tell server we're done - this allows it to delete our unique id in
@@ -280,7 +282,9 @@ class UDPClient:
 
         # CRC text
         #body = `(tsd.ident, tsd.txn_counter, text)`
-        body = udp_common.r_repr((tsd.ident, tsd.txn_counter, text))
+        ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid, tsd.txn_counter)
+        body = udp_common.r_repr((ident, tsd.txn_counter, text))
+        #body = udp_common.r_repr((tsd.ident, tsd.txn_counter, text))
         crc = checksum.adler32(0L, body, len(body))
 
         # stringify message and check if it is too long
@@ -327,6 +331,7 @@ class UDPClient:
         exp = 0
         timeout=rcv_timeout
         while max_send==0 or n_sent<max_send:
+            #print "SENDING", time.time(), msg, dst
             tsd.socket.sendto( msg, dst )
             timeout = timeout*(pow(2,exp))
             if exp < MAX_EXPONENT:
@@ -337,8 +342,11 @@ class UDPClient:
             while rcvd_txn_id != txn_id: #look for reply while rejecting "stale" responses
                 reply, server_addr, timeout_1 = \
                        wait_rsp( tsd.socket, dst, timeout)
+                
                 if not reply: # receive timed out
+                    #print "TIMEOUT", time.time(), msg
                     break #resend
+                #print "GOT REPLY",reply 
                 try:
                     rcvd_txn_id, out, t = udp_common.r_eval(reply)
                     if type(out) == type({}) and out.has_key('status') \
