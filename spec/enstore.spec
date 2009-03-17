@@ -35,6 +35,8 @@ echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
 echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
+#echo ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix} >> /tmp/enstore-setup
+#echo export ENSTORE_DIR >> /tmp/enstore-setup
 rpm -q swig-enstore > /dev/null
 if [ $? -eq 0 ]; then
 	swigdir=`rpm -ql swig-enstore | head -1`
@@ -64,10 +66,14 @@ fi
 %build
 . /tmp/enstore-setup
 echo "BUILD"
-#cd $RPM_BUILD_ROOT/%{prefix}/modules
-cd $RPM_BUILD_ROOT/%{prefix}
+cd $RPM_BUILD_ROOT/%{prefix}/modules
+#cd $RPM_BUILD_ROOT/%{prefix}
 make clean
 make all
+cd ../PyGreSQL
+make clean
+make all
+
 #cp -r /%{prefix}/external_distr/setups.sh %{build_root}/usr/local/etc/setups.sh
 
 %install

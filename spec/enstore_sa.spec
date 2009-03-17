@@ -43,8 +43,11 @@ echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 %build
 . /tmp/enstore-setup
 echo "BUILD"
-#cd $RPM_BUILD_ROOT/%{prefix}/modules
-cd $RPM_BUILD_ROOT/%{prefix}
+cd $RPM_BUILD_ROOT/%{prefix}/modules
+#cd $RPM_BUILD_ROOT/%{prefix}
+make clean
+make all
+cd ../PyGreSQL
 make clean
 make all
 
