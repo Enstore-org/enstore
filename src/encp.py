@@ -278,24 +278,16 @@ class EncpError(Exception):
         else:
             self.errno = None
 
-        #In python 2.6 python throws warnings for using Exception.message.
-        if sys.version_info[:2] == (2, 6):
-            self.message_attribute_name = "e_message"
-        else: # python 2.5 and less
-            self.message_attribute_name = "message"
-
         #Handel the message if not given.
         if e_message == None:
             if e_errno: #By now this is None or a valid errno.
-                setattr(self, self.message_attribute_name,
-                        os.strerror(self.errno))
+                self.message = os.strerror(self.errno)
             else:
-                setattr(self, self.message_attribute_name, None)
+                self.message = None
         elif type(e_message) == types.StringType:
-            #There was a string message passed.
-            setattr(self, self.message_attribute_name, e_message)
+            self.message = e_message #There was a string message passed.
         else:
-            setattr(self, self.message_attribute_name, None)
+            self.message = None
 
         #Type should be from e_errors.py.  If not specified, use errno code.
         if not e_type:
@@ -306,9 +298,7 @@ class EncpError(Exception):
         else:
             self.type = e_type
 
-        self.args = (self.errno,
-                     getattr(self, self.message_attribute_name),
-                     self.type)
+        self.args = (self.errno, self.message, self.type)
 
         #If no usefull information was passed in (overriding the default
         # empty dictionary) then set the ticket to being {}.
@@ -319,6 +309,9 @@ class EncpError(Exception):
 
         #Generate the string that stringifying this obeject will give.
         self._string()
+
+        #Is this duplicated from calling Exception.__init__(self)?
+        #self.args = [self.errno, self.message, self.type]
 
         #Do this after calling self._string().  Otherwise, self.strerror
         # will not be defined yet.
@@ -339,13 +332,12 @@ class EncpError(Exception):
         if self.errno in errno.errorcode.keys():
             errno_name = errno.errorcode[self.errno]
             errno_description = os.strerror(self.errno)
-            self.strerror = "%s: [ ERRNO %s ] %s: %s" \
-                            % (errno_name,
-                               self.errno,
-                               errno_description,
-                               getattr(self, self.message_attribute_name))
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
+                                                        self.errno,
+                                                        errno_description,
+                                                        self.message)
         else:
-            self.strerror = getattr(self, self.message_attribute_name)
+            self.strerror = self.message
 
         return self.strerror
 
@@ -5014,71 +5006,15 @@ def wait_for_message(listen_socket, lmc, work_list,
     else:
         udp_socket = None
         select_list = [listen_socket, lmc_socket]
-
-    #Wait for a message or socket connection.
-    if USE_NEW_EVENT_LOOP and transaction_id_list:
-        #If we are using the new event loop and we have pending answers for UDP
-        # replies that could arrive at any time, we need to execute this
-        # nasty loop to be able to resend messages that have not received a
-        # response.        
-        
-        loop_start_time = time.time()
-        exp = 0
-        base_timeout = 5 #seconds
-        while loop_start_time + e.resubmit_timeout > time.time():
-            #We need to do this geometric timeout ourselves.  udp_client can't
-            # because we need to wait for multiple things.
-            timeout = base_timeout * (pow(2, exp))
-            if exp < udp_client.MAX_EXPONENT:
-                exp = exp + 1
-            #Limit the timeout to what is left of the entire resubmit timeout.
-            upper_limit = max(0,
-                          loop_start_time + e.resubmit_timeout - time.time())
-            timeout = min(timeout, upper_limit)
-
-            #Listen for the control socket to connect or the library
-            # manager's repsonse to the request resubmission.
-            try:
-                r, unused, unused = select.select(select_list, [], [],
-                                                  timeout)
-            except (socket.error, select.error), msg:
-                response_ticket = {'status' : (e_errors.RESUBMITTING,
-                                               str(msg))}
-                return response_ticket, None, None
-
-            #If we got nothing back, keep looping.
-            if r == []:
-                if transaction_id_list:
-                    #Since we are still waiting for a response, resend
-                    # the original message.
-                    #A better mechanism will be needed if more than just
-                    # the lmc will do things like this.
-#                    print "RESENDING:", transaction_id_list
-                    lmc.u.repeat_deferred(transaction_id_list)
-
-                continue
-
-            break
-
-        else:
-            if transaction_id_list:
-                #We've timedout.
-                #A better mechanism will be needed if more than just
-                # the lmc will do things like this.
-#                print "DROPPING:", transaction_id_list
-                lmc.u.drop_deferred(transaction_id_list)
-
-    else:
-        #There are no UDP messages to worry about resending while waiting.
-        
-        #Listen for the control socket to connect or the library
-        # manager's repsonse to the request resubmission.
-        try:
-            r, unused, unused = select.select(select_list, [], [],
-                                              e.resubmit_timeout)
-        except (socket.error, select.error), msg:
-            response_ticket = {'status' : (e_errors.RESUBMITTING, str(msg))}
-            return response_ticket, None, None
+    
+    #Listen for the control socket to connect or the library
+    # manager's repsonse to the request resubmission.
+    try:
+        r, unused, unused = select.select(select_list, [], [],
+                                          e.resubmit_timeout)
+    except (socket.error, select.error), msg:
+        response_ticket = {'status' : (e_errors.RESUBMITTING, str(msg))}
+        return response_ticket, None, None
 
     
     #Get the packets specified one at a time.
@@ -5268,15 +5204,13 @@ def submit_one_request_recv(transaction_id, work_ticket, lmc, encp_intf):
                 if count <= max_count:
                     continue
 
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            raise (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2])
         except errno.errorcode[errno.ETIMEDOUT]:
             #Handle this string exception until udp_client is fixed.
             transaction_id = lmc.u.send_deferred(work_ticket, lmc.server_address)
             count = count + 1
             if count <= 360:
                 continue
-
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     message = "Time to receive first request: %s sec." % \
               (time.time() - submit_one_request_recv_start_time,)
@@ -8298,15 +8232,8 @@ def submit_write_request(work_ticket, encp_intf):
     # send the work ticket to the library manager
     while encp_intf.max_retry == None or \
           work_ticket.get('resend', {}).get('retry', 0) <= encp_intf.max_retry:
-        try:
-            ticket, lmc = submit_one_request(work_ticket, encp_intf)
-        except (socket.error, select.error, udp_client.UDPError), msg:
-            lmc = None
-            if msg.errno == errno.ETIMEDOUT:
-                ticket = {'status' : (e_errors.TIMEDOUT,
-                            work_ticket.get('vc', {}).get('library', None))}
-            else:
-                ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+        
+        ticket, lmc = submit_one_request(work_ticket, encp_intf)
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
                                      encp_intf)
@@ -8856,11 +8783,69 @@ def write_to_hsm(e, tinfo):
         if not e_errors.is_ok(work_ticket):
             return work_ticket
 
-        #Wait for all possible messages or connections.
+        """
+        #Get the socket we a waiting on for the LM response.  Do this
+        # after submit_write_request() so we can use the cached client.
+        try:
+            lmc = get_lmc(request_list[0]['vc']['library'])
+            lmc_socket = lmc.u.get_tsd().socket
+        except (socket.error, AttributeError), msg:
+            ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+            return None, None, ticket
+        """
+
         request_ticket, control_socket, data_path_socket = \
                                 wait_for_message(listen_socket, lmc,
                                                  [work_ticket],
                                                  transaction_id_list, e)
+
+        """
+        #Listen for the control socket to connect or the library
+        # manager's repsonse to the request resubmission.
+        try:
+            r, unused, unused = select.select([listen_socket,
+                                               lmc_socket], [], [],
+                                              e.resubmit_timeout)
+        except (socket.error, select.error), msg:
+            ticket['status'] = (e_errors.RESUBMITTING, str(msg))
+
+        #Get the packets specified one at a time.
+        if lmc_socket in r:
+            request_ticket = submit_all_request_recv(
+                transaction_id_list, request_list, lmc, e)
+
+            local_filename = None
+            external_label = None
+
+            #Remember which socket is tried.
+            received_lm = True
+        elif listen_socket in r:
+            #Wait for the mover to establish the control socket.  See
+            # if the id matches one of the tickets we submitted.
+            # Establish data socket connection with the mover.
+            control_socket, data_path_socket, request_ticket = \
+                            mover_handshake(
+                listen_socket, request_list, e)
+
+            local_filename = request_ticket.get('wrapper',
+                                                {}).get('fullname',
+                                                        None)
+            external_label = request_ticket.get('fc',
+                                                {}).get('external_label',
+                                                        None)
+
+            #Remember which socket is tried.
+            received_lm = False
+            
+        else:  #We got nothing.
+            request_ticket = {'status' : (e_errors.RESUBMITTING, None)}
+            
+            local_filename = None
+            external_label = None
+            
+            #Remember which socket is tried.
+            received_lm = False
+        """
 
         #If we connected with the mover, add these two checks.
         # Skip them if we only heard from the LM.
@@ -10169,15 +10154,7 @@ def submit_read_requests(requests, encp_intf):
         # the transfer.
         
         while req.get('completion_status', None) == None:
-            try:
-                ticket, lmc = submit_one_request(req, encp_intf)
-            except (socket.error, select.error, udp_client.UDPError), msg:
-                lmc = None
-                if msg.errno == errno.ETIMEDOUT:
-                    ticket = {'status' : (e_errors.TIMEDOUT,
-                                      req.get('vc', {}).get('library', None))}
-                else:
-                    ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+            ticket, lmc = submit_one_request(req, encp_intf)
 
             result_dict = handle_retries(requests, req, ticket, encp_intf)
             
@@ -10691,19 +10668,68 @@ def read_from_hsm(e, tinfo):
         # of request_list is not changed by this function.
         submitted, reply_ticket, lmc = submit_read_requests(request_list, e)
 
+        """
+        #Get the socket we a waiting on for the LM response.  Do this
+        # after submit_read_requests() so we can use the cached client.
+        try:
+            lmc = get_lmc(request_list[0]['vc']['library'])
+            #lmc_socket = lmc.u.get_tsd().socket
+        except (socket.error, AttributeError), msg:
+            ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+            return None, None, ticket
+        """
+
         #If USE_NEW_EVENT_LOOP is true, we need this cleared.
         transaction_id_list = []
 
         #If at least one submission succeeded, follow through with it.
         if submitted > 0:
             while requests_outstanding(request_list):
-
-                #Wait for all possible messages or connections.
+                
                 request_ticket, control_socket, data_path_socket = \
                                 wait_for_message(listen_socket, lmc,
                                                  request_list,
                                                  transaction_id_list, e)
                 
+                """
+                #Listen for the control socket to connect or the library
+                # manager's repsonse to the request resubmission.
+                try:
+                    r, unused, unused = select.select([listen_socket,
+                                                       lmc_socket], [], [],
+                                                      e.resubmit_timeout)
+                except (socket.error, select.error), msg:
+                    ticket['status'] = (e_errors.RESUBMITTING, str(msg))
+
+                #Get the packets specified one at a time.
+                if lmc_socket in r:
+                    request_ticket = submit_all_request_recv(
+                        transaction_id_list, request_list, lmc, e)
+
+                    control_socket = None 
+                    data_path_socket = None
+
+                    local_filename = None
+                    external_label = None
+                elif listen_socket in r:
+                    #Wait for the mover to establish the control socket.  See
+                    # if the id matches one of the tickets we submitted.
+                    # Establish data socket connection with the mover.
+                    control_socket, data_path_socket, request_ticket = \
+                                    mover_handshake(
+                        listen_socket, request_list, e)
+
+                    local_filename = request_ticket.get(
+                        'wrapper', {}).get('fullname', None)
+                    external_label = request_ticket.get(
+                        'fc', {}).get('external_label', None)
+                else:  #We got nothing.
+                    request_ticket = {'status' : (e_errors.RESUBMITTING, None)}
+
+                    local_filename = None
+                    external_label = None
+                """
+
                 #If we connected with the mover, add these two checks.
                 # Skip them if we only heard from the LM.
                 if control_socket:
