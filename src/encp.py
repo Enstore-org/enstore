@@ -3171,7 +3171,7 @@ def null_mover_check(work_ticket, e):
     #There is a chance that the configuration has a mover in the wrong
     # library, but we'll assume that the configuration is corrent for the
     # first one in the list.
-    if mover_list[0]['driver'] == "NullDriver":
+    if len(mover_list) > 0 and mover_list[0]['driver'] == "NullDriver":
         if work_ticket['wrapper']['pnfsFilename'].find("/NULL") == -1:
             raise EncpError(None, "NULL not in PNFS path", e_errors.USERERROR)
         
@@ -5346,7 +5346,7 @@ def submit_one_request(ticket, encp_intf):
     #return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf), lmc
     rticket, transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
     if not e_errors.is_ok(rticket):
-        return ticket
+        return ticket, lmc
     return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf), lmc
 
 #This is modifies the ticket between retries and resubmits.
