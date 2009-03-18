@@ -6,6 +6,7 @@
 #
 ###############################################################################
 import sys
+import os
 import threading
 import fcntl
 import socket
@@ -15,8 +16,16 @@ import Trace
 import checksum 
 import time
 
+DEBUG = False
 MAX_PACKET_SIZE = 16384
 
+def get_id(request):
+    rarr = request.split("'")
+    try:
+        return rarr[1]
+    except:
+        return None
+'''
 def get_id(request):
     rarr = request.split(",")
     id=(rarr[0].strip(),rarr[1].strip()) 
@@ -24,6 +33,13 @@ def get_id(request):
         return id
     except:
         return None
+'''
+
+def _print(f, msg):
+    if DEBUG:
+        f.write("%s %s\n"%(time.time(),msg))
+        f.flush()
+
 
 class RawUDP:
     
@@ -35,6 +51,7 @@ class RawUDP:
         self.queue_size = 0L
         self.buffer = []
         self.requests = {} # this is to avoid multiple requests with the same id
+        
         
     def init_port(self, port):
         self.socket_type = socket.SOCK_DGRAM
@@ -100,12 +117,21 @@ class RawUDP:
 
         self._lock.acquire()
         do_put = True
+        print "PUT ENTERED", self.thread_name
         if request_id:
             # put the latest request into the queue
             if self.requests.has_key(request_id) and self.requests[request_id] !="":
                 print "DUPLICATE",request 
-                #self.buffer.remove(self.requests[request_id])
+
+                # "retry" message put it closer to the beginnig of the queue
+                index = self.buffer.index(requests[request_id])
+                new_index = index / (((self.queue_size + 1)/10)+1) + index % 10
+                if new_index < index:
+                    print "FOUND at %s reinserting at %s queue size %s"%(index, new_index, self.queue_size)
+                    self.buffer.remove(requests[request_id])
+                    self.buffer.insert(new_index, (message[0], message[1], request))
                 do_put = False # duplicate request, do not put into the queue
+
             else:
                 self.requests[request_id] = (message[0], message[1], request)
                 
@@ -115,6 +141,7 @@ class RawUDP:
             self.buffer.append((message[0], message[1], request))
             self.arrived.set()
             #print "PUT", time.time() - t0
+        print "PUT EXITING", self.thread_name
         self._lock.release()
 
         
@@ -159,10 +186,10 @@ class RawUDP:
             
             #r = [self.server_socket]
 
-            #print "wait"
+            print "wait"
             r, w, x, remaining_time = cleanUDP.Select([self.server_socket], [], [], rcv_timeout)
             #print "got it", r, w, self.server_socket
-            #print "got it", self.queue_size
+            print "got it", self.queue_size
 
             if r:
                 for fd in r:
@@ -189,6 +216,13 @@ class RawUDP:
         except:
             exc, detail, tb = sys.exc_info()
             print detail
+
+    def set_out_file(self):
+        thread = threading.currentThread()
+        self.thread_name = thread.getName()
+        os.getenv("ENSTORE_OUT", "")
+        self.f1 = open(os.path.join(os.environ.get("ENSTORE_OUT", ""),"gp_%s_%s"%(os.getpid(),self.thread_name)), "w")
+
         
 if __name__ == "__main__":
     rs = RawUDP(7700)

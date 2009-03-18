@@ -11,7 +11,7 @@ import ctypes
 import fcntl
 import socket
 import os
-
+import threading
 import cleanUDP
 import udp_common
 import os
@@ -21,8 +21,17 @@ import time
 
 
 DEBUG = False
+#DEBUG = True
 MAX_PACKET_SIZE = 16384
+MAX_QUEUE_SIZE = 200000
 
+def get_id(request):
+    rarr = request.split("'")
+    try:
+        return rarr[1]
+    except:
+        return None
+'''
 def get_id(request):
     rarr = request.split(",")
     id=(rarr[0].strip(),rarr[1].strip()) 
@@ -30,6 +39,7 @@ def get_id(request):
         return id
     except:
         return None
+'''
 
 def _print(f, msg):
     if DEBUG:
@@ -50,14 +60,12 @@ class RawUDP:
         self.queue_size_p = self.manager.Value("l",0L)
         self.queue_size = 0L
 
-        #print "QUEUE SIZE", self.buffer.qsize()
         
     def init_port(self, port):
         self.socket_type = socket.SOCK_DGRAM
         self.address_family = socket.AF_INET
         ip, port, self.server_socket = udp_common.get_callback('', port)
         self.server_address = (ip, port)
-        #print "addr %s sock %s"%(self.server_address, self.server_socket)
         
         # set this socket to be closed in case of an exec
         if self.server_socket != None:
@@ -77,21 +85,15 @@ class RawUDP:
         rc = None
         if self.queue_size_p.value == 0:
             self.arrived.wait()
-            #print "ARRIVED"
             self.arrived.clear()
-            #print "QUEUE SIZE", self.queue_size_p.value
         if self.queue_size_p.value > 0:
-            #print "AAAA"
-            t0 = time.time()
             self._lock.acquire()
             try:
                 ret = self.buffer.pop(0)
                 request_id = get_id(ret[2])
                 self.queue_size_p.value = self.queue_size_p.value - 1
                 self.queue_size = self.queue_size_p.value
-                #print "REQ_ID", request_id
                 if self.requests.has_key(request_id):
-                    #print "DELETE ID",request_id 
                     del(self.requests[request_id])
             except IndexError, detail:
                 print "IndexError", detail
@@ -99,13 +101,12 @@ class RawUDP:
                 pass
             rc = ret[0], ret[1], ret[2]
             self._lock.release()
-            #print "GET", time.time(), request_id, time.time()-t0
+            _print(self.f1, "GET %s %s"%(self.queue_size_p.value, request_id,))
         return rc
         
 
     def receiver(self):
         print "STARTING RECEIVER", os.getpid()
-        #thread = threading.Thread(group=None, target='_receiver', args=(), kwargs={})
         proc = multiprocessing.Process(target=_receiver, args = (self,))
         try:
             proc.start()
@@ -113,13 +114,26 @@ class RawUDP:
         except:
             exc, detail, tb = sys.exc_info()
             print detail
+
+    def set_out_file(self):
+        if DEBUG:
+            thread = threading.currentThread()
+            thread_name = thread.getName()
+            os.getenv("ENSTORE_OUT", "")
+            self.f1 = open(os.path.join(os.environ.get("ENSTORE_OUT", ""),"gp_%s_%s"%(os.getpid(),thread_name)), "w")
+        else:
+            self.f1 = None
+
+
         
 def put(lock, event, buffer, queue_size, message, requests, f):
-    #print "REQUESTS", requests
+    _print (f, "QUEUE SIZE %s msg %s"%(queue_size.value,message))
+    if queue_size.value > MAX_QUEUE_SIZE:
+        # drop incoming message
+        return
     req = message[2]
     client_addr = (message[0], message[1])
     request=None
-    #print "MESSAGE", type(req), message
     try:
         request, inCRC = udp_common.r_eval(req, check=True)
         # calculate CRC
@@ -164,14 +178,25 @@ def put(lock, event, buffer, queue_size, message, requests, f):
     request_id = get_id(request)
     #_print (f, "REQUEST %s"% (request,)) 
     lock.acquire()
-    t0 = time.time()
     request_id = get_id(request)
     do_put = True
     if request_id:
         # put the latest request into the queue
         if requests.has_key(request_id) and requests[request_id] !="":
-            print "DUPLICATE",time.time(), request_id 
-            do_put = False # duplicate request, do not put into the queue
+            # most like this is a retry
+            _print (f, "DUPLICATE %s %s" % (time.time(), request_id))
+            try:
+                # "retry" message put it closer to the beginnig of the queue
+                index = buffer.index(requests[request_id])
+                new_index = index / (((queue_size.value + 1)/10)+1) + index % 10
+                if new_index < index:
+                    _print(f, "FOUND at %s reinserting at %s queue size %s"%(index, new_index, queue_size.value))
+                    buffer.remove(requests[request_id])
+                    buffer.insert(new_index, (message[0], message[1], request))
+                do_put = False # duplicate request, do not put into the queue
+            except ValueError, detail:
+                _print(f,"put: Exception:ValueError %s removing %s"%(detail,request_id))  
+
         else:
             requests[request_id] = (message[0], message[1], request)
     
@@ -188,10 +213,14 @@ def put(lock, event, buffer, queue_size, message, requests, f):
 
 def _receiver(self):
     print "I am rawUDP_p", os.getpid()
-    self.f = open("/tmp/p_%s"%(os.getpid(),), "w")
-    #print "RECEIVER PROCESS", os.getpid()
+    if DEBUG:
+        thread = threading.currentThread()
+        thread_name = thread.getName()
+        os.getenv("ENSTORE_OUT", "")
+        self.f = open(os.path.join(os.environ.get("ENSTORE_OUT", ""),"p_%s_%s"%(os.getpid(),thread_name)), "w")
+    else:
+        self.f = None
     
-    #_print(self.f, "RECEVER %s STARTS on %s"%(os.getpid(), self.server_socket.getsockname(),))
     print"RECEVER %s STARTS on %s"%(os.getpid(), self.server_socket.getsockname(),)
     rcv_timeout = self.rcv_timeout
     while 1:
