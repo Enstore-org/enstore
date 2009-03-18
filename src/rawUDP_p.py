@@ -3,21 +3,21 @@
 ###############################################################################
 #
 # $Id$
-# This module uses processes and requires python 2.6 and later
+# This module uses processes and requires python 2.6 and latter
 ###############################################################################
 import sys
 import multiprocessing
-import ctypes
 import fcntl
 import socket
 import os
 import threading
+import time
+
 import cleanUDP
 import udp_common
-import os
 import checksum
 import Trace
-import time
+
 
 
 DEBUG = False
