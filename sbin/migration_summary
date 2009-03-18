@@ -368,15 +368,16 @@ media_types=`psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
 select /* It should be as simple as just using the media_type. However,
           LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
           in the AML/2 when it was first put into use. */
-       /*media_type,*/
-       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+       /* For this issue we need the raw media_types... */
+       media_type
+       /*CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
             THEN 'LTO1'
             WHEN media_type = '3480' and capacity_bytes = '214748364800'
             THEN 'LTO2'
             WHEN media_type = '3480' and capacity_bytes < 100
             THEN NULL    --Cleaning tape; skip it.
             ELSE media_type
-       END as media_type
+       END as media_type*/
 from volume v2
 where (v2.system_inhibit_1 = 'migrated'
        or v2.system_inhibit_1 = 'duplicated')
