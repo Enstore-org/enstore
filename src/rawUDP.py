@@ -77,11 +77,8 @@ class RawUDP:
             # calculate CRC
             crc = checksum.adler32(0L, request, len(request))
             if (crc != inCRC) :
-                Trace.log(e_errors.INFO,
-                          "BAD CRC request: %s " % (request,))
-                Trace.log(e_errors.INFO,
-                          "CRC: %s calculated CRC: %s" %
-                          (repr(inCRC), repr(crc)))
+                print "BAD CRC request: %s " % (request,)
+                print "CRC: %s calculated CRC: %s" % (repr(inCRC), repr(crc))
             
                 request=None
         except ValueError, detail:
@@ -124,11 +121,11 @@ class RawUDP:
                 print "DUPLICATE",request 
 
                 # "retry" message put it closer to the beginnig of the queue
-                index = self.buffer.index(requests[request_id])
+                index = self.buffer.index(self.requests[request_id])
                 new_index = index / (((self.queue_size + 1)/10)+1) + index % 10
                 if new_index < index:
                     print "FOUND at %s reinserting at %s queue size %s"%(index, new_index, self.queue_size)
-                    self.buffer.remove(requests[request_id])
+                    self.buffer.remove(self.requests[request_id])
                     self.buffer.insert(new_index, (message[0], message[1], request))
                 do_put = False # duplicate request, do not put into the queue
 

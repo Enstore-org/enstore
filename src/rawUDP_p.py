@@ -3,7 +3,7 @@
 ###############################################################################
 #
 # $Id$
-# This module uses processes and requires python 2.6 and better
+# This module uses processes and requires python 2.6 and later
 ###############################################################################
 import sys
 import multiprocessing
@@ -139,11 +139,8 @@ def put(lock, event, buffer, queue_size, message, requests, f):
         # calculate CRC
         crc = checksum.adler32(0L, request, len(request))
         if (crc != inCRC) :
-            Trace.log(e_errors.INFO,
-                      "BAD CRC request: %s " % (request,))
-            Trace.log(e_errors.INFO,
-                      "CRC: %s calculated CRC: %s" %
-                      (repr(inCRC), repr(crc)))
+            print "BAD CRC request: %s " % (request,)
+            print "CRC: %s calculated CRC: %s" % (repr(inCRC), repr(crc))
             
             request=None
     except ValueError, detail:
