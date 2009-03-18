@@ -133,7 +133,7 @@ class UDPClient:
         tsd.reply_queue = {}
         tsd.tid = tid
         tsd.pid = pid
-        tsd.ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid, tsd.txn_counter)
+        tsd.ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid)
         tsd.send_done = {}
 
         if thread_support:
@@ -214,8 +214,8 @@ class UDPClient:
             tsd = self.reinit()
         return tsd
     
-    def _mkident(self, host, port, pid, tid, txn_counter):
-        return "%s-%d-%f-%d-%d-%d" % (host, port, time.time(), pid, abs(tid), txn_counter)
+    def _mkident(self, host, port, pid, tid):
+        return "%s-%d-%f-%d-%d" % (host, port, time.time(), pid, abs(tid))
         
     def __del__(self):
         # tell server we're done - this allows it to delete our unique id in
@@ -282,9 +282,9 @@ class UDPClient:
 
         # CRC text
         #body = `(tsd.ident, tsd.txn_counter, text)`
-        ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid, tsd.txn_counter)
-        body = udp_common.r_repr((ident, tsd.txn_counter, text))
-        #body = udp_common.r_repr((tsd.ident, tsd.txn_counter, text))
+        #ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid)
+        #body = udp_common.r_repr((ident, tsd.txn_counter, text))
+        body = udp_common.r_repr((tsd.ident, tsd.txn_counter, text))
         crc = checksum.adler32(0L, body, len(body))
 
         # stringify message and check if it is too long
