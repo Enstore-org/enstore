@@ -155,9 +155,15 @@ class UDPServer:
             self.raw_requests.init_socket(self.server_socket)
             # start raw udp receiver
             # it creates internal receiver thread and runs it in a loop
+            '''
             if self.raw_requests:
                 #rawUDP.receiver(self.raw_requests)
                 self.raw_requests.receiver()
+            '''
+        thread = threading.currentThread()
+        thread_name = thread.getName()
+
+        print "UDP_SERVER starting in thread",thread_name 
 
     # cleanup if we are done with this unique id
     def _done_cleanup(self):
@@ -523,9 +529,10 @@ class UDPServer:
         #    self.client_number,
         #    reply))
         self.reply_to_caller(ticket)
-        
 
-
+    def set_out_file(self):
+        if self.use_raw:
+            self.raw_requests.set_out_file()
         
     
 if __name__ == "__main__":
@@ -599,6 +606,12 @@ if __name__ == "__main__":
        monitor_server = False
     udpsrv = UDPServer(('', 7700), receive_timeout = 60.0, use_raw=1)
     #udpsrv = UDPServer(('', 7700), receive_timeout = 60.0)
+
+    if udpsrv.use_raw:
+        udpsrv.set_out_file()
+        # start receiver thread or process
+        udpsrv.raw_requests.receiver()
+    
 
     if monitor_server:
         thread = threading.Thread(group=None, target=monitor,

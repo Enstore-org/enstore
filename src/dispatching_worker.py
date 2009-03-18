@@ -162,6 +162,10 @@ class DispatchingWorker(udp_server.UDPServer):
         """Handle one request at a time until doomsday, unless we are in a child process"""
         ###XXX should have a global exception handler here
         count = 0
+        if self.use_raw:
+            self.set_out_file()
+            # start receiver thread or process
+            self.raw_requests.receiver()
         while not self.is_child:
             self.do_one_request()
             self.collect_children()
@@ -300,7 +304,7 @@ class DispatchingWorker(udp_server.UDPServer):
                     self.handle_er_msg(None)
                     return None, None
                 if rc and rc != ('',()):
-                    Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
+                    #Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
                     return rc
                 else:
                     # process timeout
