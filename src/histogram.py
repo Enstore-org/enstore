@@ -1347,12 +1347,12 @@ class Histogram2D(Histogram1D):
 
 if __name__ == "__main__":
     ntuple = Ntuple("gauss2D","gauss2D")
-    if (1) :
-        h1=Histogram1D("try","try",100,0,10)
-        h2=Histogram1D("try1","try1",100,0,10)
-        h3=Histogram1D("try2","try2",1000,0,100)
-        hh=Histogram2D("2d","2d",100,0,5,100,0,5)
-        while ( h1.n_entries() < 10000 ) :
+    h1=Histogram1D("try","try",100,0,10)
+    h2=Histogram1D("try1","try1",100,0,10)
+    h3=Histogram1D("try2","try2",1000,0,100)
+    hh=Histogram2D("2d","2d",100,0,5,100,0,5)
+
+    while ( h1.n_entries() < 10000 ) :
             x=random.gauss(2,0.5)
             y=random.gauss(2,0.5)
             ntuple.get_data_file().write("%f %f\n"%(x,y));
@@ -1362,54 +1362,29 @@ if __name__ == "__main__":
             h2.fill(x)
             x=random.gauss(77,0.5)
             h3.fill(x)
-    else:
-        now    = int(time.time())
-        then   = now - 30*3600*24
-        middle = now - 15*3600*24
-        width  = 4*3600*24
-        print float(middle),float(width)
-        h1=Histogram1D("try","try",100,then,now)
-        while ( h1.n_entries() < 10000 ) :
-            x=random.gauss(float(middle),float(width))
-            h1.fill(x)
-        h1.set_time_axis(True)
-
     ntuple.get_data_file().close()
     ntuple.set_line_color(2)
     ntuple.set_line_width(5)
-#    ntuple.set_marker_type("lines")
-    
-#    ntuple.set_marker_type("points pt 1 ps 10 ") 
-#   ntuple.set_marker_type("points pt 5")
-
-
     ntuple.plot("1:2")
     hh.plot()
-#    sys.exit(0)
-#    sys.exit(0)
-#    hh.plot_ascii()
     h1.set_ylabel("Counts / %s"%(h1.get_bin_width(0)))
     h1.set_xlabel("x variable")
     h1.set_marker_text("blah")
     h1.set_marker_type("impulses")
-#    h1.set_logy(True)
     h1.set_opt_stat(True)
     h1.set_line_width(10)
     t = time.ctime(time.time()) 
     h1.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
     h1.add_text("set label \"Should %s, Done %s(%3.1f%%), Not Done %s.\" at graph .05,.90\n" % (100,100,0.7,100))
-    
-
     derivative = h1.derivative()
     derivative.plot()
-    os.system("display %s.jpg&"%(derivative.get_name()))
-
     integral = h1.integral("integral","integral",True);
     integral.plot();
-
     h1.plot()
-    os.system("display %s.jpg&"%(h1.get_name()))
-#    sys.exit(0)
+
+    #
+    # this is how we plot two histograms together 
+    # 
 
     h2.set_ylabel("Counts / %s"%(h2.get_bin_width(0)))
     h2.set_xlabel("x variable")
@@ -1422,23 +1397,45 @@ if __name__ == "__main__":
     t = time.ctime(time.time()) 
     h2.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
     h2.add_text("set label \"Should %s, Done %s(%3.1f%%), Not Done %s.\" at graph .05,.90\n" % (100,100,0.7,100))
-
-
     h2.plot2(h1,True)
-    os.system("display %s.jpg&"%(h2.get_name()))
 
+    #
+    # this is how we stack two histograms
+    #
     plotter = Plotter("plotter","test plotter")
-
-
     sum_p=h1+h3
     sum_p.plot()
-    os.system("display %s.jpg&"%(sum_p.get_name()))
-
     plotter.add(h1)
     plotter.add(h2)
     plotter.add(sum_p)
     plotter.plot()
-    os.system("display %s.jpg&"%(plotter.get_name()))
-    
+
+    #
+    # time axis example
+    #
+
+    now    = int(time.time())
+    then   = now - 30*3600*24
+    middle = now - 15*3600*24
+    width  = 4*3600*24
+    h11=Histogram1D("time","time",100,then,now)
+    ntuple1 = Ntuple("time_ntuple","time_ntuple")
+    ntuple1.set_marker_type("impulses")
+    ntuple1.set_time_axis_format("%m-%d");
+    ntuple1.set_ylabel("time")
+    ntuple1.set_xlabel("(hour:minute)") 
+    ntuple1.set_time_axis()
+
+    while ( h11.n_entries() < 10000 ) :
+        x=random.gauss(float(middle),float(width))
+        h11.fill(x)
+        y=random.gauss(2,0.5)
+        ntuple1.get_data_file().write("%s %f\n"%(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(x)),y))
+        
+    h11.set_time_axis(True)
+    h11.plot()
+    ntuple1.get_data_file().close();
+    ntuple1.plot("1:3")
+
     sys.exit(0)
 
