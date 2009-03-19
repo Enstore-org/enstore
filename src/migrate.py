@@ -3491,7 +3491,7 @@ def migrate_volume(vol, intf):
 	#If volume is migrated, report that it is done and stop.
 	if enstore_functions2.is_migrated_state(v['system_inhibit'][1]) \
 	       and not getattr(intf, "force", None):
-		log(MY_TASK, vol, " is already migrated")
+		log(MY_TASK, vol, "is already migrated")
 		return 0
 		
 
@@ -3515,6 +3515,11 @@ def migrate_volume(vol, intf):
 	    "%s " \
 	    "order by location_cookie;" % (vol, use_deleted_sql, use_skip_bad)
 	res = db.query(q).getresult()
+
+	#Don't do anything for empty volumes.
+	if len(res) == 0:
+		log(MY_TASK, vol, "volume is empty")
+		return 0
 
 	#Build the list of files to migrate.
 	bfids = []
