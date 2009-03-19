@@ -83,7 +83,7 @@ echo                     >> $temp_file 2>&1
 echo "Creating Migration Summary" `date`
 
 echo "In the following table:" >> $temp_file 2>&1
-echo "migration_closed + duplication_closed + remaining + blank_volumes = total" >> $temp_file 2>&1
+echo "migration_closed_not_shelved + migration_closed_shelved + duplication_closed_not_shelved + duplication_closed_shelved + remaining + blank_volumes = total" >> $temp_file 2>&1
 
 ## Note: This sql works as long as migrate.py/duplicate.py use the volume
 ## clerk set_system_migrated()/set_system_duplicated() function(s) to set
@@ -105,40 +105,77 @@ select /* It should be as simple as just using the media_type. However,
                            THEN label
                            ELSE NULL
                       END) AS migrated,
-       count(distinct CASE WHEN (select count(*)
-                                 from migration_history
-                                 where migration_history.src_vol_id = volume.id
-                                       and migration_history.closed_time is not NULL) > 0
-                                and system_inhibit_1 = 'migrated'
+       count(distinct CASE WHEN system_inhibit_1 = 'migrated'
+                                and (select count(*)
+                                     from migration_history
+                                     where migration_history.src_vol_id = volume.id
+                                       and migration_history.closed_time is NULL) = 0
+                                and volume.sum_wr_access > 0 --skip blank tapes
+                                and library not like '%shelf%'
                            THEN label
                            ELSE NULL
-                      END) AS migrated_closed,
+                      END) AS migrated_closed_not_shelved,
+       count(distinct CASE WHEN system_inhibit_1 = 'migrated'
+                                and (select count(*)
+                                     from migration_history
+                                     where migration_history.src_vol_id = volume.id
+                                       and migration_history.closed_time is NULL) = 0
+                                and volume.sum_wr_access > 0 --skip blank tapes
+                                and library like '%shelf%'
+                           THEN label
+                           ELSE NULL
+                      END) AS migrated_closed_shelved,
        count(distinct CASE WHEN system_inhibit_1 = 'duplicated'
                            THEN label
                            ELSE NULL
                       END) AS duplicated,
-       count(distinct CASE WHEN (select count(*)
-                                 from migration_history
-                                 where migration_history.src_vol_id = volume.id
-                                       and migration_history.closed_time is not NULL) > 0
-                                and system_inhibit_1 = 'duplicated'
+       count(distinct CASE WHEN system_inhibit_1 = 'duplicated'
+                                and (select count(*)
+                                     from migration_history
+                                     where migration_history.src_vol_id = volume.id
+                                       and migration_history.closed_time is NULL) = 0
+                                and volume.sum_wr_access > 0 --skip blank tapes
+                                and library not like '%shelf%'
                       THEN label
                       ELSE NULL
-                      END) AS duplicated_closed,
-       count(distinct CASE WHEN (select count(v2.id)
-                                 from migration_history
-                                 right join volume v2 on v2.id = migration_history.src_vol_id
-                                 where migration_history.closed_time is NULL
+                      END) AS duplicated_closed_not_shelved,
+       count(distinct CASE WHEN system_inhibit_1 = 'duplicated'
+                                and (select count(*)
+                                     from migration_history
+                                     where migration_history.src_vol_id = volume.id
+                                       and migration_history.closed_time is NULL) = 0
+                                and volume.sum_wr_access > 0 --skip blank tapes
+                                and library like '%shelf%'
+                      THEN label
+                      ELSE NULL
+                      END) AS duplicated_closed_shelved,
+       count(distinct CASE WHEN volume.sum_wr_access > 0 /*skip blanks*/
+                                and ((select count(v2.id)
+                                     from migration_history
+                                     right join volume v2 on v2.id = migration_history.src_vol_id
+                                     where migration_history.closed_time is NULL
                                        and v2.id = volume.id) > 0
-                                and volume.sum_wr_access > 0
+                                    or
+                                     system_inhibit_1 not in ('migrated',
+                                                              'duplicated',
+                                                              'cloned'))
+                                and library not like '%shelf%'
                            THEN label
                            ELSE NULL
                       END) AS remaining,
        count(distinct CASE WHEN volume.sum_wr_access = 0
+                            and library not like '%shelf%'
                            THEN label
                            ELSE NULL
                       END) as blank_volumes,
-       count(distinct label) as total,
+       count(distinct CASE WHEN library not like '%shelf%'
+                             or system_inhibit_1 in ('migrated',
+                                                     'migrating',
+                                                     'duplicated',
+                                                     'duplicating')
+                           THEN label
+                           ELSE NULL
+                      END) as total,
        round(count(distinct CASE WHEN (select count(*)
                                  from migration_history
                                  where migration_history.src_vol_id = volume.id
@@ -149,10 +186,9 @@ select /* It should be as simple as just using the media_type. However,
 from volume
 where (system_inhibit_0 != 'DELETED' 
        and label not like '%.deleted')
-      and (library not like '%shelf%')
       and media_type != 'null'
       and capacity_bytes > 500  --Skip cleaning tapes.
-group by media_type,capacity_bytes
+group by media_type, capacity_bytes
 order by media_type;
 " >> $temp_file 2>&1
 
