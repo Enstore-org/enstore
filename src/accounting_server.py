@@ -367,7 +367,6 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	# log_encp_xfer(....)
 	def log_encp_xfer(self, ticket):
 		st = time.time()
-		# Trace.log(e_errors.INFO, `ticket`)
 		try:
 			if not ticket.has_key('encp_version'):
 				ticket['encp_version'] = 'unknown'
@@ -382,6 +381,16 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 				v = vcc.inquire_vol(ticket['volume'])
 				sg, ticket['file_family'], ticket['wrapper'] = string.split(v['volume_family'], ".")
 
+			if not ticket.has_key('library'):
+				if len(ticket['volume'])>0:
+					v = vcc.inquire_vol(ticket['volume'])
+					if v.has_key('library'):
+						ticket['library'] = v['library']
+					else:
+						ticket['library'] = None
+				else:
+					ticket['library'] = None
+				
 			self.accDB.log_encp_xfer(
 				ticket['date'],
 				ticket['node'],
@@ -409,13 +418,15 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 				ticket['rw'],
 				ticket['encp_version'],
 				ticket['file_family'],
-				ticket['wrapper'])
+				ticket['wrapper'],
+				ticket['library'])
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_encp_xfer()', ticket, e, v))
 		dt = time.time() - st
 		if self.debug:
 			print time.ctime(st), 'encp_xfer\t', dt
+		
 
 	# log_encp_error(....)
 	def log_encp_error(self, ticket):
@@ -427,7 +438,19 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		else:
 			ticket['file_family'] = None
 			ticket['wrapper'] = None
-
+		if not ticket.has_key('library'):
+			if not ticket.has_key('volume'):
+				ticket['library']=None
+			else:
+				if len(ticket['volume'])>0:
+					v = vcc.inquire_vol(ticket['volume'])
+					if v.has_key('library'):
+						ticket['library'] = v['library']
+					else:
+						ticket['library'] = None
+				else:
+					ticket['library'] = None
+					
 		if not ticket.has_key('mover'):
 			ticket['mover'] = None
 		if not ticket.has_key('drive_id'):
@@ -438,6 +461,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			ticket['rw'] = None
 		if not ticket.has_key('volume'):
 			ticket['volume'] = None
+			
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_encp_error(
@@ -458,7 +482,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 				ticket['mover'],
 				ticket['drive_id'],
 				ticket['drive_sn'],
-				ticket['rw'])
+				ticket['rw'],
+				ticket['volume'],
+				ticket['library'])
 		except:
 			e, v = sys.exc_info()[:2]
 			Trace.log(e_errors.ERROR, err_msg('log_encp_error()', ticket, e, v))

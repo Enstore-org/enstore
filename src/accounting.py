@@ -138,7 +138,7 @@ class accDB:
 		overall_rate, transfer_rate, mover,
 		drive_id, drive_sn, elapsed, media_changer,
 		mover_interface, driver, storage_group, encp_ip,
-		encp_id, rw, encp_version=None, file_family=None, wrapper=None):
+		encp_id, rw, encp_version=None, file_family=None, wrapper=None,library=None):
 
 		if type(date) != type(""):
 			date = time2timestamp(date)
@@ -174,13 +174,15 @@ class accDB:
 			xfer['file_family'] = file_family
 		if wrapper:
 			xfer['wrapper'] = wrapper
+		if library:
+			xfer['library'] = library
 
 		self.insert('encp_xfer', xfer)
 
 	def log_encp_error(self, date, node, pid, username, src, dst,
 		size, storage_group, encp_id, version, e_type, error,
 		file_family = None, wrapper = None, mover = None,
-		drive_id = None, drive_sn = None, rw = None, volume = None):
+		drive_id = None, drive_sn = None, rw = None, volume = None, library=None):
 		if type(date) != type(""):
 			date = time2timestamp(date)
 
@@ -222,6 +224,8 @@ class accDB:
 			en_error['rw'] = rw
 		if volume:
 			en_error['volume'] = volume
+		if library:
+			en_error['library'] = library
 
 
 		self.insert('encp_error', en_error)
