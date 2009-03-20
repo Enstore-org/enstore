@@ -2511,8 +2511,8 @@ def write_new_file(job, encp, copy_queue, migrate_r_pipe, fcc, intf, db):
 			tmp_size = None			
 		if src_size != tmp_size:
 			error_log(MY_TASK,
-				  "size check mismatch (%s, %s)" % \
-				  (src_size, tmp_size))
+			       "size check mismatch %s(current %s, temp %s)" \
+				  % (src_bfid, src_size, tmp_size))
 			try:
 				log(MY_TASK,
 				    "removing %s" % (tmp_path,))
