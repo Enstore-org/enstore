@@ -2245,6 +2245,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                                    vc_ticket.get('external_label',
                                                  ticket.get('volume', "")))
     location_cookie = fc_ticket.get('location_cookie', "")
+    library = vc_ticket.get('library', "")
     storage_group = vc_ticket.get('storage_group', "")
     if not storage_group:
         storage_group = volume_family.extract_storage_group(
@@ -2430,7 +2431,8 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
                                storage_group, unique_id, encp_client_version(),
                                status, msg, hostname, time.time(),
                                file_family, wrapper, mover_name,
-                               product_id, device_sn, rw, external_label)
+                               product_id, device_sn, rw, external_label,
+                               library)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -7195,7 +7197,8 @@ def calculate_rate(done_ticket, tinfo):
             tinfo['%s_disk_rate'%(u_id,)] = MB_transfered / disk_time
         else:
             tinfo['%s_disk_rate'%(u_id,)] = 0.0
-            
+
+        library = done_ticket.get('vc', {}).get('library', "")
         sg = done_ticket.get('vc', {}).get('storage_group', "")
         ff = done_ticket.get('vc', {}).get('file_family', "")
         ffw = done_ticket.get('vc', {}).get('file_family_wraper', "")
@@ -7363,7 +7366,9 @@ def calculate_rate(done_ticket, tinfo):
                           rw,
                           encp_client_version(),
                           ff,
-                          ffw)
+                          ffw,
+                          library,
+                          )
 
     message = "Time to calculate and record rate: %s sec." % \
               (time.time() - calculate_rate_start_time,)

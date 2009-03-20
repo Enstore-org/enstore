@@ -141,7 +141,8 @@ class accClient(generic_client.GenericClient):
 		network_rate, drive_rate, disk_rate, overall_rate,
 		transfer_rate, mover, drive_id, drive_sn,
 		elapsed, media_changer, mover_interface, driver,
-		storage_group, encp_ip, encp_id, rw, encp_version='unknown', file_family=None, wrapper=None):
+		storage_group, encp_ip, encp_id, rw, encp_version='unknown',
+		file_family=None, wrapper=None, library=None):
 
 		if not self.server_address: return
 
@@ -176,14 +177,16 @@ class accClient(generic_client.GenericClient):
 			'rw'		: rw,
 			'encp_version'	: encp_version,
 			'file_family'	: file_family,
-			'wrapper'	: wrapper}
+			'wrapper'	: wrapper,
+			'library'       : library,
+			}
 
 		self.send2(ticket)
 
 	def log_encp_error(self, src, dst, size, storage_group, encp_id, version,
 		type, error, node=None, date=None, file_family=None,
 		wrapper=None, mover=None, drive_id=None, drive_sn=None,
-		rw=None, volume=None):
+		rw=None, volume=None, library=None):
 
 		if not self.server_address: return
 
@@ -213,7 +216,9 @@ class accClient(generic_client.GenericClient):
 			'drive_id'	: drive_id,
 			'drive_sn'	: drive_sn,
 			'rw'		: rw,
-			'volume'	: volume}
+			'volume'	: volume,
+			'library'       : library,
+			}
 		self.send2(ticket)
 
 	def log_start_event(self, name):
