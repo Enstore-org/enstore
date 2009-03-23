@@ -1233,6 +1233,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.media_type = self.config.get('media_type', '8MM') #XXX
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
+        if self.max_buffer > 4095*MB:
+           self.max_buffer = 4095*MB # python list can not be more than this number
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.log_mover_state = self.config.get('log_state', None)
         self.syslog_match = self.config.get("syslog_entry",None) # pattern to match in syslog for scsi error
@@ -5751,6 +5753,8 @@ class DiskMover(Mover):
         self.media_type = self.config.get('media_type', 'disk') #XXX
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
+        if self.max_buffer > 4095*MB:
+           self.max_buffer = 4095*MB # python list can not be more than this number
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.log_mover_state = self.config.get('log_state', None)
         self.restart_on_error = self.config.get("restart_on_error", None)
