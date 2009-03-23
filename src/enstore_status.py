@@ -88,58 +88,46 @@ class EncpLine:
         self.line = line
 
         # these fields are the same for a success message or a failure message
-        self.time = line[0]
-        self.node = line[1]
-        self.pid = line[2]
-        self.user = line[3]
+        self.time = line['date']
+        self.node = line['node']
+        self.pid = line['pid']
+        self.user = line['username']
+        self.outfile = line['dst']
+        self.bytes = line['size']
+        self.direction = line['rw']  # either 'r' or 'w'
+        self.volume = line['volume']
+        self.mover = line['mover']
+        self.drive_id = line['drive_id']
+        self.drive_sn = line['drive_sn']
+        self.encp_id = line['encp_id']
+        self.storage_group = line['storage_group']
+        self.wrapper =  line['wrapper']
+        self.file_family = line['file_family']
 
         # determine if this is an encp success message or an encp error message
-        if len(line) == 27:
+        self.infile = line['src']
+        if not line.has_key('error'):
             # this is a success encp
             self.success = 1
-            self.infile = line[4]
-            self.outfile = line[5]
-            self.bytes = line[6]
-            self.direction = line[7]  # either 'r' or 'w'
-            self.overall_rate = self.bytes_to_mbytes(line[8])
-            self.network_rate = self.bytes_to_mbytes(line[9])   # was data transfer rate
-            self.drive_rate = self.bytes_to_mbytes(line[10])
-            self.volume = line[11]
-            self.mover = line[12]
-            self.drive_id = line[13]
-            self.drive_sn = line[14]
-            self.elapsed = line[15]
-            self.mc = line[16]
-            self.interface = line[17]
-            self.driver = line[18]
-            self.storage_group = line[19]
-            self.encp_ip = line[20]
-            self.encp_id = line[21]
-            self.disk_rate = self.bytes_to_mbytes(line[22])
-            self.transfer_rate = self.bytes_to_mbytes(line[23])   # was user rate
-            self.encp_version = line[24]
-            self.file_family = line[25]
-            self.wrapper =  line[26]
+            self.overall_rate = self.bytes_to_mbytes(line['overall_rate'])
+            self.network_rate = self.bytes_to_mbytes(line['network_rate'])   # was data transfer rate
+            self.drive_rate = self.bytes_to_mbytes(line['drive_rate'])
+            self.elapsed = line['elapsed']
+            self.mc = line['media_changer']
+            self.interface = line['mover_interface']
+            self.driver = line['driver']
+            self.encp_ip = line['encp_ip']
+            self.disk_rate = self.bytes_to_mbytes(line['disk_rate'])
+            self.transfer_rate = self.bytes_to_mbytes(line['transfer_rate'])   # was user rate
+            self.encp_version = line['encp_version']
             self.type = None    # this is only valid for encp error lines
             self.error = None   # this is only valid for encp error lines
         else:
             # this is an error encp
             self.success = 0
-            self.encp_id = line[4]
-            self.encp_version = line[5]
-            self.type = line[6]
-            self.error = line[7]
-            self.infile = line[8]
-            self.outfile = line[9]
-            self.bytes = line[10]
-            self.storage_group = line[11]
-            self.wrapper =  line[12]
-            self.file_family = line[13]
-            self.mover = line[14]
-            self.drive_id = line[15]
-            self.drive_sn = line[16]
-            self.direction = line[17]  # either 'r' or 'w'
-            self.volume = line[18]
+            self.type = line['type']
+            self.error = line['error']
+            self.encp_version = line['version']
             self.overall_rate = None     # this is only valid for success lines
             self.network_rate = None     # this is only valid for success lines
             self.drive_rate = None       # this is only valid for success lines
