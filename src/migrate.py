@@ -3501,7 +3501,7 @@ def migrate_volume(vol, intf):
 	elif intf.force:
 		use_deleted_sql = "or (deleted = 'y' and migration.dst_bfid is not NULL)"
 	else:
-		use_deleted_sql = ""
+		use_deleted_sql = "or migration.dst_bfid is not NULL"
 	if intf.skip_bad:
 		use_skip_bad = "and bad_file.bfid is NULL"
 	else:
