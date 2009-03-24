@@ -3942,7 +3942,7 @@ def create_zero_length_pnfs_files(filenames, e = None):
     #now try to atomically create each file
     for f in filenames:
         if type(f) == types.DictType:
-            fname = f['wrapper']['pnfsFilename']
+            fname = f['outfile']
         else:
             fname = f
 
@@ -4194,16 +4194,20 @@ def get_uinfo(e = None):
     uinfo['gid'] = os.getegid()
 
     if uinfo['uid'] == 0 and uinfo['gid'] == 0 and \
-       e != None and e.put_cache:
+       e != None and (e.put_cache or e.migration_or_duplication):
         # For the case of dcache writes into enstore; we should use the
         # ownership of the zero length pnfs file (obtained from get_pinfo())
         # created by dCache.
+        #
+        # For migration purposes, we need to do the same.
         return {}
     
     if uinfo['uid'] == 0 and uinfo['gid'] == 0 \
-       and e != None and e.put_cache:
+       and e != None and (e.put_cache or e.migration_or_duplication):
         # For the case of dcache writes into enstore; we should use the
         # ownership of the zero length pnfs file created by dCache.
+        #
+        # For migration purposes, we need to do the same.
         return {}
     
     try:
@@ -5501,15 +5505,19 @@ def open_local_file(work_ticket, tinfo, e):
     #  This will always be an non-pnfs file.
     filename = work_ticket['wrapper']['fullname']
 
-    #set the effective uid and gid.
-    file_utils.match_euid_egid(work_ticket['infile'])
+    #If the file is a deleted file that is trying to be read using
+    # --override-deleted, skip trying to access the PNFS file.
+    if work_ticket['fc']['deleted'] == "no":
+        #set the effective uid and gid.
+        file_utils.match_euid_egid(work_ticket['infile'])
 
     #Try to open the local file for read/write.
     try:
         local_fd = os.open(filename, flags)
     except OSError, detail:
-        file_utils.end_euid_egid() #Release the lock.
-        
+        if work_ticket['fc']['deleted'] == 'no':
+            file_utils.end_euid_egid() #Release the lock.
+
         if getattr(detail, "errno", None) in \
                [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
             done_ticket = {'status':(e_errors.FILE_MODIFIED, str(detail))}
@@ -5521,7 +5529,8 @@ def open_local_file(work_ticket, tinfo, e):
     try:
         stats = os.fstat(local_fd)
     except OSError, detail:
-        file_utils.end_euid_egid() #Release the lock.
+        if work_ticket['fc']['deleted'] == 'no':
+            file_utils.end_euid_egid() #Release the lock.
         
         if getattr(detail, "errno", None) in \
                [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
@@ -5530,7 +5539,8 @@ def open_local_file(work_ticket, tinfo, e):
             done_ticket = {'status':(e_errors.OSERROR, str(detail))}
         return done_ticket
 
-    file_utils.end_euid_egid() #Release the lock.
+    if work_ticket['fc']['deleted'] == "no":
+        file_utils.end_euid_egid() #Release the lock.
 
     if filename in ["/dev/zero", "/dev/random", "/dev/urandom"]:
         #Handle these character devices a little differently.
@@ -8254,6 +8264,12 @@ def create_write_request(work_ticket, file_number,
 
                     break  #stop processing the outter loop.
 
+        #We need to stop writing /pnfs/fs/usr/Migration/ paths in the wrappers
+        # for every migrated to tape.  Correct the
+        # work_ticket['wrapper']['pnfsFilename'] value.
+        if e.migration_or_duplication and e.override_path:
+            wrapper['pnfsFilename'] = e.override_path
+
         #work_ticket = {}
         work_ticket['callback_addr'] = callback_addr
         work_ticket['client_crc'] = e.chk_crc
@@ -10490,9 +10506,10 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
 
     #Update the source files times.  We need to do this after we
     # are done with the locking around the euid for the output file.
-    file_utils.match_euid_egid(done_ticket['infile'])
-    update_last_access_time(done_ticket['infile'])
-    file_utils.end_euid_egid() #Release the lock.
+    if done_ticket['fc']['deleted'] == "no":
+        file_utils.match_euid_egid(done_ticket['infile'])
+        update_last_access_time(done_ticket['infile'])
+        file_utils.end_euid_egid() #Release the lock.
 
     #Remove the new file from the list of those to be deleted should
     # encp stop suddenly.  (ie. crash or control-C).
@@ -10607,10 +10624,19 @@ def prepare_read_from_hsm(tinfo, e):
     Trace.log(e_errors.INFO, "Creating zero length output files.")
     for vol in requests_per_vol.keys():
         for i in range(len(requests_per_vol[vol])):
+
+            if requests_per_vol[vol][i]['outfile'] in ["/dev/null"]:
+                continue
+            
             try:
                 #set the effective uid and gid.
                 file_utils.match_euid_egid(requests_per_vol[vol][i]['infile'])
-
+            except (OSError, IOError, EncpError), msg:
+                requests_per_vol[vol][i]['status'] = \
+                          (e_errors.OSERROR, str(msg))
+                return requests_per_vol[vol][i], listen_socket, udp_serv, requests_per_vol
+                
+            try:
                 if os.getuid() == 0 and os.geteuid() != 0:
                     #If we are user root and the effecting ids are not,
                     # then we need to handle this special to be able to
