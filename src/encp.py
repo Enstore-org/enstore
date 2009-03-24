@@ -5507,7 +5507,9 @@ def open_local_file(work_ticket, tinfo, e):
 
     #If the file is a deleted file that is trying to be read using
     # --override-deleted, skip trying to access the PNFS file.
-    if work_ticket['fc']['deleted'] == "no":
+    #
+    # For writes 'deleted' does not exist; default to "no" for writes.
+    if work_ticket['fc'].get('deleted', "no") == "no":
         #set the effective uid and gid.
         file_utils.match_euid_egid(work_ticket['infile'])
 
@@ -5515,7 +5517,8 @@ def open_local_file(work_ticket, tinfo, e):
     try:
         local_fd = os.open(filename, flags)
     except OSError, detail:
-        if work_ticket['fc']['deleted'] == 'no':
+        # For writes 'deleted' does not exist; default to "no" for writes.
+        if work_ticket['fc'].get('deleted', "no") == "no":
             file_utils.end_euid_egid() #Release the lock.
 
         if getattr(detail, "errno", None) in \
@@ -5529,7 +5532,8 @@ def open_local_file(work_ticket, tinfo, e):
     try:
         stats = os.fstat(local_fd)
     except OSError, detail:
-        if work_ticket['fc']['deleted'] == 'no':
+        # For writes 'deleted' does not exist; default to "no" for writes.
+        if work_ticket['fc'].get('deleted', "no") == "no":
             file_utils.end_euid_egid() #Release the lock.
         
         if getattr(detail, "errno", None) in \
@@ -5539,7 +5543,8 @@ def open_local_file(work_ticket, tinfo, e):
             done_ticket = {'status':(e_errors.OSERROR, str(detail))}
         return done_ticket
 
-    if work_ticket['fc']['deleted'] == "no":
+    # For writes 'deleted' does not exist; default to "no" for writes.
+    if work_ticket['fc'].get('deleted', "no") == "no":
         file_utils.end_euid_egid() #Release the lock.
 
     if filename in ["/dev/zero", "/dev/random", "/dev/urandom"]:
@@ -12100,8 +12105,7 @@ def do_work(intf):
 
     file_utils.euid_lock.acquire()
 
-    #Remove any zero-length files left haning around.  Also, return
-    # a non-zero exit status to the calling program/shell.
+    #Remove any zero-length files left haning around.
     delete_at_exit.delete()
 
     #The only thing that would be effected by not setting this back would be
