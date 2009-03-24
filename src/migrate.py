@@ -266,6 +266,14 @@ def init(intf):
 
 	errors = 0
 
+	if intf.library:
+		library_fullname = intf.library + ".library_manager"
+		lib_dict = csc.get(library_fullname)
+		if not e_errors.is_ok(lib_dict):
+			sys.stderr.write("library %s does not exist\n" %
+					 (intf.library,))
+			sys.exit(1)
+
 	#Make sure we got the spool directory from command line or
 	# from configuration.
 	if intf.spool_dir:
@@ -1017,6 +1025,8 @@ def get_media_type(arguement, db):
 
 	try:
 		res = db.query(q).getresult()
+		if len(res) == 0:
+			return None
 		media_type = res[0][0]  #media_type
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
@@ -2286,8 +2296,8 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 # tmp_path refers to the path that the file temporarily exists on disk.
 # mig_path is the path that the file will be written to pnfs.
 def write_file(MY_TASK,
-	       src_bfid, tmp_path, mig_path, sg, ff, wrapper, deleted,
-	       encp, copy_queue, migrate_r_pipe, intf):
+	       src_bfid, src_path, tmp_path, mig_path, sg, ff, wrapper,
+	       deleted, encp, copy_queue, migrate_r_pipe, intf):
 
 	# check destination path
 	if not mig_path:     # This can not happen!!!
@@ -2384,9 +2394,14 @@ def write_file(MY_TASK,
 		use_priority = "--priority %s" % \
 			       (ENCP_PRIORITY,)
 	encp_options = "--delayed-dismount 2 --ignore-fair-share --threaded"
+	#Override these tags to use the original values from the source tape.
+	# --override-path is used to specify the correct path to be used
+	# in the wrappers written with the file on tape, since this path
+	# should match the original path not the temporary migration path
+	# that the rest of the encp process will need to worry about.
 	dst_options = "--storage-group %s --file-family %s " \
-		      "--file-family-wrapper %s" \
-		      % (sg, ff, wrapper)
+		      "--file-family-wrapper %s --override-path %s" \
+		      % (sg, ff, wrapper, src_path)
 
 	cmd = "encp %s %s %s %s %s %s" \
 	      % (encp_options, use_priority, use_library,
@@ -2530,8 +2545,9 @@ def write_new_file(job, encp, copy_queue, migrate_r_pipe, fcc, intf, db):
 		## migration path in pnfs where the new copy is
 		## written to.
 
-		rtn_code = write_file(MY_TASK, src_bfid, tmp_path,
-				      mig_path, sg, ff, wrapper,
+		rtn_code = write_file(MY_TASK, src_bfid, src_path,
+				      tmp_path, mig_path,
+				      sg, ff, wrapper,
 				      deleted, encp, copy_queue,
 				      migrate_r_pipe, intf)
 		if rtn_code:
@@ -3493,7 +3509,13 @@ def migrate_volume(vol, intf):
 	       and not getattr(intf, "force", None):
 		log(MY_TASK, vol, "is already migrated")
 		return 0
-		
+	#Make sure the library exists.
+	library_fullname = v['library'] + ".library_manager"
+	lib_dict = csc.get(library_fullname)
+	if not e_errors.is_ok(lib_dict):
+		error_log("library %s does not exist" % (library_fullname,))
+		return 1
+
 
 	# now try to copy the file one by one
 	if intf.with_deleted:
