@@ -10,6 +10,7 @@ import multiprocessing
 import fcntl
 import socket
 import os
+import pwd
 import threading
 import time
 
@@ -120,7 +121,9 @@ class RawUDP:
             thread = threading.currentThread()
             thread_name = thread.getName()
             os.getenv("ENSTORE_OUT", "")
-            self.f1 = open(os.path.join(os.environ.get("ENSTORE_OUT", ""),"gp_%s_%s"%(os.getpid(),thread_name)), "w")
+            self.f1 = open(os.path.join(os.environ.get("ENSTORE_OUT", ""),"tmp/%s/gp_%s_%s"%(pwd.getpwuid(os.geteuid())[0],
+                                                                                             os.getpid(),
+                                                                                             thread_name)), "w")
         else:
             self.f1 = None
 
@@ -214,7 +217,8 @@ def _receiver(self):
         thread = threading.currentThread()
         thread_name = thread.getName()
         os.getenv("ENSTORE_OUT", "")
-        self.f = open(os.path.join(os.environ.get("ENSTORE_OUT", ""),"p_%s_%s"%(os.getpid(),thread_name)), "w")
+        self.f = open(os.path.join(os.environ.get("ENSTORE_OUT", ""),"tmp/%s/p_%s_%s"%(pwd.getpwuid(os.geteuid())[0],
+                                                                                       os.getpid(),thread_name)), "w")
     else:
         self.f = None
     
