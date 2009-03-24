@@ -1199,10 +1199,10 @@ CREATE INDEX volume_write_protected_idx ON volume USING btree (write_protected);
 CREATE INDEX volume_write_protected_idx ON volume USING btree (write_protected);
 
 --
--- Name: declared_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_declared_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
-CREATE INDEX declared_idx ON volume USING btree (declared);
+CREATE INDEX volume_declared_idx ON volume USING btree (declared);
 
 
 --
