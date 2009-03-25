@@ -1222,7 +1222,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                     user_inhibit_1 = 'none' and \
                     write_protected = 'n' \
                     %s\
-                order by declared ;"%(mover_ip_map, library,
+                order by declared limit 1;"%(mover_ip_map, library,
                     storage_group, file_family, wrapper, vito_q)
         else: # normal case
             q = "select * from volume \
@@ -1237,7 +1237,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                     user_inhibit_1 = 'none' and \
                     write_protected = 'n' \
                     %s\
-                order by declared ;"%(library, storage_group,
+                order by declared limit 1;"%(library, storage_group,
                     file_family, wrapper, vito_q)
         Trace.trace(20, "start query: %s"%(q))
         try:
@@ -1262,7 +1262,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         else:
             return {}
         
-    # get the actual state of the media changer #### DONE
+    # get the actual state of the volume from the media changer #### DONE
     #
     ### Note: While this function only gets information, there is no reason
     ### that any other server (aka InfoServer) could use this function.
@@ -1273,28 +1273,35 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
         # a short cut for non-existing library, such as blank
         if not string.split(lib, '.')[0] in self.csc.get_library_managers().keys():
-            return ""
+            return "no_lib"  #Not a fatal error.
 
         if len(lib) < 16 or lib[-16:] != '.library_manager':
             lib = lib + '.library_manager'
         m_changer = self.csc.get_media_changer(lib)
         if not m_changer:
             Trace.log(e_errors.ERROR,
-                      " vc.get_media_changer_state: ERROR: no media changer found (lib = %s) %s" % (lib, volume))
-            return 'no_mc'
+                      "vc.get_media_changer_state: ERROR: no media changer found (lib = %s) %s" % (lib, volume))
+            return "no_mc"  #Not a fatal error.
             
         import media_changer_client
         mcc = media_changer_client.MediaChangerClient(self.csc, m_changer )
-        stat = mcc.viewvol(volume, m_type)["status"][3]
-        # the following code is robot type dependant!!!!!
-        if stat == 'O':
-            state = 'unmounted'
-        elif stat == 'M':
-            state = 'mounted'
-        else :
-            state = stat
+        reply_ticket = mcc.viewvol(volume, m_type, rcv_timeout = 5,
+                                   rcv_tries = 5)
+        if not e_errors.is_ok(reply_ticket):
+            Trace.log(e_errors.ERROR,
+                      "unable to get volume state from %s: %s: %s" % \
+                      (m_changer, reply_ticket['status'][0],
+                       reply_ticket['status'][1]))
+            return "unknown"  #Fatal error.
 
-        return state
+        #Most common values are:
+        # "O" for occupied in its home slot
+        # "M" for mounted in drive
+        # "E" for ejected
+        # "U" for undefined/unknown
+        stat = reply_ticket['status'][3]
+
+        return stat
 
     ####################################################################
 
@@ -1528,8 +1535,18 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                                            record["external_label"],
                                            record["media_type"])
 
-            if ret != 'unmounted' and ret != 'no_mc' and ret != '' and ret != 'E' and ret != 'U':
-                return e_errors.CONFLICT,"volume state must be unmounted or '' or 'E' or 'U'. state %s"%(ret)
+            # (ret == "no_lib") when no matching library is found in the
+            #             current configuration.
+            # (ret == "unknown) when the query to the media_changer times out.
+            # (ret = "no_mc") when their is no media changer defined for
+            #                 the volume's library.
+            
+            if ret != "no_mc" and ret != "no_lib" \
+                   and ret != 'O' and ret != "E" and ret != "U":
+                message = "volume state must be unmounted ('O') or " \
+                          "ejected ('E') or undefined ('U').  (state is %s)" \
+                          % (ret,)
+                return e_errors.CONFLICT, message
 
         # delete the volume
         # check if <vol>.deleted exists, if so, erase it.
