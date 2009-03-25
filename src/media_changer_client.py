@@ -78,12 +78,12 @@ class MediaChangerClient(generic_client.GenericClient):
             Trace.log(e_errors.ERROR, "unloadvol %s" % (rt['status'],))
         return rt
 
-    def viewvol(self, volume, m_type):
+    def viewvol(self, volume, m_type, rcv_timeout = 0, rcv_tries = 0):
         ticket = {'work' : 'viewvol',
                   'external_label' : volume,
                   'media_type' : m_type
                   }
-        rt = self.send(ticket)
+        rt = self.send(ticket, rcv_timeout, rcv_tries)
         return rt
 
 
