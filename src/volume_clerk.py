@@ -366,7 +366,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # has_undeleted_file(vol) -- check if vol has undeleted file
 
     def has_undeleted_file(self, vol):
-        q = "select * from file, volume where volume.label = '%s' and volume.id = file.volume and file.deleted <> 'y';"%(vol)
+        q = "select * from file, volume where volume.label = '%s' and volume.id = file.volume and file.deleted <> 'y' limit 1"%(vol)
         res = self.volumedb_dict.db.query(q)
         return res.ntuples()
 
