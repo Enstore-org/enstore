@@ -8801,8 +8801,9 @@ def prepare_write_to_hsm(tinfo, e):
             return return_ticket, listen_socket, udp_serv, request_list
 
     #Create the zero length file entries.
-    Trace.message(TRANSFER_LEVEL, "Creating zero length output files.")
-    Trace.log(e_errors.INFO, "Creating zero length output files.")
+    message = "Creating zero length output files."
+    Trace.message(TRANSFER_LEVEL, message)
+    Trace.log(e_errors.INFO, message)
     for i in range(len(request_list)):
         if e.put_cache or request_list[i].get('copy', None) != None:
             # We still need to get the inode.
@@ -10625,17 +10626,22 @@ def prepare_read_from_hsm(tinfo, e):
             return return_ticket, listen_socket, udp_serv, requests_per_vol
 
     #Create the zero length file entries.
-    Trace.message(TRANSFER_LEVEL, "Creating zero length output files.")
-    Trace.log(e_errors.INFO, "Creating zero length output files.")
+    message = "Creating zero length output files."
+    Trace.message(TRANSFER_LEVEL, message)
+    Trace.log(e_errors.INFO, message)
     for vol in requests_per_vol.keys():
         for i in range(len(requests_per_vol[vol])):
 
             if requests_per_vol[vol][i]['outfile'] in ["/dev/null"]:
                 continue
+
+            should_skip_deleted = e.override_deleted and \
+                             requests_per_vol[vol][i]['fc']['deleted'] != "no"
             
             try:
                 #set the effective uid and gid.
-                file_utils.match_euid_egid(requests_per_vol[vol][i]['infile'])
+                if not should_skip_deleted:
+                    file_utils.match_euid_egid(requests_per_vol[vol][i]['infile'])
             except (OSError, IOError, EncpError), msg:
                 requests_per_vol[vol][i]['status'] = \
                           (e_errors.OSERROR, str(msg))
@@ -10657,10 +10663,11 @@ def prepare_read_from_hsm(tinfo, e):
                     os.seteuid(new_uid)
                 else:
                     create_zero_length_local_files(requests_per_vol[vol][i])
-                        
-                file_utils.end_euid_egid()  #Release the lock.
+                if not should_skip_deleted:        
+                    file_utils.end_euid_egid()  #Release the lock.
             except (OSError, IOError, EncpError), msg:
-                file_utils.end_euid_egid() #Release the lock.
+                if not should_skip_deleted:
+                    file_utils.end_euid_egid() #Release the lock.
 
                 if isinstance(msg, EncpError):
                     requests_per_vol[vol][i]['status'] = (msg.type, str(msg))
@@ -10683,6 +10690,11 @@ def prepare_read_from_hsm(tinfo, e):
                 requests_per_vol[vol][i]['completion_status'] = FAILURE
                 
                 return requests_per_vol[vol][i], listen_socket, udp_serv, requests_per_vol
+            except:
+                if not should_skip_deleted:
+                    file_utils.end_euid_egid() #Release the lock.
+
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     return_ticket = { 'status' : (e_errors.OK, None)}
     return return_ticket, listen_socket, udp_serv, requests_per_vol
