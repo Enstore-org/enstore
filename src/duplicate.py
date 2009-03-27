@@ -20,8 +20,6 @@ The code is borrowed from migrate.py. It is imported and modified.
 import sys
 import os
 import string
-import pg
-import threading
 
 # enstore imports
 import configuration_client
@@ -31,16 +29,12 @@ import pnfs
 import migrate
 import duplication_util
 import e_errors
-import encp_wrapper
 import enstore_functions2
 import find_pnfs_file
 import Trace
 import option
 
 # modifying migrate module
-# migrate.DEFAULT_LIBRARY = 'LTO4'
-#migrate.DEFAULT_LIBRARY = 'D0-LTO4G1'
-#migrate.DEFAULT_LIBRARY = ""
 migrate.MIGRATION_FILE_FAMILY_KEY = "_copy_1"
 migrate.INHIBIT_STATE = "duplicated"
 migrate.IN_PROGRESS_STATE = "duplicating"
@@ -53,15 +47,6 @@ migrate.LOG_DIR = "/var/duplication"
 migrate.LOG_FILE = migrate.LOG_FILE.replace('Migration', 'Duplication')
 
 DuplicateInterface = migrate.MigrateInterface
-"""
-DuplicateInterface.migrate_options[option.LIST_FAILED_COPIES] = {
-	option.HELP_STRING:
-	"List originals where the multiple copy write failed.",
-	option.VALUE_USAGE:option.IGNORED,
-	option.VALUE_TYPE:option.INTEGER,
-	option.USER_LEVEL:option.USER,
-	}
-"""
 DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
 	option.HELP_STRING:
 	"Make duplicates where the multiple copy write failed.",
@@ -183,221 +168,44 @@ def get_filenames(MY_TASK, dst_bfid, pnfs_id, likely_path, deleted):
 
 	return (pnfs_path, use_path)
 
+#This is a no-op for duplication.
+def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
+	pass
 
-def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
-		    fcc, encp, intf, db):
-	ct = migrate.is_checked(dst_bfid, db)
-	if not ct:
-		#log(MY_TASK, "start checking %s %s"%(dst_bfid, src))
 
-		(pnfs_path, use_path) = get_filenames(
-                    MY_TASK, dst_bfid, pnfs_id, likely_path, deleted)
+def is_expected_volume(MY_TASK, vol, likely_path, fcc):
 
-                # make sure the path is NOT a migration path
-                if pnfs_path == None or migrate.is_migration_path(pnfs_path):
-                        migrate.error_log(MY_TASK,
-                                  'none swapped file %s' % \
-                                  (pnfs_path))
-                        #local_error = local_error + 1
-                        #continue
-                        return 1
-
-		rtn_code = migrate.scan_file(
-			MY_TASK, dst_bfid, use_path, "/dev/null",
-			deleted, intf, encp)
-		if rtn_code:
-                    #migrate.close_log("ERROR")
-                    #migrate.error_log(MY_TASK,
-		    #		     "failed on %s %s" % (dst_bfid, pnfs_path))
-                    return 1
-                else:
-                    #Log the file as having been checked/scanned.
-                    #migrate.close_log("OK")
-                    migrate.log_checked(src_bfid, dst_bfid, db)
-                    #migrate.ok_log(MY_TASK, dst_bfid, pnfs_path)
-
-	else:
-		migrate.ok_log(MY_TASK, dst_bfid, "is already checked at", ct)
-		# make sure the original is marked deleted
-		f = fcc.bfid_info(src_bfid)
-		if f['status'] == e_errors.OK and f['deleted'] != 'yes':
-			migrate.error_log(MY_TASK,
-				  "%s was not marked deleted" \
-				  % (src_bfid,))
-			return 1
-
-	return 0
-
-# final_scan_volume(vol) -- final scan on a volume when it is closed to
-#				write
-# This is run without any other threads
-#
-# deal with deleted file
-# if it is a duplicated deleted file, check it, too
-def final_scan_volume(vol, intf):
-	MY_TASK = "FINAL_SCAN_VOLUME"
-	local_error = 0
-	# get its own fcc
-	config_host = enstore_functions2.default_host()
-	config_port = enstore_functions2.default_port()
-	csc = configuration_client.ConfigurationClient((config_host,
-							config_port))
-	fcc = file_clerk_client.FileClient(csc)
-	vcc = volume_clerk_client.VolumeClerkClient(csc)
-
-	# get a db connection
-	db = pg.DB(host=migrate.dbhost, port=migrate.dbport, dbname=migrate.dbname, user=migrate.dbuser)
-
-	# get an encp
-	threading.currentThread().setName('FINAL_SCAN')
-	encp = encp_wrapper.Encp(tid='FINAL_SCAN')
-
-	migrate.log(MY_TASK, "verifying volume", vol)
-
-	v = vcc.inquire_vol(vol)
-	if v['status'][0] != e_errors.OK:
-		migrate.error_log(MY_TASK, "failed to find volume", vol)
-		return 1
-
-	# make sure the volume is ok to scan
-	if v['system_inhibit'][0] != 'none':
-		migrate.error_log(MY_TASK, 'volume %s is "%s"'%(vol, v['system_inhibit'][0]))
-		return 1
-
-	if (v['system_inhibit'][1] != 'full' and \
-		v['system_inhibit'][1] != 'none' and \
-		v['system_inhibit'][1] != 'readonly') \
-		and migrate.is_migrated_by_dst_vol(vol, intf, db):
-		migrate.error_log(MY_TASK, 'volume %s is "%s"'%(vol, v['system_inhibit'][1]))
-		return 1
-
-	if v['system_inhibit'][1] != 'full':
-		migrate.log(MY_TASK, 'volume %s is not "full"'%(vol,), "... WARNING")
-
-	if v['system_inhibit'][1] != "readonly" and \
-	       v['system_inhibit'][1] != 'full':
-		vcc.set_system_readonly(vol)
-		migrate.log(MY_TASK, 'set %s to readonly'%(vol,))
-
-	# make sure this is a duplication volume
-	sg, ff, wp = string.split(v['volume_family'], '.')
-	if ff.find(migrate.MIGRATION_FILE_FAMILY_KEY) == -1:
-		query_len = 0
-		if intf.force:
-			#If --force was used, try a more involved process
-			# for determining if a volume was a duplicated to
-			# volume or not.
-			q = "select dst " \
-			    "from migration_history mh, volume v_s, volume v_d " \
-			    "where mh.dst_vol_id = v_d.id " \
-			    "  and v_d.label = '%s' " \
-			    "  and v_s.id = mh.src_vol_id " \
-			    "  and v_s.system_inhibit_1 in ('duplicated','duplicating');" \
-			    % (vol,)
-			query_res = db.query(q).getresult()
-			query_len = len(query_res)
-			
-		if query_len == 0:
-			message = "%s is not a %s volume" % \
-				  (vol, migrate.MIGRATION_NAME.lower())
-			migrate.error_log(MY_TASK, message)
-			return 1
-		else:
-			#If we get here, then the file is still needing to
-			# be duplicated (or --force was used on a supposidly
-			# completed duplication destination volume).
-			pass
-
-	q = "select bfid, pnfs_id, pnfs_path, src_bfid, location_cookie, deleted  \
-		from file, volume, migration \
-		where file.volume = volume.id and \
-			volume.label = '%s' and \
-			dst_bfid = bfid \
-		order by location_cookie;"%(vol)
-	query_res = db.query(q).getresult()
-
-	# Determine the list of files that should be scanned.
-	for r in query_res:
-		dst_bfid, pnfs_id, likely_path, src_bfid, location_cookie, deleted = r
-
-		st = migrate.is_swapped(src_bfid, db)
-		if not st:
-			migrate.error_log(MY_TASK, "%s %s has not been swapped"%(src_bfid, dst_bfid))
-			local_error = local_error + 1
-			continue
-
-		######################################################
-
-		#Confirm that the destination volume matches the volume that
-		# pnfs is pointing to.  This is true for swapped duplicate
+	#Confirm that the destination volume matches the volume that
+	# pnfs is pointing to.  This is true for swapped duplicate
+	# files.
+	pf = pnfs.File(likely_path)
+	pf_volume = getattr(pf, "volume", None)
+	if pf_volume == None:
+		message = "No file info for %s. " % (likely_path,)
+		migrate.error_log(MY_TASK, message)
+	elif pf_volume != vol:
+		pf_bfid =  getattr(pf, "bfid", None)
+		#Get the original and make sure the original volume
+		# is the same.  This is true for non-swapped duplicate
 		# files.
-		pf = pnfs.File(likely_path)
-		if pf.volume != vol:
-			#Get the original and make sure the original volume
-			# is the same.  This is true for non-swapped duplicate
-			# files.
-			original_file_info = fcc.bfid_info(src_bfid)
-			if not e_errors.is_ok(original_file_info):
-				message = "No file info for original bfid " \
-					  "(%s) of duplicate %s." % \
-					  (src_bfid, dst_bfid)
-				migrate.error_log(MY_TASK, message)
-				local_error = local_error + 1
-				continue
+		original_file_info = fcc.bfid_info(pf_bfid)
+		if not e_errors.is_ok(original_file_info):
+			message = "No file info for bfid %s." % (pf_bfid,)
+			migrate.error_log(MY_TASK, message)
+			return False
 
-			#If the original volume and the volume we are scaning
-			# does not match the volume in pnfs layer 4, report
-			# the error.
-			if pf.volume != original_file_info['external_label']:
-				message = "wrong volume %s (expecting %s or %s)" % \
-					  (pf.volume, vol,
-					   original_file_info['external_label'])
-				migrate.error_log(MY_TASK, message)
-				local_error = local_error + 1
-				continue
-		#######################################################
-		
-		## Scan the file by reading it with encp.
-		rtn_code = final_scan_file(MY_TASK, src_bfid, dst_bfid,
-					   pnfs_id, likely_path, deleted,
-					   fcc, encp, intf, db)
-		if rtn_code:
-			local_error = local_error + 1
-			continue
+		#If the original volume and the volume we are scaning
+		# does not match the volume in pnfs layer 4, report
+		# the error.
+		if pf_volume != original_file_info['external_label']:
+			message = "wrong volume %s (expecting %s or %s)" % \
+				  (pf.volume, vol,
+				   original_file_info['external_label'])
+			migrate.error_log(MY_TASK, message)
+			return False
 
-		# If we get here, then the file has been scaned.  Consider
-		# it closed too.
-		ct = migrate.is_closed(dst_bfid, db)
-		if not ct:
-			migrate.log_closed(src_bfid, dst_bfid, db)
-			migrate.close_log('OK')
+	return True
 
-	# restore file family only if there is no error
-	if not local_error and migrate.is_migrated_by_dst_vol(vol, intf, db):
-		rtn_code = migrate.set_dst_volume_migrated(
-			MY_TASK, vol, sg, ff, wp, vcc, db)
-		if rtn_code:
-			#Error occured.
-			local_error = local_error + 1
-			
-	else:
-		migrate.error_log(MY_TASK,
-				  "skipping volume metadata update sinnce not all files have been scanned")
-				
-	return local_error
-
-# This is to change the behavior of migrate.log_swapped()
-# log_swapped_and_closed(bfid1, bfid2, db)
-def log_swapped_and_closed(bfid1, bfid2, db):
-	# log_swapped
-	q = "update migration set swapped = now(), checked = now(), closed = now() where \
-		src_bfid = '%s' and dst_bfid = '%s';"%(bfid1, bfid2)
-	try:
-		db.query(q)
-	except:
-		exc_type, exc_value = sys.exc_info()[:2]
-		migrate.error_log("LOG_SWAPPED", str(exc_type), str(exc_value), q)
-	return
 
 # The restore operation is not defined for duplication.  So, disable the
 # functionality.
@@ -423,22 +231,14 @@ def setup_cloning():
 ##
 ## Override migration functions with those for duplication.
 ##
+migrate.is_expected_volume = is_expected_volume
+migrate.cleanup_after_scan = cleanup_after_scan
 migrate.swap_metadata = duplicate_metadata
-#migrate.log_swapped = log_swapped_and_closed
-migrate.final_scan_volume = final_scan_volume
+migrate.get_filenames = get_filenames
 migrate.restore = restore
 migrate.restore_volume = restore_volume
 migrate.setup_cloning = setup_cloning
 
-
-"""
-def usage():
-	print "usage:"
-	print "  %s <file list>"%(sys.argv[0])
-	print "  %s --bfids <bfid list>"%(sys.argv[0])
-	print "  %s --vol <volume list>"%(sys.argv[0])
-	print "  %s --vol-with-deleted <volume list>"%(sys.argv[0])
-"""
 
 if __name__ == '__main__':
 
@@ -449,66 +249,3 @@ if __name__ == '__main__':
 	migrate.do_work(intf_of_migrate)
 	
 
-	"""
-	if len(sys.argv) < 2 or sys.argv[1] == "--help":
-		usage()
-		sys.exit(0)
-
-	###init()
-
-	# log command line
-	cmd = string.join(sys.argv)
-	if len(sys.argv) > 2:
-		migrate.log("COMMAND LINE:", cmd)
-
-	# handle --priority <priority>
-	if sys.argv[1] == "--priority":
-		migrate.ENCP_PRIORITY = int(sys.argv[2])
-
-		cmd1 = sys.argv[0]
-		sys.argv = sys.argv[2:]
-		sys.argv[0] = cmd1
-
-	# handle --spool-dir <spool dirctory>
-	if sys.argv[1] == "--spool-dir":
-		SPOOL_DIR = sys.argv[2]
-		
-		cmd1 = sys.argv[0]
-		sys.argv = sys.argv[2:]
-		sys.argv[0] = cmd1
-
-	# handle library
-	if sys.argv[1] == "--library":
-		migrate.DEFAULT_LIBRARY = sys.argv[2]
-		cmd1 = sys.argv[0]
-		sys.argv = sys.argv[2:]
-		sys.argv[0] = cmd1
-
-	init()
-
-	if sys.argv[1] == "--vol":
-		migrate.icheck = False
-		for i in sys.argv[2:]:
-			migrate.migrate_volume(i)
-	elif sys.argv[1] == "--vol-with-deleted":
-		migrate.icheck = False
-		for i in sys.argv[2:]:
-			migrate.migrate_volume(i, with_deleted = True)
-	elif sys.argv[1] == "--bfids":
-		files = []
-		for i in sys.argv[2:]:
-			files.append(i)
-		migrate.migrate(files)
-	else:	# assuming all are files
-		files = []
-		for i in sys.argv[1:]:
-			try:
-				f = pnfs.File(i)
-				files.append(f.bfid)
-			except:
-				# abort on error
-				migrate.error_log("can not find bifd of", i)
-				sys.exit(1)
-		migrate.migrate(files)
-
-	"""
