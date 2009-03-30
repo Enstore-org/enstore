@@ -248,7 +248,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def change_lm_state(self, state):
         return self.send({"work":"change_lm_state", "state": state})
 
-    def get_lm_state(self, timeout=0, tries=0):
+    def get_lm_state(self, timeout=10, tries=2):
         return self.send({"work":"get_lm_state"}, timeout, tries)
         
     # remove volume from suspect volume list
@@ -470,7 +470,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                                option.USER_LEVEL:option.ADMIN},
         option.START_DRAINING:{option.HELP_STRING:
                                "start draining library manager; valid library "
-                               "state values are: lock, ignore, pause, "
+                               "state values are: lock, ignore, pause, moverlock"
                                "noread and nowrite",
                                option.VALUE_TYPE:option.STRING,
                                option.VALUE_USAGE:option.REQUIRED,
@@ -595,8 +595,8 @@ def do_work(intf):
     elif (intf.start_draining or intf.stop_draining):
         if intf.start_draining:
             if intf.start_draining == 'lock': lock = 'locked'
-            elif not (intf.start_draining in ('ignore', 'pause', 'noread', 'nowrite')):
-                print "only 'lock', 'ignore', 'noread', 'nowrite' and 'pause' are valid for start_draining option"
+            elif not (intf.start_draining in ('ignore', 'pause', 'noread', 'nowrite', 'moverlock')):
+                print "only 'lock', 'moverlock', 'ignore', 'noread', 'nowrite' and 'pause' are valid for start_draining option"
                 sys.exit(0)
             else: lock = intf.start_draining
         else: lock = 'unlocked'
