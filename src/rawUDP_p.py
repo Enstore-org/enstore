@@ -32,18 +32,9 @@ def get_id(request):
         return rarr[1]
     except:
         return None
-'''
-def get_id(request):
-    rarr = request.split(",")
-    id=(rarr[0].strip(),rarr[1].strip()) 
-    try:
-        return id
-    except:
-        return None
-'''
 
 def _print(f, msg):
-    if DEBUG:
+    if DEBUG and f:
         f.write("%s %s\n"%(time.time(),msg))
         f.flush()
     
@@ -83,6 +74,7 @@ class RawUDP:
     # request
     # number of requests in the buffer
     def get(self):
+        _print(self.d_o, "GET")
         rc = None
         if self.queue_size_p.value == 0:
             self.arrived.wait()
@@ -102,7 +94,7 @@ class RawUDP:
                 pass
             rc = ret[0], ret[1], ret[2]
             self._lock.release()
-            _print(self.f1, "GET %s %s"%(self.queue_size_p.value, request_id,))
+            _print(self.d_o, "GET %s %s"%(self.queue_size_p.value, request_id,))
         return rc
         
 
@@ -120,13 +112,12 @@ class RawUDP:
         if DEBUG:
             thread = threading.currentThread()
             thread_name = thread.getName()
-            os.getenv("ENSTORE_OUT", "")
-            self.f1 = open(os.path.join(os.environ.get("ENSTORE_OUT", ""),"tmp/%s/gp_%s_%s"%(pwd.getpwuid(os.geteuid())[0],
-                                                                                             os.getpid(),
-                                                                                             thread_name)), "w")
+            dirpath = os.path.join(os.environ.get("ENSTORE_OUT", ""),"tmp/%s"%(pwd.getpwuid(os.geteuid())[0],))
+            if not os.path.exists(dirpath):
+                os.makedirs(dirpath)
+            self.d_o = open(os.path.join(dirpath, "gp_%s_%s"%(os.getpid(), thread_name)), "w")
         else:
-            self.f1 = None
-
+            self.d_o = None
 
         
 def put(lock, event, buffer, queue_size, message, requests, f):
@@ -189,10 +180,11 @@ def put(lock, event, buffer, queue_size, message, requests, f):
                 # "retry" message put it closer to the beginnig of the queue
                 index = buffer.index(requests[request_id])
                 new_index = index / (((queue_size.value + 1)/10)+1) + index % 10
-                if new_index < index:
-                    _print(f, "FOUND at %s reinserting at %s queue size %s"%(index, new_index, queue_size.value))
-                    buffer.remove(requests[request_id])
-                    buffer.insert(new_index, (message[0], message[1], request))
+                if new_index >= index:
+                    new_index = index
+                _print(f, "FOUND at %s reinserting at %s queue size %s"%(index, new_index, queue_size.value))
+                buffer.remove(requests[request_id])
+                buffer.insert(new_index, (message[0], message[1], request))
                 do_put = False # duplicate request, do not put into the queue
             except ValueError, detail:
                 _print(f,"put: Exception:ValueError %s removing %s"%(detail,request_id))  
@@ -216,9 +208,10 @@ def _receiver(self):
     if DEBUG:
         thread = threading.currentThread()
         thread_name = thread.getName()
-        os.getenv("ENSTORE_OUT", "")
-        self.f = open(os.path.join(os.environ.get("ENSTORE_OUT", ""),"tmp/%s/p_%s_%s"%(pwd.getpwuid(os.geteuid())[0],
-                                                                                       os.getpid(),thread_name)), "w")
+        dirpath = os.path.join(os.environ.get("ENSTORE_OUT", ""),"tmp/%s"%(pwd.getpwuid(os.geteuid())[0],))
+        if not os.path.exists(dirpath):
+            os.makedirs(dirpath)
+        self.f = open(os.path.join(dirpath, "p_%s_%s"%(os.getpid(), thread_name)), "w")
     else:
         self.f = None
     
