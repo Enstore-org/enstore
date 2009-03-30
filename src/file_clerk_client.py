@@ -992,7 +992,7 @@ def do_work(intf):
                     deleted = 'active'
                 else:
                     deleted = 'unknown'
-                print format % (intf.list,
+                print output_format % (intf.list,
                     record['bfid'], record['size'],
                     record['location_cookie'], deleted,
                     record['pnfs_name0'])
