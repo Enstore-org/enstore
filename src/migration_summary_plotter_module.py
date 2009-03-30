@@ -86,7 +86,6 @@ select date(time) as day,
 
 from volume,migration_history
 where volume.id = migration_history.src_vol_id
-      and volume.library not like '%shelf%'
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('migrated', 'duplicated')
       /* This time sub-query is needed to limit test volumes migrated
@@ -119,7 +118,6 @@ select date(state.time) as day,
 from volume,migration_history,state
 where volume.id = migration_history.src_vol_id
       and volume.id = state.volume
-      and volume.library not like '%shelf%'
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('migrating', 'duplicating',
                                       'migrated', 'duplicated')
@@ -170,7 +168,6 @@ select date(closed_time) as day,
        count(distinct label) as closed
 from volume,migration_history
 where volume.id = migration_history.src_vol_id
-      and volume.library not like '%shelf%'
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('migrated', 'duplicated')
       /* This time sub-query is needed to limit test volumes migrated
