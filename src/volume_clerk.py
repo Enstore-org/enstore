@@ -2440,7 +2440,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             inhibit = "system_inhibit" # set default field 
 
         position = self.extract_value_from_ticket("position", ticket)
-        if not position == None:
+        if position == None:
             return #extract_value_from_ticket handles its own errors.
 
         # check the range of position
