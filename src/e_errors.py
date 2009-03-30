@@ -69,7 +69,9 @@ NOWRITE="nowrite"
 REJECT='reject'
 PAUSE='pause'
 IGNORE='ignore'
-# end of LM statues
+MOVERLOCKED='moverlock'                 # lock movers access to libary manager request queue
+# end of LM states
+
 OSERROR = "OS ERROR"                    #Blanket error for caught OSError.
 PNFS_ERROR = "PNFS ERROR"               #Encp to Pnfs specific error.
 ENCP_STUCK = "ENCP STUCK"               #Mover detected no encp progress.
