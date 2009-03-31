@@ -41,6 +41,7 @@ import option
 import cleanUDP
 import udp_client
 import udp_server
+import callback
 
 server_map = {"log_server" : enstore_constants.LOGS,
 	      "alarm_server" : enstore_constants.ALARMS,
@@ -594,7 +595,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	except e_errors.TCP_EXCEPTION, detail:
 	    message = "Error while getting suspect vols from %s (%s)" \
                       % (lib_man.name, str(detail))
-	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
 	    return None
 	except errno.errorcode[errno.ETIMEDOUT], detail:
 	    msg = "Timeout while getting suspect vols from %s (%s)" \
