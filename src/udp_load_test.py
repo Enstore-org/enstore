@@ -2,13 +2,18 @@
 
 ###############################################################################
 #
-# $Id: 
+# $Id$
 #
 ###############################################################################
+
 import sys
 import threading
 import time
+import socket
+import select
+
 import udp_client
+import e_errors
 
 RUN=True
 CYCLES = 100
@@ -41,7 +46,7 @@ def send_message(address, message):
             lock.acquire()
             transfers = transfers + 1
             lock.release()
-        except udp_client. UDPError, detail:
+        except (socket.error, select.error, e_errors.EnstoreError), detail:
             thread = threading.currentThread()
             print "%s %s"%(thread.getName(), detail)
         

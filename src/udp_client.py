@@ -31,6 +31,7 @@ import host_config
 
 MAX_EXPONENT=6 # do not increase reeive TO in send beyond this
 
+"""
 #UDPError = "UDP Error"
 class UDPError(socket.error):
 
@@ -79,7 +80,7 @@ class UDPError(socket.error):
             self.strerror = self.e_message
 
         return self.strerror
-
+"""
 
 TRANSFER_MAX=16384
 
@@ -87,15 +88,18 @@ def wait_rsp( sock, address, rcv_timeout ):
 
     reply,server=None,None
 
-    r, w, x, rcv_timeout = cleanUDP.Select( [sock], [], [sock], rcv_timeout)
+    r, w, x, rcv_timeout = cleanUDP.Select( [sock], [], [sock], rcv_timeout )
     if r:
-        reply , server = sock.recvfrom( TRANSFER_MAX, rcv_timeout)
+        reply , server = sock.recvfrom( TRANSFER_MAX, rcv_timeout )
     elif x or w :
         exc, msg = sys.exc_info()[:2]
         Trace.log(e_errors.INFO,
               "UDPClient.send: exception on select after send to %s %s: %s %s"%
                   (address, x, exc, msg))
-        raise UDPError, "impossible to get these set w/out [r]"
+        raise e_errors.EnstoreError(None,
+                                    "impossible to get these set w/out [r]",
+                                    e_errors.NET_ERROR)
+    
     return reply, server, rcv_timeout
 
 class Container:
@@ -295,7 +299,8 @@ class UDPClient:
             errmsg="send:message too big, size=%d, max=%d" %(len(message),TRANSFER_MAX)
             Trace.log(e_errors.ERROR, errmsg)
             #raise errno.errorcode[errno.EMSGSIZE],errmsg
-            raise UDPError(errno.EMSGSIZE, errmsg)
+            raise e_errors.EnstoreError(errno.EMSGSIZE, errmsg,
+                                        e_errors.NET_ERROR)
 
         return message, tsd.txn_counter
 
@@ -393,7 +398,7 @@ class UDPClient:
             pass
         
         #raise errno.errorcode[errno.ETIMEDOUT]
-        raise UDPError(errno.ETIMEDOUT)
+        raise e_errors.EnstoreError(errno.ETIMEDOUT, "", e_errors.TIMEDOUT)
         
     # send message without waiting for reply and resend
     def send_no_wait(self, data, address) :
@@ -529,7 +534,7 @@ class UDPClient:
 
         ##If we got here, it's because we didn't receive a response to the
         ## message we sent.
-        raise UDPError(errno.ETIMEDOUT)
+        raise e_errors.EnstoreError(errno.ETIMEDOUT, "", e_errors.TIMEDOUT)
 
     # Recieve a reply, timeout has the same meaning as in select.  This
     # version is different from recv_deferred(); entire_timeout refers to the
@@ -564,10 +569,10 @@ class UDPClient:
                 upper_limit = max(0,
                            loop_start_time + entire_timeout - time.time())
                 timeout = min(timeout, upper_limit)
-
+                
                 try:
                     return self.recv_deferred(txn_ids, timeout)
-                except (socket.error, UDPError), msg:
+                except (socket.error, e_errors.EnstoreError), msg:
                     if msg.errno == errno.ETIMEDOUT:
                         #Since we are still waiting for a response, resend
                         # the original message.

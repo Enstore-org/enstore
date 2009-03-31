@@ -1087,7 +1087,7 @@ def handle_messages(csc_addr, system_name, intf):
                             send_request_dict[tx_id]['name'], mstatus)
 
                         del send_request_dict[tx_id]
-                    except (socket.error, udp_client.UDPError):
+                    except (socket.error, select.error, e_errors.EnstoreError):
                         pass
                     except errno.errorcode[errno.ETIMEDOUT]:
                         pass

@@ -5,6 +5,9 @@
 #import sys
 #import string
 import types
+import errno
+import os
+import sys
 
 OK         = 'ok'
 TIMEDOUT = 'TIMEDOUT'
@@ -369,6 +372,92 @@ stypedict = { "died"               : "DIED",
               "w"                  : "WARNING",
               "u"                  : "USERERR",
               "m"                  : "MISCERR" }
+
+############################################################################
+
+class EnstoreError(Exception):
+    def __init__(self, e_errno, e_message, e_type, e_ticket={}):
+
+        Exception.__init__(self)
+
+        #Handle the errno (if a valid one passed in).
+        if e_errno in errno.errorcode.keys():
+            self.errno = e_errno
+        else:
+            self.errno = None
+
+        #In python 2.6 python throws warnings for using Exception.message.
+        if sys.version_info[:2] == (2, 6):
+            self.message_attribute_name = "e_message"
+        else: # python 2.5 and less
+            self.message_attribute_name = "message"
+
+        #Handel the message if not given.
+        if e_message == None:
+            if e_errno: #By now this is None or a valid errno.
+                setattr(self, self.message_attribute_name,
+                        os.strerror(self.errno))
+            else:
+                setattr(self, self.message_attribute_name, None)
+        elif type(e_message) == types.StringType:
+            #There was a string message passed.
+            setattr(self, self.message_attribute_name, e_message)
+        else:
+            setattr(self, self.message_attribute_name, None)
+
+        #Type should be from e_errors.py.  If not specified, use errno code.
+        if not e_type:
+            try:
+                self.type = errno.errorcode[self.errno]
+            except KeyError:
+                self.type = UNKNOWN
+        else:
+            self.type = e_type
+
+        self.args = (self.errno,
+                     getattr(self, self.message_attribute_name),
+                     self.type)
+
+        #If no usefull information was passed in (overriding the default
+        # empty dictionary) then set the ticket to being {}.
+        if e_ticket == None:
+            self.ticket = {}
+        else:
+            self.ticket = e_ticket
+
+        #Generate the string that stringifying this obeject will give.
+        self._string()
+
+        #Do this after calling self._string().  Otherwise, self.strerror
+        # will not be defined yet.
+        if type(self.ticket) == types.DictType:
+            if not self.ticket.has_key('status'):
+                self.ticket['status'] = (self.type, self.strerror)
+            elif is_ok(self.ticket):
+                self.ticket['status'] = (self.type, self.strerror)
+
+    def __str__(self):
+        self._string()
+        return self.strerror
+
+    def __repr__(self):
+        return "EncpError"
+
+    def _string(self):
+        if self.errno in errno.errorcode.keys():
+            errno_name = errno.errorcode[self.errno]
+            errno_description = os.strerror(self.errno)
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" \
+                            % (errno_name,
+                               self.errno,
+                               errno_description,
+                               getattr(self, self.message_attribute_name))
+        else:
+            self.strerror = getattr(self, self.message_attribute_name)
+
+        return self.strerror
+
+############################################################################
 
 def _get_error(obj):
     if type(obj) == types.StringType:

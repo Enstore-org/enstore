@@ -151,12 +151,12 @@ class fileInfoMethods(generic_client.GenericClient):
             control_socket.connect(ticket['callback_addr'])
         except (socket.error), msg:
             message = "failed to establish control socket: %s" % (str(msg),)
-            raise callback.TCPError(msg.errno, message)
+            raise e_errors.EnstoreError(msg.errno, message, e_errors.NET_ERROR)
 
         #Read the data.
         try:
             ticket = callback.read_tcp_obj_new(control_socket)
-        except (socket.error, callback.TCPError):
+        except (socket.error, select.error, e_errors.EnstoreError):
             control_socket.close()
             raise sys.exc_info()[0], sys.exc_info()[1], \
                   sys.exc_info()[2]  
@@ -612,12 +612,12 @@ class volumeInfoMethods(generic_client.GenericClient):
             control_socket.connect(ticket['callback_addr'])
         except (socket.error), msg:
             message = "failed to establish control socket: %s" % (str(msg),)
-            raise callback.TCPError(msg.errno, message)
+            raise e_errors.EnstoreError(msg.errno, message, e_errors.NET_ERROR)
 
         #Read the data.
         try:
             ticket = callback.read_tcp_obj_new(control_socket)
-        except (socket.error, callback.TCPError):
+        except (socket.error, select.error, e_errors.EnstoreError):
             control_socket.close()
             raise sys.exc_info()[0], sys.exc_info()[1], \
                   sys.exc_info()[2]  

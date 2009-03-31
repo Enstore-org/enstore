@@ -39,7 +39,6 @@ import www_server
 import volume_family
 import option
 import cleanUDP
-import udp_client
 import udp_server
 import callback
 
@@ -583,7 +582,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		 "get new suspect vol list from %s"%(lib_man.name,))
 	try:
 	    state = lib_man.client.get_suspect_volumes()
-        except (socket.error, udp_client.UDPError, callback.TCPError), detail:
+        except (socket.error, select.error, e_errors.EnstoreError), detail:
             if detail.errno == errno.ETIMEDOUT:
                 message = "Timeout while getting suspect vols from %s (%s)" \
                           % (lib_man.name, str(detail))
@@ -744,7 +743,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				  "get new work queue from %s"%(lib_man.name,))
 	try:
 	    self.lm_queues[lib_man.name] = lib_man.client.getworks_sorted()
-        except (socket.error, udp_client.UDPError, callback.TCPError), detail:
+        except (socket.error, select.error, e_errors.EnstoreError), detail:
             if detail.errno == errno.ETIMEDOUT:
                 message = "Timeout while getting sorted work queue from %s (%s)" \
                           % (lib_man.name, str(detail))
@@ -800,7 +799,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    ticket = lib_man.client.get_active_volumes(self.alive_rcv_timeout,
 						       self.alive_retries)
-        except (socket.error, udp_client.UDPError, callback.TCPError), detail:
+        except (socket.error, select.error, e_errors.EnstoreError), detail:
             if detail.errno == errno.ETIMEDOUT:
                 message = "Timeout while getting active volumes from %s (%s)" \
                       % (lib_man.name, str(detail))
@@ -848,7 +847,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	try:
 	    state = lib_man.client.get_lm_state(self.alive_rcv_timeout,
 						self.alive_retries)
-        except (socket.error, udp_client.UDPError, callback.TCPError), detail:
+        except (socket.error, select.error, e_errors.EnstoreError), detail:
             if detail.errno == errno.ETIMEDOUT:
                 message = "Timeout while getting state from %s (%s)" \
                       % (lib_man.name, str(detail))

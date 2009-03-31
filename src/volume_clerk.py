@@ -1529,8 +1529,8 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             Trace.log(e_errors.ERROR, msg)
             return e_errors.ERROR, msg
 
-        if check_state:
-            # check its state
+        if check_state and record["media_type"] not in ("null", "disk"):
+            # check the volume's state with the media_changer
             ret = self.get_media_changer_state(record["library"],
                                            record["external_label"],
                                            record["media_type"])
@@ -2433,6 +2433,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
+            print "external_label:", external_label
             return #extract_external_lable_from_ticket handles its own errors.
 
         inhibit = self.extract_value_from_ticket("inhibit", ticket)

@@ -247,8 +247,8 @@ class ConfigurationClient(generic_client.GenericClient):
 
         try:
             d = callback.read_tcp_obj(control_socket)
-        except callback.TCPError, msg:
-            d = {'status':(e_errors.NET_ERROR, str(msg))}
+        except e_errors.EnstoreError, msg:
+            d = {'status':(msg.type, str(msg))}
         except e_errors.TCP_EXCEPTION:
             d = {'status':(e_errors.TCP_EXCEPTION, e_errors.TCP_EXCEPTION)}
         listen_socket.close()

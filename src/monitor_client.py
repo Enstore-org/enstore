@@ -16,17 +16,12 @@ import pprint
 import socket
 import select
 import fcntl
-#if sys.version_info < (2, 2, 0):
-#    import FCNTL #FCNTL is depricated in python 2.2 and later.
-#    fcntl.F_GETFL = FCNTL.F_GETFL
-#    fcntl.F_SETFL = FCNTL.F_SETFL
 
 # enstore imports
 import callback
 import option
 #import hostaddr
 import generic_client
-import udp_client
 import Trace
 import e_errors
 import configuration_client
@@ -106,9 +101,15 @@ class MonitorServerClient(generic_client.GenericClient):
     def _send_measurement (self, ticket):
         try:
             x = self.u.send( ticket, self.html_server_addr, self.timeout, 10 )
-        except (socket.error, udp_client.UDPError), msg:
-            x = {'status' : (e_errors.NET_ERROR,
-                             "%s: %s" % (msg.strerror, self.html_server_addr))}
+        except (socket.error, select.error, e_errors.EnstoreError), msg:
+            if msg.errno == errno.ETIMEDOUT:
+                x = {'status' : (e_errors.TIMEDOUT,
+                             "%s: %s" % (msg.strerror,
+                                         self.html_server_addr))}
+            else:
+                x = {'status' : (e_errors.NET_ERROR,
+                                 "%s: %s" % (msg.strerror,
+                                             self.html_server_addr))}
         except errno.errorcode[errno.ETIMEDOUT]:
             x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
@@ -387,15 +388,12 @@ class MonitorServerClient(generic_client.GenericClient):
         #    reply['status'] = (exc, msg)
         #    reply['elapsed'] = self.timeout*10
         #    reply['block_count'] = 0
-        except udp_client.UDPError, detail:
+        except (socket.error, select.error, e_errors.EnstoreError), detail:
             reply = {}
-            reply['status'] = (e_errors.NET_ERROR, str(detail))
-            reply['elapsed'] = self.timeout*10
-            reply['block_count'] = 0
-        except generic_client.ClientError, detail:
-            #exc, msg = sys.exc_info()[:2]
-            reply = {}
-            reply['status'] = (str(detail), None)
+            if detail.errno == errno.ETIMEDOUT:
+                reply['status'] = (e_errors.TIMEDOUT, str(detail))
+            else:
+                reply['status'] = (e_errors.NET_ERROR, str(detail))
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
         except (errno.ETIMEDOUT,  errno.errorcode[errno.ETIMEDOUT]):
@@ -509,11 +507,14 @@ class MonitorServerClient(generic_client.GenericClient):
                             rcv_timeout, tries)
             x['address'] = (ip, x['address'][1])
             print "Server %s found at %s." % (server, x['address'])
-        except (socket.error, udp_client.UDPError), msg:
+        except (socket.error, select.error, e_errors.EnstoreError), msg:
             message = "alive - ERROR, connection failed to %s: %s" \
                       % (ip, str(msg))
             Trace.trace(14, message)
-            x = {'status' : (e_errors.NET_ERROR, message)}
+            if msg.errno == errno.ETIMEDOUT:
+                x = {'status' : (e_errors.TIMEDOUT, message)}
+            else:
+                x = {'status' : (e_errors.NET_ERROR, message)}
             print x
         except errno.errorcode[errno.ETIMEDOUT]:
             message = "alive - ERROR, alive timed out"

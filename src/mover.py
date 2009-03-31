@@ -4511,7 +4511,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(10, "callback socket %s" % (u.get_tsd().socket.getsockname(),))
                     try:
                         x= u.send(ticket,ticket['routing_callback_addr'] , self.connect_to, self.connect_retry, 0)
-                    except (socket.error, udp_client.UDPError), msg:
+                    except (socket.error, select.error, e_errors.EnstoreError), msg:
                         Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
                                   (ticket['routing_callback_addr'], str(msg)))
                         self.del_udp_client(u)

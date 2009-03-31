@@ -5230,9 +5230,10 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
         try:
             response_ticket = lmc.u.recv_deferred(transaction_ids,
                                                   encp_intf.resubmit_timeout)
-        except (socket.error, select.error, udp_client.UDPError), msg:
+        except (socket.error, select.error, e_errors.EnstoreError), msg:
             if msg.errno in [errno.ETIMEDOUT]:
-                response_ticket = {'status' : (e_errors.TIMEDOUT, None)}
+                response_ticket = {'status' : (e_errors.TIMEDOUT,
+                                               lmc.server_name)}
             else:
                 response_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
             """
@@ -5267,7 +5268,7 @@ def submit_one_request_recv(transaction_id, work_ticket, lmc, encp_intf):
         try:
             response_ticket = lmc.u.recv_deferred(transaction_id,
                                                   RESEND_TIMEOUT)
-        except (socket.error, select.error, udp_client.UDPError), msg:
+        except (socket.error, select.error, e_errors.EnstoreError), msg:
             if msg.errno in [errno.ETIMEDOUT]:
                 transaction_id = lmc.u.send_deferred(work_ticket, lmc.server_address)
                 count = count + 1
@@ -8326,7 +8327,7 @@ def submit_write_request(work_ticket, encp_intf):
           work_ticket.get('resend', {}).get('retry', 0) <= encp_intf.max_retry:
         try:
             ticket, lmc = submit_one_request(work_ticket, encp_intf)
-        except (socket.error, select.error, udp_client.UDPError), msg:
+        except (socket.error, select.error, e_errors.EnstoreError), msg:
             lmc = None
             if msg.errno == errno.ETIMEDOUT:
                 ticket = {'status' : (e_errors.TIMEDOUT,
@@ -9533,8 +9534,11 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         # loop below.
         try:
             tape_ticket = fcc.tape_list(e.volume)
-        except (select.error, socket.error, udp_client.UDPError), msg:
-            tape_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+        except (select.error, socket.error, e_errors.EnstoreError), msg:
+            if msg.errno == errno.ETIMEDOUT:
+                tape_ticket = {'status' : (e_errors.TIMEDOUT, "file_clerk")}
+            else:
+                tape_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
         except e_errors.TCP_EXCEPTION:
             tape_ticket = {'status' : (e_errors.NET_ERROR,
                                        e_errors.TCP_EXCEPTION)}
@@ -10198,7 +10202,7 @@ def submit_read_requests(requests, encp_intf):
         while req.get('completion_status', None) == None:
             try:
                 ticket, lmc = submit_one_request(req, encp_intf)
-            except (socket.error, select.error, udp_client.UDPError), msg:
+            except (socket.error, select.error, e_errors.EnstoreError), msg:
                 lmc = None
                 if msg.errno == errno.ETIMEDOUT:
                     ticket = {'status' : (e_errors.TIMEDOUT,
