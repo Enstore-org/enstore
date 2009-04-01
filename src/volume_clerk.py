@@ -221,7 +221,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 return None, None
             else:
                 return None
-            
+
         #Check volume/external_label format.
         if not enstore_functions3.is_volume(external_label):
             message = "%s: external_label %s not valid" \
@@ -638,7 +638,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 elif key in ['first_access', 'last_access', 'declared',
                     'si_time_0', 'si_time_1', 'system_inhibit_0',
                     'system_inhibit_1', 'user_inhibit_0',
-                    'user_inhibit_1']:
+                    'user_inhibit_1','modification_time']:
                     val = "'%s'"%(edb.time2timestamp(state))
                 else:
                     val = state
@@ -745,7 +745,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
                     'user_inhibit_0', 'user_inhibit_1']:
                     val = "'%s'"%(state)
                 elif key in ['first_access', 'last_access', 'declared',
-                    'si_time_0', 'si_time_1']:
+                    'si_time_0', 'si_time_1','modification_time']:
                     val = "'%s'"%(edb.time2timestamp(state))
                 else:
                     val = state
@@ -1586,6 +1586,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                 record['eod_cookie'] = '0000_000000000_0000001'
             record['last_access'] = -1
             record['first_access'] = -1
+            record['modification_time'] = -1
             record['system_inhibit'] = ["none", "none"]
             record['user_inhibit'] = ["none", "none"]
             record['sum_rd_access'] = 0
@@ -1973,6 +1974,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         # optional keys - use default values if not specified
         record['last_access'] = ticket.get('last_access', -1)
         record['first_access'] = ticket.get('first_access', -1)
+        record['modification_time'] = ticket.get('modification_time', -1)
         record['declared'] = ticket.get('declared',-1)
         if record['declared'] == -1:
             record["declared"] = time.time()
@@ -2330,6 +2332,8 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         record["last_access"] = time.time()
         if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
+        if record["modification_time"] == -1:
+            record["modification_time"] = record["last_access"]
             
         # update the non-deleted file count if we wrote a new file to the tape
         bfid = ticket.get("bfid") #will be present when a new file is added
@@ -2339,6 +2343,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         # record our changes
         self.volumedb_dict[external_label] = record  
         record["status"] = (e_errors.OK, None)
+        Trace.log(e_errors.ERROR, "set_remaining_bytes "+`record`)
         self.reply_to_caller(record)
         return
 
@@ -2367,6 +2372,8 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # update the fields that have changed
+        if ticket['wr_access'] == 1:
+            record["modification_time"] = time.time()
         record["last_access"] = time.time()
         if record["first_access"] == -1:
             record["first_access"] = record["last_access"]

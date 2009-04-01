@@ -33,19 +33,29 @@ default_database = 'enstoredb'
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
 def timestamp2time(s):
+	if not s : return -1
 	if s == '1969-12-31 17:59:59':
 		return -1
 	if s == '1970-01-01 00:59:59':
 		return -1
 	else:
-		# take care of daylight saving time
-		tt = list(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
-		tt[-1] = -1
+		tt=[]
+		try:
+			# take care of daylight saving time
+			tt = list(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
+			tt[-1] = -1
+		except TypeError:
+			Trace.log( e_errors.ERROR,'wrong time format: '+s);
+			tt=list(time.localtime(s))
+			tt[-1] = -1
 		return time.mktime(tuple(tt))
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 def time2timestamp(t):
-	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
+	try:
+		return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
+	except TypeError:
+		return t;
 
 # from two dictionaries, get the difference based on the second one
 def diff_fields_and_values(s1, s2):
@@ -159,6 +169,7 @@ class DbTable:
 					setstmt = setstmt + i + ' = ' + str_value(d[i]) + ', '
 				setstmt = setstmt[:-2]	# get rid of last ', '
 				cmd = self.update_query%(setstmt, key)
+				Trace.log(e_errors.INFO, "Updating  "+cmd)
 				# print cmd
 				res = self.db.query(cmd)
 
@@ -382,7 +393,8 @@ class VolumeDB(DbTable):
 				file_family, \
 				wrapper, \
 				comment, \
-				write_protected \
+				write_protected, \
+				modification_time \
         		from volume \
 			where \
 				label = '%s';"
@@ -397,7 +409,7 @@ class VolumeDB(DbTable):
 
 	def import_format(self, s):
 		sts = string.split(s['volume_family'], '.')
-		return {
+	        data =  {
 			'block_size': s['blocksize'],
 			'capacity_bytes': s['capacity_bytes'],
 			'declared': time2timestamp(s['declared']),
@@ -426,9 +438,14 @@ class VolumeDB(DbTable):
 			'comment': s['comment'],
 			'write_protected': s['write_protected']
 			}
+		if s.has_key('modification_time') :
+			data['modification_time'] = time2timestamp(s['modification_time'])
+		else:
+			data['modification_time']=-1
+		return data;
 
 	def export_format(self, s):
-		return {
+		data = {
 			'blocksize': s['block_size'],
 			'capacity_bytes': s['capacity_bytes'],
 			'declared': timestamp2time(s['declared']),
@@ -458,3 +475,8 @@ class VolumeDB(DbTable):
 			'comment': s['comment'],
 			'write_protected': s['write_protected']
 			}
+		if s.has_key('modification_time') :
+			data['modification_time'] = timestamp2time(s['modification_time'])
+		else:
+			data['modification_time']=-1
+		return data;
