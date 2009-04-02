@@ -284,7 +284,7 @@ class AtMovers:
                     time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
                     state = self.at_movers[mover].get('state', 'unknown') 
                     if time_in_state > self.max_time_in_other:
-                        if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK']:
+                        if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                             add_to_list = 1
                         if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK'):
                             add_to_list = 1
@@ -2019,9 +2019,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.time_started = time.time()
         self.startup_flag = 1   # this flag means that LM is in the startup state
 
+        #dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'],
+        #                                                     self.keys['port']),
+        #                                              use_raw=self.use_raw)
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'],
-                                                             self.keys['port']),
-                                                      use_raw=self.use_raw)
+                                                             self.keys['port']))
+                                                      
         
         # setup the communications with the event relay task
         self.resubscribe_rate = 300
