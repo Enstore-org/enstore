@@ -286,7 +286,7 @@ class AtMovers:
                     if time_in_state > self.max_time_in_other:
                         if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                             add_to_list = 1
-                        if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK'):
+                        if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK' or state == 'MOUNT_WAIT' or state =='DISMOUNT_WAIT'):
                             add_to_list = 1
                         if add_to_list:
                             self.dont_update[mover] = state
