@@ -283,7 +283,7 @@ class GenericClient:
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (socket.error, select.error, e_errors.EnstoreError), msg:
-            if msg.errno and msg.errno == errno.ETIMEDOUT:
+            if hasattr(msg, "errno") and msg.errno and msg.errno == errno.ETIMEDOUT:
                 x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
             else:
                 x = {'status' : (e_errors.NET_ERROR,

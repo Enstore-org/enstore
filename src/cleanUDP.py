@@ -163,21 +163,29 @@ class cleanUDP :
                                 return self.socket.sendto(data, address)
                         except socket.error:
 				exc, msg, tb = sys.exc_info()
-				if msg.errno == errno.EMSGSIZE:
-					message = "sendto %s: %s: data length %s" % \
-						  (str(msg),
-						   address,
-						   len(data))
-					Trace.log(e_errors.ERROR, message)
-					#Log the stack trace so we know
-					# what request was being processed.
-					Trace.handle_error(exc, msg, tb)
-					#break here since with this error
-					# retrying will never succeed.
-					# The sendto() and the end of this
-					# function will re-raise the
-					# exception.
-					break
+				print exc, msg
+				if msg:
+					if (hasattr(msg, 'errno') and 
+					    msg.errno == errno.EMSGSIZE):
+						message = "sendto %s: %s: data length %s" % \
+							  (str(msg),
+							   address,
+							   len(data))
+						Trace.log(e_errors.ERROR, message)
+						#Log the stack trace so we know
+						# what request was being processed.
+						Trace.handle_error(exc, msg, tb)
+						#break here since with this error
+						# retrying will never succeed.
+						# The sendto() and the end of this
+						# function will re-raise the
+						# exception.
+
+						break
+					else:
+						Trace.log(e_errors.ERROR, exc, msg)
+						break
+						
 				else:
 					self.logerror("sendto", n)
 				
