@@ -1468,8 +1468,10 @@ def show_status(volume_list, db, intf):
 	exit_status = 0
 	
 	for v in volume_list:
+		#When the volume is a source volume.
 		q1a = "select f1.bfid, f1.deleted as src_del, " \
 		      "       case when b1.bfid is not NULL then 'B' " \
+		      "            when f1.deleted = 'y' and f1.pnfs_id = '' then 'E' /*Mark failed and deleted files special*/ " \
 		      "            else ' ' " \
 		      "       end as src_bad, " \
 		      "       case when (select fcm.bfid " \
@@ -1510,8 +1512,10 @@ def show_status(volume_list, db, intf):
 		      "  and volume.label = '%s' " \
 		      "order by f1.location_cookie;" % (v,)
 
+		#When the volume is a destination volume.
 		q1b = "select f1.bfid, f1.deleted as src_del, " \
 		      "       case when b1.bfid is not NULL then 'B' " \
+		      "            when f1.deleted = 'y' and f1.pnfs_id = '' then 'E' /*Mark failed and deleted files special*/ " \
 		      "            else ' ' " \
 		      "       end as src_bad, " \
 		      "       case when (select fcm.bfid " \
@@ -3326,7 +3330,9 @@ def is_migrated(src_vol, dst_vol, intf, db, copied = 1, swapped = 1, checked = 1
 	     "left join volume v2 on f2.volume = v2.id " \
 	     "%s " \
 	     "where (f2.bfid is NULL %s %s %s %s ) " \
-	     "      and %s and %s %s;" % \
+	     "      and %s and %s %s " \
+	     "  and file.pnfs_id != '' -- skip failed files "\
+	     ";" % \
 	     (bad_files1,
 	      check_copied, check_swapped, check_checked, check_closed,
 	      check_label, deleted_files, bad_files2)
