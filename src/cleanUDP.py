@@ -163,7 +163,6 @@ class cleanUDP :
                                 return self.socket.sendto(data, address)
                         except socket.error:
 				exc, msg, tb = sys.exc_info()
-				print exc, msg
 				if msg:
 					if (hasattr(msg, 'errno') and 
 					    msg.errno == errno.EMSGSIZE):
