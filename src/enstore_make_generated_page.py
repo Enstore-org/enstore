@@ -105,9 +105,19 @@ def do_work(intf):
 
     if not html_dir:
         sys.stderr.write("Unable to determine html_dir.\n")
-        return
+        return True
+    if not os.path.isdir(html_dir):
+        sys.stderr.write("Directory %s does not exist.\n" % (html_dir,))
+        return True
 
     generated_pages_subdir = os.path.join(html_dir, "")
+    if not os.path.isdir(generated_pages_subdir):
+        try:
+            os.makedirs(generated_pages_subdir)
+        except (OSError, IOError), msg:
+            sys.stderr.write("Failed to create directory %s: %s\n" %
+                             (generated_pages_subdir, str(msg)))
+            return True
 
     #Is there a better place for this list?
     subdir_description_list = [
@@ -140,8 +150,18 @@ def do_work(intf):
     #Create the top page.
     generated_pages_subdir = os.path.join(html_dir,
                                           enstore_constants.WEB_SUBDIR)
+    #If necessary, create the directory the file will go to.
+    if not os.path.isdir(generated_pages_subdir):
+        try:
+            os.makedirs(generated_pages_subdir)
+        except (OSError, IOError), msg:
+            sys.stderr.write("Failed to create directory %s: %s\n" %
+                             (generated_pages_subdir, str(msg)))
+            return True
     make_page(generated_pages_subdir, url_dir, "Enstore Generated Web Pages",
               use_subdir_list)
+
+    return False
 
 
 class GeneratedPageInterface(generic_client.GenericClientInterface):
@@ -159,4 +179,4 @@ if __name__ == "__main__" :
 
     intf = GeneratedPageInterface(user_mode=0)
 
-    do_work(intf)
+    sys.exit(do_work(intf))
