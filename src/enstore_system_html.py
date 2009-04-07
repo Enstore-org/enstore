@@ -202,7 +202,7 @@ def do_work(intf):
         remote=False
     q="select coalesce(sum(size),0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
     
-    if server.get_system_name().find("stken") != -1:
+    if not remote:
          q="select sum(deleted_bytes+unknown_bytes+active_bytes)  from volume where system_inhibit_0!='DELETED' and media_type!='null'"
 
     config_server_client_dict = configuration_client.get_config_dict()
