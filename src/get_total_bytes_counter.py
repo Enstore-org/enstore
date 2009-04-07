@@ -96,8 +96,6 @@ if __name__ == "__main__":
     acc = config_dict.get("database",{})
     total_bytes=0.
     q="select coalesce(sum(size),0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
-    if system_name.find("stken") != -1:
-	    q="select sum(deleted_bytes+unknown_bytes+active_bytes)  from volume where system_inhibit_0!='DELETED' and media_type!='null'"
     
     try: 
         db = pg.DB(host  = acc.get('db_host', "localhost"),

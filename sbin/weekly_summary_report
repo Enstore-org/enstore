@@ -152,7 +152,7 @@ echo                                 >> $temp_file 2>&1
 echo "Creating Bytes recycled in last 7 days" `date`
 
 psql -p $EDB_PORT -h $EDB_HOST -U $EDB_USER $EDB_NAME -c "
-select * from bytes_recycled_last_7days() order by storage_group;
+select * from bytes_deleted_last_7days() order by storage_group;
 " >> $temp_file 2>&1
 
 echo                    >> $temp_file 2>&1

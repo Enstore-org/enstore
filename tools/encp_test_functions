@@ -132,7 +132,7 @@ get_pnfs_file_list()
 #$1 = directory of file to choose from
 
     #Restrict this to files less than 100MB in size.
-    if [ -n "$REMOTE_ENCP" ]; then
+    if [ -n $REMOTE_ENCP ]; then
 	#filenames=`enstore pnfs_agent --just-files --list-dir $1 | sed "s:^:$1/:"`
 	filenames=`enstore pnfs_agent --just-files --list-dir $1`
     else
@@ -148,7 +148,7 @@ get_volume_from_filename()
     filename=$1
     
     
-    if [ -n "$REMOTE_ENCP" ]; then
+    if [ -n $REMOTE_ENCP ]; then
 	#Rip just the volume out of the layer 4.
 	volume=`enstore pnfs_agent --layer 4 $filename | sed -n '1p'`
     else
@@ -336,7 +336,7 @@ test_layer()
     message=`eval echo $2`
     
     for file in $pnfsfiles; do
-	if [ -n "$REMOTE_ENCP" ]; then
+	if [ -n REMOTE_ENCP ]; then
             enstore pnfs_agent --layer 1 $file > /dev/null
         else
 	    enstore pnfs --layer $file 1 > /dev/null
@@ -346,7 +346,7 @@ test_layer()
 	    echo No bfid value: $result: $file
 	    return 1
 	fi
-	if [ -n "$REMOTE_ENCP" ]; then
+	if [ -n $REMOTE_ENCP ]; then
 	    result=`enstore pnfs_agent --layer 4 $file`
 	else
 	    result=`enstore pnfs --layer $file 4`
@@ -519,7 +519,7 @@ single_read_write_test()
     print_test_name $section
 
     truncate_encp_output
-
+    
     #Snag a random file.
     filelist=`get_file_list "$LOCAL_INPUT_DIR"`
     filename=`pick_random_files 1 $filelist`
@@ -599,7 +599,7 @@ dcache_read_write_test()
 
     #Create the output file, set the size and get the pnfs id.
     size=`ls -l $filename | sed 's/ \{1,30\}/ /g' | cut -f 5 "-d "`
-    if [ -n "$REMOTE_ENCP" ]; then
+    if [ -n $REMOTE_ENCP ]; then
 	enstore pnfs_agent --touch $pnfsname
 	enstore pnfs_agent --size "${pnfsname}" "${size}"
 	pnfsid=`enstore pnfs_agent --id $pnfsname`
@@ -1125,7 +1125,7 @@ pnfs_agent_read_write_test()
 	    return
     fi
 
-    if [ -z "$REMOTE_ENCP" ]; then
+    if [ -z $REMOTE_ENCP ]; then
 	enstore pnfs_agent --alive --timeout 3 --retries 3
 	if [ $? -eq 0 ]; then
 	    #We detected that the pnfs_agent is running, lets use it.

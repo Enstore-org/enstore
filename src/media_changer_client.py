@@ -20,7 +20,6 @@ import pprint
 import time
 import socket
 import select
-import errno
 
 #enstore imports
 #import udp_client
@@ -79,12 +78,12 @@ class MediaChangerClient(generic_client.GenericClient):
             Trace.log(e_errors.ERROR, "unloadvol %s" % (rt['status'],))
         return rt
 
-    def viewvol(self, volume, m_type, rcv_timeout = 0, rcv_tries = 0):
+    def viewvol(self, volume, m_type):
         ticket = {'work' : 'viewvol',
                   'external_label' : volume,
                   'media_type' : m_type
                   }
-        rt = self.send(ticket, rcv_timeout, rcv_tries)
+        rt = self.send(ticket)
         return rt
 
 
@@ -136,11 +135,6 @@ class MediaChangerClient(generic_client.GenericClient):
     def __list_volumes(self, control_socket, ticket):
         try:
             d = callback.read_tcp_obj(control_socket, 1800) # 30 min
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
-            if msg.errno == errno.ETIMEDOUT:
-                d = {'status':(e_errors.TIMEDOUT, self.server_name)}
-            else:
-                d = {'status':(e_errors.NET_ERROR, str(msg))}
         except e_errors.TCP_EXCEPTION:
             d = {'status':(e_errors.TCP_EXCEPTION, e_errors.TCP_EXCEPTION)}
 
@@ -166,11 +160,8 @@ class MediaChangerClient(generic_client.GenericClient):
                      }
                 
                 ticket['volume_list'].append(d)
-            except (select.error, socket.error, e_errors.EnstoreError), msg:
-                if msg.errno == errno.ETIMEDOUT:
-                    ticket['status'] = (e_errors.TIMEDOUT, self.server_name)
-                else:
-                    ticket['status'] = (e_errors.NET_ERROR, str(msg))
+            except (select.error, socket.error), msg:
+                ticket['status'] = (e_errors.NET_ERROR, str(msg))
                 break
             except e_errors.TCP_EXCEPTION:
                 ticket['status'] = (e_errors.TCP_EXCEPTION,
@@ -202,11 +193,6 @@ class MediaChangerClient(generic_client.GenericClient):
         
         try:
             d = callback.read_tcp_obj(control_socket)
-        except (select.error, socket.error, e_errors.EnstoreError), msg:
-            if msg.errno == errno.ETIMEDOUT:
-                d = {'status':(e_errors.TIMEDOUT, self.server_name)}
-            else:
-                d = {'status':(e_errors.NET_ERROR, str(msg))}
         except e_errors.TCP_EXCEPTION:
             d = {'status':(e_errors.TCP_EXCEPTION, e_errors.TCP_EXCEPTION)}
         listen_socket.close()

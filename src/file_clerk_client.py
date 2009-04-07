@@ -11,14 +11,14 @@ import string
 import errno
 import sys
 import socket
-#import select
+import select
 import os
 
 # enstore imports
 import generic_client
 import option
 import backup_client
-#import callback
+import callback
 import hostaddr
 import Trace
 import e_errors
@@ -45,8 +45,8 @@ def union(s):
                 res.append(j)
     return res
 
-class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient, 
-                 backup_client.BackupClient):
+class FileClient(generic_client.GenericClient, 
+                      backup_client.BackupClient):
 
     def __init__( self, csc, bfid=0, server_address=None, flags=0, logc=None,
                   alarmc=None, rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES,
@@ -59,19 +59,12 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             rcv_tries = tries
         ###
             
-        #generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
-        #                                      flags=flags, logc=logc,
-        #                                      alarmc=alarmc,
-        #                                      rcv_timeout=rcv_timeout,
-        #                                      rcv_tries=rcv_tries,
-        #                                      server_name = MY_SERVER)
-        info_client.fileInfoMethods.__init__(self,csc,MY_NAME,server_address,
-                                             flags=flags, logc=logc,
-                                             alarmc=alarmc,
-                                             rcv_timeout=rcv_timeout,
-                                             rcv_tries=rcv_tries,
-                                             server_name = MY_SERVER)
-        
+        generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
+                                              flags=flags, logc=logc,
+                                              alarmc=alarmc,
+                                              rcv_timeout=rcv_timeout,
+                                              rcv_tries=rcv_tries,
+                                              server_name = MY_SERVER)
 	self.bfid = bfid
 	#if self.server_address == None:
         #    self.server_address = self.get_server_address(
@@ -185,8 +178,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
     #     r = self.send(ticket)
     #     return r
 
-    """
-    def get_bfids(self, external_label):
+    def get_bfids(self,external_label):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"          : "get_bfids",
@@ -228,9 +220,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             return done_ticket
 
         return ticket
-    """
 
-    """
     def list_active(self,external_label):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -275,9 +265,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         data_path_socket.close()
 
         return ticket
-    """
 
-    """
     def tape_list(self,external_label):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -363,25 +351,24 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             ticket['tape_list'].append(record)
 
         return ticket
-    """
 
     def mark_bad(self, path, specified_bfid = None):
         # get the full absolute path
         a_path = os.path.abspath(path)
-        dirname, filename = os.path.split(a_path)
+        dir, file = os.path.split(a_path)
 
 	# does it exist?
         if not os.access(path, os.F_OK):
-            msg = "%s does not exist!" % (path)
+            msg = "%s does not exist!"%(path)
             return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # check premission
-        if not os.access(dirname, os.W_OK):
-            msg = "not enough privilege to rename %s" % (path)
+        if not os.access(dir, os.W_OK):
+            msg = "not enough privilege to rename %s"%(path)
             return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # get bfid
-        bfid_file = os.path.join(dirname, '.(use)(1)(%s)' % (filename))
+        bfid_file = os.path.join(dir, '.(use)(1)(%s)'%(file))
         f = open(bfid_file)
         bfid = string.strip(f.readline())
         f.close()
@@ -419,7 +406,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         if is_multiple_copy:
             bad_file = path
         else:
-            bad_file = os.path.join(dirname, ".bad." + filename)
+            bad_file = os.path.join(dir, ".bad."+file)
             # rename it
             try:
                 os.rename(a_path, bad_file)
@@ -437,20 +424,20 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
     def unmark_bad(self, path, specified_bfid = None):
         # get the full absolute path
         a_path = os.path.abspath(path)
-        dirname, filename = os.path.split(a_path)
+        dir, file = os.path.split(a_path)
 
 	# does it exist?
         if not os.access(path, os.F_OK):
-            msg = "%s does not exist!" % (path)
+            msg = "%s does not exist!"%(path)
             return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # check premission
-        if not os.access(dirname, os.W_OK):
-            msg = "not enough privilege to rename %s" % (path)
+        if not os.access(dir, os.W_OK):
+            msg = "not enough privilege to rename %s"%(path)
             return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # get bfid
-        bfid_file = os.path.join(dirname, '.(use)(1)(%s)' % (filename))
+        bfid_file = os.path.join(dir, '.(use)(1)(%s)'%(file))
         f = open(bfid_file)
         bfid = string.strip(f.readline())
         f.close()
@@ -480,7 +467,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                 return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # is it a "bad" file?
-	if filename[:5] != ".bad." and not is_multiple_copy:
+	if file[:5] != ".bad." and not is_multiple_copy:
             msg = "%s is not officially a bad file"%(path)
             return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
@@ -491,7 +478,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         if is_multiple_copy:
             good_file = path
         else:
-            good_file = os.path.join(dirname, filename[5:])
+            good_file = os.path.join(dir, file[5:])
             # rename it
             try:
                 os.rename(a_path, good_file)
@@ -507,7 +494,6 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         return ticket
 
 
-    """
     def show_bad(self):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -549,7 +535,6 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             return done_ticket
 
         return ticket
-    """
 
     def bfid_info(self, bfid = None, timeout=0, retry=0):
         if not bfid:
@@ -968,21 +953,19 @@ def do_work(intf):
 
     elif intf.deleted and intf.bfid:
 	try:
-	    if intf.restore_dir:
-                do_dir = "yes"
+	    if intf.restore_dir: dir ="yes"
 	except AttributeError:
-	    do_dir = "no"
-        ticket = fcc.set_deleted(intf.deleted, do_dir)
+	    dir = "no"
+        ticket = fcc.set_deleted(intf.deleted, dir)
         Trace.trace(13, str(ticket))
 
     elif intf.list:
         ticket = ifc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
-            output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" \
-                            % (len(intf.list))
-            print output_format \
-                  % ("label", "bfid", "size", "location_cookie", "delflag",
-                     "original_name")
+            format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s"%(len(intf.list))
+            # print "%-8s %-16s %10s %-22s %-7s %s\n"%(
+            #    "label", "bfid", "size", "location_cookie", "delflag", "original_name")
+            print format%("label", "bfid", "size", "location_cookie", "delflag", "original_name")
             print
             tape = ticket['tape_list']
             for record in tape:
@@ -992,7 +975,8 @@ def do_work(intf):
                     deleted = 'active'
                 else:
                     deleted = 'unknown'
-                print output_format % (intf.list,
+                # print "%-8s %-16s %10i %-22s %-7s %s" % (intf.list,
+                print format % (intf.list,
                     record['bfid'], record['size'],
                     record['location_cookie'], deleted,
                     record['pnfs_name0'])

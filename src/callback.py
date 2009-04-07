@@ -38,7 +38,6 @@ import host_config
 from en_eval import en_eval
 import Interfaces
 
-"""
 class TCPError(socket.error):
 
     def __init__(self, e_errno, e_message = None):
@@ -135,7 +134,7 @@ class FIFOError(OSError):
             self.strerror = self.e_message
 
         return self.strerror
-"""    
+    
 
 def hex8(x):
     s=hex(x)[2:]  #kill the 0x
@@ -448,7 +447,7 @@ def write_tcp_obj(sock, obj, timeout=15*60):
         log_socket_state(sock) #Log the state of the socket.
         Trace.log(e_errors.ERROR, e)
         #raise e_errors.TCP_EXCEPTION
-        raise e_errors.EnstoreError(None, e, e_errors.NET_ERROR)
+        raise TCPError(e)
 
     return rtn
 
@@ -460,7 +459,7 @@ def write_tcp_obj_new(sock,obj,timeout=15*60):
         log_socket_state(sock) #Log the state of the socket.
         Trace.log(e_errors.ERROR, e)
         #raise e_errors.TCP_EXCEPTION
-        raise e_errors.EnstoreError(None, e, e_errors.NET_ERROR)
+        raise TCPError(e)
 
     return rtn
 
@@ -471,7 +470,7 @@ def write_obj(fd, obj, timeout=15*60, verbose = True):
     if e and verbose:
         Trace.log(e_errors.ERROR, e)
         #raise e_errors.TCP_EXCEPTION #What should this be?
-        raise e_errors.EnstoreError(None, e, e_errors.IOERROR)
+        raise FIFOError(e)
     
     return rtn
 
@@ -595,7 +594,7 @@ def read_tcp_obj(sock, timeout=15*60) :
         Trace.log(e_errors.ERROR, error_string)
         
         #raise e_errors.TCP_EXCEPTION
-        raise e_errors.EnstoreError(None, e, e_errors.NET_ERROR)
+        raise TCPError(e)
 
     try:
         obj = cPickle.loads(s)
@@ -623,7 +622,7 @@ def read_tcp_obj_new(sock, timeout=15*60):
         Trace.log(e_errors.ERROR, error_string)
         
 	#raise e_errors.TCP_EXCEPTION
-        raise e_errors.EnstoreError(None, e, e_errors.NET_ERROR)
+        raise TCPError(e)
     
     return cPickle.loads(s)
 
@@ -635,7 +634,7 @@ def read_obj(fd, timeout=15*60, verbose = True):
             Trace.log(e_errors.ERROR, e)
         
         #raise e_errors.TCP_EXCEPTION #What should this be?
-        raise e_errors.EnstoreError(None, e, e_errors.IOERROR)
+        raise FIFOError(e)
     
     return cPickle.loads(s)
     

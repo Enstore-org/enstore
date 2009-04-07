@@ -408,13 +408,6 @@ def get_entvrc(csc, intf):
                    config_servers[name][0][len(intf.args[0]):] == intf.args[0]:
                     address = config_servers[name][0]
                     break
-            else:
-                #Set this to the last address we were using.  This can happen
-                #if the local machines configuration names a system
-                # in 'known_config_hosts' differently than what the
-                # target system names itself in it own 'known_config_hosts'
-                # section of the configuration.
-                address = csc.server_address[0]
         else:
             #We need a default.
             address = os.environ['ENSTORE_CONFIG_HOST']
@@ -1087,7 +1080,7 @@ def handle_messages(csc_addr, system_name, intf):
                             send_request_dict[tx_id]['name'], mstatus)
 
                         del send_request_dict[tx_id]
-                    except (socket.error, select.error, e_errors.EnstoreError):
+                    except udp_client.UDPError:
                         pass
                     except errno.errorcode[errno.ETIMEDOUT]:
                         pass
