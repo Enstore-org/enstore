@@ -67,6 +67,8 @@ class NullDriver(generic_driver.Driver):
         
     def close(self):
         Trace.trace(25, "close")
+        if self.fd == -1:
+            return 0
         try:
             r = os.close(self.fd)
         except:
@@ -97,6 +99,7 @@ class NullDriver(generic_driver.Driver):
     def write(self, buf, offset, nbytes):
         if self.mode != 1:
             raise ValueError, "file not open for writing"
+        return nbytes
 
         t0 = time.time()
         r = strbuffer.buf_write(self.fd, buf, offset, nbytes)
