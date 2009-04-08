@@ -3427,7 +3427,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if ticket.has_key('action'):
             self.current_work_ticket = ticket
             self.mode = ASSERT
-            failed = False
+            #failed = False
             if (ticket['action'] == 'crc_check'):
                 read_whole_tape = True
                 ticket['return_file_list'] = {}
@@ -3449,58 +3449,59 @@ class Mover(dispatching_worker.DispatchingWorker,
                         exc, msg, tb = sys.exc_info()
                         self.transfer_failed(exc, msg, error_source=USER)
                         failed = True
-                    if failed == False:
-                        # create the list of location cookies
-                        file_info = {}
-                        for entry in file_list['tape_list']:
-                            ticket['return_file_list'][entry['location_cookie']] = e_errors.UNKNOWN
-                            file_info[entry['location_cookie']] = entry
-                        Trace.trace(24, "file_info %s"%(file_info,))
+                        return
+                    #if failed == False:
+                    # create the list of location cookies
+                    file_info = {}
+                    for entry in file_list['tape_list']:
+                        ticket['return_file_list'][entry['location_cookie']] = e_errors.UNKNOWN
+                        file_info[entry['location_cookie']] = entry
+                    Trace.trace(24, "file_info %s"%(file_info,))
                             
                 Trace.trace(24, 'ticket %s'%(ticket,))
                         
-                if failed == False:
-                    keys = ticket['return_file_list'].keys()
-                    keys.sort()
-                    Trace.trace(24, 'keys %s'%(keys,))
-                    stat = e_errors.OK 
-                    for loc_cookie in keys:
-                        location = cookie_to_long(loc_cookie)
-                        self.file_info =  file_info[loc_cookie]
-                        self.assert_return = e_errors.OK
-                        self.reset(None, 1)
-                        self.current_work_ticket = ticket
-                        Trace.trace(24, "t1 %s"%(type(self.current_work_ticket),))
-                        Trace.trace(24, "t11 %s"%(type(self.current_work_ticket['fc']),))
-                        Trace.trace(24, "t2 %s"%(type(file_info),))
-                        Trace.trace(24, "t21 %s"%(type(file_info[loc_cookie]),))
-                        self.current_work_ticket['fc'] = file_info[loc_cookie]
-                        self.current_work_ticket['fc']['address'] = fc_address
-                        self.finish_transfer_setup()
-                        self.run_in_thread('seek_thread', self.seek_to_location,
-                                           args = (location, self.mode==WRITE),
-                                           after_function=self.start_transfer)
-                        self.net_driver.open('/dev/null', WRITE)
-                        self.assert_ok.wait()
-                        self.assert_ok.clear()
-                        Trace.trace(24, "assert return: %s"%(self.assert_return,))
-                        ticket['return_file_list'][loc_cookie] = self.assert_return
-                        if self.assert_return != e_errors.OK:
-                           stat = self.assert_return 
-                        '''
-                        while 1:
-                            alive_count = threading.activeCount()
-                            Trace.trace(24, "alive_count %s"%(alive_count,))
-                            if alive_count == 2:
-                                # includes current and main threads
-                                
-                                Trace.trace(24, "assert return: %s"%(self.assert_return,))
-                                ticket['return_file_list'][loc_cookie] = self.assert_return 
-                                break
-                            else:
-                                time.sleep(1)
-                        '''
-                    self.transfer_completed(stat)
+                #if failed == False:
+                keys = ticket['return_file_list'].keys()
+                keys.sort()
+                Trace.trace(24, 'keys %s'%(keys,))
+                stat = e_errors.OK 
+                for loc_cookie in keys:
+                    location = cookie_to_long(loc_cookie)
+                    self.file_info =  file_info[loc_cookie]
+                    self.assert_return = e_errors.OK
+                    self.reset(None, 1)
+                    self.current_work_ticket = ticket
+                    Trace.trace(24, "t1 %s"%(type(self.current_work_ticket),))
+                    Trace.trace(24, "t11 %s"%(type(self.current_work_ticket['fc']),))
+                    Trace.trace(24, "t2 %s"%(type(file_info),))
+                    Trace.trace(24, "t21 %s"%(type(file_info[loc_cookie]),))
+                    self.current_work_ticket['fc'] = file_info[loc_cookie]
+                    self.current_work_ticket['fc']['address'] = fc_address
+                    self.finish_transfer_setup()
+                    self.run_in_thread('seek_thread', self.seek_to_location,
+                                       args = (location, self.mode==WRITE),
+                                       after_function=self.start_transfer)
+                    self.net_driver.open('/dev/null', WRITE)
+                    self.assert_ok.wait()
+                    self.assert_ok.clear()
+                    Trace.trace(24, "assert return: %s"%(self.assert_return,))
+                    ticket['return_file_list'][loc_cookie] = self.assert_return
+                    if self.assert_return != e_errors.OK:
+                        stat = self.assert_return 
+                    '''
+                    while 1:
+                        alive_count = threading.activeCount()
+                        Trace.trace(24, "alive_count %s"%(alive_count,))
+                        if alive_count == 2:
+                           # includes current and main threads
+                           
+                           Trace.trace(24, "assert return: %s"%(self.assert_return,))
+                           ticket['return_file_list'][loc_cookie] = self.assert_return 
+                           break
+                        else:
+                        time.sleep(1)
+                    '''
+                self.transfer_completed(stat)
                                 
 
         else:
@@ -4681,6 +4682,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if self.setup_mode == ASSERT:
                         self.listen_socket.close()
                         self.listen_socket = None
+                        callback_addr = ticket.get('callback_addr', None)
+                        if callback_addr:
+                            self.client_ip = hostaddr.address_to_name(callback_addr[0])
+                        else:
+                            self.client_ip = ticket['wrapper']['machine'][1]
                         self.run_in_thread('volume_assert__thread', self.assert_vol)
                         return
                 except:
