@@ -111,7 +111,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		#Close the connections with the database.
 		self.close()
 
-		self.__init__(self.csc)
+		self.__init__(self.csc.server_address)
 
 	def info_error_handler(self, exc, msg, tb):
 		__pychecker__ = "unusednames=tb"
