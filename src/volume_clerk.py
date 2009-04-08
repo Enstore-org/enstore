@@ -79,9 +79,16 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
 
     def __init__(self, csc):
+        # Obtain information from the configuration server.
         self.csc = configuration_client.ConfigurationClient(csc)
+        self.keys = self.csc.get(MY_NAME) #wait forever???
+        if not e_errors.is_ok(self.keys):
+            message = "Unable to acquire configuration info for %s: %s: %s" % \
+                      (MY_NAME, self.keys['status'][0], self.keys['status'][1])
+            Trace.log(e_errors.ERROR, message)
+            sys.exit(1)
 
-        self.keys = self.csc.get(MY_NAME)
+        #Setup the ability to handle requests.
         dispatching_worker.DispatchingWorker.__init__(
             self, (self.keys['hostip'], self.keys['port']))
         
@@ -111,9 +118,9 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             self.sgdb = esgdb.SGDb(self.volumedb_dict.db)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
-            Trace.log(e_errors.ERROR, msg)
-            Trace.alarm(e_errors.ERROR, msg, {})
+            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+            Trace.log(e_errors.ERROR, message)
+            Trace.alarm(e_errors.ERROR, message, {})
             Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
             sys.exit(1)
 
