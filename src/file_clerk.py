@@ -40,9 +40,16 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### here either.
 
     def  __init__(self, csc):
+        # Obtain information from the configuration server.
         self.csc = configuration_client.ConfigurationClient(csc)
-        
-        self.keys = self.csc.get(MY_NAME)
+        self.keys = self.csc.get(MY_NAME) #wait forever???
+        if not e_errors.is_ok(self.keys):
+            message = "Unable to acquire configuration info for %s: %s: %s" % \
+                      (MY_NAME, self.keys['status'][0], self.keys['status'][1])
+            Trace.log(e_errors.ERROR, message)
+            sys.exit(1)
+
+        #Setup the ability to handle requests.
         dispatching_worker.DispatchingWorker.__init__(
             self, (self.keys['hostip'], self.keys['port']))
 
@@ -67,9 +74,9 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             self.filedb_dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
-            Trace.log(e_errors.ERROR,msg)
-            Trace.alarm(e_errors.ERROR,msg, {})
+            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+            Trace.log(e_errors.ERROR, message)
+            Trace.alarm(e_errors.ERROR, message, {})
             Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
             sys.exit(1)
 
