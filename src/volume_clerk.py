@@ -2497,7 +2497,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         new_library = self.extract_value_from_ticket("new_library", ticket)
-        if not new_library == None:
+        if new_library == None:
             return #extract_value_from_ticket handles its own errors.
 
         # update the library field with the new library
