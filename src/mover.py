@@ -772,9 +772,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.in_state_to_cnt = 0
                 self.__dict__['state_change_time'] = time.time()
                 if self.starting == 0:
-                    if val in (IDLE, HAVE_BOUND):
-                        # in idle and have_bound update interval for update_lm is as set
+                    if val == IDLE:
+                        # in idle update interval for update_lm is as set
                         interval = self.update_interval
+                    elif val == HAVE_BOUND:
+                        # in have_bound update interval for update_lm is different
+                        interval = self.update_interval_in_bound
                     else:
                         # in all other states it is 3 times +1 more
                         interval = self.update_interval*3+1
@@ -1346,6 +1349,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         #how often to send a message to the library manager
         self.update_interval = self.config.get('update_interval', 15)
+        self.update_interval_in_bound = self.config.get('update_interval_in_bound', self.update_interval)
 
         ##Setting this attempts to optimize filemark writing by writing only
         ## a single filemark after each file, instead of using ftt's policy of always
@@ -3427,7 +3431,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if ticket.has_key('action'):
             self.current_work_ticket = ticket
             self.mode = ASSERT
-            #failed = False
             if (ticket['action'] == 'crc_check'):
                 read_whole_tape = True
                 ticket['return_file_list'] = {}
@@ -3448,9 +3451,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     except:
                         exc, msg, tb = sys.exc_info()
                         self.transfer_failed(exc, msg, error_source=USER)
-                        failed = True
                         return
-                    #if failed == False:
                     # create the list of location cookies
                     file_info = {}
                     for entry in file_list['tape_list']:
@@ -3460,7 +3461,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                             
                 Trace.trace(24, 'ticket %s'%(ticket,))
                         
-                #if failed == False:
                 keys = ticket['return_file_list'].keys()
                 keys.sort()
                 Trace.trace(24, 'keys %s'%(keys,))
@@ -3488,19 +3488,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ticket['return_file_list'][loc_cookie] = self.assert_return
                     if self.assert_return != e_errors.OK:
                         stat = self.assert_return 
-                    '''
-                    while 1:
-                        alive_count = threading.activeCount()
-                        Trace.trace(24, "alive_count %s"%(alive_count,))
-                        if alive_count == 2:
-                           # includes current and main threads
-                           
-                           Trace.trace(24, "assert return: %s"%(self.assert_return,))
-                           ticket['return_file_list'][loc_cookie] = self.assert_return 
-                           break
-                        else:
-                        time.sleep(1)
-                    '''
                 self.transfer_completed(stat)
                                 
 
@@ -5851,6 +5838,7 @@ class DiskMover(Mover):
 
         #how often to send a message to the library manager
         self.update_interval = self.config.get('update_interval', 15)
+        self.update_interval_in_bound = self.config.get('update_interval_in_bound', self.update_interval)
 
         self.check_written_file_period = self.config.get('check_written_file', 0)
         self.files_written_cnt = 0
