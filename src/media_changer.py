@@ -1624,6 +1624,16 @@ class STK_MediaLoader(MediaLoaderMethods):
 
         return (rt[0], rt[1], rt[2], state)
 
+    def insert(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"STK media changer does not support this operation.")
+
+    def eject(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"STK media changer does not support this operation.")
+
     def cleanCycle(self, inTicket):
         __pychecker__ = "unusednames=i"
 	    
@@ -3061,6 +3071,16 @@ class MTX_MediaLoader(MediaLoaderMethods):
         return self.retry_function(self.mtx_dismount, external_label,
 				   drive, media_type)
 
+    def insert(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"MTX media changer does not support this operation.")
+
+    def eject(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"MTX media changer does not support this operation.")
+
     #########################################################################
     # These functions are internal functions specific to MTX media changer.
     #########################################################################
@@ -3551,6 +3571,16 @@ class IBM_3584_MediaLoader(MediaLoaderMethods):
 	media_type = ticket['vol_ticket']['media_type']
         return self.retry_function(self.dismount, external_label,
 				   drive, media_type)
+
+    def insert(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"IBM media changer does not support this operation.")
+
+    def eject(self, ticket):
+        __pychecker__ = "no-argsused" # When fixed remove this pychecker line.
+        return (e_errors.NOT_SUPPORTED, 0,
+		"IBM media changer does not support this operation.")
 
     #FIXME - what the devil is this?
     def getVolState(self, ticket):
