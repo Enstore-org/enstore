@@ -130,7 +130,6 @@ class RawUDP:
             self.buffer.append((message[0], message[1], request))
             self.arrived.set()
             _print(self.f, "PUT %s"%(time.time() - t0, ))
-        print "PUT EXITING", self.thread_name
         self._lock.release()
 
         
