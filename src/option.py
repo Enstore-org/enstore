@@ -284,6 +284,7 @@ INFO = "info"                                #pnfs
 INPUT_DIR = "input_dir"                      #plotter
 INSERT = "insert"                            #media
 IO = "io"                                    #pnfs
+IOAREA = "ioarea"                            #media
 IS_UP = "is-up"                              #inquisitor
 JOUHOME = "jouHome"                          #restore
 JUST = "just"                                #start, stop
@@ -386,7 +387,7 @@ RECURSIVE = "recursive"                      #file
 RECYCLE = "recycle"                          #volume
 REFRESH = "refresh"                          #inquisitor(c&s)
 REMEDY_TYPE = "remedy_type"                  #alarm_server
-REMOVE = "remove"                            #pnfs_agent
+REMOVE = "remove"                            #pnfs_agent, media
 RESET_LIB = "reset-lib"                      #volume
 RESOLVE = "resolve"                          #alarm
 RESTORE = "restore"                          #volume, file
@@ -519,7 +520,7 @@ valid_option_list = [
     GVOL, 
     HELP, HISTORY, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_FAIR_SHARE, IGNORE_STORAGE_GROUP,
-    IMPORT, INFILE, INFO, INPUT_DIR, INSERT, IO, IS_UP,
+    IMPORT, INFILE, INFO, INPUT_DIR, INSERT, IO, IOAREA, IS_UP,
     JOUHOME, JUST, JUST_FILES,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_CLEAN, LIST_DIR, LIST_DRIVES,

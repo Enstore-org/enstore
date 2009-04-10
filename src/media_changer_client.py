@@ -37,6 +37,8 @@ MY_NAME = ".MC"
 RCV_TIMEOUT = 0
 RCV_TRIES = 0
 
+FAKEOPENIODOOR = "FakeOpenIODoor" #used to test the robot
+
 class MediaChangerClient(generic_client.GenericClient):
     #The paramater 'name' is expected to be something like
     # '9940.media_changer'.
@@ -134,6 +136,8 @@ class MediaChangerClient(generic_client.GenericClient):
         return reply
 
     def __list_volumes(self, control_socket, ticket):
+        __pychecker__ = "unusednames=ticket" #Keep pychecker happy
+        
         try:
             d = callback.read_tcp_obj(control_socket, 1800) # 30 min
         except (socket.error, select.error, e_errors.EnstoreError), msg:
@@ -244,30 +248,41 @@ class MediaChangerClient(generic_client.GenericClient):
         rt = self.send(ticket,300,10)
         return rt
 
-    def insertvol(self, IOarea, inNewLib):
+    def insertvol(self, IOarea, inNewLib = None, FakeIOOpen = None):
         ticket = {'work'         : 'insertvol',
-              'IOarea_name'  : IOarea,
-          'newlib'       : inNewLib
+                  'IOarea_name'  : IOarea,
+                  'newlib'       : inNewLib
          }
         if type(IOarea) != types.ListType:
             Trace.log(e_errors.ERROR, "ERROR:insertvol IOarea must be a list")
             rt = {'status':(e_errors.WRONGPARAMETER, 1, "IOarea must be a list")}
             return rt
-        zz = raw_input('Insert volumes into I/O area. Do not mix media types.\nWhen I/O door is closed hit return:')
-        if zz == "FakeOpenIODoor":
-            ticket["FakeIOOpen"] = 'yes'
+        if FakeIOOpen == FAKEOPENIODOOR:
+            ticket["FakeIOOpen"] = "yes"
         rt = self.send(ticket,300,10)
         return rt
 
-    def ejectvol(self, media_type, volumeList):
+    def ejectvol(self, volumeList, IOarea = None, FakeIOOpen = None,
+                 purge = None):
         ticket = {'work'         : 'ejectvol',
-              'volList'      : volumeList,
-              'media_type'   : media_type
+                  'volList'      : volumeList,
+                  #'IOarea_name'  : IOarea,
+                  #'media_type'   : media_type,
                   }
+        if IOarea:
+            #Include this only when we want to specify where the tape should
+            # go.
+            ticket['IOarea_name'] = IOarea
+        if purge:
+            #Remove the volume information from the robot database.
+            ticket['purge'] = "yes"
+            
         if type(volumeList) != types.ListType:
             Trace.log(e_errors.ERROR, "ERROR:ejectvol volumeList must be a list")
             rt = {'status':(e_errors.WRONGPARAMETER, 1, "volumeList must be a list")}
             return rt
+        if FakeIOOpen == FAKEOPENIODOOR:
+            ticket["FakeIOOpen"] = "yes"
         rt = self.send(ticket,300,10)
         return rt
 
@@ -295,6 +310,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.volume = 0
         self.insert = 0 #from robot, not drive
         self.eject = 0  #from robot, not drive
+        self.ioarea = 0 #used with --eject
+        self.remove = 0 #used with --eject
         self.mount = 0
         self.dismount = 0
         self.viewattrib = 0
@@ -329,21 +346,32 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                                             option.VALUE_NAME:"drive",
                                             option.VALUE_TYPE:option.STRING}],
                       },
-        #option.EJECT:{option.HELP_STRING:"",
-        #              option.DEFAULT_VALUE:option.DEFAULT,
-        #              option.DEFAULT_TYPE:option.INTEGER,
-        #              option.VALUE_USAGE:option.IGNORED,
-        #              option.USER_LEVEL:option.HIDDEN},
+        option.EJECT:{option.HELP_STRING:"Remove tapes from robot.",
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.VALUE_LABEL:"volume_list",
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN,
+                      },
         option.GET_WORK:{option.HELP_STRING:"",
                          option.DEFAULT_VALUE:option.DEFAULT,
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.IGNORED,
                          option.USER_LEVEL:option.ADMIN},
-        #option.INSERT:{option.HELP_STRING:"",
-        #              option.DEFAULT_VALUE:option.DEFAULT,
-        #              option.DEFAULT_TYPE:option.INTEGER,
-        #              option.VALUE_USAGE:option.IGNORED,
-        #              option.USER_LEVEL:option.HIDDEN},
+        option.INSERT:{option.HELP_STRING:"Insert tapes into robot.",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_LABEL:"insert area list",
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN,
+                       },
+        option.IOAREA:{option.HELP_STRING:
+                       "Used with --eject to specify IO area.",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.STRING,
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.USER_LEVEL:option.ADMIN,
+                       },
         option.LIST:{option.HELP_STRING: "list all media changers in "
                      "configuration",
                      option.DEFAULT_VALUE:option.DEFAULT,
@@ -387,6 +415,12 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                                             option.VALUE_NAME:"drive",
                                             option.VALUE_TYPE:option.STRING}],
                       },
+         option.REMOVE:{option.HELP_STRING:
+                        "Used with --eject to purge the volume info.",
+                        option.DEFAULT_VALUE:option.DEFAULT,
+                        option.DEFAULT_TYPE:option.INTEGER,
+                        option.VALUE_USAGE:option.IGNORED,
+                        option.USER_LEVEL:option.ADMIN},
         option.SHOW:{option.HELP_STRING:"",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
@@ -436,8 +470,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
             self.print_usage("expected media changer parameter")
         else:
             try:
-                self.media_changer = self.args[0]
-                del self.args[0]
+                self.media_changer = self.args[-1]
+                del self.args[-1]
             except KeyError:
                 self.media_changer = ""
 
@@ -482,9 +516,42 @@ def do_work(intf):
         ticket = mcc.unloadvol(vol_ticket, intf.drive, intf.drive)
         del vcc
     elif intf.insert:
-        ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
+        #Wait for a human response.
+        zz = raw_input("Insert volumes from I/O area. Do not mix media types."
+                       "\nWhen I/O door is closed hit return:")
+
+        #intf.args equals a list of insert areas.  "I01", "I08", etc.
+        if zz == FAKEOPENIODOOR:
+            ticket = mcc.insertvol(intf.args, FakeIOOpen = zz)
+        else:
+            ticket = mcc.insertvol(intf.args)
+
+        #print out the inserted tapes and IO areas
+        if e_errors.is_ok(ticket):
+            for volume, info in ticket.get('inserted', {}).items():
+                print "%s: %s" % (volume, info['IOarea_name'])
     elif intf.eject:
-        ticket=mcc.ejectvol(intf.media_type, intf.volumeList)
+        #Wait for a human response.
+        zz = raw_input("Eject volumes into I/O area. Do not mix media types."
+                       "\nWhen I/O door is closed hit return:")
+
+        ##intf.args equals a list of volumes.  The second optional arguement
+        ## is a list of eject areas ("E01", "E08", etc.).  If it is python
+        ## false, an eject area is randomly choosen.
+        if intf.ioarea:
+            ioarea = intf.ioarea
+        else:
+            ioarea = [] #randomly choose area
+        if zz == FAKEOPENIODOOR:
+            ticket=mcc.ejectvol(intf.args, ioarea, FakeIOOpen = zz,
+                                purge = intf.remove)
+        else:
+            ticket=mcc.ejectvol(intf.args, ioarea, purge = intf.remove)
+
+        #print out the ejected tapes and IO areas
+        if e_errors.is_ok(ticket):
+            for volume, info in ticket.get('ejected', {}).items():
+                print "%s: %s" % (volume, info['IOarea_name'])
     elif intf.max_work  >= 0:
         ticket=mcc.set_max_work(intf.max_work)
     elif intf.get_work:
