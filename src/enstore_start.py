@@ -238,6 +238,7 @@ def start_server(cmd, servername):
             cmd_list[i] = os.path.expanduser(cmd_list[i])
             cmd_list[i] = os.path.expandvars(cmd_list[i])
 
+        print "will execute",cmd_list[0],cmd_list  
         #Execute the new server.
         os.execvp(cmd_list[0], cmd_list)
 
@@ -311,7 +312,8 @@ def check_event_relay(csc, intf, cmd):
     if intf.nocheck:
         rtn = 1
     else:
-        print "Checking %s." % name
+        #print "Checking %s." % name
+        print "Checking 1 %s." % name
         
         rtn = erc.alive()
         
@@ -378,6 +380,7 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
     if intf.nocheck:
         rtn = {'status':("nocheck","nocheck")}
     else:
+        #print "Checking 2 %s." % name
         print "Checking %s." % name
         # see if EPS returns config_server"
         #cmd = 'EPS | egrep "%s|%s" | grep python | grep -v %s'%(name,"configuration_server.py", "grep")
@@ -448,13 +451,27 @@ def check_server(csc, name, intf, cmd):
             # Determine if the host is alive.
             rtn = gc.alive(name, SEND_TO, SEND_TM)
         except (socket.error, select.error, e_errors.EnstoreError), msg:
-            if msg.errno == errno.ETIMEDOUT:
+            if hasattr(msg, "errno") and msg.errno == errno.ETIMEDOUT:
                 rtn = {'status':(e_errors.TIMEDOUT, name)}
             else:
                 rtn = {'status':(e_errors.NET_ERROR, str(msg))}
+
         except errno.errorcode[errno.ETIMEDOUT]:
             rtn = {'status':(e_errors.TIMEDOUT,
                              errno.errorcode[errno.ETIMEDOUT])}
+            
+        if not e_errors.is_ok(rtn):
+            # check if python process with this name is still running
+            ch_cmd = 'EPS | egrep "%s" | egrep -v "%s|%s"'%(name, "grep", "enstore st")
+            pipeObj = subprocess.Popen(ch_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+            if pipeObj:
+                result = pipeObj.communicate()[0]
+                if len(result) >= 1:
+                    # running, don't start
+                    rtn = {'status':(e_errors.OK,"running")}
+                    print "Server %s does not respond but is running as \n %s" % (name, result)
+                else:
+                    rtn = {'status':("e_errors.SERVERDIED","not running")}
 
     #Process responce.
     if not e_errors.is_ok(rtn):
