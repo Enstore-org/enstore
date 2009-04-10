@@ -6,6 +6,7 @@
 #  promoting the returned pointers into shadow class instances.
 #  There has to be a better way!
 
+import string
 
 import aci_shadow
 
@@ -119,5 +120,23 @@ def aci_getcellinfo(device, media_type, attrib):
         else:
             #SWIG 1.3
             return x[0], x[1:]
+    else:
+        return x, []
+
+def aci_insert(io_area):
+    x = aci_shadow.aci_insert(io_area)
+    if type(x)==type([]):
+        if type(x[1]) == type(""):
+            #SWIG 1.1
+            volser_list = x[1].split(",")  #The SWIG 1.1 code here is broken.
+            if volser_list[-1] in (" ", ""): #Skip last volser if empty.
+                volser_list = volser_list[:-1]
+            return x[0], map(string.strip, volser_list)
+        else:
+            #SWIG 1.3
+            volser_list = x[1].split(",")
+            if volser_list[-1] in (" ", ""): #Skip last volser if empty.
+                volser_list = volser_list[:-1]
+            return x[0], map(string.strip, volser_list)
     else:
         return x, []
