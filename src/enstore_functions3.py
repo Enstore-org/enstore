@@ -142,6 +142,16 @@ def is_location_cookie(lc):
 
 from pnfs import is_pnfsid
 
+def is_ip_addr(address):
+    if type(address) == types.StringType:
+        #For strings that are IP V4 addresses.
+        ip_regex = re.compile("^[0-9]{1,3}(.)[0-9]{1,3}(.)[0-9]{1,3}(.)[0-9]{1,3}$")
+
+        if ip_regex.match(address):
+            return 1
+
+    return 0
+
 ############################################################################
 
 def extract_brand(bfid):
