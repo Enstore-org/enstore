@@ -94,6 +94,9 @@ class PnfsDbRestore:
 
         # clean directories if exist
 
+        print cwd
+        sys.exit(0)
+
         print 'Cleaning %s'% (cwd,)
         os.system('rm -rf *')
         d='%s/log'%(os.path.dirname(cwd),)
@@ -129,8 +132,8 @@ class PnfsDbRestore:
         os.system("cat %s/recovery.conf"%(pgdb))
         cmd = 'sed -i "s/archive_command/#archive_command/g" %s/postgresql.conf '% (pgdb,)
         os.system(cmd)
-        cmd = 'sed -i "s# *shared_buffers*=*.*#shared_buffers = 126976 #" %s/postgresql.conf'% (pgdb,)
-        os.system(cmd)
+#        cmd = 'sed -i "s# *shared_buffers*=*.*#shared_buffers = 126976 #" %s/postgresql.conf'% (pgdb,)
+#        os.system(cmd)
 
         #create xlog dirs
         cmd = 'mkdir -p %s/pg_xlog/archive_status'% (pgdb,)
