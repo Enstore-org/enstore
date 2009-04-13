@@ -411,8 +411,6 @@ class Enstore:
 		    # default node
 		    self.node = DEFAULT_AML2_NODE
 		rtn = 1
-	    except (socket.error, select.error, e_errors.EnstoreError), msg:
-		pass
 	    except errno.errorcode[errno.ETIMEDOUT]:
 		pass
         return rtn

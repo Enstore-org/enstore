@@ -162,10 +162,6 @@ class DispatchingWorker(udp_server.UDPServer):
         """Handle one request at a time until doomsday, unless we are in a child process"""
         ###XXX should have a global exception handler here
         count = 0
-        if self.use_raw:
-            self.set_out_file()
-            # start receiver thread or process
-            self.raw_requests.receiver()
         while not self.is_child:
             self.do_one_request()
             self.collect_children()
@@ -184,12 +180,7 @@ class DispatchingWorker(udp_server.UDPServer):
     def do_one_request(self):
         """Receive and process one request, possibly blocking."""
         # request is a "(idn,number,ticket)"
-        request = None
-        try:
-            request, client_address = self.get_request()
-        except:
-            exc, msg = sys.exc_info()[:2]
-             
+        request, client_address = self.get_request()
         now=time.time()
 
         for func, time_data in self.interval_funcs.items():
@@ -298,13 +289,14 @@ class DispatchingWorker(udp_server.UDPServer):
                 try:
                     rc = self.get_message()
                     Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
-                except (NameError, ValueError), detail:
+                except NameError, detail:
                     Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
                     self.erc.error_msg = str(detail)
+                    Trace.trace
                     self.handle_er_msg(None)
                     return None, None
                 if rc and rc != ('',()):
-                    #Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
+                    Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
                     return rc
                 else:
                     # process timeout
@@ -339,7 +331,7 @@ class DispatchingWorker(udp_server.UDPServer):
                         #Get the 'raw' request and the address from whence it came.
                         try:
                             (request, addr) = self.get_message()
-                        except (NameError, ValueError), detail:
+                        except NameError, detail:
                             Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
                             self.erc.error_msg = str(detail)
                             Trace.trace
