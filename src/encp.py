@@ -164,6 +164,7 @@ CONFIG_LEVEL   = 8
 TIME_LEVEL     = 9
 TICKET_LEVEL   = 10
 TICKET_1_LEVEL = 11
+TRANS_ID_LEVEL = 13
 
 #This is the global used by print_data_access_layer_format().  It uses it to
 # determine whether standard out or error is used.
@@ -5023,10 +5024,22 @@ def wait_for_message(listen_socket, lmc, work_list,
 
     #Wait for a message or socket connection.
     if USE_NEW_EVENT_LOOP and transaction_id_list:
+        #Send to the debug log information about the current ids we are
+        # waiting for and those that we have queued up.  This should
+        # never grow to a list larger than one; if it does then there
+        # likely is a bug somewhere.
+        Trace.log(TRANS_ID_LEVEL,
+                  "waiting for: %s or connections to %s" % \
+                  (transaction_id_list, listen_socket.getsockname()))
+        queued_sent_ids = getattr(lmc.u.get_tsd(), "send_queue", {}).keys()
+        queued_recv_ids = getattr(lmc.u.get_tsd(), "recv_queue", {}).keys()
+        Trace.log(TRANS_ID_LEVEL, "queued sent ids: %s  recv ids: %s" % \
+                  (queued_sent_ids, queued_recv_ids))
+        
         #If we are using the new event loop and we have pending answers for UDP
         # replies that could arrive at any time, we need to execute this
         # nasty loop to be able to resend messages that have not received a
-        # response.        
+        # response.
         
         loop_start_time = time.time()
         exp = 0
@@ -5060,6 +5073,8 @@ def wait_for_message(listen_socket, lmc, work_list,
                     #A better mechanism will be needed if more than just
                     # the lmc will do things like this.
 #                    print "RESENDING:", transaction_id_list
+                    Trace.log(TRANS_ID_LEVEL,
+                              "repeating ids: %s" % (transaction_id_list,))
                     lmc.u.repeat_deferred(transaction_id_list)
 
                 continue
@@ -5072,6 +5087,8 @@ def wait_for_message(listen_socket, lmc, work_list,
                 #A better mechanism will be needed if more than just
                 # the lmc will do things like this.
 #                print "DROPPING:", transaction_id_list
+                Trace.log(TRANS_ID_LEVEL,
+                          "dropping ids: %s" % (transaction_id_list,))
                 lmc.u.drop_deferred(transaction_id_list)
 
     else:
@@ -5089,7 +5106,7 @@ def wait_for_message(listen_socket, lmc, work_list,
     
     #Get the packets specified one at a time.
     if lmc_socket in r:
-        response_ticket = submit_all_request_recv(
+        response_ticket, transaction_id = submit_all_request_recv(
             transaction_id_list, work_list, lmc, e)
         #We need to change the timedout errors to resumbitting ones.
         #  RESUBMITTING is handled differently by handle_retries().
@@ -5098,6 +5115,11 @@ def wait_for_message(listen_socket, lmc, work_list,
 
         control_socket = None 
         data_path_socket = None
+
+        #Encasing the transaction ID in a list is done only to make the
+        # output string for it look like the others, which really are lists.
+        Trace.log(TRANS_ID_LEVEL,
+                          "received id: %s" % ([transaction_id],))
     elif listen_socket in r or (udp_socket and udp_socket in r):
         #Wait for the mover to establish the control socket.  See
         # if the id matches one of the tickets we submitted.
@@ -5228,8 +5250,8 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
     #count = 0
     while not response_ticket:
         try:
-            response_ticket = lmc.u.recv_deferred(transaction_ids,
-                                                  encp_intf.resubmit_timeout)
+            response_ticket, transaction_id = lmc.u.recv_deferred2(
+                transaction_ids, encp_intf.resubmit_timeout)
         except (socket.error, select.error, e_errors.EnstoreError), msg:
             if msg.errno in [errno.ETIMEDOUT]:
                 response_ticket = {'status' : (e_errors.TIMEDOUT,
@@ -5251,7 +5273,7 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
 
-    return __submit_request_recv(response_ticket)
+    return __submit_request_recv(response_ticket), transaction_id
 
 #Wait for the one response for transaction_id.  Resend the original request
 # every 10 seconds until the response arives.
@@ -5266,8 +5288,8 @@ def submit_one_request_recv(transaction_id, work_ticket, lmc, encp_intf):
     max_count = max(encp_intf.resubmit_timeout / RESEND_TIMEOUT, 2)
     while not response_ticket:
         try:
-            response_ticket = lmc.u.recv_deferred(transaction_id,
-                                                  RESEND_TIMEOUT)
+            response_ticket, transaction_id = lmc.u.recv_deferred2(
+                transaction_id, RESEND_TIMEOUT)
         except (socket.error, select.error, e_errors.EnstoreError), msg:
             if msg.errno in [errno.ETIMEDOUT]:
                 transaction_id = lmc.u.send_deferred(work_ticket, lmc.server_address)
@@ -5290,7 +5312,7 @@ def submit_one_request_recv(transaction_id, work_ticket, lmc, encp_intf):
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
 
-    return __submit_request_recv(response_ticket)
+    return __submit_request_recv(response_ticket), transaction_id
 
 def __submit_request_recv(response_ticket, ticket = {}):
 
@@ -5354,7 +5376,9 @@ def submit_one_request(ticket, encp_intf):
     rticket, transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
     if not e_errors.is_ok(rticket):
         return ticket, lmc
-    return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf), lmc
+    response_ticket, transaction_id = submit_one_request_recv(
+        transaction_id, ticket, lmc, encp_intf)
+    return response_ticket, lmc
 
 #This is modifies the ticket between retries and resubmits.
 def adjust_resubmit_request(ticket, encp_intf):
