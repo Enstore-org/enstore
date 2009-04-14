@@ -484,7 +484,7 @@ class UDPClient:
             tsd.socket.sendto( message, address )
 
     # Recieve a reply, timeout has the same meaning as in select
-    def recv_deferred(self, txn_ids, timeout):
+    def __recv_deferred(self, txn_ids, timeout):
         #Make the target a list of txn_id to consider.
         if type(txn_ids) != types.ListType:
             txn_ids = [txn_ids]
@@ -495,7 +495,7 @@ class UDPClient:
                 reply = tsd.reply_queue[txn_id]
                 del tsd.reply_queue[txn_id]
                 del tsd.send_queue[txn_id]
-                return reply
+                return reply, txn_id
         else:
             rcvd_txn_id=None
             while rcvd_txn_id not in txn_ids: #look for reply
@@ -511,7 +511,7 @@ class UDPClient:
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
                         del tsd.send_queue[rcvd_txn_id]
-                        return out
+                        return out, rcvd_txn_id
                 except (SyntaxError, TypeError):
                     #If a this error occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
@@ -537,11 +537,21 @@ class UDPClient:
                     tsd.reply_queue[rcvd_txn_id] = out
             else: # we got a good reply
                 del tsd.send_queue[rcvd_txn_id]
-                return out
+                return out, rcvd_txn_id
 
         ##If we got here, it's because we didn't receive a response to the
         ## message we sent.
         raise e_errors.EnstoreError(errno.ETIMEDOUT, "", e_errors.TIMEDOUT)
+
+    # Recieve a reply, timeout has the same meaning as in select
+    #This version returns the message.
+    def recv_deferred(self, txn_ids, timeout):
+        return self.__recv_deferred(txn_ids, timeout)[0]
+
+    # Recieve a reply, timeout has the same meaning as in select
+    #This version returns a tuple of the message and transaction id.
+    def recv_deferred2(self, txn_ids, timeout):
+        return self.__recv_deferred(txn_ids, timeout)
 
     # Recieve a reply, timeout has the same meaning as in select.  This
     # version is different from recv_deferred(); entire_timeout refers to the
