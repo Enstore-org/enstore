@@ -315,8 +315,15 @@ class UDPClient:
         if rcv_timeout:
             if max_send==0:
                 max_send = 1 # protect from nonsense inputs XXX should we do this?
+            # if rcv_timeout is specified
+            # do not grow tiemout exponentially
+            max_exponent = 0
         else:
-            rcv_timeout = 10   
+            rcv_timeout = 10
+            # if rcv_timeout is not specified or is 0 (try forever)
+            # grow tiemout exponentially
+            max_exponent = MAX_EXPONENT
+             
 
         msg, txn_id = self.protocolize(data)
         # keep track of whom we need to send a "done_cleanup" to
@@ -339,7 +346,7 @@ class UDPClient:
             #print "SENDING", time.time(), msg, dst
             tsd.socket.sendto( msg, dst )
             timeout = timeout*(pow(2,exp))
-            if exp < MAX_EXPONENT:
+            if exp < max_exponent:
                 exp = exp + 1
             n_sent=n_sent+1
             rcvd_txn_id=None
