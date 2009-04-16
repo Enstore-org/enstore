@@ -134,10 +134,12 @@ class fileInfoMethods(generic_client.GenericClient):
     # the tcp negotiation to complete.  The server will queue up requests
     # (including retries from the dropped request) and will hopefully and
     # eventually fulfill them all.  But this is not optimal.
-    def send_with_long_answer(self, ticket):
+    def send_with_long_answer(self, ticket,
+                              rcv_timeout = generic_client.DEFAULT_TIMEOUT,
+                              rcv_tries = generic_client.DEFAULT_TRIES):
 
         # send the work ticket to the server
-        ticket = self.send(ticket, 60, 1)
+        ticket = self.send(ticket, rcv_timeout, rcv_tries)
         if not e_errors.is_ok(ticket) and \
                ticket['status'][0] not in [e_errors.TOO_MANY_FILES,
                                            e_errors.TOO_MANY_VOLUMES]:
@@ -169,14 +171,16 @@ class fileInfoMethods(generic_client.GenericClient):
     ###################################################################
     ## Begin file clerk functions.
     
-    def bfid_info(self, bfid, timeout=0, retry=0):
+    def bfid_info(self, bfid, timeout = generic_client.DEFAULT_TIMEOUT,
+                  retry = generic_client.DEFAULT_TRIES):
         r = self.send({"work" : "bfid_info", "bfid" : bfid}, timeout, retry)
         if r.has_key('work'):
             del r['work']
         return r
 
     # find_copies(bfid) -- find the first generation of copies
-    def find_copies(self, bfid, timeout=0, retry=0):
+    def find_copies(self, bfid, timeout = generic_client.DEFAULT_TIMEOUT,
+                    retry = generic_client.DEFAULT_TRIES):
         ticket = {'work': 'find_copies', 'bfid': bfid}
         return self.send(ticket, timeout, retry)
 
@@ -196,7 +200,8 @@ class fileInfoMethods(generic_client.GenericClient):
         return res 
 
     # find_original(bfid) -- find the immidiate original
-    def find_original(self, bfid, timeout=0, retry=0):
+    def find_original(self, bfid, timeout = generic_client.DEFAULT_TIMEOUT,
+                      retry = generic_client.DEFAULT_TRIES):
         ticket = {'work': 'find_original',
                           'bfid': bfid}
         if bfid:
@@ -235,7 +240,6 @@ class fileInfoMethods(generic_client.GenericClient):
 
     def get_bfids(self, external_label):
         ticket = {"work"          : "get_bfids2",
-                  #"callback_addr" : (host, port),
                   "external_label": external_label}
         done_ticket = self.send_with_long_answer(ticket)
 
@@ -295,7 +299,6 @@ class fileInfoMethods(generic_client.GenericClient):
 
     def list_active(self, external_label):
         ticket = {"work"           : "list_active3",
-                  #"callback_addr"  : (host, port),
                   "external_label" : external_label}
 
         done_ticket = self.send_with_long_answer(ticket)
@@ -363,11 +366,13 @@ class fileInfoMethods(generic_client.GenericClient):
 
         return ticket
 
-    def tape_list(self, external_label):
+    def tape_list(self, external_label,
+                  timeout = generic_client.DEFAULT_TIMEOUT,
+                  retry = generic_client.DEFAULT_TRIES):
         ticket = {"work"           : "tape_list3",
-                  #"callback_addr"  : (host, port),
                   "external_label" : external_label}
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send_with_long_answer(ticket, rcv_timeout = timeout,
+                                                 rcv_tries = retry)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -595,10 +600,12 @@ class volumeInfoMethods(generic_client.GenericClient):
     # the tcp negotiation to complete.  The server will queue up requests
     # (including retries from the dropped request) and will hopefully and
     # eventually fulfill them all.  But this is not optimal.
-    def send_with_long_answer(self, ticket):
+    def send_with_long_answer(self, ticket,
+                              rcv_timeout = generic_client.DEFAULT_TIMEOUT,
+                              rcv_tries = generic_client.DEFAULT_TRIES):
 
         # send the work ticket to the server
-        ticket = self.send(ticket, 60, 1)
+        ticket = self.send(ticket, rcv_timeout, rcv_tries)
         if not e_errors.is_ok(ticket) and \
                ticket['status'][0] not in [e_errors.TOO_MANY_FILES,
                                            e_errors.TOO_MANY_VOLUMES]:
@@ -638,7 +645,6 @@ class volumeInfoMethods(generic_client.GenericClient):
     # get a list of all volumes
     def get_vols(self, key=None, state=None, not_cond=None):
         ticket = {"work"          : "get_vols3",
-                  #"callback_addr" : (host, port),
                   "key"           : key,
                   "in_state"      : state,
                   "not"	          : not_cond,
@@ -724,7 +730,6 @@ class volumeInfoMethods(generic_client.GenericClient):
     # get a list of all problem volumes
     def get_pvols(self):
         ticket = {"work"          : "get_pvols2",
-                  #"callback_addr" : (host, port),
                   }
 
         done_ticket = self.send_with_long_answer(ticket)
@@ -795,7 +800,6 @@ class volumeInfoMethods(generic_client.GenericClient):
     # get a list of all volumes
     def list_sg_count(self):
         ticket = {"work"          : "list_sg_count2",
-                  #"callback_addr" : (host, port),
                   }
 
         done_ticket = self.send_with_long_answer(ticket)
@@ -858,7 +862,6 @@ class volumeInfoMethods(generic_client.GenericClient):
     # get a list of all volumes
     def get_vol_list(self):
         ticket = {"work"          : "get_vol_list2",
-                  #"callback_addr" : (host, port),
                   }
 
         done_ticket = self.send_with_long_answer(ticket)
@@ -923,7 +926,6 @@ class volumeInfoMethods(generic_client.GenericClient):
     def show_history(self, vol):
         ticket = {"work"          : "history2",
                   "external_label" : vol,
-                  #"callback_addr" : (host, port),
                   }
 
         done_ticket = self.send_with_long_answer(ticket)
