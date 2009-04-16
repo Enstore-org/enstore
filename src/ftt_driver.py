@@ -219,7 +219,8 @@ class FTTDriver(generic_driver.Driver):
         Trace.trace(25,"seek2: current=%s target=%s" % (current, target))
         if current != target:
             Trace.log(e_errors.ERROR, "ftt_driver:seek: Positioning error %s %s" % (current, target))
-            raise e_errors.POSIT_EXCEPTION, (current, target)
+            #raise e_errors.POSIT_EXCEPTION
+            raise ftt.FTTError(("Lost position", ftt.ELOST, "%s %s"%((current, target))))
 
     def skipfm(self, n):
         return self.ftt.skip_fm(n)
@@ -509,6 +510,7 @@ class FTTDriver(generic_driver.Driver):
             if volume_label is None:
                 return e_errors.OK, s[0]
             if s[0] != volume_label[0:6]:
+                Trace.log(e_errors.ERROR, "ftt_driver:verify_label read label returned %s" % (s,))
                 return {0:e_errors.READ_VOL1_WRONG, 1:e_errors.WRITE_VOL1_WRONG}[mode], s[0]
 
             return e_errors.OK, None
