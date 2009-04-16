@@ -3445,8 +3445,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     try:
                         fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                            server_address=ticket['fc']['address'])
-                        file_list = fcc.tape_list(ticket['vc']['external_label'], timeout = 300, retry = 2):
-)
+                        file_list = fcc.tape_list(ticket['vc']['external_label'], timeout = 300, retry = 2)
                         fc_address = ticket['fc']['address']
                         Trace.trace(24, "file List %s:: %s"%(type(file_list), file_list))
                         if file_list['status'][0] != e_errors.OK:
