@@ -20,6 +20,7 @@ import socket
 import re
 import copy
 import select
+import traceback
 
 # enstore imports
 import monitored_server
@@ -1625,15 +1626,27 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if after_function:
             after_function()
 
-    def run_in_thread(self, function, args=(), after_function=None):
+    def run_in_thread(self,
+                      function,
+                      args=(),
+                      after_function=None,
+                      thread_name=None):
+        if thread_name :
+            for thread in threading.enumerate():
+                if thread.getName() == thread_name:
+                    if thread.isAlive():
+                        Trace.trace(e_errors.WARNING, "thread %s is already runnnig, skipping execution of %s" % (thread_name, function.__name__,))
+                        return 0
         _args = (function,)+ args
         if after_function:
             _args = _args + (after_function,)
-        thread_name = None
         enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
-                                   "create thread: name %s target %s args %s" % (thread_name, function, args))
+                                   "create thread: name %s target %s args %s" % (thread_name, function.__name__, args))
         thread = threading.Thread(group=None, target=self.thread_wrapper,
                                   args=_args, kwargs={})
+        if thread_name :
+            thread.setName(thread_name)
+            
         enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
                                    "starting thread name=%s"%(thread.getName()))
         try:
@@ -1642,6 +1655,47 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "starting thread: %s" % (detail))
         return 0
+
+
+    def do_one_request(self):
+        """Receive and process one request, possibly blocking."""
+        # request is a "(idn,number,ticket)"
+        request = None
+        try:
+            request, client_address = self.get_request()
+        except:
+            exc, msg = sys.exc_info()[:2]
+             
+        now=time.time()
+
+        for func, time_data in self.interval_funcs.items():
+            interval, last_called, one_shot = time_data
+            if now - last_called > interval:
+                if one_shot:
+                    del self.interval_funcs[func]
+                else: #record last call time
+                    self.interval_funcs[func][1] =  now
+                Trace.trace(6, "do_one_request: calling interval_function %s"%(func.__name__,))
+                self.run_in_thread(func, (), after_function=self._done_cleanup, thread_name=func.__name__)
+                #func()
+
+        if request is None: #Invalid request sent in
+            return
+        
+        if request == '':
+            # nothing returned, must be timeout
+            self.handle_timeout()
+            return
+        try:
+            self.process_request(request, client_address)
+        except KeyboardInterrupt:
+            traceback.print_exc()
+        except SystemExit, code:
+            # processing may fork (forked process will call exit)
+            sys.exit( code )
+        except:
+            self.handle_error(request, client_address)
+
 
     def process_request(self, request, client_address):
         ticket = udp_server.UDPServer.process_request(self, request,
