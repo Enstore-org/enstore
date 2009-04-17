@@ -2793,6 +2793,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.read_tape_running = 0
                 self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 failed = 1
+                Trace.trace(24, "MODE %s"%(mode_name(self.mode),))
+                if self.mode == ASSERT:
+                    self.assert_return = e_errors.CRC_ERROR
+                    return
                 break
             except e_errors.READ_ERROR, detail:
                 if type(detail) != type(""):
@@ -3369,6 +3373,24 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_work_ticket = ticket
         self.run_in_thread('client_connect_thread', self.connect_client)
 
+    # check connection in ASSERT mode 
+    def check_connection(self):
+        Trace.trace(40, "check_connection started")
+        while self.mode == ASSERT:
+            Trace.trace(40, "check_connection mode %s"%(mode_name(self.mode),))
+            r, w, ex = select.select([self.control_socket], [self.control_socket], [], 10)
+            Trace.trace(40, "check_connection1 %s %s %s"%(r, w, ex))
+            Trace.trace(40, "r= %s"%(r,))
+            if r:
+                # r - read socket appears when client connection gets closed
+                self.interrupt_assert = True
+                break
+            else:
+                time.sleep(10)
+        Trace.trace(40, "check_connection exits %s" % (mode_name(self.mode),))
+            
+                
+
     def assert_vol(self):
         self.net_driver = null_driver.NullDriver()
         ticket = self.current_work_ticket
@@ -3379,7 +3401,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info.update(vc)
         self.volume_family=vc['volume_family']
         self.mount_volume(ticket['vc']['external_label'])
-        if self.state == ERROR:
+        if self.state in  (ERROR, IDLE):
             Trace.log(e_errors.ERROR, "ASSERT failed %s" % (self.current_work_ticket['status'],))
             self.current_work_ticket['status'] = (e_errors.MOUNTFAILED, None)
             callback.write_tcp_obj(self.control_socket, ticket)
@@ -3445,7 +3467,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     try:
                         fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                            server_address=ticket['fc']['address'])
+                        Trace.log(e_errors.INFO, "calling tape_list")
                         file_list = fcc.tape_list(ticket['vc']['external_label'], timeout = 300, retry = 2)
+                        Trace.log(e_errors.INFO, "tape_list returned")
                         fc_address = ticket['fc']['address']
                         Trace.trace(24, "file List %s:: %s"%(type(file_list), file_list))
                         if file_list['status'][0] != e_errors.OK:
@@ -3467,8 +3491,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 keys = ticket['return_file_list'].keys()
                 keys.sort()
                 Trace.trace(24, 'keys %s'%(keys,))
-                stat = e_errors.OK 
+                stat = e_errors.OK
+                # start client netwrok monitor to detect
+                # that clinet is gone and interruprt assert
+                self.interrupt_assert = False
+                self.run_in_thread('network_monitor', self.check_connection)
+                
                 for loc_cookie in keys:
+                    if self.state == DRAINING or self.interrupt_assert:
+                        break
                     location = cookie_to_long(loc_cookie)
                     self.file_info =  file_info[loc_cookie]
                     self.assert_return = e_errors.OK
@@ -3490,10 +3521,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(24, "assert return: %s"%(self.assert_return,))
                     ticket['return_file_list'][loc_cookie] = self.assert_return
                     if self.assert_return != e_errors.OK:
-                        stat = self.assert_return 
-                self.transfer_completed(stat)
+                        stat = self.assert_return
+                        
+                if self.interrupt_assert:
+                    Trace.log(e_errors.INFO, "The assert client is gone %s" %
+                              (self.current_work_ticket['callback_addr'],))
+                    self.dismount_volume(after_function=self.idle)
+                    
+                else:
+                    self.transfer_completed(stat)
+                    Trace.log(e_errors.INFO, "The assert client is gone %s" %
+                              (self.current_work_ticket['callback_addr'],))
                                 
-
         else:
             # read tape and 
             self.dismount_volume(after_function=self.idle)
@@ -4678,7 +4717,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             self.client_ip = hostaddr.address_to_name(callback_addr[0])
                         else:
                             self.client_ip = ticket['wrapper']['machine'][1]
-                        self.run_in_thread('volume_assert__thread', self.assert_vol)
+                        self.run_in_thread('volume_assert_thread', self.assert_vol)
                         return
                 except:
                     exc, detail, tb = sys.exc_info()
@@ -5665,7 +5704,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def quit(self, ticket):
         Trace.log(e_errors.INFO, "Mover has received a quit command")
         self.start_draining(ticket)
-        #self.reply_to_caller(out_ticket)
+        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
+        self.reply_to_caller(out_ticket)
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket, do_restart=0)
