@@ -172,9 +172,9 @@ def get_authorized_tapes2():
 #Sort function to be used for sorting the volume list based on the last access
 # data field.
 def la_sort(one, two):
-    if one['last_access'] < two['last_access']:
+    if one['modification_time'] < two['modification_time']:
         return -1
-    elif one['last_access'] > two['last_access']:
+    elif one['modification_time'] > two['modification_time']:
         return 1
     else:
         if one['external_label'] < two['external_label']:
@@ -219,11 +219,11 @@ def print_header(volume, fd):
     out_string = "Volume:\t\t  " + volume['external_label'] + "\n"
     os.write(fd, out_string)
 
-    if volume['last_access'] == -1:
+    if volume['modification_time'] == -1:
         os.write(fd, "Last accessed on: Never\n")
     else:
         out_string = "Last accessed on: " + \
-              time.asctime(time.localtime(volume['last_access'])) + "\n"
+              time.asctime(time.localtime(volume['modification_time'])) + "\n"
         os.write(fd, out_string)
 
     out_string = "Bytes free:\t  %6.2f%s\n" % \
@@ -321,8 +321,8 @@ def print_last_access_status(volume_list, output_file):
     la_file = open(output_file, "w")
     for volume in volume_list:
         la_file.write("%f, %s %s\n"
-                      % (volume['last_access'],
-                         time.asctime(time.localtime(volume['last_access'])),
+                      % (volume['modification_time'],
+                         time.asctime(time.localtime(volume['modification_time'])),
                          volume['external_label']))
     la_file.close()
 
@@ -1054,7 +1054,7 @@ def inventory(output_dir, cache_dir):
 
         #First, skip updating the file information for volumes that have
         # not been updated recently.
-        if vsum and long(vsum['last']) == long(vv['last_access']):
+        if vsum and long(vsum['last']) == long(vv['modification_time']):
             # good, don't do anything
             active = vsum['active']
             deleted = vsum['deleted']
@@ -1122,7 +1122,7 @@ def inventory(output_dir, cache_dir):
             total = active+deleted+unknown
             total_size = active_size+deleted_size+unknown_size
             vsum = {
-                'last' : vv['last_access'],
+                'last' : vv['modification_time'],
                 'active' : active,
                 'deleted' : deleted,
                 'unknown' : unknown,
@@ -1324,8 +1324,8 @@ def inventory(output_dir, cache_dir):
         #last access time
         volume_sums[vk] = (active_size+deleted_size, deleted_size,
                            active_size)
-        la_file.write("%f, %s %s\n" % (vv['last_access'],
-                time.ctime(vv['last_access']), vv['external_label']))
+        la_file.write("%f, %s %s\n" % (vv['modification_time'],
+                time.ctime(vv['modification_time']), vv['external_label']))
         key = vv['external_label']
         la_values = (key,) + \
                 format_storage_size(volume_sums[key][0]) + \
@@ -1544,6 +1544,7 @@ if __name__ == "__main__":
 
 #    print "inventory_dir", inventory_dir
 #    print "inventory_rcp_dir", inventory_rcp_dir
+
 
     #Look through the arguments list for valid arguments.
     if "--stdout" in sys.argv:
