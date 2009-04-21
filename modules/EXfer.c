@@ -733,6 +733,7 @@ static int print_socket_info(int fd);
  * do_read_write_threaded().
  */
 
+static pthread_mutex_t collect_mutex; /*used to sync the monitoring*/
 static sigjmp_buf alarm_join;         /*handle detection of hung threads*/
 
 
@@ -2743,6 +2744,23 @@ static int thread_signal(size_t bin, size_t bytes, struct buffer *mem_buff,
 static int thread_collect(pthread_t tid, unsigned int wait_time)
 {
    int rtn, p_rtn;
+   sigset_t sigs_to_block;      /* Signal set of those to block. */
+
+   /* Put SIGALRM in a list of signals to change their blocking status.  Do
+    * this before grabbing the mutex to avoid the complexity of having to
+    * unlock the mutex on an error. */
+  if(sigemptyset(&sigs_to_block) < 0)
+    return errno;
+  if(sigaddset(&sigs_to_block, SIGALRM) < 0)
+    return errno;
+
+  /* If we call do_read_write_threaded() in seperate threads within the
+   * same process, we need to be sure that only one "EXfer main thread"
+   * can use alarm() at one time. */
+  if((p_rtn = pthread_mutex_lock(&collect_mutex)) != 0)
+  {
+    return p_rtn;
+  }
 
   errno = 0;
 
@@ -2757,7 +2775,7 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
       /* The only error returned is when the thread to cancel does not exist
        * (anymore).  Since the point is to stop it, if it is already stopped
        * then there is not a problem ignoring the error. */
-      pthread_cancel(tid);
+       (void)pthread_cancel(tid);
 
       /* Set the alarm to determine if the thread is still alive. */
       (void)alarm(wait_time);
@@ -2771,6 +2789,11 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
       /* Either an error occured or (more likely) the thread was joined by
        * this point.  Either way turn off the alarm. */
       (void)alarm(0);
+
+      /* Tell this thread to block SIGARLM again.  Ignore any error, since
+       * we still need to unlock the mutex on an error here. */
+      (void) pthread_sigmask(SIG_BLOCK, &sigs_to_block, NULL);
+  
     }
     else
     {
@@ -2782,6 +2805,14 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
     rtn = errno;
   }
 
+  /* If we call do_read_write_threaded() in seperate threads within the
+   * same process, we need to be sure that only one "EXfer main thread"
+   * can use alarm() at one time. */
+  if((p_rtn = pthread_mutex_unlock(&collect_mutex)) != 0)
+  {
+    return p_rtn;
+  }
+  
   return rtn;
 }
 
@@ -5339,11 +5370,13 @@ EXfd_xfer(PyObject *self, PyObject *args)
     writes.mmap_io = mmap_io;
     writes.advisory_locking = 1;
 
+    Py_BEGIN_ALLOW_THREADS
     errno = 0;
     if(threaded_transfer)
       do_read_write_threaded(&reads, &writes);
     else
       do_read_write(&reads, &writes);
+    Py_END_ALLOW_THREADS
 
 #if 0
     printf("read crc: %ud\n", reads.crc_ui);
