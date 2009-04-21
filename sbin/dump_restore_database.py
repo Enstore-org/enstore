@@ -192,7 +192,7 @@ if __name__ == "__main__" :
                 backup_dir=os.path.join(backup_dir,accounting_backup_subdirectory)
                 backup_file=get_backup(backup_host, backup_dir,dbname)
             else:
-                backup_file=get_backup(backup_host, backup_dir)
+                backup_file=os.path.join(get_backup(backup_host, backup_dir),"enstoredb.dmp")
             # copy backup_file here:
             if not os.path.exists(restore_tmp):
                 os.makedirs(restore_tmp)
