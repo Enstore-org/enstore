@@ -80,7 +80,7 @@ def r_eval(message_to_decode, check=True, compile=False):
         t=time.time()
         rc = en_eval(message_to_decode, check, compile)
         t1=time.time()
-        Trace.trace(5,"r_eval %s"%(t1-t,))
+        Trace.trace(5,"r_eval %s %s %s"%(t1-t,check, compile))
         return rc
         #return en_eval(message_to_decode)
     
