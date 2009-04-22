@@ -271,32 +271,38 @@ class AtMovers:
         now = time.time()
         movers_to_delete = []
         if self.at_movers:
-            for mover in self.at_movers.keys():
-                Trace.trace(113, "Check mover %s now %s"%(self.at_movers[mover], now))
-                if int(now) - int(self.at_movers[mover]['updated']) > 600:
-                    Trace.alarm(e_errors.ALARM,
-                                "The mover %s has not updated its state for %s minutes, will remove it from at_movers list"%
-                                (mover, int((now - self.at_movers[mover]['updated'])/60)))
-                    movers_to_delete.append(mover)
-                else:
-                    Trace.trace(111, "mover %s"%(mover,))
-                    add_to_list = 0
-                    time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
-                    state = self.at_movers[mover].get('state', 'unknown') 
-                    if time_in_state > self.max_time_in_other:
-                        if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
-                            add_to_list = 1
-                        if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK' or state == 'MOUNT_WAIT' or state =='DISMOUNT_WAIT'):
-                            add_to_list = 1
-                        if add_to_list:
-                            self.dont_update[mover] = state
-                            movers_to_delete.append(mover)
-                            Trace.alarm(e_errors.ALARM,
-                                        "The mover %s is in state %s for %s minutes, will remove it from at_movers list"%
-                                        (mover, state, int(time_in_state)/60))
-            if movers_to_delete:
-                for mover in movers_to_delete:
-                    self.delete(self.at_movers[mover])
+            try:
+                # if check runs in thread at_movers can be modified, while
+                # the loop below runs
+                # on the other hand we do not want to lock acess to at_movers
+                for mover in self.at_movers.keys():
+                    Trace.trace(113, "Check mover %s now %s"%(self.at_movers[mover], now))
+                    if int(now) - int(self.at_movers[mover]['updated']) > 600:
+                        Trace.alarm(e_errors.ALARM,
+                                    "The mover %s has not updated its state for %s minutes, will remove it from at_movers list"%
+                                    (mover, int((now - self.at_movers[mover]['updated'])/60)))
+                        movers_to_delete.append(mover)
+                    else:
+                        Trace.trace(111, "mover %s"%(mover,))
+                        add_to_list = 0
+                        time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
+                        state = self.at_movers[mover].get('state', 'unknown') 
+                        if time_in_state > self.max_time_in_other:
+                            if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
+                                add_to_list = 1
+                            if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK' or state == 'MOUNT_WAIT' or state =='DISMOUNT_WAIT'):
+                                add_to_list = 1
+                            if add_to_list:
+                                self.dont_update[mover] = state
+                                movers_to_delete.append(mover)
+                                Trace.alarm(e_errors.ALARM,
+                                            "The mover %s is in state %s for %s minutes, will remove it from at_movers list"%
+                                            (mover, state, int(time_in_state)/60))
+                if movers_to_delete:
+                    for mover in movers_to_delete:
+                        self.delete(self.at_movers[mover])
+            except:
+                pass
             return movers_to_delete
                 
    # return a list of busy volumes for a given volume family
@@ -3279,6 +3285,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # reply to the vol_assert client
     def volume_assert(self, ticket):
+        ticket['lm'] = {'address':self.server_address }
         self.volume_assert_list.append(ticket)
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlock
