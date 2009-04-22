@@ -1054,7 +1054,9 @@ def inventory(output_dir, cache_dir):
 
         #First, skip updating the file information for volumes that have
         # not been updated recently.
+        skipped = False
         if vsum and long(vsum['last']) == long(vv['modification_time']):
+            skipped = True 
             # good, don't do anything
             active = vsum['active']
             deleted = vsum['deleted']
@@ -1421,7 +1423,11 @@ def inventory(output_dir, cache_dir):
         n_vols = n_vols + 1
         n_vols_lib[vv['library']] = n_vols_lib.get(vv['library'], 0) + 1
 
-        print 'done', time.time()-tt0
+        if skipped == True : 
+            print 'skipped', time.time()-tt0
+        else:
+            print 'done', time.time()-tt0
+            
 
     ###
     ### Dump that summarizes all the volumes metadata.
