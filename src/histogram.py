@@ -397,10 +397,9 @@ class Histogram1D(BasicHistogram):
         self.overflow=0
         self.mean=0
         self.mean_error=0
-        self.rms=0
-        self.rms_error=0
-        self.sum=0
-        self.sum2=0
+        self.rms2=0
+        self.variance=0
+        self.variance_error=0
         self.bw=(self.high-self.low)/float(self.nbins)
         self.maximum=0
         self.minimum=0
@@ -437,10 +436,9 @@ class Histogram1D(BasicHistogram):
         other.overflow=self.overflow
         other.mean=self.mean
         other.mean_error=self.mean_error
-        other.rms=self.rms
-        other.rms_error=self.rms_error
-        other.sum=self.sum
-        other.sum2=self.sum2
+        other.rms2=self.rms2
+        other.variance=self.variance
+        other.variance_error=self.variance_error
         other.data_file_name=self.data_file_name
         other.bw=self.bw
         other.maximum=self.maximum
@@ -476,22 +474,20 @@ class Histogram1D(BasicHistogram):
         if ( self == other ) :
             hist = Histogram1D("sum","sum",self.n_bins(),self.get_bin_low_edge(0),
                                self.get_bin_high_edge(self.n_bins()-1))
-            hist.sum=self.sum+other.sum
-            hist.sum2=self.sum2+other.sum2
             hist.entries=self.entries+other.entries
             if ( hist.entries > 0 ) :
-                hist.mean=hist.sum/float(hist.entries)
+                hist.mean=(float(self.entries)*self.mean+float(other.entries)*other.mean)/float(hist.entries)
+                hist.rms2=(self.rms2*float(self.entries)+other.rms2*float(other.entries))/float(hist.entries)
+                hist.variance =hist.rms2-hist.mean*hist.mean
+                hist.variance =math.sqrt(hist.variance)
+                hist.mean_error=hist.variance/math.sqrt(float(hist.entries))
+                hist.variance_error==hist.variance/math.sqrt(2.*float(hist.entries))
             else:
                 hist.mean = 0.
-            rms2=hist.sum2-2.*hist.sum*hist.mean+float(hist.entries)*hist.mean*hist.mean
-            if ( hist.entries > 0 ) :
-                hist.rms=math.sqrt(rms2/float(hist.entries))
-                hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
-                hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
-            else:
+                hist.rms2 = 0.
                 hist.mean_error=0.
-                hist.rms=0.
-                hist.rms_error=0.
+                hist.variance=0.
+                hist.variance_error=0.
             for i in range(hist.n_bins()):
                 hist.binarray[i]=self.binarray[i]+other.binarray[i]
                 hist.sumarray[i]=self.sumarray[i]+other.sumarray[i]
@@ -516,14 +512,21 @@ class Histogram1D(BasicHistogram):
                     high = other.high
             nbins = int((high-low)/self.bw)
             hist = Histogram1D("sum","sum",nbins,low,high)
-            hist.sum=self.sum+other.sum
-            hist.sum2=self.sum2+other.sum2
             hist.entries=self.entries+other.entries
-            hist.mean=hist.sum/float(hist.entries)
-            rms2=hist.sum2-2.*hist.sum*hist.mean+float(hist.entries)*hist.mean*hist.mean
-            hist.rms=math.sqrt(rms2/float(hist.entries))
-            hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
-            hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
+            if ( hist.entries > 0 ) :
+                hist.mean=(float(self.entries)*self.mean+float(other.entries)*other.mean)/float(hist.entries)
+                hist.rms2=(self.rms2*float(self.entries)+other.rms2*float(other.entries))/float(hist.entries)
+                hist.variance =hist.rms2-hist.mean*hist.mean
+                hist.variance =math.sqrt(hist.variance)
+                hist.mean_error=hist.variance/math.sqrt(float(hist.entries))
+                hist.variance_error==hist.variance/math.sqrt(2.*float(hist.entries))
+            else:
+                hist.mean = 0.
+                hist.rms2 = 0.
+                hist.mean_error=0.
+                hist.variance=0.
+                hist.variance_error=0.
+            
             for i in range(hist.n_bins()):
                 x    = hist.get_bin_center(i)
                 bin1 = self.find_bin(x)
@@ -551,14 +554,21 @@ class Histogram1D(BasicHistogram):
         if ( self == other ) :
             hist = Histogram1D("diff","diff",self.n_bins(),self.get_bin_low_edge(0),
                                self.get_bin_high_edge(self.n_bins()-1))
-            hist.sum=self.sum+other.sum
-            hist.sum2=self.sum2+other.sum2
             hist.entries=self.entries+other.entries
-            hist.mean=hist.sum/float(hist.entries)
-            rms2=hist.sum2-2.*hist.sum*hist.mean+float(hist.entries)*hist.mean*hist.mean
-            hist.rms=math.sqrt(rms2/float(hist.entries))
-            hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
-            hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
+            if ( hist.entries > 0 ) :
+                hist.mean=(float(self.entries)*self.mean+float(other.entries)*other.mean)/float(hist.entries)
+                hist.rms2=(self.rms2*float(self.entries)+other.rms2*float(other.entries))/float(hist.entries)
+                hist.variance =hist.rms2-hist.mean*hist.mean
+                hist.variance =math.sqrt(hist.variance)
+                hist.mean_error=hist.variance/math.sqrt(float(hist.entries))
+                hist.variance_error==hist.variance/math.sqrt(2.*float(hist.entries))
+            else:
+                hist.mean = 0.
+                hist.rms2 = 0.
+                hist.mean_error=0.
+                hist.variance=0.
+                hist.variance_error=0.
+
             for i in range(hist.n_bins()):
                 hist.binarray[i]=self.binarray[i]-other.binarray[i]
                 hist.sumarray[i]=self.sumarray[i]-other.sumarray[i]
@@ -581,14 +591,20 @@ class Histogram1D(BasicHistogram):
                     high = other.high
             nbins = int((high-low)/self.bw)
             hist = Histogram1D("sum","sum",nbins,low,high)
-            hist.sum=self.sum+other.sum
-            hist.sum2=self.sum2+other.sum2
             hist.entries=self.entries+other.entries
-            hist.mean=hist.sum/float(hist.entries)
-            rms2=hist.sum2-2.*hist.sum*hist.mean+float(hist.entries)*hist.mean*hist.mean
-            hist.rms=math.sqrt(rms2/float(hist.entries))
-            hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
-            hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
+            if ( hist.entries > 0 ) :
+                hist.mean=(float(self.entries)*self.mean+float(other.entries)*other.mean)/float(hist.entries)
+                hist.rms2=(self.rms2*float(self.entries)+other.rms2*float(other.entries))/float(hist.entries)
+                hist.variance =hist.rms2-hist.mean*hist.mean
+                hist.variance =math.sqrt(hist.variance)
+                hist.mean_error=hist.variance/math.sqrt(float(hist.entries))
+                hist.variance_error==hist.variance/math.sqrt(2.*float(hist.entries))
+            else:
+                hist.mean = 0.
+                hist.rms2 = 0.
+                hist.mean_error=0.
+                hist.variance=0.
+                hist.variance_error=0.
             for i in range(hist.n_bins()):
                 x    = hist.get_bin_center(i)
                 bin1 = self.find_bin(x)
@@ -621,10 +637,9 @@ class Histogram1D(BasicHistogram):
         self.overflow=0
         self.mean=0
         self.mean_error=0
-        self.rms=0
-        self.rms_error=0
-        self.sum=0
-        self.sum2=0
+        self.rms2=0
+        self.variance=0
+        self.variance_error=0
         self.maximum=0
         self.minimum=0
         for unused in range(self.nbins):
@@ -702,21 +717,20 @@ class Histogram1D(BasicHistogram):
     def fill(self,x,w=1.):
         bin = self.find_bin(x)
         if bin != None :
-            self.sum=self.sum+x
-            self.sum2=self.sum2+x*x
-            self.entries=self.entries+1
             if ( self.profile ) :
                 summary=self.sumarray[bin]
                 summary=summary+1
                 self.sumarray[bin]=summary
             count=self.binarray[bin]
             count=count+1.*w
-            self.binarray[bin]=count
-            self.mean=self.sum/float(self.entries)
-            rms2=self.sum2-2.*self.sum*self.mean+float(self.entries)*self.mean*self.mean
-            self.rms=math.sqrt(math.fabs(rms2)/float(self.entries))
-            self.mean_error=self.rms/math.sqrt(float(self.entries))
-            self.rms_error=self.rms/math.sqrt(2.*float(self.entries))
+            self.binarray[bin]=count            
+            self.mean=(self.mean*float(self.entries)+x)/(self.entries+1.)
+            self.rms2=(self.rms2*float(self.entries)+x*x)/(self.entries+1.)
+            self.entries=self.entries+1
+            self.variance=self.rms2-self.mean*self.mean
+            self.variance=math.sqrt(self.variance)
+            self.mean_error=self.variance/math.sqrt(float(self.entries))
+            self.variance_error=self.variance/math.sqrt(2.*float(self.entries))
             if ( count > self.maximum ) :
                 self.maximum=count
             if ( count < self.minimum ) :
@@ -849,7 +863,7 @@ class Histogram1D(BasicHistogram):
     def add_opt_stat(self) :
         return "set key right top Left samplen 20 title \""+\
                "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
-               "\\n RMS : %.2e"%(self.rms)+"+-%.2e"%(self.rms_error)+\
+               "\\n std : %.2e"%(self.variance)+"+-%.2e"%(self.variance_error)+\
                "\\n Entries : %d"%(self.entries)+\
                "\\n Overflow : %d"%(self.overflow)+\
                "\\n Underflow : %d"%(self.underflow)+"\" box\n"
@@ -1105,10 +1119,9 @@ class Histogram2D(Histogram1D):
         other.overflow=self.overflow
         other.mean=self.mean
         other.mean_error=self.mean_error
-        other.rms=self.rms
-        other.rms_error=self.rms_error
-        other.sum=self.sum
-        other.sum2=self.sum2
+        other.rms2=self.rms2
+        other.variance_error=self.variance_error
+        other.variance=self.variance
         other.data_file_name=self.data_file_name
         other.bw=self.bw
         other.maximum=self.maximum
