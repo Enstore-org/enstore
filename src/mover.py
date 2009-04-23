@@ -1917,6 +1917,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             send_rq = 0
         set_cm_sent = 1 # tape ingest, initially enable
         Trace.trace(20, "send_rq %s"%(send_rq,))
+
         if send_rq:
             libraries = copy.deepcopy(self.libraries)
             if self.state == IDLE and len(libraries) > 1:
@@ -1928,8 +1929,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     ticket = self.format_lm_ticket(state=self.state, error_source=error_source)
 
+                Trace.trace(20, "ticket %s"%(ticket,))
                 if state != self._last_state:
                     Trace.trace(10, "update_lm: %s to %s" % (ticket, addr))
+                Trace.trace(20, "addr %s lm_addr %s"%(addr, self.lm_address,))
                 self._last_state = self.state
                 # only main thread is allowed to send messages to LM
                 # exception is a mover_busy and mover_error works
@@ -3411,6 +3414,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         have_tape = 0
         for retry_open in range(3):
             Trace.trace(10, "position media")
+            Trace.trace(10, "tape_driver.open mode %s"%(mode_name(self.mode),))
             have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
             if have_tape == 1:
                 err = None
@@ -3449,6 +3453,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             self.transfer_failed(status[0], status[1], error_source=TAPE)
             return
+
+        # to not dismout volume after assert
+        self.delay = self.default_dismount_delay
 
         if ticket.has_key('action'):
             self.current_work_ticket = ticket
@@ -3515,27 +3522,39 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.run_in_thread('seek_thread', self.seek_to_location,
                                        args = (location, self.mode==WRITE),
                                        after_function=self.start_transfer)
+
                     self.net_driver.open('/dev/null', WRITE)
                     self.assert_ok.wait()
                     self.assert_ok.clear()
+                    self.net_driver.close()
+
                     Trace.trace(24, "assert return: %s"%(self.assert_return,))
                     ticket['return_file_list'][loc_cookie] = self.assert_return
                     if self.assert_return != e_errors.OK:
                         stat = self.assert_return
+                    if self.tr_failed:
+                        break
                         
                 if self.interrupt_assert:
                     Trace.log(e_errors.INFO, "The assert client is gone %s" %
                               (self.current_work_ticket['callback_addr'],))
-                    self.dismount_volume(after_function=self.idle)
+                    self.transfer_failed(e_errors.ENCP_GONE,
+                                         "The assert client is gone %s" %
+                                         (self.current_work_ticket['callback_addr'],),
+                                         error_source=NETWORK)
                     
                 else:
                     self.transfer_completed(stat)
-                    Trace.log(e_errors.INFO, "The assert client is gone %s" %
-                              (self.current_work_ticket['callback_addr'],))
+                    Trace.log(e_errors.INFO, "The assert for %s is completed" %
+                              (ticket['vc']['external_label'],))
                                 
         else:
-            # read tape and 
-            self.dismount_volume(after_function=self.idle)
+            self.transfer_completed(e_errors.OK)
+            Trace.log(e_errors.INFO, "The assert for %s is completed" %
+                      (ticket['vc']['external_label'],))
+            
+        #    # read tape and 
+        #    self.dismount_volume(after_function=self.idle)
 
         
         
@@ -3599,6 +3618,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 delay = 60 * self.current_work_ticket['encp']['delayed_dismount']
             else:
                 delay = self.default_dismount_delay
+        else:
+            if self.mode == ASSERT:
+              delay = self.default_dismount_delay  
         if delay > 0:
             self.delay = max(delay, self.default_dismount_delay)
         elif delay < 0:
@@ -3810,11 +3832,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             eod = None
         volume_label = self.current_volume
 
-        if self.mode is WRITE and eod is None:
+        if self.mode == WRITE and eod == None:
             verify_label = 0
             label_tape = 1
         
-        if self.mode is WRITE:
+        if self.mode == WRITE:
             Trace.trace(24, "target location %s EOD cookie %s"%(self.target_location, eod))
             if self.target_location is None:
                 self.target_location = eod
