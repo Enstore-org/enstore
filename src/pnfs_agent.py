@@ -1077,7 +1077,7 @@ if __name__ == "__main__":
     #Trace.init(vc.log_name)
     
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
-    vc._do_print({'levels':[5,6,]})
+    #vc._do_print({'levels':[5,6,]})
 
     while 1:
         try:
