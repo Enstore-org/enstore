@@ -26,7 +26,9 @@ import fcntl
 #    fcntl.F_GETFL = FCNTL.F_GETFL
 #    fcntl.F_SETFL = FCNTL.F_SETFL
 import random
-import popen2
+# popen2 is deprecated and must be replaced with subprocess
+#import popen2
+import subprocess
 import copy
 
 
@@ -204,6 +206,7 @@ class Buffer:
         self.first_block = 1
         self.bytes_for_crc = 0L
         self.trailer_pnt = 0L
+        self.client_crc_on = 0
         
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
@@ -834,11 +837,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer, crc_seed=self.crc_seed)
         if self.log_mover_state:
             cmd = "EPS | grep %s"%(self.name,)
-            pipeObj = popen2.Popen3(cmd, 0, 0)
+            # popen2 is replaces with subprocess
+            #pipeObj = popen2.Popen3(cmd, 0, 0)
+            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
             if pipeObj == None:
                 return
-            stat = pipeObj.wait()
-            result = pipeObj.fromchild.readlines()  # result has returned string
+            # get stdout
+            result = pipeObj.communicate()[0]
             Trace.log(e_errors.INFO,"Init d_b LOG: PS %s"%(result,))
             del(pipeObj)
         Trace.trace(10, "init_data_buffer finished")
@@ -850,11 +855,15 @@ class Mover(dispatching_worker.DispatchingWorker,
     def log_state(self,logit=0):
         if self.log_mover_state or logit:
             cmd = "EPS | grep %s"%(self.name,)
-            pipeObj = popen2.Popen3(cmd, 0, 0)
+            # popen2 is replaces with subprocess
+            #pipeObj = popen2.Popen3(cmd, 0, 0)
+            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
             if pipeObj == None:
                 return
-            stat = pipeObj.wait()
-            result = pipeObj.fromchild.readlines()  # result has returned string
+            #stat = pipeObj.wait()
+            #result = pipeObj.fromchild.readlines()  # result has returned string
+            # get stdout
+            result = pipeObj.communicate()[0]
             Trace.log(e_errors.INFO,"LOG: PS %s"%(result,))
             del(pipeObj)
             thread = threading.currentThread()
@@ -897,11 +906,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.on_start=0
             return
         cmd = "EPS | grep %s"%(self.name,)
-        pipeObj = popen2.Popen3(cmd, 0, 0)
-        if pipeObj is None:
+        # popen2 is replaces with subprocess
+        #pipeObj = popen2.Popen3(cmd, 0, 0)
+        pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+        if pipeObj == None:
             return 0
-        stat = pipeObj.wait()
-        result = pipeObj.fromchild.readlines()  # result has returned string
+        #stat = pipeObj.wait()
+        #result = pipeObj.fromchild.readlines()  # result has returned string
+        result = pipeObj.communicate()[0]
         #Trace.log(e_errors.INFO,"LOG: PS %s"%(result,))
         del(pipeObj)
         # parse the line
@@ -942,11 +954,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.syslog_match:
             try:
                 cmd = "$ENSTORE_DIR/src/match_syslog.py '%s'"%(self.syslog_match)
-                pipeObj = popen2.Popen3(cmd, 0, 0)
-                if pipeObj is None:
+                # popen2 is replaces with subprocess
+                #pipeObj = popen2.Popen3(cmd, 0, 0)
+                pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+                if pipeObj == None:
                     return
-                stat = pipeObj.wait()
-                result = pipeObj.fromchild.readlines()  # result has returned string
+                #stat = pipeObj.wait()
+                #result = pipeObj.fromchild.readlines()  # result has returned string
+                result = pipeObj.communicate()[0]
                 if result:
                     for l in result:
                         Trace.log(e_errors.INFO,"SYSLOG Entry:[%s] %s"%(l[:-1],self.current_volume))
@@ -1181,10 +1196,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.init(self.logname, self.config.get('include_thread_name', 'yes'))
         # do not restart if some mover processes are already running
         cmd = "EPS | grep %s | grep %s | grep -v grep"%(self.name,"mover.py")
-        pipeObj = popen2.Popen3(cmd, 0, 0)
+        # popen2 is replaces with subprocess
+        #pipeObj = popen2.Popen3(cmd, 0, 0)
+        pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
         if pipeObj:
-            stat = pipeObj.wait()
-            result = pipeObj.fromchild.readlines()  # result has returned string
+            #stat = pipeObj.wait()
+            #result = pipeObj.fromchild.readlines()  # result has returned string
+            result = pipeObj.communicate()[0]
             if len(result) > 1:
                 Trace.alarm(e_errors.ERROR,"mover is already running, can not restart: %s"%(result,))
                 # remove when problem is resoved
@@ -3381,15 +3399,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(40, "check_connection started")
         while self.mode == ASSERT:
             Trace.trace(40, "check_connection mode %s"%(mode_name(self.mode),))
-            r, w, ex = select.select([self.control_socket], [self.control_socket], [], 10)
-            Trace.trace(40, "check_connection1 %s %s %s"%(r, w, ex))
-            Trace.trace(40, "r= %s"%(r,))
-            if r:
-                # r - read socket appears when client connection gets closed
-                self.interrupt_assert = True
-                break
-            else:
-                time.sleep(10)
+            try:
+                if self.control_socket:
+                    r, w, ex = select.select([self.control_socket], [self.control_socket], [], 10)
+                    Trace.trace(40, "check_connection1 %s %s %s"%(r, w, ex))
+                    Trace.trace(40, "r= %s"%(r,))
+                    if r:
+                        # r - read socket appears when client connection gets closed
+                        self.interrupt_assert = True
+                        break
+                    else:
+                        time.sleep(10)
+            except:
+                pass
         Trace.trace(40, "check_connection exits %s" % (mode_name(self.mode),))
             
                 
@@ -3397,6 +3419,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def assert_vol(self):
         self.net_driver = null_driver.NullDriver()
         ticket = self.current_work_ticket
+        self.assert_ok.clear()
         self.t0 = time.time()
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=ticket['vc']['address'])
@@ -3409,6 +3432,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.current_work_ticket['status'] = (e_errors.MOUNTFAILED, None)
             callback.write_tcp_obj(self.control_socket, ticket)
             self.control_socket.close()
+            self.control_socket = None
             return
         #At this point the media changer claims the correct volume is loaded;
         have_tape = 0
@@ -3519,15 +3543,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.current_work_ticket['fc'] = file_info[loc_cookie]
                     self.current_work_ticket['fc']['address'] = fc_address
                     self.finish_transfer_setup()
+                    Trace.trace(24, "t31 starting seek thread" )
                     self.run_in_thread('seek_thread', self.seek_to_location,
                                        args = (location, self.mode==WRITE),
                                        after_function=self.start_transfer)
 
-                    self.net_driver.open('/dev/null', WRITE)
+                    #self.net_driver.open('/dev/null', WRITE)
+                    Trace.trace(24, "t32 assert_ok returned" )
+                    
                     self.assert_ok.wait()
                     self.assert_ok.clear()
                     self.net_driver.close()
-
                     Trace.trace(24, "assert return: %s"%(self.assert_return,))
                     ticket['return_file_list'][loc_cookie] = self.assert_return
                     if self.assert_return != e_errors.OK:
@@ -5564,6 +5590,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.run_in_thread('net_thread', self.read_client)
             self.run_in_thread('tape_thread', self.write_tape)
         elif self.mode == READ or self.mode == ASSERT:
+            if self.mode == ASSERT:
+                self.net_driver.open('/dev/null', WRITE)
             self.run_in_thread('tape_thread', self.read_tape)
             self.run_in_thread('net_thread', self.write_client)
         else:
