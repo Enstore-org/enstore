@@ -171,6 +171,15 @@ def get_stat(arg):
 # only applicable to migration?
 euid_lock = threading.RLock()
 
+def acquire_lock_euid_egid():
+    euid_lock.acquire()
+
+def release_lock_euid_egid():
+    try:
+        euid_lock.release()
+    except RuntimeError:
+        pass  #Already unlocked.
+
 #Match the effective uid/gid of a file.
 # arg: could be a pathname, fileno or file object.
 #
@@ -182,8 +191,9 @@ def match_euid_egid(arg):
 
         f_stat = get_stat(arg)
 
-        euid_lock.acquire()
-                    
+        #Acquire the lock.
+        acquire_lock_euid_egid()
+
         try:
             set_euid_egid(f_stat[stat.ST_UID], f_stat[stat.ST_GID])
         except:
@@ -195,8 +205,10 @@ def set_euid_egid(euid, egid):
     if os.getuid() == 0:
 
         #We need to set these back to root, with uid first.
-        os.seteuid(0)
-        os.setegid(0)
+        if euid != 0:
+            os.seteuid(0)
+        if egid != 0:
+            os.setegid(0)
 
         #First look at the gid for setting them.
         os.setegid(egid)
@@ -210,11 +222,8 @@ def end_euid_egid(reset_ids_back = False):
         if reset_ids_back:
             os.seteuid(0)
             os.setegid(0)
-        
-        try:
-            euid_lock.release()
-        except RuntimeError:
-            pass  #Already unlocked.
+
+        release_lock_euid_egid()
 
 #############################################################################
         
