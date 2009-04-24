@@ -298,11 +298,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     #This functions uses an acitve protocol.  This function uses UDP and TCP.
     def reply_to_caller_with_long_answer_part1(self, ticket, long_items = []):
 
-        if e_errors.is_ok(ticket):
+        if not e_errors.is_ok(ticket):
             #If we have an error, then we only need to reply and skip the rest.
             self.reply_to_caller(ticket)
             return None
-
+        
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -325,7 +325,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             listen_socket.close()
             message = "connection timedout from %s" % (ticket['r_a'],)
             Trace.log(e_errors.ERROR, message)
-            return
+            return None
 
         #Accept the servers connection.
         control_socket, address = listen_socket.accept()
@@ -337,10 +337,12 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             listen_socket.close()
             message = "address %s not allowed" % (address,)
             Trace.log(e_errors.ERROR, message)
-            return
+            return None 
 
         #Socket cleanup.
         listen_socket.close()
+
+        return control_socket
         
     #Generalize the code to have a really large ticket be returned.
     #This functions uses an acitve protocol.  This function uses UDP and TCP.
@@ -827,7 +829,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # reply_to_caller_with_long_answer().
     def get_vols3(self, ticket):
         # log it
-        Trace.log(e_errors.INFO, "start listing all volumes (2)")
+        Trace.log(e_errors.INFO, "start listing all volumes (3)")
 
         # start communication
         ticket["status"] = (e_errors.OK, None)
@@ -837,6 +839,10 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.INFO, "get_vols3(): %s" % (str(msg),))
             return
 
+        #Make sure the socket exists.
+        if not control_socket:
+            return
+        
         # get reply
         reply = self.__get_vols2(ticket)
         reply['status'] = (e_errors.OK, None)
@@ -849,7 +855,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             return
 
         # log it
-        Trace.log(e_errors.INFO, "stop listing all volumes (2)")
+        Trace.log(e_errors.INFO, "stop listing all volumes (3)")
         return
 
     # return the volumes that have set system_inhibits
@@ -865,7 +871,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             res = self.volumedb_dict.db.query(q).dictresult()
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            mesg = 'get_vols(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+            mesg = '__get_pvols(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, mesg)
             res = []
         reply['volumes'] = res
@@ -901,7 +907,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # reply_to_caller_with_long_answer().
     def get_pvols2(self, ticket):
         # log it
-        Trace.log(e_errors.INFO, "start listing all volumes (2)")
+        Trace.log(e_errors.INFO, "start listing all problematic volumes (2)")
 
         # start communication
         ticket["status"] = (e_errors.OK, None)
@@ -909,6 +915,10 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             control_socket = self.reply_to_caller_with_long_answer_part1(ticket)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "get_pvols2(): %s" % (str(msg),))
+            return
+
+        #Make sure the socket exists.
+        if not control_socket:
             return
 
         # get reply
@@ -923,7 +933,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             return
         
         # log it
-        Trace.log(e_errors.INFO, "stop listing all volumes (2)")
+        Trace.log(e_errors.INFO, "stop listing all problematic volumes (2)")
 
     #### DONE
     def get_sg_count(self, ticket):
@@ -1031,7 +1041,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         try:
             control_socket = self.reply_to_caller_with_long_answer_part1(ticket)
         except (socket.error, select.error), msg:
-            Trace.log(e_errors.INFO, "get_pvols2(): %s" % (str(msg),))
+            Trace.log(e_errors.INFO, "get_vol_list2(): %s" % (str(msg),))
+            return
+
+        #Make sure the socket exists.
+        if not control_socket:
             return
 
         # get reply
@@ -1042,7 +1056,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         try:
             self.reply_to_caller_with_long_answer_part2(control_socket, ticket)
         except (socket.error, select.error), msg:
-            Trace.log(e_errors.INFO, "list_sg_count2(): %s" % (str(msg),))
+            Trace.log(e_errors.INFO, "get_vol_list2(): %s" % (str(msg),))
             return
 
     #### DONE
