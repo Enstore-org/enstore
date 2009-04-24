@@ -382,12 +382,14 @@ class MonitorServerClient(generic_client.GenericClient):
                 reply['status'] = (e_errors.INVALID_ACTION,
                                    "failed to simulate encp")
 
-        #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-        #    exc, msg = sys.exc_info()[:2]
-        #    reply = {}
-        #    reply['status'] = (exc, msg)
-        #    reply['elapsed'] = self.timeout*10
-        #    reply['block_count'] = 0
+        except (generic_client.ClientError), msg:
+            reply = {}
+            if msg.errno == errno.ETIMEDOUT:
+                reply['status'] = (e_errors.TIMEDOUT, str(msg))
+            else:
+                reply['status'] = (e_errors.NET_ERROR, str(msg))
+            reply['elapsed'] = self.timeout*10
+            reply['block_count'] = 0
         except (socket.error, select.error, e_errors.EnstoreError), detail:
             reply = {}
             if detail.errno == errno.ETIMEDOUT:
