@@ -580,7 +580,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         try:
             self.reply_to_caller_with_long_answer(ticket, ["bfids"])
         except (socket.error, select.error), msg:
-            Trace.log(e_errors.INFO, "history2: %s" % (str(msg),))
+            Trace.log(e_errors.INFO, "get_bfids2: %s" % (str(msg),))
             return
 
         return
@@ -687,6 +687,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             control_socket = self.reply_to_caller_with_long_answer_part1(ticket)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "tape_list3(): %s" % (str(msg),))
+            return
+
+        #Make sure the socket exists.
+        if not control_socket:
             return
 
         # get reply
@@ -809,6 +813,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             control_socket = self.reply_to_caller_with_long_answer_part1(ticket)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "list_active3(): %s" % (str(msg),))
+            return
+
+        #Make sure the socket exists.
+        if not control_socket:
             return
 
         # get reply
