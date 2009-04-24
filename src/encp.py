@@ -62,6 +62,7 @@ import types
 import gc
 import copy
 import random
+import threading
 
 # enstore modules
 import Trace
@@ -415,16 +416,19 @@ def print_error(errcode,errmsg):
     except IOError:
         pass
 
-def generate_unique_msg_id():
-    global _msg_counter
-    _msg_counter = _msg_counter + 1
-    return _msg_counter
+#def generate_unique_msg_id():
+#    global _msg_counter
+#    _msg_counter = _msg_counter + 1
+#    return _msg_counter
 
+unique_id_lock = threading.Lock() #protect encps within migration.
 def generate_unique_id():
     global _counter
     thishost = hostaddr.gethostinfo()[0]
+    unique_id_lock.acquire()
     ret = "%s-%d-%d-%d" % (thishost, int(time.time()), os.getpid(), _counter)
     _counter = _counter + 1
+    unique_id_lock.release()
     return ret
 
 def generate_location_cookie(number):
@@ -5253,6 +5257,7 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
             response_ticket, transaction_id = lmc.u.recv_deferred2(
                 transaction_ids, encp_intf.resubmit_timeout)
         except (socket.error, select.error, e_errors.EnstoreError), msg:
+            transaction_id = None
             if msg.errno in [errno.ETIMEDOUT]:
                 response_ticket = {'status' : (e_errors.TIMEDOUT,
                                                lmc.server_name)}
@@ -10228,7 +10233,7 @@ def submit_read_requests(requests, encp_intf):
                 ticket, lmc = submit_one_request(req, encp_intf)
             except (socket.error, select.error, e_errors.EnstoreError), msg:
                 lmc = None
-                if msg.errno == errno.ETIMEDOUT:
+                if msg.args[0] == errno.ETIMEDOUT:
                     ticket = {'status' : (e_errors.TIMEDOUT,
                                       req.get('vc', {}).get('library', None))}
                 else:
@@ -10680,15 +10685,17 @@ def prepare_read_from_hsm(tinfo, e):
                     #If we are user root and the effecting ids are not,
                     # then we need to handle this special to be able to
                     # write to a root owned local directory.
+                    file_utils.acquire_lock_euid_egid()
                     new_uid = os.geteuid()
                     new_gid = os.getegid()
-                    os.seteuid(0)
-                    os.setegid(0)
+                    file_utils.set_euid_egid(0, 0)
+
                     create_zero_length_local_files(requests_per_vol[vol][i])
                     os.chown(requests_per_vol[vol][i]['outfile'],
                              new_uid, new_gid)
-                    os.setegid(new_gid)
-                    os.seteuid(new_uid)
+
+                    file_utils.set_euid_egid(new_uid, new_gid)
+                    file_utils.release_lock_euid_egid()
                 else:
                     create_zero_length_local_files(requests_per_vol[vol][i])
                 if not should_skip_deleted:        
