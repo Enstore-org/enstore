@@ -2106,39 +2106,48 @@ static int do_select(struct transfer *info, struct locks *thread_locks)
   int sts = 0;                  /* Return value from various C system calls. */
 
   /* Initialize select values. */
-  errno = 0;
   FD_ZERO(&fds);
   FD_SET(info->fd, &fds);
-  timeout.tv_sec = info->timeout.tv_sec;
-  timeout.tv_usec = info->timeout.tv_usec;
-  
-  /* Wait for there to be data on the descriptor ready for reading. */
-  if(info->transfer_direction > 0)  /*write*/
-  {
-     sts = select(info->fd+1, NULL, &fds, NULL, &timeout);
-     if(sts < 0)
-	pack_return_values(info, 0, errno, WRITE_ERROR,
-			   "fd select error", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
-  }
-  else if(info->transfer_direction < 0)  /*read*/
-  {
-     sts = select(info->fd+1, &fds, NULL, NULL, &timeout);
-     if(sts < 0)
-	pack_return_values(info, 0, errno, READ_ERROR,
-			   "fd select error", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
-  }
-  
-  if(sts == 0)
-     pack_return_values(info, 0, ETIMEDOUT, TIMEOUT_ERROR,
-			"fd select timeout", 0.0, __FILE__, __LINE__,
-	                thread_locks);
-  
-  if (sts <= 0)
-    return 1;
 
-  return 0;
+  while(1)
+  {
+     errno = 0;
+
+     timeout.tv_sec = info->timeout.tv_sec;
+     timeout.tv_usec = info->timeout.tv_usec;
+  
+     /* Wait for there to be data on the descriptor ready for reading. */
+     if(info->transfer_direction > 0)  /*write*/
+     {
+	sts = select(info->fd+1, NULL, &fds, NULL, &timeout);
+	if(sts < 0 && errno == EINTR)
+	   continue;
+	if(sts < 0)
+	   pack_return_values(info, 0, errno, WRITE_ERROR,
+			      "fd select error", 0.0, __FILE__, __LINE__,
+			      thread_locks);
+     }
+     else if(info->transfer_direction < 0)  /*read*/
+     {
+	sts = select(info->fd+1, &fds, NULL, NULL, &timeout);
+	if(sts < 0 && errno == EINTR)
+	   continue;
+	if(sts < 0)
+	   pack_return_values(info, 0, errno, READ_ERROR,
+			      "fd select error", 0.0, __FILE__, __LINE__,
+			      thread_locks);
+     }
+     
+     if(sts == 0)
+	pack_return_values(info, 0, ETIMEDOUT, TIMEOUT_ERROR,
+			   "fd select timeout", 0.0, __FILE__, __LINE__,
+			   thread_locks);
+     
+     if (sts <= 0)
+	return 1;
+     
+     return 0;
+  }
 }
 
 
