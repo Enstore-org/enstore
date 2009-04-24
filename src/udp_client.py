@@ -472,7 +472,10 @@ class UDPClient:
         TEN_MINUTES = 10 * 60  #Time limit.
         
         for txn_id in txn_ids:
-            message, address, timestamp = tsd.send_queue[txn_id]
+            try:
+                message, address, timestamp = tsd.send_queue[txn_id]
+            except KeyError:
+                continue
 
             #After 10 minutes, assume we are not going to get a response.
             # Remove the item from the queue to prevent it from growing
