@@ -176,7 +176,11 @@ class DispatchingWorker(udp_server.UDPServer):
     # serve callback requests
     def serve_callback(self):
         while 1:
-            self.get_fd_message()
+            try:
+                self.get_fd_message()
+            except:
+                exc, msg, tb = sys.exc_info()
+                Trace.handle_error(exc, msg, tb)
 
     def serve_forever(self):
         """Handle one request at a time until doomsday, unless we are in a child process"""
