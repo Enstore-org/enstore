@@ -5025,10 +5025,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                                      self.mode,
                                                                      self.saved_mode,
                                                                      will_mount))
+        Trace.trace(10, 'error %s error_source %s'%(self._error,
+                                                    self._error_source)
+                    )
         if (self.single_filemark
             and self.mode == WRITE
             and self._error != e_errors.WRITE_ERROR
-            and (self._error_source != TAPE or self._error_source != DRIVE)):
+            and (not (self._error_source == TAPE or self._error_source == DRIVE))):
 
             if (self._error == e_errors.MEMORY_ERROR and self._error_source ==  NETWORK):
                 # write was interrupted in the middle by memory error in the network thread
