@@ -187,7 +187,7 @@ class DispatchingWorker(udp_server.UDPServer):
             if self.allow_callback:
                 Trace.trace(5, "spawning get_fd_message")
                 # spawn callback processing thread (event relay messages)
-                self.run_in_thread("call_back_proc", self.serve_callback)
+                self._run_in_thread("call_back_proc", self.serve_callback)
             
             # start receiver thread or process
             self.raw_requests.receiver()
@@ -305,7 +305,7 @@ class DispatchingWorker(udp_server.UDPServer):
             return (msg, addr)
 
 
-    def run_in_thread(self, thread_name, function, args=(), after_function=None):
+    def _run_in_thread(self, thread_name, function, args=(), after_function=None):
         thread = getattr(self, thread_name, None)
         if thread and thread.isAlive():
                 Trace.trace(5, "thread %s is already running" % (thread_name))
