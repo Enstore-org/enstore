@@ -1423,7 +1423,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if have_tape == 1:
                     self.init_stat(self.logname)
                     status = self.tape_driver.verify_label(None)
-                    #self.first_write = 0 # this flag is used in write_tape to verify tape position
+                    #self.write_counter = 0 # this flag is used in write_tape to verify tape position
                     if status[0]==e_errors.OK:
                         self.current_volume = status[1]
                         if self.state == OFFLINE:
@@ -2245,7 +2245,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, 'Write starting. Tape %s absolute location in blocks %s'%(self.current_volume, bloc_loc))
 
         if self.driver_type == 'FTTDriver':
-            if self.first_write == 0: # this is a first write since tape has been mounted
+            if self.write_counter == 0: # this is a first write since tape has been mounted
                 self.initial_abslute_location = bloc_loc
                 self.current_absolute_location = self.initial_abslute_location
                 self.last_absolute_location = self.current_absolute_location
@@ -2710,9 +2710,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.files_written_cnt = self.files_written_cnt + 1
                 self.bytes_written_last = self.bytes_written
                 self.transfer_completed()
-                if self.first_write == 0: # this is a first write since tape has been mounted
-                    self.first_write = 1  # first successful write was done
-                    self.write_in_progress = False
+                self.write_counter =  self.write_counter + 1 # successful write was done
+                self.write_in_progress = False
 
             else:
                 self.transfer_failed(e_errors.EPROTO)
@@ -3331,7 +3330,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.unlock_state()
             return
 
-        if self.save_state == HAVE_BOUND and self.single_filemark and self.mode == WRITE and self.setup_mode == READ:
+        if (self.save_state == HAVE_BOUND and self.single_filemark and self.mode == WRITE and self.setup_mode == READ
+            and self.write_counter > 0): # there was at least one successful write since tape mount
             # switching from write to read write additional fm
             Trace.log(e_errors.INFO,"writing a tape mark before switching to READ")
             if self.driver_type == 'FTTDriver':
@@ -3367,6 +3367,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                   # skip back one position in case when next read fails
                   # in this case tape is in the right position for the next write
                   self.tape_driver.skipfm(-1)
+                  # reset counter, which counts the number of successful writes
+                  # this counter must be reset after mounting tape
+                  # or switching from write to read
+                  # to decide later whether the additionla tape mark needs to get written
+                  # in a single file mark mode
+                  self.write_counter = 0
                 except:
                     Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
                     Trace.handle_error()
@@ -5028,6 +5034,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(10, 'error %s error_source %s'%(self._error,
                                                     self._error_source)
                     )
+        Trace.trace(10, 'write_in_progress %s write_counter %s'%(self.write_in_progress,
+                                                    self.write_in_progress)
+                    )
         if (self.single_filemark
             and self.mode == WRITE
             and self._error != e_errors.WRITE_ERROR
@@ -5039,9 +5048,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 pass
             elif will_mount and self.saved_mode != WRITE:
                 pass
+            elif self.write_counter == 0:
+                # first write after tape mount transfer was interrupted on client side
+                # no need to write fm
+                pass
             else:
                 # this case is for forced tape dismount request (HIPRI)
-                # and interrupted write on the client side
+                # and interrupted write on the client side and
+                # there was at leas one successful write sinse tape mount
                 Trace.log(e_errors.INFO,"writing a tape mark before dismount") 
                 if self.driver_type == 'FTTDriver':
                     bloc_loc = 0L
@@ -5414,7 +5428,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(25, "waiting %s seconds after mount"%(self.mount_delay,))
                 time.sleep(self.mount_delay)
             self.just_mounted = 1
-            self.first_write = 0 # this flag is used in write_tape to verify tape position
+            self.write_counter = 0 # this flag is used in write_tape to verify tape position
             if after_function:
                 Trace.trace(10, "mount: calling after function")
                 after_function()
