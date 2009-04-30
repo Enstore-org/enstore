@@ -585,7 +585,11 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         return
 
-    def __tape_list(self, external_label):
+    #If export_format is False, the default, then the raw names from the
+    # db query are returned in the dictionary.  If export_format is True,
+    # then the edb.py file DB export_format() function is called to
+    # rename the keys from the query.
+    def __tape_list(self, external_label, export_format = False):
         q = "select bfid, crc, deleted, drive, volume.label, \
                     location_cookie, pnfs_path, pnfs_id, \
                     sanity_size, sanity_crc, size \
@@ -599,7 +603,12 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # convert to external format
         file_list = []
         for file_info in res:
-            value = self.filedb_dict.export_format(file_info)
+            if export_format:
+                # used for tape_list3()
+                value = self.filedb_dict.export_format(file_info)
+            else:
+                # used for tape_list2()
+                value = file_info
             if not value.has_key('pnfs_name0'):
                 value['pnfs_name0'] = "unknown"
             file_list.append(value)
@@ -656,6 +665,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, "start listing " + external_label + " (2)")
 
         vol = self.__tape_list(external_label)
+        
 
         # finishing up
 
@@ -694,7 +704,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             return
 
         # get reply
-        file_info = self.__tape_list(external_label)
+        file_info = self.__tape_list(external_label, export_format = True)
         ticket['tape_list'] = file_info
 
         # send the reply
