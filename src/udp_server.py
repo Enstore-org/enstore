@@ -264,6 +264,7 @@ class UDPServer:
                 try:
                     request, inCRC = udp_common.r_eval(req, check=self.check_request)
                 except ValueError, detail:
+                    Trace.trace(5, "must be event_relay msg %s"%(detail,))
                     # must be an event relay message
                     # it has a different format
                     try:
@@ -317,17 +318,17 @@ class UDPServer:
        request, client_addr = '',()
        rc = self.raw_requests.get()
        if rc:
-           client_addr = (rc[0], rc[1])
-           request = rc[2]
            self.queue_size = self.raw_requests.queue_size
            #Trace.trace(5, "REQ %s %s %s"%(self.server_address, request,self.queue_size)) 
-           Trace.trace(5, "REQ %s %s"%(client_addr, self.queue_size)) 
+           Trace.trace(5, "REQ %s %s"%(rc[1], self.queue_size)) 
        else:
+           rc = ('',())
            if self.queue_size != 0:
                print "Nonsense rc=%s size=%s"%(rc, self.queue_size)
                sys.exit(1)
 
-       return (request, client_addr)
+       Trace.trace(5,"_get_raw_message %s %s" % (rc[0], rc[1])) 
+       return rc
 
     def get_message(self):
         if self.raw_requests:
@@ -358,6 +359,7 @@ class UDPServer:
         try:
             idn, number, ticket = udp_common.r_eval(request, check=self.check_request)
         except (NameError, ValueError), detail:
+            Trace.trace(5, "must be an event relay message %s"%(detail,))
             # must be an event relay message
             # it has a different format
             try:
@@ -368,6 +370,7 @@ class UDPServer:
                 #raise NameError, rq # dispatching_worker will take care of this
             except:
                 exc, msg = sys.exc_info()[:2]
+                Trace.trace(5, "will reraise %s %s"%(exc, msg))
                 # reraise exception
                 raise exc, msg
         except (SyntaxError, TypeError):
@@ -388,7 +391,7 @@ class UDPServer:
             #Set these to something.
             idn, number, ticket = (None, None, None)
         
-        if idn == None or type(ticket) != type({}):
+        if idn == None or type(ticket) != types.DictType:
             Trace.log(e_errors.ERROR,
                       "Malformed request from %s %s" %
                       (client_address, request,))

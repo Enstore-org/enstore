@@ -20,11 +20,18 @@ import time
 DEBUG = False
 MAX_PACKET_SIZE = 16384
 
+# get request id
 def get_id(request):
+    # request is a string like
+    # ('131.225.13.187-42240-1240336133.248870-25246-134719808', 13L, {'work': 'alive'})
     rarr = request.split("'")
     try:
+        # the fist element is a first part of request id
+        # the second: sequential request number
+        # we do not need it
         return rarr[1]
     except:
+        # wrong message format
         return None
 
 def _print(f, msg):
@@ -60,8 +67,10 @@ class RawUDP:
 
 
     def put(self, message):
-        req = message[2]
-        client_addr = (message[0], message[1])
+        # message structure:
+        #(request, cliient_address)
+        req = message[0]
+        client_addr = (message[1])
         request=None
         try:
             request, inCRC = udp_common.r_eval(req, check=True)
@@ -104,32 +113,38 @@ class RawUDP:
         request_id = get_id(request)
 
         self._lock.acquire()
-        do_put = True
-        _print(self.f, "PUT ENTERED")
-        if request_id:
-            # put the latest request into the queue
-            if self.requests.has_key(request_id) and self.requests[request_id] !="":
-                _print(self.f, "DUPLICATE %s"%(request,)) 
+        try:
+            do_put = True
+            _print(self.f, "PUT ENTERED")
+            if request_id:
+                # put the latest request into the queue
+                if self.requests.has_key(request_id) and self.requests[request_id] !="":
+                    _print(self.f, "DUPLICATE %s"%(request,)) 
 
-                # "retry" message put it closer to the beginnig of the queue
-                index = self.buffer.index(self.requests[request_id])
-                new_index = index / (((self.queue_size + 1)/10)+1) + index % 10
-                if new_index >= index:
-                    new_index = index
-                _print(self.f, "FOUND at %s reinserting at %s queue size %s"%(index, new_index, self.queue_size))
-                self.buffer.remove(self.requests[request_id])
-                self.buffer.insert(new_index, (message[0], message[1], request))
-                do_put = False # duplicate request, do not put into the queue
+                    # "retry" message put it closer to the beginnig of the queue
+                    index = self.buffer.index(self.requests[request_id])
+                    # new index is in 10% of top messages
+                    new_index = index / (((self.queue_size + 1)/10)+1) + index % 10
+                    if new_index >= index:
+                        new_index = index
+                    _print(self.f, "FOUND at %s reinserting at %s queue size %s"%(index, new_index, self.queue_size))
+                    self.buffer.remove(self.requests[request_id])
+                    self.buffer.insert(new_index, (request, message[1]))
+                    do_put = False # duplicate request, do not put into the queue
 
-            else:
-                self.requests[request_id] = (message[0], message[1], request)
-                
-        if do_put:
-            t0 = time.time()
-            self.queue_size = self.queue_size + 1
-            self.buffer.append((message[0], message[1], request))
-            self.arrived.set()
-            _print(self.f, "PUT %s"%(time.time() - t0, ))
+                else:
+                    self.requests[request_id] = (request, message[1])
+
+            if do_put:
+                t0 = time.time()
+                self.queue_size = self.queue_size + 1
+                self.buffer.append((request, message[1]))
+                self.arrived.set()
+                _print(self.f, "PUT %s"%(time.time() - t0, ))
+        except:
+            exc, detail, tb = sys.exc_info()
+            print exc, detail
+            
         self._lock.release()
 
         
@@ -150,7 +165,7 @@ class RawUDP:
             #self.arrived.clear()
             try:
                 ret = self.buffer.pop(0)
-                request_id = get_id(ret[2])
+                request_id = get_id(ret[0])
                 self.queue_size = self.queue_size - 1
             
                 if self.requests.has_key(request_id):
@@ -161,7 +176,7 @@ class RawUDP:
             except:
                 pass
 
-            rc = ret[0], ret[1], ret[2]
+            rc = ret
             self._lock.release()
             _print(self.d_o, "GET %s"%(time.time()-t0,))
 
@@ -196,7 +211,7 @@ class RawUDP:
                         #print "rawUDP:REQ", req
 
                         if req:
-                            message = (client_addr[0], client_addr[1], req)
+                            message = (req, client_addr)
                             self.put(message)
             else:
                 # time out
