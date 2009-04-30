@@ -470,7 +470,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                                option.USER_LEVEL:option.ADMIN},
         option.START_DRAINING:{option.HELP_STRING:
                                "start draining library manager; valid library "
-                               "state values are: lock, ignore, pause, moverlock"
+                               "state values are: lock, ignore, pause, moverlock, "
                                "noread and nowrite",
                                option.VALUE_TYPE:option.STRING,
                                option.VALUE_USAGE:option.REQUIRED,
