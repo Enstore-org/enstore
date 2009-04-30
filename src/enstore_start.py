@@ -462,7 +462,7 @@ def check_server(csc, name, intf, cmd):
             
         if not e_errors.is_ok(rtn):
             # check if python process with this name is still running
-            ch_cmd = 'EPS | egrep "%s" | egrep -v "%s|%s"'%(name, "grep", "enstore st")
+            ch_cmd = 'EPS | egrep "%s" | egrep python | egrep -v "%s|%s"'%(name, "grep", "enstore st")
             pipeObj = subprocess.Popen(ch_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
             if pipeObj:
                 result = pipeObj.communicate()[0]
