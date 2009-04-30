@@ -1614,47 +1614,6 @@ if __name__ == "__main__":
 
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
 
-    """
-    # find the brand
-    Trace.log(e_errors.INFO,"find the brand")
-    try:
-        brand = configuration_client.ConfigurationClient(
-                (intf.config_host, intf.config_port)).get('file_clerk')['brand']
-        Trace.log(e_errors.INFO,"The brand is %s"%(brand))
-    except:
-        brand = string.upper(string.split(os.uname()[1], ".")[0][:2])+'MS'
-        Trace.log(e_errors.INFO,"No brand is found, using '%s'"%(brand))
-
-    fc.set_brand(brand)
-
-    Trace.log(e_errors.INFO,"determine dbHome and jouHome")
-    try:
-        dbInfo = configuration_client.ConfigurationClient(
-                (intf.config_host, intf.config_port)).get('database')
-        dbHome = dbInfo['db_dir']
-        try:  # backward compatible
-            jouHome = dbInfo['jou_dir']
-        except:
-            jouHome = dbHome
-    except:
-        dbHome = os.environ['ENSTORE_DIR']
-        jouHome = dbHome
-
-    db_host = dbInfo['db_host']
-    db_port = dbInfo['db_port']
-
-    Trace.log(e_errors.INFO,"opening file database using edb.FileDB")
-    try:
-        fc.dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome)
-    except:
-        exc_type, exc_value = sys.exc_info()[:2]
-        msg = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
-        Trace.log(e_errors.ERROR,msg)
-        Trace.alarm(e_errors.ERROR,msg, {})
-        Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
-        sys.exit(1) 
-
-    """
     while 1:
         try:
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
