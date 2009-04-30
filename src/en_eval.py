@@ -8,6 +8,7 @@
 import re
 import compiler
 import sys
+import types
 import time
 import Trace
 
@@ -15,13 +16,13 @@ import Trace
 # to be used with compiler
 re_CallFunc = re.compile("CallFunc\(")
 
-# any alphanum character,
+# any alphanum character, or _
 # followed by 0 or more of "_",
 # followed by 0 or more whitespaces,
 # followed by "("
 # to be used without complier
 # this takes abut 20 times less time for executon
-re_func=re.compile("[A-Za-z0-9_ ] *\(")
+re_func=re.compile("[A-Za-z0-9_] *\(")
 
 # en_eval(expr) -- safer eval
 #
@@ -37,7 +38,7 @@ def en_eval(expr, debug=False, check=True, compile=False):
 	Trace.trace(5,"en_eval %s"%(expr,))
 	t0=time.time()
 	# reject anything that is NOT a string
-	if type(expr) != type(""):
+	if type(expr) != types.StringType:
 		if debug:
 			sys.stderr.write("en_eval Error: not a string type\n")
 		#return None
@@ -45,11 +46,10 @@ def en_eval(expr, debug=False, check=True, compile=False):
 
 	# reject function invocation
 	if check:
-		t01=time.time()
+		t02=t01=time.time()
 		if compile:
 			fun = str(compiler.parse(expr).node.nodes)
-		t02=time.time()
-		if compile:
+			t02=time.time()
 			rc = re_CallFunc.search(fun)
 		else:
 			rc = re_func.search(expr)	
