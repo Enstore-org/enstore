@@ -828,7 +828,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         f.write("=========================================\n")
         f.close()
         
-        
+    # execute shell command
+    def shell_command(self, command):
+        pipeObj = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+        if pipeObj == None:
+            return None
+        # get stdout
+        result = pipeObj.communicate()[0]
+        del(pipeObj)
+        return result 
+       
     def init_data_buffer(self):
         Trace.trace(10, "init_data_buffer started")
         if self.buffer:
@@ -837,15 +846,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer, crc_seed=self.crc_seed)
         if self.log_mover_state:
             cmd = "EPS | grep %s"%(self.name,)
-            # popen2 is replaces with subprocess
-            #pipeObj = popen2.Popen3(cmd, 0, 0)
-            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-            if pipeObj == None:
-                return
-            # get stdout
-            result = pipeObj.communicate()[0]
+            result =  self.shell_command(cmd)
             Trace.log(e_errors.INFO,"Init d_b LOG: PS %s"%(result,))
-            del(pipeObj)
         Trace.trace(10, "init_data_buffer finished")
 
         
@@ -855,17 +857,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def log_state(self,logit=0):
         if self.log_mover_state or logit:
             cmd = "EPS | grep %s"%(self.name,)
-            # popen2 is replaces with subprocess
-            #pipeObj = popen2.Popen3(cmd, 0, 0)
-            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-            if pipeObj == None:
-                return
-            #stat = pipeObj.wait()
-            #result = pipeObj.fromchild.readlines()  # result has returned string
-            # get stdout
-            result = pipeObj.communicate()[0]
+            result =  self.shell_command(cmd)
             Trace.log(e_errors.INFO,"LOG: PS %s"%(result,))
-            del(pipeObj)
             thread = threading.currentThread()
             if thread:
                 thread_name = thread.getName()
@@ -906,16 +899,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.on_start=0
             return
         cmd = "EPS | grep %s"%(self.name,)
-        # popen2 is replaces with subprocess
-        #pipeObj = popen2.Popen3(cmd, 0, 0)
-        pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-        if pipeObj == None:
-            return 0
-        #stat = pipeObj.wait()
-        #result = pipeObj.fromchild.readlines()  # result has returned string
-        result = pipeObj.communicate()[0]
-        #Trace.log(e_errors.INFO,"LOG: PS %s"%(result,))
-        del(pipeObj)
+        result =  self.shell_command(cmd)
+        if result == None:
+            return
+
         # parse the line
         #result[0].split('\t')
         mem_u = 0.
@@ -954,18 +941,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.syslog_match:
             try:
                 cmd = "$ENSTORE_DIR/src/match_syslog.py '%s'"%(self.syslog_match)
-                # popen2 is replaces with subprocess
-                #pipeObj = popen2.Popen3(cmd, 0, 0)
-                pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-                if pipeObj == None:
-                    return
-                #stat = pipeObj.wait()
-                #result = pipeObj.fromchild.readlines()  # result has returned string
-                result = pipeObj.communicate()[0]
+                result =  self.shell_command(cmd)
                 if result:
                     for l in result:
                         Trace.log(e_errors.INFO,"SYSLOG Entry:[%s] %s"%(l[:-1],self.current_volume))
-                del(pipeObj)
             except: # do not know what kind of exception it may be
                 Trace.handle_error()
 
@@ -1196,13 +1175,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.init(self.logname, self.config.get('include_thread_name', 'yes'))
         # do not restart if some mover processes are already running
         cmd = "EPS | grep %s | grep %s | grep -v grep"%(self.name,"mover.py")
-        # popen2 is replaces with subprocess
-        #pipeObj = popen2.Popen3(cmd, 0, 0)
-        pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-        if pipeObj:
-            #stat = pipeObj.wait()
-            #result = pipeObj.fromchild.readlines()  # result has returned string
-            result = pipeObj.communicate()[0]
+        result =  self.shell_command(cmd)
+        if result:
             if len(result) > 1:
                 Trace.alarm(e_errors.ERROR,"mover is already running, can not restart: %s"%(result,))
                 # remove when problem is resoved
@@ -1217,7 +1191,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 time.sleep(2)
                 sys.exit(-1)
-            del(pipeObj)
 
         self.restart_unlock()
 
@@ -3416,6 +3389,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         break
                     else:
                         time.sleep(10)
+                else:
+                    break
             except:
                 pass
         Trace.trace(40, "check_connection exits %s" % (mode_name(self.mode),))
