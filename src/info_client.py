@@ -384,54 +384,6 @@ class fileInfoMethods(generic_client.GenericClient):
         
         return done_ticket
 
-
-        # convert to external format
-        vol = copy.copy(done_ticket['tape_list'])
-        done_ticket['tape_list'] = []
-        for s in vol:
-            if s['deleted'] == 'y':
-                deleted = 'yes'
-            elif s['deleted'] == 'n':
-                deleted = 'no'
-            else:
-                deleted = 'unknown'
-
-            if s['sanity_size'] == -1:
-                sanity_size = None
-            else:
-                sanity_size = s['sanity_size']
-
-            if s['sanity_crc'] == -1:
-                sanity_crc = None
-            else:
-                sanity_crc = s['sanity_crc']
-
-            if s['crc'] == -1:
-                crc = None
-            else:
-                crc = s['crc']
-
-            record = {
-                'bfid': s['bfid'],
-                'complete_crc': crc,
-                'deleted': deleted,
-                'drive': s['drive'],
-                'external_label': s['label'],
-                'location_cookie': s['location_cookie'],
-                'pnfs_name0': s['pnfs_path'],
-                'pnfsid': s['pnfs_id'],
-                'sanity_cookie': (sanity_size, sanity_crc),
-                'size': s['size']
-                }
-
-            if s.has_key('uid'):
-                record['uid'] = s['uid']
-            if s.has_key('gid'):
-                record['gid'] = s['gid']
-            done_ticket['tape_list'].append(record)
-
-        return done_ticket
-
     ### For backward compatiblility with old servers.  (2-19-2009)
     def tape_list_old(self, external_label):
         host, port, listen_socket = callback.get_callback()
