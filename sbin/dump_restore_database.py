@@ -188,11 +188,11 @@ if __name__ == "__main__" :
             if not backup_dir :
                 print_error("Requested to restore from backup, but cannot find backup directory")
                 sys.exit(1)
-            if dbname != "enstoredb" :
+            if dbname != "enstore-db" :
                 backup_dir=os.path.join(backup_dir,accounting_backup_subdirectory)
                 backup_file=get_backup(backup_host, backup_dir,dbname)
             else:
-                backup_file=os.path.join(get_backup(backup_host, backup_dir),"enstoredb.dmp")
+                backup_file=get_backup(backup_host, backup_dir)
             # copy backup_file here:
             if not os.path.exists(restore_tmp):
                 os.makedirs(restore_tmp)

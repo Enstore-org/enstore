@@ -73,14 +73,14 @@ def get_callback(use_host=None, use_port=0):
 ### These function deal with encoding and decoding the raw bytes from
 ### udp messages.
 
-def r_eval(message_to_decode, check=True, compile=False):
+def r_eval(message_to_decode):
     try:
         #This is uses the restricted eval.  The unstricted eval could have
         #  been used by doing: return eval(message_to_decode)
         t=time.time()
-        rc = en_eval(message_to_decode, check, compile)
+        rc = en_eval(message_to_decode)
         t1=time.time()
-        Trace.trace(5,"r_eval %s %s %s"%(t1-t,check, compile))
+        Trace.trace(5,"r_eval %s"%(t1-t,))
         return rc
         #return en_eval(message_to_decode)
     

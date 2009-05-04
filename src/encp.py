@@ -62,7 +62,6 @@ import types
 import gc
 import copy
 import random
-import threading
 
 # enstore modules
 import Trace
@@ -165,7 +164,6 @@ CONFIG_LEVEL   = 8
 TIME_LEVEL     = 9
 TICKET_LEVEL   = 10
 TICKET_1_LEVEL = 11
-TRANS_ID_LEVEL = 13
 
 #This is the global used by print_data_access_layer_format().  It uses it to
 # determine whether standard out or error is used.
@@ -280,24 +278,16 @@ class EncpError(Exception):
         else:
             self.errno = None
 
-        #In python 2.6 python throws warnings for using Exception.message.
-        if sys.version_info[:2] == (2, 6):
-            self.message_attribute_name = "e_message"
-        else: # python 2.5 and less
-            self.message_attribute_name = "message"
-
         #Handel the message if not given.
         if e_message == None:
             if e_errno: #By now this is None or a valid errno.
-                setattr(self, self.message_attribute_name,
-                        os.strerror(self.errno))
+                self.message = os.strerror(self.errno)
             else:
-                setattr(self, self.message_attribute_name, None)
+                self.message = None
         elif type(e_message) == types.StringType:
-            #There was a string message passed.
-            setattr(self, self.message_attribute_name, e_message)
+            self.message = e_message #There was a string message passed.
         else:
-            setattr(self, self.message_attribute_name, None)
+            self.message = None
 
         #Type should be from e_errors.py.  If not specified, use errno code.
         if not e_type:
@@ -308,9 +298,7 @@ class EncpError(Exception):
         else:
             self.type = e_type
 
-        self.args = (self.errno,
-                     getattr(self, self.message_attribute_name),
-                     self.type)
+        self.args = (self.errno, self.message, self.type)
 
         #If no usefull information was passed in (overriding the default
         # empty dictionary) then set the ticket to being {}.
@@ -321,6 +309,9 @@ class EncpError(Exception):
 
         #Generate the string that stringifying this obeject will give.
         self._string()
+
+        #Is this duplicated from calling Exception.__init__(self)?
+        #self.args = [self.errno, self.message, self.type]
 
         #Do this after calling self._string().  Otherwise, self.strerror
         # will not be defined yet.
@@ -341,13 +332,12 @@ class EncpError(Exception):
         if self.errno in errno.errorcode.keys():
             errno_name = errno.errorcode[self.errno]
             errno_description = os.strerror(self.errno)
-            self.strerror = "%s: [ ERRNO %s ] %s: %s" \
-                            % (errno_name,
-                               self.errno,
-                               errno_description,
-                               getattr(self, self.message_attribute_name))
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
+                                                        self.errno,
+                                                        errno_description,
+                                                        self.message)
         else:
-            self.strerror = getattr(self, self.message_attribute_name)
+            self.strerror = self.message
 
         return self.strerror
 
@@ -416,19 +406,16 @@ def print_error(errcode,errmsg):
     except IOError:
         pass
 
-#def generate_unique_msg_id():
-#    global _msg_counter
-#    _msg_counter = _msg_counter + 1
-#    return _msg_counter
+def generate_unique_msg_id():
+    global _msg_counter
+    _msg_counter = _msg_counter + 1
+    return _msg_counter
 
-unique_id_lock = threading.Lock() #protect encps within migration.
 def generate_unique_id():
     global _counter
     thishost = hostaddr.gethostinfo()[0]
-    unique_id_lock.acquire()
     ret = "%s-%d-%d-%d" % (thishost, int(time.time()), os.getpid(), _counter)
     _counter = _counter + 1
-    unique_id_lock.release()
     return ret
 
 def generate_location_cookie(number):
@@ -808,47 +795,19 @@ def get_queue_size(request_list):
 
 def update_times(input_path, output_path):
     time_now = time.time()
-
-    update_last_access_time(input_path, time_now)
-    update_modification_time(output_path, time_now)
-
-def update_modification_time(output_path, time_now = None):
-
-    update_modification_time = time.time()
-    
-    if time_now == None:
-        time_now = update_modification_time
-    
-    try:
-        #Update the last modified time; set last access time to existing value.
-        os.utime(output_path,
-                 (file_utils.get_stat(output_path)[stat.ST_ATIME], time_now))
-    except OSError:
-        return #This one will fail if the output file is /dev/null.
-
-    message = "Time to update modification time: %s sec." % \
-              (time.time() - update_modification_time,)
-    Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
-
-def update_last_access_time(input_path, time_now = None):
-
-    update_last_access_start_time = time.time()
-
-    if time_now == None:
-        time_now = update_last_access_start_time
-    
     try:
         #Update the last access time; set last modified time to existing value.
         os.utime(input_path,
                  (time_now, file_utils.get_stat(input_path)[stat.ST_MTIME]))
     except OSError:
-        return
+        pass
 
-    message = "Time to update last_access_time: %s sec." % \
-              (time.time() - update_last_access_start_time,)
-    Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
+    try:
+        #Update the last modified time; set last access time to existing value.
+        os.utime(output_path,
+                 (file_utils.get_stat(input_path)[stat.ST_ATIME], time_now))
+    except OSError:
+        pass #This one will fail if the output file is /dev/null.
 
 """
 def bin(integer):
@@ -2250,7 +2209,6 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                                    vc_ticket.get('external_label',
                                                  ticket.get('volume', "")))
     location_cookie = fc_ticket.get('location_cookie', "")
-    library = vc_ticket.get('library', "")
     storage_group = vc_ticket.get('storage_group', "")
     if not storage_group:
         storage_group = volume_family.extract_storage_group(
@@ -2436,8 +2394,7 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
                                storage_group, unique_id, encp_client_version(),
                                status, msg, hostname, time.time(),
                                file_family, wrapper, mover_name,
-                               product_id, device_sn, rw, external_label,
-                               library)
+                               product_id, device_sn, rw, external_label)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -3168,20 +3125,6 @@ def tag_check(work_ticket):
              % ("file_family_width",)
         raise EncpError(None, str(msg), e_errors.USERERROR)
 
-#Prevent null mover requests from proceeding without NULL in the directory
-# path.
-def null_mover_check(work_ticket, e):
-    csc = get_csc(work_ticket)
-    library_name = work_ticket['vc']['library'] + ".library_manager"
-    mover_list = csc.get_movers2(library_name)
-
-    #There is a chance that the configuration has a mover in the wrong
-    # library, but we'll assume that the configuration is corrent for the
-    # first one in the list.
-    if len(mover_list) > 0 and mover_list[0]['driver'] == "NullDriver":
-        if work_ticket['wrapper']['pnfsFilename'].find("/NULL") == -1:
-            raise EncpError(None, "NULL not in PNFS path", e_errors.USERERROR)
-        
 
 # check the input file list for consistency
 def inputfile_check(work_list, e):
@@ -3315,17 +3258,11 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
             elif e.copy:
                 is_copy = True
 
-            #Holds the "rest" of the error strings.
-            rest = {}
 
             #First check if the file is deleted and the override deleted
             # switch/flag has been specified by the user.
-            #
-            # If the user has elected to skip pnfs access (with --get-bfid
-            # only) we skip this part too.
             if not (e.override_deleted and
-                    request_list[i]['fc']['deleted'] != 'no') and \
-                    not e.skip_pnfs:
+                    request_list[i]['fc']['deleted'] != 'no'):
 
                 #For Reads make sure the filesystem size and the pnfs size
                 # match.  If the PNFS filesystem and layer 4 sizes are
@@ -3360,6 +3297,7 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
                     dcache_crc, dcache_size = (None, None)
 
                 #Determine if the pnfs layers and the file data are consistant.
+                rest = {}
 
                 #Start by getting the pnfs layer 4 information.
                 try:
@@ -3511,13 +3449,9 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
 
             #First check if the file is deleted and the override deleted
             # switch/flag has been specified by the user.
-            #
-            # If the user has elected to skip pnfs access (with --get-bfid
-            # only) we skip this part too.
-            #
             #Not all fields get compared when reading a copy.
-            if not (e.override_deleted and request['fc']['deleted'] != 'no') \
-                   and not e.skip_pnfs:
+            if not (e.override_deleted
+                    and request['fc']['deleted'] != 'no'):
                 #For only those conflicting items, include them in
                 # the dictionary.
                 if db_volume != pnfs_volume and not is_copy:
@@ -3611,9 +3545,6 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
             # output filesystem supports.
             if not e.bypass_filesystem_max_filesize_check:
                 filesystem_check(request)
-
-            #If using null movers, make sure of a few things.
-            null_mover_check(request, e)
 
         except EncpError:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -3947,7 +3878,7 @@ def create_zero_length_pnfs_files(filenames, e = None):
     #now try to atomically create each file
     for f in filenames:
         if type(f) == types.DictType:
-            fname = f['outfile']
+            fname = f['wrapper']['pnfsFilename']
         else:
             fname = f
 
@@ -4199,20 +4130,16 @@ def get_uinfo(e = None):
     uinfo['gid'] = os.getegid()
 
     if uinfo['uid'] == 0 and uinfo['gid'] == 0 and \
-       e != None and (e.put_cache or e.migration_or_duplication):
+       e != None and e.put_cache:
         # For the case of dcache writes into enstore; we should use the
         # ownership of the zero length pnfs file (obtained from get_pinfo())
         # created by dCache.
-        #
-        # For migration purposes, we need to do the same.
         return {}
     
     if uinfo['uid'] == 0 and uinfo['gid'] == 0 \
-       and e != None and (e.put_cache or e.migration_or_duplication):
+       and e != None and e.put_cache:
         # For the case of dcache writes into enstore; we should use the
         # ownership of the zero length pnfs file created by dCache.
-        #
-        # For migration purposes, we need to do the same.
         return {}
     
     try:
@@ -4763,9 +4690,6 @@ def mover_handshake(listen_socket, udp_serv, work_tickets, encp_intf):
     control_socket, ticket = mover_handshake_part1(listen_socket, udp_serv,
                                                    work_tickets, encp_intf)
 
-    if not e_errors.is_ok(ticket):
-        return None, None, ticket
-
     data_path_socket, ticket = mover_handshake_part2(ticket, encp_intf)
 
     if not e_errors.is_ok(ticket):
@@ -5025,92 +4949,20 @@ def wait_for_message(listen_socket, lmc, work_list,
     else:
         udp_socket = None
         select_list = [listen_socket, lmc_socket]
-
-    #Wait for a message or socket connection.
-    if USE_NEW_EVENT_LOOP and transaction_id_list:
-        #Send to the debug log information about the current ids we are
-        # waiting for and those that we have queued up.  This should
-        # never grow to a list larger than one; if it does then there
-        # likely is a bug somewhere.
-        Trace.log(TRANS_ID_LEVEL,
-                  "waiting for: %s or connections to %s" % \
-                  (transaction_id_list, listen_socket.getsockname()))
-        queued_sent_ids = getattr(lmc.u.get_tsd(), "send_queue", {}).keys()
-        queued_recv_ids = getattr(lmc.u.get_tsd(), "recv_queue", {}).keys()
-        Trace.log(TRANS_ID_LEVEL, "queued sent ids: %s  recv ids: %s" % \
-                  (queued_sent_ids, queued_recv_ids))
-        
-        #If we are using the new event loop and we have pending answers for UDP
-        # replies that could arrive at any time, we need to execute this
-        # nasty loop to be able to resend messages that have not received a
-        # response.
-        
-        loop_start_time = time.time()
-        exp = 0
-        base_timeout = 5 #seconds
-        while loop_start_time + e.resubmit_timeout > time.time():
-            #We need to do this geometric timeout ourselves.  udp_client can't
-            # because we need to wait for multiple things.
-            timeout = base_timeout * (pow(2, exp))
-            if exp < udp_client.MAX_EXPONENT:
-                exp = exp + 1
-            #Limit the timeout to what is left of the entire resubmit timeout.
-            upper_limit = max(0,
-                          loop_start_time + e.resubmit_timeout - time.time())
-            timeout = min(timeout, upper_limit)
-
-            #Listen for the control socket to connect or the library
-            # manager's repsonse to the request resubmission.
-            try:
-                r, unused, unused = select.select(select_list, [], [],
-                                                  timeout)
-            except (socket.error, select.error), msg:
-                response_ticket = {'status' : (e_errors.RESUBMITTING,
-                                               str(msg))}
-                return response_ticket, None, None
-
-            #If we got nothing back, keep looping.
-            if r == []:
-                if transaction_id_list:
-                    #Since we are still waiting for a response, resend
-                    # the original message.
-                    #A better mechanism will be needed if more than just
-                    # the lmc will do things like this.
-#                    print "RESENDING:", transaction_id_list
-                    Trace.log(TRANS_ID_LEVEL,
-                              "repeating ids: %s" % (transaction_id_list,))
-                    lmc.u.repeat_deferred(transaction_id_list)
-
-                continue
-
-            break
-
-        else:
-            if transaction_id_list:
-                #We've timedout.
-                #A better mechanism will be needed if more than just
-                # the lmc will do things like this.
-#                print "DROPPING:", transaction_id_list
-                Trace.log(TRANS_ID_LEVEL,
-                          "dropping ids: %s" % (transaction_id_list,))
-                lmc.u.drop_deferred(transaction_id_list)
-
-    else:
-        #There are no UDP messages to worry about resending while waiting.
-        
-        #Listen for the control socket to connect or the library
-        # manager's repsonse to the request resubmission.
-        try:
-            r, unused, unused = select.select(select_list, [], [],
-                                              e.resubmit_timeout)
-        except (socket.error, select.error), msg:
-            response_ticket = {'status' : (e_errors.RESUBMITTING, str(msg))}
-            return response_ticket, None, None
+    
+    #Listen for the control socket to connect or the library
+    # manager's repsonse to the request resubmission.
+    try:
+        r, unused, unused = select.select(select_list, [], [],
+                                          e.resubmit_timeout)
+    except (socket.error, select.error), msg:
+        response_ticket = {'status' : (e_errors.RESUBMITTING, str(msg))}
+        return response_ticket, None, None
 
     
     #Get the packets specified one at a time.
     if lmc_socket in r:
-        response_ticket, transaction_id = submit_all_request_recv(
+        response_ticket = submit_all_request_recv(
             transaction_id_list, work_list, lmc, e)
         #We need to change the timedout errors to resumbitting ones.
         #  RESUBMITTING is handled differently by handle_retries().
@@ -5119,11 +4971,6 @@ def wait_for_message(listen_socket, lmc, work_list,
 
         control_socket = None 
         data_path_socket = None
-
-        #Encasing the transaction ID in a list is done only to make the
-        # output string for it look like the others, which really are lists.
-        Trace.log(TRANS_ID_LEVEL,
-                          "received id: %s" % ([transaction_id],))
     elif listen_socket in r or (udp_socket and udp_socket in r):
         #Wait for the mover to establish the control socket.  See
         # if the id matches one of the tickets we submitted.
@@ -5254,13 +5101,11 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
     #count = 0
     while not response_ticket:
         try:
-            response_ticket, transaction_id = lmc.u.recv_deferred2(
-                transaction_ids, encp_intf.resubmit_timeout)
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
-            transaction_id = None
+            response_ticket = lmc.u.recv_deferred(transaction_ids,
+                                                  encp_intf.resubmit_timeout)
+        except (socket.error, select.error, udp_client.UDPError), msg:
             if msg.errno in [errno.ETIMEDOUT]:
-                response_ticket = {'status' : (e_errors.TIMEDOUT,
-                                               lmc.server_name)}
+                response_ticket = {'status' : (e_errors.TIMEDOUT, None)}
             else:
                 response_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
             """
@@ -5278,7 +5123,7 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
 
-    return __submit_request_recv(response_ticket), transaction_id
+    return __submit_request_recv(response_ticket)
 
 #Wait for the one response for transaction_id.  Resend the original request
 # every 10 seconds until the response arives.
@@ -5293,16 +5138,16 @@ def submit_one_request_recv(transaction_id, work_ticket, lmc, encp_intf):
     max_count = max(encp_intf.resubmit_timeout / RESEND_TIMEOUT, 2)
     while not response_ticket:
         try:
-            response_ticket, transaction_id = lmc.u.recv_deferred2(
-                transaction_id, RESEND_TIMEOUT)
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
+            response_ticket = lmc.u.recv_deferred(transaction_id,
+                                                  RESEND_TIMEOUT)
+        except (socket.error, select.error, udp_client.UDPError), msg:
             if msg.errno in [errno.ETIMEDOUT]:
                 transaction_id = lmc.u.send_deferred(work_ticket, lmc.server_address)
                 count = count + 1
                 if count <= max_count:
                     continue
 
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            raise (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2])
         except errno.errorcode[errno.ETIMEDOUT]:
             #Handle this string exception until udp_client is fixed.
             transaction_id = lmc.u.send_deferred(work_ticket, lmc.server_address)
@@ -5310,14 +5155,12 @@ def submit_one_request_recv(transaction_id, work_ticket, lmc, encp_intf):
             if count <= 360:
                 continue
 
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
     message = "Time to receive first request: %s sec." % \
               (time.time() - submit_one_request_recv_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
 
-    return __submit_request_recv(response_ticket), transaction_id
+    return __submit_request_recv(response_ticket)
 
 def __submit_request_recv(response_ticket, ticket = {}):
 
@@ -5380,10 +5223,8 @@ def submit_one_request(ticket, encp_intf):
     #return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf), lmc
     rticket, transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
     if not e_errors.is_ok(rticket):
-        return ticket, lmc
-    response_ticket, transaction_id = submit_one_request_recv(
-        transaction_id, ticket, lmc, encp_intf)
-    return response_ticket, lmc
+        return ticket
+    return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf), lmc
 
 #This is modifies the ticket between retries and resubmits.
 def adjust_resubmit_request(ticket, encp_intf):
@@ -5535,22 +5376,15 @@ def open_local_file(work_ticket, tinfo, e):
     #  This will always be an non-pnfs file.
     filename = work_ticket['wrapper']['fullname']
 
-    #If the file is a deleted file that is trying to be read using
-    # --override-deleted, skip trying to access the PNFS file.
-    #
-    # For writes 'deleted' does not exist; default to "no" for writes.
-    if work_ticket['fc'].get('deleted', "no") == "no":
-        #set the effective uid and gid.
-        file_utils.match_euid_egid(work_ticket['infile'])
+    #set the effective uid and gid.
+    file_utils.match_euid_egid(work_ticket['infile'])
 
     #Try to open the local file for read/write.
     try:
         local_fd = os.open(filename, flags)
     except OSError, detail:
-        # For writes 'deleted' does not exist; default to "no" for writes.
-        if work_ticket['fc'].get('deleted', "no") == "no":
-            file_utils.end_euid_egid() #Release the lock.
-
+        file_utils.end_euid_egid() #Release the lock.
+        
         if getattr(detail, "errno", None) in \
                [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
             done_ticket = {'status':(e_errors.FILE_MODIFIED, str(detail))}
@@ -5562,9 +5396,7 @@ def open_local_file(work_ticket, tinfo, e):
     try:
         stats = os.fstat(local_fd)
     except OSError, detail:
-        # For writes 'deleted' does not exist; default to "no" for writes.
-        if work_ticket['fc'].get('deleted', "no") == "no":
-            file_utils.end_euid_egid() #Release the lock.
+        file_utils.end_euid_egid() #Release the lock.
         
         if getattr(detail, "errno", None) in \
                [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
@@ -5573,9 +5405,7 @@ def open_local_file(work_ticket, tinfo, e):
             done_ticket = {'status':(e_errors.OSERROR, str(detail))}
         return done_ticket
 
-    # For writes 'deleted' does not exist; default to "no" for writes.
-    if work_ticket['fc'].get('deleted', "no") == "no":
-        file_utils.end_euid_egid() #Release the lock.
+    file_utils.end_euid_egid() #Release the lock.
 
     if filename in ["/dev/zero", "/dev/random", "/dev/urandom"]:
         #Handle these character devices a little differently.
@@ -7242,8 +7072,7 @@ def calculate_rate(done_ticket, tinfo):
             tinfo['%s_disk_rate'%(u_id,)] = MB_transfered / disk_time
         else:
             tinfo['%s_disk_rate'%(u_id,)] = 0.0
-
-        library = done_ticket.get('vc', {}).get('library', "")
+            
         sg = done_ticket.get('vc', {}).get('storage_group', "")
         ff = done_ticket.get('vc', {}).get('file_family', "")
         ffw = done_ticket.get('vc', {}).get('file_family_wraper', "")
@@ -7411,9 +7240,7 @@ def calculate_rate(done_ticket, tinfo):
                           rw,
                           encp_client_version(),
                           ff,
-                          ffw,
-                          library,
-                          )
+                          ffw)
 
     message = "Time to calculate and record rate: %s sec." % \
               (time.time() - calculate_rate_start_time,)
@@ -7619,8 +7446,6 @@ def verify_write_request_consistancy(request_list, e):
         #Verify that the library and wrappers are valid.
         librarysize_check(request)
         wrappersize_check(request)
-        #If using null movers, make sure of a few things.
-        null_mover_check(request, e)
 
     message = "Time to verify write request consistancy: %s sec." % \
               (time.time() - verify_write_request_consistancy_start_time,)
@@ -8299,12 +8124,6 @@ def create_write_request(work_ticket, file_number,
 
                     break  #stop processing the outter loop.
 
-        #We need to stop writing /pnfs/fs/usr/Migration/ paths in the wrappers
-        # for every migrated to tape.  Correct the
-        # work_ticket['wrapper']['pnfsFilename'] value.
-        if e.migration_or_duplication and e.override_path:
-            wrapper['pnfsFilename'] = e.override_path
-
         #work_ticket = {}
         work_ticket['callback_addr'] = callback_addr
         work_ticket['client_crc'] = e.chk_crc
@@ -8354,15 +8173,8 @@ def submit_write_request(work_ticket, encp_intf):
     # send the work ticket to the library manager
     while encp_intf.max_retry == None or \
           work_ticket.get('resend', {}).get('retry', 0) <= encp_intf.max_retry:
-        try:
-            ticket, lmc = submit_one_request(work_ticket, encp_intf)
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
-            lmc = None
-            if msg.errno == errno.ETIMEDOUT:
-                ticket = {'status' : (e_errors.TIMEDOUT,
-                            work_ticket.get('vc', {}).get('library', None))}
-            else:
-                ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+        
+        ticket, lmc = submit_one_request(work_ticket, encp_intf)
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
                                      encp_intf)
@@ -8619,11 +8431,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         except OSError, msg:
             close_descriptors(in_fd)
             if e_errors.is_ok(done_ticket):
-                error_ticket = {'status' : (e_errors.OSERROR,
-                                            "Unable to set euid/egid: %s" % \
-                                            (str(msg),))}
-                Trace.log(e_errors.ERROR,
-                          "euid: %s  egid: %s" % (os.geteuid(), os.getegid()))
+                error_ticket = {'status' : (e_errors.OSERROR, str(msg))}
             else:
                 error_ticket = {'status' : done_ticket['status']}
             #Handle the error.
@@ -8666,8 +8474,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
             return combine_dict(result_dict, work_ticket)
 
         #Update the last access and modification times respecively.
-        #update_times(done_ticket['infile'], done_ticket['outfile'])
-        update_modification_time(done_ticket['outfile'])
+        update_times(done_ticket['infile'], done_ticket['outfile'])
 
         #Verify that setting times has been done successfully.
         #
@@ -8716,12 +8523,6 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         # on a failure is that the file is left with full permissions.
         set_outfile_permissions(done_ticket, e)
 
-        file_utils.end_euid_egid() #Release the lock.
-
-        #Update the source files times.  We need to do this after we
-        # are done with the locking around the euid for the output file.
-        file_utils.match_euid_egid(done_ticket['infile'])
-        update_last_access_time(done_ticket['infile'])
         file_utils.end_euid_egid() #Release the lock.
 
         ###What kind of check should be done here?
@@ -8831,9 +8632,8 @@ def prepare_write_to_hsm(tinfo, e):
             return return_ticket, listen_socket, udp_serv, request_list
 
     #Create the zero length file entries.
-    message = "Creating zero length output files."
-    Trace.message(TRANSFER_LEVEL, message)
-    Trace.log(e_errors.INFO, message)
+    Trace.message(TRANSFER_LEVEL, "Creating zero length output files.")
+    Trace.log(e_errors.INFO, "Creating zero length output files.")
     for i in range(len(request_list)):
         if e.put_cache or request_list[i].get('copy', None) != None:
             # We still need to get the inode.
@@ -8859,7 +8659,7 @@ def prepare_write_to_hsm(tinfo, e):
                 create_zero_length_pnfs_files(request_list[i], e)
             except OSError, msg:
                 file_utils.end_euid_egid() #Release the lock.
-
+                
                 if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
                        or (msg.args[0] == errno.EIO and \
                            msg.args[1].find("corrupt") != -1):
@@ -8913,11 +8713,69 @@ def write_to_hsm(e, tinfo):
         if not e_errors.is_ok(work_ticket):
             return work_ticket
 
-        #Wait for all possible messages or connections.
+        """
+        #Get the socket we a waiting on for the LM response.  Do this
+        # after submit_write_request() so we can use the cached client.
+        try:
+            lmc = get_lmc(request_list[0]['vc']['library'])
+            lmc_socket = lmc.u.get_tsd().socket
+        except (socket.error, AttributeError), msg:
+            ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+            return None, None, ticket
+        """
+
         request_ticket, control_socket, data_path_socket = \
                                 wait_for_message(listen_socket, lmc,
                                                  [work_ticket],
                                                  transaction_id_list, e)
+
+        """
+        #Listen for the control socket to connect or the library
+        # manager's repsonse to the request resubmission.
+        try:
+            r, unused, unused = select.select([listen_socket,
+                                               lmc_socket], [], [],
+                                              e.resubmit_timeout)
+        except (socket.error, select.error), msg:
+            ticket['status'] = (e_errors.RESUBMITTING, str(msg))
+
+        #Get the packets specified one at a time.
+        if lmc_socket in r:
+            request_ticket = submit_all_request_recv(
+                transaction_id_list, request_list, lmc, e)
+
+            local_filename = None
+            external_label = None
+
+            #Remember which socket is tried.
+            received_lm = True
+        elif listen_socket in r:
+            #Wait for the mover to establish the control socket.  See
+            # if the id matches one of the tickets we submitted.
+            # Establish data socket connection with the mover.
+            control_socket, data_path_socket, request_ticket = \
+                            mover_handshake(
+                listen_socket, request_list, e)
+
+            local_filename = request_ticket.get('wrapper',
+                                                {}).get('fullname',
+                                                        None)
+            external_label = request_ticket.get('fc',
+                                                {}).get('external_label',
+                                                        None)
+
+            #Remember which socket is tried.
+            received_lm = False
+            
+        else:  #We got nothing.
+            request_ticket = {'status' : (e_errors.RESUBMITTING, None)}
+            
+            local_filename = None
+            external_label = None
+            
+            #Remember which socket is tried.
+            received_lm = False
+        """
 
         #If we connected with the mover, add these two checks.
         # Skip them if we only heard from the LM.
@@ -9563,11 +9421,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         # loop below.
         try:
             tape_ticket = fcc.tape_list(e.volume)
-        except (select.error, socket.error, e_errors.EnstoreError), msg:
-            if msg.errno == errno.ETIMEDOUT:
-                tape_ticket = {'status' : (e_errors.TIMEDOUT, "file_clerk")}
-            else:
-                tape_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+        except (select.error, socket.error, udp_client.UDPError), msg:
+            tape_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
         except e_errors.TCP_EXCEPTION:
             tape_ticket = {'status' : (e_errors.NET_ERROR,
                                        e_errors.TCP_EXCEPTION)}
@@ -9916,17 +9771,9 @@ def create_read_request(request, file_number,
                 # --shortcut is used, the filename name will be recored as
                 # a /.(access)(<pnfsid>) style filename.
                 ifullname = e.override_path
-                use_dir = get_directory_name(ifullname)
             elif e.override_deleted and fc_reply['deleted'] != "no":
                 #Handle reading deleted files differently.
                 ifullname = fc_reply['pnfs_name0']
-                use_dir = ""
-            elif e.skip_pnfs:
-                # When told to skip PNFS, we should avoid all PNFS information.
-                # Unfortuanately, NullMovers insist on verfifying the that
-                # the pnfs path contains the string "NULL" in it.
-                ifullname = fc_reply['pnfs_name0']
-                use_dir = ""
             else:
                 if e.pnfs_mount_point:
                     use_mount_point = e.pnfs_mount_point
@@ -9947,19 +9794,17 @@ def create_read_request(request, file_number,
                                         e_errors.OSERROR,
                                         {'infilepath' : ifullname_list})
 
-                #If we did find too many matching files to the pnfsid,
+                #If we did find to many matching files to the pnfsid,
                 # we need to check the file bfids in layer 1 to determine
                 # which one we are looking for.
                 for cur_fname in ifullname_list:
                     if p.get_bit_file_id(cur_fname) == e.get_bfid:
                         ifullname = cur_fname
-                        use_dir = get_directory_name(ifullname)
                         break
                     elif get_fcc().find_original(e.get_bfid).get("original",
                                                                  None) == \
                                                  p.get_bit_file_id(cur_fname):
                         ifullname = cur_fname
-                        use_dir = get_directory_name(ifullname)
                         break
                 else:
                     raise EncpError(errno.ENOENT,
@@ -9968,7 +9813,8 @@ def create_read_request(request, file_number,
                                     {'infilepath' : ifullname_list})
 
             #Determine the access path name.
-            iaccessname = pnfs.access_file(use_dir, pnfsid)
+            iaccessname = pnfs.access_file(get_directory_name(ifullname),
+                                           pnfsid)
 
             if e.output[0] in ["/dev/null", "/dev/zero",
                                "/dev/random", "/dev/urandom"]:
@@ -9992,8 +9838,6 @@ def create_read_request(request, file_number,
                     
                 else:
                     istatinfo = None
-            elif e.skip_pnfs:
-                istatinfo = None
             else:
                 istatinfo = p.get_stat(iaccessname)
 
@@ -10229,15 +10073,7 @@ def submit_read_requests(requests, encp_intf):
         # the transfer.
         
         while req.get('completion_status', None) == None:
-            try:
-                ticket, lmc = submit_one_request(req, encp_intf)
-            except (socket.error, select.error, e_errors.EnstoreError), msg:
-                lmc = None
-                if msg.args[0] == errno.ETIMEDOUT:
-                    ticket = {'status' : (e_errors.TIMEDOUT,
-                                      req.get('vc', {}).get('library', None))}
-                else:
-                    ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+            ticket, lmc = submit_one_request(req, encp_intf)
 
             result_dict = handle_retries(requests, req, ticket, encp_intf)
             
@@ -10478,11 +10314,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         file_utils.match_euid_egid(out_fd)
     except OSError, msg:
         close_descriptors(out_fd)
-        error_ticket = {'status' : (e_errors.OSERROR,
-                                    "Unable to set euid/egid: %s" % \
-                                    (str(msg),))}
-        Trace.log(e_errors.ERROR,
-                  "euid: %s  egid: %s" % (os.geteuid(), os.getegid()))
+        error_ticket = {'status' : (e_errors.OSERROR, str(msg))}
         #Handle the error.
         result_dict = handle_retries(request_list, request_ticket,
                                      error_ticket, e)
@@ -10516,8 +10348,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         return combine_dict(result_dict, request_ticket)
 
     #Update the last access and modification times respecively.
-    #update_times(done_ticket['infile'], done_ticket['outfile'])
-    update_modification_time(done_ticket['outfile'])
+    update_times(done_ticket['infile'], done_ticket['outfile'])
 
     #If this is a read of a deleted file, leave the outfile permissions
     # to the defaults.
@@ -10542,13 +10373,6 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     #close_descriptors(control_socket, data_path_socket, out_fd)
     close_descriptors(out_fd)
     file_utils.end_euid_egid() #Release the lock.
-
-    #Update the source files times.  We need to do this after we
-    # are done with the locking around the euid for the output file.
-    if done_ticket['fc']['deleted'] == "no":
-        file_utils.match_euid_egid(done_ticket['infile'])
-        update_last_access_time(done_ticket['infile'])
-        file_utils.end_euid_egid() #Release the lock.
 
     #Remove the new file from the list of those to be deleted should
     # encp stop suddenly.  (ie. crash or control-C).
@@ -10637,12 +10461,6 @@ def prepare_read_from_hsm(tinfo, e):
         if not msg.ticket.get('status', None):
             msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket, listen_socket, udp_serv, requests_per_vol
-    except OSError, msg:
-        if msg.errno in [errno.ENOENT, errno.EPERM, errno.EACCES]:
-            return_ticket = {'status' : (e_errors.USERERROR, str(msg))}
-        else:
-            return_ticket = {'status' : (e_errors.OSERROR, str(msg))}
-        return return_ticket, listen_socket, udp_serv, requests_per_vol
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
@@ -10659,50 +10477,33 @@ def prepare_read_from_hsm(tinfo, e):
             return return_ticket, listen_socket, udp_serv, requests_per_vol
 
     #Create the zero length file entries.
-    message = "Creating zero length output files."
-    Trace.message(TRANSFER_LEVEL, message)
-    Trace.log(e_errors.INFO, message)
+    Trace.message(TRANSFER_LEVEL, "Creating zero length output files.")
+    Trace.log(e_errors.INFO, "Creating zero length output files.")
     for vol in requests_per_vol.keys():
         for i in range(len(requests_per_vol[vol])):
-
-            if requests_per_vol[vol][i]['outfile'] in ["/dev/null"]:
-                continue
-
-            should_skip_deleted = e.override_deleted and \
-                             requests_per_vol[vol][i]['fc']['deleted'] != "no"
-            
             try:
                 #set the effective uid and gid.
-                if not should_skip_deleted:
-                    file_utils.match_euid_egid(requests_per_vol[vol][i]['infile'])
-            except (OSError, IOError, EncpError), msg:
-                requests_per_vol[vol][i]['status'] = \
-                          (e_errors.OSERROR, str(msg))
-                return requests_per_vol[vol][i], listen_socket, udp_serv, requests_per_vol
-                
-            try:
+                file_utils.match_euid_egid(requests_per_vol[vol][i]['infile'])
+
                 if os.getuid() == 0 and os.geteuid() != 0:
                     #If we are user root and the effecting ids are not,
                     # then we need to handle this special to be able to
                     # write to a root owned local directory.
-                    file_utils.acquire_lock_euid_egid()
                     new_uid = os.geteuid()
                     new_gid = os.getegid()
-                    file_utils.set_euid_egid(0, 0)
-
+                    os.seteuid(0)
+                    os.setegid(0)
                     create_zero_length_local_files(requests_per_vol[vol][i])
                     os.chown(requests_per_vol[vol][i]['outfile'],
                              new_uid, new_gid)
-
-                    file_utils.set_euid_egid(new_uid, new_gid)
-                    file_utils.release_lock_euid_egid()
+                    os.setegid(new_gid)
+                    os.seteuid(new_uid)
                 else:
                     create_zero_length_local_files(requests_per_vol[vol][i])
-                if not should_skip_deleted:        
-                    file_utils.end_euid_egid()  #Release the lock.
+                        
+                file_utils.end_euid_egid()  #Release the lock.
             except (OSError, IOError, EncpError), msg:
-                if not should_skip_deleted:
-                    file_utils.end_euid_egid() #Release the lock.
+                file_utils.end_euid_egid() #Release the lock.
 
                 if isinstance(msg, EncpError):
                     requests_per_vol[vol][i]['status'] = (msg.type, str(msg))
@@ -10725,11 +10526,6 @@ def prepare_read_from_hsm(tinfo, e):
                 requests_per_vol[vol][i]['completion_status'] = FAILURE
                 
                 return requests_per_vol[vol][i], listen_socket, udp_serv, requests_per_vol
-            except:
-                if not should_skip_deleted:
-                    file_utils.end_euid_egid() #Release the lock.
-
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     return_ticket = { 'status' : (e_errors.OK, None)}
     return return_ticket, listen_socket, udp_serv, requests_per_vol
@@ -10774,19 +10570,68 @@ def read_from_hsm(e, tinfo):
         # of request_list is not changed by this function.
         submitted, reply_ticket, lmc = submit_read_requests(request_list, e)
 
+        """
+        #Get the socket we a waiting on for the LM response.  Do this
+        # after submit_read_requests() so we can use the cached client.
+        try:
+            lmc = get_lmc(request_list[0]['vc']['library'])
+            #lmc_socket = lmc.u.get_tsd().socket
+        except (socket.error, AttributeError), msg:
+            ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+            return None, None, ticket
+        """
+
         #If USE_NEW_EVENT_LOOP is true, we need this cleared.
         transaction_id_list = []
 
         #If at least one submission succeeded, follow through with it.
         if submitted > 0:
             while requests_outstanding(request_list):
-
-                #Wait for all possible messages or connections.
+                
                 request_ticket, control_socket, data_path_socket = \
                                 wait_for_message(listen_socket, lmc,
                                                  request_list,
                                                  transaction_id_list, e)
                 
+                """
+                #Listen for the control socket to connect or the library
+                # manager's repsonse to the request resubmission.
+                try:
+                    r, unused, unused = select.select([listen_socket,
+                                                       lmc_socket], [], [],
+                                                      e.resubmit_timeout)
+                except (socket.error, select.error), msg:
+                    ticket['status'] = (e_errors.RESUBMITTING, str(msg))
+
+                #Get the packets specified one at a time.
+                if lmc_socket in r:
+                    request_ticket = submit_all_request_recv(
+                        transaction_id_list, request_list, lmc, e)
+
+                    control_socket = None 
+                    data_path_socket = None
+
+                    local_filename = None
+                    external_label = None
+                elif listen_socket in r:
+                    #Wait for the mover to establish the control socket.  See
+                    # if the id matches one of the tickets we submitted.
+                    # Establish data socket connection with the mover.
+                    control_socket, data_path_socket, request_ticket = \
+                                    mover_handshake(
+                        listen_socket, request_list, e)
+
+                    local_filename = request_ticket.get(
+                        'wrapper', {}).get('fullname', None)
+                    external_label = request_ticket.get(
+                        'fc', {}).get('external_label', None)
+                else:  #We got nothing.
+                    request_ticket = {'status' : (e_errors.RESUBMITTING, None)}
+
+                    local_filename = None
+                    external_label = None
+                """
+
                 #If we connected with the mover, add these two checks.
                 # Skip them if we only heard from the LM.
                 if control_socket:
@@ -11020,7 +10865,6 @@ class EncpInterface(option.Interface):
                                    # will ignore the deleted status when
                                    # reading the file back.
         self.skip_deleted_files = None #skip files marked deleted
-        self.skip_pnfs = None      #Ignore pnfs when --get-bfid is used.
         self.migration_or_duplication = None #Set true if the transfer is
                                    # called from migrate.py or duplicate.py.
 
@@ -11129,7 +10973,7 @@ class EncpInterface(option.Interface):
                       option.DEFAULT_TYPE:option.INTEGER,
                       option.USER_LEVEL:option.USER,},
         option.COPY:{option.HELP_STRING:
-                     "Read copy N of the file.  (0 = primary)",
+                     "Read copy N of the file.  (0 = original)",
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_TYPE:option.INTEGER,
                      option.USER_LEVEL:option.USER,},
@@ -11345,12 +11189,6 @@ class EncpInterface(option.Interface):
                                    option.VALUE_USAGE:option.IGNORED,
                                    option.VALUE_TYPE:option.INTEGER,
                                    option.USER_LEVEL:option.USER,},
-        option.SKIP_PNFS:{option.HELP_STRING:
-                                   "Skip checking with PNFS.  "
-                                   "Used with --get-bfid",
-                                   option.VALUE_USAGE:option.IGNORED,
-                                   option.VALUE_TYPE:option.INTEGER,
-                                   option.USER_LEVEL:option.HIDDEN,},
         option.STORAGE_GROUP:{option.HELP_STRING:
                                "Specify an alternative storage group to "
                                "override the pnfs strorage group tag "
@@ -11399,10 +11237,6 @@ class EncpInterface(option.Interface):
             self.print_usage()
         if hasattr(self, "version") and self.version:
             self.print_version()
-
-        #Sanity check.  Only allow skip_pnfs to work if --get-bfid was used.
-        if not self.get_bfid:
-            self.skip_pnfs = None
 
         #The values for --max-retry and --max-resubmit need special processing.
         # This is so that the special non integer value of 'None' gets
@@ -12152,7 +11986,8 @@ def do_work(intf):
 
     file_utils.euid_lock.acquire()
 
-    #Remove any zero-length files left haning around.
+    #Remove any zero-length files left haning around.  Also, return
+    # a non-zero exit status to the calling program/shell.
     delete_at_exit.delete()
 
     #The only thing that would be effected by not setting this back would be

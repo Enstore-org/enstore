@@ -13,7 +13,7 @@ import time
 import random
 #import popen2
 #import sys
-import os
+#import os
 import aml2_log
 
 # enstore imports
@@ -280,7 +280,7 @@ def drive_volume(drive):
     if drive!=None:
         return drive.volser
 
-def mount(volume, drive, media_type, view_first=1):
+def mount(volume, drive, media_type,view_first=1):
     media_code = aci.__dict__.get("ACI_"+media_type)
     if media_code is None:
         return 'BAD',e_errors.MC_NONE,'Media code is None. media_type= %s'%(media_type,)
@@ -315,10 +315,7 @@ def mount(volume, drive, media_type, view_first=1):
 
     
 # this is a forced dismount. get rid of whatever has been ejected from the drive   
-def dismount(volume, drive, media_type, view_first=1):
-    #The media_type is not used.  Why is even here?
-    __pychecker__ = "unusednames=media_type"
-    
+def dismount(volume, drive, media_type,view_first=1):
     # check if any tape is mounted in this drive
     if view_first:
         stat,drvstate = drive_state(drive,"")
@@ -406,8 +403,6 @@ def yankList(listOfLists, listPosition, look4String):
     return newRecordList    
     
 def insert(ticket, classTicket):
-    ticket['inserted'] = {}
-    
     if classTicket.has_key("mcSelf"):
         mcSelf = classTicket["mcSelf"]
     else:
@@ -415,27 +410,16 @@ def insert(ticket, classTicket):
         mcSelf.workQueueClosed = 0
         Trace.trace(e_errors.ERROR, 'aml2 no mcSelf field found in ticket.')
         return status_table[status][0], status, 'aml2 no mcSelf field found in ticket.'
-
-    #Modify the E for eject versions in the config into I for insert versions.
-    # This should be done better, but this is going away so I don't care.
-    #
-    # For posterity, the IOBoxMedia section of AML2 media changer
-    # configurations would look something like this.
-    #  'IOBoxMedia': {'ACI_8MM': ['E01', 'E08'],
-    #            'ACI_DECDLT': ['E02', 'E04', 'E07'],
-    #            'ACI_LTO': ['E03', 'E05', 'E06']},
+    
     mediaAssgn = ticket['medIOassign']
     Iareas = []
     for media in mediaAssgn.keys():
         for box in mediaAssgn[media]:
-            Iareas.append("I" + box[1:])
+            Iareas.append("I"+box[1:])
 
-    #If the user/caller specified a specific IO box area, set the list to that.
     status = 0
     if ticket.has_key("IOarea_name") and len(ticket["IOarea_name"])>0:
         IOarea_input = ticket["IOarea_name"]
-        #print "IOarea_input:", IOarea_input
-        #print "All IO areas:", Iareas
 	for IOarea_name in IOarea_input:
 	    if IOarea_name not in Iareas:
 	        status = derrno.EINVALID
@@ -443,17 +427,15 @@ def insert(ticket, classTicket):
                 Trace.trace(e_errors.ERROR, 'aml2 bad IOarea parameter specified.')
 	        return status_table[status][0], status, status_table[status][1]
         areaList = IOarea_input
-    else: #Otherwise set the possible list to all available areas.
+    else:
         areaList = list(Iareas)
 
-    ###########################################################
-    # No idea what the purpose of this block of code is.
     timeL1 = time.time()
     timeCmd = ticket["timeOfCmd"]
-    #time.sleep(90)  # let robot-IOarea door open and start inventory
+    time.sleep(90)  # let robot-IOarea door open and start inventory
                     # helps for clock skew between adic2 and mc host
 
-    robot_host = os.environ['DAS_SERVER']  #"adic2.fnal.gov"
+    robot_host = "adic2.fnal.gov"
     year, month, day, hour, minute = time.localtime(timeL1)[:5]
     outfileName = "/tmp/aml2Log%02d%02d" % (day, month)
 
@@ -494,173 +476,93 @@ def insert(ticket, classTicket):
 	if len(ESrecord) == len(EFrecord):
 	    break
 	timeL1 = time.time()
-    ###########################################################
-        
+
     # do insert command...
-    #bigVolList = [] #remember volume, success/fail and IO area
+    bigVolList = []
     for area in areaList:
 	Trace.trace(e_errors.INFO, 'aml2 InsertVol IOarea: %s' % (area,))
-        status = derrno.EAMU  #default error to try again
-        volser_ranges = []
-        #If the robot gives an error EAMU (7) then wait a while and try
-        # again.  This error occurs if the door was just closed and the
-        # robot is still inventorying the IO area.
-        while status == derrno.EAMU:
-            result = aci.aci_insert(area)   # aci insert command
-
-            if result == -1:
-                res = result
-            else:
-                res = result[0]
-            status = derrno.EOK
-            if res:
-                status = aci.cvar.d_errno
-                if status > len(status_table):  #invalid error code
-                    status = derrno.EDASINT
-                
-            if status in (derrno.EAMU,):
-                time.sleep(10) #seconds
-                continue
-            elif status:
-                message = "aml2 insert failed: %s" % (status_table[status][1],)
-                Trace.log(e_errors.ERROR, message)
-                return status_table[status][0], status, message
-
-            try:
-                volser_ranges = result[1]
-            except (TypeError, ValueError, AttributeError):
-                volser_ranges = []
-
-            if len(volser_ranges) == 0 and res == 0:
-                #If we have no insert error or volumes inserted, then the
-                # door hasn't been opened and the box pulled out to trip the
-                # sensor.  Return this as an error.
-                message = "aml2 insert failed: make sure the sensor is tripped"
-                return e_errors.NO_VOLUME, derrno.ENOVOLUME, message
-
+	result = aci.aci_insert(area)   # aci insert command
+	res = result[0]
+	media_code = result[-1]
+	volser_ranges = result[1:-1]
 	###XXX this is a little ugly... but it works.
 	### we could fix up aci_typemaps to return the volser_ranges in
 	### a sublist, but life is short
-        Trace.trace(e_errors.INFO,
-                    'aml2 aci_insert: %i %i: %s' % (res, aci.cvar.d_errno, volser_ranges))
+        Trace.trace(e_errors.INFO, 'aml2 aci_insert: %i %i' % (res,media_code))
+        if res:
+            status = aci.cvar.d_errno
+            if status > len(status_table):  #invalid error code
+                status = derrno.EDASINT
+            Trace.trace(e_errors.ERROR, 'aml2 insert failed %s' % (status_table[status][1],))
+	for strList in volser_ranges:
+	    pieces = string.split(strList,', ')
+	    for vol_label in pieces:
+	        if len(vol_label)>0:
+		    info = vol_label, res
+	            bigVolList.append(info)
 
-        #Be sure to report to the client what was done.
-        for volser in volser_ranges:
-            ticket['inserted'][volser] = {'IOarea_name' : area}
-       
-        # set library name to ticket["newlib"]
-        if getattr(ticket, 'newlib', None):
-            vcc = volume_clerk_client.VolumeClerkClient(mcSelf.csc)
-            for volser in volser_ranges:
-                ret = vcc.new_library(volser, ticket["newlib"])
-                if not e_errors.is_ok(ret['status']):
-                    Trace.log(e_errors.ERROR,
-                              "aml2 NewLib-InsertVol failed %s: %s" % (volser, ret))
-                    status = NEW_LIBRARY_ERROR
-                    return status_table[status][0], status, status_table[status][1]
-                else:
-                    Trace.trace(e_errors.INFO,
-                                "aml2 NewLib-InsertVol sucessful %s" % (volser,))
-    
+    # set library name to ticket["newlib"]
+    vcc = volume_clerk_client.VolumeClerkClient(mcSelf.csc)
+    for info in bigVolList:
+        if not info[1]:
+            ret = vcc.new_library(info[0],ticket["newlib"])
+	    if ret['status'][0] != 'ok':
+                Trace.log(e_errors.ERROR, 'aml2 NewLib-InsertVol failed %s' % (ret,))
+                status = NEW_LIBRARY_ERROR
+	    else:
+                Trace.trace(e_errors.INFO, 'aml2 NewLib-InsertVol sucessful %s' % (vol_label,))
+
     return status_table[status][0], status, status_table[status][1]
 
 def eject(ticket, classTicket):
-    ticket['ejected'] = {}
 
     if classTicket.has_key("mcSelf"):
         mcSelf = classTicket["mcSelf"]
     else:
         status = COMMAND_ERROR
         mcSelf.workQueueClosed = 0
-        Trace.trace(e_errors.ERROR, "aml2 no mcSelf field found in ticket.")
-        return status_table[status][0], status, "aml2 no mcSelf field found in ticket."
+        Trace.trace(e_errors.ERROR, 'aml2 no mcSelf field found in ticket.')
+        return status_table[status][0], status, 'aml2 no mcSelf field found in ticket.'
 
     mediaAssgn = ticket['medIOassign']
     status = 0
-
-    #Get the volume list from the robot.
-    if ticket.has_key('volList'):
+    if ticket.has_key("media_type"):
+        media_type = ticket["media_type"]
+        media_code = aci.__dict__.get("ACI_"+media_type)
+    else:
+	status = derrno.EINVALID
+	return status_table[status][0], status, status_table[status][1]
+    if media_code is None:
+        status = derrno.ENOVOLUME
+        return status_table[status][0], status, status_table[status][1]
+	
+    if ticket.has_key("IOarea_name"):
+        IOarea_name = ticket["IOarea_name"]
+	if IOarea_name not in mediaAssgn["ACI_"+media_type]:
+	    status = derrno.EINVALID
+	    return status_table[status][0], status, status_table[status][1]
+    else:
+        #whrandom() is depricated.
+        #box = whrandom.randint(0,len(mediaAssgn["ACI_"+media_type])-1)
+        box = random.randint(0,len(mediaAssgn["ACI_"+media_type])-1)
+        IOarea_name = mediaAssgn["ACI_"+media_type][box]
+    
+    if ticket.has_key("volList"):
         volumeList = ticket['volList']
     else:
 	status = derrno.EINVALID
 	return status_table[status][0], status, status_table[status][1]
+    Trace.trace(e_errors.INFO, 'aml2 aci_eject: %s %i' % (IOarea_name,media_code))
 
-    #Determine if the volume information is to be purged from the robot.
-    if ticket.get('purge', None):
-        purge = True
-    else:
-        purge = False
-
-    #Handle the case of to many tapes or zero tapes.
-    MAX_EJECT = 30 #Value for AML/2.  AML/J = ???
-    if len(volumeList) > MAX_EJECT:
-        return e_errors.TOO_MANY_VOLUMES, 0, "max eject is %s" % (MAX_EJECT,)
-    elif len(volumeList) == 0:
-        return e_errors.NO_VOLUME, 0, "no volumes listed"
-
-    for volser in volumeList:
-
-        #This is the basic part of view().
-        start =  volser
-        end =  volser
-        stat, start, volsers = aci.aci_qvolsrange(start, end, 1, "")
-
-        #Get the media_type.
-        if stat != 0:
-            stat = aci.cvar.d_errno
-            Trace.log(e_errors.ERROR,"aci_qvolsrange returned status=%d" % (stat,))
-            return status_table[status][0], stat, "unable to obtain media type"
-
-        #Make sure the tape is still in the robot.
-        if volsers[0].attrib == "E":
-            return e_errors.NO_VOLUME, derrno.ENOVOLUME, "volser %s already ejected" % (volser,)
-        #Make sure the tape is not being used.
-        elif volsers[0].attrib != "O":
-            return e_errors.NO_VOLUME, derrno.ENOVOLUME, "%s: %s" % (status_table[derrno.ENOVOLUME][1], volser)
-
-        media_code = volsers[0].media_type
-        #If the media_code is 3480, then just set it to LTO.  This is entirely,
-        # a giant hack since the robot didn't know what LTO tapes were when
-        # LTO tapes came out. 
-        if media_code == aci.ACI_3480:
-            media_code = aci.ACI_LTO
-
-        #Knowing the media_code, we can get the media_type.
-        media_type = media_names[media_code]
-
-        #Determine the IO area to use.
-        if ticket.has_key("IOarea_name"):
-            IOarea_name = ticket["IOarea_name"]
-            if IOarea_name not in mediaAssgn["ACI_"+media_type]:
-                status = derrno.EINVALID
-                return status_table[status][0], status, status_table[status][1]
-        else:
-            try:
-                box = random.randint(0,len(mediaAssgn["ACI_"+media_type])-1)
-                IOarea_name = mediaAssgn["ACI_"+media_type][box]
-            except:
-                import sys
-                exc, msg, tb = sys.exc_info()
-                print str(exc), str(msg)
-                raise  exc, msg
-
-        Trace.trace(e_errors.INFO,
-               "aml2 aci_eject: %s %s %s" % (IOarea_name, media_type, volser))
-
-        # media code is aci.ACI_LTO or aci.ACI_DECDLT
-        if purge: #remove the volser info from the database
-            res = aci.aci_eject_complete(IOarea_name, volser, media_code)
-        else:
-            res = aci.aci_eject(IOarea_name, volser, media_code)
+    for volser_range in volumeList:
+        Trace.trace(e_errors.INFO, 'aml2 aci_eject: %s' % (volser_range))
+        res = aci.aci_eject(IOarea_name, volser_range, media_code)
         if res:
-            Trace.trace(e_errors.ERROR, "aml2 aci_eject: %i" % (res,))
+            Trace.trace(e_errors.ERROR, 'aml2 aci_eject: %i' % (res,))
             status = aci.cvar.d_errno
             if status > len(status_table):  #invalid error code
                 status = derrno.EDASINT
             return status_table[status][0], status, status_table[status][1]
-
-        #Be sure to report to the client what was done.
-        ticket['ejected'][volser] = {'IOarea_name' : IOarea_name}
     
     return status_table[status][0], status, status_table[status][1]
 
@@ -711,7 +613,6 @@ def list_slots():
 
         #What does this loop do?  I don't remember anymore...
         for item in range(len(media_info_totals)):
-            __pychecker__ = "unusednames=item"
             media_list.append((device, media_info_totals, media_info_free,
                                media_info_used, media_info_disabled))
 

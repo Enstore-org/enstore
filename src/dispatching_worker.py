@@ -13,7 +13,6 @@ import checksum
 import sys
 #import socket
 import signal
-import threading
 #import string
 import copy
 #import types
@@ -35,12 +34,7 @@ DEFAULT_TTL = 60 #One minute lifetime for child processes
 class DispatchingWorker(udp_server.UDPServer):
     
     def __init__(self, server_address, use_raw=None):
-        self.allow_callback = False
         self.use_raw = use_raw
-        if self.use_raw:
-            # enable to spawn callback processing thread
-            # by default in raw input mode
-            self.allow_callback = True 
         udp_server.UDPServer.__init__(self, server_address,
                                       receive_timeout=60.0,
                                       use_raw=use_raw)
@@ -69,16 +63,6 @@ class DispatchingWorker(udp_server.UDPServer):
         self.kill_list = []
         
         self.custom_error_handler = None
-
-    # call this right after initialization
-    # when use raw is enabled (last parameter in __init__
-    def enable_callback(self):
-        self.allow_callback = True         
-
-    # call this right after initialization
-    # when use raw is enabled (last parameter in __init__
-    def disable_callback(self):
-        self.allow_callback = False         
 
     def add_interval_func(self, func, interval, one_shot=0,
                           align_interval = None):
@@ -173,28 +157,11 @@ class DispatchingWorker(udp_server.UDPServer):
             ##Should we close the control socket here?
             return 0
         
-    # serve callback requests
-    def serve_callback(self):
-        while 1:
-            try:
-                self.get_fd_message()
-            except:
-                exc, msg, tb = sys.exc_info()
-                Trace.handle_error(exc, msg, tb)
-
+        
     def serve_forever(self):
         """Handle one request at a time until doomsday, unless we are in a child process"""
         ###XXX should have a global exception handler here
         count = 0
-        if self.use_raw:
-            self.set_out_file()
-            if self.allow_callback:
-                Trace.trace(5, "spawning get_fd_message")
-                # spawn callback processing thread (event relay messages)
-                self._run_in_thread("call_back_proc", self.serve_callback)
-            
-            # start receiver thread or process
-            self.raw_requests.receiver()
         while not self.is_child:
             self.do_one_request()
             self.collect_children()
@@ -210,23 +177,10 @@ class DispatchingWorker(udp_server.UDPServer):
         else:
             Trace.trace(6,"serve_forever, shouldn't get here")
 
-    def get_request(self):
-        if self.use_raw:
-            request, client_address = self._get_request_multi()
-        else:
-            request, client_address = self._get_request_single()
-        return request, client_address
-        
-
     def do_one_request(self):
         """Receive and process one request, possibly blocking."""
         # request is a "(idn,number,ticket)"
-        request = None
-        try:
-            request, client_address = self.get_request()
-        except:
-            exc, msg = sys.exc_info()[:2]
-             
+        request, client_address = self.get_request()
         now=time.time()
 
         for func, time_data in self.interval_funcs.items():
@@ -308,122 +262,20 @@ class DispatchingWorker(udp_server.UDPServer):
             addr = ()
             return (msg, addr)
 
-
-    def _run_in_thread(self, thread_name, function, args=(), after_function=None):
-        thread = getattr(self, thread_name, None)
-        if thread and thread.isAlive():
-                Trace.trace(5, "thread %s is already running" % (thread_name))
-        if after_function:
-            args = args + (after_function,)
-        Trace.trace(5, "create thread: target %s name %s args %s" % (function, thread_name, args))
-        thread = threading.Thread(group=None, target=function,
-                                  name=thread_name, args=args, kwargs={})
-        setattr(self, thread_name, thread)
-        Trace.trace(5, "starting thread %s"%(dir(thread,)))
-        try:
-            thread.start()
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.trace(5, "starting thread %s: %s" % (thread_name, detail))
-
-
-    # get request in single threaded environment
-    # when use_raw is set to 0
-    # hence rawUDP is not used
-    # this is a copy of the old get_request
-    def _get_request_single(self):
+    def get_request(self):
         # returns  (string, socket address)
         #      string is a stringified ticket, after CRC is removed
         # There are three cases:
         #   read from socket where crc is stripped and return address is valid
-        #   read from pipe where there is no crc and no r.a.     
+        #   read from pipe where there is no crc and no r.a.
         #   time out where there is no string or r.a.
-
-        gotit = 0
-        while not gotit:
-            r = self.read_fds + [self.server_socket]
-            w = self.write_fds
-
-            rcv_timeout = self.rcv_timeout
-
-            if self.interval_funcs:
-                now = time.time()
-                for func, time_data in self.interval_funcs.items():
-                    interval, last_called, one_shot = time_data
-                    rcv_timeout = min(rcv_timeout,
-                                      interval - (now - last_called))
-
-                rcv_timeout = max(rcv_timeout, 0)
-
-            r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
-            if not r + w:
-                return ('',()) #timeout
-
-            #handle pending I/O operations first
-            for fd in r + w:
-                if self.callback.has_key(fd) and self.callback[fd]:
-                    self.callback[fd](fd)
-
-            #now handle other incoming requests
-            for fd in r:
-                
-                if type(fd) == type(1) \
-                       and fd in self.read_fds \
-                       and self.callback[fd]==None:
-                    #XXX this is special-case code,
-                    #for old usage in media_changer
-
-                    (request, addr) = self.read_fd(fd)
-                    return (request, addr)
-                
-                elif fd == self.server_socket:
-                    #Get the 'raw' request and the address from whence it came.
-                    (request, addr) = udp_server.UDPServer.get_message(self)
-
-                    #Skip these if there is nothing to do.
-                    if request == None or addr in [None, ()]:
-                        #These conditions could be caught when
-                        # hostaddr.allow() raises an exception.  Since,
-                        # these are obvious conditions, we stop here to avoid
-                        # the Trace.log() that would otherwise fill the
-                        # log file with useless error messages.
-                        return (request, addr)
-
-                    #Determine if the address the request came from is
-                    # one that we should be responding to.
-                    try:
-                        is_valid_address = hostaddr.allow(addr)
-                    except (IndexError, TypeError), detail:
-                        Trace.log(e_errors.ERROR,
-                                  "hostaddr failed with %s Req.= %s, addr= %s"\
-                                  % (detail, request, addr))
-                        request = None
-                        return (request, addr)
-
-                    #If it should not be responded to, handle the error.
-                    if not is_valid_address:
-                        Trace.log(e_errors.ERROR,
-                               "attempted connection from disallowed host %s" \
-                                  % (addr[0],))
-                        request = None
-                        return (request, addr)
-                    
-                    return (request, addr)
-
-        return (None, ())
-
-    # get request in multi threaded environment
-    # when use_raw is set to 1
-    # hence rawUDP is used
-    def _get_request_multi(self):
-        # returns  (string, socket address)
-        #      string is a stringified ticket, after CRC is removed
 
         gotit = 0
         t0 = time.time()
 
         while not gotit:
-            r = [self.server_socket]
+            r = self.read_fds + [self.server_socket]
+            w = self.write_fds
             rcv_timeout = self.rcv_timeout
             if self.interval_funcs:
                 now = time.time()
@@ -433,53 +285,92 @@ class DispatchingWorker(udp_server.UDPServer):
                                       interval - (now - last_called))
 
                 rcv_timeout = max(rcv_timeout, 0)
-            try:
-                rc = self.get_message()
-                Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
-            except (NameError, ValueError), detail:
-                Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
-                self.erc.error_msg = str(detail)
-                self.handle_er_msg(None)
-                return None, None
-            if rc and rc != ('',()):
-                #Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
-                return rc
-            else:
-                # process timeout
-                if time.time()-t0 > rcv_timeout:
+            if self.use_raw:
+                try:
+                    rc = self.get_message()
+                    Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
+                except NameError, detail:
+                    Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
+                    self.erc.error_msg = str(detail)
+                    Trace.trace
+                    self.handle_er_msg(None)
+                    return None, None
+                if rc and rc != ('',()):
+                    Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
+                    return rc
+                else:
+                    # process timeout
+                    if time.time()-t0 > rcv_timeout:
+                        return ('',()) #timeout
+
+            if not self.use_raw:
+                r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
+                if not r + w:
                     return ('',()) #timeout
 
+                #handle pending I/O operations first
+                for fd in r + w:
+                    Trace.trace(5, 'dw: get_request cb %s'%(fd,))
+                    if self.callback.has_key(fd) and self.callback[fd]:
+                        self.callback[fd](fd)
+
+                #now handle other incoming requests
+                for fd in r:
+
+                    if type(fd) == type(1) \
+                           and fd in self.read_fds \
+                           and self.callback[fd]==None:
+                        #XXX this is special-case code,
+                        #for old usage in media_changer
+
+                        (request, addr) = self.read_fd(fd)
+                        Trace.trace(5, 'dw: get_request special')
+                        return (request, addr)
+
+                    elif fd == self.server_socket:
+                        #Get the 'raw' request and the address from whence it came.
+                        try:
+                            (request, addr) = self.get_message()
+                        except NameError, detail:
+                            Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
+                            self.erc.error_msg = str(detail)
+                            Trace.trace
+                            self.handle_er_msg(fd)
+                            return None, None
+                            
+
+                        #Skip these if there is nothing to do.
+                        if request == None or addr in [None, ()]:
+                            #These conditions could be caught when
+                            # hostaddr.allow() raises an exception.  Since,
+                            # these are obvious conditions, we stop here to avoid
+                            # the Trace.log() that would otherwise fill the
+                            # log file with useless error messages.
+                            return (request, addr)
+
+                        #Determine if the address the request came from is
+                        # one that we should be responding to.
+                        try:
+                            is_valid_address = hostaddr.allow(addr)
+                        except (IndexError, TypeError), detail:
+                            Trace.log(e_errors.ERROR,
+                                      "hostaddr failed with %s Req.= %s, addr= %s"\
+                                      % (detail, request, addr))
+                            request = None
+                            return (request, addr)
+
+                        #If it should not be responded to, handle the error.
+                        if not is_valid_address:
+                            Trace.log(e_errors.ERROR,
+                                   "attempted connection from disallowed host %s" \
+                                      % (addr[0],))
+                            request = None
+                            return (request, addr)
+
+                        return (request, addr)
+
         return (None, ())
 
-
-    # get and process read and write fds
-    # this method runs in a separate
-    # tread
-    def get_fd_message(self):
-        # There are three cases:
-        #   read from socket where crc is stripped and return address is valid (event relay messages)
-        #   read from pipe where there is no crc and no r.a.
-        #   time out where there is no string or r.a.
-        gotit = 0
-        while not gotit:
-            r = self.read_fds
-            w = self.write_fds
-
-            rcv_timeout = self.rcv_timeout
-
-            r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
-            if not r + w:
-                return ('',()) #timeout
-
-            #handle pending I/O operations first
-            for fd in r + w:
-                if self.callback.has_key(fd) and self.callback[fd]:
-                    Trace.trace(5,"get_fd_message - got one")
-                    self.callback[fd](fd)
-
-        return (None, ())
-        
-    
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
 

@@ -121,8 +121,7 @@ def dont_alarm(levels):
         levels = [levels]
     for level in levels:
         if level==0:
-            #raise e_errors.NOT_ALWD_EXCEPTION
-            raise ValueError("alarm level 0 can not be turned off")
+            raise e_errors.NOT_ALWD_EXCEPTION
         if alarm_levels.has_key(level):
             del alarm_levels[level]
 
@@ -137,8 +136,7 @@ def dont_message(levels):
         levels = [levels]
     for level in levels:
         if level==0:
-            #raise e_errors.NOT_ALWD_EXCEPTION
-            raise ValueError("message level 0 can not be turned off")
+            raise e_errors.NOT_ALWD_EXCEPTION
         if message_levels.has_key(level):
             del message_levels[level]
 

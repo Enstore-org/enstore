@@ -13,15 +13,16 @@
 # system imports
 #
 import sys
+#import re
 import os
 import string
 import errno
 import socket
+#import stat
 import grp
 import pwd
 import time
-import subprocess
-import select
+import popen2
 
 # enstore imports
 import setpath
@@ -29,13 +30,25 @@ import e_errors
 import enstore_constants
 import enstore_functions
 import enstore_functions2
+#import udp_client
 import generic_client
 import option
 import Trace
-import Interfaces
 
+#import alarm_client
 import configuration_client
+#import configuration_server
+#import file_clerk_client
+#import inquisitor_client
+#import library_manager_client
+#import log_client
+#import media_changer_client
+#import mover_client
+#import monitor_client
+#import volume_clerk_client
+#import ratekeeper_client
 import event_relay_client
+import Interfaces
 
 #Less hidden side effects to call this?  Also, pychecker perfers it.
 ### What does this give us?
@@ -238,7 +251,6 @@ def start_server(cmd, servername):
             cmd_list[i] = os.path.expanduser(cmd_list[i])
             cmd_list[i] = os.path.expandvars(cmd_list[i])
 
-        print "will execute",cmd_list[0],cmd_list  
         #Execute the new server.
         os.execvp(cmd_list[0], cmd_list)
 
@@ -312,8 +324,7 @@ def check_event_relay(csc, intf, cmd):
     if intf.nocheck:
         rtn = 1
     else:
-        #print "Checking %s." % name
-        print "Checking 1 %s." % name
+        print "Checking %s." % name
         
         rtn = erc.alive()
         
@@ -331,11 +342,6 @@ def check_event_relay(csc, intf, cmd):
             try:
                 #rtn = 0 implies alive, rtn = 1 implies dead.
                 rtn = erc.alive()
-            except (socket.error, select.error, e_errors.EnstoreError), msg:
-                if msg.errno == errno.ETIMEDOUT:
-                    rtn = {'status':(e_errors.TIMEDOUT, enstore_constants.EVENT_RELAY)}
-                else:
-                    rtn = {'status':(e_errors.NET_ERROR, str(msg))}
             except errno.errorcode[errno.ETIMEDOUT]:
                 rtn = {'status':(e_errors.TIMEDOUT,
                                  errno.errorcode[errno.ETIMEDOUT])}
@@ -380,16 +386,15 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
     if intf.nocheck:
         rtn = {'status':("nocheck","nocheck")}
     else:
-        #print "Checking 2 %s." % name
         print "Checking %s." % name
         # see if EPS returns config_server"
         #cmd = 'EPS | egrep "%s|%s" | grep python | grep -v %s'%(name,"configuration_server.py", "grep")
         cmd = 'EPS | egrep "%s" | egrep -v "%s|%s"'%(name, "grep", "enstore st")
-        # popen is deprecated in last python releases
-        #pipeObj = popen2.Popen3(cmd, 0, 0)
-        pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+        pipeObj = popen2.Popen3(cmd, 0, 0)
         if pipeObj:
-            result = pipeObj.communicate()[0]
+            #stat = pipeObj.wait()
+            pipeObj.wait()
+            result = pipeObj.fromchild.readlines()  # result has returned string
             if len(result) >= 1:
                 # running, don't start
                 rtn = {'status':(e_errors.OK,"running")}
@@ -408,11 +413,11 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         for unused in (0, 1, 2, 3, 4, 5):
             time.sleep(2)
             cmd = 'EPS | egrep "%s|%s" | grep -v %s'%(name,"configuration_server.py", "grep")
-            pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-            #pipeObj = popen2.Popen3(cmd, 0, 0)
+            pipeObj = popen2.Popen3(cmd, 0, 0)
             if pipeObj:
                 #stat = pipeObj.wait()
-                result = pipeObj.communicate()[0]
+                pipeObj.wait()
+                result = pipeObj.fromchild.readlines()  # result has returned string
                 if len(result) >= 1:
                     rtn = {'status':(e_errors.OK,"running")}
                     break
@@ -450,28 +455,9 @@ def check_server(csc, name, intf, cmd):
         try:
             # Determine if the host is alive.
             rtn = gc.alive(name, SEND_TO, SEND_TM)
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
-            if hasattr(msg, "errno") and msg.errno == errno.ETIMEDOUT:
-                rtn = {'status':(e_errors.TIMEDOUT, name)}
-            else:
-                rtn = {'status':(e_errors.NET_ERROR, str(msg))}
-
         except errno.errorcode[errno.ETIMEDOUT]:
             rtn = {'status':(e_errors.TIMEDOUT,
                              errno.errorcode[errno.ETIMEDOUT])}
-            
-        if not e_errors.is_ok(rtn):
-            # check if python process with this name is still running
-            ch_cmd = 'EPS | egrep "%s" | egrep python | egrep -v "%s|%s"'%(name, "grep", "enstore st")
-            pipeObj = subprocess.Popen(ch_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-            if pipeObj:
-                result = pipeObj.communicate()[0]
-                if len(result) >= 1:
-                    # running, don't start
-                    rtn = {'status':(e_errors.OK,"running")}
-                    print "Server %s does not respond but is running as \n %s" % (name, result)
-                else:
-                    rtn = {'status':("e_errors.SERVERDIED","not running")}
 
     #Process responce.
     if not e_errors.is_ok(rtn):
