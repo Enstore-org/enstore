@@ -41,7 +41,6 @@ import volume_family
 import option
 import cleanUDP
 import udp_server
-import callback
 
 server_map = {"log_server" : enstore_constants.LOGS,
 	      "alarm_server" : enstore_constants.ALARMS,
@@ -93,11 +92,15 @@ DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 FF_W = "file_family_width"
 NUM_IN_Q = "num_in_q"
 RESTRICTED_ACCESS = "RESTRICTED_ACCESS"
-
+#
+# maximum number of threads to spawn 
+#
+MAX_THREADS = 50 
 defaults = {'update_interval': 20,
             'alive_rcv_timeout': 5,
             'alive_retries': 2,
             'max_encp_lines': 50,
+            'max_threads': MAX_THREADS,
 	    enstore_constants.PAGE_THRESHOLDS: {enstore_constants.FILE_LIST: 200}}
 
 # delete a key from a dictionary if it exists
@@ -205,7 +208,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.name = MY_NAME
 	self.html_dir = None
         self.er_lock = threading.Lock()
-        self.max_threads=50
+        self.max_threads=MAX_THREADS
     
     def get_server(self, name):
 	if type(name) == types.ListType:
@@ -549,6 +552,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.alive_retries = self.get_value(key, self.got_from_cmdline[key])
         key = 'max_encp_lines'
         self.max_encp_lines = self.get_value(key, self.got_from_cmdline[key])
+        key = 'max_threads'
+        self.max_threads = self.get_value(key, self.got_from_cmdline[key])
 
 	# update any page thresholds
 	# get the thresholds which determine when we need an extra web page or two
@@ -1636,17 +1641,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 if thread.getName() == thread_name:
                     if thread.isAlive():
                         Trace.trace(e_errors.WARNING, "thread %s is already runnnig, skipping execution of %s" % (thread_name, function.__name__,))
-                        return 0
         _args = (function,)+ args
         if after_function:
             _args = _args + (after_function,)
         enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
                                    "create thread: name %s target %s args %s" % (thread_name, function.__name__, args))
         thread = threading.Thread(group=None, target=self.thread_wrapper,
-                                  args=_args, kwargs={})
-        if thread_name :
-            thread.setName(thread_name)
-            
+                                  name=thread_name,args=_args, kwargs={})
         enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
                                    "starting thread name=%s"%(thread.getName()))
         try:
@@ -1654,12 +1655,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         except:
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "starting thread: %s" % (detail))
-        return 0
-
 
     def do_one_request(self):
-        """Receive and process one request, possibly blocking."""
-        # request is a "(idn,number,ticket)"
+        #
+        # this function overrides base class's function implementing
+        # execution of interval functions in threads
+        # In the future this functionality will be provided by DispatchingWorker
+        # so we will no longer need to override it
+        #
         request = None
         try:
             request, client_address = self.get_request()
@@ -1698,6 +1701,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
 
     def process_request(self, request, client_address):
+        #
+        # this function overrides base class's function implementing
+        # execution of interval functions in threads
+        # In the future this functionality will be provided by DispatchingWorker
+        # so we will no longer need to override it
+        #
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
 
@@ -1851,7 +1860,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
     def __init__(self, csc, html_file="", update_interval=NOVALUE, alive_rcv_to=NOVALUE, 
-                 alive_retries=NOVALUE, max_encp_lines=NOVALUE, refresh=NOVALUE):
+                 alive_retries=NOVALUE, max_encp_lines=NOVALUE, refresh=NOVALUE, max_threads=NOVALUE):
 	global server_map
 	InquisitorMethods.__init__(self)
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
@@ -1898,6 +1907,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         # if no max number of encp lines was entered on the command line, get 
         # it from the configuration file.
         self.max_encp_lines = self.get_value('max_encp_lines', max_encp_lines)
+        # get max thread count 
+        self.max_threads = self.get_value('max_threads', max_threads)
 
         # get the keys that are associated with the web information
         self.www_server = self.config_d.get(enstore_constants.WWW_SERVER, {})
