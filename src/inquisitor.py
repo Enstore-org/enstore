@@ -1641,13 +1641,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 if thread.getName() == thread_name:
                     if thread.isAlive():
                         Trace.trace(e_errors.WARNING, "thread %s is already runnnig, skipping execution of %s" % (thread_name, function.__name__,))
+                        return
         _args = (function,)+ args
         if after_function:
             _args = _args + (after_function,)
         enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
                                    "create thread: name %s target %s args %s" % (thread_name, function.__name__, args))
         thread = threading.Thread(group=None, target=self.thread_wrapper,
-                                  name=thread_name,args=_args, kwargs={})
+                                  args=_args, kwargs={})
+        if thread_name:
+            thread.setName(thread_name)
         enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
                                    "starting thread name=%s"%(thread.getName()))
         try:
