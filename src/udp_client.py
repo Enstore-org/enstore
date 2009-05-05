@@ -305,7 +305,7 @@ class UDPClient:
         return message, tsd.txn_counter
 
         
-    def send(self, data, dst, rcv_timeout=0, max_send=0, send_done=1):
+    def send(self, data, dst, rcv_timeout=0, max_send=0, send_done=1, exponential_to=False):
         """send msg to dst address, up to `max_send` times, each time
         waiting `rcv_timeout' seconds for reply
         A value of 0 for max_send means retry forever"""
@@ -322,7 +322,10 @@ class UDPClient:
             rcv_timeout = 10
             # if rcv_timeout is not specified or is 0 (try forever)
             # grow tiemout exponentially
-            max_exponent = MAX_EXPONENT
+            if exponential_to:
+                max_exponent = MAX_EXPONENT
+            else:
+                max_exponent = 0
              
 
         msg, txn_id = self.protocolize(data)
@@ -344,6 +347,7 @@ class UDPClient:
         timeout=rcv_timeout
         while max_send==0 or n_sent<max_send:
             #print "SENDING", time.time(), msg, dst
+            Trace.trace(5, "sending %s %s"%(msg, dst))
             tsd.socket.sendto( msg, dst )
             timeout = timeout*(pow(2,exp))
             if exp < max_exponent:
@@ -357,8 +361,10 @@ class UDPClient:
                 
                 if not reply: # receive timed out
                     #print "TIMEOUT", time.time(), msg
+                    Trace.trace(5, "TIMEOUT")
                     break #resend
-                #print "GOT REPLY",reply 
+                #print "GOT REPLY",reply
+                Trace.trace(5, "GOT REPLY %s"%(reply,))
                 try:
                     rcvd_txn_id, out, t = udp_common.r_eval(reply)
                     if type(out) == type({}) and out.has_key('status') \
