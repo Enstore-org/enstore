@@ -1934,7 +1934,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if addr != self.lm_address and self.state == HAVE_BOUND:
                         ticket['work'] = 'mover_busy'
                     else:
-                        to = 0
+                        to = self.interval
                         retry = 0
                         if addr == self.udp_control_address:
                             to = 10
@@ -3504,7 +3504,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 keys.sort()
                 Trace.trace(24, 'keys %s'%(keys,))
                 stat = e_errors.OK
-                # start client netwrok monitor to detect
+                # start client network monitor to detect
                 # that clinet is gone and interruprt assert
                 self.interrupt_assert = False
                 self.run_in_thread('network_monitor', self.check_connection)
@@ -6410,8 +6410,8 @@ class DiskMover(Mover):
 
     def no_work(self, ticket):
         x = ticket # to trick pychecker
-        if self.state is HAVE_BOUND:
-            self.dismount_volume(after_function=self.idle)
+        Trace.trace(98, "no_work %s"%(ticket,))
+        # no_work is No work: do nothing.
         
     def setup_transfer(self, ticket, mode):
         self.lock_state()
@@ -7075,7 +7075,7 @@ if __name__ == '__main__':
     mover.handle_generic_commands(intf)
     mover.start()
     mover.starting = 0
-
+    #mover._do_print({'levels':[5,20, 98]})
     while 1:
         try:
             mover.serve_forever()
