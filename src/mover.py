@@ -1934,7 +1934,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if addr != self.lm_address and self.state == HAVE_BOUND:
                         ticket['work'] = 'mover_busy'
                     else:
-                        to = self.interval
+                        to = 0
                         retry = 0
                         if addr == self.udp_control_address:
                             to = 10
@@ -7075,7 +7075,7 @@ if __name__ == '__main__':
     mover.handle_generic_commands(intf)
     mover.start()
     mover.starting = 0
-    #mover._do_print({'levels':[5,20, 98]})
+    mover._do_print({'levels':[5,20, 98]})
     while 1:
         try:
             mover.serve_forever()
