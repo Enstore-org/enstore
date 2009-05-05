@@ -7075,7 +7075,7 @@ if __name__ == '__main__':
     mover.handle_generic_commands(intf)
     mover.start()
     mover.starting = 0
-    mover._do_print({'levels':[5,20, 98]})
+    #mover._do_print({'levels':[5,20, 98]})
     while 1:
         try:
             mover.serve_forever()
