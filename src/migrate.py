@@ -102,7 +102,7 @@ import volume_assert_wrapper
 import delete_at_exit
 
 
-debug = False	# debugging mode
+debug = True	# debugging mode
 
 ###############################################################################
 
@@ -3245,16 +3245,21 @@ def scan_file(MY_TASK, dst_bfid, src_path, dst_path, deleted, intf, encp):
 	else:
 		use_override_deleted = []
 	if intf.use_volume_assert or USE_VOLUME_ASSERT:
-		use_check = "--check" #Use encp to check the metadata.
+		use_check = ["--check"] #Use encp to check the metadata.
 	else:
-		use_check = ""
+		use_check = []
+        if deleted == 'y':
+                use_src_path = src_path.split()
+        else:
+                use_src_path = [src_path]
 
 	encp_options = ["--delayed-dismount", "1", "--ignore-fair-share",
 			"--threaded", "--bypass-filesystem-max-filesize-check"]
 	argv = ["encp"] + encp_options + use_priority + use_override_deleted \
-	       + [use_check, src_path, dst_path]
+	       + use_check + use_src_path + [dst_path]
 
 	if debug:
+                print "argv:", argv
 		cmd = string.join(argv)
 		log(MY_TASK, "cmd =", cmd)
 
