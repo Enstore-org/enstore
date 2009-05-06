@@ -169,8 +169,10 @@
 #define PROFILE_COUNT 25000
 #endif
 
+#define MILLION 1000000.0
+
 /* Macro to convert struct timeval into double. */
-#define extract_time(t) ((double)(t->tv_sec+(t->tv_usec/1000000.0)))
+#define extract_time(t) ((double)(t->tv_sec+(t->tv_usec/MILLION)))
 
 /* Define memory mapped i/o advise constants on systems without them. */
 /*#ifndef MADV_SEQUENTIAL
@@ -954,7 +956,14 @@ static struct transfer* pack_return_values(struct transfer* retval,
   return retval;
 }
 
-/* Return the time difference between to gettimeofday() calls. */
+/* Cconvert double into struct timeval.*/
+void build_time(struct timeval* time_to_set, double time)
+{
+   time_to_set->tv_sec = (time_t)(time);
+   time_to_set->tv_usec = (long)((time - (time_t)time) * MILLION);
+}
+
+/* Return the time difference between two gettimeofday() calls. */
 static double elapsed_time(struct timeval* start_time,
 			   struct timeval* end_time)
 {
@@ -2103,19 +2112,45 @@ static int do_select(struct transfer *info, struct locks *thread_locks)
 {
   fd_set fds;                   /* For use with select(2). */
   struct timeval timeout;       /* Time to wait for data. */
+  struct timeval current_time;  /* Store the current time. */
+  struct timeval start_time;    /* The time we started waiting. */
   int sts = 0;                  /* Return value from various C system calls. */
-
+  double delta_time;            /* Difference between two gettimeofday(). */
+  double start_delta;           /* Timeout value as floating point. */
+  
   /* Initialize select values. */
   FD_ZERO(&fds);
   FD_SET(info->fd, &fds);
 
+  /* Convert the timeout time into a double. */
+  start_delta = extract_time((&(info->timeout)));
+  
+  /* get the start time */
+  if(gettimeofday(&start_time, NULL))
+  {
+     pack_return_values(info, 0, errno, TIME_ERROR,
+			"gettimeofday failed", 0.0, __FILE__, __LINE__,
+			thread_locks);
+     return 1;
+  }
+  
   while(1)
   {
      errno = 0;
 
-     timeout.tv_sec = info->timeout.tv_sec;
-     timeout.tv_usec = info->timeout.tv_usec;
-  
+     /* get the current time */
+     if(gettimeofday(&current_time, NULL))
+     {
+	pack_return_values(info, 0, errno, TIME_ERROR,
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__,
+			   thread_locks);
+	return 1;
+     }
+
+     /* Set in timeout the current timeout time. */
+     delta_time = elapsed_time(&start_time, &current_time);
+     build_time(&timeout, start_delta - delta_time);
+							
      /* Wait for there to be data on the descriptor ready for reading. */
      if(info->transfer_direction > 0)  /*write*/
      {
@@ -2754,7 +2789,8 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
 {
    int rtn, p_rtn;
    sigset_t sigs_to_block;      /* Signal set of those to block. */
-
+   void* old_signal_handler;
+   
    /* Put SIGALRM in a list of signals to change their blocking status.  Do
     * this before grabbing the mutex to avoid the complexity of having to
     * unlock the mutex on an error. */
@@ -2775,16 +2811,21 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
 
   /* We don't want to leave the thread behind.  However, if something
    * very bad occured that may be the only choice. */
-  if(signal(SIGALRM, sig_alarm) != SIG_ERR)
+  if((old_signal_handler = signal(SIGALRM, sig_alarm)) != SIG_ERR)
   {
     /* If the alarm times off, the thread will not go away.  Probably, it
      * is waiting in the kernel. */
     if(sigsetjmp(alarm_join, 0) == 0)
     {
+      /* Now that the handler is set, we need to allow the thread to
+       * receive the SIGALRM signal.  As long as the first argument
+       * (SIG_UNBLOCK) is correct, this function should never fail. */
+      (void) pthread_sigmask(SIG_UNBLOCK, &sigs_to_block, NULL);
+       
       /* The only error returned is when the thread to cancel does not exist
        * (anymore).  Since the point is to stop it, if it is already stopped
        * then there is not a problem ignoring the error. */
-       (void)pthread_cancel(tid);
+      (void)pthread_cancel(tid);
 
       /* Set the alarm to determine if the thread is still alive. */
       (void)alarm(wait_time);
@@ -2807,6 +2848,12 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
     else
     {
        rtn = EINTR;
+    }
+
+    /* Reset the signal handler. */
+    if(signal(SIGALRM, old_signal_handler) != SIG_ERR)
+    {
+       rtn = errno;
     }
   }
   else
@@ -3460,7 +3507,7 @@ static void do_read_write_threaded(struct transfer *reads,
 		       "sigaddset failed", 0.0, __FILE__, __LINE__,
                        &thread_locks);
     pack_return_values(writes, 0, errno, SIGNAL_ERROR,
-		       "sigemptyset failed", 0.0, __FILE__, __LINE__,
+		       "sigaddset failed", 0.0, __FILE__, __LINE__,
                        &thread_locks);
     return;
   }
@@ -3470,11 +3517,10 @@ static void do_read_write_threaded(struct transfer *reads,
 		       "pthread_sigmask failed", 0.0, __FILE__, __LINE__,
                        &thread_locks);
     pack_return_values(writes, 0, errno, SIGNAL_ERROR,
-		       "sigemptyset failed", 0.0, __FILE__, __LINE__,
+		       "pthread_sigmask failed", 0.0, __FILE__, __LINE__,
                        &thread_locks);
     return;
   }
-  
   
   /* Initialize the thread attributes to the system defaults. */
 
