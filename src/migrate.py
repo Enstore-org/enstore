@@ -99,6 +99,7 @@ import find_pnfs_file
 import enstore_constants
 import file_utils
 import volume_assert_wrapper
+import delete_at_exit
 
 
 debug = False	# debugging mode
@@ -124,7 +125,7 @@ debug = False	# debugging mode
 #
 # The workaround (not all of the above was known about EXfer and the time
 # work on the workaround began) is to use fork and pipes instead of threads.
-USE_THREADS = False
+USE_THREADS = True
 
 #Instead of reading all the files with encp when scaning, we have a new
 # mode where volume_assert checks the CRCs for all files on a tape.  Using
@@ -142,13 +143,16 @@ PARALLEL_FILE_MIGRATION = False
 ##
 ## Currently use of this mode results in a deadlock.
 ##
-PARALLEL_FILE_TRANSFER = False
+PARALLEL_FILE_TRANSFER = True
 #We need to make sure that the multiprocessing module is available
 # for PARALLEL_FILE_TRANSFER.  If it is not set it to off.
 if PARALLEL_FILE_TRANSFER and \
    (not multiprocessing_available and not USE_THREADS):
     PARALLEL_FILE_TRANSFER = False
     sys.stderr.write("Warning: Module multiprocessing not available.\n")
+
+#Pass --threaded to encp if true.
+USE_THREADED_ENCP = False
 
 ##
 ## End multiple_threads / forked_processes global variables.
@@ -182,6 +186,10 @@ pid_list = []
 #Make this global so we can join threads if necessary.
 tid_list = []
 
+pnfs_is_trusted = None #boolean for if the admin pnfs path is trusted or not.
+#boolean if we need to use seteuid().  This is only needed for duplication
+# with --make-failed-copies.
+do_seteuid = None      
 
 errors = 0	# over all errors per migration run
 
@@ -271,7 +279,8 @@ def init(intf):
 	global log_f, dbhost, dbport, dbname, dbuser, errors
 	global SPOOL_DIR
 	global use_file_family
-	#global DEFAULT_LIBRARY
+        global pnfs_is_trusted
+        global do_seteuid
 
 	csc = configuration_client.ConfigurationClient((intf.config_host,
 							intf.config_port))
@@ -303,6 +312,41 @@ def init(intf):
 	##	SPOOL_DIR = crons_dict.get("spool_dir", None)
 	##	if SPOOL_DIR and not os.path.exists(SPOOL_DIR):
 	##		os.makedirs(SPOOL_DIR)
+
+        #Verify if PNFS is trusted.  There will likely only be one mount
+        # point to check, but handle more if necessary.
+        if os.getuid() == 0:
+            #Get a list of /pnfs/fs/usr like mount points.
+            amp = pnfs.get_enstore_admin_mount_point() #amp = Admin Mount Point
+            if len(amp) == 0:
+                #If PNFS is not trusted, give up.
+                sys.stderr.write("%s no PNFS admin mount points found\n")
+                sys.exit(1)
+            for directory in amp:
+                test_file = "%s/.is_pnfs_trusted_test" % (directory,)
+                #Create the test file.
+                try:
+                    open_file = open(test_file, "w")
+                except (OSError, IOError):
+                    #If PNFS is not trusted, give up.
+                    sys.stderr.write("%s is not trusted\n")
+                    sys.exit(1)
+                #Close the test file.
+                open_file.close()
+                #Remove the test file.
+                try:
+                    os.remove(test_file)
+                except (OSError, IOError):
+                    pass
+            else:
+                pnfs_is_trusted = True
+                do_seteuid = False
+
+        #If we are running duplication in make_failed_copies mode,
+        # do seteuid() calls.
+        if not pnfs_is_trusted and getattr(intf, 'make_failed_copies', None):
+            do_seteuid = True
+            
 
 	# check for no_log commands
 	if not intf.migrated_to and not intf.migrated_from and \
@@ -367,15 +411,6 @@ def init(intf):
 		use_file_family = intf.file_family
 
 	return
-
-# nullify_pnfs() -- nullify the pnfs entry so that when the entry is
-#			removed, its layer4 won't be put in trashcan
-#			hence won't be picked up by delfile
-def nullify_pnfs(pname):
-	p1 = pnfs.File(pname)
-	for i in [1,2,4]:
-		f = open(p1.layer_file(i), 'w')
-		f.close()
 
 #Update the proceed_number global variable.
 def set_proceed_number(src_bfids, copy_queue, scan_queue, intf):
@@ -456,6 +491,286 @@ def setup_cloning():
 	set_system_migrated_func=volume_clerk_client.VolumeClerkClient.set_system_cloned
 	set_system_migrating_func=volume_clerk_client.VolumeClerkClient.set_system_cloning
 
+###############################################################################
+
+### Only files in this section are allowed to use the file_utils.euid_lock
+### to allow for thread safe use of seteuid().
+
+#Make the file world writeable.  Make sure this only lasts for a short
+# period of time.  The reason this function exists is so that, a file
+# with only read permissions can temporarly be given write permissions so
+# that its metadata can be modified.
+def make_writeable(path):
+
+    if do_seteuid:
+        file_utils.match_euid_egid(path)
+    else:
+        file_utils.acquire_lock_euid_egid()
+
+    try:
+        os.chmod(path,
+                 stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | \
+                     stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
+    except (KeyboardInterrupt, SystemExit):
+        if do_seteuid:
+            file_utils.release_lock_euid_egid()
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError): #Expected errors.
+        if do_seteuid:
+            file_utils.release_lock_euid_egid()
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        if do_seteuid:
+            file_utils.release_lock_euid_egid()
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    #Now set the root ID's back.
+    if do_seteuid:
+        file_utils.end_euid_egid(reset_ids_back = True)
+    else:
+        file_utils.release_lock_euid_egid()
+
+# nullify_pnfs() -- nullify the pnfs entry so that when the entry is
+#			removed, its layer4 won't be put in trashcan
+#			hence won't be picked up by delfile
+def nullify_pnfs(pname):
+
+    if do_seteuid:
+        file_utils.match_euid_egid(pname)
+    else:
+        file_utils.acquire_lock_euid_egid()
+
+    try:
+        p1 = pnfs.File(pname)
+        for i in [1,2,4]:
+            f = open(p1.layer_file(i), 'w')
+            f.close()
+    except (KeyboardInterrupt, SystemExit):
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError), msg:
+        #Don't worry if the file is already gone.
+        if msg.errno not in [errno.ENOENT]:
+            if do_seteuid:
+                file_utils.end_euid_egid(reset_ids_back = True)
+            else:
+                file_utils.release_lock_euid_egid()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    #Now set the root ID's back.
+    if do_seteuid:
+        file_utils.end_euid_egid(reset_ids_back = True)
+    else:
+        file_utils.release_lock_euid_egid()
+        
+#We need to define our own remove function.  This one will try to remove
+# the file first, but if it fails (and is already removed) will attempt
+# to match the euid/egid to the owner of the parent directory and try the
+# delete again.
+#
+#This function uses pnfs.get_directory_name() and file_utils.match_euid_egid().
+# It would be nice have this in file_utils.py, but this could introduce
+# cyclic imports.
+def remove(path):
+
+    #To delete the file, we need to match
+    # the owner of the directory.
+    if do_seteuid:
+        dir_path = pnfs.get_directory_name(path)
+        file_utils.match_euid_egid(dir_path)
+    else:
+        file_utils.acquire_lock_euid_egid()
+        #If another thread doesn't use "reset_ids_back = True" then
+        # be sure that the euid and egid are for roots, which it what the
+        # rest of this function assumes the euid and egid are set to.
+        file_utils.set_euid_egid(0, 0)
+
+    try:
+        os.remove(path)
+    except (KeyboardInterrupt, SystemExit):
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError), msg:
+        #Don't worry if the file is already gone.
+        if msg.errno not in [errno.ENOENT]:
+            if do_seteuid:
+                file_utils.end_euid_egid(reset_ids_back = True)
+            else:
+                file_utils.release_lock_euid_egid()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    #Now set the root ID's back.
+    if do_seteuid:
+        file_utils.end_euid_egid(reset_ids_back = True)
+    else:
+        file_utils.release_lock_euid_egid()
+
+def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None):
+
+    if do_seteuid:
+        # We need to keep other threads from changing the euid/egid
+        # while find_pnfsid_path() is running.
+        file_utils.acquire_lock_euid_egid()
+        #Should be set to root.root already, but just in case.
+        file_utils.set_euid_egid(0, 0)
+    else:
+        file_utils.acquire_lock_euid_egid()
+        #If another thread doesn't use "reset_ids_back = True" then
+        # be sure that the euid and egid are for roots, which it what the
+        # rest of this function assumes the euid and egid are set to.
+        file_utils.set_euid_egid(0, 0)
+
+    src = None
+    try:
+        src = find_pnfs_file.find_pnfsid_path(
+            pnfs_id, bfid1,
+            file_record = file_record,
+            path_type = find_pnfs_file.FS)
+    except (KeyboardInterrupt, SystemExit):
+        if do_seteuid:
+            #Free lock on error.
+            file_utils.release_lock_euid_egid()
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError):
+        exc_type, exc_value, exc_tb = sys.exc_info()
+        del exc_tb #avoid resource leaks
+
+        try:
+            #If the migration is interupted
+            # part way through the swap, we need
+            # to check if the other bfid is
+            # current in layer 1.
+            src = find_pnfs_file.find_pnfsid_path(
+                pnfs_id, bfid2,
+                path_type = find_pnfs_file.FS)
+        except (KeyboardInterrupt, SystemExit):
+            if do_seteuid:
+                #Free lock on error.
+                file_utils.release_lock_euid_egid()
+            else:
+                file_utils.release_lock_euid_egid()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except OSError:
+                pass
+        except:
+                pass
+
+        if not src:
+            if do_seteuid:  #Free lock on error.
+                file_utils.release_lock_euid_egid()
+            else:
+                file_utils.release_lock_euid_egid()
+
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    if do_seteuid:  #Free lock on error.
+        file_utils.release_lock_euid_egid()
+    else:
+        file_utils.release_lock_euid_egid()
+
+    return src
+
+def File(path):
+    # get all pnfs metadata
+    if do_seteuid:
+        file_utils.match_euid_egid(path)
+    else:
+        file_utils.acquire_lock_euid_egid()
+        #If another thread doesn't use "reset_ids_back = True" then
+        # be sure that the euid and egid are for roots, which it what the
+        # rest of this function assumes the euid and egid are set to.
+        file_utils.set_euid_egid(0, 0)
+        
+    try:
+        p_File = pnfs.File(path)
+    except (KeyboardInterrupt, SystemExit):
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError):  #Anticipated errors.
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:  # Un-anticipated errors.
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    
+    if do_seteuid:
+        file_utils.end_euid_egid(reset_ids_back = True)
+    else:
+        file_utils.release_lock_euid_egid()
+
+    return p_File
+
+def update_layers(pnfs_File):
+    # now perform the writes to the file's layer 1 and layer 4
+    if do_seteuid:
+        file_utils.end_euid_egid(reset_ids_back = True)
+    else:
+        file_utils.acquire_lock_euid_egid()
+        #If another thread doesn't use "reset_ids_back = True" then
+        # be sure that the euid and egid are for roots, which it what the
+        # rest of this function assumes the euid and egid are set to.
+        file_utils.set_euid_egid(0, 0)
+        
+    try:
+        pnfs_File.update()  #UPDATE LAYER 1 AND LAYER 4!
+    except (KeyboardInterrupt, SystemExit):
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError): # Anticipated errors.
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except: # Un-anticipated errors.
+        if do_seteuid:
+            file_utils.end_euid_egid(reset_ids_back = True)
+        else:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    if do_seteuid:
+        file_utils.end_euid_egid(reset_ids_back = True)
+    else:
+        file_utils.release_lock_euid_egid()
 
 ###############################################################################
 
@@ -590,7 +905,7 @@ def run_in_thread(function, arg_list, my_task = "RUN_IN_THREAD"):
 	except (KeyboardInterrupt, SystemExit):
 		pass
 	except:
-		exc, msg = sys.exc_info()
+		exc, msg = sys.exc_info()[:2]
 		error_log(my_task, "start_new_thread() failed: %s: %s\n" \
 			  % (str(exc), str(msg)))
 	if debug:
@@ -1515,32 +1830,24 @@ class MigrateQueue:
 
 		#Acquire the lock to access a self data member.
 		self.lock.acquire()
-		try:
-		    self.received_count = self.received_count + 1
-		    self.finished = True
-		except:
-		    self.lock.release()
-		    raise sys.exc_info()[0], sys.exc_info()[1], \
-			  sys.exc_info()[2]
+                self.received_count = self.received_count + 1
+                self.finished = True
 	        self.lock.release()
+
+                finished = True #End the while loop.
 
 		break
 
+            self.lock.acquire()
             if r:
                 try:
+
                     #Set verbose to True for debugging.
 		    job = callback.read_obj(self.r_pipe, verbose = False)
 
 		    self.queue.put(job, block = True)
 		    #Acquire the lock to access a self data member.
-		    self.lock.acquire()
-		    try:
-			self.received_count = self.received_count + 1
-		    except:
-		        self.lock.release()
-			raise sys.exc_info()[0], sys.exc_info()[1], \
-			      sys.exc_info()[2]
-		    self.lock.release()
+                    self.received_count = self.received_count + 1
 
 		    if self.debug:
 		        log(MY_TASK, "Queued request:", str(job))
@@ -1548,15 +1855,8 @@ class MigrateQueue:
                     #Set a flag indicating that we have read the last item.
                     if job == SENTINEL:
 		        #Acquire the lock to access a self data member.
-			self.lock.acquire()
-		        try:
-			    self.finished = True
-			except:
-			    self.lock.release()
-			    raise sys.exc_info()[0], sys.exc_info()[1], \
-				  sys.exc_info()[2]
-		        self.lock.release()
-                
+                        self.finished = True
+
                     #increment counter on success
 		    requests_obtained = requests_obtained + 1
 	        except (socket.error, select.error, e_errors.EnstoreError), msg:
@@ -1566,17 +1866,8 @@ class MigrateQueue:
 		    self.queue.put(SENTINEL, block = True)
 
 		    #Acquire the lock to access a self data member.
-		    self.lock.acquire()
-		    try:
-		        self.received_count = self.received_count + 1
-			self.finished = True
-		    except:
-		        self.lock.release()
-			raise sys.exc_info()[0], sys.exc_info()[1], \
-			      sys.exc_info()[2]
-		    self.lock.release()
-		    
-		    break
+                    self.received_count = self.received_count + 1
+                    self.finished = True
                 except e_errors.TCP_EXCEPTION:
 	            if self.debug:
 		        log(MY_TASK, e_errors.TCP_EXCEPTION)
@@ -1584,24 +1875,19 @@ class MigrateQueue:
 		    self.queue.put(SENTINEL, block = True)
 
 		    #Acquire the lock to access a self data member.
-		    self.lock.acquire()
-		    try:
-		        self.received_count = self.received_count + 1
-			self.finished = True
-		    except:
-		        self.lock.release()
-			raise sys.exc_info()[0], sys.exc_info()[1], \
-			      sys.exc_info()[2]
-		    self.lock.release()
-		    
-		    break
+                    self.received_count = self.received_count + 1
+                    self.finished = True
+                except (KeyboardInterrupt, SystemExit):
+                    self.lock.release()
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
+		except:
+                    self.lock.release()
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
+                
 	    #Acquire the lock to access a self data member.
-	    self.lock.acquire()
-	    try:
-	        finished = self.finished
-            except:
-	        self.lock.release()
-		raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            finished = self.finished
             self.lock.release()
 
         if self.debug:
@@ -1637,139 +1923,6 @@ class MigrateQueue:
 	if self.debug:
 	    log("item %s sent on pipe" % (item,))
 
-"""
-def get_requests(queue, r_pipe, timeout = .1, r_debug = False):
-    MY_TASK = "GET_REQUESTS"
-
-    if USE_THREADS:
-	    return
-
-	
-    job = -1
-
-    wait_time = timeout
-
-    #Limit to return to revent reader from overwelming the writer.
-    requests_obtained = 0 
-
-    if r_debug:
-	    log(MY_TASK, "job:", str(job),
-		"requests_obtained:", str(requests_obtained),
-		"queue.full():", str(queue.full()),
-		"queue.finished:", str(queue.finished))
-
-    while job and requests_obtained < FILE_LIMIT and not queue.full() \
-	      and not queue.finished:
-        if r_debug:
-	    log(MY_TASK, "getting next file", str(wait_time))
-	    
-        try:
-            r, w, x = select.select([r_pipe], [], [], wait_time)
-        except select.error, msg:
-	    if msg.args[0] in (errno.EINTR, errno.EAGAIN):
-                #If a select (or other call) was interupted,
-                # this is not an error, but should continue.
-                continue
-	
-            #On an error, put the list ending None in the list.
-            queue.put(None)
-            queue.received_count = queue.received_count + 1
-	    queue.finished = True
-            break
-
-        if r:
-            try:
-                #Set verbose to True for debugging.
-                job = callback.read_obj(r_pipe, verbose = False)
-                queue.put(job)
-                queue.received_count = queue.received_count + 1
-		if r_debug:
-		    log(MY_TASK, "Queued request:", str(job))
-
-                #Set a flag indicating that we have read the last item.
-                if job == SENTINEL:
-                    queue.finished = True
-                
-                wait_time = 0.1 #Make the follow up wait time shorter.
-
-                #increment counter on success
-		requests_obtained = requests_obtained + 1
-	    except (socket.error, select.error, e_errors.EnstoreError), msg:
-	        if r_debug:
-		    log(MY_TASK, str(msg))
-	        #On an error, put the list ending None in the list.
-                queue.put(None)
-                queue.received_count = queue.received_count + 1
-		queue.finished = True
-                break
-            except e_errors.TCP_EXCEPTION:
-	        if r_debug:
-		    log(MY_TASK, e_errors.TCP_EXCEPTION)
-                #On an error, put the list ending None in the list.
-                queue.put(None)
-                queue.received_count = queue.received_count + 1
-		queue.finished = True
-                break
-
-        else:
-		break
-
-    if r_debug:
-	    log(MY_TASK, "queue.qsize():", str(queue.qsize()),
-		"queue.received_count:", str(queue.received_count))
-
-    return
-
-def put_request(queue, w_pipe, job):
-    if USE_THREADS:
-        queue.received_count = queue.received_count + 1
-        queue.put(job, True)
-	if job == None:
-		queue.finished = True
-	return
-
-    callback.write_obj(w_pipe, job)
-
-##########################################################################
-
-def get_queue_item(queue, r_pipe):
-
-    if USE_THREADS:
-        job = queue.get(True)
-	#Set a flag indicating that we have read the last item.
-	if job == None:
-		queue.finished = True
-	return job
-    
-    if queue.empty():
-        wait_time = 10*60 #Make the initial wait time longer.
-    else:
-        wait_time = 0.1 #Make the followup wait time shorter.
-
-    job = None
-    while not job:
-        get_requests(queue, r_pipe, timeout = wait_time, r_debug = debug)
-
-        try:
-            job = queue.get(True, 1)
-	    if job == SENTINEL:
-	        return None  #We are really done.
-	    if job == None:
-	        #Queue.get() should only return None if it was put in the
-		# queue, however, it appears to return None on its own.
-		# So, we go back to waiting for something we are looking for.
-		continue
-	    break
-        except Queue.Empty:
-            job = None
-            wait_time = 10*60 #Make the initial wait time longer.
-
-    #Set a flag indicating that we have read the last item.
-    #if job == None:
-    #    queue.finished = True
-
-    return job
-"""
 ##########################################################################
 
 def show_migrated_from(volume_list, db):
@@ -2136,14 +2289,16 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 		#continue
 		return 1
 
-	# make sure the tmp file is not there
-	if file_utils.e_access(tmp_path, os.F_OK):
+	# make sure the tmp file is not there - need to match the euid/egid
+        # with the permissions of the directory and not the file itself.
+        tmp_dir = os.path.dirname(tmp_path)
+	if file_utils.e_access(tmp_dir, os.F_OK):
 		log(MY_TASK, "tmp file %s exists, removing it first" \
 		    % (tmp_path,))
 		try:
-			os.remove(tmp_path)
+			remove(tmp_path)
 		except (OSError, IOError), msg:
-			error_log(MY_TASK, "unable to remove %s as (uid %d, gid %d): %s" % (tmp_path, os.geteuid(), os.getegid(), str(msg)))
+			error_log(MY_TASK, "lsdjf unable to remove %s as (uid %d, gid %d): %s" % (tmp_path, os.geteuid(), os.getegid(), str(msg)))
 			return 1
 
 	## Build the encp command line.
@@ -2157,12 +2312,16 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 	else:
 		use_override_deleted = []
 		use_path = [src_path]
+        if USE_THREADED_ENCP:
+                use_threads = ["--threaded"]
+        else:
+                use_threads = []
 	encp_options = ["--delayed-dismount", "2", "--ignore-fair-share",
-			"--bypass-filesystem-max-filesize-check", "--threaded"]
+			"--bypass-filesystem-max-filesize-check"]
 	#We need to use --get-bfid here because of multiple copies.
 	#
 	argv = ["encp"] + use_override_deleted + encp_options + use_priority \
-	       + use_path + [tmp_path]
+	       + use_threads + use_path + [tmp_path]
 
 	if debug:
 		cmd = "%s %s %s %s %s %s" % tuple(argv)
@@ -2214,73 +2373,43 @@ def copy_file(bfid, encp, intf, db):
 		if is_it_copied and is_it_swapped:
 			#Already copied.
 			use_bfid = dst_bfid
+                        alt_bfid = bfid
 			use_file_record = None
 		else:
 			#Still need to copy.
 			use_bfid = bfid
+                        alt_bfid = dst_bfid
 			use_file_record = file_record
 
-		src = None
-		try:
-			src = find_pnfs_file.find_pnfsid_path(
-				file_record['pnfs_id'], use_bfid,
-				file_record = use_file_record,
-				path_type = find_pnfs_file.FS)
-		except (KeyboardInterrupt, SystemExit):
-			raise (sys.exc_info()[0], sys.exc_info()[1],
-			       sys.exc_info()[2])
-		except:
-			exc_type, exc_value, exc_tb = sys.exc_info()
-			del exc_tb #avoid resource leaks
+                try:
+                    src = pnfs_find(use_bfid, alt_bfid, file_record['pnfs_id'],
+                                    file_record = use_file_record)
+                except (OSError, IOError), msg:
+                    src = None
+                    if msg.errno == errno.ENOENT \
+                           and is_it_copied and is_it_swapped:
+                        #The file has been migrated, however the file has been
+                        # deleted; removing the entry from pnfs for both.
+                        # Prove this by checking the deleted status of the
+                        # new copy.
+                        fr2 = get_file_info(MY_TASK,
+                                         dst_bfid, db)
+                        if fr2 and fr2['deleted'] == 'y':
+                            src = "deleted-%s-%s"%(bfid, tmp) # for debug
+                        else:
+                            raise sys.exc_info()[0], sys.exc_info()[1], \
+                                  sys.exc_info()[2]
 
-			if use_bfid == bfid:
-				use_bfid_2 = dst_bfid
-			else:
-				use_bfid_2 = bfid
-			try:
-				#If the migration is interupted
-				# part way through the swap, we need
-				# to check if the other bfid is
-				# current in layer 1.
-				src = find_pnfs_file.find_pnfsid_path(
-					file_record['pnfs_id'],
-					use_bfid_2,
-					path_type = find_pnfs_file.FS)
-			except (KeyboardInterrupt, SystemExit):
-				raise (sys.exc_info()[0],
-				       sys.exc_info()[1],
-				       sys.exc_info()[2])
-			except OSError, msg:
-				if msg.errno == exc_value.errno \
-				   and msg.errno == errno.ENOENT \
-				   and is_it_copied \
-				   and is_it_swapped:
-					#The file has been migrated,
-					# however the file has been
-					# deleted; removing the entry
-					# from pnfs for both.  Prove
-					# this by checking the
-					# deleted status of the new
-					# copy.
-					fr2 = get_file_info(MY_TASK,
-							 dst_bfid, db)
-					if fr2 and fr2['deleted'] == 'y':
-						src = "deleted-%s-%s"%(bfid, tmp) # for debug
-					else:
-						error_log(MY_TASK, "%s does not exists" % (file_record['dst_bfid'],))
-						return
-			except:
-				pass
-
-			if not src:
-				error_log(MY_TASK, str(exc_type),
-					  str(exc_value),
-					  "%s %s %s %s is not a valid pnfs file" \
-					  % (file_record['label'],
-					     file_record['bfid'],
-					     file_record['location_cookie'],
-					     file_record['pnfs_id']))
-				return
+                    if not src:
+                        error_log(MY_TASK, sys.exc_info()[0],
+                                  sys.exc_info()[1],
+                                  "%s %s %s %s is not a valid pnfs file" \
+                                  % (file_record['label'],
+                                     file_record['bfid'],
+                                     file_record['location_cookie'],
+                                     file_record['pnfs_id']))
+                        
+                        return
 
 	#If the file has already been copied, swapped, checked and closed
 	# handle this better than to put fear into the user with false
@@ -2293,9 +2422,8 @@ def copy_file(bfid, encp, intf, db):
 				file_record['pnfs_id'], dst_bfid,
 				path_type = find_pnfs_file.FS)
 		except (KeyboardInterrupt, SystemExit):
-			raise (sys.exc_info()[0],
-			       sys.exc_info()[1],
-			       sys.exc_info()[2])
+			raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
 		except OSError, msg:
 			src = "deleted-%s-%s"%(bfid, tmp) # for debug
 
@@ -2349,7 +2477,8 @@ def copy_file(bfid, encp, intf, db):
 
 # copy_files(files) -- copy a list of files to disk and mark the status
 # through copy_queue
-def copy_files(thread_num, files, copy_queue, grab_lock, release_lock, intf):
+def copy_files(thread_num, files, copy_queue, grab_lock, release_lock,
+               write_cv, intf):
 	
 	MY_TASK = "COPYING_TO_DISK"
 
@@ -2367,26 +2496,18 @@ def copy_files(thread_num, files, copy_queue, grab_lock, release_lock, intf):
 	threading.currentThread().setName("READ%s" % (name_ending,))
 	encp = encp_wrapper.Encp(tid = "READ%s" % (name_ending,))
 
-	if USE_THREADS:
-		mid = str(threading.currentThread())
-	else:
-		mid = str(os.getpid())
-	
 	# copy files one by one
 	for bfid in files:
 		if grab_lock:  # and release_lock:
-			#log("grabbing grab_lock", mid, str(grab_lock))
 			grab_lock.acquire()
-			#log("grabbed grab_lock", mid, str(grab_lock))
-			#log("releasing release_lock", mid, str(release_lock))
 			release_lock.release()
-			#log("release release_lock", mid, str(release_lock))
+
 		try:
 			# Read the file from tape.
 			pass_along_job = copy_file(bfid, encp, intf, db)
 		except (KeyboardInterrupt, SystemExit):
-                        raise (sys.exc_info()[0], sys.exc_info()[1],
-                               sys.exc_info()[2])
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
 		except:
 			#We failed spectacularly!
 
@@ -2398,8 +2519,8 @@ def copy_files(thread_num, files, copy_queue, grab_lock, release_lock, intf):
                         del exc_tb #avoid resource leaks
                         error_log(MY_TASK, str(exc_type),
                                   str(exc_value),
-                                  " reading file %s for %s" \
-                                  % (bfid),)
+                                  " reading file %s: %s" \
+                                  % (bfid, str(exc_value)))
 			
 		if pass_along_job:
 			#If we succeeded, pass the job on to the write
@@ -2407,13 +2528,23 @@ def copy_files(thread_num, files, copy_queue, grab_lock, release_lock, intf):
 			if debug:
 				log(MY_TASK, "Passing job %s to write step." \
 				    % (pass_along_job,))
-			copy_queue.put(pass_along_job, block = True)
+
+                        #Notify the interested write thread that we have a
+                        # put a new item into the queue.
+                        write_cv.acquire()
+                        copy_queue.put(pass_along_job, block = True)
+                        write_cv.notify()
+                        write_cv.release()
+
 			if debug:
 				log(MY_TASK, "Done passing job.")
 
 	# terminate the copy_queue
 	log(MY_TASK, "no more to copy, terminating the copy queue")
+        write_cv.acquire()
 	copy_queue.put(SENTINEL, block = True)
+        write_cv.notify()
+        write_cv.release()
 
 ##########################################################################
 
@@ -2484,30 +2615,46 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 	f1 = fcc.bfid_info(bfid1)
 	f2 = fcc.bfid_info(bfid2)
 
+        if not e_errors.is_ok(f1):
+            return "src_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
+        if not e_errors.is_ok(f2):
+            return "dst_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
+
 	#For trusted pnfs systems, there isn't a problem,
 	# but for untrusted we need to set the effective
 	# IDs to the owner of the file.
-	
-	# get all pnfs metadata
-	try:
-		# If the source PNFS file has been deleted only do the
-		# pnfs.File() instantiation; skip the euid/egid stuff to
-		# avoid tracebacks.
-		
-		if f1['deleted'] == "no":
-			file_utils.match_euid_egid(src)
-		p1 = pnfs.File(src)
-		if f1['deleted'] == "no":
-			file_utils.end_euid_egid(reset_ids_back = True)
-	except (OSError, IOError), msg:
-		return str(msg)
-	try:
-		file_utils.match_euid_egid(dst)
-		p2 = pnfs.File(dst)
-		file_utils.end_euid_egid(reset_ids_back = True)
-	except (OSError, IOError), msg:
-		return str(msg)
+        #
+        # If the source PNFS file has been deleted only do the
+        # pnfs.File() instantiation; skip the euid/egid stuff to
+        # avoid tracebacks.	
 
+	# get all pnfs metadata - first the source file
+	if f1['deleted'] == "no":
+                try:
+                        # This version handles the seteuid() locking.
+                        p1 = File(src)
+                except (KeyboardInterrupt, SystemExit):
+                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+                except (OSError, IOError), msg:
+                        return str(msg)
+                except:
+                        exc, msg = sys.exc_info()[:2]
+                        return str(msg)
+        else:
+                # What do we need an empty File class for?
+                p1 = pnfs.File(src)
+
+	# get all pnfs metadata - second the destination file
+	try:
+		p2 = File(dst)
+	except (KeyboardInterrupt, SystemExit):
+		raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+	except (OSError, IOError), msg:
+		return str(msg)
+	except:
+		exc, msg = sys.exc_info()[:2]
+		return str(msg)
+            
 	##################################################################
 	#Handle deleted files specially.
 	#if deleted == 'y':
@@ -2537,7 +2684,7 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 			#The metadata has already been swapped.
 			return None
 	if res:
-		return "1 metadata %s %s are inconsistent on %s" \
+		return "metadata %s %s are inconsistent on %s" \
 		       % (bfid1, src, res)
 
 	if not p2.bfid and not p2.volume:
@@ -2547,13 +2694,10 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 	else:
 		res = compare_metadata(p2, f2)
 		# deal with already swapped file record
-		print "p1.bfid:", p1.bfid, p1.p_path
-		print "p2.bfid:", p2.bfid, p2.p_path
-		print "f2['bfid]:", f2['bfid'], 
 		if res == 'pnfsid':
 			res = compare_metadata(p2, f2, p1.pnfs_id)
 	       	if res:
-			return "2 metadata %s %s are inconsistent on %s" \
+			return "metadata %s %s are inconsistent on %s" \
 			       % (bfid2, dst, res)
 
 	# cross check
@@ -2573,26 +2717,14 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 			undo_log(bfid1, bfid2, db)
 		return err_msg
 
-	# check if p1 is writable
-	try:
-		src_stat = os.stat(src)
-	except (OSError, IOError), msg:
-		return "%s is not accessable: %s" % (src, msg)
-	reset_permissions = False
-	if not file_utils.e_access_cmp(src_stat, os.W_OK):
-		reset_permissions = True
-		try:
-			os.chmod(src,
-				 stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | \
-				 stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
-		except (OSError, IOError):
-			return "%s is not writable" % (src,)
 
-	# swapping metadata
+	### swapping the Enstore DB metadata
 	m1 = {'bfid': bfid2, 'pnfsid':f1['pnfsid'], 'pnfs_name0':f1['pnfs_name0']}
 	res = fcc.modify(m1)
 	if not e_errors.is_ok(res['status']):
 		return "failed to change pnfsid for %s" % (bfid2,)
+
+        ### swapping the PNFS layer metadata
 	p1.volume = p2.volume
 	p1.location_cookie = p2.location_cookie
 	p1.bfid = p2.bfid
@@ -2601,9 +2733,54 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 	# should we?
 	# the best solution is to have encp ignore sanity check on file_family
 	# p1.file_family = p2.file_family
-	p1.update()
+
+       	# check if p1 is writable - do this with euid/egid the same as the
+        # the owner of the file
+	try:
+                src_stat = file_utils.get_stat(src)
+        except (KeyboardInterrupt, SystemExit):
+		raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+	except (OSError, IOError), msg: # Anticipated errors.
+		return "%s is not accessable: %s" % (src, msg)
+        except: # Un-anticipated errors.
+		exc, msg = sys.exc_info()[:2]
+		return str(msg)
+
+        #If necessary, allow for the file to be set writable again.  We test
+        # this way, since we need the original mode values from the stat()
+        # above to reset them back if necessary.
+	reset_permissions = False
+	if not file_utils.e_access_cmp(src_stat, os.W_OK):
+		reset_permissions = True
+                try:
+                        make_writeable(src)
+                except (KeyboardInterrupt, SystemExit):
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+                except (OSError, IOError):  #Anticipated errors.
+                        return "%s is not writable" % (src,)
+                except:
+                        exc, msg = sys.exc_info()[:2]
+                        return str(msg)
+                    
+               
+        # now perform the writes to the file's layer 1 and layer 4
+        if f1['deleted'] == "no":
+                try:
+                        update_layers(p1)  #UPDATE LAYER 1 AND LAYER 4!
+                except (KeyboardInterrupt, SystemExit):
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+                except (OSError, IOError), msg:
+                        return str(msg)
+                except:
+                        exc, msg = sys.exc_info()[:2]
+                        return str(msg)
 
 	if reset_permissions:
+                #At this point, either the users is able to modify their
+                # own file, or it was reset to allow all users to "write"
+                # (A.K.A. enable chmod()) to the file.
 		try:
 			os.chmod(src, src_stat[stat.ST_MODE])
 		except (OSError, IOError), msg:
@@ -2649,7 +2826,6 @@ def write_file(MY_TASK,
 			# untrusted PNFSes, we can only fail and give
 			# a good error message.  Trusted PNFSes will succeed.
 			
-			#Remove the file
 			os.makedirs(dst_directory)
 			ok_log(MY_TASK, "making path %s" % (dst_directory,))
 		except:
@@ -2681,30 +2857,27 @@ def write_file(MY_TASK,
 		log(MY_TASK, "migration file %s exists, removing it first" \
 		    % (mig_path,))
 		try:
-			#For trusted pnfs systems, there isn't a problem,
-			# but for untrusted we need to set the effective
-			# IDs to the owner of the file.
-			#Remember, unlink()/remove() permissions are based
-			# on the directory, not the file.
-			mig_dir = pnfs.get_directory_name(mig_path)
-			file_utils.match_euid_egid(mig_dir)
-				
+	
 			#Should the layers be nullified first?  When
 			# migrating the same files over and over again the
 			# answer is yes to avoid delfile complaing.
 			# But what about production?
 			nullify_pnfs(mig_path)
-			os.remove(mig_path)
+			remove(mig_path)
 
-			#Now set the root ID's back.
-			file_utils.end_euid_egid(reset_ids_back = True)
 		except (OSError, IOError), msg:
-			#Now set the root ID's back.
-			file_utils.end_euid_egid(reset_ids_back = True)
-			
 			error_log(MY_TASK,
-				  "failed to delete migration file %s: %s" \
-				  % (mig_path, str(msg)))
+				  "failed to delete migration file %s " \
+                                  "as (uid %s, gid %s): %s" % \
+				  (mig_path, os.geteuid(), os.getegid(),
+				  str(msg)))
+			return 1
+                except:
+                        error_log(MY_TASK,
+				  "error trying to delete migration file %s " \
+                                  "as (uid %s, gid %s): (%s: %s)" % \
+				  (mig_path, os.geteuid(), os.getegid(),
+				  str(sys.exc_info()[0]), str(sys.exc_info()[1])))
 			return 1
 			
 	## Build the encp command line.
@@ -2717,6 +2890,10 @@ def write_file(MY_TASK,
 		use_priority = ["--priority", str(intf.priority)]
 	else:
 		use_priority = ["--priority", str(ENCP_PRIORITY)]
+        if USE_THREADED_ENCP:
+                use_threads = ["--threaded"]
+        else:
+                use_threads = []
 	encp_options = ["--delayed-dismount", "2", "--ignore-fair-share",
 			"--threaded"]
 	#Override these tags to use the original values from the source tape.
@@ -2729,7 +2906,7 @@ def write_file(MY_TASK,
 		       "--override-path", src_path]
 
 	argv = ["encp"] + encp_options + use_priority + use_library + \
-	       dst_options + [tmp_path, mig_path]
+	       dst_options + use_threads + [tmp_path, mig_path]
 
 	if debug:
 		cmd = string.join(argv)
@@ -2737,37 +2914,44 @@ def write_file(MY_TASK,
 
 	log(MY_TASK, "copying %s %s %s" % (src_bfid, tmp_path, mig_path))
 
-	res = encp.encp(argv)
-	if res:
-		log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"
-		    % (src_bfid, tmp_path, mig_path))
-		# delete the target and retry once
-		try:
-			os.remove(mig_path)
-		except (OSError, IOError), msg:
-			error_log(MY_TASK, "failed to remove %s" % (mig_path,))
-			return 1
-		res = encp.encp(argv)
-		if res:
-			error_log(MY_TASK, "failed to copy %s %s %s error = %s"
-				  % (src_bfid, tmp_path, mig_path,
-				     encp.err_msg))
-			# delete the target and give up
-			try:
-				os.remove(mig_path)
-			except (OSError, IOError), msg:
-				error_log(MY_TASK,
-					  "failed to remove %s" % (mig_path,))
-			return 1
-	else:
-		# log success of coping
-		ok_log(MY_TASK, "%s %s is copied to %s" % \
-		       (src_bfid, tmp_path, mig_path))
+        # Make the first attempt.
+        res = encp.encp(argv)
+        if res:
+                log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"
+                    % (src_bfid, tmp_path, mig_path))
+                # delete the target and retry once
+                try:
+                        remove(mig_path)
+                except (OSError, IOError), msg:
+                        error_log(MY_TASK, "failed to remove %s as " \
+                              "(uid %s, gid %s): %s" % \
+                              (mig_path, os.geteuid(), os.getegid(), str(msg)))
+                        return 1
+
+                # Make the second attempt.
+                res = encp.encp(argv)
+                if res:
+                        error_log(MY_TASK, "failed to copy %s %s %s error = %s"
+                                  % (src_bfid, tmp_path, mig_path,
+                                     encp.err_msg))
+                        # delete the target and give up
+                        try:
+                                remove(mig_path)
+                        except (OSError, IOError), msg:
+                                error_log(MY_TASK, "failed to remove %s as " \
+                                          "(uid %s, gid %s): %s" % \
+                                          (mig_path, os.geteuid(),
+                                           os.getegid(), str(msg)))
+                        return 1
+
+        else:
+                # log success of coping
+                ok_log(MY_TASK, "%s %s is copied to %s" % \
+                       (src_bfid, tmp_path, mig_path))
 		
 	if debug:
 		log(MY_TASK, "written to tape %s %s %s"
 		    % (src_bfid, tmp_path, mig_path))
-
 
 	return 0
 
@@ -2847,7 +3031,7 @@ def write_new_file(job, encp, fcc, intf, db):
 			try:
 				log(MY_TASK,
 				    "removing %s" % (tmp_path,))
-				os.remove(tmp_path)
+				remove(tmp_path)
 			except (OSError, IOError), msg:
 				log(MY_TASK, "error removing %s: %s" \
 				    % (tmp_path, str(msg)))
@@ -2882,6 +3066,10 @@ def write_new_file(job, encp, fcc, intf, db):
 		else:
 			# update success of coping
 			log_copied(src_bfid, dst_bfid, db)
+        elif os.path.exists(tmp_path):
+                #If the file is already copied, but the temporary on disk
+                # file still remains, flag it for deletion.
+                has_tmp_file = True
 
 
 	keep_file = False
@@ -2893,31 +3081,8 @@ def write_new_file(job, encp, fcc, intf, db):
 	    (src_bfid, src_path, dst_bfid, mig_path))
 	if not is_swapped(src_bfid, db):
 
-		#We want to ignore these signals while swapping.
-		try:
-			old_int_handler = signal.signal(signal.SIGINT,
-							signal.SIG_IGN)
-			old_term_handler = signal.signal(signal.SIGTERM,
-							 signal.SIG_IGN)
-			old_quit_handler = signal.signal(signal.SIGQUIT,
-							 signal.SIG_IGN)
-		except ValueError:
-			#We get here if write_new_file() is not called from
-			# the main thread.
-			old_int_handler = None
-			old_term_handler = None
-			old_quit_handler = None
-
 		res = swap_metadata(src_bfid, src_path,
 				    dst_bfid, mig_path, db)
-
-		#Restore the previous signals.
-		if old_int_handler:
-			signal.signal(signal.SIGINT, old_int_handler)
-		if old_term_handler:
-			signal.signal(signal.SIGTERM, old_term_handler)
-		if old_quit_handler:
-			signal.signal(signal.SIGTERM, old_quit_handler)
 
 		if not res:
 			ok_log(MY_TASK2,
@@ -2941,15 +3106,18 @@ def write_new_file(job, encp, fcc, intf, db):
 	if has_tmp_file and not keep_file:
 		try:
 			# remove tmp file
-			os.remove(tmp_path)
-			ok_log(MY_TASK, "removing %s" % (tmp_path,))
+			remove(tmp_path)
+			ok_log(MY_TASK, "removed %s" % (tmp_path,))
 		except (KeyboardInterrupt, SystemExit):
-                        raise (sys.exc_info()[0], sys.exc_info()[1],
-                               sys.exc_info()[2])
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
 		except:
-			exc, msg = sys.exc_info()[0:2]
-			error_log(MY_TASK, "failed to remove temporary file %s" \
-				  % (tmp_path,))
+			exc, msg = sys.exc_info()[:2]
+			error_log(MY_TASK,
+                                  "failed to remove temporary file %s as " \
+                                  "(uid %s, gid %s): %s" \
+				  % (tmp_path, os.geteuid(), os.getegid(),
+                                     str(msg)))
 			pass
 
 	#If we had an error while swapping, don't return the dst_bfid.
@@ -2959,7 +3127,8 @@ def write_new_file(job, encp, fcc, intf, db):
 		return dst_bfid
 
 # write_new_files() -- second half of migration, driven by copy_queue
-def write_new_files(thread_num, copy_queue, scan_queue, intf):
+def write_new_files(thread_num, copy_queue, scan_queue, write_cv,
+                    scan_cv, intf):
 	MY_TASK = "COPYING_TO_TAPE"
 
 	if debug:
@@ -2988,23 +3157,25 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf):
 	fcc = file_clerk_client.FileClient(csc)
 
 	initial_wait = True #Set true since we are waiting to write first file.
-	if debug:
-		log(MY_TASK, "Getting next job for write.")
-	job = copy_queue.get(block = True)
-	if debug:
-		log(MY_TASK, "Recieved job %s for write." % \
-		    (job,))
-	while job:
 
-		#Wait for the copy_queue to reach a minimal number before
-		# starting to write the files.  If the queue is as full
-		# as it will get; move forward too.
-		if copy_queue.qsize() == 0:
-			initial_wait = True
-		while not copy_queue.finished and initial_wait and \
-			  copy_queue.qsize() < proceed_number:
-			#wait for the read thread to process a bunch first.
-			time.sleep(1)
+	while 1:
+
+                #Get the next file to copy and swap from the reading thread.
+		if debug:
+			log(MY_TASK, "Getting next job for write.")
+                write_cv.acquire()
+                while not copy_queue.finished and ((initial_wait and \
+			  copy_queue.qsize() < proceed_number) \
+                                                   or copy_queue.qsize() == 0):
+                    write_cv.wait()
+                job = copy_queue.get(block = True)
+                write_cv.release()
+                if not job:
+                    # We are done.  Nothing more to do.
+                    break
+		if debug:
+			log(MY_TASK, "Recieved job %s for write." % \
+			    (job,))
 
 		#Now that we are past the loop, set it to skip it next time.
 		initial_wait = False
@@ -3013,8 +3184,8 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf):
 		try:
 			dst_bfid = write_new_file(job, encp, fcc, intf, db)
 		except (KeyboardInterrupt, SystemExit):
-                        raise (sys.exc_info()[0], sys.exc_info()[1],
-                               sys.exc_info()[2])
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
                 except:
 			#We failed spectacularly!
 
@@ -3041,19 +3212,20 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf):
 			else:
 				pnfsid = None
 			scan_job = (src_bfid, dst_bfid, pnfsid, src_path, deleted)
+                        #We don't flag the condition variable here, because
+                        # scans done with --with-final-scan wait until all
+                        # writes are done.
 			scan_queue.put(scan_job, block = True)
 
-		#Get the next file to copy and swap from the reading thread.
-		if debug:
-			log(MY_TASK, "Getting next job for write.")
-		job = copy_queue.get(block = True)
-		if debug:
-			log(MY_TASK, "Recieved job %s for write." % \
-			    (job,))
 
 	if intf.with_final_scan:
 		log(MY_TASK, "no more to copy, terminating the scan queue")
+
+                #Since we are done, flag the condition variable.
+                scan_cv.acquire()
 		scan_queue.put(SENTINEL, block = True)
+                scan_cv.notify()
+                scan_cv.release()
 	
 ##########################################################################
 
@@ -3125,9 +3297,8 @@ def get_filenames(MY_TASK, dst_bfid, pnfs_id, likely_path, deleted):
                                 likely_path = likely_path,
                                 path_type = find_pnfs_file.FS)
                 except (KeyboardInterrupt, SystemExit):
-                        raise (sys.exc_info()[0],
-                               sys.exc_info()[1],
-                               sys.exc_info()[2])
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
                 except:
                         exc_type, exc_value, exc_tb = sys.exc_info()
                         Trace.handle_error(exc_type, exc_value, exc_tb)
@@ -3159,7 +3330,7 @@ def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
 		try:
 			#If the file still exists, try deleting it.
 			nullify_pnfs(mig_path)
-			os.remove(mig_path)
+			remove(mig_path)
 		except (OSError, IOError), msg:
 			error_log(MY_TASK,
 				  "migration path %s was not deleted[2]: %s" \
@@ -3213,7 +3384,7 @@ def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
 
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
-def final_scan(thread_num, scan_queue, intf):
+def final_scan(thread_num, scan_queue, scan_cv, intf):
 	MY_TASK = "FINAL_SCAN"
 
 	if not USE_THREADS:
@@ -3240,9 +3411,11 @@ def final_scan(thread_num, scan_queue, intf):
 
 	#We need to wait for all copies to be written to tape before
 	# trying to do a full scan.
+        scan_cv.acquire()
 	while not scan_queue.finished:
 		#wait for the write thread to process everything first.
-		time.sleep(1)
+		scan_cv.wait()
+        scan_cv.release()
 
 	#Loop over the files ready for scanning.
 	job = scan_queue.get(block = True)
@@ -3254,8 +3427,8 @@ def final_scan(thread_num, scan_queue, intf):
 					pnfs_id, likely_path, deleted,
 					fcc, encp, intf, db)
 		except (KeyboardInterrupt, SystemExit):
-                        raise (sys.exc_info()[0], sys.exc_info()[1],
-                               sys.exc_info()[2])
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
 		except:
 			#We failed spectacularly!
 
@@ -3570,6 +3743,11 @@ def migrate(bfids, intf):
 	if intf.use_volume_assert or USE_VOLUME_ASSERT:
 		scan_queue = MigrateQueue(DEFUALT_QUEUE_SIZE)
 		scan_queue.debug = debug
+
+                try:
+                        scan_cv = multiprocessing.Condition()
+                except NameError:
+                        scan_cv = threading.Condition()
 		
 	#For each list of bfids start the migrations.
 	for i in range(len(use_bfids_lists)):
@@ -3583,6 +3761,17 @@ def migrate(bfids, intf):
 			scan_queue = MigrateQueue(DEFUALT_QUEUE_SIZE)
 			scan_queue.debug = debug
 
+                #Define some conditional variables to tell the next step when to go.
+                try:
+                        write_cv = multiprocessing.Condition()
+                except NameError:
+                        write_cv = threading.Condition()
+                if not (intf.use_volume_assert or USE_VOLUME_ASSERT):
+                        try:
+                                scan_cv = multiprocessing.Condition()
+                        except NameError:
+                                scan_cv = threading.Condition()
+
 		#Set the global proceed_number variable.
 		set_proceed_number(bfid_list, copy_queue, scan_queue, intf)
 
@@ -3590,14 +3779,15 @@ def migrate(bfids, intf):
 		run_in_parallel(copy_files,
 		       (i, bfid_list, copy_queue,
 			sequential_locks[i],
-			sequential_locks[(i + 1) % use_proc_limit], intf),
+			sequential_locks[(i + 1) % use_proc_limit],
+                        write_cv, intf),
 		       my_task = "COPY_TO_DISK",
 		       on_exception = (handle_process_exception,
 				       (copy_queue, SENTINEL)))
 
 		# Start the writing in parallel
 		run_in_parallel(write_new_files,
-		       (i, copy_queue, scan_queue, intf),
+		       (i, copy_queue, scan_queue, write_cv, scan_cv, intf),
 		       my_task = "COPY_TO_TAPE",
 		       on_exception = (handle_process_exception,
 				       (scan_queue, SENTINEL)))
@@ -3608,14 +3798,14 @@ def migrate(bfids, intf):
 		if intf.with_final_scan and \
 		       not (intf.use_volume_assert or USE_VOLUME_ASSERT):
 			run_in_parallel(final_scan,
-					(i, scan_queue, intf),
+					(i, scan_queue, scan_cv, intf),
 					my_task = "FINAL_SCAN")
 
 	#If using volume_assert, we only want one call to final_scan():
 	if intf.with_final_scan and \
 	       (intf.use_volume_assert or USE_VOLUME_ASSERT):
 		run_in_parallel(final_scan,
-				(i, scan_queue, intf),
+				(i, scan_queue, scan_cv, intf),
 				my_task = "FINAL_SCAN")
 
 	done_exit_status = wait_for_parallel()
@@ -3939,7 +4129,6 @@ def migrate_volume(vol, intf):
 				run_in_parallel(migrate, ([bfid], intf))
 				#Remove from the remaing to start list.
 				copy_bfids_list.remove(bfid)
-				time.sleep(1) #give some break in between
 
 			if len(pid_list) >= 1:
 				done_exit_status = wait_for_process()
@@ -4069,8 +4258,8 @@ def restore(bfids, intf):
 					search_pnfsid, search_bfid,
 					path_type = find_pnfs_file.FS)
 			except (KeyboardInterrupt, SystemExit):
-				raise (sys.exc_info()[0], sys.exc_info()[1],
-				       sys.exc_info()[2])
+				raise sys.exc_info()[0], sys.exc_info()[1], \
+                                      sys.exc_info()[2]
 			except OSError, msg:
 				continue
 				#src = find_pnfs_file.find_pnfsid_path(
@@ -4128,75 +4317,51 @@ def restore(bfids, intf):
 
 		if os.path.exists(mig_path):
 
-			# remove the migration file in pnfs
-			try:
-				nullify_pnfs(mig_path)
-			except (OSError, IOError), msg:
-				if msg.errno in [errno.EPERM] and \
-				       os.getuid() == 0:
-			
-					#For trusted pnfs systems, there isn't
-					# a problem, but for untrusted we need
-					# to set the effective IDs to the owner
-					# of the file.
-					file_utils.match_euid_egid(mig_path)
-
-					# remove the migration file in pnfs
-					try:
-						nullify_pnfs(mig_path)
-					except (OSError, IOError), msg:
-						#Don't worry if the file is
-						# already gone.
-						if msg.errno not in [errno.ENOENT]:
-							error_log(MY_TASK,
-								  "failed to clear layers for file %s: %s" \
-								  % (mig_path, str(msg)))
-							continue
-
-					#Now set the root ID's back.
-					file_utils.end_euid_egid(reset_ids_back = True)
-				else:
-					error_log(MY_TASK,
-						  "failed to clear layers for file %s: %s" \
-						  % (mig_path, str(msg)))
-					continue
+                        try:
+                                make_writeable(mig_path)
+                        except (OSError, IOError), msg:
+                                message = "unable to make writeable for file"
+                                error_log(MY_TASK, 
+                                          "%s %s: %s" % (message, mig_path,
+                                                         str(msg)))
+                                continue
+                        
+                        try:
+                                nullify_pnfs(mig_path)
+                        except (OSError, IOError), msg:
+                                message = "failed to clear layers for file"
+                                error_log(MY_TASK,
+                                          "%s %s as (uid %s, gid %s): %s" \
+                                          % (message, mig_path, os.geteuid(),
+                                             os.getegid(), str(msg)))
+                                continue
 
 			try:
-				os.remove(mig_path)
+				remove(mig_path)
 			except (OSError, IOError), msg:
-				#Don't worry if the directory is already gone.
-				if msg.errno not in [errno.ENOENT]:
-					#To delete the file, we need to match
-					# the owner of the directory.
-					file_utils.match_euid_egid(pnfs.get_directory_name(mig_path))
-
-					try:
-						os.remove(mig_path)
-					except (OSError, IOError), msg:
-						#Don't worry if the file is
-						# already gone.
-						if msg.errno not in [errno.ENOENT]:
-							error_log(MY_TASK,
-								  "failed to delete migration file %s: %s" \
-								  % (mig_path, str(msg)))
-							continue
-
-					#Now set the root ID's back.
-					file_utils.end_euid_egid(reset_ids_back = True)
-				else:
-					error_log(MY_TASK,
-						  "failed to delete migration file %s: %s" \
-						  % (mig_path, str(msg)))
-					continue
-
+                                message = "failed to delete migration file"
+                                error_log(MY_TASK,
+                                          "%s %s as (uid %s, gid %s): %s" \
+                                          % (message, mig_path, os.geteuid(),
+                                             os.getegid(), str(msg)))
+                                continue
+                            
+				
 		#For some failures, the swap never truly happens.  If this
 		# is the case skip the pnfs layer update.
 		if not is_migration_path(src):
 
 			# set layer 1 and layer 4 to point to the original file
 			try:
-				p.update()
+				update_layers(p)
 			except (IOError, OSError), msg:
+                                message = "failed to restore layers 1 and 4 for"
+                                error_log(MY_TASK,
+                                          "%s %s %s: %s" \
+                                          % (message, bfid, src, str(msg)))
+                                continue
+
+                                """
 				if msg.errno in [errno.EPERM] and \
 				       os.getuid() == 0:
 					#For trusted pnfs systems, there isn't
@@ -4214,13 +4379,16 @@ def restore(bfids, intf):
 					try:
 						p.update()
 					except (IOError, OSError), msg:
+                                                message = "failed to restore layers 1 and 4 for"
 						error_log(MY_TASK,
-						     "failed to restore layers 1 and 4 for %s %s: %s" \
-							  % (bfid, src, str(msg)))
+                                                          "%s %s %s: %s" \
+							  % (message, bfid,
+                                                             src, str(msg)))
 						continue
 
 				        #Now set the root ID's back.
 					file_utils.end_euid_egid(reset_ids_back = True)
+                                """
 
 		# mark the migration copy of the file deleted
 		rtn_code = mark_deleted(MY_TASK, dst_bfid, fcc, db)
@@ -4601,6 +4769,8 @@ def do_work(intf):
 if __name__ == '__main__':
 
 	Trace.init(MIGRATION_NAME)
+
+        delete_at_exit.setup_signal_handling()
 
 	intf_of_migrate = MigrateInterface(sys.argv, 0) # zero means admin
 
