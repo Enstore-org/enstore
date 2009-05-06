@@ -51,22 +51,18 @@ def e_access_cmp(file_stats, mode):
     if mode & os.R_OK:  #Check for read permissions.
         #If the user is user root.
         if os.geteuid() == 0:
-            #return 1
             pass
         #Anyone can read this file.
         elif (stat_mode & stat.S_IROTH):
-            #return 1
             pass
         #This is the files owner.
         elif (stat_mode & stat.S_IRUSR) and \
            file_stats[stat.ST_UID] == os.geteuid():
-            #return 1
             pass
         #The user has group access.
         elif (stat_mode & stat.S_IRGRP) and \
            (file_stats[stat.ST_GID] == os.geteuid() or
             file_stats[stat.ST_GID] in os.getgroups()):
-            #return 1
             pass
         else:
             return 0
@@ -74,22 +70,18 @@ def e_access_cmp(file_stats, mode):
     if mode & os.W_OK:  #Check for write permissions.
         #If the user is user root.
         if os.geteuid() == 0:
-            #return 1
             pass
         #Anyone can write this file.
         elif (stat_mode & stat.S_IWOTH):
-            #return 1
             pass
         #This is the files owner.
         elif (stat_mode & stat.S_IWUSR) and \
            file_stats[stat.ST_UID] == os.geteuid():
-            #return 1
             pass
         #The user has group access.
         elif (stat_mode & stat.S_IWGRP) and \
            (file_stats[stat.ST_GID] == os.geteuid() or
             file_stats[stat.ST_GID] in os.getgroups()):
-            #return 1
             pass
         else:
             return 0
@@ -97,22 +89,18 @@ def e_access_cmp(file_stats, mode):
     if mode & os.X_OK:  #Check for execute permissions.
         #If the user is user root.
         if os.geteuid() == 0:
-            #return 1
             pass
         #Anyone can execute this file.
         elif (stat_mode & stat.S_IXOTH):
-            #return 1
             pass
         #This is the files owner.
         elif (stat_mode & stat.S_IXUSR) and \
            file_stats[stat.ST_UID] == os.geteuid():
-            #return 1
             pass
         #The user has group access.
         elif (stat_mode & stat.S_IXGRP) and \
            (file_stats[stat.ST_GID] == os.geteuid() or
             file_stats[stat.ST_GID] in os.getgroups()):
-            #return 1
             pass
         else:
             return 0
@@ -151,7 +139,10 @@ def get_stat(arg):
                 #Calling stat again won't get stuck in a loop since the
                 # effective IDS have been changed.
                 f_stat = get_stat(arg)
-            except OSError:
+            except OSError:  #Anticipated errors.
+                euid_lock.release()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:
                 euid_lock.release()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
@@ -163,7 +154,6 @@ def get_stat(arg):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     return f_stat
-
 
 #############################################################################
 
@@ -179,6 +169,7 @@ def release_lock_euid_egid():
         euid_lock.release()
     except RuntimeError:
         pass  #Already unlocked.
+    
 
 #Match the effective uid/gid of a file.
 # arg: could be a pathname, fileno or file object.
@@ -187,7 +178,7 @@ def release_lock_euid_egid():
 # (and non-trusted) pnfs mount points.
 def match_euid_egid(arg):
 
-    if os.getuid() == 0:# and getattr(e, 'migration_or_duplication', None):
+    if os.getuid() == 0 or os.getgid() == 0:
 
         f_stat = get_stat(arg)
 
@@ -197,7 +188,7 @@ def match_euid_egid(arg):
         try:
             set_euid_egid(f_stat[stat.ST_UID], f_stat[stat.ST_GID])
         except:
-            euid_lock.release()
+            release_lock_euid_egid()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
 def set_euid_egid(euid, egid):
@@ -211,9 +202,11 @@ def set_euid_egid(euid, egid):
             os.setegid(0)
 
         #First look at the gid for setting them.
-        os.setegid(egid)
+        if egid != os.getegid():
+            os.setegid(egid)
         #Then look a the uid.
-        os.seteuid(euid)
+        if euid != os.geteuid():
+            os.seteuid(euid)
 
 #Release the lock.
 def end_euid_egid(reset_ids_back = False):
