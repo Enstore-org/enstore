@@ -12,6 +12,7 @@ import sys
 import signal
 import Trace
 import errno
+import types
 try:
     import threading
     import thread
@@ -256,11 +257,40 @@ def signal_handler(sig, frame):
     quit(1)
 
 def setup_signal_handling():
+
+    #This block of code is necessary on systems that use signals internally
+    # within the C libraries.  It finds the highest user defined signal.
+    # Then it creates a list of all signals between the highest signal
+    # and the smallest realtime signal.
+    #
+    #This is important on Linux, which uses signals 32 (SIGCANCEL & SIGTIMER)
+    # and 33 (SIGSETXID) to handle inter-thread processing of per-process
+    # resources.  SIGSETXID is used to coordinate all threads in a process
+    # changing thier UID and GID (and other things), which is a process
+    # resource and not a per-thread resource.  These extra signals are not
+    # defined in signal.h, and thusly not in the singal module; which is why
+    # all of this extra coding is necesary to detect if there are even any
+    # on a given system.  On Linux 2.6 the greatest normal signal is 31 and
+    # SIGRTMIN is 34, which is why 32 and 33 need to be handled special.
+    max_regular_signal = 0
+    for key in dir(signal):
+        value = getattr(signal, key)
+        if type(value) == types.IntType and \
+           key[0:3] == "SIG" and key not in ("SIGRTMAX", "SIGRTMIN"):
+            if value > max_regular_signal:
+                max_regular_signal = value
+    # Create the list from the range.
+    sig_leave_alone_list = range(max_regular_signal + 1, signal.SIGRTMIN)
+
+    #This is a known list of signals to leave thier default handler in place.
+    sig_leave_alone_list.append(signal.SIGTSTP)
+    sig_leave_alone_list.append(signal.SIGCONT)
+    sig_leave_alone_list.append(signal.SIGCHLD)
+    sig_leave_alone_list.append(signal.SIGWINCH)
     
     #Handle all signals not in the known skip list.
     for sig in range(1, signal.NSIG):
-        if sig not in (signal.SIGTSTP, signal.SIGCONT,
-                       signal.SIGCHLD, signal.SIGWINCH):
+        if sig not in sig_leave_alone_list:
             try:
                 signal.signal(sig, signal_handler)
             except RuntimeError:
