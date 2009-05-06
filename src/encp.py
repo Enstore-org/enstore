@@ -93,6 +93,7 @@ import enstore_functions3
 import find_pnfs_file
 import udp_client
 import file_utils
+import cleanUDP
 
 USE_NEW_EVENT_LOOP = True
 
@@ -4700,7 +4701,18 @@ def open_data_socket(mover_addr, interface_ip = None):
             raise socket.error, msg
 
     #Check if the socket is open for reading and/or writing.
-    r, w, unused = select.select([data_path_socket],[data_path_socket],[],30)
+    while 1:
+        try:
+            r, w, unused = select.select([data_path_socket],
+                                         [data_path_socket],[],30)
+            break
+        except (socket.error, select.error), msg:
+            if errno.EINTR == msg.args[0]:
+                #Screen out interuptions from signals.
+                continue
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            
 
     if r or w:
         #Get the socket error condition...
@@ -5062,8 +5074,8 @@ def wait_for_message(listen_socket, lmc, work_list,
             #Listen for the control socket to connect or the library
             # manager's repsonse to the request resubmission.
             try:
-                r, unused, unused = select.select(select_list, [], [],
-                                                  timeout)
+                r, unused, unused, unused = cleanUDP.Select(select_list,
+                                                            [], [], timeout)
             except (socket.error, select.error), msg:
                 response_ticket = {'status' : (e_errors.RESUBMITTING,
                                                str(msg))}
@@ -5101,8 +5113,8 @@ def wait_for_message(listen_socket, lmc, work_list,
         #Listen for the control socket to connect or the library
         # manager's repsonse to the request resubmission.
         try:
-            r, unused, unused = select.select(select_list, [], [],
-                                              e.resubmit_timeout)
+            r, unused, unused, timeout = cleanUDP.Select(select_list, [], [],
+                                                         e.resubmit_timeout)
         except (socket.error, select.error), msg:
             response_ticket = {'status' : (e_errors.RESUBMITTING, str(msg))}
             return response_ticket, None, None
@@ -5110,6 +5122,7 @@ def wait_for_message(listen_socket, lmc, work_list,
     
     #Get the packets specified one at a time.
     if lmc_socket in r:
+        Trace.log(TRANS_ID_LEVEL, "getting LM message")
         response_ticket, transaction_id = submit_all_request_recv(
             transaction_id_list, work_list, lmc, e)
         #We need to change the timedout errors to resumbitting ones.
@@ -5125,6 +5138,7 @@ def wait_for_message(listen_socket, lmc, work_list,
         Trace.log(TRANS_ID_LEVEL,
                           "received id: %s" % ([transaction_id],))
     elif listen_socket in r or (udp_socket and udp_socket in r):
+        Trace.log(TRANS_ID_LEVEL, "starting mover handshake")
         #Wait for the mover to establish the control socket.  See
         # if the id matches one of the tickets we submitted.
         # Establish data socket connection with the mover.
@@ -8409,6 +8423,10 @@ def submit_write_request(work_ticket, encp_intf):
 def stall_write_transfer(data_path_socket, control_socket, e):
 
     stall_write_transfer_start_time = time.time()
+
+    Trace.log(INFO_LEVEL,
+              "stalling write transfer until signal bytes arives: %s sec" % \
+              (e.mover_timeout,))
     
     #Stall starting the count until the first byte is ready for writing.
     duration = e.mover_timeout
@@ -8426,6 +8444,9 @@ def stall_write_transfer(data_path_socket, control_socket, e):
             else:
                 write_fd = []
                 break
+
+    Trace.log(INFO_LEVEL,
+              "confirming control_socket still okay: %s sec" % (10,))
 
     if data_path_socket not in write_fd:
         try:
@@ -10265,6 +10286,10 @@ def submit_read_requests(requests, encp_intf):
 def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
 
     stall_read_transfer_start_time = time.time()
+
+    Trace.log(INFO_LEVEL,
+              "stalling read transfer until data arives: %s sec" % \
+              (e.mover_timeout,))
     
     #Stall starting the count until the first byte is ready for reading.
     duration = e.mover_timeout
@@ -10282,6 +10307,9 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
             else:
                 read_fd = []
                 break
+
+    Trace.log(INFO_LEVEL,
+              "confirming control_socket still okay: %s sec" % (10,))
 
     if data_path_socket not in read_fd:
         try:
@@ -12150,7 +12178,7 @@ def do_work(intf):
 
         exit_status = 1
 
-    file_utils.euid_lock.acquire()
+    file_utils.acquire_lock_euid_egid()
 
     #Remove any zero-length files left haning around.
     delete_at_exit.delete()
@@ -12160,7 +12188,7 @@ def do_work(intf):
         os.seteuid(0)
         os.setegid(0)
         
-    file_utils.euid_lock.release()
+    file_utils.release_lock_euid_egid()
     
     return exit_status
         
