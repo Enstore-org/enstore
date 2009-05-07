@@ -1726,6 +1726,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
+        Trace.trace(20,"update_lm: dont_update=%s" % (self.dont_update_lm,))
         if self.state == IDLE:
             # check memory usage and if bad restart
             self.memory_usage()
@@ -2005,7 +2006,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # second - state
         # third -  reset timer
         # fourth - error source
-
+        Trace.trace(20," need_update %s"%(self.need_lm_update,))
         if self.need_lm_update[0]:
             Trace.trace(20," need_update calling update_lm") 
             self.update_lm(state = self.need_lm_update[1],
@@ -3417,6 +3418,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         #At this point the media changer claims the correct volume is loaded;
         have_tape = 0
+        self.need_lm_update = (1, None, 0, None)
         for retry_open in range(3):
             Trace.trace(10, "position media")
             Trace.trace(10, "tape_driver.open mode %s"%(mode_name(self.mode),))
@@ -3533,6 +3535,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(24, "t32 assert_ok returned" )
                     
                     self.assert_ok.wait()
+                    self.need_lm_update = (1, None, 0, None)
                     self.assert_ok.clear()
                     self.net_driver.close()
                     Trace.trace(24, "assert return: %s"%(self.assert_return,))
