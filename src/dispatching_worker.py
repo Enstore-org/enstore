@@ -495,7 +495,6 @@ class DispatchingWorker(udp_server.UDPServer):
         # by the client.
         if not ticket:
             Trace.trace(6, "dispatching_worker: no ticket!!!")
-            Trace.log(e_errors.ERROR, "dispatching_worker: no ticket!!!")
             return
 
         # look in the ticket and figure out what work user wants

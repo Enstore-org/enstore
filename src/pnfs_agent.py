@@ -1006,7 +1006,6 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         # by the client.
         if not ticket:
             Trace.trace(6, "pnfs_agent: no ticket!!!")
-            Trace.log(e_errors.ERROR, "pnfs_agent: no ticket!!!")
             return
 
         # look in the ticket and figure out what work user wants
