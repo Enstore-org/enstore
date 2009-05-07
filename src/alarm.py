@@ -103,7 +103,7 @@ class GenericAlarm:
         self.timedate_last = time.time()
 	try:
 	    self.num_times_raised = self.num_times_raised + 1
-	except OverflowError:
+	except errno.errorcode[errno.EOVERFLOW]:
 	    self.num_times_raised = -1
 
     # return the a list of the alarm pieces we need to output

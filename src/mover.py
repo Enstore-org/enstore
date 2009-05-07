@@ -1726,6 +1726,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
+        Trace.trace(20,"update_lm: dont_update=%s" % (self.dont_update_lm,))
         if self.state == IDLE:
             # check memory usage and if bad restart
             self.memory_usage()
@@ -2005,7 +2006,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # second - state
         # third -  reset timer
         # fourth - error source
-
+        Trace.trace(20," need_update %s"%(self.need_lm_update,))
         if self.need_lm_update[0]:
             Trace.trace(20," need_update calling update_lm") 
             self.update_lm(state = self.need_lm_update[1],
@@ -3417,6 +3418,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         #At this point the media changer claims the correct volume is loaded;
         have_tape = 0
+        self.need_lm_update = (1, None, 0, None)
         for retry_open in range(3):
             Trace.trace(10, "position media")
             Trace.trace(10, "tape_driver.open mode %s"%(mode_name(self.mode),))
@@ -3504,7 +3506,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 keys.sort()
                 Trace.trace(24, 'keys %s'%(keys,))
                 stat = e_errors.OK
-                # start client netwrok monitor to detect
+                # start client network monitor to detect
                 # that clinet is gone and interruprt assert
                 self.interrupt_assert = False
                 self.run_in_thread('network_monitor', self.check_connection)
@@ -3533,6 +3535,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(24, "t32 assert_ok returned" )
                     
                     self.assert_ok.wait()
+                    self.need_lm_update = (1, None, 0, None)
                     self.assert_ok.clear()
                     self.net_driver.close()
                     Trace.trace(24, "assert return: %s"%(self.assert_return,))
@@ -6409,9 +6412,9 @@ class DiskMover(Mover):
         return string.join((ip_map,volume_family,'%s'%(long(time.time()*1000),)),':')
 
     def no_work(self, ticket):
-        x = ticket # to trick pychecker
-        if self.state is HAVE_BOUND:
-            self.dismount_volume(after_function=self.idle)
+        #x = ticket # to trick pychecker
+        Trace.trace(98, "no_work %s"%(ticket,))
+        # no_work is No work: do nothing.
         
     def setup_transfer(self, ticket, mode):
         self.lock_state()
@@ -7075,7 +7078,7 @@ if __name__ == '__main__':
     mover.handle_generic_commands(intf)
     mover.start()
     mover.starting = 0
-
+    #mover._do_print({'levels':[5,20, 98]})
     while 1:
         try:
             mover.serve_forever()
