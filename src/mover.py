@@ -6412,7 +6412,7 @@ class DiskMover(Mover):
         return string.join((ip_map,volume_family,'%s'%(long(time.time()*1000),)),':')
 
     def no_work(self, ticket):
-        x = ticket # to trick pychecker
+        #x = ticket # to trick pychecker
         Trace.trace(98, "no_work %s"%(ticket,))
         # no_work is No work: do nothing.
         
