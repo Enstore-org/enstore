@@ -1712,12 +1712,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         #
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
-
         Trace.trace(6, "inquisitor:process_request %s; %s"%(request, ticket,))
-        if not ticket:
-            Trace.log(e_errors.ERROR, "inquisitor: no ticket!!!")
-            return
-
+        if not ticket:  return
         try:
             function_name = ticket["work"]
         except (KeyError, AttributeError, TypeError), detail:
@@ -1729,7 +1725,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
-
         try:
             Trace.trace(5,"process_request: function %s"%(function_name,))
             function = getattr(self,function_name)
@@ -1743,7 +1738,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
-
         # call the user function
         t = time.time()
 	c = threading.activeCount()
