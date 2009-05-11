@@ -2543,7 +2543,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
                     Trace.log(e_errors.INFO, 'filemarks written. Tape %s absolute location in blocks %s'%(self.current_volume, new_bloc_loc,))
-                    Trace.log(e_errors.INFO, "write_tape timing:pull %s write %s crc_ckeck %s freespace %s block_write %s idle %s" %
+                    Trace.log(e_errors.INFO, "write_tape timing:pull %s write %s crc_check %s freespace %s block_write %s idle %s" %
                               (self.buffer.write_stats[0],
                                self.buffer.write_stats[1],
                                self.buffer.write_stats[2],
@@ -3111,7 +3111,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
         
-        Trace.log(e_errors.INFO, "read_tape timing:get_space %s read %s crc_ckeck %s push %s block_read %s idle %s" %
+        Trace.log(e_errors.INFO, "read_tape timing:get_space %s read %s crc_check %s push %s block_read %s idle %s" %
                   (self.buffer.read_stats[0],
                    self.buffer.read_stats[1],
                    self.buffer.read_stats[2],
