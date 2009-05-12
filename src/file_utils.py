@@ -18,6 +18,8 @@ import threading
 import types
 import errno
 
+import Trace
+
 ## mode is one of os.F_OK, os.W_OK, os.R_OK or os.X_OK.
 ## file_stats is the return from os.stat()
 
@@ -128,7 +130,7 @@ def get_stat(arg):
         # set the effective IDS to root so we can try again.
         if msg.errno in [errno.EACCES, errno.EPERM] and \
                os.getuid() == 0 and os.geteuid() != 0:
-            euid_lock.acquire()
+            acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
             
@@ -140,21 +142,190 @@ def get_stat(arg):
                 # effective IDS have been changed.
                 f_stat = get_stat(arg)
             except OSError:  #Anticipated errors.
-                euid_lock.release()
+                release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:
-                euid_lock.release()
+            except:  #Un-anticipated errors.
+                release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             os.setegid(current_egid)
             os.seteuid(current_euid)
 
-            euid_lock.release()
+            release_lock_euid_egid()
         else:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     return f_stat
 
+#Because open() is a builtin, pychecker gives a "(open) shadows builtin"
+# warning.  This suppresses that warning, but it will do so for all functions
+# in this module.
+__pychecker__ = "no-shadowbuiltin"
+
+#Open the file fname.  Mode has same meaning as builtin open().
+def open(fname, mode = "r"):
+    try:
+        file_p = __builtins__['open'](fname, mode)
+    except (OSError, IOError), msg:
+        #If we were denied access and our effective IDS were not root's,
+        # set the effective IDS to root so we can try again.
+        if msg.errno in [errno.EACCES, errno.EPERM] and \
+               os.getuid() == 0 and os.geteuid() != 0:
+            acquire_lock_euid_egid()
+            current_euid = os.geteuid()
+            current_egid = os.getegid()
+        
+            os.seteuid(0)
+            os.setegid(0)
+
+            try:
+                file_p = __builtins__['open'](fname, mode)
+            except (OSError, IOError), msg:  #Anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:  #Un-anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            os.setegid(current_egid)
+            os.seteuid(current_euid)
+
+            release_lock_euid_egid()
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            
+    return file_p
+
+#Change the permissions of file fname.  Perms have same meaning as os.chmod().
+def chmod(fname, perms):
+    try:
+        os.chmod(fname, perms)
+    except (OSError, IOError), msg:
+        #If we were denied access and our effective IDS were not root's,
+        # set the effective IDS to root so we can try again.
+        if msg.errno in [errno.EACCES, errno.EPERM] and \
+               os.getuid() == 0 and os.geteuid() != 0:
+            acquire_lock_euid_egid()
+            current_euid = os.geteuid()
+            current_egid = os.getegid()
+        
+            os.seteuid(0)
+            os.setegid(0)
+
+            try:
+                os.chmod(fname, perms)
+            except (OSError, IOError), msg:  #Anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:  #Un-anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            os.setegid(current_egid)
+            os.seteuid(current_euid)
+
+            release_lock_euid_egid()
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+#Change the owner of file fname.  Perms have same meaning as os.chmod().
+def chown(fname, uid, gid):
+    try:
+        os.chown(fname, uid, gid)
+    except (OSError, IOError), msg:
+        #If we were denied access and our effective IDS were not root's,
+        # set the effective IDS to root so we can try again.
+        if msg.errno in [errno.EACCES, errno.EPERM] and \
+               os.getuid() == 0 and os.geteuid() != 0:
+            acquire_lock_euid_egid()
+            current_euid = os.geteuid()
+            current_egid = os.getegid()
+        
+            os.seteuid(0)
+            os.setegid(0)
+
+            try:
+                os.chown(fname, uid, gid)
+            except (OSError, IOError), msg:  #Anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:  #Un-anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            os.setegid(current_egid)
+            os.seteuid(current_euid)
+
+            release_lock_euid_egid()
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+#Update the times of file fname.  Access time and modification time are
+# the same as os.chown().
+def utime(fname, times):
+    try:
+        os.utime(fname, times)
+    except (OSError, IOError), msg:
+        #If we were denied access and our effective IDS were not root's,
+        # set the effective IDS to root so we can try again.
+        if msg.errno in [errno.EACCES, errno.EPERM] and \
+               os.getuid() == 0 and os.geteuid() != 0:
+            acquire_lock_euid_egid()
+            current_euid = os.geteuid()
+            current_egid = os.getegid()
+        
+            os.seteuid(0)
+            os.setegid(0)
+
+            try:
+                os.utime(fname, times)
+            except (OSError, IOError), msg:  #Anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:  #Un-anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            os.setegid(current_egid)
+            os.seteuid(current_euid)
+
+            release_lock_euid_egid()
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+#Remove the file fname from the filesystem.
+def remove(fname):
+    try:
+        os.remove(fname)
+    except (OSError, IOError), msg:
+        #If we were denied access and our effective IDS were not root's,
+        # set the effective IDS to root so we can try again.
+        if msg.errno in [errno.EACCES, errno.EPERM] and \
+               os.getuid() == 0 and os.geteuid() != 0:
+            acquire_lock_euid_egid()
+            current_euid = os.geteuid()
+            current_egid = os.getegid()
+        
+            os.seteuid(0)
+            os.setegid(0)
+
+            try:
+                os.remove(fname)
+            except (OSError, IOError), msg:  #Anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:  #Un-anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            os.setegid(current_egid)
+            os.seteuid(current_euid)
+
+            release_lock_euid_egid()
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        
+        
 #############################################################################
 
 #If root is running the process, we may need to change the euid.  Is this
@@ -162,6 +333,10 @@ def get_stat(arg):
 euid_lock = threading.RLock()
 
 def acquire_lock_euid_egid():
+    if euid_lock._RLock__count > 0 and \
+           euid_lock._RLock__owner == threading.currentThread(): 
+        Trace.log(67, "lock count: %s" % (euid_lock._RLock__count,))
+        Trace.log_stack_trace(severity = 67)
     euid_lock.acquire()
 
 def release_lock_euid_egid():
