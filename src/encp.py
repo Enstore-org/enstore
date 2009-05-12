@@ -63,6 +63,7 @@ import gc
 import copy
 import random
 import threading
+import thread
 
 # enstore modules
 import Trace
@@ -99,7 +100,8 @@ USE_NEW_EVENT_LOOP = True
 
 #Hack for migration to report an error, instead of having to go to the log
 # file for every error.
-err_msg = ""
+err_msg = {}
+err_msg_lock = threading.Lock()
 
 #Add these if missing.
 if not hasattr(socket, "IPTOS_LOWDELAY"):
@@ -822,7 +824,7 @@ def update_modification_time(output_path, time_now = None):
     
     try:
         #Update the last modified time; set last access time to existing value.
-        os.utime(output_path,
+        file_utils.utime(output_path,
                  (file_utils.get_stat(output_path)[stat.ST_ATIME], time_now))
     except OSError:
         return #This one will fail if the output file is /dev/null.
@@ -841,7 +843,7 @@ def update_last_access_time(input_path, time_now = None):
     
     try:
         #Update the last access time; set last modified time to existing value.
-        os.utime(input_path,
+        file_utils.utime(input_path,
                  (time_now, file_utils.get_stat(input_path)[stat.ST_MTIME]))
     except OSError:
         return
@@ -1165,19 +1167,12 @@ def do_layers_exist(pnfs_filename):
 
     p = Pnfs()
 
-    #Match the effective IDs of the file.
-    file_utils.match_euid_egid(pnfs_filename)
-
     try:
         if p.readlayer(1, pnfs_filename) or p.readlayer(4, pnfs_filename):
             #Layers found for the file!
             return True
     except (OSError, IOError):
-        file_utils.end_euid_egid(reset_ids_back = True)
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-    #Release the lock.
-    file_utils.end_euid_egid(reset_ids_back = True)
 
     #The pnfs files does not exist, or it does exist and does not have
     # any layer information.
@@ -3827,7 +3822,7 @@ def outputfile_check(work_list, e):
 
 
                     #Match the effective IDs of the file.
-                    file_utils.match_euid_egid(outputfile_use)
+###                    file_utils.match_euid_egid(outputfile_use)
 
                     #Try to write an empty string to layer 1.  If this fails,
                     # it will most likely fail becuase of:
@@ -3842,10 +3837,10 @@ def outputfile_check(work_list, e):
                         p.writelayer(1, "", outputfile_use)
 
                         #Release the lock.
-                        file_utils.end_euid_egid(reset_ids_back = True)
+###                        file_utils.end_euid_egid(reset_ids_back = True)
                     except:
                         #Release the lock.
-                        file_utils.end_euid_egid(reset_ids_back = True)
+###                        file_utils.end_euid_egid(reset_ids_back = True)
                         raise sys.exc_info()[0], sys.exc_info()[1], \
                               sys.exc_info()[2]
 
@@ -4021,7 +4016,32 @@ def create_zero_length_local_files(filenames):
                 fname = f
             
         delete_at_exit.register(fname)
-        fd = atomic.open(fname, mode=0666) #raises OSError on error.
+
+        if os.getuid() == 0 and os.geteuid() != 0:
+            #If we are user root and the effecting ids are not,
+            # then we need to handle this special to be able to
+            # write to a root owned local directory.
+            file_utils.acquire_lock_euid_egid()
+            new_uid = os.geteuid()
+            new_gid = os.getegid()
+            file_utils.set_euid_egid(0, 0)
+
+            try:
+                fd = atomic.open(fname, mode=0666) #raises OSError on error.
+                file_utils.chown(fname, new_uid, new_gid)
+            except (OSError, IOError):  #Anticipated errors.
+                file_utils.set_euid_egid(new_uid, new_gid)
+                file_utils.release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except: #Un-anticipated errors.
+                file_utils.set_euid_egid(new_uid, new_gid)
+                file_utils.release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            file_utils.set_euid_egid(new_uid, new_gid)
+            file_utils.release_lock_euid_egid()
+        else:
+            fd = atomic.open(fname, mode=0666) #raises OSError on error. 
         
         if type(f) == types.DictType:
             #The inode is used later on to determine if another process
@@ -6177,6 +6197,31 @@ def verify_file_size(ticket, encp_intf = None):
             pnfs_filename = ticket['infile']
         else: #write
             pnfs_filename = ticket['outfile']
+    except (TypeError), detail:
+        ticket['status'] = (e_errors.OK, "No files sizes to verify.")
+        return
+
+    #While dealing with a local admin pnfs mount, we need to get back to
+    # being user root if we are not their already.  Here we take advantage
+    # of the reenterant attribute of the threading.RLock.  If the directory
+    # and the file have different owners, we need to up the lock one more
+    # time to change the effective IDs one more time before giving up the
+    # lock completely.
+    file_utils.acquire_lock_euid_egid()
+    release_lock = True
+    try:
+        pnfs.is_admin_pnfs_path(pnfs_filename)
+    except (OSError, IOError), msg:
+        if os.getuid() == 0 and os.geteuid() != 0 and \
+               msg.args[0] in [errno.EPERM, errno.EACCES]:
+            file_utils.set_euid_egid(0, 0)
+        release_lock = True  #Set this so we no if we need to release the lock.
+            
+    try:
+        if is_read(ticket):
+            pnfs_filename = ticket['infile']
+        else: #write
+            pnfs_filename = ticket['outfile']
         
         p = Pnfs()
         pnfs_stat = p.get_stat(pnfs_filename)
@@ -6184,6 +6229,8 @@ def verify_file_size(ticket, encp_intf = None):
         pnfs_inode = pnfs_stat[stat.ST_INO]
     except (TypeError), detail:
         ticket['status'] = (e_errors.OK, "No files sizes to verify.")
+        if release_lock:
+            file_utils.release_lock_euid_egid()
         return
     except (OSError, IOError), detail:
         if encp_intf and encp_intf.override_deleted:
@@ -6193,70 +6240,77 @@ def verify_file_size(ticket, encp_intf = None):
             pnfs_inode = None
         else:
             ticket['status'] = (e_errors.OSERROR, str(detail))
+            if release_lock:
+                file_utils.release_lock_euid_egid()
             return
+    except: #Un-anticipated errors.
+        if release_lock:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-    #try:
-    #    in_stat = os.stat(ticket['infile'])
-    #    in_filesize = in_stat[stat.ST_SIZE]
-    #except (OSError, IOError), detail:
-    #    ticket['status'] = (e_errors.OSERROR, str(detail))
-    #    return
+    try:
+        #Handle making sure the local inode did not change during the transfer.
+        local_inode = ticket.get("local_inode", None)
+        if local_inode:
+            if local_inode != full_inode:
+                ticket['status'] = (e_errors.USERERROR,
+                                    "Local inode changed during transfer.")
+                return
 
-    #try:
-    #    out_stat = os.stat(ticket['outfile'])
-    #    out_filesize = out_stat[stat.ST_SIZE]
-    #except (OSError, IOError), detail:
-    #    ticket['status'] = (e_errors.OSERROR, str(detail))
-    #    return
+        #Handle making sure the pnfs file inode not change during the transfer.
+        remote_inode = ticket['wrapper'].get("inode", None)
+        if remote_inode and remote_inode != 0:
+            if remote_inode != pnfs_inode:
+                ticket['status'] = (e_errors.USERERROR,
+                                    "Pnfs inode changed during transfer.")
+                return
+    except: #Un-anticipated errors.
+        if release_lock:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-    #Handle making sure the local inode did not change during the transfer.
-    local_inode = ticket.get("local_inode", None)
-    if local_inode:
-        if local_inode != full_inode:
-            ticket['status'] = (e_errors.USERERROR,
-                                "Local inode changed during transfer.")
-            return
+    try:
+        #Handle large files.
+        if pnfs_filesize == 1:
+            #Until pnfs supports NFS version 3 (for large file support) make
+            # sure we are using the correct file_size for the pnfs side.
+            try:
+                if is_read(ticket):
+                    pnfs_filename = ticket['infile']
+                else: #write
+                    pnfs_filename = ticket['outfile']
 
-    #Handle making sure the pnfs file inode not change during the transfer.
-    remote_inode = ticket['wrapper'].get("inode", None)
-    if remote_inode and remote_inode != 0:
-        if remote_inode != pnfs_inode:
-            ticket['status'] = (e_errors.USERERROR,
-                                "Pnfs inode changed during transfer.")
-            return
+                p = Pnfs(pnfs_filename)
+                pnfs_real_size = p.get_file_size(pnfs_filename)
+            except (OSError, IOError), detail:
+                ticket['status'] = (e_errors.OSERROR, str(detail))
+                if release_lock:
+                    file_utils.release_lock_euid_egid()
+                return
 
-    #Handle large files.
-    if pnfs_filesize == 1:
-        #Until pnfs supports NFS version 3 (for large file support) make
-        # sure we are using the correct file_size for the pnfs side.
-        try:
-            if is_read(ticket):
-                pnfs_filename = ticket['infile']
-            else: #write
-                pnfs_filename = ticket['outfile']
-            
-            p = Pnfs(pnfs_filename)
-            pnfs_real_size = p.get_file_size(pnfs_filename)
-        except (OSError, IOError), detail:
-            ticket['status'] = (e_errors.OSERROR, str(detail))
-            return
-
-        if full_filesize != pnfs_real_size:
-            msg = "Expected local file size (%s) to equal remote file " \
-                  "size (%s) for large file %s." \
-                  % (full_filesize, pnfs_real_size, ticket['outfile'])
+            if full_filesize != pnfs_real_size:
+                msg = "Expected local file size (%s) to equal remote file " \
+                      "size (%s) for large file %s." \
+                      % (full_filesize, pnfs_real_size, ticket['outfile'])
+                ticket['status'] = (e_errors.FILE_MODIFIED, msg)
+        #Test if the sizes are correct.
+        elif ticket['file_size'] != full_filesize:
+            msg = "Expected file size (%s) to equal actuall file size " \
+                  "(%s) for file %s." % \
+                  (ticket['file_size'], full_filesize, ticket['outfile'])
             ticket['status'] = (e_errors.FILE_MODIFIED, msg)
-    #Test if the sizes are correct.
-    elif ticket['file_size'] != full_filesize:
-        msg = "Expected file size (%s) to equal actuall file size " \
-              "(%s) for file %s." % \
-              (ticket['file_size'], full_filesize, ticket['outfile'])
-        ticket['status'] = (e_errors.FILE_MODIFIED, msg)
-    elif full_filesize != pnfs_filesize:
-        msg = "Expected local file size (%s) to equal remote file " \
-              "size (%s) for file %s." \
-              % (full_filesize, pnfs_filesize, ticket['outfile'])
-        ticket['status'] = (e_errors.FILE_MODIFIED, msg)
+        elif full_filesize != pnfs_filesize:
+            msg = "Expected local file size (%s) to equal remote file " \
+                  "size (%s) for file %s." \
+                  % (full_filesize, pnfs_filesize, ticket['outfile'])
+            ticket['status'] = (e_errors.FILE_MODIFIED, msg)
+    except: #Un-anticipated errors.
+        if release_lock:
+            file_utils.release_lock_euid_egid()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        
+    if release_lock:
+        file_utils.release_lock_euid_egid()
 
     message = "Time to verify file size: %s sec." % \
               (time.time() - verify_file_size_start_time,)
@@ -6344,19 +6398,15 @@ def set_outfile_permissions(ticket, encp_intf):
             try:
                 perms = in_stat_info[stat.ST_MODE]
 
-                file_utils.match_euid_egid(ticket['outfile'])
-
                 #handle remote file case
                 if is_write(ticket):
                     p = Pnfs(ticket['outfile'])
                     p.chmod(perms, ticket['outfile'])
                 else:
-                    os.chmod(ticket['outfile'], perms)
+                    file_utils.chmod(ticket['outfile'], perms)
 
                 ticket['status'] = (e_errors.OK, None)
-                file_utils.end_euid_egid()
             except OSError, msg:
-                file_utils.end_euid_egid()
                 Trace.log(e_errors.INFO, "chmod %s failed: %s" % \
                           (ticket['outfile'], msg))
                 ticket['status'] = (e_errors.USERERROR,
@@ -6374,7 +6424,7 @@ def set_outfile_permissions(ticket, encp_intf):
                         p = Pnfs(ticket['outfile'])
                         p.chown(uid, gid, ticket['outfile'])
                     else:
-                        os.chown(ticket['outfile'], uid, gid)
+                        file_utils.chown(ticket['outfile'], uid, gid)
                     ticket['status'] = (e_errors.OK, None)
                 except OSError, msg:
                     Trace.log(e_errors.INFO, "chown %s failed: %s" % \
@@ -8628,31 +8678,6 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                       (work_ticket['outfilepath'],
                        time.time()-tinfo['encp_start_time']))
 
-        try:
-            #Set the effective uid and gid of the file before closing the file.
-            if os.getuid() == 0:
-                #For root only, we need to match the current owner of the
-                # output file.  The correct owner gets set in
-                # set_outfile_permissions() for root.
-                file_utils.match_euid_egid(done_ticket['outfile'])
-            else:
-                file_utils.match_euid_egid(in_fd)
-        except OSError, msg:
-            close_descriptors(in_fd)
-            if e_errors.is_ok(done_ticket):
-                error_ticket = {'status' : (e_errors.OSERROR,
-                                            "Unable to set euid/egid: %s" % \
-                                            (str(msg),))}
-                Trace.log(e_errors.ERROR,
-                          "euid: %s  egid: %s" % (os.geteuid(), os.getegid()))
-            else:
-                error_ticket = {'status' : done_ticket['status']}
-            #Handle the error.
-            result_dict = handle_retries([work_ticket], work_ticket,
-                                         error_ticket, e)
-            
-            return combine_dict(result_dict, work_ticket)
-                
         #Don't need these anymore.
         #close_descriptors(control_socket, data_path_socket, in_fd)
         close_descriptors(in_fd)
@@ -8662,10 +8687,8 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                                      done_ticket, e)
 
         if e_errors.is_retriable(result_dict):
-            file_utils.end_euid_egid() #Release the lock.
             continue
         elif e_errors.is_non_retriable(result_dict):
-            file_utils.end_euid_egid() #Release the lock.
             return combine_dict(result_dict, work_ticket)
 
         #Make sure the exfer sub-ticket gets stored into request_ticket.
@@ -8680,10 +8703,8 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                                      done_ticket, e)
 
         if e_errors.is_retriable(result_dict['status'][0]):
-            file_utils.end_euid_egid() #Release the lock.
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
-            file_utils.end_euid_egid() #Release the lock.
             return combine_dict(result_dict, work_ticket)
 
         #Update the last access and modification times respecively.
@@ -8701,10 +8722,8 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                                      pnfs_filename = done_ticket['outfile'])
 
         if e_errors.is_retriable(result_dict['status'][0]):
-            file_utils.end_euid_egid() #Release the lock.
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
-            file_utils.end_euid_egid() #Release the lock.        
             return combine_dict(result_dict, work_ticket)
 
         #We know the file has hit some sort of media. When this occurs
@@ -8717,11 +8736,9 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
 
         if e_errors.is_retriable(result_dict['status'][0]):
             clear_layers_1_and_4(done_ticket) #Reset this.
-            file_utils.end_euid_egid() #Release the lock.
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
             clear_layers_1_and_4(done_ticket) #Reset this.
-            file_utils.end_euid_egid() #Release the lock.
             return combine_dict(result_dict, work_ticket)
 
         #Set the UNIX file permissions.
@@ -8737,13 +8754,10 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         # on a failure is that the file is left with full permissions.
         set_outfile_permissions(done_ticket, e)
 
-        file_utils.end_euid_egid() #Release the lock.
 
         #Update the source files times.  We need to do this after we
         # are done with the locking around the euid for the output file.
-        file_utils.match_euid_egid(done_ticket['infile'])
         update_last_access_time(done_ticket['infile'])
-        file_utils.end_euid_egid() #Release the lock.
 
         ###What kind of check should be done here?
         #This error should result in the file being left where it is, but it
@@ -8868,11 +8882,12 @@ def prepare_write_to_hsm(tinfo, e):
                 
         else:
             if os.getuid() == 0:
-                #For root we need to handle things special.
+                #For root we need to handle things special and match the
+                # directory.
                 dname = pnfs.get_directory_name(request_list[i]['infile'])
                 file_utils.match_euid_egid(dname)
             else:
-                #set the effective uid and gid.
+                #set the effective uid and gid too match the source file.
                 file_utils.match_euid_egid(request_list[i]['infile'])
             
             #Create the zero length file entry and grab the inode.
@@ -8890,6 +8905,9 @@ def prepare_write_to_hsm(tinfo, e):
                     request_list[i]['status'] = \
                                    (e_errors.OSERROR, msg.strerror)
                 return request_list[i], listen_socket, udp_serv, request_list
+            except: #Un-anticipated errors.
+                file_utils.end_euid_egid() #Release the lock.
+                raise sys.exc_info()[0], sys.exc_info()[1],  sys.exc_info()[2]
 
             file_utils.end_euid_egid() #Release the lock.
 
@@ -10067,12 +10085,13 @@ def create_read_request(request, file_number,
 
             #Fundamentally this belongs in verify_read_request_consistancy(),
             # but information needed about the input file requires this check.
+            ifullname = None
             try:
                 istatinfo = p.get_stat(request['infile'])
                 ifullname = request['infile']
             except (KeyboardInterrupt, SystemExit):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except (OSError, IOError):
+            except (OSError, IOError), msg:
                 ifullname = get_ininfo(request['infile'])
                 istatinfo = p.get_stat(ifullname)
 
@@ -10487,11 +10506,9 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     #Verify that everything went ok with the transfer.
     result_dict = handle_retries(request_list, request_ticket,
                                  done_ticket, e)
-                                 #listen_socket = listen_socket,
 
     if not e_errors.is_ok(result_dict):
         #Close these before they are forgotten.
-        #close_descriptors(control_socket, data_path_socket, out_fd)
         close_descriptors(out_fd)
         return combine_dict(result_dict, request_ticket)
 
@@ -10501,22 +10518,6 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     #These functions write errors/warnings to the log file and put an
     # error status in the ticket.
 
-    try:
-        #set the effective uid and gid.
-        file_utils.match_euid_egid(out_fd)
-    except OSError, msg:
-        close_descriptors(out_fd)
-        error_ticket = {'status' : (e_errors.OSERROR,
-                                    "Unable to set euid/egid: %s" % \
-                                    (str(msg),))}
-        Trace.log(e_errors.ERROR,
-                  "euid: %s  egid: %s" % (os.geteuid(), os.getegid()))
-        #Handle the error.
-        result_dict = handle_retries(request_list, request_ticket,
-                                     error_ticket, e)
-        
-        return combine_dict(result_dict, request_ticket)
-    
     #Verify size is the same.
     verify_file_size(done_ticket, e)
 
@@ -10525,9 +10526,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
 
     if not e_errors.is_ok(result_dict):
         #Close these before they are forgotten.
-        #close_descriptors(control_socket, data_path_socket, out_fd)
         close_descriptors(out_fd)
-        file_utils.end_euid_egid() #Release the lock.
         return combine_dict(result_dict, request_ticket)
 
     #Check the CRC.
@@ -10538,13 +10537,10 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
 
     if not e_errors.is_ok(result_dict):
         #Close these before they are sforgotten.
-        #close_descriptors(control_socket, data_path_socket, out_fd)
         close_descriptors(out_fd)
-        file_utils.end_euid_egid() #Release the lock.
         return combine_dict(result_dict, request_ticket)
 
     #Update the last access and modification times respecively.
-    #update_times(done_ticket['infile'], done_ticket['outfile'])
     update_modification_time(done_ticket['outfile'])
 
     #If this is a read of a deleted file, leave the outfile permissions
@@ -10553,6 +10549,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
         set_outfile_permissions(done_ticket, e) #Writes errors to log file.
+
     ###What kind of check should be done here?
     #This error should result in the file being left where it is, but it
     # is still considered a failed transfer (aka. exit code = 1 and
@@ -10569,14 +10566,11 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     #If no error occured, this is safe to close now.
     #close_descriptors(control_socket, data_path_socket, out_fd)
     close_descriptors(out_fd)
-    file_utils.end_euid_egid() #Release the lock.
 
     #Update the source files times.  We need to do this after we
     # are done with the locking around the euid for the output file.
     if done_ticket['fc']['deleted'] == "no":
-        file_utils.match_euid_egid(done_ticket['infile'])
         update_last_access_time(done_ticket['infile'])
-        file_utils.end_euid_egid() #Release the lock.
 
     #Remove the new file from the list of those to be deleted should
     # encp stop suddenly.  (ie. crash or control-C).
@@ -10709,6 +10703,7 @@ def prepare_read_from_hsm(tinfo, e):
                 return requests_per_vol[vol][i], listen_socket, udp_serv, requests_per_vol
                 
             try:
+                """
                 if os.getuid() == 0 and os.geteuid() != 0:
                     #If we are user root and the effecting ids are not,
                     # then we need to handle this special to be able to
@@ -10728,6 +10723,8 @@ def prepare_read_from_hsm(tinfo, e):
                     create_zero_length_local_files(requests_per_vol[vol][i])
                 if not should_skip_deleted:        
                     file_utils.end_euid_egid()  #Release the lock.
+                """
+                create_zero_length_local_files(requests_per_vol[vol][i])
             except (OSError, IOError, EncpError), msg:
                 if not should_skip_deleted:
                     file_utils.end_euid_egid() #Release the lock.
@@ -10758,6 +10755,9 @@ def prepare_read_from_hsm(tinfo, e):
                     file_utils.end_euid_egid() #Release the lock.
 
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            if not should_skip_deleted:
+                    file_utils.end_euid_egid() #Release the lock.
 
     return_ticket = { 'status' : (e_errors.OK, None)}
     return return_ticket, listen_socket, udp_serv, requests_per_vol
@@ -11806,7 +11806,10 @@ class EncpInterface(option.Interface):
             
 def log_encp_start(tinfo, intf):
     global err_msg #hack for migration to report any error.
-    err_msg = ""
+
+    err_msg_lock.acquire()
+    err_msg[thread.get_ident()] = ""
+    err_msg_lock.release()
 
     log_encp_start_time = time.time()
 
@@ -11986,7 +11989,9 @@ def final_say(intf, done_ticket):
         #Setting this global, will enable the migration to report the
         # errors directly.  This might keep the admins from having to
         # constantly looking through the log file.
-        err_msg = str(status) 
+        err_msg_lock.acquire()
+        err_msg[thread.get_ident()] = str(status)
+        err_msg_lock.release()
         
         #Determine the filename(s).
         ifilename = done_ticket.get("infilepath", "")
@@ -12049,7 +12054,9 @@ def final_say(intf, done_ticket):
         #Setting this global, will enable the migration to report the
         # errors directly.  This might keep the admins from having to
         # constantly looking through the log file.
-        err_msg = str(("UNKNOWN", "UNKNOWN"))
+        err_msg_lock.acquire()
+        err_msg[thread.get_ident()] = str(("UNKNOWN", "UNKNOWN"))
+        err_msg_lock.release()
         
         #delete_at_exit.quit(1)
         return exit_status
