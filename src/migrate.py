@@ -102,7 +102,7 @@ import volume_assert_wrapper
 import delete_at_exit
 
 
-debug = True	# debugging mode
+debug = False	# debugging mode
 
 ###############################################################################
 
@@ -125,7 +125,7 @@ debug = True	# debugging mode
 #
 # The workaround (not all of the above was known about EXfer and the time
 # work on the workaround began) is to use fork and pipes instead of threads.
-USE_THREADS = True
+USE_THREADS = False
 
 #Instead of reading all the files with encp when scaning, we have a new
 # mode where volume_assert checks the CRCs for all files on a tape.  Using
@@ -143,16 +143,16 @@ PARALLEL_FILE_MIGRATION = False
 ##
 ## Currently use of this mode results in a deadlock.
 ##
-PARALLEL_FILE_TRANSFER = True
+PARALLEL_FILE_TRANSFER = False
 #We need to make sure that the multiprocessing module is available
-# for PARALLEL_FILE_TRANSFER.  If it is not set it to off.
+# for PARALLEL_FILE_TRANSFER.  If it is not set, set it to off.
 if PARALLEL_FILE_TRANSFER and \
    (not multiprocessing_available and not USE_THREADS):
     PARALLEL_FILE_TRANSFER = False
     sys.stderr.write("Warning: Module multiprocessing not available.\n")
 
 #Pass --threaded to encp if true.
-USE_THREADED_ENCP = False
+USE_THREADED_ENCP = True
 
 ##
 ## End multiple_threads / forked_processes global variables.
@@ -551,57 +551,6 @@ def nullify_pnfs(pname):
         for i in [1,2,4]:
             f = open(p1.layer_file(i), 'w')
             f.close()
-    except (KeyboardInterrupt, SystemExit):
-        if do_seteuid:
-            file_utils.end_euid_egid(reset_ids_back = True)
-        else:
-            file_utils.release_lock_euid_egid()
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except (OSError, IOError), msg:
-        #Don't worry if the file is already gone.
-        if msg.errno not in [errno.ENOENT]:
-            if do_seteuid:
-                file_utils.end_euid_egid(reset_ids_back = True)
-            else:
-                file_utils.release_lock_euid_egid()
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except:
-        if do_seteuid:
-            file_utils.end_euid_egid(reset_ids_back = True)
-        else:
-            file_utils.release_lock_euid_egid()
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-    #Now set the root ID's back.
-    if do_seteuid:
-        file_utils.end_euid_egid(reset_ids_back = True)
-    else:
-        file_utils.release_lock_euid_egid()
-        
-#We need to define our own remove function.  This one will try to remove
-# the file first, but if it fails (and is already removed) will attempt
-# to match the euid/egid to the owner of the parent directory and try the
-# delete again.
-#
-#This function uses pnfs.get_directory_name() and file_utils.match_euid_egid().
-# It would be nice have this in file_utils.py, but this could introduce
-# cyclic imports.
-def remove(path):
-
-    #To delete the file, we need to match
-    # the owner of the directory.
-    if do_seteuid:
-        dir_path = pnfs.get_directory_name(path)
-        file_utils.match_euid_egid(dir_path)
-    else:
-        file_utils.acquire_lock_euid_egid()
-        #If another thread doesn't use "reset_ids_back = True" then
-        # be sure that the euid and egid are for roots, which it what the
-        # rest of this function assumes the euid and egid are set to.
-        file_utils.set_euid_egid(0, 0)
-
-    try:
-        os.remove(path)
     except (KeyboardInterrupt, SystemExit):
         if do_seteuid:
             file_utils.end_euid_egid(reset_ids_back = True)
@@ -1807,7 +1756,7 @@ class MigrateQueue:
 	    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         self.lock.release()
 
-	if self.debug:
+        if 0: #self.debug:
 	    log(MY_TASK, "job:", str(job),
 		"requests_obtained:", str(requests_obtained),
 		"queue.full():", str(self.queue.full()),
@@ -2291,12 +2240,11 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 
 	# make sure the tmp file is not there - need to match the euid/egid
         # with the permissions of the directory and not the file itself.
-        tmp_dir = os.path.dirname(tmp_path)
-	if file_utils.e_access(tmp_dir, os.F_OK):
+	if file_utils.e_access(tmp_path, os.F_OK):
 		log(MY_TASK, "tmp file %s exists, removing it first" \
 		    % (tmp_path,))
 		try:
-			remove(tmp_path)
+			file_utils.remove(tmp_path)
 		except (OSError, IOError), msg:
 			error_log(MY_TASK, "lsdjf unable to remove %s as (uid %d, gid %d): %s" % (tmp_path, os.geteuid(), os.getegid(), str(msg)))
 			return 1
@@ -2316,15 +2264,19 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
                 use_threads = ["--threaded"]
         else:
                 use_threads = []
+        if debug:
+                use_verbose = ["--verbose", "4"]
+        else:
+                use_verbose = []
 	encp_options = ["--delayed-dismount", "2", "--ignore-fair-share",
 			"--bypass-filesystem-max-filesize-check"]
 	#We need to use --get-bfid here because of multiple copies.
 	#
-	argv = ["encp"] + use_override_deleted + encp_options + use_priority \
-	       + use_threads + use_path + [tmp_path]
+	argv = ["encp"] + use_verbose + use_override_deleted + encp_options + \
+               use_priority + use_threads + use_path + [tmp_path]
 
 	if debug:
-		cmd = "%s %s %s %s %s %s" % tuple(argv)
+		cmd = string.join(argv)
 		log(MY_TASK, "cmd =", cmd)
 
 	try:
@@ -2531,20 +2483,24 @@ def copy_files(thread_num, files, copy_queue, grab_lock, release_lock,
 
                         #Notify the interested write thread that we have a
                         # put a new item into the queue.
-                        write_cv.acquire()
+                        if USE_THREADS or multiprocessing_available:
+                            write_cv.acquire()
                         copy_queue.put(pass_along_job, block = True)
-                        write_cv.notify()
-                        write_cv.release()
+                        if USE_THREADS or multiprocessing_available:
+                            write_cv.notify()
+                            write_cv.release()
 
 			if debug:
 				log(MY_TASK, "Done passing job.")
 
 	# terminate the copy_queue
 	log(MY_TASK, "no more to copy, terminating the copy queue")
-        write_cv.acquire()
+        if USE_THREADS or multiprocessing_available:
+            write_cv.acquire()
 	copy_queue.put(SENTINEL, block = True)
-        write_cv.notify()
-        write_cv.release()
+        if USE_THREADS or multiprocessing_available:
+            write_cv.notify()
+            write_cv.release()
 
 ##########################################################################
 
@@ -2863,7 +2819,7 @@ def write_file(MY_TASK,
 			# answer is yes to avoid delfile complaing.
 			# But what about production?
 			nullify_pnfs(mig_path)
-			remove(mig_path)
+			file_utils.remove(mig_path)
 
 		except (OSError, IOError), msg:
 			error_log(MY_TASK,
@@ -2894,6 +2850,10 @@ def write_file(MY_TASK,
                 use_threads = ["--threaded"]
         else:
                 use_threads = []
+        if debug:
+                use_verbose = ["--verbose", "4"]
+        else:
+                use_verbose = []
 	encp_options = ["--delayed-dismount", "2", "--ignore-fair-share",
 			"--threaded"]
 	#Override these tags to use the original values from the source tape.
@@ -2905,8 +2865,8 @@ def write_file(MY_TASK,
 		       "--file-family-wrapper", wrapper,
 		       "--override-path", src_path]
 
-	argv = ["encp"] + encp_options + use_priority + use_library + \
-	       dst_options + use_threads + [tmp_path, mig_path]
+	argv = ["encp"] + use_verbose + encp_options + use_priority + \
+               use_library + dst_options + use_threads + [tmp_path, mig_path]
 
 	if debug:
 		cmd = string.join(argv)
@@ -2921,7 +2881,7 @@ def write_file(MY_TASK,
                     % (src_bfid, tmp_path, mig_path))
                 # delete the target and retry once
                 try:
-                        remove(mig_path)
+                        file_utils.remove(mig_path)
                 except (OSError, IOError), msg:
                         error_log(MY_TASK, "failed to remove %s as " \
                               "(uid %s, gid %s): %s" % \
@@ -2936,7 +2896,7 @@ def write_file(MY_TASK,
                                      encp.err_msg))
                         # delete the target and give up
                         try:
-                                remove(mig_path)
+                                file_utils.remove(mig_path)
                         except (OSError, IOError), msg:
                                 error_log(MY_TASK, "failed to remove %s as " \
                                           "(uid %s, gid %s): %s" % \
@@ -3031,7 +2991,7 @@ def write_new_file(job, encp, fcc, intf, db):
 			try:
 				log(MY_TASK,
 				    "removing %s" % (tmp_path,))
-				remove(tmp_path)
+				file_utils.remove(tmp_path)
 			except (OSError, IOError), msg:
 				log(MY_TASK, "error removing %s: %s" \
 				    % (tmp_path, str(msg)))
@@ -3106,7 +3066,7 @@ def write_new_file(job, encp, fcc, intf, db):
 	if has_tmp_file and not keep_file:
 		try:
 			# remove tmp file
-			remove(tmp_path)
+			file_utils.remove(tmp_path)
 			ok_log(MY_TASK, "removed %s" % (tmp_path,))
 		except (KeyboardInterrupt, SystemExit):
                         raise sys.exc_info()[0], sys.exc_info()[1], \
@@ -3160,16 +3120,25 @@ def write_new_files(thread_num, copy_queue, scan_queue, write_cv,
 
 	while 1:
 
-                #Get the next file to copy and swap from the reading thread.
 		if debug:
 			log(MY_TASK, "Getting next job for write.")
-                write_cv.acquire()
-                while not copy_queue.finished and ((initial_wait and \
-			  copy_queue.qsize() < proceed_number) \
-                                                   or copy_queue.qsize() == 0):
-                    write_cv.wait()
-                job = copy_queue.get(block = True)
-                write_cv.release()
+
+                #Get the next file to copy and swap from the reading thread.
+                if USE_THREADS or multiprocessing_available:
+                    write_cv.acquire()
+                    while not copy_queue.finished and ((initial_wait and \
+                              copy_queue.qsize() < proceed_number) \
+                                                       or copy_queue.qsize() == 0):
+                        write_cv.wait()
+                    job = copy_queue.get(block = True)
+                    write_cv.release()
+                else:
+                    while not copy_queue.finished and ((initial_wait and \
+                              copy_queue.qsize() < proceed_number) \
+                                                       or copy_queue.qsize() == 0):
+                        time.sleep(1)
+                    job = copy_queue.get(block = True)
+                    
                 if not job:
                     # We are done.  Nothing more to do.
                     break
@@ -3222,10 +3191,12 @@ def write_new_files(thread_num, copy_queue, scan_queue, write_cv,
 		log(MY_TASK, "no more to copy, terminating the scan queue")
 
                 #Since we are done, flag the condition variable.
-                scan_cv.acquire()
+                if USE_THREADS or multiprocessing_available:
+                    scan_cv.acquire()
 		scan_queue.put(SENTINEL, block = True)
-                scan_cv.notify()
-                scan_cv.release()
+                if USE_THREADS or multiprocessing_available:
+                    scan_cv.notify()
+                    scan_cv.release()
 	
 ##########################################################################
 
@@ -3335,7 +3306,7 @@ def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
 		try:
 			#If the file still exists, try deleting it.
 			nullify_pnfs(mig_path)
-			remove(mig_path)
+			file_utils.remove(mig_path)
 		except (OSError, IOError), msg:
 			error_log(MY_TASK,
 				  "migration path %s was not deleted[2]: %s" \
@@ -3416,11 +3387,15 @@ def final_scan(thread_num, scan_queue, scan_cv, intf):
 
 	#We need to wait for all copies to be written to tape before
 	# trying to do a full scan.
-        scan_cv.acquire()
-	while not scan_queue.finished:
-		#wait for the write thread to process everything first.
-		scan_cv.wait()
-        scan_cv.release()
+        if USE_THREADS or multiprocessing_available:
+                scan_cv.acquire()
+                while not scan_queue.finished:
+		       #wait for the write thread to process everything first.
+                       scan_cv.wait()
+                scan_cv.release()
+        else:
+            while not scan_queue.finished:
+                time.sleep(1)
 
 	#Loop over the files ready for scanning.
 	job = scan_queue.get(block = True)
@@ -4342,7 +4317,7 @@ def restore(bfids, intf):
                                 continue
 
 			try:
-				remove(mig_path)
+				file_utils.remove(mig_path)
 			except (OSError, IOError), msg:
                                 message = "failed to delete migration file"
                                 error_log(MY_TASK,
