@@ -4,8 +4,8 @@ a quick and not so dirty wrapper for encp so that multiple encps can be
 instantiated in the same program, probably in different threads.
 """
 
-#import string
 import sys
+import thread
 
 import Trace
 import file_utils
@@ -41,7 +41,7 @@ class Encp:
 				#return -10
 				res = -10  #Same as initial value.
 
-			self.err_msg = self.my_encp.err_msg
+			self.err_msg = self.my_encp.err_msg[thread.get_ident()]
 		except (KeyboardInterrupt, SystemExit):
 			Trace.logname = logname #Reset the log file name.
 			raise sys.exc_info()[0], sys.exc_info()[1], \
