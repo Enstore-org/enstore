@@ -280,7 +280,12 @@ def setup_signal_handling():
             if value > max_regular_signal:
                 max_regular_signal = value
     # Create the list from the range.
-    sig_leave_alone_list = range(max_regular_signal + 1, signal.SIGRTMIN)
+    SIGRTMIN = getattr(signal, "SIGRTMIN", None)
+    if SIGRTMIN:
+        sig_leave_alone_list = range(max_regular_signal + 1, SIGRTMIN)
+    else:
+        #We need this for non-Linux systems that don't define SIGRTMIN.
+        sig_leave_alone_list = []
 
     #This is a known list of signals to leave thier default handler in place.
     sig_leave_alone_list.append(signal.SIGTSTP)
