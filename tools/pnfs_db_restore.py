@@ -94,9 +94,6 @@ class PnfsDbRestore:
 
         # clean directories if exist
 
-        print cwd
-        sys.exit(0)
-
         print 'Cleaning %s'% (cwd,)
         os.system('rm -rf *')
         d='%s/log'%(os.path.dirname(cwd),)
