@@ -207,6 +207,8 @@ class Buffer:
         self.bytes_for_crc = 0L
         self.trailer_pnt = 0L
         self.client_crc_on = 0
+        self.read_stats = [0,0,0,0,0] # read block timing stats
+        self.write_stats = [0,0,0,0,0] # read block timing stats
         
     def set_wrapper(self, wrapper):
         self.wrapper = wrapper
@@ -271,6 +273,8 @@ class Buffer:
         self.client_crc_on = client_crc_on
         self.wrapper = None
         self.first_block = 1
+        self.read_stats = [0,0,0,0,0] # read block timing stats
+        self.write_stats = [0,0,0,0,0] # read block timing stats
         
     def clear(self):
         Trace.trace(10,"clear buffer start")
@@ -375,11 +379,14 @@ class Buffer:
             do_crc = 0
         data = None
         partial = None
+        t0 = time.time()
         space = self._getspace()
-        Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,)) # COMMENT THIS
+        t1 = time.time()
+        Trace.trace(222,"block_read: bytes_to_read: %s"%(nbytes,)) # COMMENT THIS
         #bytes_read = driver.read(space, 0, nbytes)
         bytes_read = driver.read(space, 0, self.blocksize)
-        Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,)) # COMMENT THIS
+        t2 = time.time()
+        Trace.trace(222,"block_read: bytes_read: %s in %s"%(bytes_read,t2-t1)) # COMMENT THIS
         if bytes_read == nbytes: #normal case
             data = space
         elif bytes_read<=0: #error
@@ -452,12 +459,18 @@ class Buffer:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 raise CRC_ERROR
                 
-
+        t3 = time.time()
         if data and fill_buffer:
             self.push(data)
             if partial:
                 self._freespace(space)
-                
+        t4 = time.time()
+        self.read_stats[0] = self.read_stats[0] + t1-t0   # total time in get_space
+        self.read_stats[1] = self.read_stats[1] + t2-t1   # total time in read
+        self.read_stats[2] = self.read_stats[2] + t3-t2   # total time in check CRC
+        self.read_stats[3] = self.read_stats[3] + t4-t3   # total time in push
+        self.read_stats[4] = self.read_stats[4] + t4-t0   # total time in block_read
+        
         return bytes_read
 
     def block_write(self, nbytes, driver):
@@ -470,10 +483,13 @@ class Buffer:
         else:
             do_crc = 0
         #Trace.trace(22,"block_write: header size %s"%(self.header_size,))
-        data = self.pull() 
+        t0 = t1 = t2 = t3 = t4 = time.time()
+        data = self.pull()
+        t1 = time.time()
         if len(data)!=nbytes:
             raise ValueError, "asked to write %s bytes, buffer has %s" % (nbytes, len(data))
         bytes_written = driver.write(data, 0, nbytes)
+        t2 = time.time()
         if bytes_written == nbytes: #normal case
             #Trace.trace(22, "block_write: bytes written %s" % (self.bytes_written,))
             number_to_skip = 0L
@@ -519,12 +535,20 @@ class Buffer:
                     except:
                         Trace.log(e_errors.ERROR,"block_write: CRC_ERROR")
                         raise CRC_ERROR
+            t3 = time.time()
             self._freespace(data)
+            t4 = time.time()
             self.bytes_written = self.bytes_written + bytes_written
 
         else: #XXX raise an exception?
             Trace.trace(22,"actually written %s" % (bytes_written,))
             self._freespace(data)
+        self.write_stats[0] = self.write_stats[0] + t1-t0   # total time in pull
+        self.write_stats[1] = self.write_stats[1] + t2-t1   # total time in write
+        self.write_stats[2] = self.write_stats[2] + t3-t2   # total time in check CRC
+        self.write_stats[3] = self.write_stats[3] + t4-t3   # total time in freespace
+        self.write_stats[4] = self.write_stats[4] + t4-t0   # total time in block_write
+        Trace.trace(22, "WS %s"%(self.write_stats,))
         return bytes_written
 
         
@@ -1726,6 +1750,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
+        Trace.trace(20,"update_lm: dont_update=%s" % (self.dont_update_lm,))
         if self.state == IDLE:
             # check memory usage and if bad restart
             self.memory_usage()
@@ -2005,7 +2030,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # second - state
         # third -  reset timer
         # fourth - error source
-
+        Trace.trace(20," need_update %s"%(self.need_lm_update,))
         if self.need_lm_update[0]:
             Trace.trace(20," need_update calling update_lm") 
             self.update_lm(state = self.need_lm_update[1],
@@ -2203,6 +2228,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         failed = 0
         self.media_transfer_time = 0.
         bloc_loc = 0L
+        idle_time = 0. # accumulative time when not writing
 
         if self.driver_type == 'FTTDriver':
             try:
@@ -2307,6 +2333,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                       self.bytes_to_write, self.buffer.nbytes(), time.time()))
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
+            loop_start = time.time()
+
             Trace.trace(33,"total_bytes %s total_bytes_written %s"%(self.bytes_to_write, self.bytes_written))
             if self.tr_failed:
                 self.tape_driver.flush() # to empty buffer and to release device from this thread
@@ -2371,6 +2399,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     netrate, junk = self.net_driver.rates()
                     taperate = self.max_rate
                     if taperate > 0:
+                        # if network rate < taperate
+                        # increase the water mark
+                        # otherwise set it to self.min_buffer
                         ratio = netrate/(taperate*1.0)
                         optimal_buf = self.bytes_to_transfer * (1-ratio)
                         optimal_buf = min(optimal_buf, 0.5 * self.max_buffer)
@@ -2408,7 +2439,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 failed = 1
                 break
-            self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
+            t2 = time.time()
+            self.media_transfer_time = self.media_transfer_time + (t2-t1)
+            idle_time = idle_time + t1 - loop_start
             if bytes_written != nbytes:
                 self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
                                      (bytes_written, nbytes), error_source=TAPE)
@@ -2502,14 +2535,39 @@ class Mover(dispatching_worker.DispatchingWorker,
                 new_bloc_loc = 0L
                 if self.driver_type == 'FTTDriver':
 
-                    stats = self.tape_driver.get_stats()
+
+
+                    read_errors = -1
+                    write_errors = -1
+
                     try:
+                        stats = self.tape_driver.get_stats()
+                        block_n = stats[self.ftt.BLOCK_NUMBER]
+                        tot_blocks = stats[self.ftt.BLOCK_TOTAL]
                         new_bloc_loc = long(stats[self.ftt.BLOC_LOC])
+                        block_size = stats[self.ftt.BLOCK_SIZE]
+                        bot = stats[self.ftt.BOT]
+                        read_errors = long(stats[self.ftt.READ_ERRORS])
+                        write_errors = long(stats[self.ftt.WRITE_ERRORS])
+
                     except  self.ftt.FTTError, detail:
                         self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+                        return
 
 
                     Trace.log(e_errors.INFO, 'filemarks written. Tape %s absolute location in blocks %s'%(self.current_volume, new_bloc_loc,))
+                    Trace.log(e_errors.INFO, "write_tape timing:pull %s write %s crc_check %s freespace %s block_write %s idle %s" %
+                              (self.buffer.write_stats[0],
+                               self.buffer.write_stats[1],
+                               self.buffer.write_stats[2],
+                               self.buffer.write_stats[3],
+                               self.buffer.write_stats[4],
+                               idle_time))
+
+                    Trace.log(e_errors.INFO, 'drive stats after write. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
+                              (self.current_volume, block_n, block_size, new_bloc_loc, tot_blocks, bot, read_errors, write_errors))
+                    
+
                     self.tape_driver.flush()
                     self.media_transfer_time = self.media_transfer_time + (time.time()-t1) # include filemarks into drive time
                     Trace.trace(31, "cur %s, initial %s, last %s, blocks %s, headers %s trailers %s"%(new_bloc_loc, self.initial_abslute_location, self.current_absolute_location,self.last_blocks_written, len(self.header_labels), len(self.eof_labels)))
@@ -2679,6 +2737,28 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
                     return
 
+
+                read_errors = -1
+                write_errors = -1
+
+                try:
+                    stats = self.tape_driver.get_stats()
+                    block_n = stats[self.ftt.BLOCK_NUMBER]
+                    tot_blocks = stats[self.ftt.BLOCK_TOTAL]
+                    new_bloc_loc = stats[self.ftt.BLOC_LOC]
+                    block_size = stats[self.ftt.BLOCK_SIZE]
+                    bot = stats[self.ftt.BOT]
+                    read_errors = long(stats[self.ftt.READ_ERRORS])
+                    write_errors = long(stats[self.ftt.WRITE_ERRORS])
+
+                except  self.ftt.FTTError, detail:
+                    self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+                    return
+                
+                Trace.log(e_errors.INFO, 'drive stats after write. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
+                          (self.current_volume, block_n, block_size, bloc_loc, tot_blocks, bot, read_errors, write_errors))
+
+
             if self.update_after_writing():
                 self.files_written_cnt = self.files_written_cnt + 1
                 self.bytes_written_last = self.bytes_written
@@ -2717,8 +2797,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         Trace.trace(24, "state %s read %s to_read %s"%(state_name(self.state),self.bytes_read, self.bytes_to_read))
         t_started = time.time()
+        idle_time = 0. # accumulative time when not reading
         break_here = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+            loop_start = time.time()
             Trace.trace(33,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
@@ -2766,11 +2848,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_read = 0
             try:
                 t1 = time.time()
-                Trace.trace(33,"bytes to read %s"%(nbytes,))
                 bytes_read = self.buffer.block_read(nbytes, driver)
-                Trace.trace(33,"bytes read %s"%(bytes_read,))
                 nblocks = nblocks + 1
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
+                idle_time = idle_time + t1 - loop_start
+                Trace.trace(33,"bytes to read %s, bytes read %s"%(nbytes, bytes_read))
             except MemoryError:
                 #raise exceptions.MemoryError # to test this thread
                 exc, detail, tb = sys.exc_info()
@@ -2929,6 +3011,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         block_n = tot_blocks = bloc_loc = block_size = bot = 0L
         if self.driver_type == 'FTTDriver':
+            read_errors = -1
+            write_errors = -1
+            
             try:
                 stats = self.tape_driver.get_stats()
                 block_n = stats[self.ftt.BLOCK_NUMBER]
@@ -2936,11 +3021,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bloc_loc = stats[self.ftt.BLOC_LOC]
                 block_size = stats[self.ftt.BLOCK_SIZE]
                 bot = stats[self.ftt.BOT]
+                read_errors = long(stats[self.ftt.READ_ERRORS])
+                write_errors = long(stats[self.ftt.WRITE_ERRORS])
+                
             except  self.ftt.FTTError, detail:
                 self.transfer_failed(e_errors.INFO, "error getting stats after read %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
 
 
-            Trace.log(e_errors.INFO, 'drive stats after read. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s'%(self.current_volume, location, block_n, block_size, bloc_loc, tot_blocks, bot))
+            Trace.log(e_errors.INFO, 'drive stats after read. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
+                      (self.current_volume, location, block_n, block_size, bloc_loc, tot_blocks, bot, read_errors, write_errors))
         
         if break_here and self.method == 'read_next':
             self.bytes_to_write = self.bytes_read # set correct size for bytes to write
@@ -3067,6 +3156,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.time_in_state = time.time()- t_started
         Trace.log(e_errors.INFO, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
+        
+        Trace.log(e_errors.INFO, "read_tape timing:get_space %s read %s crc_check %s push %s block_read %s idle %s" %
+                  (self.buffer.read_stats[0],
+                   self.buffer.read_stats[1],
+                   self.buffer.read_stats[2],
+                   self.buffer.read_stats[3],
+                   self.buffer.read_stats[4],
+                   idle_time))
+
 
         # this is for crc check in ASSERT mode
         if self.mode == ASSERT:
@@ -3417,6 +3515,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         #At this point the media changer claims the correct volume is loaded;
         have_tape = 0
+        self.need_lm_update = (1, None, 0, None)
         for retry_open in range(3):
             Trace.trace(10, "position media")
             Trace.trace(10, "tape_driver.open mode %s"%(mode_name(self.mode),))
@@ -3504,7 +3603,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 keys.sort()
                 Trace.trace(24, 'keys %s'%(keys,))
                 stat = e_errors.OK
-                # start client netwrok monitor to detect
+                # start client network monitor to detect
                 # that clinet is gone and interruprt assert
                 self.interrupt_assert = False
                 self.run_in_thread('network_monitor', self.check_connection)
@@ -3533,6 +3632,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(24, "t32 assert_ok returned" )
                     
                     self.assert_ok.wait()
+                    self.need_lm_update = (1, None, 0, None)
                     self.assert_ok.clear()
                     self.net_driver.close()
                     Trace.trace(24, "assert return: %s"%(self.assert_return,))
@@ -6021,6 +6121,9 @@ class DiskMover(Mover):
                     netrate, junk = self.net_driver.rates()
                     taperate = self.max_rate
                     if taperate > 0:
+                        # if network rate < taperate
+                        # increase the water mark
+                        # otherwise set it to self.min_buffer
                         ratio = netrate/(taperate*1.0)
                         optimal_buf = self.bytes_to_transfer * (1-ratio)
                         optimal_buf = min(optimal_buf, 0.5 * self.max_buffer)
@@ -6409,9 +6512,9 @@ class DiskMover(Mover):
         return string.join((ip_map,volume_family,'%s'%(long(time.time()*1000),)),':')
 
     def no_work(self, ticket):
-        x = ticket # to trick pychecker
-        if self.state is HAVE_BOUND:
-            self.dismount_volume(after_function=self.idle)
+        #x = ticket # to trick pychecker
+        Trace.trace(98, "no_work %s"%(ticket,))
+        # no_work is No work: do nothing.
         
     def setup_transfer(self, ticket, mode):
         self.lock_state()
@@ -7075,7 +7178,7 @@ if __name__ == '__main__':
     mover.handle_generic_commands(intf)
     mover.start()
     mover.starting = 0
-
+    #mover._do_print({'levels':[5,20, 98]})
     while 1:
         try:
             mover.serve_forever()

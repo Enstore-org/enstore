@@ -11,7 +11,9 @@
 #Notes: Various functions return 0 for the server is not running an 1 if it is.
 
 # system imports
+#
 import sys
+#import re
 import os
 import string
 import errno
@@ -19,7 +21,6 @@ import socket
 import signal
 import pwd
 import time
-import select
 
 # enstore imports
 import setpath
@@ -29,11 +30,22 @@ import enstore_functions
 import enstore_functions2
 import udp_client
 import Trace
+#import enstore_start
 import generic_client
 import option
 
+#import alarm_client
 import configuration_client
+#import configuration_server
+#import file_clerk_client
+#import inquisitor_client
+#import library_manager_client
 import log_client
+#import media_changer_client
+#import mover_client
+#import monitor_client
+#import volume_clerk_client
+#import ratekeeper_client
 import event_relay_client
 import enstore_start
 
@@ -113,14 +125,9 @@ def find_servers_by_type(csc, type):
                 config_dict = config_dict['dump']
                 config_dict['status'] = status
         else:
-            config_dict = {'status':(e_errors.TIMEDOUT,
-                                     enstore_constants.CONFIGURATION_SERVER)}
-    except (socket.error, select.error, e_errors.EnstoreError), msg:
-        if msg.errno == errno.ETIMEDOUT:
-            config_dict = {'status':(e_errors.TIMEDOUT,
-                                     enstore_constants.CONFIGURATION_SERVER)}
-        else:
-            config_dict = {'status':(e_errors.NET_ERROR, str(msg))}
+            config_dict = {'status':(e_errors.TIMEDOUT, None)}
+    except udp_client.UDPError, msg:
+        config_dict = {'status':(e_errors.NET_ERROR, str(msg))}
     except errno.errorcode[errno.ETIMEDOUT]:
         config_dict = {'status':(e_errors.TIMEDOUT, None)}
     if not e_errors.is_ok(config_dict) and \
@@ -201,11 +208,8 @@ def quit_process(gc, use_alias=0):
     try:
         #rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
         rtn = gc.quit(SEND_TO, SEND_TM)
-    except (socket.error, select.error, e_errors.EnstoreError), msg:
-        if msg.errno == errno.ETIMEDOUT:
-            rtn = {'status':(e_errors.TIMEDOUT, gc.server_name)}
-        else:
-            rtn = {'status':(e_errors.NET_ERROR, str(msg))}
+    except udp_client.UDPError, msg:
+        rtn = {'status':(e_errors.NET_ERROR, str(msg))}
     except errno.errorcode[errno.ETIMEDOUT]:
         rtn = {'status':(e_errors.TIMEDOUT, None)}
     if e_errors.is_ok(rtn):
@@ -237,11 +241,8 @@ def stop_server(gc, servername):
         u = udp_client.UDPClient()
 	try:
             rtn1 = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
-            if msg.errno == errno.ETIMEDOUT:
-                rtn1 = {'status':(e_errors.TIMEDOUT, servername)}
-            else:
-                rtn1 = {'status':(e_errors.NET_ERROR, str(msg))}
+        except udp_client.UDPError, msg:
+            rtn1 = {'status':(e_errors.NET_ERROR, str(msg))}
             if not e_errors.is_ok(rtn1):
                 return 1
         except errno.errorcode[errno.ETIMEDOUT]:
@@ -410,12 +411,8 @@ def check_event_relay(csc):
             try:
                 #rtn = 0 implies alive, rtn = 1 implies dead.
                 rtn = erc.alive()
-            except (socket.error, select.error, e_errors.EnstoreError), msg:
-                if msg.errno == errno.ETIMEDOUT:
-                    rtn = {'status':(e_errors.TIMEDOUT,
-                                     enstore_constants.EVENT_RELAY)}
-                else:
-                    rtn = {'status':(e_errors.NET_ERROR, str(msg))}
+            except udp_client.UDPError, msg:
+                rtn = {'status':(e_errors.NET_ERROR, str(msg))}
             except errno.errorcode[errno.ETIMEDOUT]:
                 rtn = {'status':(e_errors.TIMEDOUT,
                                  errno.errorcode[errno.ETIMEDOUT])}

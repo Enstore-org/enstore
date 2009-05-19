@@ -236,9 +236,6 @@ const char unknown_mandatory_file_locking[] =
 #define MMAP_MEMORY      1U
 #define MALLOC_MEMORY    2U
 
-#define ZERO ((size_t)0ULL) /* For filling struct buffer "stored" values
-			     * in a 32bit/64bit safe way. */
-
 /***************************************************************************
  * definitions
  **************************************************************************/
@@ -334,6 +331,13 @@ struct transfer
   char* filename;         /*filename where error occured*/
 };
 
+/* Two pointers for use by the monitor thread. */
+struct t_monitor
+{
+  struct transfer *read_info;  /* Pointer to the read direction struct. */
+  struct transfer *write_info; /* Pointer to the write direction struct. */
+};
+
 #ifdef PROFILE
 struct profile
 {
@@ -344,35 +348,6 @@ struct profile
 };
 #endif
 
-/* Pointers to a set of variables for managing the in memory buffering. */
-struct buffer
-{
-size_t *stored;               /*pointer to array of bytes in each bin*/
-char **buffer;                /*pointer to array of buffer bins*/
-size_t *buffer_type;          /*type of items in buffer array*/
-pthread_mutex_t *buffer_lock; /*pointer to array of bin mutex locks*/
-};
-
-/* Various locks and related stuff. */
-struct locks
-{
-pthread_mutex_t done_mutex;   /*main thread waits for an exited thread*/
-pthread_mutex_t monitor_mutex;/*used to sync the monitoring*/
-pthread_cond_t done_cond;     /*main thread waits for an exited thread*/
-pthread_cond_t next_cond;     /*used to signal peer thread to continue*/
-#ifdef DEBUG
-pthread_mutex_t print_lock;   /*order debugging output*/
-#endif
-};
-
-/* Two pointers for use by the monitor thread. */
-struct t_monitor
-{
-  struct transfer *read_info;  /* Pointer to the read direction struct. */
-  struct transfer *write_info; /* Pointer to the write direction struct. */
-  struct locks *thread_locks;  /* Pointer to pthread locking objects. */
-  struct buffer *mem_buff;     /* Pointer to memory buffer objects. */
-};
 
 /***************************************************************************
  * prototypes
@@ -417,9 +392,7 @@ static struct transfer* pack_return_values(struct transfer *info,
 					   int errno_val, int exit_status,
 					   char* msg,
 					   double transfer_time,
-					   char *filename, int line,
-					   struct locks *thread_locks);
-
+					   char *filename, int line);
 /*
  * elapsed_time():
  * Return the difference between the two struct timeval{}s as a floating
@@ -510,12 +483,8 @@ static int setup_posix_io(struct transfer *info);
  * transfer variable.  cleanup_segment() should only be passed the write
  * direction transfer struct.
  */
-static void* get_next_segment(int bin, struct buffer *mem_buff,
-			      struct transfer *info,
-			      struct locks *thread_locks);
-static int cleanup_segment(int bin, struct buffer *mem__buff,
-			   struct transfer *info,
-			   struct locks *thread_locks);
+static void* get_next_segment(int bin, struct transfer *info);
+static int cleanup_segment(int bin, struct transfer *info);
 
 /*
  * get_segments() and cleanup_segments():
@@ -523,22 +492,14 @@ static int cleanup_segment(int bin, struct buffer *mem__buff,
  * However, they are only used in the case when memory mapped io is
  * copied to another memory mapped i/o region.  They are implimented using
  * get_next_segment() and cleanup_segment(). */
-static void* get_next_segments(struct buffer *mem_buff,
-			       struct transfer *info,
-			       struct locks *thread_locks);
-static int cleanup_segments(struct buffer *mem_buff,
-			    struct transfer *info,
-			    struct locks *thread_locks);
+static void* get_next_segments(struct transfer *info);
+static int cleanup_segments(struct transfer *info);
 
 /*
  * remove_lock():
  * If the file descriptor passed in the struct still has the file locked,
  * free the lock. */
-static int remove_lock(struct transfer *info, struct locks *thread_locks);
-/* This version does not call pack_return_values() and is inteaded to
- * only be called from pack_return_values().  The nr stands for
- * Non-Recursive.*/
-static int remove_lock_nr(struct transfer *info);
+static int remove_lock(struct transfer *info);
 
 /*
  * finish_write() and finish_read():
@@ -546,8 +507,8 @@ static int remove_lock_nr(struct transfer *info);
  * appropriate syncing function for posix, direct or mmapped i/o.
  * The return value is -1 on error and zero on success.
  */
-static int finish_write(struct transfer *info, struct locks *thread_locks);
-static int finish_read(struct transfer *info, struct locks *thread_locks);
+static int finish_write(struct transfer *info);
+static int finish_read(struct transfer *info);
 
 /*
  * do_select():
@@ -555,7 +516,7 @@ static int finish_read(struct transfer *info, struct locks *thread_locks);
  * direction of the transfer the transfer struct paramater specifies.
  * This is really just a shell around select(), since only on FD is used.
  */
-static int do_select(struct transfer *info, struct locks *thread_locks);
+static int do_select(struct transfer *info);
 
 /*
  * *read() and *write():
@@ -567,27 +528,26 @@ static int do_select(struct transfer *info, struct locks *thread_locks);
  * return value is the amount of data read/written or -1 for error.
  */
 static ssize_t mmap_read(void *dst, size_t bytes_to_transfer,
-			 struct transfer *info, struct locks *thread_locks);
+			 struct transfer *info);
 static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
-			  struct transfer *info, struct locks *thread_locks);
+			  struct transfer *info);
 static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
-			  struct transfer* info, struct locks *thread_locks);
+			  struct transfer* info);
 static ssize_t posix_write(void *src, size_t bytes_to_transfer,
-			   struct transfer* info, struct locks *thread_locks);
+			   struct transfer* info);
 
 /*
  * thread_init():
  * Initialize the global mutex locks and condition variables.
  */
-static int thread_init(struct transfer *info, struct locks *thread_locks);
+static int thread_init(struct transfer *info);
 
 /*
  * thread_wait():
  * If the other read/write thread is slow, wait for the specified bin to become
  * available.  Return 1 on error and 0 on success.
  */
-static int thread_wait(size_t bin, struct buffer *mem_buff,
-		       struct transfer *info, struct locks *thread_locks);
+static int thread_wait(size_t bin, struct transfer *info);
 
 /*
  * thread_signal():
@@ -595,8 +555,7 @@ static int thread_wait(size_t bin, struct buffer *mem_buff,
  * This function will also 'raise' a condional variable signal to wake
  * up the other read/write thread.  Return 1 on error and 0 on success.
  */
-static int thread_signal(size_t bin, size_t bytes, struct buffer *mem_buff,
-			 struct transfer *info, struct locks *thread_locks);
+static int thread_signal(size_t bin, size_t bytes, struct transfer *info);
 
 /*
  * thread_collect():
@@ -673,7 +632,7 @@ int get_quotas(char *block_device, int type, struct dqblk* my_quota);
  * Returns true if the bin (aka bucket) 'bin' in the 'stored' global variable,
  * is empty.  False if it is full.
  */
-static int is_stored_empty(unsigned int bin, struct buffer *mem_buff);
+static int is_stored_empty(unsigned int bin);
 
 /*
  * buffer_empty() and buffer_full():
@@ -681,8 +640,8 @@ static int is_stored_empty(unsigned int bin, struct buffer *mem_buff);
  * true; false otherwise.  If all the values in stored are zero,
  * buffer_empty() returns true; false otherwise.
  */
-static int buffer_empty(size_t array_size, struct buffer *mem_buff);
-static int buffer_full(size_t array_size, struct buffer *mem_buff);
+static int buffer_empty(size_t array_size);
+static int buffer_full(size_t array_size);
 
 /*
  * sig_alarm():
@@ -698,9 +657,7 @@ static void print_profile(struct profile *profile_data, int profile_count);
 #endif /*PROFILE*/
 #ifdef DEBUG
 static void print_status(FILE *fp, unsigned int bytes_transfered,
-			 unsigned int bytes_remaining, struct buffer *mem_buff,
-			 struct transfer *info,
-                         struct locks *thread_locks);
+			 unsigned int bytes_remaining, struct transfer *info);
 #endif /*DEBUG*/
 
 /*
@@ -725,24 +682,7 @@ static int print_socket_info(int fd);
  * globals
  **************************************************************************/
 
-/*
- * In general globals variables in a threaded program cause problems.  Those
- * listed here are used between the sets of threads created by
- * do_read_write_threaded().  All variables that are used within a set of
- * threads created in do_read_write_threaded() are themselves created in
- * do_read_write_threaded().
- */
-
-static pthread_mutex_t collect_mutex; /*used to sync the monitoring*/
-static sigjmp_buf alarm_join;         /*handle detection of hung threads*/
-
-
 #ifndef STAND_ALONE
-
-/*
- * The following python globals are used by python for interfacing this
- * C code to appear as a python module to the python interpreter.
- */
 
 static PyObject *EXErrObject;
 
@@ -773,6 +713,19 @@ static PyMethodDef EXfer_Methods[] = {
 };
 
 #endif /* ! STAND_ALONE */
+
+static size_t *stored;               /*pointer to array of bytes in each bin*/
+static char **buffer;                /*pointer to array of buffer bins*/
+static size_t *buffer_type;          /*type of items in buffer array*/
+static pthread_mutex_t *buffer_lock; /*pointer to array of bin mutex locks*/
+static pthread_mutex_t done_mutex;   /*main thread waits for an exited thread*/
+static pthread_mutex_t monitor_mutex;/*used to sync the monitoring*/
+static pthread_cond_t done_cond;     /*main thread waits for an exited thread*/
+static pthread_cond_t next_cond;     /*used to signal peer thread to continue*/
+#ifdef DEBUG
+static pthread_mutex_t print_lock;   /*order debugging output*/
+#endif
+static sigjmp_buf alarm_join;        /*handle detection of hung threads*/
 
 /***************************************************************************
  user defined functions
@@ -821,23 +774,22 @@ static void sig_alarm(int sig_num)
    if(sig_num != SIGALRM)
       return;  /* Should never happen. */
    
-   /* Return execution to thread_collect(). */
+   /* Return execution to collect_thread(). */
    siglongjmp(alarm_join, 1);
 }
 
-static int is_other_thread_done(struct transfer* info,
-				struct locks *thread_locks)
+static int is_other_thread_done(struct transfer* info)
 {
   int rtn;
    
-  if((pthread_mutex_lock(&(thread_locks->done_mutex))) != 0)
+  if((pthread_mutex_lock(&done_mutex)) != 0)
   {
      return -1;
   }
   
   rtn = info->other_thread_done;
   
-  if((pthread_mutex_unlock(&(thread_locks->done_mutex))) != 0)
+  if((pthread_mutex_unlock(&done_mutex)) != 0)
   {
      return -1;
   }
@@ -846,22 +798,22 @@ static int is_other_thread_done(struct transfer* info,
 }
 
 /* Return 0 for false, >1 for true, <1 for error. */
-static int is_stored_empty(unsigned int bin, struct buffer *mem_buff)
+static int is_stored_empty(unsigned int bin)
 {
   int rtn = 0; /*hold return value*/
 
   pthread_testcancel(); /* Don't continue if the thread should stop now. */
   
   /* Determine if the lock for the buffer_lock bin, bin, is ready. */
-  if(pthread_mutex_lock(&(mem_buff->buffer_lock)[bin]) != 0)
+  if(pthread_mutex_lock(&buffer_lock[bin]) != 0)
   {
     return -1; /* If we fail here, we are likely to see it again. */
   }
-  if(mem_buff->stored[bin] == (size_t)0ULL)
+  if(stored[bin] == 0)
   {
     rtn = 1;
   }
-  if(pthread_mutex_unlock(&(mem_buff->buffer_lock)[bin]) != 0)
+  if(pthread_mutex_unlock(&buffer_lock[bin]) != 0)
   {
     return -1; /* If we fail here, we are likely to see it again. */
   }
@@ -871,14 +823,14 @@ static int is_stored_empty(unsigned int bin, struct buffer *mem_buff)
   return rtn;
 }
 
-static int buffer_empty(size_t array_size, struct buffer *mem_buff)
+static int buffer_empty(size_t array_size)
 {
   unsigned int i;   /*loop counting*/
   int rtn = -1; /*return*/ 
 
   for(i = 0; i < array_size; i++)
   {
-    if(!is_stored_empty(i, mem_buff))
+    if(!is_stored_empty(i))
     {
       rtn = 0;
       break;
@@ -889,14 +841,14 @@ static int buffer_empty(size_t array_size, struct buffer *mem_buff)
   return rtn;
 }
 
-static int buffer_full(size_t array_size, struct buffer *mem_buff)
+static int buffer_full(size_t array_size)
 {
   unsigned int i;   /*loop counting*/
   int rtn = -1; /*return*/
   
   for(i = 0; i < array_size; i++)
   {
-    if(is_stored_empty(i, mem_buff))
+    if(is_stored_empty(i))
     {
       rtn = 0;
       break;
@@ -906,7 +858,6 @@ static int buffer_full(size_t array_size, struct buffer *mem_buff)
   
   return rtn;
 }
-
 
 /* Pack the arguments into a struct trasnfer{}. */
 static struct transfer* pack_return_values(struct transfer* retval,
@@ -915,18 +866,14 @@ static struct transfer* pack_return_values(struct transfer* retval,
 					   int exit_status,
 					   char* message,
 					   double transfer_time,
-					   char* filename, int line,
-					   struct locks *thread_locks)
+					   char* filename, int line)
 {
-  if(thread_locks && &(thread_locks->done_mutex))
-  {
-    pthread_testcancel(); /* Don't continue if the thread should stop now. */
+  pthread_testcancel(); /* Don't continue if the thread should stop now. */
 
-    /* Do not bother with checking return values for errors.  Should the
-     * pthread_* functions fail at this point, there is notthing else to
-     * do but raise the condition variable and return. */
-    pthread_mutex_lock(&(thread_locks->done_mutex));
-  }
+  /* Do not bother with checking return values for errors.  Should the
+   * pthread_* functions fail at this point, there is notthing else to
+   * do but raise the condition variable and return. */
+  pthread_mutex_lock(&done_mutex);
 
   retval->crc_ui = crc_ui;               /* Checksum */
   retval->errno_val = errno_val;         /* Errno value if error occured. */
@@ -937,19 +884,16 @@ static struct transfer* pack_return_values(struct transfer* retval,
   retval->filename = filename;           /* Filename an error occured on. */
   retval->done = 1;                      /* Flag saying transfer half done. */
 
-  remove_lock_nr(retval); /* If necessary remove the file lock. */
+  remove_lock(retval); /* If necessary remove the file lock. */
   
-  if(thread_locks && &(thread_locks->done_mutex))
-  {
-     /* Putting the following here is just the lazy thing to do. */
-     /* For this code to work this must be executed after setting retval->done
-      * to 1 above. */
-     pthread_cond_signal(&(thread_locks->done_cond));
-     
-     pthread_mutex_unlock(&(thread_locks->done_mutex));
-     
-     pthread_testcancel(); /* Don't continue if the thread should stop now. */
-  }
+  /* Putting the following here is just the lazy thing to do. */
+  /* For this code to work this must be executed after setting retval->done
+   * to 1 above. */
+  pthread_cond_signal(&done_cond);
+
+  pthread_mutex_unlock(&done_mutex);
+
+  pthread_testcancel(); /* Don't continue if the thread should stop now. */
   
   return retval;
 }
@@ -1050,18 +994,13 @@ return max2ull(max2ull(max1, max2), max3);
 
 #ifdef DEBUG
 static void print_status(FILE* fp, unsigned int bytes_transfered,
-			 unsigned int bytes_remaining, struct buffer *mem_buff,
-			 struct transfer *info,
-                         struct locks *thread_locks)
+			 unsigned int bytes_remaining, struct transfer *info)
 {
   unsigned int i;
   char debug_print;
   char direction;
 
-  if(thread_locks && &(thread_locks->print_lock))
-  {
-     pthread_mutex_lock(&(thread_locks->print_lock));
-  }
+  pthread_mutex_lock(&print_lock);
 
   /* Print F if entire bin is transfered, P if bin partially transfered. */
   debug_print = (bytes_remaining) ? 'P' : 'F';
@@ -1070,18 +1009,15 @@ static void print_status(FILE* fp, unsigned int bytes_transfered,
   
   (void)fprintf(fp, "%c%c bytes: %15llu crc: %10u | ",
 	  direction, debug_print,
-	  (unsigned long long)info->bytes_transfered, info->crc_ui);
+	  (unsigned long long)info->bytes, info->crc_ui);
 
   for(i = 0; i < info->array_size; i++)
   {
-     (void)fprintf(fp, " %6u", (unsigned int)mem_buff->stored[i]);
+    (void)fprintf(fp, " %6d", stored[i]);
   }
   (void)fprintf(fp, "\n");
 
-  if(thread_locks && &(thread_locks->print_lock))
-  {
-     pthread_mutex_unlock(&(thread_locks->print_lock));
-  }
+  pthread_mutex_unlock(&print_lock);
 
 }
 #endif /*DEBUG*/
@@ -1292,7 +1228,7 @@ static int setup_mmap_io(struct transfer *info)
   if(fstat(fd, &file_info))
   {
     pack_return_values(info, 0, errno, FILE_ERROR, "fstat failed",
-		       0.0, __FILE__, __LINE__, NULL);
+		       0.0, __FILE__, __LINE__);
     return 1;
   }
   /* If the file descriptor is not a file, don't continue. */
@@ -1329,7 +1265,7 @@ static int setup_mmap_io(struct transfer *info)
      if(ftruncate(fd, bytes) < 0)
      {
 	pack_return_values(info, 0, errno, FILE_ERROR, "ftruncate failed",
-			   0.0, __FILE__, __LINE__, NULL);
+			   0.0, __FILE__, __LINE__);
 	return 1;
      }
   }
@@ -1378,14 +1314,13 @@ static int setup_mmap_io(struct transfer *info)
 	  if(ftruncate(fd, file_info.st_size) < 0)
 	  {
 	     pack_return_values(info, 0, errno, FILE_ERROR,
-				"ftruncate failed", 0.0, __FILE__, __LINE__,
-		                NULL);
+				"ftruncate failed", 0.0, __FILE__, __LINE__);
 	     return 1;
 	  }
 	}
 	
 	pack_return_values(info, 0, errno, FILE_ERROR,
-			   "mmap failed", 0.0, __FILE__, __LINE__, NULL);
+			   "mmap failed", 0.0, __FILE__, __LINE__);
 	return 1;
      }
   }
@@ -1395,7 +1330,7 @@ static int setup_mmap_io(struct transfer *info)
   if(munmap(mmap_ptr, mmap_len))
   {
      pack_return_values(info, 0, errno, FILE_ERROR,
-			"munmap failed", 0.0, __FILE__, __LINE__, NULL);
+			"munmap failed", 0.0, __FILE__, __LINE__);
      return 1;
   }
 
@@ -1404,38 +1339,34 @@ static int setup_mmap_io(struct transfer *info)
 
 /* Returns NULL on error, the new memory address of the read direction
  * is returned on success. */
-static void* get_next_segments(struct buffer *mem_buff,
-			       struct transfer *info,
-			       struct locks *thread_locks)
+static void* get_next_segments(struct transfer *info)
 {
    if(info->mmap_io && info->other_mmap_io)
    {
       info->other_mmap_io = 0;
-      if(get_next_segment(1, mem_buff, info, thread_locks) == NULL)
+      if(get_next_segment(1, info) == NULL)
       {
 	 return NULL;
       }
       info->other_mmap_io = 1;
 
       info->mmap_io = 0;
-      if(get_next_segment(0, mem_buff, info, thread_locks) == NULL)
+      if(get_next_segment(0, info) == NULL)
       {
 	 return NULL;
       }
       info->mmap_io = 1;
    }
-   return mem_buff->buffer[1];
+   return buffer[1];
 }
 
 /* Returns NULL on error, the new memory address is returned on success. */
-static void* get_next_segment(int bin, struct buffer *mem_buff,
-			      struct transfer *info,
-			      struct locks *thread_locks)
+static void* get_next_segment(int bin, struct transfer *info)
 {
   int advise_holder = 0; /* Advise hints for madvise. */
   size_t mmap_len;
   void* mmap_ptr;
-  size_t mmap_io = ZERO;
+  size_t mmap_io = 0U;
   int fd = -1;
   int mmap_permissions = 0;
 
@@ -1444,8 +1375,7 @@ static void* get_next_segment(int bin, struct buffer *mem_buff,
   if(info->transfer_direction > 0)
   {
      pack_return_values(info, 0, errno, FILE_ERROR,
-			"read values only", 0.0, __FILE__, __LINE__,
-	                thread_locks);
+			"read values only", 0.0, __FILE__, __LINE__);
      return NULL;
   }
 
@@ -1486,8 +1416,7 @@ static void* get_next_segment(int bin, struct buffer *mem_buff,
 			 info->size - info->bytes_to_go)) == MAP_FAILED)
      {
 	pack_return_values(info, 0, errno, FILE_ERROR,
-			   "mmap failed", 0.0, __FILE__, __LINE__,
-			   thread_locks);
+			   "mmap failed", 0.0, __FILE__, __LINE__);
 	return NULL;
      }
 
@@ -1508,20 +1437,18 @@ static void* get_next_segment(int bin, struct buffer *mem_buff,
 	   {
 	      mmap_ptr = MAP_FAILED; /* Set this explicitly. */
 	      pack_return_values(info, 0, errno, FILE_ERROR,
-				 "munmap failed", 0.0, __FILE__, __LINE__,
-		                 thread_locks);
+				 "munmap failed", 0.0, __FILE__, __LINE__);
 	      return NULL;
 	   }
 	   
 	   pack_return_values(info, 0, errno, FILE_ERROR,
-			      "madvise failed", 0.0, __FILE__, __LINE__,
-	                      thread_locks);
+			      "madvise failed", 0.0, __FILE__, __LINE__);
 	   return NULL;
 	}
      }
 
-     mem_buff->buffer[bin] = mmap_ptr;
-     mem_buff->buffer_type[bin] = MMAP_MEMORY;
+     buffer[bin] = mmap_ptr;
+     buffer_type[bin] = MMAP_MEMORY;
   }
   else
   {
@@ -1530,35 +1457,32 @@ static void* get_next_segment(int bin, struct buffer *mem_buff,
      if((mmap_ptr = page_aligned_malloc(info->block_size)) == NULL)
      {
 	pack_return_values(info, 0, errno, MEMORY_ERROR,
-			   "memalign failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "memalign failed", 0.0, __FILE__, __LINE__);
 	return NULL;
      }
 
-     mem_buff->buffer[bin]  = mmap_ptr;
-     mem_buff->buffer_type[bin] = MALLOC_MEMORY;
+     buffer[bin]  = mmap_ptr;
+     buffer_type[bin] = MALLOC_MEMORY;
   }
 
-  return mem_buff->buffer[bin];
+  return buffer[bin];
 }
 
 /* Free the buffer bins for mmap to mmap transfer.  Return 0 for success
  * and 1 for failure. */
-static int cleanup_segments(struct buffer *mem_buff,
-			    struct transfer *info,
-			    struct locks *thread_locks)
+static int cleanup_segments(struct transfer *info)
 {
    if(info->mmap_io && info->other_mmap_io)
    {
       info->other_mmap_io = 0;
-      if(cleanup_segment(0, mem_buff, info, thread_locks) > 0)
+      if(cleanup_segment(0, info) > 0)
       {
 	 return 1;
       }
       info->other_mmap_io = 1;
 
       info->mmap_io = 0;
-      if(cleanup_segment(1, mem_buff, info, thread_locks) > 0)
+      if(cleanup_segment(1, info) > 0)
       {
 	 return 1;
       }
@@ -1570,11 +1494,9 @@ static int cleanup_segments(struct buffer *mem_buff,
 
 /* Free up the buffer bin specified.  Return 0 for success and 1 for
  * failure. */
-static int cleanup_segment(int bin, struct buffer *mem_buff,
-			   struct transfer *info,
-			   struct locks *thread_locks)
+static int cleanup_segment(int bin, struct transfer *info)
 {
-   void* mmap_ptr = mem_buff->buffer[bin];
+   void* mmap_ptr = buffer[bin];
    /* Note: Always make sure that info-> bytes gets updated after
     * cleanup_segment() is called.  Otherwise the wrong size gets
     * unmapped and that causes errors. */
@@ -1583,15 +1505,14 @@ static int cleanup_segment(int bin, struct buffer *mem_buff,
 
    /* If the file is a local disk, use memory mapped i/o on it. 
     * Only advance to the next mmap segment when the previous one is done. */
-   if(mem_buff->buffer_type[bin] == MMAP_MEMORY)
+   if(buffer_type[bin] == MMAP_MEMORY)
    {
       /* Force the data to be written out to disk. */
       errno = 0;
       if(msync(mmap_ptr, mmap_len, MS_SYNC | MS_INVALIDATE) < 0)
       {
 	 pack_return_values(info, 0, errno, FILE_ERROR,
-			    "msync failed", 0.0, __FILE__, __LINE__,
-	                    thread_locks);
+			    "msync failed", 0.0, __FILE__, __LINE__);
 	 return 1;
       }
 
@@ -1610,8 +1531,7 @@ static int cleanup_segment(int bin, struct buffer *mem_buff,
 	 if(errno != EINVAL && errno != ENOSYS)
 	 {
 	    pack_return_values(info, 0, errno, WRITE_ERROR,
-			       "madvise failed", 0.0, __FILE__, __LINE__,
-	                       thread_locks);
+			       "madvise failed", 0.0, __FILE__, __LINE__);
 	    return 1;
 	 }
       }
@@ -1621,26 +1541,25 @@ static int cleanup_segment(int bin, struct buffer *mem_buff,
       if(munmap(mmap_ptr, mmap_len) < 0)
       {
 	 pack_return_values(info, 0, errno, FILE_ERROR,
-			    "munmap failed", 0.0, __FILE__, __LINE__,
-	                    thread_locks);
+			    "munmap failed", 0.0, __FILE__, __LINE__);
 	 return 1;
       }
 
-      mem_buff->buffer[bin] = NULL;
-      mem_buff->buffer_type[bin] = EMPTY_MEMORY;
+      buffer[bin] = NULL;
+      buffer_type[bin] = EMPTY_MEMORY;
       return 0;
    }
    else
    {
       free(mmap_ptr);
-      mem_buff->buffer[bin] = NULL;
-      mem_buff->buffer_type[bin] = EMPTY_MEMORY;
+      buffer[bin] = NULL;
+      buffer_type[bin] = EMPTY_MEMORY;
       return 0;
    }
 }
 
-/* Removes a file lock. (not a mutex lock). */
-static int remove_lock(struct transfer *info, struct locks *thread_locks)
+/* Removes a file loock. (not a mutex lock). */
+static int remove_lock(struct transfer *info)
 {
 #ifdef F_SETLK
    struct flock filelock;
@@ -1660,36 +1579,7 @@ static int remove_lock(struct transfer *info, struct locks *thread_locks)
       {
 	 pack_return_values(info, 0, errno, FILE_ERROR,
 			    "fcntl(F_SETLK) failed", 0.0,
-			    __FILE__, __LINE__, thread_locks);
-	 return 1;
-      }
-   }
-#endif /* F_SETLK */
-   return 0;
-}
-
-/* Removes a file lock. (not a mutex lock). */
-/* This version does not call pack_return_values() and is inteaded to
- * only be called from pack_return_values().  The nr stands for
- * Non-Recursive.*/
-static int remove_lock_nr(struct transfer *info)
-{
-#ifdef F_SETLK
-   struct flock filelock;
-   int rtn_fcntl;
-
-   /* Now that we are done with this file, release the lock. */
-   if(info->advisory_locking || info->mandatory_locking)
-   {
-      filelock.l_whence = SEEK_SET;
-      filelock.l_start = 0L;
-      filelock.l_type = F_UNLCK;
-      filelock.l_len = 0L;
-      
-      /* Unlock the file. */
-      errno = 0;
-      if((rtn_fcntl = fcntl(info->fd, F_SETLK, &filelock)) < 0)
-      {
+			    __FILE__, __LINE__);
 	 return 1;
       }
    }
@@ -1698,13 +1588,13 @@ static int remove_lock_nr(struct transfer *info)
 }
 
 /* Return 1 on error, 0 on success. */
-static int finish_read(struct transfer *info, struct locks *thread_locks)
+static int finish_read(struct transfer *info)
 {
-   return remove_lock(info, thread_locks);
+   return remove_lock(info);
 }
 
 /* Return 1 on error, 0 on success. */
-static int finish_write(struct transfer *info, struct locks *thread_locks)
+static int finish_write(struct transfer *info)
 {
   int rtn_fcntl;
    
@@ -1721,8 +1611,7 @@ static int finish_write(struct transfer *info, struct locks *thread_locks)
        if(errno != EINVAL && errno != EROFS)
        {
 	  pack_return_values(info, 0, errno, WRITE_ERROR,
-			     "fsync failed", 0.0, __FILE__, __LINE__,
-	                     thread_locks);
+			 "fsync failed", 0.0, __FILE__, __LINE__);
 	  return 1;
        }
     }
@@ -1739,15 +1628,14 @@ static int finish_write(struct transfer *info, struct locks *thread_locks)
        if(errno != EINVAL && errno != ESPIPE && errno != ENOSYS)
        {
 	  pack_return_values(info, 0, errno, WRITE_ERROR,
-			     "fadvise failed", 0.0, __FILE__, __LINE__,
-	                     thread_locks);
+			     "fadvise failed", 0.0, __FILE__, __LINE__);
 	  return 1;
        }
     }
 #endif /*_POSIX_ADVISORY_INFO*/
   }
 
-  rtn_fcntl = remove_lock(info, thread_locks);
+  rtn_fcntl = remove_lock(info);
   if(rtn_fcntl)
      return rtn_fcntl;
   
@@ -1778,7 +1666,7 @@ static int setup_direct_io(struct transfer *info)
   if(fstat(info->fd, &file_info))
   {
      pack_return_values(info, 0, errno, FILE_ERROR, "fstat failed", 0.0,
-			__FILE__, __LINE__, NULL);
+			__FILE__, __LINE__);
      return 1;
   }
   /* Direct IO can only work on regular files.  Even if direct io is 
@@ -1801,8 +1689,7 @@ static int setup_direct_io(struct transfer *info)
   if((rtn_fcntl = fcntl(info->fd, F_GETFL, 0)) < 0)
   {
      pack_return_values(info, 0, errno, FILE_ERROR,
-			"fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__,
-	                NULL);
+			"fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
      return 1;
   }
 
@@ -1826,8 +1713,7 @@ static int setup_direct_io(struct transfer *info)
      else
      {
 	pack_return_values(info, 0, errno, FILE_ERROR,
-			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__,
-	                   NULL);
+			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__);
 	return 1;
      }
   }
@@ -1848,8 +1734,7 @@ static int setup_direct_io(struct transfer *info)
   if((test_fcntl = fcntl(info->fd, F_GETFL, 0)) < 0)
   {
      pack_return_values(info, 0, errno, FILE_ERROR,
-			"fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__,
-	                NULL);
+			   "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
      return 1;
   }
 
@@ -1881,11 +1766,11 @@ static int setup_direct_io(struct transfer *info)
   errno = 0;
   if(info->transfer_direction > 0) /* write */
   {
-     rtn = write(info->fd, temp_buffer, (size_t)50ULL);
+     rtn = write(info->fd, temp_buffer, (size_t)50U);
   }
   else /* read */
   {
-     rtn = read(info->fd, temp_buffer, (size_t)50ULL);
+     rtn = read(info->fd, temp_buffer, (size_t)50U);
   }
   if(rtn > 0)
   {
@@ -1895,8 +1780,7 @@ static int setup_direct_io(struct transfer *info)
      if(fcntl(info->fd, F_SETFL, rtn_fcntl) < 0)
      {
 	pack_return_values(info, 0, errno, FILE_ERROR,
-			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__,
-	                   NULL);
+			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__);
 	return 1;
      }
      
@@ -1937,8 +1821,7 @@ static int setup_direct_io(struct transfer *info)
      if(fcntl(info->fd, F_SETFL, rtn_fcntl) < 0)
      {
 	pack_return_values(info, 0, errno, FILE_ERROR,
-			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__,
-	                   NULL);
+			   "fcntl(F_SETFL) failed", 0.0, __FILE__, __LINE__);
 	return 1;
      }
 
@@ -1960,7 +1843,7 @@ static int setup_direct_io(struct transfer *info)
   if(lseek(info->fd, 0, SEEK_SET) < (off_t)0)
   {
      pack_return_values(info, 0, errno, FILE_ERROR,
-			"lseek failed", 0.0, __FILE__, __LINE__, NULL);
+			"lseek failed", 0.0, __FILE__, __LINE__);
      return 1;
   }
 
@@ -1988,7 +1871,7 @@ static int setup_posix_io(struct transfer *info)
   if(fstat(info->fd, &file_info))
   {
     pack_return_values(info, 0, errno, FILE_ERROR, "fstat failed",
-		       0.0, __FILE__, __LINE__, NULL);
+		       0.0, __FILE__, __LINE__);
     return 1;
   }
 
@@ -2022,7 +1905,7 @@ static int setup_posix_io(struct transfer *info)
 	{
 	   pack_return_values(info, 0, errno, FILE_ERROR,
 			      "fcntl(F_GETFL) failed", 0.0,
-			      __FILE__, __LINE__, NULL);
+			      __FILE__, __LINE__);
 	   return 1;
 	}
 
@@ -2032,7 +1915,7 @@ static int setup_posix_io(struct transfer *info)
 	{
 	   pack_return_values(info, 0, errno, FILE_ERROR,
 			      "fcntl(F_SETFL) failed", 0.0,
-			      __FILE__, __LINE__, NULL);
+			      __FILE__, __LINE__);
 	   return 1;
 	}
      }
@@ -2047,7 +1930,7 @@ static int setup_posix_io(struct transfer *info)
 	{
 	   pack_return_values(info, 0, errno, FILE_ERROR,
 			      "fcntl(F_SETFL) failed", 0.0,
-			      __FILE__, __LINE__, NULL);
+			      __FILE__, __LINE__);
 	   return 1;
 	}
 #endif /* 0 */
@@ -2068,7 +1951,7 @@ static int setup_posix_io(struct transfer *info)
 	{
 	   pack_return_values(info, 0, errno, FILE_ERROR,
 			      "fcntl(F_SETLK) failed", 0.0,
-			      __FILE__, __LINE__, NULL);
+			      __FILE__, __LINE__);
 	   return 1;
 	}
      }
@@ -2099,60 +1982,48 @@ static int setup_posix_io(struct transfer *info)
 
 /* Handle waiting for the file descriptor. Return non-zero on error and
  * zero on success. */
-static int do_select(struct transfer *info, struct locks *thread_locks)
+static int do_select(struct transfer *info)
 {
   fd_set fds;                   /* For use with select(2). */
   struct timeval timeout;       /* Time to wait for data. */
   int sts = 0;                  /* Return value from various C system calls. */
 
   /* Initialize select values. */
+  errno = 0;
   FD_ZERO(&fds);
   FD_SET(info->fd, &fds);
-
-  while(1)
-  {
-     errno = 0;
-
-     timeout.tv_sec = info->timeout.tv_sec;
-     timeout.tv_usec = info->timeout.tv_usec;
+  timeout.tv_sec = info->timeout.tv_sec;
+  timeout.tv_usec = info->timeout.tv_usec;
   
-     /* Wait for there to be data on the descriptor ready for reading. */
-     if(info->transfer_direction > 0)  /*write*/
-     {
-	sts = select(info->fd+1, NULL, &fds, NULL, &timeout);
-	if(sts < 0 && errno == EINTR)
-	   continue;
-	if(sts < 0)
-	   pack_return_values(info, 0, errno, WRITE_ERROR,
-			      "fd select error", 0.0, __FILE__, __LINE__,
-			      thread_locks);
-     }
-     else if(info->transfer_direction < 0)  /*read*/
-     {
-	sts = select(info->fd+1, &fds, NULL, NULL, &timeout);
-	if(sts < 0 && errno == EINTR)
-	   continue;
-	if(sts < 0)
-	   pack_return_values(info, 0, errno, READ_ERROR,
-			      "fd select error", 0.0, __FILE__, __LINE__,
-			      thread_locks);
-     }
-     
-     if(sts == 0)
-	pack_return_values(info, 0, ETIMEDOUT, TIMEOUT_ERROR,
-			   "fd select timeout", 0.0, __FILE__, __LINE__,
-			   thread_locks);
-     
-     if (sts <= 0)
-	return 1;
-     
-     return 0;
+  /* Wait for there to be data on the descriptor ready for reading. */
+  if(info->transfer_direction > 0)  /*write*/
+  {
+     sts = select(info->fd+1, NULL, &fds, NULL, &timeout);
+     if(sts < 0)
+	pack_return_values(info, 0, errno, WRITE_ERROR,
+			   "fd select error", 0.0, __FILE__, __LINE__);
   }
+  else if(info->transfer_direction < 0)  /*read*/
+  {
+     sts = select(info->fd+1, &fds, NULL, NULL, &timeout);
+     if(sts < 0)
+	pack_return_values(info, 0, errno, READ_ERROR,
+			   "fd select error", 0.0, __FILE__, __LINE__);
+  }
+  
+  if(sts == 0)
+     pack_return_values(info, 0, ETIMEDOUT, TIMEOUT_ERROR,
+			"fd select timeout", 0.0, __FILE__, __LINE__);
+  
+  if (sts <= 0)
+    return 1;
+
+  return 0;
 }
 
 
 static ssize_t mmap_read(void *dst, size_t bytes_to_transfer,
-			 struct transfer *info, struct locks *thread_locks)
+			 struct transfer *info)
 {
   void* mmap_ptr = dst;
    
@@ -2175,7 +2046,7 @@ static ssize_t mmap_read(void *dst, size_t bytes_to_transfer,
 }
 
 static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
-			  struct transfer *info, struct locks *thread_locks)
+			  struct transfer *info)
 {
   pthread_testcancel(); /* Any syncing action will take time. */
 
@@ -2183,7 +2054,7 @@ static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
   if(msync(src, bytes_to_transfer, MS_ASYNC) < 0)
   {
      pack_return_values(info, 0, errno, WRITE_ERROR,
-			"msync error", 0.0, __FILE__, __LINE__, thread_locks);
+			"msync error", 0.0, __FILE__, __LINE__);
      return -1;
   }
   pthread_testcancel(); /* Any syncing action will take time. */
@@ -2194,7 +2065,7 @@ static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
 /* Act like the posix read() call.  But return all interpreted errors with -1.
  * Also, set error values appropratly when detected. */
 static ssize_t direct_read(void *dst, size_t bytes_to_transfer,
-			   struct transfer* info, struct locks *thread_locks)
+			   struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
   struct stat stats;
@@ -2222,8 +2093,7 @@ static ssize_t direct_read(void *dst, size_t bytes_to_transfer,
     if((rtn_fcntl = fcntl(info->fd, F_DIOINFO, &direct_io_info)) < 0)
     {
       pack_return_values(info, 0, errno, FILE_ERROR,
-			 "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__,
-	                 thread_locks);
+			 "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
       return 1;
     }
     
@@ -2248,7 +2118,7 @@ static ssize_t direct_read(void *dst, size_t bytes_to_transfer,
   if (sts < 0)
   {
     pack_return_values(info, 0, errno, READ_ERROR,
-		       "fd read error", 0.0, __FILE__, __LINE__, thread_locks);
+		       "fd read error", 0.0, __FILE__, __LINE__);
     return -1;
   }
   if (sts == 0)
@@ -2263,8 +2133,7 @@ static ssize_t direct_read(void *dst, size_t bytes_to_transfer,
     }
      
     pack_return_values(info, 0, errno, TIMEOUT_ERROR,
-		       "fd read timeout", 0.0, __FILE__, __LINE__,
-		       thread_locks);
+		       "fd read timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
   return sts;
@@ -2273,7 +2142,7 @@ static ssize_t direct_read(void *dst, size_t bytes_to_transfer,
 /* Act like the posix read() call.  But return all interpreted errors with -1.
  * Also, set error values appropratly when detected. */
 static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
-			  struct transfer* info, struct locks *thread_locks)
+			  struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
   int remember_errno;
@@ -2287,7 +2156,7 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
   if (sts < 0)
   {
     pack_return_values(info, 0, errno, READ_ERROR,
-		       "fd read error", 0.0, __FILE__, __LINE__, thread_locks);
+		       "fd read error", 0.0, __FILE__, __LINE__);
     return -1;
   }
 #if 1
@@ -2313,8 +2182,7 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
     }
      
     pack_return_values(info, 0, errno, TIMEOUT_ERROR,
-		       "fd read timeout", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "fd read timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
 #endif
@@ -2325,7 +2193,7 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
 /* Act like the posix write() call.  But return all interpreted errors with -1.
  * Also, set error values appropratly when detected. */
 static ssize_t direct_write(void *src, size_t bytes_to_transfer,
-			    struct transfer* info, struct locks *thread_locks)
+			    struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
   struct stat stats;
@@ -2356,8 +2224,7 @@ static ssize_t direct_write(void *src, size_t bytes_to_transfer,
     if((rtn_fcntl = fcntl(info->fd, F_DIOINFO, &direct_io_info)) < 0)
     {
       pack_return_values(info, 0, errno, FILE_ERROR,
-			 "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__,
-	                 thread_locks);
+			 "fcntl(F_GETFL) failed", 0.0, __FILE__, __LINE__);
       return 1;
     }
     
@@ -2393,8 +2260,7 @@ static ssize_t direct_write(void *src, size_t bytes_to_transfer,
   if (sts == -1)
   {
     pack_return_values(info, 0, errno, WRITE_ERROR,
-		       "fd write error", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "fd write error", 0.0, __FILE__, __LINE__);
     return -1;
   }
   if (sts == 0)
@@ -2405,8 +2271,7 @@ static ssize_t direct_write(void *src, size_t bytes_to_transfer,
 	errno = ENOTCONN;
     
     pack_return_values(info, 0, errno, TIMEOUT_ERROR,
-		       "fd write timeout", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "fd write timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
 
@@ -2429,8 +2294,7 @@ static ssize_t direct_write(void *src, size_t bytes_to_transfer,
 	if(ftruncate(info->fd, end_of_file - size_diff) < 0)
 	{
 	   pack_return_values(info, 0, errno, WRITE_ERROR,
-			      "ftruncate failed", 0.0, __FILE__, __LINE__,
-	                      thread_locks);
+			      "ftruncate failed", 0.0, __FILE__, __LINE__);
 	   return -1;
 	}
      }
@@ -2442,7 +2306,7 @@ static ssize_t direct_write(void *src, size_t bytes_to_transfer,
 /* Act like the posix write() call.  But return all interpreted errors with -1.
  * Also, set error values appropratly when detected. */
 static ssize_t posix_write(void *src, size_t bytes_to_transfer,
-			   struct transfer* info, struct locks *thread_locks)
+			   struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
   struct stat stats;
@@ -2456,8 +2320,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
   if (sts == -1)
   {
     pack_return_values(info, 0, errno, WRITE_ERROR,
-		       "fd write error", 0.0, __FILE__, __LINE__,
-		       thread_locks);
+		       "fd write error", 0.0, __FILE__, __LINE__);
     return -1;
   }
 
@@ -2465,7 +2328,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
   if(fstat(info->fd, &stats) < 0)
   {
      pack_return_values(info, 0, errno, FILE_ERROR,
-			"fstat error", 0.0, __FILE__, __LINE__, thread_locks);
+			"fstat error", 0.0, __FILE__, __LINE__);
      return -1;
   }
 
@@ -2475,8 +2338,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
        errno = ENOTCONN; /* If the connection is closed, give better error. */
     
     pack_return_values(info, 0, errno, TIMEOUT_ERROR,
-		       "fd write timeout", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "fd write timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
 
@@ -2507,8 +2369,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 	   if(errno != EINVAL)
 	   {
 	      pack_return_values(info, 0, errno, WRITE_ERROR,
-				 "fdatasync failed", 0.0, __FILE__, __LINE__,
-		                 thread_locks);
+				 "fdatasync failed", 0.0, __FILE__, __LINE__);
 	      return -1;
 	   }
 	}
@@ -2518,8 +2379,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 	   if(errno != EINVAL)
 	   {
 	      pack_return_values(info, 0, errno, WRITE_ERROR,
-				 "fsync failed", 0.0, __FILE__, __LINE__,
-		                 thread_locks);
+				 "fsync failed", 0.0, __FILE__, __LINE__);
 	      return -1;
 	   }
 	}
@@ -2537,8 +2397,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 	   if(errno != EINVAL && errno != ESPIPE && errno != ENOSYS)
 	   {
 	      pack_return_values(info, 0, errno, WRITE_ERROR,
-				 "fadvise failed", 0.0, __FILE__, __LINE__,
-		                 thread_locks);
+				 "fadvise failed", 0.0, __FILE__, __LINE__);
 	      return -1;
 	   }
 	}
@@ -2551,62 +2410,65 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 /***************************************************************************/
 /***************************************************************************/
 
-static int thread_init(struct transfer *info, struct locks *thread_locks)
+static int thread_init(struct transfer *info)
 {
   int p_rtn;                    /* Pthread return value. */
+  size_t i;
 
   /* Initalize all the condition varaibles and mutex locks. */
 
   /* initalize the conditional variable signaled when a thread has finished. */
-  if((p_rtn = pthread_cond_init(&(thread_locks->done_cond), NULL)) != 0)
+  if((p_rtn = pthread_cond_init(&done_cond, NULL)) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
-		       "cond init failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "cond init failed", 0.0, __FILE__, __LINE__);
     return 1;
   }
   /* initalize the conditional variable to signal peer thread to continue. */
-  if((p_rtn = pthread_cond_init(&(thread_locks->next_cond), NULL)) != 0)
+  if((p_rtn = pthread_cond_init(&next_cond, NULL)) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
-		       "cond init failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "cond init failed", 0.0, __FILE__, __LINE__);
     return 1;
   }
   /* initalize the mutex for signaling when a thread has finished. */
-  if((p_rtn = pthread_mutex_init(&(thread_locks->done_mutex), NULL)) != 0)
+  if((p_rtn = pthread_mutex_init(&done_mutex, NULL)) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
-		       "mutex init failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "mutex init failed", 0.0, __FILE__, __LINE__);
     return 1;
   }
   /* initalize the mutex for syncing the monitoring operations. */
-  if((p_rtn = pthread_mutex_init(&(thread_locks->monitor_mutex), NULL)) != 0)
+  if((p_rtn = pthread_mutex_init(&monitor_mutex, NULL)) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
-		       "mutex init failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "mutex init failed", 0.0, __FILE__, __LINE__);
     return 1;
   }
 #ifdef DEBUG
   /* initalize the mutex for ordering debugging output. */
-  if((p_rtn = pthread_mutex_init(&(thread_locks->print_lock), NULL)) != 0)
+  if((p_rtn = pthread_mutex_init(&print_lock, NULL)) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
-		       "mutex init failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "mutex init failed", 0.0, __FILE__, __LINE__);
     return 1;
   }
 #endif
-
+  /* initalize the array of bin mutex locks. */
+  for(i = 0; i < info->array_size; i++)
+    if((p_rtn = pthread_mutex_init(&(buffer_lock[i]), NULL)) != 0)
+    {
+      pack_return_values(info, 0, p_rtn, THREAD_ERROR,
+			 "mutex init failed", 0.0, __FILE__, __LINE__);
+      return 1;
+    }
+  
   return 0;
 }
 
 /* The first parameter is the bin to wait on.  Last paramater is the transfer
  * struct for this half of the transfer. */
-static int thread_wait(size_t bin, struct buffer *mem_buff,
-		       struct transfer *info, struct locks *thread_locks)
+static int thread_wait(size_t bin, struct transfer *info)
 {
   int p_rtn;                    /* Pthread return value. */
   struct timeval cond_wait_tv;  /* Absolute time to wait for cond. variable. */
@@ -2616,20 +2478,19 @@ static int thread_wait(size_t bin, struct buffer *mem_buff,
   pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
   /* Determine if the lock for the buffer_lock bin, bin, is ready. */
-  if((p_rtn = pthread_mutex_lock(&(mem_buff->buffer_lock[bin]))) != 0)
+  if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
-		       "mutex lock failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "mutex lock failed", 0.0, __FILE__, __LINE__);
     return 1;
   }
 
   /* If the stored bin is still full (stored[bin] > 0 == 1) when writing or
    * still empty (stored[bin] == 0) when reading, then wait for the other
    * thread to catch up. */
-  if((mem_buff->stored[bin] > ZERO) == expected) /*if(!stored[bin] == !expected)*/
+  if((stored[bin] > 0) == expected)  /*if(!stored[bin] == !expected)*/
   {
-    if(info->size == -1 && is_other_thread_done(info, thread_locks))
+    if(info->size == -1 && is_other_thread_done(info))
     {
        /* For file transfers of unknown length, only the write thread
 	* should be able to get here.  The write thread should get here
@@ -2641,8 +2502,7 @@ static int thread_wait(size_t bin, struct buffer *mem_buff,
     if(gettimeofday(&cond_wait_tv, NULL) < 0)
     {
       pack_return_values(info, 0, errno, TIME_ERROR,
-			 "gettimeofday failed", 0.0, __FILE__, __LINE__,
-	                 thread_locks);
+			 "gettimeofday failed", 0.0, __FILE__, __LINE__);
       return 1;
     }
     cond_wait_ts.tv_sec = cond_wait_tv.tv_sec + info->timeout.tv_sec;
@@ -2652,8 +2512,7 @@ static int thread_wait(size_t bin, struct buffer *mem_buff,
     {
        /* This bin still needs to be used by the other thread.  Put this thread
 	* to sleep until the other thread is done with it. */
-       if((p_rtn = pthread_cond_timedwait(&(thread_locks->next_cond),
-					  &(mem_buff->buffer_lock[bin]),
+       if((p_rtn = pthread_cond_timedwait(&next_cond, &buffer_lock[bin],
 					  &cond_wait_ts)) != 0)
        {
 	  /* If the wait was interupted, go back and re-enter the
@@ -2661,10 +2520,10 @@ static int thread_wait(size_t bin, struct buffer *mem_buff,
 	  if(p_rtn == EINTR)
 	     continue;
 	  
-	  pthread_mutex_unlock(&(mem_buff->buffer_lock[bin]));
+	  pthread_mutex_unlock(&buffer_lock[bin]);
 	  pack_return_values(info, 0, p_rtn, THREAD_ERROR,
 			     "waiting for condition failed",
-			     0.0, __FILE__, __LINE__, thread_locks);
+			     0.0, __FILE__, __LINE__);
 	  return 1;
        }
 
@@ -2672,20 +2531,20 @@ static int thread_wait(size_t bin, struct buffer *mem_buff,
        break;
     }
   }
-  if((p_rtn = pthread_mutex_unlock(&(mem_buff->buffer_lock[bin]))) != 0)
+  if((p_rtn = pthread_mutex_unlock(&buffer_lock[bin])) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
 		       "mutex unlock failed", 0.0,
-		       __FILE__, __LINE__, thread_locks);
+		       __FILE__, __LINE__);
     return 1;
   }
   
   /* Determine if the main thread sent the signal to indicate the other
    * thread exited early from an error. If this value is still non-zero/zero,
    * then assume there was an error. */
-  if((mem_buff->stored[bin] > ZERO) == expected) /*if(!stored[bin] == !expected)*/
+  if((stored[bin] > 0) == expected)  /*if(!stored[bin] == !expected)*/
   {
-     if(info->size == -1 && is_other_thread_done(info, thread_locks))
+    if(info->size == -1 && is_other_thread_done(info))
     {
        /* For file transfers of unknown length, only the write thread
 	* should be able to get here.  The write thread should get here
@@ -2695,15 +2554,14 @@ static int thread_wait(size_t bin, struct buffer *mem_buff,
     }
     pack_return_values(info, 0, ECANCELED, THREAD_ERROR,
 		       "waiting for condition failed",
-		       0.0, __FILE__, __LINE__, thread_locks);
+		       0.0, __FILE__, __LINE__);
     return 1;
   }
 
   return 0;
 }
 
-static int thread_signal(size_t bin, size_t bytes, struct buffer *mem_buff,
-			 struct transfer *info, struct locks *thread_locks)
+static int thread_signal(size_t bin, size_t bytes, struct transfer *info)
 {
   int p_rtn;                    /* Pthread return value. */
 
@@ -2711,33 +2569,31 @@ static int thread_signal(size_t bin, size_t bytes, struct buffer *mem_buff,
     
   /* Obtain the mutex lock for the specific buffer bin that is needed to
    * clear the bin for writing. */
-  if((p_rtn = pthread_mutex_lock(&(mem_buff->buffer_lock[bin]))) != 0)
+  if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
-		       "mutex lock failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "mutex lock failed", 0.0, __FILE__, __LINE__);
     return 1;
   }
   
   /* Set the number of bytes in the buffer. After a write this is set
    * to zero, and after a read it is set to the amount read. */
   /* Does this really belong here??? */
-  mem_buff->stored[bin] = bytes;
-  
+  stored[bin] = bytes;
+
   /* If other thread sleeping, wake it up. */
-  if((p_rtn = pthread_cond_signal(&(thread_locks->next_cond))) != 0)
+  if((p_rtn = pthread_cond_signal(&next_cond)) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
 		       "waiting for condition failed",
-		       0.0, __FILE__, __LINE__, thread_locks);
+		       0.0, __FILE__, __LINE__);
     return 1;
   }
   /* Release the mutex lock for this bin. */
-  if((p_rtn = pthread_mutex_unlock(&(mem_buff->buffer_lock[bin]))) != 0)
+  if((p_rtn = pthread_mutex_unlock(&buffer_lock[bin])) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
-		       "mutex unlock failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "mutex unlock failed", 0.0, __FILE__, __LINE__);
     return 1;
   }
   
@@ -2752,27 +2608,10 @@ static int thread_signal(size_t bin, size_t bytes, struct buffer *mem_buff,
 
 static int thread_collect(pthread_t tid, unsigned int wait_time)
 {
-   int rtn, p_rtn;
-   sigset_t sigs_to_block;      /* Signal set of those to block. */
-
-   /* Put SIGALRM in a list of signals to change their blocking status.  Do
-    * this before grabbing the mutex to avoid the complexity of having to
-    * unlock the mutex on an error. */
-  if(sigemptyset(&sigs_to_block) < 0)
-    return errno;
-  if(sigaddset(&sigs_to_block, SIGALRM) < 0)
-    return errno;
-
-  /* If we call do_read_write_threaded() in seperate threads within the
-   * same process, we need to be sure that only one "EXfer main thread"
-   * can use alarm() at one time. */
-  if((p_rtn = pthread_mutex_lock(&collect_mutex)) != 0)
-  {
-    return p_rtn;
-  }
+  int rtn;
 
   errno = 0;
-
+  
   /* We don't want to leave the thread behind.  However, if something
    * very bad occured that may be the only choice. */
   if(signal(SIGALRM, sig_alarm) != SIG_ERR)
@@ -2784,7 +2623,7 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
       /* The only error returned is when the thread to cancel does not exist
        * (anymore).  Since the point is to stop it, if it is already stopped
        * then there is not a problem ignoring the error. */
-       (void)pthread_cancel(tid);
+      pthread_cancel(tid);
 
       /* Set the alarm to determine if the thread is still alive. */
       (void)alarm(wait_time);
@@ -2798,31 +2637,13 @@ static int thread_collect(pthread_t tid, unsigned int wait_time)
       /* Either an error occured or (more likely) the thread was joined by
        * this point.  Either way turn off the alarm. */
       (void)alarm(0);
-
-      /* Tell this thread to block SIGARLM again.  Ignore any error, since
-       * we still need to unlock the mutex on an error here. */
-      (void) pthread_sigmask(SIG_BLOCK, &sigs_to_block, NULL);
-  
+      
+      return rtn;
     }
     else
-    {
-       rtn = EINTR;
-    }
+      return EINTR;
   }
-  else
-  {
-    rtn = errno;
-  }
-
-  /* If we call do_read_write_threaded() in seperate threads within the
-   * same process, we need to be sure that only one "EXfer main thread"
-   * can use alarm() at one time. */
-  if((p_rtn = pthread_mutex_unlock(&collect_mutex)) != 0)
-  {
-    return p_rtn;
-  }
-  
-  return rtn;
+  return errno;
 }
 
 /***************************************************************************/
@@ -3345,68 +3166,6 @@ int get_quotas(char *block_device, int type, struct dqblk* my_quota)
 /***************************************************************************/
 /***************************************************************************/
 
-static int buffer_init(struct buffer *mem_buff, struct transfer *info,
-		       struct locks *thread_locks)
-{
-  int p_rtn;                    /* Pthread return value. */
-  size_t i;
-
-  /* Allocate and set to zeros the array that holds the number of bytes
-   * currently sitting in a bin. */
-  errno = 0;
-  if((mem_buff->stored = calloc(info->array_size, sizeof(size_t))) ==  NULL)
-  {
-    pack_return_values(info, 0, errno, MEMORY_ERROR,
-		       "calloc failed", 0.0, __FILE__, __LINE__,
-		       thread_locks);
-    return 1;
-  }
-  /* Allocate and set to zeros the array of mutex locks for each buffer bin. */
-  errno = 0;
-  if((mem_buff->buffer_lock = calloc(info->array_size, sizeof(pthread_mutex_t))) == NULL)
-  {
-    pack_return_values(info, 0, errno, MEMORY_ERROR,
-		       "calloc failed", 0.0, __FILE__, __LINE__,
-		       thread_locks);
-    return 1;
-  }
-
-  /* If mmap io is used, use the buffer variable for a different purpose. */
-  errno = 0;
-  if((mem_buff->buffer = calloc(info->array_size, sizeof(char *))) == NULL)
-  {
-     pack_return_values(info, 0, errno, MEMORY_ERROR,
-			"memalign failed", 0.0, __FILE__, __LINE__,
-			thread_locks);
-     return 1;
-  }
-
-  /* Allocate and set to zeros the memory type array. */
-  errno = 0;
-  if((mem_buff->buffer_type = calloc(info->array_size, sizeof(size_t))) == NULL)
-  {
-    pack_return_values(info, 0, errno, MEMORY_ERROR,
-		       "calloc failed", 0.0, __FILE__, __LINE__,
-		       thread_locks);
-    return 1;
-  }
-  
-  /* initalize the array of bin mutex locks. */
-  for(i = 0; i < info->array_size; i++)
-    if((p_rtn = pthread_mutex_init(&(mem_buff->buffer_lock[i]), NULL)) != 0)
-    {
-      pack_return_values(info, 0, p_rtn, THREAD_ERROR,
-			 "mutex init failed", 0.0, __FILE__, __LINE__,
-	                 thread_locks);
-      return 1;
-    }
-
-  return 0;
-}
-
-/***************************************************************************/
-/***************************************************************************/
-
 static void do_read_write_threaded(struct transfer *reads,
 				   struct transfer *writes)
 {
@@ -3419,80 +3178,30 @@ static void do_read_write_threaded(struct transfer *reads,
   struct t_monitor monitor_info;/* Stuct pointing to both transfer stucts. */
   pthread_attr_t read_attr;     /* Set any non-default thread attributes. */
   pthread_attr_t write_attr;    /* Set any non-default thread attributes. */
-  sigset_t sigs_to_block;      /* Signal set of those to block. */
 
-  struct buffer mem_buff;       /* Pointers to memory buffer structures. */
-  struct locks thread_locks;    /* Pointers to thread locking structures. */
-
-  /* Initialize the mutex locks so we can use them. */
-  if(thread_init(reads, &thread_locks))
-  {
-    /* Since this error is for both reads and writes, copy it over to 
-     * the writes struct. */
-    (void)memcpy(writes, reads, sizeof(reads));
-    return;
-  }
-  
-  /* Set the values for passing to the threads. */
+  /* Set the values for passing to the monitor thread. */
   monitor_info.read_info = reads;
   monitor_info.write_info = writes;
-  monitor_info.thread_locks = &thread_locks;
-  monitor_info.mem_buff = &mem_buff;
 
-  /* Block this signal.  Only the main thread should use/receive it from
-   * inside of thread_collect().  The python code should already block this
-   * for us, but if do_read_write_threaded() is itself called from multiple
-   * threads (A.K.A. multi-threaded migration), then we need to make sure
-   * only the one thread calling thread_collect() can receive SIGARLM. */
-  if(sigemptyset(&sigs_to_block) < 0)
-  {
-    pack_return_values(reads, 0, errno, SIGNAL_ERROR,
-		       "sigemptyset failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
-    pack_return_values(writes, 0, errno, SIGNAL_ERROR,
-		       "sigemptyset failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
-    return;
-  }
-  if(sigaddset(&sigs_to_block, SIGALRM) < 0)
-  {
-    pack_return_values(reads, 0, errno, SIGNAL_ERROR,
-		       "sigaddset failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
-    pack_return_values(writes, 0, errno, SIGNAL_ERROR,
-		       "sigemptyset failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
-    return;
-  }
-  if(pthread_sigmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
-  {
-    pack_return_values(reads, 0, errno, SIGNAL_ERROR,
-		       "pthread_sigmask failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
-    pack_return_values(writes, 0, errno, SIGNAL_ERROR,
-		       "sigemptyset failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
-    return;
-  }
-  
-  
   /* Initialize the thread attributes to the system defaults. */
 
   /* Initialize the read thread attributes. */
   if((p_rtn = pthread_attr_init(&read_attr)) != 0)
   {
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
-		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__);
+    /*pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+      "pthread_attr_init failed", 0.0, __FILE__, __LINE__);*/
     return;
   }
   
   /* Initialize the write thread attributes. */
   if((p_rtn = pthread_attr_init(&write_attr)) != 0)
   {
+    /*pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
+      "pthread_attr_init failed", 0.0, __FILE__, __LINE__);*/
     pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
-		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__);
     return;
   }
 
@@ -3534,17 +3243,19 @@ static void do_read_write_threaded(struct transfer *reads,
   if((p_rtn = pthread_attr_setscope(&read_attr, PTHREAD_SCOPE_BOUND_NP)) != 0)
   {
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
-		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__);
+    /*pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+      "pthread_attr_init failed", 0.0, __FILE__, __LINE__);*/
     return;
   }
 
   /* Set the read thread scope to allow pthread_setrunon_np() to work. */
-  if((p_rtn = pthread_attr_setscope(&write_attr, PTHREAD_SCOPE_BOUND_NP)) != 0)
+  if((p_rtn = pthread_attr_setscope(&read_attr, PTHREAD_SCOPE_BOUND_NP)) != 0)
   {
-    pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
-		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+    pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
+		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__);
+    /*pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+      "pthread_attr_init failed", 0.0, __FILE__, __LINE__);*/
     return;
   }
 
@@ -3602,26 +3313,69 @@ static void do_read_write_threaded(struct transfer *reads,
      return;
   }
   
-  /* Allocate and initialize the buffer arrays. */
-  if(buffer_init(&mem_buff, reads, &thread_locks))
+  /* Allocate and initialize the arrays */
+
+  /* Allocate and set to zeros the array that holds the number of bytes
+   * currently sitting in a bin. */
+  errno = 0;
+  if((stored = calloc(array_size, sizeof(int))) ==  NULL)
+  {
+    pack_return_values(reads, 0, errno, MEMORY_ERROR,
+		       "calloc failed", 0.0, __FILE__, __LINE__);
+    pack_return_values(writes, 0, errno, MEMORY_ERROR,
+		       "calloc failed", 0.0, __FILE__, __LINE__);
+    return;
+  }
+  /* Allocate and set to zeros the array of mutex locks for each buffer bin. */
+  errno = 0;
+  if((buffer_lock = calloc(array_size, sizeof(pthread_mutex_t))) == NULL)
+  {
+    pack_return_values(reads, 0, errno, MEMORY_ERROR,
+		       "calloc failed", 0.0, __FILE__, __LINE__);
+    pack_return_values(writes, 0, errno, MEMORY_ERROR,
+		       "calloc failed", 0.0, __FILE__, __LINE__);
+    return;
+  }
+
+  /* If mmap io is used, use the buffer variable for a different purpose. */
+  errno = 0;
+  if((buffer = calloc(array_size, sizeof(char *))) == NULL)
+  {
+     pack_return_values(reads, 0, errno, MEMORY_ERROR,
+			"memalign failed", 0.0, __FILE__, __LINE__);
+     pack_return_values(writes, 0, errno, MEMORY_ERROR,
+			"memalign failed", 0.0, __FILE__, __LINE__);
+     return;
+  }
+
+  /* Allocate and set to zeros the memory type array. */
+  errno = 0;
+  if((buffer_type = calloc(array_size, sizeof(size_t))) == NULL)
+  {
+    pack_return_values(reads, 0, errno, MEMORY_ERROR,
+		       "calloc failed", 0.0, __FILE__, __LINE__);
+    pack_return_values(writes, 0, errno, MEMORY_ERROR,
+		       "calloc failed", 0.0, __FILE__, __LINE__);
+    return;
+  }
+
+  
+  if(thread_init(reads))
   {
     /* Since this error is for both reads and writes, copy it over to 
      * the writes struct. */
     (void)memcpy(writes, reads, sizeof(reads));
     return;
   }
-
   /* Snag this mutex before spawning the new threads.  Otherwise, there is
    * the possibility that the new threads will finish before the main thread
    * can get to the pthread_cond_timedwait() to detect the threads exiting. */
-  if((p_rtn = pthread_mutex_lock(&(thread_locks.done_mutex))) != 0)
+  if((p_rtn = pthread_mutex_lock(&done_mutex)) != 0)
   {
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
-		       "mutex lock failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "mutex lock failed", 0.0, __FILE__, __LINE__);
     pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
-		       "mutex lock failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "mutex lock failed", 0.0, __FILE__, __LINE__);
     return;
   }
   
@@ -3629,30 +3383,28 @@ static void do_read_write_threaded(struct transfer *reads,
 
   /* Start the thread that 'writes' the file. */
   if((p_rtn = pthread_create(&(writes->thread_id), &write_attr,
-			     &thread_write, &monitor_info)) != 0)
+			     &thread_write, writes)) != 0)
   {
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
-		       "write thread creation failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "write thread creation failed", 0.0, __FILE__,__LINE__);
     pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
-		       "write thread creation failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "write thread creation failed", 0.0, __FILE__,__LINE__);
     return;
   }
 
   /* Start the thread that 'reads' the file. */
   if((p_rtn = pthread_create(&(reads->thread_id), &read_attr,
-			     &thread_read, &monitor_info)) != 0)
+			     &thread_read, reads)) != 0)
   {
     /* Don't let this thread continue on forever. */
     (void)thread_collect(writes->thread_id, get_fsync_waittime(writes));
 
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 		       "monitor thread creation failed", 0.0,
-		       __FILE__, __LINE__, &thread_locks);
+		       __FILE__, __LINE__);
     pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
 		       "monitor thread creation failed", 0.0,
-		       __FILE__, __LINE__, &thread_locks);
+		       __FILE__, __LINE__);
     return;
   }
 
@@ -3665,11 +3417,9 @@ static void do_read_write_threaded(struct transfer *reads,
     (void)thread_collect(reads->thread_id, get_fsync_waittime(reads));
 
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
-		       "read thread creation failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "read thread creation failed", 0.0, __FILE__, __LINE__);
     pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
-		       "read thread creation failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "read thread creation failed", 0.0, __FILE__, __LINE__);
     return;
   }
 
@@ -3682,11 +3432,9 @@ static void do_read_write_threaded(struct transfer *reads,
     (void)thread_collect(monitor_tid, get_fsync_waittime(writes));
 
     pack_return_values(reads, 0, p_rtn, TIME_ERROR,
-		       "read thread creation failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "read thread creation failed", 0.0, __FILE__, __LINE__);
     pack_return_values(writes, 0, p_rtn, TIME_ERROR,
-		       "read thread creation failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "read thread creation failed", 0.0, __FILE__, __LINE__);
     return;
   }
   cond_wait_ts.tv_sec = cond_wait_tv.tv_sec + (60 * 60 * 6); /*wait 6 hours*/
@@ -3704,8 +3452,7 @@ static void do_read_write_threaded(struct transfer *reads,
     /* wait until the condition variable is set and we have the mutex */
     for( ; ; ) /* continue looping */
     {
-       if((p_rtn = pthread_cond_timedwait(&(thread_locks.done_cond),
-					  &(thread_locks.done_mutex),
+       if((p_rtn = pthread_cond_timedwait(&done_cond, &done_mutex,
 					  &cond_wait_ts)) != 0)
        {
 	  /* If the wait was interupted, resume. */
@@ -3719,10 +3466,10 @@ static void do_read_write_threaded(struct transfer *reads,
 	  
 	  pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			     "waiting for condition failed", 0.0,
-			     __FILE__, __LINE__, &thread_locks);
+			     __FILE__, __LINE__);
 	  pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
 			     "waiting for condition failed", 0.0,
-			     __FILE__, __LINE__, &thread_locks);
+			     __FILE__, __LINE__);
 	  return;
        }
 
@@ -3744,14 +3491,14 @@ static void do_read_write_threaded(struct transfer *reads,
 	  (void)thread_collect(monitor_tid, get_fsync_waittime(writes));
 	  
 	  /* Since, pack_return_values aquires this mutex, release it. */
-	  pthread_mutex_unlock(&(thread_locks.done_mutex));
+	  pthread_mutex_unlock(&done_mutex);
 
 	  pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			     "joining with read thread failed",
-			     0.0, __FILE__, __LINE__, &thread_locks);
+			     0.0, __FILE__, __LINE__);
 	  pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
 			     "joining with read thread failed",
-			     0.0, __FILE__, __LINE__, &thread_locks);
+			     0.0, __FILE__, __LINE__);
 	  return;
 	}
       }
@@ -3769,12 +3516,12 @@ static void do_read_write_threaded(struct transfer *reads,
 	 * Since, we don't know which one, get them all. */
 	for(i = 0; i < array_size; i++)
 	{
-	   pthread_mutex_trylock(&(mem_buff.buffer_lock[i]));
+	   pthread_mutex_trylock(&(buffer_lock[i]));
 	}
-	pthread_cond_signal(&(thread_locks.next_cond));
+	pthread_cond_signal(&next_cond);
 	for(i = 0; i < array_size; i++)
 	{
-	  pthread_mutex_unlock(&(mem_buff.buffer_lock[i]));
+	  pthread_mutex_unlock(&(buffer_lock[i]));
 	}
       }
       reads->done = -1; /* Set to non-positive and non-zero value. */
@@ -3794,14 +3541,14 @@ static void do_read_write_threaded(struct transfer *reads,
 	  (void)thread_collect(monitor_tid, get_fsync_waittime(writes));
 	  
 	  /* Since, pack_return_values aquires this mutex, release it. */
-	  pthread_mutex_unlock(&(thread_locks.done_mutex));
+	  pthread_mutex_unlock(&done_mutex);
 
 	  pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			     "joining with write thread failed",
-			     0.0, __FILE__, __LINE__, &thread_locks);
+			     0.0, __FILE__, __LINE__);
 	  pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
 			     "joining with write thread failed",
-			     0.0, __FILE__, __LINE__, &thread_locks);
+			     0.0, __FILE__, __LINE__);
 	  return;
 	}
       }
@@ -3819,19 +3566,19 @@ static void do_read_write_threaded(struct transfer *reads,
 	 * Since, we don't know which one, get them all.*/
 	for(i = 0; i < array_size; i++)
 	{
-	  pthread_mutex_trylock(&(mem_buff.buffer_lock[i]));
+	  pthread_mutex_trylock(&(buffer_lock[i]));
 	}
-	pthread_cond_signal(&(thread_locks.next_cond));
+	pthread_cond_signal(&next_cond);
 	for(i = 0; i < array_size; i++)
 	{
-	  pthread_mutex_unlock(&(mem_buff.buffer_lock[i]));
+	  pthread_mutex_unlock(&(buffer_lock[i]));
 	}
       }
       writes->done = -1; /* Set to non-positive and non-zero value. */
       reads->other_thread_done = 1; /* Set true for read thread to know. */
     }
   }
-  pthread_mutex_unlock(&(thread_locks.done_mutex));
+  pthread_mutex_unlock(&done_mutex);
 
   /* Don't let this thread continue on forever. */
   (void)thread_collect(monitor_tid, get_fsync_waittime(writes));
@@ -3839,16 +3586,16 @@ static void do_read_write_threaded(struct transfer *reads,
   /*free the address space, this should only be done here if an error occured*/
   for(i = 0; i < array_size; i++)
   {
-     if(mem_buff.buffer[i] != NULL)
+     if(buffer[i] != NULL)
      {
-	if(mem_buff.buffer_type[i] == MALLOC_MEMORY)
+	if(buffer_type[i] == MALLOC_MEMORY)
 	{
-	   free(mem_buff.buffer[i]);
+	   free(buffer[i]);
 	}
-	else if(mem_buff.buffer_type[i] == MMAP_MEMORY)
+	else if(buffer_type[i] == MMAP_MEMORY)
 	{
 	   /* If there is an error, there isn't much we can do. */
-	   (void)munmap(mem_buff.buffer[i], reads->mmap_size);
+	   (void)munmap(buffer[i], reads->mmap_size);
 	}
 	else
 	{
@@ -3899,12 +3646,12 @@ static void do_read_write_threaded(struct transfer *reads,
   }
 
   /* Free the dynamic memory. */
-  free(mem_buff.stored);
+  free(stored);
   if(!(writes->mmap_io || reads->mmap_io))
   {
-     free(mem_buff.buffer);
+     free(buffer);
   }
-  free(mem_buff.buffer_lock);
+  free(buffer_lock);
 
   return;
 }
@@ -3913,20 +3660,17 @@ static void* thread_monitor(void *monitor_info)
 {
   struct transfer *read_info = ((struct t_monitor *)monitor_info)->read_info;
   struct transfer *write_info = ((struct t_monitor *)monitor_info)->write_info;
-  struct locks *thread_locks = ((struct t_monitor*)monitor_info)->thread_locks;
-  struct buffer *mem_buff = ((struct t_monitor *)monitor_info)->mem_buff;
-  
   struct timespec sleep_time;  /* Time to wait in nanosleep. */
   struct timeval start_read;   /* Old time to remember during nanosleep. */
   struct timeval start_write;  /* Old time to remember during nanosleep. */
   sigset_t sigs_to_block;      /* Signal set of those to block. */
 
-  /* Block this signal.  Only the main thread should use/receive it. */
+  /* Block this signal.  Only the main thread should use/recieve it. */
   if(sigemptyset(&sigs_to_block) < 0)
     pthread_exit(NULL);
   if(sigaddset(&sigs_to_block, SIGALRM) < 0)
     pthread_exit(NULL);
-  if(pthread_sigmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
+  if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
     pthread_exit(NULL);
 
   /* This is the maximum time a read/write call is allowed to take. If it
@@ -3937,17 +3681,17 @@ static void* thread_monitor(void *monitor_info)
 
   pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
-  if(pthread_mutex_lock(&(thread_locks->done_mutex)))
+  if(pthread_mutex_lock(&done_mutex))
     pthread_exit(NULL);
 
   while(!read_info->done && !write_info->done)
   {
-     if(pthread_mutex_unlock(&(thread_locks->done_mutex)))
+    if(pthread_mutex_unlock(&done_mutex))
       pthread_exit(NULL);
 
     pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
-    if(pthread_mutex_lock(&(thread_locks->monitor_mutex)))
+    if(pthread_mutex_lock(&monitor_mutex))
       pthread_exit(NULL);
 
     /* Grab the currently recorded start time. */
@@ -3956,7 +3700,7 @@ static void* thread_monitor(void *monitor_info)
     (void)memcpy(&start_write, &(write_info->start_transfer_function),
 		 sizeof(struct timeval));
 
-    if(pthread_mutex_unlock(&(thread_locks->monitor_mutex)))
+    if(pthread_mutex_unlock(&monitor_mutex))
       pthread_exit(NULL);
     
     for( ; ; ) /* continue looping */
@@ -3982,9 +3726,9 @@ static void* thread_monitor(void *monitor_info)
     
     pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
     
-    if(pthread_mutex_lock(&(thread_locks->monitor_mutex)))
+    if(pthread_mutex_lock(&monitor_mutex))
       pthread_exit(NULL);
-    if(pthread_mutex_lock(&(thread_locks->done_mutex)))
+    if(pthread_mutex_lock(&done_mutex))
       pthread_exit(NULL);
 
     pthread_testcancel(); /* Don't continue if we should stop now. */
@@ -3994,7 +3738,7 @@ static void* thread_monitor(void *monitor_info)
      * are going equally slow/fast) and if the time is cleared; this is
      * to avoid false positves. */
 
-    if(!read_info->done && buffer_empty(read_info->array_size, mem_buff) &&
+    if(!read_info->done && buffer_empty(read_info->array_size) &&
        (read_info->start_transfer_function.tv_sec > 0) &&
        (read_info->start_transfer_function.tv_usec > 0) &&
        (start_read.tv_sec == read_info->start_transfer_function.tv_sec) && 
@@ -4032,14 +3776,14 @@ static void* thread_monitor(void *monitor_info)
 
       /* Tell the main thread to stop waiting (discover the other threads
        * failure) and error out nicely. */
-      pthread_cond_signal(&(thread_locks->done_cond));
+      pthread_cond_signal(&done_cond);
 
-      pthread_mutex_unlock(&(thread_locks->monitor_mutex));
-      pthread_mutex_unlock(&(thread_locks->done_mutex));
+      pthread_mutex_unlock(&monitor_mutex);
+      pthread_mutex_unlock(&done_mutex);
 
       return NULL;
     }
-    if(!write_info->done && buffer_full(write_info->array_size, mem_buff) &&
+    if(!write_info->done && buffer_full(write_info->array_size) &&
        (write_info->start_transfer_function.tv_sec > 0) &&
        (write_info->start_transfer_function.tv_usec > 0) &&
        (start_write.tv_sec == write_info->start_transfer_function.tv_sec) && 
@@ -4075,35 +3819,32 @@ static void* thread_monitor(void *monitor_info)
 
       /* Tell the main thread to stop waiting (discover the other threads
        * failure) and error out nicely. */
-      pthread_cond_signal(&(thread_locks->done_cond));
+      pthread_cond_signal(&done_cond);
 
-      pthread_mutex_unlock(&(thread_locks->monitor_mutex));
-      pthread_mutex_unlock(&(thread_locks->done_mutex));
+      pthread_mutex_unlock(&monitor_mutex);
+      pthread_mutex_unlock(&done_mutex);
 
       return NULL;
     }
 
-    if(pthread_mutex_unlock(&(thread_locks->monitor_mutex)))
+    if(pthread_mutex_unlock(&monitor_mutex))
       pthread_exit(NULL);
 
   }
   
-  pthread_mutex_unlock(&(thread_locks->done_mutex));
+  pthread_mutex_unlock(&done_mutex);
 
   return NULL;
 }
 
 static void* thread_read(void *info)
 {
-  struct transfer *read_info = ((struct t_monitor *)info)->read_info;
-  struct locks *thread_locks = ((struct t_monitor *)info)->thread_locks;
-  struct buffer *mem_buff = ((struct t_monitor *)info)->mem_buff;
-  
+  struct transfer *read_info = (struct transfer*)info; /* dereference */
   size_t segment_to_read;       /* Number of bytes to move in one loop. */
   size_t segment_read;          /* Number of bytes read in a sub loop. */
   /*int sts = 0;*/              /* Return value from various C system calls. */
   int rsts = -1;                /* Return value from read(). */
-  size_t bin = ZERO;            /* The current bin (bucket) to use. */
+  size_t bin = 0U;              /* The current bin (bucket) to use. */
   unsigned int crc_ui = 0U;     /* Calculated checksum. */
   void *read_to_addr;           /* Holder for the read to memory address. */
   struct stat file_info;        /* Information about the file to read from. */
@@ -4120,26 +3861,23 @@ static void* thread_read(void *info)
   int cpu_error;                /* If setrunon fails remember the error. */
 #endif /* PTHREAD_SCOPE_BOUND_NP */
 
-  /* Block this signal.  Only the main thread should use/receive it. */
+  /* Block this signal.  Only the main thread should use/recieve it. */
   if(sigemptyset(&sigs_to_block))
   {
     pack_return_values(read_info, 0, errno, SIGNAL_ERROR,
-		       "sigemptyset failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "sigemptyset failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
   if(sigaddset(&sigs_to_block, SIGALRM))
   {
     pack_return_values(read_info, 0, errno, SIGNAL_ERROR,
-		       "sigaddset failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "sigaddset failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
-  if(pthread_sigmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
+  if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
   {
     pack_return_values(read_info, 0, errno, SIGNAL_ERROR,
-		       "pthread_sigmask failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "sigprocmask failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
 
@@ -4152,7 +3890,7 @@ static void* thread_read(void *info)
   if(gettimeofday(&start_total, NULL) < 0)
   {
     pack_return_values(read_info, 0, errno, TIME_ERROR, "gettimeofday failed",
-		       0.0, __FILE__, __LINE__, thread_locks);
+		       0.0, __FILE__, __LINE__);
     return NULL;
   }
   (void)memcpy(&end_total, &start_total, sizeof(struct timeval));
@@ -4161,7 +3899,7 @@ static void* thread_read(void *info)
   if(getrusage(RUSAGE_SELF, &start_usage) < 0)
   {
     pack_return_values(read_info, 0, errno, TIME_ERROR, "getrusage failed",
-		       0.0, __FILE__, __LINE__, thread_locks);
+		       0.0, __FILE__, __LINE__);
     return NULL;
   }
 
@@ -4170,7 +3908,7 @@ static void* thread_read(void *info)
   if(fstat(read_info->fd, &file_info))
   {
     pack_return_values(read_info, 0, errno, FILE_ERROR, "fstat failed", 0.0,
-		       __FILE__, __LINE__, thread_locks);
+		       __FILE__, __LINE__);
     return NULL;
   }
 
@@ -4189,12 +3927,12 @@ static void* thread_read(void *info)
 	 (read_info->size == -1) ) /* && rsts != 0) )*/
   {
     /* If the other thread is slow, wait for it. */
-    if(thread_wait(bin, mem_buff, read_info, thread_locks))
+    if(thread_wait(bin, read_info))
     {
        return NULL;
     }
     /* Allocate the next buffer to place data into. */
-    if(get_next_segment(bin, mem_buff, read_info, thread_locks) == NULL)
+    if(get_next_segment(bin, read_info) == NULL)
     {
        return NULL;
     }
@@ -4220,46 +3958,43 @@ static void* thread_read(void *info)
     }
 
     /* Set this to zero. */
-    segment_read = ZERO;
+    segment_read = 0U;
 
-    while(segment_to_read > ZERO)
+    /*while(bytes_remaining > 0U)*/
+    while(segment_to_read > 0U)
     {
       /* Record the time to start waiting for the read to occur. */
       if(gettimeofday(&start_time, NULL) < 0)
       {
 	pack_return_values(read_info, 0, errno, TIME_ERROR,
-			   "gettimeofday failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
 
       /* Handle calling select to wait on the descriptor. */
-      if(do_select(read_info, thread_locks))
+      if(do_select(read_info))
 	return NULL;
 
       pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
       /* In case something happens, make sure that the monitor thread can
        * determine that the transfer is stuck. */
-      if(pthread_mutex_lock(&(thread_locks->monitor_mutex)))
+      if(pthread_mutex_lock(&monitor_mutex))
       {
 	pack_return_values(read_info, 0, errno, THREAD_ERROR,
-			   "mutex lock failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "mutex lock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
       if(gettimeofday(&(read_info->start_transfer_function), NULL) < 0)
       {
 	pack_return_values(read_info, 0, errno, TIME_ERROR,
-			   "gettimeofday failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
-      if(pthread_mutex_unlock(&(thread_locks->monitor_mutex)))
+      if(pthread_mutex_unlock(&monitor_mutex))
       {
 	pack_return_values(read_info, 0, errno, THREAD_ERROR,
-			   "mutex unlock failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "mutex unlock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
 
@@ -4269,23 +4004,20 @@ static void* thread_read(void *info)
        * is read directly into the memory mapped file. */
       /* These values will change with each iteration, don't get over
        * ambitous and try to move this out of the loop. */
-      read_to_addr = (void*)((uintptr_t)mem_buff->buffer[bin] + segment_read);
+      read_to_addr = (void*)((uintptr_t)buffer[bin] + segment_read);
 
       /* Read in the data. */
       if(read_info->mmap_io)
       {
-	 rsts = mmap_read(read_to_addr, segment_to_read, read_info,
-			  thread_locks);
+	 rsts = mmap_read(read_to_addr, segment_to_read, read_info);
       }
       else if(read_info->direct_io)
       {
-	 rsts = direct_read(read_to_addr, segment_to_read, read_info,
-			    thread_locks);
+	 rsts = direct_read(read_to_addr, segment_to_read, read_info);
       }
       else
       {
-	 rsts = posix_read(read_to_addr, segment_to_read, read_info,
-	                   thread_locks);
+	 rsts = posix_read(read_to_addr, segment_to_read, read_info);
       }
       
       if(rsts < 0)
@@ -4294,20 +4026,18 @@ static void* thread_read(void *info)
       pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
       /* Since the read call returned, clear the timeval struct. */
-      if(pthread_mutex_lock(&(thread_locks->monitor_mutex)))
+      if(pthread_mutex_lock(&monitor_mutex))
       {
 	pack_return_values(read_info, 0, errno, THREAD_ERROR,
-			   "mutex lock failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "mutex lock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
       read_info->start_transfer_function.tv_sec = 0;
       read_info->start_transfer_function.tv_usec = -1;
-      if(pthread_mutex_unlock(&(thread_locks->monitor_mutex)))
+      if(pthread_mutex_unlock(&monitor_mutex))
       {
 	pack_return_values(read_info, 0, errno, THREAD_ERROR,
-			   "mutex unlock failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "mutex unlock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
 
@@ -4315,8 +4045,7 @@ static void* thread_read(void *info)
       if(gettimeofday(&end_time, NULL) < 0)
       {
 	pack_return_values(read_info, 0, errno, TIME_ERROR,
-			   "gettimeofday failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
       /* Calculate wait time. */
@@ -4339,39 +4068,36 @@ static void* thread_read(void *info)
 
       /* Update this nested loop's counting variables. */
       if(rsts == 0)
-	 segment_to_read = ZERO;
+	 segment_to_read = 0U;
       else
 	 segment_to_read -= rsts;
       segment_read += rsts;
 
 #ifdef DEBUG
-      print_status(stderr, segment_read, segment_to_read, mem_buff, read_info,
-	           thread_locks);
+      print_status(stderr, segment_read, segment_to_read, read_info);
 #endif /*DEBUG*/
     }
 
     /* Tell the other thread to go. */
-    if(thread_signal(bin, segment_read, mem_buff, read_info, thread_locks))
+    if(thread_signal(bin, segment_read, read_info))
        return NULL;
     
     /* Determine where to put the data. */
     bin = (bin + 1U) % read_info->array_size;
     pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
     /* Determine the number of bytes left to transfer. */
-    if(pthread_mutex_lock(&(thread_locks->monitor_mutex)))
+    if(pthread_mutex_lock(&monitor_mutex))
     {
       pack_return_values(read_info, 0, errno, THREAD_ERROR,
-			 "mutex lock failed", 0.0, __FILE__, __LINE__,
-	                 thread_locks);
+			 "mutex lock failed", 0.0, __FILE__, __LINE__);
       return NULL;
     }
     read_info->bytes_to_go -= segment_read;
     read_info->bytes_transfered += segment_read;
-    if(pthread_mutex_unlock(&(thread_locks->monitor_mutex)))
+    if(pthread_mutex_unlock(&monitor_mutex))
     {
       pack_return_values(read_info, 0, errno, THREAD_ERROR,
-			 "mutex unlock failed", 0.0, __FILE__, __LINE__,
-	                 thread_locks);
+			 "mutex unlock failed", 0.0, __FILE__, __LINE__);
       return NULL;
     }
 
@@ -4384,15 +4110,14 @@ static void* thread_read(void *info)
   }
 
   /* Sync the data to disk and other 'completion' steps. */
-  if(finish_read(read_info, thread_locks))
+  if(finish_read(read_info))
     return NULL;
 
   /* Get total end time. */
   if(gettimeofday(&end_total, NULL) < 0)
   {
     pack_return_values(read_info, 0, errno, TIME_ERROR,
-		       "gettimeofday failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
   /* Get the thread's time usage. */
@@ -4400,8 +4125,7 @@ static void* thread_read(void *info)
   if(getrusage(RUSAGE_SELF, &end_usage) < 0)
   {
     pack_return_values(read_info, 0, errno, TIME_ERROR,
-		       "getrusage failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "getrusage failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
 
@@ -4420,7 +4144,7 @@ static void* thread_read(void *info)
       transfer_time;
 
   pack_return_values(read_info, read_info->crc_ui, 0, 0, "",
-		     corrected_time, NULL, 0, thread_locks);
+		     corrected_time, NULL, 0);
 
   return NULL;
 }
@@ -4428,15 +4152,12 @@ static void* thread_read(void *info)
 
 static void* thread_write(void *info)
 {
-  struct transfer *write_info = ((struct t_monitor *)info)->write_info;
-  struct locks *thread_locks = ((struct t_monitor *)info)->thread_locks;
-  struct buffer *mem_buff = ((struct t_monitor *)info)->mem_buff;
-
+  struct transfer *write_info = (struct transfer*)info; /* dereference */
   size_t segment_to_write;      /* Number of bytes to write in one loop. */
   size_t segment_written;       /* Number of bytes witten in a sub loop. */
   /*int sts = 0;*/              /* Return value from various C system calls. */
   int wsts = -1;                /* Return value from write(). */
-  size_t bin = ZERO;            /* The current bin (bucket) to use. */
+  size_t bin = 0U;              /* The current bin (bucket) to use. */
   unsigned int crc_ui = 0U;     /* Calculated checksum. */
   void *write_from_addr;        /* Holder for the write from memory address. */
   struct stat file_info;        /* Information about the file to write to. */
@@ -4453,26 +4174,23 @@ static void* thread_write(void *info)
   int cpu_error;                /* If setrunon fails remember the error. */
 #endif /* PTHREAD_SCOPE_BOUND_NP */
 
-  /* Block this signal.  Only the main thread should use/receive it. */
+  /* Block this signal.  Only the main thread should use/recieve it. */
   if(sigemptyset(&sigs_to_block) < 0)
   {
     pack_return_values(write_info, 0, errno, SIGNAL_ERROR,
-		       "sigemptyset failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "sigemptyset failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
   if(sigaddset(&sigs_to_block, SIGALRM) < 0)
   {
     pack_return_values(write_info, 0, errno, SIGNAL_ERROR,
-		       "sigaddset failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "sigaddset failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
-  if(pthread_sigmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
+  if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
   {
     pack_return_values(write_info, 0, errno, SIGNAL_ERROR,
-		       "pthread_sigmask failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "sigprocmask failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
   
@@ -4485,8 +4203,7 @@ static void* thread_write(void *info)
   if(gettimeofday(&start_total, NULL) < 0)
   {
     pack_return_values(write_info, 0, errno, TIME_ERROR,
-		       "gettimeofday failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
   (void)memcpy(&end_total, &start_total, sizeof(struct timeval));
@@ -4494,7 +4211,7 @@ static void* thread_write(void *info)
   if(getrusage(RUSAGE_SELF, &start_usage) < 0)
   {
     pack_return_values(write_info, 0, errno, TIME_ERROR, "getrusage failed",
-		       0.0, __FILE__, __LINE__, thread_locks);
+		       0.0, __FILE__, __LINE__);
     return NULL;
   }
 
@@ -4503,7 +4220,7 @@ static void* thread_write(void *info)
   if(fstat(write_info->fd, &file_info) < 0)
   {
     pack_return_values(write_info, 0, errno, FILE_ERROR,
-		       "fstat failed", 0.0, __FILE__, __LINE__, thread_locks);
+		       "fstat failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
 
@@ -4522,73 +4239,66 @@ static void* thread_write(void *info)
 	 (write_info->size == -1) ) /* && wsts != 0) )*/
   {
     /* If the other thread is slow, wait for it. */
-    if(thread_wait(bin, mem_buff, write_info, thread_locks))
+    if(thread_wait(bin, write_info))
     {
        return NULL;
     }
 
     /* Number of bytes remaining for this loop. */
-    segment_to_write = mem_buff->stored[bin];
+    segment_to_write = stored[bin];
     /* Set this to zero. */
-    segment_written = ZERO;
+    segment_written = 0U;
 
-    while(segment_to_write > ZERO)
+    while(segment_to_write > 0U)
     {
       /* Record the time to start waiting for the read to occur. */
       if(gettimeofday(&start_time, NULL) < 0)
       {
 	pack_return_values(write_info, 0, errno, TIME_ERROR,
-			   "gettimeofday failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
 
       /* Handle calling select to wait on the descriptor. */
-      if(do_select(write_info, thread_locks))
+      if(do_select(write_info))
 	return NULL;
       
       pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
       /* In case something happens, make sure that the monitor thread can
        * determine that the transfer is stuck. */
-      if(pthread_mutex_lock(&(thread_locks->monitor_mutex)))
+      if(pthread_mutex_lock(&monitor_mutex))
       {
 	pack_return_values(write_info, 0, errno, THREAD_ERROR,
-			   "mutex lock failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "mutex lock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
       if(gettimeofday(&(write_info->start_transfer_function), NULL) < 0)
       {
 	pack_return_values(write_info, 0, errno, TIME_ERROR,
-			   "gettimeofday failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
-      if(pthread_mutex_unlock(&(thread_locks->monitor_mutex)))
+      if(pthread_mutex_unlock(&monitor_mutex))
       {
 	pack_return_values(write_info, 0, errno, THREAD_ERROR,
-			   "mutex unlock failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "mutex unlock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
 
-      write_from_addr = mem_buff->buffer[bin] + segment_written;
+      write_from_addr = buffer[bin] + segment_written;
       
       if(write_info->mmap_io)
       {
-	 wsts = mmap_write(write_from_addr, segment_to_write, write_info,
-	                   thread_locks);
+	 wsts = mmap_write(write_from_addr, segment_to_write, write_info);
       }
       else if(write_info->direct_io)
       {
-	 wsts = direct_write(write_from_addr, segment_to_write, write_info,
-	                     thread_locks);
+	 wsts = direct_write(write_from_addr, segment_to_write, write_info);
       }
       else
       {
-	 wsts = posix_write(write_from_addr, segment_to_write, write_info,
-	                    thread_locks);
+	wsts = posix_write(write_from_addr, segment_to_write, write_info);
       }
 
       if(wsts < 0)
@@ -4597,20 +4307,18 @@ static void* thread_write(void *info)
       pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
       /* Since the write call returned, clear the timeval struct. */
-      if(pthread_mutex_lock(&(thread_locks->monitor_mutex)))
+      if(pthread_mutex_lock(&monitor_mutex))
       {
 	pack_return_values(write_info, 0, errno, THREAD_ERROR,
-			   "mutex lock failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "mutex lock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
       write_info->start_transfer_function.tv_sec = 0;
       write_info->start_transfer_function.tv_usec = -1;
-      if(pthread_mutex_unlock(&(thread_locks->monitor_mutex)))
+      if(pthread_mutex_unlock(&monitor_mutex))
       {
 	pack_return_values(write_info, 0, errno, THREAD_ERROR,
-			   "mutex unlock failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "mutex unlock failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
 
@@ -4619,8 +4327,7 @@ static void* thread_write(void *info)
       if(gettimeofday(&end_time, NULL) < 0)
       {
 	pack_return_values(write_info, 0, errno, TIME_ERROR,
-			   "gettimeofday failed", 0.0, __FILE__, __LINE__,
-	                   thread_locks);
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
 	return NULL;
       }
       /* Get total end time. */
@@ -4648,14 +4355,13 @@ static void* thread_write(void *info)
       segment_written += wsts;
 
 #ifdef DEBUG
-      print_status(stderr, segment_written, segment_to_write, mem_buff,
-		   write_info, thread_locks);
+      print_status(stderr, segment_written, segment_to_write, write_info);
 #endif /*DEBUG*/
     }
 
     /* We must remember that cleanup_segment() needs to be called before
      * write_info->bytes gets updated. */
-    if(cleanup_segment(bin, mem_buff, write_info, thread_locks))
+    if(cleanup_segment(bin, write_info))
        return NULL;
 
     /* Tell the other thread to go if we have more bytes to go for a
@@ -4665,28 +4371,26 @@ static void* thread_write(void *info)
      * a file of unknown length.  Calling thread_signal() beyond the
      * amount of data read by thread_read() would block, becuase the main
      * thread has just grabbed *all* the buffer locks.*/
-    if(segment_written != ZERO)
-       if(thread_signal(bin, 0, mem_buff, write_info, thread_locks))
+    if(segment_written != 0U)
+       if(thread_signal(bin, 0, write_info))
 	  return NULL;
 
     /* Determine where to get the data. */
     bin = (bin + 1U) % write_info->array_size;
     pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
     /* Determine the number of bytes left to transfer. */
-    if(pthread_mutex_lock(&(thread_locks->monitor_mutex)))
+    if(pthread_mutex_lock(&monitor_mutex))
     {
       pack_return_values(write_info, 0, errno, THREAD_ERROR,
-			 "mutex lock failed", 0.0, __FILE__, __LINE__,
-	                 thread_locks);
+			 "mutex lock failed", 0.0, __FILE__, __LINE__);
       return NULL;
     }
     write_info->bytes_to_go -= segment_written;
     write_info->bytes_transfered += segment_written;
-    if(pthread_mutex_unlock(&(thread_locks->monitor_mutex)))
+    if(pthread_mutex_unlock(&monitor_mutex))
     {
       pack_return_values(write_info, 0, errno, THREAD_ERROR,
-			 "mutex unlock failed", 0.0, __FILE__, __LINE__,
-	                 thread_locks);
+			 "mutex unlock failed", 0.0, __FILE__, __LINE__);
       return NULL;
     }
 
@@ -4699,15 +4403,14 @@ static void* thread_write(void *info)
   }
 
   /* Sync the data to disk and other 'completion' steps. */
-  if(finish_write(write_info, thread_locks))
+  if(finish_write(write_info))
     return NULL;
   
   /* Get total end time. */
   if(gettimeofday(&end_total, NULL) < 0)
   {
     pack_return_values(write_info, 0, errno, TIME_ERROR,
-		       "gettimeofday failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
   /* Get the thread's time usage. */
@@ -4715,8 +4418,7 @@ static void* thread_write(void *info)
   if(getrusage(RUSAGE_SELF, &end_usage) < 0)
   {
     pack_return_values(write_info, 0, errno, TIME_ERROR,
-		       "getrusage failed", 0.0, __FILE__, __LINE__,
-                       thread_locks);
+		       "getrusage failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
 
@@ -4734,8 +4436,7 @@ static void* thread_write(void *info)
     corrected_time = rusage_elapsed_time(&start_usage, &end_usage) + 
       transfer_time;
 
-  pack_return_values(write_info, crc_ui, 0, 0, "", corrected_time, NULL, 0,
-                     thread_locks);
+  pack_return_values(info, crc_ui, 0, 0, "", corrected_time, NULL, 0);
 
   return NULL;
 }
@@ -4764,12 +4465,6 @@ static void do_read_write(struct transfer *read_info,
   void *read_to_addr;           /* Holder for the read to memory address. */  
   void *write_from_addr;        /* Holder for the write from memory address. */
 
-  struct buffer mem_buff;       /* Pointers to memory buffer structures. */
-  struct locks thread_locks;    /* Pointers to thread locking structures. */
-
-  /* Initialize the thread information to zeros. */
-  memset(&thread_locks, 0, sizeof(thread_locks));
-
 #ifdef PROFILE
   (void)memset(profile_data, 0, sizeof(profile_data));
 #endif /*PROFILE*/
@@ -4790,12 +4485,44 @@ static void do_read_write(struct transfer *read_info,
   if(setup_posix_io(write_info))
      return;
 
-  /* Allocate and initialize the buffer arrays. */
-  if(buffer_init(&mem_buff, read_info, &thread_locks))
+  /* Allocate and initialize the arrays */
+
+  /* Allocate page aligned memory for the actuall data buffer. */
+  errno = 0;
+  read_info->array_size = 1;
+  write_info->array_size = 1;
+  if((buffer = calloc(3, sizeof(char *))) == NULL)
   {
-    /* Since this error is for both reads and writes, copy it over to 
-     * the writes struct. */
-    (void)memcpy(write_info, read_info, sizeof(read_info));
+     pack_return_values(read_info, 0, errno, MEMORY_ERROR,
+			"memalign failed", 0.0, __FILE__, __LINE__);
+     pack_return_values(write_info, 0, errno, MEMORY_ERROR,
+			"memalign failed", 0.0, __FILE__, __LINE__);
+     return;
+  }
+
+#ifdef DEBUG
+  /* Allocate and set to zeros the array (that is one element in length)
+   * that holds the number of bytes currently sitting in a bin. */
+  errno = 0;
+  if((stored = calloc(1, sizeof(int))) == NULL)
+  {
+    pack_return_values(read_info, 0, errno, MEMORY_ERROR, "malloc failed",
+		       0.0, __FILE__, __LINE__);
+    pack_return_values(write_info, 0, errno, MEMORY_ERROR, "malloc failed",
+		       0.0, __FILE__, __LINE__);
+    return;
+  }
+  /**stored = 0;*/
+#endif /*DEBUG*/
+
+  /* Allocate and set to zeros the memory type array. */
+  errno = 0;
+  if((buffer_type = calloc(2, sizeof(size_t))) == NULL)
+  {
+    pack_return_values(read_info, 0, errno, MEMORY_ERROR,
+		       "calloc failed", 0.0, __FILE__, __LINE__);
+    pack_return_values(write_info, 0, errno, MEMORY_ERROR,
+		       "calloc failed", 0.0, __FILE__, __LINE__);
     return;
   }
 
@@ -4803,11 +4530,9 @@ static void do_read_write(struct transfer *read_info,
   if(gettimeofday(&start_time, NULL) < 0)
   {
     pack_return_values(read_info, 0, errno, TIME_ERROR,
-		       "gettimeofday failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
     pack_return_values(write_info, 0, errno, TIME_ERROR,
-		       "gettimeofday failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
     return;
   }
   (void)memcpy(&end_time, &start_time, sizeof(struct timeval));
@@ -4834,13 +4559,13 @@ static void do_read_write(struct transfer *read_info,
     if(read_info->mmap_io && write_info->mmap_io)
     {
        /* Allocate the next mmap() regions. */
-       if(get_next_segments(&mem_buff, read_info, &thread_locks) == 0)
+       if(get_next_segments(read_info) == 0)
        {
 	  return;
        }
     }
     /* Allocate the next buffer to place data into. */
-    else if(get_next_segment(0, &mem_buff, read_info, &thread_locks) == NULL)
+    else if(get_next_segment(0, read_info) == NULL)
     {
        return;
     }
@@ -4866,9 +4591,9 @@ static void do_read_write(struct transfer *read_info,
     }
 
     /* Set this to zero. */
-    segment_read = ZERO;
+    segment_read = 0U;
 
-    while(segment_to_read > ZERO)
+    while(segment_to_read > 0U)
     {
 #ifdef PROFILE
       update_profile(1, segment_to_read, read_info->fd,
@@ -4876,7 +4601,7 @@ static void do_read_write(struct transfer *read_info,
 #endif /*PROFILE*/
 
       /* Handle calling select to wait on the descriptor. */
-      if(do_select(read_info, &thread_locks))
+      if(do_select(read_info))
 	return;
 
 #ifdef PROFILE
@@ -4897,7 +4622,7 @@ static void do_read_write(struct transfer *read_info,
        */
       /* These values will change with each iteration, don't get over
        * ambitous and try to move this out of the loop. */
-      read_to_addr = (void*)((uintptr_t)mem_buff.buffer[0] + segment_read);
+      read_to_addr = (void*)((uintptr_t)buffer[0] + segment_read);
       
       /* Read in the data. */
       if(read_info->mmap_io && write_info->mmap_io)
@@ -4905,25 +4630,22 @@ static void do_read_write(struct transfer *read_info,
 	 /* In this case buffer[0] holds the destination mmap address
 	  * and buffer[1] holds the source mmap address. */
 	 (void)memcpy(read_to_addr,
-		      (void*)((uintptr_t)mem_buff.buffer[1] + segment_read),
+		      (void*)((uintptr_t)buffer[1] + segment_read),
 		      segment_to_read);
 	 rsts = segment_to_read;
       }
       else if(read_info->mmap_io)
       {
 	 /* Tells kernel to preread the file into cache. */
-	 rsts = mmap_read(read_to_addr, segment_to_read, read_info,
-			  &thread_locks);
+	 rsts = mmap_read(read_to_addr, segment_to_read, read_info);
       }
       else if(read_info->direct_io)
       {
-	 rsts = direct_read(read_to_addr, segment_to_read, read_info,
-	                    &thread_locks);
+	 rsts = direct_read(read_to_addr, segment_to_read, read_info);
       }
       else
       {
-	 rsts = posix_read(read_to_addr, segment_to_read, read_info,
-	                   &thread_locks);
+	 rsts = posix_read(read_to_addr, segment_to_read, read_info);
       }
 
       if(rsts < 0)
@@ -4948,16 +4670,15 @@ static void do_read_write(struct transfer *read_info,
 
       /* Update this nested loop's counting variables. */
       if(rsts == 0)
-	 segment_to_read = ZERO;
+	 segment_to_read = 0U;
       else
 	 segment_to_read -= rsts;
       segment_read += rsts;
 
 #ifdef DEBUG
-      *(mem_buff.stored) = segment_read;
+      *stored = segment_read;
       read_info->crc_ui = r_crc_ui;
-      print_status(stderr, segment_read, segment_to_read, &mem_buff,
-		   read_info, &thread_locks);
+      print_status(stderr, segment_read, segment_to_read, read_info);
 #endif /*DEBUG*/
     }
 
@@ -4967,9 +4688,9 @@ static void do_read_write(struct transfer *read_info,
     /* Initialize the write loop variables. */
     segment_to_write = segment_read;
     /* Set this to zero. */
-    segment_written = ZERO;
+    segment_written = 0U;
 
-    while (segment_to_write > ZERO)
+    while (segment_to_write > 0U)
     {
 #ifdef PROFILE
       update_profile(5, segment_to_write, write_info->fd,
@@ -4977,7 +4698,7 @@ static void do_read_write(struct transfer *read_info,
 #endif /*PROFILE*/
 
       /* Handle calling select to wait on the descriptor. */
-      if(do_select(write_info, &thread_locks))
+      if(do_select(write_info))
 	return;
 
 #ifdef PROFILE
@@ -4998,23 +4719,20 @@ static void do_read_write(struct transfer *read_info,
        */
       /* These values will change with each iteration, don't get over
        * ambitous and try to move this out of the loop. */
-      write_from_addr = (void*)((uintptr_t)mem_buff.buffer[0] + segment_written);
+      write_from_addr = (void*)((uintptr_t)buffer[0] + segment_written);
       
       if(write_info->mmap_io)
       {
 	 /* Tells the kernel to get the information to disk ASAP. */
-	 wsts = mmap_write(write_from_addr, segment_to_write, write_info,
-	                   &thread_locks);
+	 wsts = mmap_write(write_from_addr, segment_to_write, write_info);
       }
       else if(write_info->direct_io)
       {
-	 wsts = direct_write(write_from_addr, segment_to_write, write_info,
-	                     &thread_locks);
+	 wsts = direct_write(write_from_addr, segment_to_write, write_info);
       }
       else
       {
-	 wsts = posix_write(write_from_addr, segment_to_write, write_info,
-	                    &thread_locks);
+	 wsts = posix_write(write_from_addr, segment_to_write, write_info);
       }
       
       if(wsts < 0)
@@ -5042,10 +4760,9 @@ static void do_read_write(struct transfer *read_info,
       segment_written += wsts;
 
 #ifdef DEBUG
-      *(mem_buff.stored) = segment_written;
+      *stored = segment_written;
       write_info->crc_ui = crc_ui;
-      print_status(stderr, segment_written, segment_to_write, &mem_buff,
-		   write_info, &thread_locks);
+      print_status(stderr, segment_written, segment_to_write, write_info);
 #endif /*DEBUG*/
     }
 
@@ -5053,10 +4770,10 @@ static void do_read_write(struct transfer *read_info,
      * write_info->bytes gets updated. */
     if(read_info->mmap_io && write_info->mmap_io)
     {
-       if(cleanup_segments(&mem_buff, write_info, &thread_locks))
+       if(cleanup_segments(write_info))
 	  return;
     }
-    else if(cleanup_segment(0, &mem_buff, write_info, &thread_locks))
+    else if(cleanup_segment(0, write_info))
        return;
 
     write_info->bytes_to_go -= segment_written;
@@ -5064,27 +4781,25 @@ static void do_read_write(struct transfer *read_info,
   }
 
   /* Sync the data to disk and other 'completion' steps. */
-  if(finish_write(write_info, &thread_locks))
+  if(finish_write(write_info))
     return;
-  if(finish_read(read_info, &thread_locks))
+  if(finish_read(read_info))
     return;
 
   /* Get the time that the thread finished to work on transfering data. */
   if(gettimeofday(&end_time, NULL) < 0)
   {
     pack_return_values(read_info, 0, errno, TIME_ERROR,
-		       "gettimeofday failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
     pack_return_values(write_info, 0, errno, TIME_ERROR,
-		       "gettimeofday failed", 0.0, __FILE__, __LINE__,
-                       &thread_locks);
+		       "gettimeofday failed", 0.0, __FILE__, __LINE__);
     return;
   }
   time_elapsed = elapsed_time(&start_time, &end_time);
 
-  free(mem_buff.buffer);
+  free(buffer);
 #ifdef DEBUG
-  free(mem_buff.stored);
+  free(stored);
 #endif /*DEBUG*/
 
 #ifdef PROFILE
@@ -5097,10 +4812,8 @@ static void do_read_write(struct transfer *read_info,
   else if(read_info->mmap_io)
      r_crc_ui = crc_ui;
   
-  pack_return_values(write_info, crc_ui, 0, 0, "", time_elapsed, NULL, 0,
-                     &thread_locks);
-  pack_return_values(read_info, r_crc_ui, 0, 0, "", time_elapsed, NULL, 0,
-                     &thread_locks);
+  pack_return_values(write_info, crc_ui, 0, 0, "", time_elapsed, NULL, 0);
+  pack_return_values(read_info, r_crc_ui, 0, 0, "", time_elapsed, NULL, 0);
   return;
 }
 
@@ -5297,7 +5010,7 @@ EXfd_xfer(PyObject *self, PyObject *args)
     PyObject	*rr;
     struct transfer reads;
     struct transfer writes;
-
+    
     sts = PyArg_ParseTuple(args, "iiOOiiiOiii|O", &fr_fd, &to_fd,
 			   &no_bytes_obj, &crc_obj_tp, &timeout.tv_sec,
 			   &block_size, &array_size, &mmap_size_obj,
@@ -5379,13 +5092,11 @@ EXfd_xfer(PyObject *self, PyObject *args)
     writes.mmap_io = mmap_io;
     writes.advisory_locking = 1;
 
-    Py_BEGIN_ALLOW_THREADS
     errno = 0;
     if(threaded_transfer)
       do_read_write_threaded(&reads, &writes);
     else
       do_read_write(&reads, &writes);
-    Py_END_ALLOW_THREADS
 
 #if 0
     printf("read crc: %ud\n", reads.crc_ui);
@@ -5591,7 +5302,7 @@ static int invalidate_cache_posix(char* abspath)
 #if defined ( _POSIX_ADVISORY_INFO ) && _POSIX_ADVISORY_INFO >= 200112L
   /* If the file descriptor supports fadvise, tell the kernel to nuke
    * the file's buffer cache. */
-   if(posix_fadvise(fd, (off_t)0ULL, (off_t)0ULL, POSIX_FADV_DONTNEED) < 0)
+  if(posix_fadvise(fd, 0, 0U, POSIX_FADV_DONTNEED) < 0)
   {
      if(errno != EINVAL && errno != ESPIPE && errno != ENOSYS)
      {
@@ -5606,7 +5317,7 @@ static int invalidate_cache_posix(char* abspath)
   /* Start by opening the entire file (or SIZE_MAX if it is to big).*/
   errno = 0;
   if((mmap_ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
-		      MAP_SHARED, fd, (off_t)0ULL)) == MAP_FAILED)
+		      MAP_SHARED, fd, (off_t)0)) == MAP_FAILED)
   {
      if(errno == ENODEV || errno == EPERM)
      {
@@ -6032,7 +5743,7 @@ int main(int argc, char **argv)
   int mandatory_locking_index    = 0;
   int first_file_optind          = 0;
   int second_file_optind         = 0;
-
+  
   opterr = 0;
   while(optind < argc)
   {

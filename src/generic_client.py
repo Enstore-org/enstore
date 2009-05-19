@@ -9,13 +9,14 @@
 #system imports
 import sys
 import errno
+#import pprint
 import types
 import os
 import string
 import socket
-import select
 
 #enstore imports
+#import setpath
 import Trace
 import e_errors
 import option
@@ -282,8 +283,8 @@ class GenericClient:
 
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
-            if hasattr(msg, "errno") and msg.errno and msg.errno == errno.ETIMEDOUT:
+        except udp_client.UDPError, msg:
+            if msg.errno and msg.errno == errno.ETIMEDOUT:
                 x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
             else:
                 x = {'status' : (e_errors.NET_ERROR,
@@ -291,10 +292,9 @@ class GenericClient:
         except TypeError, detail:
              x = {'status' : (e_errors.ERROR,
                                  "%s: %s" % (self.server_name, str(detail)))}
-        #except:
-        #    x = {'status' : (str(sys.exc_info()[0], str(sys.exc_info()[1])))}
-        #except errno.errorcode[errno.ETIMEDOUT]:
-        #    x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
+        
+        except errno.errorcode[errno.ETIMEDOUT]:
+            x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
         
         return x
         
@@ -308,7 +308,7 @@ class GenericClient:
         csc = self._get_csc()
         try:
             t = csc.get(server, timeout=rcv_timeout, retry=tries)
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
+        except udp_client.UDPError, msg:
             if msg.errno == errno.ETIMEDOUT:
                 return {'status' : (e_errors.TIMEDOUT,
                                     enstore_constants.CONFIGURATION_SERVER)}
@@ -329,7 +329,7 @@ class GenericClient:
         try:
             x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
                             rcv_timeout, tries)
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
+        except udp_client.UDPError, msg:
             if msg.errno == errno.ETIMEDOUT:
                 return {'status' : (e_errors.TIMEDOUT, self.server_name)}
             else:
@@ -351,10 +351,9 @@ class GenericClient:
         csc = self._get_csc()
         try:
             t = csc.get(server)
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
+        except udp_client.UDPError, msg:
             if msg.errno == errno.ETIMEDOUT:
-                return {'status' : (e_errors.TIMEDOUT,
-                                    enstore_constants.CONFIGURATION_SERVER)}
+                return {'status' : (e_errors.TIMEDOUT, "configuration_server")}
             else:
                 return {'status' : (e_errors.BROKEN, str(msg))}
         except errno.errorcode[errno.ETIMEDOUT]:
@@ -362,7 +361,7 @@ class GenericClient:
         try:
             x = self.u.send({'work': work,
                              'levels':levels}, (t['hostip'], t['port']))
-        except (socket.error, select.error, e_errors.EnstoreError), msg:
+        except udp_client.UDPError, msg:
             if msg.errno == errno.ETIMEDOUT:
                 return {'status' : (e_errors.TIMEDOUT, self.server_name)}
             else:

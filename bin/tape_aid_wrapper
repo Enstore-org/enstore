@@ -307,7 +307,11 @@ if [ ${debug:-0} -gt 0 ]; then
    exit		# quit before we cause real trouble
 fi
 
-output=/tmp/${script}.${action}.${robot}.output
+# Retain history of failures, usually due to a tape busy in a drive
+# as these will need manual intervention.
+logDir=$HOME/isa-tools/log
+[ ! -d $logDir ] && mkdir $logDir
+output=$logDir/${script}.${action}.${robot}.output-`date +%Y%m%d.%H%M`
 
 # reload is advertised as a take_out function, but implemented by flip_tab
 case $action in
