@@ -382,11 +382,11 @@ class Buffer:
         t0 = time.time()
         space = self._getspace()
         t1 = time.time()
-        Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,)) # COMMENT THIS
+        Trace.trace(222,"block_read: bytes_to_read: %s"%(nbytes,)) # COMMENT THIS
         #bytes_read = driver.read(space, 0, nbytes)
         bytes_read = driver.read(space, 0, self.blocksize)
         t2 = time.time()
-        Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,)) # COMMENT THIS
+        Trace.trace(222,"block_read: bytes_read: %s in %s"%(bytes_read,t2-t1)) # COMMENT THIS
         if bytes_read == nbytes: #normal case
             data = space
         elif bytes_read<=0: #error
@@ -2535,11 +2535,24 @@ class Mover(dispatching_worker.DispatchingWorker,
                 new_bloc_loc = 0L
                 if self.driver_type == 'FTTDriver':
 
-                    stats = self.tape_driver.get_stats()
+
+
+                    read_errors = -1
+                    write_errors = -1
+
                     try:
+                        stats = self.tape_driver.get_stats()
+                        block_n = stats[self.ftt.BLOCK_NUMBER]
+                        tot_blocks = stats[self.ftt.BLOCK_TOTAL]
                         new_bloc_loc = long(stats[self.ftt.BLOC_LOC])
+                        block_size = stats[self.ftt.BLOCK_SIZE]
+                        bot = stats[self.ftt.BOT]
+                        read_errors = long(stats[self.ftt.READ_ERRORS])
+                        write_errors = long(stats[self.ftt.WRITE_ERRORS])
+
                     except  self.ftt.FTTError, detail:
                         self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+                        return
 
 
                     Trace.log(e_errors.INFO, 'filemarks written. Tape %s absolute location in blocks %s'%(self.current_volume, new_bloc_loc,))
@@ -2550,6 +2563,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                self.buffer.write_stats[3],
                                self.buffer.write_stats[4],
                                idle_time))
+
+                    Trace.log(e_errors.INFO, 'drive stats after write. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
+                              (self.current_volume, block_n, block_size, new_bloc_loc, tot_blocks, bot, read_errors, write_errors))
+                    
 
                     self.tape_driver.flush()
                     self.media_transfer_time = self.media_transfer_time + (time.time()-t1) # include filemarks into drive time
@@ -2719,6 +2736,28 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
                     return
+
+
+                read_errors = -1
+                write_errors = -1
+
+                try:
+                    stats = self.tape_driver.get_stats()
+                    block_n = stats[self.ftt.BLOCK_NUMBER]
+                    tot_blocks = stats[self.ftt.BLOCK_TOTAL]
+                    new_bloc_loc = stats[self.ftt.BLOC_LOC]
+                    block_size = stats[self.ftt.BLOCK_SIZE]
+                    bot = stats[self.ftt.BOT]
+                    read_errors = long(stats[self.ftt.READ_ERRORS])
+                    write_errors = long(stats[self.ftt.WRITE_ERRORS])
+
+                except  self.ftt.FTTError, detail:
+                    self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+                    return
+                
+                Trace.log(e_errors.INFO, 'drive stats after write. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
+                          (self.current_volume, block_n, block_size, bloc_loc, tot_blocks, bot, read_errors, write_errors))
+
 
             if self.update_after_writing():
                 self.files_written_cnt = self.files_written_cnt + 1
@@ -2972,6 +3011,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         block_n = tot_blocks = bloc_loc = block_size = bot = 0L
         if self.driver_type == 'FTTDriver':
+            read_errors = -1
+            write_errors = -1
+            
             try:
                 stats = self.tape_driver.get_stats()
                 block_n = stats[self.ftt.BLOCK_NUMBER]
@@ -2979,11 +3021,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bloc_loc = stats[self.ftt.BLOC_LOC]
                 block_size = stats[self.ftt.BLOCK_SIZE]
                 bot = stats[self.ftt.BOT]
+                read_errors = long(stats[self.ftt.READ_ERRORS])
+                write_errors = long(stats[self.ftt.WRITE_ERRORS])
+                
             except  self.ftt.FTTError, detail:
                 self.transfer_failed(e_errors.INFO, "error getting stats after read %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
 
 
-            Trace.log(e_errors.INFO, 'drive stats after read. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s'%(self.current_volume, location, block_n, block_size, bloc_loc, tot_blocks, bot))
+            Trace.log(e_errors.INFO, 'drive stats after read. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
+                      (self.current_volume, location, block_n, block_size, bloc_loc, tot_blocks, bot, read_errors, write_errors))
         
         if break_here and self.method == 'read_next':
             self.bytes_to_write = self.bytes_read # set correct size for bytes to write
