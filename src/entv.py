@@ -931,7 +931,10 @@ def handle_messages(csc_addr, system_name, intf):
     enstore_display.startup_lock.acquire()
 
     #This is a time hack to get a clean output file.
-    #timeout_time = time.time() + intf.capture_timeout
+    if intf.generate_messages_file:
+        timeout_time = time.time() + intf.capture_timeout
+    else:
+        timeout_time = None
 
     send_request_dict = {}
 
@@ -965,7 +968,7 @@ def handle_messages(csc_addr, system_name, intf):
         while er_dict == None or not e_errors.is_ok(er_dict):
             try:
                 er_dict = csc.get('event_relay', 3, 3)
-            except SystemExit, msg:
+            except (KeyboardInterupt, SystemExit), msg:
                 raise msg
             except:
                 pass
@@ -1133,17 +1136,38 @@ def handle_messages(csc_addr, system_name, intf):
             words = commands[i].split(" ")
             if words[0] in ("connect", "disconnect", "loaded", "loading",
                             "state", "unload", "transfer", "error"):
+                
                 if len(words[1].split("@")) == 1:
+                    full_entv_mover_name = words[1] + "@" + enstore_system
                     #If the name already has the enstore_system appended to
                     # the end (from messages_file) then don't do this step.
                     commands[i] = "%s %s %s" % (words[0],
-                                               words[1] + "@" + enstore_system,
-                                               string.join(words[2:], " "))
+                                                full_entv_mover_name,
+                                                string.join(words[2:], " "))
+                else:
+                    full_entv_mover_name = words[1]
+
+                #Output this if --generate-messages-file was used.
+                if timeout_time and timeout_time > time.time():
+                    #Building this string is resource expensive, only build it
+                    # if necessary.
+                    Trace.message(10, string.join((time.ctime(), commands[i]), " "))
+                elif timeout_time: #timeout expired.
+                    try:
+                        if displays[0].movers[full_entv_mover_name].state not in \
+                               ("IDLE", "Unknown", "HAVE_BOUND"):
+                            #Keep outputing until the mover is done.
+                            Trace.message(10, string.join((time.ctime(), commands[i]), " "))
+                    except KeyError:
+                        pass
+                        
 
         put_func = enstore_display.message_queue.put_queue #Shortcut.
         for command in commands:
             #For normal use put everything into the queue.
             put_func(command, system_name)  #, enstore_system)
+
+            
             
         #If necessary, handle resubscribing.
         if not intf.messages_file:
@@ -1315,12 +1339,21 @@ def resize(event = None):
 
     __pychecker__ = "no-argsused"
 
+    #Recalculating this for each display is not efficent.
+    if len(displays) > 0:
+        size = displays[0].master.geometry().split("+")[0]
+        sizes = size.split("x")
+        width = int(sizes[0]) / len(displays)
+        height = int(sizes[1])
+
     for display in displays:
+        """
         #Recalculating this for each display is not efficent.
         size = display.master.geometry().split("+")[0]
         sizes = size.split("x")
         width = int(sizes[0]) / len(displays)
         height = int(sizes[1])
+        """
 
         display.configure(height = height, width = width)
     
@@ -1418,13 +1451,16 @@ def main(intf):
     global stop_now
     global displays
 
+    if intf.generate_messages_file:
+        Trace.do_print(10)
+
     if intf.movers_file or intf.messages_file:
         csc = None
 
         system_name = DEFAULT_SYSTEM_NAME
         title_name = DEFAULT_SYSTEM_NAME
 
-        cscs_info = {}
+        cscs_info = {system_name : (None, None)}
         cscs = [None]
         mover_list = []
     else:
@@ -1527,7 +1563,10 @@ def main(intf):
 
         size = entvrc_dict['geometry'].split("+")[0]
         sizes = size.split("x")
-        width = int(sizes[0]) / len(cscs_info)
+        if len(cscs_info) == 0:
+            width = int(sizes[0]) # --messages-file
+        else:
+            width = int(sizes[0]) / len(cscs_info)
         height = int(sizes[1])
         
         displays = []
@@ -1633,8 +1672,9 @@ def main(intf):
                 pass
 
         #Set the geometry of the .entvrc file (if necessary).
-        address = cscs_info[displays[0].system_name][0]
-        set_entvrc(displays[0], address)
+        if not intf.messages_file:
+            address = cscs_info[displays[0].system_name][0]
+            set_entvrc(displays[0], address)
 
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
