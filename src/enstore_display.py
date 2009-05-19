@@ -169,6 +169,12 @@ class Queue:
             number = len(self.queue[tid])
         except KeyError:
             number = 0
+        except (KeyboardInterrupt, SystemExit):
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         self.lock.release()
 
@@ -177,58 +183,67 @@ class Queue:
     def clear_queue(self, tid = None):
         self.lock.acquire()
         
-        #while len(self.queue):
-        #    del self.queue[0]
-
         try:
             del self.queue[tid][:]
         except KeyError:
             pass
+        except (KeyboardInterrupt, SystemExit):
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         self.lock.release()
 
     def clear_queues(self):
         self.lock.acquire()
 
-        for queue in self.queue.values():
-            del queue[:]
+        try:
+            for queue in self.queue.values():
+                del queue[:]
 
-        self.queue = {}
+            self.queue = {}
+        except (KeyboardInterrupt, SystemExit):
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         self.lock.release()
     
     def put_queue(self, queue_item, tid=None):
         self.lock.acquire()
 
-        if self.queue.get(tid, None) == None:
-            self.queue[tid] = []
+        try:
+            if self.queue.get(tid, None) == None:
+                self.queue[tid] = []
         
-        self.queue[tid].append({'item' : queue_item, 'tid' : tid})
+            self.queue[tid].append({'item' : queue_item, 'tid' : tid})
+        except (KeyboardInterrupt, SystemExit):
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         self.lock.release()
 
     def get_queue(self, tid=None):
         self.lock.acquire()
 
-        """
-        for i in range(len(self.queue)):
-            try:
-                temp = self.queue[i]
-            except IndexError:
-                temp = None
-
-            if tid == None or (temp != None and temp['tid'] == tid):
-                del self.queue[i]
-                break
-        else:
-            temp = {'item': None}
-        """
-
         try:
             temp = self.queue[tid][0]
             del self.queue[tid][0]
         except (KeyError, IndexError):
             temp = {'item' : None}
+        except (KeyboardInterrupt, SystemExit):
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         
         self.lock.release()
 
@@ -263,6 +278,7 @@ _font_cache = {}
 
 #def get_font(height_wanted, family='arial', fit_string="", width_wanted=0):
 def get_font(height_wanted, family='Helvetica', fit_string="", width_wanted=0):
+#def get_font(height_wanted, family='Courier', fit_string="", width_wanted=0):
 
     height_wanted = int(height_wanted)
 
@@ -362,6 +378,7 @@ color_dict = {
     'state_error_color':    rgbtohex(0, 0, 0), # black
     'state_offline_color':  rgbtohex(0, 0, 0), # black
     'state_unknown_color':    rgbtohex(0, 0, 0), # black
+    'state_active_color':    rgbtohex(0, 255, 0), # green
     'timer_color':          rgbtohex(255, 255, 255), # white
     'timer_longtime_color': rgbtohex(255, 0, 0), # red
     'timer_unknown_color': rgbtohex(0, 0, 0), # black
@@ -543,6 +560,7 @@ class Mover:
         self.label              = None
         self.timer_display      = None
         self.state_display      = None
+        self.state_display_2    = None  #For multiple part icons.
         self.volume_display     = None
         self.volume_bg_display  = None
         self.rate_display       = None
@@ -640,6 +658,72 @@ class Mover:
                                                   font = self.font,
                                                   fill = self.label_color)
 
+    #Used by draw_state().
+    def draw_positioning_icon(self):
+        x, y                    = self.x, self.y
+
+        #Path of the first "fast forward" line.
+        path = (x + self.img_offset.x, y + self.img_offset.y + (self.vol_height * 0.25),
+                x + self.img_offset.x + (self.vol_height * 0.25), y + self.img_offset.y + (self.vol_height * 0.5),
+                x + self.img_offset.x, y + self.img_offset.y + (self.vol_height * 0.75))
+
+        # path 2 is the same as one just moved to the right three pixels.
+        path2 = (x + self.img_offset.x + 3, y + self.img_offset.y + (self.vol_height * 0.25),
+                 x + self.img_offset.x + 3 + (self.vol_height * 0.25), y + self.img_offset.y + (self.vol_height * .05),
+                 x + self.img_offset.x + 3, y + self.img_offset.y + (self.vol_height * 0.75))
+        
+        if self.state_display and \
+               self.display.type(self.state_display) != "text":
+            self.display.coords(self.state_display, path)
+            self.display.coords(self.state_display_2, path2)
+        else:
+            if self.state_display:
+                self.display.delete(self.state_display)
+                self.state_display = None
+            if self.state_display_2:
+                self.display.delete(self.state_display_2)
+                self.state_display_2 = None
+                    
+            self.state_display = self.display.create_line(
+                path, width=1, smooth=0, joinstyle = 'miter',
+                fill=color_dict['state_active_color'])
+
+            self.state_display_2 = self.display.create_line(
+                path2, width=1, smooth=0, joinstyle = 'miter',
+                fill=color_dict['state_active_color'])
+
+    #Used by draw_state().
+    def draw_active_icon(self):
+        x, y                    = self.x, self.y
+
+        #Circle bounding box.
+        coords = (x + self.img_offset.x, y + self.img_offset.y + (self.vol_height * 0.25),
+                  x + self.img_offset.x + (self.vol_height * 0.5), y + self.img_offset.y + (self.vol_height * 0.75))
+
+        #Triangle points.
+        coords2 = (x + self.img_offset.x + (self.vol_height * 0.5), y + self.img_offset.y + (self.vol_height * 0.25),
+                   x + self.img_offset.x + (self.vol_height * 0.75), y + self.img_offset.y + (self.vol_height * 0.5),
+                   x + self.img_offset.x + (self.vol_height * 0.5), y + self.img_offset.y + (self.vol_height * 0.75))
+        
+        if self.state_display and \
+               self.display.type(self.state_display) != "text":
+            self.display.coords(self.state_display, coords)
+            self.display.coords(self.state_display_2, coords2)
+        else:
+            if self.state_display:
+                self.display.delete(self.state_display)
+                self.state_display = None
+            if self.state_display_2:
+                self.display.delete(self.state_display_2)
+                self.state_display_2 = None
+                    
+            self.state_display = self.display.create_oval(
+                coords, fill=color_dict['state_active_color'])
+
+            self.state_display_2 = self.display.create_polygon(
+                coords2, fill=color_dict['state_active_color'])
+
+
     def draw_state(self):
         x, y                    = self.x, self.y
 
@@ -655,42 +739,43 @@ class Mover:
             self.undraw_rate()
 
         #Display the current state.
-        img          = find_image(self.state + '.gif')
+        #img          = find_image(self.state + '.gif')
+        #img = None
         if self.state_display:
-            #If current state is an image and the new state is an image.
-            if img and self.display.type(self.state_display) == "image":
-                self.display.coords(self.state_display,
-                                    x+self.img_offset.x, y+self.img_offset.y)
-                self.display.itemconfigure(self.state_display, image=img)
-            #If currect state is in text and new state is an image.
-            elif img and self.display.type(self.state_display) == "text":
-                self.display.delete(self.state_display)
-                self.state_display = self.display.create_image(
-                    x+self.img_offset.x, y+self.img_offset.y,
-                    anchor=Tkinter.NW, image=img)
-            #If current state is an image and new state is in text.
-            elif self.display.type(self.state_display) == "image":
-                self.display.delete(self.state_display)
-                self.state_display = self.display.create_text(
-                x+self.state_offset.x, y+self.state_offset.y, font = self.font,
-                text=fit_string(self.font, self.state, self.state_width),
-                         fill=self.state_color, anchor=Tkinter.CENTER)
+            
+            if self.state in ("POSITIONING"):
+                self.draw_positioning_icon()
+            elif self.state in ("ACTIVE"):
+                self.draw_active_icon()
+                    
             #if current state is in text and the new state is in text.
             else:
-                self.display.coords(self.state_display,
-                                 x+self.state_offset.x, y+self.state_offset.y)
-                self.display.itemconfigure(self.state_display,
+                if self.display.type(self.state_display) == "text":
+                    self.display.coords(self.state_display,
+                                        x+self.state_offset.x, y+self.state_offset.y)
+                    self.display.itemconfigure(self.state_display,
                                            text=fit_string(self.font,
                                                            self.state,
                                                            self.state_width),
                                            anchor=Tkinter.CENTER,
                                            fill=self.state_color)
+                else:
+                    self.display.delete(self.state_display)
+                    if self.state_display_2:
+                        self.display.delete(self.state_display_2)
+                        self.state_display_2 = None
+                    self.state_display = self.display.create_text(
+                        x+self.state_offset.x, y+self.state_offset.y,
+                        font = self.font,
+                        text=fit_string(self.font, self.state, self.state_width),
+                        fill=self.state_color, anchor=Tkinter.CENTER)
+            
         #No currect state display.
         else:
-            if img:
-                self.state_display = self.display.create_image(
-                    x+self.img_offset.x, y+self.img_offset.y,
-                    anchor=Tkinter.NW, image=img)
+            if self.state in ("POSITIONING"):
+                self.draw_positioning_icon()
+            elif self.state in ("ACTIVE"):
+                self.draw_active_icon()
             else:
                 self.state_display = self.display.create_text(
                     x+self.state_offset.x, y+self.state_offset.y,
@@ -1005,6 +1090,12 @@ class Mover:
         try:
             self.display.delete(self.state_display)
             self.state_display = None
+        except Tkinter.TclError:
+            pass
+
+        try:
+            self.display.delete(self.state_display_2)
+            self.state_display_2 = None
         except Tkinter.TclError:
             pass
 
@@ -1450,13 +1541,13 @@ class Mover:
         self.width = (self.display.width / (total_columns + 1))
 
         #Font geometry. (state, label, timer)
-        self.font = get_font(self.height/3.5, #'arial',
+        self.font = get_font((self.height/3.5),
                              width_wanted=self.max_font_width(),
                              fit_string="DISMOUNT_WAIT")
 
         #Size of the volume portion of mover display.
-        self.vol_height = (self.height)/2.5
-        self.volume_font = get_font(self.vol_height, #'arial',
+        self.vol_height = self.height/2.5  #(self.height / 2.0) - 2.0
+        self.volume_font = get_font(self.vol_height,
                                     fit_string="MMMM99",
                                     width_wanted=((self.width/2.5)))
         self.vol_width = max(((self.width)/2.5),
@@ -1483,7 +1574,7 @@ class Mover:
 
         self.bar_width             = self.width/2.5 #(how long bar should be)
         self.bar_height            = self.height/4
-        self.buffer_bar_height     = self.height/10
+        self.buffer_bar_height     = self.bar_height / 2.0
         self.progress_bar_offset1  = XY(4, self.height - 2 - self.bar_height)
         self.progress_bar_offset2  = XY(4, self.height - 2)#yellow
         self.buffer_bar_offset1 = XY(4, self.height - 4 -
@@ -3401,7 +3492,10 @@ class Display(Tkinter.Canvas):
             #Every command gets processed though handle_command().  Thus,
             # this will output all processed messages and those necessary
             # to insert because of missed messges.
-            #Trace.trace(10, string.join((time.ctime(), command), " "))
+            #if Trace.print_levels.has_key(10):
+                #Building this string is resource expensive, only build it
+                # if necessary.
+            #    Trace.message(10, string.join((time.ctime(), command), " "))
 
             #Run the corresponding function.
             display_lock.acquire()
