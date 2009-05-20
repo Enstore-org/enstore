@@ -1985,6 +1985,8 @@ class STK_MediaLoader(MediaLoaderMethods):
 			slot_list[-1]['used'] = used
 			break
 		    except (TypeError, ValueError):
+		        #Other lines of text may be interspersed with what
+			# we are looking for.  Ignore them.
 			pass
 
 	    #Obtain specific total cell/slot count.
@@ -2005,7 +2007,9 @@ class STK_MediaLoader(MediaLoaderMethods):
 		        total = int(line2)
 			slot_list[-1]['total'] = total
 			break
-		    except TypeError:
+		    except (TypeError, ValueError):
+		        #Other lines of text may be interspersed with what
+			# we are looking for.  Ignore them.
 			pass
 
 	    #Obtain specific inaccessable/disabled cell/slot count.
@@ -2026,7 +2030,9 @@ class STK_MediaLoader(MediaLoaderMethods):
 		        inaccessible = int(line2)
 			#This value is added to the reserved count.
 			break
-		    except TypeError:
+		    except (TypeError, ValueError):
+		        #Other lines of text may be interspersed with what
+			# we are looking for.  Ignore them.
 			pass
 
 	    #Obtain specific inaccessable/disabled cell/slot count.
@@ -2046,7 +2052,9 @@ class STK_MediaLoader(MediaLoaderMethods):
 		    try:
 		        reserved = int(line2)
 			break
-		    except TypeError:
+		    except (TypeError, ValueError):
+		        #Other lines of text may be interspersed with what
+			# we are looking for.  Ignore them.
 			pass
 
 	    #Sum these two values for the disabled count.
