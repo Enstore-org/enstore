@@ -2564,8 +2564,23 @@ class Mover(dispatching_worker.DispatchingWorker,
                                self.buffer.write_stats[4],
                                idle_time))
 
-                    Trace.log(e_errors.INFO, 'drive stats after write. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
-                              (self.current_volume, block_n, block_size, new_bloc_loc, tot_blocks, bot, read_errors, write_errors))
+                    if self.buffer.write_stats[4] > 0.:
+                        rates = self.bytes_written/self.buffer.write_stats[4]
+                    else:
+                        rates = 0.
+                    Trace.log(e_errors.INFO, 'drive stats after write. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_write_tot %s tape_rate %s'%
+                              (self.current_volume,
+                               self.current_location,
+                               block_n,
+                               block_size,
+                               new_bloc_loc,
+                               tot_blocks,
+                               bot,
+                               read_errors,
+                               write_errors,
+                               self.bytes_written,
+                               self.buffer.read_stats[4],
+                               rates))
                     
 
                     self.tape_driver.flush()
@@ -2755,7 +2770,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
                     return
                 
-                Trace.log(e_errors.INFO, 'drive stats after write. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
+
+                if self.buffer.read_stats[4] > 0.:
+                    rates = self.bytes_read/self.buffer.read_stats[4]
+                else:
+                    rates = 0.
+                Trace.log(e_errors.INFO, 'drive stats after crc check. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
                           (self.current_volume, block_n, block_size, bloc_loc, tot_blocks, bot, read_errors, write_errors))
 
 
@@ -3026,10 +3046,26 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
             except  self.ftt.FTTError, detail:
                 self.transfer_failed(e_errors.INFO, "error getting stats after read %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+                return
 
 
-            Trace.log(e_errors.INFO, 'drive stats after read. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
-                      (self.current_volume, location, block_n, block_size, bloc_loc, tot_blocks, bot, read_errors, write_errors))
+            if self.buffer.read_stats[4] > 0.:
+                rates = self.bytes_read/self.buffer.read_stats[4]
+            else:
+                rates = 0.
+            Trace.log(e_errors.INFO, 'drive stats after read. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_read_tot %s tape_rate %s'%
+                      (self.current_volume,
+                       location,
+                       block_n,
+                       block_size,
+                       bloc_loc,
+                       tot_blocks,
+                       bot,
+                       read_errors,
+                       write_errors,
+                       self.bytes_read,
+                       self.buffer.read_stats[4],
+                       rates))
         
         if break_here and self.method == 'read_next':
             self.bytes_to_write = self.bytes_read # set correct size for bytes to write
