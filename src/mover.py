@@ -2579,7 +2579,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                read_errors,
                                write_errors,
                                self.bytes_written,
-                               self.buffer.read_stats[4],
+                               self.buffer.write_stats[4],
                                rates))
                     
 
@@ -2772,11 +2772,21 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
 
                 if self.buffer.read_stats[4] > 0.:
-                    rates = self.bytes_read/self.buffer.read_stats[4]
+                    rates = bytes_read/self.buffer.read_stats[4]
                 else:
                     rates = 0.
-                Trace.log(e_errors.INFO, 'drive stats after crc check. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s'%
-                          (self.current_volume, block_n, block_size, bloc_loc, tot_blocks, bot, read_errors, write_errors))
+                Trace.log(e_errors.INFO, 'drive stats after crc check. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_read_tot %s tape_rate %s'%
+                          (self.current_volume,
+                           block_n,
+                           block_size,
+                           bloc_loc,
+                           tot_blocks,
+                           bot,
+                           read_errors,
+                           write_errors,
+                           bytes_read,
+                           self.buffer.read_stats[4],
+                           rates))
 
 
             if self.update_after_writing():
