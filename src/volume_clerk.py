@@ -2364,7 +2364,6 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         # record our changes
         self.volumedb_dict[external_label] = record  
         record["status"] = (e_errors.OK, None)
-        Trace.log(e_errors.ERROR, "set_remaining_bytes "+`record`)
         self.reply_to_caller(record)
         return
 
