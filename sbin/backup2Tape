@@ -160,7 +160,7 @@ do
           fl=`find ${xd}.xlogs -follow -type f -newer $startwal`
           if [[ $fl != "" ]]
           then
-            tar cfz ${xd}.xlogs-${tarfile}.tar.Z $startwal $fl
+            tar cfz ${xd}/xlogs-${tarfile}.tar.Z $startwal $fl
           fi
         fi
 done
