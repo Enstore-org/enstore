@@ -1,9 +1,0 @@
-FILE = TABLE
-PRODUCT=ipmi
-
-FLAVOR=ANY
-QUALIFIERS=""
-        ACTION=setup
-                setupEnv()
-                proddir()
-		pathPrepend(PATH, ${IPMI_DIR})
