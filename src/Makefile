@@ -18,9 +18,9 @@ PYLIB=$(PYTHON_DIR)/lib/python2.*/lib-dynload
 # modules listed as -x are to be excluded from the frozen binary (though if
 # they do exist they will be included).  These mostly have to do with non-UNIX
 # OSes that won't have modules be there when running on UNIX.
-FREEZE_SKIP_OS=-x ce -x dos -x mac -x nt -x os2 -x riscos -x riscosenviron -x riscospath
+FREEZE_SKIP_OS=-x ce -x dos -x mac -x nt -x os2 -x riscos -x riscosenviron -x riscospath -x MacOS -x _winreg -x msvcrt -x MACFS -x macfs -x SOCKS -x Carbon.File -x Carbon.Folder -x Carbon.Folders
 FREEZE_SKIP_HTML=-x GimpGradientFile -x GimpPaletteFile -x Image -x ImageTk -x PaletteFile -x _imaging -x jarray
-FREEZE_SKIP_MISC=-x MacOS -X sitecustomize -x _winreg -x ic -x rourl2path -x EasyDialogs -x msvcrt -x MACFS -x macfs -x SOCKS -x org.python.core -X org -X xreadlines -x Carbon.File -x Carbon.Folder -x Carbon.Folders -x os.path -x _emx_link -x _dummy_threading
+FREEZE_SKIP_MISC=-X sitecustomize -x ic -x rourl2path -x EasyDialogs -x org.python.core -X org -X xreadlines -x os.path -x _emx_link -x _dummy_threading -x _subprocess -x email.Generator -x email.Iterators -x usercustomize -x _md5 -x _sha -x _sha256 -x _sha512 -x _xmlplus -x _xmlrpclib -x dummy.Process -x sgmlop -x multiprocessing -x pg 
 FREEZE_SKIP_POSTGRES=`if [ "_Linux" != _$(MACH_OS) ]; then echo "-x pg"; fi`
 
 FREEZE_ENCP_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC)
@@ -213,6 +213,15 @@ SERVER_LIB_LIST=
 #mover media_changer
 NON_SERVER_LIST=plotter_main
 
+#This .SECONDEXPANSION necessary to enable $$@ to work on newer versions of GNU
+# Make.  This became necessary with the version of GNU Make that shipped with
+# SLF5.  SLF4 and ealier had $$@ enabled by default.
+#
+# The third edition of "Managing Progjects with GNU Make" does not mention
+# $$@ or .SECONDEXPANSION.  The first edition described $$@ as a Sys V
+# extension.
+.SECONDEXPANSION:
+
 #These are the full lists.
 FULL_SERVER_LIST=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) $(SERVER_LIB_LIST) $(NON_SERVER_LIST)
 FULL_CLIENT_LIST=enstore_admin encp_admin ensync_admin enmv_admin
@@ -289,7 +298,7 @@ entv:
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENTV_TEMP entv.py
 	(cd ENTV_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENTV_TEMP/entv ../ups/chooseConfig ENTV_BIN
-	if [ -n "$(ENSTORE_DEVEL_DIR)" ]; then \
+	if [ -n "$(ENSTORE_DEVEL_DIR)" -a -f $(ENSTORE_DEVEL_DIR)/tcltk/ ]; then \
 		tcltk_dirs=`ls -ld $(ENSTORE_DEVEL_DIR)/tcltk/lib/tcl* $(ENSTORE_DEVEL_DIR)/tcltk/lib/tk* | egrep "^d" | awk '{print $$9}'` && \
 		cp -r $$tcltk_dirs ENTV_BIN ; \
 		cp -r $(ENSTORE_DIR)/etc/Images ENTV_BIN ; \
