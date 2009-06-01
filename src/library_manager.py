@@ -193,6 +193,7 @@ class AtMovers:
         self.max_time_in_active = 7200
         self.max_time_in_other = 1200
         self.dont_update = {}
+        self.alarm_sent = {} # mover to which alarm was sent
                         
         
     def put(self, mover_info):
@@ -263,6 +264,7 @@ class AtMovers:
             del(self.at_movers[mover])
         Trace.trace(32,"AtMovers delete: at_movers: %s" % (self.at_movers,))
         Trace.trace(31,"AtMovers delete: sg_vf: %s" % (self.sg_vf,))
+        
 
     # check how long mover did not update its state
     def check(self):
@@ -277,6 +279,7 @@ class AtMovers:
                 # on the other hand we do not want to lock acess to at_movers
                 for mover in self.at_movers.keys():
                     Trace.trace(113, "Check mover %s now %s"%(self.at_movers[mover], now))
+                    Trace.trace(111, "alarm_sent %s"%(self.alarm_sent,))
                     if int(now) - int(self.at_movers[mover]['updated']) > 600:
                         Trace.alarm(e_errors.ALARM,
                                     "The mover %s has not updated its state for %s minutes, will remove it from at_movers list"%
@@ -286,14 +289,22 @@ class AtMovers:
                         Trace.trace(111, "mover %s"%(mover,))
                         add_to_list = 0
                         time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
-                        state = self.at_movers[mover].get('state', 'unknown') 
+                        Trace.trace(111, "time_in_state %s  max_time_in_other %s max_time_in_active %s"%
+                                    (time_in_state,self.max_time_in_other, self.max_time_in_active))
+                        state = self.at_movers[mover].get('state', 'unknown')
+                        if self.alarm_sent.has_key(mover) and state != self.alarm_sent[mover]:
+                            # state has changed, remove the mover entry
+                            del(self.alarm_sent[mover])
                         if time_in_state > self.max_time_in_other:
                             if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                                 add_to_list = 1
                             if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK' or state == 'MOUNT_WAIT' or state =='DISMOUNT_WAIT'):
-                                Trace.alarm(e_errors.ALARM,
-                                            "The mover %s is in state %s for %s minutes, Please check the mover"%
-                                            (mover, state, int(time_in_state)/60))
+                                if not self.alarm_sent.has_key(mover):
+                                    # send alarm only once
+                                    Trace.alarm(e_errors.ALARM,
+                                                "The mover %s is in state %s for %s minutes, Please check the mover"%
+                                                (mover, state, int(time_in_state)/60))
+                                    self.alarm_sent[mover] = state
                                 
                                 #add_to_list = 1
                             if add_to_list:
@@ -637,7 +648,7 @@ class LibraryManagerMethods:
         return rc
 
     def check(self):
-        while 1:
+         while 1:
            time.sleep(self.check_interval)
            movers = self.volumes_at_movers.check()
            if movers:
