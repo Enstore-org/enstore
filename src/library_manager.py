@@ -291,7 +291,11 @@ class AtMovers:
                             if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                                 add_to_list = 1
                             if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK' or state == 'MOUNT_WAIT' or state =='DISMOUNT_WAIT'):
-                                add_to_list = 1
+                                Trace.alarm(e_errors.ALARM,
+                                            "The mover %s is in state %s for %s minutes, Please check the mover"%
+                                            (mover, state, int(time_in_state)/60))
+                                
+                                #add_to_list = 1
                             if add_to_list:
                                 self.dont_update[mover] = state
                                 movers_to_delete.append(mover)
