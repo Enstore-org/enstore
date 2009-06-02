@@ -121,6 +121,9 @@ def is_nameof_name(filepath):
 
 def is_pnfs_path(pathname, check_name_only = None):
 
+    if not pathname:  #Handle None and empty string.
+        return 0
+
     if is_access_name(pathname) or is_nameof_name(pathname):
         #We don't want to call fullpath() for these special files.
         # fullpath doesn't know how to protect from accessing an unknown
