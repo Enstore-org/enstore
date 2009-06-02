@@ -598,7 +598,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                           % (lib_man.name, str(detail))
             Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
             return None
-	except (e_errors.TCP_EXCEPTION, errno.errorcode[errno.ETIMEDOUT]), detail:
+	except e_errors.TCP_EXCEPTION, detail:
+	    message = "Error while getting suspect vols from %s (%s)" \
+                      % (lib_man.name, str(detail))
+	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
+	    return None
+
+	except errno.errorcode[errno.ETIMEDOUT], detail:
 	    message = "Error while getting suspect vols from %s (%s)" \
                       % (lib_man.name, str(detail))
 	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
