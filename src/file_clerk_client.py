@@ -13,6 +13,7 @@ import sys
 import socket
 #import select
 import os
+import stat
 
 # enstore imports
 import generic_client
@@ -627,12 +628,14 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         if not gid:
             gid = bit_file['gid']
 
+        """ 
 	# try its best to set uid and gid
         try:
             os.setregid(gid, gid)
             os.setreuid(uid, uid)
         except:
             pass
+        """
 
         # check if the volume is deleted
         if bit_file["external_label"][-8:] == '.deleted':
@@ -661,7 +664,8 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
         # its directory has to exist
         p_p, p_f = os.path.split(bit_file['pnfs_name0'])
-        rtn_code2 = file_utils.e_access(p_p, os.F_OK)
+        p_stat = file_utils.get_stat(p_p)
+        rtn_code2 = file_utils.e_access_cmp(p_stat, os.F_OK)
         if not rtn_code2:
             message = "can not write in directory %s" % (p_p,)
             return {'status': (e_errors.FILE_CLERK_ERROR, message)}
@@ -692,13 +696,30 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             if pf.exists() and force == None:
                 message = "%s already exists" % (bit_file['pnfs_name0'],)
                 return {'status': (e_errors.FILE_CLERK_ERROR, message)}
-            
-            try:
-                pf.create()
-            except:
-                message = "can not create %s" % (pf.path,)
-                return {'status': (e_errors.FILE_CLERK_ERROR, message)}
-            
+          
+            if not pf.exists(): 
+                #We need to wrap this code (when uid == 0) to set the euid and
+                # egid to the owner of the directory.  This will allow root 
+                # to create files in non-admin and non-trusted filesystems.
+                #print "os.geteuid():", os.geteuid(), p_p
+                file_utils.match_euid_egid(p_p)
+                #print "os.geteuid():", os.geteuid(), p_p
+                try:
+                    pf.create()
+                except (OSError, IOError), msg:
+                    message = "can not create: %s" % (str(msg),)
+                    return {'status': (e_errors.PNFS_ERROR, message)}
+                except:
+                    message = "can not create: %s: %s" % (str(sys.exc_info()[0]),
+                                                          str(sys.exc_info()[1]))
+                    return {'status' : (e_errors.PNFS_ERROR, message)}
+                file_utils.set_euid_egid(0, 0)
+                file_utils.release_lock_euid_egid()
+
+                #Now that we are back to root, we can change the ownership
+                # of the file.
+                file_utils.chown(bit_file['pnfs_name0'], uid, gid)
+
             pnfs_id = pf.get_pnfs_id()
             if pnfs_id != pf.pnfs_id:
                 # update file record
