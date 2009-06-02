@@ -657,7 +657,10 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         del vcc
 
         # check if the path is a valid pnfs path
-        #if bit_file['pnfs_name0'][:5] != '/pnfs':
+        if not bit_file['pnfs_name0']:
+            #We get here if there is no path information.
+            message = "no path information found for %s" % (bfid,)
+            return {'status': (e_errors.FILE_CLERK_ERROR, message)}
         if not pnfs.is_pnfs_path(bit_file['pnfs_name0'], check_name_only = 1):
             message = "%s is not a valid pnfs path" % (bit_file['pnfs_name0'],)
             return {'status': (e_errors.FILE_CLERK_ERROR, message)}
