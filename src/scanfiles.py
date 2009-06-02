@@ -1341,43 +1341,65 @@ def check_bit_file(bfid, bfid_info = None):
         errors_and_warnings(prefix, err, warn, info)
         return
 
-    #Determine if this file is a multiple copy.
+    #Determine if this file is a multiple copy.  Multiple copies made using
+    # duplicate.py would set this True too.
     original_bfid = infc.find_original(bfid).get('original', None)
     if original_bfid != None and bfid != original_bfid:
         is_multiple_copy = True
     else:
         is_multiple_copy = False
-
+    ### This first method will be faster, but relies on an updated
+    ### info_server.py.
+    """
+    #Determine if the file is an original copy.
+    if original_bfid != None and bfid == original_bfid:
+        is_primary_copy = True
+    else:
+        is_primary_copy = False
+    """
+    ### Use this method for now.
+    all_copies = infc.find_all_copies(bfid).get('copies', None)
+    if all_copies != None and len(all_copies) > 1:
+        if is_multiple_copy:
+            is_primary_copy = False
+        else:
+            is_primary_copy = True
+    else:
+        is_primary_copy = False
+        
     #Determine if this file has been migrated/duplicated.  (Some early,
     # volumes were set to readonly instead of 'migrating', so include those
     # volumes.)  Just because the variable name is is_migrated_copy,
     # any cloned or duplicated files will also have this set true.
-    vol_state = volume_record['system_inhibit'][1]
-    if volume_record and \
-       (enstore_functions2.is_migration_state(vol_state) or \
-        vol_state == 'readonly'):
-        
-        response_dict = infc.find_migrated(bfid)
-        if not e_errors.is_ok(response_dict):
-            # We should simply be able to give the following warning if we
-            # get this far.  However, to allow this scan to work on systems
-            # that do not have the updated information server with
-            # find_migrated(), we need guess that if the system inhibit
-            # says that the migration/duplication/cloning is done, that
-            # we should just list the bfid as a migrated bfid.
-            #      info.append("unable to determine migration status")
-            if enstore_functions2.is_migrated_state(vol_state):
-                src_bfids = [bfid]
-            else:
-                src_bfids = [] #If nothing is found, an empty list is returned.
+    response_dict = infc.find_migrated(bfid)
+    if not e_errors.is_ok(response_dict):
+        # We should simply be able to give the following warning if we
+        # get this far.  However, to allow this scan to work on systems
+        # that do not have the updated information server with
+        # find_migrated(), we need guess that if the system inhibit
+        # says that the migration/duplication/cloning is done, that
+        # we should just list the bfid as a migrated bfid.
+        #      info.append("unable to determine migration status")
+        if enstore_functions2.is_migrated_state(volume_record['system_inhibit'][1]):
+            src_bfids = [bfid]
+            dst_bfids = []
+        elif enstore_functions2.is_migration_related_file_family(volume_record['file_family']):
+            src_bfids = []
+            dst_bfids = [bfid]
         else:
-            src_bfids = response_dict['src_bfid']
-        if src_bfids and bfid in src_bfids:
-            is_migrated_copy = True
-        else:
-            is_migrated_copy = False
+            src_bfids = [] #If nothing is found, an empty list is returned.
+            dst_bfids = []
+    else:
+        src_bfids = response_dict['src_bfid']
+        dst_bfids = response_dict['dst_bfid']
+    if src_bfids and bfid in src_bfids:
+        is_migrated_copy = True
     else:
         is_migrated_copy = False
+    if dst_bfids and bfid in dst_bfids:
+        is_migrated_to_copy = True
+    else:
+        is_migrated_to_copy = False
 
     # we can not simply skip deleted files
     #
@@ -1421,12 +1443,39 @@ def check_bit_file(bfid, bfid_info = None):
                             "found original of copy"]:
             # The bfid is not active, and it is not active in pnfs.
             info.append(msg.args[1])
+        elif is_migrated_to_copy and \
+                 not (is_multiple_copy or is_primary_copy) \
+                 and msg.errno == errno.ENOENT and \
+                 file_record['deleted'] in ['no']:
+            #Test if the migration metadata in PNFS is incorrectly swapped.
+            try:
+                find_pnfs_file.find_pnfsid_path(file_record['pnfsid'],
+                                                src_bfids[0],
+                                                file_record = file_record)
+                
+                #If find_pnfsid_path() succeeds here, we really have an error.
+                # This test allows for a more accurate error message.
+                err.append("migration destination copy is inactive in PNFS")
+            except (OSError, IOError):
+                #Repeat the original error.
+                err.append(msg.args[1])
+        elif is_multiple_copy:
+            #There is no error here.  A multiple copy will not match PNFS.
+            pass
         else:
             err.append(msg.args[1])
         errors_and_warnings(prefix, err, warn, info)
         return
     except (ValueError,), msg:
         err.append(str(msg))
+        errors_and_warnings(prefix, err, warn, info)
+        return
+
+    #Catch the case where the migration source file is the active file
+    # in PNFS instead of the new copy.
+    if is_migrated_copy and pnfs_path \
+             and not (is_multiple_copy or is_primary_copy):
+        err.append("migration source copy is active in PNFS")
         errors_and_warnings(prefix, err, warn, info)
         return
         
