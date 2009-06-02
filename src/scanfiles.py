@@ -1443,25 +1443,45 @@ def check_bit_file(bfid, bfid_info = None):
                             "found original of copy"]:
             # The bfid is not active, and it is not active in pnfs.
             info.append(msg.args[1])
-        elif is_migrated_to_copy and \
+        elif (is_migrated_to_copy or is_migrated_copy) and \
                  not (is_multiple_copy or is_primary_copy) \
                  and msg.errno == errno.ENOENT and \
                  file_record['deleted'] in ['no']:
+            if is_migrated_to_copy:
+                use_bfid = src_bfids[0]
+                error_type = "destination"
+                info_string = "is migrated to copy"
+            else: #is_migrated_copy
+                use_bfid = dst_bfids[0]
+                error_type = "source"
+                info_string = "is migrated copy"
+
             #Test if the migration metadata in PNFS is incorrectly swapped.
             try:
                 find_pnfs_file.find_pnfsid_path(file_record['pnfsid'],
-                                                src_bfids[0],
+                                                use_bfid,
                                                 file_record = file_record)
-                
-                #If find_pnfsid_path() succeeds here, we really have an error.
-                # This test allows for a more accurate error message.
-                err.append("migration destination copy is inactive in PNFS")
+
+                if is_migrated_to_copy:
+                    #If find_pnfsid_path() succeeds here, we really have
+                    # an error.  This test allows for a more accurate
+                    # error message.
+                    err.append("migration %s copy is inactive in PNFS" % \
+                               (error_type,))
             except (OSError, IOError):
                 #Repeat the original error.
                 err.append(msg.args[1])
-        elif is_multiple_copy:
+
+            info.append(info_string)
+        elif is_multiple_copy and msg.errno == errno.ENOENT:
             #There is no error here.  A multiple copy will not match PNFS.
-            pass
+            info.append("is multiple copy")
+
+            #Append these to if applicable.
+            if is_primary_copy:
+                info.append("is primary copy")
+            elif is_multiple_copy:
+                info.append("is multiple copy")
         else:
             err.append(msg.args[1])
         errors_and_warnings(prefix, err, warn, info)
@@ -1478,7 +1498,7 @@ def check_bit_file(bfid, bfid_info = None):
         err.append("migration source copy is active in PNFS")
         errors_and_warnings(prefix, err, warn, info)
         return
-        
+
     #Stat the file.
     f_stats, (e2, w2, i2) = get_stat(pnfs_path)
     err = err + e2
@@ -1519,13 +1539,15 @@ def check_bit_file(bfid, bfid_info = None):
             except OSError:
                 pass
 
-    file_info = {"f_stats"       : f_stats,
-                 "layer1"        : bfid, #layer1_bfid,
-                 "file_record"   : file_record,
-                 "pnfsid"        : file_record['pnfsid'],
-                 "is_multiple_copy" : is_multiple_copy,
-                 "volume_record" : volume_record,
-                 "is_migrated_copy" : is_migrated_copy,
+    file_info = {'f_stats'             : f_stats,
+                 'layer1'              : bfid, #layer1_bfid,
+                 'file_record'         : file_record,
+                 'pnfsid'              : file_record['pnfsid'],
+                 'is_multiple_copy'    : is_multiple_copy,
+                 'is_primary_copy'     : is_primary_copy,
+                 'volume_record'       : volume_record,
+                 'is_migrated_copy'    : is_migrated_copy,
+                 'is_migrated_to_copy' : is_migrated_to_copy,
                  }
 
     e1, w1, i1 = check_file(pnfs_path, file_info)
@@ -1542,8 +1564,10 @@ def check_file(f, file_info):
     filedb = file_info.get('file_record', None)
     #pnfs_id = file_info.get('pnfsid', None)
     is_multiple_copy = file_info.get('is_multiple_copy', None)
+    is_primary_copy = file_info.get('is_primary_copy', None)
     volumedb = file_info.get('volume_record', None)
     is_migrated_copy = file_info.get('is_migrated_copy', None)
+    is_migrated_to_copy = file_info.get('is_migrated_to_copy', None)
 
     err = []
     warn = []
@@ -2010,9 +2034,13 @@ def check_file(f, file_info):
 
     if is_multiple_copy:
         info.append("is multiple copy")
+    elif is_primary_copy:
+        info.append("is primary copy")
 
     if is_migrated_copy:
         info.append("is migrated copy")
+    elif is_migrated_to_copy:
+        info.append("is migrated to copy")
 
     return err, warn, info
 
