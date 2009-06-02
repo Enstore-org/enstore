@@ -586,6 +586,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def suspect_vols(self, lib_man, time):
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 		 "get new suspect vol list from %s"%(lib_man.name,))
+        message=""
 	try:
 	    state = lib_man.client.get_suspect_volumes()
         except (socket.error, select.error, e_errors.EnstoreError), detail:
@@ -597,14 +598,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                           % (lib_man.name, str(detail))
             Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
             return None
-	except e_errors.TCP_EXCEPTION, detail:
+	except (e_errors.TCP_EXCEPTION, errno.errorcode[errno.ETIMEDOUT]), detail:
 	    message = "Error while getting suspect vols from %s (%s)" \
                       % (lib_man.name, str(detail))
-	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
-	    return None
-	except errno.errorcode[errno.ETIMEDOUT], detail:
-	    msg = "Timeout while getting suspect vols from %s (%s)" \
-                  % (lib_man.name, str(detail))
 	    Trace.log(e_errors.ERROR, message, e_errors.IOERROR)
 	    return None
 
@@ -1631,6 +1627,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if after_function:
             after_function()
 
+    #
+    # spawn function in new thread of there is not alive thread with this name
+    #
     def run_in_thread(self,
                       function,
                       args=(),
@@ -1682,7 +1681,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 else: #record last call time
                     self.interval_funcs[func][1] =  now
                 Trace.trace(6, "do_one_request: calling interval_function %s"%(func.__name__,))
-                self.run_in_thread(func, (), after_function=self._done_cleanup, thread_name=func.__name__)
+                self.run_in_thread(func, (), after_function=self._done_cleanup, thread_name="%s.%s"%(self.__class__.__name__,func.__name__))
                 #func()
 
         if request is None: #Invalid request sent in
