@@ -768,7 +768,8 @@ def is_on_host(host):
     return 0
 
 ###########################################################################
-##
+### Here are some migration related functions that check for certain
+### states in the metadata. 
 ###########################################################################
 
 def is_readonly_state(state):
@@ -805,3 +806,25 @@ def is_migrating_state(state):
         return 1
 
     return 0
+
+migration_compile = re.compile(".*-MIGRATION.*")
+def is_migration_file_family(ff):
+    if migration_compile.match(ff):
+        return True
+
+    return False
+
+duplication_compile = re.compile(".*_copy_[1-9]*.*")
+def is_duplication_file_family(ff):
+    if duplication_compile.match(ff):
+        return True
+
+    return False
+
+#This one tests for the file family being either for migration or duplication.
+def is_migration_related_file_family(ff):
+    rtn = is_migration_file_family(ff)
+    if rtn:
+        return rtn
+
+    return is_duplication_file_family(ff)
