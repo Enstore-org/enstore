@@ -125,14 +125,14 @@ debug = False	# debugging mode
 #
 # The workaround (not all of the above was known about EXfer and the time
 # work on the workaround began) is to use fork and pipes instead of threads.
-USE_THREADS = False
+USE_THREADS = True
 
 #Instead of reading all the files with encp when scaning, we have a new
 # mode where volume_assert checks the CRCs for all files on a tape.  Using
 # this volume_assert functionality should significantly reduce the [networking]
 # resources required to run the migration scan; while at the same time
 # increasing performance.
-USE_VOLUME_ASSERT = False
+USE_VOLUME_ASSERT = True
 
 #When true, fork off a new process/thread that will handle migrating one file.
 # Then keep multiple procesess going.
@@ -143,7 +143,7 @@ PARALLEL_FILE_MIGRATION = False
 ##
 ## Currently use of this mode results in a deadlock.
 ##
-PARALLEL_FILE_TRANSFER = False
+PARALLEL_FILE_TRANSFER = True
 #We need to make sure that the multiprocessing module is available
 # for PARALLEL_FILE_TRANSFER.  If it is not set, set it to off.
 if PARALLEL_FILE_TRANSFER and \
@@ -275,12 +275,16 @@ def time2timestamp(t):
 
 # initialize csc, db, ... etc.
 def init(intf):
-	#global db, csc
 	global log_f, dbhost, dbport, dbname, dbuser, errors
 	global SPOOL_DIR
 	global use_file_family
         global pnfs_is_trusted
         global do_seteuid
+        global debug
+
+        #Make getting debug information from the command line possible.
+        if intf.debug:
+            debug = intf.debug
 
 	csc = configuration_client.ConfigurationClient((intf.config_host,
 							intf.config_port))
@@ -293,13 +297,15 @@ def init(intf):
 
 	errors = 0
 
+        #Verify that all libraries passed in exist.
 	if intf.library:
-		library_fullname = intf.library + ".library_manager"
-		lib_dict = csc.get(library_fullname)
-		if not e_errors.is_ok(lib_dict):
-			sys.stderr.write("library %s does not exist\n" %
-					 (intf.library,))
-			sys.exit(1)
+                for library in intf.library.split(","):
+		        library_fullname = library + ".library_manager"
+                        lib_dict = csc.get(library_fullname)
+                        if not e_errors.is_ok(lib_dict):
+                                sys.stderr.write("library %s does not exist\n" %
+                                                 (library,))
+                                sys.exit(1)
 
 	#Make sure we got the spool directory from command line or
 	# from configuration.
@@ -320,7 +326,7 @@ def init(intf):
             amp = pnfs.get_enstore_admin_mount_point() #amp = Admin Mount Point
             if len(amp) == 0:
                 #If PNFS is not trusted, give up.
-                sys.stderr.write("%s no PNFS admin mount points found\n")
+                sys.stderr.write("no PNFS admin mount points found\n")
                 sys.exit(1)
             for directory in amp:
                 test_file = "%s/.is_pnfs_trusted_test" % (directory,)
@@ -346,7 +352,6 @@ def init(intf):
         # do seteuid() calls.
         if not pnfs_is_trusted and getattr(intf, 'make_failed_copies', None):
             do_seteuid = True
-            
 
 	# check for no_log commands
 	if not intf.migrated_to and not intf.migrated_from and \
@@ -447,7 +452,7 @@ def set_proceed_number(src_bfids, copy_queue, scan_queue, intf):
 	#Determine the media speeds that the migration will be going at.
 	src_media_type = get_media_type(src_bfids[0], db)
 	if intf.library and type(intf.library) == types.StringType:
-		dst_media_type = get_media_type(intf.library, db)
+		dst_media_type = get_media_type(intf.library.split(",")[0], db)
 	else:
 		mig_path = get_migration_db_path()
 		if mig_path != None:
@@ -502,39 +507,8 @@ def setup_cloning():
 # that its metadata can be modified.
 def make_writeable(path):
 
-    if do_seteuid:
-        file_utils.match_euid_egid(path)
-    else:
-        file_utils.acquire_lock_euid_egid()
-
-    try:
-        os.chmod(path,
-                 stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | \
+    file_utils.chmod(path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | \
                      stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
-    except (KeyboardInterrupt, SystemExit):
-        if do_seteuid:
-            file_utils.release_lock_euid_egid()
-        else:
-            file_utils.release_lock_euid_egid()
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except (OSError, IOError): #Expected errors.
-        if do_seteuid:
-            file_utils.release_lock_euid_egid()
-        else:
-            file_utils.release_lock_euid_egid()
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except:
-        if do_seteuid:
-            file_utils.release_lock_euid_egid()
-        else:
-            file_utils.release_lock_euid_egid()
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-    #Now set the root ID's back.
-    if do_seteuid:
-        file_utils.end_euid_egid(reset_ids_back = True)
-    else:
-        file_utils.release_lock_euid_egid()
 
 # nullify_pnfs() -- nullify the pnfs entry so that when the entry is
 #			removed, its layer4 won't be put in trashcan
@@ -543,8 +517,8 @@ def nullify_pnfs(pname):
 
     if do_seteuid:
         file_utils.match_euid_egid(pname)
-    else:
-        file_utils.acquire_lock_euid_egid()
+    #else:
+    #    file_utils.acquire_lock_euid_egid()
 
     try:
         p1 = pnfs.File(pname)
@@ -554,29 +528,29 @@ def nullify_pnfs(pname):
     except (KeyboardInterrupt, SystemExit):
         if do_seteuid:
             file_utils.end_euid_egid(reset_ids_back = True)
-        else:
-            file_utils.release_lock_euid_egid()
+        #else:
+        #    file_utils.release_lock_euid_egid()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError), msg:
         #Don't worry if the file is already gone.
         if msg.errno not in [errno.ENOENT]:
             if do_seteuid:
                 file_utils.end_euid_egid(reset_ids_back = True)
-            else:
-                file_utils.release_lock_euid_egid()
+            #else:
+            #    file_utils.release_lock_euid_egid()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         if do_seteuid:
             file_utils.end_euid_egid(reset_ids_back = True)
-        else:
-            file_utils.release_lock_euid_egid()
+        #else:
+        #    file_utils.release_lock_euid_egid()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     #Now set the root ID's back.
     if do_seteuid:
         file_utils.end_euid_egid(reset_ids_back = True)
-    else:
-        file_utils.release_lock_euid_egid()
+    #else:
+    #    file_utils.release_lock_euid_egid()
 
 def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None):
 
@@ -611,13 +585,14 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None):
         del exc_tb #avoid resource leaks
 
         try:
-            #If the migration is interupted
-            # part way through the swap, we need
-            # to check if the other bfid is
-            # current in layer 1.
-            src = find_pnfs_file.find_pnfsid_path(
-                pnfs_id, bfid2,
-                path_type = find_pnfs_file.FS)
+            if bfid2:
+                #If the migration is interupted
+                # part way through the swap, we need
+                # to check if the other bfid is
+                # current in layer 1.
+                src = find_pnfs_file.find_pnfsid_path(
+                    pnfs_id, bfid2,
+                    path_type = find_pnfs_file.FS)
         except (KeyboardInterrupt, SystemExit):
             if do_seteuid:
                 #Free lock on error.
@@ -781,7 +756,7 @@ def run_in_process(function, arg_list, my_task = "RUN_IN_PROCESS",
 				# process to stop.
 				parent_pid = os.getppid()
 				if parent_pid > 1:
-					os.kill(pid, signal.SIGTERM)
+					os.kill(parent_pid, signal.SIGTERM)
 			except:
 				pass
 
@@ -834,21 +809,66 @@ def wait_for_processes(kill = False):
 
 	return rtn
 
+def __run_in_thread(function, on_exception, arg_list):
+    try:
+        apply(function, arg_list)
+    except:
+        Trace.handle_error()
+        error_log(threading.currentThread().getName(),
+                  "UNHANDLED EXCEPTION", str(sys.exc_info()[1]))
+
+        #Execute this function only if an exception occurs.
+        if type(on_exception) == types.TupleType \
+           and len(on_exception) == 2:
+                try:
+                        apply(on_exception[0], on_exception[1])
+                except:
+                        message = "exception handler: %s: %s"\
+                                  % (sys.exc_info()[0],
+                                     sys.exc_info()[1])
+                        Trace.log(e_errors.ERROR, message)
+
+        #Try and force pending output to go where it needs to go.
+        try:
+                sys.stdout.flush()
+                sys.stderr.flush()
+        except IOError:
+                pass
+
+        io_lock.acquire()
+        try:
+                log_f.flush()
+                os.fsync(log_f.fileno())
+        except (IOError, OSError):
+                pass
+        io_lock.release()
+
+        try:
+            #Make an attempt to tell the entire process to stop.
+            pid = os.getpid()
+            if pid > 1:
+                os.kill(pid, signal.SIGTERM)
+        except:
+            pass
+
+        
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
 #function: is a string name of the function to call using apply()
 #arg_list: is the argument list to pass to the function using apply()
 #my_task: overrides the default step name for logging errors
 #on_exception: 2-tuple consisting of function and arugument list to execute
 #          if function throws an exception.
-def run_in_thread(function, arg_list, my_task = "RUN_IN_THREAD"):
+def run_in_thread(function, arg_list, my_task = "RUN_IN_THREAD",
+                  on_exception = None):
 	global tid_list
 	
 	# start a thread 
 	if debug:
 		print "Starting %s." % (str(function),)
 	try:
-		#tid = thread.start_new_thread(function, arg_list)
-		tid = threading.Thread(target=function, name=my_task,
-				       args=arg_list)
+		tid = threading.Thread(target=__run_in_thread, name=my_task,
+				       args=(function, on_exception, arg_list))
 		tid_list.append(tid)  #append to the list of thread ids.
 		tid.start()
 	except (KeyboardInterrupt, SystemExit):
@@ -857,6 +877,8 @@ def run_in_thread(function, arg_list, my_task = "RUN_IN_THREAD"):
 		exc, msg = sys.exc_info()[:2]
 		error_log(my_task, "start_new_thread() failed: %s: %s\n" \
 			  % (str(exc), str(msg)))
+
+                
 	if debug:
 		print "Started %s [%s]." % (str(function), str(tid))
 
@@ -865,26 +887,37 @@ def wait_for_thread():
 
 	rtn = 0
 
-	try:
-		tid_list[0].join()
-	except RuntimeError:
-		rtn = rtn + 1
+        for i in range(len(tid_list)):
+
+                if tid_list[i].isAlive():
+                    if 0: #debug:
+                        print "%s is alive" % (tid_list[i].getName(),)
+                    continue
+
+                #We should only be trying to join threads that are done.
+                try:
+                        tid_list[i].join(1)
+                except RuntimeError:
+                        rtn = rtn + 1
 	
-	if tid_list[0].isAlive():
-		rtn = rtn + 1
+                if tid_list[i].isAlive():
+                        #rtn = rtn + 1
+                        continue
 
-	if debug:
-		print "Completed %s." % (str(tid_list[0]),)
+                if debug:
+                        print "Completed %s." % (str(tid_list[i]),)
 
-	try:
-		del tid_list[0]
-	except IndexError, msg:
-		rtn = rtn + 1
-		try:
-			sys.stderr.write("%s\n" % (msg,))
-			sys.stderr.flush()
-		except IOError:
-			pass
+                try:
+                        del tid_list[i]
+                except IndexError, msg:
+                        rtn = rtn + 1
+                        try:
+                                sys.stderr.write("%s\n" % (msg,))
+                                sys.stderr.flush()
+                        except IOError:
+                            pass
+
+                return rtn #Only do one to avoid "i" being off.
 
 	return rtn
 
@@ -892,8 +925,10 @@ def wait_for_threads():
 	global tid_list
 		
 	rtn = 0
-	while len(tid_list) > 0:
-		rtn = rtn + wait_for_thread()
+        while len(tid_list):
+                wft_rtn = wait_for_thread()
+                rtn = rtn + wft_rtn
+                time.sleep(5)
 
 	return rtn
 		
@@ -901,7 +936,8 @@ def wait_for_threads():
 def run_in_parallel(function, arg_list, my_task = "RUN_IN_PARALLEL",
 		    on_exception = None):
 	if USE_THREADS:
-		run_in_thread(function, arg_list, my_task = my_task)
+		run_in_thread(function, arg_list, my_task = my_task,
+                              on_exception = on_exception)
 	else:
 		run_in_process(function, arg_list, my_task = my_task,
 			       on_exception = on_exception)
@@ -1045,13 +1081,15 @@ def get_bfids(bfid, db):
 # open_log(*args) -- log message without final line-feed
 def open_log(*args):
 	t = time.time()
-	print time.ctime(t),
+        ctime = time.ctime(t)
+        thread_name = threading.currentThread().getName()
+	print ctime, thread_name,
 	for i in args:
 		print i,
 	if log_f:
-		log_f.write(time.ctime(t)+' ')
+		log_f.write(ctime+" "+thread_name+" ")
 		for i in args:
-			log_f.write(str(i)+' ')
+			log_f.write(str(i)+" ")
 		log_f.flush()
 		
 # error_log(s) -- handling error message
@@ -1602,20 +1640,35 @@ def temp_file(file_record):
 
 class MigrateQueue:
 
-    def __init__(self, maxsize):
+    def __init__(self, maxsize, notify_every_time = True,
+                 low_watermark = 1):
         self.queue = Queue.Queue(maxsize)
+
 	self.finished = False
 	self.received_count = 0
-	self.r_pipe, self.w_pipe = os.pipe()
+	self.debug = debug
+        self.initial_wait = True #Wait until low_watermark items are queued.
+        self.low_watermark = low_watermark
+        
+	self.r_pipe, self.w_pipe = os.pipe() #Used with processes.
 
+        #Handle to the message-waiting-thread when processes are used.
 	self.cur_thread = None
-
-	self.debug = True
 
 	try:
 	    self.lock = multiprocessing.Lock()
         except NameError:
 	    self.lock = threading.Lock()
+
+        #If notify_every_time is true, then use the condition variable to
+        # tell the consuming thread/process to go.  If false, notify
+        # the waiting thread/process to go after all items have been received
+        # from the queue.
+        self.notify_every_time = notify_every_time
+        try:
+            self.cv = multiprocessing.Condition()
+        except NameError:
+            self.cv = threading.Condition()
 	
     #We need to be able to control starting the pipe reading AFTER any fork()s.
     #
@@ -1628,7 +1681,7 @@ class MigrateQueue:
 	    #If we are using processes, start a thread to continuely read
 	    # items in the pipe.
 	    if self.debug:
-	        print "starting pipe read thread"
+	        log("starting pipe read thread")
 
 	    self.lock.acquire() #Acquire the lock to access a self data member.
 
@@ -1644,12 +1697,12 @@ class MigrateQueue:
 	    self.lock.release()
 	    
 	    if self.debug:
-	        print "started pipe read thread"
+	        log("started pipe read thread")
 
     def __del__(self):
         if self.cur_thread:
 	    if self.debug:
-	        print "joining thread"
+	        log("joining thread")
 
 	    self.lock.acquire() #Acquire the lock to access a self data member.
 
@@ -1664,7 +1717,7 @@ class MigrateQueue:
 	    self.lock.release()
 	    
 	    if self.debug:
-	        print "joined thread"
+	        log("joined thread")
 
     def qsize(self):    
         return self.queue.qsize()
@@ -1675,27 +1728,16 @@ class MigrateQueue:
     def full(self):
         return self.queue.full()
 
-    def get(self, block = False, timeout = .1):
-        if USE_THREADS:
-	    job = self.queue.get(block)
-	    #Set a flag indicating that we have read the last item.
-	    if job == SENTINEL:
-                #Acquire the lock to access a self data member.
-                self.lock.acquire()
-                self.finished = True
-                self.lock.release()
-		return None  #We are really done.
-	    return job
-
+    def __get(self, block, timeout):
         #Acquire the lock to access a self data member.
 	self.lock.acquire()
 	try:
-	    finished = self.finished
+	    finished = self.finished #Get if the queue is finished.
         except:
 	    self.lock.release()
 	    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         self.lock.release()
-
+        
         #Enter the loop if:
 	# 1) we are not done and waiting for the next item
 	# 2) the queue is not empty
@@ -1710,21 +1752,51 @@ class MigrateQueue:
 		    # queue, however, it appears to return None on its own.
 		    # So, we go back to waiting for something we are looking
 		    # for.
-		    pass
+		    continue
 	        break
 	    except Queue.Empty:
 	        job = None
 
-	    #Acquire the lock to access a self data member.
-	    self.lock.acquire()
-	    try:
-	        finished = self.finished
-            except:
-	        self.lock.release()
-		raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        return job
+
+    def get(self, block = False, timeout = .1):
+        #Get the next file to copy and swap from the reading thread.
+        if (USE_THREADS or multiprocessing_available) and \
+               self.notify_every_time:
+            if self.debug:
+                log("acquiring condition lock")
+            self.cv.acquire()
+            if self.debug:
+                log("acquired condition lock")
+            while not self.finished and ((self.initial_wait and \
+                      self.queue.qsize() < self.low_watermark) \
+                                               or self.queue.qsize() == 0):
+                if self.debug:
+                    log("waiting for condition")
+                self.cv.wait()
+            #job = copy_queue.get(block = True)
+            job = self.__get(block, timeout)
+            if self.debug:
+                log("releasing condition lock")
+            self.cv.release()
+        else:
+            #This is the old way if using processes with python 2.4.  Or
+            # if we only flag the condition when the queue is finished.
+            while not self.finished and ((self.initial_wait and \
+                      self.queue.qsize() < self.low_watermark) \
+                                               or self.queue.qsize() == 0):
+                time.sleep(1)
+            #job = self.queue.get(block = True)
+            job = self.__get(block, timeout)
+
+        #Set a flag indicating that we have read the last item.
+        if job == SENTINEL:
+            #Acquire the lock to access a self data member.
+            self.lock.acquire()
+            self.finished = True
+            self.initial_wait = False
             self.lock.release()
-
-
+            return None  #We are really done.
         return job
 
     #On Linux, there is a bug in select()
@@ -1795,7 +1867,6 @@ class MigrateQueue:
 		    job = callback.read_obj(self.r_pipe, verbose = False)
 
 		    self.queue.put(job, block = True)
-		    #Acquire the lock to access a self data member.
                     self.received_count = self.received_count + 1
 
 		    if self.debug:
@@ -1803,7 +1874,6 @@ class MigrateQueue:
 
                     #Set a flag indicating that we have read the last item.
                     if job == SENTINEL:
-		        #Acquire the lock to access a self data member.
                         self.finished = True
 
                     #increment counter on success
@@ -1811,10 +1881,9 @@ class MigrateQueue:
 	        except (socket.error, select.error, e_errors.EnstoreError), msg:
 	            if self.debug:
 		        log(MY_TASK, str(msg))
-	            #On an error, put the list ending None in the list.
+	            #On an error, put the list ending SENTINEL in the list.
 		    self.queue.put(SENTINEL, block = True)
 
-		    #Acquire the lock to access a self data member.
                     self.received_count = self.received_count + 1
                     self.finished = True
                 except e_errors.TCP_EXCEPTION:
@@ -1823,7 +1892,6 @@ class MigrateQueue:
                     #On an error, put the list ending None in the list.
 		    self.queue.put(SENTINEL, block = True)
 
-		    #Acquire the lock to access a self data member.
                     self.received_count = self.received_count + 1
                     self.finished = True
                 except (KeyboardInterrupt, SystemExit):
@@ -1835,7 +1903,6 @@ class MigrateQueue:
                     raise sys.exc_info()[0], sys.exc_info()[1], \
                           sys.exc_info()[2]
                 
-	    #Acquire the lock to access a self data member.
             finished = self.finished
             self.lock.release()
 
@@ -1850,27 +1917,75 @@ class MigrateQueue:
 	    self.lock.acquire()
             self.received_count = self.received_count + 1
 	    self.lock.release()
-	    self.queue.put(item, block, timeout)
-	    return
 
-	#If item is the last when using processes, record it as such for
-	# the sender too.
-	if item == SENTINEL:
-	    #Acquire the lock to access a self data member.
-	    self.lock.acquire()
-	    try:
-	        self.finished = True
-	    except:
-	        self.lock.release()
-		raise sys.exc_info()[0], sys.exc_info()[1], \
-		      sys.exc_info()[2]
-	    self.lock.release()
+        
+            #Notify the interested write thread that we have a
+            # put a new item into the queue.  We do this for every item if
+            # notify_every_time is true or if it is the sentinel value
+            # (regardless if notify_every_time is true or not).
+            TIMEOUT = 10
+            if ((USE_THREADS or multiprocessing_available) and \
+                   self.notify_every_time) or item == SENTINEL:
+                while 1:
+                    if self.debug:
+                        log("acquiring condition lock")
+                    self.cv.acquire()
+                    if self.debug:
+                        log("acquired condition lock")
 
-        if self.debug:
-	    log("sending next item %s on pipe" % (item,))
-        callback.write_obj(self.w_pipe, item)
-	if self.debug:
-	    log("item %s sent on pipe" % (item,))
+                    try:
+                        if self.queue.full():
+                            #If we know it is full, skip waiting
+                            # the TIMEOUT duration and notify
+                            # the write thread now.
+                            raise Queue.Full()
+
+                        self.queue.put(item, block = True, timeout = TIMEOUT)
+                        if self.debug:
+                            log("notifying condition")
+                        self.cv.notify()
+                        self.cv.release()
+                        if self.debug:
+                            log("released condition lock")
+                        break
+                    except Queue.Full:
+                        log("queue is full (%s), "
+                            "waiting %s more seconds" % \
+                            (str(self.queue.qsize()), TIMEOUT))
+
+                        #The write thread needs to be able to
+                        # acquire the condition variable.
+                        self.cv.notify()
+                        self.cv.release()
+                        #The need for sleep() is awful.  But without a
+                        # python equivalent to the C sched_yield() function
+                        # we need some way of transfering focus to the
+                        # other thread.
+                        time.sleep(TIMEOUT)
+
+            else:
+                self.queue.put(item, block = block,
+                               timeout = timeout)
+
+        else: #processes
+            #If item is the last when using processes, record it as such for
+            # the sender too.
+            if item == SENTINEL:
+                #Acquire the lock to access a self data member.
+                self.lock.acquire()
+                try:
+                    self.finished = True
+                except:
+                    self.lock.release()
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
+                self.lock.release()
+
+            if self.debug:
+                log("sending next item %s on pipe" % (item,))
+            callback.write_obj(self.w_pipe, item)
+            if self.debug:
+                log("item %s sent on pipe" % (item,))
 
 ##########################################################################
 
@@ -2246,7 +2361,7 @@ def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
 		try:
 			file_utils.remove(tmp_path)
 		except (OSError, IOError), msg:
-			error_log(MY_TASK, "lsdjf unable to remove %s as (uid %d, gid %d): %s" % (tmp_path, os.geteuid(), os.getegid(), str(msg)))
+			error_log(MY_TASK, "unable to remove %s as (uid %d, gid %d): %s" % (tmp_path, os.geteuid(), os.getegid(), str(msg)))
 			return 1
 
 	## Build the encp command line.
@@ -2355,7 +2470,7 @@ def copy_file(bfid, encp, intf, db):
                     if not src:
                         error_log(MY_TASK, sys.exc_info()[0],
                                   sys.exc_info()[1],
-                                  "%s %s %s %s is not a valid pnfs file" \
+                                  "%s %s %s %s is not a valid pnfs file [klsjf]" \
                                   % (file_record['label'],
                                      file_record['bfid'],
                                      file_record['location_cookie'],
@@ -2429,8 +2544,7 @@ def copy_file(bfid, encp, intf, db):
 
 # copy_files(files) -- copy a list of files to disk and mark the status
 # through copy_queue
-def copy_files(thread_num, files, copy_queue, grab_lock, release_lock,
-               write_cv, intf):
+def copy_files(thread_num, files, copy_queue, grab_lock, release_lock, intf):
 	
 	MY_TASK = "COPYING_TO_DISK"
 
@@ -2481,26 +2595,14 @@ def copy_files(thread_num, files, copy_queue, grab_lock, release_lock,
 				log(MY_TASK, "Passing job %s to write step." \
 				    % (pass_along_job,))
 
-                        #Notify the interested write thread that we have a
-                        # put a new item into the queue.
-                        if USE_THREADS or multiprocessing_available:
-                            write_cv.acquire()
                         copy_queue.put(pass_along_job, block = True)
-                        if USE_THREADS or multiprocessing_available:
-                            write_cv.notify()
-                            write_cv.release()
 
 			if debug:
 				log(MY_TASK, "Done passing job.")
 
 	# terminate the copy_queue
 	log(MY_TASK, "no more to copy, terminating the copy queue")
-        if USE_THREADS or multiprocessing_available:
-            write_cv.acquire()
 	copy_queue.put(SENTINEL, block = True)
-        if USE_THREADS or multiprocessing_available:
-            write_cv.notify()
-            write_cv.release()
 
 ##########################################################################
 
@@ -2713,8 +2815,9 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
                 except (KeyboardInterrupt, SystemExit):
                         raise sys.exc_info()[0], sys.exc_info()[1], \
                               sys.exc_info()[2]
-                except (OSError, IOError):  #Anticipated errors.
-                        return "%s is not writable" % (src,)
+                except (OSError, IOError), msg:  #Anticipated errors.
+                        return "%s is not writable as %s: %s" \
+                               % (src, os.geteuid(), str(msg))
                 except:
                         exc, msg = sys.exc_info()[:2]
                         return str(msg)
@@ -2835,7 +2938,19 @@ def write_file(MY_TASK,
 				  (mig_path, os.geteuid(), os.getegid(),
 				  str(sys.exc_info()[0]), str(sys.exc_info()[1])))
 			return 1
-			
+
+        #Make sure the user specified enough libraries for this file.
+        user_libraries = intf.library.split(",")
+        if len(user_libraries) > 1:
+                pnfs_libraries = pnfs.Tag().readtag("library", pnfs.get_directory_name(src_path))[0].split(",")
+                if len(user_libraries) != len(pnfs_libraries):
+                        error_log(MY_TASK,
+                                  "Destination directory writes %s copies; "
+                                  "only %s libraries specified for %s %s" %
+                                  (len(pnfs_libraries), len(pnfs_libraries),
+                                   src_bfid, src_path))
+                        return 1
+                                                                              
 	## Build the encp command line.
 	ff = migration_file_family(ff, deleted)
 	if intf.library:  #DEFAULT_LIBRARY:
@@ -2953,8 +3068,7 @@ def write_new_file(job, encp, fcc, intf, db):
 			mig_path = migration_path(mig_path)
 	else:
 		mig_path = migration_path(src_path, deleted)
-		
-		#Try and catch situations were an error left a zero
+				#Try and catch situations were an error left a zero
 		# length file in the migration spool directory.  We
 		# don't want to 'migrate' this wrong file to tape.
 		try:
@@ -3087,8 +3201,7 @@ def write_new_file(job, encp, fcc, intf, db):
 		return dst_bfid
 
 # write_new_files() -- second half of migration, driven by copy_queue
-def write_new_files(thread_num, copy_queue, scan_queue, write_cv,
-                    scan_cv, intf):
+def write_new_files(thread_num, copy_queue, scan_queue, intf):
 	MY_TASK = "COPYING_TO_TAPE"
 
 	if debug:
@@ -3116,38 +3229,19 @@ def write_new_files(thread_num, copy_queue, scan_queue, write_cv,
 		(config_host, config_port))
 	fcc = file_clerk_client.FileClient(csc)
 
-	initial_wait = True #Set true since we are waiting to write first file.
-
 	while 1:
 
 		if debug:
 			log(MY_TASK, "Getting next job for write.")
 
-                #Get the next file to copy and swap from the reading thread.
-                if USE_THREADS or multiprocessing_available:
-                    write_cv.acquire()
-                    while not copy_queue.finished and ((initial_wait and \
-                              copy_queue.qsize() < proceed_number) \
-                                                       or copy_queue.qsize() == 0):
-                        write_cv.wait()
-                    job = copy_queue.get(block = True)
-                    write_cv.release()
-                else:
-                    while not copy_queue.finished and ((initial_wait and \
-                              copy_queue.qsize() < proceed_number) \
-                                                       or copy_queue.qsize() == 0):
-                        time.sleep(1)
-                    job = copy_queue.get(block = True)
+                job = copy_queue.get(block = True)
                     
                 if not job:
                     # We are done.  Nothing more to do.
                     break
 		if debug:
-			log(MY_TASK, "Recieved job %s for write." % \
+			log(MY_TASK, "Received job %s for write." % \
 			    (job,))
-
-		#Now that we are past the loop, set it to skip it next time.
-		initial_wait = False
 
 		# Make the mew copy.
 		try:
@@ -3191,19 +3285,13 @@ def write_new_files(thread_num, copy_queue, scan_queue, write_cv,
 		log(MY_TASK, "no more to copy, terminating the scan queue")
 
                 #Since we are done, flag the condition variable.
-                if USE_THREADS or multiprocessing_available:
-                    scan_cv.acquire()
 		scan_queue.put(SENTINEL, block = True)
-                if USE_THREADS or multiprocessing_available:
-                    scan_cv.notify()
-                    scan_cv.release()
 	
 ##########################################################################
 
 ## src_path doesn't need to be an actuall path in pnfs.  It could be 
 ## "--get-bfid <bfid>" or --get
 def scan_file(MY_TASK, dst_bfid, src_path, dst_path, deleted, intf, encp):
-	#open_log(MY_TASK, "verifying", dst_bfid, location_cookie, src_path, '...')
 	open_log(MY_TASK, "verifying", dst_bfid, src_path, '...')
 	
 	## Build the encp command line.
@@ -3246,7 +3334,6 @@ def scan_file(MY_TASK, dst_bfid, src_path, dst_path, deleted, intf, encp):
 	
 	if res == 0:
 		close_log("OK")
-		#log_checked(src_bfid, dst_bfid, db) #file_scan_file()?
 		ok_log(MY_TASK, dst_bfid, src_path)
 	else: # error
 		close_log("ERROR")
@@ -3360,7 +3447,7 @@ def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
 
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
-def final_scan(thread_num, scan_queue, scan_cv, intf):
+def final_scan(thread_num, scan_queue, intf):
 	MY_TASK = "FINAL_SCAN"
 
 	if not USE_THREADS:
@@ -3384,18 +3471,6 @@ def final_scan(thread_num, scan_queue, scan_cv, intf):
 		name_ending = "_%s" % (thread_num,)
 	threading.currentThread().setName("FINAL_SCAN%s" % (name_ending,))
 	encp = encp_wrapper.Encp(tid = "FINAL_SCAN%s" % (name_ending,))
-
-	#We need to wait for all copies to be written to tape before
-	# trying to do a full scan.
-        if USE_THREADS or multiprocessing_available:
-                scan_cv.acquire()
-                while not scan_queue.finished:
-		       #wait for the write thread to process everything first.
-                       scan_cv.wait()
-                scan_cv.release()
-        else:
-            while not scan_queue.finished:
-                time.sleep(1)
 
 	#Loop over the files ready for scanning.
 	job = scan_queue.get(block = True)
@@ -3721,14 +3796,10 @@ def migrate(bfids, intf):
 
 	#Get scan queue once if volume assert is being used.
 	if intf.use_volume_assert or USE_VOLUME_ASSERT:
-		scan_queue = MigrateQueue(DEFUALT_QUEUE_SIZE)
+		scan_queue = MigrateQueue(DEFUALT_QUEUE_SIZE,
+                                          notify_every_time = False)
 		scan_queue.debug = debug
 
-                try:
-                        scan_cv = multiprocessing.Condition()
-                except NameError:
-                        scan_cv = threading.Condition()
-		
 	#For each list of bfids start the migrations.
 	for i in range(len(use_bfids_lists)):
 		bfid_list = use_bfids_lists[i]
@@ -3738,19 +3809,9 @@ def migrate(bfids, intf):
 		copy_queue.debug = debug
 		if not (intf.use_volume_assert or USE_VOLUME_ASSERT):
 			#Get new queues for each set of processes/threads.
-			scan_queue = MigrateQueue(DEFUALT_QUEUE_SIZE)
+			scan_queue = MigrateQueue(DEFUALT_QUEUE_SIZE,
+                                                  notify_every_time = False)
 			scan_queue.debug = debug
-
-                #Define some conditional variables to tell the next step when to go.
-                try:
-                        write_cv = multiprocessing.Condition()
-                except NameError:
-                        write_cv = threading.Condition()
-                if not (intf.use_volume_assert or USE_VOLUME_ASSERT):
-                        try:
-                                scan_cv = multiprocessing.Condition()
-                        except NameError:
-                                scan_cv = threading.Condition()
 
 		#Set the global proceed_number variable.
 		set_proceed_number(bfid_list, copy_queue, scan_queue, intf)
@@ -3760,14 +3821,14 @@ def migrate(bfids, intf):
 		       (i, bfid_list, copy_queue,
 			sequential_locks[i],
 			sequential_locks[(i + 1) % use_proc_limit],
-                        write_cv, intf),
+                        intf),
 		       my_task = "COPY_TO_DISK",
 		       on_exception = (handle_process_exception,
 				       (copy_queue, SENTINEL)))
 
 		# Start the writing in parallel
 		run_in_parallel(write_new_files,
-		       (i, copy_queue, scan_queue, write_cv, scan_cv, intf),
+		       (i, copy_queue, scan_queue, intf),
 		       my_task = "COPY_TO_TAPE",
 		       on_exception = (handle_process_exception,
 				       (scan_queue, SENTINEL)))
@@ -3778,14 +3839,14 @@ def migrate(bfids, intf):
 		if intf.with_final_scan and \
 		       not (intf.use_volume_assert or USE_VOLUME_ASSERT):
 			run_in_parallel(final_scan,
-					(i, scan_queue, scan_cv, intf),
+					(i, scan_queue, intf),
 					my_task = "FINAL_SCAN")
 
 	#If using volume_assert, we only want one call to final_scan():
 	if intf.with_final_scan and \
 	       (intf.use_volume_assert or USE_VOLUME_ASSERT):
 		run_in_parallel(final_scan,
-				(i, scan_queue, scan_cv, intf),
+				(i, scan_queue, intf),
 				my_task = "FINAL_SCAN")
 
 	done_exit_status = wait_for_parallel()
@@ -3795,18 +3856,16 @@ def migrate(bfids, intf):
 
 ##########################################################################
 
-def handle_process_exception(queue, pipe, write_value):
+#Can be used for threads too.  It simply sends the value in write_value
+# which should be a SENTINEL value to the queue.
+def handle_process_exception(queue, write_value):
 
-	try:
-		queue.put(write_value)
-	except (OSError, IOError), msg:
-		sys.stderr.write("AAAA %s\n" % (str(msg),))
-	try:
-		os.close(pipe)
-	except (OSError, IOError), msg:
-		sys.stderr.write("BBBB %s\n" % (str(msg),))
-		
-	
+    try:
+        queue.put(write_value)
+    except (OSError, IOError), msg:
+        sys.stderr.write("Error sending abort sentinel to queue: %s\n" \
+                         % (str(msg),))
+
 ##########################################################################
 
 # migrated_from(vol, db) -- list all volumes that have migrated to vol
@@ -3994,9 +4053,9 @@ def migrate_volume(vol, intf):
 	global set_system_migrating_func, set_system_migrated_func
 
 	global pid_list
-	
-	MY_TASK = "MIGRATING_VOLUME"
-	log(MY_TASK, "start migrating volume", vol, "...")
+
+	MY_TASK = "%s_VOLUME" % (IN_PROGRESS_STATE.upper(),)
+	log(MY_TASK, "start", IN_PROGRESS_STATE, "volume", vol, "...")
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 	# get its own vcc
 	config_host = enstore_functions2.default_host()
@@ -4016,8 +4075,10 @@ def migrate_volume(vol, intf):
 		return 1
 	#If volume is migrated, report that it is done and stop.
 	if enstore_functions2.is_migrated_state(v['system_inhibit'][1]) \
+           and is_migrated_by_src_vol(vol, intf, db,
+                                      checked = 0, closed = 0) \
 	       and not getattr(intf, "force", None):
-		log(MY_TASK, vol, "is already migrated")
+		log(MY_TASK, vol, "is already", v['system_inhibit'][1])
 		return 0
 	#Make sure the library exists.
 	library_fullname = v['library'] + ".library_manager"
@@ -4026,6 +4087,12 @@ def migrate_volume(vol, intf):
 		error_log("library %s does not exist" % (library_fullname,))
 		return 1
 
+        # Do not duplicate multiple copy tapes.  We want to duplicate just
+        # the originals.
+        file_family = volume_family.extract_file_family(v["volume_family"])
+        if re.compile(".*_copy_[1-9]*$").match(file_family) != None:
+                error_log("%s is a multiple copy volume" % (vol,))
+		return 1
 
 	# now try to copy the file one by one
 	if intf.with_deleted:
@@ -4176,6 +4243,7 @@ def restore(bfids, intf):
 	__pychecker__ = "unusednames=intf" #Remove when intf is used.
 	
 	MY_TASK = "RESTORE"
+        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 	# get its own file clerk client and volume clerk client
 	config_host = enstore_functions2.default_host()
 	config_port = enstore_functions2.default_port()
@@ -4194,8 +4262,7 @@ def restore(bfids, intf):
 		#if f['deleted'] != 'yes':
 		#	error_log(MY_TASK, "%s is not deleted"%(bfid))
 		#	continue
-		#Verify that the file was copied and swapped.
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+
 		#Obtain volume information.
 		v = vcc.inquire_vol(f['external_label'])
 		if not e_errors.is_ok(f):
@@ -4341,35 +4408,6 @@ def restore(bfids, intf):
                                           % (message, bfid, src, str(msg)))
                                 continue
 
-                                """
-				if msg.errno in [errno.EPERM] and \
-				       os.getuid() == 0:
-					#For trusted pnfs systems, there isn't
-					# a problem, but for untrusted we need
-					# to set the effective IDs to the
-					# owner of the file.
-					try:
-						file_utils.match_euid_egid(src)
-					except (OSError, IOError), msg:
-						error_log(MY_TASK, str(msg))
-						continue
-
-					#Set layer 1 and layer 4 to point to
-					# the original file.
-					try:
-						p.update()
-					except (IOError, OSError), msg:
-                                                message = "failed to restore layers 1 and 4 for"
-						error_log(MY_TASK,
-                                                          "%s %s %s: %s" \
-							  % (message, bfid,
-                                                             src, str(msg)))
-						continue
-
-				        #Now set the root ID's back.
-					file_utils.end_euid_egid(reset_ids_back = True)
-                                """
-
 		# mark the migration copy of the file deleted
 		rtn_code = mark_deleted(MY_TASK, dst_bfid, fcc, db)
 		if rtn_code:
@@ -4463,6 +4501,7 @@ class MigrateInterface(option.Interface):
 		self.destination_only = None
 		self.source_only = None
 		self.use_volume_assert = None
+                self.debug = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -4481,6 +4520,11 @@ class MigrateInterface(option.Interface):
 		]
 	
 	migrate_options = {
+		option.DEBUG:{option.HELP_STRING:
+                              "Output extra debugging information",
+                              option.VALUE_USAGE:option.IGNORED,
+			      option.VALUE_TYPE:option.INTEGER,
+			      option.USER_LEVEL:option.HIDDEN},
 		option.DESTINATION_ONLY:{option.HELP_STRING:
 					 "Used with --status to only list "
 					 "output assuming the volume is a "
@@ -4616,8 +4660,6 @@ class MigrateInterface(option.Interface):
 
 
 def main(intf):
-	#global icheck
-
 	init(intf)
 
 	if intf.migrated_from:
@@ -4745,6 +4787,7 @@ def do_work(intf):
 		wait_for_processes(kill = True)
 	
 	sys.exit(exit_status)
+
 
 if __name__ == '__main__':
 
