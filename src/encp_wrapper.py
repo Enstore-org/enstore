@@ -52,6 +52,11 @@ class Encp:
 			sys.stderr.write("%s\n" % self.err_msg)
 			res = 1
 
+		if res and not self.err_msg:
+			import e_errors
+			Trace.log(e_errors.INFO,
+				  "unexpected combination of values: exit_status[%s]: %s  err_msg[%s]: %s" % (type(res), res, type(self.err_msg), self.err_msg))
+
 		#If we end up with encp being owned not by root at this
 		# point, we need to set it back.
 		file_utils.acquire_lock_euid_egid()
