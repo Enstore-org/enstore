@@ -1119,9 +1119,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = self.pnfsFilename
 
         if mode:
-            fd = atomic.open(fname, mode=mode)
+            fd = atomic.open(fname, os.O_RDWR | os.O_CREAT | os.O_EXCL,
+                             mode=mode)
         else:
-            fd = atomic.open(fname)
+            fd = atomic.open(fname, os.O_RDWR | os.O_CREAT | os.O_EXCL)
 
 	if not filename:
             self.pstatinfo()

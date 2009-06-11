@@ -12,9 +12,10 @@ import errno
 import time
 import Trace
 
-def _open1(pathname,mode=0666):
+def _open1(pathname, flags, mode=0666):
     #delete_at_exit.register(pathname)
-    fd = os.open(pathname, os.O_CREAT|os.O_EXCL|os.O_RDWR, mode)
+    #fd = os.open(pathname, os.O_CREAT|os.O_EXCL|os.O_RDWR, mode)
+    fd = os.open(pathname, flags, mode)
     return fd
 
 ##  From man open(2)
@@ -44,7 +45,7 @@ def unique_id():
     return tm.replace(" ", "_")
 
     
-def _open2(pathname,mode=0666):
+def _open2(pathname, flags, mode=0666):
     __pychecker__ = "unusednames=i"
 
     #Create a unique temporary filename.
@@ -123,8 +124,11 @@ def _open2(pathname,mode=0666):
             raise OSError, detail
 
     if ok:
+        #Pull out only the information about how to open the file with respect
+        # to reading or writing.
+        second_chance_flags = flags & (os.O_WRONLY | os.O_RDONLY | os.O_RDWR)
         try:
-            fd=os.open(pathname, os.O_RDWR, mode)
+            fd=os.open(pathname, second_chance_flags, mode)
             os.unlink(tmpname)
             os.close(fd_tmp)
             return fd

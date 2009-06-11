@@ -19,6 +19,7 @@ import types
 import errno
 
 import Trace
+import atomic
 
 ## mode is one of os.F_OK, os.W_OK, os.R_OK or os.X_OK.
 ## file_stats is the return from os.stat()
@@ -195,6 +196,51 @@ def open(fname, mode = "r"):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             
     return file_p
+
+#Open the file fname.  This is a wrapper for os.open() (atomic.open() is
+# another level of wrapper for os.open()).
+def open_fd(fname, flags, mode = 0777):
+    #Call atomic.open() if we expect to crate the file.  Use os.open() if
+    # the file should already exist.
+    try:
+        if flags & os.O_CREAT:
+            Trace.log(99, "%s %s %s" % (fname, flags, mode))
+            file_fd = atomic.open(fname, flags, mode)
+        else:
+            file_fd = os.open(fname, flags, mode)
+    except (OSError, IOError), msg:
+        Trace.log(99, str(msg))
+        #If we were denied access and our effective IDS were not root's,
+        # set the effective IDS to root so we can try again.
+        if msg.errno in [errno.EACCES, errno.EPERM] and \
+               os.getuid() == 0 and os.geteuid() != 0:
+            acquire_lock_euid_egid()
+            current_euid = os.geteuid()
+            current_egid = os.getegid()
+        
+            os.seteuid(0)
+            os.setegid(0)
+
+            try:
+                if flags & os.O_CREAT:
+                    file_fd = atomic.open(fname, flags, mode)
+                else:
+                    file_fd = os.open(fname, flags, mode)
+            except (OSError, IOError), msg:  #Anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:  #Un-anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            os.setegid(current_egid)
+            os.seteuid(current_euid)
+
+            release_lock_euid_egid()
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            
+    return file_fd
 
 #Change the permissions of file fname.  Perms have same meaning as os.chmod().
 def chmod(fname, perms):

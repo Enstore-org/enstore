@@ -37,10 +37,10 @@ description = "enmv stands for ENstore MV.  It is a PNFS and Enstore" \
 #    delete_at_exit.quit(exit_code)
 
 def print_error(errcode,errmsg):
-    format = str(errcode)+" "+str(errmsg) + '\n'
-    format = "ERROR: "+format
+    output_format = str(errcode)+" "+str(errmsg) + '\n'
+    output_format = "ERROR: "+output_format
     try:
-        sys.stderr.write(format)
+        sys.stderr.write(output_format)
         sys.stderr.flush()
     except IOError:
         pass
@@ -315,7 +315,8 @@ def move_file(input_filename, output_filename):
                 delete_at_exit.register(output_filename)
                 #Create for reading and writing.  The default open mode
                 # is sufficent for making metadata changes.
-                out_fd = atomic.open(output_filename)
+                out_fd = atomic.open(output_filename,
+                                     os.O_RDWR | os.O_CREAT | os.O_EXCL)
             except OSError, msg2:
                 print_error(e_errors.OSERROR,
                             "Unable to create file %s: %s" %
