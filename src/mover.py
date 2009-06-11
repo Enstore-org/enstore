@@ -5092,6 +5092,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "work": work,
             "transfer_deficiency": int(self.transfer_deficiency),
             "time_in_state": now - self.state_change_time,
+            "current_time" : now,
             "library": self.current_library,
             "library_list":self.libraries, # this is needed for the federation project
             'current_priority': pri,
