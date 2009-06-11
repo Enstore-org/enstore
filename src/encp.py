@@ -64,6 +64,11 @@ import copy
 import random
 import threading
 import thread
+try:
+    import multiprocessing
+    multiprocessing_available = True
+except ImportError:
+    multiprocessing_available = False
 
 # enstore modules
 import Trace
@@ -101,7 +106,17 @@ USE_NEW_EVENT_LOOP = True
 #Hack for migration to report an error, instead of having to go to the log
 # file for every error.
 err_msg = {}
-err_msg_lock = threading.Lock()
+try:
+    err_msg_lock = multiprocessing.Lock()
+except NameError:
+    err_msg_lock = threading.Lock()
+
+#This lock prevents multiple encps from submitting requests out of order
+# when run inside of migration.
+try:
+    start_lock = multiprocessing.Lock()
+except NameError:
+    start_lock = threading.Lock()
 
 #Add these if missing.
 if not hasattr(socket, "IPTOS_LOWDELAY"):
@@ -2704,7 +2719,7 @@ def _get_stat(pathname, func=file_utils.get_stat):
 
 def get_stat(filename):
     global pnfs_is_automounted
-    
+
     pathname = os.path.abspath(filename)
 
     try:
@@ -3963,7 +3978,8 @@ def create_zero_length_pnfs_files(filenames, e = None):
             while local_errno == -1 or local_errno == errno.EAGAIN:
                 try:
                     #raises OSError on error.
-                    fd = atomic.open(fname, mode=0666)
+                    fd = file_utils.open_fd(fname, os.O_CREAT|os.O_EXCL|os.O_RDWR,
+                                       mode = 0666)
 
                     if type(f) == types.DictType:
                         #The inode is used later on to determine if
@@ -4017,32 +4033,9 @@ def create_zero_length_local_files(filenames):
             
         delete_at_exit.register(fname)
 
-        if os.getuid() == 0 and os.geteuid() != 0:
-            #If we are user root and the effecting ids are not,
-            # then we need to handle this special to be able to
-            # write to a root owned local directory.
-            file_utils.acquire_lock_euid_egid()
-            new_uid = os.geteuid()
-            new_gid = os.getegid()
-            file_utils.set_euid_egid(0, 0)
-
-            try:
-                fd = atomic.open(fname, mode=0666) #raises OSError on error.
-                file_utils.chown(fname, new_uid, new_gid)
-            except (OSError, IOError):  #Anticipated errors.
-                file_utils.set_euid_egid(new_uid, new_gid)
-                file_utils.release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except: #Un-anticipated errors.
-                file_utils.set_euid_egid(new_uid, new_gid)
-                file_utils.release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            file_utils.set_euid_egid(new_uid, new_gid)
-            file_utils.release_lock_euid_egid()
-        else:
-            fd = atomic.open(fname, mode=0666) #raises OSError on error. 
-        
+        fd = file_utils.open_fd(fname, os.O_CREAT|os.O_EXCL|os.O_RDWR,
+                                mode=0666) #raises OSError on error.
+            
         if type(f) == types.DictType:
             #The inode is used later on to determine if another process
             # has deleted or removed the local file.
@@ -5053,12 +5046,19 @@ def wait_for_message(listen_socket, lmc, work_list,
     if isinstance(udp_serv, udp_server.UDPServer):
         #This is for get and put.
         udp_socket = udp_serv.server_socket
-        select_list = [listen_socket, lmc_socket, udp_socket]
+        select_list = [listen_socket, udp_socket]
     else:
         udp_socket = None
-        select_list = [listen_socket, lmc_socket]
+        select_list = [listen_socket]
+    #Only include lmc_socket if we have something in the transaction_id_list.
+    # It appears that messages can arrive unsolicated from the LM; this check
+    # is needed to protect against waiting forever inside
+    # udp_client.__received_deferred().
+    if len(transaction_id_list) > 0:
+        select_list.append(lmc_socket)
 
     #Wait for a message or socket connection.
+    Trace.log(99, "transaction_id_list: %s" % (transaction_id_list,))
     if USE_NEW_EVENT_LOOP and transaction_id_list:
         #Send to the debug log information about the current ids we are
         # waiting for and those that we have queued up.  This should
@@ -5141,6 +5141,7 @@ def wait_for_message(listen_socket, lmc, work_list,
 
     
     #Get the packets specified one at a time.
+    Trace.log(99, "lmc_socket: %s   r: %s" % (lmc_socket, r))
     if lmc_socket in r:
         Trace.log(TRANS_ID_LEVEL, "getting LM message")
         response_ticket, transaction_id = submit_all_request_recv(
@@ -5154,9 +5155,10 @@ def wait_for_message(listen_socket, lmc, work_list,
         data_path_socket = None
 
         #Encasing the transaction ID in a list is done only to make the
-        # output string for it look like the others, which really are lists.
+        # output string for it look like the others, which really are
+        # lists.
         Trace.log(TRANS_ID_LEVEL,
-                          "received id: %s" % ([transaction_id],))
+                  "received id: %s" % ([transaction_id],))
     elif listen_socket in r or (udp_socket and udp_socket in r):
         Trace.log(TRANS_ID_LEVEL, "starting mover handshake")
         #Wait for the mover to establish the control socket.  See
@@ -5266,7 +5268,40 @@ def submit_one_request_send(ticket, encp_intf):
     # has always set those ticket values.  This is noted, since other
     # client functions do set their own 'work' values in the ticket.
     #response_ticket = lmc.send(ticket)
-    transaction_id = lmc.u.send_deferred(ticket, lmc.server_address)
+    try:
+        transaction_id = lmc.u.send_deferred(ticket, lmc.server_address)
+    except (KeyboardInterrupt, SystemExit):
+        #This is used to keep multiple encps in a migration in sync.
+        # Otherwise, it should have no effect.
+        try:
+            start_lock.release()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            pass
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:  #Un-anticipated errrors.
+        #This is used to keep multiple encps in a migration in sync.
+        # Otherwise, it should have no effect.
+        try:
+            start_lock.release()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            pass
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    #This is used to keep multiple encps in a migration in sync.
+    # Otherwise, it should have no effect.
+    try:
+        start_lock.release()
+    except (KeyboardInterrupt, SystemExit):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        #Already unlocked.  Older pythons raised AssertionError, RuntimeError
+        # is what is documented with python 2.6, but ValueError appears to be
+        # what is actually raised.
+        pass
 
     message = "Time to submit one request: %s sec." % \
               (time.time() - submit_one_request_send_start_time,)
@@ -5288,8 +5323,10 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
     #count = 0
     while not response_ticket:
         try:
+            Trace.log(99, "in submit_all_request_recv() before recv_deferred2()")
             response_ticket, transaction_id = lmc.u.recv_deferred2(
                 transaction_ids, encp_intf.resubmit_timeout)
+            Trace.log(99, "in submit_all_request_recv() after recv_deferred2()")
         except (socket.error, select.error, e_errors.EnstoreError), msg:
             transaction_id = None
             if msg.errno in [errno.ETIMEDOUT]:
@@ -5304,7 +5341,8 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
                 if count <= 360:
                     continue
             """
-
+            if not response_ticket:
+                Trace.log(e_errors.ERROR, "about to hang in submit_all_request_recv: %s" % (response_ticket,))
             #raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     message = "Time to receive one request: %s sec." % \
@@ -5483,69 +5521,10 @@ def resubmit_one_request(ticket, encp_intf):
 def resubmit_one_request_send(ticket, encp_intf):
     ticket = adjust_resubmit_request(ticket, encp_intf)
     rticket, transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
-    #if not e_errors.is_ok(rticket):
-    #    return ticket
     return transaction_id, lmc
 
 
 ############################################################################
-
-"""
-#Verify that the pnfs file is still there and looks okay.
-def check_pnfs_file(work_ticket):
-    
-    check_pnfs_file_start_time = time.time()
-
-    if is_read(work_ticket):
-        pnfs_file = work_ticket['outfile']
-    else: #write
-        pnfs_file = work_ticket['infile']
-
-    try:
-        #work_ticket['outfile'] should contain the .(access)() filename
-        # for this file.  Thus, even if the user moves it, it should still
-        # work correctly.
-        statinfo = get_stat(pnfs_file)
-    except IOError, msg:
-        raise EncpError(msg.args, str(msg), e_errors.IOERROR,
-                        {'infile' : work_ticket['infilepath'],
-                         'outfile' : work_ticket['outfilepath']})
-    except OSError, msg:
-        raise EncpError(msg.args, str(msg), e_errors.OSERROR,
-                        {'infile' : work_ticket['infilepath'],
-                         'outfile' : work_ticket['outfilepath']})
-
-    #With work_ticket['outfile'] containing the .(access)() name, it should
-    # be impossible that the pnfs could be given out to a different
-    # file directory.  Since, work_ticket['outfile'] could still be a
-    # normal file path, we should be prepared to handle this situation
-    # anyway.
-    if stat.S_ISDIR(statinfo[stat.ST_MODE]):
-        raise EncpError(errno.EISDIR, work_ticket['infilepath'],
-                                    e_errors.USERERROR,
-                                    {'infile' : work_ticket['infilepath']})
-
-    filesize = long(statinfo[stat.ST_SIZE])
-    if is_read(work_ticket):
-        if filesize == 1 and work_ticket['file_size'] > TWO_G:
-            pass  #All is good.
-        elif filesize == work_ticket['file_size']:
-            pass #All is good.
-        else:
-            raise EncpError(errno.EISDIR, work_ticket['infilepath'],
-                                    e_errors.USERERROR,
-                                    {'infile' : work_ticket['infilepath']})
-    
-    done_ticket = {'status':(e_errors.OK, None)}
-
-    #Record this.
-    message = "Time to check pnfs file: %s sec." % \
-              (time.time() - check_pnfs_file_start_time,)
-    Trace.message(TIME_LEVEL, message)
-    Trace.log(TIME_LEVEL, message)
-
-    return done_ticket
-"""
 
 #Open the local disk file for reading or writing (as appropriate).
 def open_local_file(work_ticket, tinfo, e):
@@ -5569,22 +5548,10 @@ def open_local_file(work_ticket, tinfo, e):
     #  This will always be an non-pnfs file.
     filename = work_ticket['wrapper']['fullname']
 
-    #If the file is a deleted file that is trying to be read using
-    # --override-deleted, skip trying to access the PNFS file.
-    #
-    # For writes 'deleted' does not exist; default to "no" for writes.
-    if work_ticket['fc'].get('deleted', "no") == "no":
-        #set the effective uid and gid.
-        file_utils.match_euid_egid(work_ticket['infile'])
-
     #Try to open the local file for read/write.
     try:
-        local_fd = os.open(filename, flags)
+        local_fd = file_utils.open_fd(filename, flags)
     except OSError, detail:
-        # For writes 'deleted' does not exist; default to "no" for writes.
-        if work_ticket['fc'].get('deleted', "no") == "no":
-            file_utils.end_euid_egid() #Release the lock.
-
         if getattr(detail, "errno", None) in \
                [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
             done_ticket = {'status':(e_errors.FILE_MODIFIED, str(detail))}
@@ -5594,22 +5561,14 @@ def open_local_file(work_ticket, tinfo, e):
 
     #Try to grab the os stats of the file.
     try:
-        stats = os.fstat(local_fd)
+        stats = file_utils.get_stat(local_fd)
     except OSError, detail:
-        # For writes 'deleted' does not exist; default to "no" for writes.
-        if work_ticket['fc'].get('deleted', "no") == "no":
-            file_utils.end_euid_egid() #Release the lock.
-        
         if getattr(detail, "errno", None) in \
                [errno.EACCES, errno.EFBIG, errno.ENOENT, errno.EPERM]:
             done_ticket = {'status':(e_errors.FILE_MODIFIED, str(detail))}
         else:
             done_ticket = {'status':(e_errors.OSERROR, str(detail))}
         return done_ticket
-
-    # For writes 'deleted' does not exist; default to "no" for writes.
-    if work_ticket['fc'].get('deleted', "no") == "no":
-        file_utils.end_euid_egid() #Release the lock.
 
     if filename in ["/dev/zero", "/dev/random", "/dev/urandom"]:
         #Handle these character devices a little differently.
@@ -6807,7 +6766,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #At this point it is known there is an error.  If the transfer is a read,
     # then if the encp is killed before completing delete_at_exit.quit() could
     # leave non-zero non-correct files.  If this is the case truncate them.
-    elif is_read(encp_intf):
+    #
+    #We leave the file alone if told to skip this step.
+    elif is_read(encp_intf) and not error_dictionary.get('skip_retry', None):
         try:
             fd = os.open(outfile, os.O_WRONLY | os.O_TRUNC)
             os.close(fd)
@@ -6928,13 +6889,21 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #
     #If the error is a media error AND there is another copy of the file
     # then perform the retry for the next copy.
-    if e_errors.is_non_retriable(status[0]) and \
-           not retry_non_retriable_media_error:
+    #
+    #Another possibility is that skip_retry is true.  Then we treat this
+    # error like a non-retriable error.
+    if (e_errors.is_non_retriable(status[0]) and \
+           not retry_non_retriable_media_error) \
+           or error_dictionary.get('skip_retry', None):
         #Print error to stdout in data_access_layer format. However, only
         # do so if the dictionary is full (aka. the error occured after
         # the control socket was successfully opened).  Control socket
         # errors are printed elsewere (for reads only).
         error_dictionary['status'] = status
+        #Flag this request as failed.  This may get thrown away if the
+        # request_ticket is empty (by empty I mean it likely only has a
+        # 'status' field).
+        request_dictionary['completion_status'] = FAILURE
         #By checking those that aren't of significant length, we only
         # print these out on writes.
         if len(request_dictionary) > 3:
@@ -7112,7 +7081,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                'queue_size':len(request_list),
                                'transaction_id_list':transaction_id_list,
                                }
-
+    
     #Change the unique id so the library manager won't remove the retry
     # request when it removes the old one.  Do this only when there was an
     # actuall error, not just a timeout.  Also, increase the retry count by 1.
@@ -8574,6 +8543,91 @@ def stall_write_transfer(data_path_socket, control_socket, e):
 
 ############################################################################
 
+def write_post_transfer_update(done_ticket, e):
+    #This function writes errors/warnings to the log file and puts an
+    # error status in the ticket.
+    check_crc(done_ticket, e) #Check the CRC.
+
+    #Verify that the file transfered in tacted.
+    """
+    result_dict = handle_retries([work_ticket], work_ticket,
+                                 done_ticket, e)
+
+    if e_errors.is_retriable(result_dict['status'][0]):
+        continue
+    elif e_errors.is_non_retriable(result_dict['status'][0]):
+        return combine_dict(result_dict, work_ticket)
+    """
+    if not e_errors.is_ok(done_ticket):
+        return done_ticket
+
+    #Update the last access and modification times respecively.
+    #update_times(done_ticket['infile'], done_ticket['outfile'])
+    update_modification_time(done_ticket['outfile'])
+
+    """
+    #Verify that setting times has been done successfully.
+    #
+    #Also verify, before calling set_pnfs_settings(), that another
+    # encp has not yet set layer 1 or 4 (very small chance of race
+    # condition that another encp would set them between this check
+    # and them being set).
+    result_dict = handle_retries([work_ticket], work_ticket,
+                                 done_ticket, e,
+                                 pnfs_filename = done_ticket['outfile'])
+
+    if e_errors.is_retriable(result_dict['status'][0]):
+        continue
+    elif e_errors.is_non_retriable(result_dict['status'][0]):
+        return combine_dict(result_dict, work_ticket)
+    """
+
+    #We know the file has hit some sort of media. When this occurs
+    # create a file in pnfs namespace with information about transfer.
+    set_pnfs_settings(done_ticket, e)
+
+    #Verify that the pnfs info was set correctly.
+    """
+    result_dict = handle_retries([work_ticket], work_ticket,
+                                 done_ticket, e)
+
+    if e_errors.is_retriable(result_dict['status'][0]):
+        clear_layers_1_and_4(done_ticket) #Reset this.
+        continue
+    elif e_errors.is_non_retriable(result_dict['status'][0]):
+        clear_layers_1_and_4(done_ticket) #Reset this.
+        return combine_dict(result_dict, work_ticket)
+    """
+    if not e_errors.is_ok(done_ticket):
+        clear_layers_1_and_4(done_ticket) #Reset this.
+        return done_ticket
+    
+
+    #Set the UNIX file permissions.
+    #Writes errors to log file.
+    #The last peice of metadata that should be set is the filesize.  This
+    # is done last inside of set_pnfs_settings().  Unfortunatly, write
+    # permissions are needed to set the filesize.  If setting the
+    # permissions goes first and write permissions are not included
+    # in the values from the input file then the transer will fail.  Thus
+    # setting the outfile permissions is done after setting the filesize,
+    # however, if setting the permissions fails the file is left alone
+    # but it is still treated like a failed transfer.  Worst case senerio
+    # on a failure is that the file is left with full permissions.
+    set_outfile_permissions(done_ticket, e)
+
+    if not e_errors.is_ok(done_ticket):
+        done_ticket['skip_retry'] = 1
+        return done_ticket
+
+    #Update the source files times.  We need to do this after we
+    # are done with the locking around the euid for the output file.
+    update_last_access_time(done_ticket['infile'])
+
+    return done_ticket
+
+############################################################################
+
 def write_hsm_file(work_ticket, control_socket, data_path_socket,
                    tinfo, e, udp_serv = None):
 
@@ -8694,83 +8748,22 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         #Make sure the exfer sub-ticket gets stored into request_ticket.
         work_ticket = combine_dict(done_ticket, work_ticket)
 
-        #This function writes errors/warnings to the log file and puts an
-        # error status in the ticket.
-        check_crc(done_ticket, e) #Check the CRC.
+        try:
+            #This function write errors/warnings to the log file and put an
+            # error status in the ticket.
+            done_ticket = write_post_transfer_update(done_ticket, e)
+        except (SystemExit, KeyboardInterrupt):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            done_ticket['status'] = (e_errors.UNKNOWN, sys.exc_info()[1])
 
-        #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e)
 
-        if e_errors.is_retriable(result_dict['status'][0]):
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
+        if e_errors.is_non_retriable(done_ticket.get('status', (e_errors.OK,None))):
             return combine_dict(result_dict, work_ticket)
-
-        #Update the last access and modification times respecively.
-        #update_times(done_ticket['infile'], done_ticket['outfile'])
-        update_modification_time(done_ticket['outfile'])
-
-        #Verify that setting times has been done successfully.
-        #
-        #Also verify, before calling set_pnfs_settings(), that another
-        # encp has not yet set layer 1 or 4 (very small chance of race
-        # condition that another encp would set them between this check
-        # and them being set).
-        result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e,
-                                     pnfs_filename = done_ticket['outfile'])
-
-        if e_errors.is_retriable(result_dict['status'][0]):
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
+        if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK, None))):
             return combine_dict(result_dict, work_ticket)
-
-        #We know the file has hit some sort of media. When this occurs
-        # create a file in pnfs namespace with information about transfer.
-        set_pnfs_settings(done_ticket, e)
-
-        #Verify that the pnfs info was set correctly.
-        result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e)
-
-        if e_errors.is_retriable(result_dict['status'][0]):
-            clear_layers_1_and_4(done_ticket) #Reset this.
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            clear_layers_1_and_4(done_ticket) #Reset this.
-            return combine_dict(result_dict, work_ticket)
-
-        #Set the UNIX file permissions.
-        #Writes errors to log file.
-        #The last peice of metadata that should be set is the filesize.  This
-        # is done last inside of set_pnfs_settings().  Unfortunatly, write
-        # permissions are needed to set the filesize.  If setting the
-        # permissions goes first and write permissions are not included
-        # in the values from the input file then the transer will fail.  Thus
-        # setting the outfile permissions is done after setting the filesize,
-        # however, if setting the permissions fails the file is left alone
-        # but it is still treated like a failed transfer.  Worst case senerio
-        # on a failure is that the file is left with full permissions.
-        set_outfile_permissions(done_ticket, e)
-
-
-        #Update the source files times.  We need to do this after we
-        # are done with the locking around the euid for the output file.
-        update_last_access_time(done_ticket['infile'])
-
-        ###What kind of check should be done here?
-        #This error should result in the file being left where it is, but it
-        # is still considered a failed transfer (aka. exit code = 1 and
-        # data access layer is still printed).
-        if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
-            print_data_access_layer_format(done_ticket['infile'],
-                                           done_ticket['outfile'],
-                                           done_ticket['file_size'],
-                                           done_ticket)
-            #We want to set this here, just in case the error isn't technically
-            # non-retriable.
-            done_ticket['completion_status'] = FAILURE
 
         tstring = '%s_overall_time' % done_ticket['unique_id']
         tinfo[tstring] = time.time() - overall_start #-------------Overall End
@@ -8881,21 +8874,10 @@ def prepare_write_to_hsm(tinfo, e):
                 request_list[i]['wrapper']['inode'] = None
                 
         else:
-            if os.getuid() == 0:
-                #For root we need to handle things special and match the
-                # directory.
-                dname = pnfs.get_directory_name(request_list[i]['infile'])
-                file_utils.match_euid_egid(dname)
-            else:
-                #set the effective uid and gid too match the source file.
-                file_utils.match_euid_egid(request_list[i]['infile'])
-            
             #Create the zero length file entry and grab the inode.
             try:
                 create_zero_length_pnfs_files(request_list[i], e)
             except OSError, msg:
-                file_utils.end_euid_egid() #Release the lock.
-
                 if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
                        or (msg.args[0] == errno.EIO and \
                            msg.args[1].find("corrupt") != -1):
@@ -8906,10 +8888,7 @@ def prepare_write_to_hsm(tinfo, e):
                                    (e_errors.OSERROR, msg.strerror)
                 return request_list[i], listen_socket, udp_serv, request_list
             except: #Un-anticipated errors.
-                file_utils.end_euid_egid() #Release the lock.
                 raise sys.exc_info()[0], sys.exc_info()[1],  sys.exc_info()[2]
-
-            file_utils.end_euid_egid() #Release the lock.
 
     return_ticket = { 'status' : (e_errors.OK, None)}
     return return_ticket, listen_socket, udp_serv, request_list
@@ -10136,7 +10115,6 @@ def create_read_request(request, file_number,
             iaccessname = pnfs.access_file(get_directory_name(ifullname),
                                            fc_reply['pnfsid'])
 
-
             read_work = 'read_from_hsm'
 
         ##################################################################
@@ -10390,6 +10368,76 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
 
 #############################################################################
 
+def read_post_transfer_update(done_ticket, out_fd, e):
+    #Verify size is the same.
+    verify_file_size(done_ticket, e)
+
+    """
+    result_dict = handle_retries(request_list, request_ticket,
+                                 done_ticket, e)
+
+    if not e_errors.is_ok(result_dict):
+        #Close these before they are forgotten.
+        close_descriptors(out_fd)
+        return combine_dict(result_dict, request_ticket)
+    """
+    if not e_errors.is_ok(done_ticket):
+        return done_ticket
+
+    #Check the CRC.
+    check_crc(done_ticket, e, out_fd)
+
+    """
+    result_dict = handle_retries(request_list, request_ticket,
+                                 done_ticket, e)
+
+    if not e_errors.is_ok(result_dict):
+        #Close these before they are sforgotten.
+        close_descriptors(out_fd)
+        return combine_dict(result_dict, request_ticket)
+    """
+    if not e_errors.is_ok(done_ticket):
+        return done_ticket
+
+    #Update the last access and modification times respecively.
+    update_modification_time(done_ticket['outfile'])
+
+    #If this is a read of a deleted file, leave the outfile permissions
+    # to the defaults.
+    if not (e.override_deleted and done_ticket['fc']['deleted'] != 'no'):
+        #This function writes errors/warnings to the log file and puts an
+        # error status in the ticket.
+        set_outfile_permissions(done_ticket, e) #Writes errors to log file.
+        if not e_errors.is_ok(done_ticket):
+            #Special way of saying that this error should be returned as an
+            # error without retrying and that the output file should be left
+            # alone.
+            done_ticket['skip_retry'] = 1
+
+    """
+    ###What kind of check should be done here?
+    #This error should result in the file being left where it is, but it
+    # is still considered a failed transfer (aka. exit code = 1 and
+    # data access layer is still printed).
+    if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
+        print_data_access_layer_format(done_ticket['infile'],
+                                       done_ticket['outfile'],
+                                       done_ticket['file_size'],
+                                       done_ticket)
+        #We want to set this here, just in case the error isn't technically
+        # non-retriable.
+        done_ticket['completion_status'] = FAILURE
+    """
+
+    #Update the source files times.
+    if done_ticket['fc']['deleted'] == "no":
+        update_last_access_time(done_ticket['infile'])
+
+
+    return done_ticket
+
+#############################################################################
+
 # read hsm files in the loop after read requests have been submitted
 #Args:
 # listen_socket - The socket to listen on returned from callback.get_callback()
@@ -10450,6 +10498,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
 
     #By adding the pnfs_filename check, we will know if another process
     # has modified this file.
+    Trace.log(99, "after open_local_file: %s" % (done_ticket['status'],))
     result_dict = handle_retries(request_list, request_ticket,
                                  done_ticket, e,
                                  pnfs_filename = request_ticket['infile'])
@@ -10461,6 +10510,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         out_fd = done_ticket['fd']
     
     #We need to stall the transfer until the mover is ready.
+    Trace.log(99, "before stall_read_transfer")
     done_ticket = stall_read_transfer(data_path_socket, control_socket,
                                       request_ticket, e)
 
@@ -10515,62 +10565,29 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     #Make sure the exfer sub-ticket gets stored into request_ticket.
     request_ticket = combine_dict(done_ticket, request_ticket)
     
-    #These functions write errors/warnings to the log file and put an
-    # error status in the ticket.
-
-    #Verify size is the same.
-    verify_file_size(done_ticket, e)
+    try:
+        #This function write errors/warnings to the log file and put an
+        # error status in the ticket.
+        done_ticket = read_post_transfer_update(done_ticket, out_fd, e)
+    except (SystemExit, KeyboardInterrupt):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        done_ticket['status'] = (e_errors.UNKNOWN, sys.exc_info()[1])
 
     result_dict = handle_retries(request_list, request_ticket,
                                  done_ticket, e)
 
-    if not e_errors.is_ok(result_dict):
+    if e_errors.is_non_retriable(done_ticket.get('status', (e_errors.OK,None))):
+        #Close these before they are forgotten.
+        close_descriptors(out_fd)
+        return combine_dict(result_dict, request_ticket)
+    if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
         #Close these before they are forgotten.
         close_descriptors(out_fd)
         return combine_dict(result_dict, request_ticket)
 
-    #Check the CRC.
-    check_crc(done_ticket, e, out_fd)
-
-    result_dict = handle_retries(request_list, request_ticket,
-                                 done_ticket, e)
-
-    if not e_errors.is_ok(result_dict):
-        #Close these before they are sforgotten.
-        close_descriptors(out_fd)
-        return combine_dict(result_dict, request_ticket)
-
-    #Update the last access and modification times respecively.
-    update_modification_time(done_ticket['outfile'])
-
-    #If this is a read of a deleted file, leave the outfile permissions
-    # to the defaults.
-    if not (e.override_deleted and done_ticket['fc']['deleted'] != 'no'):
-        #This function writes errors/warnings to the log file and puts an
-        # error status in the ticket.
-        set_outfile_permissions(done_ticket, e) #Writes errors to log file.
-
-    ###What kind of check should be done here?
-    #This error should result in the file being left where it is, but it
-    # is still considered a failed transfer (aka. exit code = 1 and
-    # data access layer is still printed).
-    if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
-        print_data_access_layer_format(done_ticket['infile'],
-                                       done_ticket['outfile'],
-                                       done_ticket['file_size'],
-                                       done_ticket)
-        #We want to set this here, just in case the error isn't technically
-        # non-retriable.
-        done_ticket['completion_status'] = FAILURE
-
     #If no error occured, this is safe to close now.
-    #close_descriptors(control_socket, data_path_socket, out_fd)
     close_descriptors(out_fd)
-
-    #Update the source files times.  We need to do this after we
-    # are done with the locking around the euid for the output file.
-    if done_ticket['fc']['deleted'] == "no":
-        update_last_access_time(done_ticket['infile'])
 
     #Remove the new file from the list of those to be deleted should
     # encp stop suddenly.  (ie. crash or control-C).
@@ -10692,42 +10709,24 @@ def prepare_read_from_hsm(tinfo, e):
 
             should_skip_deleted = e.override_deleted and \
                              requests_per_vol[vol][i]['fc']['deleted'] != "no"
+
             
             try:
-                #set the effective uid and gid.
-                if not should_skip_deleted:
-                    file_utils.match_euid_egid(requests_per_vol[vol][i]['infile'])
-            except (OSError, IOError, EncpError), msg:
-                requests_per_vol[vol][i]['status'] = \
-                          (e_errors.OSERROR, str(msg))
-                return requests_per_vol[vol][i], listen_socket, udp_serv, requests_per_vol
-                
-            try:
-                """
-                if os.getuid() == 0 and os.geteuid() != 0:
-                    #If we are user root and the effecting ids are not,
-                    # then we need to handle this special to be able to
-                    # write to a root owned local directory.
-                    file_utils.acquire_lock_euid_egid()
-                    new_uid = os.geteuid()
-                    new_gid = os.getegid()
-                    file_utils.set_euid_egid(0, 0)
-
-                    create_zero_length_local_files(requests_per_vol[vol][i])
-                    os.chown(requests_per_vol[vol][i]['outfile'],
-                             new_uid, new_gid)
-
-                    file_utils.set_euid_egid(new_uid, new_gid)
-                    file_utils.release_lock_euid_egid()
-                else:
-                    create_zero_length_local_files(requests_per_vol[vol][i])
-                if not should_skip_deleted:        
-                    file_utils.end_euid_egid()  #Release the lock.
-                """
                 create_zero_length_local_files(requests_per_vol[vol][i])
-            except (OSError, IOError, EncpError), msg:
+
                 if not should_skip_deleted:
-                    file_utils.end_euid_egid() #Release the lock.
+                    #If the file is not deleted, we should set the ownership
+                    # to that of the owner of the original file.
+                    
+                    ### Note to self: work on removing this stat().
+                    in_file_stats = get_stat(requests_per_vol[vol][i]['infile'])
+                
+                    file_utils.chown(requests_per_vol[vol][i]['outfile'],
+                                     in_file_stats[stat.ST_UID],
+                                     in_file_stats[stat.ST_GID])
+            except (OSError, IOError, EncpError), msg:
+                #if not should_skip_deleted:
+                #    file_utils.end_euid_egid() #Release the lock.
 
                 if isinstance(msg, EncpError):
                     requests_per_vol[vol][i]['status'] = (msg.type, str(msg))
@@ -10751,13 +10750,13 @@ def prepare_read_from_hsm(tinfo, e):
                 
                 return requests_per_vol[vol][i], listen_socket, udp_serv, requests_per_vol
             except:
-                if not should_skip_deleted:
-                    file_utils.end_euid_egid() #Release the lock.
+                #if not should_skip_deleted:
+                #    file_utils.end_euid_egid() #Release the lock.
 
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            if not should_skip_deleted:
-                    file_utils.end_euid_egid() #Release the lock.
+            #if not should_skip_deleted:
+            #        file_utils.end_euid_egid() #Release the lock.
 
     return_ticket = { 'status' : (e_errors.OK, None)}
     return return_ticket, listen_socket, udp_serv, requests_per_vol
@@ -12161,19 +12160,27 @@ def main(intf):
 
 def do_work(intf):
 
+    #Keep multiple encps within a migration in sync.
+    start_lock.acquire()
+
     try:
         exit_status = main(intf)
     except (SystemExit, KeyboardInterrupt):
         exc, msg = sys.exc_info()[:2]
-        Trace.log(e_errors.ERROR,
-                  "encp aborted from: %s: %s" % (str(exc),str(msg)))
+        message = "encp aborted from: %s: %s" % (str(exc), str(msg))
+        Trace.log(e_errors.ERROR, message)
         
         exit_status = 1
+        
+        err_msg_lock.acquire()
+        err_msg[thread.get_ident()] = message
+        err_msg_lock.release()
     except:
         #Get the uncaught exception.
         exc, msg, tb = sys.exc_info()
         ticket = {'status' : (e_errors.UNCAUGHT_EXCEPTION,
                               "%s: %s" % (str(exc), str(msg)))}
+        message = str(ticket['status'])
 
         #Print the data access layer and send the information to the
         # accounting server (if possible).
@@ -12184,6 +12191,16 @@ def do_work(intf):
         del tb #No cyclic references.
 
         exit_status = 1
+
+        err_msg_lock.acquire()
+        err_msg[thread.get_ident()] = message
+        err_msg_lock.release()
+
+    #Keep multiple encps within a migration in sync.
+    try:
+        start_lock.release()
+    except:
+        pass
 
     file_utils.acquire_lock_euid_egid()
 
