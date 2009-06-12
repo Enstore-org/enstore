@@ -3395,13 +3395,28 @@ def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
 			nullify_pnfs(mig_path)
 			file_utils.remove(mig_path)
 		except (OSError, IOError), msg:
-			error_log(MY_TASK,
-				  "migration path %s was not deleted[2]: %s" \
+			#If we got the errors that:
+			# 1) the file does not exist
+			# or 
+			# 2) that the filename exists, but is no longer a
+			#    regular file (i.e. is a directory)
+			#then we don't need to worry.
+			if msg.args[0] not in (errno.ENOENT, errno.EISDIR):
+				error_log(MY_TASK,
+				  "migration path %s was not deleted: %s" \
 				  % (mig_path, str(msg)))
+				return 1
+	except (OSError, IOError), msg2:
+		if msg2.args[0] in (errno.ENOENT,):
+			#If the target we are trying to delete no longer
+			# exists, there is now problem.
+			pass
+		else:
+			error_log(MY_TASK,
+				  "migration path %s was not deleted: %s" \
+                                  % (mig_path, str(msg)))
 			return 1
-	except (OSError, IOError):
-		#Do we need a check specifically for ENOENT?
-		pass
+
 
 	# make sure the original is marked deleted
 	f = fcc.bfid_info(src_bfid)
