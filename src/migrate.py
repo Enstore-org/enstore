@@ -132,7 +132,7 @@ USE_THREADS = True
 # this volume_assert functionality should significantly reduce the [networking]
 # resources required to run the migration scan; while at the same time
 # increasing performance.
-USE_VOLUME_ASSERT = True
+USE_VOLUME_ASSERT = False
 
 #When true, fork off a new process/thread that will handle migrating one file.
 # Then keep multiple procesess going.
