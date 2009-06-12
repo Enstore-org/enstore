@@ -197,6 +197,7 @@ DATABASE = "database"                        #pnfs
 DATABASEN = "databaseN"                      #pnfs
 DATA_ACCESS_LAYER = "data-access-layer"      #encp
 DBHOME = "dbHome"                            #restore
+DEBUG = "debug"                              #migrate
 DECR_FILE_COUNT = "decr-file-count"          #volume
 DELAYED_DISMOUNT = "delayed-dismount"        #encp
 DELETE = "delete"                            #volume
@@ -496,7 +497,7 @@ valid_option_list = [
     CLEAN_DRIVE, CLEAR, CLEAR_SG, CLIENT_NAME,
     CONDITION, CONFIG_FILE, CONFIG_HOSTS, CONST, COPIES, COPY,
     COUNTERS, COUNTERSN, CP, CRC_CHECK, CREATE, CURSOR,
-    DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
+    DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME, DEBUG,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
     DESCRIPTION, DESTINATION_ONLY, DESTROY,
     DIRECT_IO, DISABLE, DISMOUNT, DISPLAY,
