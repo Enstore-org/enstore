@@ -51,10 +51,11 @@ Implementation issues:
     -- need to deal with not-thread-safe issues
        -- encp in different threads can be imported into different
           name spaces
-[3] three states of a migrating file
+[3] four states of a migrating file
     -- copied
     -- swapped
     -- checked
+    -- closed
 """
 
 # system imports
@@ -2969,8 +2970,14 @@ def write_file(MY_TASK,
                 use_verbose = ["--verbose", "4"]
         else:
                 use_verbose = []
-	encp_options = ["--delayed-dismount", "2", "--ignore-fair-share",
-			"--threaded"]
+        #dismount delay is the number of minutes a mover needs to wait
+        # before dismounting a tape.  We set this to 2 minutes for each
+        # library that a copy is written into.  This is to give a little
+        # extra time to avoid writes bouncing between tapes with lots
+        # of mounts and dismounts.
+        dismount_delay = str(2 * len(intf.library.split(",")))
+	encp_options = ["--delayed-dismount", dismount_delay,
+                        "--ignore-fair-share", "--threaded"]
 	#Override these tags to use the original values from the source tape.
 	# --override-path is used to specify the correct path to be used
 	# in the wrappers written with the file on tape, since this path
@@ -2983,7 +2990,7 @@ def write_file(MY_TASK,
 	argv = ["encp"] + use_verbose + encp_options + use_priority + \
                use_library + dst_options + use_threads + [tmp_path, mig_path]
 
-	if debug:
+        if 1: #debug:
 		cmd = string.join(argv)
 		log(MY_TASK, 'cmd =', cmd)
 
