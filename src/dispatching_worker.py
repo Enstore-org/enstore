@@ -16,7 +16,7 @@ import signal
 import threading
 #import string
 import copy
-#import types
+import types
 
 #enstore imports
 import udp_server
@@ -29,6 +29,27 @@ import enstore_constants
 MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
 
+def run_in_thread(thread_name, function, args=(), after_function=None):
+    # see what threads are running
+    if thread_name:
+        threads = threading.enumerate()
+        for thread in threads:
+            if ((thread.getName() == thread_name) and thread.isAlive()):
+                Trace.trace(5, "thread %s is already running" % (thread_name))
+                return
+    if after_function:
+        args = args + (after_function,)
+    Trace.trace(5, "create thread: target %s name %s args %s" % (function, thread_name, args))
+    thread = threading.Thread(group=None, target=function,
+                              name=thread_name, args=args, kwargs={})
+    Trace.trace(5, "starting thread %s"%(dir(thread,)))
+    try:
+        thread.start()
+    except:
+        exc, detail, tb = sys.exc_info()
+        Trace.trace(5, "error starting thread %s: %s" % (thread_name, detail))
+
+
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
 
@@ -36,8 +57,7 @@ class DispatchingWorker(udp_server.UDPServer):
     
     def __init__(self, server_address, use_raw=None):
         self.allow_callback = False
-        self.use_raw = use_raw
-        if self.use_raw:
+        if use_raw:
             # enable to spawn callback processing thread
             # by default in raw input mode
             self.allow_callback = True 
@@ -191,7 +211,7 @@ class DispatchingWorker(udp_server.UDPServer):
             if self.allow_callback:
                 Trace.trace(5, "spawning get_fd_message")
                 # spawn callback processing thread (event relay messages)
-                self._run_in_thread("call_back_proc", self.serve_callback)
+                run_in_thread("call_back_proc", self.serve_callback)
             
             # start receiver thread or process
             self.raw_requests.receiver()
@@ -309,22 +329,6 @@ class DispatchingWorker(udp_server.UDPServer):
             return (msg, addr)
 
 
-    def _run_in_thread(self, thread_name, function, args=(), after_function=None):
-        thread = getattr(self, thread_name, None)
-        if thread and thread.isAlive():
-                Trace.trace(5, "thread %s is already running" % (thread_name))
-        if after_function:
-            args = args + (after_function,)
-        Trace.trace(5, "create thread: target %s name %s args %s" % (function, thread_name, args))
-        thread = threading.Thread(group=None, target=function,
-                                  name=thread_name, args=args, kwargs={})
-        setattr(self, thread_name, thread)
-        Trace.trace(5, "starting thread %s"%(dir(thread,)))
-        try:
-            thread.start()
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.trace(5, "starting thread %s: %s" % (thread_name, detail))
 
 
     # get request in single threaded environment
@@ -339,8 +343,7 @@ class DispatchingWorker(udp_server.UDPServer):
         #   read from pipe where there is no crc and no r.a.     
         #   time out where there is no string or r.a.
 
-        gotit = 0
-        while not gotit:
+        while True:
             r = self.read_fds + [self.server_socket]
             w = self.write_fds
 
@@ -367,9 +370,9 @@ class DispatchingWorker(udp_server.UDPServer):
             #now handle other incoming requests
             for fd in r:
                 
-                if type(fd) == type(1) \
-                       and fd in self.read_fds \
-                       and self.callback[fd]==None:
+                if (type(fd) == types.IntType and
+                    fd in self.read_fds and
+                    self.callback[fd]==None):
                     #XXX this is special-case code,
                     #for old usage in media_changer
 
@@ -419,10 +422,9 @@ class DispatchingWorker(udp_server.UDPServer):
         # returns  (string, socket address)
         #      string is a stringified ticket, after CRC is removed
 
-        gotit = 0
         t0 = time.time()
 
-        while not gotit:
+        while True:
             r = [self.server_socket]
             rcv_timeout = self.rcv_timeout
             if self.interval_funcs:
@@ -443,6 +445,27 @@ class DispatchingWorker(udp_server.UDPServer):
                 return None, None
             if rc and rc != ('',()):
                 #Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
+                request, addr = rc[0], rc[1]
+
+                #Determine if the address the request came from is
+                # one that we should be responding to.
+                try:
+                    is_valid_address = hostaddr.allow(addr)
+                except (IndexError, TypeError), detail:
+                    Trace.log(e_errors.ERROR,
+                              "hostaddr failed with %s Req.= %s, addr= %s"\
+                              % (detail, request, addr))
+                    request = None
+                    return (request, addr)
+
+                #If it should not be responded to, handle the error.
+                if not is_valid_address:
+                    Trace.log(e_errors.ERROR,
+                           "attempted connection from disallowed host %s" \
+                              % (addr[0],))
+                    request = None
+                    return (request, addr)
+                
                 return rc
             else:
                 # process timeout
@@ -460,8 +483,7 @@ class DispatchingWorker(udp_server.UDPServer):
         #   read from socket where crc is stripped and return address is valid (event relay messages)
         #   read from pipe where there is no crc and no r.a.
         #   time out where there is no string or r.a.
-        gotit = 0
-        while not gotit:
+        while True:
             r = self.read_fds
             w = self.write_fds
 
