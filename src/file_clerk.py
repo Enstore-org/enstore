@@ -14,6 +14,8 @@ import string
 import socket
 import select
 
+import threading
+
 # enstore imports
 import traceback
 import callback
@@ -28,6 +30,7 @@ import configuration_client
 import hostaddr
 import event_relay_messages
 import enstore_functions3
+import udp_server
 
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
 MAX_CONNECTION_FAILURE = 5
@@ -79,6 +82,95 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.alarm(e_errors.ERROR, message, {})
             Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
             sys.exit(1)
+
+    #
+    # spawn function is separate thread. It will soon appear in dispathing_worker
+    #
+
+    def run_in_thread(self,
+                      function,
+                      args=(),
+                      after_function=None,
+                      thread_name=None):
+        if thread_name :
+            for thread in threading.enumerate():
+                if thread.getName() == thread_name:
+                    if thread.isAlive():
+                        Trace.log(e_errors.WARNING, "thread %s is already runnnig, skipping execution of %s" % (thread_name, function.__name__,))
+                        return
+        if after_function:
+            args = args + (after_function,)
+        Trace.log(5,
+                  "create thread: name %s target %s args %s" % (thread_name, function.__name__, args))
+        thread = threading.Thread(group=None,
+                                  target=function,
+                                  name=thread_name,
+                                  args=args,
+                                  kwargs={})
+        Trace.log(5,
+                  "starting thread name=%s"%(thread.getName()))
+        try:
+            thread.start()
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "starting thread: %s" % (detail))
+
+
+    def process_request(self, request, client_address):
+        #
+        # this function overrides base class's function implementing
+        # execution of interval functions in threads
+        # In the future this functionality will be provided by DispatchingWorker
+        # so we will no longer need to override it
+        #
+        ticket = udp_server.UDPServer.process_request(self, request,
+                                                      client_address)
+        Trace.trace(6, "inquisitor:process_request %s; %s"%(request, ticket,))
+        if not ticket:  return
+        try:
+            function_name = ticket["work"]
+        except (KeyError, AttributeError, TypeError), detail:
+            ticket = {'status' : (e_errors.KEYERROR, 
+                                  "cannot find any named function")}
+            msg = "%s process_request %s from %s" % \
+                (detail, ticket, client_address)
+            Trace.trace(6, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+        try:
+            Trace.trace(5,"process_request: function %s"%(function_name,))
+            function = getattr(self,function_name)
+        except (KeyError, AttributeError, TypeError), detail:
+            ticket = {'status' : (e_errors.KEYERROR, 
+                                  "cannot find requested function `%s'"
+                                  % (function_name,))}
+            msg = "%s process_request %s %s from %s" % \
+                (detail, ticket, function_name, client_address) 
+            Trace.trace(6, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+        if function_name == "tape_list3":
+            external_label = self.extract_external_label_from_ticket(
+                ticket, check_exists = False)
+            t = time.time()
+            c = threading.activeCount()
+            Trace.trace(5, "threads %s"%(c,))
+            # 50 need to move to config
+            if c < 50:
+                Trace.trace(5, "threads %s"%(c,))
+                self.run_in_thread(function,
+                                   (ticket,),
+                                   after_function=self._done_cleanup,
+                                   function.__name__+'('+external_label+')')
+            else:
+                function(ticket)
+        else:
+            function(ticket)
+        Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
+ 
+    
 
     ####################################################################
 
@@ -597,9 +689,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
              where \
                  file.volume = volume.id and volume.label = '%s' \
              order by location_cookie;" % (external_label,)
-
-        res = self.filedb_dict.db.query(q).dictresult()
-
+        db =  self.filedb_dict.pool.connection()
+        res = db.query(q).dictresult()
         # convert to external format
         file_list = []
         for file_info in res:
@@ -612,7 +703,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             if not value.has_key('pnfs_name0'):
                 value['pnfs_name0'] = "unknown"
             file_list.append(value)
-
+        db.close()
         return file_list
 
     #### DONE
@@ -643,7 +734,6 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         self.control_socket.close()
         Trace.log(e_errors.INFO, "finish listing " + external_label)
         return
-
 
     # This is the newer implementation that off load to client
     def tape_list2(self, ticket):

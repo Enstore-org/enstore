@@ -28,6 +28,7 @@ import ejournal
 import os
 import Trace
 import e_errors
+import DBUtils
 
 default_database = 'enstoredb'
 
@@ -104,7 +105,7 @@ def get_fields_and_values(s):
 # self.exprot_format(self, s) -- translate database output to external format
 
 class DbTable:
-	def __init__(self, host, port, database, table, pkey, jouHome ='.', auto_journal=0, rdb=None):
+	def __init__(self, host, port, database, table, pkey, jouHome ='.', auto_journal=0, rdb=None, max_con=20):
 		self.host = host
 		self.port = port
 		self.database = database
@@ -134,6 +135,12 @@ class DbTable:
 			except:	# wait for 30 seconds and retry
 				time.sleep(30)
 				self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
+		self.pool =  DBUtils.PooledPg(maxconnections=max_con,
+					      blocking=True,
+					      host=self.db.host,
+					      port=self.db.port,
+					      dbname=self.db.dbname)
+		
 
 	# translate database output to external format
 	def export_format(self, s):
