@@ -35,7 +35,7 @@ echo export PYTHONINC >> /tmp/enstore-setup
 #echo PYTHONLIB=$pm2:$pm1 >> /tmp/enstore-setup
 echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
-echo PYTHONPATH=$RPM_BUILD_ROOT/%{prefix}/src:$RPM_BUILD_ROOT/%{prefix}/modules:$RPM_BUILD_ROOT/%{prefix}/HTMLgen >> /tmp/enstore-setup
+echo PYTHONPATH=$RPM_BUILD_ROOT/%{prefix}:$RPM_BUILD_ROOT/%{prefix}/src:$RPM_BUILD_ROOT/%{prefix}/modules:$RPM_BUILD_ROOT/%{prefix}/HTMLgen >> /tmp/enstore-setup
 echo export PYTHONPATH >> /tmp/enstore-setup
 echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup

@@ -236,6 +236,7 @@ COMMON:
                 # now set the python module search path, need to do these in separate
                 # lines so that when an unsetup is done, the dropit will do 3 separate
                 # dropits.   dropit does not support > 1 substring to drop on a line
+                envAppend(PYTHONPATH,"${UPS_PROD_DIR}")
                 envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src")
                 envAppend(PYTHONPATH,"${UPS_PROD_DIR}/modules")
                 envAppend(PYTHONPATH,"${UPS_PROD_DIR}/modules/PyGreSQL")
