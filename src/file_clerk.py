@@ -163,7 +163,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 self.run_in_thread(function,
                                    (ticket,),
                                    after_function=self._done_cleanup,
-                                   function.__name__+'('+external_label+')')
+                                   thread_name=None)
             else:
                 function(ticket)
         else:
