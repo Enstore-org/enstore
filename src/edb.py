@@ -28,7 +28,7 @@ import ejournal
 import os
 import Trace
 import e_errors
-from DBUtils import PooledPg
+from DBUtils.PooledPg import PooledPg
 
 default_database = 'enstoredb'
 
@@ -137,9 +137,9 @@ class DbTable:
 				self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
 		self.pool =  PooledPg(maxconnections=max_con,
 				      blocking=True,
-				      host=self.db.host,
-				      port=self.db.port,
-				      dbname=self.db.dbname)
+				      host=self.host,
+				      port=self.port,
+				      dbname=self.database)
 		
 
 	# translate database output to external format
