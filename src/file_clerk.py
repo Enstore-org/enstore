@@ -151,10 +151,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
+        t = time.time()
         if function_name == "tape_list3":
             external_label = self.extract_external_label_from_ticket(
                 ticket, check_exists = False)
-            t = time.time()
             c = threading.activeCount()
             Trace.trace(5, "threads %s"%(c,))
             # 50 need to move to config
