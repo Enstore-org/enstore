@@ -2569,14 +2569,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def mover_idle(self, mticket):
         Trace.trace(11,"IDLE RQ %s"%(mticket,))
         
-        # Mover is idle remove it from volumes_at_movers.
+        # Since the mover is idle, it needs to be removed from volume_at_movers.
         # Library manager may not be able to respond to a mover
         # on time which results in the mover retry message.
         # The mover requests may also be kept in the udp buffer before
         # getting processed by the library manager.
         # Both cases result in sending a work to the mover and then removing
-        # work from the active list as a result of the second idle request
-        # to avoid this problem  compare the time of the mover request submission
+        # work from the active list as a result of the second idle request.
+        # To avoid this problem compare the time of the mover request submission
         # with the time when the work for the same mover became active
         # This code requires a new key in the mover ticket
         if mticket.has_key("current_time"):
