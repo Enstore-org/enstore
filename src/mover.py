@@ -746,8 +746,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state_change_time = 0.0
         self.time_in_state = 0.0
         self.in_state_to_cnt = 0 # how many times timeot for being in the same state expired
-        self.connect_to = 15  # timeout for control socket connection
-        self.connect_retry = 4 # number of retries for control socket connection 
+        self.connect_to = 5  # timeout for control socket connection
+        self.connect_retry = 3 # number of retries for control socket connection 
         self._state_lock = threading.Lock()
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
@@ -4869,7 +4869,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         callback.write_tcp_obj(self.control_socket, ticket)
                     """
                     Trace.log (e_errors.INFO,"SENDING %s"%(ticket,))
-                    callback.write_tcp_obj(self.control_socket, ticket)
+                    rtn = callback.write_tcp_obj(self.control_socket, ticket, timeout=10)
+                    Trace.trace(10,"SENDING RC %s"%(rtn,))
                     if null_err:
                         # just for a case
                         try:
@@ -4914,7 +4915,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             # we expect a prompt call-back here
             # establish a data connection
             Trace.trace(10, "select: listening for client callback")
-            read_fds,write_fds,exc_fds=select.select([self.listen_socket],[],[],60) # one minute timeout
+            read_fds,write_fds,exc_fds=select.select([self.listen_socket],[],[],20) # 20 s TO
             Trace.trace(10, "select returned %s" % ((self.listen_socket in read_fds),))
 
             if self.listen_socket in read_fds:
