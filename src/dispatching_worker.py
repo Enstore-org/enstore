@@ -47,7 +47,7 @@ def run_in_thread(thread_name, function, args=(), after_function=None):
         thread.start()
     except:
         exc, detail, tb = sys.exc_info()
-        Trace.trace(5, "error starting thread %s: %s" % (thread_name, detail))
+        Trace.log(e_errors.ERROR, "error starting thread %s: %s" % (thread_name, detail))
 
 
 # Generic request response server class, for multiple connections
