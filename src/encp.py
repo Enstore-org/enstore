@@ -198,7 +198,7 @@ pnfs_agent_client_allowed = False
 #Initial seed for generate_unique_id().
 _counter = 0
 #Initial seed for generate_unique_msg_id().
-_msg_counter = 0
+###_msg_counter = 0
 
 #This is the largest 16 bit prime number.  It is used for converting the
 # 1 seeded dcache CRCs with the 0 seeded enstore CRCs.
@@ -4581,7 +4581,7 @@ def open_control_socket(listen_socket, mover_timeout):
 
         try:
             ticket = callback.read_tcp_obj(control_socket)
-        except (select.error, socket.error):
+        except (select.error, socket.error, e_errors.EnstoreError):
             try:
                 control_socket.close()
             except socket.error:
@@ -4646,7 +4646,7 @@ def open_control_socket(listen_socket, mover_timeout):
                 Trace.log(e_errors.INFO,
                           "Received second ticket in open_control_socket: %s" %
                           (str(ticket),))
-            except (select.error, socket.error), msg:
+            except (select.error, socket.error, e_errors.EnstoreError), msg:
                 raise EncpError(msg.errno, str(msg), e_errors.NET_ERROR, ticket)
             except e_errors.TCP_EXCEPTION:
                 raise EncpError(errno.ENOTCONN,
@@ -5647,7 +5647,7 @@ def receive_final_dialog(control_socket):
         #Output these two regardless of get or encp.
         Trace.message(TICKET_LEVEL, "FINAL DIALOG:")
         Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
-    except (select.error, socket.error), msg:
+    except (select.error, socket.error, e_errors.EnstoreError), msg:
         done_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
     except e_errors.TCP_EXCEPTION:
         done_ticket = {'status' : (e_errors.NET_ERROR, e_errors.TCP_EXCEPTION)}
@@ -6557,11 +6557,18 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #if request_dictionary.get('fc', {}).has_key('external_label'):
     if external_label and external_label == \
            request_dictionary.get('fc', {}).get('external_label', None):
+        check_external_label_start_time = time.time()
+
         try:
             vc_reply = get_volume_clerk_info(request_dictionary)
             vc_status = vc_reply['status']
         except EncpError, msg:
             vc_status = (getattr(msg, 'type', e_errors.UNKNOWN), str(msg))
+
+        message = "Time to check external label: %s sec." % \
+              (time.time() - check_external_label_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
     else:
         vc_status = (e_errors.OK, None)
 
@@ -6569,6 +6576,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     socket_status = (e_errors.OK, None)
     socket_dict = {'status':socket_status}
     if control_socket:
+        check_control_socket_start_time = time.time()
+        
         try:
             socket_error = control_socket.getsockopt(socket.SOL_SOCKET,
                                                      socket.SO_ERROR)
@@ -6615,9 +6624,16 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                     Trace.log(e_errors.WARNING,
                               "Control socket status: %s" % (socket_status,))
 
+        message = "Time to check control socket: %s sec." % \
+              (time.time() - check_control_socket_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
+
     #Just to be paranoid check the listening socket.  Check the current
     # socket status to avoid wiping out an error.
     if e_errors.is_ok(socket_dict) and listen_socket:
+        check_listen_socket_start_time = time.time()
+        
         socket_error = listen_socket.getsockopt(socket.SOL_SOCKET,
                                                 socket.SO_ERROR)
         if socket_error:
@@ -6625,8 +6641,15 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             socket_dict = {'status':socket_status}
             request_dictionary = combine_dict(socket_dict, request_dictionary)
 
+        message = "Time to check listen socket: %s sec." % \
+              (time.time() - check_listen_socket_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
+
     lf_status = (e_errors.OK, None)
     if local_filename:
+        check_local_filename_start_time = time.time()
+        
         try:
             #First determine if stat-ing the file produces any errors.
             
@@ -6679,10 +6702,17 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 lf_status = (e_errors.OSERROR,
                              "Noticed error checking local file:" + str(msg))
 
+        message = "Time to check local filename: %s sec." % \
+              (time.time() - check_local_filename_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
+        
     pf_status = (e_errors.OK, None)
     skip_layer_cleanup = False
     if is_write(encp_intf) and type(pnfs_filename) == types.StringType \
            and pnfs_filename and not request_dictionary.get('copy', None):
+        check_pnfs_filename_start_time = time.time()
+        
         #If the user wants us to specifically check if another encp has
         # written (layers 1 or 4) to this pnfs file; now is the time to check.
         try:
@@ -6719,6 +6749,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         Trace.log(e_errors.INFO,
                   "pf_status = %s  skip_layer_cleanup = %s" %
                   (pf_status, skip_layer_cleanup))
+        message = "Time to check pnfs filename: %s sec." % \
+                  (time.time() - check_pnfs_filename_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
+
 
     ## First check for non-retriable errors.
 
@@ -8477,7 +8512,7 @@ def stall_write_transfer(data_path_socket, control_socket, e):
             else:
                 status_ticket = {'status' : (e_errors.UNKNOWN,
                                              "No data written to mover.")}
-        except (select.error, socket.error), msg:
+        except (select.error, socket.error, e_errors.EnstoreError), msg:
             status_ticket = {'status' : (e_errors.NET_ERROR,
                                          "%s: %s" % (str(msg),
                                                "No data read from mover."))}
@@ -8524,7 +8559,7 @@ def stall_write_transfer(data_path_socket, control_socket, e):
             else:
                 status_ticket = {'status' : (e_errors.UNKNOWN,
                                              "No data written to mover.")}
-        except (select.error, socket.error), msg:
+        except (select.error, socket.error, e_errors.EnstoreError), msg:
             status_ticket = {'status' : (e_errors.NET_ERROR,
                                          "%s: %s" % (str(msg),
                                                "No data read from mover."))}
@@ -10317,7 +10352,7 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
             else:
                 status_ticket = {'status' : (e_errors.UNKNOWN,
                                              "No data read from mover.")}
-        except (select.error, socket.error), msg:
+        except (select.error, socket.error, e_errors.EnstoreError), msg:
             status_ticket = {'status' : (e_errors.NET_ERROR,
                                          "%s: %s" % (str(msg),
                                                "No data read from mover."))}
@@ -10349,7 +10384,7 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
             else:
                 status_ticket = {'status' : (e_errors.UNKNOWN,
                                              "No data read from mover.")}
-        except (select.error, socket.error), msg:
+        except (select.error, socket.error, e_errors.EnstoreError), msg:
             status_ticket = {'status' : (e_errors.NET_ERROR,
                                          "%s: %s" % (str(msg),
                                                "No data read from mover."))}
