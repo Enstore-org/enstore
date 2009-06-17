@@ -59,8 +59,8 @@ class NetDriver(generic_driver.Driver):
 
     def read(self, buf, offset, nbytes):
         t0 = time.time()
-        ## Give up if the client does not send us data for 5 minutes
-        ready, junk, junk= select.select([self.fileno()], [], [], 5*60)
+        ## Give up if the client does not send us data for 1 minute
+        ready, junk, junk= select.select([self.fileno()], [], [], 1*60)
         if ready:
             try:
                 r =  strbuffer.buf_recv(self.fileno(), buf, offset, nbytes)
