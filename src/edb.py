@@ -105,7 +105,7 @@ def get_fields_and_values(s):
 # self.exprot_format(self, s) -- translate database output to external format
 
 class DbTable:
-	def __init__(self, host, port, database, table, pkey, jouHome ='.', auto_journal=0, rdb=None, max_con=20):
+	def __init__(self, host, port, database, table, pkey, jouHome ='.', auto_journal=0, rdb=None, max_connections=20):
 		self.host = host
 		self.port = port
 		self.database = database
@@ -135,7 +135,7 @@ class DbTable:
 			except:	# wait for 30 seconds and retry
 				time.sleep(30)
 				self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
-		self.pool =  PooledPg(maxconnections=max_con,
+		self.pool =  PooledPg(maxconnections=max_connections,
 				      blocking=True,
 				      host=self.host,
 				      port=self.port,
@@ -248,8 +248,8 @@ class DbTable:
 		pass
 
 class FileDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1):
-		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal=auto_journal, rdb = rdb)
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1,max_connections=20):
+		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal=auto_journal, rdb = rdb, max_connections = max_connections)
 
 		self.retrieve_query = "\
         		select \
@@ -377,8 +377,8 @@ class FileDB(DbTable):
 		return record
 
 class VolumeDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1):
-		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal=auto_journal, rdb = rdb)
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1, max_connections=20):
+		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal=auto_journal, rdb = rdb, max_connections=max_connections)
 
 		self.retrieve_query = "\
         		select \

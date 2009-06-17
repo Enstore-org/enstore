@@ -35,6 +35,9 @@ import udp_server
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
 MAX_CONNECTION_FAILURE = 5
 
+MAX_THREADS = 50 
+MAX_CONNECTIONS=20
+
 class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### This class of File Clerk methods should only be readonly operations.
     ### This class is inherited by Info Server (to increase code reuse)
@@ -71,6 +74,9 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         db_host = dbInfo['db_host']
         db_port = dbInfo['db_port']
 
+        self.max_connections = dbInfo.get('max_connections',MAX_CONNECTIONS)
+        self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
+
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
         try:
@@ -82,39 +88,6 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.alarm(e_errors.ERROR, message, {})
             Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
             sys.exit(1)
-
-    #
-    # spawn function is separate thread. It will soon appear in dispathing_worker
-    #
-
-    def run_in_thread(self,
-                      function,
-                      args=(),
-                      after_function=None,
-                      thread_name=None):
-        if thread_name :
-            for thread in threading.enumerate():
-                if thread.getName() == thread_name:
-                    if thread.isAlive():
-                        Trace.log(e_errors.WARNING, "thread %s is already runnnig, skipping execution of %s" % (thread_name, function.__name__,))
-                        return
-        if after_function:
-            args = args + (after_function,)
-        Trace.log(5,
-                  "create thread: name %s target %s args %s" % (thread_name, function.__name__, args))
-        thread = threading.Thread(group=None,
-                                  target=function,
-                                  name=thread_name,
-                                  args=args,
-                                  kwargs={})
-        Trace.log(5,
-                  "starting thread name=%s"%(thread.getName()))
-        try:
-            thread.start()
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "starting thread: %s" % (detail))
-
 
     def process_request(self, request, client_address):
         #
@@ -157,18 +130,17 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 ticket, check_exists = False)
             c = threading.activeCount()
             Trace.trace(5, "threads %s"%(c,))
-            # 50 need to move to config
-            if c < 50:
+            if c < self.max_threads:
                 Trace.trace(5, "threads %s"%(c,))
-                self.run_in_thread(function,
-                                   (ticket,),
-                                   after_function=self._done_cleanup,
-                                   thread_name=None)
+                dispatching_worker.run_in_thread(thread_name=None,
+                                                 function=function,
+                                                 args=(ticket,),
+                                                 after_function=None)
             else:
                 function(ticket)
         else:
             function(ticket)
-        Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
+        Trace.trace(5,"file_clerk.process_request: function %s time %s"%(function_name,time.time()-t))
  
     
 
