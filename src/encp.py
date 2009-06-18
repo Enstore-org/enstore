@@ -299,7 +299,7 @@ class EncpError(Exception):
             self.errno = None
 
         #In python 2.6 python throws warnings for using Exception.message.
-        if sys.version_info[:2] == (2, 6):
+        if sys.version_info[:2] >= (2, 6):
             self.message_attribute_name = "e_message"
         else: # python 2.5 and less
             self.message_attribute_name = "message"
