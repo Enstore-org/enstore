@@ -1183,9 +1183,14 @@ def do_layers_exist(pnfs_filename):
     p = Pnfs()
 
     try:
-        if p.readlayer(1, pnfs_filename) or p.readlayer(4, pnfs_filename):
+        if get_stat(p.use_file(pnfs_filename, 1))[stat.ST_SIZE] or \
+           get_stat(p.use_file(pnfs_filename, 4))[stat.ST_SIZE]:
             #Layers found for the file!
             return True
+        
+        #if p.readlayer(1, pnfs_filename) or p.readlayer(4, pnfs_filename):
+        #    #Layers found for the file!
+        #    return True
     except (OSError, IOError):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
