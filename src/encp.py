@@ -1180,11 +1180,11 @@ def do_layers_exist(pnfs_filename):
     if not pnfs_filename:
         return False
 
-    p = Pnfs()
+    #p = Pnfs()
 
     try:
-        if get_stat(p.use_file(pnfs_filename, 1))[stat.ST_SIZE] or \
-           get_stat(p.use_file(pnfs_filename, 4))[stat.ST_SIZE]:
+        if get_stat(pnfs.layer_file(pnfs_filename, 1))[stat.ST_SIZE] or \
+               get_stat(pnfs.layer_file(pnfs_filename, 4))[stat.ST_SIZE]:
             #Layers found for the file!
             return True
         
