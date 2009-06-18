@@ -1,7 +1,9 @@
 import time
 import string
 import os
+import errno
 
+import e_errors
 import enstore_functions2
 
 # ticket keys used in this module
@@ -123,10 +125,15 @@ class Label:
     def text_len(self):
 	if not len(self.text) == HDR_LABELLEN:
 	    # we need to be of length HDR_LABELLEN
-	    raise INVALIDLENGTH, \
-		  "invalid length (%s) for %s, should be %s"%(len(self.text),
+            msg = "invalid length (%s) for %s, should be %s"%(len(self.text),
 							      self.label,
 							      HDR_LABELLEN)
+            raise e_errors.EnstoreError(errno.EMSGSIZE, msg, INVALIDLENGTH)
+
+	    # raise INVALIDLENGTH, \
+            # "invalid length (%s) for %s, should be %s"%(len(self.text),
+            # self.label,
+            # HDR_LABELLEN)
 
 
 class Label1(Label):
@@ -174,9 +181,11 @@ class Label2(Label):
 		 implementation_id, offset_length):
 	Label.__init__(self)
 	if record_format not in RECORDFORMAT:
-	    raise UNKNOWNRECFORMAT, \
-		  "record format not one of %s"%(RECORDFORMAT,)
-
+            msg = "record format not one of %s"%(RECORDFORMAT,)
+            raise e_errors.EnstoreError(None, msg, UNKNOWNRECFORMAT)
+	    #raise UNKNOWNRECFORMAT, \
+            #"record format not one of %s"%(RECORDFORMAT,)
+            
 	self.record_format = record_format
 	if long(block_length) <= BLOCK_LEN_LIMIT:
 	    self.block_length = block_length
@@ -521,7 +530,9 @@ class EnstoreLargeFileWrapper:
 				   '???')         # CN, FN - file identifier
 	self.filename_len = len(self.filename)    # not in hdr, but used here
 	if self.filename_len > MAXFILENAMELEN:
-	    raise INVALIDLENGTH, "filename too long (%s)"%(self.filename_len,)
+            msg = "filename too long (%s)"%(self.filename_len,)
+            raise e_errors.EnstoreError(errno.EMSGSIZE, msg, INVALIDLENGTH)
+	    #raise INVALIDLENGTH, "filename too long (%s)"%(self.filename_len,)
 	self.file_set_id = 6*ZERO                 # NU - identify file set
 	self.file_section_number = 4*ZERO         # NU - for files that span 
 	                                          #      tapes, enstores' don't
