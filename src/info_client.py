@@ -373,7 +373,7 @@ class fileInfoMethods(generic_client.GenericClient):
                   "external_label" : external_label}
         done_ticket = self.send_with_long_answer(ticket, rcv_timeout = timeout,
                                                  rcv_tries = retry)
-
+   
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
                done_ticket['status'][1].startswith("cannot find requested function"):
@@ -1015,6 +1015,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         return r
     
     def find_file_by_path(self, pnfs_name0):
+        host, port, listen_socket = callback.get_callback()
         ticket = {"work" : "find_file_by_path2",
                   "pnfs_name0" : pnfs_name0}
         r = self.send_with_long_answer(ticket)
@@ -1394,14 +1395,16 @@ def do_work(intf):
     elif intf.show_file:
         ticket = ifc.file_info(intf.show_file)
         if e_errors.is_ok(ticket):
-            show_file(ticket['file_info'])
+            #show_file(ticket['file_info'])
+            pprint.pprint(ticket['file_info'])
 
     elif intf.show_copies:
         ticket = ifc.find_all_copies(intf.show_copies)
         for i in ticket["copies"]:
             ticket = ifc.file_info(i)
             if e_errors.is_ok(ticket):
-                show_file(ticket['file_info'])
+                #show_file(ticket['file_info'])
+                pprint.pprint(ticket['file_info'])
 
     elif intf.ls_active:
         ticket = ifc.list_active(intf.ls_active)

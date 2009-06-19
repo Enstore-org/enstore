@@ -205,12 +205,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		bfid, record = self.extract_bfid_from_ticket(ticket)
 		if not bfid:
 			return #extract_bfid_from_ticket handles its own errors.
-
-		q = "select * from file_info where bfid = '%s';" % (bfid,)
-
-		# Obtain the file record(s).
-		self.__find_file(q, ticket, item_name = "file_info")
-		
+		self.__find_file(bfid, ticket, error_target="file_info",item_name = "file_info")
 		self.reply_to_caller(ticket)
 		return
 
@@ -222,91 +217,71 @@ class Server(file_clerk.FileClerkInfoMethods,
 	# key.
 	#
 	# error_target is a string describing what is being looked for.
-	def __find_file(self, q, ticket, error_target, item_name = None):
-		try:
-			res = self.db.query(q).dictresult()
-		except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
-			ticket['status'] = (e_errors.DATABASE_ERROR,
-					    "looking for %s: %s" % \
-					    (error_target, str(msg)))
-
-			return
-			
-		if len(res) == 0:
+	def __find_file(self, bfid, ticket, error_target, item_name = None):
+		finfo  = getattr(self, 'file', {})[bfid]
+		if not finfo:
 			ticket['status'] = (e_errors.NO_FILE,
 				"%s: %s not found" % (MY_NAME, error_target))
 			Trace.log(e_errors.ERROR, "%s" % (ticket,))
 			return
-		if len(res) > 1:
-			ticket['status'] = (e_errors.TOO_MANY_FILES,
-				"%s: %s %s matches found" % \
-					    (MY_NAME, error_target, len(res)))
-			Trace.log(e_errors.ERROR, "%s" % (ticket,))
-			#return the entire list for future use.
-			ticket['file_list'] = []
-			for db_info in res:
-				if item_name:
-					ticket['file_list'].append(db_info)
-				else:
-					ticket['file_list'].append(self.file.export_format(db_info))
-			return
-
-		#We get here when there is only one match.
-
-		finfo = self.file.export_format(res[0])
-
-		if item_name:
-			ticket[item_name] = res[0]
+	        if ticket.has_key('file_list'):
+			ticket['file_list'].append(finfo)
+			return 
 		else:
-			#Copy all file information we have to user's ticket.
-			# Copy the info one key at a time to avoid cyclic
-			# dictionary references.
-			for key in finfo.keys():
-				ticket[key] = finfo[key]
-	
+			if item_name:
+				ticket[item_name] = finfo
+			else:
+				for key in finfo.keys():
+					ticket[key] = finfo[key]
 		ticket["status"] = (e_errors.OK, None)
-		return ticket
+		return 
 
 	# find_file_by_path() -- find a file using pnfs_path
 	def __find_file_by_path(self, ticket):
-
 		pnfs_path = self.extract_value_from_ticket("pnfs_name0", ticket,
 							  fail_None = True)
 		if not pnfs_path:
 			return #extract_value_from_ticket handles its own errors.
+		q="select bfid from file where pnfs_path='%s'"%(pnfs_path,)
+		print q 
+		res=[]
+		try:
+			res = self.db.query(q).dictresult()
+		except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+			ticket['status'] = (e_errors.DATABASE_ERROR,
+					    "failed to find bfid for pnfs_path %s"%(pnfs_path,))
 
-		q = "select \
-			bfid, crc, deleted, drive, \
-			volume.label, location_cookie, pnfs_path, \
-			pnfs_id, sanity_size, sanity_crc, size, \
-			uid, gid, update \
-			from file, volume \
-			where \
-				file.volume = volume.id and \
-				pnfs_path = '%s';" % (pnfs_path,)
-
-		# Obtain the file record(s).
-		self.__find_file(q, ticket, pnfs_path)
-		
-		return ticket
+			return
+		if not res :
+			ticket['status'] = (e_errors.NO_FILE,
+					    "%s: %s not found" % (MY_NAME, pnfs_path))
+			Trace.log(e_errors.ERROR, "%s" % (ticket,))
+			return
+		if len(res)>1:
+			ticket["status"] = (e_errors.OK, None)
+			ticket['file_list'] = []
+			for db_info in res:
+				bfid = db_info.get('bfid')
+				self.__find_file(bfid, ticket, pnfs_path)
+		else:
+			bfid = res[0].get('bfid')
+			self.__find_file(bfid, ticket, pnfs_path)
+		return 
 
 	# find_file_by_path() -- find a file using pnfs id
 	def find_file_by_path(self, ticket):
 		self.__find_file_by_path(ticket)
-
 		self.reply_to_caller(ticket)
 		return
 
 	#This version can handle replying with a large number of file matches.
 	def find_file_by_path2(self, ticket):
 		self.__find_file_by_path(ticket)
-
 		self.reply_to_caller_with_long_answer(ticket, ["file_list"])
 		return
 		
 	# find_file_by_pnfsid() -- find a file using pnfs id
 	def __find_file_by_pnfsid(self, ticket):
-
 		pnfs_id = self.extract_value_from_ticket("pnfsid", ticket,
 							  fail_None = True)
 		if not pnfs_id:
@@ -318,33 +293,43 @@ class Server(file_clerk.FileClerkInfoMethods,
 			Trace.log(e_errors.ERROR, message)
 			self.reply_to_caller(ticket)
 			return
+		q = "select bfid from file where pnfs_id = '%s'" % (pnfs_id,)
+		res=[]
+		try:
+			res = self.db.query(q).dictresult()
+		except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+			ticket['status'] = (e_errors.DATABASE_ERROR,
+					    "failed to find bfid for pnfs_id %s"%(pnfs_id,))
 
-		q = "select \
-			bfid, crc, deleted, drive, \
-			volume.label, location_cookie, pnfs_path, \
-			pnfs_id, sanity_size, sanity_crc, size, \
-			uid, gid, update \
-			from file, volume \
-			where \
-				file.volume = volume.id and \
-				pnfs_id = '%s';" % (pnfs_id,)
+			return 
+		if not res :
+			ticket['status'] = (e_errors.NO_FILE,
+					    "%s: %s not found" % (MY_NAME, pnfs_id))
+			Trace.log(e_errors.ERROR, "%s" % (ticket,))
+			return
 
-		# Obtain the file record(s).
-		self.__find_file(q, ticket, pnfs_id)
-		
+		if len(res)>1:
+			ticket['status'] = (e_errors.TOO_MANY_FILES,
+				"%s: %s %s matches found" % \
+					    (MY_NAME, pnfs_id, len(res)))
+			ticket['file_list'] = []
+			for db_info in res:
+				bfid = db_info.get('bfid')
+				self.__find_file(bfid, ticket, pnfs_id)
+		else:
+			bfid = res[0].get('bfid')
+			self.__find_file(bfid, ticket, pnfs_id)
 		return ticket
 
 	# find_file_by_pnfsid() -- find a file using pnfs id
 	def find_file_by_pnfsid(self, ticket):
 		self.__find_file_by_pnfsid(ticket)
-
 		self.reply_to_caller(ticket)
 		return
 
 	#This version can handle replying with a large number of file matches.
 	def find_file_by_pnfsid2(self, ticket):
 		self.__find_file_by_pnfsid(ticket)
-
 		self.reply_to_caller_with_long_answer(ticket, ["file_list"])
 		return
 				

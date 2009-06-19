@@ -98,7 +98,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         #
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
-        Trace.trace(6, "inquisitor:process_request %s; %s"%(request, ticket,))
+        Trace.trace(6, "file_clerk.process_request %s; %s"%(request, ticket,))
         if not ticket:  return
         try:
             function_name = ticket["work"]
