@@ -243,7 +243,6 @@ class Server(file_clerk.FileClerkInfoMethods,
 		if not pnfs_path:
 			return #extract_value_from_ticket handles its own errors.
 		q="select bfid from file where pnfs_path='%s'"%(pnfs_path,)
-		print q 
 		res=[]
 		try:
 			res = self.db.query(q).dictresult()
