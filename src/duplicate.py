@@ -20,6 +20,7 @@ The code is borrowed from migrate.py. It is imported and modified.
 import sys
 import os
 import string
+import re
 
 # enstore imports
 import configuration_client
@@ -35,7 +36,7 @@ import Trace
 import option
 
 # modifying migrate module
-migrate.MIGRATION_FILE_FAMILY_KEY = "_copy_1"
+migrate.MIGRATION_FILE_FAMILY_KEY = "_copy_%s" #Not equals to (==) safe.
 migrate.INHIBIT_STATE = "duplicated"
 migrate.IN_PROGRESS_STATE = "duplicating"
 migrate.MIGRATION_NAME = "DUPLICATION"
@@ -56,6 +57,37 @@ DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
 	}
 del DuplicateInterface.migrate_options[option.RESTORE]
 
+
+# migration_file_family(ff) -- making up a file family for migration
+def migration_file_family(bfid, ff, fcc, intf, deleted = 'n'):
+	reply_ticket = fcc.find_all_copies(bfid)
+	if e_errors.is_ok(reply_ticket):
+		count = len(reply_ticket['copies'])
+	else:
+		raise e_errors.EnstoreError(None, reply_ticket['status'][1],
+					    reply_ticket['status'][0])
+	
+	if deleted == 'y':
+		return migrate.DELETED_FILE_FAMILY + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
+	else:
+		if intf.file_family:
+			return intf.file_family + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
+		else:
+			return ff + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
+
+# normal_file_family(ff) -- making up a normal file family from a
+#				migration file family
+def normal_file_family(ff):
+	return re.sub("_copy_[0-9]*", "", ff, 1)
+
+#Return True if the file_family has the pattern of a migration/duplication
+# file.  False otherwise.
+def is_migration_file_family(ff):
+    if re.search("_copy_[0-9]*", ff) == None:
+        return False
+
+    return True
+
 # This is to change the behavior of migrate.swap_metadata.
 # duplicate_metadata(bfid1, src, bfid2, dst, db) -- duplicate metadata for src and dst
 #
@@ -70,23 +102,74 @@ def duplicate_metadata(bfid1, src, bfid2, dst, db):
 	csc = configuration_client.ConfigurationClient((config_host,
 							config_port))
 	fcc = file_clerk_client.FileClient(csc)
-	# get all metadata
-	p1 = pnfs.File(src)
-	f1 = fcc.bfid_info(bfid1)
-	p2 = pnfs.File(dst)
-	f2 = fcc.bfid_info(bfid2)
 
+	# get all the file db metadata
+	f1 = fcc.bfid_info(bfid1)
+        if not e_errors.is_ok(f1):
+            return "src_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
+	
+	f2 = fcc.bfid_info(bfid2)
+        if not e_errors.is_ok(f2):
+            return "dst_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
+
+        #It is possible to duplicate a duplicate.  Need to handle finding
+	# the original bfid's file recored, if there is one.
+        original_reply = fcc.find_the_original(bfid1)
+	f0 = {}
+	if e_errors.is_ok(original_reply) \
+	       and original_reply['original'] != None \
+	       and original_reply['original'] != bfid1:
+		f0 = fcc.bfid_info(original_reply['original'])
+		if not e_errors.is_ok(f2):
+			return "original bfid: %s: %s" % (f1['status'][0],
+							  f1['status'][1])
+
+	# get all pnfs metadata - first the source file
+	if f1['deleted'] == "no":
+                try:
+                        # This version handles the seteuid() locking.
+                        p1 = migrate.File(src)
+                except (KeyboardInterrupt, SystemExit):
+                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+                except (OSError, IOError), msg:
+                        return str(msg)
+                except:
+                        exc, msg = sys.exc_info()[:2]
+                        return str(msg)
+        else:
+                # What do we need an empty File class for?
+                p1 = pnfs.File(src)
+
+	# get all pnfs metadata - second the destination file
+	try:
+		p2 = migrate.File(dst)
+	except (KeyboardInterrupt, SystemExit):
+		raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+	except (OSError, IOError), msg:
+		return str(msg)
+	except:
+		exc, msg = sys.exc_info()[:2]
+		return str(msg)
+	
 	# check if the metadata are consistent
 	res = migrate.compare_metadata(p1, f1)
+	if res == "bfid" and f0:
+		#Compare original, if applicable.
+		res = migrate.compare_metadata(p1, f0)
 	if res:
-		return "metadata %s %s are inconsistent on %s"%(bfid1, src, res)
+		return "[3] metadata %s %s are inconsistent on %s"%(bfid1, src, res)
 
-	res = migrate.compare_metadata(p2, f2)
-	# deal with already swapped file record
-	if res == 'pnfsid':
-		res = migrate.compare_metadata(p2, f2, p1.pnfs_id)
-	if res:
-		return "metadata %s %s are inconsistent on %s"%(bfid2, dst, res)
+	if not p2.bfid and not p2.volume:
+		#The migration path has already been deleted.  There is
+		# no file to compare with.
+		pass
+	else:
+		res = migrate.compare_metadata(p2, f2)
+		# deal with already swapped file record
+		if res == 'pnfsid':
+			res = migrate.compare_metadata(p2, f2, p1.pnfs_id)
+		if res:
+			return "[4] metadata %s %s are inconsistent on %s"%(bfid2, dst, res)
 
 	# cross check
 	if f1['size'] != f2['size']:
@@ -238,6 +321,9 @@ migrate.get_filenames = get_filenames
 migrate.restore = restore
 migrate.restore_volume = restore_volume
 migrate.setup_cloning = setup_cloning
+migrate.migration_file_family = migration_file_family
+migrate.normal_file_family = normal_file_family
+migrate.is_migration_file_family = is_migration_file_family
 
 
 if __name__ == '__main__':

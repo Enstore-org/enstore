@@ -126,6 +126,10 @@ debug = False	# debugging mode
 #
 # The workaround (not all of the above was known about EXfer and the time
 # work on the workaround began) is to use fork and pipes instead of threads.
+#
+#Currently, EXfer has now been fixed.  So, threads are in and processes
+# are out.  Python 2.4 does not have the multiprocessing module to do
+# this same functionality with processes.
 USE_THREADS = True
 
 #Instead of reading all the files with encp when scaning, we have a new
@@ -144,6 +148,7 @@ PARALLEL_FILE_MIGRATION = False
 ##
 ## Currently use of this mode results in a deadlock.
 ##
+## Update: Deadlocks are fixed.
 PARALLEL_FILE_TRANSFER = True
 #We need to make sure that the multiprocessing module is available
 # for PARALLEL_FILE_TRANSFER.  If it is not set, set it to off.
@@ -200,7 +205,7 @@ no_log_command = ['--migrated-from', '--migrated-to', '--status']
 # server in the production version
 
 # designated file family
-use_file_family = None  #possibly overridden with --file-family
+#use_file_family = None  #possibly overridden with --file-family
 # designated buffer disk area
 SPOOL_DIR = ''  #usually overrided with --spool-dir
 # name of pnfs database directory for migrated files
@@ -223,7 +228,7 @@ DELETED_TMP = 'DELETED'
 MFROM = "<="
 MTO = "=>"
 
-MIGRATION_FILE_FAMILY_KEY = "-MIGRATION"
+MIGRATION_FILE_FAMILY_KEY = "-MIGRATION"  #Not equals to (==) safe.
 DELETED_FILE_FAMILY = "DELETED_FILES"
 
 INHIBIT_STATE = "migrated"
@@ -278,7 +283,7 @@ def time2timestamp(t):
 def init(intf):
 	global log_f, dbhost, dbport, dbname, dbuser, errors
 	global SPOOL_DIR
-	global use_file_family
+	#global use_file_family
         global pnfs_is_trusted
         global do_seteuid
         global debug
@@ -325,7 +330,8 @@ def init(intf):
         if os.getuid() == 0:
             #Get a list of /pnfs/fs/usr like mount points.
             amp = pnfs.get_enstore_admin_mount_point() #amp = Admin Mount Point
-            if len(amp) == 0:
+            if len(amp) == 0 and \
+                   not getattr(intf, 'make_failed_copies', None):
                 #If PNFS is not trusted, give up.
                 sys.stderr.write("no PNFS admin mount points found\n")
                 sys.exit(1)
@@ -334,17 +340,22 @@ def init(intf):
                 #Create the test file.
                 try:
                     open_file = open(test_file, "w")
-                except (OSError, IOError):
+                except (OSError, IOError), msg:
                     #If PNFS is not trusted, give up.
-                    sys.stderr.write("%s is not trusted\n")
+                    sys.stderr.write("%s is not trusted: %s\n" % (amp, str(msg),))
                     sys.exit(1)
                 #Close the test file.
                 open_file.close()
                 #Remove the test file.
                 try:
                     os.remove(test_file)
-                except (OSError, IOError):
-                    pass
+                except (OSError, IOError), msg:
+                    if msg.args[0] == errno.ENOENT:
+                        pass
+                    else:
+                        #If PNFS is not trusted?  Give up?
+                        sys.stderr.write("%s is not trusted: %s\n" % (amp, str(msg),))
+                        sys.exit(1)
             else:
                 pnfs_is_trusted = True
                 do_seteuid = False
@@ -413,8 +424,8 @@ def init(intf):
 				sys.exit(1)
 
 
-	if intf.file_family:
-		use_file_family = intf.file_family
+	#if intf.file_family:
+	#	use_file_family = intf.file_family
 
 	return
 
@@ -553,7 +564,7 @@ def nullify_pnfs(pname):
     #else:
     #    file_utils.release_lock_euid_egid()
 
-def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None):
+def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None, intf = None):
 
     if do_seteuid:
         # We need to keep other threads from changing the euid/egid
@@ -568,12 +579,19 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None):
         # rest of this function assumes the euid and egid are set to.
         file_utils.set_euid_egid(0, 0)
 
+    #This is a hack for running duplication on a machine without trusted
+    # status.  We allow for all types of PNFS filesystems to be used.
+    if intf and getattr(intf, "make_failed_copies", None):
+        use_path_type = find_pnfs_file.BOTH
+    else:
+        use_path_type = find_pnfs_file.FS
+
     src = None
     try:
         src = find_pnfs_file.find_pnfsid_path(
             pnfs_id, bfid1,
             file_record = file_record,
-            path_type = find_pnfs_file.FS)
+            path_type = use_path_type)
     except (KeyboardInterrupt, SystemExit):
         if do_seteuid:
             #Free lock on error.
@@ -593,7 +611,7 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None):
                 # current in layer 1.
                 src = find_pnfs_file.find_pnfsid_path(
                     pnfs_id, bfid2,
-                    path_type = find_pnfs_file.FS)
+                    path_type = use_path_type)
         except (KeyboardInterrupt, SystemExit):
             if do_seteuid:
                 #Free lock on error.
@@ -2288,6 +2306,12 @@ def make_failed_copies(intf, db):
 	    "      and remaining > 0 " \
 	    "      and active_file_copying.bfid = file.bfid " \
 	    "      and time < CURRENT_TIMESTAMP - interval '24 hours' " \
+            "  --These 4 pnfs_id/pnfs_path checks remove failed original " \
+            "  -- transfers from the output list. " \
+            "      and file.pnfs_id is not NULL " \
+            "      and file.pnfs_id != '' " \
+            "      and file.pnfs_path is not NULL " \
+            "      and file.pnfs_path != '' " \
 	    "order by volume.id,time;"
 	#Get the results.
 	res = db.query(q).getresult()
@@ -2307,7 +2331,7 @@ def make_failed_copies(intf, db):
 				bfid_list.append(row[0])
 
 	#Loop over each file making a multiple copy each time.
-	for bfid in bfid_list:
+        for bfid in bfid_list:
 		#Do the duplication.
 		exit_status = migrate([bfid], intf)
 
@@ -2340,6 +2364,11 @@ def make_failed_copies(intf, db):
 			#Get the results.
 			db.query(q)
 
+                #For debugging, do only one file.
+                if debug:
+                        log("limiting to one file in debug mode")
+                        break
+   
 ##########################################################################
 
 def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
@@ -2437,6 +2466,7 @@ def copy_file(bfid, encp, intf, db):
 	#Handle finding the name differently for deleted and non-deleted files.
 	
 	#Start with non-deleted files.
+        log("file_record:", str(file_record))
 	if file_record['deleted'] == 'n':
 		if is_it_copied and is_it_swapped:
 			#Already copied.
@@ -2451,7 +2481,7 @@ def copy_file(bfid, encp, intf, db):
 
                 try:
                     src = pnfs_find(use_bfid, alt_bfid, file_record['pnfs_id'],
-                                    file_record = use_file_record)
+                                    file_record = use_file_record, intf = intf)
                 except (OSError, IOError), msg:
                     src = None
                     if msg.errno == errno.ENOENT \
@@ -2469,9 +2499,11 @@ def copy_file(bfid, encp, intf, db):
                                   sys.exc_info()[2]
 
                     if not src:
+                        import traceback
+                        traceback.print_tb(sys.exc_info()[2])
                         error_log(MY_TASK, sys.exc_info()[0],
                                   sys.exc_info()[1],
-                                  "%s %s %s %s is not a valid pnfs file [klsjf]" \
+                                  "%s %s %s %s is not a valid pnfs file" \
                                   % (file_record['label'],
                                      file_record['bfid'],
                                      file_record['location_cookie'],
@@ -2498,15 +2530,21 @@ def copy_file(bfid, encp, intf, db):
 	#Lastly, we need to handle user deleted files by making up some
 	# information.
 	elif file_record['deleted'] == 'y' and \
-		 len(file_record['pnfs_id']) > 10:
+		 (len(file_record['pnfs_id']) > 10 or \
+                  len(file_record['pnfs_path']) > 1):
 		log(MY_TASK, "%s %s %s is a DELETED FILE" \
 		    % (file_record['bfid'], file_record['pnfs_id'],
 		       file_record['pnfs_path']))
 		src = "deleted-%s-%s"%(bfid, tmp) # for debug
 		# do nothing more
+        elif len(file_record['pnfs_id']) == 0 and \
+                 len(file_record['pnfs_path']) == 0:
+                # Can't migrate an empty/failed file.
+                error_log(MY_TASK, "can not copy failed file %s" % (bfid,))
+		return
 	else:
 		# what to do?
-		error_log(MY_TASK, "can not copy %s"%(bfid))
+		error_log(MY_TASK, "can not copy %s" % (bfid,))
 		return
 
 	if debug:
@@ -2528,8 +2566,8 @@ def copy_file(bfid, encp, intf, db):
 				res = 0
 			else:
 				res = 1
-		else:		
-			res = read_file(MY_TASK, bfid, src, tmp,
+		else:
+                        res = read_file(MY_TASK, bfid, src, tmp,
 					file_record['label'],
 					file_record['location_cookie'],
 					file_record['deleted'],
@@ -2608,20 +2646,78 @@ def copy_files(thread_num, files, copy_queue, grab_lock, release_lock, intf):
 ##########################################################################
 
 # migration_file_family(ff) -- making up a file family for migration
-def migration_file_family(ff, deleted = 'n'):
-	global use_file_family
+def migration_file_family(bfid, ff, fcc, intf, deleted = 'n'):
+        __pychecker__ = "unusednames=bfid,fcc" #Reserved for duplication.
+        
 	if deleted == 'y':
-		return DELETED_FILE_FAMILY+MIGRATION_FILE_FAMILY_KEY
+		return DELETED_FILE_FAMILY + MIGRATION_FILE_FAMILY_KEY
 	else:
-		if use_file_family:
-			return use_file_family+MIGRATION_FILE_FAMILY_KEY
+		if intf.file_family:
+			return intf.file_family + MIGRATION_FILE_FAMILY_KEY
 		else:
-			return ff+MIGRATION_FILE_FAMILY_KEY
+			return ff + MIGRATION_FILE_FAMILY_KEY
 
 # normal_file_family(ff) -- making up a normal file family from a
 #				migration file family
 def normal_file_family(ff):
 	return ff.replace(MIGRATION_FILE_FAMILY_KEY, '')
+
+#Return True if the file_family has the pattern of a migration/duplication
+# file.  False otherwise.
+def is_migration_file_family(ff):
+    if ff.find(MIGRATION_FILE_FAMILY_KEY) == -1:
+        return False
+
+    return True
+
+# use_libraries() - Return the library or libraries to write to tape with.
+#                   If multiple libraries are specified (to use the encp
+#                   multiple copy feature) they are a comma seperated list
+#                   with no white space.
+# 
+# bfid - source bfid to migrate/duplicate
+# filepath - source files full path in pnfs
+# db - database object to directly query the database
+# intf - interface class of migration or duplication
+def use_libraries(bfid, filepath, db, intf):
+
+        #Get the command line specified libraries (if any).
+        user_libraries = getattr(intf, "library", "")
+        if user_libraries == None:
+            user_libraries = ""
+        user_libraries = user_libraries.split(",")
+
+        #Get the pnfs specified libraries.
+        pnfs_libraries = pnfs.Tag().readtag("library", pnfs.get_directory_name(filepath))[0].split(",")
+
+        #Make sure the user specified enough libraries for this file.
+        if len(user_libraries) > 1:
+                if len(user_libraries) != len(pnfs_libraries):
+                        error_log("Destination directory writes %s copies; "
+                                  "only %s libraries specified for %s %s" %
+                                  (len(pnfs_libraries), len(pnfs_libraries),
+                                   bfid, filepath))
+                        return 1
+
+        #Get the number of copies remaining to be written to tape for this
+        # special duplication mode of operation.
+        if getattr(intf, "make_failed_copies", None):
+                q = "select remaining from active_file_copying " \
+                    "where bfid = '%s';" % (bfid,)
+                res = db.query(q).getresult()
+                count = res[0][0]
+        else:
+                count = len(pnfs_libraries)
+
+        #The last count nomber of libraries are choosen.  This might be an
+        # issue if --library and --make-failed-copies are used together.
+	if intf.library:
+ 		use_library = string.join(intf.library.split(",")[-(count):],
+                                          ",")
+	else:
+ 		use_library = string.join(pnfs_libraries[-(count):], ",")
+
+        return use_library
 
 # compare_metadata(p, f) -- compare metadata in pnfs (p) and filedb (f)
 def compare_metadata(p, f, pnfsid = None):
@@ -2679,14 +2775,17 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
         if not e_errors.is_ok(f2):
             return "dst_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
 
+        """
 	#For trusted pnfs systems, there isn't a problem,
 	# but for untrusted we need to set the effective
 	# IDs to the owner of the file.
         #
         # If the source PNFS file has been deleted only do the
         # pnfs.File() instantiation; skip the euid/egid stuff to
-        # avoid tracebacks.	
+        # avoid tracebacks.
+        """
 
+        
 	# get all pnfs metadata - first the source file
 	if f1['deleted'] == "no":
                 try:
@@ -2716,7 +2815,6 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
             
 	##################################################################
 	#Handle deleted files specially.
-	#if deleted == 'y':
 	if f1['deleted'] == "yes":
 		res = ''
 		# copy the metadata
@@ -2743,7 +2841,7 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 			#The metadata has already been swapped.
 			return None
 	if res:
-		return "metadata %s %s are inconsistent on %s" \
+		return "[1] metadata %s %s are inconsistent on %s" \
 		       % (bfid1, src, res)
 
 	if not p2.bfid and not p2.volume:
@@ -2756,7 +2854,7 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 		if res == 'pnfsid':
 			res = compare_metadata(p2, f2, p1.pnfs_id)
 	       	if res:
-			return "metadata %s %s are inconsistent on %s" \
+			return "[2] metadata %s %s are inconsistent on %s" \
 			       % (bfid2, dst, res)
 
 	# cross check
@@ -2859,8 +2957,10 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 # tmp_path refers to the path that the file temporarily exists on disk.
 # mig_path is the path that the file will be written to pnfs.
 def write_file(MY_TASK,
-	       src_bfid, src_path, tmp_path, mig_path, sg, ff, wrapper,
+	       src_bfid, src_path, tmp_path, mig_path,
+               libraries, sg, ff, wrapper,
 	       deleted, encp, intf):
+        __pychecker__ = "unusednames=deleted" #Used to use; need in future?
 
 	# check destination path
 	if not mig_path:     # This can not happen!!!
@@ -2939,25 +3039,8 @@ def write_file(MY_TASK,
 				  (mig_path, os.geteuid(), os.getegid(),
 				  str(sys.exc_info()[0]), str(sys.exc_info()[1])))
 			return 1
-
-        #Make sure the user specified enough libraries for this file.
-        user_libraries = intf.library.split(",")
-        if len(user_libraries) > 1:
-                pnfs_libraries = pnfs.Tag().readtag("library", pnfs.get_directory_name(src_path))[0].split(",")
-                if len(user_libraries) != len(pnfs_libraries):
-                        error_log(MY_TASK,
-                                  "Destination directory writes %s copies; "
-                                  "only %s libraries specified for %s %s" %
-                                  (len(pnfs_libraries), len(pnfs_libraries),
-                                   src_bfid, src_path))
-                        return 1
-                                                                              
+                                         
 	## Build the encp command line.
-	ff = migration_file_family(ff, deleted)
-	if intf.library:  #DEFAULT_LIBRARY:
-		use_library = ["--library", intf.library]
-	else:
-		use_library = []
 	if intf.priority:
 		use_priority = ["--priority", str(intf.priority)]
 	else:
@@ -2975,7 +3058,8 @@ def write_file(MY_TASK,
         # library that a copy is written into.  This is to give a little
         # extra time to avoid writes bouncing between tapes with lots
         # of mounts and dismounts.
-        dismount_delay = str(2 * len(intf.library.split(",")))
+        user_libraries = libraries.split(",")
+        dismount_delay = str(2 * len(user_libraries))
 	encp_options = ["--delayed-dismount", dismount_delay,
                         "--ignore-fair-share", "--threaded"]
 	#Override these tags to use the original values from the source tape.
@@ -2985,10 +3069,11 @@ def write_file(MY_TASK,
 	# that the rest of the encp process will need to worry about.
 	dst_options = ["--storage-group", sg, "--file-family", ff,
 		       "--file-family-wrapper", wrapper,
+                       "--library", libraries,
 		       "--override-path", src_path]
 
 	argv = ["encp"] + use_verbose + encp_options + use_priority + \
-               use_library + dst_options + use_threads + [tmp_path, mig_path]
+               dst_options + use_threads + [tmp_path, mig_path]
 
         if 1: #debug:
 		cmd = string.join(argv)
@@ -3118,7 +3203,15 @@ def write_new_file(job, encp, fcc, intf, db):
 				    % (tmp_path, str(msg)))
 			return
 
-
+                #The library value can consist of a comma seperated list
+                # of libraries, though in most cases there will be just one.
+                # There are some 'odd' cases that use_libraries() handles
+                # for us.
+                libraries = use_libraries(src_bfid, src_path, db, intf)
+                #The same goes for file families.  Migration and duplication
+                # vary greatly with respect to the file family.  There are
+                # some 'odd' cases that migration_file_family() handles for us.
+                ff = migration_file_family(src_bfid, ff, fcc, intf, deleted)
 
 		## At this point src_path points to the original file's
 		## location in pnfs, tmp_path points to the temporary
@@ -3128,7 +3221,7 @@ def write_new_file(job, encp, fcc, intf, db):
 
 		rtn_code = write_file(MY_TASK, src_bfid, src_path,
 				      tmp_path, mig_path,
-				      sg, ff, wrapper,
+				      libraries, sg, ff, wrapper,
 				      deleted, encp, intf)
 		if rtn_code:
 			return
@@ -3325,7 +3418,6 @@ def scan_file(MY_TASK, dst_bfid, src_path, dst_path, deleted, intf, encp):
 	       + use_check + use_src_path + [dst_path]
 
 	if debug:
-                print "argv:", argv
 		cmd = string.join(argv)
 		log(MY_TASK, "cmd =", cmd)
 
@@ -3571,7 +3663,7 @@ def final_scan_volume(vol, intf):
 		#We get here if the volume is a destination volume that has
 		# other tapes migrated/duplicated to it.
 		pass
-	elif ff.find(MIGRATION_FILE_FAMILY_KEY) == -1:
+	elif not is_migration_file_family(ff):
 		error_log(MY_TASK, "%s is not a %s volume" %
 			  (vol, MIGRATION_NAME.lower()))
 		return 1
@@ -3779,10 +3871,12 @@ def migrate(bfids, intf):
 
 	errors = 0
 
+        #Limit the number of processes/threads if only one or two files
+        # is in the list.
 	if PARALLEL_FILE_TRANSFER:
-		use_proc_limit = PROC_LIMIT
+		use_proc_limit = min(PROC_LIMIT, len(bfids))
 	else:
-		use_proc_limit = 1
+		use_proc_limit = min(1, len(bfids))
 	
 	i = 0
 	#Make a list of PROC_LIMIT length.  Each element should

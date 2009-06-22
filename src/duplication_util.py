@@ -53,6 +53,12 @@ class DuplicationManager:
 		f2 = self.fcc.bfid_info(bfid2)
 		if f2['status'][0] != e_errors.OK:
 			return "no such file %s"%(bfid2)
+		# determine if makeing duplicate of duplicate; find original
+		fo_ticket = self.fcc.find_the_original(bfid1)
+		f0 = {} # empty dictionary evaluates to false for checks.
+		if e_errors.is_ok(fo_ticket) and fo_ticket['original'] \
+		       and fo_ticket['original'] != bfid1:
+			f0 = self.fcc.bfid_info(fo_ticket['original'])
 
 		# check if f1 and f2 are the same file
 		for i in ['complete_crc', 'pnfs_name0',
@@ -91,15 +97,26 @@ class DuplicationManager:
 
 		# check for consistency
 		if long(pf.complete_crc) != f1['complete_crc']:
-			return "wrong crc: pnfs(%s), file(%s)"%(`pf.complete_crc`, `f1['complete_crc']`)
-		# npp means Normalized Pnfs Path.
-		npp = pnfs.get_enstore_fs_path(pnfs.get_abs_pnfs_path(pf.path))
-		# ndp means Normalized Database Path.
-		ndp = pnfs.get_enstore_fs_path(pnfs.get_abs_pnfs_path(f1['pnfs_name0']))
+			return "wrong crc: pnfs(%s), file(%s)" \
+			       % (`pf.complete_crc`, `f1['complete_crc']`)
+		##We need ot convert both paths to the same type, either
+		## /pnfs or /pnfs/fs/usr.  Prefer /pnfs/fs/usr if it is
+		## mounted.
+		if pnfs.get_enstore_admin_mount_point():
+			# npp means Normalized Pnfs Path.
+			npp = pnfs.get_enstore_fs_path(pnfs.get_abs_pnfs_path(pf.path))
+			# ndp means Normalized Database Path.
+			ndp = pnfs.get_enstore_fs_path(pnfs.get_abs_pnfs_path(f1['pnfs_name0']))
+		else:
+			# npp means Normalized Pnfs Path.
+			npp = pnfs.get_enstore_pnfs_path(pnfs.get_abs_pnfs_path(pf.path))
+			# ndp means Normalized Database Path.
+			ndp = pnfs.get_enstore_pnfs_path(pnfs.get_abs_pnfs_path(f1['pnfs_name0']))
 		if npp != ndp:
 			return "wrong pnfs_path: pnfs(%s), file(%s)" \
 			       % (pf.path, f1['pnfs_name0'])
-		if pf.bfid != f1['bfid'] and pf.bfid != f2['bfid']:
+		if pf.bfid != f1['bfid'] and pf.bfid != f2['bfid'] \
+		       and pf.bfid != f0.get('bfid', "NO MATCH"):
 			return "wrong bfids: pnfs(%s), f1(%s), f2(%s)" \
 			       % (pf.bfid, f1['bfid'], f2['bfid'])
 		if long(pf.size) != f1['size']:
