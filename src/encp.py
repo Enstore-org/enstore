@@ -87,7 +87,7 @@ import library_manager_client
 import EXfer
 import hostaddr
 import host_config
-import atomic
+#import atomic
 import delete_at_exit
 import charset
 import volume_family
@@ -8085,9 +8085,19 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
         parmameter_libraries = e.output_library.split(",")
         tag_libraries = t.get_library(os.path.dirname(work_ticket['outfile'])).split(",")
-        
-        for n_copy in range(1, use_copies + 1):
 
+        #Determine the starting copy number.  This will only happen if
+        # --file-family is used to specify a "_copy_#" file family.  Only
+        # exceptional cases like duplication should do that.
+        mul_copy = re.search("_copy_[0-9]*", work_ticket['vc']['file_family'])
+        if mul_copy:
+            start_copy_number = int(mul_copy.group().replace("_copy_"))
+        else:
+            start_copy_number = None
+
+        #Create use_copies number of multiple copy requests and put them
+        # into the request list.
+        for n_copy in range(1, use_copies + 1):
 
             #Determine the library manager to use.  First, try to see if
             # the command line has the information.  Otherwise, check
@@ -8101,8 +8111,6 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 except IndexError:
                     #We get here if n copies were requested, but less than
                     # that number of libraries were found.
-                    #use_copies = n_copy - 1
-                    #break
                     raise EncpError(None,
                                     "Too many copies requested for the "
                                     "number of configured copy libraries.",
@@ -8112,7 +8120,13 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 copy_ticket = copy.deepcopy(work_ticket)
                 #Specify the copy number; this is the copy number relative to
                 # this encp.
-                copy_ticket['copy'] = n_copy
+                if start_copy_number != None:
+                    #Subtract one from the total, since we want to start at
+                    # start_copy_number, but n_copy starts at one.  Only
+                    # exceptional cases like duplication should do this.
+                    copy_ticket['copy'] = start_copy_number + n_copy - 1
+                else:
+                    copy_ticket['copy'] = n_copy
                 #Make the transfer id unique, but also keep the original around.
                 copy_ticket['original_unique_id'] = copy_ticket['unique_id']
                 del copy_ticket['unique_id']
@@ -8130,9 +8144,9 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 request_copy_list.append(copy_ticket)
 
 
-                ##We need to update the intent of this original to include
-                ## the number of copies we are going to make.
-                work_ticket['fc']['copies'] = use_copies
+        ##We need to update the intent of this original to include
+        ## the number of copies we are going to make.
+        work_ticket['fc']['copies'] = use_copies
 
     message = "Time to create write requests: %s sec." % \
               (time.time() - create_write_requests_start_time,)
