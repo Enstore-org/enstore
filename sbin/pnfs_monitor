@@ -231,6 +231,10 @@ check_pnfsids()
     header_outputed=0 #Start with this false.  This will be set to 1 if
                       # a problem files is found (and the header is outputed).
 
+    #Clear the temporary file.
+    rm -f $TEMP_OUTPUT_FILE_2
+    touch $TEMP_OUTPUT_FILE_2
+
     cat $TEMP_FILE |
     while read line; do
 	if [ -z "$line" ]; then
@@ -288,7 +292,13 @@ check_pnfsids()
 
 	#Get the file size.
 	filesize=`get_filesize $db_name $pnfsid`
+	if [ -z "$filesize" ]; then
+	    filesize=-1
+	fi
 	l2_filesize=`get_L2_filesize $db_name $pnfsid`
+	if [ -z "$l2_filesize" ]; then
+	    l2_filesize=-1
+	fi
 
 	#
 	#Skip to next file if this file is likely not to be written to tape.
@@ -306,7 +316,9 @@ check_pnfsids()
 	#
 	#Skip to next file if this file is a temporary nfs file.
 	#
-	if [ `basename "$path" | cut -c 1-4` = ".nfs" -a $filesize -eq 0 ]; then
+	#Extract the first four characters of the basename.
+	file_ending=`basename "$path" | cut -c 1-4`
+	if [ "$file_ending" = ".nfs" -a "$filesize" -eq 0 ]; then
             continue
 	fi
 
@@ -433,7 +445,11 @@ db_list=`get_pnfs_dbs | sort`
 for db_name in `echo $db_list`; do
 
     #Put the recent pnfsids in the /tmp/recent_pnfids_${db_name} file.
+    # For quicker debugging of just already known files, use touch instead
+    # of get_recent_pnfsids.
     get_recent_pnfsids $db_name $db_user
+    ###  For debugging only. ### /tmp/recent_pnfids_${db_name}
+
     #The output is in /tmp/recent_pnfids_${db_name}.  #Remove the 2 header
     # lines for this step, the row total line and any empty lines.
     cat /tmp/recent_pnfids_${db_name} | sed '1,2d' | grep -v " rows" | sed '/^$/d' > $TEMP_FILE_NEW
