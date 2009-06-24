@@ -5,6 +5,23 @@
 # Report on files in pnfs that have not yet been written to tape.  This script
 # does handle volitile dcache files and zero length dcache files.
 
+# To inject files into the cache that have been missed:
+# 1) Copy and past the parse_id() function from this file into a terminal.
+# 2) source /usr/etc/pnfsSetup
+# 3) Run using the correct *.missing_file or *.missing_layer_* file:
+#    for item in `cut -f 1 -d " " dzero_forward.error2.error.missing_file`; do
+#       timestamp=`stat $item | grep "Modify:" | cut -f 2-3 -d " "`;
+#       echo -n "" $timestamp "| ";
+#       parse_id `enstore pnfs --id $item`;
+#    done | tee /tmp/missing_files
+# 4) cp /tmp/missing_files ``dirname $trash`/pnfs_monitor/missing_files
+# 5) Re-run the pnfs_monitor or wait until its regularly scheduled time.
+#
+# An example for a single file insertion by would look like:
+#    $ parse_id 0002000000000000022CF258
+#    020000000000000058F22C02
+#    $ echo " 2007-10-10 10:36:37.000000000 | 020000000000000058F22C02" >> xyz
+
 #Make sure to set a timeout.
 timeout='--timeout 10 --retries 3'
 file_fallback='--file-fallback' #Set this for SDE.
@@ -216,7 +233,19 @@ get_filepath()
 	    path=`echo "$path" | tail -n 1 | sed 's/root/pnfs/'`
 	fi
     else
-	path=""
+	source /usr/etc/pnfsSetup
+	pathfinder_path=$pnfs/tools/pathfinder
+	if [ -x $pathfinder_path ]; then
+	    path=`$pathfinder_path $pnfsid`
+	    if [ $? -ne 0 ]; then
+		path=""
+	    else
+	        #Success.  Now munge the data a little.
+		path=`echo "$path" | tail -n 1 | sed 's/root/pnfs/'`
+	    fi
+	else
+	    path=""
+	fi
     fi
     echo $path
 }
@@ -448,7 +477,7 @@ for db_name in `echo $db_list`; do
     # For quicker debugging of just already known files, use touch instead
     # of get_recent_pnfsids.
     get_recent_pnfsids $db_name $db_user
-    ###  For debugging only. ### /tmp/recent_pnfids_${db_name}
+    ###  For debugging only. ### touch /tmp/recent_pnfids_${db_name}
 
     #The output is in /tmp/recent_pnfids_${db_name}.  #Remove the 2 header
     # lines for this step, the row total line and any empty lines.
