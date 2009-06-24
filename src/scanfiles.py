@@ -34,6 +34,8 @@ import enstore_constants
 import checksum
 import find_pnfs_file
 import enstore_functions2
+import enstore_functions3
+import file_utils
 
 #os.access = e_access   #Hack for effective ids instead of real ids.
 
@@ -861,7 +863,7 @@ def get_pnfsid(f):
     #Get the id of the file or directory.
     try:
         fname = id_file(f)
-        f = open(fname)
+        f = file_utils.open(fname)
         pnfs_id = f.readline().strip()
         f.close()
     except(OSError, IOError), detail:
@@ -1174,29 +1176,39 @@ def check_dir(d, dir_info):
         #   fname[:3] == '.A_' or \
         #fname[:8] == '.removed':
         return err, warn, info
-   
-    if not check_permissions(d_stats, os.R_OK | os.X_OK) and \
-       os.getuid() == 0 and os.geteuid() != 0:
-        #We might need to switch back to root, since the user might not
-        # have given themselves eXecute permissions on the directory.
+
+    #If necessary set the effective uid and gid.
+    if os.getuid() == 0 and os.geteuid() != d_stats[stat.ST_UID]:
         os.seteuid(0)
         os.setegid(0)
-    if check_permissions(d_stats, os.R_OK | os.X_OK):
-        err, warn, info = check_parent(d)
-        if err or warn:
-            return err, warn, info
+        
+        os.setegid(dir_info[stat.ST_GID])
+        os.seteuid(dir_info[stat.ST_UID])
+                   
 
-        #Get the list of files.
-        try:
-            file_list = os.listdir(d)
-        except (OSError, IOError):
-            #If we call check_permissions() above, how can we possibly,
-            # get here?  Clearly, it is possible though...
+    #Get the list of files.
+    try:
+        file_list = os.listdir(d)
+    except (OSError, IOError):
 
+        #Set teh effective IDs back to root.
+        if os.getuid() == 0 and os.geteuid() != 0:
+            os.seteuid(0)
+            os.setegid(0)
+        
+            #Try again.
+            try:
+                file_list = os.listdir(d)
+            except (OSError, IOError):
+                err.append("can not access directory")
+                file_list = None
+        else:
             err.append("can not access directory")
-            file_list = []
-            
+            file_list = None
 
+    #file_list will be None on an error.  An empty list means the directory
+    # is empty.
+    if file_list != None:
         for i in range(0, len(file_list)):
 
             #This little check searches the files left in the list for
@@ -1208,9 +1220,6 @@ def check_dir(d, dir_info):
 
             check(f)
 
-    else:
-        err.append("can not access directory")
-    
     return err, warn, info
 
 # check_vol(vol) -- check whole volume
@@ -1219,7 +1228,7 @@ def check_vol(vol):
     err = []
     warn = []
     info = []
-    
+
     tape_ticket = infc.tape_list(vol)
     if not e_errors.is_ok(tape_ticket):
         errors_and_warnings(vol, ['can not get tape_list info'], [], [])
@@ -1376,7 +1385,7 @@ def check_bit_file(bfid, bfid_info = None):
         # We should simply be able to give the following warning if we
         # get this far.  However, to allow this scan to work on systems
         # that do not have the updated information server with
-        # find_migrated(), we need guess that if the system inhibit
+        # find_migrated(), we need to guess that if the system inhibit
         # says that the migration/duplication/cloning is done, that
         # we should just list the bfid as a migrated bfid.
         #      info.append("unable to determine migration status")
@@ -1401,6 +1410,17 @@ def check_bit_file(bfid, bfid_info = None):
     else:
         is_migrated_to_copy = False
 
+    #Include these information items if necessary.
+    if is_multiple_copy and "is multiple copy" not in info:
+        info.append("is multiple copy")
+    elif is_primary_copy and "is primary copy" not in info:
+        info.append("is primary copy")
+
+    if is_migrated_copy and "is migrated copy" not in info:
+        info.append("is migrated copy")
+    elif is_migrated_to_copy and "is migrated to copy" not in info:
+        info.append("is migrated to copy")
+
     # we can not simply skip deleted files
     #
     # for each deleted file, we have to make sure:
@@ -1409,8 +1429,10 @@ def check_bit_file(bfid, bfid_info = None):
     # [2] no valid pnfsid, or
     # [3] in reused pnfsid case, the bfids are not the same
     if file_record['deleted'] == 'yes':
-        info = info + ["deleted"]
-    if is_migrated_copy and file_record['deleted'] == 'yes':
+        if "deleted(yes)" not in info:
+            info = info + ["deleted(yes)"]
+    if (is_migrated_copy or is_multiple_copy) and \
+           file_record['deleted'] == 'yes':
         #The file is migrated.  The file was already deleted (and
         # --with-deleted was used) or the newly migrated to copy has been
         # scanned.  Either way there is no error.
@@ -1432,56 +1454,105 @@ def check_bit_file(bfid, bfid_info = None):
                                                     bfid,
                                                     file_record = file_record)
     except (OSError, IOError), msg:
+        #The following list contains responses that we need to handle special.
+        # These will accompany an errno of EEXIST.
+        EXISTS_LIST = ["replaced with newer file",
+                       "replaced with another file",
+                       "found original of copy",
+                       "reused pnfsid"]
+        
+        ### Note: msg.args[0] will be returned as ENOENT if a file is found
+        ### to match the pnfsid, but not the bfid.
+        
         if msg.errno == errno.ENOENT and file_record['deleted'] in ['yes',
                                                                     'unknown']:
             # There is no error here.  Everything agrees the file is gone.
             pass
-        elif file_record['deleted'] in ['yes', 'unknown'] and \
-            msg.errno == errno.EEXIST and \
-            msg.args[1] in ["replaced with newer file",
-                            "replaced with another file",
-                            "found original of copy"]:
-            # The bfid is not active, and it is not active in pnfs.
-            info.append(msg.args[1])
-        elif (is_migrated_to_copy or is_migrated_copy) and \
-                 not (is_multiple_copy or is_primary_copy) \
-                 and msg.errno == errno.ENOENT and \
-                 file_record['deleted'] in ['no']:
-            if is_migrated_to_copy:
-                use_bfid = src_bfids[0]
-                error_type = "destination"
-                info_string = "is migrated to copy"
-            else: #is_migrated_copy
-                use_bfid = dst_bfids[0]
-                error_type = "source"
-                info_string = "is migrated copy"
 
-            #Test if the migration metadata in PNFS is incorrectly swapped.
-            try:
-                find_pnfs_file.find_pnfsid_path(file_record['pnfsid'],
-                                                use_bfid,
-                                                file_record = file_record)
+        ### Test for mulitple_copies/duplicates before plain migration.  This
+        ### is because duplication also sets the is_migrated_copy or the
+        ### is_migrated_to_copy values too.
 
-                if is_migrated_to_copy:
+        elif is_multiple_copy:
+            if msg.errno in [errno.ENOENT] or \
+              (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST):
+                pass #No error here.  Just easier to write this if.
+            else:
+                #The multiple copy should not be findable, but in this
+                # situation it was.
+                err.append("multiple copy(%s)" % (msg.args[1],))
+        elif is_primary_copy:
+            #The primary copy should match the file, but in this situation
+            # it did not.
+            err.append("primary copy(%s)" % (msg.args[1],))
+
+        ### Now plain source migration files can be handled.
+            
+        elif is_migrated_copy and file_record['deleted'] == "no":
+            if msg.args[0] in [errno.ENOENT] or \
+               (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST):
+                #If the destination hasn't been scanned, this will be true.
+                # If the destination has been scanned and we still get here,
+                # does this check need to be furthur modified???
+                warn.append("migrated copy not marked deleted")
+            else:
+                err.append("migration(%s)" % (msg.args[1],))
+        elif is_migrated_copy and file_record['deleted'] == "yes":
+            pass #Normal situation after scan, not an error.
+        elif is_migrated_copy and file_record['deleted'] == "unknown":
+            #Should never get here!
+            err.append("failed (unknown) file found as migration source")
+
+        ### Now the plain destination migration files can be handled.
+            
+        elif is_migrated_to_copy and file_record['deleted'] == "no":
+            if msg.args[0] in [errno.ENOENT] or \
+               (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST):
+                #Test if the migration metadata in PNFS is incorrectly swapped.
+                try:
+                    find_pnfs_file.find_pnfsid_path(file_record['pnfsid'],
+                                                    src_bfids[0],
+                                                    file_record = file_record)
+
                     #If find_pnfsid_path() succeeds here, we really have
                     # an error.  This test allows for a more accurate
                     # error message.
-                    err.append("migration %s copy is inactive in PNFS" % \
-                               (error_type,))
-            except (OSError, IOError):
-                #Repeat the original error.
+                    err.append("migration source copy is active in PNFS")
+                except (OSError, IOError),msg2:
+                    if msg2.args[0] in [errno.ENOENT]:
+                        #Both source and destination failed to be found
+                        # in PNFS.
+                        err.append("does not exist")
+                    else:
+                        err.append("migration(%s)" % (msg.args[1],))
+            else:
+                err.append("migration(%s)" % (msg.args[1],))
+        elif is_migrated_to_copy and file_record['deleted'] == "yes":
+            if msg.args[0] == errno.ENOENT:
+                pass #Normal situation
+            elif msg.args[0] == errno.EEXIST and \
+                 msg.args[1] in ["pnfs entry exists"]:
                 err.append(msg.args[1])
+            else:
+                err.append("migration(%s)" % (msg.args[1]))
+        elif is_migrated_to_copy and file_record['deleted'] == "unknown":
+            #Should never get here!
+            err.append("failed (unknown) file found as migration destination")
 
-            info.append(info_string)
-        elif is_multiple_copy and msg.errno == errno.ENOENT:
-            #There is no error here.  A multiple copy will not match PNFS.
-            info.append("is multiple copy")
-
-            #Append these to if applicable.
-            if is_primary_copy:
-                info.append("is primary copy")
-            elif is_multiple_copy:
-                info.append("is multiple copy")
+        ###
+            
+        elif file_record['deleted'] in ['yes', 'unknown'] and \
+                 msg.errno in [errno.EEXIST] and msg.args[1] in EXISTS_LIST:
+            # The bfid is not active, and it is not active in pnfs.
+            info.append(msg.args[1])
+        elif msg.args[0] == errno.ENOENT and file_record['deleted'] == "no" \
+                 and file_record['pnfs_name0'].find("/Migration/") != -1:
+            #If a failed file sits on a migration destination volume,
+            # we need to flag this so it can be flagged to be fixed.
+            # This if statement is here to give a specific error message
+            # instead of "No such file or directory".
+            err.append("active failed migration destination file does not exist")
+            info.append("deleted(no)")
         else:
             err.append(msg.args[1])
         errors_and_warnings(prefix, err, warn, info)
@@ -1553,7 +1624,11 @@ def check_bit_file(bfid, bfid_info = None):
     e1, w1, i1 = check_file(pnfs_path, file_info)
     err = err + e1
     warn = warn + w1
-    info = info + i1
+    for item in i1:
+        #We need to loop here to prevent duplicates from being inserted
+        # into the list.
+        if item not in info:
+            info.append(item)
     errors_and_warnings(prefix+' '+pnfs_path, err, warn, info)
     return
 
@@ -2032,14 +2107,15 @@ def check_file(f, file_info):
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no deleted field')
 
-    if is_multiple_copy:
+    #Include these information items if necessary.
+    if is_multiple_copy and "is multiple copy" not in info:
         info.append("is multiple copy")
-    elif is_primary_copy:
+    elif is_primary_copy and "is primary copy" not in info:
         info.append("is primary copy")
 
-    if is_migrated_copy:
+    if is_migrated_copy and "is migrated copy" not in info:
         info.append("is migrated copy")
-    elif is_migrated_to_copy:
+    elif is_migrated_to_copy and "is migrated to copy" not in info:
         info.append("is migrated to copy")
 
     return err, warn, info
@@ -2114,15 +2190,17 @@ class ScanfilesInterface(option.Interface):
     parameters = ["[target_path [target_path_2 ...]]"] 
 
     scanfile_options = {
+        #--bfid is considered obsolete
         option.BFID:{option.HELP_STRING:"treat input as bfids",
                          option.VALUE_USAGE:option.IGNORED,
                          option.DEFAULT_VALUE:option.DEFAULT,
                          option.DEFAULT_TYPE:option.INTEGER,
-                         option.USER_LEVEL:option.USER},
+                         option.USER_LEVEL:option.HIDDEN},
+        #--bfid is considered obsolete
         option.FILE_THREADS:{option.HELP_STRING:"Number of threads in files.",
                          option.VALUE_USAGE:option.REQUIRED,
                          option.VALUE_TYPE:option.INTEGER,
-                         option.USER_LEVEL:option.USER,},
+                         option.USER_LEVEL:option.HIDDEN,},
         option.INFILE:{option.HELP_STRING:"Use the contents of this file"
                        " as a list of targets to scan.",
                          option.VALUE_USAGE:option.REQUIRED,
@@ -2131,11 +2209,12 @@ class ScanfilesInterface(option.Interface):
         option.PROFILE:{option.HELP_STRING:"Display profile info on exit.",
                             option.VALUE_USAGE:option.IGNORED,
                             option.USER_LEVEL:option.ADMIN,},
+        #--bfid is considered obsolete
         option.VOL:{option.HELP_STRING:"treat input as volumes",
                          option.VALUE_USAGE:option.IGNORED,
                          option.DEFAULT_VALUE:option.DEFAULT,
                          option.DEFAULT_TYPE:option.INTEGER,
-                         option.USER_LEVEL:option.USER},
+                         option.USER_LEVEL:option.HIDDEN},
         }
 
     def parse_options(self):
@@ -2161,6 +2240,9 @@ def handle_signal(sig, frame):
     sys.exit(1)
 
 def main(intf_of_scanfiles, file_object, file_list):
+    # intf_of_scanfiles has been used before.  Probably will be used again.
+    # This quites pychecker for the time being.
+    __pychecker__ = "unusednames=intf_of_scanfiles"
 
     
     #number of threads to use for checking files.
@@ -2175,9 +2257,9 @@ def main(intf_of_scanfiles, file_object, file_list):
         if file_list:
             for line in file_list:
                 if line[:2] != '--':
-                    if intf_of_scanfiles.bfid:
+                    if enstore_functions3.is_bfid(line):
                         check_bit_file(line)
-                    elif intf_of_scanfiles.vol:
+                    elif enstore_functions3.is_volume(line):
                         check_vol(line)
                     else:
                         start_check(line)
@@ -2188,9 +2270,9 @@ def main(intf_of_scanfiles, file_object, file_list):
             line = file_object.readline()
             while line:
                 line = line.split(" ... ")[0].strip()
-                if intf_of_scanfiles.bfid:
+                if enstore_functions3.is_bfid(line):
                     check_bit_file(line)
-                elif intf_of_scanfiles.vol:
+                elif enstore_functions3.is_volume(line):
                     check_vol(line)
                 else:
                     start_check(line)
