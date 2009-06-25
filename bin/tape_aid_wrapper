@@ -10,9 +10,6 @@ usage() { case $script in
 	    flip_tab | take_out)
 	       echo "Usage: login as enstore to d0ensrv4[n], stkensrv4[n], or cdfensrv4[n]"
 	       ;;
-	    adic_flip_tab | adic_take_out)	# deprecated form
-	       echo "Usage: login as enstore to d0ensrv4[n] or stkensrv4[n]"
-	       ;;
 	    tape_aid_wrapper)
 	       echo "Usage: run as flip_tab or take_out"
 	       ;;
@@ -69,14 +66,6 @@ YesNo() { local ans
 
 script=`basename $0`
 case $script in
-  adic_flip_tab)      # deprecated form
-     script=flip_tab
-     location=ADIC
-     ;;
-  adic_take_out)      # deprecated form
-     script=take_out
-     location=ADIC
-     ;;
   flip_tab | take_out)
      ;;
   *) usage
@@ -149,16 +138,15 @@ case ${gang}@${location} in
      sun=fntt
      ;;
 
-  *en@FCC2)		# disambiguate the three libraries on FCC2
+  *en@FCC2)		# disambiguate the libraries on FCC2
      until [ -n "${lib:-}" ]; do
        echo
        echo "Which library are you working with ?  Choose"
        case $gang in
 	 d0en|stken)
-	   echo " 1) AML2 if you are working with the AML/2"
-	   echo " 2) 8500 if you are working with the SL8500"
-	   echo " 3) Quit if you are doing something else"
-	   libs="AML2 8500"
+	   echo " 1) 8500 if you are working with the SL8500"
+	   echo " 2) Quit if you are doing something else"
+	   libs="8500"
 	   ;;
 	 cdfen)
 	   echo " 1) 9310 if you are working with the silos"
@@ -188,30 +176,10 @@ case ${gang}@${location} in
 	  sun=fntt2
 	  ;;
 
-       d0en@FCC2.AML2)
-	  robot="aml2"
-	  type=3480
-	  ;;
-
-       stken@FCC2.AML2)
-	  robot="aml2"
-	  type=DECDLT
-	  ;;
-
        *) exit 1
 	  ;;
 
      esac
-     ;;
-
-  d0en@ADIC)		# shortcut taken when script called as adic_{flip_tab|take_out}
-     robot="aml2"
-     type=3480
-     ;;
-
-  stken@ADIC)		# shortcut taken when script called as adic_{flip_tab|take_out}
-     robot="aml2"
-     type=DECDLT
      ;;
 
   *) exit 1
@@ -326,9 +294,6 @@ esac
 case $robot in
   9310 | 8500*)
     api=acsls
-    ;;
-  aml2)
-    api=das
     ;;
 esac
 
