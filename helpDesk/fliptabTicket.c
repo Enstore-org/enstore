@@ -175,23 +175,23 @@ int main( int argc, char *argv[] )
    fields[3].value.dataType = AR_DATA_TYPE_CHAR;
 
    fields[4].fieldId = AR_FERMI_FERMI_ID;
-   fields[4].value.u.charVal = "06102N";
+   fields[4].value.u.charVal = "13173N";
    fields[4].value.dataType = AR_DATA_TYPE_CHAR;
 
    fields[5].fieldId = AR_FERMI_FIRST_NAME;
-   fields[5].value.u.charVal = "David";
+   fields[5].value.u.charVal = "John";
    fields[5].value.dataType = AR_DATA_TYPE_CHAR;
 
    fields[6].fieldId = AR_FERMI_LAST_NAME;
-   fields[6].value.u.charVal = "Berg";
+   fields[6].value.u.charVal = "Hendry";
    fields[6].value.dataType = AR_DATA_TYPE_CHAR;
 
    fields[7].fieldId = AR_FERMI_PHONE;
-   fields[7].value.u.charVal = "3021";
+   fields[7].value.u.charVal = "4683";
    fields[7].value.dataType = AR_DATA_TYPE_CHAR;
 
    fields[8].fieldId = AR_FERMI_EMAIL;
-   fields[8].value.u.charVal = "ssa-group@fnal.gov";
+   fields[8].value.u.charVal = "ssa-auto@fnal.gov";
    fields[8].value.dataType = AR_DATA_TYPE_CHAR;
 
    fields[9].fieldId = AR_FERMI_CATEGORY;
