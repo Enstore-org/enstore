@@ -588,7 +588,8 @@ static int thread_init(struct transfer *info, struct locks *thread_locks);
  * If the other read/write thread is slow, wait for the specified bin to become
  * available.  Return 1 on error and 0 on success.
  */
-static int thread_wait(size_t bin, struct buffer *mem_buff,
+static int thread_wait(size_t bin, double *thread_wait_time,
+		       struct buffer *mem_buff,
 		       struct transfer *info, struct locks *thread_locks);
 
 /*
@@ -2638,16 +2639,22 @@ static int thread_init(struct transfer *info, struct locks *thread_locks)
   return 0;
 }
 
-/* The first parameter is the bin to wait on.  Last paramater is the transfer
- * struct for this half of the transfer. */
-static int thread_wait(size_t bin, struct buffer *mem_buff,
+/* The first parameter is the bin to wait on.  The second argument returns
+ * the amount of time the current thread speands waiting for the other
+ * thread to complete.  The third parameter is a pointer to the array of
+ * pointers to the memory buffers.  Forth paramater is the transfer struct
+ * for this half of the transfer.  The fifth is the pointer to the struct
+ * of locks. */
+static int thread_wait(size_t bin, double *thread_wait_time,
+		       struct buffer *mem_buff,
 		       struct transfer *info, struct locks *thread_locks)
 {
   int p_rtn;                    /* Pthread return value. */
   struct timeval cond_wait_tv;  /* Absolute time to wait for cond. variable. */
   struct timespec cond_wait_ts; /* Absolute time to wait for cond. variable. */
   int expected = (info->transfer_direction < 0); /*0 = writes; 1 = reads*/
-  
+  struct timeval thread_wait_end; /* Time waiting on other thread. */
+
   pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
   /* Determine if the lock for the buffer_lock bin, bin, is ready. */
@@ -2702,6 +2709,11 @@ static int thread_wait(size_t bin, struct buffer *mem_buff,
 			     0.0, __FILE__, __LINE__, thread_locks);
 	  return 1;
        }
+
+       /* Need to determine how much time was spent waiting on the other
+	* thread.  */
+       (void)gettimeofday(&thread_wait_end, NULL);
+       *thread_wait_time += elapsed_time(&cond_wait_tv, &thread_wait_end);
 
        /* If we get here, pthread_cond_timedwait() returned 0 (success). */
        break;
@@ -4165,6 +4177,7 @@ static void* thread_read(void *info)
 #if defined ( __sgi ) && defined ( PTHREAD_SCOPE_BOUND_NP )
   int cpu_error;                /* If setrunon fails remember the error. */
 #endif /* PTHREAD_SCOPE_BOUND_NP */
+  double thread_wait_time = 0.0; /* Time spent waiting on the other thread. */
 
   /* Block this signal.  Only the main thread should use/receive it. */
   if(sigemptyset(&sigs_to_block))
@@ -4235,7 +4248,7 @@ static void* thread_read(void *info)
 	 (read_info->size == -1) ) /* && rsts != 0) )*/
   {
     /* If the other thread is slow, wait for it. */
-    if(thread_wait(bin, mem_buff, read_info, thread_locks))
+    if(thread_wait(bin, &thread_wait_time, mem_buff, read_info, thread_locks))
     {
        return NULL;
     }
@@ -4443,7 +4456,13 @@ static void* thread_read(void *info)
   }
   /* Get the thread's time usage. */
   errno = 0;
+#ifdef RUSAGE_THREAD
+  if(getrusage(RUSAGE_THREAD, &end_usage) < 0)
+#elif RUSAGE_LWP
+  if(getrusage(RUSAGE_LWP, &end_usage) < 0)
+#else
   if(getrusage(RUSAGE_SELF, &end_usage) < 0)
+#endif
   {
     pack_return_values(read_info, 0, errno, TIME_ERROR,
 		       "getrusage failed", 0.0, __FILE__, __LINE__,
@@ -4458,12 +4477,30 @@ static void* thread_read(void *info)
    * Instead socket information seems most accurate by adding the total
    * CPU time usage to the time spent in select() and read()/write().
    */
+  /*
+   * June 2009: Modified to be the wall clock time minus the cumulative
+   * time spent waiting for the other thread for all types of files.
+   * For getrusage() POSIX says that the RUSAGE_SELF times are for the
+   * process, not just the thread.  The old Linux threads appears to have
+   * reported times for the thread, while the newer NPTL reports for
+   * the entire process (which for newer Linux kernels resulted in low
+   * network rates being reported).
+   */
 
-  if(S_ISREG(file_info.st_mode))
-    corrected_time = elapsed_time(&start_total, &end_total);
-  else
+#if (defined(RUSAGE_THREAD) || defined(RUSAGE_LWP)) && 0
+  /* Only use rusage method for socket if we can get this information on
+   * a per-thread basis.
+   * RUSAGE_THREAD is the Linux name.  RUSAGE_LWP is the Solaris name. */
+  if(S_ISSOCK(file_info.st_mode))
+  {
     corrected_time = rusage_elapsed_time(&start_usage, &end_usage) +
       transfer_time;
+  }
+  else
+#endif
+  {      
+    corrected_time = elapsed_time(&start_total, &end_total) - thread_wait_time;
+  }
 
   pack_return_values(read_info, read_info->crc_ui, 0, 0, "",
 		     corrected_time, NULL, 0, thread_locks);
@@ -4498,6 +4535,7 @@ static void* thread_write(void *info)
 #if defined ( __sgi ) && defined ( PTHREAD_SCOPE_BOUND_NP )
   int cpu_error;                /* If setrunon fails remember the error. */
 #endif /* PTHREAD_SCOPE_BOUND_NP */
+  double thread_wait_time = 0.0; /* Time spent waiting on the other thread. */
 
   /* Block this signal.  Only the main thread should use/receive it. */
   if(sigemptyset(&sigs_to_block) < 0)
@@ -4568,7 +4606,7 @@ static void* thread_write(void *info)
 	 (write_info->size == -1) ) /* && wsts != 0) )*/
   {
     /* If the other thread is slow, wait for it. */
-    if(thread_wait(bin, mem_buff, write_info, thread_locks))
+    if(thread_wait(bin, &thread_wait_time, mem_buff, write_info, thread_locks))
     {
        return NULL;
     }
@@ -4758,7 +4796,13 @@ static void* thread_write(void *info)
   }
   /* Get the thread's time usage. */
   errno = 0;
+#ifdef RUSAGE_THREAD
+  if(getrusage(RUSAGE_THREAD, &end_usage) < 0)
+#elif RUSAGE_LWP
+  if(getrusage(RUSAGE_LWP, &end_usage) < 0)
+#else
   if(getrusage(RUSAGE_SELF, &end_usage) < 0)
+#endif
   {
     pack_return_values(write_info, 0, errno, TIME_ERROR,
 		       "getrusage failed", 0.0, __FILE__, __LINE__,
@@ -4773,12 +4817,30 @@ static void* thread_write(void *info)
    * Instead socket information seems most accurate by adding the total
    * CPU time usage to the time spent in select() and read()/write().
    */
+  /*
+   * June 2009: Modified to be the wall clock time minus the cumulative
+   * time spent waiting for the other thread for all types of files.
+   * For getrusage() POSIX says that the RUSAGE_SELF times are for the
+   * process, not just the thread.  The old Linux threads appears to have
+   * reported times for the thread, while the newer NPTL reports for
+   * the entire process (which for newer Linux kernels resulted in low
+   * network rates being reported).
+   */
 
-  if(S_ISREG(file_info.st_mode))
-    corrected_time = elapsed_time(&start_total, &end_total);
-  else
-    corrected_time = rusage_elapsed_time(&start_usage, &end_usage) + 
+#if (defined(RUSAGE_THREAD) || defined(RUSAGE_LWP)) && 0
+  /* Only use rusage method for socket if we can get this information on
+   * a per-thread basis.
+   * RUSAGE_THREAD is the Linux & AIX name.  RUSAGE_LWP is the Solaris name. */
+  if(S_ISSOCK(file_info.st_mode))
+  {
+    corrected_time = rusage_elapsed_time(&start_usage, &end_usage) +
       transfer_time;
+  }
+  else
+#endif
+  {      
+    corrected_time = elapsed_time(&start_total, &end_total) - thread_wait_time;
+  }
 
   pack_return_values(write_info, crc_ui, 0, 0, "", corrected_time, NULL, 0,
                      thread_locks);
