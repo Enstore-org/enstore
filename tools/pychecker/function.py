@@ -58,7 +58,7 @@ class FakeFunction(_ReturnValues):
         return self.func_name
 
     def __repr__(self):
-        return '%s from %s' % (self.func_name, self.func_code.co_filename)
+        return '%s from %r' % (self.func_name, self.func_code.co_filename)
 
 class Function(_ReturnValues):
     "Class to hold all information about a function"
@@ -83,7 +83,7 @@ class Function(_ReturnValues):
         return self.function.func_name
 
     def __repr__(self):
-        return '%s from %s:%d' % (self.function.func_name,
+        return '%s from %r:%d' % (self.function.func_name,
                                   self.function.func_code.co_filename,
                                   self.function.func_code.co_firstlineno)
 
@@ -125,6 +125,9 @@ def create_fake(name, code, func_globals = {}, varnames = None) :
     return Function(FakeFunction(name, code, func_globals, varnames))
 
 def create_from_file(file, filename, module) :
+    if file is None:
+        return create_fake(filename, compile('', filename, 'exec'))
+
     # Make sure the file is at the beginning
     #   if python compiled the file, it will be at the end
     file.seek(0)

@@ -127,6 +127,13 @@ def _validateKwArgs(code, info, func_name, kwArgs):
     elif not info[3]:
         return
 
+    try:
+        # info could be from a builtin method which means that
+        # info[3] is not a list.
+        dummy = info[3][0]
+    except IndexError:
+        return
+
     for arg in kwArgs:
         if arg not in info[3]:
             code.addWarning(msgs.FUNC_DOESNT_SUPPORT_KW_ARG % (func_name, arg))
@@ -144,7 +151,10 @@ def _checkBuiltin(code, loadValue, argCount, kwArgs, check_arg_count = 1) :
                 (func_name == 'getattr' and argCount == 2)):
                 arg2 = code.stack[-argCount + 1]
                 if arg2.const:
-                    code.addWarning(msgs.USES_CONST_ATTR % func_name)
+                    # lambda with setattr and const is a common way of setting
+                    # attributes, so allow it
+                    if code.func.function.func_name != '<lambda>':
+                        code.addWarning(msgs.USES_CONST_ATTR % func_name)
 
             if kwArgs:
                 _validateKwArgs(code, info, func_name, kwArgs)
@@ -216,6 +226,11 @@ def _isexception(object) :
         # try/except is necessary for globals like NotImplemented
         if issubclass(object, Exception) :
             return 1
+        # Python 2.5 added a BaseException to the hierarchy.  That's
+        # really what we need to check if it exists.
+        if utils.pythonVersion() >= utils.PYTHON_2_5:
+            if issubclass(object, BaseException):
+                return 1
     except TypeError:
         return 0
 
@@ -395,7 +410,11 @@ def _handleFunctionCall(codeSource, code, argCount, indexOffset = 0,
                     name = utils.safestr(loadValue.data)
                     if type(loadValue.data) == types.TupleType :
                         name = string.join(loadValue.data, '.')
-                    code.addWarning(msgs.USING_NONE_RETURN_VALUE % name)
+                    # lambda with setattr is a common way of setting
+                    # attributes, so allow it
+                    if name != 'setattr' \
+                        or code.func.function.func_name != '<lambda>':
+                        code.addWarning(msgs.USING_NONE_RETURN_VALUE % name)
 
     code.stack = code.stack[:funcIndex] + [ returnValue ]
     code.functionsCalled[funcName] = loadValue
@@ -412,7 +431,8 @@ def _checkClassAttribute(attr, c, code) :
         except KeyError :
             pass
     elif cfg().classAttrExists :
-        code.addWarning(msgs.INVALID_CLASS_ATTR % attr)
+        if attr not in cfg().missingAttrs:
+            code.addWarning(msgs.INVALID_CLASS_ATTR % attr)
 
 def _checkModuleAttribute(attr, module, code, ref) :
     try:
@@ -1307,8 +1327,11 @@ def _COMPARE_OP(oparg, operand, codeSource, code) :
     compareValues = _handleComparison(code.stack, operand)
     if oparg == OP.EXCEPT_COMPARISON:
         _handleExceptionChecks(codeSource, code, compareValues)
-    elif oparg < OP.IS_COMPARISON:
+    elif oparg < OP.IN_COMPARISON: # '<', '<=', '==', '!=', '>', '>='
         _checkBoolean(code, compareValues)
+    elif oparg < OP.IS_COMPARISON: # 'in', 'not in'
+        # TODO: any checks that should be done here?
+        pass
     elif cfg().isLiteral:
         # X is Y   or   X is not Y   comparison
         second_arg = code.stack[-1].data[2]
@@ -1504,15 +1527,18 @@ def _checkModifyNoOp(code, op, msg=msgs.MODIFY_VAR_NOOP, modifyStack=1):
             _modifyStackName(code, op)
 
 def _BINARY_AND(oparg, operand, codeSource, code):
-    _checkModifyNoOp(code, '&')
+    # Don't modify the stack, since _coerce_type() will do it.
+    _checkModifyNoOp(code, '&', modifyStack=0)
     _coerce_type(code)
 
 def _BINARY_OR(oparg, operand, codeSource, code):
-    _checkModifyNoOp(code, '|')
+    # Don't modify the stack, since _coerce_type() will do it.
+    _checkModifyNoOp(code, '|', modifyStack=0)
     _coerce_type(code)
 
 def _BINARY_XOR(oparg, operand, codeSource, code):
-    _checkModifyNoOp(code, '^', msgs.XOR_VAR_WITH_ITSELF)
+    # Don't modify the stack, since _coerce_type() will do it.
+    _checkModifyNoOp(code, '^', msgs.XOR_VAR_WITH_ITSELF, modifyStack=0)
     _coerce_type(code)
 
 def _PRINT_ITEM_TO(oparg, operand, codeSource, code) :

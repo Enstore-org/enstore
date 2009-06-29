@@ -32,7 +32,7 @@ _WARNING_LEVELS = get_warning_levels()
 
 _RC_FILE = ".pycheckrc"
 CHECKER_VAR = '__pychecker__'
-_VERSION = '0.8.17'
+_VERSION = '0.8.18'
 
 _DEFAULT_BLACK_LIST = [ "Tkinter", "wxPython", "gtk", "GTK", "GDK", ]
 _DEFAULT_VARIABLE_IGNORE_LIST = [ '__version__', '__warningregistry__', 
@@ -42,7 +42,15 @@ _DEFAULT_VARIABLE_IGNORE_LIST = [ '__version__', '__warningregistry__',
                                   '__date__',
                                 ]
 _DEFAULT_UNUSED_LIST = [ '_', 'empty', 'unused', 'dummy', ]
+_DEFAULT_MISSING_ATTRS_LIST = []
 
+# _OPTIONS = (
+#   (categoryName, [
+#     (shortArg, useValue, longArg, member, description),
+#     ...
+#    ]),
+#   ...
+# )
 _OPTIONS = (
     ('Major Options', [
  ('',  0, 'only', 'only', 'only warn about files passed on the command line'),
@@ -51,6 +59,7 @@ _OPTIONS = (
  ('F', 1, 'config', None, 'specify .pycheckrc file to use'),
  ('',  0, 'quixote', None, 'support Quixote\'s PTL modules'),
  ('',  1, 'evil', 'evil', 'list of evil C extensions that crash the interpreter'),
+ ('',  0, 'keepgoing', 'ignoreImportErrors', 'ignore import errors'),
      ]),
     ('Error Control', [
  ('i', 0, 'import', 'importUsed', 'unused imports'),
@@ -94,6 +103,7 @@ _OPTIONS = (
  ('4', 0, 'noeffect', 'noEffect', 'check if statement appears to have no effect'),
  ('',  0, 'modulo1', 'modulo1', 'check if using (expr % 1), it has no effect on integers and strings'),
  ('',  0, 'isliteral', 'isLiteral', "check if using (expr is const-literal), doesn't always work on integers and strings"),
+ ('',  0, 'constattr', 'constAttr', "check if a constant string is passed to getattr()/setattr()"),
      ]),
     ('Possible Errors', [
  ('r', 0, 'returnvalues', 'checkReturnValues', 'check consistent return values'),
@@ -115,6 +125,7 @@ _OPTIONS = (
  ('b', 1, 'blacklist', 'blacklist', 'ignore warnings from the list of modules\n\t\t\t'),
  ('Z', 1, 'varlist', 'variablesToIgnore', 'ignore global variables not used if name is one of these values\n\t\t\t'),
  ('E', 1, 'unusednames', 'unusedNames', 'ignore unused locals/arguments if name is one of these values\n\t\t\t'),
+ ('',  1, 'missingattrs', 'missingAttrs', 'ignore missing class attributes if name is one of these values\n\t\t\t'),
  ( '', 0, 'deprecated', 'deprecated', 'ignore use of deprecated modules/functions'),
      ]),
     ('Complexity', [
@@ -132,6 +143,7 @@ _OPTIONS = (
  ( '', 0, 'rcfile', None, 'print a .pycheckrc file generated from command line args'),
  ('P', 0, 'printparse', 'printParse', 'print internal checker parse structures'),
  ('d', 0, 'debug', 'debug', 'turn on debugging for checker'),
+ ('',  0, 'findevil', 'findEvil', 'print each class object to find one that crashes'),
  ('Q', 0, 'quiet', 'quiet', 'turn off all output except warnings'),
  ('V', 0, 'version', None, 'print the version of PyChecker and exit'),
      ])
@@ -227,10 +239,12 @@ class Config :
         self.level = 0
         self.limit = 10
 
+        self.ignoreImportErrors = 0
         self.onlyCheckInitForMembers = 0
         self.printParse = 0
         self.quixote = 0
         self.evil = []
+        self.findEvil = 0
 
         self.noDocModule = 0
         self.noDocClass = 0
@@ -271,6 +285,7 @@ class Config :
         self.unusedNames = _DEFAULT_UNUSED_LIST
         self.variablesToIgnore = _DEFAULT_VARIABLE_IGNORE_LIST
         self.blacklist = _DEFAULT_BLACK_LIST
+        self.missingAttrs = _DEFAULT_MISSING_ATTRS_LIST
         self.ignoreStandardLibrary = 0
         self.methodArgName = 'self'
         self.classmethodArgNames = ['cls', 'klass']

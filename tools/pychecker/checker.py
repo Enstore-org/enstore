@@ -34,8 +34,29 @@ def setupNamespace(path) :
     if checker_path not in sys.path :
         sys.path.append(checker_path)
 
+
+def setupSysPathForDevelopment():
+    import pychecker
+    this_module = sys.modules[__name__]
+    this_path = os.path.normpath(os.path.dirname(this_module.__file__))
+    pkg_path = os.path.normpath(os.path.dirname(pychecker.__file__))
+    if pkg_path != this_path:
+        # pychecker was probably found in site-packages, insert this
+        # directory before the other one so we can do development and run
+        # our local version and not the version from site-packages.
+        pkg_dir = os.path.dirname(pkg_path)
+        i = 0
+        for p in sys.path:
+            if os.path.normpath(p) == pkg_dir:
+                sys.path.insert(i-1, os.path.dirname(this_path))
+                break
+            i = i + 1
+    del sys.modules['pychecker']
+
+
 if __name__ == '__main__' :
     setupNamespace(sys.argv[0])
+    setupSysPathForDevelopment()
 
 from pychecker import utils
 from pychecker import printer
@@ -44,10 +65,9 @@ from pychecker import OP
 from pychecker import Config
 from pychecker import function
 from pychecker import msgs
+from pychecker import pcmodules
 from pychecker.Warning import Warning
 
-# Globals for storing a dictionary of info about modules and classes
-_allModules = {}
 _cfg = None
 
 # Constants
@@ -99,7 +119,15 @@ def _flattenList(list) :
     return new_list
 
 def getModules(arg_list) :
-    "Returns a list of module names that can be imported"
+    """
+    arg_list is a list of arguments to pychecker; arguments can represent
+    a module name, a filename, or a wildcard file specification.
+
+    Returns a list of (module name, dirPath) that can be imported, where
+    dirPath is the on-disk path to the module name for that argument.
+
+    dirPath can be None (in case the given argument is an actual module).
+    """
 
     new_arguments = []
     for arg in arg_list :
@@ -116,6 +144,8 @@ def getModules(arg_list) :
         
     modules = []
     for arg in _flattenList(new_arguments) :
+        # if arg is an actual module, return None for the directory
+        arg_dir = None
         # is it a .py file?
         for suf, suflen in zip(PY_SUFFIXES, PY_SUFFIX_LENS):
             if len(arg) > suflen and arg[-suflen:] == suf:
@@ -125,10 +155,9 @@ def getModules(arg_list) :
                     continue
 
                 module_name = os.path.basename(arg)[:-suflen]
-                if arg_dir not in sys.path :
-                    sys.path.insert(0, arg_dir)
+
                 arg = module_name
-        modules.append(arg)
+        modules.append((arg, arg_dir))
 
     return modules
 
@@ -161,11 +190,14 @@ def _q_find_module(p, path):
                 if os.path.exists(f):
                     return _q_file(file(f)), f, ('.ptl', 'U', 1)
 
-def _findModule(name) :
+def _findModule(name, moduleDir=None) :
     """Returns the result of an imp.find_module(), ie, (file, filename, smt)
        name can be a module or a package name.  It is *not* a filename."""
 
     path = sys.path[:]
+    if moduleDir:
+        path.insert(0, moduleDir)
+
     packages = string.split(name, '.')
     for p in packages :
         # smt = (suffix, mode, type)
@@ -235,8 +267,12 @@ def _getClassTokens(c) :
 class Class :
     "Class to hold all information about a class"
 
-    def __init__(self, name, module) :
+    def __init__(self, name, pcmodule) :
+        """
+        @type pcmodule: PyCheckerModule
+        """
         self.name = name
+        module = pcmodule.module
         self.classObject = getattr(module, name)
 
         modname = getattr(self.classObject, '__module__', None)
@@ -248,12 +284,30 @@ class Class :
             if mo:
                 modname = ".".join(mo.group(1).split(".")[:-1])
 
+        # TODO(nnorwitz): this check for __name__ might not be necessary
+        # any more.  Previously we checked objects as if they were classes.
+        # This problem is fixed by not adding objects as if they are classes.
+
+        # zope.interface for example has Provides and Declaration that
+        # look a lot like class objects but do not have __name__
+        if not hasattr(self.classObject, '__name__'):
+            if modname not in cfg().blacklist:
+                sys.stderr.write("warning: no __name__ attribute "
+                                 "for class %s (module name: %s)\n"
+                                 % (self.classObject, modname))
+            self.classObject.__name__ = name
+        # later pychecker code uses this
+        self.classObject__name__ = self.classObject.__name__
+
         self.module = sys.modules.get(modname)
-        if not self.module:
+        # if the pcmodule has moduleDir, it means we processed it before,
+        # and deleted it from sys.modules
+        if not self.module and not pcmodule.moduleDir:
             self.module = module
-            sys.stderr.write("warning: couldn't find real module "
-                             "for class %s (module name: %s)\n"
-                             % (self.classObject, modname))
+            if modname not in cfg().blacklist:
+                sys.stderr.write("warning: couldn't find real module "
+                                 "for class %s (module name: %s)\n"
+                                 % (self.classObject, modname))
         self.ignoreAttrs = 0
         self.methods = {}
         self.members = { '__class__': types.ClassType,
@@ -280,14 +334,13 @@ class Class :
             return min(lineNums)
         return 0
 
-
     def allBaseClasses(self, c = None) :
         "Return a list of all base classes for this class and it's subclasses"
 
         baseClasses = []
         if c == None :
             c = self.classObject
-        for base in c.__bases__ :
+        for base in getattr(c, '__bases__', None) or ():
             baseClasses = baseClasses + [ base ] + self.allBaseClasses(base)
         return baseClasses
 
@@ -330,7 +383,7 @@ class Class :
         self.cleanupMemberRefs()
         # add standard methods
         for methodName in ('__class__',) :
-            self.addMethod(methodName, classObject.__name__)
+            self.addMethod(methodName, self.classObject__name__)
 
     def addMembers(self, classObject) :
         if not cfg().onlyCheckInitForMembers :
@@ -413,9 +466,11 @@ class Class :
                 result.append(m)
         return result
 
-def _getLineInFile(moduleName, linenum):
+def _getLineInFile(moduleName, moduleDir, linenum):
     line = ''
-    file, filename, smt = _findModule(moduleName)
+    file, filename, smt = _findModule(moduleName, moduleDir)
+    if file is None:
+        return ''
     try:
         lines = file.readlines()
         line = string.rstrip(lines[linenum - 1])
@@ -424,7 +479,7 @@ def _getLineInFile(moduleName, linenum):
     file.close()
     return line
 
-def importError(moduleName):
+def importError(moduleName, moduleDir=None):
     exc_type, exc_value, tb = sys.exc_info()
 
     # First, try to get a nice-looking name for this exception type.
@@ -444,7 +499,7 @@ def importError(moduleName):
         # the output and make it consistent for all versions of Python
         e = exc_value
         msg = '%s (%s, line %d)' % (e.msg, e.filename, e.lineno)
-        line = _getLineInFile(moduleName, e.lineno)
+        line = _getLineInFile(moduleName, moduleDir, e.lineno)
         offset = e.offset
         if type(offset) is not types.IntType:
             offset = 0
@@ -486,8 +541,15 @@ def _getPyFile(filename):
 class PyCheckerModule :
     "Class to hold all information for a module"
 
-    def __init__(self, moduleName, check = 1) :
+    def __init__(self, moduleName, check = 1, moduleDir=None) :
+        """
+        @param moduleDir: if specified, the directory where the module can
+                          be loaded from; allows discerning between modules
+                          with the same name in a different directory
+
+        """
         self.moduleName = moduleName
+        self.moduleDir = moduleDir
         self.variables = {}
         self.functions = {}
         self.classes = {}
@@ -497,7 +559,9 @@ class PyCheckerModule :
         self.main_code = None
         self.module = None
         self.check = check
-        _allModules[moduleName] = self
+        # key on a combination of moduleName and moduleDir so we have separate
+        # entries for modules with the same name but in different directories
+        pcmodules.addPCModule(self)
 
     def __str__(self) :
         return self.moduleName
@@ -511,13 +575,13 @@ class PyCheckerModule :
         self.functions[func.__name__] = function.Function(func)
 
     def __addAttributes(self, c, classObject) :
-        for base in classObject.__bases__ :
+        for base in getattr(classObject, '__bases__', None) or ():
             self.__addAttributes(c, base)
         c.addMethods(classObject)
         c.addMembers(classObject)
 
     def addClass(self, name) :
-        self.classes[name] = c = Class(name, self.module)
+        self.classes[name] = c = Class(name, self)
         try:
             objName = utils.safestr(c.classObject)
         except TypeError:
@@ -529,8 +593,8 @@ class PyCheckerModule :
         if not c.ignoreAttrs :
             self.__addAttributes(c, c.classObject)
 
-    def addModule(self, name) :
-        module = _allModules.get(name, None)
+    def addModule(self, name, moduleDir=None) :
+        module = pcmodules.getPCModule(name, moduleDir)
         if module is None :
             self.modules[name] = module = PyCheckerModule(name, 0)
             if imp.is_builtin(name) == 0:
@@ -547,24 +611,31 @@ class PyCheckerModule :
             filename = self.module.__file__
         except AttributeError :
             filename = self.moduleName
+            # FIXME: this would be nice to have, but changes output of
+            # NOT PROCESSED UNABLE TO IMPORT like in test8
+            #if self.moduleDir:
+            #    filename = self.moduleDir + ': ' + filename
+
         return _getPyFile(filename)
 
     def load(self):
         try :
-            # there's no need to reload modules we already have
-            module = sys.modules.get(self.moduleName)
-            if module :
-                if not _allModules[self.moduleName].module :
-                    return self._initModule(module)
-                return 1
+            # there's no need to reload modules we already have if no moduleDir
+            # is specified for this module
+            if not self.moduleDir:
+                module = sys.modules.get(self.moduleName)
+                if module :
+                    if not pcmodules.getPCModule(self.moduleName).module :
+                        return self._initModule(module)
+                    return 1
 
             return self._initModule(self.setupMainCode())
         except (SystemExit, KeyboardInterrupt) :
             exc_type, exc_value, exc_tb = sys.exc_info()
             raise exc_type, exc_value
         except :
-            importError(self.moduleName)
-            return 0
+            importError(self.moduleName, self.moduleDir)
+            return cfg().ignoreImportErrors
 
     def initModule(self, module) :
         if not self.module:
@@ -595,8 +666,8 @@ class PyCheckerModule :
             # README if interpreter is crashing:
             # Change 0 to 1 if the interpretter is crashing and re-run.
             # Follow the instructions from the last line printed.
-            if 0:
-                print "Add the following line to _EVIL_C_OBJECTS:\n" \
+            if _cfg.findEvil:
+                print "Add the following line to _EVIL_C_OBJECTS or the string to evil in a config file:\n" \
                       "    '%s.%s': None, " % (self.moduleName, tokenName)
 
             token = getattr(self.module, tokenName)
@@ -606,7 +677,8 @@ class PyCheckerModule :
             elif isinstance(token, types.FunctionType) :
                 self.addFunction(token)
             elif isinstance(token, types.ClassType) or \
-                 hasattr(token, '__bases__') :
+                 hasattr(token, '__bases__') and \
+                 issubclass(type(token), type):
                 self.addClass(tokenName)
             else :
                 self.addVariable(tokenName, type(token))
@@ -616,9 +688,20 @@ class PyCheckerModule :
         return 1
 
     def setupMainCode(self) :
-        file, filename, smt = _findModule(self.moduleName)
+        file, filename, smt = _findModule(self.moduleName, self.moduleDir)
         # FIXME: if the smt[-1] == imp.PKG_DIRECTORY : load __all__
+        # HACK: to make sibling imports work, we add self.moduleDir to sys.path
+        # temporarily, and remove it later
+        if self.moduleDir:
+            oldsyspath = sys.path[:]
+            sys.path.insert(0, self.moduleDir)
         module = imp.load_module(self.moduleName, file, filename, smt)
+        if self.moduleDir:
+            sys.path = oldsyspath
+            # to make sure that subsequent modules with the same moduleName
+            # do not persist, and get their namespace clobbered, delete it
+            del sys.modules[self.moduleName]
+
         self._setupMainCode(file, filename, module)
         return module
 
@@ -633,7 +716,7 @@ class PyCheckerModule :
 def getAllModules() :
     "Returns a list of all modules that should be checked."
     modules = []
-    for module in _allModules.values() :
+    for module in pcmodules.getPCModules():
         if module.check :
             modules.append(module)
     return modules
@@ -646,9 +729,16 @@ _BUILTIN_MODULE_ATTRS = { 'sys': [ 'ps1', 'ps2', 'tracebacklimit',
 
 def fixupBuiltinModules(needs_init=0):
     for moduleName in sys.builtin_module_names :
+        # Skip sys since it will reset sys.stdout in IDLE and cause
+        # stdout to go to the real console rather than the IDLE console.
+        # FIXME: this breaks test42
+        # if moduleName == 'sys':
+        #     continue
+
         if needs_init:
             _ = PyCheckerModule(moduleName, 0)
-        module = _allModules.get(moduleName, None)
+        # builtin modules don't have a moduleDir
+        module = pcmodules.getPCModule(moduleName)
         if module is not None :
             try :
                 m = imp.init_builtin(moduleName)
@@ -678,6 +768,36 @@ def _printWarnings(warnings, stream=None):
         warning.output(stream)
 
 
+class NullModule:
+    def __getattr__(self, unused_attr):
+        return None
+
+def install_ignore__import__():
+
+    _orig__import__ = None
+
+    def __import__(name, globals=None, locals=None, fromlist=None):
+        if globals is None:
+            globals = {}
+        if locals is None:
+            locals = {}
+        if fromlist is None:
+            fromlist = ()
+
+        try:
+            pymodule = _orig__import__(name, globals, locals, fromlist)
+        except ImportError:
+            pymodule = NullModule()
+            if not _cfg.quiet:
+                modname = '.'.join((name,) + fromlist)
+                sys.stderr.write("Can't import module: %s, ignoring.\n" % modname)
+        return pymodule
+
+    # keep the orig __import__ around so we can call it
+    import __builtin__
+    _orig__import__ = __builtin__.__import__
+    __builtin__.__import__ = __import__
+
 def processFiles(files, cfg = None, pre_process_cb = None) :
     # insert this here, so we find files in the local dir before std library
     if sys.path[0] != '' :
@@ -690,16 +810,22 @@ def processFiles(files, cfg = None, pre_process_cb = None) :
     elif _cfg is None :
         _cfg = Config.Config()
 
+    if _cfg.ignoreImportErrors:
+        install_ignore__import__()
+
     warnings = []
     utils.initConfig(_cfg)
-    for moduleName in getModules(files) :
+    for file, (moduleName, moduleDir) in zip(files, getModules(files)) :
         if callable(pre_process_cb) :
-            pre_process_cb(moduleName)
-        module = PyCheckerModule(moduleName)
+            pre_process_cb("module %s (%s)" % (moduleName, file))
+        oldsyspath = sys.path[:]
+        sys.path.insert(0, moduleDir)
+        module = PyCheckerModule(moduleName, moduleDir=moduleDir)
         if not module.load() :
             w = Warning(module.filename(), 1,
                         msgs.Internal("NOT PROCESSED UNABLE TO IMPORT"))
             warnings.append(w)
+        sys.path = oldsyspath
     utils.popConfig()
     return warnings
 
@@ -804,6 +930,7 @@ else :
         pymodule = _orig__import__(name, globals, locals, fromlist)
         if check :
             try :
+                # FIXME: can we find a good moduleDir ?
                 module = PyCheckerModule(pymodule.__name__)
                 if module.initModule(pymodule):
                     warnings = warn.find([module], _cfg, _suppressions)
@@ -812,6 +939,7 @@ else :
                     print 'Unable to load module', pymodule.__name__
             except Exception:
                 name = getattr(pymodule, '__name__', utils.safestr(pymodule))
+                # FIXME: can we use it here ?
                 importError(name)
 
         return pymodule

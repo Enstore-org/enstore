@@ -100,6 +100,10 @@ if utils.pythonVersion() >= utils.PYTHON_2_2 :
 if utils.pythonVersion() >= utils.PYTHON_2_3:
     GLOBAL_FUNC_INFO['dict'] = (types.DictType, 0, 1, [])
 
+if utils.pythonVersion() >= utils.PYTHON_2_5:
+    GLOBAL_FUNC_INFO['max'] = (Stack.TYPE_UNKNOWN, 1, None, ['key'])
+    GLOBAL_FUNC_INFO['min'] = (Stack.TYPE_UNKNOWN, 1, None, ['key'])
+
 def tryAddGlobal(name, *args):
     if globals().has_key(name):
         GLOBAL_FUNC_INFO[name] = args
@@ -116,6 +120,9 @@ tryAddGlobal('sum', types.IntType, 1, 2, ['start'])
 # sorted() and reversed() always return an iterator  (FIXME: support iterator)
 tryAddGlobal('sorted', Stack.TYPE_UNKNOWN, 1, 1)
 tryAddGlobal('reversed', Stack.TYPE_UNKNOWN, 1, 1)
+
+tryAddGlobal('all', BOOL, 1, 1)
+tryAddGlobal('any', BOOL, 1, 1)
 
 _STRING_METHODS = { 'capitalize': (types.StringType, 0, 0),
                     'center': (types.StringType, 1, 1),
@@ -153,6 +160,7 @@ _STRING_METHODS = { 'capitalize': (types.StringType, 0, 0),
 
 if utils.pythonVersion() >= utils.PYTHON_2_2 :
     _STRING_METHODS['decode'] = (types.UnicodeType, 0, 2)
+    _STRING_METHODS['zfill'] = (types.StringType, 1, 1)
 
 if utils.pythonVersion() >= utils.PYTHON_2_4:
     _STRING_METHODS['rsplit'] = (types.StringType, 0, 2)
@@ -202,11 +210,28 @@ BUILTIN_METHODS = { types.DictType :
                   }
 
 if utils.pythonVersion() >= utils.PYTHON_2_4:
+    GLOBAL_FUNC_INFO['set'] = (Stack.TYPE_UNKNOWN, 0, 1)
+    GLOBAL_FUNC_INFO['frozenset'] = (Stack.TYPE_UNKNOWN, 0, 1)
+
     kwargs = ['cmp', 'key', 'reverse']
-    BUILTIN_METHODS[types.ListType]['sort'] =(types.NoneType, 0, 3, kwargs)
+    BUILTIN_METHODS[types.ListType]['sort'] = (types.NoneType, 0, 3, kwargs)
+    BUILTIN_METHODS[types.DictType]['update'] = (types.NoneType, 1, 1, [])
 
 if hasattr({}, 'pop'):
     BUILTIN_METHODS[types.DictType]['pop'] = (Stack.TYPE_UNKNOWN, 1, 2)
+
+if utils.pythonVersion() >= utils.PYTHON_2_5:
+    _STRING_METHODS['partition'] = (types.TupleType, 1, 1)
+    _STRING_METHODS['rpartition'] = (types.TupleType, 1, 1)
+
+if utils.pythonVersion() >= utils.PYTHON_2_6:
+    GLOBAL_FUNC_INFO['bin'] = (types.StringType, 1, 1)
+    GLOBAL_FUNC_INFO['bytesarray'] = (bytearray, 0, 1)
+    GLOBAL_FUNC_INFO['bytes'] = (bytes, 0, 1)
+    GLOBAL_FUNC_INFO['format'] = (types.StringType, 1, 2)
+    GLOBAL_FUNC_INFO['next'] = (Stack.TYPE_UNKNOWN, 1, 2)
+    GLOBAL_FUNC_INFO['print'] = (types.NoneType, 0, None,
+                                 ['sep', 'end', 'file'])
 
 def _setupBuiltinMethods() :
     if utils.pythonVersion() >= utils.PYTHON_2_2 :
@@ -236,7 +261,7 @@ _setupBuiltinMethods()
 MUTABLE_TYPES = (types.ListType, types.DictType, types.InstanceType,)
 
 # identifiers which will become a keyword in a future version
-FUTURE_KEYWORDS = { 'yield': '2.2' }
+FUTURE_KEYWORDS = { 'yield': '2.2', 'with': '2.5', 'as': '2.5' }
 
 METHODLESS_OBJECTS = { types.NoneType : None, types.IntType : None,
                        types.LongType : None, types.FloatType : None,
@@ -354,7 +379,6 @@ SPECIAL_METHODS = {
     '__len__': 1,
     '__new__': None,			# new-style class constructor
     '__nonzero__': 1,
-    '__reduce__': 1,
 
     '__hex__': 1,
     '__oct__': 1,
@@ -369,6 +393,7 @@ SPECIAL_METHODS = {
     '__le__': 2,	'__lt__': 2,
 
     '__getattribute__': 2,	# only in new-style classes
+    '__get__': 3,		'__set__': 3,		'__delete__': 2,
     '__getattr__': 2,		'__setattr__': 3,	'__delattr__': 2,
     '__getitem__': 2,		'__setitem__': 3,	'__delitem__': 2,
     '__getslice__': 3,		'__setslice__': 4,	'__delslice__': 3,
@@ -395,5 +420,8 @@ SPECIAL_METHODS = {
     # these are related to pickling 
     '__getstate__': 1,		'__setstate__': 2,
     '__copy__': 1,		'__deepcopy__': 2,
-    '__getinitargs__': 1,	
+    '__getinitargs__': 1,	'__getnewargs__': 1,
+    '__reduce__': 1,		'__reduce_ex__': 2,
     }
+
+NEW_STYLE_CLASS_METHODS = ['__getattribute__', '__set__', '__get__', '__delete__']

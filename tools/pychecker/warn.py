@@ -19,6 +19,7 @@ from pychecker import OP
 from pychecker import Stack
 from pychecker import function
 from pychecker import python
+from pychecker import pcmodules
 
 from pychecker import msgs
 from pychecker import utils
@@ -319,11 +320,21 @@ def _baseInitCalled(classInitInfo, base, functionsCalled) :
 
     # ok, do this the hard way, there may be aliases, so check here
     names = string.split(initName, '.')
-    try:
-        # i think this can raise an exception if the module is a library (.so)
-        obj = sys.modules[names[0]]
-    except KeyError:
-        return 1
+
+    # first look in our list of PyCheckerModules
+    moduleName = names[0]
+    moduleDir = os.path.dirname(classInitInfo[0])
+    pcmodule = pcmodules.getPCModule(moduleName, moduleDir)
+    if pcmodule:
+        obj = pcmodule.module
+    else:
+        # fall back to looking in sys.modules
+        try:
+            # i think this can raise an exception if the module is a library
+            # (.so)
+            obj = sys.modules[names[0]]
+        except KeyError:
+            return 1
     for i in range(1, len(names)) :
         obj = getattr(obj, names[i], None)
         if obj is None:
@@ -348,8 +359,8 @@ def _checkBaseClassInit(moduleFilename, c, func_code, funcInfo) :
     classInit = getattr(c.classObject, utils.INIT, None)
     if cfg().baseClassInitted and classInit is not None :
         classInitInfo = _get_func_info(classInit)
-        for base in c.classObject.__bases__ :
-            if not _baseInitCalled(classInitInfo, base, functionsCalled) :
+        for base in getattr(c.classObject, '__bases__', None) or ():
+            if not _baseInitCalled(classInitInfo, base, functionsCalled):
                 warn = Warning(moduleFilename, func_code,
                                msgs.BASE_CLASS_NOT_INIT % utils.safestr(base))
                 warnings.append(warn)
@@ -386,21 +397,34 @@ def getBlackList(moduleList) :
             file, path, flags = imp.find_module(badBoy)
             if file :
                 file.close()
+            # apparently, imp.find_module can return None, path, (triple)
+            # This happened to me with twisted 2.2.0 in a separate path
+            if path:
                 blacklist.append(normalize_path(path))
         except ImportError :
             pass
     return blacklist
 
-def getStandardLibrary() :
+def getStandardLibraries() :
+    """
+    Return a list of standard libraries.
+
+    @rtype: list of str or None
+    """
     if cfg().ignoreStandardLibrary :
         try :
             from distutils import sysconfig
 
-            std_lib = sysconfig.get_python_lib()
-            path = os.path.split(std_lib)
-            if path[1] == 'site-packages' :
-                std_lib = path[0]
-            return std_lib
+            std_libs = [
+                sysconfig.get_python_lib(plat_specific=0),
+                sysconfig.get_python_lib(plat_specific=1)
+            ]
+            ret = []
+            for std_lib in std_libs:
+                path = os.path.split(std_lib)
+                if path[1] == 'site-packages' :
+                    ret.append(path[0])
+            return ret
         except ImportError :
             return None
 
@@ -408,17 +432,39 @@ def normalize_path(path):
     return os.path.normpath(os.path.normcase(path))
 
 def removeWarnings(warnings, blacklist, std_lib, cfg):
+    """
+    @param blacklist: list of absolute paths not to warn for
+    @type  blacklist: str
+    @param std_lib:   list of standard library directories
+    @type  std_lib:   list of str or None
+    """
     if std_lib is not None:
-        std_lib = normalize_path(std_lib)
+        std_lib = [normalize_path(p) for p in std_lib]
     for index in range(len(warnings)-1, -1, -1) :
         filename = normalize_path(warnings[index].file)
-        if filename in blacklist or (std_lib is not None and
-                                     utils.startswith(filename, std_lib)) :
-            del warnings[index]
+        # the blacklist contains paths to packages and modules we do not
+        # want warnings for
+        # when we find a match, make sure we continue the warnings for loop
+        found = False
+        for path in blacklist:
+            if not found and filename.startswith(path):
+                found = True
+                del warnings[index]
+        if found:
+            continue
+        if std_lib:
+            found = False
+            for path in std_lib:
+                if not found and utils.startswith(filename, path) :
+                    found = True
+                    del warnings[index]
+            if found:
+                continue
         elif cfg.only:
             # ignore files not specified on the cmd line if requested
             if os.path.abspath(filename) not in cfg.files:
                 del warnings[index]
+                continue
 
         # filter by warning/error level if requested
         if cfg.level and warnings[index].level < cfg.level:
@@ -639,11 +685,12 @@ def _findClassWarnings(module, c, class_code,
         err = msgs.USING_COERCE_IN_NEW_CLASS % c.name
         warnings.append(Warning(filename, lineNum, err))
 
-    gettroMethod = c.methods.get('__getattribute__')
-    if not newStyleClass and gettroMethod:
-        lineNum = gettroMethod.function.func_code.co_firstlineno
-        err = msgs.USING_GETATTRIBUTE_IN_OLD_CLASS % c.name
-        warnings.append(Warning(filename, lineNum, err))
+    for newClassMethodName in python.NEW_STYLE_CLASS_METHODS:
+        newClassMethod = c.methods.get(newClassMethodName)
+        if not newStyleClass and newClassMethod:
+            lineNum = newClassMethod.function.func_code.co_firstlineno
+            err = msgs.USING_NEW_STYLE_METHOD_IN_OLD_CLASS % (newClassMethodName, c.name)
+            warnings.append(Warning(filename, lineNum, err))
 
     if cfg().noDocClass and c.classObject.__doc__ == None :
         method = c.methods.get(utils.INIT, None)
@@ -690,8 +737,8 @@ def find(moduleList, initialCfg, suppressions = None) :
         _findFunctionWarnings(module, globalRefs, warnings, suppressions)
 
         for c in module.classes.values() :
-                _findClassWarnings(module, c, classCodes.get(c.name),
-                                   globalRefs, warnings, suppressions)
+            _findClassWarnings(module, c, classCodes.get(c.name),
+                               globalRefs, warnings, suppressions)
 
         if cfg().noDocModule and \
            module.module != None and module.module.__doc__ == None :
@@ -721,7 +768,7 @@ def find(moduleList, initialCfg, suppressions = None) :
 
     std_lib = None
     if cfg().ignoreStandardLibrary :
-        std_lib = getStandardLibrary()
+        std_lib = getStandardLibraries()
     return removeWarnings(warnings, getBlackList(cfg().blacklist), std_lib,
                           cfg())
 
