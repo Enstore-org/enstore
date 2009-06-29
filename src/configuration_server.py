@@ -237,7 +237,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             return
 
         # look up in our dictionary the lookup key
-        out_ticket = {}
+        out_ticket = copy.copy(ticket)
         try:
             if ticket.get('new', None):
                 out_ticket[lookup] = self.configdict[lookup]
@@ -263,7 +263,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 out_ticket['domains']['valid_domains'].append(hostaddr.getdomainaddr())
                 out_ticket['domains']['system_name'] = self._get_system_name()
 
-        self.reply_to_caller(out_ticket)
+        self.send_reply(out_ticket)
 
 
     # return a list of the dictionary keys back to the user
