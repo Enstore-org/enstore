@@ -1621,6 +1621,12 @@ class STK_MediaLoader(MediaLoaderMethods):
 	    ticket['media_type'] = rt[2].split()[-1]
 	except (IndexError, ValueError, TypeError, AttributeError):
 	    pass
+	#Return the location in a consistant fashion.  This removes leading
+	# trailing and inserted space characters.
+	try:
+	    ticket['location'] = rt[2][29:51].strip().replace(" ", "")
+	except (IndexError, ValueError, TypeError, AttributeError):
+	    pass
 
         return (rt[0], rt[1], rt[2], state)
 

@@ -572,7 +572,8 @@ def do_work(intf):
             print "%17s %10s %20s %20s" % ("volume", "type",
                                            "state", "location")
             print "%17s %10s %20s %20s" % (intf.volume, ticket['media_type'],
-                                           ticket['status'][3], "")
+                                           ticket['status'][3],
+                                           ticket.get("location", ""))
     elif intf.show_drive:
         ticket = mcc.viewdrive(intf.drive)
         if e_errors.is_ok(ticket) and ticket.get("drive_info", None):
