@@ -21,6 +21,7 @@ import e_errors
 import option
 import udp_client
 import enstore_constants
+import callback
 
 DEFAULT_TIMEOUT = 0
 DEFAULT_TRIES = 0
@@ -282,6 +283,9 @@ class GenericClient:
 
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except (socket.gaierror, socket.herror), msg:
+            x = {'status' : (e_errors.NET_ERROR,
+                                 "%s: %s" % (self.server_name, str(msg)))}
         except (socket.error, select.error, e_errors.EnstoreError), msg:
             if hasattr(msg, "errno") and msg.errno and msg.errno == errno.ETIMEDOUT:
                 x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
@@ -291,11 +295,30 @@ class GenericClient:
         except TypeError, detail:
              x = {'status' : (e_errors.ERROR,
                                  "%s: %s" % (self.server_name, str(detail)))}
-        #except:
-        #    x = {'status' : (str(sys.exc_info()[0], str(sys.exc_info()[1])))}
-        #except errno.errorcode[errno.ETIMEDOUT]:
-        #    x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
-        
+
+        #If the short answer says that the real answer is too long, continue
+        # with obtaining the information over TCP.
+        if type(x) == types.DictType and x.get('long_reply', None):
+            
+            try:
+                connect_socket = callback.connect_to_callback(x['callback_addr'])
+            except (socket.error), msg:
+                message = "failed to establish control socket: %s" % (str(msg),)
+                x['status'] = (e_errors.NET_ERROR, message)
+
+            if e_errors.is_ok(x):
+                #Read the data.
+                try:
+                    x = callback.read_tcp_obj_new(connect_socket)
+                except (socket.error, select.error, e_errors.EnstoreError), msg:
+                    control_socket.close()
+                    message = "failed to read from control socket: %s" % \
+                              (str(msg),)
+                    x['status'] = (e_errors.NET_ERROR, message)
+
+                #Socket cleanup.
+                connect_socket.close()
+
         return x
         
     # return the name used for this client/server #XXX what is this nonsense? cgw

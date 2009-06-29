@@ -276,6 +276,9 @@ def log_socket_state(sock):
                 Trace.log(e_errors.ERROR,
                           "socket state: arp get[%s]: %s" % \
                           (peer_name[0], str(msg)))
+                
+###############################################################################
+###############################################################################
 
 # get an unused tcp port for control communication
 def get_callback(ip=None):
@@ -289,6 +292,86 @@ def get_callback(ip=None):
     s.bind((ip, 0))
     host, port = s.getsockname()
     return host, port, s
+
+def connect_to_callback(ip_addr, interface_ip = None, timeout = 30):
+
+    try:
+        #Create the socket.
+        connect_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error, msg:
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    #Put the socket into non-blocking mode.
+    flags = fcntl.fcntl(connect_socket.fileno(), fcntl.F_GETFL)
+    fcntl.fcntl(connect_socket.fileno(), fcntl.F_SETFL,
+                flags | os.O_NONBLOCK)
+
+    #Attempt to use one specific IP address on the local multihomed machine.
+    try:
+	if interface_ip:
+	    connect_socket.bind((interface_ip, 0))
+    except socket.error, msg:
+        connect_socket.close()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    try:
+        connect_socket.connect(ip_addr)
+        #error = 0 #MWZ: pychecker questioned this line.  
+    except socket.error, msg:
+        #We have seen that on IRIX, when the three way handshake is in
+        # progress, we get an EISCONN error.
+        if hasattr(errno, 'EISCONN') and msg[0] == errno.EISCONN:
+            pass
+        #The TCP handshake is in progress.
+        elif msg[0] == errno.EINPROGRESS:
+            pass
+        #A real or fatal error has occured.  Handle accordingly.
+        else:
+            message = "Connecting to socket failed immediatly."
+            Trace.log(e_errors.ERROR, message)
+            Trace.trace(12, message)
+            connect_socket.close()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    #Check if the socket is open for reading and/or writing.
+    while 1:
+        try:
+            r, w, unused = select.select([connect_socket],
+                                         [connect_socket], [], timeout)
+            break
+        except (socket.error, select.error), msg:
+            if errno.EINTR == msg.args[0]:
+                #Screen out interuptions from signals.
+                continue
+            else:
+                connect_socket.close()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            
+
+    if r or w:
+        #Get the socket error condition...
+        rtn = connect_socket.getsockopt(socket.SOL_SOCKET,
+                                          socket.SO_ERROR)
+        #error = 0 #MWZ: pychecker questioned this line.  
+    #If the select didn't return sockets ready for read or write, then the
+    # connection timed out.
+    else:
+        connect_socket.close()
+        raise socket.error(errno.ETIMEDOUT, os.strerror(errno.ETIMEDOUT))
+
+    #If the return value is zero then success, otherwise it failed.
+    if rtn != 0:
+        message = "Connecting to socket failed later."
+        Trace.log(e_errors.ERROR, message)
+        Trace.trace(12, message)
+        connect_socket.close()
+        raise socket.error(rtn, os.strerror(rtn))
+
+    #Restore flag values to blocking mode.
+    fcntl.fcntl(connect_socket.fileno(), fcntl.F_SETFL, flags)
+
+    return connect_socket
+
 
 ###############################################################################
 ###############################################################################
@@ -439,6 +522,9 @@ write_tcp_raw = write_raw
 
 # send a message over the network which is a Python object
 def write_tcp_obj(sock, obj, timeout=15*60):
+    if type(sock) != types.IntType and not hasattr(sock, "fileno"):
+        raise TypeError("expected integer socket file descriptor or "
+                        "socket object; received %s instead" % (str(sock),))
 ### When we want to go strictly to cPickle use the following line.
 #    return write_tcp_obj_new(sock, obj, timeout)
 
@@ -454,6 +540,10 @@ def write_tcp_obj(sock, obj, timeout=15*60):
 
 # send a message over the network which is a Python object
 def write_tcp_obj_new(sock,obj,timeout=15*60):
+    if type(sock) != types.IntType and not hasattr(sock, "fileno"):
+        raise TypeError("expected integer socket file descriptor or "
+                        "socket object; received %s instead" % (str(sock),))
+    
     rtn, e = write_tcp_raw(sock, cPickle.dumps(obj), timeout)
     
     if e:
@@ -581,7 +671,11 @@ def read_raw(fd, timeout=15*60):
 read_tcp_raw = read_raw
 
 # receive a message over the network which is a Python object
-def read_tcp_obj(sock, timeout=15*60) :
+def read_tcp_obj(sock, timeout=15*60):
+    if type(sock) != types.IntType and not hasattr(sock, "fileno"):
+        raise TypeError("expected integer socket file descriptor or "
+                        "socket object; received %s instead" % (str(sock),))
+
     s, e = read_tcp_raw(sock, timeout)
     if not s:
         log_socket_state(sock) #Log the state of the socket.
@@ -610,6 +704,10 @@ def read_tcp_obj(sock, timeout=15*60) :
 
 # receive a message over the network which is a Python object
 def read_tcp_obj_new(sock, timeout=15*60):
+    if type(sock) != types.IntType and not hasattr(sock, "fileno"):
+        raise TypeError("expected integer socket file descriptor or "
+                        "socket object; received %s instead" % (str(sock),))
+
     s, e = read_tcp_raw(sock, timeout)
     if not s:
         log_socket_state(sock) #Log the state of the socket.

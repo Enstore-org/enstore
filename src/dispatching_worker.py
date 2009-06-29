@@ -17,6 +17,8 @@ import threading
 #import string
 import copy
 import types
+import socket
+import select
 
 #enstore imports
 import udp_server
@@ -25,6 +27,7 @@ import cleanUDP
 import Trace
 import e_errors
 import enstore_constants
+import callback
 
 MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
@@ -637,18 +640,96 @@ class DispatchingWorker(udp_server.UDPServer):
 
     # send back our response
     def send_reply(self, t):
+        save_copy = copy.copy(t)
         try:
             self.reply_to_caller(t)
         except:
             # even if there is an error - respond to caller so he can process it
             exc, msg = sys.exc_info()[:2]
-            t["status"] = (str(exc),str(msg))
-            self.reply_to_caller(t)
-            Trace.trace(enstore_constants.DISPWORKDBG,
-                        "exception in send_reply %s" % (t,))
+
+            if isinstance(msg, socket.error) and msg.args[0] == errno.EMSGSIZE:
+                self.send_reply_with_long_answer(save_copy)
+            else:
+                t["status"] = (str(exc),str(msg))
+                self.reply_to_caller(t)
+                Trace.trace(enstore_constants.DISPWORKDBG,
+                            "exception in send_reply %s" % (t,))
+                return
+
+    #This functions uses an acitve protocol.  This function uses UDP and TCP.
+    def send_reply_with_long_answer_part1(self, ticket):
+
+        if not e_errors.is_ok(ticket):
+            #If we have an error, then we only need to reply and skip the rest.
+            self.reply_to_caller(ticket)
+            return None
+
+        # get a port to talk on and listen for connections
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+
+        #The initial over UDP message needs to be small.
+        small_reply = {'work' : ticket['work'],
+                       'r_a' : ticket['r_a'],
+                       'status' : (e_errors.OK, None),
+                       'callback_addr' : (host, port),
+                       'long_reply' : 1, #Tell the client the answer is long.
+                       }
+       
+        #Tell the client to wait for a connection.
+        self.reply_to_caller(small_reply)
+
+        #Wait for the client to connect over TCP.
+        r, w, x = select.select([listen_socket], [], [], 60)
+        if not r:
+            listen_socket.close()
+            message = "connection timedout from %s" % (ticket['r_a'],)
+            Trace.log(e_errors.ERROR, message)
+            return None
+
+        #Accept the servers connection.
+        control_socket, address = listen_socket.accept()
+        
+        #Veify that this connection is made from an acceptable
+        # IP address.
+        if not hostaddr.allow(address):
+            control_socket.close()
+            listen_socket.close()
+            message = "address %s not allowed" % (address,)
+            Trace.log(e_errors.ERROR, message)
+            return None
+
+        #Socket cleanup.
+        listen_socket.close()
+
+        return control_socket
+        
+    #Generalize the code to have a really large ticket be returned.
+    #This functions uses an acitve protocol.  This function uses UDP and TCP.
+    def send_reply_with_long_answer_part2(self, control_socket, ticket):
+        try:
+            #Write reply on control socket.
+            callback.write_tcp_obj_new(control_socket, ticket)
+        except (socket.error), msg:
+            message = "failed to use control socket: %s" % (str(msg),)
+            Trace.log(e_errors.NET_ERROR, message)
+
+        #Socket cleanup.
+        control_socket.close()
+
+    #Generalize the code to have a really large ticket be returned.
+    #This functions uses an acitve protocol.  This function uses UDP and TCP.
+    #
+    # The 'ticket' is sent over the network.
+    # 'long_items' is a list of elements that should be supressed in the
+    # initial UDP response.
+    def send_reply_with_long_answer(self, ticket):
+        control_socket = self.send_reply_with_long_answer_part1(ticket)
+        if not control_socket:
             return
 
-
+        self.send_reply_with_long_answer_part2(control_socket, ticket)
+        
     def restricted_access(self):
         '''
         restricted_access(self) -- check if the service is restricted
