@@ -193,6 +193,7 @@ class AtMovers:
         self.max_time_in_active = 7200
         self.max_time_in_other = 1200
         self.dont_update = {}
+        self.alarm_sent = []
                         
         
     def put(self, mover_info):
@@ -291,9 +292,15 @@ class AtMovers:
                             if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                                 add_to_list = 1
                             if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK' or state == 'MOUNT_WAIT' or state =='DISMOUNT_WAIT'):
-                                Trace.alarm(e_errors.ALARM,
-                                            "The mover %s is in state %s for %s minutes, Please check the mover"%
-                                            (mover, state, int(time_in_state)/60))
+                                if not mover in self.alarm_sent:
+                                    # send alarm only once
+                                    Trace.alarm(e_errors.ALARM,
+                                                "The mover %s is in state %s for %s minutes, Please check the mover"%
+                                                (mover, state, int(time_in_state)/60))
+                                    self.alarm_sent.append(mover)
+                            else:
+                                self.alarm_sent.remove(mover)
+                            
                                 
                                 #add_to_list = 1
                             if add_to_list:
