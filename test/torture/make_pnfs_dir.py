@@ -25,6 +25,7 @@ class MakePnfsDir:
                                                              config_port))
         self.pac = None
         self.use_pnfs_agent=os.getenv('REMOTE_ENCP')
+
         if self.use_pnfs_agent:         
             info = self.csc.get('pnfs_agent', {})
             if info:
@@ -58,17 +59,19 @@ class MakePnfsDir:
             else:
                 p = pnfs.Pnfs()
                 try:
-                    os.mkdir(dirname)
+                    os.makedirs(dirname)
                     ret = 0
-                except OSError:
+                except OSError, detail:
+                    print "OSError", detail
                     ret = 1
-                except IOError:
+                except IOError, detail:
+                    print "IOError", detail
                     ret = 1
         if ret == 0:
             if self.use_pnfs_agent and self.use_pnfs_agent=="only_pnfs_agent":
                 p = self.pac
             else:
-                p = pnfs.Pnfs()
+                p = pnfs.Tag(dirname)
 
             p.set_storage_group(self.sg, dirname)
             p.set_library(self.library, dirname)
