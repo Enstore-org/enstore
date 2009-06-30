@@ -554,9 +554,15 @@ class DispatchingWorker(udp_server.UDPServer):
         # call the user function
         t = time.time()
         Trace.trace(5,"process_request: function %s"%(function_name, ))
-        apply(function, (ticket,))
-        self._done_cleanup()
+        self.invoke_function(function, (ticket,))
         Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
+    
+    def invoke_function(self,function, args=()):
+        # this function has been introduced as convenience, so
+        # that subclasses can override it as they see fit w/o
+        # touching process_request
+        apply(function,args)
+        self._done_cleanup()
 
     def handle_error(self, request, client_address):
         exc, msg, tb = sys.exc_info()

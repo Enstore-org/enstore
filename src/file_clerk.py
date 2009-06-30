@@ -89,59 +89,24 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
             sys.exit(1)
 
-    def process_request(self, request, client_address):
-        #
-        # this function overrides base class's function implementing
-        # execution of interval functions in threads
-        # In the future this functionality will be provided by DispatchingWorker
-        # so we will no longer need to override it
-        #
-        ticket = udp_server.UDPServer.process_request(self, request,
-                                                      client_address)
-        Trace.trace(6, "file_clerk.process_request %s; %s"%(request, ticket,))
-        if not ticket:  return
-        try:
-            function_name = ticket["work"]
-        except (KeyError, AttributeError, TypeError), detail:
-            ticket = {'status' : (e_errors.KEYERROR, 
-                                  "cannot find any named function")}
-            msg = "%s process_request %s from %s" % \
-                (detail, ticket, client_address)
-            Trace.trace(6, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-        try:
-            Trace.trace(5,"process_request: function %s"%(function_name,))
-            function = getattr(self,function_name)
-        except (KeyError, AttributeError, TypeError), detail:
-            ticket = {'status' : (e_errors.KEYERROR, 
-                                  "cannot find requested function `%s'"
-                                  % (function_name,))}
-            msg = "%s process_request %s %s from %s" % \
-                (detail, ticket, function_name, client_address) 
-            Trace.trace(6, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-        t = time.time()
-        if function_name == "tape_list3":
-            external_label = self.extract_external_label_from_ticket(
-                ticket, check_exists = False)
+    def invoke_function(self, function, args=()):
+        if  function.__name__  == "tape_list3":
+            external_label = self.extract_external_label_from_ticket(args[0],
+                                                                     check_exists = False)
             c = threading.activeCount()
             Trace.trace(5, "threads %s"%(c,))
             if c < self.max_threads:
                 Trace.trace(5, "threads %s"%(c,))
                 dispatching_worker.run_in_thread(thread_name=None,
                                                  function=function,
-                                                 args=(ticket,),
-                                                 after_function=None)
+                                                 args=args,
+                                                 after_function=self._done_cleanup)
             else:
-                function(ticket)
+                apply(function,args)
+                self._done_cleanup()
         else:
-            function(ticket)
-        Trace.trace(5,"file_clerk.process_request: function %s time %s"%(function_name,time.time()-t))
- 
+            apply(function,args)
+            self._done_cleanup()
     
 
     ####################################################################
