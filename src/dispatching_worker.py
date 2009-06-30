@@ -32,6 +32,11 @@ import callback
 MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
 
+def thread_wrapper(function, args=(), after_function=None):
+    function(args)
+    if after_function:
+        after_function()
+
 def run_in_thread(thread_name, function, args=(), after_function=None):
     # see what threads are running
     if thread_name:
@@ -40,10 +45,11 @@ def run_in_thread(thread_name, function, args=(), after_function=None):
             if ((thread.getName() == thread_name) and thread.isAlive()):
                 Trace.trace(5, "thread %s is already running" % (thread_name))
                 return
+    args = (function,)+args
     if after_function:
         args = args + (after_function,)
     Trace.trace(5, "create thread: target %s name %s args %s" % (function, thread_name, args))
-    thread = threading.Thread(group=None, target=function,
+    thread = threading.Thread(group=None, target=thread_wrapper,
                               name=thread_name, args=args, kwargs={})
     Trace.trace(5, "starting thread %s"%(dir(thread,)))
     try:
