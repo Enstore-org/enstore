@@ -28,7 +28,7 @@ import ejournal
 import os
 import Trace
 import e_errors
-from DBUtils.PooledPg import PooledPg
+import DBUtils.PooledPg
 
 default_database = 'enstoredb'
 
@@ -135,11 +135,11 @@ class DbTable:
 			except:	# wait for 30 seconds and retry
 				time.sleep(30)
 				self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
-		self.pool =  PooledPg(maxconnections=max_connections,
-				      blocking=True,
-				      host=self.host,
-				      port=self.port,
-				      dbname=self.database)
+		self.pool =  DBUtils.PooledPg(maxconnections=max_connections,
+					      blocking=True,
+					      host=self.host,
+					      port=self.port,
+					      dbname=self.database)
 		
 
 	# translate database output to external format
