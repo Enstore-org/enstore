@@ -11,7 +11,7 @@ docs:
 	cd doc ; $(MAKE) $(MFLAGS) all $(ENDBG)
 
 all:
-	for d in modules src volume_import PyGreSQL; do \
+	for d in modules src volume_import PyGreSQL psycopg2; do \
 		(cd $$d; $(MAKE) $(MFLAGS) all $(ENDBG);) \
 	done
 
