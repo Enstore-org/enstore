@@ -135,11 +135,11 @@ class DbTable:
 			except:	# wait for 30 seconds and retry
 				time.sleep(30)
 				self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
-		self.pool =  DBUtils.PooledPg(maxconnections=max_connections,
-					      blocking=True,
-					      host=self.host,
-					      port=self.port,
-					      dbname=self.database)
+		self.pool =  DBUtils.PooledPg.PooledPg(maxconnections=max_connections,
+						       blocking=True,
+						       host=self.host,
+						       port=self.port,
+						       dbname=self.database)
 		
 
 	# translate database output to external format
