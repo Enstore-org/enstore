@@ -10,7 +10,6 @@ all:
 	@echo "building psycopg2"
 	CFLAGS="-m32" python setup.py build --build-lib=../modules
 	python setup.py clean
-	cd ../modules/psycopg2/
-	python -m compileall .
+	cd ../modules/psycopg2 && python -m compileall .
 clean:
 	@echo "Cleaning psycopg2"
