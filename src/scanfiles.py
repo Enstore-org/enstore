@@ -1523,6 +1523,15 @@ def check_bit_file(bfid, bfid_info = None):
                         #Both source and destination failed to be found
                         # in PNFS.
                         err.append("does not exist")
+                    elif msg2.args[0] in [errno.EEXIST]:
+                        original_bfid = infc.find_original(src_bfids[0]).get('original', None)
+                        if original_bfid:
+                            #We migrated a duplicte/multiple_copy.  While
+                            # not a good thing it should not be considered
+                            # an error.
+                            pass
+                        else:
+                            err.append("migration(%s)" % (msg.args[1],))
                     else:
                         err.append("migration(%s)" % (msg.args[1],))
             else:
@@ -2039,9 +2048,9 @@ def check_file(f, file_info):
 
     # path
     try:
-        layer4_name = get_enstore_pnfs_path(layer4['original_name'])
+        layer4_name = get_enstore_pnfs_path(layer4.get('original_name', "NO-LAYER4_NAME"))
         current_name = get_enstore_pnfs_path(f)
-        filedb_name = get_enstore_pnfs_path(filedb['pnfs_name0'])
+        filedb_name = get_enstore_pnfs_path(filedb.get('pnfs_name0', "NO-FILEDB-NAME"))
         if layer4['original_name'] != filedb['pnfs_name0']: #layer4 vs filedb
             if is_multiple_copy and layer4_name == filedb_name:
                 #If the corrected paths match, then there really isn't
@@ -2067,9 +2076,11 @@ def check_file(f, file_info):
 
     # pnfsid
     try:
-        if pnfs_id != layer4['pnfsid'] or pnfs_id != filedb['pnfsid']:
-            err.append('pnfsid(%s, %s, %s)' % (layer4['pnfsid'], pnfs_id,
-                                               filedb['pnfsid']))
+        use_layer4_pnfsid = layer4.get('pnfsid', "NO-LAYER4-PNFSID")
+        use_filedb_pnfsid = filedb.get('pnfsid', "NO-FILEDB-PNFSID")
+        if pnfs_id != use_layer4_pnfsid  or pnfs_id != use_filedb_pnfsid:
+            err.append('pnfsid(%s, %s, %s)' % (use_layer4_pnfsid, pnfs_id,
+                                               use_filedb_pnfsid))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted pnfsid')
 
