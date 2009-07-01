@@ -2768,12 +2768,24 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 
 	# get all the file db metadata
 	f1 = fcc.bfid_info(bfid1)
-	f2 = fcc.bfid_info(bfid2)
-
         if not e_errors.is_ok(f1):
             return "src_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
+        
+	f2 = fcc.bfid_info(bfid2)
         if not e_errors.is_ok(f2):
             return "dst_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
+
+        #It is possible to migrate a duplicate.  Need to handle finding
+	# the original bfid's file recored, if there is one.
+        original_reply = fcc.find_the_original(bfid1)
+	f0 = {}
+	if e_errors.is_ok(original_reply) \
+	       and original_reply['original'] != None \
+	       and original_reply['original'] != bfid1:
+		f0 = fcc.bfid_info(original_reply['original'])
+		if not e_errors.is_ok(f2):
+			return "original bfid: %s: %s" % (f1['status'][0],
+							  f1['status'][1])
 
         """
 	#For trusted pnfs systems, there isn't a problem,
@@ -2832,14 +2844,25 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 		return res
 	###################################################################
 
+        #If we happen to be migrating a multiple copy (which is only allowed
+        # with --force), then we need to do not modify layers 1 and 4.
+        is_migrating_multiple_copy = False
+
 	# check if the metadata are consistent
 	res = compare_metadata(p1, f1)
 	# deal with already swapped metadata
 	if res == "bfid":
 		res = compare_metadata(p1, f2)
-		if not res:
-			#The metadata has already been swapped.
-			return None
+                if res == "bfid" and f0:
+                	#Compare original, if applicable.
+                        res = compare_metadata(p1, f0)
+                        if not res:
+                                #Note: Don't update layers 1 and 4!
+                        	is_migrating_multiple_copy = True
+                else:
+                	if not res:
+				#The metadata has already been swapped.
+				return None
 	if res:
 		return "[1] metadata %s %s are inconsistent on %s" \
 		       % (bfid1, src, res)
@@ -2874,81 +2897,86 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
 			undo_log(bfid1, bfid2, db)
 		return err_msg
 
-
 	### swapping the Enstore DB metadata
 	m1 = {'bfid': bfid2, 'pnfsid':f1['pnfsid'], 'pnfs_name0':f1['pnfs_name0']}
 	res = fcc.modify(m1)
 	if not e_errors.is_ok(res['status']):
 		return "failed to change pnfsid for %s" % (bfid2,)
 
-        ### swapping the PNFS layer metadata
-	p1.volume = p2.volume
-	p1.location_cookie = p2.location_cookie
-	p1.bfid = p2.bfid
-	p1.drive = p2.drive
-	p1.complete_crc = p2.complete_crc
-	# should we?
-	# the best solution is to have encp ignore sanity check on file_family
-	# p1.file_family = p2.file_family
+        #If we are migrating a multiple_copy/duplicate, we do not update the
+        # layer 1 and layer 4 information.
+        if not is_migrating_multiple_copy:
+                ### swapping the PNFS layer metadata
+                p1.volume = p2.volume
+                p1.location_cookie = p2.location_cookie
+                p1.bfid = p2.bfid
+                p1.drive = p2.drive
+                p1.complete_crc = p2.complete_crc
+                # should we?
+                # the best solution is to have encp ignore sanity check on file_family
+                # p1.file_family = p2.file_family
 
-       	# check if p1 is writable - do this with euid/egid the same as the
-        # the owner of the file
-	try:
-                src_stat = file_utils.get_stat(src)
-        except (KeyboardInterrupt, SystemExit):
-		raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-	except (OSError, IOError), msg: # Anticipated errors.
-		return "%s is not accessable: %s" % (src, msg)
-        except: # Un-anticipated errors.
-		exc, msg = sys.exc_info()[:2]
-		return str(msg)
-
-        #If necessary, allow for the file to be set writable again.  We test
-        # this way, since we need the original mode values from the stat()
-        # above to reset them back if necessary.
-	reset_permissions = False
-	if not file_utils.e_access_cmp(src_stat, os.W_OK):
-		reset_permissions = True
+                # check if p1 is writable - do this with euid/egid the same as the
+                # the owner of the file
                 try:
-                        make_writeable(src)
+                        src_stat = file_utils.get_stat(src)
                 except (KeyboardInterrupt, SystemExit):
-                        raise sys.exc_info()[0], sys.exc_info()[1], \
-                              sys.exc_info()[2]
-                except (OSError, IOError), msg:  #Anticipated errors.
-                        return "%s is not writable as %s: %s" \
-                               % (src, os.geteuid(), str(msg))
-                except:
-                        exc, msg = sys.exc_info()[:2]
-                        return str(msg)
-                    
-               
-        # now perform the writes to the file's layer 1 and layer 4
-        if f1['deleted'] == "no":
-                try:
-                        update_layers(p1)  #UPDATE LAYER 1 AND LAYER 4!
-                except (KeyboardInterrupt, SystemExit):
-                        raise sys.exc_info()[0], sys.exc_info()[1], \
-                              sys.exc_info()[2]
-                except (OSError, IOError), msg:
-                        return str(msg)
-                except:
+                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+                except (OSError, IOError), msg: # Anticipated errors.
+                        return "%s is not accessable: %s" % (src, msg)
+                except: # Un-anticipated errors.
                         exc, msg = sys.exc_info()[:2]
                         return str(msg)
 
-	if reset_permissions:
-                #At this point, either the users is able to modify their
-                # own file, or it was reset to allow all users to "write"
-                # (A.K.A. enable chmod()) to the file.
-		try:
-			os.chmod(src, src_stat[stat.ST_MODE])
-		except (OSError, IOError), msg:
-			error_log("Unable to reset persisions for %s to %s" % \
-				  (src, src_stat[stat.ST_MODE]))
+                #If necessary, allow for the file to be set writable again.  We test
+                # this way, since we need the original mode values from the stat()
+                # above to reset them back if necessary.
+                reset_permissions = False
+                if not file_utils.e_access_cmp(src_stat, os.W_OK):
+                        reset_permissions = True
+                        try:
+                                make_writeable(src)
+                        except (KeyboardInterrupt, SystemExit):
+                                raise sys.exc_info()[0], sys.exc_info()[1], \
+                                      sys.exc_info()[2]
+                        except (OSError, IOError), msg:  #Anticipated errors.
+                                return "%s is not writable as %s: %s" \
+                                       % (src, os.geteuid(), str(msg))
+                        except:
+                                exc, msg = sys.exc_info()[:2]
+                                return str(msg)
+
+
+                # now perform the writes to the file's layer 1 and layer 4
+                if f1['deleted'] == "no":
+                        try:
+                                update_layers(p1)  #UPDATE LAYER 1 AND LAYER 4!
+                        except (KeyboardInterrupt, SystemExit):
+                                raise sys.exc_info()[0], sys.exc_info()[1], \
+                                      sys.exc_info()[2]
+                        except (OSError, IOError), msg:
+                                return str(msg)
+                        except:
+                                exc, msg = sys.exc_info()[:2]
+                                return str(msg)
+
+                if reset_permissions:
+                        #At this point, either the users is able to modify their
+                        # own file, or it was reset to allow all users to "write"
+                        # (A.K.A. enable chmod()) to the file.
+                        try:
+                                os.chmod(src, src_stat[stat.ST_MODE])
+                        except (OSError, IOError), msg:
+                                error_log("Unable to reset persisions for %s to %s" % \
+                                          (src, src_stat[stat.ST_MODE]))
 
 	# check it again
 	p1 = pnfs.File(src)
 	f1 = fcc.bfid_info(bfid2)
 	res = compare_metadata(p1, f1)
+        if res == "bfid" and f0:
+        	# Handle the possibility of migrating a multiple copy.
+        	res = compare_metadata(p1, f0)
 	if res:
 		return "swap_metadata(): %s %s has inconsistent metadata on %s"%(bfid2, src, res)
 
@@ -3417,7 +3445,7 @@ def scan_file(MY_TASK, dst_bfid, src_path, dst_path, deleted, intf, encp):
 	argv = ["encp"] + encp_options + use_priority + use_override_deleted \
 	       + use_check + use_src_path + [dst_path]
 
-	if debug:
+        if 1: #debug:
 		cmd = string.join(argv)
 		log(MY_TASK, "cmd =", cmd)
 
@@ -4110,18 +4138,18 @@ def is_duplication(bfid, db):
 	    "where bfid = '%s' or alt_bfid = '%s';" % (bfid, bfid)
 
 	q2 = "select bfid,alt_bfid from file_copies_map,migration " \
-	     "where (bfid = src_bfid and alt_bfid = dst_bfid) " \
-	     "   or (bfid = dst_bfid and alt_bfid = src_bfid) " \
+	     "where ((bfid = src_bfid and alt_bfid = dst_bfid) " \
+	     "   or (bfid = dst_bfid and alt_bfid = src_bfid)) " \
 	     "  and (bfid = '%s' or alt_bfid = '%s');" % (bfid, bfid)
 
 	#Determine if the file is a duplicated file.
-	if debug:
+        if debug:
 		print q1
 	res1 = db.query(q1).getresult()
 
 	#Determine if the file_copies_map (duplication only) table and the
 	# migration (migration and duplication) table agree.
-	if debug:
+        if debug:
 		print q2
 	res2 = db.query(q2).getresult()
 
@@ -4206,7 +4234,8 @@ def migrate_volume(vol, intf):
         # Do not duplicate multiple copy tapes.  We want to duplicate just
         # the originals.
         file_family = volume_family.extract_file_family(v["volume_family"])
-        if re.compile(".*_copy_[1-9]*$").match(file_family) != None:
+        if re.compile(".*_copy_[1-9]*$").match(file_family) != None \
+               and not intf.force:
                 error_log("%s is a multiple copy volume" % (vol,))
 		return 1
 
@@ -4370,6 +4399,12 @@ def restore(bfids, intf):
 	if type(bfids) != type([]):
 		bfids = [bfids]
 	for bfid in bfids:
+
+                ###########################################################
+                # Verify the metadata.
+                ###########################################################
+
+                #Obtain file information.
 		f = fcc.bfid_info(bfid)
 		if not e_errors.is_ok(f):
 			error_log(MY_TASK, f['status'])
@@ -4381,7 +4416,7 @@ def restore(bfids, intf):
 
 		#Obtain volume information.
 		v = vcc.inquire_vol(f['external_label'])
-		if not e_errors.is_ok(f):
+		if not e_errors.is_ok(v):
 			error_log(MY_TASK, v['status'])
 			sys.exit(1)
 
@@ -4393,7 +4428,7 @@ def restore(bfids, intf):
 				error_log("bfid %s is a destination bfid not"
 					  " a source bfid" % (bfid,))
 				sys.exit(1)
-				
+
 		#If swapped, the current bfid is the new copy, ...
 		if is_swapped(bfid, db):
 			active_bfid = dst_bfid
@@ -4412,9 +4447,23 @@ def restore(bfids, intf):
 				  " a migration/cloning bfid" % (bfid,))
 			sys.exit(1)
 
+                #We need to handle restoring a multiple copy.
+                ob_reply = fcc.find_the_original(bfid)
+                if e_errors.is_ok(ob_reply):
+                        original_bfid = ob_reply.get('original', None)
+                        if original_bfid and original_bfid == bfid:
+                                #If this is its own original, ignore.
+                                original_bfid = None
+                else:
+                        original_bfid = None
+
 		#Find the current location of the file.
 		pairs_to_search = [(f['pnfsid'], active_bfid),
 				   (f['pnfsid'], nonactive_bfid)]
+                if original_bfid:
+                        #If we are restoring a migrated multiple_copy, add this
+                        # to the list of metadata to check.  Put this first.
+                        pairs_to_search.insert(0, (f['pnfsid'], original_bfid))
 		for search_pnfsid, search_bfid in pairs_to_search:
 			try:
 				src = find_pnfs_file.find_pnfsid_path(
@@ -4459,25 +4508,80 @@ def restore(bfids, intf):
 		if type(src) == type([]):
 			src = src[0]
 
-		p = pnfs.File(src)
-		p.volume = f['external_label']
-		p.location_cookie = f['location_cookie']
-		p.bfid = bfid
-		p.drive = f['drive']
-		p.complete_crc = f['complete_crc']
-		p.file_family = volume_family.extract_file_family(v['volume_family'])
-		# undelete the file
-		rtn_code = mark_undeleted(MY_TASK, bfid, fcc, db)
-		if rtn_code:
-			error_log(MY_TASK,
-				  "failed to undelete original file %s %s" \
-				  % (bfid, src,))
-			continue
+                if original_bfid:
+                        #If original_bfid is set, p needs to be overridden
+                        # with the primary copy information.
 
-		#Knowing the path in pnfs, we can determine the special
+                        #Obtain original file information.
+                        f_original = fcc.bfid_info(original_bfid)
+                        if not e_errors.is_ok(f_original):
+                                error_log(MY_TASK, f_original['status'])
+                                sys.exit(1)
+
+                        #Obtain original volume information.
+                        v_original = vcc.inquire_vol(f_original['external_label'])
+                        if not e_errors.is_ok(v_original):
+                                error_log(MY_TASK, v_original['status'])
+                                sys.exit(1)
+                                
+                        p = pnfs.File(src)
+                        p.volume = f_original['external_label']
+                        p.location_cookie = f_original['location_cookie']
+                        p.bfid = original_bfid
+                        p.drive = f_original['drive']
+                        p.complete_crc = f_original['complete_crc']
+                        p.file_family = volume_family.extract_file_family(v_original['volume_family'])
+                else:
+                        #We are not restoring a multiple copy file.
+                        
+                        p = pnfs.File(src)
+                        p.volume = f['external_label']
+                        p.location_cookie = f['location_cookie']
+                        p.bfid = bfid
+                        p.drive = f['drive']
+                        p.complete_crc = f['complete_crc']
+                        p.file_family = volume_family.extract_file_family(v['volume_family'])
+
+                if debug:
+                        p.show()
+                    
+                #Knowing the path in pnfs, we can determine the special
 		# temporary migration path in PNFS.
 		mig_path = migration_path(src)
 
+                ###########################################################
+                # Make the metadata changes.
+                ###########################################################
+                
+                if original_bfid:
+                        #Have the restored multiple copy match the deleted
+                        # status of the original.
+                        if f_original['deleted'] == "no":
+                                rtn_code = mark_undeleted(MY_TASK, bfid,
+                                                          fcc, db)
+                                if rtn_code:
+                                        error_log(MY_TASK,
+                                                  "failed to undelete source file %s %s" \
+                                                  % (bfid, src,))
+                                        continue
+                        elif f_original['deleted'] == "yes":
+                                 rtn_code = mark_deleted(MY_TASK, bfid,
+                                                         fcc, db)
+                                 if rtn_code:
+                                        error_log(MY_TASK,
+                                                  "failed to delete source file %s %s" \
+                                                  % (bfid, src,))
+                                        continue
+                else:
+                        # undelete the source file
+                        rtn_code = mark_undeleted(MY_TASK, bfid, fcc, db)
+                        if rtn_code:
+                                error_log(MY_TASK,
+                                          "failed to undelete source file %s %s" \
+                                          % (bfid, src,))
+                                continue
+
+                #Remove the temporary path in PNFS if it still exists.
 		if os.path.exists(mig_path):
 
                         try:
@@ -4509,10 +4613,16 @@ def restore(bfids, intf):
                                              os.getegid(), str(msg)))
                                 continue
                             
-				
-		#For some failures, the swap never truly happens.  If this
+
+                ### Update layers 1 and 4.
+		
+                #Don't update if the original copy of the multiple
+                # copy being restored is deleted (or unknown).
+                if (original_bfid and f_original['deleted'] != "no"):
+                        pass
+                #For some failures, the swap never truly happens.  If this
 		# is the case skip the pnfs layer update.
-		if not is_migration_path(src):
+		elif not is_migration_path(src):
 
 			# set layer 1 and layer 4 to point to the original file
 			try:
@@ -4532,9 +4642,13 @@ def restore(bfids, intf):
 				  % (dst_bfid, mig_path,))
 			continue
 
-		#Remove the swapped timestamp from the migration table.
+		#Remove the swapped timestamp from the migration table.  On
+                # error an exception should be raised preventing us from
+                # continuing further.
 		log_unswapped(bfid, dst_bfid, db)
-		#Remove the copied timestamp from the migration table.
+		#Remove the copied timestamp from the migration table.  On
+                # error an exception should be raised preventing us from
+                # continuing further.
 		log_uncopied(bfid, dst_bfid, db)
 
 # restore_volume(vol) -- restore all migrated files on original volume
