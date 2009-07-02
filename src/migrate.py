@@ -2679,7 +2679,7 @@ def is_migration_file_family(ff):
 # filepath - source files full path in pnfs
 # db - database object to directly query the database
 # intf - interface class of migration or duplication
-def use_libraries(bfid, filepath, db, intf):
+def use_libraries(bfid, filepath, file_record, db, intf):
 
         #Get the command line specified libraries (if any).
         user_libraries = getattr(intf, "library", "")
@@ -2687,9 +2687,36 @@ def use_libraries(bfid, filepath, db, intf):
             user_libraries = ""
         user_libraries = user_libraries.split(",")
 
-        #Get the pnfs specified libraries.
-        pnfs_libraries = pnfs.Tag().readtag("library", pnfs.get_directory_name(filepath))[0].split(",")
+        if file_record['deleted'] == "yes": #unknown should never get this far
+                use_dirpath = pnfs.get_directory_name(file_record['pnfs_name0'])
+        else:
+                use_dirpath = pnfs.get_directory_name(filepath)
 
+        #Get the pnfs specified libraries.
+        dirs_to_try = []
+        try:
+                dirs_to_try.append(pnfs.get_enstore_fs_path(use_dirpath))
+        except OSError:
+                pass
+        try:
+                dirs_to_try.append(pnfs.get_enstore_pnfs_path(use_dirpath))
+        except OSError:
+                pass
+        for dir_to_check in dirs_to_try:
+                try:
+                        pnfs_libraries = pnfs.Tag().readtag("library", dir_to_check)[0].split(",")
+                        break #Found it!
+                except OSError:
+                        pass
+        else:
+                if getattr(intf, "library", ""):
+                        #Need to trust the user here.
+                        pnfs_libraries = intf.library
+                else:
+                        error_log("Unable to determine correct library for deleted file.")
+                        log("HINT: use --library on the command line")
+                        return None
+        
         #Make sure the user specified enough libraries for this file.
         if len(user_libraries) > 1:
                 if len(user_libraries) != len(pnfs_libraries):
@@ -2697,7 +2724,7 @@ def use_libraries(bfid, filepath, db, intf):
                                   "only %s libraries specified for %s %s" %
                                   (len(pnfs_libraries), len(pnfs_libraries),
                                    bfid, filepath))
-                        return 1
+                        return None
 
         #Get the number of copies remaining to be written to tape for this
         # special duplication mode of operation.
@@ -3103,7 +3130,7 @@ def write_file(MY_TASK,
 	argv = ["encp"] + use_verbose + encp_options + use_priority + \
                dst_options + use_threads + [tmp_path, mig_path]
 
-        if 1: #debug:
+        if debug:
 		cmd = string.join(argv)
 		log(MY_TASK, 'cmd =', cmd)
 
@@ -3164,6 +3191,7 @@ def write_new_file(job, encp, fcc, intf, db):
 	is_it_copied = is_copied(src_bfid, db)
 	dst_bfid = is_it_copied  #side effect: this is also the dst bfid
 	has_tmp_file = False
+        file_record = {} #empty record
 	if is_it_copied:
 		ok_log(MY_TASK, "%s has already been copied to %s" \
 		       % (src_bfid, dst_bfid))
@@ -3188,7 +3216,7 @@ def write_new_file(job, encp, fcc, intf, db):
 			mig_path = migration_path(mig_path)
 	else:
 		mig_path = migration_path(src_path, deleted)
-				#Try and catch situations were an error left a zero
+                #Try and catch situations were an error left a zero
 		# length file in the migration spool directory.  We
 		# don't want to 'migrate' this wrong file to tape.
 		try:
@@ -3235,7 +3263,11 @@ def write_new_file(job, encp, fcc, intf, db):
                 # of libraries, though in most cases there will be just one.
                 # There are some 'odd' cases that use_libraries() handles
                 # for us.
-                libraries = use_libraries(src_bfid, src_path, db, intf)
+                libraries = use_libraries(src_bfid, src_path, file_record,
+                                          db, intf)
+                if libraries == None:
+                        #use_libraries() logs its own errors.
+                        return
                 #The same goes for file families.  Migration and duplication
                 # vary greatly with respect to the file family.  There are
                 # some 'odd' cases that migration_file_family() handles for us.
@@ -3445,7 +3477,7 @@ def scan_file(MY_TASK, dst_bfid, src_path, dst_path, deleted, intf, encp):
 	argv = ["encp"] + encp_options + use_priority + use_override_deleted \
 	       + use_check + use_src_path + [dst_path]
 
-        if 1: #debug:
+        if debug:
 		cmd = string.join(argv)
 		log(MY_TASK, "cmd =", cmd)
 
