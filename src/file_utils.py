@@ -113,10 +113,13 @@ def e_access_cmp(file_stats, mode):
 #############################################################################
 
 #arg can be: filename, file descritor, file object, a stat object
-def get_stat(arg):
+def get_stat(arg, use_lstat = False):
     try:
         if type(arg) == types.StringType:
-            f_stat = os.stat(arg)
+            if use_lstat:
+                f_stat = os.lstat(arg)
+            else:
+                f_stat = os.stat(arg)
         elif type(arg) == types.IntType:
             f_stat = os.fstat(arg)
         elif type(arg) == types.FileType:
@@ -141,7 +144,7 @@ def get_stat(arg):
             try:
                 #Calling stat again won't get stuck in a loop since the
                 # effective IDS have been changed.
-                f_stat = get_stat(arg)
+                f_stat = get_stat(arg, use_lstat)
             except OSError:  #Anticipated errors.
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -241,6 +244,41 @@ def open_fd(fname, flags, mode = 0777):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             
     return file_fd
+
+#Open the file fname.  Mode has same meaning as builtin open().
+def listdir(dname):
+    try:
+        directory_listing = os.listdir(dname)
+    except (OSError, IOError), msg:
+        #If we were denied access and our effective IDS were not root's,
+        # set the effective IDS to root so we can try again.
+        if msg.errno in [errno.EACCES, errno.EPERM] and \
+               os.getuid() == 0 and os.geteuid() != 0:
+            acquire_lock_euid_egid()
+            current_euid = os.geteuid()
+            current_egid = os.getegid()
+        
+            os.seteuid(0)
+            os.setegid(0)
+
+            try:
+                directory_listing = os.listdir(dname)
+            except (OSError, IOError), msg:  #Anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:  #Un-anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            os.setegid(current_egid)
+            os.seteuid(current_euid)
+
+            release_lock_euid_egid()
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            
+    return directory_listing
+
 
 #Change the permissions of file fname.  Perms have same meaning as os.chmod().
 def chmod(fname, perms):
