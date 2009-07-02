@@ -40,9 +40,10 @@ import file_utils
 #os.access = e_access   #Hack for effective ids instead of real ids.
 
 class ThreadWithResult(threading.Thread):
-    #def __init__(self, *pargs, **kwargs):
-    #    threading.Thread.__init__(self, *pargs, **kwargs)
-    #    self.result = None
+    def __init__(self, *pargs, **kwargs):
+        threading.Thread.__init__(self, *pargs, **kwargs)
+        self.result = None
+        self.is_joinable = False
 
     def get_args(self):
         return copy.deepcopy(self._Thread__args)
@@ -54,7 +55,6 @@ class ThreadWithResult(threading.Thread):
             return None
 
     def run(self):
-
         # do my stuff here that generates results
         try:
             self.result = apply(self._Thread__target, self._Thread__args)
@@ -64,6 +64,9 @@ class ThreadWithResult(threading.Thread):
             traceback.print_tb(tb)
             print str(exc), str(msg)
 
+        #Tell the main thread that this thread is done.
+        self.is_joinable = True
+        
         # and now the thread exits
 
     def reset(self, *pargs):
@@ -186,105 +189,6 @@ def errors_and_warnings(fname, error, warning, information):
     print_lock.release()
 
 ###############################################################################
-
-#The os.access() and the access(2) C library routine use the real id when
-# testing for access.  This function does the same thing but for the
-# effective ID.
-def e_access(path, mode):
-    
-    #Test for existance.
-    try:
-        file_stats = os.stat(path)
-        #stat_mode = file_stats[stat.ST_MODE]
-    except OSError:
-        return 0
-
-    return check_permissions(file_stats, mode)
-
-def check_permissions(file_stats, mode):
-
-    stat_mode = file_stats[stat.ST_MODE]
-
-    #Make sure a valid mode was passed in.
-    if mode & (os.F_OK | os.R_OK | os.W_OK | os.X_OK) != mode:
-        return 0
-
-    # Need to check for each type of access permission.
-
-    if mode == os.F_OK:
-        # In order to get this far, the file must exist.
-        return 1
-
-    if mode & os.R_OK:  #Check for read permissions.
-        #If the user is user root.
-        if os.geteuid() == 0:
-            #return 1
-            pass
-        #Anyone can read this file.
-        elif (stat_mode & stat.S_IROTH):
-            #return 1
-            pass
-        #This is the files owner.
-        elif (stat_mode & stat.S_IRUSR) and \
-           file_stats[stat.ST_UID] == os.geteuid():
-            #return 1
-            pass
-        #The user has group access.
-        elif (stat_mode & stat.S_IRGRP) and \
-           (file_stats[stat.ST_GID] == os.geteuid() or
-            file_stats[stat.ST_GID] in os.getgroups()):
-            #return 1
-            pass
-        else:
-            return 0
-
-    if mode & os.W_OK:  #Check for write permissions.
-        #If the user is user root.
-        if os.geteuid() == 0:
-            #return 1
-            pass
-        #Anyone can write this file.
-        elif (stat_mode & stat.S_IWOTH):
-            #return 1
-            pass
-        #This is the files owner.
-        elif (stat_mode & stat.S_IWUSR) and \
-           file_stats[stat.ST_UID] == os.geteuid():
-            #return 1
-            pass
-        #The user has group access.
-        elif (stat_mode & stat.S_IWGRP) and \
-           (file_stats[stat.ST_GID] == os.geteuid() or
-            file_stats[stat.ST_GID] in os.getgroups()):
-            #return 1
-            pass
-        else:
-            return 0
-    
-    if mode & os.X_OK:  #Check for execute permissions.
-        #If the user is user root.
-        if os.geteuid() == 0:
-            #return 1
-            pass
-        #Anyone can execute this file.
-        elif (stat_mode & stat.S_IXOTH):
-            #return 1
-            pass
-        #This is the files owner.
-        elif (stat_mode & stat.S_IXUSR) and \
-           file_stats[stat.ST_UID] == os.geteuid():
-            #return 1
-            pass
-        #The user has group access.
-        elif (stat_mode & stat.S_IXGRP) and \
-           (file_stats[stat.ST_GID] == os.geteuid() or
-            file_stats[stat.ST_GID] in os.getgroups()):
-            #return 1
-            pass
-        else:
-            return 0
-
-    return 1
 
 def get_enstore_pnfs_path(filename):
 
@@ -410,41 +314,11 @@ def get_database(f):
 
     return database
 
+
 def get_layer(layer_filename):
-    RETRY_COUNT = 2
-    
-    i = 0
-    while i < RETRY_COUNT:
-        # get info from layer
-        try:
-            fl = open(layer_filename)
-            layer_info = fl.readlines()
-            fl.close()
-            break
-        except (OSError, IOError), detail:
-            #Increment the retry count before it is needed to determine if
-            # we should sleep or not sleep.
-            i = i + 1
-            
-            if detail.args[0] in [errno.EACCES, errno.EPERM] and os.getuid() == 0:
-                #If we get here and the real id is user root, we need to reset
-                # the effective user id back to that of root ...
-                os.seteuid(0)
-                os.setegid(0)
-            elif i < RETRY_COUNT:
-                #If the problem wasn't permissions, lets give the system a
-                # moment to catch up.
-                #Skip the sleep if we are not going to try again.
-                ##time.sleep(0.1)
-
-                ##It is known that stat() can return and incorrect ENOENT
-                ## if pnfs is really loaded.  Is this true for open() or
-                ## readline()?  Skipping the time.sleep() makes the scan
-                ## much faster.
-                raise detail
-    else:
-        raise detail
-
+    fl = file_utils.open(layer_filename)
+    layer_info = fl.readlines()
+    fl.close()
     return layer_info
 
 def get_layer_1(f):
@@ -796,7 +670,7 @@ def get_stat(f):
     #Do one stat() for each file instead of one for each os.path.isxxx() call.
     for i in range(2):
         try:
-            f_stats = os.lstat(f)
+            f_stats = file_utils.get_stat(f, use_lstat = True)
 
             ##signal.alarm(0)
             ##alarm_lock.release()
@@ -819,7 +693,7 @@ def get_stat(f):
         # and this is how to find out.
         try:
             directory, filename = os.path.split(f)
-            dir_list = os.listdir(directory)
+            dir_list = file_utils.listdir(directory)
             if filename in dir_list:
                 #We have this special error situation.
                 err.append("invalid directory entry")
@@ -831,16 +705,6 @@ def get_stat(f):
         return None, (err, warn, info)
 
     if msg.errno == errno.EACCES or msg.errno == errno.EPERM:
-        if os.getuid() == 0: #If we started as user root...
-            try:
-                os.seteuid(0)  #...reset the effective uid and gid.
-                os.setegid(0)
-
-                f_stats = os.lstat(f)  #Redo the stat.
-                return f_stats, (err, warn, info)
-            except OSError, msg:
-                pass
-
         #If we get here we still could not stat the file.
         err.append("permission error")
         return None, (err, warn, info)
@@ -1084,24 +948,10 @@ def check(f, f_stats = None):
         return
 
     #If we are a supper user, reset the effective uid and gid.
-    if os.getuid() == 0:
-        if os.geteuid() != f_stats[stat.ST_UID]:
-            if os.geteuid() != 0:
-                #If the currect effective ids are not currently root,
-                # we need to set them back before (re)setting them.
-                try:
-                    os.setegid(0)
-                    os.seteuid(0)
-                except OSError:
-                    pass
+    file_utils.acquire_lock_euid_egid()
+    file_utils.set_euid_egid(f_stats[stat.ST_UID], f_stats[stat.ST_GID])
+    file_utils.release_lock_euid_egid()
 
-            #Set the uid and gid to match that of the file's owner.
-            try:
-                os.setegid(f_stats[stat.ST_GID])
-                os.seteuid(f_stats[stat.ST_UID])
-            except OSError:
-                pass
-    
     file_info = {"f_stats"       : f_stats}
 
     #There is no usual reason for the link count to be greater than 1.
@@ -1169,42 +1019,25 @@ def check_dir(d, dir_info):
     info = []
 
     # skip volmap and .bad and .removed and migration directory
-    fname = os.path.basename(d)
-    if fname.lower().find("migration") != -1: # or \
-        #fname == 'volmap' or \
-        #fname[:3] == '.B_' or \
-        #   fname[:3] == '.A_' or \
-        #fname[:8] == '.removed':
-        return err, warn, info
+    #fname = os.path.basename(d)
+    #if fname.lower().find("migration") != -1:
+    #    return err, warn, info
 
-    #If necessary set the effective uid and gid.
-    if os.getuid() == 0 and os.geteuid() != d_stats[stat.ST_UID]:
-        os.seteuid(0)
-        os.setegid(0)
-        
-        os.setegid(dir_info[stat.ST_GID])
-        os.seteuid(dir_info[stat.ST_UID])
-                   
+    #If we are a supper user, reset the effective uid and gid.
+    file_utils.acquire_lock_euid_egid()
+    file_utils.set_euid_egid(d_stats[stat.ST_UID], d_stats[stat.ST_GID])
+    file_utils.release_lock_euid_egid()
 
     #Get the list of files.
     try:
-        file_list = os.listdir(d)
-    except (OSError, IOError):
+        file_list = file_utils.listdir(d)
+    except (OSError, IOError), msg:
+        file_list = None #Error getting directory listing.
 
-        #Set teh effective IDs back to root.
-        if os.getuid() == 0 and os.geteuid() != 0:
-            os.seteuid(0)
-            os.setegid(0)
-        
-            #Try again.
-            try:
-                file_list = os.listdir(d)
-            except (OSError, IOError):
-                err.append("can not access directory")
-                file_list = None
+        if msg.args[0] == errno.ENOENT:
+            err.append("does not exist")
         else:
             err.append("can not access directory")
-            file_list = None
 
     #file_list will be None on an error.  An empty list means the directory
     # is empty.
@@ -1601,23 +1434,9 @@ def check_bit_file(bfid, bfid_info = None):
         return
 
     #If we are a supper user, reset the effective uid and gid.
-    if os.getuid() == 0:
-        if os.geteuid() != f_stats[stat.ST_UID]:
-            if os.geteuid() != 0:
-                #If the currect effective ids are not currently root,
-                # we need to set them back before (re)setting them.
-                try:
-                    os.setegid(0)
-                    os.seteuid(0)
-                except OSError:
-                    pass
-
-            #Set the uid and gid to match that of the file's owner.
-            try:
-                os.setegid(f_stats[stat.ST_GID])
-                os.seteuid(f_stats[stat.ST_UID])
-            except OSError:
-                pass
+    file_utils.acquire_lock_euid_egid()
+    file_utils.set_euid_egid(f_stats[stat.ST_UID], f_stats[stat.ST_GID])
+    file_utils.release_lock_euid_egid()
 
     file_info = {'f_stats'             : f_stats,
                  'layer1'              : bfid, #layer1_bfid,
@@ -2095,7 +1914,7 @@ def check_file(f, file_info):
                 alt_path = os.path.join(os.path.dirname(f),
                                         ".(access)(%s)" % parent_id, fname)
                 try:
-                    alt_stats = os.stat(alt_path)
+                    alt_stats = get_stat(alt_path)
 
                     if f_stats != alt_stats:
                         err.append("parent_id(%s, %s)" % (parent_id,
@@ -2168,15 +1987,29 @@ def start_check(line):
 
     check(line)
 
-    for a_thread in ts_check:
-        a_thread.join()
-        result =  a_thread.get_result()
-        try:
-            err_j, warn_j, info_j = result #Why do we do this?
-        except TypeError:
-            pass #???
-        del ts_check[0]
+    while len(ts_check) > 0:
+        for i in range(len(ts_check)):
+            #We need to check for is_joinable().  If we call join() while the
+            # thread is still running the call to join() will hang until
+            # the thread exists.  This normally wouldn't be a problem,
+            # but in python this allows the process to ignore signals,
+            # like the one generated from a Ctrl-C.
+            if ts_check[i].is_joinable:
+                ts_check[i].join()
+                result = ts_check[i].get_result()
+                try:
+                    err_j, warn_j, info_j = result #Why do we do this?
+                except TypeError:
+                    pass #???
+                del ts_check[i]
 
+                #If we joined a thread, go back to the top of the while.
+                # If we don't we will have a discrepancy between indexes
+                # from before the "del" and after the "del" of ts_check[i].
+                break
+        else:
+            time.sleep(5)
+        
 ###############################################################################
     
 class ScanfilesInterface(option.Interface):
