@@ -33,7 +33,7 @@ MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
 
 def thread_wrapper(function, args=(), after_function=None):
-    function(args)
+    apply(function,args)
     if after_function:
         after_function()
 
