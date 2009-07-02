@@ -503,7 +503,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # catch any failure
@@ -565,7 +565,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         bfids = self.get_all_bfids(external_label)
@@ -597,7 +597,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # get bfids
@@ -647,7 +647,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     def tape_list(self, ticket):
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         ticket["status"] = (e_errors.OK, None)
@@ -677,7 +677,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         ticket["status"] = (e_errors.OK, None)
@@ -712,7 +712,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # log the activity
@@ -754,7 +754,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         ticket["status"] = (e_errors.OK, None)
@@ -813,7 +813,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         ticket["status"] = (e_errors.OK, None)
@@ -841,7 +841,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # start communication
@@ -1406,7 +1406,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         ticket["status"] = (e_errors.OK, None)
@@ -1445,7 +1445,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
-        if not external_label:
+        if not external_label or external_label == (None, None):
             return #extract_external_lable_from_ticket handles its own errors.
 
         ticket["status"] = (e_errors.OK, None)
