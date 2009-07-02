@@ -33,7 +33,10 @@ MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
 
 def thread_wrapper(function, args=(), after_function=None):
-    apply(function,args)
+    if type(args) != types.TupleType:
+        apply(function,(args,))
+    else:
+        apply(function,args)
     if after_function:
         after_function()
 
