@@ -2720,15 +2720,6 @@ def use_libraries(bfid, filepath, file_record, db, intf):
                         error_log("Unable to determine correct library for deleted file.")
                         log("HINT: use --library on the command line")
                         return None
-        
-        #Make sure the user specified enough libraries for this file.
-        if len(user_libraries) > 1:
-                if len(user_libraries) != len(pnfs_libraries):
-                        error_log("Destination directory writes %s copies; "
-                                  "only %s libraries specified for %s %s" %
-                                  (len(pnfs_libraries), len(pnfs_libraries),
-                                   bfid, filepath))
-                        return None
 
         #Get the number of copies remaining to be written to tape for this
         # special duplication mode of operation.
@@ -2737,10 +2728,21 @@ def use_libraries(bfid, filepath, file_record, db, intf):
                     "where bfid = '%s';" % (bfid,)
                 res = db.query(q).getresult()
                 count = res[0][0]
+        #Make sure the user specified enough libraries for this file.
+        elif intf.library:
+                if len(user_libraries) > 1 and \
+                    len(user_libraries) < len(pnfs_libraries):
+                        error_log("Destination directory writes %s copies; "
+                                  "only %s libraries specified for %s %s" %
+                                  (len(pnfs_libraries), len(pnfs_libraries),
+                                   bfid, filepath))
+                        return None
+                else:
+                        count = len(user_libraries)
         else:
                 count = len(pnfs_libraries)
 
-        #The last count nomber of libraries are choosen.  This might be an
+        #The last count number of libraries are chosen.  This might be an
         # issue if --library and --make-failed-copies are used together.
 	if intf.library:
  		use_library = string.join(intf.library.split(",")[-(count):],
