@@ -8948,6 +8948,7 @@ def prepare_write_to_hsm(tinfo, e):
     return return_ticket, listen_socket, udp_serv, request_list
 
 def write_to_hsm(e, tinfo):
+    global err_msg
 
     Trace.trace(16,"write_to_hsm input_files=%s  output=%s  verbose=%s  "
                 "chk_crc=%s t0=%s" %
@@ -9023,7 +9024,19 @@ def write_to_hsm(e, tinfo):
 
             #Regardless if index is None or not, make sure that
             # exit_status gets set to failure.
-            exit_status = 1
+            if e.migration_or_duplication:
+                #Handle migration cases a little differently.
+
+                # Make sure the migration knows not to try this
+                # file again.
+                exit_status = 2
+            else:
+                exit_status = 1
+            # Make sure the correct error is reported.  If
+            # we don't set this here, then we end up with the
+            # non-useful ("OK", "Error after transfering... )
+            # error messages from calculate_final_statistics.
+            err_msg = str(result_dict['status'])
 
             if index == None:
                 message = "Unknown transfer failed."
@@ -10816,6 +10829,7 @@ def prepare_read_from_hsm(tinfo, e):
     return return_ticket, listen_socket, udp_serv, requests_per_vol
 
 def read_from_hsm(e, tinfo):
+    global err_msg
 
     Trace.trace(16,"read_from_hsm input_files=%s  output=%s  verbose=%s  "
                 "chk_crc=%s t0=%s" % (e.input, e.output, e.verbose,
@@ -10903,7 +10917,19 @@ def read_from_hsm(e, tinfo):
                    
                     #Regardless if index is None or not, make sure that
                     # exit_status gets set to failure.
-                    exit_status = 1
+                    if e.migration_or_duplication:
+                        #Handle migration cases a little differently.
+
+                        # Make sure the migration knows not to try this
+                        # file again.
+                        exit_status = 2
+                    else:
+                        exit_status = 1
+                    # Make sure the correct error is reported.  If
+                    # we don't set this here, then we end up with the
+                    # non-useful ("OK", "Error after transfering... )
+                    # error messages from calculate_final_statistics.
+                    err_msg = str(result_dict['status'])
 
                     if index == None:
                         message = "Unknown transfer failed."
@@ -12037,14 +12063,28 @@ def final_say(intf, done_ticket):
             Trace.log(e_errors.INFO, "Traceback line for check_for_traceback.")
             Trace.log(e_errors.INFO,
                       " done_ticket['exit_status'] = %s  exit_status = %s  status = %s" % (done_ticket.get('exit_status', "NotSet"), exit_status, status))
-            exit_status = 1
+            if intf.migration_or_duplication and \
+                   e_errors.is_non_retriable(status):
+                #For fatal errors, tell migration not to retry!
+                exit_status = 2
+            else:
+                exit_status = 1
 
         #Setting this global, will enable the migration to report the
         # errors directly.  This might keep the admins from having to
-        # constantly looking through the log file.
-        err_msg_lock.acquire()
-        err_msg[thread.get_ident()] = str(status)
-        err_msg_lock.release()
+        # keep constantly looking through the log file.
+        if e_errors.is_ok(status) and err_msg[thread.get_ident()]:
+            #Don't set this migration specific string if it is already set
+            # and when the "error" status has is "OK".
+            #
+            # The status[0] value can/will be "OK" if it is set by
+            # calculate_final_statistics().  Even if there already was a
+            # failed transfer.
+            pass
+        else:
+            err_msg_lock.acquire()
+            err_msg[thread.get_ident()] = str(status)
+            err_msg_lock.release()
         
         #Determine the filename(s).
         ifilename = done_ticket.get("infilepath", "")

@@ -3138,7 +3138,14 @@ def write_file(MY_TASK,
 
         # Make the first attempt.
         res = encp.encp(argv)
-        if res:
+        if res == 2:
+		# If encp returns two (2), then we should not try again.  Encp
+                # believes that a person needs to look into the problem.
+                # Encp only returns two (2) for migration/duplication fatal
+                # errors.
+		log(MY_TASK, "failed to copy %s %s %s error = %s"
+                    % (src_bfid, tmp_path, mig_path, encp.err_msg))
+        elif res == 1:
                 log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"
                     % (src_bfid, tmp_path, mig_path))
                 # delete the target and retry once
@@ -3165,6 +3172,10 @@ def write_file(MY_TASK,
                                           (mig_path, os.geteuid(),
                                            os.getegid(), str(msg)))
                         return 1
+        elif res:
+		#Some unknown error occured.
+		log(MY_TASK, "failed to copy %s %s %s error = %s"
+                    % (src_bfid, tmp_path, mig_path, encp.err_msg))
 
         else:
                 # log success of coping
