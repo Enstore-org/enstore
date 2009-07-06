@@ -41,3 +41,4 @@ ecrc
 ddencp
 mouse_move
 autologinenstore
+psycopg2
