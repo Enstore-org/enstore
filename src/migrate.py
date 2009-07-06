@@ -101,7 +101,7 @@ import enstore_constants
 import file_utils
 import volume_assert_wrapper
 import delete_at_exit
-
+from scanfiles import ThreadWithResult
 
 debug = False	# debugging mode
 
@@ -839,27 +839,27 @@ def __run_in_thread(function, on_exception, arg_list):
         #Execute this function only if an exception occurs.
         if type(on_exception) == types.TupleType \
            and len(on_exception) == 2:
-                try:
-                        apply(on_exception[0], on_exception[1])
-                except:
-                        message = "exception handler: %s: %s"\
-                                  % (sys.exc_info()[0],
-                                     sys.exc_info()[1])
-                        Trace.log(e_errors.ERROR, message)
+            try:
+                apply(on_exception[0], on_exception[1])
+            except:
+                message = "exception handler: %s: %s"\
+                          % (sys.exc_info()[0],
+                             sys.exc_info()[1])
+                Trace.log(e_errors.ERROR, message)
 
         #Try and force pending output to go where it needs to go.
         try:
-                sys.stdout.flush()
-                sys.stderr.flush()
+            sys.stdout.flush()
+            sys.stderr.flush()
         except IOError:
-                pass
+            pass
 
         io_lock.acquire()
         try:
-                log_f.flush()
-                os.fsync(log_f.fileno())
+            log_f.flush()
+            os.fsync(log_f.fileno())
         except (IOError, OSError):
-                pass
+            pass
         io_lock.release()
 
         try:
@@ -880,65 +880,69 @@ def __run_in_thread(function, on_exception, arg_list):
 #          if function throws an exception.
 def run_in_thread(function, arg_list, my_task = "RUN_IN_THREAD",
                   on_exception = None):
-	global tid_list
-	
-	# start a thread 
-	if debug:
-		print "Starting %s." % (str(function),)
-	try:
-		tid = threading.Thread(target=__run_in_thread, name=my_task,
-				       args=(function, on_exception, arg_list))
-		tid_list.append(tid)  #append to the list of thread ids.
-		tid.start()
-	except (KeyboardInterrupt, SystemExit):
-		pass
-	except:
-		exc, msg = sys.exc_info()[:2]
-		error_log(my_task, "start_new_thread() failed: %s: %s\n" \
-			  % (str(exc), str(msg)))
+    global tid_list
 
-                
-	if debug:
-		print "Started %s [%s]." % (str(function), str(tid))
+    # start a thread 
+    if debug:
+        print "Starting %s." % (str(function),)
+    try:
+        #We use ThreadWithResult wrapper around thread.Thread() for its ability
+        # to tell you if it is ready to be joined; and not for the exit
+        # status of the thread, since migration threads handle errors on
+        # their own.
+        tid = ThreadWithResult(target=__run_in_thread, name=my_task,
+                               args=(function, on_exception, arg_list))
+        tid_list.append(tid)  #append to the list of thread ids.
+        tid.start()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except:
+        exc, msg = sys.exc_info()[:2]
+        error_log(my_task, "start_new_thread() failed: %s: %s\n" \
+                  % (str(exc), str(msg)))
+
+
+    if debug:
+        print "Started %s [%s]." % (str(function), str(tid))
 
 def wait_for_thread():
-	global tid_list
+    global tid_list
 
-	rtn = 0
+    rtn = 0
 
+    while len(tid_list) > 0:
         for i in range(len(tid_list)):
 
-                if tid_list[i].isAlive():
-                    if 0: #debug:
-                        print "%s is alive" % (tid_list[i].getName(),)
-                    continue
+            #If we blinkly go into the join(), we will be stuck waiting
+            # for the thread to finish.  The problem with this, is that
+            # the python thread join() function blocks signals like SIGINT
+            # (Ctrl-C) allowing the other threads in the program to continue
+            # to run.
+            if tid_list[i].is_joinable:
 
                 #We should only be trying to join threads that are done.
                 try:
-                        tid_list[i].join(1)
+                    tid_list[i].join(1)
                 except RuntimeError:
-                        rtn = rtn + 1
-	
-                if tid_list[i].isAlive():
-                        #rtn = rtn + 1
-                        continue
+                    rtn = rtn + 1
 
                 if debug:
-                        print "Completed %s." % (str(tid_list[i]),)
+                    print "Completed %s." % (str(tid_list[i]),)
 
                 try:
-                        del tid_list[i]
+                    del tid_list[i]
                 except IndexError, msg:
-                        rtn = rtn + 1
-                        try:
-                                sys.stderr.write("%s\n" % (msg,))
-                                sys.stderr.flush()
-                        except IOError:
-                            pass
+                    rtn = rtn + 1
+                    try:
+                        sys.stderr.write("%s\n" % (msg,))
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
 
                 return rtn #Only do one to avoid "i" being off.
-
-	return rtn
+        else:
+            time.sleep(5)
+    return rtn
 
 def wait_for_threads():
 	global tid_list
@@ -3203,6 +3207,12 @@ def write_new_file(job, encp, fcc, intf, db):
 	dst_bfid = is_it_copied  #side effect: this is also the dst bfid
 	has_tmp_file = False
         file_record = {} #empty record
+        if deleted == 'y':
+            file_record['deleted'] = "yes"  #Minimally, set the deleted status.
+        elif deleted == 'n':
+            file_record['deleted'] = "no"   #Minimally, set the deleted status.
+        else:
+            file_record['deleted'] = "unknown"  #Should never happen.
 	if is_it_copied:
 		ok_log(MY_TASK, "%s has already been copied to %s" \
 		       % (src_bfid, dst_bfid))
