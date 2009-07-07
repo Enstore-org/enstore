@@ -960,34 +960,6 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 
 ###############################################################################
 
-    # this is a thread wrapper
-    # it calls a function and then - after function if needed 
-    def thread_wrapper(self, function, args=(), after_function=None):
-        function(args)
-        if after_function:
-            after_function()
-
-            
-    def run_in_thread(self, function, args=(), after_function=None):
-        _args = (function,)+ args
-        if after_function:
-            _args = _args + (after_function,)
-        #thread_name = str(threading.activeCount()+1)
-        thread_name = None
-        Trace.trace(5, "create thread: name %s target %s args %s" % (thread_name, function, args))
-        #thread = threading.Thread(group=None, target=self.thread_wrapper,
-        #                          name=thread_name, args=_args, kwargs={})
-        thread = threading.Thread(group=None, target=self.thread_wrapper,
-                                  args=_args, kwargs={})
-        Trace.trace(5, "starting thread %s name=%s"%(dir(thread,), thread.getName()))
-        try:
-            thread.start()
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "starting thread: %s" % (detail))
-        return 0
-
-
     # Process the  request that was (generally) sent from UDPClient.send
     # overrides dispatching worker method
     # the difference: creates a thread
@@ -1042,7 +1014,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             c = threading.activeCount()
             if c < self.max_threads:
                 Trace.trace(5, "threads %s"%(c,))
-                self.run_in_thread(function, (ticket,), after_function=self._done_cleanup)
+                dispatching_worker.run_in_thread(None, function, (ticket,), after_function=self._done_cleanup)
                 #self.run_in_thread(function, (ticket,))
                 #self.run_in_thread(function, (ticket,self._done_cleanup))
                 break
@@ -1050,8 +1022,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 	c = threading.activeCount()
 	Trace.trace(5, "threads %s"%(c,))
 	if c < self.max_threads:
-	    Trace.trace(5, "threads %s"%(c,))
-	    self.run_in_thread(function, (ticket,), after_function=self._done_cleanup)
+	    dispatching_worker.run_in_thread(None, function, (ticket,), after_function=self._done_cleanup)
 	    #self.run_in_thread(function, (ticket,))
 	    #self.run_in_thread(function, (ticket,self._done_cleanup))
 	else:
