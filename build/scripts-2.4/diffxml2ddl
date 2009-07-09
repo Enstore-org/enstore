@@ -1,0 +1,3 @@
+#!/home/litvinse/v2_4_3_E_1/bin/python
+import xml2ddl.diffxml2ddl
+xml2ddl.diffxml2ddl.parseCommandLine()
