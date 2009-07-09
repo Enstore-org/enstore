@@ -2929,7 +2929,6 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
         try:
             # This version handles the seteuid() locking.
             p1 = File(src)
-            p1.show()
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (OSError, IOError), msg:
@@ -2944,7 +2943,6 @@ def swap_metadata(bfid1, src, bfid2, dst, db):
     # get all pnfs metadata - second the destination file
     try:
         p2 = File(dst)
-        p2.show()
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError), msg:
