@@ -2558,7 +2558,6 @@ def copy_file(bfid, encp, intf, db):
 	#Handle finding the name differently for deleted and non-deleted files.
 	
 	#Start with non-deleted files.
-        log("file_record:", str(file_record))
 	if file_record['deleted'] == 'n':
 		if is_it_copied and is_it_swapped:
 			#Already copied.
