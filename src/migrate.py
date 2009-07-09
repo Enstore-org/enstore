@@ -1042,50 +1042,74 @@ def is_library(library):
 # is_copied(bfid) -- has the file already been copied?
 #	we check the source file
 def is_copied(bfid, db):
-	q = "select * from migration where src_bfid = '%s';"%(bfid)
-	if debug:
-		log("is_copied():", q)
-	res = db.query(q).dictresult()
-	if not len(res):
-		return None
-	else:
-		return res[0]['dst_bfid']
-
+    q = "select * from migration where src_bfid = '%s';"%(bfid)
+    if debug:
+        log("is_copied():", q)
+    res = db.query(q).dictresult()
+    if len(res) == 0:
+        return None
+    elif len(res) == 1:
+        return res[0]['dst_bfid']
+    else: #len(res) > 1
+        for file_result in res:
+            if not file_result['dst_bfid']:
+                return file_result['dst_bfid']
+        else:
+            return res[0]['dst_bfid']
+        
 # is_swapped(bfid) -- has the file already been swapped?
 #	we check the source file
 def is_swapped(bfid, db):
-	q = "select * from migration where src_bfid = '%s';"%(bfid)
-	if debug:
-		log("is_swapped():", q)
-	res = db.query(q).dictresult()
-	if not len(res):
-		return None
-	else:
-		return res[0]['swapped']
+    q = "select * from migration where src_bfid = '%s';"%(bfid)
+    if debug:
+        log("is_swapped():", q)
+    res = db.query(q).dictresult()
+    if len(res) == 0:
+        return None
+    elif len(res) == 1:
+        return res[0]['swapped']
+    else: #len(res) > 1
+        for file_result in res:
+            if not file_result['swapped']:
+                return file_result['swapped']
+        else:
+            return res[0]['swapped']
 
 # is_checked(bfid) -- has the file already been checked?
 #	we check the destination file
 def is_checked(bfid, db):
-	q = "select * from migration where dst_bfid = '%s';"%(bfid)
-	if debug:
-		log("is_checked():", q)
-	res = db.query(q).dictresult()
-	if not len(res):
-		return None
-	else:
-		return res[0]['checked']
+    q = "select * from migration where dst_bfid = '%s';"%(bfid)
+    if debug:
+        log("is_checked():", q)
+    res = db.query(q).dictresult()
+    if len(res) == 0:
+        return None
+    elif len(res) == 1:
+        return res[0]['checked']
+    else: #len(res) > 1
+        for file_result in res:
+            if not file_result['checked']:
+                return file_result['checked']
+        else:
+            return res[0]['checked']
 
 # is_closed(bfid) -- has the file already been closed?
 #	we check the destination file
 def is_closed(bfid, db):
-	q = "select * from migration where dst_bfid = '%s';"%(bfid)
-	if debug:
-		log("is_closed():", q)
-	res = db.query(q).dictresult()
-	if not len(res):
-		return None
-	else:
-		return res[0]['closed']
+    q = "select * from migration where dst_bfid = '%s';"%(bfid)
+    if debug:
+        log("is_closed():", q)
+    res = db.query(q).dictresult()
+    if len(res) == 0:
+        return None
+    elif len(res) == 1:
+        return res[0]['closed']
+    else: #len(res) > 1
+        for file_result in res:
+            if not file_result['closed']:
+                return file_result['closed']
+        else:
+            return res[0]['closed']
 
 # get_bfids(bfid) -- has the file already been closed?
 #	we check the destination file
@@ -1160,89 +1184,99 @@ def close_log(*args):
 
 # log_copied(bfid1, bfid2) -- log a successful copy
 def log_copied(bfid1, bfid2, db):
-	q = "insert into migration (src_bfid, dst_bfid, copied) \
-		values ('%s', '%s', '%s');" % (bfid1, bfid2,
-		time2timestamp(time.time()))
-	if debug:
-		log("log_copied():", q)
-	try:
-		db.query(q)
-	except:
-		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_COPIED", str(exc_type), str(exc_value), q)
-	return
+    q = "insert into migration (src_bfid, dst_bfid, copied) \
+            values ('%s', '%s', '%s');" % (bfid1, bfid2,
+            time2timestamp(time.time()))
+    if debug:
+        log("log_copied():", q)
+    try:
+        db.query(q)
+    except pg.ProgrammingError, msg:
+        if str(msg).find("duplicate key violates unique constraint") != -1:
+                #The old unique constraint was on each src & dst
+                # column.  For modern migration capable of migrating
+                # to multiple copies this constraint needs to be on
+                # the pair of src & dst columns.
+                log("The database has an obsolete unique key constraint.  This will prevent multiple copies from being scanned.")
+
+        exc_type, exc_value = sys.exc_info()[:2]
+        error_log("LOG_COPIED", str(exc_type), str(exc_value), q)
+    except:
+        exc_type, exc_value = sys.exc_info()[:2]
+        error_log("LOG_COPIED", str(exc_type), str(exc_value), q)
+    return
 
 # log_uncopied(bfid1, bfid2) -- log a successful uncopy (aka restore)
 def log_uncopied(bfid1, bfid2, db):
-	q = "update migration set copied = NULL where \
-		src_bfid = '%s' and dst_bfid = '%s'; \
-		delete from migration where \
-		src_bfid = '%s' and dst_bfid = '%s';" % \
-	(bfid1, bfid2, bfid1, bfid2)
-	if debug:
-		log("log_uncopied():", q)
-	try:
-		db.query(q)
-	except:
-		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_UNCOPIED", str(exc_type), str(exc_value), q)
-	return
+    q = "update migration set copied = NULL where \
+            src_bfid = '%s' and dst_bfid = '%s'; \
+            delete from migration where \
+            src_bfid = '%s' and dst_bfid = '%s';" % \
+    (bfid1, bfid2, bfid1, bfid2)
+    if debug:
+        log("log_uncopied():", q)
+    try:
+        db.query(q)
+    except:
+        exc_type, exc_value = sys.exc_info()[:2]
+        error_log("LOG_UNCOPIED", str(exc_type), str(exc_value), q)
+    return
 
 # log_swapped(bfid1, bfid2) -- log a successful swap
 def log_swapped(bfid1, bfid2, db):
-	q = "update migration set swapped = '%s' where \
-		src_bfid = '%s' and dst_bfid = '%s';" % \
-			(time2timestamp(time.time()), bfid1, bfid2)
-	if debug:
-		log("log_swapped():", q)
-	try:
-		db.query(q)
-	except:
-		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_SWAPPED", str(exc_type), str(exc_value), q)
-	return
+    q = "update migration set swapped = '%s' where \
+            src_bfid = '%s' and dst_bfid = '%s';" % \
+                    (time2timestamp(time.time()), bfid1, bfid2)
+    if debug:
+        log("log_swapped():", q)
+    try:
+        db.query(q)
+    except:
+        exc_type, exc_value = sys.exc_info()[:2]
+        error_log("LOG_SWAPPED", str(exc_type), str(exc_value), q)
+    return
 
 # log_unswapped(bfid1, bfid2) -- log a successful unswap (aka restore)
 def log_unswapped(bfid1, bfid2, db):
-	q = "update migration set swapped = NULL where \
-		src_bfid = '%s' and dst_bfid = '%s';" % \
-			(bfid1, bfid2)
-	if debug:
-		log("log_unswapped():", q)
-	try:
-		db.query(q)
-	except:
-		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_UNSWAPPED", str(exc_type), str(exc_value), q)
-	return
+    q = "update migration set swapped = NULL where \
+            src_bfid = '%s' and dst_bfid = '%s';" % \
+                    (bfid1, bfid2)
+    if debug:
+        log("log_unswapped():", q)
+    try:
+        db.query(q)
+    except:
+        exc_type, exc_value = sys.exc_info()[:2]
+        error_log("LOG_UNSWAPPED", str(exc_type), str(exc_value), q)
+    return
 
 # log_checked(bfid1, bfid2) -- log a successful readback 
 def log_checked(bfid1, bfid2, db):
-	q = "update migration set checked = '%s' where \
-		src_bfid = '%s' and dst_bfid = '%s';"%(
-			time2timestamp(time.time()), bfid1, bfid2)
-	if debug:
-		log("log_checked():", q)
-	try:
-		db.query(q)
-	except:
-		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_CHECKED", str(exc_type), str(exc_value), q)
-	return
+    q = "update migration set checked = '%s' where \
+            src_bfid = '%s' and dst_bfid = '%s';"%(
+                    time2timestamp(time.time()), bfid1, bfid2)
+    if debug:
+        log("log_checked():", q)
+    try:
+        db.query(q)
+    except:
+        exc_type, exc_value = sys.exc_info()[:2]
+        error_log("LOG_CHECKED", str(exc_type), str(exc_value), q)
+    return
 
 # log_closed(bfid1, bfid2) -- log a successful readback after closing
 def log_closed(bfid1, bfid2, db):
-	q = "update migration set closed = '%s' where \
-		src_bfid = '%s' and dst_bfid = '%s';"%(
-			time2timestamp(time.time()), bfid1, bfid2)
-	if debug:
-		log("log_closed():", q)
-	try:
-		db.query(q)
-	except:
-		exc_type, exc_value = sys.exc_info()[:2]
-		error_log("LOG_CLOSED", str(exc_type), str(exc_value), q)
-	return
+    q = "update migration set closed = '%s' where \
+            src_bfid = '%s' and dst_bfid = '%s';"%(
+                    time2timestamp(time.time()), bfid1, bfid2)
+    if debug:
+        log("log_closed():", q)
+    try:
+        db.query(q)
+    except:
+        exc_type, exc_value = sys.exc_info()[:2]
+        error_log("LOG_CLOSED", str(exc_type), str(exc_value), q)
+    return
 
 # log_history(src, dst) -- log a migration history
 def log_history(src, dst, db):
@@ -1503,6 +1537,19 @@ def get_migration_type(src_vol, dst_vol, db):
 		return duplication_result
 		
 	return None
+
+#Report the multiple copies a file has.
+def get_multiple_copy_bfids(bfid, db):
+
+    q = "select alt_bfid from file_copies_map where bfid = '%s';" % (bfid,)
+    res = db.query(q).getresult()
+
+    multiple_copy_list = []
+    for row in res:
+        multiple_copy_list.append(row[0])
+
+    return multiple_copy_list
+    
 
 #
 def search_directory(original_path):
@@ -2013,294 +2060,335 @@ class MigrateQueue:
 ##########################################################################
 
 def show_migrated_from(volume_list, db):
-	for vol in volume_list:
-		from_list = migrated_from(vol, db)
-		#We need to determine if migration or
-		# duplication was used.
-		try:
-			mig_type = get_migration_type(from_list[0], vol, db)
-			if mig_type == "MIGRATION":
-				mfrom = "<="
-			elif mig_type == "DUPLICATION":
-				mfrom = "<-"
-			else:
-				mfrom = "<=-?"
-		except IndexError:
-			mfrom = "<=-?"
-		print "%s %s"%(vol, mfrom),
-		for from_vol in from_list:
-			print from_vol,
-		print
+    for vol in volume_list:
+        from_list = migrated_from(vol, db)
+        #We need to determine if migration or
+        # duplication was used.
+        try:
+            mig_type = get_migration_type(from_list[0], vol, db)
+            if mig_type == "MIGRATION":
+                mfrom = "<="
+            elif mig_type == "DUPLICATION":
+                mfrom = "<-"
+            else:
+                mfrom = "<=-?"
+        except IndexError:
+            mfrom = "<=-?"
+        print "%s %s"%(vol, mfrom),
+        for from_vol in from_list:
+            print from_vol,
+        print
 
 def show_migrated_to(volume_list, db):
-	for vol in volume_list:
-		to_list = migrated_to(vol, db)
-		#We need to know determine if migration or
-		# duplication was used.
-		try:
-			mig_type = get_migration_type(vol, to_list[0], db)
-			if mig_type == "MIGRATION":
-				mto = "=>"
-			elif mig_type == "DUPLICATION":
-				mto = "->"
-			else:
-				mto = "?-=>"
-		except IndexError:
-			mto = "?-=>"
-		print "%s %s"%(vol, mto),
-		for to_vol in to_list:
-			print to_vol,
-		print
+    for vol in volume_list:
+        to_list = migrated_to(vol, db)
+        #We need to know determine if migration or
+        # duplication was used.
+        try:
+            mig_type = get_migration_type(vol, to_list[0], db)
+            if mig_type == "MIGRATION":
+                mto = "=>"
+            elif mig_type == "DUPLICATION":
+                mto = "->"
+            else:
+                mto = "?-=>"
+        except IndexError:
+                mto = "?-=>"
+        print "%s %s"%(vol, mto),
+        for to_vol in to_list:
+            print to_vol,
+        print
 
 def show_status(volume_list, db, intf):
-	exit_status = 0
-	
-	for v in volume_list:
-		#When the volume is a source volume.
-		q1a = "select f1.bfid, f1.deleted as src_del, " \
-		      "       case when b1.bfid is not NULL then 'B' " \
-		      "            when f1.deleted = 'y' and f1.pnfs_id = '' then 'E' /*Mark failed and deleted files special*/ " \
-		      "            else ' ' " \
-		      "       end as src_bad, " \
-		      "       case when (select fcm.bfid " \
-		      "                  from file_copies_map fcm " \
-		      "                  where f1.bfid = fcm.bfid " \
-		      "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
-		      "            then 'P'" \
-		      "            when (select fcm.bfid" \
-		      "                  from file_copies_map fcm" \
-		      "                  where f1.bfid = fcm.alt_bfid " \
-		      "                    and f2.bfid = fcm.bfid) is not NULL" \
-		      "            then 'C'" \
-		      "            else NULL" \
-		      "       end as src_dup, " \
-		      "       f2.bfid, f2.deleted as dst_del, " \
-		      "       case when b2.bfid is not NULL then 'B' " \
-		      "            else ' ' " \
-		      "       end as dst_bad, " \
-		      "       case when (select fcm.bfid " \
-		      "                  from file_copies_map fcm " \
-		      "                  where f1.bfid = fcm.alt_bfid " \
-		      "                    and f2.bfid = fcm.bfid) is not NULL" \
-		      "            then 'P'" \
-		      "            when (select fcm.bfid" \
-		      "                  from file_copies_map fcm" \
-		      "                  where f1.bfid = fcm.bfid " \
-		      "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
-		      "            then 'C'" \
-		      "            else NULL" \
-		      "       end as dst_dup, " \
-		      "       copied, swapped, checked, closed " \
-		      "from volume, migration " \
-		      "right join file f1 on f1.bfid = migration.src_bfid " \
-		      "left join file f2 on f2.bfid = migration.dst_bfid " \
-		      "left join bad_file b1 on b1.bfid = f1.bfid " \
-		      "left join bad_file b2 on b2.bfid = f2.bfid " \
-		      "where f1.volume = volume.id " \
-		      "  and volume.label = '%s' " \
-		      "order by f1.location_cookie;" % (v,)
+    exit_status = 0
 
-		#When the volume is a destination volume.
-		q1b = "select f1.bfid, f1.deleted as src_del, " \
-		      "       case when b1.bfid is not NULL then 'B' " \
-		      "            when f1.deleted = 'y' and f1.pnfs_id = '' then 'E' /*Mark failed and deleted files special*/ " \
-		      "            else ' ' " \
-		      "       end as src_bad, " \
-		      "       case when (select fcm.bfid " \
-		      "                  from file_copies_map fcm " \
-		      "                  where f1.bfid = fcm.bfid " \
-		      "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
-		      "            then 'P'" \
-		      "            when (select fcm.bfid" \
-		      "                  from file_copies_map fcm" \
-		      "                  where f1.bfid = fcm.alt_bfid " \
-		      "                    and f2.bfid = fcm.bfid) is not NULL" \
-		      "            then 'C'" \
-		      "            else NULL" \
-		      "       end as src_dup, " \
-		      "       f2.bfid, f2.deleted as dst_del, " \
-		      "       case when b2.bfid is not NULL then 'B' " \
-		      "            else ' ' " \
-		      "       end as dst_bad, " \
-		      "       case when (select fcm.bfid " \
-		      "                  from file_copies_map fcm " \
-		      "                  where f1.bfid = fcm.alt_bfid " \
-		      "                    and f2.bfid = fcm.bfid) is not NULL" \
-		      "            then 'P'" \
-		      "            when (select fcm.bfid " \
-		      "                  from file_copies_map fcm " \
-		      "                  where f1.bfid = fcm.bfid " \
-		      "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
-		      "            then 'C'" \
-		      "            else NULL" \
-		      "       end as dst_dup, " \
-		      "       copied, swapped, checked, closed " \
-		      "from volume, migration " \
-		      "left join file f1 on f1.bfid = migration.src_bfid " \
-		      "right join file f2 on f2.bfid = migration.dst_bfid " \
-		      "left join bad_file b1 on b1.bfid = f1.bfid " \
-		      "left join bad_file b2 on b2.bfid = f2.bfid " \
-		      "where f2.volume = volume.id " \
-		      "  and volume.label = '%s' " \
-		      "order by f2.location_cookie;" % (v,)
-		
-		
-		show_list = []
-		if intf.source_only:
-			res1a = db.query(q1a).getresult() #Get the results.
-			show_list.append(res1a)
-		elif intf.destination_only:
-			res1b = db.query(q1b).getresult() #Get the results.
-			show_list.append(res1b)
-		else:
-			#Get the results.
-			res1a = db.query(q1a).getresult()
-			res1b = db.query(q1b).getresult()
-			
-			for row in res1a:
-				if row[4]:
-					#We found a source volume.
-					show_list.append(res1a)
-					break
-			for row in res1b:
-				if row[0]: #We found a destination volume.
-					show_list.append(res1b)
-					break
+    for v in volume_list:
+        #When the volume is a source volume.
+        q1a = "select f1.bfid, f1.deleted as src_del, " \
+              "       case when b1.bfid is not NULL then 'B' " \
+              "            when f1.deleted = 'y' and f1.pnfs_id = '' then 'E' /*Mark failed and deleted files special*/ " \
+              "            else ' ' " \
+              "       end as src_bad, " \
+              "       case when (select fcm.bfid " \
+              "                  from file_copies_map fcm " \
+              "                  where f1.bfid = fcm.bfid " \
+              "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
+              "            then 'P'" \
+              "            when (select fcm.bfid" \
+              "                  from file_copies_map fcm" \
+              "                  where f1.bfid = fcm.alt_bfid " \
+              "                    and f2.bfid = fcm.bfid) is not NULL" \
+              "            then 'C'" \
+              "            /* This last section is for reporting if " \
+              "               the destination copy has multiple " \
+              "               copies. */" \
+              "            when (select count(fcm.bfid)" \
+              "                  from file_copies_map fcm" \
+              "                  where f1.bfid = fcm.bfid) > 0" \
+              "            then 'O'" \
+              "            when (select count(fcm.bfid)" \
+              "                  from file_copies_map fcm" \
+              "                  where f1.bfid = fcm.alt_bfid) > 0" \
+              "            then 'M'" \
+              "            else NULL" \
+              "       end as src_dup, " \
+              "       f2.bfid, f2.deleted as dst_del, " \
+              "       case when b2.bfid is not NULL then 'B' " \
+              "            else ' ' " \
+              "       end as dst_bad, " \
+              "       case when (select fcm.bfid " \
+              "                  from file_copies_map fcm " \
+              "                  where f1.bfid = fcm.alt_bfid " \
+              "                    and f2.bfid = fcm.bfid) is not NULL" \
+              "            then 'P'" \
+              "            when (select fcm.bfid" \
+              "                  from file_copies_map fcm" \
+              "                  where f1.bfid = fcm.bfid " \
+              "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
+              "            then 'C'" \
+              "            /* This last section is for reporting if " \
+              "               the destination copy has multiple " \
+              "               copies. */" \
+              "            when (select count(fcm.bfid)" \
+              "                  from file_copies_map fcm" \
+              "                  where f2.bfid = fcm.bfid) > 0" \
+              "            then 'O'" \
+              "            when (select count(fcm.bfid)" \
+              "                  from file_copies_map fcm" \
+              "                  where f2.bfid = fcm.alt_bfid) > 0" \
+              "            then 'M'" \
+              "            else NULL" \
+              "       end as dst_dup, " \
+              "       copied, swapped, checked, closed " \
+              "from volume, migration " \
+              "right join file f1 on f1.bfid = migration.src_bfid " \
+              "left join file f2 on f2.bfid = migration.dst_bfid " \
+              "left join bad_file b1 on b1.bfid = f1.bfid " \
+              "left join bad_file b2 on b2.bfid = f2.bfid " \
+              "where f1.volume = volume.id " \
+              "  and volume.label = '%s' " \
+              "order by f1.location_cookie;" % (v,)
 
-			if show_list == []:
-				#If this volume has not been involved in
-				# any migration, report that nothing
-				# currently has been migrated.
-				show_list.append(res1a)
+        #When the volume is a destination volume.
+        q1b = "select f1.bfid, f1.deleted as src_del, " \
+              "       case when b1.bfid is not NULL then 'B' " \
+              "            when f1.deleted = 'y' and f1.pnfs_id = '' then 'E' /*Mark failed and deleted files special*/ " \
+              "            else ' ' " \
+              "       end as src_bad, " \
+              "       case when (select fcm.bfid " \
+              "                  from file_copies_map fcm " \
+              "                  where f1.bfid = fcm.bfid " \
+              "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
+              "            then 'P'" \
+              "            when (select fcm.bfid" \
+              "                  from file_copies_map fcm" \
+              "                  where f1.bfid = fcm.alt_bfid " \
+              "                    and f2.bfid = fcm.bfid) is not NULL" \
+              "            then 'C'" \
+              "            /* This last section is for reporting if " \
+              "               the destination copy has multiple " \
+              "               copies. */" \
+              "            when (select count(fcm.bfid)" \
+              "                  from file_copies_map fcm" \
+              "                  where f1.bfid = fcm.bfid) > 0" \
+              "            then 'O'" \
+              "            when (select count(fcm.bfid)" \
+              "                  from file_copies_map fcm" \
+              "                  where f1.bfid = fcm.alt_bfid) > 0" \
+              "            then 'M'" \
+              "            else NULL" \
+              "       end as src_dup, " \
+              "       f2.bfid, f2.deleted as dst_del, " \
+              "       case when b2.bfid is not NULL then 'B' " \
+              "            else ' ' " \
+              "       end as dst_bad, " \
+              "       case when (select fcm.bfid " \
+              "                  from file_copies_map fcm " \
+              "                  where f1.bfid = fcm.alt_bfid " \
+              "                    and f2.bfid = fcm.bfid) is not NULL" \
+              "            then 'P'" \
+              "            when (select fcm.bfid " \
+              "                  from file_copies_map fcm " \
+              "                  where f1.bfid = fcm.bfid " \
+              "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
+              "            then 'C'" \
+              "            /* This last section is for reporting if " \
+              "               the destination copy has multiple " \
+              "               copies. */" \
+              "            when (select count(fcm.bfid)" \
+              "                  from file_copies_map fcm" \
+              "                  where f2.bfid = fcm.bfid) > 0" \
+              "            then 'O'" \
+              "            when (select count(fcm.bfid)" \
+              "                  from file_copies_map fcm" \
+              "                  where f2.bfid = fcm.alt_bfid) > 0" \
+              "            then 'M'" \
+              "            else NULL" \
+              "       end as dst_dup, " \
+              "       copied, swapped, checked, closed " \
+              "from volume, migration " \
+              "left join file f1 on f1.bfid = migration.src_bfid " \
+              "right join file f2 on f2.bfid = migration.dst_bfid " \
+              "left join bad_file b1 on b1.bfid = f1.bfid " \
+              "left join bad_file b2 on b2.bfid = f2.bfid " \
+              "where f2.volume = volume.id " \
+              "  and volume.label = '%s' " \
+              "order by f2.location_cookie;" % (v,)
 
-		for rows in show_list:
-			#migration type (MIGRATION, DUPLICATION or CLONING)
-			mig_type = None
 
-			#Output the header.
-			print "%19s %1s%1s%1s %19s %1s%1s%1s %6s %6s %6s %6s" % \
-			      ("src_bfid", "S", "D", "B",
-			       "dst_bfid", "S", "D", "B",
-			       "copied", "swapped", "checked", "closed")
-			
-			for row2 in rows:
+        show_list = []
+        if intf.source_only:
+            res1a = db.query(q1a).getresult() #Get the results.
+            show_list.append(res1a)
+        elif intf.destination_only:
+            res1b = db.query(q1b).getresult() #Get the results.
+            show_list.append(res1b)
+        else:
+            #Get the results.
+            res1a = db.query(q1a).getresult()
+            res1b = db.query(q1b).getresult()
 
-				#Name these for easier reading.
+            for row in res1a:
+                if row[4]:
+                    #We found a source volume.
+                    show_list.append(res1a)
+                    break
+            for row in res1b:
+                if row[0]: #We found a destination volume.
+                    show_list.append(res1b)
+                    break
 
-				#source bfid
-				if row2[0] == None:
-					src_bfid = ""
-				else:
-					src_bfid = row2[0]
-				#source bfid deleted status (in uppercase)
-				if row2[1] == None:
-					src_del_status = ""
-				else:
-					src_del_status = row2[1].upper()
-				#source bfid bad status (in uppercase)
-				if row2[2] == None:
-					src_bad_status = ""
-				else:
-					src_bad_status = row2[2].upper()
-				#source bfid duplication status
-				if row2[3] == None:
-					src_dup_status = ""
-				else:
-					src_dup_status = row2[3].upper()
-				#destination bfid
-				if row2[4] == None:
-					dst_bfid = ""
-				else:
-					dst_bfid = row2[4]
-				#destination bfid deleted status (in uppercase)
-				if row2[5] == None:
-					dst_del_status = ""
-				else:
-					dst_del_status = row2[5].upper()
-				if row2[6] == None:
-					dst_bad_status = ""
-				else:
-					dst_bad_status = row2[6].upper()
-				#destination bfid duplication status
-				if row2[7] == None:
-					dst_dup_status = ""
-				else:
-					dst_dup_status = row2[7].upper()
+            if show_list == []:
+                #If this volume has not been involved in
+                # any migration, report that nothing
+                # currently has been migrated.
+                show_list.append(res1a)
 
-				#Determine migration status.
-				if row2[8]:
-					copied = "y"
-				else:
-					copied = ""
-					exit_status = 1
-				if row2[9]:
-					swapped = "y"
-				else:
-					swapped = ""
-					exit_status = 1
-				if row2[10]:
-					checked = "y"
-				else:
-					checked = ""
-					exit_status = 1
-				if row2[11]:
-					closed = "y"
-				else:
-					closed = "" 
-					exit_status = 1
-				
-				line = "%19s %1s%1s%1s %19s %1s%1s%1s %6s %6s %6s %6s" % \
-				       (src_bfid, src_dup_status,
-					src_del_status, src_bad_status,
-					dst_bfid, dst_dup_status,
-					dst_del_status, dst_bad_status,
-					copied, swapped, checked, closed)
-				print line
+        for rows in show_list:
+            #migration type (MIGRATION, DUPLICATION or CLONING)
+            mig_type = None
 
-				#We should only need to do this once.
-				if not mig_type and len(rows) > 0:
-					src_vol = get_volume_from_bfid(
-						src_bfid, db)
-					dst_vol = get_volume_from_bfid(
-						dst_bfid, db)
-					mig_type = get_migration_type(src_vol,
-								      dst_vol,
-								      db)
+            #Output the header.
+            print "%19s %1s%1s%1s %19s %1s%1s%1s %6s %6s %6s %6s" % \
+                  ("src_bfid", "S", "D", "B",
+                   "dst_bfid", "S", "D", "B",
+                   "copied", "swapped", "checked", "closed")
 
-			if mig_type:
-				print "\n%s" % (mig_type,)
+            for row2 in rows:
 
-	return exit_status
+                #Name these for easier reading.
+
+                #source bfid
+                if row2[0] == None:
+                    src_bfid = ""
+                else:
+                    src_bfid = row2[0]
+                #source bfid deleted status (in uppercase)
+                if row2[1] == None:
+                    src_del_status = ""
+                else:
+                    src_del_status = row2[1].upper()
+                #source bfid bad status (in uppercase)
+                if row2[2] == None:
+                    src_bad_status = ""
+                else:
+                    src_bad_status = row2[2].upper()
+                #source bfid duplication status
+                if row2[3] == None:
+                    src_dup_status = ""
+                else:
+                    src_dup_status = row2[3].upper()
+                #destination bfid
+                if row2[4] == None:
+                    dst_bfid = ""
+                else:
+                    dst_bfid = row2[4]
+                #destination bfid deleted status (in uppercase)
+                if row2[5] == None:
+                    dst_del_status = ""
+                else:
+                    dst_del_status = row2[5].upper()
+                if row2[6] == None:
+                    dst_bad_status = ""
+                else:
+                    dst_bad_status = row2[6].upper()
+                #destination bfid duplication status
+                if row2[7] == None:
+                    dst_dup_status = ""
+                else:
+                    dst_dup_status = row2[7].upper()
+
+                #Determine migration status.
+                if row2[8]:
+                    copied = "y"
+                else:
+                    copied = ""
+                    exit_status = 1
+                if row2[9]:
+                    swapped = "y"
+                else:
+                    swapped = ""
+                    exit_status = 1
+                if row2[10]:
+                    checked = "y"
+                else:
+                    checked = ""
+                    exit_status = 1
+                if row2[11]:
+                    closed = "y"
+                else:
+                    closed = "" 
+                    exit_status = 1
+
+                line = "%19s %1s%1s%1s %19s %1s%1s%1s %6s %6s %6s %6s" % \
+                       (src_bfid, src_dup_status,
+                        src_del_status, src_bad_status,
+                        dst_bfid, dst_dup_status,
+                        dst_del_status, dst_bad_status,
+                        copied, swapped, checked, closed)
+                print line
+
+                #We should only need to do this once.
+                if not mig_type and len(rows) > 0:
+                    src_vol = get_volume_from_bfid(src_bfid, db)
+                    dst_vol = get_volume_from_bfid(dst_bfid, db)
+                    mig_type = get_migration_type(src_vol, dst_vol, db)
+
+            if mig_type:
+                print "\n%s" % (mig_type,)
+
+    return exit_status
 
 def show_show(intf, db):
-	#Build the sql query.
-	q = "select label,system_inhibit_1 from volume " \
-	    "where system_inhibit_0 != 'DELETED' " \
-	    " and media_type = '%s' " \
-	    % (intf.media_type,)
-	if intf.library and \
-	       intf.library != None and intf.library != "None":
-		q = q + "and library = '%s' " % (intf.library,)
-	if intf.storage_group and \
-	       intf.storage_group != None and \
-	       intf.storage_group != "None":
-		q = q + "and storage_group = '%s' " % \
-		    (intf.storage_group,)
-	if intf.file_family and \
-	       intf.file_family != None and intf.file_family != "None":
-		q = q + "and file_family = '%s' " % (intf.file_family,)
-	if intf.wrapper and \
-	       intf.wrapper != None and intf.wrapper != "None":
-		q = q + "and wrapper = '%s' " % (intf.wrapper,)
-	q = q + ";"
+    #Build the sql query.
+    q = "select label,system_inhibit_1 from volume " \
+        "where system_inhibit_0 != 'DELETED' " \
+        " and media_type = '%s' " \
+        % (intf.media_type,)
+    if intf.library and \
+           intf.library != None and intf.library != "None":
+        q = q + "and library = '%s' " % (intf.library,)
+    if intf.storage_group and \
+           intf.storage_group != None and \
+           intf.storage_group != "None":
+        q = q + "and storage_group = '%s' " % (intf.storage_group,)
+    if intf.file_family and \
+           intf.file_family != None and intf.file_family != "None":
+        q = q + "and file_family = '%s' " % (intf.file_family,)
+    if intf.wrapper and \
+           intf.wrapper != None and intf.wrapper != "None":
+        q = q + "and wrapper = '%s' " % (intf.wrapper,)
+    q = q + ";"
 
-	#Get the results.
-	res = db.query(q).getresult()
+    #Get the results.
+    res = db.query(q).getresult()
 
-	print "%10s %s" % ("volume", "system inhibit")
-	for row in res:
-		print "%10s %s" % (row[0], row[1])
+    print "%10s %s" % ("volume", "system inhibit")
+    for row in res:
+        print "%10s %s" % (row[0], row[1])
 
+##########################################################################
+        
 #For duplication only.
 def make_failed_copies(intf, db):
 	MY_TASK = "MAKE_FAILED_COPIES"
@@ -2685,72 +2773,71 @@ def is_migration_file_family(ff):
 # intf - interface class of migration or duplication
 def use_libraries(bfid, filepath, file_record, db, intf):
 
-        #Get the command line specified libraries (if any).
-        user_libraries = getattr(intf, "library", "")
-        if user_libraries == None:
-            user_libraries = ""
-        user_libraries = user_libraries.split(",")
+    #Get the command line specified libraries (if any).
+    user_libraries = getattr(intf, "library", "")
+    if user_libraries == None:
+        user_libraries = ""
+    user_libraries = user_libraries.split(",")
 
-        if file_record['deleted'] == "yes": #unknown should never get this far
-                use_dirpath = pnfs.get_directory_name(file_record['pnfs_name0'])
-        else:
-                use_dirpath = pnfs.get_directory_name(filepath)
+    if file_record['deleted'] == "yes": #unknown should never get this far
+        use_dirpath = pnfs.get_directory_name(file_record['pnfs_name0'])
+    else:
+        use_dirpath = pnfs.get_directory_name(filepath)
 
-        #Get the pnfs specified libraries.
-        dirs_to_try = []
+    #Get the pnfs specified libraries.
+    dirs_to_try = []
+    try:
+        dirs_to_try.append(pnfs.get_enstore_fs_path(use_dirpath))
+    except OSError:
+        pass
+    try:
+        dirs_to_try.append(pnfs.get_enstore_pnfs_path(use_dirpath))
+    except OSError:
+        pass
+    for dir_to_check in dirs_to_try:
         try:
-                dirs_to_try.append(pnfs.get_enstore_fs_path(use_dirpath))
+            pnfs_libraries = pnfs.Tag().readtag("library", dir_to_check)[0].split(",")
+            break #Found it!
         except OSError:
-                pass
-        try:
-                dirs_to_try.append(pnfs.get_enstore_pnfs_path(use_dirpath))
-        except OSError:
-                pass
-        for dir_to_check in dirs_to_try:
-                try:
-                        pnfs_libraries = pnfs.Tag().readtag("library", dir_to_check)[0].split(",")
-                        break #Found it!
-                except OSError:
-                        pass
+            pass
+    else:
+        if getattr(intf, "library", ""):
+            #Need to trust the user here.
+            pnfs_libraries = intf.library
         else:
-                if getattr(intf, "library", ""):
-                        #Need to trust the user here.
-                        pnfs_libraries = intf.library
-                else:
-                        error_log("Unable to determine correct library for deleted file.")
-                        log("HINT: use --library on the command line")
-                        return None
+            error_log("Unable to determine correct library for deleted file.")
+            log("HINT: use --library on the command line")
+            return None
 
-        #Get the number of copies remaining to be written to tape for this
-        # special duplication mode of operation.
-        if getattr(intf, "make_failed_copies", None):
-                q = "select remaining from active_file_copying " \
-                    "where bfid = '%s';" % (bfid,)
-                res = db.query(q).getresult()
-                count = res[0][0]
-        #Make sure the user specified enough libraries for this file.
-        elif intf.library:
-                if len(user_libraries) > 1 and \
-                    len(user_libraries) < len(pnfs_libraries):
-                        error_log("Destination directory writes %s copies; "
-                                  "only %s libraries specified for %s %s" %
-                                  (len(pnfs_libraries), len(pnfs_libraries),
-                                   bfid, filepath))
-                        return None
-                else:
-                        count = len(user_libraries)
+    #Get the number of copies remaining to be written to tape for this
+    # special duplication mode of operation.
+    if getattr(intf, "make_failed_copies", None):
+        q = "select remaining from active_file_copying " \
+            "where bfid = '%s';" % (bfid,)
+        res = db.query(q).getresult()
+        count = res[0][0]
+    #Make sure the user specified enough libraries for this file.
+    elif intf.library:
+        if len(user_libraries) > 1 and \
+               len(user_libraries) < len(pnfs_libraries):
+            error_log("Destination directory writes %s copies; "
+                      "only %s libraries specified for %s %s" %
+                      (len(pnfs_libraries), len(pnfs_libraries),
+                       bfid, filepath))
+            return None
         else:
-                count = len(pnfs_libraries)
+            count = len(user_libraries)
+    else:
+        count = len(pnfs_libraries)
 
-        #The last count number of libraries are chosen.  This might be an
-        # issue if --library and --make-failed-copies are used together.
-	if intf.library:
- 		use_library = string.join(intf.library.split(",")[-(count):],
-                                          ",")
-	else:
- 		use_library = string.join(pnfs_libraries[-(count):], ",")
+    #The last count number of libraries are chosen.  This might be an
+    # issue if --library and --make-failed-copies are used together.
+    if intf.library:
+        use_library = string.join(intf.library.split(",")[-(count):], ",")
+    else:
+        use_library = string.join(pnfs_libraries[-(count):], ",")
 
-        return use_library
+    return use_library
 
 # compare_metadata(p, f) -- compare metadata in pnfs (p) and filedb (f)
 def compare_metadata(p, f, pnfsid = None):
@@ -2790,230 +2877,235 @@ def compare_metadata(p, f, pnfsid = None):
 # * return None if succeeds, otherwise, return error message
 # * to avoid deeply nested "if ... else", it takes early error return
 def swap_metadata(bfid1, src, bfid2, dst, db):
-	MY_TASK = "SWAPPING_METADATA"
-	
-	# get its own file clerk client
-	config_host = enstore_functions2.default_host()
-	config_port = enstore_functions2.default_port()
-	csc = configuration_client.ConfigurationClient((config_host,
-							config_port))
-	fcc = file_clerk_client.FileClient(csc)
+    MY_TASK = "SWAPPING_METADATA"
 
-	# get all the file db metadata
-	f1 = fcc.bfid_info(bfid1)
-        if not e_errors.is_ok(f1):
-            return "src_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
-        
-	f2 = fcc.bfid_info(bfid2)
-        if not e_errors.is_ok(f2):
-            return "dst_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
+    # get its own file clerk client
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host,
+                                                    config_port))
+    fcc = file_clerk_client.FileClient(csc)
 
-        #It is possible to migrate a duplicate.  Need to handle finding
-	# the original bfid's file recored, if there is one.
-        original_reply = fcc.find_the_original(bfid1)
-	f0 = {}
-	if e_errors.is_ok(original_reply) \
-	       and original_reply['original'] != None \
-	       and original_reply['original'] != bfid1:
-		f0 = fcc.bfid_info(original_reply['original'])
-		if not e_errors.is_ok(f2):
-			return "original bfid: %s: %s" % (f1['status'][0],
-							  f1['status'][1])
+    # get all the file db metadata
+    f1 = fcc.bfid_info(bfid1)
+    if not e_errors.is_ok(f1):
+        return "src_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
 
-        """
-	#For trusted pnfs systems, there isn't a problem,
-	# but for untrusted we need to set the effective
-	# IDs to the owner of the file.
-        #
-        # If the source PNFS file has been deleted only do the
-        # pnfs.File() instantiation; skip the euid/egid stuff to
-        # avoid tracebacks.
-        """
+    f2 = fcc.bfid_info(bfid2)
+    if not e_errors.is_ok(f2):
+        return "dst_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
 
-        
-	# get all pnfs metadata - first the source file
-	if f1['deleted'] == "no":
-                try:
-                        # This version handles the seteuid() locking.
-                        p1 = File(src)
-                except (KeyboardInterrupt, SystemExit):
-                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-                except (OSError, IOError), msg:
-                        return str(msg)
-                except:
-                        exc, msg = sys.exc_info()[:2]
-                        return str(msg)
+    #It is possible to migrate a duplicate.  Need to handle finding
+    # the original bfid's file recored, if there is one.
+    #
+    #It is also possible to make multiple copies while migrating, need
+    # to check bfid2 for this possibility.
+    for mc_check_bfid in (bfid1, bfid2):
+        original_reply = fcc.find_the_original(mc_check_bfid)
+        f0 = {}
+        if e_errors.is_ok(original_reply) \
+               and original_reply['original'] != None \
+               and original_reply['original'] != mc_check_bfid:
+            f0 = fcc.bfid_info(original_reply['original'])
+            if not e_errors.is_ok(f2):
+                return "original bfid: %s: %s" % (f1['status'][0],
+                                                  f1['status'][1])
+        if f0:
+            break #found our original.
+
+    """
+    #For trusted pnfs systems, there isn't a problem,
+    # but for untrusted we need to set the effective
+    # IDs to the owner of the file.
+    #
+    # If the source PNFS file has been deleted only do the
+    # pnfs.File() instantiation; skip the euid/egid stuff to
+    # avoid tracebacks.
+    """
+
+
+    # get all pnfs metadata - first the source file
+    if f1['deleted'] == "no":
+        try:
+            # This version handles the seteuid() locking.
+            p1 = File(src)
+            p1.show()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except (OSError, IOError), msg:
+            return str(msg)
+        except:
+            exc, msg = sys.exc_info()[:2]
+            return str(msg)
+    else:
+        # What do we need an empty File class for?
+        p1 = pnfs.File(src)
+
+    # get all pnfs metadata - second the destination file
+    try:
+        p2 = File(dst)
+        p2.show()
+    except (KeyboardInterrupt, SystemExit):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError), msg:
+        return str(msg)
+    except:
+        exc, msg = sys.exc_info()[:2]
+        return str(msg)
+
+    ##################################################################
+    #Handle deleted files specially.
+    if f1['deleted'] == "yes":
+        res = ''
+        # copy the metadata
+        finfo = copy.copy(f1)
+        if e_errors.is_ok(f1):
+            del finfo['status']
+            finfo['bfid'] = bfid2
+            #finfo['location_cookie'] = pf2.location_cookie
+            finfo['location_cookie'] = f2['location_cookie']
+            res2 = fcc.modify(finfo)
+            if not e_errors.is_ok(res2['status']):
+                res = res2['status'][1]
         else:
-                # What do we need an empty File class for?
-                p1 = pnfs.File(src)
+            res = "source file info missing"
+        return res
+    ###################################################################
 
-	# get all pnfs metadata - second the destination file
-	try:
-		p2 = File(dst)
-	except (KeyboardInterrupt, SystemExit):
-		raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-	except (OSError, IOError), msg:
-		return str(msg)
-	except:
-		exc, msg = sys.exc_info()[:2]
-		return str(msg)
-            
-	##################################################################
-	#Handle deleted files specially.
-	if f1['deleted'] == "yes":
-		res = ''
-		# copy the metadata
-		finfo = copy.copy(f1)
-		if e_errors.is_ok(f1):
-			del finfo['status']
-			finfo['bfid'] = bfid2
-			#finfo['location_cookie'] = pf2.location_cookie
-			finfo['location_cookie'] = f2['location_cookie']
-			res2 = fcc.modify(finfo)
-			if res2['status'][0] != e_errors.OK:
-				res = res2['status'][1]
-		else:
-			res = "source file info missing"
-		return res
-	###################################################################
+    #If we happen to be migrating a multiple copy (which is only allowed
+    # with --force), then we need to do not modify layers 1 and 4.
+    is_migrating_multiple_copy = False
 
-        #If we happen to be migrating a multiple copy (which is only allowed
-        # with --force), then we need to do not modify layers 1 and 4.
-        is_migrating_multiple_copy = False
-
-	# check if the metadata are consistent
-	res = compare_metadata(p1, f1)
-	# deal with already swapped metadata
-	if res == "bfid":
-		res = compare_metadata(p1, f2)
-                if res == "bfid" and f0:
-                	#Compare original, if applicable.
-                        res = compare_metadata(p1, f0)
-                        if not res:
-                                #Note: Don't update layers 1 and 4!
-                        	is_migrating_multiple_copy = True
-                else:
-                	if not res:
-				#The metadata has already been swapped.
-				return None
-	if res:
-		return "[1] metadata %s %s are inconsistent on %s" \
-		       % (bfid1, src, res)
-
-	if not p2.bfid and not p2.volume:
-		#The migration path has already been deleted.  There is
-		# no file to compare with.
-		pass
-	else:
-		res = compare_metadata(p2, f2)
-		# deal with already swapped file record
-		if res == 'pnfsid':
-			res = compare_metadata(p2, f2, p1.pnfs_id)
-	       	if res:
-			return "[2] metadata %s %s are inconsistent on %s" \
-			       % (bfid2, dst, res)
-
-	# cross check
-	err_msg = ""
-	if f1['size'] != f2['size']:
-		err_msg = "%s and %s have different size"%(bfid1, bfid2)
-	elif f1['complete_crc'] != f2['complete_crc']:
-		err_msg = "%s and %s have different crc"%(bfid1, bfid2)
-	elif f1['sanity_cookie'] != f2['sanity_cookie']:
-		err_msg = "%s and %s have different sanity_cookie" \
-			  % (bfid1, bfid2)
-	if err_msg:
-		if f2['deleted'] == "yes" and not is_swapped(bfid1, db):
-			log(MY_TASK,
-			    "undoing migration of %s to %s do to error" \
-			    % (bfid1, bfid2))
-			undo_log(bfid1, bfid2, db)
-		return err_msg
-
-	### swapping the Enstore DB metadata
-	m1 = {'bfid': bfid2, 'pnfsid':f1['pnfsid'], 'pnfs_name0':f1['pnfs_name0']}
-	res = fcc.modify(m1)
-	if not e_errors.is_ok(res['status']):
-		return "failed to change pnfsid for %s" % (bfid2,)
-
-        #If we are migrating a multiple_copy/duplicate, we do not update the
-        # layer 1 and layer 4 information.
-        if not is_migrating_multiple_copy:
-                ### swapping the PNFS layer metadata
-                p1.volume = p2.volume
-                p1.location_cookie = p2.location_cookie
-                p1.bfid = p2.bfid
-                p1.drive = p2.drive
-                p1.complete_crc = p2.complete_crc
-                # should we?
-                # the best solution is to have encp ignore sanity check on file_family
-                # p1.file_family = p2.file_family
-
-                # check if p1 is writable - do this with euid/egid the same as the
-                # the owner of the file
-                try:
-                        src_stat = file_utils.get_stat(src)
-                except (KeyboardInterrupt, SystemExit):
-                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-                except (OSError, IOError), msg: # Anticipated errors.
-                        return "%s is not accessable: %s" % (src, msg)
-                except: # Un-anticipated errors.
-                        exc, msg = sys.exc_info()[:2]
-                        return str(msg)
-
-                #If necessary, allow for the file to be set writable again.  We test
-                # this way, since we need the original mode values from the stat()
-                # above to reset them back if necessary.
-                reset_permissions = False
-                if not file_utils.e_access_cmp(src_stat, os.W_OK):
-                        reset_permissions = True
-                        try:
-                                make_writeable(src)
-                        except (KeyboardInterrupt, SystemExit):
-                                raise sys.exc_info()[0], sys.exc_info()[1], \
-                                      sys.exc_info()[2]
-                        except (OSError, IOError), msg:  #Anticipated errors.
-                                return "%s is not writable as %s: %s" \
-                                       % (src, os.geteuid(), str(msg))
-                        except:
-                                exc, msg = sys.exc_info()[:2]
-                                return str(msg)
-
-
-                # now perform the writes to the file's layer 1 and layer 4
-                if f1['deleted'] == "no":
-                        try:
-                                update_layers(p1)  #UPDATE LAYER 1 AND LAYER 4!
-                        except (KeyboardInterrupt, SystemExit):
-                                raise sys.exc_info()[0], sys.exc_info()[1], \
-                                      sys.exc_info()[2]
-                        except (OSError, IOError), msg:
-                                return str(msg)
-                        except:
-                                exc, msg = sys.exc_info()[:2]
-                                return str(msg)
-
-                if reset_permissions:
-                        #At this point, either the users is able to modify their
-                        # own file, or it was reset to allow all users to "write"
-                        # (A.K.A. enable chmod()) to the file.
-                        try:
-                                os.chmod(src, src_stat[stat.ST_MODE])
-                        except (OSError, IOError), msg:
-                                error_log("Unable to reset persisions for %s to %s" % \
-                                          (src, src_stat[stat.ST_MODE]))
-
-	# check it again
-	p1 = pnfs.File(src)
-	f1 = fcc.bfid_info(bfid2)
-	res = compare_metadata(p1, f1)
+    # check if the metadata are consistent
+    res = compare_metadata(p1, f1)
+    # deal with already swapped metadata
+    if res == "bfid":
+        res = compare_metadata(p1, f2)
         if res == "bfid" and f0:
-        	# Handle the possibility of migrating a multiple copy.
-        	res = compare_metadata(p1, f0)
-	if res:
-		return "swap_metadata(): %s %s has inconsistent metadata on %s"%(bfid2, src, res)
+            #Compare original, if applicable.
+            res = compare_metadata(p1, f0)
+            if not res:
+                #Note: Don't update layers 1 and 4!
+                is_migrating_multiple_copy = True
+        else:
+            if not res:
+                #The metadata has already been swapped.
+                return None
+    if res:
+        return "[1] metadata %s %s are inconsistent on %s" % (bfid1, src, res)
 
-	return None
+    if not p2.bfid and not p2.volume:
+        #The migration path has already been deleted.  There is
+        # no file to compare with.
+        pass
+    else:
+        res = compare_metadata(p2, f2)
+        # deal with already swapped file record
+        if res == "pnfsid":
+            res = compare_metadata(p2, f2, p1.pnfs_id)
+        elif res == "bfid" and f0:
+            res = compare_metadata(p2, f0, p1.pnfs_id)
+        if res:
+            return "[2] metadata %s %s are inconsistent on %s" \
+                   % (bfid2, dst, res)
+
+    # cross check
+    err_msg = ""
+    if f1['size'] != f2['size']:
+        err_msg = "%s and %s have different size" % (bfid1, bfid2)
+    elif f1['complete_crc'] != f2['complete_crc']:
+        err_msg = "%s and %s have different crc" % (bfid1, bfid2)
+    elif f1['sanity_cookie'] != f2['sanity_cookie']:
+        err_msg = "%s and %s have different sanity_cookie" % (bfid1, bfid2)
+    if err_msg:
+        if f2['deleted'] == "yes" and not is_swapped(bfid1, db):
+            log(MY_TASK,
+                "undoing migration of %s to %s do to error" % (bfid1, bfid2))
+            undo_log(bfid1, bfid2, db)
+        return err_msg
+
+    ### swapping the Enstore DB metadata
+    m1 = {'bfid': bfid2, 'pnfsid':f1['pnfsid'], 'pnfs_name0':f1['pnfs_name0']}
+    res = fcc.modify(m1)
+    if not e_errors.is_ok(res['status']):
+        return "failed to change pnfsid for %s" % (bfid2,)
+
+    #If we are migrating a multiple_copy/duplicate, we do not update the
+    # layer 1 and layer 4 information.
+    if not is_migrating_multiple_copy:
+        ### swapping the PNFS layer metadata
+        p1.volume = f2['external_label'] # p2.volume
+        p1.location_cookie = f2['location_cookie'] # p2.location_cookie
+        p1.bfid = f2['bfid'] # p2.bfid
+        p1.drive = f2['drive'] # p2.drive
+        p1.complete_crc = f2['complete_crc'] # p2.complete_crc
+        # should we?
+        # the best solution is to have encp ignore sanity check on file_family
+        # p1.file_family = p2.file_family
+
+        # check if p1 is writable - do this with euid/egid the same as the
+        # the owner of the file
+        try:
+            src_stat = file_utils.get_stat(src)
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except (OSError, IOError), msg: # Anticipated errors.
+            return "%s is not accessable: %s" % (src, msg)
+        except: # Un-anticipated errors.
+            exc, msg = sys.exc_info()[:2]
+            return str(msg)
+
+        #If necessary, allow for the file to be set writable again.  We test
+        # this way, since we need the original mode values from the stat()
+        # above to reset them back if necessary.
+        reset_permissions = False
+        if not file_utils.e_access_cmp(src_stat, os.W_OK):
+            reset_permissions = True
+            try:
+                make_writeable(src)
+            except (KeyboardInterrupt, SystemExit):
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except (OSError, IOError), msg:  #Anticipated errors.
+                return "%s is not writable as %s: %s" \
+                       % (src, os.geteuid(), str(msg))
+            except:
+                exc, msg = sys.exc_info()[:2]
+                return str(msg)
+
+
+        # now perform the writes to the file's layer 1 and layer 4
+        if f1['deleted'] == "no":
+            try:
+                update_layers(p1)  #UPDATE LAYER 1 AND LAYER 4!
+            except (KeyboardInterrupt, SystemExit):
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except (OSError, IOError), msg:
+                return str(msg)
+            except:
+                exc, msg = sys.exc_info()[:2]
+                return str(msg)
+
+        if reset_permissions:
+            #At this point, either the users is able to modify their
+            # own file, or it was reset to allow all users to "write"
+            # (A.K.A. enable chmod()) to the file.
+            try:
+                os.chmod(src, src_stat[stat.ST_MODE])
+            except (OSError, IOError), msg:
+                error_log("Unable to reset persisions for %s to %s" % \
+                          (src, src_stat[stat.ST_MODE]))
+
+    # check it again
+    p1 = pnfs.File(src)
+    f1 = fcc.bfid_info(bfid2)
+    res = compare_metadata(p1, f1)
+    if res == "bfid" and f0:
+        # Handle the possibility of migrating a multiple copy.
+        res = compare_metadata(p1, f0)
+    if res:
+        return "swap_metadata(): %s %s has inconsistent metadata on %s"%(bfid2, src, res)
+
+    return None
 
 # tmp_path refers to the path that the file temporarily exists on disk.
 # mig_path is the path that the file will be written to pnfs.
@@ -3209,6 +3301,8 @@ def write_new_file(job, encp, fcc, intf, db):
 	dst_bfid = is_it_copied  #side effect: this is also the dst bfid
 	has_tmp_file = False
         file_record = {} #empty record
+        wrote_multiple_copies = False #set true if mupltiple copies written.
+        mc_dst_bfids = [] #list of bfids of multiple copies written.
         if deleted == 'y':
             file_record['deleted'] = "yes"  #Minimally, set the deleted status.
         elif deleted == 'n':
@@ -3227,16 +3321,15 @@ def write_new_file(job, encp, fcc, intf, db):
 				  "no file record found(%s)" % (dst_bfid,))
 			return
 
-		try:
-			mig_path = find_pnfs_file.find_pnfsid_path(
-				file_record['pnfsid'], dst_bfid,
-				file_record = file_record)
-		except (OSError, IOError), msg:
-			mig_path = migration_path(src_path, deleted)
-
-		#We need to specify the correct path if it is not swapped.
-		if not is_swapped(src_bfid, db):
-			mig_path = migration_path(mig_path)
+                if file_record['deleted'] == "no":
+		        try:
+			        mig_path = find_pnfs_file.find_pnfsid_path(
+                                    file_record['pnfsid'], dst_bfid,
+                                    file_record = file_record)
+		        except (OSError, IOError), msg:
+			        mig_path = migration_path(src_path, deleted)
+                else:
+                        mig_path = migration_path(src_path, deleted)
 	else:
 		mig_path = migration_path(src_path, deleted)
                 #Try and catch situations were an error left a zero
@@ -3291,6 +3384,8 @@ def write_new_file(job, encp, fcc, intf, db):
                 if libraries == None:
                         #use_libraries() logs its own errors.
                         return
+                if len(libraries.split(",")) > 1:
+                        wrote_multiple_copies = True
                 #The same goes for file families.  Migration and duplication
                 # vary greatly with respect to the file family.  There are
                 # some 'odd' cases that migration_file_family() handles for us.
@@ -3309,6 +3404,7 @@ def write_new_file(job, encp, fcc, intf, db):
 		if rtn_code:
 			return
 
+                
 	# Get bfid (and layer 4) of copied file.  We need these values
 	# regardless if the file was already copied, or it was
 	# just copied.
@@ -3321,13 +3417,30 @@ def write_new_file(job, encp, fcc, intf, db):
 				  "failed to get bfid of %s" % (mig_path,))
 			return
 		else:
-			# update success of coping
-			log_copied(src_bfid, dst_bfid, db)
-        elif os.path.exists(tmp_path):
-                #If the file is already copied, but the temporary on disk
-                # file still remains, flag it for deletion.
-                has_tmp_file = True
+                        if wrote_multiple_copies:
+                                #We need to obtain the list of the multiple
+                                # copies written out.
+                                mc_dst_bfids = get_multiple_copy_bfids(dst_bfid, db)
+                    
+			# update success of copying (plus multiple copies)
+                        #
+                        # The dst_bfid needs to go first.  If a multiple copy
+                        # write is done using a migration DB table that
+                        # has seperate unique constraints for src & dst instead
+                        # of the more modern constraint on the pair of src
+                        # & dst columns, we need to make sure the original
+                        # copy gets into the database.
+                        for cur_dst_bfid in [dst_bfid] + mc_dst_bfids:
+                                log_copied(src_bfid, cur_dst_bfid, db)
 
+        else:
+                if os.path.exists(tmp_path):
+                        #If the file is already copied, but the temporary on
+                        # disk file still remains, flag it for deletion.
+                        has_tmp_file = True
+
+                #Need to get this list for re-runs of the migration.
+                mc_dst_bfids = get_multiple_copy_bfids(dst_bfid, db)
 
 	keep_file = False
 	## Perform modifications to the file metadata.  It does
@@ -3338,21 +3451,22 @@ def write_new_file(job, encp, fcc, intf, db):
 	    (src_bfid, src_path, dst_bfid, mig_path))
 	if not is_swapped(src_bfid, db):
 
-		res = swap_metadata(src_bfid, src_path,
-				    dst_bfid, mig_path, db)
+                for cur_dst_bfid in [dst_bfid] + mc_dst_bfids:
+                        res = swap_metadata(src_bfid, src_path,
+                                            cur_dst_bfid, mig_path, db)
 
-		if not res:
-			ok_log(MY_TASK2,
-			       "%s %s %s %s have been swapped" \
-			       % (src_bfid, src_path, dst_bfid,
-				  mig_path))
-			log_swapped(src_bfid, dst_bfid, db)
-		else:
-			error_log(MY_TASK2,
-				  "%s %s %s %s failed due to %s" \
-				  % (src_bfid, src_path, dst_bfid,
-				     mig_path, res))
-			keep_file = True
+                        if not res:
+                                ok_log(MY_TASK2,
+                                       "%s %s %s %s have been swapped" \
+                                       % (src_bfid, src_path, cur_dst_bfid,
+                                          mig_path))
+                                log_swapped(src_bfid, cur_dst_bfid, db)
+                        if res:
+                                error_log(MY_TASK2,
+                                          "%s %s %s %s failed due to %s" \
+                                          % (src_bfid, src_path, cur_dst_bfid,
+                                             mig_path, res))
+                                keep_file = True
 	else:
 		ok_log(MY_TASK2, "%s %s %s %s have already been swapped" \
 		       % (src_bfid, src_path, dst_bfid, mig_path))
@@ -3381,7 +3495,7 @@ def write_new_file(job, encp, fcc, intf, db):
 	if keep_file:
 		return
 	else:
-		return dst_bfid
+		return dst_bfid, mc_dst_bfids
 
 # write_new_files() -- second half of migration, driven by copy_queue
 def write_new_files(thread_num, copy_queue, scan_queue, intf):
@@ -3428,7 +3542,13 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf):
 
 		# Make the mew copy.
 		try:
-			dst_bfid = write_new_file(job, encp, fcc, intf, db)
+			rtn = write_new_file(job, encp, fcc, intf, db)
+                        if rtn:  #Success.
+                                dst_bfid = rtn[0]
+                                mc_dst_bfids = rtn[1]
+                        else:  #Failure
+                                dst_bfid = None
+                                mc_dst_bfids = []
 		except (KeyboardInterrupt, SystemExit):
                         raise sys.exc_info()[0], sys.exc_info()[1], \
                               sys.exc_info()[2]
@@ -3436,6 +3556,7 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf):
 			#We failed spectacularly!
 
 			dst_bfid = None #Set this so we can continue.
+                        mc_dst_bfids = []
 
 			#Report the error so we can continue.
 			exc_type, exc_value, exc_tb = sys.exc_info()
@@ -3457,7 +3578,7 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf):
 				pnfsid = pnfs.get_pnfsid(src_path)
 			else:
 				pnfsid = None
-			scan_job = (src_bfid, dst_bfid, pnfsid, src_path, deleted)
+			scan_job = (src_bfid, dst_bfid, mc_dst_bfids, pnfsid, src_path, deleted)
                         #We don't flag the condition variable here, because
                         # scans done with --with-final-scan wait until all
                         # writes are done.
@@ -3609,7 +3730,7 @@ def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
 			return 1
 
 def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
-		    fcc, encp, intf, db):
+		    is_multiple_copy, fcc, encp, intf, db):
 	ct = is_checked(dst_bfid, db)
 	if not ct:
 		#log(MY_TASK, "start checking %s %s"%(dst_bfid, src))
@@ -3639,8 +3760,11 @@ def final_scan_file(MY_TASK, src_bfid, dst_bfid, pnfs_id, likely_path, deleted,
 		# make sure the migration path has been removed
 		mig_path = migration_path(likely_path)
 
-	#cleanup_after_scan() reports its own errors.
-	return cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db)
+        if not is_multiple_copy:
+		#cleanup_after_scan() reports its own errors.  Only do this
+                # for orignal destination copies, not any of its possible
+                # multplie copies.
+		return cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db)
 
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
@@ -3672,26 +3796,40 @@ def final_scan(thread_num, scan_queue, intf):
 	#Loop over the files ready for scanning.
 	job = scan_queue.get(block = True)
 	while job:
-		(src_bfid, dst_bfid, pnfs_id, likely_path, deleted) = job
+		(src_bfid, dst_bfid, mc_dst_bfids, pnfs_id, likely_path, deleted) = job
+                
+                #If the destination file has multiple copies, we need to
+                # check them all.  We need to scan any multiple copies first,
+                # then when they are all fine we can try the original.
+                for cur_dst_bfid in mc_dst_bfids + [dst_bfid]:
+                        #Avoid having final_scan_file() calling find_copies().
+                        # Pass this information along.
+                        if cur_dst_bfid == dst_bfid:
+                                is_multiple_copy = False
+                        else:
+                                is_multiple_copy = True
+                    
+                        try:
+                                final_scan_file(MY_TASK, src_bfid,
+                                                cur_dst_bfid,
+                                                pnfs_id, likely_path, deleted,
+                                                is_multiple_copy,
+                                                fcc, encp, intf, db)
+                        except (KeyboardInterrupt, SystemExit):
+                                raise sys.exc_info()[0], sys.exc_info()[1], \
+                                      sys.exc_info()[2]
+                        except:
+                                #We failed spectacularly!
 
-		try:
-			final_scan_file(MY_TASK, src_bfid, dst_bfid,
-					pnfs_id, likely_path, deleted,
-					fcc, encp, intf, db)
-		except (KeyboardInterrupt, SystemExit):
-                        raise sys.exc_info()[0], sys.exc_info()[1], \
-                              sys.exc_info()[2]
-		except:
-			#We failed spectacularly!
-
-			#Report the error so we can continue.
-			exc_type, exc_value, exc_tb = sys.exc_info()
-                        Trace.handle_error(exc_type, exc_value, exc_tb)
-                        del exc_tb #avoid resource leaks
-                        error_log(MY_TASK, str(exc_type),
-                                  str(exc_value),
-                                  " scanning file %s for %s" \
-                                  % (dst_bfid, job))
+                                #Report the error so we can continue.
+                                exc_type, exc_value, exc_tb = sys.exc_info()
+                                Trace.handle_error(exc_type, exc_value, exc_tb)
+                                del exc_tb #avoid resource leaks
+                                error_log(MY_TASK, str(exc_type),
+                                          str(exc_value),
+                                          " scanning file %s for %s" \
+                                          % (cur_dst_bfid, job))
+                                break
 
 
 		#Get the next file.
@@ -3758,7 +3896,7 @@ def final_scan_volume(vol, intf):
 		and is_migrated_by_dst_vol(vol, intf, db):
 		error_log(MY_TASK, 'volume %s is "%s"'%(vol, v['system_inhibit'][1]))
 		return 1
-	#Warn if the volume about to be scanned is not full.  Scann a non
+	#Warn if the volume about to be scanned is not full.  Scan a non-
 	# full tape will not allow future migration files to be written
 	# onto it (without intervention anyway).
 	if v['system_inhibit'][1] != 'full':
@@ -3863,12 +4001,20 @@ def final_scan_volume(vol, intf):
 				    "assert of %s %s:%s succeeded" % \
 				    (dst_bfid, vol, location_cookie))
 
+                #We need to tell final_scan_file() if the file is a multiple
+                # or not.
+                if get_multiple_copy_bfids(dst_bfid, db):
+                        is_multiple_copy = True
+                else:
+                        is_multiple_copy = False
+
 		## Scan the file by reading it with encp.
 		## Note: if we are using volume assert, then final_scan_file()
 		##       uses --check with the encp to avoid redundant
 		##       reading of the file.
 		rtn_code = final_scan_file(MY_TASK, src_bfid, dst_bfid,
 					   pnfs_id, likely_path, deleted,
+                                           is_multiple_copy,
 					   fcc, encp, intf, db)
 		if rtn_code:
 			local_error = local_error + 1
@@ -4689,22 +4835,36 @@ def restore(bfids, intf):
                                           % (message, bfid, src, str(msg)))
                                 continue
 
-		# mark the migration copy of the file deleted
-		rtn_code = mark_deleted(MY_TASK, dst_bfid, fcc, db)
-		if rtn_code:
-			error_log(MY_TASK,
-			     "failed to mark undeleted migration file %s %s" \
+                #If the destination copy has multiple copies, we need to
+                # be able to clear them.
+                copies_reply = fcc.find_copies(dst_bfid)
+                if not e_errors.is_ok(copies_reply):
+                        error_log(MY_TASK,
+			     "failed to retrieve multiple copies list %s %s" \
 				  % (dst_bfid, mig_path,))
 			continue
 
-		#Remove the swapped timestamp from the migration table.  On
-                # error an exception should be raised preventing us from
-                # continuing further.
-		log_unswapped(bfid, dst_bfid, db)
-		#Remove the copied timestamp from the migration table.  On
-                # error an exception should be raised preventing us from
-                # continuing further.
-		log_uncopied(bfid, dst_bfid, db)
+                #Undo the migration for the destination file and any
+                # multiple copies that it has.
+                for cur_dst_bfid in [dst_bfid] + copies_reply['copies']:
+                
+                        # mark the migration copy (and any multiple copies)
+                        # of the file deleted
+                        rtn_code = mark_deleted(MY_TASK, cur_dst_bfid, fcc, db)
+                        if rtn_code:
+                                error_log(MY_TASK,
+                                     "failed to mark undeleted migration file %s %s" \
+                                          % (dst_bfid, mig_path,))
+                                continue
+
+                        #Remove the swapped timestamp from the migration table.
+                        # On error an exception should be raised preventing
+                        # us from continuing further.
+                        log_unswapped(bfid, cur_dst_bfid, db)
+                        #Remove the copied timestamp from the migration table.
+                        # On error an exception should be raised preventing
+                        # us from continuing further.
+                        log_uncopied(bfid, cur_dst_bfid, db)
 
 # restore_volume(vol) -- restore all migrated files on original volume
 def restore_volume(vol, intf):
