@@ -20,3 +20,7 @@ data
 trace.key
 encp
 ddencp
+xml2html
+xml2ddl
+downloadXml
+diffxml2ddl
