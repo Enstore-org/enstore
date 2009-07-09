@@ -42,3 +42,4 @@ ddencp
 mouse_move
 autologinenstore
 psycopg2
+xml2ddl
