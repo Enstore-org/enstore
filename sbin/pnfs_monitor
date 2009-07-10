@@ -104,7 +104,8 @@ is_reg_file()
     pnfsid=$2
 
     #Get the showid path for the current pnfsid.
-    fname_showid="/pnfs/fs/usr/$db_name/.(showid)(${pnfsid})"
+#    fname_showid="/pnfs/fs/usr/$db_name/.(showid)(${pnfsid})"
+fname_showid="/pnfs/fs/usr/.(showid)(${pnfsid})"
 
     grep "Regular ( Inode )" $fname_showid > /dev/null 2>&1
     if [ $? -ne 0 ]; then
@@ -120,7 +121,8 @@ get_l1_status()
     dbname=$1
     pnfsid=$2
 
-    fname_l1="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})(1)"
+#    fname_l1="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})(1)"
+fname_l1="/pnfs/fs/usr/.(access)(${pnfsid})(1)"
     L1=`cat "$fname_l1"`
     if [ `echo "$L1" | wc -c` -gt 1 ]; then
 	echo y
@@ -136,7 +138,8 @@ get_l2_status()
     dbname=$1
     pnfsid=$2
 
-    fname_l2="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})(2)"
+#    fname_l2="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})(2)"
+    fname_l2="/pnfs/fs/usr/.(access)(${pnfsid})(2)"
     L2=`cat "$fname_l2"`
     if [ `echo "$L2" | wc -l` -ge 2 ]; then
 	echo y
@@ -152,7 +155,8 @@ get_l4_status()
     dbname=$1
     pnfsid=$2
 
-    fname_l4="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})(4)"
+#    fname_l4="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})(4)"
+    fname_l4="/pnfs/fs/usr/.(access)(${pnfsid})(4)"
     L4=`cat "$fname_l4"`
     if [ `echo "$L4" | wc -l` -ge 8 ]; then
 	echo y
@@ -168,7 +172,8 @@ get_hsm_status()
     dbname=$1
     pnfsid=$2
 
-    fname_l2="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})(2)"
+#    fname_l2="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})(2)"
+    fname_l2="/pnfs/fs/usr/.(access)(${pnfsid})(2)"
     L2=`cat "$fname_l2"`
     if [ `echo "$L2" | wc -l` -ge 2 ]; then
 	echo "$L2" | grep "h=yes" > /dev/null 2>&1 
@@ -190,7 +195,8 @@ get_filesize()
     dbname=$1
     pnfsid=$2
 
-    fname="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})"
+#`   fname="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})"
+    fname="/pnfs/fs/usr/.(access)(${pnfsid})"
     size=`ls -l $fname | awk '{print $5}'`
     if [ $? -ne 0 ]; then
 	echo -1
@@ -207,7 +213,8 @@ get_L2_filesize()
     dbname=$1
     pnfsid=$2
 
-    fname="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})"
+#    fname="/pnfs/fs/usr/$db_name/.(access)(${pnfsid})"
+    fname="/pnfs/fs/usr/.(access)(${pnfsid})"
     #size=`ls -l $fname | awk '{print $5}'`
     l2_fname="${fname}(2)"
     size=`cat $l2_fname | sed -n '2p' | sed 's/.*\(l=[0-9]*\).*/\1/' | cut -c 3- | tr -d ' \t\n'`
