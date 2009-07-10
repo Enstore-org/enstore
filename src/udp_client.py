@@ -503,7 +503,12 @@ class UDPClient:
             if tsd.reply_queue.has_key(txn_id):
                 reply = tsd.reply_queue[txn_id]
                 del tsd.reply_queue[txn_id]
-                del tsd.send_queue[txn_id]
+                try:
+                    del tsd.send_queue[txn_id]
+                except KeyError:
+                    #Apparently it is possible to get here when Enstore has
+                    # very high load.  How exactly does this happen?
+                    pass
                 return reply, txn_id
         else:
             rcvd_txn_id=None
