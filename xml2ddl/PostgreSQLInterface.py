@@ -158,7 +158,8 @@ class PgDownloader(DownloadCommon):
         
         if type == 'numeric':
             atttypmod -= VARHDRSZ
-            return  ( (atttypmod >> 16) & 0xffff, atttypmod & 0xffff)
+            #return  ( (atttypmod >> 16) & 0xffff, atttypmod & 0xffff)
+            return  (None,None)
         
         if type == 'varbit' or type == 'bit':
             return (atttypmod, None)
@@ -254,10 +255,10 @@ class PgDownloader(DownloadCommon):
         
         for row in rows:
             (strConstraintName, cols, fk_table, fkeys, chUpdateType, chDelType) = row
-            cols = cols[1:-1]
+            #cols = cols[1:-1] (Dmitry Litvinsev litvinse@fnal.gov)
 #            colList = self._fetchTableColumnsNamesByNums(strTableName, cols.split(','))
             colList = self._fetchTableColumnsNamesByNums(strTableName, cols)
-            fkeys = fkeys[1:-1]
+            #fkeys = fkeys[1:-1]   (Dmitry Litvinsev litvinse@fnal.gov)
             fkColList = self._fetchTableColumnsNamesByNums(fk_table, fkeys)
             ret.append((strConstraintName, colList, fk_table, fkColList, chUpdateType, chDelType))
         
@@ -277,7 +278,6 @@ class PgDownloader(DownloadCommon):
                 AND pa.attnum = %s
                 ORDER BY pa.attnum
                 """
-            
             self.cursor.execute(strSql, [strTableName] + [num])
             rows = self.cursor.fetchall()
             ret.append(rows[0][0])
