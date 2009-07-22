@@ -9036,7 +9036,7 @@ def write_to_hsm(e, tinfo):
             # we don't set this here, then we end up with the
             # non-useful ("OK", "Error after transfering... )
             # error messages from calculate_final_statistics.
-            err_msg = str(result_dict['status'])
+            err_msg[thread.get_ident()] = str(result_dict['status'])
 
             if index == None:
                 message = "Unknown transfer failed."
@@ -10929,7 +10929,7 @@ def read_from_hsm(e, tinfo):
                     # we don't set this here, then we end up with the
                     # non-useful ("OK", "Error after transfering... )
                     # error messages from calculate_final_statistics.
-                    err_msg = str(result_dict['status'])
+                    err_msg[thread.get_ident()] = str(result_dict['status'])
 
                     if index == None:
                         message = "Unknown transfer failed."
