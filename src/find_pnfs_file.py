@@ -311,7 +311,10 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 # There probably won't be anything, but every now and then...
                 try:
                     layer4_dict = pnfs.get_layer_4(afn)
-                except (OSError, IOError):
+                except (OSError, IOError), msg:
+                    if msg.args[0] in [errno.EACCES, errno.EPERM]:
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
                     layer4_dict = {}
                 #We through away the (err_l, warn_l, info_l) values becuase we
                 # expect them to not be there if layer 1 is not there.  It does
