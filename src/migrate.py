@@ -3119,7 +3119,7 @@ def write_file(MY_TASK,
 	# check if the directory is witeable
 	try:
 		(dst_directory, dst_basename) = os.path.split(mig_path)
-		d_stat = os.stat(dst_directory)
+		d_stat = file_utils.get_stat(dst_directory)
 	except OSError, msg:
 		if msg.errno == errno.ENOENT:
 			d_stat = None
@@ -3136,18 +3136,26 @@ def write_file(MY_TASK,
 			# untrusted PNFSes, we can only fail and give
 			# a good error message.  Trusted PNFSes will succeed.
 			
-			os.makedirs(dst_directory)
 			ok_log(MY_TASK, "making path %s" % (dst_directory,))
-		except:
-			error_log(MY_TASK,
-				  "can not make path %s: %s" % \
-				  (dst_directory, str(sys.exc_info()[1])))
-			if sys.exc_info()[1].errno == errno.EPERM and \
-			   os.geteuid() == 0:
-				log(MY_TASK, "Question: Is PNFS trusted?")
-				sys.exit(1)
+			os.makedirs(dst_directory)
+		except (OSError, IOError), msg:
+			if msg.args[0] == errno.EEXIST:
+				#There is no error.  O_EXCL is not reliable
+				# over NFS V2 (what PNFS uses).  Perhaps
+				# makedirs() is hitting a this or a similar
+				# problem for directories?
+				pass
+			else:
+				error_log(MY_TASK,
+					  "can not make path %s: %s" % \
+					(dst_directory, str(sys.exc_info()[1])))
+				if sys.exc_info()[1].errno == errno.EPERM and \
+			   	   os.geteuid() == 0:
+					log(MY_TASK,
+					    "Question: Is PNFS trusted?")
+					sys.exit(1)
 				
-			return 1
+				return 1
 	if not d_stat and not os.access(dst_directory, os.W_OK):
 		# can not create the file in that directory
 		error_log(MY_TASK, "%s is not writable" % (dst_directory,))
