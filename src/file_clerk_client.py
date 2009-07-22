@@ -893,7 +893,9 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.USER},
-        option.MARK_BAD:{option.HELP_STRING:"mark the file bad",
+        option.MARK_BAD:{option.HELP_STRING:"Mark the file with the given "
+                         "filename as bad.  Include the bfid only if the "
+                         "file is a multiple copy file.",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
                          option.VALUE_LABEL:"path",
@@ -948,7 +950,9 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.VALUE_USAGE:option.IGNORED,
                        option.USER_LEVEL:option.ADMIN},
-        option.UNMARK_BAD:{option.HELP_STRING:"unmark a bad file",
+        option.UNMARK_BAD:{option.HELP_STRING:"Unmark the file with the given "
+                         "filename as bad.  Include the bfid only if the "
+                         "file is a multiple copy file.",
                            option.VALUE_TYPE:option.STRING,
                            option.VALUE_USAGE:option.REQUIRED,
                            option.VALUE_LABEL:"path",
