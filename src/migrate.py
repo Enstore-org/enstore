@@ -3255,10 +3255,14 @@ def write_file(MY_TASK,
                 try:
                         file_utils.remove(mig_path)
                 except (OSError, IOError), msg:
-                        error_log(MY_TASK, "failed to remove %s as " \
-                              "(uid %s, gid %s): %s" % \
-                              (mig_path, os.geteuid(), os.getegid(), str(msg)))
-                        return 1
+                        #If the file deletion failed becuase the file already
+                        # does not exist, treat this case like a success.
+                        # Fail all other errors.
+                        if msg.args[0] != errno.ENOENT:
+                                error_log(MY_TASK, "failed to remove %s as " \
+                                          "(uid %s, gid %s): %s" % \
+                                          (mig_path, os.geteuid(), os.getegid(), str(msg)))
+                                return 1
 
                 # Make the second attempt.
                 res = encp.encp(argv)
@@ -3270,11 +3274,17 @@ def write_file(MY_TASK,
                         try:
                                 file_utils.remove(mig_path)
                         except (OSError, IOError), msg:
-                                error_log(MY_TASK, "failed to remove %s as " \
-                                          "(uid %s, gid %s): %s" % \
-                                          (mig_path, os.geteuid(),
-                                           os.getegid(), str(msg)))
-                        return 1
+                                #If the file deletion failed becuase the file
+                                # already does not exist, treat this case like
+                                # a success.  Fail all other errors.
+                                if msg.args[0] != errno.ENOENT:
+                            
+                                        error_log(MY_TASK,
+                                                  "failed to remove %s as " \
+                                                  "(uid %s, gid %s): %s" % \
+                                                  (mig_path, os.geteuid(),
+                                                   os.getegid(), str(msg)))
+                                return 1
         elif res:
 		#Some unknown error occured.
 		log(MY_TASK, "failed to copy %s %s %s error = %s"
