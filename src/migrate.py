@@ -1610,7 +1610,7 @@ def get_file_info(MY_TASK, bfid, db):
 
 	# does it exist?
 	if not len(res):
-		error_log(MY_TASK, "%s does not exists"%(bfid))
+		error_log(MY_TASK, "%s does not exist in db"%(bfid))
 		return None
 
 	return res[0]
@@ -2541,7 +2541,7 @@ def copy_file(bfid, encp, intf, db):
 	# get file info
 	file_record = get_file_info(MY_TASK, bfid, db)
 	if not file_record:
-		error_log(MY_TASK, "%s does not exists" % (bfid,))
+		error_log(MY_TASK, "%s does not exist in db" % (bfid,))
 		return
 
 	if debug:
@@ -3163,7 +3163,7 @@ def write_file(MY_TASK,
 
 	# make sure the migration file is not there
 	try:
-		mig_stat = os.stat(mig_path)
+		mig_stat = file_utils.get_stat(mig_path)
 	except OSError, msg:
 		if msg.errno == errno.ENOENT:
 			mig_stat = None
@@ -3263,6 +3263,14 @@ def write_file(MY_TASK,
                                           "(uid %s, gid %s): %s" % \
                                           (mig_path, os.geteuid(), os.getegid(), str(msg)))
                                 return 1
+
+		#Detect ghost files for better reporting.
+		if dst_basename in os.listdir(dst_directory):
+			message = "Tried to write to invalid directory entry."
+			error_log(MY_TASK, message)
+			log(MY_TASK,
+			    "HINT: Remove %s using sclient." % (mig_path,))
+			return 1
 
                 # Make the second attempt.
                 res = encp.encp(argv)
