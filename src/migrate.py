@@ -2797,7 +2797,7 @@ def use_libraries(bfid, filepath, file_record, db, intf):
         try:
             pnfs_libraries = pnfs.Tag().readtag("library", dir_to_check)[0].split(",")
             break #Found it!
-        except OSError:
+        except (OSError, IOError):
             pass
     else:
         if getattr(intf, "library", ""):
@@ -3384,7 +3384,7 @@ def write_new_file(job, encp, fcc, intf, db):
 		except (OSError, IOError):
 			#We likely get here when the file is already
 			# removed from the spooling directory.
-			tmp_size = None			
+			tmp_size = None
 		if src_size != tmp_size:
 			error_log(MY_TASK,
 			       "size check mismatch %s(current %s, temp %s)" \
