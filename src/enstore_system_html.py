@@ -203,7 +203,7 @@ def do_work(intf):
     q="select coalesce(sum(size),0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
     
     if not remote:
-         q="select sum(deleted_bytes+unknown_bytes+active_bytes)  from volume where system_inhibit_0!='DELETED' and media_type!='null'"
+         q="select sum(deleted_bytes+unknown_bytes+active_bytes)  from volume where system_inhibit_0!='DELETED' and media_type!='null' and library not like '%shelf%' and library not like '%test%'"
 
     config_server_client_dict = configuration_client.get_config_dict()
     acc            = config_server_client_dict.get("database", {})

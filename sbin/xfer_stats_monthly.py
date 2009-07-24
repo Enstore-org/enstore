@@ -117,20 +117,13 @@ def fill_tape_histograms(i,server_name,server_port,hlist):
                user  = acc.get('dbuser_reader', "enstore_reader"))
     h   = hlist[i]
     db.query("begin")
-    q="declare file_cursor cursor for select bfid, size from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
-#    if socket.gethostbyname(socket.gethostname())[0:7] == "131.225" :
-#        remote=False
-#        q=q+" and library in ("
-#        for l in "cdf", "CDF-9940B", "CDF-LTO3", "CDF-LTO4","mezsilo", "samlto", "samm2", "sammam", "D0-9940B", "samlto2", "shelf-samlto", "D0-LTO3", "D0-LTO4", "9940",  "CD-9940B", "CD-LTO3", "CD-LTO4":
-#            q=q+"'"+l+"',"
-#        q=q[0:-1]
-#        q=q+")";
-#
+    q="declare file_cursor cursor for select file.bfid, file.size, volume.library from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
     db.query(q)
-#    db.query("declare file_cursor cursor for select bfid, size from file where deleted = 'n';")
     while True:
         res =  db.query("fetch 10000 from file_cursor;").getresult()
         for row in res:
+            library = row[2]
+            if library.find("shelf") != -1 or library.find("test") != -1 : continue
             d    = bfid2time(row[0]);
             size = row[1];
             h.fill(float(d),float(size)/TB)
