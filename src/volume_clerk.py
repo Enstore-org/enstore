@@ -2428,6 +2428,8 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         record['last_access'] = time.time()
+        if record.has_key('modification_time'):
+            record['modification_time'] = record['last_access']
         if record['first_access'] == -1:
             record['first_access'] = record['last_access']
         self.volumedb_dict[external_label] = record
