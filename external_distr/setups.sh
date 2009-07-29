@@ -32,10 +32,22 @@ setup() {
 			fi    
 			return 0
 		    else
-			if [ "${UPS_DIR:-x}" != "x" ]
-			then
-			    . `$UPS_DIR/bin/ups setup $last`
-			fi
+                        # new pnfs rpm name is pnfs-postgresql
+                        rpm -q "pnfs-postgresql" > /dev/null
+                        if [ $? -eq 0 ]
+                        then
+                                if [ -f /usr/etc/pnfsSetup.sh ]
+                                then
+                                        source /usr/etc/pnfsSetup.sh
+                                        PATH=$PATH:$pnfs/bin:$pnfs/tools
+                                fi
+                                return 0
+                        else
+                                if [ "${UPS_DIR:-x}" != "x" ]
+                                then
+                                . `$UPS_DIR/bin/ups setup $last`
+                                fi
+                        fi
 		    fi
 		fi
                 return 0
