@@ -84,15 +84,21 @@ select date(time) as day,
                             ELSE NULL
                       END) as completed
 
-from volume,migration_history
-where volume.id = migration_history.src_vol_id
+from volume,state
+where volume.id = state.volume
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('migrated', 'duplicated')
       /* This time sub-query is needed to limit test volumes migrated
          multiple times to be counted only once. */
+      /* Note: It is important that this time value come from the state
+         table and not the migration_history table.  If an empty or
+         only-containing-skipped-deleted-files tapes are migrated and entry
+         will make it into the state table but not the migration_history
+         table. */
       and time = (select max(time)
-                  from migration_history m2
-                  where m2.src_vol_id = volume.id)
+                  from state s2
+                  where s2.volume = volume.id
+                  and s2.value in ('migrated', 'duplicated'))
       and capacity_bytes > 500  --Skip cleaning tapes.
 group by day,media_type,capacity_bytes
 order by day,media_type
@@ -115,25 +121,29 @@ select date(state.time) as day,
             ELSE media_type
        END as media_type,
        count(distinct volume.label) as started
-from volume,migration_history,state
-where volume.id = migration_history.src_vol_id
-      and volume.id = state.volume
+from volume,state
+where volume.id = state.volume
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('migrating', 'duplicating',
                                       'migrated', 'duplicated')
       /* Hopefully, setting state.time like this will correctly handle
          all vintages of the migration process.  The migrating and duplicating
          stages were added September of 2008. */
+      /* Note: It is important that this time value come from the state
+         table and not the migration_history table.  If an empty or
+         only-containing-skipped-deleted-files tapes are migrated an entry
+         will make it into the state table but not the migration_history
+         table. */
       and state.time = (select min(s5.time) from (
                         select CASE WHEN s2.value in ('migrating',
                                                       'duplicating')
-                                    THEN min(s2.time)
+                                    THEN max(s2.time)
                                     WHEN s2.value in ('readonly')
                                          and time > current_timestamp - interval '30 days'
-                                    THEN min(s2.time)
+                                    THEN max(s2.time)
                                     WHEN s2.value in ('migrated',
                                                       'duplicated')
-                                    THEN min(s2.time)
+                                    THEN max(s2.time)
                                     ELSE NULL
                                END as time
                         from state s2
@@ -172,9 +182,25 @@ where volume.id = migration_history.src_vol_id
       and volume.system_inhibit_1 in ('migrated', 'duplicated')
       /* This time sub-query is needed to limit test volumes migrated
          multiple times to be counted only once. */
+      /* We use migration_history table here, instead of state table, because
+         we need to report source tapes where all the destination tapes
+         have been scanned.  For blank or only-containing-skipped-deleted-files
+         tapes, there are no destination tapes to scan and thus a more
+         accurate number of source tapes 'closed'. */
       and closed_time = (select max(closed_time)
                          from migration_history m2
                          where m2.src_vol_id = volume.id)
+      /* Make sure that at least one destination has been scanned. */
+      and (select count(*)
+           from migration_history
+           where migration_history.src_vol_id = volume.id
+             and migration_history.closed_time is not NULL
+           limit 1) > 0
+      /* Make sure all the destination volumes have been scanned. */
+      and (select count(*)
+           from migration_history
+           where migration_history.src_vol_id = volume.id
+           and migration_history.closed_time is NULL) = 0
       and capacity_bytes > 500  --Skip cleaning tapes.
 group by day,media_type,capacity_bytes
 order by day,media_type
@@ -205,12 +231,12 @@ select /* It should be as simple as just using the media_type. However,
        count(distinct label) as remaining_volumes
 from volume
 left join migration_history on migration_history.src_vol_id = volume.id
-where (system_inhibit_1 not in ('migrated', 'duplicated', 'cloned')
+where (system_inhibit_1 not in ('migrated', 'duplicated', 'cloned', 'cloning')
        or migration_history.closed_time is NULL)
       and system_inhibit_0 != 'DELETED'
       and library not like '%shelf%'
       and media_type != 'null'
-      and volume.sum_wr_access != 0
+      and volume.sum_wr_access - volume.sum_wr_err > 0
       and capacity_bytes > 500  --Skip cleaning tapes.
 group by media_type,capacity_bytes;
 """
@@ -235,7 +261,7 @@ from volume
 where system_inhibit_0 != 'DELETED'
       and library not like '%shelf%'
       and media_type != 'null'
-      and sum_wr_access != 0
+      and sum_wr_access - sum_wr_err > 0 --Skip tapes with only write failures.
       and capacity_bytes > 500  --Skip cleaning tapes.
 group by media_type,capacity_bytes;
 """
@@ -262,10 +288,10 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         plot_fp = open(plot_filename, "w+")
 
         if self.enstore_name:
-            use_title = "Migration summary %s for %s on %s" % \
+            use_title = "Migration/Duplication summary %s for %s on %s" % \
                         (plot_type, key, self.enstore_name)
         else:
-            use_title = "Migration summary %s for %s" % \
+            use_title = "Migration/Duplication summary %s for %s" % \
                         (plot_type, key)
 
         plot_fp.write('set terminal postscript color solid\n')
@@ -292,8 +318,8 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             
             #This is possibly used for adjusting the goal line.  See comment
             # below for possible reasons.
-            if started_count - total_count > 0:
-                goal_adjust = closed_count - total_count
+            if started_count > total_count:
+                goal_adjust = started_count - total_count
             else:
                 goal_adjust = 0
 
@@ -322,6 +348,8 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                           % (self.summary_done.get(key, 0L),))
             plot_fp.write('set label "Closed %s" at graph .05,.80\n' \
                           % (self.summary_closed.get(key, 0L),))
+            plot_fp.write('set label "Total %s" at graph .05,.75\n' \
+                          % (total_volumes,))
         else: #Daily
              plot_fp.write('set yrange [ 0 : ]\n')
         
