@@ -36,7 +36,8 @@ class Container:
 thread_specific_data = {}  #global value with each item for a different thread
 deletion_list_lock = threading.Lock()
 
-#Build thread specific data.
+#Build thread specific data.  get_deletion_lists() should only be called
+# from functions that have acquired the deletion_list_lock lock.
 def get_deletion_lists():
     if thread_support:
         tid = thread.get_ident() #Obtain unique identifier.
@@ -57,8 +58,10 @@ def get_deletion_lists():
                     continue
                 if a_thread.tid == tid:
                     #If the thread is still active, don't cleanup.
-                    continue
-
+                    break
+            else:
+                #If we didn't find a match with an active thread we can
+                # purge the stale information.
                 del thread_specific_data[tid]
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -77,6 +80,7 @@ def get_deletion_lists():
         thread_specific_data[tid] = Container()
         thread_specific_data[tid].bfids = []
         thread_specific_data[tid].files = []
+        thread_specific_data[tid].tid = tid
 
         if thread_support:
             #There is no good way to store which thread this tsd was
@@ -89,6 +93,20 @@ def get_deletion_lists():
             threading.currentThread().tid = tid
 
         rtn_tsd = thread_specific_data[tid]
+
+    #If the current thread obtains the information for another thread
+    # abort immediately!
+    if tid != rtn_tsd.tid:
+        message = "Obtained another thread's information.  Aborting.\n"
+        message1 = "tid = %s  rtn_tsd.tid = %s  tread_name = %s\n" \
+                   % (tid, rtn_tsd.tid, threading.currentThread().getName())
+        try:
+            sys.stderr.write(message)
+            sys.stderr.write(message1)
+            sys.stderr.flush()
+        except IOError:
+            pass
+        sys.exit(1)
             
     return rtn_tsd
 
@@ -140,8 +158,10 @@ def delete():
 
     deletion_list_lock.acquire()
 
-    _deletion_list = get_deletion_lists().files
-    _deletion_list_bfids = get_deletion_lists().bfids
+    #Acquire the list of things to delete.
+    del_list = get_deletion_lists()
+    _deletion_list = del_list.files
+    _deletion_list_bfids = del_list.bfids
 
     if not _deletion_list and not _deletion_list_bfids:
         deletion_list_lock.release() # Avoid deadlocks.
