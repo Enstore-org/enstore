@@ -134,6 +134,10 @@ where volume.id = state.volume
          only-containing-skipped-deleted-files tapes are migrated an entry
          will make it into the state table but not the migration_history
          table. */
+      /* The use of max(s2.time) instead of min(s2.time) are for migrated,
+         then recycled, then migrated (again) tapes to report the correct
+         date for XXOO00 and XXOO00.deleted, since XXOO00 has the combined
+         volume history for XXOO00 and XXOO00.deleted. */
       and state.time = (select min(s5.time) from (
                         select CASE WHEN s2.value in ('migrating',
                                                       'duplicating')
