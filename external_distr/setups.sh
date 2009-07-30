@@ -33,6 +33,8 @@ setup() {
 			return 0
 		    else
                         # new pnfs rpm name is pnfs-postgresql
+                        # old pnfs rpm name is pnfs
+
                         rpm -q "pnfs-postgresql" > /dev/null
                         if [ $? -eq 0 ]
                         then
