@@ -3248,6 +3248,7 @@ def write_file(MY_TASK,
                 # errors.
 		log(MY_TASK, "failed to copy %s %s %s error = %s"
                     % (src_bfid, tmp_path, mig_path, encp.err_msg))
+                return 1
         elif res == 1:
                 log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"
                     % (src_bfid, tmp_path, mig_path))
@@ -3292,7 +3293,7 @@ def write_file(MY_TASK,
                                                   "(uid %s, gid %s): %s" % \
                                                   (mig_path, os.geteuid(),
                                                    os.getegid(), str(msg)))
-                                return 1
+                                        return 1
         elif res:
 		#Some unknown error occured.
 		log(MY_TASK, "failed to copy %s %s %s error = %s"
