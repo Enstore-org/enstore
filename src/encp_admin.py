@@ -4,15 +4,9 @@
 #
 
 import encp
+import delete_at_exit
 
-def do_work():
-    # admin mode
-    mode = 0
-
-    intf = encp.EncpInterface(user_mode=mode)
-    if intf:
-	encp.do_work(intf)
 
 if __name__ == "__main__" :
 
-    do_work()
+    delete_at_exit.quit(encp.start(0))  #0 means admin

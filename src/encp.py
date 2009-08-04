@@ -12309,10 +12309,45 @@ def do_work(intf):
     file_utils.release_lock_euid_egid()
     
     return exit_status
-        
-if __name__ == '__main__':
+
+#If mode = 0 it means admin, 1 means user, 2 means dcache.
+#
+def start(mode):
+    if mode not in [0, 1, 2]:
+        #Some ways of running encp (or get) allow for encp to return 2 which
+        # indicates a non-retriable error.  Even for the normal encp return
+        # 2 since this should never happen.
+        return 2
+
     delete_at_exit.setup_signal_handling()
 
-    intf_of_encp = EncpInterface(sys.argv, 0) # zero means admin
+    try:
+        intf = EncpInterface(user_mode=mode)
+    except (KeyboardInterrupt, SystemExit):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        try:
+            Trace.handle_error()
+        except:
+            pass
+        #Some ways of running encp (or get) allow for encp to return 2 which
+        # indicates a non-retriable error.  Having the interface class fail
+        # should never happen.
+        return 2
 
-    delete_at_exit.quit(do_work(intf_of_encp))
+    try:
+        return do_work(intf)
+    except (KeyboardInterrupt, SystemExit):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        try:
+            Trace.handle_error()
+        except:
+            pass
+        #Some ways of running encp (or get) allow for encp to return 2 which
+        # indicates a non-retriable error.  Catching an exception outside of
+        # do_work() should never happen.
+        return 2
+        
+if __name__ == '__main__':
+    delete_at_exit.quit(start(0))  #0 means admin
