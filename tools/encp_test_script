@@ -35,6 +35,8 @@ if [ $# -eq 0 ]; then
     multiple_copies_read_write_test=`expr 1`
     pnfs_agent_read_write_test=`expr 1`
     pipe_write_test=`expr 1`
+    source_file_does_not_exist_write_test=`expr 1`
+    library_does_not_exist_write_test=`expr 1`
 else
     single_read_test=`expr 0`
     single_read_write_test=`expr 0`
@@ -56,6 +58,8 @@ else
     multiple_copies_read_write_test=`expr 0`
     pnfs_agent_read_write_test=`expr 0`
     pipe_write_test=`expr 0`
+    source_file_does_not_exist_write_test=`expr 0`
+    library_does_not_exist_write_test=`expr 0`
 
     for switch in $*; do
 	if [ "single_read_test" = $switch ]; then
@@ -117,6 +121,12 @@ else
 	fi
 	if [ "pipe_write_test" = $switch ]; then
 	    pipe_write_test=`expr 1`
+	fi
+	if [ "source_file_does_not_exist_write_test" = $switch ]; then
+	    source_file_does_not_exist_write_test=`expr 1`
+	fi
+	if [ "library_does_not_exist_write_test" = $switch ]; then
+	    library_does_not_exist_write_test=`expr 1`
 	fi
     done
 fi
@@ -268,4 +278,18 @@ if [ $pipe_write_test -eq 1 ]; then
     #pipe_write_test
     # Skip the pipe write test until the library manager supports it.
     echo "Skipping Pipe Write Test"
+fi
+
+###
+### SOURCE FILE DOES NOT EXIST WRITE TEST
+###
+if [ $source_file_does_not_exist_write_test -eq 1 ]; then
+    source_file_does_not_exist_write_test
+fi
+
+###
+### LIBRARY DOES NOT EXIST WRITE TEST
+###
+if [ $library_does_not_exist_write_test -eq 1 ]; then
+    library_does_not_exist_write_test
 fi

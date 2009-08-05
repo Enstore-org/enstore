@@ -212,6 +212,11 @@ transfer()
     options=`eval echo $5`
     message=`eval echo $6`
     direction=`eval echo $7`
+    if [ -z "$8" ]; then  #This allows us to check for failures too.
+        expected_exit_status=0
+    else
+        expected_exit_status=`eval echo $8`
+    fi
 
     #echo ENCP $encp_cmd
     #echo INPUT $infile
@@ -225,7 +230,7 @@ transfer()
     eval $encp_cmd $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
 
     rtn=$?
-    if [ "$rtn" -gt 0 ]; then
+    if [ $rtn -ne $expected_exit_status ]; then
 	echo "$message TEST FAILED ON $direction"
 	cat $ENCP_OUTPUT
 	cleanup_files "$cleanup"
@@ -1179,7 +1184,7 @@ pipe_write_test()
     else
 	filename=`pick_random_files 1 $filelist`
 	basename=`basename $filename`
-	pnfsname=`echo ${PNFS_AGENT_OUTPUT_DIR}/$basename`
+	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
 	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
 	encp='echo tttt | encp'
 	
@@ -1207,5 +1212,50 @@ pipe_write_test()
 	#rm -f $outname
 	#rm_pnfs_file $pnfsname
         cleanup_files '"$outname" "$pnfsname"'
+    fi
+}
+
+source_file_does_not_exist_write_test()
+{
+    section="SOURCE FILE DOES NOT EXIST WRITE"
+    print_test_name $section
+
+    truncate_encp_output
+
+    #Make up a bogus source file.
+    filename=/tmp/i_dont_exist/i_dont_exist
+    pnfsname=${PNFS_OUTPUT_DIR}/i_dont_exist
+
+    #Test if encp returns an error.
+    transfer "encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1
+}
+
+library_does_not_exist_write_test()
+{
+    section="LIBRARY DOES NOT EXIST WRITE"
+    print_test_name $section
+
+    #Test the version of encp.
+    is_admin_encp
+    if [ $? -eq 0 ]; then
+        echo "Encp is cut version.  Skipping test and continuting."
+	return
+    fi
+
+    truncate_encp_output
+
+    #Snag a random file.
+    filelist=`get_file_list "$LOCAL_INPUT_DIR"`
+    if [ -z "$filelist" ]; then
+	echo "Input directory empty.  Skipping test and continuing."
+    else
+	filename=`pick_random_files 1 $filelist`
+	basename=`basename $filename`
+	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
+	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	encp='encp --library this_library_does_not_exist'
+	
+	#See if the transfer fails.
+	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1
     fi
 }
