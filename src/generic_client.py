@@ -311,7 +311,7 @@ class GenericClient:
                 try:
                     x = callback.read_tcp_obj_new(connect_socket)
                 except (socket.error, select.error, e_errors.EnstoreError), msg:
-                    control_socket.close()
+                    connect_socket.close()
                     message = "failed to read from control socket: %s" % \
                               (str(msg),)
                     x['status'] = (e_errors.NET_ERROR, message)
