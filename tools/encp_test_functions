@@ -3,6 +3,9 @@
 #LOCAL_DIR=/tmp
 #PNFS_DIR=/pnfs/mist
 
+#encp_cmd can be overridden from the encp_test_script command line.
+encp_cmd=`which encp`
+
 if [ ! -d "$LOCAL_DIR" ]; then
     echo "\$LOCAL_DIR not set.  Stopping test."
     exit 1
@@ -102,14 +105,63 @@ print_test_name()
     echo STARTING $* TEST
 }
 
+#############################################################################
+
+has_library_switch()
+{
+    help=`$encp_cmd --help`
+
+    echo "$help" | awk '{print $1}' | grep '\-\-library' > /dev/null
+
+    #If a match was found it has the switch.
+    if [ $? -eq 0 ]; then
+	return 1
+    fi
+
+    #Return zero if the switch is not available.
+    return 0
+}
+
+has_volume_switch()
+{
+    help=`$encp_cmd --help`
+
+    echo "$help" | awk '{print $1}' | grep '\-\-volume' > /dev/null
+
+    #If a match was found it has the switch.
+    if [ $? -eq 0 ]; then
+	return 1
+    fi
+
+    #Return zero if the switch is not available.
+    return 0
+}
+
+has_shortcut_switch()
+{
+    help=`$encp_cmd --help`
+
+    echo "$help" | awk '{print $1}' | grep '\-\-shortcut' > /dev/null
+
+    #If a match was found it has the switch.
+    if [ $? -eq 0 ]; then
+	return 1
+    fi
+
+    #Return zero if the switch is not available.
+    return 0
+}
+
 is_admin_encp()
 {
-    version=`encp --version`
+    version=`$encp_cmd --help`
 
-    echo $version | grep frozen > /dev/null
+    #This check only works for as long as --storage-group remains an
+    # administator only option.
+    echo "$version" | awk '{print $1}' | grep '\-\-storage-group' > /dev/null
 
-    #If a match was found it is a cut version.
-    if [ $? -eq 1 ]; then
+    #If a match was found it is an admin version.
+    if [ $? -eq 0 ]; then
 	return 1
     fi
 
@@ -117,12 +169,17 @@ is_admin_encp()
     return 0
 }
 
+#############################################################################
+
 get_file_list()
 {
 #$1 = directory of file to choose from
 
     #Restrict this to files less than 100MB in size.
-    filenames=`find $1 -size -104857600c -type f`
+    filenames=`find $1 -maxdepth 1 -size -104857600c -type f`
+    if [ -z "$filenames" ]; then
+	filenames=`find $1 -size -104857600c -type f`
+    fi
 
     echo "$filenames"
 }
@@ -136,7 +193,10 @@ get_pnfs_file_list()
 	#filenames=`enstore pnfs_agent --just-files --list-dir $1 | sed "s:^:$1/:"`
 	filenames=`enstore pnfs_agent --just-files --list-dir $1`
     else
-        filenames=`find $1 -size -104857600c -type f`
+        filenames=`find $1 -maxdepth 1 -size -104857600c -type f`
+	if [ -z "$filenames" ]; then
+	    filenames=`find $1 -size -104857600c -type f`
+	fi
     fi
 
     echo "$filenames"
@@ -205,7 +265,7 @@ absfile()
 #transfer file
 transfer()
 {
-    encp_cmd=$1  #`eval echo $1`
+    encp_command=$1  #`eval echo $1`
     infile=`eval echo $2`
     outfile=`eval echo $3`
     cleanup=`eval echo $4`
@@ -218,28 +278,34 @@ transfer()
         expected_exit_status=`eval echo $8`
     fi
 
-    #echo ENCP $encp_cmd
-    #echo INPUT $infile
-    #echo OUTPUT $outfile
-    #echo INCLEANUP $cleanup
-    #echo OPTIONS $options
-    #echo MESSAGE $message
-    #echo DIRECTION $direction
+    if [ $debug -gt 2 ]; then
+        echo ENCP $encp_command
+        echo INPUT $infile
+        echo OUTPUT $outfile
+        echo INCLEANUP $cleanup
+        echo OPTIONS $options
+        echo MESSAGE $message
+        echo DIRECTION $direction
+        echo EXPECTED_EXIT_STATUS $expected_exit_status
+    fi
 
-    #echo "$encp_cmd $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT" | tee $ENCP_OUTPUT 2>&1
-    eval $encp_cmd $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
+    if [ $debug -gt 0 ]; then
+	echo "$encp_command $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT" | tee $ENCP_OUTPUT 2>&1
+    fi
+    eval $encp_command $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
 
     rtn=$?
     if [ $rtn -ne $expected_exit_status ]; then
-	echo "$message TEST FAILED ON $direction"
+	echo "$message TEST FAILED WITH $rtn ON $direction"
 	cat $ENCP_OUTPUT
 	cleanup_files "$cleanup"
-	#for file in $cleanup; do
-	#    if [ "$file" != "/dev/null" ]; then
-	#	rm -f $file
-	#    fi
-	#done
 	exit 1
+    else
+        echo "$message TEST SUCCEEDED WITH $rtn ON $direction"
+	if [ $debug -gt 1 ]; then
+	    #Only output this if they really want it.
+	    cat $ENCP_OUTPUT
+	fi
     fi
 }
 
@@ -511,10 +577,11 @@ single_read_test()
     if [ -z "$filelist" ]; then
 	echo "Input directory empty.  Skipping test and continuing."
     else
+	#Specify file paths.
 	filename=`pick_random_files 1 $filelist`
 	outname=/dev/null
-	
-	transfer encp '$filename' '$outname' '$outname' "" "$section" READ
+
+	transfer $encp_cmd '$filename' '$outname' '$outname' "" "$section" READ
     fi
 }
 
@@ -532,11 +599,11 @@ single_read_write_test()
     pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
     outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
 
-    transfer encp '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer $encp_cmd '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
 
-    transfer encp '$pnfsname' '$outname' '$pnfsname $outname' "" "$Section" READ
+    transfer $encp_cmd '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
     permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -561,11 +628,11 @@ multiple_read_write_test()
     pnfsnames=`absfile $PNFS_OUTPUT_DIR $filenames`
     outnames=`absfile $LOCAL_OUTPUT_DIR $filenames`
 
-    transfer encp '$filenames' '$PNFS_OUTPUT_DIR' '$pnfsnames' "" "$section" WRITE
+    transfer $encp_cmd '$filenames' '$PNFS_OUTPUT_DIR' '$pnfsnames' "" "$section" WRITE
 
     test_layer '$pnfsnames' "$section"
 
-    transfer encp '$pnfsnames' '$LOCAL_OUTPUT_DIR' '$pnfsnames $outnames' "" "$section" READ
+    transfer $encp_cmd '$pnfsnames' '$LOCAL_OUTPUT_DIR' '$pnfsnames $outnames' "" "$section" READ
 
     test_diff '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
     permissions_test '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
@@ -583,9 +650,9 @@ dcache_read_write_test()
     print_test_name $section
 
     #Test the version of encp.
-    is_admin_encp
+    has_shortcut_switch
     if [ $? -eq 0 ]; then
-        echo "Encp is cut version.  Skipping test and continuting."
+        echo "Encp does not have --shortcut switch.  Skipping test and continuing."
 	return
     fi
 
@@ -615,18 +682,17 @@ dcache_read_write_test()
     fi
 
     #Shorten some things for readability.
-    #encp="encp --shortcut"
     mount="--shortcut --pnfs-mount $PNFS_DIR"
     put_id="--put-cache $pnfsid"
     get_id="--get-cache $pnfsid"
 
     #Do the write transfer and test for correctness.
-    transfer encp '$put_id' '$filename' '$pnfsname' '$mount' "$section" WRITE
+    transfer $encp_cmd '$put_id' '$filename' '$pnfsname' '$mount' "$section" WRITE
     
     test_layer '$pnfsname' "$section"
 
     #Do the read transfer and test for correctness.
-    transfer encp '$get_id' '$outname' '$pnfsname $outname' '$mount' "$section" READ
+    transfer $encp_cmd '$get_id' '$outname' '$pnfsname $outname' '$mount' "$section" READ
 
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
     permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -637,7 +703,7 @@ dcache_read_write_test()
     #Do the read transfer and test with short cutting of extrapolating
     # the full file path enabled.
     get_id="--shortcut --get-cache $pnfsid"
-    transfer encp '$get_id' '$outname' '$pnfsname $outname' '$mount' "$section" READ
+    transfer $encp_cmd '$get_id' '$outname' '$pnfsname $outname' '$mount' "$section" READ
 
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
     permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -665,11 +731,11 @@ non_conf_read_write_test()
     #Override enstore.conf
     export ENSTORE_CONF=NULL #This is a string "NULL", not ((void*)NULL) in C.
 
-    transfer encp '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer $encp_cmd '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
     
     test_layer '$pnfsname' "$section"
 
-    transfer encp '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    transfer $encp_cmd '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
     permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -706,7 +772,7 @@ setuid_read_write_test()
     outname=`absfile $LOCAL_OUTPUT_DIR $filename`
     pnfsname=`absfile $PNFS_OUTPUT_DIR $filename`
     
-    transfer 'setuid encp' '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer "setuid $encp_cmd" '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
 
     #Test if an error occured or if an error is what we expect.
     setuid test_layer '$pnfsname' "$section"
@@ -726,7 +792,7 @@ setuid_read_write_test()
 	fi
     fi
 
-    transfer 'setuid encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    transfer "setuid $encp_cmd" '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
     permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -752,13 +818,13 @@ single_threaded_read_write_test()
     basename=`basename $filename`
     pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
     outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
-    encp='encp --threaded'
+    encp="$encp_cmd --threaded"
 
     transfer '$encp' '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
 
-    transfer '$encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$Section" READ
+    transfer '$encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
     permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -781,7 +847,7 @@ multiple_threaded_read_write_test()
     filenames=`pick_random_files 3 $filelist`
     pnfsnames=`absfile $PNFS_OUTPUT_DIR $filenames`
     outnames=`absfile $LOCAL_OUTPUT_DIR $filenames`
-    encp='encp --threaded'
+    encp="$encp_cmd --threaded"
 
     transfer '$encp' '$filenames' '$PNFS_OUTPUT_DIR' '$pnfsnames' "" "$section" WRITE
 
@@ -811,13 +877,13 @@ single_ecrc_read_write_test()
     basename=`basename $filename`
     pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
     outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
-    encp='encp --ecrc'
+    encp="$encp_cmd --ecrc"
 
     transfer '$encp' '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
 
-    transfer '$encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$Section" READ
+    transfer '$encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
     permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -907,11 +973,11 @@ single_relative_path_read_write_test()
 
 	cd ${PNFS_OUTPUT_DIR}/
 
-	transfer encp '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+	transfer $encp_cmd '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
 	
 	test_layer '$pnfsname' "$section"
 	
-	transfer encp '$pnfsname' '$outname' '$pnfsname $outname' "" "$Section" READ
+	transfer $encp_cmd '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
 	test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
 	permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -945,7 +1011,7 @@ single_local_pnfs_path_read_test()
 	#If this does not exist, create it.
 	mkdir -p $outdir
 	
-	transfer encp '$filename' '$outname' '$outname' "" "$section" READ
+	transfer $encp_cmd '$filename' '$outname' '$outname' "" "$section" READ
 
 	rm -f $outname
     fi
@@ -970,7 +1036,7 @@ single_no_brand_read_test()
 	filename=`pick_random_files 1 $filelist`
 	outname=/dev/null
 
-	transfer encp '$filename' '$outname' '$outname' "" "$section" READ
+	transfer $encp_cmd '$filename' '$outname' '$outname' "" "$section" READ
     fi
 }
 
@@ -980,15 +1046,15 @@ volume_read_test()
     print_test_name $section
 
     #Test the version of encp.
-    is_admin_encp
+    has_volume_switch
     if [ $? -eq 0 ]; then
-        echo "Encp is cut version.  Skipping test and continuting."
+        echo "Encp does not have --volume switch.  Skipping test and continuing."
         return
     fi 
 
     truncate_encp_output
 
-    encp='encp --skip-deleted-files'
+    encp="$encp_cmd --skip-deleted-files"
 
     #Snag a volume_read_test volume.
     volumes=`enstore info --query "select label from volume where file_family = 'volume_read_test' and label not like '%.deleted' ;" | sed '1,2d'`
@@ -1022,7 +1088,7 @@ single_fs_path_read_test()
 	filename=`echo $filename | cut -c1-6`fs/usr`echo $filename | cut -c6-`
 	outname=/dev/null
 
-	transfer encp '$filename' '$outname' '$outname' "" "$section" READ
+	transfer $encp_cmd '$filename' '$outname' '$outname' "" "$section" READ
     fi
 }
 
@@ -1039,14 +1105,14 @@ data_access_layer_read_write_test()
     basename=`basename $filename`
     pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
     outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
-    encp='encp --data-access-layer'
+    encp="$encp_cmd --data-access-layer"
 
     transfer '$encp' '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
     data_access_layer_test '$filename' '$pnfsname' '$pnfsname $outname' "$section"
     
-    transfer '$encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$Section" READ
+    transfer '$encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
     data_access_layer_test '$pnfsname' '$outname' '$pnfsname $outname' "$section"
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -1066,9 +1132,9 @@ multiple_copies_read_write_test()
     print_test_name $section
 
     #Test the version of encp.
-    is_admin_encp
+    has_library_switch
     if [ $? -eq 0 ]; then
-        echo "Encp is cut version.  Skipping test and continuting."
+        echo "Encp does not have --library switch.  Skipping test and continuing."
 	return
     fi
 
@@ -1084,7 +1150,7 @@ multiple_copies_read_write_test()
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
 	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
 	library=`cd ${PNFS_OUTPUT_DIR}; enstore pnfs --library`
-	encp='encp --copies 1 --library $library,$library'
+	encp="$encp_cmd --copies 1 --library $library,$library"
 	
 	#Write the original and one copy to tape.
 	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE
@@ -1092,19 +1158,19 @@ multiple_copies_read_write_test()
 	enstore_check_test '$pnfsname' '$pnfsname' "$section"
     		
 	#Do the read transfer and test for correctness of the original.
-	transfer encp '$pnfsname' '$outname' '$pnfsname $outname' "" "$Section" READ
+	transfer $encp_cmd '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
 	rm -f $outname
 
 	#Now read back the copy via bfid.
 	bfid=`enstore pnfs --bfid $pnfsname`
 	get_bfid="--get-bfid `enstore file --find-copies $bfid`"
-	transfer encp '$get_bfid' '$outname' '$pnfsname $outname' "" "$section" READ
+	transfer $encp_cmd '$get_bfid' '$outname' '$pnfsname $outname' "" "$section" READ
 
 	rm -f $outname
 
 	#Now read back the copy via copy number.
-	transfer "encp --copy 1" '$pnfsname' '$outname' '$pnfsname $outname' "" "$Section" READ
+	transfer "$encp_cmd --copy 1" '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
 	#rm -f $outname
 	#rm_pnfs_file $pnfsname
@@ -1120,7 +1186,7 @@ pnfs_agent_read_write_test()
     #Test the version of encp.
     is_admin_encp
     if [ $? -eq 0 ]; then
-        echo "Encp is cut version.  Skipping test and continuing."
+        echo "Encp is user version.  Skipping test and continuing."
 	return
     fi
 
@@ -1154,7 +1220,7 @@ pnfs_agent_read_write_test()
 	basename=`basename $filename`
 	pnfsname=`echo ${PNFS_AGENT_OUTPUT_DIR}/$basename`
 	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
-	encp='encp'
+	encp="$encp_cmd"
 	
 	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE
 
@@ -1186,7 +1252,7 @@ pipe_write_test()
 	basename=`basename $filename`
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
 	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
-	encp='echo tttt | encp'
+	encp="echo tttt | $encp_cmd"
 	
 	#First test that encp ingnores the standard in pipe when simulating
 	# a cron environment.
@@ -1195,7 +1261,7 @@ pipe_write_test()
 	test_layer "$pnfsname" "$section"
 	enstore_check_test '$pnfsname' '$pnfsname' "$section"
 	
-	transfer encp "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
+	transfer "$encp_cmd" "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
 
 	rm -f $outname
 	rm -f $pnfsname
@@ -1207,7 +1273,7 @@ pipe_write_test()
 	test_layer '$pnfsname' "$section"
 	enstore_check_test '$pnfsname' '$pnfsname' "$section"
 	
-	transfer encp "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
+	transfer "$encp_cmd" "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
 
 	#rm -f $outname
 	#rm_pnfs_file $pnfsname
@@ -1227,7 +1293,7 @@ source_file_does_not_exist_write_test()
     pnfsname=${PNFS_OUTPUT_DIR}/i_dont_exist
 
     #Test if encp returns an error.
-    transfer "encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1
+    transfer "$encp_cmd" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1
 }
 
 library_does_not_exist_write_test()
@@ -1236,9 +1302,9 @@ library_does_not_exist_write_test()
     print_test_name $section
 
     #Test the version of encp.
-    is_admin_encp
+    has_library_switch
     if [ $? -eq 0 ]; then
-        echo "Encp is cut version.  Skipping test and continuting."
+        echo "Encp does not have --library switch.  Skipping test and continuing."
 	return
     fi
 
@@ -1253,7 +1319,7 @@ library_does_not_exist_write_test()
 	basename=`basename $filename`
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
 	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
-	encp='encp --library this_library_does_not_exist'
+	encp="$encp_cmd --library this_library_does_not_exist"
 	
 	#See if the transfer fails.
 	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1

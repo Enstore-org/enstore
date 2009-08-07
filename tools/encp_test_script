@@ -1,5 +1,13 @@
 #! /bin/bash
 
+print_help()
+{
+    echo "USAGE: `basename $0` [-h | -d | -e <encp_path>] [<test_name1> [test_name2] ...]"
+    echo "    -h               Print this help."
+    echo "    -e <encp_path>   Specifiy the encp to use for the tests."
+    echo "    -d               Increase the debugging output."
+}
+
 if [ ! -d "$LOCAL_DIR" ]; then
     echo "\$LOCAL_DIR not set.  Stopping test."
     exit 1
@@ -10,10 +18,29 @@ if [ ! -d "$PNFS_DIR" ]; then
 fi
 
 verbose="--verbose 9"
-unalias ls
+unalias ls   #We want the default ls behavior.
 
 source encp_test_functions
 
+#These variables are possibily overridden with command line arguments.
+encp_command=`which encp`
+debug=0
+
+#Parse any command line arguments.
+while getopts dhe: option; do
+    case "$option"
+    in
+        e) encp_cmd=$OPTARG;;
+	h) print_help; exit 0;;
+	d) debug=`expr $debug + 1`;;
+    esac
+done
+
+#Clear any switches from the argument list so that we can continue processing
+# all arguments on the command line.
+shift `expr $OPTIND - 1`
+
+#If the number of arguments, $#, is zero run all the tests.
 if [ $# -eq 0 ]; then
     single_read_test=`expr 1`
     single_read_write_test=`expr 1`
