@@ -137,9 +137,13 @@ def get_stat(arg, use_lstat = False):
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
-            
-            os.seteuid(0)
-            os.setegid(0)
+
+            try:
+                os.seteuid(0)
+                os.setegid(0)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             try:
                 #Calling stat again won't get stuck in a loop since the
@@ -152,8 +156,12 @@ def get_stat(arg, use_lstat = False):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            os.setegid(current_egid)
-            os.seteuid(current_euid)
+            try:
+                os.setegid(current_egid)
+                os.seteuid(current_euid)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             release_lock_euid_egid()
         else:
@@ -179,8 +187,12 @@ def open(fname, mode = "r"):
             current_euid = os.geteuid()
             current_egid = os.getegid()
         
-            os.seteuid(0)
-            os.setegid(0)
+            try:
+                os.seteuid(0)
+                os.setegid(0)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             try:
                 file_p = __builtins__['open'](fname, mode)
@@ -191,8 +203,12 @@ def open(fname, mode = "r"):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            os.setegid(current_egid)
-            os.seteuid(current_euid)
+            try:
+                os.setegid(current_egid)
+                os.seteuid(current_euid)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             release_lock_euid_egid()
         else:
@@ -221,8 +237,12 @@ def open_fd(fname, flags, mode = 0777):
             current_euid = os.geteuid()
             current_egid = os.getegid()
         
-            os.seteuid(0)
-            os.setegid(0)
+            try:
+                os.seteuid(0)
+                os.setegid(0)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             try:
                 if flags & os.O_CREAT:
@@ -236,8 +256,12 @@ def open_fd(fname, flags, mode = 0777):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            os.setegid(current_egid)
-            os.seteuid(current_euid)
+            try:
+                os.setegid(current_egid)
+                os.seteuid(current_euid)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             release_lock_euid_egid()
         else:
@@ -245,7 +269,7 @@ def open_fd(fname, flags, mode = 0777):
             
     return file_fd
 
-#Open the file fname.  Mode has same meaning as builtin open().
+#Obtain the contents of the specified directory.
 def listdir(dname):
     try:
         directory_listing = os.listdir(dname)
@@ -258,8 +282,12 @@ def listdir(dname):
             current_euid = os.geteuid()
             current_egid = os.getegid()
         
-            os.seteuid(0)
-            os.setegid(0)
+            try:
+                os.seteuid(0)
+                os.setegid(0)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             try:
                 directory_listing = os.listdir(dname)
@@ -270,8 +298,12 @@ def listdir(dname):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            os.setegid(current_egid)
-            os.seteuid(current_euid)
+            try:
+                os.setegid(current_egid)
+                os.seteuid(current_euid)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             release_lock_euid_egid()
         else:
@@ -293,8 +325,12 @@ def chmod(fname, perms):
             current_euid = os.geteuid()
             current_egid = os.getegid()
         
-            os.seteuid(0)
-            os.setegid(0)
+            try:
+                os.seteuid(0)
+                os.setegid(0)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             try:
                 os.chmod(fname, perms)
@@ -305,8 +341,12 @@ def chmod(fname, perms):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            os.setegid(current_egid)
-            os.seteuid(current_euid)
+            try:
+                os.setegid(current_egid)
+                os.seteuid(current_euid)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             release_lock_euid_egid()
         else:
@@ -325,8 +365,12 @@ def chown(fname, uid, gid):
             current_euid = os.geteuid()
             current_egid = os.getegid()
         
-            os.seteuid(0)
-            os.setegid(0)
+            try:
+                os.seteuid(0)
+                os.setegid(0)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             try:
                 os.chown(fname, uid, gid)
@@ -337,8 +381,12 @@ def chown(fname, uid, gid):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            os.setegid(current_egid)
-            os.seteuid(current_euid)
+            try:
+                os.setegid(current_egid)
+                os.seteuid(current_euid)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             release_lock_euid_egid()
         else:
@@ -358,8 +406,12 @@ def utime(fname, times):
             current_euid = os.geteuid()
             current_egid = os.getegid()
         
-            os.seteuid(0)
-            os.setegid(0)
+            try:
+                os.seteuid(0)
+                os.setegid(0)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             try:
                 os.utime(fname, times)
@@ -370,8 +422,12 @@ def utime(fname, times):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            os.setegid(current_egid)
-            os.seteuid(current_euid)
+            try:
+                os.setegid(current_egid)
+                os.seteuid(current_euid)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             release_lock_euid_egid()
         else:
@@ -390,8 +446,12 @@ def remove(fname):
             current_euid = os.geteuid()
             current_egid = os.getegid()
         
-            os.seteuid(0)
-            os.setegid(0)
+            try:
+                os.seteuid(0)
+                os.setegid(0)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             try:
                 os.remove(fname)
@@ -402,8 +462,12 @@ def remove(fname):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            os.setegid(current_egid)
-            os.seteuid(current_euid)
+            try:
+                os.setegid(current_egid)
+                os.seteuid(current_euid)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             release_lock_euid_egid()
         else:
