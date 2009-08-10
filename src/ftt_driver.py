@@ -279,7 +279,8 @@ class FTTDriver(generic_driver.Driver):
             #Trace.trace(42, "%s=ftt.read(buf,%s) done" % (r,nbytes,))
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "ftt_driver:read: %s %s" % (detail, detail.value))
-            raise e_errors.READ_ERROR, detail
+            # re raise ftt exception
+            raise ftt.FTTError, detail
         if r > 0:
             now = time.time()
             t = (now - t0)
@@ -306,7 +307,9 @@ class FTTDriver(generic_driver.Driver):
             #Trace.trace(42, "%s=ftt.write(buf,%s) done" % (r,nbytes,))
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "ftt_driver:write: %s %s" % (detail, detail.value))
-            raise e_errors.WRITE_ERROR, detail
+            # re raise ftt exception
+            raise ftt.FTTError, detail
+            #raise e_errors.WRITE_ERROR, detail
         if r > 0:
             now = time.time()
             t = (now - t0)
@@ -335,7 +338,9 @@ class FTTDriver(generic_driver.Driver):
             ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "ftt_driver:write_fm %s %s" % (detail, detail.value))
-            raise e_errors.WRITE_ERROR, detail
+            # re raise ftt exception
+            raise ftt.FTTError, detail
+            #raise e_errors.WRITE_ERROR, detail
         if r==-1:
             ftt.raise_ftt()
         return r

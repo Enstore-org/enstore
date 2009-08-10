@@ -319,7 +319,7 @@ class Buffer:
         if blocksize == self.blocksize:
             return
         if self.nbytes() != 0:
-            raise BUF_SIZE_CH_ERR
+            raise MoverError(BUF_SIZE_CH_ERR)
         self._lock.acquire()
         self._freelist = []
         self.blocksize = blocksize
@@ -412,7 +412,7 @@ class Buffer:
                     header_size = self.wrapper.header_size(data)
                 except (TypeError, ValueError), msg:
                     Trace.log(e_errors.ERROR,"Invalid header %s" %(data[:self.wrapper.min_header_size]))
-                    raise WRAPPER_ERROR
+                    raise MoverError(WRAPPER_ERROR)
                 data_ptr = header_size
                 bytes_for_cs = min(bytes_read - header_size, self.bytes_for_crc)
             self.first_block = 0
@@ -452,12 +452,12 @@ class Buffer:
             except:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 Trace.handle_error()
-                raise CRC_ERROR
+                raise MoverError(CRC_ERROR)
             if crc_error:
                 Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, actual (%s,%s)" %
                           (self.sanity_cookie, self.sanity_bytes, self.sanity_crc)) 
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
-                raise CRC_ERROR
+                raise MoverError(CRC_ERROR)
                 
         t3 = time.time()
         if data and fill_buffer:
@@ -502,7 +502,7 @@ class Buffer:
                     number_to_skip = self.header_size
                     #bytes_for_cs = bytes_for_cs - self.header_size
                     if len(data) <= self.header_size:
-                        raise WRAPPER_ERROR
+                        raise MoverError(WRAPPER_ERROR)
                     self.first_block = 0
                 #Trace.trace(22, "block_write: written in this shot %s" % (bytes_written,))
                 
@@ -534,7 +534,7 @@ class Buffer:
                             #            (self.sanity_crc, self.sanity_bytes))
                     except:
                         Trace.log(e_errors.ERROR,"block_write: CRC_ERROR")
-                        raise CRC_ERROR
+                        raise MoverError(CRC_ERROR)
             t3 = time.time()
             self._freespace(data)
             t4 = time.time()
@@ -644,7 +644,7 @@ class Buffer:
             if bytes_written != bytes_to_write:
                 msg="encp gone? bytes to write %s, bytes written %s"%(bytes_to_write, bytes_written)
                 Trace.log(e_errors.ERROR, msg)
-                raise e_errors.ENCP_GONE, msg
+                raise MoverError(e_errors.ENCP_GONE)
             if do_crc:
                 self.complete_crc = checksum.adler32_o(self.complete_crc,
                                                        self._writing_block,
@@ -672,7 +672,7 @@ class Buffer:
                             Trace.log(e_errors.ERROR,
                                       "CRC Error: CRC sanity cookie %s, sanity CRC %s writing %s bytes. Written %s bytes" %
                                       (self.sanity_cookie[1],self.sanity_crc, bytes_to_write, nbytes)) 
-                            raise CRC_ERROR
+                            raise MoverError(CRC_ERROR)
         else:
             bytes_written = bytes_to_write #discarding header stuff
         self._write_ptr = self._write_ptr + bytes_written
@@ -1050,7 +1050,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.tape_driver and self.tape_driver.ftt:
             try:
                 stats = self.tape_driver.get_stats()
-            except  (self.ftt.FTTError, TypeError), detail:
+            except (self.ftt.FTTError, TypeError), detail:
                 Trace.log(e_errors.ERROR, "error getting stats %s"%(detail,))
                 return
             
@@ -1402,7 +1402,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 good_label = 1
                 try:
                     have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
-                except  self.ftt.FTTError, detail:
+                except self.ftt.FTTError, detail:
                     Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive: %s %s. Will terminate"%(self.ftt.FTTError, detail))
                     time.sleep(5)
                     sys.exit(-1)
@@ -1412,7 +1412,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.config['product_id'] = stats[self.ftt.PRODUCT_ID]
                     self.config['serial_num'] = stats[self.ftt.SERIAL_NUM]
                     self.config['vendor_id'] = stats[self.ftt.VENDOR_ID]
-                except  (self.ftt.FTTError, TypeError), detail:
+                except (self.ftt.FTTError, TypeError), detail:
                     Trace.alarm(e_errors.ALARM, "Can not start: %s"%(detail,))
                     print "Can not start: %s"%(detail,)
                     sys.exit(-1)
@@ -1972,8 +1972,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                             Trace.trace(20,"update_lm: send with wait %s to %s TO %s retry %s"%
                                         (ticket['work'],addr, to, retry))
                             try:
+                                t0 = time.time()
                                 request_from_lm = self.udpc.send(ticket, addr, rcv_timeout=to, max_send=retry)
                                 #request_from_lm = self.udpc.send(ticket, addr, rcv_timeout=30)
+                                Trace.trace(41, "Request turn around time %s"(time.time() - t0,))
                                 #self.waiting_for_lm_response = 1
                             except:
                                 exc, msg, tb = sys.exc_info()
@@ -2237,7 +2239,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #raise self.ftt.FTTError(("partial stats", ftt2.FTT_EPARTIALSTAT,""))
                 stats = self.tape_driver.get_stats()
                 bloc_loc = long(stats[self.ftt.BLOC_LOC])
-            except  (self.ftt.FTTError, TypeError), detail:
+            except (self.ftt.FTTError, TypeError), detail:
                 self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%
                                      (detail, bloc_loc), error_source=DRIVE)
                 return
@@ -2550,7 +2552,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         read_errors = long(stats[self.ftt.READ_ERRORS])
                         write_errors = long(stats[self.ftt.WRITE_ERRORS])
 
-                    except  self.ftt.FTTError, detail:
+                    except self.ftt.FTTError, detail:
                         self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
                         return
 
@@ -2628,7 +2630,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
                     self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
                 
-                except  self.ftt.FTTError, detail:
+                except self.ftt.FTTError, detail:
                     Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive while checking a written file: %s %s"%(self.ftt.FTTError, detail))
                     self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
@@ -2636,7 +2638,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
                 try:
                     save_location, block = self.tape_driver.tell()
-                except  self.ftt.FTTError, detail:
+                except self.ftt.FTTError, detail:
                     self.transfer_failed(e_errors.WRITE_ERROR, 'Can not get drive info %s' % (detail,),
                                          error_source=TAPE)
                     return
@@ -2696,9 +2698,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             #Trace.trace(22,"write_tape: freeing block")
                             self.buffer._freespace(self.buffer._writing_block)
                         
-                    except CRC_ERROR:
-                        exc, detail, tb = sys.exc_info()
-                        #Trace.handle_error(exc, detail, tb)
+                    except MoverError, detail:
                         Trace.alarm(e_errors.ERROR, "selective CRC check error",
                                     {'outfile':self.current_work_ticket['outfile'],
                                      'infile':self.current_work_ticket['infile'],
@@ -2766,7 +2766,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     read_errors = long(stats[self.ftt.READ_ERRORS])
                     write_errors = long(stats[self.ftt.WRITE_ERRORS])
 
-                except  self.ftt.FTTError, detail:
+                except self.ftt.FTTError, detail:
                     self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
                     return
                 
@@ -2889,7 +2889,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.MEMORY_ERROR, detail, error_source=MOVER,dismount_allowed=1)
                 return
-            except CRC_ERROR:
+            except MoverError:
                 Trace.alarm(e_errors.ERROR, "CRC error reading tape",
                             {'outfile':self.current_work_ticket['outfile'],
                              'infile':self.current_work_ticket['infile'],
@@ -2903,7 +2903,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.assert_return = e_errors.CRC_ERROR
                     return
                 break
-            except e_errors.READ_ERROR, detail:
+            except self.ftt.FTTError, detail:
                 if type(detail) != type(""):
                     detail = str(detail)
                 if self.method == 'read_next':
@@ -3008,7 +3008,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if bytes_read == 0:
                     try:
                         location, block = self.tape_driver.tell()
-                    except  self.ftt.FTTError, detail:
+                    except self.ftt.FTTError, detail:
                         self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s' % (detail,),
                                              error_source=TAPE)
                         return
@@ -3029,7 +3029,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "read bytes %s/%s, blocks %s header %s" %(self.bytes_read, self.bytes_to_read, nblocks, header_size))
         try:
             location, block = self.tape_driver.tell()
-        except  self.ftt.FTTError, detail:
+        except self.ftt.FTTError, detail:
             self.transfer_failed(e_errors.READ_ERROR, 'Can not get drive info %s' % (detail,),
                                  error_source=TAPE)
             return
@@ -3054,7 +3054,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 read_errors = long(stats[self.ftt.READ_ERRORS])
                 write_errors = long(stats[self.ftt.WRITE_ERRORS])
                 
-            except  self.ftt.FTTError, detail:
+            except self.ftt.FTTError, detail:
                 self.transfer_failed(e_errors.INFO, "error getting stats after read %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
                 return
 
@@ -3273,7 +3273,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.stream_w_flag = 1
                     bytes_written = self.buffer.stream_write(nbytes, driver)
                     self.stream_w_flag = 0
-                except CRC_ERROR:
+                except MoverError:
                     Trace.alarm(e_errors.ERROR, "CRC error in write client",
                                 {'outfile':self.current_work_ticket['outfile'],
                                  'infile':self.current_work_ticket['infile'],
@@ -3466,7 +3466,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 try:
                     stats = self.tape_driver.get_stats()
                     bloc_loc = long(stats[self.ftt.BLOC_LOC])
-                except  (self.ftt.FTTError, TypeError), detail:
+                except (self.ftt.FTTError, TypeError), detail:
                     self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s"%(detail, ), error_source=DRIVE)
                     self.unlock_state()
                     return
@@ -3923,7 +3923,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(10, "position media")
             try:
                 have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
-            except  self.ftt.FTTError, detail:
+            except self.ftt.FTTError, detail:
                 Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive positioning the tape: %s %s."%(self.ftt.FTTError, detail))
                 self.transfer_failed(e_errors.POSITIONING_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
                 return
@@ -4044,7 +4044,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ##    self.tape_driver.writefm()
 	            # END WAYNE FOO
                 
-                except e_errors.WRITE_ERROR, detail:
+                except self.ftt.FTTError, detail:
                     self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                     return 0
                 except:
@@ -5194,7 +5194,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     try:
                         stats = self.tape_driver.get_stats()
                         bloc_loc = long(stats[self.ftt.BLOC_LOC])
-                    except  (self.ftt.FTTError, TypeError), detail:
+                    except (self.ftt.FTTError, TypeError), detail:
                         Trace.log(e_errors.WRITE_ERROR, "error getting stats before write %s"%(detail,))
                         return
                     if bloc_loc != self.last_absolute_location:
@@ -5653,7 +5653,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.timer('seek_time')
         try:
             self.current_location, block = self.tape_driver.tell()
-        except  self.ftt.FTTError, detail:
+        except self.ftt.FTTError, detail:
             self.transfer_failed(e_errors.POSITIONING_ERROR, 'Positioning error, can not get drive info %s' % (detail,),
                                  error_source=DRIVE)
             return
@@ -6264,7 +6264,7 @@ class DiskMover(Mover):
                             #Trace.trace(22,"write_tape: freeing block")
                             self.buffer._freespace(self.buffer._writing_block)
                         
-                    except CRC_ERROR:
+                    except MoverError:
                         exc, detail, tb = sys.exc_info()
                         #Trace.handle_error(exc, detail, tb)
                         Trace.alarm(e_errors.ERROR, "selective CRC check error",
@@ -6353,7 +6353,7 @@ class DiskMover(Mover):
                 t1 = time.time()
                 bytes_read = self.buffer.block_read(nbytes, driver)
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
-            except CRC_ERROR:
+            except MoverError:
                 Trace.alarm(e_errors.ERROR, "CRC error reading tape",
                             {'outfile':self.current_work_ticket['outfile'],
                              'infile':self.current_work_ticket['infile'],
