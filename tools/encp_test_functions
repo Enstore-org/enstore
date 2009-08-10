@@ -3,17 +3,24 @@
 #LOCAL_DIR=/tmp
 #PNFS_DIR=/pnfs/mist
 
-#encp_cmd can be overridden from the encp_test_script command line.
+#These variables can be overridden from the encp_test_script command line.
 encp_cmd=`which encp`
+debug=0
 
+#LOCAL_DIR is set by the user in their environment.
 if [ ! -d "$LOCAL_DIR" ]; then
     echo "\$LOCAL_DIR not set.  Stopping test."
     exit 1
 fi
+#PNFS_DIR is set by the user in their environment.
 if [ ! -d "$PNFS_DIR" ]; then
     echo "\$PNFS_DIR not set.  Stopping test."
     exit 1
 fi
+
+#Note: REMOTE_ENCP is an environmental variable that tells encp to use
+# pnfs_agent instead of PNFS directly.  We check for the same variable here to
+# handle running these tests through the pnfs agent too.
 
 #Handle making files in PNFS through mountpoint or pnfs_agent.
 make_pnfs_dir()
@@ -42,7 +49,7 @@ cleanup_files()
         fi
 
 	if [ -f $file ]; then
-	    rm $file
+	    rm -f $file
         else
 	    if [ $? -ne 0 ]; then
                 rm_pnfs_file $file
@@ -175,7 +182,8 @@ get_file_list()
 {
 #$1 = directory of file to choose from
 
-    #Restrict this to files less than 100MB in size.
+    #Restrict this to files less than 100MB in size.  Only consider files
+    # in this directory first; go recurisive if the first list is empty.
     filenames=`find $1 -maxdepth 1 -size -104857600c -type f`
     if [ -z "$filenames" ]; then
 	filenames=`find $1 -size -104857600c -type f`
@@ -188,7 +196,8 @@ get_pnfs_file_list()
 {
 #$1 = directory of file to choose from
 
-    #Restrict this to files less than 100MB in size.
+    #Restrict this to files less than 100MB in size.  Only consider files
+    # in this directory first; go recurisive if the first list is empty.
     if [ -n "$REMOTE_ENCP" ]; then
 	#filenames=`enstore pnfs_agent --just-files --list-dir $1 | sed "s:^:$1/:"`
 	filenames=`enstore pnfs_agent --just-files --list-dir $1`
@@ -312,21 +321,30 @@ transfer()
 #test volume
 volume_assert()
 {
-    assert=`eval echo $1`
+    assert=$1  #`eval echo $1`
     volume=`eval echo $2`
     message=`eval echo $3`
+    if [ -z "$4" ]; then  #This allows us to check for failures too.
+        expected_exit_status=0
+    else
+        expected_exit_status=`eval echo $4`
+    fi
 
-    #echo ASSERT $assert
-    #echo VOLUME $volume
-    #echo MESSAGE $message
-
-    #echo "$assert --verbose 1 --volume $volume >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT"
+    if [ $debug -gt 2 ]; then
+        echo ASSERT $assert
+        echo VOLUME $volume
+        echo MESSAGE $message
+	echo EXPECTED_EXIT_STATUS $expected_exit_status
+    fi
+    
+    if [ $debug -gt 0 ]; then
+        echo "$assert --verbose 1 --volume $volume >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT" | tee $ENCP_OUTPUT 2>&1
+    fi
     $assert --verbose 1 --volume $volume >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
 
     rtn=$?
-
-    if [ "$rtn" -gt 0 ]; then
-	echo "$message TEST FAILED"
+    if [ "$rtn" -ne $expected_exit_status ]; then
+	echo "$message TEST FAILED WITH $rtn"
 	cat $ENCP_OUTPUT
 	for file in $cleanup; do
 	    if [ "$file" != "/dev/null" ]; then
@@ -334,6 +352,12 @@ volume_assert()
 	    fi
 	done
 	exit 1
+    else
+        echo "$message TEST SUCCEEDED WITH $rtn"
+	if [ $debug -gt 1 ]; then
+	    #Only output this if they really want it.
+	    cat $ENCP_OUTPUT
+	fi
     fi
 }
 
@@ -344,18 +368,27 @@ ensync_transfer()
     input_dir=`eval echo $2`
     output_dir=`eval echo $3`
     message=`eval echo $4`
+    if [ -z "$5" ]; then  #This allows us to check for failures too.
+        expected_exit_status=0
+    else
+        expected_exit_status=`eval echo $5`
+    fi
 
-    #echo ASSERT $assert
-    #echo VOLUME $volume
-    #echo MESSAGE $message
+    if [ $debug -gt 2 ]; then
+        echo ASSERT $assert
+        echo VOLUME $volume
+        echo MESSAGE $message
+    fi
 
-    #echo "$assert --verbose 1 --volume $volume >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT"
+    if [ $debug -ne $expected_exit_status ]; then
+	echo "$ensync --verbose 1 $input_dir $output_dir >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT" | tee $ENCP_OUTPUT 2>&1
+    fi
+
     $ensync --verbose 1 $input_dir $output_dir >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
 
     rtn=$?
-
     if [ "$rtn" -gt 0 ]; then
-	echo "$message TEST FAILED"
+	echo "$message TEST FAILED WITH $rtn"
 	cat $ENCP_OUTPUT
 	for file in $cleanup; do
 	    if [ "$file" != "/dev/null" ]; then
@@ -363,6 +396,12 @@ ensync_transfer()
 	    fi
 	done
 	exit 1
+    else
+        echo "$message TEST SUCCEEDED WITH $rtn"
+	if [ $debug -gt 1 ]; then
+	    #Only output this if they really want it.
+	    cat $ENCP_OUTPUT
+	fi
     fi
 }
 
@@ -415,7 +454,7 @@ test_layer()
 	if [ $? -ne 0 ]; then
 	    echo $message "TEST FAILED ON LAYER"
 	    echo No bfid value: $result: $file
-	    return 1
+	    exit 1
 	fi
 	if [ -n "$REMOTE_ENCP" ]; then
 	    result=`enstore pnfs_agent --layer 4 $file`
@@ -427,11 +466,10 @@ test_layer()
 		echo $message "TEST FAILED ON LAYER"
 		echo Layer 4 contains unknown value: $file
 		echo $result
-		return 1
+		exit 1
 	    fi
 	done
     done
-    return 0
 }
 
 #Test that the permissions are the same.
@@ -820,11 +858,11 @@ single_threaded_read_write_test()
     outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
     encp="$encp_cmd --threaded"
 
-    transfer '$encp' '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer "$encp" '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
 
-    transfer '$encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    transfer "$encp" '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
     permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -849,11 +887,11 @@ multiple_threaded_read_write_test()
     outnames=`absfile $LOCAL_OUTPUT_DIR $filenames`
     encp="$encp_cmd --threaded"
 
-    transfer '$encp' '$filenames' '$PNFS_OUTPUT_DIR' '$pnfsnames' "" "$section" WRITE
+    transfer "$encp" '$filenames' '$PNFS_OUTPUT_DIR' '$pnfsnames' "" "$section" WRITE
 
     test_layer '$pnfsnames' "$section"
 
-    transfer '$encp' '$pnfsnames' '$LOCAL_OUTPUT_DIR' '$pnfsnames $outnames' "" "$section" READ
+    transfer "$encp" '$pnfsnames' '$LOCAL_OUTPUT_DIR' '$pnfsnames $outnames' "" "$section" READ
 
     test_diff '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
     permissions_test '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
@@ -879,11 +917,11 @@ single_ecrc_read_write_test()
     outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
     encp="$encp_cmd --ecrc"
 
-    transfer '$encp' '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer "$encp" '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
 
-    transfer '$encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    transfer "$encp" '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
 
     test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
     permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
@@ -907,7 +945,12 @@ single_assert_test()
 	return
     fi
 
-    assert="python $ENSTORE_DIR/src/volume_assert.py"
+    #Current volume_assert location.
+    assert=`dirname $encp_cmd`/volume_assert
+    if [ ! -f "$assert" ]; then
+        echo "Unable to find $assert.  Skipping test and continuing."
+	return
+    fi
 
     wrapper=`cat "$PNFS_INPUT_DIR/.(tag)(file_family_wrapper)"`
     if [ "$wrapper" == "null" ]; then
@@ -926,7 +969,7 @@ single_assert_test()
 
 	volume=`get_volume_from_filename "$filename"`
 
-	volume_assert '$assert' '$volume' '$section'
+	volume_assert "$assert" '$volume' '$section'
     fi
 }
 
@@ -940,14 +983,21 @@ ensync_test()
     #Snag a directory.
     input_dir=$ENSYNC_INPUT_DIR
     output_dir=$ENSYNC_OUTPUT_DIR
-    ensync='ensync'
+    
+    #Get the 
+    #Current ensync location.
+    ensync=`dirname $encp_cmd`/ensync
+    if [ ! -f "$ensync" ]; then
+        echo "Unable to find $ensync.  Skipping test and continuing."
+	return
+    fi
 
     if [ ! -d $input_dir ]; then
 	echo "Input directory does not exist.  Skipping test and continuing."
     elif [ ! -d $output_dir ]; then
 	echo "Output directory does not exist.  Skipping test and continuing."
     else
-        ensync_transfer '$ensync' '$input_dir' '$output_dir' '$section'
+        ensync_transfer "$ensync" '$input_dir' '$output_dir' '$section'
     fi
 }
 
@@ -1196,11 +1246,16 @@ pnfs_agent_read_write_test()
 	    return
     fi
 
+    #This gets set to true if we temporarily enable $REMOTE_ENCP for encp
+    # to use pnfs_agent.
+    clear_remote_encp=0
+
     if [ -z "$REMOTE_ENCP" ]; then
 	enstore pnfs_agent --alive --timeout 3 --retries 3
 	if [ $? -eq 0 ]; then
 	    #We detected that the pnfs_agent is running, lets use it.
 	    export REMOTE_ENCP=only_pnfs_agent
+	    clear_remote_encp=1
 	else
 	    echo "pnfs_agent is not running.  Skipping test and continuing."
 	    return
@@ -1213,8 +1268,6 @@ pnfs_agent_read_write_test()
     filelist=`get_file_list "$LOCAL_INPUT_DIR"`
     if [ -z "$filelist" ]; then
 	echo "Input directory empty.  Skipping test and continuing."
-    #elif [ -d $PNFS_AGENT_OUTPUT_DIR ]; then
-    #    echo "$PNFS_AGENT_OUTPUT_DIR is mounted.  Skipping test."
     else
 	filename=`pick_random_files 1 $filelist`
 	basename=`basename $filename`
@@ -1225,15 +1278,16 @@ pnfs_agent_read_write_test()
 	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE
 
 	### These two tests need to be made pnfs_agent aware.
-	#test_layer '$pnfsname' "$section"
-	#enstore_check_test '$pnfsname' '$pnfsname' "$section"
+	test_layer '$pnfsname' "$section"
+	enstore_check_test '$pnfsname' '$pnfsname' "$section"
 
 	transfer "$encp" "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
     fi
     
-    #rm -f $outname
-    #rm_pnfs_file $pnfsname
     cleanup_files '"$outname" "$pnfsname"'
+    if [ $clear_remote_encp -eq 1 ]; then
+        unset REMOTE_ENCP
+    fi
 }
 
 pipe_write_test()
