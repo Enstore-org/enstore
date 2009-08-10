@@ -8931,7 +8931,7 @@ def prepare_write_to_hsm(tinfo, e):
             #Create the zero length file entry and grab the inode.
             try:
                 create_zero_length_pnfs_files(request_list[i], e)
-            except OSError, msg:
+            except (OSError, IOError, EncpError), msg:
                 if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
                        or (msg.args[0] == errno.EIO and \
                            msg.args[1].find("corrupt") != -1):
@@ -10787,10 +10787,12 @@ def prepare_read_from_hsm(tinfo, e):
                     
                     ### Note to self: work on removing this stat().
                     in_file_stats = get_stat(requests_per_vol[vol][i]['infile'])
-                
-                    file_utils.chown(requests_per_vol[vol][i]['outfile'],
-                                     in_file_stats[stat.ST_UID],
-                                     in_file_stats[stat.ST_GID])
+
+                    if os.getuid() == 0:
+                        #Only try this when the real user is root.  
+                        file_utils.chown(requests_per_vol[vol][i]['outfile'],
+                                         in_file_stats[stat.ST_UID],
+                                         in_file_stats[stat.ST_GID])
             except (OSError, IOError, EncpError), msg:
                 #if not should_skip_deleted:
                 #    file_utils.end_euid_egid() #Release the lock.
@@ -12303,8 +12305,11 @@ def do_work(intf):
 
     #The only thing that would be effected by not setting this back would be
     if os.getuid() == 0 and os.geteuid() != 0:
-        os.seteuid(0)
-        os.setegid(0)
+        try:
+            os.seteuid(0)
+            os.setegid(0)
+        except:
+            pass
         
     file_utils.release_lock_euid_egid()
     
@@ -12324,7 +12329,7 @@ def start(mode):
     try:
         intf = EncpInterface(user_mode=mode)
     except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        return 1
     except:
         try:
             Trace.handle_error()
@@ -12338,7 +12343,7 @@ def start(mode):
     try:
         return do_work(intf)
     except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        return 1
     except:
         try:
             Trace.handle_error()
