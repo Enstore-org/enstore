@@ -8,10 +8,12 @@ print_help()
     echo "    -d               Increase the debugging output."
 }
 
+#LOCAL_DIR is set by the user in their environment.
 if [ ! -d "$LOCAL_DIR" ]; then
     echo "\$LOCAL_DIR not set.  Stopping test."
     exit 1
 fi
+#PNFS_DIR is set by the user in their environment.
 if [ ! -d "$PNFS_DIR" ]; then
     echo "\$PNFS_DIR not set.  Stopping test."
     exit 1
@@ -27,6 +29,9 @@ encp_command=`which encp`
 debug=0
 
 #Parse any command line arguments.
+#
+# encp_cmd and debug are used in encp_test_functions function transfer().
+# 
 while getopts dhe: option; do
     case "$option"
     in
@@ -198,9 +203,9 @@ fi
 ###
 ### SETUID READ & WRITE TEST
 ###
-if [ $setuid_read_write_test -eq 1 ]; then
-    setuid_read_write_test
-fi
+#if [ $setuid_read_write_test -eq 1 ]; then
+#    setuid_read_write_test
+#fi
 
 
 ###
