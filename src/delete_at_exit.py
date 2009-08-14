@@ -15,7 +15,7 @@ import errno
 import types
 try:
     import threading
-    import thread
+    #import thread
     thread_support=1
 except ImportError:
     thread_support=0
@@ -33,83 +33,29 @@ import pnfs
 class Container:
     pass
 
-thread_specific_data = {}  #global value with each item for a different thread
+#global value with each item for a different thread
+thread_specific_data = threading.local()  
+#global locks for the thread_specific_data
 deletion_list_lock = threading.Lock()
 
 #Build thread specific data.  get_deletion_lists() should only be called
 # from functions that have acquired the deletion_list_lock lock.
 def get_deletion_lists():
-    if thread_support:
-        tid = thread.get_ident() #Obtain unique identifier.
-    else:
-        tid = 1
+    global thread_specific_data
+    
+    if not hasattr(thread_specific_data, "bfids"):
+        thread_specific_data.bfids = []
+        thread_specific_data.files = []
 
-    rtn_tsd = thread_specific_data.get(tid)
+    return thread_specific_data
 
-    try:
-        #Cleanup
-        for tid, tsd in thread_specific_data.items():
-            #Loop though all of the active threads searching for
-            # the thread specific data (tsd) that it relates to.
-            for a_thread in threading.enumerate():
-                if not hasattr(a_thread, "tid"):
-                    #If there is no tid attribute, it hasn't used
-                    # this udp_client and thus we don't care.
-                    continue
-                if a_thread.tid == tid:
-                    #If the thread is still active, don't cleanup.
-                    break
-            else:
-                #If we didn't find a match with an active thread we can
-                # purge the stale information.
-                del thread_specific_data[tid]
-    except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except:
-        exc, msg = sys.exc_info()[:2]
-        try:
-            sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
-            sys.stderr.flush()
-        except IOError:
-            pass
-        pass
-             
-               
-            
-    if not rtn_tsd:
-        thread_specific_data[tid] = Container()
-        thread_specific_data[tid].bfids = []
-        thread_specific_data[tid].files = []
-        thread_specific_data[tid].tid = tid
-
-        if thread_support:
-            #There is no good way to store which thread this tsd was
-            # create for.  It used to do the following.
-            #     tsd.thread = threading.currentThread()
-            # But this turns out to be a resource leak by creating a
-            # cyclic reference.  Thus, this hack was devised to track
-            # them from the other direction; namely knowing the thread
-            # identify the tsd in the self.tsd dict that it relates to.
-            threading.currentThread().tid = tid
-
-        rtn_tsd = thread_specific_data[tid]
-
-    #If the current thread obtains the information for another thread
-    # abort immediately!
-    if tid != rtn_tsd.tid:
-        message = "Obtained another thread's information.  Aborting.\n"
-        message1 = "tid = %s  rtn_tsd.tid = %s  tread_name = %s\n" \
-                   % (tid, rtn_tsd.tid, threading.currentThread().getName())
-        try:
-            sys.stderr.write(message)
-            sys.stderr.write(message1)
-            sys.stderr.flush()
-        except IOError:
-            pass
-        sys.exit(1)
-            
-    return rtn_tsd
-
+# get_deletion_lists() should only be called from functions that have
+# acquired the deletion_list_lock lock.
+def clear_deletion_lists():
+    global thread_specific_data
+    
+    thread_specific_data.bfids = []
+    thread_specific_data.files = []
 
 def register(filename):
     if filename == '/dev/null':
