@@ -256,7 +256,9 @@ def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
 	pass
 
 
-def is_expected_volume(MY_TASK, vol, likely_path, fcc):
+#Note: db used only for migrate.py version of this function.
+def is_expected_volume(MY_TASK, vol, likely_path, fcc, db):
+	__pychecker__ = "unusednames=db"
 
 	#Confirm that the destination volume matches the volume that
 	# pnfs is pointing to.  This is true for swapped duplicate
