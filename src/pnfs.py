@@ -184,6 +184,29 @@ def is_pnfs_path(pathname, check_name_only = None):
     # not point to a pnfs directory.
     return 0
 
+def is_normal_pnfs_path(pathname, check_name_only = None):
+    rtn = is_pnfs_path(pathname, check_name_only)
+    if rtn:
+        #Additional check to make sure that this is a normal path.  Remove
+        # the directory component seperator "/" from the character list.
+        basename_charset = charset.filenamecharset.replace("/", "")
+        if re.search("/pnfs/[%s]*/usr/" % (basename_charset), pathname):
+            rtn = 0 #Admin path.
+
+    return rtn
+
+
+def is_admin_pnfs_path(pathname, check_name_only = None):
+    rtn = is_pnfs_path(pathname, check_name_only)
+    if rtn:
+        #Additional check to make sure that this is an admin path.  Remove
+        # the directory component seperator "/" from the character list.
+        basename_charset = charset.filenamecharset.replace("/", "")
+        if not re.search("/pnfs/[%s]*/usr/" % (basename_charset), pathname):
+            rtn = 0 #Normal path.
+
+    return rtn
+
 def isdir(pathname):
     return os.path.isdir(pathname)
 
@@ -1226,10 +1249,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         fname = self.nameof_file(directory, id)
 
         f = open(fname,'r')
-        nameof = f.readlines()
+        nameof = f.readline()
         f.close()
 
-        return nameof[0].replace("\n", "")
+        return nameof.replace("\n", "")
         
     # get the nameof information, given the id
     def get_nameof(self, id=None, directory=""):
