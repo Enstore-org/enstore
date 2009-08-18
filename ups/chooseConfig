@@ -20,14 +20,10 @@ if [ `echo $fqdn | cut -c ${domain_index_check}-` != ".fnal.gov" ]; then
    exit 0
 fi
 
-d0en=d0ensrv2n.fnal.gov
-#d0en=conf-d0en.fnal.gov
-stken=stkensrv2n.fnal.gov
-#stken=conf-stken.fnal.gov
-cdfen=cdfensrv2n.fnal.gov
-#cdfen=conf-cdfen.fnal.gov
-gccen=gccensrv1.fnal.gov
-#gccen=conf-gccen.fnal.gov
+d0en=conf-d0en.fnal.gov
+stken=conf-stken.fnal.gov
+cdfen=conf-cdfen.fnal.gov
+gccen=conf-gccen.fnal.gov
 
 happy=happy.fnal.gov
 fndapr=fndapr.fnal.gov
