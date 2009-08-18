@@ -186,11 +186,11 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                             if not is_multiple_copy:
                                 raise OSError(errno.EEXIST,
                                               "pnfs entry exists",
-                                              pnfsid)
+                                              tmp_name_list[0])
                             else:
                                 raise OSError(errno.EEXIST,
                                               "found original of copy",
-                                              pnfsid)
+                                              tmp_name_list[0])
                         else:
                             raise OSError(errno.EIO, "to many matches",
                                           tmp_name_list)
