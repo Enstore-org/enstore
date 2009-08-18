@@ -2104,7 +2104,7 @@ def max_attempts(csc, library, encp_intf):
 
     resend = {}
     resend['retry'] = 0
-    resend['resubmit'] = 0
+    resend['resubmits'] = 0
 
     #Determine how many times a transfer can be retried from failures.
     #Also, determine how many times encp resends the request to the lm
@@ -5123,6 +5123,10 @@ def wait_for_message(listen_socket, lmc, work_list,
             break
 
         else:
+            r = [] #We don't have a message or connection.  Define this if
+                   # the user specified "--resubmit_timeout 0" on the command
+                   # line.
+            
             if transaction_id_list:
                 #We've timedout.
                 #A better mechanism will be needed if more than just
@@ -6553,8 +6557,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     infile_print = request_dictionary.get('infilepath', '')
     outfile_print = request_dictionary.get('outfilepath', '')
     file_size = request_dictionary.get('file_size', 0)
-    retry = request_dictionary.get('resend', {}).get('retry', 0)
-    resubmits = request_dictionary.get('resend', {}).get('resubmits', 0)
+    try:
+        use_resend = request_dictionary['resend']
+    except KeyError:
+        #We should only get here on reads.  Writes are submited one at a time
+        # so the current file being attempted is always known.
+        use_resend = get_next_request(request_list)[0].get('resend', {})
+    retry = use_resend.get('retry', 0)
+    resubmits = use_resend.get('resubmits', 0)
 
     #Get volume info from the volume clerk.
     #Need to check if the volume has been marked NOACCESS since it
@@ -6798,8 +6808,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         
     #If there is no error, then don't do anything
     if e_errors.is_ok(status):
-        result_dict = {'status':(e_errors.OK, None), 'retry':retry,
-                       'resubmits':resubmits,
+        result_dict = {'status':(e_errors.OK, None),
+                       'resend':{'retry':retry, 'resubmits':resubmits},
                        'queue_size':len(request_list)}
         result_dict = combine_dict(result_dict, socket_dict)
         return result_dict
@@ -6946,7 +6956,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         request_dictionary['completion_status'] = FAILURE
         #By checking those that aren't of significant length, we only
         # print these out on writes.
-        if len(request_dictionary) > 3:
+        if 1: #len(request_dictionary) > 3:
             print_data_access_layer_format(infile_print, outfile_print,
                                            file_size, error_dictionary)
             #If error_dictionary is the same dictionary as request_dictionary
@@ -6991,9 +7001,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # effect anything.
         if status[0] == e_errors.TOO_MANY_RESUBMITS:
             queue_size = 0
-        
-        result_dict = {'status':status, 'retry':retry,
-                       'resubmits':resubmits,
+
+        result_dict = {'status':status,
+                       'resend':{'resubmits':resubmits, 'retry':retry},
                        'queue_size':queue_size}
 
     #When nothing was recieved from the mover and the 15min has passed,
@@ -7083,9 +7093,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #If an unrecoverable error occured while resubmitting to LM.
             if e_errors.is_non_retriable(internal_result_dict['status'][0]):
                 result_dict = {'status':internal_result_dict['status'],
-                               'retry':request_dictionary.get('retry', 0),
-                               'resubmits':request_dictionary.get('resubmits',
-                                                                  0),
+                               #'resend':{'retry':request_dictionary.get('resend', {}).get('retry', 0),
+                               #          'resubmits':request_dictionary.get('resend', {}).get('resubmits', 0)},
+                               'resend':{'retry':retry,
+                                         'resubmits':resubmits + 1},
                                'queue_size':0,
                                'transaction_id_list':transaction_id_list,
                                }
@@ -7098,9 +7109,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #If a retriable error occured while resubmitting to LM.
             elif not e_errors.is_ok(internal_result_dict['status'][0]):
                 result_dict = {'status':internal_result_dict['status'],
-                               'retry':request_dictionary.get('retry', 0),
-                               'resubmits':request_dictionary.get('resubmits',
-                                                                  0),
+                               #'resend':{'retry':request_dictionary.get('resend', {}).get('retry', 0),
+                               #          'resubmits':request_dictionary.get('resend', {}).get('resubmits', 0)},
+                               'resend':{'retry':retry,
+                                         'resubmits':resubmits + 1},
                                'queue_size':len(request_list),
                                'transaction_id_list':transaction_id_list,
                                }
@@ -7115,9 +7127,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 result_dict = {'status':(e_errors.RESUBMITTING,
                                          request_list[i].get('unique_id',
                                                              None)),
-                               'retry':request_dictionary.get('retry', 0),
-                               'resubmits':request_dictionary.get('resubmits',
-                                                                  0),
+                               #'resend':{'retry':request_dictionary.get('resend', {}).get('retry', 0),
+                               #          'resubmits':request_dictionary.get('resend', {}).get('resubmits',  0)},
+                               'resend':{'retry':retry,
+                                         'resubmits':resubmits + 1},
                                'queue_size':len(request_list),
                                'transaction_id_list':transaction_id_list,
                                }
@@ -7193,16 +7206,16 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #If an unrecoverable error occured while retrying to LM.
         if e_errors.is_non_retriable(internal_result_dict['status'][0]):
             result_dict = {'status':internal_result_dict['status'],
-                           'retry':request_dictionary.get('retry', 0),
-                           'resubmits':request_dictionary.get('resubmits', 0),
+                           'resend':{'retry':request_dictionary.get('resend', {}).get('retry', 0),
+                                     'resubmits':request_dictionary.get('resend', {}).get('resubmits', 0)},
                            'queue_size':len(request_list) - 1,
                            'transaction_id_list':transaction_id_list,
                            }
             Trace.log(e_errors.ERROR, str(result_dict))
         elif not e_errors.is_ok(internal_result_dict['status'][0]):
             result_dict = {'status':internal_result_dict['status'],
-                           'retry':request_dictionary.get('retry', 0),
-                           'resubmits':request_dictionary.get('resubmits', 0),
+                           'resend':{'retry':request_dictionary.get('resend', {}).get('retry', 0),
+                                     'resubmits':request_dictionary.get('resend', {}).get('resubmits', 0)},
                            'queue_size':len(request_list),
                            'transaction_id_list':transaction_id_list,
                            }
@@ -7210,8 +7223,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         else:
             result_dict = {'status':(e_errors.RETRY,
                                      request_dictionary['unique_id']),
-                           'retry':request_dictionary.get('retry', 0),
-                           'resubmits':request_dictionary.get('resubmits', 0),
+                           'resend':{'retry':request_dictionary.get('resend', {}).get('retry', 0),
+                                     'resubmits':request_dictionary.get('resend', {}).get('resubmits', 0)},
                            'queue_size':len(request_list),
                            'transaction_id_list':transaction_id_list,
                            }
@@ -9018,7 +9031,11 @@ def write_to_hsm(e, tinfo):
         #For LM submission errors (i.e. tape went NOACCESS), use
         # any request information in result_dict to identify which
         # request gave an error.
-        done_ticket = combine_dict(result_dict, done_ticket)
+        #
+        #Writes included work_ticket in this combine.  That doesn't
+        # work for reads because we don't know which read request
+        # will get picked first.
+        done_ticket = combine_dict(result_dict, done_ticket, work_ticket)
 
         if e_errors.is_non_retriable(result_dict):
 
@@ -9060,6 +9077,10 @@ def write_to_hsm(e, tinfo):
             return done_ticket
 
         if not e_errors.is_ok(result_dict):
+            #Combine the dictionaries.
+            work_ticket = combine_dict(done_ticket, request_list[index])
+            #Store these changes back into the master list.
+            request_list[index] = work_ticket
             continue
 
         if not control_socket:
@@ -10897,9 +10918,9 @@ def read_from_hsm(e, tinfo):
 
                 #Make sure done_ticket exists by this point.
                 done_ticket = request_ticket
-                
+
                 result_dict = handle_retries(request_list, request_ticket,
-                                             done_ticket, e,
+                                             request_ticket, e,
                                              listen_socket = listen_socket,
                                              local_filename = local_filename,
                                              external_label = external_label)
@@ -10910,10 +10931,20 @@ def read_from_hsm(e, tinfo):
                 #For LM submission errors (i.e. tape went NOACCESS), use
                 # any request information in result_dict to identify which
                 # request gave an error.
+                #
+                #Writes included work_ticket in this combine.  That doesn't
+                # work for reads because we don't know which read request
+                # will get picked first.
                 done_ticket = combine_dict(result_dict, done_ticket)
                 
                 #Obtain the index of the returned request.
                 index, unused = get_request_index(request_list, done_ticket)
+                if index == None:
+                    #If the error happend before we knew the next request
+                    # (i.e. a timeout occured waiting), then pick the next
+                    # request so the retry/resubmits counts can be attributed
+                    # somewhere.
+                    unused, index, unused = get_next_request(request_list)
 
                 if e_errors.is_non_retriable(result_dict):
                    
@@ -10952,7 +10983,14 @@ def read_from_hsm(e, tinfo):
                         #Store these changes back into the master list.
                         request_list[index] = work_ticket
 
+                    return done_ticket
+                
                 if not e_errors.is_ok(result_dict):
+                    #Combine the dictionaries.
+                    work_ticket = combine_dict(done_ticket,
+                                               request_list[index])
+                    #Store these changes back into the master list.
+                    request_list[index] = work_ticket
                     continue
 
                 if not control_socket:
