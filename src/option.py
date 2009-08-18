@@ -403,7 +403,8 @@ ROOT_ERROR = "root-error"                    #alarm
 SAAG = "saag"                                #html
 SAAG_NETWORK = "saag-network"                #html
 SAAG_STATUS = "saagstatus"                   #inquisitor
-SCAN_VOLUMES = "scan-volumes"                #migrate
+SCAN = "scan"                                #migrate
+SCAN_VOLUMES = "scan-volumes"                #migrate (obsolete)
 SENDTO = "sendto"                            #mover
 SEQUENTIAL_FILENAMES = "sequential-filenames"  #get
 SET_CRCS = "set-crcs"                        #file
@@ -549,7 +550,7 @@ valid_option_list = [
     RESTORE, RESTORE_ALL, RESUBMIT_TIMEOUT, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RMDIR, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG, SAAG_NETWORK, SAAG_STATUS,
-    SCAN_VOLUMES, SENDTO, SEQUENTIAL_FILENAMES,
+    SCAN, SCAN_VOLUMES, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,
     SHORTCUT, SHOW, SHOW_BAD, SHOW_BY_LIBRARY, SHOW_DRIVE, SHOW_FILE,
     SHOW_COPIES,
