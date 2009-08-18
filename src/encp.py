@@ -9026,7 +9026,7 @@ def write_to_hsm(e, tinfo):
                                      external_label = external_label)
 
         #If USE_NEW_EVENT_LOOP is true, we need these ids.
-        transaction_id_list = result_dict.get('transaction_id_list',[])
+        transaction_id_list = result_dict.get('transaction_id_list', [])
 
         #For LM submission errors (i.e. tape went NOACCESS), use
         # any request information in result_dict to identify which
@@ -9071,8 +9071,12 @@ def write_to_hsm(e, tinfo):
                                            request_list[index])
                 #Set completion status to successful.
                 work_ticket['completion_status'] = FAILURE
+                #Set the exit status value.
+                work_ticket['exit_status'] = exit_status
                 #Store these changes back into the master list.
                 request_list[index] = work_ticket
+                #Make sure done_ticket points to the new info too.
+                done_ticket = work_ticket
 
             return done_ticket
 
@@ -10980,8 +10984,12 @@ def read_from_hsm(e, tinfo):
                                                    request_list[index])
                         #Set completion status to successful.
                         work_ticket['completion_status'] = FAILURE
+                        #Set the exit status value.
+                        work_ticket['exit_status'] = exit_status
                         #Store these changes back into the master list.
                         request_list[index] = work_ticket
+                        #Make sure done_ticket points to the new info too.
+                        done_ticket = work_ticket
 
                     return done_ticket
                 
@@ -12096,7 +12104,7 @@ def final_say(intf, done_ticket):
         #Log the message that tells us that we are done.
         status = done_ticket.get('status', (e_errors.UNKNOWN,e_errors.UNKNOWN))
         exit_status = done_ticket.get('exit_status',
-                                      not e_errors.is_ok(status))
+                                      int(not e_errors.is_ok(status)))
         #Catch an impossible (hopefully) situation where status contains
         # and error, but exit_status says success.
         if not e_errors.is_ok(status) and not exit_status:
