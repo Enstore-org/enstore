@@ -69,6 +69,7 @@ if [ $# -eq 0 ]; then
     pipe_write_test=`expr 1`
     source_file_does_not_exist_write_test=`expr 1`
     library_does_not_exist_write_test=`expr 1`
+    too_many_resubmits_write_test=`expr 1`
 else
     single_read_test=`expr 0`
     single_read_write_test=`expr 0`
@@ -92,6 +93,7 @@ else
     pipe_write_test=`expr 0`
     source_file_does_not_exist_write_test=`expr 0`
     library_does_not_exist_write_test=`expr 0`
+    too_many_resubmits_write_test=`expr 0`
 
     for switch in $*; do
 	if [ "single_read_test" = $switch ]; then
@@ -159,6 +161,9 @@ else
 	fi
 	if [ "library_does_not_exist_write_test" = $switch ]; then
 	    library_does_not_exist_write_test=`expr 1`
+	fi
+	if [ "too_many_resubmits_write_test" = $switch ]; then
+	    too_many_resubmits_write_test=`expr 1`
 	fi
     done
 fi
@@ -324,4 +329,11 @@ fi
 ###
 if [ $library_does_not_exist_write_test -eq 1 ]; then
     library_does_not_exist_write_test
+fi
+
+###
+### TOO MANY RESUBMITS READ TEST
+###
+if [ $too_many_resubmits_write_test -eq 1 ]; then
+    too_many_resubmits_write_test
 fi

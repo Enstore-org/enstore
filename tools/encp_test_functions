@@ -159,6 +159,21 @@ has_shortcut_switch()
     return 0
 }
 
+has_max_resubmits_switch()
+{
+    help=`$encp_cmd --help`
+
+    echo "$help" | awk '{print $1}' | grep '\-\-max-resubmit' > /dev/null
+
+    #If a match was found it has the switch.
+    if [ $? -eq 0 ]; then
+	return 1
+    fi
+
+    #Return zero if the switch is not available.
+    return 0
+}
+
 is_admin_encp()
 {
     version=`$encp_cmd --help`
@@ -172,7 +187,43 @@ is_admin_encp()
 	return 1
     fi
 
-    #Return zero if it is running from source.
+    return 0
+}
+
+is_user_encp()
+{
+    version=`$encp_cmd --help`
+
+    #This check only works for as long as --storage-group remains an
+    # administator only option.
+    echo "$version" | awk '{print $1}' | grep '\-\-get-cache' > /dev/null
+
+    #If a match was not found it is an user version.
+    if [ $? -ne 0 ]; then
+	return 1
+    fi
+
+    return 0
+}
+
+is_user2_encp()
+{
+    version=`$encp_cmd --help`
+
+    #This check only works for as long as --storage-group remains an
+    # administator only option.
+    echo "$version" | awk '{print $1}' | grep '\-\-get-cache' > /dev/null
+
+    #If a match was found it might be a dcache version.
+    if [ $? -eq 0 ]; then
+	echo "$version" | awk '{print $1}' | grep '\-\-storage-group' > /dev/null
+
+        #If a match was not found it is a dcache version.
+	if [ $? -ne 0 ]; then
+	    return 1
+	fi
+    fi
+
     return 0
 }
 
@@ -299,7 +350,22 @@ transfer()
     fi
 
     if [ $debug -gt 0 ]; then
+        #Output the command line that will be executed.
 	echo "$encp_command $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT" | tee $ENCP_OUTPUT 2>&1
+
+	#Output the type of encp that we are runnig.
+	is_admin_encp
+	if [ $? -eq 1 ]; then
+            echo "type is admin encp version" | tee $ENCP_OUTPUT 2>&1
+        fi
+	is_user2_encp
+	if [ $? -eq 1 ]; then
+            echo "type is dcache encp version" | tee $ENCP_OUTPUT 2>&1
+        fi
+	is_user_encp
+	if [ $? -eq 1 ]; then
+            echo "type is user encp version" | tee $ENCP_OUTPUT 2>&1
+        fi
     fi
     eval $encp_command $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
 
@@ -1374,6 +1440,36 @@ library_does_not_exist_write_test()
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
 	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
 	encp="$encp_cmd --library this_library_does_not_exist"
+	
+	#See if the transfer fails.
+	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1
+    fi
+}
+
+too_many_resubmits_write_test()
+{
+    section="TOO MANY RESUBMITS WRITE"
+    print_test_name $section
+
+    #Test the version of encp.
+    has_max_resubmits_switch
+    if [ $? -eq 0 ]; then
+        echo "Encp does not have --max-resubmits switch.  Skipping test and continuing."
+	return
+    fi
+
+    truncate_encp_output
+
+    #Snag a random file.
+    filelist=`get_file_list "$LOCAL_INPUT_DIR"`
+    if [ -z "$filelist" ]; then
+	echo "Input directory empty.  Skipping test and continuing."
+    else
+	filename=`pick_random_files 1 $filelist`
+	basename=`basename $filename`
+	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
+	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	encp="$encp_cmd --resubmit-timeout 0 --max-resubmit 0"
 	
 	#See if the transfer fails.
 	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1
