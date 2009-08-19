@@ -30,9 +30,6 @@ import pnfs_agent_client
 import file_utils
 import pnfs
 
-class Container:
-    pass
-
 #global value with each item for a different thread
 thread_specific_data = threading.local()  
 #global locks for the thread_specific_data
