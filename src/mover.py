@@ -900,6 +900,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO,"LOG: Thread %s is running" % (thread_name,))
                 else:
                     Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(thread_name,))
+
+    def log_processes(self,logit=0):
+        if self.log_mover_state or logit:
+            cmd = "ps -eo user,start,args --cols 100"
+            result =  self.shell_command(cmd)
+            Trace.log(e_errors.INFO,"LOG: All running processes \n%s"%(result,))
+            thread = threading.currentThread()
+            if thread:
+                thread_name = thread.getName()
+            else:
+                thread_name = None
+            Trace.log(e_errors.INFO,"LOG: CurThread %s"%(thread_name))
+    
             
     # from entv
     def memory_in_use(self):
@@ -1973,9 +1986,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                         (ticket['work'],addr, to, retry))
                             try:
                                 t0 = time.time()
+                                
                                 request_from_lm = self.udpc.send(ticket, addr, rcv_timeout=to, max_send=retry)
                                 #request_from_lm = self.udpc.send(ticket, addr, rcv_timeout=30)
-                                Trace.trace(41, "Request turn around time %s"(time.time() - t0,))
+                                Trace.trace(41, "Request turn around time %s"%(time.time() - t0,))
                                 #self.waiting_for_lm_response = 1
                             except:
                                 exc, msg, tb = sys.exc_info()
@@ -2260,6 +2274,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 Trace.trace(31, "cur %s, initial %s, last %s"%(bloc_loc, self.initial_abslute_location, self.last_absolute_location))
                 if (bloc_loc <= self.initial_abslute_location) or (bloc_loc != self.last_absolute_location):
+                    Trace.alarm(e_errors.ERROR, "Write error on %s. Wrong position. See log for details"%(self.current_volume,))
+                    self.log_processes(logit=1)
                     self.transfer_failed(e_errors.WRITE_ERROR,
                                          "Wrong position for %s: initial %s, last %s, current %s, last written blocks %s"%
                                          (self.current_volume,
@@ -2267,6 +2283,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                           self.last_absolute_location,
                                           bloc_loc,
                                           self.last_blocks_written),error_source=TAPE)
+
                     self.set_volume_noaccess(self.current_volume)
                     return
 
@@ -2307,6 +2324,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.alarm(e_errors.ERROR, "Write error on %s detail %s exception %s. Volume is set readonly" %
                             (self.current_volume,detail, exc, ))
                 self.vcc.set_system_readonly(self.current_volume)
+                # also set volume to NOACCESS, so far
+                self.set_volume_noaccess(self.current_volume)
+                # log all running proceses
+                self.log_processes(logit=1)
                 # trick ftt_close, so that it does not attempt to write FM
                 if self.driver_type == 'FTTDriver':
                     import ftt
@@ -2432,6 +2453,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly" %
                             (self.current_volume,))
                 self.vcc.set_system_readonly(self.current_volume)
+                # also set volume to NOACCESS, so far
+                self.set_volume_noaccess(self.current_volume)
+                # log all running proceses
+                self.log_processes(logit=1)
+                
                 # trick ftt_close, so that it does not attempt to write FM
                 if self.driver_type == 'FTTDriver':
                     import ftt
@@ -2522,6 +2548,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.vcc.set_system_readonly(self.current_volume)
                         self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
                                              (bytes_written, len(self.eof_labels)), error_source=TAPE)
+                        
+                        Trace.alarm(e_errors.ERROR, "Short write on %s. Volume is set readonly. See log for details"%(self.current_volume,))
+                        # also set volume to NOACCESS, so far
+                        self.set_volume_noaccess(self.current_volume)
+                        # log all running proceses
+                        self.log_processes(logit=1)
                         return
                     Trace.trace(23, "write fm")
                     self.tape_driver.writefm()
@@ -2616,9 +2648,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
             except:
                 exc, detail, tb = sys.exc_info()
+                Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly. See log for details"%(self.current_volume,))
                 self.vcc.set_system_readonly(self.current_volume)
                 Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                # also set volume to NOACCESS, so far
+                self.set_volume_noaccess(self.current_volume)
+                # log all running proceses
+                self.log_processes(logit=1)
                 return
 
             
@@ -2633,7 +2670,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 except self.ftt.FTTError, detail:
                     Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive while checking a written file: %s %s"%(self.ftt.FTTError, detail))
                     self.vcc.set_system_readonly(self.current_volume)
+                    Trace.alarm(e_errors.ERROR, "Serious FTT error %s on %s. Volume is set readonly"%(detail, self.current_volume))
                     self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
+                    # also set volume to NOACCESS, so far
+                    self.set_volume_noaccess(self.current_volume)
+                    # log all running proceses
+                    self.log_processes(logit=1)
 
                     return
                 try:
@@ -2662,10 +2704,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.tape_driver.seek(location, 0) #XXX is eot_ok needed?
                 except:
                     exc, detail, tb = sys.exc_info()
-                    Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
+                    Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s. Volume is set readonly"%
                                 (self.current_volume,save_location))
                     self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
+                    # also set volume to NOACCESS, so far
+                    self.set_volume_noaccess(self.current_volume)
+                    # log all running proceses
+                    self.log_processes(logit=1)
                     return
                 self.buffer.save_settings()
                 bytes_read = 0L
@@ -2732,24 +2778,39 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(22,"write_tape: read CRC %s write CRC %s"%
                             (self.buffer.complete_crc, saved_complete_crc))
                 if failed:
+                    Trace.alarm(e_errors.ERROR, "Write error on %s. See log for details. Volume is set readonly"%(self.current_volume,))
                     self.vcc.set_system_readonly(self.current_volume)
+                    # also set volume to NOACCESS, so far
+                    self.set_volume_noaccess(self.current_volume)
+                    # log all running proceses
+                    self.log_processes(logit=1)
                     return
                 if self.buffer.complete_crc != saved_complete_crc:
-                    Trace.alarm(e_errors.ERROR, "selective CRC check error")
+                    Trace.alarm(e_errors.ERROR,
+                                "selective CRC check error on %s. See log for details. Volume is set readonly"%
+                                (self.current_volume,))
                     self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error",error_source=DRIVE)
                     return
-                Trace.log(e_errors.INFO, "selective CRC check after writing file completed successfuly")
+                Trace.log(e_errors.INFO,
+                          "selective CRC check after writing file completed successfuly")
                 self.buffer.restore_settings()
                 # position to eod"
                 try:
                     self.tape_driver.seek(save_location, 0) #XXX is eot_ok
                 except:
                     exc, detail, tb = sys.exc_info()
-                    Trace.alarm(e_errors.ERROR, "error positioning tape %s after selective CRC check. Position %s"%
+                    Trace.alarm(e_errors.ERROR,
+                                "error positioning tape %s after selective CRC check. Position %s"%
                                 (self.current_volume,save_location))
                     self.vcc.set_system_readonly(self.current_volume)
-                    self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
+                    self.transfer_failed(e_errors.POSITIONING_ERROR,
+                                         'positioning error %s. See log for details. Volume is set readonly' %
+                                         (detail,), error_source=DRIVE)
+                    # also set volume to NOACCESS, so far
+                    self.set_volume_noaccess(self.current_volume)
+                    # log all running proceses
+                    self.log_processes(logit=1)
                     return
 
 
@@ -3467,16 +3528,25 @@ class Mover(dispatching_worker.DispatchingWorker,
                     stats = self.tape_driver.get_stats()
                     bloc_loc = long(stats[self.ftt.BLOC_LOC])
                 except (self.ftt.FTTError, TypeError), detail:
-                    self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s"%(detail, ), error_source=DRIVE)
+                    self.transfer_failed(e_errors.WRITE_ERROR,
+                                         "error getting stats before write %s"%
+                                         (detail, ), error_source=DRIVE)
                     self.unlock_state()
                     return
 
                 if bloc_loc != self.last_absolute_location:
+                    Trace.alarm(e_errors.ERROR,
+                                "Wrong position for %s. See log for details. Volume is set readonly"%
+                                (self.current_volume,)) 
                     self.transfer_failed(e_errors.WRITE_ERROR,
                                          "Wrong position for %s: last %s, current %s"%
                                          (self.current_volume, self.last_absolute_location,
                                           bloc_loc,),error_source=TAPE)
                     self.vcc.set_system_readonly(self.current_volume)
+                    # also set volume to NOACCESS, so far
+                    self.set_volume_noaccess(self.current_volume)
+                    # log all running proceses
+                    self.log_processes(logit=1)
                     self.unlock_state()
                     return
                 try:
@@ -3491,9 +3561,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                   # in a single file mark mode
                   self.write_counter = 0
                 except:
-                    Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
+                    Trace.alarm(e_errors.ERROR,"error writing file mark, will set volume readonly")
                     Trace.handle_error()
                     self.vcc.set_system_readonly(self.current_volume)
+                    # also set volume to NOACCESS, so far
+                    self.set_volume_noaccess(self.current_volume)
+                    # log all running proceses
+                    self.log_processes(logit=1)
+
                     self.return_work_to_lm(ticket)
                     self.unlock_state()
                     self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
@@ -4138,7 +4213,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ftt_eio = 1
             elif msg.find("FTT_EBLANK") != -1:
                 if self.mode == WRITE:
+                    Trace.alarm(e_errors.ERROR,
+                                "Write error on %s. See log for details. Volume is set readonly"%
+                                (self.current_volume))
                     self.vcc.set_system_readonly(self.current_volume)
+                    # also set volume to NOACCESS, so far
+                    self.set_volume_noaccess(self.current_volume)
+                    # log all running proceses
+                    self.log_processes(logit=1)
+
                 if self.stop:
                     self.offline() # stop here for investigation
                     return
@@ -4523,8 +4606,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     exc, detail, tb = sys.exc_info()
                     Trace.handle_error(exc, detail, tb)
             if failed:
+                Trace.alarm(e_errors.ERROR, "ftt error on %s after write, detail %s. Volume is set readonly" %
+                            (self.current_volume, detail))
+                
                 self.vcc.set_system_readonly(self.current_volume)
                 self.set_volume_noaccess(self.current_volume)
+                # log all running proceses
+                self.log_processes(logit=1)
                 self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
                 return 0
                 
@@ -5198,17 +5286,27 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.WRITE_ERROR, "error getting stats before write %s"%(detail,))
                         return
                     if bloc_loc != self.last_absolute_location:
-                        Trace.log(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set readonly"%
+                        Trace.alarm(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set readonly"%
                                   (self.current_volume, self.last_absolute_location,
                                    bloc_loc,))
                         self.vcc.set_system_readonly(self.current_volume)
+                        # also set volume to NOACCESS, so far
+                        self.set_volume_noaccess(self.current_volume)
+                        # log all running proceses
+                        self.log_processes(logit=1)
+                        
                     else:
                         try:
                             self.tape_driver.writefm()
                         except:
-                            Trace.log(e_errors.ERROR,"error writing file mark, will set %s readonly"%(self.current_volume,))
+                            Trace.alarm(e_errors.ERROR,"error writing file mark, will set %s readonly"%(self.current_volume,))
                             Trace.handle_error()
                             self.vcc.set_system_readonly(self.current_volume)
+                            # also set volume to NOACCESS, so far
+                            self.set_volume_noaccess(self.current_volume)
+                            # log all running proceses
+                            self.log_processes(logit=1)
+
                 
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
@@ -5804,6 +5902,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
             
         self.reply_to_caller(tick)
+        #self.log_processes(logit=1)
         return
 
     def timer(self, key):
