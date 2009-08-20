@@ -6454,7 +6454,7 @@ def finish_request(done_ticket, request_list, index):
         else:
             #Tell the user what happend.
             message = "File %s transfer failed: %s" % \
-                      (done_ticket['outfile'], done_ticket['status'])
+                      (done_ticket['outfilepath'], done_ticket['status'])
             Trace.message(DONE_LEVEL, message)
             Trace.log(e_errors.ERROR, message)
 
@@ -8531,10 +8531,10 @@ def stall_write_transfer(data_path_socket, control_socket, e):
                 write_fd = []
                 break
 
-    Trace.log(INFO_LEVEL,
-              "confirming control_socket still okay: %s sec" % (10,))
-
     if data_path_socket not in write_fd:
+        Trace.log(INFO_LEVEL,
+                  "confirming control_socket still okay: %s sec" % (10,))
+
         try:
             read_control_fd, unused, unused = select.select([control_socket],
                                                             [], [], 10)
@@ -8551,11 +8551,8 @@ def stall_write_transfer(data_path_socket, control_socket, e):
         except e_errors.TCP_EXCEPTION:
             status_ticket = {'status' : (e_errors.NET_ERROR,
                                          e_errors.TCP_EXCEPTION)}
-        ### Why isn't there a return of here like there is in
-        ### stall_read_transfer()?  The return just after
-        ### callback.read_tcp_obj() should be correct in all cases, but
-        ### is there some case that the else and except don't want to
-        ### return right away?
+
+        return status_ticket
 
     #To achive more accurate rates on writes to enstore when a tape
     # needs to be mounted, wait until the mover has sent a byte as
@@ -8698,10 +8695,6 @@ def write_post_transfer_update(done_ticket, e):
 def write_hsm_file(work_ticket, control_socket, data_path_socket,
                    tinfo, e, udp_serv = None):
 
-    #Loop around in case the file transfer needs to be retried.
-    while e.max_retry == None or \
-              work_ticket['resend'].get('retry', 0) <= e.max_retry:
-
         overall_start = time.time() #----------------------------Overall Start
 
         
@@ -8745,7 +8738,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket)
-            continue
+            return combine_dict(result_dict, work_ticket)
         elif e_errors.is_non_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket)
             return combine_dict(result_dict, work_ticket)
@@ -8775,7 +8768,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
 
             if e_errors.is_retriable(result_dict['status'][0]):
                 close_descriptors(control_socket, data_path_socket, in_fd)
-                continue
+                return combine_dict(result_dict, work_ticket)
             elif e_errors.is_non_retriable(result_dict['status'][0]):
                 close_descriptors(control_socket, data_path_socket, in_fd)
                 return combine_dict(result_dict, work_ticket)
@@ -8808,7 +8801,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                                      done_ticket, e)
 
         if e_errors.is_retriable(result_dict):
-            continue
+            return combine_dict(result_dict, work_ticket)
         elif e_errors.is_non_retriable(result_dict):
             return combine_dict(result_dict, work_ticket)
 
@@ -8861,11 +8854,6 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
                        time.time()-tinfo['encp_start_time']))
 
         return done_ticket
-
-    #If we get out of the while loop, then return error.
-    msg = "Failed to write file %s." % work_ticket['outfile']
-    done_ticket = {'status':(e_errors.TOO_MANY_RETRIES, msg)}
-    return done_ticket
 
 ############################################################################
 
@@ -10397,10 +10385,10 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
                 read_fd = []
                 break
 
-    Trace.log(INFO_LEVEL,
-              "confirming control_socket still okay: %s sec" % (10,))
-
     if data_path_socket not in read_fd:
+        Trace.log(INFO_LEVEL,
+                  "confirming control_socket still okay: %s sec" % (10,))
+
         try:
             read_control_fd, unused, unused = select.select([control_socket],
                                                             [], [], 10)
@@ -10602,7 +10590,6 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         out_fd = done_ticket['fd']
     
     #We need to stall the transfer until the mover is ready.
-    Trace.log(99, "before stall_read_transfer")
     done_ticket = stall_read_transfer(data_path_socket, control_socket,
                                       request_ticket, e)
 
