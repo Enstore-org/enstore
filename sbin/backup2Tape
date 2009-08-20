@@ -6,6 +6,10 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 #Make sure to set a timeout.
 timeout='--timeout 10 --retries 3'
+#Override the default time allowed to wait for the mover.  This is used as
+# a workaround for cases where it takes longer than 15 minutes for a tape
+# to be mounted.
+mover_timeout='--mover-timeout 1800'  #30 minutes (defualt is 15 minutes)
 
 if [ -n "${1:-}" ];then 
   FULL=`echo $1 | tr a-z A-Z `
@@ -47,7 +51,7 @@ doit() { list "$1"
 saveit() { 
            pnfsname=`echo $1 | tr '/' '-' | sed s/-//`
            ls -l $1
-           doit "encp --data $verbose $1 $pnfspath/$pnfsname"
+           doit "encp $mover_timeout --data $verbose $1 $pnfspath/$pnfsname"
            status=$?
            ls -l $pnfspath/$pnfsname
            if [ $status -ne 0 ]; then touch $QUIT; exit $status; fi
