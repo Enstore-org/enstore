@@ -520,5 +520,5 @@ if __name__ == '__main__':
 
     #print encp.format_class_for_print(intf_of_encp, "intf_of_encp")
 
-    do_work(intf_of_encp)
+    delete_at_exit.quit(do_work(intf_of_encp))
 
