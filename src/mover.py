@@ -901,8 +901,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(thread_name,))
 
+    # log a snapshot of all running processes
+    # this is done to check for activities during
+    # tape operation failure
     def log_processes(self,logit=0):
         if self.log_mover_state or logit:
+            # the format of the "ps" command is such
+            # that it usally fits into udp message and
+            # still is detailed enough
             cmd = "ps -eo user,start,args --cols 100"
             result =  self.shell_command(cmd)
             Trace.log(e_errors.INFO,"LOG: All running processes \n%s"%(result,))
@@ -2321,10 +2327,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # bail out gracefuly
 
                 # set volume to readlonly
+                self.vcc.set_system_readonly(self.current_volume)
                 Trace.alarm(e_errors.ERROR, "Write error on %s detail %s exception %s. Volume is set readonly" %
                             (self.current_volume,detail, exc, ))
-                self.vcc.set_system_readonly(self.current_volume)
                 # also set volume to NOACCESS, so far
+                # no alarm is needed here because it is send by volume clerk
+                # when it sets a volume to NOACCESS
                 self.set_volume_noaccess(self.current_volume)
                 # log all running proceses
                 self.log_processes(logit=1)
@@ -2450,10 +2458,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # bail out gracefuly
 
                 # set volume to readlonly
+                self.vcc.set_system_readonly(self.current_volume)
                 Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly" %
                             (self.current_volume,))
-                self.vcc.set_system_readonly(self.current_volume)
                 # also set volume to NOACCESS, so far
+                # no alarm is needed here because it is send by volume clerk
+                # when it sets a volume to NOACCESS
                 self.set_volume_noaccess(self.current_volume)
                 # log all running proceses
                 self.log_processes(logit=1)
@@ -2551,6 +2561,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         
                         Trace.alarm(e_errors.ERROR, "Short write on %s. Volume is set readonly. See log for details"%(self.current_volume,))
                         # also set volume to NOACCESS, so far
+                        # no alarm is needed here because it is send by volume clerk
+                        # when it sets a volume to NOACCESS
                         self.set_volume_noaccess(self.current_volume)
                         # log all running proceses
                         self.log_processes(logit=1)
@@ -2648,11 +2660,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
             except:
                 exc, detail, tb = sys.exc_info()
-                Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly. See log for details"%(self.current_volume,))
                 self.vcc.set_system_readonly(self.current_volume)
+                Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly. See log for details"%(self.current_volume,))
                 Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 # also set volume to NOACCESS, so far
+                # no alarm is needed here because it is send by volume clerk
+                # when it sets a volume to NOACCESS
                 self.set_volume_noaccess(self.current_volume)
                 # log all running proceses
                 self.log_processes(logit=1)
@@ -2673,6 +2687,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.alarm(e_errors.ERROR, "Serious FTT error %s on %s. Volume is set readonly"%(detail, self.current_volume))
                     self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
                     # also set volume to NOACCESS, so far
+                    # no alarm is needed here because it is send by volume clerk
+                    # when it sets a volume to NOACCESS
                     self.set_volume_noaccess(self.current_volume)
                     # log all running proceses
                     self.log_processes(logit=1)
@@ -2704,11 +2720,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.tape_driver.seek(location, 0) #XXX is eot_ok needed?
                 except:
                     exc, detail, tb = sys.exc_info()
+                    self.vcc.set_system_readonly(self.current_volume)
                     Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s. Volume is set readonly"%
                                 (self.current_volume,save_location))
-                    self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
                     # also set volume to NOACCESS, so far
+                    # no alarm is needed here because it is send by volume clerk
+                    # when it sets a volume to NOACCESS
                     self.set_volume_noaccess(self.current_volume)
                     # log all running proceses
                     self.log_processes(logit=1)
@@ -2778,18 +2796,20 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(22,"write_tape: read CRC %s write CRC %s"%
                             (self.buffer.complete_crc, saved_complete_crc))
                 if failed:
-                    Trace.alarm(e_errors.ERROR, "Write error on %s. See log for details. Volume is set readonly"%(self.current_volume,))
                     self.vcc.set_system_readonly(self.current_volume)
+                    Trace.alarm(e_errors.ERROR, "Write error on %s. See log for details. Volume is set readonly"%(self.current_volume,))
                     # also set volume to NOACCESS, so far
+                    # no alarm is needed here because it is send by volume clerk
+                    # when it sets a volume to NOACCESS
                     self.set_volume_noaccess(self.current_volume)
                     # log all running proceses
                     self.log_processes(logit=1)
                     return
                 if self.buffer.complete_crc != saved_complete_crc:
+                    self.vcc.set_system_readonly(self.current_volume)
                     Trace.alarm(e_errors.ERROR,
                                 "selective CRC check error on %s. See log for details. Volume is set readonly"%
                                 (self.current_volume,))
-                    self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error",error_source=DRIVE)
                     return
                 Trace.log(e_errors.INFO,
@@ -2808,6 +2828,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                          'positioning error %s. See log for details. Volume is set readonly' %
                                          (detail,), error_source=DRIVE)
                     # also set volume to NOACCESS, so far
+                    # no alarm is needed here because it is send by volume clerk
+                    # when it sets a volume to NOACCESS
                     self.set_volume_noaccess(self.current_volume)
                     # log all running proceses
                     self.log_processes(logit=1)
@@ -3535,15 +3557,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
 
                 if bloc_loc != self.last_absolute_location:
-                    Trace.alarm(e_errors.ERROR,
-                                "Wrong position for %s. See log for details. Volume is set readonly"%
-                                (self.current_volume,)) 
                     self.transfer_failed(e_errors.WRITE_ERROR,
                                          "Wrong position for %s: last %s, current %s"%
                                          (self.current_volume, self.last_absolute_location,
                                           bloc_loc,),error_source=TAPE)
                     self.vcc.set_system_readonly(self.current_volume)
+                    Trace.alarm(e_errors.ERROR,
+                                "Wrong position for %s. See log for details. Volume is set readonly"%
+                                (self.current_volume,)) 
                     # also set volume to NOACCESS, so far
+                    # no alarm is needed here because it is send by volume clerk
+                    # when it sets a volume to NOACCESS
                     self.set_volume_noaccess(self.current_volume)
                     # log all running proceses
                     self.log_processes(logit=1)
@@ -3561,10 +3585,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                   # in a single file mark mode
                   self.write_counter = 0
                 except:
-                    Trace.alarm(e_errors.ERROR,"error writing file mark, will set volume readonly")
                     Trace.handle_error()
                     self.vcc.set_system_readonly(self.current_volume)
+                    Trace.alarm(e_errors.ERROR,"error writing file mark, will set volume readonly")
                     # also set volume to NOACCESS, so far
+                    # no alarm is needed here because it is send by volume clerk
+                    # when it sets a volume to NOACCESS
                     self.set_volume_noaccess(self.current_volume)
                     # log all running proceses
                     self.log_processes(logit=1)
@@ -4213,11 +4239,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ftt_eio = 1
             elif msg.find("FTT_EBLANK") != -1:
                 if self.mode == WRITE:
+                    self.vcc.set_system_readonly(self.current_volume)
                     Trace.alarm(e_errors.ERROR,
                                 "Write error on %s. See log for details. Volume is set readonly"%
                                 (self.current_volume))
-                    self.vcc.set_system_readonly(self.current_volume)
                     # also set volume to NOACCESS, so far
+                    # no alarm is needed here because it is send by volume clerk
+                    # when it sets a volume to NOACCESS
                     self.set_volume_noaccess(self.current_volume)
                     # log all running proceses
                     self.log_processes(logit=1)
@@ -4606,10 +4634,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     exc, detail, tb = sys.exc_info()
                     Trace.handle_error(exc, detail, tb)
             if failed:
+                self.vcc.set_system_readonly(self.current_volume)
                 Trace.alarm(e_errors.ERROR, "ftt error on %s after write, detail %s. Volume is set readonly" %
                             (self.current_volume, detail))
-                
-                self.vcc.set_system_readonly(self.current_volume)
+                # no alarm is needed here because it is send by volume clerk
+                # when it sets a volume to NOACCESS
                 self.set_volume_noaccess(self.current_volume)
                 # log all running proceses
                 self.log_processes(logit=1)
@@ -5291,6 +5320,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                    bloc_loc,))
                         self.vcc.set_system_readonly(self.current_volume)
                         # also set volume to NOACCESS, so far
+                        # no alarm is needed here because it is send by volume clerk
+                        # when it sets a volume to NOACCESS
                         self.set_volume_noaccess(self.current_volume)
                         # log all running proceses
                         self.log_processes(logit=1)
@@ -5303,6 +5334,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                             Trace.handle_error()
                             self.vcc.set_system_readonly(self.current_volume)
                             # also set volume to NOACCESS, so far
+                            # no alarm is needed here because it is send by volume clerk
+                            # when it sets a volume to NOACCESS
                             self.set_volume_noaccess(self.current_volume)
                             # log all running proceses
                             self.log_processes(logit=1)
