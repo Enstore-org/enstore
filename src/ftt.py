@@ -11,6 +11,7 @@
 import sys
 import exceptions
 import string
+import types
 
 #import setpath
 import ftt2
@@ -44,6 +45,11 @@ class FTTError(exceptions.Exception):
 def raise_ftt(err=None, value=None):
     if err is None:
         err=_ftt.ftt_get_error()
+    if err and type(err) == types.ListType:
+        # beginning with swig 1.3.21
+        # the list is returned instead of tuple
+        # this workaround fixes the incompatibility
+        err = tuple(err) 
     err = err + (value,)
     if err[1]!=0:
         raise FTTError(err)
@@ -81,7 +87,7 @@ class stat_buf:
 def check(r, e=-1):
     """first arg is return code from _ftt call, second arg is value or values to be
     considered error returns"""
-    if type(e) is not type(()):
+    if type(e) != types.TupleType:
         e=(e,)
     if r not in e:
         return r
