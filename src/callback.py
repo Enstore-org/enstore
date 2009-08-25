@@ -29,6 +29,7 @@ import cPickle
 import errno
 import fcntl
 import types
+import struct
 
 # enstore imports
 import Trace
@@ -155,7 +156,6 @@ def get_socket_read_queue_length(sock):
            os.uname()[0] == "OSF1":
             OPT = 1074030207 #Pulled from header files.
     if OPT != None:
-        import struct #Only import this when necessary.
         nbytes = struct.unpack("i",
                                fcntl.ioctl(sock, OPT, "    "))[0]
 
@@ -163,6 +163,34 @@ def get_socket_read_queue_length(sock):
         raise AttributeError("FIONREAD")
 
     return nbytes
+
+#The return value is the number of un-ACKed packets.  This function only
+# works on Linux.  All other OSes get a socket exception with errno EOPNOTSUPP.
+def get_unacked_packet_count(sock):
+    OPT = getattr(socket, "TCP_INFO", None)
+    if OPT == None:
+        #Give an error since TCP_INFO is not supported on this system.
+        s_errno = getattr(errno, 'EOPNOTSUPP',
+                          getattr(errno, "ENOTSUP", errno.EIO))
+        raise socket.error(s_errno, "getsockopt(TCP_INFO) is not supported")
+
+    if os.uname()[0] != "Linux":
+        #We only have the unpacking for the Linux version of getsockopt.
+        s_errno = getattr(errno, 'EOPNOTSUPP',
+                          getattr(errno, "ENOTSUP", errno.EIO))
+        raise socket.error(s_errno, "getsockopt(TCP_INFO) format is not known")
+
+    #Get the TCP socket information for this socket.
+    raw_tcp_info = sock.getsockopt(socket.SOL_TCP, socket.TCP_INFO, 92)
+
+    #We need to pull the information out of the string returned from
+    # getsockopt().  See /usr/include/netinet/tcp.h for more information
+    # about the other fields in this C struct.
+    tcp_info = struct.unpack("BBBBBBBIIIIIIIIIIIIIIIIIIIII", raw_tcp_info)
+
+    #Linux specific location for un-acked packets in the tuple.
+    UNACKED = 12
+    return tcp_info[UNACKED]
 
 def __get_socket_state(fd):
     if os.uname()[0] == "Linux":
