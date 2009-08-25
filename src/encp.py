@@ -1725,10 +1725,14 @@ def __get_fcc(parameter = None):
             return __fcc, None
     
     #First check that the cached version matches the bfid brand.
-    if __fcc != None:
+    if __fcc != None and match_fc(__fcc.server_address):
         file_info = __fcc.bfid_info(bfid, 5, 12)
         if e_errors.is_ok(file_info):
             return __fcc, file_info
+        else:
+            Trace.log(e_errors.WARNING,
+                      "File inquiry to cached file_clerk failed: %s" \
+                      % (file_info['status'],))
 
     #Next check the fcc associated with the cached csc.
     if __csc != None:
@@ -1736,12 +1740,16 @@ def __get_fcc(parameter = None):
             __csc, logc = __logc, alarmc = __alarmc,
             rcv_timeout=5, rcv_tries=12)
         if fcc.server_address == None:
-            Trace.log(e_errors.WARNING, "Locating cached file clerk failed.\n")
+            Trace.log(e_errors.WARNING, "Locating cached file_clerk failed.")
         else:
             file_info = fcc.bfid_info(bfid, 5, 12)
             if e_errors.is_ok(file_info):
                 __fcc = fcc
                 return __fcc, file_info
+            else:
+                Trace.log(e_errors.WARNING,
+                          "File inquiry to default file_clerk failed: %s" \
+                          % (file_info['status'],))
 
     #Before checking other systems, check the default system.
     config_host = enstore_functions2.default_host()
@@ -1750,7 +1758,7 @@ def __get_fcc(parameter = None):
     fcc = file_clerk_client.FileClient(
         csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=12)
     if fcc.server_address == None:
-        Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
+        Trace.log(e_errors.WARNING, "Locating default file_clerk failed.")
     else:
         file_info = fcc.bfid_info(bfid, 5, 12)
         if e_errors.is_ok(file_info):
@@ -1761,6 +1769,10 @@ def __get_fcc(parameter = None):
                                                     logc = __logc,
                                                     alarmc = __alarmc)
             return __fcc, file_info
+        else:
+            Trace.log(e_errors.WARNING,
+                      "File inquiry to default file_clerk failed: %s" \
+                      % (file_info['status'],))
 
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
@@ -1792,8 +1804,12 @@ def __get_fcc(parameter = None):
 		#If the fcc has been initialized correctly; use it.
                 file_info = fcc_test.bfid_info(bfid, 5, 3)
                 if e_errors.is_ok(file_info):
+                    message = "Using file_clerk at %s based on bfid %s." % \
+                          (fcc_test.server_address, bfid)
+                    Trace.log(e_errors.INFO, message)
+                    
                     __csc = csc_test
-                    __fcc = fcc
+                    __fcc = fcc_test
                     if __acc != None:
                         __acc = accounting_client.accClient(
                             __csc, logname = 'ENCP',
@@ -1832,31 +1848,84 @@ def __get_fcc(parameter = None):
 def get_fcc(bfid = None):
 
     return __get_fcc(bfid)[0]
+
+#match_fcc() - a helper function for __get_vcc().  It makes sure the file_clerk
+# address passed in matches that of the cached configuration.
+def match_fc(match_fc_addr):
+    if __csc != None and __fcc != None and match_fc_addr != None:
+        conf_fc = __csc.get('file_clerk')
+        if e_errors.is_ok(conf_fc):
+            fc_addr = (conf_fc['hostip'], conf_fc['port'])
+        else:
+            fc_addr = None
+
+        if fc_addr == match_fc_addr:
+            return True
+    
+    return False
+
+#match_fcc() - a helper function for __get_vcc().  It makes sure the file_clerk
+# address passed in matches that of the cached configuration.
+def match_vc(match_vc_addr):
+    if __csc != None and __fcc != None and match_vc_addr != None:
+        conf_vc = __csc.get('volume_clerk')
+        if e_errors.is_ok(conf_vc):
+            vc_addr = (conf_vc['hostip'], conf_vc['port'])
+        else:
+            vc_addr = None
+
+        if vc_addr == match_vc_addr:
+            return True
+    
+    return False
+    
     
 def __get_vcc(parameter = None):
     global __vcc
     global __csc
     global __acc
 
+    ## match_fc_addr - This value is necessary to obtain the file_clerk
+    ## address that the particular file was found at.  This matters if
+    ## the same tape is located in two different Enstore instances; most
+    ## likely a NULL tape, like NULL01.  If we don't make sure that the
+    ## vcc we proceed with matches the fcc we might already have, we will
+    ## have a problem.  The use of match_vc() and match_fc() are used to aid
+    ## in this process.
+    ##
+    ## This check is only done if a ticket is passed in.  The ticket must
+    ## be from get_file_clerk_info() or a work_ticket from
+    ## create_read_request() or create__write_request().
+
     if not parameter:
         volume = None
+        match_fc_addr = None
 
     elif type(parameter) == types.DictType: #If passed a ticket with volume.
-        volume = parameter.get('fc', {}).get('external_label',
-                                             parameter.get('volume', None))
+        if parameter.has_key('fc'):
+            volume = parameter.get('fc', {}).get('external_label',
+                                                 parameter.get('volume', None))
+            match_fc_addr = parameter.get('fc', {}).get('address', (None, None))
+        elif parameter.has_key('volume'):
+            volume = parameter.get('volume', None)
+            match_fc_addr = None
+        elif parameter.has_key('external_label'): #fc_ticket
+            volume = parameter.get('external_label', None)
+            match_fc_addr = parameter.get('address', (None, None))
+        else:
+            volume = None
+            match_fc_addr = None
 
     elif enstore_functions3.is_volume(parameter):  #If passed a volume.
         volume = parameter
+        match_fc_addr = None
 
     else:
         raise EncpError(None,
                         "Invalid volume (%s) specified." % parameter,
                         e_errors.WRONGPARAMETER, {})
-     
-        #Set default value.
-        #volume = None
 
-    if volume == None: 
+    if volume == None:
         if __vcc != None: #No volume, but have cached vcc.
             return __vcc, None
         else:
@@ -1875,25 +1944,50 @@ def __get_vcc(parameter = None):
                 rcv_timeout=5, rcv_tries=12)
             return __vcc, None
 
-    #First check that the cached version knows about the volume.
-    if __vcc != None:
+    #First check that the cached version knows about the volume.  Be sure
+    # to make sure the file_clerk address matches the curent configuration
+    # and that the current configuration matches that of the cached
+    # volume_clerk.
+    if __vcc != None and \
+           ((match_fc_addr and match_fc(match_fc_addr)) or not match_fc_addr) \
+           and match_vc(__vcc.server_address):
+        
         volume_info = __vcc.inquire_vol(volume, 5, 12)
         if e_errors.is_ok(volume_info):
             return __vcc, volume_info
+        else:
+            Trace.log(e_errors.WARNING,
+                      "Volume inquiry to cached volume_clerk failed: %s" \
+                      % (volume_info['status'],))
+            if match_fc(match_fc_addr):
+                #If the address matches the Enstore system we want,
+                # return it anyway.
+                return __vcc, volume_info
 
-    #Next check the vcc associated with the cached csc.
-    if __csc != None:
+    #Next check the vcc associated with the cached csc.  Be sure
+    # to make sure the file_clerk address matches the curent configuration.
+    if __csc != None and \
+           ((match_fc_addr and match_fc(match_fc_addr)) or not match_fc_addr):
+        
         test_vcc = volume_clerk_client.VolumeClerkClient(
             __csc, logc = __logc, alarmc = __alarmc,
             rcv_timeout = 5, rcv_tries = 12)
         if test_vcc.server_address == None:
             Trace.log(e_errors.WARNING,
-                      "Locating cached volume clerk failed.\n")
+                      "Locating cached volume_clerk failed.")
         else:
             volume_info = test_vcc.inquire_vol(volume, 5, 12)
             if e_errors.is_ok(volume_info):
                 __vcc = test_vcc
                 return __vcc, volume_info
+            else:
+                Trace.log(e_errors.WARNING,
+                          "Volume inquiry to default volume_clerk failed: %s" \
+                          % (volume_info['status'],))
+                if match_fc(match_fc_addr):
+                    #If the address matches the Enstore system we want,
+                    # return it anyway.
+                    return __vcc, volume_info
 
     # get a configuration server
     config_host = enstore_functions2.default_host()
@@ -1902,7 +1996,7 @@ def __get_vcc(parameter = None):
     vcc = volume_clerk_client.VolumeClerkClient(csc, logc = __logc,
                                                 alarmc = __alarmc)
     if vcc.server_address == None:
-        Trace.log(e_errors.WARNING, "Locating default volume clerk failed.\n")
+        Trace.log(e_errors.WARNING, "Locating default volume_clerk failed.")
     #Before checking other systems, check the current system.
     else:
         volume_info = vcc.inquire_vol(volume, 5, 12)
@@ -1914,6 +2008,10 @@ def __get_vcc(parameter = None):
                                                     logc = __logc,
                                                     alarmc = __alarmc)
             return __vcc, volume_info
+        else:
+            Trace.log(e_errors.WARNING,
+                      "Volume inquiry to default volume_clerk failed: %s" \
+                      % (volume_info['status'],))
 
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
@@ -1947,9 +2045,9 @@ def __get_vcc(parameter = None):
 
             volume_info = vcc_test.inquire_vol(volume, 5, 3)
             if e_errors.is_ok(volume_info):
-                msg = "Using %s based on volume %s." % \
+                message = "Using volume_clerk at %s based on volume %s." % \
                       (vcc_test.server_address, volume)
-                Trace.log(e_errors.INFO, msg)
+                Trace.log(e_errors.INFO, message)
 
                 __csc = csc_test  #Set global for performance reasons.
                 __vcc = vcc_test
@@ -9566,8 +9664,7 @@ def get_clerks_info(bfid, e):
     #The volume clerk is much more complicated.  In some situations we
     # may wish to override the NOACCESS and NOTALLOWED system inhibts.
     try:
-        vc_ticket = get_volume_clerk_info(fc_ticket['external_label'],
-                                          encp_intf=e)
+        vc_ticket = get_volume_clerk_info(fc_ticket, encp_intf=e)
     except EncpError, msg:
         if msg.type in [e_errors.NOACCESS, e_errors.NOTALLOWED] \
                and e.override_noaccess:
