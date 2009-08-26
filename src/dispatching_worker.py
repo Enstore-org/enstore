@@ -665,10 +665,11 @@ class DispatchingWorker(udp_server.UDPServer):
             if isinstance(msg, socket.error) and msg.args[0] == errno.EMSGSIZE:
                 self.send_reply_with_long_answer(save_copy)
             else:
-                t["status"] = (str(exc),str(msg))
+                t["status"] = (str(exc), str(msg))
                 self.reply_to_caller(t)
                 Trace.trace(enstore_constants.DISPWORKDBG,
                             "exception in send_reply %s" % (t,))
+                Trace.handle_error(exc, msg, sys.exc_info()[2])
                 return
 
     #This functions uses an acitve protocol.  This function uses UDP and TCP.
@@ -692,11 +693,21 @@ class DispatchingWorker(udp_server.UDPServer):
                        }
        
         #Tell the client to wait for a connection.
-        self.reply_to_caller(small_reply)
+        small_reply_copy = copy.copy(small_reply)
+        self.reply_to_caller(small_reply_copy)
 
         #Wait for the client to connect over TCP.
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
+        for i in range(12):
+            r, w, x = select.select([listen_socket], [], [], 5)
+            if not r:
+                #Tell the client to wait for a connection.
+                small_reply_copy = copy.copy(small_reply)
+                self.reply_to_caller(small_reply_copy)
+            else:
+                #We've been connected to.
+                break
+        else:
+            #We didn't hear back from the other side.
             listen_socket.close()
             message = "connection timedout from %s" % (ticket['r_a'],)
             Trace.log(e_errors.ERROR, message)
