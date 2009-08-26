@@ -161,36 +161,55 @@ class cleanUDP :
                 for n in range(self.retry_max) :
                         try:
                                 return self.socket.sendto(data, address)
-                        except socket.error:
-				exc, msg, tb = sys.exc_info()
-				if msg:
-					if (hasattr(msg, 'errno') and 
-					    msg.errno == errno.EMSGSIZE):
-						message = "sendto %s: %s: data length %s" % \
-							  (str(msg),
-							   address,
-							   len(data))
-						Trace.log(e_errors.ERROR, message)
-						#Log the stack trace so we know
-						# what request was being processed.
-						Trace.handle_error(exc, msg, tb)
-						#break here since with this error
-						# retrying will never succeed.
-						# The sendto() and the end of this
-						# function will re-raise the
-						# exception.
-
-						break
-					else:
-						Trace.log(e_errors.ERROR, exc, msg)
-						break
+                        except (socket.error, socket.gaierror, socket.herror,
+				select.error), msg:
+				e_errno = getattr(msg, 'errno', msg.args[0])
+				if e_errno in [errno.EMSGSIZE]:
+					"""
+					#These error are considered fatal,
+					# where retrying will always fail too.
+					message = "sendto %s: %s: data length %s" % \
+						  (str(msg), address, len(data))
 						
+					Trace.log(e_errors.ERROR, message)
+					#Log the stack trace so we know
+					# what request was being processed.
+					Trace.handle_error(sys.exc_info()[0],
+							   sys.exc_info()[1],
+							   sys.exc_info()[2])
+				        """
+					### A long message can now be
+					### handled by generic_client and
+					### dispatching_worker.  Don't log a
+					### traceback here.
+
+					#Re-raise here since with this error
+					# retrying will never succeed.
+					raise sys.exc_info()[0], \
+					      sys.exc_info()[1], \
+					      sys.exc_info()[2]
+				elif e_errno in [socket.EAI_NONAME]:
+					#message = "sendto %s: %s" % \
+					#	  (str(msg), address)
+					#Trace.log(e_errors.ERROR, message)
+
+					#Re-raise here since with this error
+					# retrying will never succeed.
+					# Inject the addess into the error
+					# string so the users see the address
+					# that is causing the error.
+					raise sys.exc_info()[0], \
+					      (socket.EAI_NONAME,
+					       "%s: %s" % (str(msg),
+							  str(address))
+					       ), \
+					       sys.exc_info()[2]
 				else:
+					Trace.log(e_errors.ERROR,
+						  str(sys.exc_info()[0]),
+						  str(sys.exc_info()[1]))
 					self.logerror("sendto", n)
 				
-				#Avoid resource leaks.
-				del tb
-					
 						  
                 return self.socket.sendto(data, address)
                 

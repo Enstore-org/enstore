@@ -516,7 +516,9 @@ class UDPServer:
                         (with_interface, reply_address, current_id))
             send_socket.sendto(udp_common.r_repr(list_copy), reply_address)
         except:
-            Trace.handle_error()
+            ### A long message can now be handled by generic_client and
+            ### dispatching_worker.  Don't log a traceback here.
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     # for requests that are not handled serially reply_address, current_id,
     # and client_number number must be reset.  In the forking media changer
