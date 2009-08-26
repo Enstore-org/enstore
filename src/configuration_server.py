@@ -15,7 +15,7 @@ import traceback
 import socket
 import time
 import copy
-import threading
+#import threading
 
 # enstore imports
 #import setpath
@@ -275,45 +275,25 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         out_ticket = {"status" : (e_errors.OK, None), "get_keys" : (skeys)}
         self.reply_to_caller(out_ticket)
 
-    # run in thread
-    def run_in_thread(self, thread_name, function, args=(), after_function=None):
-        ##threads = threading.enumerate()
-        ##for th in threads:
-        ##    if th.isAlive():
-        ##        thread_name = th.getName()
-        ##        Trace.log(e_errors.INFO,"LOG: Thread %s is running" % (thread_name,))
-        ##    else:
-        ##        Trace.log(e_errors.INFO,"LOG: Thread %s is dead" % (thread_name,))
-
-        if after_function:
-            args = args + (after_function,)
-        #Trace.log(e_errors.INFO, "create thread: target %s name %s args %s" % (function, thread_name, args))
-        thread = threading.Thread(group=None, target=function,
-                                  name=thread_name, args=args, kwargs={})
-        #setattr(self, thread_name, thread)
-        #Trace.log(e_errors.INFO, "starting thread %s"%(dir(thread,)))
-        try:
-            thread.start()
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
-        return 0
-
     def dump(self, ticket):
         if self.use_thread:
             t = copy.deepcopy(ticket)
-            self.run_in_thread('dump', self.make_dump,  args=(t,))
+            dispatching_worker.run_in_thread('dump', self.make_dump, args=(t,))
         else:
             self.make_dump(ticket)
         return
-        
+
+    def dump2(self, ticket):
+        if self.use_thread:
+            t = copy.deepcopy(ticket)
+            dispatching_worker.run_in_thread('dump2', self.make_dump2, args=(t,))
+        else:
+            self.make_dump2(ticket)
+        return
 
     # return a dump of the dictionary back to the user
-    def make_dump(self, ticket):
+    def __make_dump(self, ticket):
         Trace.trace(15, 'DUMP: \n' + str(ticket))
-
-        if not hostaddr.allow(ticket['callback_addr']):
-            return
 
         ticket['status'] = (e_errors.OK, None)
         #The following section places into the udp reply ticket information
@@ -332,6 +312,15 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         reply=ticket.copy()
         reply["dump"] = self.configdict
         reply["config_load_timestamp"] = self.config_load_timestamp
+        return reply
+
+    def make_dump(self, ticket):
+        if not hostaddr.allow(ticket['callback_addr']):
+            return None
+
+        reply = self.__make_dump(ticket)
+        if reply == None:
+            return
         self.reply_to_caller(ticket)
         addr = ticket['callback_addr']
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -346,6 +335,12 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             Trace.handle_error()
             Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
         return
+
+    def make_dump2(self, ticket):
+        reply = self.__make_dump(ticket)
+        if reply == None:
+            return
+        self.send_reply(reply)
             
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):

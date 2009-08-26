@@ -219,8 +219,26 @@ class ConfigurationClient(generic_client.GenericClient):
                 
         return ret
 
-    # dump the configuration dictionary
+    # dump the configuration dictionary (use active protocol)
     def dump(self, timeout=0, retry=0):
+        ticket = {"work"          : "dump2",
+                  }
+        done_ticket = self.send(ticket, rcv_timeout = timeout,
+                                tries = retry)
+
+        #Try old way if the server is old too.
+        if done_ticket['status'][0] == e_errors.KEYERROR and \
+               done_ticket['status'][1].startswith("cannot find requested function"):
+            done_ticket = self.dump_old(timeout, retry)
+            return done_ticket #Avoid duplicate "convert to external format"
+        if not e_errors.is_ok(done_ticket):
+            return done_ticket
+
+        return done_ticket
+
+
+    # dump the configuration dictionary
+    def dump_old(self, timeout=0, retry=0):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         
