@@ -30,59 +30,14 @@ import host_config
 
 
 MAX_EXPONENT=6 # do not increase reeive TO in send beyond this
+TRANSFER_MAX=16384 #Max size of UDP datagram.
 
-"""
-#UDPError = "UDP Error"
-class UDPError(socket.error):
 
-    def __init__(self, e_errno, e_message = None):
+#global value with each item for a different thread
+thread_specific_data = threading.local()  
+#global locks for the thread_specific_data
+deletion_list_lock = threading.Lock()
 
-        socket.error.__init__(self)
-
-        #If the only a message is present, it is in the e_errno spot.
-        if e_message == None:
-            if type(e_errno) == types.IntType:
-                self.errno = e_errno
-                self.e_message = None
-            elif type(e_errno) == types.StringType:
-                self.errno = None
-                self.e_message = e_errno
-            else:
-                self.errno = None
-                self.e_message = "Unknown error"
-        #If both are there then we have both to use.
-        else:
-            self.errno = e_errno
-            self.e_message = e_message
-
-        #Generate the string that stringifying this obeject will give.
-        self.strerror = "" #Define this to make pychecker happy.
-        self._string()
-
-        self.args = (self.errno, self.e_message)
-
-    def __str__(self):
-        self._string()
-        return self.strerror
-
-    def __repr__(self):
-        return "UDPError"  #String value.
-
-    def _string(self):
-        if self.errno in errno.errorcode.keys():
-            errno_name = errno.errorcode[self.errno]
-            errno_description = os.strerror(self.errno)
-            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
-                                                        self.errno,
-                                                        errno_description,
-                                                        self.e_message)
-        else:
-            self.strerror = self.e_message
-
-        return self.strerror
-"""
-
-TRANSFER_MAX=16384
 
 def wait_rsp( sock, address, rcv_timeout ):
 
@@ -102,33 +57,27 @@ def wait_rsp( sock, address, rcv_timeout ):
     
     return reply, server, rcv_timeout
 
-class Container:
-    pass
-
-"""
-_rexec = rexec.RExec()
-def r_eval(stuff):
-    return _rexec.r_eval(stuff)
-"""
 
 class UDPClient:
 
     def __init__(self):
-        self.tsd = {} #Thread-specific data
-        self._os = os
+        #self.tsd = {} #Thread-specific data
+        #self._os = os
 
         self.reinit()
 
     def reinit(self):
+        global thread_specific_data
         #Obtain necessary values.
-        pid = self._os.getpid()
+        pid = os.getpid()
         host, port, socket = udp_common.get_default_callback()
         if thread_support:
             tid = thread.get_ident() #Obtain unique identifier.
         else:
             tid = 1
+        
         #Build thread specific data.
-        tsd = Container()
+        tsd = thread_specific_data  #local shortcut
         tsd.host = host
         tsd.port = port
         tsd.socket = socket
@@ -140,143 +89,27 @@ class UDPClient:
         tsd.ident = self._mkident(tsd.host, tsd.port, tsd.pid, tsd.tid)
         tsd.send_done = {}
 
-        if thread_support:
-            #There is no good way to store which thread this tsd was
-            # create for.  It used to do the following.
-            #     tsd.thread = threading.currentThread()
-            # But this turns out to be a resource leak by creating a
-            # cyclic reference.  Thus, this hack was devised to track
-            # them from the other direction; namely knowing the thread
-            # identify the tsd in the self.tsd dict that it relates to.
-            threading.currentThread().tid = tid
-            
-        #Cache the tsd and return.
-        self.tsd[tid] = tsd
         return tsd
 
-    def get_address(self):
-        if thread_support:
-            tid = thread.get_ident() #Obtain unique identifier.
-        else:
-            tid = 1
-        return self.tsd[tid].socket.getsockname()
-
-    def cleanup_tsd(self):
-        if thread_support:
-            for tid, tsd in self.tsd.items():
-                #Clean up resources of exited threads.
-                try:
-                    #Loop though all of the active threads searching for
-                    # the thread specific data (tsd) that it relates to.
-                    for a_thread in threading.enumerate():
-                        if not hasattr(a_thread, "tid"):
-                            #If there is no tid attribute, it hasn't used
-                            # this udp_client and thus we don't care.
-                            continue
-                        if a_thread.tid == tid:
-                            #If the thread is still active, don't cleanup.
-                            break
-                    else:
-                        #After testing all the active threads this thread
-                        # was found to be gone.
-                        '''
-                        for server in self.tsd[tid].send_done.keys() :
-                            try:
-                                self.send_no_wait({"work":"done_cleanup"},
-                                                  server)
-                            except:
-                                pass
-                        '''
-
-                        #Cleanup system resources now.
-                        self.tsd[tid].socket.close()
-                        del self.tsd[tid]
-                except KeyError, msg:
-                    pass # another thread could have done the cleanup...
-                except (KeyboardInterrupt, SystemExit):
-                    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-                except:
-                    exc, msg = sys.exc_info()[:2]
-                    try:
-                        sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
-                        sys.stderr.flush()
-                    except IOError:
-                        pass
-                    pass
-             
-
+    #Return this thread's local data.  If it hasn't been initialized yet,
+    # call reinit() to do so.
     def get_tsd(self):
-        if thread_support:
-            tid = thread.get_ident() #Obtain unique identifier.
-        else:
-            tid = 1
-        tsd = self.tsd.get(tid)
-        if not tsd:
-            #Cleanup unused sockets and TSDs.
-            self.cleanup_tsd()
-            #Get the new socket and TSD.
-            tsd = self.reinit()
-        return tsd
+        global thread_specific_data
+        
+        if not hasattr(thread_specific_data, 'pid'):
+            self.reinit()
+
+        return thread_specific_data
     
+    #Return the IP address for the socket.
+    def get_address(self):
+        tsd = self.get_tsd()
+
+        return tsd.socket.getsockname()
+
     def _mkident(self, host, port, pid, tid):
         return "%s-%d-%f-%d-%d" % (host, port, time.time(), pid, abs(tid))
-        
-    def __del__(self):
-        # tell server we're done - this allows it to delete our unique id in
-        # its dictionary - this keeps things cleaner & stops memory from
-        # growing
-        
-        try:
-            #Cleanup all of the other thread specific data related to threads
-            # that should no longer exist.
-            self.cleanup_tsd()
 
-            #Since, this UDPClient object should go away (in the last
-            # surviving thread) we also need to cleanup this tsd too, even
-            # though the thread is still alive.
-            #Note: Don't use get_tsd(), to return the tsd for this thread.
-            #      If this thread hasn't used this UDPClient object before
-            #      then there is nothing to clean up.  get_tsd() will
-            #      unecessarily create a UDPClient object to destroy.
-            if thread_support:
-                tid = thread.get_ident() #Obtain unique identifier.
-            else:
-                tid = 1
-            tsd = self.tsd.get(tid)
-            if tsd:
-                '''
-                #Send any final messages for this threads socket.
-                for server in tsd.send_done.keys():
-                    try:
-                        self.send_no_wait({"work" : "done_cleanup"}, server)
-                    except:
-                        pass
-                '''
-
-                #Cleanup system resources now.
-                self.tsd[tid].socket.close()
-                del self.tsd[tid]
-        except Exception, msg:
-            exc, msg = sys.exc_info()[:2]
-            print exc, msg
-            pass
-
-    """
-    def _eval_reply(self, reply): #private to send
-        try:
-            number, out, t = r_eval(reply) #XXX
-            # catch any error and keep going. server needs to be robust
-        except:
-            exc, msg = sys.exc_info()[:2]
-            logmsg="udpClient.eval_reply %s %s"%(exc, msg)
-            if exc == exceptions.SyntaxError: #msg size> max datagram size?
-                logmsg=logmsg+"Truncated message?"
-            elif exc == exceptions.TypeError:
-                logmsg = logmsg + ": " + reply
-            Trace.log(e_errors.ERROR, logmsg)
-            raise sys.exc_info()
-        return number, out, t
-    """
 
 
     def protocolize( self, text ):
@@ -634,6 +467,38 @@ class UDPClient:
         
 if __name__ == "__main__" :
 
+    status = 0
+    def send_test(msg, address, udp_c):
+        global status
+
+        tsd = udp_c.get_tsd()
+        
+        print "Sending message %s to %s using callback %s." \
+              % (msg, address, (tsd.host, tsd.port))
+
+        try:
+            if "deferred" in  sys.argv:
+                txn_id = u.send_deferred(msg, address)
+                print "Sleeping for 5 sec."
+                time.sleep(5)
+                back = u.recv_deferred(txn_id, 5)
+                print "Recieved message %s." % (back)
+
+            elif "nowait" in sys.argv:
+                back = u.send_no_wait(msg, address)
+                print "Sent message."
+
+            else:
+                back = u.send(msg, address, rcv_timeout = 10, max_send=3)
+                print "Recieved message %s." % (back)
+
+        except:
+            exc, msg = sys.exc_info()[:2]
+            print "Unable to complete test: %s: %s" % (str(exc), str(msg))
+            status = 1
+
+        return status
+
     #This test can be run in a number of ways.  The usage of this test
     # will look like:
     #   python $ENSTORE_DIR/SRC/udp_client.py
@@ -656,39 +521,17 @@ if __name__ == "__main__" :
     #   using callback ('131.225.84.1', 60853).
     #   Recieved message {'message': 'TEST MESSAGE'}.
 
-    status = 0
-
     # get a UDP client
     u = UDPClient()
-    tsd = u.get_tsd()
-    msg = {'message' : "TEST MESSAGE"}
+    message = {'message' : "TEST MESSAGE"}
     address = ("localhost", 7700)
-    
-    print "Sending message %s to %s using callback %s." \
-          % (msg, address, (tsd.host, tsd.port))
 
-    try:
-        if "deferred" in  sys.argv:
-            txn_id = u.send_deferred(msg, address)
-            print "Sleeping for 5 sec."
-            time.sleep(5)
-            back = u.recv_deferred(txn_id, 5)
-            print "Recieved message %s." % (back)
-
-        elif "nowait" in sys.argv:
-            back = u.send_no_wait(msg, address)
-            print "Sent message."
-
-        else:
-            back = u.send(msg, address, rcv_timeout = 10, max_send=3)
-            print "Recieved message %s." % (back)
-
-    except:
-        exc, msg = sys.exc_info()[:2]
-        print "Unable to complete test: %s: %s" % (str(exc), str(msg))
-        status = 1
+    test_thread = threading.Thread(target = send_test,
+                                   args = (message, address, u))
+    test_thread.start()
+    test_thread.join()
 
     del u
 
-    sys.exit(status)
+    sys.exit(status)  #Note: status is global.
     
