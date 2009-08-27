@@ -83,7 +83,6 @@ def mover_hosts(dict):
 
 
 if __name__ == '__main__':      # testing
-	import pprint
         # get configuration file path from ENSTORE_CONFIG_FILE
         config_file = os.environ['ENSTORE_CONFIG_FILE']
 
@@ -91,9 +90,7 @@ if __name__ == '__main__':      # testing
         cd = configuration_server.ConfigurationDict()
         cd.read_config(config_file)
 
-	pprint.pprint(cd.configdict)
-
-        if sys.argv[1] == "server":
+	if sys.argv[1] == "server":
             server_hosts(cd.configdict)
         elif sys.argv[1] == "mover":
             mover_hosts(cd.configdict)
