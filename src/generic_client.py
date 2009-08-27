@@ -293,7 +293,7 @@ class GenericClient:
                 x = {'status' : (e_errors.NET_ERROR,
                                  "%s: %s" % (self.server_name, str(msg)))}
         except TypeError, detail:
-             x = {'status' : (e_errors.ERROR,
+             x = {'status' : (e_errors.UNKNOWN,
                                  "%s: %s" % (self.server_name, str(detail)))}
 
         #If the short answer says that the real answer is too long, continue
