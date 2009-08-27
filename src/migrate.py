@@ -1623,25 +1623,90 @@ def search_media_type(original_path, db):
 	return media_type
 
 def get_file_info(MY_TASK, bfid, db):
-	# get file info
-	q = "select bfid, label, location_cookie, pnfs_id, \
-		storage_group, file_family, deleted, \
-		pnfs_path, size, crc as complete_crc, \
-		wrapper \
-		from file, volume \
-		where file.volume = volume.id and \
-			bfid = '%s';"%(bfid)
-	if debug:
-		log(MY_TASK, q)
-	res = db.query(q).dictresult()
+    # get file info
+    q = "select bfid, label, location_cookie, pnfs_id, \
+            storage_group, file_family, deleted, \
+            pnfs_path, size, crc as complete_crc, \
+            wrapper \
+            from file, volume \
+            where file.volume = volume.id and \
+                    bfid = '%s';" % (bfid,)
+    if debug:
+        log(MY_TASK, q)
+    res = db.query(q).dictresult()
 
-	# does it exist?
-	if not len(res):
-		error_log(MY_TASK, "%s does not exist in db"%(bfid))
-		return None
+    # does it exist?
+    if not len(res):
+        error_log(MY_TASK, "%s does not exist in db" % (bfid,))
+        return None
 
-	return res[0]
+    return res[0]
 
+def get_volume_info(MY_TASK, volume, db):
+    #get volume info
+    q = "select label as external_label, block_size as blocksize, \
+                capacity_bytes, declared, eod_cookie, first_access, \
+                last_access, library, media_type, remaining_bytes, \
+                sum_mounts, sum_rd_access, sum_rd_err, sum_wr_access, \
+                sum_wr_err, \
+                system_inhibit_0, system_inhibit_1, \
+                user_inhibit_0, user_inhibit_1, \
+                si_time_0, si_time_1, \
+                storage_group || '.' || file_family || '.' || wrapper as volume_family, \
+                write_protected, comment, modification_time \
+         from volume \
+         where volume.label = '%s';" % (volume,)
+
+    if debug:
+        log(MY_TASK, q)
+    res = db.query(q).dictresult()
+
+    # does it exist?
+    if not len(res):
+        error_log(MY_TASK, "%s does not exist in db" % (volume,))
+        return None
+
+    return_copy = copy.copy(res[0])
+
+    #Modify the sql result to match vcc.inquire_vol() format.
+
+    #First is the system inhibit.
+    return_copy['system_inhibit'] = [res[0]['system_inhibit_0'],
+                                     res[0]['system_inhibit_1']]
+    try:
+        del return_copy['system_inhibit_0']
+    except KeyError:
+        pass
+    try:
+        del return_copy['system_inhibit_1']
+    except KeyError:
+        pass
+
+    #Second is the user inhibit.
+    return_copy['user_inhibit'] = [res[0]['user_inhibit_0'],
+                                   res[0]['user_inhibit_1']]
+    try:
+        del return_copy['user_inhibit_0']
+    except KeyError:
+        pass
+    try:
+        del return_copy['user_inhibit_1']
+    except KeyError:
+        pass
+
+    # Third is the si_time.
+    return_copy['si_time'] = (res[0]['si_time_0'],
+                              res[0]['si_time_1'])
+    try:
+        del return_copy['si_time_0']
+    except KeyError:
+        pass
+    try:
+        del return_copy['si_time_1']
+    except KeyError:
+        pass
+
+    return return_copy
 
 ##########################################################################
 
@@ -4960,9 +5025,6 @@ def restore(bfids, intf):
                 if dst_bfid != None:
                         copies_reply = fcc.find_copies(dst_bfid)
                         if not e_errors.is_ok(copies_reply):
-                                import pprint
-                                print bfid, dst_bfid
-                                pprint.pprint(copies_reply)
                                 error_log(MY_TASK,
                                      "failed to retrieve multiple copies list %s %s: %s" \
                                           % (dst_bfid, mig_path, str(copies_reply['status'])))
