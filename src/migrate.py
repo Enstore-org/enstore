@@ -612,7 +612,6 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError):
         exc_type, exc_value, exc_tb = sys.exc_info()
-        Trace.handle_error(exc_type, exc_value, exc_tb)
         del exc_tb #avoid resource leaks
 
         if exc_value.args[0] in [errno.EEXIST]:
@@ -646,6 +645,7 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
                 else:
                     file_utils.release_lock_euid_egid()
 
+                Trace.handle_error(exc_type, exc_value, sys.exc_info()[2])
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     if do_seteuid:  #Free lock on error.
@@ -1404,6 +1404,29 @@ def get_volume_from_bfid(bfid, db):
 			  str(exc_value), q)
 	
 	return None
+
+#Returns false if the tape is marked NOTALLOWED or NOACCESS.
+def is_volume_allowed(volume, db):
+    if not enstore_functions3.is_volume(volume):
+        return False
+
+    q = "select system_inhibit_0,user_inhibit_0 from volume where " \
+        "volume.label = '%s';" % (volume,)
+
+    try:
+        res = db.query(q).getresult()
+    except:
+        exc_type, exc_value = sys.exc_info()[:2]
+        error_log("is_volume_allowed", str(exc_type),
+                  str(exc_value), q)
+        return False
+
+    if res[0][0] in ["NOTALLOWED", "NOACCESS"]: #check system_inhibit_0
+        return False
+    if res[0][1] in ["NOTALLOWED", "NOACCESS"]: #check user_inhibit_0
+        return False
+    
+    return True
 
 #Return the media_type that the bfid or volume refers to.  The first
 # argument may also be a file path in pnfs.  It may also be a (short) library
@@ -2850,6 +2873,22 @@ def copy_files(thread_num, files, copy_queue, grab_lock, release_lock, intf):
 
 			if debug:
 				log(MY_TASK, "Done passing job.")
+                else:
+                        #If we failed, check if the tape is still accessable.
+                        volume = get_volume_from_bfid(bfid, db)
+                        if not is_volume_allowed(volume, db):
+                            # If we get here the tape has been marked
+                            # NOACCESS or NOTALLOWED.
+                            message =  "volume %s is NOACCESS or NOTALLOWED" \
+                                      % (volume,)
+                            error_log(MY_TASK, message)
+
+                            #Is breaking out of the loop the correct thing
+                            # to do?  For volume migrations it is, because
+                            # copy_files() is passed a list of bfids from
+                            # one volume.  What if it is just passed any
+                            # old list of bfids from the command line?
+                            break
 
 	# terminate the copy_queue
 	log(MY_TASK, "no more to copy, terminating the copy queue")
@@ -4265,6 +4304,19 @@ def final_scan_volume(vol, intf):
 					   fcc, encp, intf, db)
 		if rtn_code:
 			local_error = local_error + 1
+
+                        if not intf.use_volume_assert and \
+                           not USE_VOLUME_ASSERT:
+                                #If we failed reading the file, check if
+                                # the tape is still accessable.
+                                if not is_volume_allowed(vol, db):
+                                        # If we get here the tape has been
+                                        # marked NOACCESS or NOTALLOWED.
+                                        message = "%s is NOACCESS or NOTALLOWED" \
+                                                  % (vol,)
+                                        error_log(MY_TASK, message)
+
+                                        break
 			continue
 
                 # If we get here, then the file has been scaned.  Consider
