@@ -238,6 +238,7 @@ while [ $done -gt 0 ]; do
     is_lib_known=`enstore conf --list-library-manager | grep $library | wc -l`
     if [ "$is_lib_known" -eq 0 ]; then
         echo "Unable to find ${library}.library_manager." 1>&2
+	echo
         #Update the return value and the number of volumes done count.
         RC=`expr $RC + 1`
         done=`expr $done - 1`
@@ -250,6 +251,8 @@ while [ $done -gt 0 ]; do
     echo $cmd
     vols_at_movers=`eval $cmd`
     if [ $? -ne 0 ]; then
+	echo "Unable to determine busy drives for ${library}.library_manager." 1>&2
+	echo
         continue
     fi
     
@@ -263,9 +266,9 @@ while [ $done -gt 0 ]; do
     cmd2="enstore mov --list | grep ${library}.library_manager"
     echo $cmd2
     configured_movers=`eval $cmd2`
-    #Now count the number of lines.
-    total_movers=`echo "$configured_movers" | wc -l`
-    
+    #Now count the number of lines. (Ignore empty lines.)
+    total_movers=`echo "$configured_movers" | egrep -v "^$" | wc -l`
+
     down_movers=0
     #Obtain the list of down movers.  Remove headers and empty lines.
     servers_down=`enstore sched --show | egrep -v " Enstore | -----|^$"`
@@ -274,6 +277,9 @@ while [ $done -gt 0 ]; do
     #Loop over the configured movers looking for a match to a down mover.
     for mover_line in "$configured_movers"; do
 	mover_name=`echo $mover_line | awk '{print $1'}`
+        if [ -z "$mover_name" ]; then
+            continue
+        fi
 	grep $mover_name /tmp/copy_ran_file_servers_down > /dev/null
 	if [ $? -eq 0 ]; then
             #If the grep returns success (0), increase the down movers
@@ -283,6 +289,13 @@ while [ $done -gt 0 ]; do
     done
     #Determine the number of drives available right now.
     online_movers=`expr $total_movers - $down_movers`
+
+    #There needs to be at least one mover up for this library.
+    if [ $online_movers -le 0 ]; then
+	echo "Unable to find available movers for ${library}.library_manager." 1>&2
+	echo
+	continue
+    fi
 
     #This test should compare this number to the number of drives in the
     # library.  I don't know of a good way from bash to get the number of
