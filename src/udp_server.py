@@ -7,9 +7,9 @@
 ###############################################################################
 
 # system imports
-#import errno
+import errno
 import time
-#import os
+import os
 #import traceback
 import checksum
 import sys
@@ -510,11 +510,20 @@ class UDPServer:
         else:
             send_socket = self.server_socket
             with_interface = ""  #Give better trace message.
+
+        # sendto() in python 2.6 raises this EMSGSIZE socket exception if
+        # the message size is to long for UDP.  In python 2.4, the message
+        # is silently truncated.
+        wrapped_list = udp_common.r_repr(list_copy)
+        if len(wrapped_list) > self.max_packet_size:
+            ### A long message can now be handled by generic_client and
+            ### dispatching_worker.  Don't log a traceback here.
+            raise socket.error(errno.EMSGSIZE, os.strerror(errno.EMSGSIZE))
         
         try:
             Trace.trace(16, "udp_server (reply%s): to %s: request_dict %s" %
                         (with_interface, reply_address, current_id))
-            send_socket.sendto(udp_common.r_repr(list_copy), reply_address)
+            send_socket.sendto(wrapped_list, reply_address)
         except:
             ### A long message can now be handled by generic_client and
             ### dispatching_worker.  Don't log a traceback here.
