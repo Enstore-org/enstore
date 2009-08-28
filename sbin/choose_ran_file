@@ -45,11 +45,38 @@ here=`pwd`
 override_ro="" #Used to audit the state of the write protect tab.
 tmp_dir=/tmp
 
+#Make sure to set a timeout.
+timeout="--retries 3 --timeout 30"
+
+#Obtain a list of test libraries to ignore.  (ttl = Test Library List)
+## Get the information from the configuration.
+
+tll_raw=`enstore conf $timeout --print crons test_library_list 2> /dev/null`
+###   If there is no test_library_list then this will be an error.
+###   Comment this check out for now.
+##if [ $? -ne 0 ]; then
+##    echo "Failed to obtain test library list from configuration." 1>&2
+##    exit 1
+##fi
+##
+#Remove the line header contents (before the :), remove any empty lines,
+# stick single quotes on either side of eache item, replace all newlines
+# with commas and lastly remove the last comma.
+tll=`echo "$tll_raw" | cut -f 2 -d ":" | egrep -v ^$ | sed -e "s/$/'/" -e "s/^/'/" | tr "\n" "," | sed "s/,$//"`
+if [ -z "$tll" ]; then
+    skip_library_sql=""
+else
+    if [ $verbose -eq 1 ]; then
+	echo "Skipping libraries:" "$tll"
+    fi
+    skip_library_sql="and library not in ($tll)"
+fi
+
 #Get the list of suitable tapes for testing.
 ###8-16-2007: The 'or' of the system_inhibit_1 values to readonly and full
 ###           should have a third condition.  If the last_access time is
 ###           older than three months, allow the tape for consideration.
-enstore info --retries 3 --timeout 30 --query \
+enstore info $timeout --query \
 "select label,library,media_type,wrapper,write_protected
 from volume where 
     label not like '%.deleted' and 
@@ -61,7 +88,7 @@ from volume where
     user_inhibit_0 = 'none' and
     last_access <> -1 and
     media_type <> 'null' and
-    library not like '%shelf%'
+    library not like '%shelf%' $skip_library_sql
 order by label;" \
     | sed '1,2d' > $tmp_dir/V_D
 
@@ -97,9 +124,13 @@ while [ $done -gt 0 ]; do
   # Get up to date information on the tape to make sure we have a chance 
   # to read a file.
   if [ $verbose -eq 1 ]; then
-    echo `date` enstore info --vol $tape
+    echo `date` enstore info $timeout --vol $tape
   fi
-  tinfo=`enstore info --vol $tape`
+  tinfo=`enstore info $timeout --vol $tape`
+  if [ $? -ne 0 ]; then
+    echo "Unable to obtain $tape information." 1>&2
+    exit 1
+  fi  
   if [ $verbose -eq 1 ]; then
     echo "$tinfo"
   fi
@@ -115,7 +146,13 @@ while [ $done -gt 0 ]; do
   #   echo "override $override"
   fi
 
-  enstore info --list $tape | sed '1,2d' > $tmp_dir/$tape
+  #Get a list of all files on the tape.
+  tape_list=`enstore info $timeout --list $tape`
+  if [ $? -ne 0 ]; then
+    echo "Unable to obtain $tape content information." 1>&2
+    exit 1
+  fi
+  echo "$tape_list" | sed '1,2d' > $tmp_dir/$tape
 
   # make sure this volume is still on the readable list.
   if [ `egrep -c 'DELETED|NOACCESS|NOTALLOWED' /$tmp_dir/$tape` -ne 0 ]; then 
@@ -154,9 +191,24 @@ while [ $done -gt 0 ]; do
   last_bfid=`echo $file_l |awk '{print $5}'`
    
   #...and these...
-  ran_pnfsid=`enstore info --bfid $ran_bfid | grep pnfsid | cut -c 13-36`
-  first_pnfsid=`enstore info --bfid $first_bfid | grep pnfsid | cut -c 13-36`
-  last_pnfsid=`enstore info --bfid $last_bfid | grep pnfsid | cut -c 13-36`
+  raw_ran_pnfsid=`enstore info $timeout --bfid $ran_bfid`
+  if [ $? -ne 0 ]; then
+    echo "Unable to get file information for $ran_bfid" 1>&2
+    exit 1
+  fi
+  ran_pnfsid=`echo "$raw_ran_pnfsid" | grep pnfsid | cut -c 13-36`
+  raw_first_pnfsid=`enstore info $timeout --bfid $first_bfid`
+  if [ $? -ne 0 ]; then
+    echo "Unable to get file information for $first_bfid" 1>&2
+    exit 1
+  fi
+  first_pnfsid=`echo "$raw_first_pnfsid" | grep pnfsid | cut -c 13-36`
+  raw_last_pnfsid=`enstore info $timeout --bfid $last_bfid`
+  if [ $? -ne 0 ]; then
+    echo "Unable to get file information for $last_bfid" 1>&2
+    exit 1
+  fi
+  last_pnfsid=`echo "$raw_last_pnfsid" | grep pnfsid | cut -c 13-36`
 
   #...with help from this function...
   check_files()
@@ -231,11 +283,21 @@ while [ $done -gt 0 ]; do
     echo 
 
     #Obtain the library that this tape belongs too.
-    library=`enstore info  --vol $tape | grep library | cut -d' ' -f3`
+    raw_library=`enstore info $timeout --vol $tape`
+    if [ $? -ne 0 ]; then
+        echo "Unable to obtain information about $tape." 1>&1
+        exit 1
+    fi
+    library=`echo "$raw_library" | grep library | cut -d' ' -f3`
     library=`echo $library | tr ",'" "  " | sed "s/ //g"`
 
     #Verify that there is a library manager for this library.
-    is_lib_known=`enstore conf --list-library-manager | grep $library | wc -l`
+    raw_is_lib_known=`enstore conf $timeout --list-library-manager`
+    if [ $? -ne 0 ]; then
+        echo "Unable to obtain the list of libraries." 1>&2
+        exit 1
+    fi
+    is_lib_known=`echo "$raw_is_lib_known" | grep $library | wc -l`
     if [ "$is_lib_known" -eq 0 ]; then
         echo "Unable to find ${library}.library_manager." 1>&2
 	echo
@@ -247,7 +309,7 @@ while [ $done -gt 0 ]; do
 
     #List the number of active volumes.  This will give more meaningful
     # output for the administrators.
-    cmd="enstore lib --vols $library"
+    cmd="enstore lib $timeout --vols $library"
     echo $cmd
     vols_at_movers=`eval $cmd`
     if [ $? -ne 0 ]; then
@@ -263,15 +325,25 @@ while [ $done -gt 0 ]; do
     busy_movers=`expr $busy_movers - 1`
 
     #Determine the number of total drives for this library.
-    cmd2="enstore mov --list | grep ${library}.library_manager"
+    cmd2="enstore mov $timeout --list"
     echo $cmd2
-    configured_movers=`eval $cmd2`
+    raw_configured_movers=`eval $cmd2`
+    if [ $? -ne 0 ]; then
+        echo "Unable to obtain the list of movers for library ${library}." 1>&2
+        exit 1
+    fi
+    configured_movers=`echo "$raw_configured_movers" | grep ${library}.library_manager`
     #Now count the number of lines. (Ignore empty lines.)
     total_movers=`echo "$configured_movers" | egrep -v "^$" | wc -l`
 
     down_movers=0
     #Obtain the list of down movers.  Remove headers and empty lines.
-    servers_down=`enstore sched --show | egrep -v " Enstore | -----|^$"`
+    raw_servers_down=`enstore sched $timeout --show`
+    if [ $? -ne 0 ]; then
+        echo "Unable to obtain schedule information." 2>&1
+	exit 1
+    fi
+    servers_down=`echoe "$raw_servers_down" | egrep -v " Enstore | -----|^$"`
     #Pull out just the server names.
     echo "$servers_down" | awk '{print $1}' > /tmp/copy_ran_file_servers_down
     #Loop over the configured movers looking for a match to a down mover.
