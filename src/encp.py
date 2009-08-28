@@ -1232,9 +1232,12 @@ def get_original_request(request_list, index_of_copy):
     oui = request_list[index_of_copy].get('original_unique_id', None)
     if oui:  #oui == Original Unique Id
         for j in range(len(request_list)):
-            if request_list[j].get('completion_status', None) == SUCCESS \
-               and oui == request_list[j].get('unique_id', None):
-                return request_list[j]
+            if request_list[j].get('completion_status', None) == SUCCESS:
+                
+                if oui == request_list[j].get('unique_id', None):
+                    return request_list[j]
+                elif oui in request_list[j].get('retried_unique_ids', []):
+                    return request_list[j]
 
     return None
 
@@ -1242,12 +1245,14 @@ def did_original_succeed(request_list, index_of_copy):
     oui = request_list[index_of_copy].get('original_unique_id', None)
     if oui:  #oui == Original Unique Id
         for j in range(len(request_list)):
-            if request_list[j].get('completion_status', None) == SUCCESS \
-               and oui == request_list[j].get('unique_id', None):
-                return True #The original succeeded.
+            if request_list[j].get('completion_status', None) == SUCCESS:
+                if oui == request_list[j].get('unique_id', None):
+                    return True #The original succeeded.
+                elif oui in request_list[j].get('retried_unique_ids', []):
+                    return True #The original succeeded.
         else:
             return False #Original not done yet or failed.
-            
+
     return True #Is an original.
 
 #Return the number of files in the list left to transfer.
@@ -7240,6 +7245,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         
         #Log the intermidiate error as a warning instead as a full error.
         Trace.log(e_errors.WARNING, "Retriable error: %s" % str(status))
+
+        #Before getting a new unique id, remember the current one.  This is
+        # so that multiple copy writes have a list of previous ids to check
+        # against to determine if its original succeeded.
+        if not request_dictionary.has_key('retried_unique_ids'):
+            request_dictionary['retried_unique_ids'] = []
+        old_uniqu_id = request_dictionary['unique_id']
+        request_dictionary['retried_unique_ids'].append(old_uniqu_id)
 
         #Get a new unique id for the transfer request since the last attempt
         # ended in error.
