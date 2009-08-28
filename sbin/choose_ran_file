@@ -161,12 +161,18 @@ while [ $done -gt 0 ]; do
 	continue
   fi
 
+  # get list of known bad file bfid's.
+  bad_list=`enstore file --show-bad | grep $tape | cut -f 2 -d " "`
+  #Turn this into an egrep compatible filter string.  (be sure to remember
+  # to remove the first " | " from the string.
+  bad_filter=`for item in $bad_list; do echo -n " |" $item; done | cut -c 2-`
+  
   # Get rid of volume information - we already processed that and don't 
-  # need it anymore. #Get rid of all files the user already deleted. 
+  # need it anymore. Get rid of all files the user already deleted. 
   # We don't want to read these files.  If there aren't any files left, 
-  # start over with a new tape.  gnore hidden files and sort the filelist 
-  # according to location on the tape.
-  grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep active | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
+  # start over with a new tape.  Ignore hidden files and sort the filelist 
+  # according to location on the tape.  Also, skip known bad files.
+  grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep active | egrep -v "$bad_filter" | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
   rm -f $tmp_dir/$tape
   NF=`wc $tmp_dir/${tape}_| awk '{print $1}'`
   if [ $NF -gt 0 ]; then 
