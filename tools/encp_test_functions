@@ -194,8 +194,8 @@ is_user_encp()
 {
     version=`$encp_cmd --help`
 
-    #This check only works for as long as --storage-group remains an
-    # administator only option.
+    #This check only works for as long as --get-cache remains an
+    # dcache encp and above option.
     echo "$version" | awk '{print $1}' | grep '\-\-get-cache' > /dev/null
 
     #If a match was not found it is an user version.
@@ -206,12 +206,14 @@ is_user_encp()
     return 0
 }
 
+#The dcache version of encp (for pool nodes) is at times also called
+# the user2 version of encp.
 is_user2_encp()
 {
     version=`$encp_cmd --help`
 
-    #This check only works for as long as --storage-group remains an
-    # administator only option.
+    #This check only works for as long as --get-cache remains an
+    # dcache encp and above option.
     echo "$version" | awk '{print $1}' | grep '\-\-get-cache' > /dev/null
 
     #If a match was found it might be a dcache version.
