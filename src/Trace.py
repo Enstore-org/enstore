@@ -273,9 +273,9 @@ def set_log_func(func):
 
 # defaults (templates) -- called from trace
 
-def default_alarm_func(time, pid, name, root_error, severity,
+def default_alarm_func(timestamp, pid, name, root_error, severity,
                        condition, remedy_type, args):
-    __pychecker__ = "unusednames=time,pid,name,root_error,severity," \
+    __pychecker__ = "unusednames=timestamp,pid,name,root_error,severity," \
                     "condition,remedy_type,args"
     print "default_alarm_func:", args
     #lvl = args[0]
@@ -290,7 +290,7 @@ try:
 except:
     usr = "unknown"
 
-def default_log_func( time, pid, name, args ):
+def default_log_func( timestamp, pid, name, args ):
     #Even though this implimentation of log_func() does not use the time
     # parameter, others will.
     __pychecker__ = "unusednames=time"
@@ -298,7 +298,7 @@ def default_log_func( time, pid, name, args ):
     severity = args[0]
     msg = args[1]
     if severity > e_errors.MISC: severity = e_errors.MISC
-    print '%.6d %.8s %s %s  %s' % (pid,usr,e_errors.sevdict[severity],name,msg)
+    print '%s %.6d %.8s %s %s  %s' % (time.ctime(timestamp), pid,usr,e_errors.sevdict[severity],name,msg)
     return None
 
 set_log_func(default_log_func)
