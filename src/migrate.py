@@ -576,6 +576,14 @@ def nullify_pnfs(pname):
 
 def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
               alt_file_record = None, intf = None):
+    ###
+    ### find_pnfs_file.find_pnfsid_path() may modify the seteuid() without
+    ### use of file_utils.py.  Becuase of this, we need to excplicitly
+    ### lock and unlock the file_utils.py locks, while nullify_pnfs(),
+    ### update_layers, etc. handle their own locking.
+    ###
+    ### find_pnfs_path.py should be fixed, but that is beyond the patch
+    ### that this comment is getting included in.
 
     if do_seteuid:
         # We need to keep other threads from changing the euid/egid
@@ -586,7 +594,7 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
     else:
         file_utils.acquire_lock_euid_egid()
         #If another thread doesn't use "reset_ids_back = True" then
-        # be sure that the euid and egid are for roots, which it what the
+        # be sure that the euid and egid are for root's, which it what the
         # rest of this function assumes the euid and egid are set to.
         file_utils.set_euid_egid(0, 0)
 
@@ -604,8 +612,7 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
             file_record = file_record,
             path_type = use_path_type)
     except (KeyboardInterrupt, SystemExit):
-        if do_seteuid:
-            #Free lock on error.
+        if do_seteuid: #Free lock on error.
             file_utils.release_lock_euid_egid()
         else:
             file_utils.release_lock_euid_egid()
@@ -615,6 +622,10 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
         del exc_tb #avoid resource leaks
 
         if exc_value.args[0] in [errno.EEXIST]:
+            if do_seteuid: #Free lock on error.
+                file_utils.release_lock_euid_egid()
+            else:
+                file_utils.release_lock_euid_egid()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         else:
             try:
@@ -628,8 +639,7 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
                         file_record = alt_file_record,
                         path_type = use_path_type)
             except (KeyboardInterrupt, SystemExit):
-                if do_seteuid:
-                    #Free lock on error.
+                if do_seteuid:  #Free lock on error.
                     file_utils.release_lock_euid_egid()
                 else:
                     file_utils.release_lock_euid_egid()
