@@ -464,8 +464,8 @@ if __name__ == "__main__" :
 
         tsd = udp_c.get_tsd()
         
-        print "Sending message %s to %s using callback %s." \
-              % (msg, address, (tsd.host, tsd.port))
+        print "Sending message %s to %s in %s thread using callback %s." \
+              % (msg, address, threading.current_thread().getName(), (tsd.host, tsd.port))
 
         try:
             if "deferred" in  sys.argv:
@@ -514,11 +514,13 @@ if __name__ == "__main__" :
 
     # get a UDP client
     u = UDPClient()
+    print "Default client callback for %s thread: %s" % (threading.current_thread().getName(), (u.get_tsd().host, u.get_tsd().port))
     message = {'message' : "TEST MESSAGE"}
     address = ("localhost", 7700)
 
     test_thread = threading.Thread(target = send_test,
-                                   args = (message, address, u))
+                                   args = (message, address, u),
+                                   name = "test_thread")
     test_thread.start()
     test_thread.join()
 
