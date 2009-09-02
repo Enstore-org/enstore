@@ -3573,11 +3573,23 @@ class Tag:
             if intf.file_family == 1:
                 print self.get_file_family()
             else:
-                if charset.is_in_charset(intf.file_family):
-                    self.set_file_family(intf.file_family)
-                else:
+                #Restrict the characters allowed in the file_family.
+                if not charset.is_in_charset(intf.file_family):
                     print "Pnfs tag, file_family, contains invalid characters."
                     return 1
+                #Don't allow users to set file_families with the
+                # migration pattern.
+                elif re.search(".*-MIGRATION$", intf.file_family):
+                    print "File familes ending in -MIGRATION are forbidden."
+                    return 1
+                #Don't allow users to set file_families with the
+                # duplication pattern.
+                elif re.search("_copy_[0-9]*$", intf.file_family):
+                    print "File familes ending in _copy_# are forbidden."
+                    return 1
+                else:
+                    self.set_file_family(intf.file_family)
+
             return 0
         except (OSError, IOError), detail:
             print str(detail)
