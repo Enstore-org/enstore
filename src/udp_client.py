@@ -33,12 +33,6 @@ MAX_EXPONENT=6 # do not increase reeive TO in send beyond this
 TRANSFER_MAX=16384 #Max size of UDP datagram.
 
 
-#global value with each item for a different thread
-thread_specific_data = threading.local()  
-#global locks for the thread_specific_data
-deletion_list_lock = threading.Lock()
-
-
 def wait_rsp( sock, address, rcv_timeout ):
 
     reply,server=None,None
@@ -61,13 +55,11 @@ def wait_rsp( sock, address, rcv_timeout ):
 class UDPClient:
 
     def __init__(self):
-        #self.tsd = {} #Thread-specific data
-        #self._os = os
+        self.thread_specific_data = threading.local() #Thread-specific data
 
         self.reinit()
 
     def reinit(self):
-        global thread_specific_data
         #Obtain necessary values.
         pid = os.getpid()
         host, port, socket = udp_common.get_default_callback()
@@ -77,7 +69,7 @@ class UDPClient:
             tid = 1
         
         #Build thread specific data.
-        tsd = thread_specific_data  #local shortcut
+        tsd = self.thread_specific_data  #local shortcut
         tsd.host = host
         tsd.port = port
         tsd.socket = socket
@@ -94,12 +86,11 @@ class UDPClient:
     #Return this thread's local data.  If it hasn't been initialized yet,
     # call reinit() to do so.
     def get_tsd(self):
-        global thread_specific_data
         
-        if not hasattr(thread_specific_data, 'pid'):
+        if not hasattr(self.thread_specific_data, 'pid'):
             self.reinit()
 
-        return thread_specific_data
+        return self.thread_specific_data
     
     #Return the IP address for the socket.
     def get_address(self):
