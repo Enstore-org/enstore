@@ -165,6 +165,21 @@ class UDPServer:
 
         print "UDP_SERVER starting in thread",thread_name 
 
+    def enable_raw_queue_print(self):
+        if self.use_raw:
+            self.raw_requests.enable_print_queue()
+            pass
+
+    def disable_reshuffle(self):
+        if self.use_raw:
+            self.raw_requests.disable_reshuffle()
+            pass
+
+    def set_keyword(self, keyword):
+        if self.use_raw:
+            self.raw_requests.set_keyword(keyword)
+        
+
     # cleanup if we are done with this unique id
     def _done_cleanup(self):
         if self.current_id and self.request_dict.has_key(self.current_id):
@@ -263,6 +278,7 @@ class UDPServer:
                 #print "REQ", req
                 try:
                     request, inCRC = udp_common.r_eval(req, check=self.check_request)
+                    Trace.trace(5,"_get_message: %s"%(request,)) 
                 except ValueError, detail:
                     Trace.trace(5, "must be event_relay msg %s"%(detail,))
                     # must be an event relay message
@@ -500,7 +516,14 @@ class UDPServer:
 
         #print "reply_with_list interface_ip %s reply_address %s current_id %s"%(interface_ip, reply_address, current_id)
         self._lock.acquire()
-        list_copy = copy.deepcopy(list)
+        try:
+            # there are rare cases when the following erro occurs:
+            # RuntimeError: dictionary changed size during iteration
+            # I do not know the reason
+            # but this should help the code to proceed
+            list_copy = copy.deepcopy(list)
+        except:
+            Trace.handle_error()
         self._lock.release()
         self.request_dict[current_id] = list_copy
 
