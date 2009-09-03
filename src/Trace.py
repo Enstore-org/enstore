@@ -209,12 +209,13 @@ def trace(severity, msg):
     global thread_name
     ## there is no need to waste time on creating message
     ## if it will not be sent
-    if (print_levels.has_key(severity) or
-        log_levels.has_key(severity) or
+    ## truncate all messges but intended for print
+    if (log_levels.has_key(severity) or
         alarm_levels.has_key(severity)):
         msg = trunc(msg)
     else:
-        return
+        if not print_levels.has_key(severity):
+            return
     if print_levels.has_key(severity):
         try:
             t=time.time()
