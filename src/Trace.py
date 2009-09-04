@@ -207,12 +207,12 @@ def alarm(severity, root_error, rest={},
 
 def trace(severity, msg):
     global thread_name
-    ## there is no need to waste time on creating message
-    ## if it will not be sent
-    ## truncate all messges but intended for print
+    ## There is no need to waste time on creating a message, if it will not
+    ## be sent.  Truncate all messages sent over the network, but not the
+    ## messages to be printed to standard out.
     if (log_levels.has_key(severity) or
         alarm_levels.has_key(severity)):
-        msg = trunc(msg)
+        msg_truncated = trunc(msg)
     else:
         if not print_levels.has_key(severity):
             return
@@ -249,9 +249,9 @@ def trace(severity, msg):
         except:
             pass
     if log_levels.has_key(severity):
-        log(severity, msg, doprint=0)
+        log(severity, msg_truncated, doprint=0)
     if alarm_levels.has_key(severity):
-        alarm(severity, msg)
+        alarm(severity, msg_truncated)
 
 def message(severity, msg):
     msg = trunc(msg)
