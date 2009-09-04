@@ -108,6 +108,7 @@ if __name__ == '__main__':
     if cronjobs_dict.has_key('status'):
         del cronjobs_dict['status']
 
+    installed_crons = []
     for (configuration_key, cron_info) in cronjobs_dict.items():
         #Determine the host the cronjob should run on.
         use_host = None
@@ -128,7 +129,26 @@ if __name__ == '__main__':
                 src = os.path.join(CRONJOB_SRC_DIR, cron)
                 dst = os.path.join(CRONJOB_DST_DIR, cron)
                 copy_it(src, dst)
+
+                #Rememember the crons that should be installed on this
+                # node.  We will use this list to prevent them from being
+                # deleted when we look for crontab files that have totally
+                # been removed from the Enstore configuration.
+                installed_crons.append(cron)
         else:
             for cron in cron_info['cronfiles']:
                 dst = os.path.join(CRONJOB_DST_DIR, cron)
                 delete_it(dst)
+
+    #There is one more situation to consider.  If a cronjob is totally
+    # removed from the configuration, we need a way to distinguish these
+    # crons from other system installed crons.  The goal is to only remove
+    # the obsolete enstore crons while leaving the system installed crons
+    # in place.
+    #
+    #Now loop through the crons and remove any that are not configured
+    # for this Enstore system and exist in the crontab source directory.
+    for cron in os.listdir(CRONJOB_DST_DIR):
+        if cron in os.listdir(CRONJOB_SRC_DIR) and cron not in installed_crons:
+            dst = os.path.join(CRONJOB_DST_DIR, cron)
+            delete_it(dst)
