@@ -126,48 +126,6 @@ class fileInfoMethods(generic_client.GenericClient):
                                               rcv_timeout = rcv_timeout,
                                               rcv_tries = rcv_tries)
 
-    #Use an active protocol model for receiving large amounts of information.
-    #This function uses UDP and TCP.
-    #
-    #There is an issue with this method.  If the initial server response over
-    # UDP is dropped, the server will wait (by default 1 minute) for
-    # the tcp negotiation to complete.  The server will queue up requests
-    # (including retries from the dropped request) and will hopefully and
-    # eventually fulfill them all.  But this is not optimal.
-    def send_with_long_answer(self, ticket,
-                              rcv_timeout = generic_client.DEFAULT_TIMEOUT,
-                              rcv_tries = generic_client.DEFAULT_TRIES):
-
-        # send the work ticket to the server
-        ticket = self.send(ticket, rcv_timeout, rcv_tries)
-        if not e_errors.is_ok(ticket) and \
-               ticket['status'][0] not in [e_errors.TOO_MANY_FILES,
-                                           e_errors.TOO_MANY_VOLUMES]:
-            return ticket
-
-        try:
-            #This should be made non-blocking to control the timeout period.
-            #That would allow for a better retry mechinism.
-            control_socket = socket.socket(socket.AF_INET,
-                                           socket.SOCK_STREAM)
-            control_socket.connect(ticket['callback_addr'])
-        except (socket.error), msg:
-            message = "failed to establish control socket: %s" % (str(msg),)
-            raise e_errors.EnstoreError(msg.errno, message, e_errors.NET_ERROR)
-
-        #Read the data.
-        try:
-            ticket = callback.read_tcp_obj_new(control_socket)
-        except (socket.error, select.error, e_errors.EnstoreError):
-            control_socket.close()
-            raise sys.exc_info()[0], sys.exc_info()[1], \
-                  sys.exc_info()[2]  
-
-        #Socket cleanup.
-        control_socket.close()
-
-        return ticket
-
     ###################################################################
     ## Begin file clerk functions.
     
@@ -241,7 +199,7 @@ class fileInfoMethods(generic_client.GenericClient):
     def get_bfids(self, external_label):
         ticket = {"work"          : "get_bfids2",
                   "external_label": external_label}
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send(ticket)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -301,7 +259,7 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"           : "list_active3",
                   "external_label" : external_label}
 
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send(ticket)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -371,8 +329,8 @@ class fileInfoMethods(generic_client.GenericClient):
                   retry = generic_client.DEFAULT_TRIES):
         ticket = {"work"           : "tape_list3",
                   "external_label" : external_label}
-        done_ticket = self.send_with_long_answer(ticket, rcv_timeout = timeout,
-                                                 rcv_tries = retry)
+        done_ticket = self.send(ticket, rcv_timeout = timeout,
+                                tries = retry)
    
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -475,7 +433,7 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "show_bad2",
                   #"callback_addr" : (host, port),
                   }
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send(ticket)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -544,48 +502,6 @@ class volumeInfoMethods(generic_client.GenericClient):
                                               rcv_timeout = rcv_timeout,
                                               rcv_tries = rcv_tries)
 
-    #Use an active protocol model for receiving large amounts of information.
-    #This function uses UDP and TCP.
-    #
-    #There is an issue with this method.  If the initial server response over
-    # UDP is dropped, the server will wait (by default 1 minute) for
-    # the tcp negotiation to complete.  The server will queue up requests
-    # (including retries from the dropped request) and will hopefully and
-    # eventually fulfill them all.  But this is not optimal.
-    def send_with_long_answer(self, ticket,
-                              rcv_timeout = generic_client.DEFAULT_TIMEOUT,
-                              rcv_tries = generic_client.DEFAULT_TRIES):
-
-        # send the work ticket to the server
-        ticket = self.send(ticket, rcv_timeout, rcv_tries)
-        if not e_errors.is_ok(ticket) and \
-               ticket['status'][0] not in [e_errors.TOO_MANY_FILES,
-                                           e_errors.TOO_MANY_VOLUMES]:
-            return ticket
-
-        try:
-            #This should be made non-blocking to control the timeout period.
-            #That would allow for a better retry mechinism.
-            control_socket = socket.socket(socket.AF_INET,
-                                           socket.SOCK_STREAM)
-            control_socket.connect(ticket['callback_addr'])
-        except (socket.error), msg:
-            message = "failed to establish control socket: %s" % (str(msg),)
-            raise e_errors.EnstoreError(msg.errno, message, e_errors.NET_ERROR)
-
-        #Read the data.
-        try:
-            ticket = callback.read_tcp_obj_new(control_socket)
-        except (socket.error, select.error, e_errors.EnstoreError):
-            control_socket.close()
-            raise sys.exc_info()[0], sys.exc_info()[1], \
-                  sys.exc_info()[2]  
-
-        #Socket cleanup.
-        control_socket.close()
-
-        return ticket
-
     ###################################################################
     ## Begin volume clerk functions.
 
@@ -602,7 +518,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   "not"	          : not_cond,
                   }
 
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send(ticket)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -684,7 +600,7 @@ class volumeInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "get_pvols2",
                   }
 
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send(ticket)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -754,7 +670,7 @@ class volumeInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "list_sg_count2",
                   }
 
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send(ticket)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -816,7 +732,7 @@ class volumeInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "get_vol_list2",
                   }
 
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send(ticket)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -880,7 +796,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   "external_label" : vol,
                   }
 
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send(ticket)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -1018,7 +934,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         host, port, listen_socket = callback.get_callback()
         ticket = {"work" : "find_file_by_path2",
                   "pnfs_name0" : pnfs_name0}
-        r = self.send_with_long_answer(ticket)
+        r = self.send(ticket)
 
         #Try old way if the server is old too.
         if r['status'][0] == e_errors.KEYERROR and \
@@ -1040,7 +956,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
 
     def find_file_by_pnfsid(self, pnfsid):
         ticket = {"work" : "find_file_by_pnfsid2", "pnfsid" : pnfsid}
-        r = self.send_with_long_answer(ticket)
+        r = self.send(ticket)
 
         #Try old way if the server is old too.
         if r['status'][0] == e_errors.KEYERROR and \
@@ -1063,7 +979,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
     def find_file_by_location(self, vol, loc):
         ticket = {"work" : "find_file_by_location2",
                   "external_label" : vol, "location_cookie" : loc}
-        r = self.send_with_long_answer(ticket)
+        r = self.send(ticket)
 
         #Try old way if the server is old too.
         if r['status'][0] == e_errors.KEYERROR and \
@@ -1087,7 +1003,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
     def find_same_file(self, bfid):
         ticket = {"work": "find_same_file2",
                   "bfid": bfid}
-        done_ticket = self.send_with_long_answer(ticket)
+        done_ticket = self.send(ticket)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -1105,7 +1021,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
                   "query"         : q,
                   #"callback_addr" : (host, port),
                   }
-        return self.send_with_long_answer(ticket)
+        return self.send(ticket)
         
 
     ### For backward compatiblility with old servers.  (2-19-2009)
@@ -1348,8 +1264,11 @@ def do_work(intf):
     elif intf.list:
         ticket = ifc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
-            output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s"%(len(intf.list))
-            print output_format%("label", "bfid", "size", "location_cookie", "delflag", "original_name")
+            output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" \
+                            %(len(intf.list),)
+            print output_format \
+                  % ("label", "bfid", "size", "location_cookie", "delflag",
+                     "original_name")
             print
             tape = ticket['tape_list']
             for record in tape:

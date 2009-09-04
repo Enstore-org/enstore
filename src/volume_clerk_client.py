@@ -331,119 +331,6 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
                   "restore"         : restore_vm}
         return self.send(ticket,timeout,retry)
 
-    """
-    # get a list of all volumes
-    def get_vols(self, key=None,state=None, not_cond=None, print_list=1):
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "get_vols2",
-                  "callback_addr" : (host, port),
-                  "key"           : key,
-                  "in_state"      : state,
-                  "not"           : not_cond}
-
-        # send the work ticket to the library manager
-        ticket = self.send(ticket, 60, 1)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r,w,x = select.select([listen_socket], [], [], 60)
-        if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for info clerk callback"
-        
-        control_socket, address = listen_socket.accept()
-        
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-        
-        ticket = callback.read_tcp_obj(control_socket)
-
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
-        volumes = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        if volumes.has_key("header"):        # full info
-            if print_list:
-                show_volume_header()
-                print
-                for v in volumes["volumes"]:
-                    show_volume(v)
-        else:
-            vlist = ''
-            for v in volumes.get("volumes",[]):
-                vlist = vlist+v['label']+" "
-            if print_list:
-                print vlist
-                
-        ticket['volumes'] = volumes.get('volumes',[])
-        return ticket
-    """
-
-    """
-    def get_pvols(self):
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"        : "get_pvols",
-              "callback_addr"    : (host, port)}
-
-        # send the work ticket to the library manager
-        ticket = self.send(ticket, 60, 1)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r,w,x = select.select([listen_socket], [], [], 60)
-        if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for info clerk callback"
-        
-        control_socket, address = listen_socket.accept()
-        
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-        
-        ticket = callback.read_tcp_obj(control_socket)
-
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
-        volumes = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        ticket['volumes'] = volumes.get('volumes',[])
-        return ticket
-    """
-
     # rebuild sg scounts
     def rebuild_sg_count(self, timeout=300, retry=1):
         return(self.send({'work':'rebuild_sg_count'},timeout,retry))
@@ -463,105 +350,6 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
                   'storage_group': sg}
         return(self.send(ticket,timeout,retry))
 
-    """
-    # list all sg counts
-    def list_sg_count(self):
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "list_sg_count",
-                  "callback_addr" : (host, port)}
-
-        ticket = self.send(ticket,60,1)
-        if ticket['status'][0] != e_errors.OK:
-            Trace.log( e_errors.ERROR,
-                       'vcc.list_sg_count: sending ticket: %s'%(ticket,) )
-            return ticket
-
-        r,w,x = select.select([listen_socket], [], [], 60)
-        if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
-        
-        control_socket, address = listen_socket.accept()
-        
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-        
-        ticket = callback.read_tcp_obj(control_socket)
-
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
-        sgcnt = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        ticket['sgcnt'] = sgcnt
-        return ticket
-    """
-
-    """
-    # get a list of all volumes
-    def get_vol_list(self):
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "get_vol_list",
-                  "callback_addr" : (host, port)}
-
-        # send the work ticket to the library manager
-        ticket = self.send(ticket,60,1)
-        if ticket['status'][0] != e_errors.OK:
-            Trace.log( e_errors.ERROR,
-                       'vcc.get_vol_list: sending ticket: %s'%(ticket,) )
-            return ticket
-
-        r,w,x = select.select([listen_socket], [], [], 60)
-        if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
-        
-        control_socket, address = listen_socket.accept()
-        
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-        
-        ticket = callback.read_tcp_obj(control_socket)
-
-        listen_socket.close()
-
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
-        volumes = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        ticket['volumes'] = volumes
-        return ticket
-    """
-
     # what is the current status of a specified volume?
     def inquire_vol(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'inquire_vol',
@@ -579,53 +367,6 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
         ticket= { 'work'           : 'check_record',
                   'external_label' : external_label }
         return self.send(ticket,timeout, retry)
-
-    """
-    # show_history
-    def show_history(self, vol):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"           : "history",
-                  "external_label" : vol,
-                  "callback_addr"  : (host, port)}
-
-        # send the work ticket to volume clerk
-        ticket = self.send(ticket, 10, 1)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
-
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
-        ticket= callback.read_tcp_obj(data_path_socket)
-        res = callback.read_tcp_obj_new(data_path_socket)
-        ticket['history'] = res
-
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        return ticket
-    """
 
     def write_protect_on(self, vol):
         ticket = {"work"            : "write_protect_on",
@@ -1754,8 +1495,11 @@ def do_work(intf):
     elif intf.list:
         ticket = ifc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
-            format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s"%(len(intf.list))
-            print format%("label", "bfid", "size", "location_cookie", "delflag", "original_name")
+            output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" % \
+			    (len(intf.list),)
+            print output_format \
+		  % ("label", "bfid", "size", "location_cookie", "delflag",
+		     "original_name")
             print
             tape = ticket['tape_list']
             for record in tape:
@@ -1765,7 +1509,7 @@ def do_work(intf):
                     deleted = 'active'
                 else:
                     deleted = 'unknown'
-                print format % (intf.list,
+                print output_format % (intf.list,
                     record['bfid'], record['size'],
                     record['location_cookie'], deleted,
                     record['pnfs_name0'])

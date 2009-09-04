@@ -293,83 +293,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.handle_error(exc, msg)
             return 0
         return 1
-    
-    #Generalize the code to have a really large ticket be returned.
-    #This functions uses an acitve protocol.  This function uses UDP and TCP.
-    def reply_to_caller_with_long_answer_part1(self, ticket, long_items = []):
 
-        if not e_errors.is_ok(ticket):
-            #If we have an error, then we only need to reply and skip the rest.
-            self.reply_to_caller(ticket)
-            return None
-        
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-
-        ticket['callback_addr'] = (host, port)
-
-        #The initial over UDP message needs to be small.
-        reply = ticket.copy()
-        for name in long_items:
-            try:
-                del reply[name]
-            except KeyError:
-                pass
-        #Tell the client to wait for a connection.
-        self.reply_to_caller(reply)
-
-        #Wait for the client to connect over TCP.
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            message = "connection timedout from %s" % (ticket['r_a'],)
-            Trace.log(e_errors.ERROR, message)
-            return None
-
-        #Accept the servers connection.
-        control_socket, address = listen_socket.accept()
-        
-        #Veify that this connection is made from an acceptable
-        # IP address.
-        if not hostaddr.allow(address):
-            control_socket.close()
-            listen_socket.close()
-            message = "address %s not allowed" % (address,)
-            Trace.log(e_errors.ERROR, message)
-            return None 
-
-        #Socket cleanup.
-        listen_socket.close()
-
-        return control_socket
-        
-    #Generalize the code to have a really large ticket be returned.
-    #This functions uses an acitve protocol.  This function uses UDP and TCP.
-    def reply_to_caller_with_long_answer_part2(self, control_socket, ticket):
-        try:
-            #Write reply on control socket.
-            callback.write_tcp_obj_new(control_socket, ticket)
-        except (socket.error), msg:
-            message = "failed to use control socket: %s" % (str(msg),)
-            Trace.log(e_errors.NET_ERROR, message)
-
-        #Socket cleanup.
-        control_socket.close()
-
-    #Generalize the code to have a really large ticket be returned.
-    #This functions uses an acitve protocol.  This function uses UDP and TCP.
-    #
-    # The 'ticket' is sent over the network.
-    # 'long_items' is a list of elements that should be supressed in the
-    # initial UDP response.
-    def reply_to_caller_with_long_answer(self, ticket, long_items = []):
-        control_socket = self.reply_to_caller_with_long_answer_part1(ticket, long_items)
-        if not control_socket:
-            return
-
-        self.reply_to_caller_with_long_answer_part2(control_socket, ticket)
-        
     ####################################################################
     
     # has_undeleted_file(vol) -- check if vol has undeleted file
@@ -516,7 +440,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     #
     # This is even newer and better implementation that replaces
     # history().  Now the network communications are done using
-    # reply_to_caller_with_long_answer().
+    # send_reply_with_long_answer().
     def history2(self, ticket):
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
@@ -529,7 +453,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         ticket['history'] = reply
         ticket["status"] = (e_errors.OK, None)
         try:
-            self.reply_to_caller_with_long_answer(ticket)
+            self.send_reply_with_long_answer(ticket)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "history2: %s" % (str(msg),))
             return
@@ -826,7 +750,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     #
     # This is even newer and better implementation that replaces
     # get_vols2().  Now the network communications are done using
-    # reply_to_caller_with_long_answer().
+    # send_reply_with_long_answer().
     def get_vols3(self, ticket):
         # log it
         Trace.log(e_errors.INFO, "start listing all volumes (3)")
@@ -834,7 +758,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # start communication
         ticket["status"] = (e_errors.OK, None)
         try:
-            control_socket = self.reply_to_caller_with_long_answer_part1(ticket)
+            control_socket = self.send_reply_with_long_answer_part1(ticket)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "get_vols3(): %s" % (str(msg),))
             return
@@ -849,7 +773,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         # send the reply
         try:
-            self.reply_to_caller_with_long_answer_part2(control_socket, reply)
+            self.send_reply_with_long_answer_part2(control_socket, reply)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "get_vols3(): %s" % (str(msg),))
             return
@@ -904,7 +828,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     #
     # This is even newer and better implementation that replaces
     # get_pvols().  Now the network communications are done using
-    # reply_to_caller_with_long_answer().
+    # send_reply_with_long_answer().
     def get_pvols2(self, ticket):
         # log it
         Trace.log(e_errors.INFO, "start listing all problematic volumes (2)")
@@ -912,7 +836,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # start communication
         ticket["status"] = (e_errors.OK, None)
         try:
-            control_socket = self.reply_to_caller_with_long_answer_part1(ticket)
+            control_socket = self.send_reply_with_long_answer_part1(ticket)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "get_pvols2(): %s" % (str(msg),))
             return
@@ -927,7 +851,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         # send the reply
         try:
-            self.reply_to_caller_with_long_answer_part2(control_socket, reply)
+            self.send_reply_with_long_answer_part2(control_socket, reply)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "get_pvols2(): %s" % (str(msg),))
             return
@@ -978,7 +902,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     #### DONE
     # This is even newer and better implementation that replaces
     # list_sg_count().  Now the network communications are done using
-    # reply_to_caller_with_long_answer().
+    # send_reply_with_long_answer().
     def list_sg_count2(self, ticket):
 
         sgcnt = self.sgdb.list_sg_count()
@@ -986,7 +910,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         ticket['sgcnt'] = sgcnt
         try:
-            self.reply_to_caller_with_long_answer(ticket, ["sgcnt"])
+            self.send_reply_with_long_answer(ticket)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "list_sg_count2(): %s" % (str(msg),))
             return
@@ -1033,13 +957,13 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     #
     # This is even newer and better implementation that replaces
     # get_vol_list().  Now the network communications are done using
-    # reply_to_caller_with_long_answer().
+    # send_reply_with_long_answer().
     def get_vol_list2(self, ticket):
         ticket['status'] = (e_errors.OK, None)
 
         # start communication
         try:
-            control_socket = self.reply_to_caller_with_long_answer_part1(ticket)
+            control_socket = self.send_reply_with_long_answer_part1(ticket)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "get_vol_list2(): %s" % (str(msg),))
             return
@@ -1054,7 +978,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # send the reply
         ticket['volumes'] = vols
         try:
-            self.reply_to_caller_with_long_answer_part2(control_socket, ticket)
+            self.send_reply_with_long_answer_part2(control_socket, ticket)
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "get_vol_list2(): %s" % (str(msg),))
             return

@@ -11,15 +11,12 @@ import string
 import errno
 import sys
 import socket
-#import select
 import os
-import stat
 
 # enstore imports
 import generic_client
 import option
 import backup_client
-#import callback
 import hostaddr
 import Trace
 import e_errors
@@ -186,186 +183,6 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
     #     r = self.send(ticket)
     #     return r
 
-    """
-    def get_bfids(self, external_label):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "get_bfids",
-                  "callback_addr" : (host, port),
-                  "external_label": external_label}
-        # send the work ticket to the file clerk
-        ticket = self.send(ticket)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-        
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-        
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['file_clerk_callback_addr'])
-  
-        ticket= callback.read_tcp_obj(data_path_socket)
-        list = callback.read_tcp_obj_new(data_path_socket)
-        ticket['bfids'] = list
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        return ticket
-    """
-
-    """
-    def list_active(self,external_label):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "list_active2",
-                  "callback_addr" : (host, port),
-                  "external_label": external_label}
-        # send the work ticket to the file clerk
-        ticket = self.send(ticket)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-        
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-        
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['file_clerk_callback_addr'])
-  
-        ticket= callback.read_tcp_obj(data_path_socket)
-        list = callback.read_tcp_obj_new(data_path_socket)
-        # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        ticket['active_list'] = []
-        for i in list:
-            ticket['active_list'].append(i[0])
-        data_path_socket.close()
-
-        return ticket
-    """
-
-    """
-    def tape_list(self,external_label):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "tape_list2",
-                  "callback_addr" : (host, port),
-                  "external_label": external_label}
-        # send the work ticket to the file clerk
-        ticket = self.send(ticket)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-        
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-        
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['file_clerk_callback_addr'])
-  
-        ticket= callback.read_tcp_obj(data_path_socket)
-        vol = callback.read_tcp_obj_new(data_path_socket)
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        # convert to external format
-        ticket['tape_list'] = []
-        for s in vol:
-            if s['deleted'] == 'y':
-                deleted = 'yes'
-            elif s['deleted'] == 'n':
-                deleted = 'no'
-            else:
-                deleted = 'unknown'
-
-            if s['sanity_size'] == -1:
-                sanity_size = None
-            else:
-                sanity_size = s['sanity_size']
-
-            if s['sanity_crc'] == -1:
-                sanity_crc = None
-            else:
-                sanity_crc = s['sanity_crc']
-
-            if s['crc'] == -1:
-                crc = None
-            else:
-                crc = s['crc']
-
-            record = {
-                'bfid': s['bfid'],
-                'complete_crc': crc,
-                'deleted': deleted,
-                'drive': s['drive'],
-                'external_label': s['label'],
-                'location_cookie': s['location_cookie'],
-                'pnfs_name0': s['pnfs_path'],
-                'pnfsid': s['pnfs_id'],
-                'sanity_cookie': (sanity_size, sanity_crc),
-                'size': s['size']
-            }
-
-            if s.has_key('uid'):
-                record['uid'] = s['uid']
-            if s.has_key('gid'):
-                record['gid'] = s['gid']
-            ticket['tape_list'].append(record)
-
-        return ticket
-    """
-
     def mark_bad(self, path, specified_bfid = None):
         # get the full absolute path
         a_path = os.path.abspath(path)
@@ -506,51 +323,6 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         if ticket['status'][0] == e_errors.OK:
             print bfid, a_path, "->", good_file
         return ticket
-
-
-    """
-    def show_bad(self):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"          : "show_bad",
-                  "callback_addr" : (host, port)}
-        # send the work ticket to the file clerk
-        ticket = self.send(ticket)
-        if ticket['status'][0] != e_errors.OK:
-            return ticket
-
-        r, w, x = select.select([listen_socket], [], [], 60)
-        if not r:
-            listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
-        control_socket, address = listen_socket.accept()
-        if not hostaddr.allow(address):
-            listen_socket.close()
-            control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
-
-        ticket = callback.read_tcp_obj(control_socket)
-        listen_socket.close()
-        
-        if ticket["status"][0] != e_errors.OK:
-            return ticket
-        
-        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_path_socket.connect(ticket['file_clerk_callback_addr'])
-  
-        ticket= callback.read_tcp_obj(data_path_socket)
-        bad_files = callback.read_tcp_obj_new(data_path_socket)
-        ticket['bad_files'] = bad_files
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_obj(control_socket)
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            return done_ticket
-
-        return ticket
-    """
 
     def bfid_info(self, bfid = None, timeout=0, retry=0):
         if not bfid:
