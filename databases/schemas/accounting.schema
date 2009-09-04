@@ -738,22 +738,14 @@ SET default_with_oids = false;
 CREATE TABLE drive_utilization (
     "time" timestamp with time zone NOT NULL,
     "type" character varying NOT NULL,
-    "storage_group" character varying NULL, 
     total integer,
     busy integer,
-    tape_library character varying DEFAULT 'TBA'::character varying NOT NULL
+    tape_library character varying DEFAULT 'TBA'::character varying NOT NULL,
+    storage_group character varying
 );
 
 
 ALTER TABLE public.drive_utilization OWNER TO enstore;
-
----
--- alter table drive_utilization  DROP CONSTRAINT drive_utilization_pkey;
----
-
----
--- alter table drive_utilization add column storage_group character varying NULL;
---
 
 SET default_with_oids = true;
 
@@ -780,7 +772,8 @@ CREATE TABLE encp_error (
     drive_id character varying,
     drive_sn character varying,
     rw character(1),
-    volume character varying
+    volume character varying,
+    library character varying
 );
 
 
@@ -802,7 +795,7 @@ CREATE TABLE encp_xfer (
     overall_rate bigint NOT NULL,
     network_rate bigint NOT NULL,
     drive_rate bigint NOT NULL,
-    volume character varying(64) NOT NULL,
+    volume character varying(16) NOT NULL,
     mover character varying(32) NOT NULL,
     drive_id character varying(16) NOT NULL,
     drive_sn character varying(16) NOT NULL,
@@ -817,7 +810,8 @@ CREATE TABLE encp_xfer (
     transfer_rate bigint,
     encp_version character varying(48),
     file_family character varying,
-    wrapper character varying
+    wrapper character varying,
+    library character varying
 );
 
 
@@ -863,23 +857,6 @@ CREATE VIEW encp_xfer_by_day_view AS
 ALTER TABLE public.encp_xfer_by_day_view OWNER TO enstore;
 
 --
--- Name: encp_xfer_clone; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
---
-
-CREATE TABLE encp_xfer_clone (
-    date timestamp without time zone NOT NULL,
-    overall_rate bigint NOT NULL,
-    network_rate bigint NOT NULL,
-    disk_rate bigint NOT NULL,
-    transfer_rate bigint NOT NULL,
-    drive_rate bigint NOT NULL,
-    storage_group character varying(16) NOT NULL
-);
-
-
-ALTER TABLE public.encp_xfer_clone OWNER TO enstore;
-
---
 -- Name: enstore_tables; Type: VIEW; Schema: public; Owner: enstore
 --
 
@@ -907,7 +884,6 @@ CREATE TABLE event (
 
 ALTER TABLE public.event OWNER TO enstore;
 
--- alter table  event ALTER column  name type  varchar(64);
 --
 -- Name: lock_status; Type: VIEW; Schema: public; Owner: enstore
 --
@@ -978,7 +954,42 @@ CREATE TABLE old_bytes_per_day (
 
 ALTER TABLE public.old_bytes_per_day OWNER TO enstore;
 
+--
+-- Name: quota; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE TABLE quota (
+    library character varying NOT NULL,
+    storage_group character varying NOT NULL,
+    requested integer DEFAULT 0,
+    authorized integer DEFAULT 0,
+    quota integer DEFAULT 0,
+    significance character(1) DEFAULT 'y'::bpchar
+);
+
+
+ALTER TABLE public.quota OWNER TO enstore;
+
 SET default_with_oids = false;
+
+--
+-- Name: quotas; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE TABLE quotas (
+    "time" timestamp with time zone DEFAULT now() NOT NULL,
+    library character varying NOT NULL,
+    storage_group character varying NOT NULL,
+    allocated integer,
+    blank integer NOT NULL,
+    written integer NOT NULL,
+    requested integer,
+    authorized integer,
+    quota integer
+);
+
+
+ALTER TABLE public.quotas OWNER TO enstore;
 
 --
 -- Name: rate; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -1021,7 +1032,7 @@ SET default_with_oids = true;
 
 CREATE TABLE tape_mounts (
     node character varying(32) NOT NULL,
-    volume character varying(64) NOT NULL,
+    volume character varying(16) NOT NULL,
     "type" character varying(32) NOT NULL,
     logname character varying(16) NOT NULL,
     "start" timestamp without time zone NOT NULL,
@@ -1037,7 +1048,7 @@ ALTER TABLE public.tape_mounts OWNER TO enstore;
 --
 
 CREATE TABLE tape_mounts_tmp (
-    volume character varying(64) NOT NULL,
+    volume character varying(16) NOT NULL,
     state character varying(1) NOT NULL,
     id bigint
 );
@@ -1120,15 +1131,6 @@ CREATE TABLE xfer_by_month (
 ALTER TABLE public.xfer_by_month OWNER TO enstore;
 
 --
--- Name: drive_utilization_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
---
-
---
--- ALTER TABLE ONLY drive_utilization
---     ADD CONSTRAINT drive_utilization_pkey PRIMARY KEY ("time", "type");
--- 
-
---
 -- Name: event_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
@@ -1142,6 +1144,22 @@ ALTER TABLE ONLY event
 
 ALTER TABLE ONLY mover
     ADD CONSTRAINT mover_pkey PRIMARY KEY (name);
+
+
+--
+-- Name: quota_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+--
+
+ALTER TABLE ONLY quota
+    ADD CONSTRAINT quota_pkey PRIMARY KEY (library, storage_group);
+
+
+--
+-- Name: quotas_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+--
+
+ALTER TABLE ONLY quotas
+    ADD CONSTRAINT quotas_pkey PRIMARY KEY ("time", library, storage_group);
 
 
 --
@@ -1244,6 +1262,13 @@ CREATE INDEX drive_utilization_type_idx ON drive_utilization USING btree ("type"
 
 
 --
+-- Name: encp_error_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX encp_error_library_idx ON encp_xfer USING btree (library);
+
+
+--
 -- Name: encp_xfer_average_by_storage_group_date_index; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
@@ -1283,6 +1308,13 @@ CREATE INDEX encp_xfer_average_by_storage_group_to_date_index ON encp_xfer_avera
 --
 
 CREATE INDEX encp_xfer_average_by_storage_group_unix_time_index ON encp_xfer_average_by_storage_group USING btree (unix_time);
+
+
+--
+-- Name: encp_xfer_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX encp_xfer_library_idx ON encp_xfer USING btree (library);
 
 
 --
@@ -1367,6 +1399,20 @@ CREATE INDEX mover_logname_idx ON mover USING btree (logname);
 --
 
 CREATE INDEX mover_media_changer_idx ON mover USING btree (media_changer);
+
+
+--
+-- Name: quota_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX quota_library_idx ON quota USING btree (library);
+
+
+--
+-- Name: quota_storage_group_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX quota_storage_group_idx ON quota USING btree (storage_group);
 
 
 --
@@ -1536,6 +1582,216 @@ CREATE INDEX xfr_wrapper_idx ON encp_xfer USING btree (wrapper);
 
 ALTER TABLE ONLY write_protect_summary_by_library
     ADD CONSTRAINT write_protect_summary_by_library_date_fkey FOREIGN KEY (date) REFERENCES write_protect_summary(date);
+
+
+--
+-- Name: public; Type: ACL; Schema: -; Owner: products
+--
+
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM products;
+GRANT ALL ON SCHEMA public TO products;
+GRANT ALL ON SCHEMA public TO PUBLIC;
+
+
+--
+-- Name: blanks; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE blanks FROM PUBLIC;
+REVOKE ALL ON TABLE blanks FROM enstore;
+GRANT ALL ON TABLE blanks TO enstore;
+GRANT SELECT ON TABLE blanks TO enstore_reader;
+
+
+--
+-- Name: xfer_count_by_day; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE xfer_count_by_day FROM PUBLIC;
+REVOKE ALL ON TABLE xfer_count_by_day FROM enstore;
+GRANT ALL ON TABLE xfer_count_by_day TO enstore;
+GRANT SELECT ON TABLE xfer_count_by_day TO enstore_reader;
+
+
+--
+-- Name: xfer_by_day; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE xfer_by_day FROM PUBLIC;
+REVOKE ALL ON TABLE xfer_by_day FROM enstore;
+GRANT ALL ON TABLE xfer_by_day TO enstore;
+GRANT SELECT ON TABLE xfer_by_day TO enstore_reader;
+
+
+--
+-- Name: xfer_by_day_by_mover; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE xfer_by_day_by_mover FROM PUBLIC;
+REVOKE ALL ON TABLE xfer_by_day_by_mover FROM enstore;
+GRANT ALL ON TABLE xfer_by_day_by_mover TO enstore;
+GRANT SELECT ON TABLE xfer_by_day_by_mover TO enstore_reader;
+
+
+--
+-- Name: drive_utilization; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE drive_utilization FROM PUBLIC;
+REVOKE ALL ON TABLE drive_utilization FROM enstore;
+GRANT ALL ON TABLE drive_utilization TO enstore;
+GRANT SELECT ON TABLE drive_utilization TO enstore_reader;
+
+
+--
+-- Name: encp_error; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE encp_error FROM PUBLIC;
+REVOKE ALL ON TABLE encp_error FROM enstore;
+GRANT ALL ON TABLE encp_error TO enstore;
+GRANT SELECT ON TABLE encp_error TO enstore_reader;
+
+
+--
+-- Name: encp_xfer; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE encp_xfer FROM PUBLIC;
+REVOKE ALL ON TABLE encp_xfer FROM enstore;
+GRANT ALL ON TABLE encp_xfer TO enstore;
+GRANT SELECT ON TABLE encp_xfer TO enstore_reader;
+
+
+--
+-- Name: encp_xfer_average_by_storage_group; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE encp_xfer_average_by_storage_group FROM PUBLIC;
+REVOKE ALL ON TABLE encp_xfer_average_by_storage_group FROM enstore;
+GRANT ALL ON TABLE encp_xfer_average_by_storage_group TO enstore;
+GRANT SELECT ON TABLE encp_xfer_average_by_storage_group TO enstore_reader;
+
+
+--
+-- Name: enstore_tables; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE enstore_tables FROM PUBLIC;
+REVOKE ALL ON TABLE enstore_tables FROM enstore;
+GRANT ALL ON TABLE enstore_tables TO enstore;
+GRANT SELECT ON TABLE enstore_tables TO enstore_reader;
+
+
+--
+-- Name: event; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE event FROM PUBLIC;
+REVOKE ALL ON TABLE event FROM enstore;
+GRANT ALL ON TABLE event TO enstore;
+GRANT SELECT ON TABLE event TO enstore_reader;
+
+
+--
+-- Name: lock_status; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE lock_status FROM PUBLIC;
+REVOKE ALL ON TABLE lock_status FROM enstore;
+GRANT ALL ON TABLE lock_status TO enstore;
+GRANT SELECT ON TABLE lock_status TO enstore_reader;
+
+
+--
+-- Name: mover; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE mover FROM PUBLIC;
+REVOKE ALL ON TABLE mover FROM enstore;
+GRANT ALL ON TABLE mover TO enstore;
+GRANT SELECT ON TABLE mover TO enstore_reader;
+
+
+--
+-- Name: old_bytes_per_day; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE old_bytes_per_day FROM PUBLIC;
+REVOKE ALL ON TABLE old_bytes_per_day FROM enstore;
+GRANT ALL ON TABLE old_bytes_per_day TO enstore;
+GRANT SELECT ON TABLE old_bytes_per_day TO enstore_reader;
+
+
+--
+-- Name: quota; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE quota FROM PUBLIC;
+REVOKE ALL ON TABLE quota FROM enstore;
+GRANT ALL ON TABLE quota TO enstore;
+GRANT SELECT ON TABLE quota TO enstore_reader;
+
+
+--
+-- Name: tape_mounts; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE tape_mounts FROM PUBLIC;
+REVOKE ALL ON TABLE tape_mounts FROM enstore;
+GRANT ALL ON TABLE tape_mounts TO enstore;
+GRANT SELECT ON TABLE tape_mounts TO enstore_reader;
+
+
+--
+-- Name: tape_mounts_tmp; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE tape_mounts_tmp FROM PUBLIC;
+REVOKE ALL ON TABLE tape_mounts_tmp FROM enstore;
+GRANT ALL ON TABLE tape_mounts_tmp TO enstore;
+GRANT SELECT ON TABLE tape_mounts_tmp TO enstore_reader;
+
+
+--
+-- Name: tmp_xfer_by_day; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE tmp_xfer_by_day FROM PUBLIC;
+REVOKE ALL ON TABLE tmp_xfer_by_day FROM enstore;
+GRANT ALL ON TABLE tmp_xfer_by_day TO enstore;
+GRANT SELECT ON TABLE tmp_xfer_by_day TO enstore_reader;
+
+
+--
+-- Name: write_protect_summary; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE write_protect_summary FROM PUBLIC;
+REVOKE ALL ON TABLE write_protect_summary FROM enstore;
+GRANT ALL ON TABLE write_protect_summary TO enstore;
+GRANT SELECT ON TABLE write_protect_summary TO enstore_reader;
+
+
+--
+-- Name: write_protect_summary_by_library; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE write_protect_summary_by_library FROM PUBLIC;
+REVOKE ALL ON TABLE write_protect_summary_by_library FROM enstore;
+GRANT ALL ON TABLE write_protect_summary_by_library TO enstore;
+GRANT SELECT ON TABLE write_protect_summary_by_library TO enstore_reader;
+
+
+--
+-- Name: xfer_by_month; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE xfer_by_month FROM PUBLIC;
+REVOKE ALL ON TABLE xfer_by_month FROM enstore;
+GRANT ALL ON TABLE xfer_by_month TO enstore;
+GRANT SELECT ON TABLE xfer_by_month TO enstore_reader;
 
 
 --
