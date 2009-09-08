@@ -175,7 +175,7 @@ class RawUDP:
                             # "retry" message put it closer to the beginnig of the queue
                             index = self.buffer.index(self.requests[request_id])
 
-                            if enable_reinsert and self.queue_size > SHUFFLE_THRESHOLD:
+                            if self.enable_reinsert and self.queue_size > SHUFFLE_THRESHOLD:
                                 # new index is in 10% of top messages
                                 new_index = index / (((self.queue_size + 1)/10)+1) + index % 10
                                 if new_index >= index:
