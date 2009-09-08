@@ -277,10 +277,14 @@ class GenericClient:
 
         return server_address
 
-    def send(self, ticket, rcv_timeout=0, tries=0):
+    #The long_reply value should be one of three values.
+    #None: for the default behavior of looking at the short response
+    #      to determine if the long answer should be tried.
+    #1   : to always do the long answer response
+    #0   : to never to the long answer response
+    def send(self, ticket, rcv_timeout=0, tries=0, long_reply = None):
         try:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
-
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (socket.gaierror, socket.herror), msg:
@@ -298,7 +302,9 @@ class GenericClient:
 
         #If the short answer says that the real answer is too long, continue
         # with obtaining the information over TCP.
-        if type(x) == types.DictType and x.get('long_reply', None):
+        if (long_reply == None and
+            type(x) == types.DictType and x.get('long_reply', None)) \
+               or (long_reply != None and long_reply):
             
             try:
                 connect_socket = callback.connect_to_callback(x['callback_addr'])
