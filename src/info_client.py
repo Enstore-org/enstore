@@ -199,7 +199,7 @@ class fileInfoMethods(generic_client.GenericClient):
     def get_bfids(self, external_label):
         ticket = {"work"          : "get_bfids2",
                   "external_label": external_label}
-        done_ticket = self.send(ticket)
+        done_ticket = self.send(ticket, long_reply = 1)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -219,7 +219,7 @@ class fileInfoMethods(generic_client.GenericClient):
                   "callback_addr" : (host, port),
                   "external_label": external_label}
         # send the work ticket to the file clerk
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, long_reply = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
@@ -259,7 +259,7 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"           : "list_active3",
                   "external_label" : external_label}
 
-        done_ticket = self.send(ticket)
+        done_ticket = self.send(ticket, long_reply = 1)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -285,7 +285,7 @@ class fileInfoMethods(generic_client.GenericClient):
                   "callback_addr"  : (host, port),
                   "external_label" : external_label}
         # send the work ticket to the file clerk
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, long_reply = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
@@ -330,7 +330,7 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"           : "tape_list3",
                   "external_label" : external_label}
         done_ticket = self.send(ticket, rcv_timeout = timeout,
-                                tries = retry)
+                                tries = retry, long_reply = 1)
    
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -350,7 +350,7 @@ class fileInfoMethods(generic_client.GenericClient):
                   "callback_addr"  : (host, port),
                   "external_label" : external_label}
         # send the work ticket to the file clerk
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, long_reply = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
@@ -433,7 +433,7 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "show_bad2",
                   #"callback_addr" : (host, port),
                   }
-        done_ticket = self.send(ticket)
+        done_ticket = self.send(ticket, long_answer = 1)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -451,7 +451,7 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "show_bad",
                   "callback_addr" : (host, port)}
         # send the work ticket to the file clerk
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, long_answer = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
@@ -518,7 +518,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   "not"	          : not_cond,
                   }
 
-        done_ticket = self.send(ticket)
+        done_ticket = self.send(ticket, long_reply = 1)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -542,7 +542,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   "not"		   : not_cond}
 
         # send the work ticket to the library manager
-        ticket = self.send(ticket, 60, 1)
+        ticket = self.send(ticket, 60, 1, long_reply = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
@@ -600,7 +600,7 @@ class volumeInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "get_pvols2",
                   }
 
-        done_ticket = self.send(ticket)
+        done_ticket = self.send(ticket, long_reply = 1)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -621,7 +621,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   "callback_addr"	: (host, port)}
 
         # send the work ticket to the library manager
-        ticket = self.send(ticket, 60, 1)
+        ticket = self.send(ticket, 60, 1, long_reply = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
@@ -670,7 +670,7 @@ class volumeInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "list_sg_count2",
                   }
 
-        done_ticket = self.send(ticket)
+        done_ticket = self.send(ticket, long_reply = 1)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -690,7 +690,7 @@ class volumeInfoMethods(generic_client.GenericClient):
         ticket = {"work"		  : "list_sg_count",
                           "callback_addr" : (host, port)}
 
-        ticket = self.send(ticket,60,1)
+        ticket = self.send(ticket, 60, 1, long_reply = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
@@ -732,7 +732,7 @@ class volumeInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "get_vol_list2",
                   }
 
-        done_ticket = self.send(ticket)
+        done_ticket = self.send(ticket, long_reply = 1)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -753,7 +753,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   "callback_addr" : (host, port)}
 
         # send the work ticket to the library manager
-        ticket = self.send(ticket,60,1)
+        ticket = self.send(ticket, 60, 1, long_reply = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
@@ -796,7 +796,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   "external_label" : vol,
                   }
 
-        done_ticket = self.send(ticket)
+        done_ticket = self.send(ticket, long_reply = 1)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -817,7 +817,7 @@ class volumeInfoMethods(generic_client.GenericClient):
                   "callback_addr"  : (host, port)}
 
         # send the work ticket to volume clerk
-        ticket = self.send(ticket, 10, 1)
+        ticket = self.send(ticket, 10, 1, long_reply = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
