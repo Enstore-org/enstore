@@ -19,6 +19,8 @@ import time
 
 DEBUG = False
 MAX_PACKET_SIZE = 16384
+MAX_QUEUE_SIZE = 200000
+SHUFFLE_THRESHOLD = 1000 # reinsert at the lower index beginning with this queue size
 
 # get request id
 def get_id(request):
@@ -34,6 +36,21 @@ def get_id(request):
         # wrong message format
         return None
 
+# get a keyword from message
+def get_keyword(request, keyword):
+    rarr = request.split("'")
+    try:
+        if keyword in rarr:
+            index = rarr.index(keyword)
+            return(rarr[index+2])
+        else:
+            return None
+    except:
+        exc, detail, tb = sys.exc_info()
+        print "Exception getting keyword %s"%(detail,)
+        
+        return None
+        
 def _print(f, msg):
     if DEBUG and f:
         f.write("%s %s\n"%(time.time(),msg))
@@ -50,6 +67,12 @@ class RawUDP:
         self.queue_size = 0L
         self.buffer = []
         self.requests = {} # this is to avoid multiple requests with the same id
+        self.enable_reinsert = True
+        # if self.replace_keyword is specified
+        # replace a message with this keyword in the buffer
+        # this is needed for processing
+        # mover requests
+        self.replace_keyword = None 
         
     def init_port(self, port):
         self.socket_type = socket.SOCK_DGRAM
@@ -65,6 +88,18 @@ class RawUDP:
     def init_socket(self, socket):
         self.server_socket = socket
 
+
+    def enable_print_queue(self):
+        self.print_queue = True
+
+    def set_keyword(self, keyword):
+        self.replace_keyword = keyword
+
+    # disable reshuffling of duplicate requests
+    # this can be beneficial for mover requests
+    # but may hurt encp requests
+    def disable_reshuffle(self):
+        self.enable_reinsert = False
 
     def put(self, message):
         # message structure:
@@ -114,31 +149,57 @@ class RawUDP:
 
         self._lock.acquire()
         try:
+            request_id = get_id(request)
             do_put = True
-            _print(self.f, "PUT ENTERED")
-            if request_id:
-                # put the latest request into the queue
-                if self.requests.has_key(request_id) and self.requests[request_id] !="":
-                    _print(self.f, "DUPLICATE %s"%(request,)) 
+            if self.replace_keyword:
+                keyword_to_replace = get_keyword(request, self.replace_keyword)
+                if keyword_to_replace:
+                    if self.requests.has_key(keyword_to_replace):
+                        try:
+                           do_put = False # duplicate request, do not put into the queue
+                           index = buffer.index(self.requests[keyword_to_replace])
+                           del buffer[index]
+                           buffer.insert(index, (request, client_addr))
 
-                    # "retry" message put it closer to the beginnig of the queue
-                    index = self.buffer.index(self.requests[request_id])
-                    # new index is in 10% of top messages
-                    new_index = index / (((self.queue_size + 1)/10)+1) + index % 10
-                    if new_index >= index:
-                        new_index = index
-                    _print(self.f, "FOUND at %s reinserting at %s queue size %s"%(index, new_index, self.queue_size))
-                    self.buffer.remove(self.requests[request_id])
-                    self.buffer.insert(new_index, (request, message[1]))
-                    do_put = False # duplicate request, do not put into the queue
+                        except ValueError:
+                           # request is not in buffer yet
+                           pass
+                    _print(self.f, "ADD TO REQUESTS %s"%(request,))
+                    self.requests[keyword_to_replace] = (request, client_addr)
+            else:
+                if request_id:
+                    # put the latest request into the queue
+                    if self.requests.has_key(request_id) and self.requests[request_id] !="":
+                        _print(self.f, "DUPLICATE %s"%(request,))
+                        try:
+                            # "retry" message put it closer to the beginnig of the queue
+                            index = self.buffer.index(self.requests[request_id])
 
-                else:
-                    self.requests[request_id] = (request, message[1])
+                            if enable_reinsert and self.queue_size > SHUFFLE_THRESHOLD:
+                                # new index is in 10% of top messages
+                                new_index = index / (((self.queue_size + 1)/10)+1) + index % 10
+                                if new_index >= index:
+                                    new_index = index
+                            else:
+                                new_index = index
+                            _print(self.f, "FOUND at %s reinserting at %s queue size %s"%(index, new_index, self.queue_size))
+                            self.buffer.remove(self.requests[request_id])
+                            self.buffer.insert(new_index, (request, message[1]))
+                            do_put = False # duplicate request, do not put into the queue
+                        except ValueError, detail:
+                            _print(self.f,"put: Exception:ValueError %s removing %s"%(detail,request_id))  
+
+                    else:
+                        if self.queue_size > MAX_QUEUE_SIZE:
+                            # drop incoming message
+                            do_put = False
+                        else:
+                            self.requests[request_id] = (request, message[1])
 
             if do_put:
                 t0 = time.time()
-                self.queue_size = self.queue_size + 1
                 self.buffer.append((request, message[1]))
+                self.queue_size = self.queue_size + 1
                 self.arrived.set()
                 _print(self.f, "PUT %s"%(time.time() - t0, ))
         except:
@@ -155,6 +216,13 @@ class RawUDP:
     # request
     # number of requests in the buffer
     def get(self):
+        # this is to measure time in get
+        if hasattr(self, "last_get"):
+            t = time.time() - self.last_get
+        else:
+            t = 0
+        _print(self.d_o, "GET")
+        Trace.trace(5, "GET %s"%(t,))
         rc = None
         if self.queue_size == 0:
             self.arrived.wait()
@@ -171,6 +239,10 @@ class RawUDP:
                 if self.requests.has_key(request_id):
                     #print "DELETE ID",request_id 
                     del(self.requests[request_id])
+                keyword_to_replace = get_keyword(ret[0], self.replace_keyword)
+                if self.requests.has_key(keyword_to_replace):
+                    del(self.requests[keyword_to_replace])
+                
             except IndexError, detail:
                 print "IndexError", detail
             except:
@@ -179,6 +251,7 @@ class RawUDP:
             rc = ret
             self._lock.release()
             _print(self.d_o, "GET %s"%(time.time()-t0,))
+            self.last_get = time.time()
 
         return rc
         
