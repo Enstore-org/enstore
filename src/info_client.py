@@ -433,7 +433,7 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "show_bad2",
                   #"callback_addr" : (host, port),
                   }
-        done_ticket = self.send(ticket, long_answer = 1)
+        done_ticket = self.send(ticket, long_reply = 1)
 
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
@@ -451,7 +451,7 @@ class fileInfoMethods(generic_client.GenericClient):
         ticket = {"work"          : "show_bad",
                   "callback_addr" : (host, port)}
         # send the work ticket to the file clerk
-        ticket = self.send(ticket, long_answer = 0)
+        ticket = self.send(ticket, long_reply = 0)
         if ticket['status'][0] != e_errors.OK:
             return ticket
 
