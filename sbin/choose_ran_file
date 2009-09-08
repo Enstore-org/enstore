@@ -62,7 +62,11 @@ tll_raw=`enstore conf $timeout --print crons test_library_list 2> /dev/null`
 #Remove the line header contents (before the :), remove any empty lines,
 # stick single quotes on either side of eache item, replace all newlines
 # with commas and lastly remove the last comma.
-tll=`echo "$tll_raw" | cut -f 2 -d ":" | egrep -v ^$ | sed -e "s/$/'/" -e "s/^/'/" | tr "\n" "," | sed "s/,$//"`
+if [ -z $tll_raw ]; then
+    tll=""
+else
+    tll=`echo "$tll_raw" | cut -f 2 -d ":" | egrep -v ^$ | sed -e "s/$/'/" -e "s/^/'/" | tr "\n" "," | sed "s/,$//"`
+fi
 if [ -z "$tll" ]; then
     skip_library_sql=""
 else
@@ -147,32 +151,38 @@ while [ $done -gt 0 ]; do
   fi
 
   #Get a list of all files on the tape.
-  tape_list=`enstore info $timeout --list $tape`
+  enstore info $timeout --list $tape > $tmp_dir/$tape.raw
   if [ $? -ne 0 ]; then
     echo "Unable to obtain $tape content information." 1>&2
     exit 1
   fi
-  echo "$tape_list" | sed '1,2d' > $tmp_dir/$tape
+  cat $tmp_dir/$tape.raw | sed '1,2d' > $tmp_dir/$tape
+  rm $tmp_dir/$tape.raw
 
   # make sure this volume is still on the readable list.
   if [ `egrep -c 'DELETED|NOACCESS|NOTALLOWED' /$tmp_dir/$tape` -ne 0 ]; then 
 	echo `date` REJECTED $tape is DELETED/NOACCESS/NOTALLOED
-	rm -f /$tmp_dir/$tape
+	rm -f $tmp_dir/$tape
 	continue
   fi
 
   # get list of known bad file bfid's.
-  bad_list=`enstore file --show-bad | grep $tape | cut -f 2 -d " "`
+  enstore file --show-bad | grep $tape | cut -f 2 -d " " > $tmp_dir/bad_list
   #Turn this into an egrep compatible filter string.  (be sure to remember
   # to remove the first " | " from the string.
-  bad_filter=`for item in $bad_list; do echo -n " |" $item; done | cut -c 2-`
-  
+  bad_filter=`for item in $(cat $tmp_dir/bad_list); do echo -n " |" $item; done | cut -c 2-`
+  rm $tmp_dir/bad_list
+
   # Get rid of volume information - we already processed that and don't 
   # need it anymore. Get rid of all files the user already deleted. 
   # We don't want to read these files.  If there aren't any files left, 
   # start over with a new tape.  Ignore hidden files and sort the filelist 
   # according to location on the tape.  Also, skip known bad files.
-  grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep active | egrep -v "$bad_filter" | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
+  if [ -n "$bad_filter" ]; then
+    grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep active | egrep -v "$bad_filter" | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
+  else
+      grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep active | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
+  fi
   rm -f $tmp_dir/$tape
   NF=`wc $tmp_dir/${tape}_| awk '{print $1}'`
   if [ $NF -gt 0 ]; then 
