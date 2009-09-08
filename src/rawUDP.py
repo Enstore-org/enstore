@@ -157,9 +157,9 @@ class RawUDP:
                     if self.requests.has_key(keyword_to_replace):
                         try:
                            do_put = False # duplicate request, do not put into the queue
-                           index = buffer.index(self.requests[keyword_to_replace])
-                           del buffer[index]
-                           buffer.insert(index, (request, client_addr))
+                           index = self.buffer.index(self.requests[keyword_to_replace])
+                           del self.buffer[index]
+                           self.buffer.insert(index, (request, client_addr))
 
                         except ValueError:
                            # request is not in buffer yet
