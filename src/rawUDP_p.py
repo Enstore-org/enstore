@@ -42,6 +42,7 @@ def get_id(request):
         return None
 
 # get a keyword from message
+# message is a str(dictionary)
 def get_keyword(request, keyword):
     rarr = request.split("'")
     try:
@@ -76,10 +77,15 @@ class RawUDP:
         self.queue_size = 0L
         self.print_queue = False
         self.enable_reinsert = True
+
         # if self.replace_keyword is specified
         # replace a message with this keyword in the buffer
         # this is needed for processing
-        # mover requests
+        # mover requests require different aprroaach in their processing
+        # they need to be aligned on the order they came and no duplicate
+        # request is allowed.
+        # Thus the old mover request gets replaced by the newer request
+        # at the same place in the queue
         self.replace_keyword = None 
 
         
@@ -174,6 +180,8 @@ class RawUDP:
         else:
             self.d_o = None
 
+# put runs in a separate process (_receiver)
+# this is why it is outside of RawUDP class
         
 def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, replace_keyword):
     _print (f, "QUEUE SIZE %s msg %s"%(queue_size.value, message))
@@ -226,6 +234,14 @@ def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, 
     try:
         request_id = get_id(request)
         do_put = True
+        # if self.replace_keyword is specified
+        # replace a message with this keyword in the buffer
+        # this is needed for processing
+        # mover requests require different aprroaach in their processing
+        # they need to be aligned on the order they came and no duplicate
+        # request is allowed.
+        # Thus the old mover request gets replaced by the newer request
+        # at the same place in the queue
         if replace_keyword:
             keyword_to_replace = get_keyword(request, replace_keyword)
             if keyword_to_replace:
@@ -288,6 +304,7 @@ def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, 
 
         
 # receiver runs in a separate process
+# this is why it is outside of RawUDP class
 def _receiver(self):
     print "I am rawUDP_p", os.getpid(), self.replace_keyword
     if DEBUG:
@@ -313,6 +330,11 @@ def _receiver(self):
                         self.max_packet_size, self.rcv_timeout)
 
                     if req:
+                        # Reminder about request structure
+                        # request is a string
+                        # it has the following structure
+                        # str(str((request_id, request_counter, body)), check_sum)
+                        # where body is a dictionary
                         message = (req, client_addr)
                         #_print (self.f, "MESSAGE %s %s"%(time.time(), message))
                         put(self._lock, self.arrived, self.buffer, self.queue_size_p, message, self.requests, self.f, self.enable_reinsert, self.replace_keyword)
