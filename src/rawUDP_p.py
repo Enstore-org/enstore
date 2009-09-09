@@ -103,9 +103,6 @@ class RawUDP:
         self.server_socket = socket
         
 
-    def enable_print_queue(self):
-        self.print_queue = True
-
     def set_keyword(self, keyword):
         self.replace_keyword = keyword
         
