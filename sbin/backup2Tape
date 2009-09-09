@@ -74,7 +74,7 @@ if [ $? -ne 0 ]; then
    exit 1
 fi
 pnfspath=$pnfspath/`date_string_d` #Append the current date.
-# try to make a unique directory, but give up after 10 tries
+# try to make a unique directory pathname, but give up after 10 tries
 x=0
 while [ $x -le 10 -a -d $pnfspath ]; do
    x=`expr $x + 1`
@@ -82,7 +82,7 @@ while [ $x -le 10 -a -d $pnfspath ]; do
 done
 # Now test if the directory is good to go.
 if [ ! -d "$pnfspath" ]; then
-   mkdir -p "$pnfspath"
+   mkdir -p "$pnfspath"   #Actually attempt to make the directory.
    if [ $? -ne 0 ]; then
      echo "Unable to make $pnfspath directory.  Aborting."
      exit 1
