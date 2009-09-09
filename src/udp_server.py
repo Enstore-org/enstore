@@ -165,11 +165,10 @@ class UDPServer:
 
         print "UDP_SERVER starting in thread",thread_name 
 
-    def enable_raw_queue_print(self):
-        if self.use_raw:
-            self.raw_requests.enable_print_queue()
-            pass
-
+    # disable reshuffling of duplicate requests when using rawUDP
+    # this can be beneficial for mover requests
+    # but may hurt encp requests
+    # call this right before starting the server
     def disable_reshuffle(self):
         if self.use_raw:
             self.raw_requests.disable_reshuffle()
@@ -523,8 +522,14 @@ class UDPServer:
             # but this should help the code to proceed
             list_copy = copy.deepcopy(list)
         except:
+            list_copy = None
             Trace.handle_error()
         self._lock.release()
+
+        if not list_copy:
+            # do not send a reply
+            return
+
         self.request_dict[current_id] = list_copy
 
         if interface_ip != None:
