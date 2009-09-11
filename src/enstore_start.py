@@ -312,9 +312,7 @@ def check_event_relay(csc, intf, cmd):
     if intf.nocheck:
         rtn = 1
     else:
-        #print "Checking %s." % name
-        print "Checking 1 %s." % name
-        
+        print "Checking %s." % name
         rtn = erc.alive()
         
     if rtn:
@@ -380,13 +378,10 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
     if intf.nocheck:
         rtn = {'status':("nocheck","nocheck")}
     else:
-        #print "Checking 2 %s." % name
         print "Checking %s." % name
         # see if EPS returns config_server"
         #cmd = 'EPS | egrep "%s|%s" | grep python | grep -v %s'%(name,"configuration_server.py", "grep")
         cmd = 'EPS | egrep "%s" | egrep -v "%s|%s"'%(name, "grep", "enstore st")
-        # popen is deprecated in last python releases
-        #pipeObj = popen2.Popen3(cmd, 0, 0)
         pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
         if pipeObj:
             result = pipeObj.communicate()[0]
@@ -409,9 +404,7 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
             time.sleep(2)
             cmd = 'EPS | egrep "%s|%s" | grep -v %s'%(name,"configuration_server.py", "grep")
             pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
-            #pipeObj = popen2.Popen3(cmd, 0, 0)
             if pipeObj:
-                #stat = pipeObj.wait()
                 result = pipeObj.communicate()[0]
                 if len(result) >= 1:
                     rtn = {'status':(e_errors.OK,"running")}
