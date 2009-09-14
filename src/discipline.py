@@ -84,18 +84,24 @@ class Restrictor:
         # list of function arguments
         # what to do with request ("ignore", "reject")
         
-        self._lock.acquire()
-        callback = ticket.get('callback_addr', None)
-        if callback:
-            host = hostaddr.address_to_name(callback[0])
-        else:
-            host = w['wrapper']['machine'][1]
-
-        
-        self._lock.release()
         # default match settings
         #match = 1, "restrict_host_access", [host, 1], "ignore" 
-        match = 0, None, None, None 
+        match = 0, None, None, None
+        failed = False
+        self._lock.acquire()
+        callback = ticket.get('callback_addr', None)
+        try:
+            if callback:
+                host = hostaddr.address_to_name(callback[0])
+            else:
+                host = ticket['wrapper']['machine'][1]
+        except:
+            failed = True 
+        
+        self._lock.release()
+        if failed:
+            return match
+
         if not self.exists:  # no discipline configuration info
             return match
 
