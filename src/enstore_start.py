@@ -29,6 +29,7 @@ import e_errors
 import enstore_constants
 import enstore_functions
 import enstore_functions2
+import enstore_functions3
 import generic_client
 import option
 import Trace
@@ -83,6 +84,12 @@ def this_host(use_alias=0):
         return [rtn[0]] + rtn[1] + rtn[2]
 
 def is_on_host(host, use_alias=0):
+    #If the host happens to be an IP address instead of the form 131.225.0.0,
+    # then turn on using aliases.  For multihomed hosts, we need to check
+    # all IP addresses.
+    if enstore_functions3.is_ip_addr(host):
+        use_alias = 1
+    
     if host in this_host(use_alias):
         return 1
 
