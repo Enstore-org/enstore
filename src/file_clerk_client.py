@@ -177,6 +177,118 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             del r['work']
         return r
 
+    # report any information if this file has been involved in migration
+    # or duplication
+    def find_migration_info(self, bfid, find_src = 1, find_dst = 1,
+                            order_by = "copied", timeout=0, retry=0):
+        #Map the possible arguments to something more simple.
+        if not find_src:
+            use_find_src = 0
+        else:
+            use_find_src = 1
+        if not find_dst:
+            use_find_dst = 0
+        else:
+            use_find_dst = 1
+
+        #Make sure a valid order by value is given.
+        if order_by not in ("copied", "swapped", "checked", "closed"):
+            return {'status' : (e_errors.WRONGPARAMETER,
+                                "Expected migration state, not %s" \
+                                % (str(order_by),)),
+                    'work' : "find_migration_info",
+                    'bfid' : bfid,
+                    }
+        
+        r = self.send({'work' : "find_migration_info",
+                       'bfid' : bfid,
+                       'find_src' : use_find_src,
+                       'find_dst' : use_find_dst,
+                       'order_by' : order_by,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    #Set the migration copied state for the bfid pair.
+    def set_copied(self, src_bfid, dst_bfid, timeout = 0, retry = 0):
+        r = self.send({'work' : "set_copied",
+                       'src_bfid' : src_bfid,
+                       'dst_bfid' : dst_bfid,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    #Clear the migration copied state for the bfid pair.
+    def unset_copied(self, src_bfid, dst_bfid, timeout = 0, retry = 0):
+        r = self.send({'work' : "unset_copied",
+                       'src_bfid' : src_bfid,
+                       'dst_bfid' : dst_bfid,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    #Set the migration swapped state for the bfid pair.
+    def set_swapped(self, src_bfid, dst_bfid, timeout = 0, retry = 0):
+        r = self.send({'work' : "set_swapped",
+                       'src_bfid' : src_bfid,
+                       'dst_bfid' : dst_bfid,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    #Clear the migration swapped state for the bfid pair.
+    def unset_swapped(self, src_bfid, dst_bfid, timeout = 0, retry = 0):
+        r = self.send({'work' : "unset_swapped",
+                       'src_bfid' : src_bfid,
+                       'dst_bfid' : dst_bfid,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    #Set the migration checked state for the bfid pair.
+    def set_checked(self, src_bfid, dst_bfid, timeout = 0, retry = 0):
+        r = self.send({'work' : "set_checked",
+                       'src_bfid' : src_bfid,
+                       'dst_bfid' : dst_bfid,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    #Clear the migration checked state for the bfid pair.
+    def unset_checked(self, src_bfid, dst_bfid, timeout = 0, retry = 0):
+        r = self.send({'work' : "unset_checked",
+                       'src_bfid' : src_bfid,
+                       'dst_bfid' : dst_bfid,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    #Set the migration closed state for the bfid pair.
+    def set_closed(self, src_bfid, dst_bfid, timeout = 0, retry = 0):
+        r = self.send({'work' : "set_closed",
+                       'src_bfid' : src_bfid,
+                       'dst_bfid' : dst_bfid,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    #Clear the migration closed state for the bfid pair.
+    def unset_closed(self, src_bfid, dst_bfid, timeout = 0, retry = 0):
+        r = self.send({'work' : "unset_closed",
+                       'src_bfid' : src_bfid,
+                       'dst_bfid' : dst_bfid,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+
     # def set_delete(self, ticket):
     #     #Is this really set_deleted or set_delete?
     #     ticket['work'] = "set_deleted"
