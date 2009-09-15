@@ -949,7 +949,26 @@ def check(f, f_stats = None):
 
     #If we are a supper user, reset the effective uid and gid.
     file_utils.acquire_lock_euid_egid()
-    file_utils.set_euid_egid(f_stats[stat.ST_UID], f_stats[stat.ST_GID])
+    try:
+        file_utils.set_euid_egid(f_stats[stat.ST_UID], f_stats[stat.ST_GID])
+    except (KeyboardInterrupt, SystemExit):
+        file_utils.release_lock_euid_egid()  # Release to avoid deadlock!
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError), msg:
+        message = "Unable to set effective IDs (UID:%s, GID:%s) while  " \
+                  "euid = %s  egid = %s  uid = %s  gid = %s [check()]:" \
+                  " %s for %s\n" \
+                  % (f_stats[stat.ST_UID], f_stats[stat.ST_GID],
+                     os.geteuid(), os.getegid(), os.getuid(), os.getgid(),
+                     str(msg), f)
+        sys.stderr.write(message)
+    except:
+        file_utils.release_lock_euid_egid() # Release to avoid deadlock!
+        message = "Unknown error setting effective IDs: %s" \
+                  % (str(sys.exc_info()[1]),)
+        sys.stderr.write(message)
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        
     file_utils.release_lock_euid_egid()
 
     file_info = {"f_stats"       : f_stats}
@@ -1025,7 +1044,25 @@ def check_dir(d, dir_info):
 
     #If we are a supper user, reset the effective uid and gid.
     file_utils.acquire_lock_euid_egid()
-    file_utils.set_euid_egid(d_stats[stat.ST_UID], d_stats[stat.ST_GID])
+    try:
+        file_utils.set_euid_egid(d_stats[stat.ST_UID], d_stats[stat.ST_GID])
+    except (KeyboardInterrupt, SystemExit):
+        file_utils.release_lock_euid_egid() # Release to avoid deadlock!
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except OSError, msg:
+        message = "Unable to set effective IDs (UID:%s, GID:%s) while  " \
+                  "euid = %s  egid = %s  uid = %s  gid = %s [check_dir()]:" \
+                  "%s for %s\n" \
+                  % (d_stats[stat.ST_UID], d_stats[stat.ST_GID],
+                     os.geteuid(), os.getegid(), os.getuid(), os.getgid(),
+                     str(msg), d)
+        sys.stderr.write(message)
+    except:
+        file_utils.release_lock_euid_egid() # Release to avoid deadlock!
+        message = "Unknown error setting effective IDs: %s" \
+                  % (str(sys.exc_info()[1]),)
+        sys.stderr.write(message)
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     file_utils.release_lock_euid_egid()
 
     #Get the list of files.
@@ -1435,7 +1472,26 @@ def check_bit_file(bfid, bfid_info = None):
 
     #If we are a supper user, reset the effective uid and gid.
     file_utils.acquire_lock_euid_egid()
-    file_utils.set_euid_egid(f_stats[stat.ST_UID], f_stats[stat.ST_GID])
+    try:
+        file_utils.set_euid_egid(f_stats[stat.ST_UID], f_stats[stat.ST_GID])
+    except (KeyboardInterrupt, SystemExit):
+        file_utils.release_lock_euid_egid() # Release to avoid deadlock!
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except OSError, msg:
+        message = "Unable to set effective IDs (UID:%s, GID:%s) while  " \
+                  "euid = %s  egid = %s  uid = %s  gid = %s [check_bit_file()]:" \
+                  "%s for %s\n" \
+                  % (f_stats[stat.ST_UID], f_stats[stat.ST_GID],
+                     os.geteuid(), os.getegid(), os.getuid(), os.getgid(),
+                     str(msg), pnfs_path)
+        sys.stderr.write(message)
+    except:
+        file_utils.release_lock_euid_egid() # Release to avoid deadlock!
+        message = "Unknown error setting effective IDs: %s" \
+                  % (str(sys.exc_info()[1]),)
+        sys.stderr.write(message)
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    
     file_utils.release_lock_euid_egid()
 
     file_info = {'f_stats'             : f_stats,
