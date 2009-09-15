@@ -579,9 +579,16 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 
 /*
  * thread_init():
- * Initialize the global mutex locks and condition variables.
+ * Initialize the local mutex locks and condition variables.
  */
 static int thread_init(struct transfer *info, struct locks *thread_locks);
+
+/*
+ * thread_destroy():
+ * Destroy the local mutex locks and condition variables.
+ */
+static int thread_destroy(struct transfer *info, struct locks *thread_locks);
+
 
 /*
  * thread_wait():
@@ -2639,6 +2646,55 @@ static int thread_init(struct transfer *info, struct locks *thread_locks)
   return 0;
 }
 
+static int thread_destroy(struct transfer *info, struct locks *thread_locks)
+{
+  int p_rtn;                    /* Pthread return value. */
+  /* initalize the conditional variable signaled when a thread has finished. */
+  if((p_rtn = pthread_cond_destroy(&(thread_locks->done_cond))) != 0)
+  {
+    pack_return_values(info, 0, p_rtn, THREAD_ERROR,
+		       "cond destory failed", 0.0, __FILE__, __LINE__,
+                       thread_locks);
+    return 1;
+  }
+  /* initalize the conditional variable to signal peer thread to continue. */
+  if((p_rtn = pthread_cond_destroy(&(thread_locks->next_cond))) != 0)
+  {
+    pack_return_values(info, 0, p_rtn, THREAD_ERROR,
+		       "cond destory failed", 0.0, __FILE__, __LINE__,
+                       thread_locks);
+    return 1;
+  }
+  /* initalize the mutex for signaling when a thread has finished. */
+  if((p_rtn = pthread_mutex_destroy(&(thread_locks->done_mutex))) != 0)
+  {
+    pack_return_values(info, 0, p_rtn, THREAD_ERROR,
+		       "mutex destory failed", 0.0, __FILE__, __LINE__,
+                       thread_locks);
+    return 1;
+  }
+  /* initalize the mutex for syncing the monitoring operations. */
+  if((p_rtn = pthread_mutex_destroy(&(thread_locks->monitor_mutex))) != 0)
+  {
+    pack_return_values(info, 0, p_rtn, THREAD_ERROR,
+		       "mutex destory failed", 0.0, __FILE__, __LINE__,
+                       thread_locks);
+    return 1;
+  }
+#ifdef DEBUG
+  /* initalize the mutex for ordering debugging output. */
+  if((p_rtn = pthread_mutex_destroy(&(thread_locks->print_lock))) != 0)
+  {
+    pack_return_values(info, 0, p_rtn, THREAD_ERROR,
+		       "mutex destory failed", 0.0, __FILE__, __LINE__,
+                       thread_locks);
+    return 1;
+  }
+#endif
+
+  return 0;
+}
+
 /* The first parameter is the bin to wait on.  The second argument returns
  * the amount of time the current thread speands waiting for the other
  * thread to complete.  The third parameter is a pointer to the array of
@@ -3964,6 +4020,15 @@ static void do_read_write_threaded(struct transfer *reads,
   }
   free(mem_buff.buffer_lock);
 
+  /* Destory the mutex locks to avoid resource leaks. */
+  if(thread_destroy(reads, &thread_locks))
+  {
+    /* Since this error is for both reads and writes, copy it over to 
+     * the writes struct. */
+    (void)memcpy(writes, reads, sizeof(reads));
+    return;
+  }
+  
   return;
 }
 
