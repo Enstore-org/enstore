@@ -625,6 +625,44 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
                   'storage_group': sg}
         return self.send(ticket,timeout,retry)
 
+    def list_migrated_files(self, src_vol, dst_vol,
+                            timeout = 0, retry = 0):
+        r = self.send({'work' : "list_migrated_files",
+                       'src_vol' : src_vol,
+                       'dst_vol' : dst_vol,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    def list_duplicated_files(self, src_vol, dst_vol,
+                              timeout = 0, retry = 0):
+        r = self.send({'work' : "list_duplicated_files",
+                       'src_vol' : src_vol,
+                       'dst_vol' : dst_vol,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+
+    def set_migration_history(self, src_vol, dst_vol, timeout = 0, retry = 0):
+        r = self.send({'work' : "set_migration_history",
+                       'src_vol' : src_vol,
+                       'dst_vol' : dst_vol,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
+        
+    def set_migration_history_closed(self, src_vol, dst_vol,
+				     timeout = 0, retry = 0):
+        r = self.send({'work' : "set_migration_history_closed",
+                       'src_vol' : src_vol,
+                       'dst_vol' : dst_vol,
+                       }, timeout, retry)
+        if r.has_key('work'):
+            del r['work']
+        return r
 
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
