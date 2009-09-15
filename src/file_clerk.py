@@ -38,6 +38,11 @@ MAX_CONNECTION_FAILURE = 5
 MAX_THREADS = 50 
 MAX_CONNECTIONS=20
 
+# time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
+# copied from migrate.py
+def time2timestamp(t):
+	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
+
 class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### This class of File Clerk methods should only be readonly operations.
     ### This class is inherited by Info Server (to increase code reuse)
@@ -405,6 +410,61 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             ticket["src_bfid"] = None
             ticket["dst_bfid"] = None
             ticket["status"] = (e_errors.DATABASE_ERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    # find any information if this file has been involved in migration
+    # or duplication
+    def __find_migration_info(self, bfid, find_src, find_dst, order_by):
+        src_res = []
+        dst_res = []
+
+        if find_src:
+            q = "select * from migration where src_bfid = '%s' order by %s;" \
+                % (bfid, order_by)
+            Trace.log(e_errors.INFO, q)
+            src_res = self.filedb_dict.db.query(q).dictresult()
+            Trace.log(e_errors.INFO, src_res)
+
+        if find_dst:
+            q = "select * from migration where dst_bfid = '%s' order by %s;" \
+                % (bfid, order_by)
+            Trace.log(e_errors.INFO, q)
+            dst_res = self.filedb_dict.db.query(q).dictresult()
+            Trace.log(e_errors.INFO, dst_res)
+
+        return src_res + dst_res
+
+    # report any information if this file has been involved in migration
+    # or duplication
+    def find_migration_info(self, ticket):
+        bfid, record = self.extract_bfid_from_ticket(ticket)
+        if not bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+
+        # extract the additional information if source and/or destination
+        # information is requested.
+        find_src = self.extract_value_from_ticket('find_src', ticket)
+        if find_src == None:
+            return #extract_value_from_ticket handles its own errors.
+        find_dst = self.extract_value_from_ticket('find_dst', ticket)
+        if find_dst == None:
+            return #extract_value_from_ticket handles its own errors.
+
+        # extrace the column name of the timestamp field that will be used
+        # to sort the responses.
+        order_by = self.extract_value_from_ticket('order_by', ticket)
+        if order_by == None:
+            return #extract_value_from_ticket handles its own errors.
+
+        try:
+            ticket['migration_info'] = self.__find_migration_info(bfid,
+                                                                  find_src,
+                                                                  find_dst,
+                                                                  order_by)
+            ticket['status'] = (e_errors.OK, None)
+        except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
+            ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
         self.reply_to_caller(ticket)
         return
 
@@ -1481,6 +1541,166 @@ class FileClerkMethods(FileClerkInfoMethods):
         self.reply_to_caller(ticket)
         return
 
+    # __migration(): Underlying function that exectutes the SQL commands
+    # for the migration state [un]setting functions.
+    #
+    # query - An SQL statement to execute; one that does not return any values.
+    # ticket - The original ticket received; the status field is set.
+    def __migration(self, query, ticket):
+        try:
+            self.filedb_dict.db.query(query)
+
+            ticket['status'] = (e_errors.OK, None)
+        except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+            if str(msg).find("duplicate key violates unique constraint") != -1:
+                #The old unique constraint was on each src & dst
+                # column.  For modern migration capable of migrating
+                # to multiple copies this constraint needs to be on
+                # the pair of src & dst columns.
+                ticket['status'] = (e_errors.DATABASE_ERROR,
+                                    "The database has an obsolete unique key constraint.")
+            else:
+                ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
+        except:
+            ticket['status'] = (e_errors.FILE_CLERK_ERROR, str(msg))
+
+        return ticket
+
+    # __set_migration() & __unset_migration(): Intermidiate functions used
+    # to execute SQL commands for the migration state [un]setting functions.
+    #
+    # q_base - The string with the SQL command; the python %s string insert
+    #          substrings are allowed.  This function fills them in.
+    #          For set functions:  The first one must be for setting the
+    #                              timestamp, the second for giving the
+    #                              source bfid, the third is the destination
+    #                              bfid.
+    #          For unset_functions:  The first one is the source bfid,
+    #                                the second one is the destination bfid.
+    # ticket - The original ticket received; the status field is set.
+
+    def __set_migration(self, q_base, ticket):
+        # extract the additional information if source and/or destination
+        # information is requested.
+        src_bfid, src_record = self.extract_bfid_from_ticket(ticket,
+                                                             key = 'src_bfid')
+        if not src_bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+        dst_bfid, dst_record = self.extract_bfid_from_ticket(ticket,
+                                                             key = 'dst_bfid')
+        if not dst_bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+        
+        q = q_base % (time2timestamp(time.time()), src_bfid, dst_bfid)
+
+        return self.__migration(q, ticket)
+        
+    def __unset_migration(self, q_base, ticket):
+        # extract the additional information if source and/or destination
+        # information is requested.
+        src_bfid, src_record = self.extract_bfid_from_ticket(ticket,
+                                                             key = 'src_bfid')
+        if not src_bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+        dst_bfid, dst_record = self.extract_bfid_from_ticket(ticket,
+                                                             key = 'dst_bfid')
+        if not dst_bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+        
+        q = q_base % (src_bfid, dst_bfid)
+
+        return self.__migration(q, ticket)
+    
+    #set_copied(): Insert into the migration table a new record showing
+    #   that the file has been copied to a new tape.
+    def set_copied(self, ticket):
+        q_base = "insert into migration (copied, src_bfid, dst_bfid) \
+                  values ('%s', '%s', '%s');"
+
+        ticket = self.__set_migration(q_base, ticket)
+
+        self.reply_to_caller(ticket)
+        return
+
+    #unset_copied():  First, remove the copied status from the record,
+    #   then if no errors occured remove the entire row.
+    def unset_copied(self, ticket):
+        q_base = "update migration set copied = NULL where \
+                  src_bfid = '%s' and dst_bfid = '%s';"
+
+        ticket = self.__unset_migration(q_base, ticket)
+        if not e_errors.is_ok(ticket):
+            self.reply_to_caller(ticket)
+
+        q_base = "delete from migration where \
+                  src_bfid = '%s' and dst_bfid = '%s';"
+
+        ticket = self.__unset_migration(q_base, ticket)
+
+        self.reply_to_caller(ticket)
+        return
+
+    #set_swapped():  Updated record to indicate the source and destination
+    #   files have been swapped.
+    def set_swapped(self, ticket):
+        q_base = "update migration set swapped = '%s' where \
+                  src_bfid = '%s' and dst_bfid = '%s';"
+
+        ticket = self.__set_migration(q_base, ticket)
+
+        self.reply_to_caller(ticket)
+        return
+
+    #unset_swapped():  Remove the swapped status from the migration record.
+    def unset_swapped(self, ticket):
+        q_base = "update migration set swapped = NULL where \
+                  src_bfid = '%s' and dst_bfid = '%s';"
+
+        ticket = self.__unset_migration(q_base, ticket)
+
+        self.reply_to_caller(ticket)
+        return
+
+    #set_checked():  Updated record to indicate the migration destination
+    #   file has been scanned/checked.
+    def set_checked(self, ticket):
+        q_base = "update migration set checked = '%s' where \
+                  src_bfid = '%s' and dst_bfid = '%s';"
+
+        ticket = self.__set_migration(q_base, ticket)
+
+        self.reply_to_caller(ticket)
+        return
+
+    #unset_checked():  Remove the checked status from the migration record.
+    def unset_checked(self, ticket):
+        q_base = "update migration set checked = NULL where \
+                  src_bfid = '%s' and dst_bfid = '%s';"
+
+        ticket = self.__set_migration(q_base, ticket)
+
+        self.reply_to_caller(ticket)
+        return
+
+    #set_closed():  Update record to indicate the migration has been completed.
+    def set_closed(self, ticket):
+        q_base = "update migration set closed = '%s' where \
+                  src_bfid = '%s' and dst_bfid = '%s';"
+
+        ticket = self.__set_migration(q_base, ticket)
+
+        self.reply_to_caller(ticket)
+        return
+
+    #unset_closed():  Remove the closed status from the migration record.
+    def unset_closed(self, ticket):
+        q_base = "update migration set closed = NULL where \
+                  src_bfid = '%s' and dst_bfid = '%s';"
+
+        ticket = self.__set_migration(q_base, ticket)
+
+        self.reply_to_caller(ticket)
+        return
 
 
 class FileClerk(FileClerkMethods, generic_server.GenericServer):
