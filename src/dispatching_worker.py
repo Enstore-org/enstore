@@ -564,7 +564,7 @@ class DispatchingWorker(udp_server.UDPServer):
         t = time.time()
         Trace.trace(5,"process_request: function %s"%(function_name, ))
         self.invoke_function(function, (ticket,))
-        Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
+        Trace.log(e_errors.INFO,"process_request: function %s time %s"%(function_name,time.time()-t))
     
     def invoke_function(self,function, args=()):
         # this function has been introduced as convenience, so
