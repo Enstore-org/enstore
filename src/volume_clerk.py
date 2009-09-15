@@ -988,6 +988,127 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         ticket['status'] = (e_errors.OK, self.ignored_sg)
         self.reply_to_caller(ticket)
 
+    def list_migrated_files(self, ticket):
+        src_vol, src_record = self.extract_external_label_from_ticket(ticket,
+                                                           key = 'src_vol')
+        if not src_vol:
+            return #extract_bfid_from_ticket handles its own errors.
+        dst_vol, dst_record = self.extract_external_label_from_ticket(ticket,
+                                                           key = 'dst_vol')
+        if not dst_vol:
+            return #extract_bfid_from_ticket handles its own errors.
+
+        q = "select migration.src_bfid, src_bfid, copied, swapped, checked, closed " \
+            "from migration,file f1, volume v1, file f2, volume v2 " \
+            "where v1.label = '%s' and f1.volume = v1.id " \
+            "  and v2.label = '%s' and f2.volume = v2.id " \
+            "  and f1.bfid = migration.src_bfid " \
+            "  and f2.bfid = migration.dst_bfid;" % (src_vol, dst_vol)
+
+        try:
+            ticket['migrated_files'] = self.volumedb_dict.db.query(q).dictresult()
+            ticket['status'] = (e_errors.OK, None)
+        except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
+            ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
+        except:
+            ticket['status'] = (e_errors.FILE_CLERK_ERROR, str(sys.exc_info()[1]))
+        self.send_reply(ticket)
+        return
+
+
+    def list_duplicated_files(self, ticket):
+        src_vol, src_record = self.extract_external_label_from_ticket(ticket,
+                                                              key = 'src_vol')
+        if not src_vol:
+            return #extract_bfid_from_ticket handles its own errors.
+        dst_vol, dst_record = self.extract_external_label_from_ticket(ticket,
+                                                              key = 'dst_vol')
+        if not dst_vol:
+            return #extract_bfid_from_ticket handles its own errors.
+
+        q = "select file_copies_map.bfid, alt_bfid " \
+            "from file_copies_map,file f1, volume v1, file f2, volume v2 " \
+            "where v1.label = '%s' and f1.volume = v1.id " \
+            "  and v2.label = '%s' and f2.volume = v2.id " \
+            "  and f1.bfid = file_copies_map.bfid " \
+            "  and f2.bfid = file_copies_map.alt_bfid;" % (src_vol, dst_vol)
+
+        try:
+            ticket['duplicated_files'] = self.volumedb_dict.db.query(q).dictresult()
+            ticket['status'] = (e_errors.OK, None)
+        except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
+            ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
+        except:
+            ticket['status'] = (e_errors.FILE_CLERK_ERROR, str(sys.exc_info()[1]))
+        self.send_reply(ticket)
+        return
+
+    #_migration_history():  Underlying function to obtain the internal
+    #   database IDs for the source and destination migration volumes.
+    def _migration_history(self, ticket):
+        # extract the additional information if source and/or destination
+        # information is requested.
+        src_vol, src_record = self.extract_external_label_from_ticket(ticket,
+                                                               key = 'src_vol')
+        if not src_vol:
+            return #extract_bfid_from_ticket handles its own errors.
+        dst_vol, dst_record = self.extract_external_label_from_ticket(ticket,
+                                                              key = 'dst_vol')
+        if not dst_vol:
+            return #extract_bfid_from_ticket handles its own errors.
+
+        vol_id_list = []
+        for vol in (src_vol, dst_vol):
+            q = "select id from volume where label = '%s'" % (vol,)
+
+            try:
+                res = self.volumedb_dict.db.query(q).getresult()
+
+                if len(res) == 0:
+                    ticket['status'] = (e_errors.NOVOLUME,
+                                        "volume %s not found in DB" % (vol,))
+                    return ticket
+                else:
+                    vol_id_list.append(res[0][0]) #We got the volume DB ID.
+            except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+                ticket["status"] = (e_errors.DATABASE_ERROR, msg)
+            except:
+                exc_type, exc_value = sys.exc_info()[:2]
+                message = "failed to find %s volume id due to: %s" \
+                          % (vol, (str(exc_type), str(exc_value)))
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, message)
+                Trace.log(e_errors.ERROR, message)
+
+                return ticket
+
+        #If we get this far, we successfully obtained two volume IDs.
+        ticket['src_vol_id'] = vol_id_list[0]
+        ticket['dst_vol_id'] = vol_id_list[1]
+        ticket['status'] = (e_errors.OK, None)
+
+        return ticket
+
+    def get_migration_history(self, ticket):
+        ticket = self._migration_history(ticket)
+
+        # Insert this volume combintation into the migration_history table.
+        q = "select * from  migration_history where src_vol_id = '%s' \
+             and dst_vol_id = '%s';" % (ticket['src_vol_id'],
+                                        ticket['dst_vol_id'])
+
+        try:
+            res = self.volumedb_dict.db.query(q).dictresult()
+
+            ticket['status'] = (e_errors.OK, None)
+            ticket['migration_history'] = res
+        except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+            ticket['status'] = (e_errors.DATABASE_ERROR,
+                      "Failed to update migration_history for %s due to: %s" \
+                      % ((ticket['src_vol'], ticket['dst_vol']), str(msg)))
+
+        self.send_reply(ticket)
+        return
+
 class VolumeClerkMethods(VolumeClerkInfoMethods):
 
     def __init__(self, csc):
@@ -2848,6 +2969,56 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         ticket['status'] = ret_stat
         Trace.trace(35, "is_volume_available: returning %s " %(ret_stat,))
         self.reply_to_caller(ticket)
+
+
+    #set_migration_history():  Update the migration_history table for
+    # the source and destination volumes.
+    def set_migration_history(self, ticket):
+        #Get the source and destination volumes' DB ID.
+        ticket = self._migration_history(ticket)
+        
+        # Insert this volume combintation into the migration_history table.
+        q = "insert into migration_history (src, src_vol_id, dst, dst_vol_id) \
+             values ('%s', '%s', '%s', '%s');" \
+             % (ticket['src_vol'], ticket['src_vol_id'],
+                ticket['dst_vol'], ticket['dst_vol_id'])
+
+        try:
+            self.volumedb_dict.db.query(q)
+
+            ticket['status'] = (e_errors.OK, None)
+        except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+            ticket['status'] = (e_errors.DATABASE_ERROR,
+                      "Failed to update migration_history for %s due to: %s" \
+                      % ((ticket['src_vol'], ticket['dst_vol']), str(msg)))
+
+        self.reply_to_caller(ticket)
+        return
+
+    #set_migration_history_closed():  Update the migration_history table for
+    # the source and destination volumes.
+    def set_migration_history_closed(self, ticket):
+        #Get the source and destination volumes' DB ID.
+        ticket = self._migration_history(ticket)
+        
+        # Update the closed field for this volume combintation in the
+        # migration_history table.
+        q = "update migration_history set closed_time = current_timestamp " \
+            "where migration_history.src_vol_id = '%s' " \
+            "      and migration_history.dst_vol_id = '%s';" % \
+            (ticket['src_vol_id'], ticket['dst_vol_id'])
+
+        try:
+            self.volumedb_dict.db.query(q)
+
+            ticket['status'] = (e_errors.OK, None)
+        except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+            ticket['status'] = (e_errors.DATABASE_ERROR,
+                      "Failed to update migration_history for %s due to: %s" \
+                      % ((ticket['src_vol'], ticket['dst_vol']), str(msg)))
+
+        self.reply_to_caller(ticket)
+        return
 
 
 class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
