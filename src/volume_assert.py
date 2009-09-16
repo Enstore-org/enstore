@@ -263,7 +263,7 @@ def submit_assert_requests(assert_list):
         # volume assert.
         lmc = library_manager_client.LibraryManagerClient(
             ticket['_csc'], ticket['vc']['library'] + ".library_manager")
-        responce_ticket = lmc.volume_assert(ticket, 10, 1)
+        responce_ticket = lmc.volume_assert(ticket, 10, 6)
 
         if not e_errors.is_ok(responce_ticket['status']):
             message = "Submission for %s failed: %s\n" % \
@@ -326,8 +326,8 @@ def stall_volume_assert(control_socket):
             read_control_fd, unused, unused = select.select([control_socket],
                                                             [], [], None)
             status_ticket = {'status' : (e_errors.OK, None)}
-        except (select.error, socket.error), msg:
-            if msg.errno in [errno.EINTR, errno.EAGAIN]:
+        except (socket.error, select.error), msg:
+            if msg.args[0] in [errno.EINTR, errno.EAGAIN]:
                 #select() was interupted by a signal.
                 continue
             
@@ -347,7 +347,8 @@ def stall_volume_assert(control_socket):
     return status_ticket
 
 #Unique_id_list is a list of just the unique ids.  Assert_list is a list of
-# the complete tickets.
+# the complete tickets.  Return false (0) for success, or true (1) if an
+# error occured.
 def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
 
     error_id_list = []
@@ -364,11 +365,13 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
         except:
             #Output a message.
             msg = sys.exc_info()[1]
+            message = str(msg)
             try:
-                sys.stderr.write(str(msg) + "\n")
+                sys.stderr.write("%s\n" % (message,))
                 sys.stderr.flush()
             except IOError:
                 pass
+            Trace.log(e_errors.WARNING, message)
 
             uncompleted_list = []
             for i in range(len(assert_list)):
@@ -379,12 +382,10 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
                         assert_list[i]['unique_id'] = encp.generate_unique_id()
                     uncompleted_list.append(assert_list[i])
             #Resend or resubmit the volume request.
-            submit_assert_requests(uncompleted_list)
+            if len(uncompleted_list) > 0:
+                submit_assert_requests([uncompleted_list[0]])
             continue
 
-        Trace.trace(1, "Control socket %s is connected to %s for %s." %
-                    (socket.getsockname(), addr,
-                     callback_ticket.get('unique_id', "Unknown")))
         Trace.trace(10, "CONTROL SOCKET CALLBACK TICKET")
         Trace.trace(10, pprint.pformat(callback_ticket))
 
@@ -401,7 +402,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
                 sys.stderr.flush()
             except IOError:
                 pass
-            Trace.log(e_errors.ERROR, message)
+            Trace.log(e_errors.WARNING, message)
             #Do not retry from error.
             error_id_list.append(callback_ticket['unique_id'])
             continue
@@ -561,11 +562,15 @@ def main(intf):
         lc_list  = parse_comma_list(intf.location_cookies)
 
         if len(vol_list) > 1 :
-            sys.stderr.write(
-                "When specifying files to check, only one volume may"
-                " be specified.\n")
-            sys.stderr.flush()
-            sys.exit(1)
+            message = "When specifying files to check, only one volume may" \
+                      " be specified."
+            try:
+                sys.stderr.write("%s\n" % (message,))
+                sys.stderr.flush()
+            except IOError:
+                pass
+            Trace.log(e_errors.ERROR, message)
+            return 1
 
         check_requests = {vol_list[0] : lc_list}
     elif intf.volume: #read from command line argument.
@@ -576,12 +581,14 @@ def main(intf):
         for vol in vol_list:
             check_requests[vol] = None #No CRC checks, just label check.
     else:
+        message = "No volume labels given."
         try:
-            sys.stderr.write("No volume labels given.\n")
+            sys.stderr.write("%s\n" % (message,))
             sys.stderr.flush()
         except IOError:
             pass
-        sys.exit(1)
+        Trace.log(e_errors.ERROR, message)
+        return 1
 
     ### At this point check_requests is a dictionary with its keys being
     ### volume names and the values being a list of location cookies (possibly
@@ -591,14 +598,34 @@ def main(intf):
     #Create the list of assert work requests.
     assert_list, listen_socket = create_assert_list(check_requests)
 
-    #Submit the work requests to the library manager.
-    unique_id_list = submit_assert_requests(assert_list)
+    if len(assert_list) == 0:
+        message = "No volumes to assert?"
+        try:
+            sys.stderr.write("%s\n" % (message,))
+            sys.stderr.flush()
+        except IOError:
+            pass
+        Trace.log(e_errors.ERROR, message)
+        return 1
+
+    #Submit the first work request to the library manager.
+    unique_id_list = submit_assert_requests([assert_list[0]])
+
+    if len(unique_id_list) == 0:
+        #None of the library sumbissions succeeded.
+        message = "All assert request submissions failed."
+        try:
+            sys.stderr.write("%s\n" % (message,))
+            sys.stderr.flush()
+        except IOError:
+            pass
+        Trace.log(e_errors.ERROR, message)
+        return 1
 
     #Wait for mover to call back with the volume assert status.
     exit_status = handle_assert_requests(unique_id_list, assert_list,
                                          listen_socket, intf)
 
-    #sys.exit(exit_status)
     return exit_status
     
 ############################################################################
