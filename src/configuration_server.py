@@ -15,7 +15,8 @@ import traceback
 import socket
 import time
 import copy
-#import threading
+import threading
+import errno
 
 # enstore imports
 #import setpath
@@ -40,20 +41,33 @@ class ConfigurationDict:
         self.serverlist = {}
         self.config_load_timestamp = None
         self.use_thread = 1
+        self.system_name = None  #Cache return value from _get_system_name().
+
+        self.config_lock = threading.Lock()
+
+    ####################################################################
+    ### read_config(), verify_and_update_config() and load_config()
+    ### are the three functions used to read in the configuration file.
 
     def read_config(self, configfile):
         self.configdict={}
         try:
             f = open(configfile,'r')
-        except:
-            msg = (e_errors.DOESNOTEXIST,"Configuration Server: read_config %s: does not exist"%
-                   (configfile,))
-            Trace.log( e_errors.ERROR, msg[1] )
-            return msg
+        except (OSError, IOError), msg:
+            if msg.args[0] in [errno.ENOENT]:
+                status = (e_errors.DOESNOTEXIST,
+                      "Configuration Server: read_config %s: does not exist"
+                          % (configfile,))
+            else:
+                status = (e_errors.OSERROR,
+                          "Configuration Server: read_config %s: %s"
+                          % (configfile, str(msg)))
+            Trace.log( e_errors.ERROR, status[1] )
+            return status
         code = string.join(f.readlines(),'')
 
         # Lint hack, otherwise lint can't see where configdict is defined.
-        configdict={}
+        configdict = {}
         del configdict 
         configdict = {}
 
@@ -62,77 +76,153 @@ class ConfigurationDict:
             ##I would like to do this in a restricted namespace, but
             ##the dict uses modules like e_errors, which it does not import
         except:
-            exc,msg,tb = sys.exc_info()
-            fmt =  traceback.format_exception(exc,msg,tb)[2:]
-            ##report the name of the config file in the traceback instead of "<string>"
+            exc, msg, tb = sys.exc_info()
+            fmt =  traceback.format_exception(exc, msg, tb)[2:]
+            ##report the name of the config file in the traceback instead of
+            ##"<string>"
             fmt[0] = string.replace(fmt[0], "<string>", configfile)
-            msg = "Configuration Server: "+string.join(fmt, "")
-            Trace.log(e_errors.ERROR,msg)
-            print msg
+            message = "Configuration Server: "+string.join(fmt, "")
+            Trace.log(e_errors.ERROR, message)
             os._exit(-1)
         # ok, we read entire file - now set it to real dictionary
-        self.configdict=configdict
+        self.configdict = configdict
+        return (e_errors.OK, None)
+
+    def verify_and_update_config(self):
+        self.serverlist={}
+        conflict = 0
+        for key in self.configdict.keys():
+            if not self.configdict[key].has_key('status'):
+                self.configdict[key]['status'] = (e_errors.OK, None)
+            for insidekey in self.configdict[key].keys():
+                if insidekey == 'host':
+                    if not self.configdict[key].has_key('hostip'):
+                        self.configdict[key]['hostip'] = \
+                            hostaddr.name_to_address(
+                            self.configdict[key]['host'])
+                    if not self.configdict[key].has_key('port'):
+                        self.configdict[key]['port'] = -1
+                    # check if server is already configured
+                    for configured_key in self.serverlist.keys():
+                        if (self.serverlist[configured_key][1] == 
+                            self.configdict[key]['hostip'] and 
+                            self.serverlist[configured_key][2] == 
+                            self.configdict[key]['port'] and
+                            self.configdict[key]['port'] !=-1):
+                            message = "Configuration Conflict detected "\
+                                  "for hostip "+\
+                                  repr(self.configdict[key]['hostip'])+ \
+                                  "and port "+ \
+                                  repr(self.configdict[key]['port'])
+                            Trace.log(10, message)
+                            conflict = 1
+                            break
+                    if not conflict:
+                        self.serverlist[key] = (
+                            self.configdict[key]['host'],
+                            self.configdict[key]['hostip'],
+                            self.configdict[key]['port'])
+                    break
+
+        if conflict:
+            return(e_errors.CONFLICT, "Configuration conflict detected. "
+                   "Check configuration file")
+
         return (e_errors.OK, None)
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile):
+        #Since we are loading a new configuration file, 'known_config_servers'
+        # could change.  Set, system_name to None so the next call to
+        # _get_system_name() resets this value.
+        self.system_name = None
+        
         try:
-            msg = self.read_config(configfile)
-            if msg != (e_errors.OK, None):
-                return msg
-            self.serverlist={}
-            conflict = 0
-            for key in self.configdict.keys():
-                if not self.configdict[key].has_key('status'):
-                    self.configdict[key]['status'] = (e_errors.OK, None)
-                for insidekey in self.configdict[key].keys():
-                    if insidekey == 'host':
-                        if not self.configdict[key].has_key('hostip'):
-                            self.configdict[key]['hostip'] = \
-                                hostaddr.name_to_address(
-                                self.configdict[key]['host'])
-                        if not self.configdict[key].has_key('port'):
-                            self.configdict[key]['port'] = -1
-                        # check if server is already configured
-                        for configured_key in self.serverlist.keys():
-                            if (self.serverlist[configured_key][1] == 
-                                self.configdict[key]['hostip'] and 
-                                self.serverlist[configured_key][2] == 
-                                self.configdict[key]['port'] and
-                                self.configdict[key]['port'] !=-1):
-                                msg = "Configuration Conflict detected for "\
-                                      "hostip "+\
-                                      repr(self.configdict[key]['hostip'])+ \
-                                      "and port "+ \
-                                      repr(self.configdict[key]['port'])
-                                Trace.log(10, msg)
-                                conflict = 1
-                                break
-                        if not conflict:
-                            self.serverlist[key]= (self.configdict[key]['host'],self.configdict[key]['hostip'],self.configdict[key]['port'])
-                        break
+            self.config_lock.acquire()
+            status = self.read_config(configfile)
+            if not e_errors.is_ok(status):
+                self.config_lock.release()   #Avoid deadlocks!
+                return status
 
-            if conflict:
-                return(e_errors.CONFLICT, "Configuration conflict detected. "
-                       "Check configuration file")
+            status = self.verify_and_update_config()
+            if not e_errors.is_ok(status):
+                self.config_lock.release()   #Avoid deadlocks!
+                return status
 
             #We have successfully loaded the config file.
             self.config_load_timestamp = time.time()
+
+            self.config_lock.release()   #Avoid deadlocks!
             return (e_errors.OK, None)
 
         # even if there is an error - respond to caller so he can process it
         except:
-            exc,msg=sys.exc_info()[:2]
-            return str(exc), str(msg)
+            exc, msg, tb = sys.exc_info()
+            Trace.handle_error(exc, msg, tb)
+            del tb  #Avoid resource leaks!
+            self.config_lock.release()   #Avoid deadlocks!
+            return (e_errors.UNKNOWN, (str((str(exc), str(msg)))))
 
+    ####################################################################
+
+    ## get_dict_entry(), get_server_list(), get_config_keys() and
+    ## get_config_dict():
+    ## These are internal functions that pull information out of the
+    ## configuration in a thread safe manner.  All other functions should
+    ## use these functions instead of accessing self.configdict directly.
+        
+    def get_dict_entry(self, skeyValue):
+        self.config_lock.acquire()
+        try:
+            value = copy.deepcopy(self.configdict[skeyValue])
+        except:
+            self.config_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        self.config_lock.release()
+        return value
+
+    def get_server_list(self):
+        self.config_lock.acquire()
+        try:
+            slist = copy.deepcopy(self.serverlist)
+        except:
+            self.config_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        self.config_lock.release()
+        return slist
+
+    def get_config_keys(self):
+        self.config_lock.acquire()
+        try:
+            key_list = copy.deepcopy(self.configdict.keys())
+        except:
+            self.config_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        self.config_lock.release()
+        return key_list
+
+    def get_config_dict(self):
+        self.config_lock.acquire()
+        try:
+            configdict = copy.deepcopy(self.configdict)
+        except:
+            self.config_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        self.config_lock.release()
+        return configdict
+
+    ####################################################################
+    
     def get_movers_internal(self, ticket):
         ret = []
 	if ticket.has_key('library'):
 	    # search for the appearance of this library manager
 	    # in all configured movers
-	    for srv in self.configdict.keys():
+	    for srv in self.get_config_keys():
 		if string.find (srv, ".mover") != -1:
-		    item = self.configdict[srv]
+		    item = self.get_dict_entry(srv)
                     if not ticket['library']:
                         #If no library was specified, return all movers.
                         mv = {'mover' : srv,
@@ -160,26 +250,29 @@ class ConfigurationDict:
                                     ret.append(mv)
         return ret
 
-    def get_dict_entry(self, skeyValue):
-        slist = []
-        for key in self.configdict.keys():
-            if skeyValue in self.configdict[key].items():
-                slist.append(key)
-        return slist
-
     #This function returns the key in the 'known_config_servers' sub-ticket
     # that corresponds to this system.  If it is not there then a default
     # based on the system name is returned.
+    #
+    # system_name is a variable where this is cached during the
+    # first time the function is called.
     def _get_system_name(self):
-        kcs = self.configdict.get('known_config_servers', {})
-        server_address = os.environ.get('ENSTORE_CONFIG_HOST', "default2")
+        if self.system_name == None:
+            #kcs = self.configdict.get('known_config_servers', {})
+            try:
+                kcs = self.get_dict_entry('known_config_servers')
+            except:
+                kcs = {}
+            server_address = os.environ.get('ENSTORE_CONFIG_HOST', "default2")
 
-        for item in kcs.items():
-            if socket.getfqdn(item[1][0]) == \
-                   socket.getfqdn(server_address):
-                return item[0]
-        
-        return socket.getfqdn(server_address).split(".")[0]
+            for item in kcs.items():
+                if socket.getfqdn(item[1][0]) == \
+                       socket.getfqdn(server_address):
+                    return item[0]
+
+            self.system_name = socket.getfqdn(server_address).split(".")[0]
+
+        return self.system_name
 
 
 class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorker,
@@ -240,7 +333,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         out_ticket = copy.copy(ticket)
         try:
             if ticket.get('new', None):
-                out_ticket[lookup] = self.configdict[lookup]
+                out_ticket[lookup] = self.get_dict_entry(lookup)
             else:
                 #For backward compatibility.
                 out_ticket = self.configdict[lookup]
@@ -253,7 +346,10 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         # to prevent the configuration_client from having to pull it
         # down seperatly.
         if ticket.get('new', None):
-            domains = self.configdict.get('domains', {})
+            try:
+                domains = self.get_dict_entry('domains')
+            except:
+                domains = {}
             if domains:
                 #Put the domains into the reply ticket.
                 out_ticket['domains'] = copy.deepcopy(domains)
@@ -270,10 +366,11 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
     def get_keys(self, ticket):
         __pychecker__ = "unusednames=ticket"
 
-        skeys = self.configdict.keys()
+        skeys = self.get_config_keys()
         skeys.sort()
-        out_ticket = {"status" : (e_errors.OK, None), "get_keys" : (skeys)}
-        self.reply_to_caller(out_ticket)
+        ticket['get_keys'] = (skeys)
+        ticket['status'] = (e_errors.OK, None)
+        self.send_reply(ticket)
 
     def dump(self, ticket):
         if self.use_thread:
@@ -310,7 +407,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             ticket['domains']['system_name'] = self._get_system_name()
             
         reply=ticket.copy()
-        reply["dump"] = self.configdict
+        reply["dump"] = self.get_config_dict()
         reply["config_load_timestamp"] = self.config_load_timestamp
         return reply
 
@@ -344,28 +441,27 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):
-        out_ticket = {"status":(e_errors.OK, None)}
 	try:
-            configfile = ticket["configfile"]
-            out_ticket = {"status" : self.load_config(configfile)}
+            configfile = ticket['configfile']
+            ticket['status'] = self.load_config(configfile)
         except KeyError:
-            out_ticket = {"status" : (e_errors.KEYERROR,
-                                      "Configuration Server: no such name")}
+            ticket['status'] = (e_errors.KEYERROR,
+                                "Configuration Server: no such name")
 	except:
-            exc,msg=sys.exc_info()[:2]
-            out_ticket = {"status" : (str(exc), str(msg))}
+            exc, msg = sys.exc_info()[:2]
+            ticket['status'] = (e_errors.UNKNOWN, str(((str(exc), str(msg)))))
 
 	# even if there is an error - respond to caller so he can process it
-        self.reply_to_caller(out_ticket)
+        self.reply_to_caller(ticket)
 
-        if out_ticket["status"] == (e_errors.OK, None):
-            # send an event relay message 
+        if e_errors.is_ok(ticket['status']):
+            # send an event relay message
             self.erc.send(self.new_config_message)
             # Record in the log file the successfull reload.
             Trace.log(e_errors.INFO, "Configuration reloaded.")
         else:
             Trace.log(e_errors.ERROR, "Configuration reload failed: %s" %
-                      (out_ticket['status'],))
+                      (ticket['status'],))
 
     def config_timestamp(self, ticket):
         ticket['config_load_timestamp'] = self.config_load_timestamp
@@ -373,8 +469,8 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         self.reply_to_caller(ticket)
 
     # get list of the Library manager movers
-    ## XXX this function is misleadingly named - it gives movers for a particular library
-    ## as specified in ticket['library']
+    ## XXX this function is misleadingly named - it gives movers for a
+    ## particular library as specified in ticket['library']
     def get_movers(self, ticket):
 	ret = self.get_movers_internal(ticket)
 	self.reply_to_caller(ret)
@@ -387,7 +483,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         ret = ''
         for m in movers:
             mv_name = m['mover']
-            ret =  self.configdict[mv_name].get('media_changer','')
+            ret =  self.get_dict_entry(mv_name).get('media_changer','')
             if ret:
                 break
         self.reply_to_caller(ret)
@@ -400,11 +496,11 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         __pychecker__ = "unusednames=ticket"
         
         ret = {}
-        for key in self.configdict.keys():
+        for key in self.get_config_keys():
             index = string.find (key, ".library_manager")
             if index != -1:
                 library_name = key[:index]
-                item = self.configdict[key]
+                item = self.get_dict_entry(key)
                 ret[library_name] = {'address':(item['host'],item['port']),
 				     'name': key}
         self.reply_to_caller(ret)
@@ -417,11 +513,11 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         __pychecker__ = "unusednames=ticket"
         
         ret = {}
-        for key in self.configdict.keys():
+        for key in self.get_config_keys():
             index = string.find (key, ".media_changer")
             if index != -1:
                 media_changer_name = key[:index]
-                item = self.configdict[key]
+                item = self.get_dict_entry(key)
                 ret[media_changer_name] = {'address':(item['host'],
                                                       item['port']),
                                            'name': key}
@@ -429,15 +525,22 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 
     def reply_serverlist( self, ticket):
         __pychecker__ = "unusednames=ticket"
+
+        try:
+            ticket['server_list'] = self.get_server_list()
+            ticket['status'] = (e_errors.OK, None)
+        except:
+            ticket['status'] = (e_errors.UNKNOWN, str(sys.exc_info()[1]))
         
-        out_ticket = {"status" : (e_errors.OK, None), 
-                      "server_list" : self.serverlist }
-        self.reply_to_caller(out_ticket)
+        self.reply_to_caller(ticket)
  
     def get_dict_element(self, ticket):
-        ret = {"status" : (e_errors.OK, None)}
-        ret['servers'] = self.get_dict_entry(ticket['keyValue'])
-        self.reply_to_caller(ret)
+        try:
+            ticket['value'] = self.get_dict_entry(ticket['keyValue'])
+            ticket['status'] = (e_errors.OK, None)
+        except:
+            ticket['status'] = (e_errors.UNKNOWN, str(sys.exc_info()[1]))
+        self.reply_to_caller(ticket)
     
     # turn on / off threaded implementation
     def thread_on(self, ticket):
