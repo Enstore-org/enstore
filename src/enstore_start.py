@@ -408,7 +408,7 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
         # no good reason for it to occur.  Putting a loop here fixed it.
         for unused in (0, 1, 2, 3, 4, 5):
             time.sleep(2)
-            cmd = 'EPS | egrep '%(name,)
+            cmd = 'EPS | egrep %s'%(name,)
             pipeObj = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
             if pipeObj:
                 result = pipeObj.communicate()[0]
