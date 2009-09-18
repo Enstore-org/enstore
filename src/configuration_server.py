@@ -375,7 +375,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
     def dump(self, ticket):
         if self.use_thread:
             t = copy.deepcopy(ticket)
-            dispatching_worker.run_in_thread('dump', self.make_dump, args=(t,))
+            dispatching_worker.run_in_thread(None, self.make_dump, args=(t,))
         else:
             self.make_dump(ticket)
         return
@@ -383,7 +383,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
     def dump2(self, ticket):
         if self.use_thread:
             t = copy.deepcopy(ticket)
-            dispatching_worker.run_in_thread('dump2', self.make_dump2, args=(t,))
+            dispatching_worker.run_in_thread(None, self.make_dump2, args=(t,))
         else:
             self.make_dump2(ticket)
         return
