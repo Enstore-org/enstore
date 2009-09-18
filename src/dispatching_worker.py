@@ -29,6 +29,7 @@ import e_errors
 import enstore_constants
 import callback
 
+MAX_THREADS = 50
 MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
 
@@ -40,6 +41,15 @@ def thread_wrapper(function, args=(), after_function=None):
     if after_function:
         after_function()
 
+# run_in_thread():
+# thread_name: A string containing the name of the thread to use, or None.
+#              If thread_name is given, a limit of one is allowed.  If
+#              None is given, then at most MAX_THREADS number of threads
+#              are allowed.
+# function: The function to run in the thread.  This is not the string
+#           name of the function.
+# args: Tuple of arguments.
+# after_function:
 def run_in_thread(thread_name, function, args=(), after_function=None):
     # see what threads are running
     if thread_name:
@@ -47,7 +57,21 @@ def run_in_thread(thread_name, function, args=(), after_function=None):
         for thread in threads:
             if ((thread.getName() == thread_name) and thread.isAlive()):
                 Trace.trace(5, "thread %s is already running" % (thread_name))
+                #We've exceeded the number of thread_name threads, which
+                # is one.  Running it in main thread.
+                thread_wrapper(function, args, after_function)
                 return
+
+    #Impose a prossess wise limit on the number of threads.
+    thread_count = threading.activeCount()
+    if thread_count >= MAX_THREADS:
+        Trace.trace(5, "too many threads, %s, are already running" \
+                    % (thread_count,))
+        #We've exceeded the number of thread_name threads.
+        # Running it in main thread.
+        thread_wrapper(function, args, after_function)
+        return
+
     args = (function,)+args
     if after_function:
         args = args + (after_function,)
