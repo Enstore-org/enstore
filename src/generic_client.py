@@ -14,7 +14,6 @@ import os
 import string
 import socket
 import select
-import time
 
 #enstore imports
 import Trace
