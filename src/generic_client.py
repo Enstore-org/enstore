@@ -14,6 +14,7 @@ import os
 import string
 import socket
 import select
+import time
 
 #enstore imports
 import Trace
@@ -360,7 +361,7 @@ class GenericClient:
                             rcv_timeout, tries)
         except (socket.error, select.error, e_errors.EnstoreError), msg:
             if msg.errno == errno.ETIMEDOUT:
-                return {'status' : (e_errors.TIMEDOUT, self.server_name)}
+                return {'status' : (e_errors.TIMEDOUT, server)}
             else:
                 return {'status' : (e_errors.BROKEN, str(msg))}
         except KeyError, detail:
@@ -372,7 +373,7 @@ class GenericClient:
             os._exit(1)
         except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(14,"alive - ERROR, alive timed out")
-            x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
+            x = {'status' : (e_errors.TIMEDOUT, server)}
         return x
 
 
