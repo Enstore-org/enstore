@@ -42,6 +42,7 @@ class ConfigurationDict:
         self.config_load_timestamp = None
         self.use_thread = 1
         self.system_name = None  #Cache return value from _get_system_name().
+        self.cached_domains = None  #Cache return value from _get_system_name().
 
         self.config_lock = threading.Lock()
 
@@ -136,6 +137,7 @@ class ConfigurationDict:
         # could change.  Set, system_name to None so the next call to
         # _get_system_name() resets this value.
         self.system_name = None
+        self.cached_domains = None
         
         try:
             self.config_lock.acquire()
@@ -172,14 +174,19 @@ class ConfigurationDict:
     ## use these functions instead of accessing self.configdict directly.
         
     def get_dict_entry(self, skeyValue):
+        Trace.trace(5,"get_dict_entry 1") 
         self.config_lock.acquire()
         try:
-            value = copy.deepcopy(self.configdict[skeyValue])
+            Trace.trace(5,"get_dict_entry 2") 
+            #value = copy.deepcopy(self.configdict[skeyValue])
+            value = copy.copy(self.configdict[skeyValue])
+            Trace.trace(5,"get_dict_entry 3") 
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         self.config_lock.release()
+        Trace.trace(5,"get_dict_entry 4") 
         return value
 
     def get_server_list(self):
@@ -258,7 +265,6 @@ class ConfigurationDict:
     # first time the function is called.
     def _get_system_name(self):
         if self.system_name == None:
-            #kcs = self.configdict.get('known_config_servers', {})
             try:
                 kcs = self.get_dict_entry('known_config_servers')
             except:
@@ -274,6 +280,29 @@ class ConfigurationDict:
 
         return self.system_name
 
+    #Return the domains information in the configuration dictionary.
+    # Append to the valid_domains 
+    def _get_domains(self):
+        if self.cached_domains == None:
+            try:
+                domains = self.get_dict_entry('domains')
+            except:
+                domains = None # Some error.
+                
+            if domains != None:
+                self.cached_domains = {}
+                #Put the domains into the reply ticket.
+                self.cached_domains['domains'] = copy.deepcopy(domains)
+                #We need to insert the configuration servers domain into the
+                # list.  Otherwise, the client will not have the configuration
+                # server's domain in the valid_domains list.
+                try:
+                    self.cached_domains['domains']['valid_domains'].append(hostaddr.getdomainaddr())
+                except KeyError:
+                    pass
+                self.cached_domains['domains']['system_name'] = self._get_system_name()
+
+        return self.cached_domains
 
 class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorker,
 			  generic_server.GenericServer):
@@ -321,6 +350,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket):
         # everything is based on lookup - make sure we have this
+        Trace.trace(5, "lookup: 1")
         try:
             key="lookup"
             lookup = ticket[key]
@@ -330,36 +360,30 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             return
 
         # look up in our dictionary the lookup key
-        out_ticket = copy.copy(ticket)
+        Trace.trace(5, "lookup: 2")
         try:
             if ticket.get('new', None):
-                out_ticket[lookup] = self.get_dict_entry(lookup)
+                ticket[lookup] = self.get_dict_entry(lookup)
+
+                Trace.trace(5, "lookup: 3")
+                #The following section places into the udp reply ticket
+                # information to prevent the configuration_client from having
+                # to pull it down seperatly.
+                domains = self._get_domains()['domains']
+                if domains != None:
+                    ticket['domains'] = domains
             else:
                 #For backward compatibility.
-                out_ticket = self.configdict[lookup]
-            out_ticket['status'] = (e_errors.OK, None)
+                ticket = self.get_dict_entry(lookup)
+            ticket['status'] = (e_errors.OK, None)
         except KeyError:
-            out_ticket = {"status": (e_errors.KEYERROR,
+            ticket = {"status": (e_errors.KEYERROR,
                                      "Configuration Server: no such name: "
                                      +repr(lookup))}
-        #The following section places into the udp reply ticket information
-        # to prevent the configuration_client from having to pull it
-        # down seperatly.
-        if ticket.get('new', None):
-            try:
-                domains = self.get_dict_entry('domains')
-            except:
-                domains = {}
-            if domains:
-                #Put the domains into the reply ticket.
-                out_ticket['domains'] = copy.deepcopy(domains)
-                #We need to insert the configuration servers domain into the
-                # list.  Otherwise, the client will not have the configuration
-                # server's domain in the valid_domains list.
-                out_ticket['domains']['valid_domains'].append(hostaddr.getdomainaddr())
-                out_ticket['domains']['system_name'] = self._get_system_name()
 
-        self.send_reply(out_ticket)
+        Trace.trace(5, "lookup: 4")
+
+        self.send_reply(ticket)
 
 
     # return a list of the dictionary keys back to the user
@@ -393,22 +417,17 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         Trace.trace(15, 'DUMP: \n' + str(ticket))
 
         ticket['status'] = (e_errors.OK, None)
+
+        reply=ticket.copy()
+        reply["dump"] = self.get_config_dict()
         #The following section places into the udp reply ticket information
         # to prevent the configuration_client from having to pull it
         # down seperatly.
-        domains = self.configdict.get('domains', {})
-        if domains:
-            #Put the domains into the reply ticket.
-            ticket['domains'] = copy.deepcopy(domains)
-            #We need to insert the configuration servers domain into the
-            # list.  Otherwise, the client will not have the configuration
-            # server's domain in the valid_domains list.
-            ticket['domains']['valid_domains'].append(hostaddr.getdomainaddr())
-            ticket['domains']['system_name'] = self._get_system_name()
-            
-        reply=ticket.copy()
-        reply["dump"] = self.get_config_dict()
         reply["config_load_timestamp"] = self.config_load_timestamp
+        domains = self._get_domains()['domains']
+        if domains != None:
+            reply['domains'] = domains
+        
         return reply
 
     def make_dump(self, ticket):
@@ -437,7 +456,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         reply = self.__make_dump(ticket)
         if reply == None:
             return
-        self.send_reply(reply)
+        self.send_reply_with_long_answer(reply)
             
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):
