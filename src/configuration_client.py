@@ -317,6 +317,12 @@ class ConfigurationClient(generic_client.GenericClient):
         x = self.send(request, timeout, retry)
         return x
 
+    # copy_level: 2 = deepcopy, 1 = copy, 0 = direct reference
+    def copy_level(self, copy_level = 2, timeout=0, retry=0):
+        request = {'work' : 'copy_level' , 'copy_level':copy_level }
+        x = self.send(request, timeout, retry)
+        return x
+
     #def alive(self, server, rcv_timeout=0, tries=0):
     #    return self.send({'work':'alive'}, rcv_timeout, tries)
 
@@ -419,7 +425,13 @@ class ConfigurationClient(generic_client.GenericClient):
         request = {'work': 'get_dict_element',
                    'keyValue': keyValue }
         return self.send(request, timeout, retry)
-        
+
+    # get the configuration dictionary element(s) that contain the specified
+    # key, value pair
+    def reply_serverlist(self, timeout=0, retry=0):
+        request = {'work': 'reply_serverlist',
+                   }
+        return self.send(request, timeout, retry)
 
 class ConfigurationClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
@@ -440,6 +452,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.list_movers = 0
         self.file_fallback = 0
         self.print_1 = 0
+        self.copy = None
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -456,6 +469,10 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.DEFAULT_TYPE:option.STRING,
 			    option.USER_LEVEL:option.ADMIN},
+        option.COPY:{option.HELP_STRING:"internal copy level",
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.DEFAULT_TYPE:option.INTEGER,
+			    option.USER_LEVEL:option.HIDDEN},
         option.FILE_FALLBACK:{option.HELP_STRING:"return configuration from"
                               " file if configuration server is down",
                               option.DEFAULT_TYPE:option.INTEGER,
@@ -521,7 +538,6 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                               option.DEFAULT_TYPE:option.INTEGER,
                               option.USER_LEVEL:option.ADMIN},
          }
-
 
 #Used for --print.
 def flatten2(prefix, value, flat_dict):
@@ -657,6 +673,10 @@ def do_work(intf):
     elif intf.threaded_impl != None:
         result = csc.threaded(intf.threaded_impl, intf.alive_rcv_timeout,
                                       intf.alive_retries)
+        print result
+    elif intf.copy != None:
+        result = csc.copy_level(intf.copy, intf.alive_rcv_timeout,
+                                intf.alive_retries)
         print result
     elif intf.list_library_managers:
         try:
