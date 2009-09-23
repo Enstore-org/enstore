@@ -35,9 +35,9 @@ DEFAULT_TTL = 60 #One minute lifetime for child processes
 
 def thread_wrapper(function, args=(), after_function=None):
     if type(args) != types.TupleType:
-        apply(function,(args,))
+        apply(function, (args,))
     else:
-        apply(function,args)
+        apply(function, args)
     if after_function:
         after_function()
 
@@ -173,6 +173,8 @@ class DispatchingWorker(udp_server.UDPServer):
     def set_error_handler(self, handler):
         self.custom_error_handler = handler
 
+    ####################################################################
+
     # check for any children that have exited (zombies) and collect them
     def collect_children(self):
         while self.n_children > 0:
@@ -228,7 +230,112 @@ class DispatchingWorker(udp_server.UDPServer):
             self.is_child = 1
             ##Should we close the control socket here?
             return 0
-        
+
+    def func_wrapper(self, function, args=(), after_function=None):
+        if type(args) != types.TupleType:
+            self.__invoke_function(function, (args,))
+        else:
+            self.__invoke_function(function, args)
+        if after_function:
+            after_function()
+
+    # run_in_thread():
+    # thread_name: A string containing the name of the thread to use, or None.
+    #              If thread_name is given, a limit of one is allowed.  If
+    #              None is given, then at most MAX_THREADS number of threads
+    #              are allowed.
+    # function: The function to run in the thread.  This is not the string
+    #           name of the function.
+    # args: Tuple of arguments.
+    # after_function:
+    #
+    # Note: Python threads can't be killed.  Thus, there is no time-to-live
+    #       aspect with threads like there is with processes.
+    def run_in_thread(self, thread_name, function, args=(), after_function=None):
+        # see what threads are running
+        if thread_name:
+            threads = threading.enumerate()
+            for thread in threads:
+                if ((thread.getName() == thread_name) and thread.isAlive()):
+                    Trace.trace(5, "thread %s is already running" % (thread_name))
+                    #We've exceeded the number of thread_name threads, which
+                    # is one.  Running it in main thread.
+                    self.func_wrapper(function, args, after_function)
+                    return
+
+        #Impose a prossess wise limit on the number of threads.
+        thread_count = threading.activeCount()
+        if thread_count >= MAX_THREADS:
+            Trace.trace(5, "too many threads, %s, are already running" \
+                        % (thread_count,))
+            #We've exceeded the number of thread_name threads.
+            # Running it in main thread.
+            self.func_wrapper(function, args, after_function)
+            return
+
+        args = (function,)+args
+        if after_function:
+            args = args + (after_function,)
+        Trace.trace(5, "create thread: target %s name %s args %s" % (function, thread_name, args))
+        thread = threading.Thread(group=None, target=self.func_wrapper,
+                                  name=thread_name, args=args, kwargs={})
+        Trace.trace(5, "starting thread %s"%(dir(thread,)))
+        try:
+            thread.start()
+        except:
+            exc, detail = sys.exc_info()[:2]
+            Trace.log(e_errors.ERROR, "error starting thread %s: %s" % (thread_name, detail))
+
+    # run_in_process():
+    # process_name: A string containing the name of the thread to use, or None.
+    #              If thread_name is given, a limit of one is allowed.  If
+    #              None is given, then at most MAX_THREADS number of threads
+    #              are allowed.
+    # function: The function to run in the thread.  This is not the string
+    #           name of the function.
+    # args: Tuple of arguments.
+    # after_function:
+    #
+    #Note: This is intended for responding to client messages.  If a process
+    #      needs to fork a process that will live for a long time,
+    #      look at the dispatching_work.fork() function instead.
+    def run_in_process(self, process_name, function, args=(), after_function = None):
+
+        Trace.trace(5, "create process: target %s name %s args %s" % (function, process_name, args))
+        try:
+            pid = os.fork()
+        except OSError, msg:
+            Trace.log(e_errors.ERROR, "fork() failed: %s\n" % (str(msg),))
+            return
+        if pid > 0:  #parent
+            #Add this to the list.
+            self.kill_list.append(pid)
+            self.add_interval_func(lambda self=self, pid=pid,
+                                   sig=signal.SIGTERM: self.kill(pid, sig),
+                                   DEFAULT_TTL, one_shot = 1)
+            self.add_interval_func(lambda self=self, pid=pid,
+                                   sig=signal.SIGKILL: self.kill(pid,sig),
+                                   DEFAULT_TTL + 5, one_shot = 1)
+        else: #child
+            #Clear the list of the parent's other childern.  They are
+            # not the childern of this current process.
+            self.kill_list = []
+            
+            try:
+                self.func_wrapper(function, args, after_function)
+                res = 0
+            except:
+                res = 1
+                exc, msg, tb = sys.exc_info()
+                Trace.handle_error(exc, msg, tb)
+                del tb #Avoid cyclic references.
+                Trace.log(e_errors.ERROR, "error starting process %s: %s" \
+                          % (process_name, msg))
+                
+            os._exit(res) #child exit
+
+    ####################################################################
+    
     # serve callback requests
     def serve_callback(self):
         while 1:
@@ -536,7 +643,8 @@ class DispatchingWorker(udp_server.UDPServer):
                     self.callback[fd](fd)
 
         return (None, ())
-        
+
+    ####################################################################
     
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
@@ -585,16 +693,22 @@ class DispatchingWorker(udp_server.UDPServer):
             return
 
         # call the user function
-        t = time.time()
-        Trace.trace(5,"process_request: function %s"%(function_name, ))
         self.invoke_function(function, (ticket,))
-        Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
-    
-    def invoke_function(self,function, args=()):
-        # this function has been introduced as convenience, so
-        # that subclasses can override it as they see fit w/o
-        # touching process_request
-        apply(function,args)
+
+    def __invoke_function(self, function, args=()):
+        Trace.trace(5, "invoke_function: function %s" % (function.func_name,))
+        t = time.time()
+        apply(function, args)
+        Trace.trace(5, "invoke_function: function %s time %s" \
+                    % (function.func_name, time.time() - t))
+
+    # This function has been introduced as convenience, so
+    # that subclasses can override it as they see fit w/o
+    # touching dispatching_worker.process_request().
+    #
+    #after_function is only used if overloaded version in a server uses it.
+    def invoke_function(self, function, args=(), after_function = None):
+        self.__invoke_function(function, args)
         self._done_cleanup()
 
     def handle_error(self, request, client_address):
@@ -613,6 +727,8 @@ class DispatchingWorker(udp_server.UDPServer):
                                    'request':request, 
                                    'exc_type':str(exc), 
                                    'exc_value':str(msg)} )
+
+    ####################################################################
 
     def alive(self,ticket):
         ticket['address'] = self.server_address
@@ -676,6 +792,8 @@ class DispatchingWorker(udp_server.UDPServer):
         # interface.  All other 'work' related functions also have it.
         __pychecker__ = "unusednames=ticket"
         self._done_cleanup()
+
+    ####################################################################
 
     # send back our response
     def send_reply(self, t):
@@ -779,6 +897,8 @@ class DispatchingWorker(udp_server.UDPServer):
             return
 
         self.send_reply_with_long_answer_part2(control_socket, ticket)
+
+    ####################################################################
         
     def restricted_access(self):
         '''
@@ -795,4 +915,5 @@ class DispatchingWorker(udp_server.UDPServer):
         return (e_errors.ERROR,
                 "This restricted service can only be requested from node %s"
                 % (self.node_name))
+
     
