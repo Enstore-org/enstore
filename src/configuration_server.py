@@ -552,17 +552,21 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 
         ticket['status'] = (e_errors.OK, None)
 
-        #reply=ticket.copy()
-        ticket['dump'] = self.get_config_dict()
+        #We need to copy the original ticket.  This is to keep it short
+        # enough so that it will not be too long for reply_to_caller()
+        # to handle.  dump2() could handle it either way, but dump()
+        # can not.
+        reply=ticket.copy()
+        reply['dump'] = self.get_config_dict()
         #The following section places into the udp reply ticket information
         # to prevent the configuration_client from having to pull it
         # down seperatly.
-        ticket['config_load_timestamp'] = self.get_config_load_timestamp()
+        reply['config_load_timestamp'] = self.get_config_load_timestamp()
         domains = self._get_domains()['domains']
         if domains != None:
-            ticket['domains'] = domains
+            reply['domains'] = domains
         
-        return ticket
+        return reply
 
     def dump(self, ticket):
         if not hostaddr.allow(ticket['callback_addr']):
@@ -576,7 +580,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             sock.connect(addr)
-            r = callback.write_tcp_obj(sock,reply)
+            r = callback.write_tcp_obj(sock, reply)
             sock.close()
             if r:
                Trace.log(e_errors.ERROR,"Error calling write_tcp_obj. Callback addr. %s"%(addr,))
@@ -710,7 +714,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 key = 1
         self.set_threaded_imp(key)
         ret = {"status" : (e_errors.OK,
-                           "thread is set to %s" % (self.get_thread_imp()))}
+                           "thread is set to %s" % (self.get_threaded_imp()))}
         self.reply_to_caller(ret)
 
     # change the copy level: 2 = deepcopy, 1 = copy, 0 = direct reference
