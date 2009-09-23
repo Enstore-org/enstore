@@ -37,14 +37,18 @@ MY_NAME = enstore_constants.CONFIGURATION_SERVER   #"CONFIG_SERVER"
 class ConfigurationDict:
 
     def __init__(self):
-        #self.print_id="CONFIG_DICT"
         self.serverlist = {}
         self.config_load_timestamp = None
         self.use_thread = 1
         self.system_name = None  #Cache return value from _get_system_name().
-        self.cached_domains = None  #Cache return value from _get_system_name().
+        self.cached_domains = None #Cache return value from _get_system_name().
+        self.do_copies = 2 # 2=deepcopy, 1=copy, 0=object reference
 
+        #To keep the code as clean as possible, only ConfigurationDict
+        # functions use these locks.  ConfigurationServer class functions use
+        # wrapper functions that access these locks in a thread safe manner.
         self.config_lock = threading.Lock()
+        self.member_lock = threading.Lock()
 
     ####################################################################
     ### read_config(), verify_and_update_config() and load_config()
@@ -129,18 +133,22 @@ class ConfigurationDict:
             return(e_errors.CONFLICT, "Configuration conflict detected. "
                    "Check configuration file")
 
+        
+
         return (e_errors.OK, None)
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile):
-        #Since we are loading a new configuration file, 'known_config_servers'
-        # could change.  Set, system_name to None so the next call to
-        # _get_system_name() resets this value.
-        self.system_name = None
-        self.cached_domains = None
         
         try:
             self.config_lock.acquire()
+            
+            #Since we are loading a new configuration file,
+            # 'known_config_servers' could change.  Set, system_name to None
+            # so the next call to _get_system_name() resets this value.
+            self.system_name = None
+            self.cached_domains = None
+            
             status = self.read_config(configfile)
             if not e_errors.is_ok(status):
                 self.config_lock.release()   #Avoid deadlocks!
@@ -174,35 +182,35 @@ class ConfigurationDict:
     ## use these functions instead of accessing self.configdict directly.
         
     def get_dict_entry(self, skeyValue):
-        Trace.trace(5,"get_dict_entry 1") 
+        copy_level = self.get_copy_level()
         self.config_lock.acquire()
         try:
-            Trace.trace(5,"get_dict_entry 2") 
-            #value = copy.deepcopy(self.configdict[skeyValue])
-            value = copy.copy(self.configdict[skeyValue])
-            Trace.trace(5,"get_dict_entry 3") 
+            t0 = time.time()
+            if copy_level >= 2:
+                value = copy.deepcopy(self.configdict[skeyValue])
+            elif copy_level == 1:
+                value = copy.copy(self.configdict[skeyValue])
+            else:
+                value = self.configdict[skeyValue]
+            Trace.trace(25, "get_dict_entry: extract time: %f" % (time.time() - t0,))
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
         self.config_lock.release()
-        Trace.trace(5,"get_dict_entry 4") 
         return value
 
-    def get_server_list(self):
-        self.config_lock.acquire()
-        try:
-            slist = copy.deepcopy(self.serverlist)
-        except:
-            self.config_lock.release()
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        self.config_lock.release()
-        return slist
-
     def get_config_keys(self):
+        copy_level = self.get_copy_level()
         self.config_lock.acquire()
         try:
-            key_list = copy.deepcopy(self.configdict.keys())
+            t0 = time.time()
+            if copy_level >= 2:
+                key_list = copy.deepcopy(self.configdict.keys())
+            elif copy_level == 1:
+                key_list = copy.copy(self.configdict.keys())
+            else:
+                key_list = self.configdict.keys()
+            Trace.trace(25, "get_config_keys: extract time: %f" % (time.time() - t0,))
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -210,15 +218,119 @@ class ConfigurationDict:
         return key_list
 
     def get_config_dict(self):
+        copy_level = self.get_copy_level()
         self.config_lock.acquire()
         try:
-            configdict = copy.deepcopy(self.configdict)
+            t0 = time.time()
+            if copy_level >= 2:
+                configdict = copy.deepcopy(self.configdict)
+            elif copy_level == 1:
+                configdict = copy.copy(self.configdict)
+            else:
+                configdict = self.configdict
+            Trace.trace(25, "get_config_dict: extract time: %f" % (time.time() - t0,))
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
         self.config_lock.release()
         return configdict
+
+    ## The following should use member_lock, but use config_lock to avoid
+    ## need to lock two locks to safely update the data member.
+
+    def get_server_list(self):
+        copy_level = self.get_copy_level()
+        self.config_lock.acquire()
+        try:
+            t0 = time.time()
+            if copy_level >= 2:
+                slist = copy.deepcopy(self.serverlist)
+            elif copy_level == 1:
+                slist = copy.copy(self.serverlist)
+            else:
+                slist = self.serverlist
+            Trace.trace(25, "get_server_list: extract time: %f" % (time.time() - t0,))
+        except:
+            self.config_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        self.config_lock.release()
+        return slist
+
+    ## The following use member_lock instead of config_lock.
+    
+    def get_config_load_timestamp(self):
+        copy_level = self.get_copy_level()
+        self.member_lock.acquire()
+        try:
+            t0 = time.time()
+            if copy_level >= 2:
+                clt = copy.deepcopy(self.config_load_timestamp)
+            elif copy_level == 1:
+                clt = copy.copy(self.config_load_timestamp)
+            else:
+                clt = self.config_load_timestamp
+            Trace.trace(25, "get_config_load_timestamp: extract time: %f" % (time.time() - t0,))
+        except:
+            self.member_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        self.member_lock.release()
+        return clt
+
+    def get_threaded_imp(self):
+        copy_level = self.get_copy_level()
+        self.member_lock.acquire()
+        try:
+            t0 = time.time()
+            if copy_level >= 2:
+                use_thread = copy.deepcopy(self.use_thread)
+            elif copy_level == 1:
+                use_thread = copy.copy(self.use_thread)
+            else:
+                use_thread = self.use_thread
+            Trace.trace(25, "get_threaded_imp: extract time: %f" % (time.time() - t0,))
+        except:
+            self.member_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        self.member_lock.release()
+        return use_thread
+
+    def set_threaded_imp(self, new_value):
+        self.member_lock.acquire()
+        try:
+            self.use_thread = new_value
+        except:
+            self.member_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        self.member_lock.release()
+        return
+
+    def get_copy_level(self):
+        self.member_lock.acquire()
+        try:
+            t0 = time.time()
+            if self.do_copies >= 2:
+                copy_level = copy.deepcopy(self.do_copies)
+            elif self.do_copies == 1:
+                copy_level = copy.copy(self.do_copies)
+            else:
+                copy_level = self.do_copies
+            Trace.trace(25, "get_copy_level: extract time: %f" % (time.time() - t0,))
+        except:
+            self.member_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        self.member_lock.release()
+        return copy_level
+
+
+    def set_copy_level(self, new_value):
+        self.member_lock.acquire()
+        try:
+            self.do_copies = new_value
+        except:
+            self.member_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        self.member_lock.release()
+        return
 
     ####################################################################
     
@@ -263,7 +375,10 @@ class ConfigurationDict:
     #
     # system_name is a variable where this is cached during the
     # first time the function is called.
-    def _get_system_name(self):
+    #
+    # This function should only be called from _get_domain(), where the
+    # thread safe locking is done.
+    def __get_system_name(self):
         if self.system_name == None:
             try:
                 kcs = self.get_dict_entry('known_config_servers')
@@ -283,51 +398,65 @@ class ConfigurationDict:
     #Return the domains information in the configuration dictionary.
     # Append to the valid_domains 
     def _get_domains(self):
-        if self.cached_domains == None:
+
+        self.member_lock.acquire()
+        if getattr(self, "cached_domains", None) == None:
+            should_set_now = True
+        else:
+            should_set_now = False
+        #Release member_lock to prevent another thread from locking
+        # config_lock and allowing for the possibility of a deadlock.
+        self.member_lock.release()
+            
+        if should_set_now:
+            t0 = time.time()
             try:
                 domains = self.get_dict_entry('domains')
             except:
                 domains = None # Some error.
                 
             if domains != None:
-                self.cached_domains = {}
+                cached_domains = {}
                 #Put the domains into the reply ticket.
-                self.cached_domains['domains'] = copy.deepcopy(domains)
-                #We need to insert the configuration servers domain into the
-                # list.  Otherwise, the client will not have the configuration
-                # server's domain in the valid_domains list.
+                cached_domains['domains'] = domains
+                #We need to insert the configuration servers domain into
+                # the list.  Otherwise, the client will not have the
+                # configuration server's domain in the valid_domains list.
                 try:
-                    self.cached_domains['domains']['valid_domains'].append(hostaddr.getdomainaddr())
+                    cached_domains['domains']['valid_domains'].append(hostaddr.getdomainaddr())
                 except KeyError:
                     pass
-                self.cached_domains['domains']['system_name'] = self._get_system_name()
+
+                #Don't call __get_system_name() while member_lock is locked.
+                # It calls get_dict_entry() which locks config_lock and
+                # could cause a deadlock between threads.
+                cached_domains['domains']['system_name'] = self.__get_system_name()
+                
+                self.member_lock.acquire()
+                self.cached_domains = cached_domains
+                self.member_lock.release()
+                
+            Trace.trace(25, "_get_domains: extract time: %f" % (time.time() - t0,))
 
         return self.cached_domains
 
 class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorker,
 			  generic_server.GenericServer):
 
-    def __init__(self, server_address,
-                 #configfile = enstore_constants.DEFAULT_CONF_FILE):
-                 configfile = None): #enstore_functions2.default_file()):
-	#self.running = 0
-	#self.print_id = MY_NAME
+    def __init__(self, server_address, configfile = None):
         
         # make a configuration dictionary
-        #cd = ConfigurationDict()
         ConfigurationDict.__init__(self)
         # load the config file user requested
         if configfile == None:
             configfile = enstore_functions2.default_file()
         self.load_config(configfile)
-        #self.running = 1
-        # The other servers call the generic_server __init__() function
-        # to get this function(s) called.  The configuration server does
-        # not use the generic_server __init__() function, so this must be
+
+        # The other servers call the generic_server.__init__() function
+        # to get hostaddr.update_domains() called.  The configuration server
+        # does not use the generic_server __init__() function, so this must be
         # done expliticly (after the configfile is loaded).
-        domains = self.configdict.get('domains', {})
-        domains['system_name'] = self._get_system_name()
-        hostaddr.update_domains(domains)
+        self.update_domains()
         
         # default socket initialization - ConfigurationDict handles requests
         dispatching_worker.DispatchingWorker.__init__(self, server_address)
@@ -346,26 +475,48 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER, 
 				 enstore_constants.CONFIG_SERVER_ALIVE_INTERVAL)
 
+    #Called whenever a new configuration is loaded.
+    def update_domains(self):
+        # The other servers call the generic_server.__init__() function
+        # to get hostaddr.update_domains function called.  The configuration
+        # server does not use the generic_server.__init__() function, so
+        # this must be done expliticly (after the configfile is loaded).
+        domains = self._get_domains()
+        if domains == None:
+            domains = {}
+        hostaddr.update_domains(domains)
+
+    # Overridden dispatching_worker function.  This allows us to control
+    # which functions are started in parallel or not.
+    def invoke_function(self, function, args=(), after_function = None):
+        if function.func_name in ['dump', 'dump2']:
+            if self.get_threaded_imp():
+                self.run_in_thread(None, function, args, after_function)
+            else:
+                self.run_in_process(None, function, args, after_function)
+        else:
+            dispatching_worker.DispatchingWorker.invoke_function(
+                self, function, args)
+        
+    ####################################################################
         
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket):
         # everything is based on lookup - make sure we have this
-        Trace.trace(5, "lookup: 1")
         try:
             key="lookup"
             lookup = ticket[key]
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, "Configuration Server: "+key+" key is missing")
+            ticket["status"] = (e_errors.KEYERROR,
+                                "Configuration Server: "+key+" key is missing")
             self.reply_to_caller(ticket)
             return
 
         # look up in our dictionary the lookup key
-        Trace.trace(5, "lookup: 2")
         try:
             if ticket.get('new', None):
                 ticket[lookup] = self.get_dict_entry(lookup)
 
-                Trace.trace(5, "lookup: 3")
                 #The following section places into the udp reply ticket
                 # information to prevent the configuration_client from having
                 # to pull it down seperatly.
@@ -381,8 +532,6 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                                      "Configuration Server: no such name: "
                                      +repr(lookup))}
 
-        Trace.trace(5, "lookup: 4")
-
         self.send_reply(ticket)
 
 
@@ -396,21 +545,6 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         ticket['status'] = (e_errors.OK, None)
         self.send_reply(ticket)
 
-    def dump(self, ticket):
-        if self.use_thread:
-            t = copy.deepcopy(ticket)
-            dispatching_worker.run_in_thread(None, self.make_dump, args=(t,))
-        else:
-            self.make_dump(ticket)
-        return
-
-    def dump2(self, ticket):
-        if self.use_thread:
-            t = copy.deepcopy(ticket)
-            dispatching_worker.run_in_thread(None, self.make_dump2, args=(t,))
-        else:
-            self.make_dump2(ticket)
-        return
 
     # return a dump of the dictionary back to the user
     def __make_dump(self, ticket):
@@ -418,19 +552,19 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 
         ticket['status'] = (e_errors.OK, None)
 
-        reply=ticket.copy()
-        reply["dump"] = self.get_config_dict()
+        #reply=ticket.copy()
+        ticket['dump'] = self.get_config_dict()
         #The following section places into the udp reply ticket information
         # to prevent the configuration_client from having to pull it
         # down seperatly.
-        reply["config_load_timestamp"] = self.config_load_timestamp
+        ticket['config_load_timestamp'] = self.get_config_load_timestamp()
         domains = self._get_domains()['domains']
         if domains != None:
-            reply['domains'] = domains
+            ticket['domains'] = domains
         
-        return reply
+        return ticket
 
-    def make_dump(self, ticket):
+    def dump(self, ticket):
         if not hostaddr.allow(ticket['callback_addr']):
             return None
 
@@ -452,7 +586,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
         return
 
-    def make_dump2(self, ticket):
+    def dump2(self, ticket):
         reply = self.__make_dump(ticket)
         if reply == None:
             return
@@ -470,6 +604,12 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             exc, msg = sys.exc_info()[:2]
             ticket['status'] = (e_errors.UNKNOWN, str(((str(exc), str(msg)))))
 
+        try:
+            self.update_domains()
+        except:
+            exc, msg = sys.exc_info()[:2]
+            ticket['status'] = (e_errors.UNKNOWN, str(((str(exc), str(msg)))))
+
 	# even if there is an error - respond to caller so he can process it
         self.reply_to_caller(ticket)
 
@@ -483,7 +623,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                       (ticket['status'],))
 
     def config_timestamp(self, ticket):
-        ticket['config_load_timestamp'] = self.config_load_timestamp
+        ticket['config_load_timestamp'] = self.get_config_load_timestamp()
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
@@ -568,10 +708,24 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             key=int(key)
             if key != 0:
                 key = 1
-        self.use_thread = key
-        ret = {"status" : (e_errors.OK, "thread is set to %s"%(self.use_thread))}
+        self.set_threaded_imp(key)
+        ret = {"status" : (e_errors.OK,
+                           "thread is set to %s" % (self.get_thread_imp()))}
         self.reply_to_caller(ret)
-        
+
+    # change the copy level: 2 = deepcopy, 1 = copy, 0 = direct reference
+    def copy_level(self, ticket):
+        key = ticket.get('copy_level', 2)
+        if key:
+            key=int(key)
+            if key >= 2:
+                key = 2
+            elif key <= 0:
+                key = 0
+        self.set_copy_level(key)
+        ret = {"status" : (e_errors.OK,
+                           "copy level set to %s" % (self.get_copy_level()))}
+        self.reply_to_caller(ret)
         
 
 
