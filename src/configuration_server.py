@@ -42,7 +42,16 @@ class ConfigurationDict:
         self.use_thread = 1
         self.system_name = None  #Cache return value from _get_system_name().
         self.cached_domains = None #Cache return value from _get_system_name().
-        self.do_copies = 2 # 2=deepcopy, 1=copy, 0=object reference
+        #The average dump2() execution time, in seconds, for these three
+        # copy levels are (n = 9, for each):
+        # deepcopy: 0.017653094397633334
+        # copy: 0.0063026481204566673
+        # direct reference: 0.0062727663252077782
+        #We are going with copy, since it is just as fast as a direct
+        # reference and the way self.configdict is assigned in read_config(),
+        # there should be no possible way for any sub-ticket values to
+        # be shared between a new and old configdict.
+        self.do_copies = 1 # 2=deepcopy, 1=copy, 0=object reference
 
         #To keep the code as clean as possible, only ConfigurationDict
         # functions use these locks.  ConfigurationServer class functions use
