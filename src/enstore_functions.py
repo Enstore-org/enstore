@@ -24,6 +24,7 @@ import Trace
 import e_errors
 import www_server
 import option
+import Interfaces
 
 DEFAULTHTMLDIR = "."
 
@@ -120,6 +121,16 @@ def get_enstore_tmp_dir():
     config_hostname = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
     hostnames = socket.gethostbyname_ex(socket.gethostname())
     hostnames = [hostnames[0]] + hostnames[1] + hostnames[2]
+    for item in Interfaces.interfacesGet().values():
+        # For nodes with multiple IP addresses, we need to check for all
+        # of them.
+        if item['ip'] == "127.0.0.1": #Ignore localhost.
+            continue
+        tmp_hostnames = socket.gethostbyname_ex(item['ip'])
+        tmp_hostnames = [tmp_hostnames[0]] + tmp_hostnames[1] + tmp_hostnames[2]
+        for name in tmp_hostnames: #Keep the list unique.
+            if name not in hostnames:
+                hostnames.append(name)
     if config_hostname in hostnames:
         rtn_dir = get_from_config_file("temp_dir", "temp_dir", None)
     else:
