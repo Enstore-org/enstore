@@ -59,7 +59,7 @@ del DuplicateInterface.migrate_options[option.RESTORE]
 
 
 # migration_file_family(ff) -- making up a file family for migration
-def migration_file_family(bfid, ff, fcc, intf, deleted = 'n'):
+def migration_file_family(bfid, ff, fcc, intf, deleted = migrate.NO):
 	reply_ticket = fcc.find_all_copies(bfid)
 	if e_errors.is_ok(reply_ticket):
 		count = len(reply_ticket['copies'])
@@ -67,7 +67,7 @@ def migration_file_family(bfid, ff, fcc, intf, deleted = 'n'):
 		raise e_errors.EnstoreError(None, reply_ticket['status'][1],
 					    reply_ticket['status'][0])
 	
-	if deleted == 'y':
+	if deleted == migrate.YES:
 		return migrate.DELETED_FILE_FAMILY + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
 	else:
 		if intf.file_family:
@@ -182,10 +182,10 @@ def duplicate_metadata(bfid1, src, bfid2, dst, db):
 	else:
 		err_msg = None
 	if err_msg:
-		if f2['deleted'] == "yes" and not migrate.is_swapped(bfid1, db):
+		if f2['deleted'] == "yes" and not migrate.is_swapped(bfid1, fcc, db):
 			migrate.log(MY_TASK,
 			    "undoing duplication of %s to %s do to error"         % (bfid1, bfid2))
-			migrate.undo_log(bfid1, bfid2, db)
+			migrate.log_uncopied(bfid1, bfid2, fcc, db)
 		return err_msg
 
 	# check if p1 is writable
@@ -211,7 +211,7 @@ def duplicate_metadata(bfid1, src, bfid2, dst, db):
 # encp may not be a real filename (i.e. --get-bfid <bfid>).
 def get_filenames(MY_TASK, dst_bfid, pnfs_id, likely_path, deleted):
 
-	if deleted == 'y':
+	if deleted == migrate.YES:
 		use_path = "--override-deleted --get-bfid %s" \
 			   % (dst_bfid,)
 		pnfs_path = likely_path #Is anything else more correct?
