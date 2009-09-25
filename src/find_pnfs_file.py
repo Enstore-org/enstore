@@ -23,6 +23,7 @@ import configuration_client
 import info_client
 import enstore_constants
 import e_errors
+import file_utils
 
 #######################################################################
 
@@ -438,7 +439,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
         for i in range(len(dir_list[:-1])):
             single_dir = os.path.join(use_mp, dir_list[i])
             try:
-                os.stat(single_dir)
+                file_utils.get_stat(single_dir)
                 use_name = os.path.join(use_mp,
                                          string.join(dir_list[i:], "/"))
                 break
@@ -461,15 +462,6 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
         except OSError:
             cur_pnfsid = None
         if not cur_pnfsid or cur_pnfsid != enstoredb_pnfsid:
-            #Since we have no idea in pnfs-land where we will be headed,
-            # lets set things so that we will be able to have access
-            # permissions set if possible.
-            if os.getuid() == 0 and os.geteuid() != 0:
-                try:
-                    os.seteuid(0)
-                    os.setegid(0)
-                except OSError:
-                    pass
             try:
                 tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(
                     enstoredb_pnfsid, use_mp)
@@ -480,7 +472,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                     raise OSError(errno.EIO, "to many matches", tmp_name_list)
                 
                 if tmp_name[0] == "/":
-                    #Make sure the path is a absolute path.
+                    #Make sure the path is an absolute path.
                     pnfs_path = tmp_name
                 else:
                     #If the path is not an absolute path we get here.  What
