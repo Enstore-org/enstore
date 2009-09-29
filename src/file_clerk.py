@@ -1304,6 +1304,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         deleted = self.extract_value_from_ticket('deleted', ticket)
         if not deleted:
             return #extract_value_from_ticket handles its own errors.
+        deleted = string.lower(deleted);
 
         if record["deleted"] != deleted:
             record["deleted"] = deleted
