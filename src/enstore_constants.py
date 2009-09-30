@@ -381,3 +381,6 @@ DEFAULT_ENCP_RESUBMISSIONS = None
 #Time constants (in seconds) for the mover to send 'transfer' messages.
 MIN_TRANSFER_TIME = 1.0
 MAX_TRANSFER_TIME = 5.0
+
+#Allowed file deleted states
+FILE_DELETED_FLAGS = ["y", "n","u","yes","no", "unknown"]

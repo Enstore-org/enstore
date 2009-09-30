@@ -457,6 +457,11 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
     # This is a retrofit for bfid
     def set_deleted(self, deleted, restore_dir="no", bfid = None):
+        if deleted not in enstore_constants.FILE_DELETED_FLAGS:
+            msg="Unsupported delete flag \"%s\", supported flags are "%(deleted,)
+            for f in enstore_constants.FILE_DELETED_FLAGS:
+                msg=msg+"\""+f+"\","
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg[:-1])}
         if bfid == None:
             bfid = self.bfid
         r = self.send({"work"        : "set_deleted",

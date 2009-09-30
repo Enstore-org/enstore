@@ -1306,6 +1306,14 @@ class FileClerkMethods(FileClerkInfoMethods):
             return #extract_value_from_ticket handles its own errors.
         deleted = string.lower(deleted);
 
+	if deleted not in enstore_constants.FILE_DELETED_FLAGS:
+		msg="Unsupported delete flag \"%s\", supported flags are "%(deleted,)
+		for f in enstore_constants.FILE_DELETED_FLAGS:
+			msg=msg+"\""+f+"\","
+		ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg[:-1])
+		self.reply_to_caller(ticket)
+		return
+	
         if record["deleted"] != deleted:
             record["deleted"] = deleted
             self.filedb_dict[bfid] = record
