@@ -42,7 +42,7 @@ def usage(cmd):
 
 
 def print_message(text):
-    sys.stdout.write(text+"\n")
+    sys.stdout.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : " +text+"\n")
     sys.stdout.flush()
 
 def get_command_output(command):
@@ -54,7 +54,7 @@ def get_command_output(command):
     return data[:-1] # (skip '\n' at the end)
 
 def print_error(text):
-    sys.stderr.write(text+"\n")
+    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : " +text+"\n")
     sys.stderr.flush()
 
 
@@ -137,6 +137,9 @@ if __name__ == "__main__" :
     parser.add_option("-p", "--port",
                       metavar="PORT",type=int,
                       help="database port if it should be different from setup file")
+    parser.add_option("-H", "--host",
+                      metavar="HOST",type=str,
+                      help="database host if it should be different from setup file")
     parser.add_option("-f", "--filename",type=str,
                       metavar="FILE", help="output or sourvce datbase backup"),
     (options, args) = parser.parse_args()
@@ -168,10 +171,17 @@ if __name__ == "__main__" :
     dbhost=server.get("dbhost","localhost")
     if options.port:
         dbport=options.port
+    if options.host:
+        dbhost=options.host
     if not dbarea :
         print_error("Failed to extract dbarea for database %s"%(dbname))
     if options.dump==True:
+        print_message("About to dump database %s running on host %s port %d"%(dbname,dbhost,dbport,))
+        print_message("Sleeping 10 seconds");
+        time.sleep(10)
+        print_message("Dumping ....");
         if dump_database(dbhost,dbname,dbuser,dbport,filename)!=0: sys.exit(1)
+        print_message("Done");
     if options.restore==True:
         backup_file=filename
         if options.backup==True:
@@ -204,8 +214,12 @@ if __name__ == "__main__" :
                 print_error("%s failed w/ exit code %d" % (cmd, err))
                 sys.exit(1)
             backup_file=os.path.basename(backup_file)
-        print "Got backup file "+backup_file
+        print_message("Got backup file "+backup_file)
         # drop database
+        print_message("About to drop database %s running on host %s port %d"%(dbname,dbhost,dbport,))
+        print_message("Sleep 10 seconds")
+        time.sleep(10)
+        print_message("Dropping")
         drop_database(dbname,dbuser,dbport)
         if create_database(dbname,dbuser,dbport)!=0:
             print_error("Failed to create database %s"%(dbname))
@@ -214,34 +228,35 @@ if __name__ == "__main__" :
         if restore_database(dbname,dbuser,dbport,backup_file)!=0:
             print_error("Failed to restore database %s"%(dbname))
             sys.exit(1)
+        print_message("Done");
         os.unlink(backup_file)
         os.chdir(current_dir)
         os.rmdir(restore_tmp)
     sys.exit(0)
     
 
-    os.system("dropdb -p 8800 -U enstore accounting")
-    if os.system("createdb -p 8800 -U enstore accounting") != 0 : sys.exit(1)
-    os.system("pg_restore -p 8800 -U enstore -d accounting -i --schema-only -v accounting.dump")
-    db = pg.DB(host  = "localhost",
-               dbname= "accounting",
-               port  = 8800,
-               user  = "enstore")
-    
-    tables = db.get_tables()
-    db.close()
-
-    for t in tables:
-        if t[:3] == "sql" :
-            continue
-        start = time.time()
-        txt="Starting to restore table %s %f "%(t,start,)
-        sys.stdout.write(txt)
-        sys.stdout.flush()
-        os.system("pg_restore -U enstore -p 8800 -d accounting -i --data-only --table=%s -v accounting.dump >> acc_dump.log 2>&1"%(t,))
-        end   = time.time()
-        txt="Took %f seconds to restore table %s\n"%(end-start, t)
-        sys.stdout.write(txt)
-        sys.stdout.flush()
-    sys.exit(0)
+#    os.system("dropdb -p 8800 -U enstore accounting")
+#    if os.system("createdb -p 8800 -U enstore accounting") != 0 : sys.exit(1)
+#    os.system("pg_restore -p 8800 -U enstore -d accounting -i --schema-only -v accounting.dump")
+#    db = pg.DB(host  = "localhost",
+#               dbname= "accounting",
+#               port  = 8800,
+#               user  = "enstore")
+#    
+#    tables = db.get_tables()
+#    db.close()
+#
+#    for t in tables:
+#        if t[:3] == "sql" :
+#            continue
+#        start = time.time()
+#        txt="Starting to restore table %s %f "%(t,start,)
+#        sys.stdout.write(txt)
+#        sys.stdout.flush()
+#        os.system("pg_restore -U enstore -p 8800 -d accounting -i --data-only --table=%s -v accounting.dump >> acc_dump.log 2>&1"%(t,))
+#        end   = time.time()
+#        txt="Took %f seconds to restore table %s\n"%(end-start, t)
+#        sys.stdout.write(txt)
+#        sys.stdout.flush()
+#    sys.exit(0)
 #time pg_dump -F c -U enstore -f accounting.dump accounting
