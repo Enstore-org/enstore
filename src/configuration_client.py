@@ -426,8 +426,7 @@ class ConfigurationClient(generic_client.GenericClient):
                    'keyValue': keyValue }
         return self.send(request, timeout, retry)
 
-    # get the configuration dictionary element(s) that contain the specified
-    # key, value pair
+    # get the configuration dictionary keys that refer to enstore servers
     def reply_serverlist(self, timeout=0, retry=0):
         request = {'work': 'reply_serverlist',
                    }
