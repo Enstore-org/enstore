@@ -618,14 +618,11 @@ class UDPServer:
         if interface_ip == self.tsd.server_socket.getsockname()[0]:
             send_socket = self.tsd.server_socket
             with_interface = ""
-            Trace.trace(e_errors.INFO, "reply_with_list: %s %s (same)" % (threading.current_thread().getName(), send_socket.getsockname()))
         elif interface_ip != None:
             ip, port, send_socket = udp_common.get_callback(interface_ip)
             with_interface = " with interface %s" % interface_ip
-            Trace.trace(e_errors.INFO, "reply_with_list: %s %s (other)" % (threading.current_thread().getName(), send_socket.getsockname()))
         else:
             send_socket = self.tsd.server_socket
-            Trace.trace(e_errors.INFO, "reply_with_list: %s %s" % (threading.current_thread().getName(), send_socket.getsockname()))
             with_interface = ""  #Give better trace message.
 
         # sendto() in python 2.6 raises this EMSGSIZE socket exception if
