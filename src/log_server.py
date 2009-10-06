@@ -250,8 +250,8 @@ class Logger(  dispatching_worker.DispatchingWorker
     def log_message(self, ticket) :
         if not ticket.has_key('message'):
             return
-        host = hostaddr.address_to_name(self.reply_address[0])
-                  ## XXX take care of case where we can't figure out the host name
+        host = hostaddr.address_to_name(self.extract_reply_address(ticket)[0])
+        ## XXX take care of case where we can't figure out the host name
         # determine what type of message is it
         message_type = string.split(ticket['message'])[2]
         message = "%-8s %s"%(host,ticket['message'])

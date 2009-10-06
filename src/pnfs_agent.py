@@ -84,6 +84,11 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, message)
             sys.stderr.write("%s\n" % (message,))
             sys.exit(1)
+
+        #Set the list of functions to run in parallel.  This should
+        # include those with long answers, since the dispatching worker
+        # cache of recent replies is not sufficent for those.
+        self.run_in_parallel = []
         
     """
     def handle_error(self, exc, msg, tb):
@@ -98,6 +103,8 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
                 pass
     """
 
+    ######################################################################
+   
     # show_state -- show internal configuration values
     def show_state(self, ticket):
         ticket['state'] = {}
@@ -958,81 +965,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
-###############################################################################
-
-    # Process the  request that was (generally) sent from UDPClient.send
-    # overrides dispatching worker method
-    # the difference: creates a thread
-    # if number of threads is maximal waits until a running thread exits
-    def process_request(self, request, client_address):
-
-        #Since get_request() gets requests from UDPServer.get_message()
-        # and self.read_fd(fd).  Thusly, some care needs to be taken
-        # from within UDPServer.process_request() to be tolerent of
-        # requests not originally read with UDPServer.get_message().
-        ticket = udp_server.UDPServer.process_request(self, request,
-                                                      client_address)
-
-        Trace.trace(6, "pnfs_agent:process_request %s; %s"%(request, ticket,))
-        #This checks help process cases where the message was repeated
-        # by the client.
-        if not ticket:
-            Trace.trace(6, "pnfs_agent: no ticket!!!")
-            return
-
-        # look in the ticket and figure out what work user wants
-        try:
-            function_name = ticket["work"]
-        except (KeyError, AttributeError, TypeError), detail:
-            ticket = {'status' : (e_errors.KEYERROR, 
-                                  "cannot find any named function")}
-            msg = "%s process_request %s from %s" % \
-                (detail, ticket, client_address)
-            Trace.trace(6, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        try:
-            Trace.trace(5,"process_request: function %s"%(function_name,))
-            function = getattr(self,function_name)
-        except (KeyError, AttributeError, TypeError), detail:
-            ticket = {'status' : (e_errors.KEYERROR, 
-                                  "cannot find requested function `%s'"
-                                  % (function_name,))}
-            msg = "%s process_request %s %s from %s" % \
-                (detail, ticket, function_name, client_address) 
-            Trace.trace(6, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # call the user function
-        t = time.time()
-	'''
-        while 1:
-            c = threading.activeCount()
-            if c < self.max_threads:
-                Trace.trace(5, "threads %s"%(c,))
-                dispatching_worker.run_in_thread(None, function, (ticket,), after_function=self._done_cleanup)
-                #self.run_in_thread(function, (ticket,))
-                #self.run_in_thread(function, (ticket,self._done_cleanup))
-                break
-	'''
-	c = threading.activeCount()
-	Trace.trace(5, "threads %s"%(c,))
-	if c < self.max_threads:
-	    dispatching_worker.run_in_thread(None, function, (ticket,), after_function=self._done_cleanup)
-	    #self.run_in_thread(function, (ticket,))
-	    #self.run_in_thread(function, (ticket,self._done_cleanup))
-	else:
-	    function(ticket)
-	
-                
-        #apply(function, (ticket,))
-        Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
-   
-        
+    ######################################################################
 
 class PnfsAgentInterface(generic_server.GenericServerInterface):
         pass
@@ -1041,29 +974,26 @@ if __name__ == "__main__":
 
     # get the interface
     intf = PnfsAgentInterface()
-    vc   = PnfsAgent((intf.config_host, intf.config_port))
-    vc.handle_generic_commands(intf)
-    Trace.init(vc.log_name, 'yes')
-    #Trace.init(vc.log_name)
+    pa   = PnfsAgent((intf.config_host, intf.config_port))
+    pa.handle_generic_commands(intf)
+    Trace.init(pa.log_name, 'yes')
+    #Trace.init(pa.log_name)
     
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
-    #vc._do_print({'levels':[5,6,]})
+    #pa._do_print({'levels':[5,6,]})
 
     while 1:
         try:
-            vc.serve_forever()
-        except SystemExit:
-            Trace.log(e_errors.INFO, "%s exiting." % (vc.name,))
-            os._exit(0)
+            Trace.log(e_errors.INFO, "Pnfs Agent (re) starting")
+            pa.serve_forever()
+        except SystemExit, exit_code:
+            pa.collect_children_now()
+            Trace.log(e_errors.INFO, "%s exiting." % (pa.name,))
+            os._exit(exit_code)
             break
         except:
             try:
-                exc, msg, tb = sys.exc_info()
-                full_tb = traceback.format_exception(exc,msg,tb)
-                for l in full_tb:
-                    Trace.log(e_errors.ERROR, l[:-1], {}, "TRACEBACK")
-                Trace.log(e_errors.INFO, "restarting after exception")
-                vc.restart()
+                Trace.handle_error()
             except:
                 pass
 

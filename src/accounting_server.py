@@ -105,23 +105,23 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	#Run once a day at  midnight.
 	def acc_daily_summary_func(self):
-		if self.fork(THREE_MINUTES_TTL):
-			#Parent
-			return
-
-		#child
-		self.acc_daily_summary()
-		os._exit(0)
+		rtn = self.run_in_process("daily_summary",
+					  self.acc_daily_summary,
+					  args=(), ttl=THREE_MINUTES_TTL)
+		if rtn:
+			#Parent, with error.
+			Trace.alarm(e_errors.ALARM,
+				    "failed to run daily summary")
 
 	#Run every 20 minutes.
 	def filler_func(self):
-		if self.fork(THREE_MINUTES_TTL):
-			#Parent
-			return
+		rtn = self.run_in_process("filler", self.filler,
+					  args=(), ttl=THREE_MINUTES_TTL)
+		if rtn: #1 or -1 is an error
+			#Parent, with error.
+			Trace.alarm(e_errors.ALARM,
+				    "failed to run filler")
 
-		#child
-		self.filler()
-		os._exit(0)
 
 	###
 	### acc_daily_summary() and filler() don't use self.accDB.  Instead

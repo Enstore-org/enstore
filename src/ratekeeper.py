@@ -269,13 +269,27 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 rcv_timeout = 3, rcv_tries = 3
                 )
 
-            if self.fork(THREE_MINUTES_TTL):
+            rtn = self.run_in_process(None, self.update_DRVBusy,
+                                      args=(mcc,), ttl=THREE_MINUTES_TTL)
+            if rtn: #1 or -1 is an error
+                #Parent, with error.
+                Trace.alarm(e_errors.ALARM,
+                            "failed to run update slots")
+
+            """
+            pid = self.fork(THREE_MINUTES_TTL):
+            if pid: #Parent
+                if pid < 0:
+                    #Parent, with error.
+                    Trace.alarm(e_errors.ALARM,
+                                "failed to run daily drive busy")
                 #Parent
                 continue
 
             #child
             self.update_DRVBusy(mcc)
             os._exit(0)
+            """
 
     # Do update the DB every 6 hours.
     def slots_interval_func(self):
@@ -287,14 +301,26 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 rcv_timeout = 3, rcv_tries = 3
                 )
 
-            
-            if self.fork(THREE_MINUTES_TTL):
+            rtn = self.run_in_process(None, self.update_slots,
+                                      args=(mcc,), ttl=THREE_MINUTES_TTL)
+            if rtn: #1 or -1 is an error
+                #Parent, with error.
+                Trace.alarm(e_errors.ALARM,
+                            "failed to run update slots")
+            """
+            pid = self.fork(THREE_MINUTES_TTL):
+            if pid: #Parent
+                if pid < 0:
+                    #Parent, with error.
+                    Trace.alarm(e_errors.ALARM,
+                                "failed to run update slots")
                 #Parent
                 continue
             
             #child
             self.update_slots(mcc)
             os._exit(0)
+            """
 
     def update_DRVBusy(self, mcc):
         busy_count = {}

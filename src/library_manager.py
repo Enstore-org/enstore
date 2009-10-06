@@ -2048,7 +2048,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
         # setup the communications with the event relay task
         self.resubscribe_rate = 300
-        self.erc = event_relay_client.EventRelayClient(self, function = self.handle_er_msg, sock=self.server_socket)
+        self.erc = event_relay_client.EventRelayClient(
+            self, function = self.handle_er_msg) #, sock=self.server_socket)
         self.erc.start([event_relay_messages.NEWCONFIGFILE],
                        self.resubscribe_rate)
         
@@ -2083,30 +2084,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.volume_assert_list = []
 
         
-        
-    def run_in_thread(self, thread_name, function, args=(), after_function=None):
-        thread = getattr(self, thread_name, None)
-        for wait in range(5):
-            if thread and thread.isAlive():
-                Trace.trace(20, "thread %s is already running, waiting %s" % (thread_name, wait))
-                time.sleep(1)
-        if thread and thread.isAlive():
-                Trace.log(e_errors.ERROR, "thread %s is already running" % (thread_name))
-                return -1
-        if after_function:
-            args = args + (after_function,)
-        Trace.trace(20, "create thread: target %s name %s args %s" % (function, thread_name, args))
-        thread = threading.Thread(group=None, target=function,
-                                  name=thread_name, args=args, kwargs={})
-        setattr(self, thread_name, thread)
-        Trace.trace(20, "starting thread %s"%(dir(thread,)))
-        try:
-            thread.start()
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
-        return 0
-
     def accept_request(self, ticket):
         Trace.trace(201,"queue %s max rq %s priority %s"%(self.pending_work.queue_length, self.max_requests, ticket['encp']['adminpri'])) 
         if self.pending_work.queue_length > self.max_requests:
@@ -2604,12 +2581,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # LM needs a certain startup delay before it
             # starts processing mover requests to update
             # its volumes at movers table
-            self.reply_to_caller({'work': 'no_work'})
+            self.reply_to_caller2({'work': 'no_work'}, mticket)
             return
         
         if self.lm_lock in (e_errors.PAUSE, e_errors.BROKEN):
             Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
-            self.reply_to_caller({'work': 'no_work'})
+            self.reply_to_caller2({'work': 'no_work'}, mticket)
             return
             
         self.requestor = mticket
@@ -2644,7 +2621,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # check if it is a backed up request
             if mover_rq_unique_id and mover_rq_unique_id != work_at_mover_unique_id:
                 Trace.trace(15,"found backed up mover %s" % (mticket['mover'],))
-                self.reply_to_caller({'work': 'no_work'})
+                self.reply_to_caller2({'work': 'no_work'}, mticket)
                 return
             self.work_at_movers.remove(wt)
             format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
@@ -2689,15 +2666,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             del self.volume_assert_list[i]
                             break
                         else:
-                            self.reply_to_caller({'work': 'no_work'})
+                            self.reply_to_caller2({'work': 'no_work'}, mticket)
                     else:
-                        self.reply_to_caller({'work': 'no_work'})
+                        self.reply_to_caller2({'work': 'no_work'}, mticket)
             else:
-                self.reply_to_caller({'work': 'no_work'})
+                self.reply_to_caller2({'work': 'no_work'}, mticket)
             return
 
         if status[0] != e_errors.OK:
-            self.reply_to_caller({'work': 'no_work'})
+            self.reply_to_caller2({'work': 'no_work'}, mticket)
             Trace.log(e_errors.ERROR,"mover_idle: assertion error w=%s ticket=%s"%(rq, mticket))
             raise AssertionError
             
@@ -2726,7 +2703,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.work_at_movers.append(w)
         #work = string.split(w['work'],'_')[0]
         Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
-        self.reply_to_caller(w)
+        #The client does not expect any extra stuff in the reply ticket.
+        # Thus, we need to not use reply_to_caller() and instead use
+        # reply_to_caller2() which takes the original ticket too.
+        self.reply_to_caller2(w, mticket)
+        #self.reply_to_caller(w)
         #self.udpc.send_no_wait(w, mticket['address'])
 
         ### XXX are these all needed?
@@ -2788,13 +2769,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(11, "mover_bound_volume for %s: request: %s"%(mticket['mover'],mticket))
         library = mticket.get('library', None)
         if library and library != self.name.split(".")[0]:
-            self.reply_to_caller({'work': 'no_work'})
+            self.reply_to_caller2({'work': 'no_work'}, mticket)
             return
             
         if not mticket['external_label']:
             Trace.log(e_errors.ERROR,"mover_bound_volume: mover request with suspicious volume label %s" %
                       (mticket['external_label'],))
-            self.reply_to_caller({'work': 'no_work'})
+            self.reply_to_caller2({'work': 'no_work'}, mticket)
             return
         last_work = mticket['operation']
         if not mticket['volume_family']:
@@ -2807,7 +2788,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 if mticket.has_key('volume_clerk'):
                     if mticket['volume_clerk'] == None:
                         # mover starting, no volume info
-                        self.reply_to_caller({'work': 'no_work'})
+                        self.reply_to_caller2({'work': 'no_work'}, mticket)
                         return
                     self.set_vcc(mticket['volume_clerk'])
                     #self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
@@ -2825,7 +2806,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 else:
                    Trace.log(e_errors.ERROR, "mover_bound_volume: can't update volume info, status:%s"%
                                (vol_info['status'],))
-                   self.reply_to_caller({'work': 'no_work'})
+                   self.reply_to_caller2({'work': 'no_work'}, mticket)
                    return
                            
         transfer_deficiency = mticket.get('transfer_deficiency', 1)
@@ -2836,7 +2817,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # LM needs a certain startup delay before it
             # starts processing mover requests to update
             # its volumes at movers table
-            self.reply_to_caller({'work': 'no_work'})
+            self.reply_to_caller2({'work': 'no_work'}, mticket)
             return
         # just did some work, delete it from queue
         w = self.get_work_at_movers(mticket['external_label'], mticket['mover'])
@@ -2846,7 +2827,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # check if it is a backed up request
             if mticket['unique_id'] and mticket['unique_id'] != w['unique_id']:
                 Trace.trace(15,"found backed up mover %s " % (mticket['mover'], ))
-                self.reply_to_caller({'work': 'no_work'})
+                self.reply_to_caller2({'work': 'no_work'}, mticket)
                 return
             Trace.trace(18,"removing %s  from the queue"%(w,))
             # file family may be changed by VC during the volume
@@ -2866,7 +2847,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
         if self.lm_lock in (e_errors.PAUSE, e_errors.BROKEN):
             Trace.trace(18,"LM state is %s no mover request processing" % (self.lm_lock,))
-            self.reply_to_caller({'work': 'no_work'})
+            self.reply_to_caller2({'work': 'no_work'}, mticket)
             return
         # see if this volume will do for any other work pending
         rq, status = self.next_work_this_volume(mticket['external_label'], mticket['volume_family'],
@@ -2884,7 +2865,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                  w["wrapper"]["uname"]))
             except KeyError:
                 Trace.log(e_errors.ERROR, "mover_bound_volume: Bad ticket: %s"%(w,))
-                self.reply_to_caller({'work': 'no_work'})
+                self.reply_to_caller2({'work': 'no_work'}, mticket)
                 return
             w['times']['lm_dequeued'] = time.time()
             if w.has_key('reject_reason'): del(w['reject_reason'])
@@ -2898,7 +2879,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    log_add_to_wam_queue(w['vc'])
             self.work_at_movers.append(w)
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s to mover"%(w,))
-            self.reply_to_caller(w)
+            #The client does not expect any extra stuff in the reply ticket.
+            # Thus, we need to not use reply_to_caller() and instead use
+            # reply_to_caller2() which takes the original ticket too.
+            self.reply_to_caller2(w, mticket)
+            #self.reply_to_caller(w)
             #self.udpc.send_no_wait(w, mticket['address']) 
             # if new work volume is different from mounted
             # which may happen in case of high pri. work
@@ -2959,11 +2944,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                               'external_label': mticket['external_label']
                               }
             # do not dismount
-            self.reply_to_caller(ret_ticket)
+            self.reply_to_caller2(ret_ticket, mticket)
             return
         else:
             Trace.log(e_errors.ERROR,"HAVE_BOUND: .next_work_this_volume returned %s:"%(status,))
-            self.reply_to_caller({'work': 'no_work'})
+            self.reply_to_caller2({'work': 'no_work'}, mticket)
             return
 
 
@@ -3062,7 +3047,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 else:
                     pass
 
-        #self.reply_to_caller({'work': 'no_work'})
+        #self.reply_to_caller2({'work': 'no_work'}, mticket)
 
     # what is going on
     def getwork(self,ticket):
@@ -3073,17 +3058,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.fork() != 0:
             return
         try:
-            if not self.get_user_sockets(ticket):
+            (control_socket, data_socket) = self.get_user_sockets(ticket)
+            if control_socket == None or data_socket == None:
                 return
             rticket = {}
             rticket["status"] = (e_errors.OK, None)
             rticket["at movers"] = self.work_at_movers.list
             adm_queue, write_queue, read_queue = self.pending_work.get_queue()
             rticket["pending_work"] = adm_queue + write_queue + read_queue
-            callback.write_tcp_obj_new(self.data_socket,rticket)
-            self.data_socket.close()
-            callback.write_tcp_obj_new(self.control_socket,ticket)
-            self.control_socket.close()
+            callback.write_tcp_obj_new(data_socket,rticket)
+            data_socket.close()
+            callback.write_tcp_obj_new(control_socket,ticket)
+            control_socket.close()
         except:
             pass #XXX
         os._exit(0)
@@ -3110,7 +3096,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.fork() != 0:
             return
         try:
-            if not self.get_user_sockets(ticket):
+            (control_socket, data_socket) = self.get_user_sockets(ticket)
+            if control_socket == None or data_socket == None:
                 return
             rticket = {}
             rticket["status"] = (e_errors.OK, None)
@@ -3120,10 +3107,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                         'write_queue': write_queue,
                                         'read_queue':  read_queue
                                         }
-            callback.write_tcp_obj_new(self.data_socket,rticket)
-            self.data_socket.close()
-            callback.write_tcp_obj_new(self.control_socket,ticket)
-            self.control_socket.close()
+            callback.write_tcp_obj_new(data_socket,rticket)
+            data_socket.close()
+            callback.write_tcp_obj_new(control_socket,ticket)
+            control_socket.close()
         except:
             pass #XXX
         os._exit(0)
@@ -3137,15 +3124,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.fork() != 0:
             return
         try:
-            if not self.get_user_sockets(ticket):
+            (control_socket, data_socket) = self.get_user_sockets(ticket)
+            if control_socket == None or data_socket == None:
                 return
             rticket = {}
             rticket["status"] = (e_errors.OK, None)
             rticket['pending_asserts'] = self.volume_assert_list
-            callback.write_tcp_obj_new(self.data_socket,rticket)
-            self.data_socket.close()
-            callback.write_tcp_obj_new(self.control_socket,ticket)
-            self.control_socket.close()
+            callback.write_tcp_obj_new(data_socket,rticket)
+            data_socket.close()
+            callback.write_tcp_obj_new(control_socket,ticket)
+            control_socket.close()
         except:
             pass #XXX
         os._exit(0)
@@ -3160,15 +3148,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.fork() != 0:
             return
         try:
-            if not self.get_user_sockets(ticket):
+            (control_socket, data_socket) = self.get_user_sockets(ticket)
+            if control_socket == None or data_socket == None:
                 return
             rticket = {}
             rticket["status"] = (e_errors.OK, None)
             rticket["suspect_volumes"] = self.suspect_volumes.list
-            callback.write_tcp_obj_new(self.data_socket,rticket)
-            self.data_socket.close()
-            callback.write_tcp_obj_new(self.control_socket,ticket)
-            self.control_socket.close()
+            callback.write_tcp_obj_new(data_socket,rticket)
+            data_socket.close()
+            callback.write_tcp_obj_new(control_socket,ticket)
+            control_socket.close()
             Trace.trace(15,"get_suspect_volumes ")
         except:
             pass
@@ -3182,21 +3171,21 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                               callback.get_callback()
         listen_socket.listen(4)
         ticket["library_manager_callback_addr"] = (library_manager_host, library_manager_port)
-        self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        i=self.control_socket.connect(ticket['callback_addr'])
-        callback.write_tcp_obj_new(self.control_socket, ticket)
+        control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        i = control_socket.connect(ticket['callback_addr'])
+        callback.write_tcp_obj_new(control_socket, ticket)
         r,w,x = select.select([listen_socket], [], [], 15)
         if not r:
             listen_socket.close()
-            return 0
+            return (None, None)
         data_socket, address = listen_socket.accept()
         if not hostaddr.allow(address):
             data_socket.close()
             listen_socket.close()
-            return 0
-        self.data_socket = data_socket
+            return (None, None)
+        data_socket = data_socket
         listen_socket.close()
-        return 1
+        return (control_socket, data_socket)
     
     # remove work from list of pending works
     def remove_work(self, ticket):
@@ -3413,7 +3402,7 @@ if __name__ == "__main__":
             Trace.init(lm.log_name)
             Trace.log(e_errors.INFO, "Library Manager %s (re)starting"%(intf.name,))
             # start check movers thread
-            lm.run_in_thread('check_at_movers', lm.check)
+            lm.run_in_thread('check_at_movers', lm.check, leave_running = True)
             lm.serve_forever()
         except SystemExit, exit_code:
             sys.exit(exit_code)

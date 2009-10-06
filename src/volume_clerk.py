@@ -70,6 +70,18 @@ MIN_LEFT=long(0) # for now, this is disabled.
 MY_NAME = enstore_constants.VOLUME_CLERK   #"volume_clerk"
 MAX_CONNECTION_FAILURE = 5
 
+#Set the list of functions to run in parallel.  This should include
+# those with long answers, since the dispatching worker
+# cache of recent replies is not sufficent for those.
+RUN_IN_PARALLEL = []  #For testing.
+#RUN_IN_PARALLEL = ["history", "history2",
+#                   "get_vols", "get_vols2", "get_vols3",
+#                   "get_pvols", "get_pvols2",
+#                   "list_sg_count", "list_sg_count2",
+#                   "get_vol_list", "get_vol_list2",
+#                   ]
+
+
 class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### This class of Volume Clerk methods should only be readonly operations.
     ### This class is inherited by Info Server (to increase code reuse)
@@ -143,8 +155,13 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         if len(self.sgdb) == 0:
             self.sgdb.rebuild_sg_count()
 
+        #Set the list of functions to run in parallel.  This should include
+        # those with long answers, since the dispatching worker
+        # cache of recent replies is not sufficent for those.
+        self.run_in_parallel = RUN_IN_PARALLEL
+        
         return
-    
+
     ####################################################################
 
     # These extract value functions are used to get a value from the ticket
@@ -515,8 +532,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
 
-        record["status"] = (e_errors.OK, None)
-        self.reply_to_caller(record)
+        record['status'] = (e_errors.OK, None)
+        #The client does not expect any extra stuff in the reply ticket.
+        # Thus, we need to not use reply_to_caller() and instead use
+        # reply_to_caller2() which takes all the necessary pieces as arguments.
+        self.reply_to_caller2(record, ticket)
 
     #### DONE, probably not completely
     # return all the volumes in our dictionary.  Not so useful!
@@ -1471,10 +1491,10 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
         
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to rename volume %s to %s from %s" \
-                      % (old, new, self.reply_address[0])
+                      % (old, new, self.extract_reply_address(ticket)[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
             #self.reply_to_caller(ticket)
@@ -1546,10 +1566,10 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to erase volume %s from %s" \
-                      % (external_label, self.reply_address[0])
+                      % (external_label, self.extract_reply_address(ticket)[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
             #self.reply_to_caller(ticket)
@@ -1730,10 +1750,10 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to delete volume %s from %s" \
-                      % (external_label, self.reply_address[0])
+                      % (external_label, self.extract_reply_address(ticket)[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
             self.reply_to_caller(ticket)
@@ -1756,10 +1776,10 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to recycle volume %s from %s" \
-                      % (external_label, self.reply_address[0])
+                      % (external_label, self.extract_reply_address(ticket)[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
             self.reply_to_caller(ticket)
@@ -1844,10 +1864,10 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to restore volume %s from %s" \
-                      % (external_label, self.reply_address[0])
+                      % (external_label, self.extract_reply_address(ticket)[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
             self.reply_to_caller(ticket)
@@ -1962,10 +1982,10 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if media and media == 'disk':
             status = None
         else:
-            status = self.restricted_access()
+            status = self.restricted_access(ticket)
         if status:
             message = "attempt to add volume %s from %s" \
-                      % (external_label, self.reply_address[0])
+                      % (external_label, self.extract_reply_address(ticket)[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
             self.reply_to_caller(ticket)
@@ -2140,10 +2160,10 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
 
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to remove volume entry %s from %s" % \
-                      (external_label, self.reply_address[0])
+                      (external_label, self.extract_reply_address(ticket)[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
             self.reply_to_caller(ticket)
@@ -2308,7 +2328,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                                     message)
             self.volumedb_dict[label] = vol  
             vol['status'] = (e_errors.OK, None)
-            self.reply_to_caller(vol)
+            self.reply_to_caller2(vol, ticket)
             return
 
         # nothing was available at all
@@ -2407,9 +2427,9 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             record['non_del_files'] = record['non_del_files'] + 1
             
         # record our changes
-        self.volumedb_dict[external_label] = record  
+        self.volumedb_dict[external_label] = record
         record["status"] = (e_errors.OK, None)
-        self.reply_to_caller(record)
+        self.reply_to_caller2(record, ticket)
         return
 
     # decrement the file count on the volume #### DONE
@@ -2426,7 +2446,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         record ["non_del_files"] = record["non_del_files"] - count
         self.volumedb_dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
-        self.reply_to_caller(record)
+        self.reply_to_caller2(record, ticket)
         return
 
     # update the database entry for this volume #### DONE
@@ -2462,7 +2482,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         # record our changes
         self.volumedb_dict[external_label] = record  
         record["status"] = (e_errors.OK, None)
-        self.reply_to_caller(record)
+        self.reply_to_caller2(record, ticket)
         return
 
     # touch(self, ticket) -- update last_access time #### DONE
@@ -2507,7 +2527,6 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
-            print "external_label:", external_label
             return #extract_external_lable_from_ticket handles its own errors.
 
         inhibit = self.extract_value_from_ticket("inhibit", ticket)
@@ -2553,7 +2572,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             message = "system inhibit %d cleared for %s" \
                       % (position, external_label)
             Trace.log(e_errors.INFO, message)
-        self.reply_to_caller(record)
+        self.reply_to_caller2(record, ticket)
         return
 
     # move a volume to a new library #### DONE
@@ -2575,7 +2594,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         Trace.log(e_errors.INFO, 'volume %s is assigned from library %s to library %s'%(external_label, old_library, new_library))
         # log to its history
         self.change_state(external_label, 'new_library', '%s -> %s'%(old_library, new_library))
-        self.reply_to_caller(record)
+        self.reply_to_caller2(record, ticket)
         return
 
     # set system_inhibit flag #### DONE
@@ -2592,7 +2611,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         #     # check if volume is blank
         #     if record['non_del_files'] == 0:
         #         record['status'] = (e_errors.CONFLICT, "volume is blank")
-        #         self.reply_to_caller(record)
+        #         self.reply_to_caller2(record, ticket)
         #         return record["status"]
         record["system_inhibit"][index] = flag
         # record time
@@ -2601,7 +2620,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         self.change_state(external_label, 'system_inhibit_'+`index`, flag)
         record["status"] = (e_errors.OK, None)
         Trace.log(e_errors.INFO,external_label+" system inhibit set to "+flag)
-        self.reply_to_caller(record)
+        self.reply_to_caller2(record, ticket)
         return record["status"]
 
     #### DONE

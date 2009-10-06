@@ -95,11 +95,17 @@ class Server(file_clerk.FileClerkInfoMethods,
 					   auto_journal=0, rdb=self.db)
 		self.sgdb = esgdb.SGDb(self.db)
 
-
 		# setup the communications with the event relay task
 		self.event_relay_subscribe([event_relay_messages.NEWCONFIGFILE])
 
 		self.set_error_handler(self.info_error_handler)
+
+		#Set the list of functions to run in parallel.  This should
+		# include those with long answers, since the dispatching worker
+		# cache of recent replies is not sufficent for those.
+		self.run_in_parallel = file_clerk.RUN_IN_PARALLEL + \
+				       volume_clerk.RUN_IN_PARALLEL
+		
 		return
 
 	def reinit(self):
