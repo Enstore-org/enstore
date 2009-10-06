@@ -202,7 +202,7 @@ class DispatchingWorker(udp_server.UDPServer):
         #Next check for threads.
 
         for search_thread in threading.enumerate():
-            if search_thread == threading.current_thread():
+            if search_thread == threading.currentThread():
                 #Skip current thread to avoid raising RunTime exception
                 # joining current thread.
                 continue
