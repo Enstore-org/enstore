@@ -354,7 +354,7 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
     def inquire_vol(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'inquire_vol',
                   'external_label' : external_label }
-        return self.send(ticket,timeout,retry)
+	return self.send(ticket,timeout,retry)
 
     # update the last_access time
     def touch(self, external_label, timeout=60, retry=10):
@@ -727,6 +727,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.write_protect_off = None
         self.write_protect_status = None
         self.keep_declaration_time = False
+	self.force = False #use real clerks (True); use info server (False)
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -836,6 +837,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_LABEL:"volume_name",
                        option.USER_LEVEL:option.ADMIN},
+	option.FORCE:{option.HELP_STRING:"use real cleark, not info_server",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.VALUE_LABEL:"force",
+                      option.USER_LEVEL:option.HIDDEN},
 	option.FORGET_IGNORED_STORAGE_GROUP:{option.HELP_STRING:
                       "clear a ignored storage group",
                       option.VALUE_TYPE:option.STRING,
@@ -1111,8 +1117,11 @@ def do_work(intf):
                 return
         else:
             key = None
-            in_state = None 
-        ticket = ifc.get_vols(key, in_state, not_cond)
+            in_state = None
+	if intf.force:
+		ticket = vcc.get_vols(key, in_state, not_cond)
+	else:
+		ticket = ifc.get_vols(key, in_state, not_cond)
 
 	# print out the answer
         if ticket.has_key("header"):		# full info
@@ -1127,7 +1136,10 @@ def do_work(intf):
             print vlist
 
     elif intf.pvols:
-        ticket = ifc.get_pvols()
+        if intf.force:
+	    ticket = vcc.get_pvols()
+	else:
+	    ticket = ifc.get_pvols()
         problem_vol = {}
         for i in ticket['volumes']:
             if i['system_inhibit_0'] != 'none':
@@ -1152,7 +1164,10 @@ def do_work(intf):
                     show_volume(v)
                 print
     elif intf.labels:
-        ticket = ifc.get_vol_list()
+        if intf.force:
+	    ticket = vcc.get_vol_list()
+	else:
+	    ticket = ifc.get_vol_list()
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['volumes']:
                 print i
@@ -1167,7 +1182,10 @@ def do_work(intf):
     elif intf.rebuild_sg_count:
         ticket = vcc.rebuild_sg_count()
     elif intf.ls_sg_count:
-        ticket = ifc.list_sg_count()
+        if intf.force:
+	    ticket = vcc.list_sg_count()
+	else:
+	    ticket = ifc.list_sg_count()
         sgcnt = ticket['sgcnt']
         sk = sgcnt.keys()
         sk.sort()
@@ -1177,7 +1195,10 @@ def do_work(intf):
             lib, sg = string.split(i, ".")
             print "%12s %16s %10d"%(lib, sg, sgcnt[i])
     elif intf.get_sg_count:
-        ticket = ifc.get_sg_count(intf.get_sg_count, intf.storage_group)
+        if intf.force:
+	    ticket = vcc.get_sg_count(intf.get_sg_count, intf.storage_group)
+	else:
+            ticket = ifc.get_sg_count(intf.get_sg_count, intf.storage_group)
         print "%12s %16s %10d"%(ticket['library'], ticket['storage_group'], ticket['count'])
     elif intf.set_sg_count:
         ticket = vcc.set_sg_count(intf.set_sg_count, intf.storage_group, intf.count)
@@ -1191,7 +1212,10 @@ def do_work(intf):
         ticket = vcc.show_quota()
 	pprint.pprint(ticket['quota'])
     elif intf.vol:
-        ticket = ifc.inquire_vol(intf.vol)
+        if intf.force:
+	    ticket = vcc.inquire_vol(intf.vol)
+	else:
+	    ticket = ifc.inquire_vol(intf.vol)
         if ticket['status'][0] == e_errors.OK:
             status = ticket['status']
             del ticket['status']
@@ -1200,7 +1224,10 @@ def do_work(intf):
             pprint.pprint(ticket)
             ticket['status'] = status
     elif intf.gvol:
-        ticket = ifc.inquire_vol(intf.gvol)
+        if intf.force:
+            ticket = vcc.inquire_vol(intf.gvol)
+	else:
+	    ticket = ifc.inquire_vol(intf.gvol)
         if ticket['status'][0] == e_errors.OK:
             status = ticket['status']
             del ticket['status']
@@ -1218,7 +1245,10 @@ def do_work(intf):
             pprint.pprint(ticket)
             ticket['status'] = status
     elif intf.check:
-        ticket = ifc.inquire_vol(intf.check)
+        if intf.force:
+	    ticket = vcc.inquire_vol(intf.check)
+	else:
+            ticket = ifc.inquire_vol(intf.check)
         ##pprint.pprint(ticket)
         # guard against error
         if ticket['status'][0] == e_errors.OK:
@@ -1227,7 +1257,10 @@ def do_work(intf):
                                    ticket['system_inhibit'],
                                    ticket['user_inhibit'])
     elif intf.history:
-        ticket = ifc.show_history(intf.history)
+        if intf.force:
+	    ticket = vcc.show_history(intf.history)
+	else:
+	    ticket = ifc.show_history(intf.history)
         if ticket['status'][0] == e_errors.OK and len(ticket['history']):
             for state in ticket['history']:
                 stype = state['type']
@@ -1245,7 +1278,10 @@ def do_work(intf):
     elif intf.write_protect_off:
         ticket = vcc.write_protect_off(intf.write_protect_off)
     elif intf.write_protect_status:
-        ticket = ifc.write_protect_status(intf.write_protect_status)
+        if intf.force:
+	    ticket = vcc.write_protect_status(intf.write_protect_status)
+	else:
+            ticket = ifc.write_protect_status(intf.write_protect_status)
         if ticket['status'][0] == e_errors.OK:
             print intf.write_protect_status, "write-protect", ticket['status'][1]
     elif intf.set_comment: # set comment of vol
@@ -1531,7 +1567,11 @@ def do_work(intf):
     elif intf.lm_to_clear:
         ticket = vcc.clear_lm_pause(intf.lm_to_clear)
     elif intf.list:
-        ticket = ifc.tape_list(intf.list)
+        if intf.force:
+	    #ticket = vcc.tape_list(intf.list)
+	    ticket = {'status' : "--force not supported"}
+	else:
+            ticket = ifc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
             output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" % \
 			    (len(intf.list),)
@@ -1552,7 +1592,11 @@ def do_work(intf):
                     record['location_cookie'], deleted,
                     record['pnfs_name0'])
     elif intf.ls_active:
-        ticket = ifc.list_active(intf.ls_active)
+        if intf.force:
+            #ticket = vcc.list_active(intf.ls_active)
+	    ticket = {'status' : "--force not supported"}
+	else:
+	    ticket = ifc.list_active(intf.ls_active)
         active_list = ticket['active_list']
         for i in active_list:
             print i

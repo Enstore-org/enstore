@@ -694,7 +694,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.find_original = None
         self.find_the_original = None
         self.find_duplicates = None
-        self.force = None
+        self.force = None #use real clerks (True); use info server (False)
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -761,6 +761,8 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"file",
                      option.USER_LEVEL:option.ADMIN},
+        #Additionally, --force can be used to talk to the file clerk and
+        # not the info srver.  
         option.FORCE:{option.HELP_STRING:
 			      "Force restore of file from DB that still exists"
                               " (in some capacity) in PNFS.",
@@ -893,7 +895,10 @@ def do_work(intf):
         Trace.trace(13, str(ticket))
 
     elif intf.list:
-        ticket = ifc.tape_list(intf.list)
+        if intf.force:
+            ticket = fcc.tape_list(intf.list)
+        else:
+            ticket = ifc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
             output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" \
                             % (len(intf.list))
@@ -921,24 +926,36 @@ def do_work(intf):
         ticket = fcc.unmark_bad(intf.unmark_bad, intf.bfid)
 
     elif intf.show_bad:
-        ticket = ifc.show_bad()
+        if intf.force:
+            ticket = fcc.show_bad()
+        else:
+            ticket = ifc.show_bad()
         if ticket['status'][0] == e_errors.OK:
             for f in ticket['bad_files']:
                 print f['label'], f['bfid'], f['size'], f['path']
 
     elif intf.ls_active:
-        ticket = ifc.list_active(intf.ls_active)
+        if intf.force:
+            ticket = fcc.list_active(intf.ls_active)
+        else:
+            ticket = ifc.list_active(intf.ls_active)
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['active_list']:
                 print i
     elif intf.bfids:
-        ticket  = ifc.get_bfids(intf.bfids)
+        if intf.force:
+            ticket  = fcc.get_bfids(intf.bfids)
+        else:
+            ticket  = ifc.get_bfids(intf.bfids)
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['bfids']:
                 print i
             # print `ticket['bfids']`
     elif intf.bfid:
-        ticket = ifc.bfid_info(intf.bfid)
+        if intf.force:
+            ticket = fcc.bfid_info(intf.bfid)
+        else:
+            ticket = ifc.bfid_info(intf.bfid)
 	if ticket['status'][0] ==  e_errors.OK:
 	    #print ticket['fc'] #old encp-file clerk format
 	    #print ticket['vc']
