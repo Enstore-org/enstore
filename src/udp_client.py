@@ -185,7 +185,7 @@ class UDPClient:
                 
                 if not reply: # receive timed out
                     #print "TIMEOUT", time.time(), msg
-                    Trace.trace(5, "TIMEOUT")
+                    Trace.trace(5, "TIMEOUT sending %s"%(msg,))
                     break #resend
                 #print "GOT REPLY",reply
                 Trace.trace(5, "GOT REPLY %s"%(reply,))
