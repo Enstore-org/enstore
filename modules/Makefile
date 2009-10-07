@@ -5,7 +5,7 @@ SHELL=/bin/sh
 #
 #############################################################
 
-ALL_TARGETS=tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp mouse_move autologinenstore
+ALL_TARGETS=tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp
 
 all: adler32.a Makefile.modules Modules $(ALL_TARGETS)
 
