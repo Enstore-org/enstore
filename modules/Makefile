@@ -71,6 +71,19 @@ Modules:
 	else \
 		make BITS_FLAG=$(BITS_FLAG) -f Makefile.modules oldsharedmods; \
 	fi
+
+#Modules made using swig need to have two names; one for swig 1.1 and the
+# other for swig 1.3.  Those with the letter c in the middle are for
+# swig 1.1.
+#	- cp aci_shadowcmodule.so _aci_shadowmodule.so
+#	- cp derrnocmodule.so _derrnomodule.so
+	cp checksumcmodule.so _checksummodule.so
+	cp socket_extcmodule.so _socket_extmodule.so
+	cp strbuffercmodule.so _strbuffermodule.so
+	- cp ftt2cmodule.so _ftt2module.so
+	cp runoncmodule.so _runonmodule.so
+	cp enroutecmodule.so _enroutemodule.so
+
 adler32.o: adler32.c
 	$(CC) $(CFLAGS) -c $(PIC) adler32.c
 

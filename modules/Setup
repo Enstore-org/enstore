@@ -88,28 +88,30 @@ IPC IPC.c  -I$(PYTHONINC) $(BITS_FLAG)
 Devcodes Devcodes.c  -I$(PYTHONINC) $(BITS_FLAG)
 
 # The EMASS/aci_shadow modules are not built unless ACI_DIR is defined ; see Makefile
-aci_shadowc aci_shadow_wrap.c  -I$(PYTHONINC) -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic $(BITS_FLAG)
-_aci_shadow aci_shadow_wrap.c  -I$(PYTHONINC) -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic $(BITS_FLAG)
-derrnoc derrno_wrap.c  -I$(PYTHONINC) -I$(ACI_DIR)/inc $(BITS_FLAG)
-_derrno derrno_wrap.c  -I$(PYTHONINC) -I$(ACI_DIR)/inc $(BITS_FLAG)
+### 10-7-2009: Now that the ADIC is gone, we don't need these anymore.
+#aci_shadowc aci_shadow_wrap.c  -I$(PYTHONINC) -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic $(BITS_FLAG)
+#_aci_shadow aci_shadow_wrap.c  -I$(PYTHONINC) -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic $(BITS_FLAG)
+#derrnoc derrno_wrap.c  -I$(PYTHONINC) -I$(ACI_DIR)/inc $(BITS_FLAG)
+#_derrno derrno_wrap.c  -I$(PYTHONINC) -I$(ACI_DIR)/inc $(BITS_FLAG)
 
 checksumc checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a $(BITS_FLAG)
-_checksum checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a $(BITS_FLAG)
+#_checksum checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a $(BITS_FLAG)
 
 socket_extc socket_ext_wrap.c  -I$(PYTHONINC) $(BITS_FLAG)
-_socket_ext socket_ext_wrap.c  -I$(PYTHONINC) $(BITS_FLAG)
+#_socket_ext socket_ext_wrap.c  -I$(PYTHONINC) $(BITS_FLAG)
 
 strbufferc strbuffer_wrap_thread.c  -I$(PYTHONINC) -D`uname` $(BITS_FLAG)
-_strbuffer strbuffer_wrap_thread.c  -I$(PYTHONINC) -D`uname` $(BITS_FLAG)
+#_strbuffer strbuffer_wrap_thread.c  -I$(PYTHONINC) -D`uname` $(BITS_FLAG)
 
 ftt2c ftt2_wrap_thread.c  -I$(PYTHONINC) -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt $(BITS_FLAG)
-_ftt2 ftt2_wrap_thread.c  -I$(PYTHONINC) -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt $(BITS_FLAG)
+#_ftt2 ftt2_wrap_thread.c  -I$(PYTHONINC) -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt $(BITS_FLAG)
 
 runonc runon_wrap.c runon.c -I$(PYTHONINC) $(BITS_FLAG)
-_runon runon_wrap.c runon.c -I$(PYTHONINC) $(BITS_FLAG)
+#_runon runon_wrap.c runon.c -I$(PYTHONINC) $(BITS_FLAG)
 
 enroutec enroute_wrap.c enroute.c -I$(PYTHONINC) $(BITS_FLAG)
-_enroute enroute_wrap.c enroute.c -I$(PYTHONINC) $(BITS_FLAG)
+#_enroute enroute_wrap.c enroute.c -I$(PYTHONINC) $(BITS_FLAG)
 
 Interfaces Interfaces.c  -I$(PYTHONINC) $(BITS_FLAG)
+
 #rawUDP rawUDP.c  -I$(PYTHONINC) $(QUOTAS) $(POSIX4) $(RT) $(GEN) $(BITS_FLAG)
