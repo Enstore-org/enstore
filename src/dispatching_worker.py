@@ -33,6 +33,58 @@ MAX_THREADS = 50
 MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
 
+def thread_wrapper(function, args=(), after_function=None):
+    if type(args) != types.TupleType:
+        apply(function, (args,))
+    else:
+        apply(function, args)
+    if after_function:
+        after_function()
+
+# run_in_thread():
+# thread_name: A string containing the name of the thread to use, or None.
+#              If thread_name is given, a limit of one is allowed.  If
+#              None is given, then at most MAX_THREADS number of threads
+#              are allowed.
+# function: The function to run in the thread.  This is not the string
+#           name of the function.
+# args: Tuple of arguments.
+# after_function:
+def run_in_thread(thread_name, function, args=(), after_function=None):
+    # see what threads are running
+    if thread_name:
+        threads = threading.enumerate()
+        for thread in threads:
+            if ((thread.getName() == thread_name) and thread.isAlive()):
+                Trace.trace(5, "thread %s is already running" % (thread_name))
+                #We've exceeded the number of thread_name threads, which
+                # is one.  Running it in main thread.
+                thread_wrapper(function, args, after_function)
+                return
+
+    #Impose a prossess wise limit on the number of threads.
+    thread_count = threading.activeCount()
+    if thread_count >= MAX_THREADS:
+        Trace.trace(5, "too many threads, %s, are already running" \
+                    % (thread_count,))
+        #We've exceeded the number of thread_name threads.
+        # Running it in main thread.
+        thread_wrapper(function, args, after_function)
+        return
+
+    args = (function,)+args
+    if after_function:
+        args = args + (after_function,)
+    Trace.trace(5, "create thread: target %s name %s args %s" % (function, thread_name, args))
+    thread = threading.Thread(group=None, target=thread_wrapper,
+                              name=thread_name, args=args, kwargs={})
+    Trace.trace(5, "starting thread %s"%(dir(thread,)))
+    try:
+        thread.start()
+    except:
+        exc, detail, tb = sys.exc_info()
+        Trace.log(e_errors.ERROR, "error starting thread %s: %s" % (thread_name, detail))
+
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -40,97 +92,44 @@ DEFAULT_TTL = 60 #One minute lifetime for child processes
 class DispatchingWorker(udp_server.UDPServer):
     
     def __init__(self, server_address, use_raw=None):
-
+        self.allow_callback = False
+        if use_raw:
+            # enable to spawn callback processing thread
+            # by default in raw input mode
+            self.allow_callback = True 
         udp_server.UDPServer.__init__(self, server_address,
                                       receive_timeout=60.0,
                                       use_raw=use_raw)
         #If the UDPServer socket failed to open, stop the server.
-        if self.tsd.server_socket == None:
+        if self.server_socket == None:
             msg = "The udp server socket failed to open.  Aborting.\n"
             sys.stdout.write(msg)
             sys.exit(1)
             
         #Deal with multiple interfaces.
 
-        self.initialize_thread_safe_data(is_child = 0, use_raw = use_raw)
-
-        #Number of processes and the list of pids.
-        self.n_children = 0
-        self.kill_list = []
-
-        #List of functions to run in another thread/process.  Override this
-        # list in any interested server.
-        self.run_in_parallel = []
-        
-    def initialize_thread_safe_data(self, is_child = 1, use_raw = False):
-
-        # The declaration of self.tsd is done in the UDPServer.
-
-        if hasattr(self.tsd, "is_child"):
-            #Already initialized.
-            return
-
-        ## Flag for whether we are in a child process.
-        ## Server loops should be conditional on "self.tsd.is_child"
-        ## rather than 'while 1'.
-        ##
-        ## This needs to be defined before calling udp_server's
-        ## init_thread_specific_data().  Otherwise, dispatching_worker's
-        ## __getattr__ and __setattr__ won't let UDPServer initialize.
-        self.tsd.is_child = is_child
-        
-        #If the udp_server thread-specific-data parts are already done,
-        # don't do them again.
-        if not hasattr(self.tsd, 'server_address'):
-            self.init_thread_specific_data()
-
         # fds that the worker/server also wants watched with select
-        self.tsd.read_fds = []    
-        self.tsd.write_fds = []
-        # callback functions associated with below
-        self.tsd.callback = {}
-        if use_raw:
-            self.tsd.allow_callback = True
-        else:
-            self.tsd.allow_callback = False
+        self.read_fds = []    
+        self.write_fds = []
+        # callback functions associated with above
+        self.callback = {}
         # functions to call periodically -
         #  key is function, value is [interval, last_called]
-        self.tsd.interval_funcs = {} 
+        self.interval_funcs = {} 
 
-
-        self.tsd.custom_error_handler = None
-
-    def __getattr__(self, attr):
-        if self.__dict__.has_key('tsd') and hasattr(self.tsd, attr):
-            return getattr(self.tsd, attr)
-        elif self.__dict__.has_key(attr):
-            return self.__dict__[attr]
-        else:
-            message = "dispatching_worker does not have %s" % (attr,)
-            raise AttributeError(message)
-
-    def __setattr__(self, attr, value):
-        if self.__dict__.has_key('tsd') and hasattr(self.tsd, attr):
-            setattr(self.tsd, attr, value)
-        elif not self.__dict__.has_key('tsd'):
-            self.__dict__[attr] = value  #in parent during __init__()
-        elif not hasattr(self.__dict__['tsd'], 'is_child'):
-            self.__dict__[attr] = value  #in parent during __init__()
-        elif getattr(self.__dict__['tsd'], 'is_child', None) == 0:
-            self.__dict__[attr] = value  #in parent after __init()
-        else:
-            #Child threads/processes should not change values that are
-            # not specific to them.
-            message = "child thread/process is not allowed to modify" \
-                      " non-thread/process specific data"
-            raise AttributeError(message)
-
-    ####################################################################
+        ## Flag for whether we are in a child process.
+        ## Server loops should be conditional on "self.is_child"
+        ## rather than 'while 1'.
+        self.is_child = 0
+        self.n_children = 0
+        self.kill_list = []
+        
+        self.custom_error_handler = None
 
     # call this right after initialization
     # when use raw is enabled (last parameter in __init__
     def enable_callback(self):
-        self.allow_callback = True
+        self.allow_callback = True         
 
     # call this right after initialization
     # when use raw is enabled (last parameter in __init__
@@ -155,21 +154,21 @@ class DispatchingWorker(udp_server.UDPServer):
             
         else:
             last_called = now
-        self.tsd.interval_funcs[func] = [interval, last_called, one_shot]
+        self.interval_funcs[func] = [interval, last_called, one_shot]
 
     def set_interval_func(self, func,interval):
         #Backwards-compatibilty
         self.add_interval_func(func, interval)
         
     def remove_interval_func(self, func):
-        del self.tsd.interval_funcs[func]
+        del self.interval_funcs[func]
         
     def reset_interval_timer(self, func):
-        self.tsd.interval_funcs[func][1] = time.time()
+        self.interval_funcs[func][1] = time.time()
 
     def reset_interval(self, func, interval):
-        self.tsd.interval_funcs[func][0] = interval
-        self.tsd.interval_funcs[func][1] = time.time()
+        self.interval_funcs[func][0] = interval
+        self.interval_funcs[func][1] = time.time()
 
     def set_error_handler(self, handler):
         self.custom_error_handler = handler
@@ -178,9 +177,6 @@ class DispatchingWorker(udp_server.UDPServer):
 
     # check for any children that have exited (zombies) and collect them
     def collect_children(self):
-
-        #Check processes first.
-        
         while self.n_children > 0:
             try:
                 pid, status = os.waitpid(0, os.WNOHANG)
@@ -198,88 +194,50 @@ class DispatchingWorker(udp_server.UDPServer):
                     Trace.trace(6,"collect_children %s"%(msg,))
                     raise os.error, msg
 
-
-        #Next check for threads.
-
-        for search_thread in threading.enumerate():
-            if search_thread == threading.currentThread():
-                #Skip current thread to avoid raising RunTime exception
-                # joining current thread.
-                continue
-            try:
-                search_thread.join(0)  #wait zero seconds.
-            except RuntimeError:
-                # We cannot join a thread before it is started.
-                pass
-            #Either the join() succeeded or timed out.  If it succeeded,
-            # then threading.enumerate() will not include it in the
-            # return list the next time it is called.
-
-    #Kill all child processes still running.  Python threads can't be
-    # killed with current versions of python.
-    def collect_children_now(self):
-
-        self.collect_children()
-
-        #Send those still running the SIGTERM signal.
-        if self.kill_list:
-            for pid in self.kill_list:
-                self.kill(pid, signal.SIGTERM)
-
-            #Wait a few seconds then collect the child processes.
-            time.sleep(5)
-            self.collect_children()
-
-        #Send those still running the SIGKILL signal.
-        if self.kill_list:
-            for pid in self.kill_list:
-                self.kill(pid, signal.SIGKILL)
-
-            #Wait a few seconds then collect the child processes.
-            time.sleep(5)
-            self.collect_children()
-            
     def kill(self, pid, signal):
-        """Signal a child process.  Use this instead of os.kill for safety"""
         if pid not in self.kill_list:
             return
-        Trace.trace(6, "killing process %d with signal %d" % (pid, signal))
+        Trace.trace(6, "killing process %d with signal %d" % (pid,signal))
         try:
             os.kill(pid, signal)
         except os.error, msg:
-            Trace.log(e_errors.ERROR, "kill %d: %s" % (pid, str(msg)))
+            Trace.log(e_errors.ERROR, "kill %d: %s" %(pid, msg))
         
     def fork(self, ttl=DEFAULT_TTL):
         """Fork off a child process.  Use this instead of os.fork for safety"""
         if self.n_children >= MAX_CHILDREN:
             Trace.log(e_errors.ERROR, "Too many child processes!")
-            return -1
-        if self.tsd.is_child: #Don't allow double-forking
+            return os.getpid()
+        if self.is_child: #Don't allow double-forking
             Trace.log(e_errors.ERROR, "Cannot fork from child process!")
-            return -1
+            return os.getpid()
         
         pid = os.fork()
         ### The incrementing of the number of childern should occur after
         ### the os.fork() call.  If it is before and os.fork() throws
         ### an execption, then we have a discrepencey.
         self.n_children = self.n_children + 1
-        Trace.trace(6, "fork: n_children = %d" % (self.n_children,))
+        Trace.trace(6,"fork: n_children = %d"%(self.n_children,))
 
         if pid != 0:  #We're in the parent process
             if ttl is not None:
                 self.kill_list.append(pid)
                 self.add_interval_func(lambda self=self,pid=pid,sig=signal.SIGTERM: self.kill(pid,sig), ttl, one_shot=1)
                 self.add_interval_func(lambda self=self,pid=pid,sig=signal.SIGKILL: self.kill(pid,sig), ttl+5, one_shot=1)
-            self.tsd.is_child = 0
+            self.is_child = 0
             return pid
         else:
-            #Clear the list of the parent's other childern.  They are
-            # not the children of this current process.
-            self.kill_list = []
-            
-            self.tsd.is_child = 1
+            self.is_child = 1
             ##Should we close the control socket here?
             return 0
+
+    def func_wrapper(self, function, args=(), after_function=None):
+        if type(args) != types.TupleType:
+            self.__invoke_function(function, (args,))
+        else:
+            self.__invoke_function(function, args)
+        if after_function:
+            after_function()
 
     # run_in_thread():
     # thread_name: A string containing the name of the thread to use, or None.
@@ -290,166 +248,89 @@ class DispatchingWorker(udp_server.UDPServer):
     #           name of the function.
     # args: Tuple of arguments.
     # after_function:
-    # wait_if_busy:  Set wait_if_busy to True for threads that are intended
-    #                to be long lived in a parallel implimentation.  Those
-    #                that are to run once and return a value to a user
-    #                should leave wait_if_busy False.
-    # leave_running: If a long running thread is still running, don't
-    #                run it again (even in the main thread).
-    #
-    # Returns value:
-    # 0:    Successfully started the thread.
-    # 1:    Error starting the thread.
-    # -1:   Did not try to start the thread.
-    # None: 1) Ran function in main thread.
-    #       2) leave_running is true and the thread is still alive.
     #
     # Note: Python threads can't be killed.  Thus, there is no time-to-live
     #       aspect with threads like there is with processes.
-    def run_in_thread(self, thread_name, function, args=(),
-                      after_function=None, wait_if_busy = False,
-                      leave_running = False):
-
-        #Some situations call for only one type of thread to run at a
-        # time.  Set use_range to determine if we need to wait for another
-        # thread to exit or go ahead and run it in the main thread anyway.
-        if wait_if_busy:
-            use_range = 5
-        else:
-            use_range = 1  #Only check once!
-
+    def run_in_thread(self, thread_name, function, args=(), after_function=None):
         # see what threads are running
         if thread_name:
             threads = threading.enumerate()
-            for search_thread in threads:
-                if search_thread.getName() == thread_name:
-                    #Loop for a while to see if the other active thread
-                    # goes away on its own.
-                    for i in range(use_range):
-                        if search_thread and search_thread.isAlive():
-                            if leave_running:
-                                return None
-                            elif wait_if_busy:
-                                message = "thread %s is already running, " \
-                                          "waiting %s" % (thread_name, i)
-                                Trace.trace(20, message)
-                                time.sleep(1)
-                            else:
-                                #use_range has one item so we go to the else
-                                # clause.
-                                continue
-                        else:
-                            break
-                    else:
-                        message = "thread %s is already running" \
-                                  % (thread_name,)
-                        Trace.log(e_errors.ERROR, message)
+            for thread in threads:
+                if ((thread.getName() == thread_name) and thread.isAlive()):
+                    Trace.trace(5, "thread %s is already running" % (thread_name))
+                    #We've exceeded the number of thread_name threads, which
+                    # is one.  Running it in main thread.
+                    self.func_wrapper(function, args, after_function)
+                    return
 
-                        if wait_if_busy:
-                            return -1  #Don't try to start the thread.
-                        else:
-                            #We've exceeded the number of thread_name threads,
-                            # which is one.  Running it in main thread.
-                            self.__invoke_function(function, args,
-                                                   after_function)
-                            return None #Ran function in main thread.
-
-        #Impose a prossess wide limit on the number of threads.
-        for i in range(use_range):
-            thread_count = threading.activeCount()
-            if thread_count >= MAX_THREADS:
-                if wait_if_busy:
-                    time.sleep(1)                
-                else:
-                    #use_range has one item so we go to the else clause.
-                    continue 
-            else:
-                break
-        else:
+        #Impose a prossess wise limit on the number of threads.
+        thread_count = threading.activeCount()
+        if thread_count >= MAX_THREADS:
             Trace.trace(5, "too many threads, %s, are already running" \
                         % (thread_count,))
-            if wait_if_busy:
-                return -1  #Don't try to start the thread.
-            else:
-                #We've exceeded the number of non-thread_name threads.
-                # Running it in main thread.
-                self.__invoke_function(function, args, after_function)
-                return None #Ran function in main thread.
-
-        #Don't allow a child thread to create its own threads.
-        #### This check breaks the current mover code.
-        #if self.tsd.is_child:
-        #    Trace.log(e_errors.ERROR, "Cannot create new thread from thread!")
-        #    return -1
+            #We've exceeded the number of thread_name threads.
+            # Running it in main thread.
+            self.func_wrapper(function, args, after_function)
+            return
 
         args = (function,)+args
         if after_function:
             args = args + (after_function,)
-        Trace.trace(5, "create thread: target %s name %s args %s" \
-                    % (function, thread_name, args))
-        thread = threading.Thread(group=None, target=self.__invoke_function,
+        Trace.trace(5, "create thread: target %s name %s args %s" % (function, thread_name, args))
+        thread = threading.Thread(group=None, target=self.func_wrapper,
                                   name=thread_name, args=args, kwargs={})
-        Trace.trace(5, "starting thread: target %s name %s args %s" \
-                    % (function, thread_name, args))
+        Trace.trace(5, "starting thread %s"%(dir(thread,)))
         try:
             thread.start()
         except:
             exc, detail = sys.exc_info()[:2]
-            message = "error starting thread %s: %s" % (thread_name, detail)
-            Trace.log(e_errors.ERROR, message)
-            return 1  #Error starting the thread.
-
-        return 0  #Successfully started the thread.
+            Trace.log(e_errors.ERROR, "error starting thread %s: %s" % (thread_name, detail))
 
     # run_in_process():
     # process_name: A string containing the name of the thread to use, or None.
+    #              If thread_name is given, a limit of one is allowed.  If
+    #              None is given, then at most MAX_THREADS number of threads
+    #              are allowed.
     # function: The function to run in the thread.  This is not the string
     #           name of the function.
     # args: Tuple of arguments.
     # after_function:
-    # ttl: Time-To-Live, the duration the process is allowed to run
-    #      before being killed.
-    #
-    # Returns value:
-    # 0:    Successfully started the process.
-    # 1:    Error starting the process.
-    # -1:   Did not try to start the process.
-    # None: Ran function in current process.
     #
     #Note: This is intended for responding to client messages.  If a process
     #      needs to fork a process that will live for a long time,
     #      look at the dispatching_work.fork() function instead.
-    def run_in_process(self, process_name, function, args=(),
-                       after_function = None, wait_if_busy = False,
-                       ttl=DEFAULT_TTL):
+    def run_in_process(self, process_name, function, args=(), after_function = None):
 
-        Trace.trace(5, "create process: target %s name %s args %s" \
-                    % (function, process_name, args))
+        Trace.trace(5, "create process: target %s name %s args %s" % (function, process_name, args))
         try:
-            pid = self.fork(ttl = ttl)
+            pid = os.fork()
         except OSError, msg:
             Trace.log(e_errors.ERROR, "fork() failed: %s\n" % (str(msg),))
-            return  1  #Failed to start the processes.
-        if pid < 0: #parent, on error
-            if self.n_children >= MAX_CHILDREN and not wait_if_busy:
-                self.__invoke_function(function, args, after_function)
-                return None  #Ran function in current process.
-            else:
-                return -1  #Did not try to start the process.
-        elif pid > 0:  #parent
-            return 0  #Successfully started the process.
+            return
+        if pid > 0:  #parent
+            #Add this to the list.
+            self.kill_list.append(pid)
+            self.add_interval_func(lambda self=self, pid=pid,
+                                   sig=signal.SIGTERM: self.kill(pid, sig),
+                                   DEFAULT_TTL, one_shot = 1)
+            self.add_interval_func(lambda self=self, pid=pid,
+                                   sig=signal.SIGKILL: self.kill(pid,sig),
+                                   DEFAULT_TTL + 5, one_shot = 1)
         else: #child
+            #Clear the list of the parent's other childern.  They are
+            # not the childern of this current process.
+            self.kill_list = []
+            
             try:
-                self.__invoke_function(function, args, after_function)
+                self.func_wrapper(function, args, after_function)
                 res = 0
             except:
                 res = 1
                 exc, msg, tb = sys.exc_info()
                 Trace.handle_error(exc, msg, tb)
                 del tb #Avoid cyclic references.
-                message = "error starting process %s: %s" \
-                          % (process_name, msg)
-                Trace.log(e_errors.ERROR, message)
+                Trace.log(e_errors.ERROR, "error starting process %s: %s" \
+                          % (process_name, msg))
                 
             os._exit(res) #child exit
 
@@ -473,12 +354,11 @@ class DispatchingWorker(udp_server.UDPServer):
             if self.allow_callback:
                 Trace.trace(5, "spawning get_fd_message")
                 # spawn callback processing thread (event relay messages)
-                self.run_in_thread("call_back_proc", self.serve_callback)
+                run_in_thread("call_back_proc", self.serve_callback)
             
             # start receiver thread or process
             self.raw_requests.receiver()
-
-        while 1:  #not self.tsd.is_child:
+        while not self.is_child:
             self.do_one_request()
             self.collect_children()
             count = count + 1
@@ -486,27 +366,13 @@ class DispatchingWorker(udp_server.UDPServer):
             if count > 20:
                 self.purge_stale_entries()
                 count = 0
-
-        if self.tsd.is_child:
+                
+        if self.is_child:
             Trace.trace(6,"serve_forever, child process exiting")
             os._exit(0) ## in case the child process doesn't explicitly exit
         else:
             Trace.trace(6,"serve_forever, shouldn't get here")
 
-    #serve_forever2() should be called from run_in_thread instead of
-    # serve_forever().
-    #
-    #alt_server_address: (hostname, port#) to listen on, that is
-    # different from the default (hostname, port#)
-    def serve_forever2(self, alt_server_address):
-        try:
-            self.init_thread_specific_data(alt_server_address) #udp_server
-            self.initialize_thread_safe_data() #dispatching_worker
-            self.disable_callback()
-            self.serve_forever()
-        except:
-            Trace.handle_error()
-        
     def get_request(self):
         if self.use_raw:
             request, client_address = self._get_request_multi()
@@ -522,17 +388,17 @@ class DispatchingWorker(udp_server.UDPServer):
         try:
             request, client_address = self.get_request()
         except:
-            Trace.handle_error()
+            exc, msg = sys.exc_info()[:2]
              
         now=time.time()
 
-        for func, time_data in self.tsd.interval_funcs.items():
+        for func, time_data in self.interval_funcs.items():
             interval, last_called, one_shot = time_data
             if now - last_called > interval:
                 if one_shot:
-                    del self.tsd.interval_funcs[func]
+                    del self.interval_funcs[func]
                 else: #record last call time
-                    self.tsd.interval_funcs[func][1] =  now
+                    self.interval_funcs[func][1] =  now
                 Trace.trace(6, "do_one_request: calling interval_function %s"%(func,))
                 func()
 
@@ -553,30 +419,28 @@ class DispatchingWorker(udp_server.UDPServer):
         except:
             self.handle_error(request, client_address)
 
-        Trace.trace(6, "do_one_request: from %s"%(client_address,))
-
     # a server can add an fd to the server_fds list
     def add_select_fd(self, fd, write=0, callback=None):
         if fd is None:
             return
         if write:
-            if fd not in self.tsd.write_fds:
-                self.tsd.write_fds.append(fd)
+            if fd not in self.write_fds:
+                self.write_fds.append(fd)
         else:
-            if fd not in self.tsd.read_fds:
-                self.tsd.read_fds.append(fd)
-        self.tsd.callback[fd]=callback
+            if fd not in self.read_fds:
+                self.read_fds.append(fd)
+        self.callback[fd]=callback
         
     def remove_select_fd(self, fd):
         if fd is None:
             return
 
-        while fd in self.tsd.write_fds:
-            self.tsd.write_fds.remove(fd)
-        while fd in self.tsd.read_fds:
-            self.tsd.read_fds.remove(fd)
-        if self.tsd.callback.has_key(fd):
-            del self.tsd.callback[fd]
+        while fd in self.write_fds:
+            self.write_fds.remove(fd)
+        while fd in self.read_fds:
+            self.read_fds.remove(fd)
+        if self.callback.has_key(fd):
+            del self.callback[fd]
 
     def read_fd(self, fd):
         
@@ -623,14 +487,14 @@ class DispatchingWorker(udp_server.UDPServer):
         #   time out where there is no string or r.a.
 
         while True:
-            r = self.tsd.read_fds + [self.tsd.server_socket]
-            w = self.tsd.write_fds
+            r = self.read_fds + [self.server_socket]
+            w = self.write_fds
 
             rcv_timeout = self.rcv_timeout
 
-            if self.tsd.interval_funcs:
+            if self.interval_funcs:
                 now = time.time()
-                for func, time_data in self.tsd.interval_funcs.items():
+                for func, time_data in self.interval_funcs.items():
                     interval, last_called, one_shot = time_data
                     rcv_timeout = min(rcv_timeout,
                                       interval - (now - last_called))
@@ -643,22 +507,22 @@ class DispatchingWorker(udp_server.UDPServer):
 
             #handle pending I/O operations first
             for fd in r + w:
-                if self.tsd.callback.has_key(fd) and self.tsd.callback[fd]:
-                    self.tsd.callback[fd](fd)
+                if self.callback.has_key(fd) and self.callback[fd]:
+                    self.callback[fd](fd)
 
             #now handle other incoming requests
             for fd in r:
                 
                 if (type(fd) == types.IntType and
-                    fd in self.tsd.read_fds and
-                    self.tsd.callback[fd]==None):
+                    fd in self.read_fds and
+                    self.callback[fd]==None):
                     #XXX this is special-case code,
                     #for old usage in media_changer
 
                     (request, addr) = self.read_fd(fd)
                     return (request, addr)
                 
-                elif fd == self.tsd.server_socket:
+                elif fd == self.server_socket:
                     #Get the 'raw' request and the address from whence it came.
                     (request, addr) = udp_server.UDPServer.get_message(self)
 
@@ -704,11 +568,11 @@ class DispatchingWorker(udp_server.UDPServer):
         t0 = time.time()
 
         while True:
-            r = [self.tsd.server_socket]
+            r = [self.server_socket]
             rcv_timeout = self.rcv_timeout
-            if self.tsd.interval_funcs:
+            if self.interval_funcs:
                 now = time.time()
-                for func, time_data in self.tsd.interval_funcs.items():
+                for func, time_data in self.interval_funcs.items():
                     interval, last_called, one_shot = time_data
                     rcv_timeout = min(rcv_timeout,
                                       interval - (now - last_called))
@@ -719,9 +583,8 @@ class DispatchingWorker(udp_server.UDPServer):
                 Trace.trace(5, "disptaching_worker!!: get_request %s"%(rc,))
             except (NameError, ValueError), detail:
                 Trace.trace(5, "dispatching_worker: nameerror %s"%(detail,))
-                #self.erc.error_msg = str(detail)
-                #self.handle_er_msg(None)
-                Trace.handle_error()
+                self.erc.error_msg = str(detail)
+                self.handle_er_msg(None)
                 return None, None
             if rc and rc != ('',()):
                 #Trace.trace(5, "disptaching_worker: get_request %s"%(rc,))
@@ -764,8 +627,8 @@ class DispatchingWorker(udp_server.UDPServer):
         #   read from pipe where there is no crc and no r.a.
         #   time out where there is no string or r.a.
         while True:
-            r = self.tsd.read_fds
-            w = self.tsd.write_fds
+            r = self.read_fds
+            w = self.write_fds
 
             rcv_timeout = self.rcv_timeout
 
@@ -775,9 +638,9 @@ class DispatchingWorker(udp_server.UDPServer):
 
             #handle pending I/O operations first
             for fd in r + w:
-                if self.tsd.callback.has_key(fd) and self.tsd.callback[fd]:
+                if self.callback.has_key(fd) and self.callback[fd]:
                     Trace.trace(5,"get_fd_message - got one")
-                    self.tsd.callback[fd](fd)
+                    self.callback[fd](fd)
 
         return (None, ())
 
@@ -831,51 +694,22 @@ class DispatchingWorker(udp_server.UDPServer):
 
         # call the user function
         self.invoke_function(function, (ticket,))
-        Trace.trace(5,"process_request: function %s done"%(function_name,))
 
-    def __invoke_function(self, function, args=(), after_function = None):
-        if not hasattr(self.tsd, "is_child"):
-            #For threads, we need to define this thread's thread-specific-
-            #data.
-            self.initialize_thread_safe_data()
-            is_child_thread = 1
-        else:
-            is_child_thread = 0
-        
+    def __invoke_function(self, function, args=()):
         Trace.trace(5, "invoke_function: function %s" % (function.func_name,))
         t = time.time()
-        try:
-            if type(args) != types.TupleType:
-                apply(function, (args,))
-            else:
-                apply(function, args)
-        except:
-            if is_child_thread:
-                #Trace.handle_error()
-                Trace.log(e_errors.ERROR, str(sys.exc_info()[1]))
-            else:
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        apply(function, args)
         Trace.trace(5, "invoke_function: function %s time %s" \
                     % (function.func_name, time.time() - t))
-
-        if after_function:
-            after_function()
 
     # This function has been introduced as convenience, so
     # that subclasses can override it as they see fit w/o
     # touching dispatching_worker.process_request().
+    #
+    #after_function is only used if overloaded version in a server uses it.
     def invoke_function(self, function, args=(), after_function = None):
-        # Functions run in a different thread/process won't have the
-        # answer cached, which in a busy system could make things even
-        # worse.  This is desirable for requests with long answers over
-        # TCP.
-        if function.func_name in self.run_in_parallel:
-            if self.get_threaded_imp():
-                self.run_in_thread(None, function, args, after_function)
-            else:
-                self.run_in_process(None, function, args, after_function)
-        else:
-            self.__invoke_function(function, args, after_function)
+        self.__invoke_function(function, args)
+        self._done_cleanup()
 
     def handle_error(self, request, client_address):
         exc, msg, tb = sys.exc_info()
@@ -889,23 +723,11 @@ class DispatchingWorker(udp_server.UDPServer):
         if self.custom_error_handler:
             self.custom_error_handler(exc,msg,tb)
         else:
-            #We need to insert the client's address into a fake ticket
-            # so that reply_to_caller2() can send back the error.
-            reply_ticket = {}
-            reply_ticket['r_a'] = ("", client_address, "")
+            self.reply_to_caller( {'status':(str(exc),str(msg), 'error'), 
+                                   'request':request, 
+                                   'exc_type':str(exc), 
+                                   'exc_value':str(msg)} )
 
-            self.reply_to_caller2( {'status':(str(exc),str(msg), 'error'), 
-                                    'request':request, 
-                                    'exc_type':str(exc), 
-                                    'exc_value':str(msg)},
-                                   reply_ticket)
-
-    #Currently only the configuration server overrides this function to
-    # allow for multiple threads/processes to be choosen by the administor
-    # or developer.
-    def get_threaded_imp(self):
-        return True  #use threads
-    
     ####################################################################
 
     def alive(self,ticket):
@@ -955,8 +777,6 @@ class DispatchingWorker(udp_server.UDPServer):
             children = multiprocessing.active_children()
             for p in children:
                 p.terminate()
-        else:
-            self.collect_children_now()  #Kill remaining child processes.
         Trace.trace(10,"quit address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
@@ -976,13 +796,10 @@ class DispatchingWorker(udp_server.UDPServer):
     ####################################################################
 
     # send back our response
-    def send_reply(self, t, original_ticket = None):
+    def send_reply(self, t):
         save_copy = copy.copy(t)
         try:
-            if original_ticket != None:
-                self.reply_to_caller2(t, original_ticket)
-            else:
-                self.reply_to_caller(t)
+            self.reply_to_caller(t)
         except:
             # even if there is an error - respond to caller so he can process it
             exc, msg = sys.exc_info()[:2]
@@ -1022,9 +839,8 @@ class DispatchingWorker(udp_server.UDPServer):
         self.reply_to_caller(small_reply_copy)
 
         #Wait for the client to connect over TCP.
-        REPLY_TIMEOUT = 5
         for i in range(12):
-            r, w, x = select.select([listen_socket], [], [], REPLY_TIMEOUT)
+            r, w, x = select.select([listen_socket], [], [], 5)
             if not r:
                 #Tell the client to wait for a connection.
                 small_reply_copy = copy.copy(small_reply)
@@ -1035,8 +851,7 @@ class DispatchingWorker(udp_server.UDPServer):
         else:
             #We didn't hear back from the other side.
             listen_socket.close()
-            message = "connection timedout after %s seconds from %s" \
-                      % (i * REPLY_TIMEOUT, ticket['r_a'],)
+            message = "connection timedout from %s" % (ticket['r_a'],)
             Trace.log(e_errors.ERROR, message)
             return None
 
@@ -1085,7 +900,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
     ####################################################################
         
-    def restricted_access(self, ticket):
+    def restricted_access(self):
         '''
         restricted_access(self) -- check if the service is restricted
 
@@ -1094,8 +909,8 @@ class DispatchingWorker(udp_server.UDPServer):
         self.reply_address. If they match, return None. If not, return a
         error status that can be used in reply_to_caller.
         '''
-        if self.extract_reply_address(ticket)[0] in self.ipaddrlist:
-            return None
+        if self.reply_address[0] in self.ipaddrlist:
+             return None
 
         return (e_errors.ERROR,
                 "This restricted service can only be requested from node %s"

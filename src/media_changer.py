@@ -641,11 +641,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         # If not a duplicate request or dropped request; fork the work.
         pipe = os.pipe()
 	pid = self.fork(ttl=None) #no time limit
-	if pid < 0: #Parent, with error
-	    Trace.alarm(e_errors.ERROR,
-			"failed to fork child: %d" % (common_message,))
-	    return
-	elif pid: 
+        if pid: 
 	    #  in parent process
 	    ticket['pid'] = pid
 
@@ -1176,6 +1172,15 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	#
 	# The bug is that for every call to aci_getcellinfo() three file
 	# descriptors (that are sockets) are leaked.
+	#
+	# By using self.fork() instead of os.fork() we get automatic process
+	# tracking and termination (if needed).
+	#     
+	#pid = self.fork()
+	#if pid != 0: # parent
+	#    return
+
+	# ... else this is the child.
 
 	### All this extra forking code to work around aci_getcellinfo()
 	### is not needed now that list_slots() uses DoWork() to call

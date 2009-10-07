@@ -41,7 +41,7 @@ class ConfigurationDict:
         self.config_load_timestamp = None
         self.use_thread = 1
         self.system_name = None  #Cache return value from _get_system_name().
-        self.cached_domains = None #Cache return value from _get_domains().
+        self.cached_domains = None #Cache return value from _get_system_name().
         #The average dump2() execution time, in seconds, for these three
         # copy levels are (n = 9, for each):
         # deepcopy: 0.017653094397633334
@@ -78,11 +78,6 @@ class ConfigurationDict:
                           % (configfile, str(msg)))
             Trace.log( e_errors.ERROR, status[1] )
             return status
-        except:
-            message = "Configuration Server: read_config: %s" \
-                      % (sys.exc_info()[1],)
-            return (e_errors.UNKNOWN, message)
-
         code = string.join(f.readlines(),'')
 
         # Lint hack, otherwise lint can't see where configdict is defined.
@@ -153,18 +148,15 @@ class ConfigurationDict:
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile):
-
-        
-        self.member_lock.acquire()
-        #Since we are loading a new configuration file,
-        # 'known_config_servers' could change.  Set, system_name to None
-        # so the next call to _get_system_name() resets this value.
-        self.system_name = None
-        self.cached_domains = None
-        self.member_lock.release()
         
         try:
             self.config_lock.acquire()
+            
+            #Since we are loading a new configuration file,
+            # 'known_config_servers' could change.  Set, system_name to None
+            # so the next call to _get_system_name() resets this value.
+            self.system_name = None
+            self.cached_domains = None
             
             status = self.read_config(configfile)
             if not e_errors.is_ok(status):
@@ -191,20 +183,6 @@ class ConfigurationDict:
             return (e_errors.UNKNOWN, (str((str(exc), str(msg)))))
 
     ####################################################################
-
-    #member_name: a string containing the name of a self.something variable.
-    def __get_member_value(self, member_name, copy_level):
-        t0 = time.time()
-        if copy_level >= 2:
-            value = copy.deepcopy(getattr(self, member_name))
-        elif copy_level == 1:
-            value = copy.copy(getattr(self, member_name))
-        else:
-            value = getattr(self, member_name)
-        Trace.trace(25,
-                    "get_dict_entry: extract time: %f" % (time.time() - t0,))
-
-        return value
 
     ## get_dict_entry(), get_server_list(), get_config_keys() and
     ## get_config_dict():
@@ -252,7 +230,14 @@ class ConfigurationDict:
         copy_level = self.get_copy_level()
         self.config_lock.acquire()
         try:
-            configdict = self.__get_member_value("configdict", copy_level)
+            t0 = time.time()
+            if copy_level >= 2:
+                configdict = copy.deepcopy(self.configdict)
+            elif copy_level == 1:
+                configdict = copy.copy(self.configdict)
+            else:
+                configdict = self.configdict
+            Trace.trace(25, "get_config_dict: extract time: %f" % (time.time() - t0,))
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -266,7 +251,14 @@ class ConfigurationDict:
         copy_level = self.get_copy_level()
         self.config_lock.acquire()
         try:
-            slist = self.__get_member_value("serverlist", copy_level)
+            t0 = time.time()
+            if copy_level >= 2:
+                slist = copy.deepcopy(self.serverlist)
+            elif copy_level == 1:
+                slist = copy.copy(self.serverlist)
+            else:
+                slist = self.serverlist
+            Trace.trace(25, "get_server_list: extract time: %f" % (time.time() - t0,))
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -279,7 +271,14 @@ class ConfigurationDict:
         copy_level = self.get_copy_level()
         self.member_lock.acquire()
         try:
-            clt = self.__get_member_value("config_load_timestamp", copy_level)
+            t0 = time.time()
+            if copy_level >= 2:
+                clt = copy.deepcopy(self.config_load_timestamp)
+            elif copy_level == 1:
+                clt = copy.copy(self.config_load_timestamp)
+            else:
+                clt = self.config_load_timestamp
+            Trace.trace(25, "get_config_load_timestamp: extract time: %f" % (time.time() - t0,))
         except:
             self.member_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -290,7 +289,14 @@ class ConfigurationDict:
         copy_level = self.get_copy_level()
         self.member_lock.acquire()
         try:
-            use_thread = self.__get_member_value("use_thread", copy_level)
+            t0 = time.time()
+            if copy_level >= 2:
+                use_thread = copy.deepcopy(self.use_thread)
+            elif copy_level == 1:
+                use_thread = copy.copy(self.use_thread)
+            else:
+                use_thread = self.use_thread
+            Trace.trace(25, "get_threaded_imp: extract time: %f" % (time.time() - t0,))
         except:
             self.member_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -310,7 +316,14 @@ class ConfigurationDict:
     def get_copy_level(self):
         self.member_lock.acquire()
         try:
-            copy_level = self.__get_member_value("do_copies", self.do_copies)
+            t0 = time.time()
+            if self.do_copies >= 2:
+                copy_level = copy.deepcopy(self.do_copies)
+            elif self.do_copies == 1:
+                copy_level = copy.copy(self.do_copies)
+            else:
+                copy_level = self.do_copies
+            Trace.trace(25, "get_copy_level: extract time: %f" % (time.time() - t0,))
         except:
             self.member_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -396,7 +409,7 @@ class ConfigurationDict:
     def _get_domains(self):
 
         self.member_lock.acquire()
-        if getattr(self, 'cached_domains', None) == None:
+        if getattr(self, "cached_domains", None) == None:
             should_set_now = True
         else:
             should_set_now = False
@@ -410,38 +423,18 @@ class ConfigurationDict:
                 domains = self.get_dict_entry('domains')
             except:
                 domains = None # Some error.
-
-            #Make sure the type is correct.
-            if type(domains) != types.DictType:
-                message = "domains sub-field is not a dictionary"
-                Trace.log(e_errors.ERROR, message)
-                return self.cached_domains
-
-            #Make sure the type is correct.
-            for key in ("valid_domains", "invalid_domains"):
-                #Make sure valid_domains exists first.
-                if not domains.has_key(key):
-                    domains[key] = []
-
-                #Fix the type if necessary.
-                if type(domains[key]) != types.ListType:
-                    message = "%s sub-field is not a list" % (key,)
-                    Trace.log(e_errors.ERROR, message)
-                    
-                    if type(domains[key]) == types.TupleType:
-                        domains[key] = list(domains[key]) #convert tuples
-                    else:
-                        domains[key] = []  #What else to do?
-            
+                
             if domains != None:
                 cached_domains = {}
                 #Put the domains into the reply ticket.
                 cached_domains['domains'] = domains
-
                 #We need to insert the configuration servers domain into
                 # the list.  Otherwise, the client will not have the
                 # configuration server's domain in the valid_domains list.
-                cached_domains['domains']['valid_domains'].append(hostaddr.getdomainaddr())
+                try:
+                    cached_domains['domains']['valid_domains'].append(hostaddr.getdomainaddr())
+                except KeyError:
+                    pass
 
                 #Don't call __get_system_name() while member_lock is locked.
                 # It calls get_dict_entry() which locks config_lock and
@@ -491,11 +484,6 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER, 
 				 enstore_constants.CONFIG_SERVER_ALIVE_INTERVAL)
 
-        #Set the list of functions to run in parallel.  This should include
-        # those with long answers, since the dispatching worker
-        # cache of recent replies is not sufficent for those.
-        self.run_in_parallel = ["dump", "dump2"]
-
     #Called whenever a new configuration is loaded.
     def update_domains(self):
         # The other servers call the generic_server.__init__() function
@@ -507,6 +495,18 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             domains = {}
         hostaddr.update_domains(domains)
 
+    # Overridden dispatching_worker function.  This allows us to control
+    # which functions are started in parallel or not.
+    def invoke_function(self, function, args=(), after_function = None):
+        if function.func_name in ['dump', 'dump2']:
+            if self.get_threaded_imp():
+                self.run_in_thread(None, function, args, after_function)
+            else:
+                self.run_in_process(None, function, args, after_function)
+        else:
+            dispatching_worker.DispatchingWorker.invoke_function(
+                self, function, args)
+        
     ####################################################################
         
     # just return the current value for the item the user wants to know about
@@ -537,9 +537,9 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 ticket = self.get_dict_entry(lookup)
             ticket['status'] = (e_errors.OK, None)
         except KeyError:
-            ticket['status'] = (e_errors.KEYERROR,
-                                "Configuration Server: no such name: "
-                                +repr(lookup))
+            ticket = {"status": (e_errors.KEYERROR,
+                                     "Configuration Server: no such name: "
+                                     +repr(lookup))}
 
         self.send_reply(ticket)
 
@@ -645,7 +645,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
     ## particular library as specified in ticket['library']
     def get_movers(self, ticket):
 	ret = self.get_movers_internal(ticket)
-        self.reply_to_caller2(ret, ticket)
+	self.reply_to_caller(ret)
 
     def get_media_changer(self, ticket):
         #__pychecker__ = "unusednames=ticket"
@@ -658,9 +658,12 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             ret =  self.get_dict_entry(mv_name).get('media_changer','')
             if ret:
                 break
-        self.reply_to_caller2(ret, ticket)
+        self.reply_to_caller(ret)
         
     #get list of library managers
+    ### Not thread safe.  The ticket['r_a'] value isn't passed to
+    ### reply_to_caller() via ret, so the reply the client asked for may
+    ### not be what they get.
     def get_library_managers(self, ticket):
         __pychecker__ = "unusednames=ticket"
         
@@ -672,10 +675,12 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 item = self.get_dict_entry(key)
                 ret[library_name] = {'address':(item['host'],item['port']),
 				     'name': key}
-
-        self.reply_to_caller2(ret, ticket)
+        self.reply_to_caller(ret)
 
     #get list of media changers
+    ### Not thread safe.  The ticket['r_a'] value isn't passed to
+    ### reply_to_caller() via ret, so the reply the client asked for may
+    ### not be what they get.
     def get_media_changers(self, ticket):
         __pychecker__ = "unusednames=ticket"
         
@@ -688,8 +693,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                 ret[media_changer_name] = {'address':(item['host'],
                                                       item['port']),
                                            'name': key}
-        
-        self.reply_to_caller2(ret, ticket)
+        self.reply_to_caller(ret)
 
     def reply_serverlist( self, ticket):
         __pychecker__ = "unusednames=ticket"
@@ -720,7 +724,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         self.set_threaded_imp(key)
         ret = {"status" : (e_errors.OK,
                            "thread is set to %s" % (self.get_threaded_imp()))}
-        self.reply_to_caller2(ret, ticket)
+        self.reply_to_caller(ret)
 
     # change the copy level: 2 = deepcopy, 1 = copy, 0 = direct reference
     def copy_level(self, ticket):
@@ -734,7 +738,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         self.set_copy_level(key)
         ret = {"status" : (e_errors.OK,
                            "copy level set to %s" % (self.get_copy_level()))}
-        self.reply_to_caller2(ret, ticket)
+        self.reply_to_caller(ret)
         
 
 

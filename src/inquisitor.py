@@ -1628,6 +1628,132 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(enstore_constants.INQWORKDBG, 
 		    "mark server nooverride work from user")
 
+    def thread_wrapper(self, function, args=(), after_function=None):
+        function(args)
+        if after_function:
+            after_function()
+
+    #
+    # spawn function in new thread of there is not alive thread with this name
+    #
+    def run_in_thread(self,
+                      function,
+                      args=(),
+                      after_function=None,
+                      thread_name=None):
+        if thread_name :
+            for thread in threading.enumerate():
+                if thread.getName() == thread_name:
+                    if thread.isAlive():
+                        Trace.trace(e_errors.WARNING, "thread %s is already runnnig, skipping execution of %s" % (thread_name, function.__name__,))
+                        return
+        _args = (function,)+ args
+        if after_function:
+            _args = _args + (after_function,)
+        enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
+                                   "create thread: name %s target %s args %s" % (thread_name, function.__name__, args))
+        thread = threading.Thread(group=None, target=self.thread_wrapper,
+                                  args=_args, kwargs={})
+        if thread_name:
+            thread.setName(thread_name)
+        enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
+                                   "starting thread name=%s"%(thread.getName()))
+        try:
+            thread.start()
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "starting thread: %s" % (detail))
+
+    def do_one_request(self):
+        #
+        # this function overrides base class's function implementing
+        # execution of interval functions in threads
+        # In the future this functionality will be provided by DispatchingWorker
+        # so we will no longer need to override it
+        #
+        request = None
+        try:
+            request, client_address = self.get_request()
+        except:
+            exc, msg = sys.exc_info()[:2]
+             
+        now=time.time()
+
+        for func, time_data in self.interval_funcs.items():
+            interval, last_called, one_shot = time_data
+            if now - last_called > interval:
+                if one_shot:
+                    del self.interval_funcs[func]
+                else: #record last call time
+                    self.interval_funcs[func][1] =  now
+                Trace.trace(6, "do_one_request: calling interval_function %s"%(func.__name__,))
+                self.run_in_thread(func, (), after_function=self._done_cleanup, thread_name="%s.%s"%(self.__class__.__name__,func.__name__))
+                #func()
+
+        if request is None: #Invalid request sent in
+            return
+        
+        if request == '':
+            # nothing returned, must be timeout
+            self.handle_timeout()
+            return
+        try:
+            self.process_request(request, client_address)
+        except KeyboardInterrupt:
+            traceback.print_exc()
+        except SystemExit, code:
+            # processing may fork (forked process will call exit)
+            sys.exit( code )
+        except:
+            self.handle_error(request, client_address)
+
+
+    def process_request(self, request, client_address):
+        #
+        # this function overrides base class's function implementing
+        # execution of interval functions in threads
+        # In the future this functionality will be provided by DispatchingWorker
+        # so we will no longer need to override it
+        #
+        ticket = udp_server.UDPServer.process_request(self, request,
+                                                      client_address)
+        Trace.trace(6, "inquisitor:process_request %s; %s"%(request, ticket,))
+        if not ticket:  return
+        try:
+            function_name = ticket["work"]
+        except (KeyError, AttributeError, TypeError), detail:
+            ticket = {'status' : (e_errors.KEYERROR, 
+                                  "cannot find any named function")}
+            msg = "%s process_request %s from %s" % \
+                (detail, ticket, client_address)
+            Trace.trace(6, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+        try:
+            Trace.trace(5,"process_request: function %s"%(function_name,))
+            function = getattr(self,function_name)
+        except (KeyError, AttributeError, TypeError), detail:
+            ticket = {'status' : (e_errors.KEYERROR, 
+                                  "cannot find requested function `%s'"
+                                  % (function_name,))}
+            msg = "%s process_request %s %s from %s" % \
+                (detail, ticket, function_name, client_address) 
+            Trace.trace(6, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+        # call the user function
+        t = time.time()
+	c = threading.activeCount()
+	Trace.trace(5, "threads %s"%(c,))
+	if c < self.max_threads:
+	    Trace.trace(5, "threads %s"%(c,))
+	    self.run_in_thread(function, (ticket,), after_function=self._done_cleanup)
+	else:
+	    function(ticket)
+        Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
+ 
     def show(self, ticket):
 	ticket["status"] = (e_errors.OK, None)
         sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)

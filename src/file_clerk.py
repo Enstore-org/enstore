@@ -38,16 +38,6 @@ MAX_CONNECTION_FAILURE = 5
 MAX_THREADS = 50 
 MAX_CONNECTIONS=20
 
-#Set the list of functions to run in parallel.  This should include
-# those with long answers, since the dispatching worker
-# cache of recent replies is not sufficent for those.
-RUN_IN_PARALLEL = ["tape_list3"]  #For testing.
-#RUN_IN_PARALLEL = ["tape_list", "tape_list2", "tape_list3",
-#		   "get_bfids", "get_bfids2",
-#		   "list_active", "list_active2", "list_active3",
-#		   "show_bad", "show_bad2",
-#		   ]
-
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
 def time2timestamp(t):
@@ -104,10 +94,24 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
             sys.exit(1)
 
-	#Set the list of functions to run in parallel.  This should include
-        # those with long answers, since the dispatching worker
-        # cache of recent replies is not sufficent for those.
-	self.run_in_parallel = RUN_IN_PARALLEL
+    def invoke_function(self, function, args=()):
+        if  function.__name__  == "tape_list3":
+
+            c = threading.activeCount()
+            Trace.trace(5, "threads %s"%(c,))
+            if c < self.max_threads:
+                Trace.trace(5, "threads %s"%(c,))
+                dispatching_worker.run_in_thread(thread_name=None,
+                                                 function=function,
+                                                 args=args,
+                                                 after_function=self._done_cleanup)
+            else:
+                apply(function,args)
+                self._done_cleanup()
+        else:
+            apply(function,args)
+            self._done_cleanup()
+    
 
     ####################################################################
 
@@ -1339,11 +1343,10 @@ class FileClerkMethods(FileClerkInfoMethods):
             return #extract_bfid_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access(ticket)
+        status = self.restricted_access()
         if status:
-            message = "attempt to delete file %s from %s" \
-		      % (bfid, self.extract_reply_address(ticket)[0])
-            Trace.log(e_errors.ERROR, message)
+            msg = "attempt to delete file %s from %s"%(bfid, self.reply_address[0])
+            Trace.log(e_errors.ERROR, msg)
             ticket['status'] = status
             self.reply_to_caller(ticket)
             return

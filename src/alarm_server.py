@@ -60,7 +60,6 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
     # pull out alarm info from the ticket and raise the alarm
     def post_alarm(self, ticket):
-        original_ticket = ticket.copy() #ticket gets modified in self.alarm
         severity = self.get_from_ticket(ticket, SEVERITY, e_errors.DEFAULT_SEVERITY)
         root_error = self.get_from_ticket(ticket, enstore_constants.ROOT_ERROR,
                                           e_errors.DEFAULT_ROOT_ERROR)
@@ -82,7 +81,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                        enstore_constants.ALARM    : repr(theAlarm.get_id()) }
         Trace.log(e_errors.ALARM, " (%s) %s "%(theAlarm.timedate, theAlarm.short_text(),),
                   Trace.MSG_ALARM)
-        self.send_reply(ret_ticket, original_ticket)
+        self.send_reply(ret_ticket)
 
     def default_action(self, theAlarm, isNew, params=[]):
         if isNew:
@@ -196,7 +195,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         if alarm_info is None:
             alarm_info = {}
         # find out where the alarm came from
-	host = hostaddr.address_to_name(self.extract_reply_address(alarm_info)[0])
+	host = hostaddr.address_to_name(self.reply_address[0])
         # we should only get a new alarm if this is not the same alarm as
         # one we already have
         theAlarm = self.find_alarm(host, severity, root_error, source,

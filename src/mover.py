@@ -817,7 +817,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dump(self, ticket):
         x = ticket
         out_ticket = {'status':(e_errors.OK,None)}
-        self.reply_to_caller2(out_ticket, ticket)
+        self.reply_to_caller(out_ticket)
         self.dump_vars()
 
     def dump_vars(self, header=None):
@@ -5217,6 +5217,29 @@ class Mover(dispatching_worker.DispatchingWorker,
             }
         return ticket
 
+    def run_in_thread(self, thread_name, function, args=(), after_function=None):
+        thread = getattr(self, thread_name, None)
+        for wait in range(5):
+            if thread and thread.isAlive():
+                Trace.trace(20, "thread %s is already running, waiting %s" % (thread_name, wait))
+                time.sleep(1)
+        if thread and thread.isAlive():
+                Trace.log(e_errors.ERROR, "thread %s is already running" % (thread_name))
+                return -1
+        if after_function:
+            args = args + (after_function,)
+        Trace.trace(20, "create thread: target %s name %s args %s" % (function, thread_name, args))
+        thread = threading.Thread(group=None, target=function,
+                                  name=thread_name, args=args, kwargs={})
+        setattr(self, thread_name, thread)
+        Trace.trace(20, "starting thread %s"%(dir(thread,)))
+        try:
+            thread.start()
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
+        return 0
+    
     def dismount_volume(self, after_function=None):
         Trace.trace(10, "state %s"%(state_name(self.state),))
         will_mount = self.will_mount
@@ -5910,12 +5933,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
-
-        #The client does not expect any extra stuff in the reply ticket.
-        # Thus, we need to not use reply_to_caller() and instead use
-        # reply_to_caller2() which takes the original ticket too. 
-        self.reply_to_caller2(tick, ticket)
-        #self.reply_to_caller(tick)
+            
+        self.reply_to_caller(tick)
         #self.log_processes(logit=1)
         return
 
@@ -5964,10 +5983,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = DRAINING # XXX CGW should dismount here. fix this
         Trace.trace(e_errors.INFO, "The mover is set to state %s"%(state_name(self.state),)) 
         self.create_lockfile()
-        out_ticket = {'status':(e_errors.OK,None),
-                      'state':state_name(self.state),
-                      'pid': os.getpid()}
-        self.reply_to_caller2(out_ticket, ticket)
+        out_ticket = {'status':(e_errors.OK,None),'state':state_name(self.state), 'pid': os.getpid()}
+        self.reply_to_caller(out_ticket)
         if save_state is HAVE_BOUND and self.state is DRAINING:
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
 
@@ -5979,10 +5996,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         x = ticket # to trick pychecker
         if self.state != OFFLINE:
             out_ticket = {'status':("EPROTO","Not OFFLINE")}
-            self.reply_to_caller2(out_ticket, ticket)
+            self.reply_to_caller(out_ticket)
             return
         out_ticket = {'status':(e_errors.OK,None)}
-        self.reply_to_caller2(out_ticket, ticket)
+        self.reply_to_caller(out_ticket)
         ## XXX here we need to check if tape is mounted
         ## if yes go to have bound, NOT idle AM
         Trace.trace(11,"check lockfile %s"%(self.check_lockfile(),))
@@ -5995,9 +6012,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def warm_restart(self, ticket):
         self.start_draining(ticket)
-        out_ticket = {'status':(e_errors.OK,None),
-                      'state':self.state}
-        self.reply_to_caller2(out_ticket, ticket)
+        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
+        self.reply_to_caller(out_ticket)
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket)
@@ -6010,9 +6026,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def quit(self, ticket):
         Trace.log(e_errors.INFO, "Mover has received a quit command")
         self.start_draining(ticket)
-        out_ticket = {'status':(e_errors.OK,None),
-                      'state':self.state}
-        self.reply_to_caller2(out_ticket, ticket)
+        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
+        self.reply_to_caller(out_ticket)
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket, do_restart=0)
@@ -7313,12 +7328,8 @@ class DiskMover(Mover):
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
-
-        #The client does not expect any extra stuff in the reply ticket.
-        # Thus, we need to not use reply_to_caller() and instead use
-        # reply_to_caller2() which takes the original ticket too.
-        self.reply_to_caller2(tick, ticket)
-        #self.reply_to_caller(tick)
+            
+        self.reply_to_caller(tick)
         return
 
 if __name__ == '__main__':            

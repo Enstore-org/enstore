@@ -60,41 +60,99 @@ can_use_raw = True
 class UDPServer:
     
     def __init__(self, server_address, receive_timeout=60., use_raw=None):
-        self._lock = threading.Lock()
-
-        #These variables should be used like constants.  (readonly)
         self.socket_type = socket.SOCK_DGRAM
         self.max_packet_size = 16384
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
+        self._lock = threading.Lock()
+        self.current_id = None
+        self.queue_size = 0L
         self.use_raw = use_raw and can_use_raw
+        if use_raw:
+            #self.server_address = server_address
+            if getattr(self, "server_socket", None):
+                self.server_address = server_address
+                pass
+            else:
+                ip, port, self.server_socket = udp_common.get_callback(
+                    server_address[0], server_address[1])
+                self.server_address = (ip, port)
+        else:
+            try:
+                #If we already have a server_socket...
+                if getattr(self, "server_socket", None):
+                    if type(server_address) == type(()) \
+                       and type(server_address[0]) == type("") \
+                       and type(server_address[1]) == type(0):
+                        ssa = self.server_socket.getsockname()
+                        if ssa == server_address:
+                            self.server_address = ssa
+                        else:
+                            self.server_socket.close()
+                            ip, port, self.server_socket = udp_common.get_callback(
+                                server_address[0], server_address[1])
+                            self.server_address = (ip, port)
+                    else:
+                        ip, port, self.server_socket = \
+                            udp_common.get_default_callback()
+                        self.server_address = (ip, port)
+                #If an address was not specified.
+                elif type(server_address) != type(()) or \
+                   (type(server_address) != type(()) and len(server_address) != 2):
+                    ip,port,self.server_socket = udp_common.get_default_callback()
+                    self.server_address = (ip, port)
+                #If an address was specified.                
+                elif (type(server_address[0]) == type("")
+                     and type(server_address[1]) == type(0)):
+                    ip, port, self.server_socket = udp_common.get_callback(
+                        server_address[0], server_address[1])
+                    self.server_address = (ip, port)
+                #If an address was not specified.
+                else:
+                    ip,port,self.server_socket = udp_common.get_default_callback()
+                    self.server_address = (ip, port)
+
+            except socket.error, msg:
+                self.server_address = ("", 0)
+                self.server_socket = None
+                Trace.log(e_errors.ERROR, str(msg))
+            
+        try:
+            self.node_name, self.aliaslist, self.ipaddrlist = \
+                socket.gethostbyname_ex(
+                    socket.gethostbyaddr(self.server_address[0])[0])
+            cf = host_config.find_config_file()
+            if cf:
+                cc = host_config.read_config_file(cf)
+                for i in cc.get('interface', {}).keys():
+                    self.ipaddrlist.append(cc['interface'][i]['ip'])
+        except (socket.error, socket.herror, socket.gaierror):
+            self.node_name, self.aliaslist, self.ipaddrlist = \
+                self.server_address[0], [], [self.server_address[0]]
+
+        # used to recognize UDP retries
+        self.request_dict = {}
         # keep requests in request dict for this many seconds
         #self.request_dict_ttl = 1800
         self.request_dict_ttl = 1000
 
-        #These variables should be dead.
-        #self.current_id = None
-        #self.queue_size = 0L
-
-        #These variables should be used with care.
-        if not hasattr(self, 'tsd'):
-            self.tsd = threading.local()
-        self.init_thread_specific_data(server_address)
-
-        #By default init_thread_specific_data() sets use_request_dict to
-        # false, since most server threads only live to process
-        # one request.  This is the MainThread, so we need to override
-        # this to true.
-        self.tsd.use_request_dict = True
+        """
+        self.rexec = rexec.RExec()
+        """
+        
+        # set this socket to be closed in case of an exec
+        if self.server_socket != None:
+            fcntl.fcntl(self.server_socket.fileno(), fcntl.F_SETFD,
+                        fcntl.FD_CLOEXEC)
 
         # to use receiver implemented in c
         # to increase the performance
-        self.raw_requests = None
+        self.raw_requests = None;
         self.check_request = True # check request in r_eval
         if self.use_raw:
             self.check_request = False # dont check request in r_eval, it is checked in rawUDP receiver
             self.raw_requests = rawUDP.RawUDP(receive_timeout=self.rcv_timeout)
-            self.raw_requests.init_socket(self.tsd.server_socket)
+            self.raw_requests.init_socket(self.server_socket)
             # start raw udp receiver
             # it creates internal receiver thread and runs it in a loop
             '''
@@ -107,100 +165,6 @@ class UDPServer:
 
         print "UDP_SERVER starting in thread",thread_name 
 
-    def init_thread_specific_data(self, server_address = None):
-
-        if hasattr(self.tsd, 'server_address') and \
-               self.tsd.server_address == server_address:
-            #Already initialized.
-            return
-        
-        # used to recognize UDP retries
-        self.tsd.request_dict = {}
-        #Set if the thread should remember things in self.tsd.request_dict.
-        # This is useful for servers that spawn a thread to handle making
-        # one reply.
-        self.tsd.use_request_dict = False
-
-        #What does this self.use_raw section do differently from the else
-        # section?  Someone will need to explain it, because it is not
-        # obvious.
-        if self.use_raw:
-            if getattr(self.tsd, "server_socket", None):
-                self.tsd.server_address = server_address
-                pass
-            #If an address was not specified.
-            elif type(server_address) != type(()) or \
-                     (type(server_address) != type(()) and len(server_address) != 2):
-                ip,port,self.tsd.server_socket = udp_common.get_default_callback()
-                self.tsd.server_address = (ip, port)
-            else:
-                ip, port, self.tsd.server_socket = udp_common.get_callback(
-                    server_address[0], server_address[1])
-                self.tsd.server_address = (ip, port)
-        else:
-            try:
-                #If we already have a server_socket...
-                if getattr(self.tsd, "server_socket", None):
-                    if type(server_address) == type(()) \
-                       and type(server_address[0]) == type("") \
-                       and type(server_address[1]) == type(0):
-                        ssa = self.tsd.server_socket.getsockname()
-                        if ssa == server_address:
-                            self.tsd.server_address = ssa
-                        else:
-                            self.tsd.server_socket.close()
-                            ip, port, self.tsd.server_socket = udp_common.get_callback(
-                                server_address[0], server_address[1])
-                            self.tsd.server_address = (ip, port)
-                    else:
-                        ip, port, self.tsd.server_socket = \
-                            udp_common.get_default_callback()
-                        self.tsd.server_address = (ip, port)
-                #If an address was not specified.
-                elif type(server_address) != type(()) or \
-                   (type(server_address) != type(()) and len(server_address) != 2):
-                    ip,port,self.tsd.server_socket = udp_common.get_default_callback()
-                    self.tsd.server_address = (ip, port)
-                #If an address was specified.                
-                elif (type(server_address[0]) == type("")
-                     and type(server_address[1]) == type(0)):
-                    ip, port, self.tsd.server_socket = udp_common.get_callback(
-                        server_address[0], server_address[1])
-                    self.tsd.server_address = (ip, port)
-                #If an address was not specified.
-                else:
-                    ip,port,self.tsd.server_socket = udp_common.get_default_callback()
-                    self.tsd.server_address = (ip, port)
-
-            except socket.error, msg:
-                self.tsd.server_address = ("", 0)
-                self.tsd.server_socket = None
-                Trace.log(e_errors.ERROR, str(msg))
-
-        #Determine the list of IP addresses that we are allowed to use.
-        #These should be used readonly.
-        try:
-            self.tsd.node_name, self.tsd.aliaslist, self.tsd.ipaddrlist = \
-                socket.gethostbyname_ex(
-                    socket.gethostbyaddr(self.tsd.server_address[0])[0])
-            cf = host_config.find_config_file()
-            if cf:
-                cc = host_config.read_config_file(cf)
-                for i in cc.get('interface', {}).keys():
-                    self.ipaddrlist.append(cc['interface'][i]['ip'])
-        except (socket.error, socket.herror, socket.gaierror, TypeError):
-            #TypeError is in the list if server_address is None.
-            self.tsd.node_name, self.tsd.aliaslist, self.tsd.ipaddrlist = \
-                self.tsd.server_address[0], [], [self.tsd.server_address[0]]
-
-
-        # set this socket to be closed in case of an exec
-        if self.tsd.server_socket != None:
-            fcntl.fcntl(self.tsd.server_socket.fileno(), fcntl.F_SETFD,
-                        fcntl.FD_CLOEXEC)
-
-    ####################################################################
-    
     # disable reshuffling of duplicate requests when using rawUDP
     # this can be beneficial for mover requests
     # but may hurt encp requests
@@ -213,40 +177,36 @@ class UDPServer:
     def set_keyword(self, keyword):
         if self.use_raw:
             self.raw_requests.set_keyword(keyword)
-
-    ####################################################################
-
-    #Useful function to hide the format of the sub-ticket.  It returns the
-    # IP address of the originating node.
-    def extract_reply_address(self, ticket):
-        reply_address = ticket['r_a'][0]
-        return reply_address
-
-    #Useful function to hide the format of the sub-ticket.  It returns the
-    # unique message id.
-    def extract_current_id(self, ticket):
-        reply_address = ticket['r_a'][2]
-        return reply_address
         
+
     # cleanup if we are done with this unique id
     def _done_cleanup(self):
-        #self.current_id is not thread safe
-        pass
-        """
         if self.current_id and self.request_dict.has_key(self.current_id):
             try:
                 del self.request_dict[self.current_id]
             except KeyError:
                 pass
-        """
 
+
+    def __del__(self):
+        self.server_socket.close()
+        self.server_socket = None
+
+    """
+    def r_eval(self, stuff):
+        try:
+            return self.rexec.r_eval(stuff)
+        except:
+            return None,None,None
+    """
+    
     def purge_stale_entries(self):
         stale_time = time.time() - self.request_dict_ttl
         count = 0
-        for key, value in self.get_request_dict().items():
+        for key, value in self.request_dict.items():
             if  value[2] < stale_time:
                 try:
-                    del self.get_request_dict()[key]
+                    del self.request_dict[key]
                     count = count+1
                 except KeyError:
                     exc, msg = sys.exc_info()[:2]
@@ -263,8 +223,6 @@ class UDPServer:
         """
         print "server_bind add %s"%(self.server_address,)
         Trace.trace(16,"server_bind add %s"%(self.server_address,))
-        #Since we are binding the address we are listening with, only
-        # the main socket should get bound???
         self.server_socket.bind(self.server_address)
 
     def handle_timeout(self):
@@ -277,29 +235,11 @@ class UDPServer:
         Interface required by select().
 
         """
-        return self.tsd.server_socket.fileno()
-
-    ####################################################################
+        return self.server_socket.fileno()
 
     def get_server_address(self):
-        self.server_address
+        return self.server_address
 
-    def get_request_dict(self):
-        if not hasattr(self.tsd, 'request_dict'):
-            self.init_thread_specific_data()
-
-        return self.tsd.request_dict
-
-    def set_request_dict(self, id, value):
-        if not getattr(self.tsd, 'use_request_dict', None):
-            #Only update the recently processed responses if this thread
-            # is the one that recieved the message.  If it was passed to
-            # this thread from another, like the MainThread, then we
-            # don't need to slowly consume more memory.
-            self.get_request_dict()[id] = value
-
-    ####################################################################
-            
     def do_request(self):
         # ref udp_client.py (i.e. we may wish to have a udp_client method
         # to get this information)
@@ -321,7 +261,7 @@ class UDPServer:
         #   time out where there is no string or r.a.
 
         request, client_addr = '',()
-        r = [self.tsd.server_socket]
+        r = [self.server_socket]
 
         rcv_timeout = self.rcv_timeout
         r, w, x, remaining_time = cleanUDP.Select(r, [], [], rcv_timeout)
@@ -330,9 +270,9 @@ class UDPServer:
             return ('',()) #timeout
 
         for fd in r:
-            if fd == self.tsd.server_socket:
+            if fd == self.server_socket:
 
-                req, client_addr = self.tsd.server_socket.recvfrom(
+                req, client_addr = self.server_socket.recvfrom(
                     self.max_packet_size, self.rcv_timeout)
                 #print "REQ", req
                 try:
@@ -393,11 +333,13 @@ class UDPServer:
        request, client_addr = '',()
        rc = self.raw_requests.get()
        if rc:
-           Trace.trace(5, "REQ %s %s"%(rc[1], self.raw_requests.queue_size)) 
+           self.queue_size = self.raw_requests.queue_size
+           #Trace.trace(5, "REQ %s %s %s"%(self.server_address, request,self.queue_size)) 
+           Trace.trace(5, "REQ %s %s"%(rc[1], self.queue_size)) 
        else:
            rc = ('',())
-           if self.raw_requests.queue_size != 0:
-               print "Nonsense rc=%s size=%s"%(rc, self.raw_requests.queue_size)
+           if self.queue_size != 0:
+               print "Nonsense rc=%s size=%s"%(rc, self.queue_size)
                sys.exit(1)
 
        Trace.trace(5,"_get_raw_message %s %s" % (rc[0], rc[1])) 
@@ -469,16 +411,16 @@ class UDPServer:
                       "Malformed request from %s %s" %
                       (client_address, request,))
             reply = (0L,{'status': (e_errors.MALFORMED, None)},None)
-            self.tsd.server_socket.sendto(repr(reply), client_address)
+            self.server_socket.sendto(repr(reply), client_address)
             return None
 
         reply_address = client_address
         client_number = number
         current_id = idn
         #The following are not thread safe.
-        ###self.reply_address = client_address
-        ###self.client_number = number
-        ###self.current_id = idn
+        self.reply_address = client_address
+        self.client_number = number
+        self.current_id = idn
 
         #The reason we need to include this information (at least
         # temporarily) is that for a multithreaded server it would
@@ -486,23 +428,18 @@ class UDPServer:
         # before repy_with_list() could be called from another thread(s).
         # In such a situation reply_to_caller() would reply with the
         # most recent request address and not to the one that made the request.
-        #
-        #It is tempting to use self.tsd to hold these values.  This won't
-        # work because they would be stored in the main thread's thread-
-        # specific-data and not necessarily the TSD of the thread that
-        # will reply.
         if reply_address:
             ticket['r_a'] = (reply_address,
                              client_number,
                              current_id)
 
-        if self.get_request_dict().has_key(idn):
+        if self.request_dict.has_key(idn):
 
             # UDPClient resends messages if it doesn't get a response
             # from us, see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
             try:
-                lst = self.get_request_dict()[idn]
+                lst = self.request_dict[idn]
             except KeyError:
                 Trace.trace(6,
                             "process_request %s from %s: no such key in request dictionary" % \
@@ -527,59 +464,46 @@ class UDPServer:
 
         return ticket
 
-    ####################################################################
 
     # reply to sender with her number and ticket (which has status)
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
     def reply_to_caller(self, ticket):
-        if type(ticket) == types.DictType and ticket.get('r_a', None):
-            reply_address = ticket['r_a'][0] 
-            client_number = ticket['r_a'][1]
-            current_id    = ticket['r_a'][2]
+        if type(ticket) == types.DictType and ticket.get("r_a", None):
+            reply_address = ticket["r_a"][0] 
+            client_number = ticket["r_a"][1]
+            current_id    = ticket["r_a"][2]
 
             del ticket['r_a']
         
         else:
-            Trace.log(e_errors.ERROR, "request missing r_a: %s" % (ticket,))
-            Trace.log_stack_trace()
-            return
+            #Can we ever get here?  If we do it isn't thread safe.
+            try:
+                reply_address = self.reply_address
+                client_number = self.client_number
+                current_id    = self.current_id
+            except AttributeError:
+                exc, msg = sys.exc_info()[:2]
+                print "reply_to_caller: error", exc, msg
+                return
 
         reply = (client_number, ticket, time.time())
         self.reply_with_list(reply, reply_address, current_id)
 
-    # reply to sender with her number and ticket (which has status)
-    # generally, the requested user function will send its response through
-    # this function - this keeps the request numbers straight
-    def reply_to_caller2(self, raw_reply, ticket):
-        if type(ticket) == types.DictType and ticket.get('r_a', None):
-            reply_address = ticket['r_a'][0]
-            client_number = ticket['r_a'][1]
-            current_id    = ticket['r_a'][2]
-
-            del ticket['r_a']
-
-        else:
-            Trace.log(e_errors.ERROR, "request missing r_a: %s" % (ticket,))
-            Trace.log_stack_trace()
-            return
-        
-        reply = (client_number, raw_reply, time.time())
-        self.reply_with_list(reply, reply_address, current_id)
-
     # if a different interface is needed to send the reply on then use it.
     def reply_to_caller_using_interface_ip(self, ticket, interface_ip):
-        if type(ticket) == types.DictType and ticket.get('r_a', None):
-            reply_address = ticket['r_a'][0] 
-            client_number = ticket['r_a'][1]
-            current_id    = ticket['r_a'][2]
+        if type(ticket) == types.DictType and ticket.get("r_a", None):
+            reply_address = ticket["r_a"][0] 
+            client_number = ticket["r_a"][1]
+            current_id    = ticket["r_a"][2]
 
             del ticket['r_a']
         
         else:
-            Trace.log(e_errors.ERROR, "request missing r_a: %s" % (ticket,))
-            Trace.log_stack_trace()
-            return
+            #Can we ever get here?  If we do it isn't thread safe.
+            reply_address = self.reply_address
+            client_number = self.client_number
+            current_id    = self.current_id
 
         reply = (client_number, ticket, time.time())
         self.reply_with_list(reply, reply_address, current_id, interface_ip)
@@ -599,30 +523,20 @@ class UDPServer:
             list_copy = copy.deepcopy(list)
         except:
             list_copy = None
-            try:
-                Trace.handle_error()
-            except:
-                pass
+            Trace.handle_error()
         self._lock.release()
 
         if not list_copy:
             # do not send a reply
             return
 
-        #Remember the response.  If we get the same request again, we only
-        # need to resend it from cache instead of recreating the response.
-        # This doesn't really work for responses that use a TCP connection
-        # to send the full response.
-        self.set_request_dict(current_id, list_copy)
-        
-        if interface_ip == self.tsd.server_socket.getsockname()[0]:
-            send_socket = self.tsd.server_socket
-            with_interface = ""
-        elif interface_ip != None:
+        self.request_dict[current_id] = list_copy
+
+        if interface_ip != None:
             ip, port, send_socket = udp_common.get_callback(interface_ip)
             with_interface = " with interface %s" % interface_ip
         else:
-            send_socket = self.tsd.server_socket
+            send_socket = self.server_socket
             with_interface = ""  #Give better trace message.
 
         # sendto() in python 2.6 raises this EMSGSIZE socket exception if
@@ -643,7 +557,6 @@ class UDPServer:
             ### dispatching_worker.  Don't log a traceback here.
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-    """
     # for requests that are not handled serially reply_address, current_id,
     # and client_number number must be reset.  In the forking media changer
     # these are in the forked child and passed back to us
@@ -658,10 +571,7 @@ class UDPServer:
         #    self.client_number,
         #    reply))
         self.reply_to_caller(ticket)
-    """
 
-    ####################################################################
-    
     def set_out_file(self):
         if self.use_raw:
             self.raw_requests.set_out_file()
