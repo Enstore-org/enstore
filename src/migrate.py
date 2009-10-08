@@ -1817,6 +1817,8 @@ def get_file_info(MY_TASK, bfid, fcc, db):
         except KeyError:
             pass
 
+        return_copy['status'] = (e_errors.OK, None)
+
         return return_copy
 
 #Obtain information for the volume.
@@ -1893,6 +1895,8 @@ def get_volume_info(MY_TASK, volume, vcc, db):
         except KeyError:
             pass
 
+        return_copy['status'] = (e_errors.OK, None)
+        
         return return_copy
 
 def get_volume_info_for_bfid(MY_TASK, bfid, vcc, fcc, db):
