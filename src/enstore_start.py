@@ -29,7 +29,6 @@ import e_errors
 import enstore_constants
 import enstore_functions
 import enstore_functions2
-import enstore_functions3
 import generic_client
 import option
 import Trace
@@ -49,6 +48,13 @@ SEND_TM = 1
 # These are common to all start/stop functionality. #######################
 #
 
+#global cache to avoid looking up the same ip address over and over for the
+# machine it is running on when starting or stoping multiple Enstore servers.
+# See function this_host().  Starting a servers worth of Enstore server
+# processes shouldn't take that long; not long enough to need to worry
+# about the hostname and ip address list changing.
+host_names_and_ips = None
+
 def get_csc():
     # get a configuration server
     config_host = enstore_functions2.default_host()
@@ -57,40 +63,48 @@ def get_csc():
 
     return csc
 
-def this_alias(host):
-    ip = socket.gethostbyname(host)
-    interfaces_list = Interfaces.interfacesGet()
-    #print interfaces_list
-    for interface in interfaces_list.keys():
-        if interfaces_list[interface].has_key('ip'): # on MAC this list has a different structure
-            if interfaces_list[interface]['ip'] == ip:
-                rc = [host] + [] + [ip]
-                return rc
-    else:
-        return None
-
-def this_host(use_alias=0):
-    rtn = socket.gethostbyname_ex(socket.getfqdn())
-
-    if use_alias and (not os.environ['ENSTORE_CONFIG_HOST'] in rtn):
-        # try alias
-        rc = this_alias(os.environ['ENSTORE_CONFIG_HOST'])
-        if rc:
-            return rc
-        else:
-            return [rtn[0]] + rtn[1] + rtn[2]
-
-    else:
-        return [rtn[0]] + rtn[1] + rtn[2]
-
-def is_on_host(host, use_alias=0):
-    #If the host happens to be an IP address instead of the form 131.225.0.0,
-    # then turn on using aliases.  For multihomed hosts, we need to check
-    # all IP addresses.
-    if enstore_functions3.is_ip_addr(host):
-        use_alias = 1
+#Return all IP address and hostnames for this node/host/machine.
+def this_host():
+    global host_names_and_ips  #global cache variable
     
-    if host in this_host(use_alias):
+    if host_names_and_ips == None:
+        try:
+            rtn = socket.gethostbyname_ex(socket.getfqdn())
+        except (socket.error, socket.herror, socket.gaierror), msg:
+            try:
+                message = "unable to obtain hostname information: %s\n" \
+                          % (str(msg),)
+                sys.stderr.write(message)
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+        rtn_formated = [rtn[0]] + rtn[1] + rtn[2]
+
+        interfaces_list = Interfaces.interfacesGet()
+        for interface in interfaces_list.keys():
+            ip = interfaces_list[interface]['ip']
+            try:
+                rc = socket.gethostbyname_ex(ip)
+            except (socket.error, socket.herror, socket.gaierror):
+                try:
+                    message = "unable to obtain hostname information: %s\n" \
+                              % (str(msg),)
+                    sys.stderr.write(message)
+                    sys.stderr.flush()
+                except IOError:
+                    pass
+                sys.exit(1)
+            rc_formated = [rc[0]] + rc[1] + rc[2]
+
+            rtn_formated = rtn_formated + rc_formated
+
+        host_names_and_ips = rtn_formated
+
+    return host_names_and_ips
+
+def is_on_host(host):
+    if host in this_host():
         return 1
 
     return 0
@@ -366,7 +380,7 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
     config_host_ip = socket.gethostbyname(config_host)
     #Compare the the ip values.  If a match is found continue with starting
     # the config server.  Otherwise return.
-    if not is_on_host(config_host_ip, use_alias=1):
+    if not is_on_host(config_host_ip):
         return
     #chip = config_host_ip.split('.')
     #for host_ip in host_ips:
