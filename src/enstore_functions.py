@@ -126,7 +126,7 @@ def get_enstore_tmp_dir():
         # of them.
         if item['ip'] == "127.0.0.1": #Ignore localhost.
             continue
-        tmp_hostnames = socket.gethostbyname_ex(item['ip'])
+        tmp_hostnames = socket.gethostbyaddr(item['ip'])
         tmp_hostnames = [tmp_hostnames[0]] + tmp_hostnames[1] + tmp_hostnames[2]
         for name in tmp_hostnames: #Keep the list unique.
             if name not in hostnames:
