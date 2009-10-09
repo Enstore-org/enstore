@@ -84,8 +84,10 @@ def this_host():
         interfaces_list = Interfaces.interfacesGet()
         for interface in interfaces_list.keys():
             ip = interfaces_list[interface]['ip']
+            if ip == "127.0.0.1":
+                continue
             try:
-                rc = socket.gethostbyname_ex(ip)
+                rc = socket.gethostbyaddr(ip)
             except (socket.error, socket.herror, socket.gaierror):
                 try:
                     message = "unable to obtain hostname information: %s\n" \
@@ -259,7 +261,7 @@ def start_server(cmd, servername):
             cmd_list[i] = os.path.expanduser(cmd_list[i])
             cmd_list[i] = os.path.expandvars(cmd_list[i])
 
-        print "Will execute",cmd_list  
+        print "Will execute",cmd_list
         #Execute the new server.
         os.execvp(cmd_list[0], cmd_list)
 
