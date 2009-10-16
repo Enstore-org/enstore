@@ -151,16 +151,17 @@ if __name__ == "__main__" :
     all_library_counts={}
     for res in db.query(q).getresult():
         all_library_counts[res[1]]=res[0]
-
-
+    # get total number of volumes
+    total=db.query("select count(*) from volume where system_inhibit_0 != 'DELETED'").getresult()[0][0]
     fp.write("\n\n");
+    fp.write("Total: %5d\n"%(total))
     for key in should_library_counts.keys():
          fp.write("\n%s:\n----------------\n"%(key))
          wpa_format = "  Total: %5d\n Should: %5d\n   Done: %5d\nNot yet: %5d\n  Ratio: %5.2f%%\n"
          wpa_values = (all_library_counts[key],
                        should_library_counts[key],
                        should_library_counts[key]-to_do_library_counts[key],
-                       to_do_library_counts[key], float((should_library_counts[key]-to_do_library_counts[key])*100/should_library_counts[key]))
+                       to_do_library_counts[key], float((should_library_counts[key]-to_do_library_counts[key])*100./should_library_counts[key]))
          fp.write(wpa_format % wpa_values)
     fp.close()
     db.close()
