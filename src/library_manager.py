@@ -715,7 +715,7 @@ class LibraryManagerMethods:
                 disciplineExceptionMounted=int(max_permitted[w])
             
         active = 0
-        Trace.trace(30, "restrict_host_access(%s,%s,%s %s)"%
+        Trace.trace(30, "restrict_host_access(%s,%s,%s,%s)"%
                     (storage_group, host, max_permitted, rq_host))
         for w in self.work_at_movers.list:
             callback = w.get('callback_addr', None)
@@ -782,12 +782,13 @@ class LibraryManagerMethods:
 
     ## check if there are any additional restrictions for mounted
     def client_host_busy_2(self, requestor, external_label, vol_family, w):
-        Trace.trace(22,"client_host_busy:restrict_access_in_bound %s"%(self.restrict_access_in_bound))
+        Trace.trace(22,"client_host_busy_2:restrict_access_in_bound %s"%(self.restrict_access_in_bound,))
         ret = 0
         if not self.restrict_access_in_bound:
             return 0
         
         rc, fun, args, action = self.restrictor.match_found(w)
+        args_copy = copy.copy(args)
         Trace.trace(22,"client_host_busy_2 args %s" %(args,)) 
         if rc and fun and action:
             w["status"] = (e_errors.OK, None)
@@ -797,6 +798,30 @@ class LibraryManagerMethods:
                     host_from_ticket = hostaddr.address_to_name(callback[0])
                 else:
                     host_from_ticket = w['wrapper']['machine'][1]
+
+                # For admin priority requests check if current volume
+                # would get dismounted by this request.
+                # We may allow extra work only for the same volume
+                adminpri = -1
+                client = w.get('encp','')
+                if client:
+                    adminpri = client.get('adminpri',-1)
+                Trace.trace(22,"client_host_busy_2:adminpri %s"%(adminpri))
+                
+                if adminpri >= 0:
+                    # check if request woould get rejected for idle mover
+                    args_copy.append(host_from_ticket)
+                    would_reject = apply(getattr(self,fun), args_copy)
+                    if would_reject:
+                        # see if this request can be satisfied for the currently
+                        # mounted volume
+                        if ((w['work'] == "read_from_hsm" and w["fc"]["external_label"] == external_label) or
+                            (w['work'] == "write_to_hsm" and w["vc"]["volume_family"] == vol_family)):
+                            pass
+                        else:
+                            # otherwise reject this request
+                            return True 
+                    
                 mp=args[-1]
                 Trace.trace(22,"client_host_busy_2 mp %s" %(mp,))
                 if type(mp) == type(()) and len(mp) == 3:
@@ -919,36 +944,25 @@ class LibraryManagerMethods:
         # otherwise we have found a volume that has read work pending
         Trace.trace(12,"process_read_request %s"%(rq.ticket,))
         # ok passed criteria. Get request by file location
-        if rq.ticket['encp']['adminpri'] < 0: # not a HiPri request
-            Trace.trace(22,"PW2")
-            '''
-            rq_e = None
-            while 1:
-                if self.process_for_bound_vol and self.process_for_bound_vol == rq.ticket["fc"]["external_label"]:
-                    break
-                rq_e = self.pending_work.get(rq.ticket["fc"]["external_label"], next=1)
-                # check whether client host exceeded a max allowed number of simult. transfers
-                if rq_e:
-                    if self.process_for_bound_vol and self.process_for_bound_vol == rq.ticket["fc"]["external_label"]:
-                        rc = self.client_host_busy_2(requestor, rq.ticket["fc"]["external_label"], rq.ticket["vc"]["volume_family"], rq_e.ticket)
-                    else:
-                        rc = self.client_host_busy(rq_e.ticket)
-                    if rc:
-                        continue
-                    else:
-                        break
-                else:
-                    break
-            if rq_e:
-                rq = rq_e
-                Trace.trace(22, 'PW3 %s'%(rq,))
-            '''
-            rq_tmp = self.pending_work.get(rq.ticket["fc"]["external_label"])
-            Trace.trace(22, 'PW212 new rq %s'%(rq_tmp.ticket,)) 
-            if rq_tmp.ticket['encp']['adminpri'] >= 0: # got a HIPri request
-                self.continue_scan = 1
-                key_to_check = self.fair_share(rq_tmp)
-                return rq_tmp,key_to_check 
+        ## check if there are any discipline restrictions
+        host_busy = False
+        if self.process_for_bound_vol:
+            host_busy = self.client_host_busy_2(requestor,
+                                                self.process_for_bound_vol,
+                                                self.current_volume_info['volume_family'],
+                                                rq.ticket)
+          
+        else:
+            host_busy = self.client_host_busy(rq.ticket)
+        Trace.trace(12,"process_read_request: host_busy %s"%(host_busy,))
+        if host_busy:
+            self.continue_scan = 1
+            sg, key_to_check = self.request_key(rq) 
+            #return None, None
+            return None, key_to_check
+
+        
+
         ########################################################
         ### from old idle_mover
         # check if the volume for this work had failed on this mover
@@ -1561,6 +1575,8 @@ class LibraryManagerMethods:
         Trace.trace(11, "next_work_this_volume for %s %s %s %s %s %s" % (external_label,vol_family, last_work, requestor, current_location, priority))
         status = None
         self.init_request_selection()
+        # what is current volume state?
+        self.current_volume_info = self.vcc.inquire_vol(external_label, timeout=5, retry=3)
         self.process_for_bound_vol = external_label
         #self.pending_work.wprint()
         # can be uncommented only for the test reason. Sprint takes a lot of cpu in case of a big queue
@@ -2048,7 +2064,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
         # setup the communications with the event relay task
         self.resubscribe_rate = 300
-        self.erc = event_relay_client.EventRelayClient(self, function = self.handle_er_msg, sock=self.server_socket)
+        # config file reloads stopped working for erc initialized like this
+        #self.erc = event_relay_client.EventRelayClient(self, function = self.handle_er_msg, sock=self.server_socket)
+        # I do not have time to investigate, but will do this later!!!!!!!
         self.erc.start([event_relay_messages.NEWCONFIGFILE],
                        self.resubscribe_rate)
         
