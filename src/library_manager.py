@@ -721,10 +721,14 @@ class LibraryManagerMethods:
         for mover in self.volumes_at_movers.at_movers.keys():
             try:
                 mover_info = self.volumes_at_movers.at_movers[mover] 
-               
-                # unique id looks like:
-                # "d0srv072.fnal.gov-1256072504-29121-0"
-                host_from_ticket = mover_info["unique_id"].split("-")[0]
+                callback = mover_info.get('callback_addr', None)
+                Trace.trace(30,"callback %s"%(callback,))
+                if callback:
+                    host_from_ticket = hostaddr.address_to_name(callback[0])
+                else:
+                    # unique id looks like:
+                    # "d0srv072.fnal.gov-1256072504-29121-0"
+                    host_from_ticket = mover_info["unique_id"].split("-")[0]
                 Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
                 sg = volume_family.extract_storage_group(mover_info["volume_family"])
                 
@@ -2756,6 +2760,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         mticket['current_location'] = None
         mticket['volume_family'] =  w['vc']['volume_family']
         mticket['unique_id'] =  w['unique_id']
+        mticket['callback_addr'] =  w['callback_addr']
         mticket['status'] =  (e_errors.OK, None)
         # update volume status
         # get it directly from volume clerk as mover
@@ -2946,6 +2951,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                                                 vol_info.get('user_inhibit',['Unknown', 'Unknown']))
             # create new mover_info
+            mticket['unique_id'] =  w['unique_id']
+            mticket['callback_addr'] =  w['callback_addr']
+            
             mticket['status'] = (e_errors.OK, None)
 
             #############################################
