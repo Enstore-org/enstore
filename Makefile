@@ -10,9 +10,9 @@ all:
 	@echo "building psycopg2"
 	CFLAGS="-m32" python setup.py build --build-lib=../modules --build-scripts=../bin  
 	python setup.py clean
+	rm -rf build 
 	cd ../modules/xml2ddl && python -m compileall .
 clean:
 	rm -rf ../modules/xml2ddl
-	rm -rf build 
-	cd ../bin && rm diffxml2ddl downloadXml  xml2ddl  xml2html
+	rm ../bin/diffxml2ddl ../bin/downloadXml  ../bin/xml2ddl  ../bin/xml2html
 	@echo "Cleaning xml2ddl"
