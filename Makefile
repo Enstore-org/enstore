@@ -12,4 +12,7 @@ all:
 	python setup.py clean
 	cd ../modules/xml2ddl && python -m compileall .
 clean:
+	rm -rf ../modules/xml2ddl
+	rm -rf build 
+	cd ../bin && rm diffxml2ddl downloadXml  xml2ddl  xml2html
 	@echo "Cleaning xml2ddl"
