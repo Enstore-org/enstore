@@ -542,4 +542,19 @@ def end_euid_egid(reset_ids_back = False):
         release_lock_euid_egid()
 
 #############################################################################
-        
+
+# this function does "rm -f path"
+def rmdir(path):
+  try:
+    if (os.path.isdir(path)):
+      direntries=os.listdir(os.path.abspath(path))
+      for direntry in os.listdir(os.path.abspath(path)):
+        rmdir(os.path.join(path,direntry))
+      os.rmdir(path)
+    else:
+        os.unlink(path)
+  except (IOError, os.error), why:
+    print "rmdir %s: %s" % (str(path), str(why))
+    return 1
+  return 0
+

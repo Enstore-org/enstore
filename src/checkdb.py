@@ -13,6 +13,7 @@ import e_errors
 import timeofday
 import hostaddr
 import configuration_client
+import file_utils
 
 import pg
 
@@ -259,11 +260,17 @@ if __name__ == "__main__":
 	if not os.access(check_dir, os.F_OK):
 		os.makedirs(check_dir)
 	check_existance(check_dir, 0)
-	if not os.access(db_path, os.F_OK):
-		os.makedirs(db_path)
-		# create database area
-		cmd = "initdb -D %s"%(db_path)
-		os.system(cmd)
+	if os.access(db_path, os.F_OK):
+            print db_path, "exists, removing it..."
+            if file_utils.rmdir(db_path) :
+                print "Failed"
+                sys.exit(1)
+        os.makedirs(db_path)
+        # create database area
+        cmd = "initdb -D %s"%(db_path)
+        if (os.system(cmd)):
+            print "Failed to create database area ",db_path
+            sys.exit(1)
 	#starting postmaster
 	start_postmaster(db_path)
 	extract_backup(check_dir, check_backup(backup_dir, backup_node))
@@ -276,3 +283,10 @@ if __name__ == "__main__":
 	cmd = "enrcp %s %s"%(os.path.join(check_dir, "PNFS.XREF"), dest_path)
 	print timeofday.tod(), cmd
 	os.system(cmd)
+        if os.access(db_path, os.F_OK):
+            if (file_utils.rmdir(db_path)) :
+                print "Failed to remove directory ",db_path
+                sys.exit(1)
+            
+            
+
