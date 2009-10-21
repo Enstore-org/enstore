@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/env perl 
 # move all specified files from the source directory to the target directory.
 # during the move add the top button onto the top of the file if it was not
 # already done.
