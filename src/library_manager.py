@@ -717,16 +717,18 @@ class LibraryManagerMethods:
         active = 0
         Trace.trace(30, "restrict_host_access(%s,%s,%s,%s)"%
                     (storage_group, host, max_permitted, rq_host))
-        for w in self.work_at_movers.list:
-            callback = w.get('callback_addr', None)
-            if callback:
-                host_from_ticket = hostaddr.address_to_name(callback[0])
-            else:
-                host_from_ticket = w['wrapper']['machine'][1]
-            
-            Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
+        Trace.trace(30,"AT MOVERS %s"%(self.volumes_at_movers.at_movers,)) 
+        for mover in self.volumes_at_movers.at_movers.keys():
             try:
-                if (w['vc']['storage_group'] == storage_group and
+                mover_info = self.volumes_at_movers.at_movers[mover] 
+               
+                # unique id looks like:
+                # "d0srv072.fnal.gov-1256072504-29121-0"
+                host_from_ticket = mover_info["unique_id"].split("-")[0]
+                Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
+                sg = volume_family.extract_storage_group(mover_info["volume_family"])
+                
+                if (sg == storage_group and
                     re.search(host, host_from_ticket)):
                     if rq_host:
                         if  host_from_ticket == rq_host:
@@ -734,7 +736,8 @@ class LibraryManagerMethods:
                     else:
                         active = active + 1
             except KeyError,detail:
-                Trace.log(e_errors.ERROR,"restrict_host_access:%s....%s"%(detail, w))
+                Trace.log(e_errors.ERROR,"restrict_host_access:%s....%s"%(detail, mover_info))
+        
         Trace.trace(30, "restrict_host_access(%s,%s)"%
                     (active, max_permitted))
         return active >= max_perm+disciplineExceptionMounted
@@ -2695,6 +2698,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             # busy volumes and movers.
                             self.work_at_movers.append(
                                 self.volume_assert_list[i])
+                            mticket["unique_id"] = self.volume_assert_list[i]["unique_id"]
                             self.volumes_at_movers.put(mticket)
                             #Record this action in log file.
                             Trace.log(e_errors.INFO,
