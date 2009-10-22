@@ -526,6 +526,18 @@ class LibraryManagerMethods:
         except:
             pass
             
+    def get_host_name_from_ticket(self, ticket):
+        host_from_ticket = None
+        try:
+            callback = ticket.get('callback_addr', None)
+            if callback:
+                host_from_ticket = hostaddr.address_to_name(callback[0])
+            else:
+                host_from_ticket = ticket['wrapper']['machine'][1]
+        except:
+            pass
+            
+        
     # send a regret
     def send_regret(self, ticket):
         # fork off the regret sender
@@ -727,10 +739,7 @@ class LibraryManagerMethods:
         Trace.trace(30, "restrict_host_access(%s,%s,%s,%s)"%
                     (storage_group, host, max_permitted, rq_host))
         for w in self.work_at_movers.list:
-            callback = w.get('callback_addr', None)
-            if callback:
-                host_from_ticket = hostaddr.address_to_name(callback[0])
-            else:
+            host_from_ticket = self.get_host_name_from_ticket(w)
                 host_from_ticket = w['wrapper']['machine'][1]
             
             Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
@@ -771,12 +780,7 @@ class LibraryManagerMethods:
         if rc and fun and action:
             w["status"] = (e_errors.OK, None)
             if fun == 'restrict_host_access':
-                callback = w.get('callback_addr', None)
-                if callback:
-                    host_from_ticket = hostaddr.address_to_name(callback[0])
-                    Trace.trace(30,'RHA01 %s'%(host_from_ticket,))
-                else:
-                    host_from_ticket = w['wrapper']['machine'][1]
+                host_from_ticket = self.get_host_name_from_ticket(w)
                 Trace.trace(30,'RHA02 %s %s'%(host_from_ticket, w['wrapper']['machine'][1]))
 
                 args.append(host_from_ticket)
@@ -802,11 +806,7 @@ class LibraryManagerMethods:
         if rc and fun and action:
             w["status"] = (e_errors.OK, None)
             if fun == 'restrict_host_access':
-                callback = w.get('callback_addr', None)
-                if callback:
-                    host_from_ticket = hostaddr.address_to_name(callback[0])
-                else:
-                    host_from_ticket = w['wrapper']['machine'][1]
+                host_from_ticket = self.get_host_name_from_ticket(w)
 
                 # For admin priority requests check if current volume
                 # would get dismounted by this request.
@@ -2264,11 +2264,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return 1
         if ticket['vc'].has_key('storage_group'):
             if  self.allow_access.has_key(ticket['vc']['storage_group']):
-                callback = ticket.get('callback_addr', None)
-                if callback:
-                    host_from_ticket = hostaddr.address_to_name(callback[0])
-                else:
-                    host_from_ticket = ticket['wrapper']['machine'][1]
+                host_from_ticket = self.get_host_name_from_ticket(ticket)
                 Trace.trace(33, 'host %s, list %s'%(host_from_ticket, self.allow_access[ticket['vc']['storage_group']]))
                 for host in self.allow_access[ticket['vc']['storage_group']]:
                     if re.search('^%s'%(host,), host_from_ticket):  # host is in the list: acccess granted
@@ -2413,11 +2409,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 del(args[2])
                 args.append(ticket)
             elif fun == 'restrict_host_access':
-                callback = ticket.get('callback_addr', None)
-                if callback:
-                    host_from_ticket = hostaddr.address_to_name(callback[0])
-                else:
-                    host_from_ticket = ticket['wrapper']['machine'][1]
+                host_from_ticket = self.get_host_name_from_ticket(ticket)
                 args.append(host_from_ticket)
             
             ret = apply(getattr(self,fun), args)
@@ -2570,11 +2562,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 del(args[2])
                 args.append(ticket)
             elif fun == 'restrict_host_access':
-                callback = ticket.get('callback_addr', None)
-                if callback:
-                    host_from_ticket = hostaddr.address_to_name(callback[0])
-                else:
-                    host_from_ticket = ticket['wrapper']['machine'][1]
+                host_from_ticket = self.get_host_name_from_ticket(ticket)
                 args.append(host_from_ticket)
             ret = apply(getattr(self,fun), args)
             if ret and (action in (e_errors.LOCKED, e_errors.IGNORE, e_errors.PAUSE, e_errors.NOREAD, e_errors.REJECT)):
