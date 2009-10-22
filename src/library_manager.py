@@ -491,8 +491,17 @@ class LibraryManagerMethods:
         self.volumes_at_movers = AtMovers() # to keep information about what volumes are mounted at which movers
         self.init_suspect_volumes()
         self.pending_work = manage_queue.Request_Queue()
+        self.idle_movers = [] # list of known idle movers
         
-
+    # add idle mover
+    def add_idle_mover(self, mover):
+        if not mover in self.idle_movers:
+            self.idle_movers.append(mover)
+    # remove idle mover
+    def remove_idle_mover(self, mover):
+        if mover in self.idle_movers:
+            self.idle_movers.remove(mover)
+            
     # get storage grop limit
     def get_sg_limit(self, storage_group):
         if self.sg_limits['use_default']:
@@ -717,22 +726,16 @@ class LibraryManagerMethods:
         active = 0
         Trace.trace(30, "restrict_host_access(%s,%s,%s,%s)"%
                     (storage_group, host, max_permitted, rq_host))
-        Trace.trace(30,"AT MOVERS %s"%(self.volumes_at_movers.at_movers,)) 
-        for mover in self.volumes_at_movers.at_movers.keys():
+        for w in self.work_at_movers.list:
+            callback = w.get('callback_addr', None)
+            if callback:
+                host_from_ticket = hostaddr.address_to_name(callback[0])
+            else:
+                host_from_ticket = w['wrapper']['machine'][1]
+            
+            Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
             try:
-                mover_info = self.volumes_at_movers.at_movers[mover] 
-                callback = mover_info.get('callback_addr', None)
-                Trace.trace(30,"callback %s"%(callback,))
-                if callback:
-                    host_from_ticket = hostaddr.address_to_name(callback[0])
-                else:
-                    # unique id looks like:
-                    # "d0srv072.fnal.gov-1256072504-29121-0"
-                    host_from_ticket = mover_info["unique_id"].split("-")[0]
-                Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
-                sg = volume_family.extract_storage_group(mover_info["volume_family"])
-                
-                if (sg == storage_group and
+                if (w['vc']['storage_group'] == storage_group and
                     re.search(host, host_from_ticket)):
                     if rq_host:
                         if  host_from_ticket == rq_host:
@@ -740,8 +743,7 @@ class LibraryManagerMethods:
                     else:
                         active = active + 1
             except KeyError,detail:
-                Trace.log(e_errors.ERROR,"restrict_host_access:%s....%s"%(detail, mover_info))
-        
+                Trace.log(e_errors.ERROR,"restrict_host_access:%s....%s"%(detail, w))
         Trace.trace(30, "restrict_host_access(%s,%s)"%
                     (active, max_permitted))
         return active >= max_perm+disciplineExceptionMounted
@@ -827,7 +829,11 @@ class LibraryManagerMethods:
                             pass
                         else:
                             # otherwise reject this request
-                            return True 
+                            return True
+                    else:
+                        # return here
+                        # the discipline has already allowed this request
+                        return False
                     
                 mp=args[-1]
                 Trace.trace(22,"client_host_busy_2 mp %s" %(mp,))
@@ -851,6 +857,47 @@ class LibraryManagerMethods:
         
         return ret
                         
+    # allow HIPR request to be sent to the current mover
+    # this method is used with Admin Priority requests
+    # inputs
+    # request to process
+    # label of currently mounted volume
+    # volume family of currently mounted volume
+    # last work on currently mounted volume
+    # requestor - mover information on which the volume is mounted
+    # priority - priority of completed request
+    # it is a tuple (current_priority, admin_priority)
+    # returns rq (possibly modified)
+    # and flag confirming wheter HIPRI request could go
+    def allow_hipri(self, rq, external_label, vol_family, last_work, requestor, priority):
+        Trace.trace(30, "allow_hi_pri %s %s %s %s %s %s"%
+                    (external_label, vol_family, last_work, requestor,priority, rq))
+        ret = True
+        
+        if priority and priority[1] >= 0:
+            return rq, ret
+         
+        would_preempt = False
+        if rq.work == "read_from_hsm" and rq.ticket["fc"]["external_label"] != external_label:
+            would_preempt = True
+
+        elif rq.work == "write_to_hsm":
+            if rq.ticket["vc"]["volume_family"] != vol_family:
+                would_preempt = True
+            else:
+                # same file family
+                if last_work == "read_from_hsm":
+                    rq, status = self.check_write_request(external_label, rq, requestor)
+                    if rq and status[0] == e_errors.OK:
+                        if rq.ticket["fc"]["external_label"] != external_label:
+                            would_preempt = True
+        if would_preempt:
+            # check whether there are idle movers availabe
+            if len(self.idle_movers) > 0:
+                Trace.trace(30, "There are idle movers. Will not preempt the current one %s"%
+                            (self.idle_movers,))
+                ret = False
+        return rq, ret
 
     def init_request_selection(self):
         self.write_volumes = []
@@ -1631,6 +1678,16 @@ class LibraryManagerMethods:
             elif priority and priority[0] > 0:
                 
                 # for regular priority
+                # check if this request is allowed to go to a mounted tape
+                rq, allow = self.allow_hipri(rq, external_label, vol_family,
+                                             last_work, requestor, priority) 
+                if not allow:
+                    # completed request had a regular proirity
+                    # but the mounted tape can not be preempted by HIPRI request
+                    # because there are idle movers tah could pick up HIPRI request  
+                    rq = self.pending_work.get_admin_request(next=1) # get next request
+                    continue
+
                 if rq.work == "write_to_hsm":
                     # check if there is a potentially available tape at bound movers
                     # and if yes skip request so that it will be picked by bound mover
@@ -1658,7 +1715,6 @@ class LibraryManagerMethods:
 
                                     rq = self.pending_work.get_admin_request(next=1) # get next request
                                     continue
-                    
             Trace.trace(22, "RQYY %s"%(rq,))    
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
@@ -1669,6 +1725,7 @@ class LibraryManagerMethods:
             if self.client_host_busy_2(requestor, external_label, vol_family, rq.ticket):
                 rq = self.pending_work.get_admin_request(next=1) # get next request
                 continue
+
             if rq.work == 'read_from_hsm':
                 rq, key = self.process_read_request(rq, requestor)
                 if self.continue_scan:
@@ -1680,7 +1737,7 @@ class LibraryManagerMethods:
                     continue
                 break
             elif rq.work == 'write_to_hsm':
-                rq, key = self.process_write_request(rq, requestor) 
+                rq, key = self.process_write_request(rq, requestor)
                 if self.continue_scan:
                     if rq:
                         rq, status = self.check_write_request(external_label, rq, requestor)
@@ -1692,6 +1749,7 @@ class LibraryManagerMethods:
         
         if not rq:
             rq = self.tmp_rq
+            
         if rq:
             Trace.trace(14, "s1 rq %s" % (rq.ticket,))
             if rq.work == 'read_from_hsm':
@@ -1699,6 +1757,7 @@ class LibraryManagerMethods:
                 if rq and status[0] == e_errors.OK:
                     return rq, status
             elif rq.work == 'write_to_hsm':
+                
                 rq, status = self.check_write_request(external_label, rq, requestor)
                 if rq and status[0] == e_errors.OK:
                     return rq, status
@@ -2603,6 +2662,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # mover is idle - see what we can do
     def mover_idle(self, mticket):
         Trace.trace(11,"IDLE RQ %s"%(mticket,))
+        self.add_idle_mover(mticket["mover"])
         
         # Since the mover is idle, it needs to be removed from volume_at_movers.
         # Library manager may not be able to respond to a mover
@@ -2702,8 +2762,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             # busy volumes and movers.
                             self.work_at_movers.append(
                                 self.volume_assert_list[i])
-                            mticket["unique_id"] = self.volume_assert_list[i]["unique_id"]
                             self.volumes_at_movers.put(mticket)
+                            # remove this mover from idle_movers list
+                            self.remove_idle_mover(mticket["mover"])
                             #Record this action in log file.
                             Trace.log(e_errors.INFO,
                                       "IDLE:sending %s to mover" %
@@ -2752,6 +2813,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.work_at_movers.append(w)
         #work = string.split(w['work'],'_')[0]
         Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
+        # remove this mover from idle_movers list
+        self.remove_idle_mover(mticket["mover"])
         self.reply_to_caller(w)
         #self.udpc.send_no_wait(w, mticket['address'])
 
@@ -2760,7 +2823,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         mticket['current_location'] = None
         mticket['volume_family'] =  w['vc']['volume_family']
         mticket['unique_id'] =  w['unique_id']
-        mticket['callback_addr'] =  w['callback_addr']
         mticket['status'] =  (e_errors.OK, None)
         # update volume status
         # get it directly from volume clerk as mover
@@ -2951,9 +3013,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                                                 vol_info.get('user_inhibit',['Unknown', 'Unknown']))
             # create new mover_info
-            mticket['unique_id'] =  w['unique_id']
-            mticket['callback_addr'] =  w['callback_addr']
-            
             mticket['status'] = (e_errors.OK, None)
 
             #############################################
@@ -3008,6 +3067,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if library and library != self.name.split(".")[0]:
             return
         self.volumes_at_movers.put(mticket)
+        if mticket["state"] == IDLE:
+            self.add_idle_mover(mticket["mover"])
+        else:
+            # just for a case
+            self.remove_idle_mover(mticket["mover"])
+            
         #self.volumes_at_movers.delete(mticket)
         #self.volumes_at_movers.put(mticket) I don't remember why this was done
         # but it causes problems with correct request processing. 
