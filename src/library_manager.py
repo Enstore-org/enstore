@@ -3055,7 +3055,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if library and library != self.name.split(".")[0]:
             return
         self.volumes_at_movers.put(mticket)
-        if mticket["state"] == IDLE:
+        if mticket["state"] == "IDLE":
             self.add_idle_mover(mticket["mover"])
         else:
             # just for a case
