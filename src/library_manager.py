@@ -527,7 +527,7 @@ class LibraryManagerMethods:
             pass
             
     def get_host_name_from_ticket(self, ticket):
-        host_from_ticket = None
+        host_from_ticket = ''
         try:
             callback = ticket.get('callback_addr', None)
             if callback:
@@ -536,6 +536,7 @@ class LibraryManagerMethods:
                 host_from_ticket = ticket['wrapper']['machine'][1]
         except:
             pass
+        return host_from_ticket
             
         
     # send a regret
@@ -740,7 +741,6 @@ class LibraryManagerMethods:
                     (storage_group, host, max_permitted, rq_host))
         for w in self.work_at_movers.list:
             host_from_ticket = self.get_host_name_from_ticket(w)
-                host_from_ticket = w['wrapper']['machine'][1]
             
             Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
             try:
