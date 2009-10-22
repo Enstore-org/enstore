@@ -1,0 +1,1 @@
+\echo 'No types in drivestat database'

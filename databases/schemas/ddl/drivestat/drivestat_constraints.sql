@@ -1,0 +1,1 @@
+\echo 'No constraints in drivestat database'

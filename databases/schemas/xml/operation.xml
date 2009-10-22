@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<schema generated="yes">
+  <table name="object">
+    <column name="job" type="integer" null="no"/>
+    <column name="object" type="varchar"/>
+    <column name="association" type="varchar"/>
+    <indexes>
+        <index name="object_job_idx" columns="job"/>
+        <index name="object_object_idx" columns="object"/>
+    </indexes>
+    <relations>
+        <relation name="object_job_fkey" column="job" table="job" fk="id" ondelete="cascade" onupdate="cascade"/>
+    </relations>
+  </table>
+  <table name="progress">
+    <column name="job" type="integer" null="no" key="1"/>
+    <column name="task" type="integer" null="no" key="2"/>
+    <column name="start" type="timestamp" default="now()"/>
+    <column name="finish" type="timestamp"/>
+    <column name="comment" type="varchar"/>
+    <column name="args" type="varchar"/>
+    <column name="result" type="varchar"/>
+    <indexes>
+        <index name="progress_job_idx" columns="job"/>
+        <index name="progress_start_idx" columns="start"/>
+    </indexes>
+    <relations>
+        <relation name="progress_job_fkey" column="job" table="job" fk="id" ondelete="cascade" onupdate="cascade"/>
+    </relations>
+  </table>
+  <table name="job">
+    <column name="id" type="integer" null="no" default="nextval(('job_id')::regclass)" key="1"/>
+    <column name="name" type="varchar" null="no"/>
+    <column name="type" type="integer" null="no"/>
+    <column name="start" type="timestamp" default="now()"/>
+    <column name="finish" type="timestamp"/>
+    <column name="comment" type="varchar"/>
+    <indexes>
+        <index name="job_name_key" columns="name"/>
+        <index name="job_finish_idx" columns="finish"/>
+        <index name="job_name_idx" columns="name"/>
+        <index name="job_start_idx" columns="start"/>
+        <index name="job_type_idx" columns="type"/>
+    </indexes>
+    <relations>
+        <relation name="job_type_fkey" column="type" table="job_definition" fk="id" ondelete="cascade" onupdate="cascade"/>
+    </relations>
+  </table>
+  <table name="task">
+    <column name="id" type="integer" null="no" default="nextval(('task_id')::regclass)"/>
+    <column name="seq" type="integer" null="no" key="1"/>
+    <column name="job_type" type="integer" null="no" key="2"/>
+    <column name="dsc" type="varchar"/>
+    <column name="action" type="varchar"/>
+    <column name="comment" type="varchar"/>
+    <column name="auto_start" type="bpchar" default="'m'::bpchar"/>
+    <relations>
+        <relation name="task_job_type_fkey" column="job_type" table="job_definition" fk="id" ondelete="cascade" onupdate="cascade"/>
+    </relations>
+  </table>
+  <table name="job_definition">
+    <column name="id" type="integer" null="no" default="nextval(('job_definition_id')::regclass)" key="1"/>
+    <column name="name" type="varchar" null="no"/>
+    <column name="tasks" type="integer" default="0"/>
+    <column name="remarks" type="varchar"/>
+    <indexes>
+        <index name="job_definition_name_idx" columns="name"/>
+    </indexes>
+  </table>
+  <function name="plpgsql_call_handler" arguments="" returns="language_handler" language="c">
+plpgsql_call_handler
+  </function>
+  <function name="plpgsql_call_handler" arguments="" returns="language_handler" language="c">
+plpgsql_call_handler
+  </function>
+  <function name="set_job_finish" arguments="" returns="trigger" language="plpgsql">
+begin
+update job set finish = (select progress.finish from progress, job, job_definition where job.id = NEW.job and progress.job = job.id and job.type = job_definition.id and job_definition.tasks = progress.task) where job.id = NEW.job;
+return NEW;
+end;
+  </function>
+  <function name="reset_job_tasks" arguments="" returns="trigger" language="plpgsql">
+begin
+update job_definition set tasks = (select max(seq) from task where task.job_type = OLD.job_type) where job_definition.id = OLD.job_type;
+return OLD;
+end;
+  </function>
+  <function name="set_job_tasks" arguments="" returns="trigger" language="plpgsql">
+begin
+update job_definition set tasks = (select max(seq) from task where task.job_type = NEW.job_type) where job_definition.id = NEW.job_type;
+return NEW;
+end;
+  </function>
+  <function name="plpgsql_validator" arguments="oid" returns="void" language="c">
+plpgsql_validator
+  </function>
+  <function name="plpgsql_validator" arguments="oid" returns="void" language="c">
+plpgsql_validator
+  </function>
+</schema>
