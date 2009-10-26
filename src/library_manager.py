@@ -502,7 +502,7 @@ class LibraryManagerMethods:
         if mover in self.idle_movers:
             self.idle_movers.remove(mover)
             
-    # get storage grop limit
+    # get storage group limit
     def get_sg_limit(self, storage_group):
         if self.sg_limits['use_default']:
             return self.sg_limits['default']
@@ -537,7 +537,6 @@ class LibraryManagerMethods:
         except:
             pass
         return host_from_ticket
-            
         
     # send a regret
     def send_regret(self, ticket):
@@ -692,8 +691,8 @@ class LibraryManagerMethods:
             return {'status':(e_errors.OK, None)}
         else:
             return {'status': (e_errors.MEDIA_IN_ANOTHER_DEVICE, None)}
-    # get volume clerk client
-    
+
+    # set volume clerk client
     def set_vcc(self,vol_server_address=None):
         if vol_server_address == None:
             return
@@ -875,6 +874,7 @@ class LibraryManagerMethods:
         ret = True
         
         if priority and priority[1] >= 0:
+            Trace.trace(30, "allow_hi_pri: returning1 %s %s"%(rq, ret))
             return rq, ret
          
         would_preempt = False
@@ -897,6 +897,7 @@ class LibraryManagerMethods:
                 Trace.trace(30, "There are idle movers. Will not preempt the current one %s"%
                             (self.idle_movers,))
                 ret = False
+        Trace.trace(30, "allow_hi_pri: returning %s %s"%(rq, ret))
         return rq, ret
 
     def init_request_selection(self):
@@ -1155,7 +1156,8 @@ class LibraryManagerMethods:
                             Trace.trace(223, "check_write_volume returned %s"%(ret,))
                             if (rq.work == "write_to_hsm" and
                                 (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
-                                 ret['status'][0] == 'full')):
+                                 ret['status'][0] == 'full' or
+                                 ret['status'][1] == 'readonly')):
                                 Trace.trace(223, " will let this request go to idle mover")
                             else:
                                 Trace.trace(223, 'will wait with this request go to %s'%
@@ -1170,7 +1172,14 @@ class LibraryManagerMethods:
         #Trace.trace(12,"process_write_request: request next write volume for %s" % (vol_family,))
 
         # before assigning volume check if it is bound for the current family
-        if self.process_for_bound_vol not in vol_veto_list:
+        bound_vol = self.process_for_bound_vol
+        # for bound volumes check what was priority of the last request
+        if bound_vol and requestor["current_priority"][1] < 0:
+            # last prority was regular
+            if rq.adminpri > -1: # HIRI
+                bound_vol = None # this will allow preemption of regular priority requests
+        
+        if bound_vol not in vol_veto_list: 
             # width not exceeded, ask volume clerk for a new volume.
             Trace.trace(9,"process_write_request for %s" % (rq.ticket,))
             Trace.trace(22, "PW_RQ5")
@@ -1187,13 +1196,6 @@ class LibraryManagerMethods:
                                        mover=requestor)
             
             Trace.trace(111, "next_write_volume, time in state %s"%(time.time()-start_t, ))
-            #v = self.vcc.next_write_volume(rq.ticket["vc"]["library"],
-            #                               rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
-            #                               vol_family, 
-            #                               vol_veto_list,
-            #                               first_found=0,
-            #                               mover=requestor,
-            #                               timeout=60, retry=5)
             Trace.trace(22, "PW_RQ6")
             # volume clerk returned error
             Trace.trace(9,"process_write_request: next write volume returned %s" % (v,))
@@ -1705,13 +1707,21 @@ class LibraryManagerMethods:
                                     Trace.trace(223,'vol %s mover %s'%(vol, mover)) 
                                     if vol == mover['external_label']:
                                         if mover['state'] == 'HAVE_BOUND' and mover['time_in_state'] < 31:
-                                            found_mover = 1
-                                            break
+                                            # check if the volume mounted on this mover
+                                            # fits to request
+                                            fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
+                                            ret = self.vcc.is_vol_available(rq.work,  mover['external_label'],
+                                            rq.ticket['vc']['volume_family'],
+                                            fsize)
+                                            if ret["status"][0] == e_errors.OK:
+                                                found_mover = 1
+                                                break
                                 if found_mover:
                                     break
                             if found_mover:
                                 if mover != requestor['mover']:
-                                    Trace.trace(223, 'will wait with this request to go to %s %s'%(mover['mover'], mover['external_label']))
+                                    Trace.trace(223, 'will wait with this request to go to %s %s'%
+                                                (mover['mover'], mover['external_label']))
 
                                     rq = self.pending_work.get_admin_request(next=1) # get next request
                                     continue
@@ -1759,8 +1769,13 @@ class LibraryManagerMethods:
             elif rq.work == 'write_to_hsm':
                 
                 rq, status = self.check_write_request(external_label, rq, requestor)
+                Trace.trace(14, "check_write_request returned %s %s"%(rq, status))
                 if rq and status[0] == e_errors.OK:
-                    return rq, status
+                        return rq, status
+                else:
+                    if len(self.idle_movers) == 0:
+                        # no idle movers let HIPRI request preempt current tape
+                        return rq, status
                 
         # no HIPri requests: look in pending work queue for reading or writing work
         # see what priority has completed request
