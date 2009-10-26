@@ -1157,7 +1157,7 @@ class LibraryManagerMethods:
                             if (rq.work == "write_to_hsm" and
                                 (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
                                  ret['status'][0] == 'full' or
-                                 ret['status'][1] == 'readonly')):
+                                 ret['status'][0] == 'readonly')):
                                 Trace.trace(223, " will let this request go to idle mover")
                             else:
                                 Trace.trace(223, 'will wait with this request go to %s'%
