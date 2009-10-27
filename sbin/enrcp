@@ -10,7 +10,8 @@ do_rcp () {
    rc=$?
    if [ "$rc" == "1" ]; then
       # there was an error, maybe rcp support is turned off
-      scp $@
+      scp -c blowfish $@
+      rc=$?
    fi
    return $rc
 }
