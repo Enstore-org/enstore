@@ -1522,6 +1522,8 @@ def do_work(intf):
             if ticket.has_key('si_time'):
                     ticket['si_time'] = (time.ctime(ticket['si_time'][0]),
                                                              time.ctime(ticket['si_time'][1]))
+            if ticket.has_key('modification_time'):
+                    ticket['modification_time'] = time.ctime(ticket['modification_time'])
             pprint.pprint(ticket)
             ticket['status'] = status
     else:
