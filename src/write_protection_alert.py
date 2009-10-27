@@ -20,7 +20,7 @@ import time
 
 # enstore imports
 
-NON_EXEMPT="select label, system_inhibit_1,library, media_type, \
+NON_EXEMPT="select label, system_inhibit_1,date(si_time_1),library, media_type, \
 CASE when write_protected='n' \
      then 'OFF' \
      when write_protected='y'\
@@ -35,10 +35,10 @@ END as wp from volume where system_inhibit_0!='DELETED' and \
 	storage_group  not in (select storage_group from no_flipping_storage_group) and \
 	(storage_group,file_family) not in (select storage_group,file_family from no_flipping_file_family)"
 
-ORDER="order by label,library,media_type"
+ORDER="order by si_time_1,label,library,media_type"
 NOT_SHELF="library not like 'shelf%'"
 
-EXEMPT="select label, system_inhibit_1,library, media_type, \
+EXEMPT="select label, system_inhibit_1,date(si_time_1),library, media_type, \
 CASE when write_protected='n' \
      then 'OFF' \
      when write_protected='y'\
@@ -76,11 +76,11 @@ def print_common_header(fp):
 def print_write_protect_alert_header(fp):
     print_common_header(fp)
 
-    wpa_format = "%-16s %-12s %-16s %-16s %-16s %-3s\n\n"
-    wpa_titles = ("volume", "state", "library", "media type", "wp", "exemption")
+    wpa_format = "%-16s %-12s %-18s %-16s %-16s %-16s %-3s\n\n"
+    wpa_titles = ("volume", "state", "time", "library", "media type", "wp", "exemption")
     fp.write(wpa_format % wpa_titles)
 
-WPA_FORMAT = "%-16s %-12s %-16s %-16s %-16s %-3s\n"
+WPA_FORMAT = "%-16s %-12s %-18s %-16s %-16s %-16s %-3s\n"
 
 def prepare_query(query,wpa_states,wpa_media_types,wpa_excluded_libraries):
     states=""
@@ -135,15 +135,15 @@ if __name__ == "__main__" :
     q=prepare_query(NON_EXEMPT,wpa_states,wpa_media_types,wpa_excluded_libraries)
     q=q+" and "+NOT_SHELF+" "+ORDER
     for res in db.query(q).getresult():
-        if to_do_library_counts.has_key(res[2]):
-            to_do_library_counts[res[2]]=to_do_library_counts[res[2]]+1
-        wpa_values=(res[0],res[1],res[2],res[3],res[4],"NO")
+        if to_do_library_counts.has_key(res[3]):
+            to_do_library_counts[res[3]]=to_do_library_counts[res[3]]+1
+        wpa_values=(res[0],res[1],res[2],res[3],res[4],res[5],"NO")
         fp.write(WPA_FORMAT % wpa_values)
     # get exempt
     q=prepare_query(EXEMPT,wpa_states,wpa_media_types,wpa_excluded_libraries)
     q=q+" and "+NOT_SHELF+" "+ORDER
     for res in db.query(q).getresult():
-        wpa_values=(res[0],res[1],res[2],res[3],res[4],"YES")
+        wpa_values=(res[0],res[1],res[2],res[3],res[4],res[5],"YES")
         fp.write(WPA_FORMAT % wpa_values)
     #get all
     q=prepare_query1(ALL,wpa_excluded_libraries)
