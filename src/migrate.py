@@ -2679,7 +2679,12 @@ def show_status(volume_list, db, intf):
                         copied, swapped, checked, closed)
                 print line
 
-                #We should only need to do this once.
+                #We should only need to do this once.  When the first
+                # migrated/duplicated/cloned file is found, mig_type gets
+                # set to a non-None value and should prevent us from
+                # executing this if block again.  We can't just look at
+                # the first file record on the volume, because it might
+                # be an unknown or skipped deleted file.
                 if not mig_type and len(rows) > 0 and src_bfid and dst_bfid:
                     # get its own file clerk client and volume clerk client
                     config_host = enstore_functions2.default_host()
@@ -5441,7 +5446,9 @@ def restore(bfids, intf):
         else:
             #We are really scrweed.  How did we get here without any
             # destination file record?
-            error_log(MY_TASK, "impossible situation")
+            message = "impossible situation: found destination bfid, " \
+                      "but no destination file record"
+            error_log(MY_TASK, message)
             sys.exit(1)
 
         ###########################################################
