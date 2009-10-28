@@ -92,7 +92,9 @@ from volume where
     user_inhibit_0 = 'none' and
     last_access <> -1 and
     media_type <> 'null' and
-    library not like '%shelf%' $skip_library_sql
+    library not like '%shelf%' $skip_library_sql and
+    system_inhibit_1 not in ('migrated', 'migrating', 'duplicated',
+                             'duplicating', 'cloned', 'cloning')
 order by label;" \
     | sed '1,2d' > $tmp_dir/V_D
 
