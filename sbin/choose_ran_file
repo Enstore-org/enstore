@@ -62,7 +62,7 @@ tll_raw=`enstore conf $timeout --print crons test_library_list 2> /dev/null`
 #Remove the line header contents (before the :), remove any empty lines,
 # stick single quotes on either side of eache item, replace all newlines
 # with commas and lastly remove the last comma.
-if [ -z $tll_raw ]; then
+if [ -z "$tll_raw" ]; then
     tll=""
 else
     tll=`echo "$tll_raw" | cut -f 2 -d ":" | egrep -v ^$ | sed -e "s/$/'/" -e "s/^/'/" | tr "\n" "," | sed "s/,$//"`
@@ -138,6 +138,8 @@ while [ $done -gt 0 ]; do
   if [ $verbose -eq 1 ]; then
     echo "$tinfo"
   fi
+  #Skip the tape if is is marked deleted, not allowed by an administrator
+  # or noaccess by the system.
   if [ `echo $tinfo | egrep -c 'DELETED|NOTALLOWED|NOACCESS'` -ne 0 ]; then
     echo REJECTED $tape is DELETED/NOTALLOWED/NOACCESS
     continue
@@ -148,6 +150,27 @@ while [ $done -gt 0 ]; do
   if [ `echo $tinfo | egrep -c "full|readonly|migrated"` -ne 0 ]; then
      override_ro="--override-ro-mount"
   #   echo "override $override"
+  fi
+  #If the library is not available, pick another one.  Start by pulling
+  # out the library name from the volume record.
+  library=`echo "$tinfo" | grep library | awk '{print $2}' | tr -d "',"`
+  if [ $library = "none" ]; then
+    #Skip blank volumes.
+    continue
+  fi
+  #Get the current state of the library.
+  raw_lm_status=`enstore library --status $library`
+  if [ $? -ne 0 ]; then
+    echo "Unable to obtain $library library manager status." 1>&2
+    continue
+  fi
+  lm_status=`echo $raw_lm_status | tr ":" " " | awk '{print $3}' | tr -d "',"`
+  #If the state is locked, pause, ignore, noread or moverlock skip it.
+  # The expected value is "unlocked", however, allow "nowrite".
+  if [ $lm_status = "locked" -o $lm_status = "pause" -o $lm_status = "ignore" \
+      -o $lm_status = "moverlock" -o $lm_status = "noread" ]; then
+    echo "Library $library in $lm_status state for volume $tape." 1>&2
+    continue
   fi
 
   #Get a list of all files on the tape.
