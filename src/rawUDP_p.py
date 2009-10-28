@@ -118,11 +118,6 @@ class RawUDP:
     # (request, client_address)
     # where client_address = (client_ip, client_port) 
     def get(self):
-        # this is to measure time in get
-        if hasattr(self, "last_get"):
-            t = time.time() - self.last_get
-        else:
-            t = 0
         _print(self.d_o, "GET")
         rc = None
         if self.queue_size_p.value == 0:
@@ -302,29 +297,29 @@ def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, 
         
 # receiver runs in a separate process
 # this is why it is outside of RawUDP class
-def _receiver(self):
-    print "I am rawUDP_p", os.getpid(), self.replace_keyword
+def _receiver(RawUDP_obj):
+    print "I am rawUDP_p", os.getpid(), RawUDP_obj.replace_keyword
     if DEBUG:
         thread = threading.currentThread()
         thread_name = thread.getName()
         dirpath = os.path.join(os.environ.get("ENSTORE_OUT", ""),"tmp/%s"%(pwd.getpwuid(os.geteuid())[0],))
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
-        self.f = open(os.path.join(dirpath, "p_%s_%s"%(os.getpid(), thread_name)), "w")
+        RawUDP_obj.f = open(os.path.join(dirpath, "p_%s_%s"%(os.getpid(), thread_name)), "w")
     else:
-        self.f = None
+        RawUDP_obj.f = None
     
-    print"RECEIVER %s STARTS on %s"%(os.getpid(), self.server_socket.getsockname(),)
-    rcv_timeout = self.rcv_timeout
+    print"RECEIVER %s STARTS on %s"%(os.getpid(), RawUDP_obj.server_socket.getsockname(),)
+    rcv_timeout = RawUDP_obj.rcv_timeout
     while 1:
 
-        r, w, x, remaining_time = cleanUDP.Select([self.server_socket], [], [], rcv_timeout)
+        r, w, x, remaining_time = cleanUDP.Select([RawUDP_obj.server_socket], [], [], rcv_timeout)
 
         if r:
             for fd in r:
-                if fd == self.server_socket:
-                    req, client_addr = self.server_socket.recvfrom(
-                        self.max_packet_size, self.rcv_timeout)
+                if fd == RawUDP_obj.server_socket:
+                    req, client_addr = RawUDP_obj.server_socket.recvfrom(
+                        RawUDP_obj.max_packet_size, RawUDP_obj.rcv_timeout)
 
                     if req:
                         # Reminder about request structure
@@ -333,13 +328,15 @@ def _receiver(self):
                         # str(str((request_id, request_counter, body)), check_sum)
                         # where body is a dictionary
                         message = (req, client_addr)
-                        #_print (self.f, "MESSAGE %s %s"%(time.time(), message))
-                        put(self._lock, self.arrived, self.buffer, self.queue_size_p, message, self.requests, self.f, self.enable_reinsert, self.replace_keyword)
+                        #_print (RawUDP_obj.f, "MESSAGE %s %s"%(time.time(), message))
+                        put(RawUDP_obj._lock, RawUDP_obj.arrived, RawUDP_obj.buffer,
+                            RawUDP_obj.queue_size_p, message, RawUDP_obj.requests,
+                            RawUDP_obj.f, RawUDP_obj.enable_reinsert, RawUDP_obj.replace_keyword)
         else:
             # time out
             # set event to allow get to proceed
             # this can be used in dispatching worker to run interva functions
-            self.arrived.set()
+            RawUDP_obj.arrived.set()
 
 if __name__ == "__main__":
     rs = RawUDP(7700)

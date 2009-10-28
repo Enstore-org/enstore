@@ -5,7 +5,6 @@
 #
 # system imports
 import os
-import string
 import re
 import copy
 import threading
