@@ -122,7 +122,7 @@ def do_work(intf):
     #Is there a better place for this list?
     subdir_description_list = [
         (enstore_constants.WEEKLY_SUMMARY_SUBDIR,
-         "Weekely statistics on the number of tapes, bytes and cleaning tapes used."),
+         "Weekly statistics on the number of tapes, bytes and cleaning tapes used."),
         (enstore_constants.MISC_HTML_SUBDIR,
          "Miscellaneous Enstore web pages."),
         ]
