@@ -182,7 +182,8 @@ def duplicate_metadata(bfid1, src, bfid2, dst, db):
 	else:
 		err_msg = None
 	if err_msg:
-		if f2['deleted'] == "yes" and not migrate.is_swapped(bfid1, fcc, db):
+		if f2['deleted'] == migrate.YES \
+                   and not migrate.is_swapped(bfid1, fcc, db):
 			migrate.log(MY_TASK,
 			    "undoing duplication of %s to %s do to error"         % (bfid1, bfid2))
 			migrate.log_uncopied(bfid1, bfid2, fcc, db)
