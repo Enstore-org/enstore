@@ -137,6 +137,10 @@ class EnstoreSystemHtml:
                          "Web Pages",
                          "Enstore Web Pages")
         add_row_to_table(self.status_table,
+                         "/cgi-bin/active_volumes.sh", #Need constant???
+                         "Active Volumes",
+                         "Currently Active Volumes per Library")
+        add_row_to_table(self.status_table,
                          "/cgi-bin/enstore_show_inv_summary_cgi.py", #Need constant???
                          "Tape Inventory Summary",
                          "Summary of inventory results")
