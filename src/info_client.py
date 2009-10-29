@@ -1520,10 +1520,10 @@ def do_work(intf):
             ticket['first_access'] = time.ctime(ticket['first_access'])
             ticket['last_access'] = time.ctime(ticket['last_access'])
             if ticket.has_key('si_time'):
-                    ticket['si_time'] = (time.ctime(ticket['si_time'][0]),
-                                                             time.ctime(ticket['si_time'][1]))
+                ticket['si_time'] = (time.ctime(ticket['si_time'][0]),
+                                     time.ctime(ticket['si_time'][1]))
             if ticket.has_key('modification_time'):
-                    ticket['modification_time'] = time.ctime(ticket['modification_time'])
+                ticket['modification_time'] = time.ctime(ticket['modification_time'])
             pprint.pprint(ticket)
             ticket['status'] = status
     else:
