@@ -99,7 +99,7 @@ if [ $alias_rtn -ne 0 -o $is_host_rtn -eq 0 ]; then
    # than this one, go with the hostname.
    pnfs_alias=`hostname | cut -f 1 -d "."`
 fi
-filename=/tmp/${pnfs_alias}_pnfsExports.html
+filename=/tmp/pnfsExports.html
 
 #Send the output for making the web page to the temporary file.
 (
