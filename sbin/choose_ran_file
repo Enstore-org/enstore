@@ -60,7 +60,7 @@ tll_raw=`enstore conf $timeout --print crons test_library_list 2> /dev/null`
 ##fi
 ##
 #Remove the line header contents (before the :), remove any empty lines,
-# stick single quotes on either side of eache item, replace all newlines
+# stick single quotes on either side of each item, replace all newlines
 # with commas and lastly remove the last comma.
 if [ -z "$tll_raw" ]; then
     tll=""
@@ -76,6 +76,20 @@ else
     skip_library_sql="and library not in ($tll)"
 fi
 
+#Make sure the library exists.  Get the list of configured libraries,
+# grab just the first part out the output, remove everything after the period
+# leaving just the short library name, stick single quotes on either size
+# of each item, replace all newlines with commas and lastly remove the last
+# comma.
+#vll = Valid Library List
+vll_raw=`enstore conf $timeout --list-library`
+if [ $? -gt 0 ]; then
+   echo "Unable to obtain the list of configured libraries." 2>&1
+   exit 1
+fi
+vll=`echo "$vll_raw" | sed '1d' | awk '{print $1}' | tr "." " " | awk '{print $1}' | sed -e "s/$/'/" -e "s/^/'/" | tr "\n" "," | sed "s/,$//"`
+
+
 #Get the list of suitable tapes for testing.
 ###8-16-2007: The 'or' of the system_inhibit_1 values to readonly and full
 ###           should have a third condition.  If the last_access time is
@@ -90,8 +104,9 @@ from volume where
     ( system_inhibit_1 = 'readonly' or system_inhibit_1 = 'full' or
       last_access < CURRENT_TIMESTAMP - interval '3 months' ) and
     user_inhibit_0 = 'none' and
-    last_access <> -1 and
+    extract('epoch' from last_access) <> -1 and
     media_type <> 'null' and
+    library in ($vll) and   --Only consider configured libraries.
     library not like '%shelf%' $skip_library_sql and
     system_inhibit_1 not in ('migrated', 'migrating', 'duplicated',
                              'duplicating', 'cloned', 'cloning')
