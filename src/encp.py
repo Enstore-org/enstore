@@ -8593,19 +8593,30 @@ def submit_write_request(work_ticket, encp_intf):
 
     #Some KeyErrors are occuring because 'file_family' doesn't exist.  Need
     # to log this for debugging.
+    #
+    #One case is now understood.  Some errors returned by the library
+    # manager contain a 'status' value and the original request, converted 
+    # to a string, under the key 'request'.
     try:
         if ticket['vc']['file_family']:
             pass
+        if ticket['infile']:
+            pass
+        if ticket['vc']['library']:
+            pass
+        if ticket['file_size']:
+            pass
     except KeyError:
-        Trace.log(e_errors.INFO,
-                  "IMMIDIATE TRACEBACK EXPECTED: %s" % ticket)
+        message = "UNEXPECTED TICKET FORMAT DETECTED: %s" % ticket
+        Trace.log(e_errors.INFO, message)
 
     Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % (1,))
     Trace.message(TRANSFER_LEVEL,
                   "File queued: %s library: %s family: %s bytes: %s %s" %
-                  (ticket['infile'], ticket['vc']['library'],
-                   ticket['vc']['file_family'],
-                   ticket['file_size'],
+                  (ticket.get('infile', "UNKNOWN"),
+                   ticket.get('vc', {}).get('library' "UNKNOWN"),
+                   ticket.get('vc', {}).get('file_family', "UNKNOWN"),
+                   ticket.get('file_size', -1),
                    elapsed_string()))
 
     message = "Time to submit %d write request: %s sec." % \
