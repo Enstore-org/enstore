@@ -1011,7 +1011,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
             ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
         except:
-            ticket['status'] = (e_errors.FILE_CLERK_ERROR, str(sys.exc_info()[1]))
+            ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, str(sys.exc_info()[1]))
         self.send_reply(ticket)
         return
 
@@ -1039,7 +1039,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
             ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
         except:
-            ticket['status'] = (e_errors.FILE_CLERK_ERROR, str(sys.exc_info()[1]))
+            ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, str(sys.exc_info()[1]))
         self.send_reply(ticket)
         return
 
@@ -1076,7 +1076,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 exc_type, exc_value = sys.exc_info()[:2]
                 message = "failed to find %s volume id due to: %s" \
                           % (vol, (str(exc_type), str(exc_value)))
-                ticket["status"] = (e_errors.FILE_CLERK_ERROR, message)
+                ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, message)
                 Trace.log(e_errors.ERROR, message)
 
                 return ticket
