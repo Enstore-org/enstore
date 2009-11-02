@@ -382,11 +382,11 @@ class Buffer:
         t0 = time.time()
         space = self._getspace()
         t1 = time.time()
-        Trace.trace(222,"block_read: bytes_to_read: %s"%(nbytes,)) # COMMENT THIS
+        #Trace.trace(222,"block_read: bytes_to_read: %s"%(nbytes,)) # COMMENT THIS
         #bytes_read = driver.read(space, 0, nbytes)
         bytes_read = driver.read(space, 0, self.blocksize)
         t2 = time.time()
-        Trace.trace(222,"block_read: bytes_read: %s in %s"%(bytes_read,t2-t1)) # COMMENT THIS
+        #Trace.trace(222,"block_read: bytes_read: %s in %s"%(bytes_read,t2-t1)) # COMMENT THIS
         if bytes_read == nbytes: #normal case
             data = space
         elif bytes_read<=0: #error
@@ -419,7 +419,7 @@ class Buffer:
         if do_crc:
             crc_error = 0
             try:
-                Trace.trace(22,"block_read: data_ptr %s, bytes_for_cs %s" % (data_ptr, bytes_for_cs)) #COMMENT THIS
+                #Trace.trace(22,"block_read: data_ptr %s, bytes_for_cs %s" % (data_ptr, bytes_for_cs)) #COMMENT THIS
 
                 self.complete_crc = checksum.adler32_o(self.complete_crc,
                                                        data,
@@ -483,6 +483,7 @@ class Buffer:
         else:
             do_crc = 0
         #Trace.trace(22,"block_write: header size %s"%(self.header_size,))
+        #Trace.trace(22,"block_write: do_crc %s"%(do_crc,))
         t0 = t1 = t2 = t3 = t4 = time.time()
         data = self.pull()
         t1 = time.time()
@@ -522,7 +523,8 @@ class Buffer:
                         self.complete_crc = checksum.adler32_o(self.complete_crc,
                                                                data,
                                                                data_ptr, bytes_for_cs)
-
+                        
+                        #Trace.trace(22,"complete crc %s"%(self.complete_crc,))
                         #if self.first_block and self.sanity_bytes < SANITY_SIZE:
                         if self.sanity_bytes < SANITY_SIZE:
                             nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
@@ -548,7 +550,7 @@ class Buffer:
         self.write_stats[2] = self.write_stats[2] + t3-t2   # total time in check CRC
         self.write_stats[3] = self.write_stats[3] + t4-t3   # total time in freespace
         self.write_stats[4] = self.write_stats[4] + t4-t0   # total time in block_write
-        Trace.trace(22, "WS %s"%(self.write_stats,))
+        Trace.trace(122, "WS %s"%(self.write_stats,))
         return bytes_written
 
         
@@ -2199,7 +2201,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.ENCP_GONE, msg, error_source=NETWORK)
                 return
-            Trace.trace(34, "read_client: bytes read %s"%(bytes_read,))
+            Trace.trace(134, "read_client: bytes read %s"%(bytes_read,))
             if bytes_read <= 0:  #  The client went away!
                 Trace.log(e_errors.ERROR, "read_client: dropped connection")
                 #if self.state is not DRAINING: self.state = HAVE_BOUND
@@ -2366,7 +2368,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             loop_start = time.time()
 
-            Trace.trace(33,"total_bytes %s total_bytes_written %s"%(self.bytes_to_write, self.bytes_written))
+            Trace.trace(133,"total_bytes %s total_bytes_written %s"%(self.bytes_to_write, self.bytes_written))
             if self.tr_failed:
                 self.tape_driver.flush() # to empty buffer and to release device from this thread
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
@@ -2438,7 +2440,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         optimal_buf = min(optimal_buf, 0.5 * self.max_buffer)
                         optimal_buf = max(optimal_buf, self.min_buffer)
                         optimal_buf = int(optimal_buf)
-                        Trace.trace(12,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
+                        Trace.trace(112,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
                         if self.buffer.min_bytes != optimal_buf:
                             Trace.trace(12,"Changing buffer size from %s to %s"%
                                         (self.buffer.min_bytes, optimal_buf))
@@ -2451,7 +2453,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_written = self.buffer.block_write(nbytes, driver)
                 nblocks = nblocks+1
-                Trace.trace(33,"bytes_to_write %s bytes_written %s"%(nbytes,bytes_written))
+                Trace.trace(133,"bytes_to_write %s bytes_written %s"%(nbytes,bytes_written))
             except:
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
@@ -2914,8 +2916,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         break_here = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             loop_start = time.time()
-            Trace.trace(33,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
-            Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
+            Trace.trace(133,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
+            Trace.trace(127,"read_tape: tr_failed %s"%(self.tr_failed,))
             if self.tr_failed:
                 break
 
@@ -2965,7 +2967,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 nblocks = nblocks + 1
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
                 idle_time = idle_time + t1 - loop_start
-                Trace.trace(33,"bytes to read %s, bytes read %s"%(nbytes, bytes_read))
+                Trace.trace(133,"bytes to read %s, bytes read %s"%(nbytes, bytes_read))
             except MemoryError:
                 #raise exceptions.MemoryError # to test this thread
                 exc, detail, tb = sys.exc_info()
@@ -3334,8 +3336,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                       time.time()))
         cnt = 0
         while 1:
-            Trace.trace(33, "state %s cnt %s"%(state_name(self.state),cnt))
-            Trace.trace(33, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
+            Trace.trace(133, "state %s cnt %s"%(state_name(self.state),cnt))
+            Trace.trace(133, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
             if self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
                 #Trace.trace(33, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
                 if self.tr_failed:
@@ -4362,7 +4364,29 @@ class Mover(dispatching_worker.DispatchingWorker,
                         break
         Trace.trace(26,"dismount_allowed %s after_dismount %s"%(dism_allowed, after_dismount_function))
         if encp_gone:
-            self.current_location, block = self.tape_driver.tell()
+            last_location = self.current_location
+            try:
+                self.current_location, block = self.tape_driver.tell()
+            except self.ftt.FTTError, detail:
+                Trace.alarm(e_errors.ERROR, 'Can not get drive info %s' % (detail,))
+                if self.mode == WRITE:
+                    self.vcc.set_system_readonly(self.current_volume)
+                self.dismount_volume(after_function=self.idle)
+                return
+
+            if (self.header_labels and
+                (self.current_location - last_location == 1) and
+                self.mode == WRITE):
+                # This case is for cern alike headers,
+                # which are separated from data by fm.
+                # If header was written before
+                # encp was gone,
+                # the current location will be 1 more than in
+                # case of cpio wrapper, which is not separated from
+                # data with fm
+                Trace.trace(10, "for cern wrapper will set loc to %s"%(last_location,))
+                self.current_location = last_location
+                
             self.dismount_time = time.time() + self.delay
             if self.state == IDLE:
                 pass
@@ -6309,7 +6333,7 @@ class DiskMover(Mover):
                         optimal_buf = min(optimal_buf, 0.5 * self.max_buffer)
                         optimal_buf = max(optimal_buf, self.min_buffer)
                         optimal_buf = int(optimal_buf)
-                        Trace.trace(12,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
+                        Trace.trace(112,"netrate = %.3g, taperate=%.3g" % (netrate, taperate))
                         if self.buffer.min_bytes != optimal_buf:
                             Trace.trace(12,"Changing buffer size from %s to %s"%
                                         (self.buffer.min_bytes, optimal_buf))
