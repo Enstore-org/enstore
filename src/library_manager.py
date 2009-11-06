@@ -3117,7 +3117,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if vol_status and vol_status[0][0] == 'none':
                 vol = self.update_suspect_vol_list(mticket['external_label'], 
                                                    mticket['mover'])
-                Trace.alarm(e_errors.INFO,"mover_error updated suspect volume list for %s"%(mticket['external_label'],))
+                Trace.log(e_errors.INFO,"mover_error updated suspect volume list for %s"%(mticket['external_label'],))
                 if vol:
                     # need a special processing for FTT_EBLANK. For 9940A tape drives
                     # it is mainly a firmware bug, but we need to make tape to not
