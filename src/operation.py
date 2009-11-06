@@ -1286,7 +1286,7 @@ def make_cap(l, library_type='9310', cap_n = 0):
 		if count != 0:
 			cap_script = cap_script + door
 	elif library_type == '8500G1':
-		cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
+		cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,5,0 "
 		for i in l:
 			cap_script = cap_script + ' ' + i
 		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
