@@ -126,8 +126,8 @@ done
 case ${gang}@${location} in
   *en@GCC)
      robot="8500G1"
-     icap="0,5,0"	# library 1, rail 6, cap A
-     ocap="0,1,0"	# library 1, rail 2, cap A
+     icap="0,9,0"	# library 2, lsm 9, rail 2, cap A
+     ocap="0,5,0"	# library 3, lsm 5, rail 2, cap A
      sun="fntt-gcc"
      ;;
 
@@ -164,8 +164,8 @@ case ${gang}@${location} in
      case ${gang}@${location}.${lib} in
        *en@FCC2.8500)
 	  robot="8500F1"
-	  icap="1,1,0"       # library 2, rail 2, cap A
-	  ocap="1,1,0"       # library 2, rail 2, cap A
+	  icap="1,5,0"       # library 2, lsm 5, rail 2, cap A
+	  ocap="1,1,0"       # library 1, lsm 1, rail 2, cap A
 	  sun="fntt2"
 	  ;;
 
