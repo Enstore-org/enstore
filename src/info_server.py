@@ -354,19 +354,25 @@ class Server(file_clerk.FileClerkInfoMethods,
 			return
 
 		q = "select \
-			bfid, crc, deleted, drive, \
-			volume.label, location_cookie, pnfs_path, \
-			pnfs_id, sanity_size, sanity_crc, size, \
-			uid, gid, update \
+			bfid \
 			from file, volume \
 			where \
 				file.volume = volume.id and \
 				label = '%s' and \
 				location_cookie = '%s';" % \
 		(external_label, location_cookie)
+		res=[]
+		try:
+			res=self.db.query(q).dictresult()
+		except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+			ticket['status'] = (e_errors.DATABASE_ERROR,
+					    "failed to find bfid for volume:location %s:%s"%(external_label, location_cookie,))
+			return ticket
+		bfid = res[0].get('bfid')
+		
 
 		# Obtain the file record(s).
-		self.__find_file(q, ticket, "%s:%s" % (external_label, location_cookie))
+		self.__find_file(bfid, ticket, "%s:%s" % (external_label, location_cookie))
 		
 		return ticket
 
