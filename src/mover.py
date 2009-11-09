@@ -3501,6 +3501,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.unique_id = ticket['unique_id']
         self.uid = -1
         self.gid = -1
+        self.header_labels = "" # set it here to not have problems in assert
         if ticket.has_key('wrapper'):
             uid = ticket['wrapper'].get('uid', -1)
             gid = ticket['wrapper'].get('gid', -1)
