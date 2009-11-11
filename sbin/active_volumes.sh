@@ -1,4 +1,5 @@
 #!/bin/sh
+# generate the list of active volumes per library manager
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # this is cheap argument processing. Must be in this order when checking. I want it cheap!
@@ -20,7 +21,7 @@ grep -v disk | grep "\." > /tmp/enstore_libs.0
 echo "Content-type: text/html
 
 <head>
-<title> Enstore Drives </title>
+<title> Active Volumes List </title>
 </head>
 <body bgcolor='#ffffd0'>
 <font size=5 color='blue'>Active Volumes `date`</font>
@@ -41,4 +42,6 @@ echo "
 <hr><a href='http://www.fnal.gov/pub/disclaim.html'>Legal Notices</a><hr>
 </body>
 </html>"
+rm -f /tmp/etl.1
+
 
