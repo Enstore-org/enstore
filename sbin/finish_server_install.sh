@@ -68,14 +68,22 @@ if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSe
 echo "PGDATA=$database_postgres" > /etc/sysconfig/pgsql/postgresql
 if [ $this_host = $pnfs_host ];
 then
+    mkdir -p $database_postgres
+    mkdir -p $database
     chown enstore $database_postgres
     echo "Configuring this host to run postgres"
     /sbin/chkconfig postgresql on
+    echo "Initializing postgres"
+    su enstore -c "initdb -D $database_postgres"    
     echo "Starting postgres"
     /etc/init.d/postgresql start
     echo "Configuring this host to run pnfs server"
     /sbin/chkconfig --add pnfs
     /sbin/chkconfig pnfs on
+    echo "creating admin DB"
+    ./mdb create admin `dirname $database`/admin
+    echo "creating data DB"
+    ./mdb create data `dirname $database`/data
     #echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
 	#/etc/init.d/pnfs startnst
 fi
