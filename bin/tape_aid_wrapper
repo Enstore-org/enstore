@@ -171,8 +171,8 @@ case ${gang}@${location} in
 
        cdfen@FCC2.9310)
 	  robot="9310"
-	  icap="0,0,0"
-	  ocap="0,1,0"
+	  icap="0,1,0"
+	  ocap="0,0,0"
 	  sun=fntt2
 	  ;;
 
