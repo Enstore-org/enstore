@@ -112,6 +112,9 @@ def e_access_cmp(file_stats, mode):
 
 #############################################################################
 
+## This section of code contains wrapper functions around os module functions
+## in a thread safe manner with respect to seteuid().
+
 #arg can be: filename, file descritor, file object, a stat object
 def get_stat(arg, use_lstat = False):
     try:
@@ -514,12 +517,17 @@ def match_euid_egid(arg):
             release_lock_euid_egid()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+#Set the effective uid/gid.
+# euid - The new effective user ID.
+# egid - The new effective group ID.
 def set_euid_egid(euid, egid):
 
     if os.getuid() == 0:
 
-        #We need to set these back to root, with uid first.
-        if euid != 0:
+        #We need to set these back to root, with uid first.  If the group
+        # is changed we need to also set the euid, to that we will have
+        # permissions to set the egid to another non-root user ID.
+        if euid != 0  or egid != 0:
             os.seteuid(0)
         if egid != 0:
             os.setegid(0)
