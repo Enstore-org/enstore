@@ -21,13 +21,7 @@ import select
 import exceptions
 import traceback
 import fcntl
-#if sys.version_info < (2, 2, 0):
-#    import FCNTL #FCNTL is depricated in python 2.2 and later.
-#    fcntl.F_GETFL = FCNTL.F_GETFL
-#    fcntl.F_SETFL = FCNTL.F_SETFL
 import random
-# popen2 is deprecated and must be replaced with subprocess
-#import popen2
 import subprocess
 import copy
 
@@ -629,7 +623,7 @@ class Buffer:
             do_crc = 1
         else:
             do_crc = 0
-        Trace.trace(8, "stream_write do_crc %s bytes %s"%(do_crc,nbytes))
+        Trace.trace(108, "stream_write do_crc %s bytes %s"%(do_crc,nbytes))
         if not self._writing_block:
             if self.empty():
                 Trace.trace(10, "stream_write: buffer empty")
@@ -637,11 +631,11 @@ class Buffer:
             self._writing_block = self.pull()
             self._write_ptr = 0
         bytes_to_write = min(len(self._writing_block)-self._write_ptr, nbytes)
-        Trace.trace(35, "bytes_to_write %s write_ptr %s"%(bytes_to_write,self._write_ptr))
+        Trace.trace(135, "bytes_to_write %s write_ptr %s"%(bytes_to_write,self._write_ptr))
         
         if driver:
             bytes_written = driver.write(self._writing_block, self._write_ptr, bytes_to_write)
-            Trace.trace(24, "BYTES WRITTEN %s"%(bytes_written,))
+            Trace.trace(124, "BYTES WRITTEN %s"%(bytes_written,))
             if bytes_written != bytes_to_write:
                 msg="encp gone? bytes to write %s, bytes written %s"%(bytes_to_write, bytes_written)
                 Trace.log(e_errors.ERROR, msg)
@@ -677,7 +671,7 @@ class Buffer:
         else:
             bytes_written = bytes_to_write #discarding header stuff
         self._write_ptr = self._write_ptr + bytes_written
-        Trace.trace(35, "write_ptr %s len w_b %s"%(self._write_ptr,len(self._writing_block)))
+        Trace.trace(135, "write_ptr %s len w_b %s"%(self._write_ptr,len(self._writing_block)))
         if self._write_ptr == len(self._writing_block): #finished sending out this block
             self._freespace(self._writing_block)
             self._writing_block = None
@@ -2962,7 +2956,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 buffer_full_t = 0
                 buffer_full_cnt = 0
             
-            Trace.trace(24, "btr %s br %s bs %s"%(self.bytes_to_read, self.bytes_read, self.buffer.blocksize))
+            Trace.trace(124, "btr %s br %s bs %s"%(self.bytes_to_read, self.bytes_read, self.buffer.blocksize))
             nbytes = min(self.bytes_to_read - self.bytes_read, self.buffer.blocksize)
             self.buffer.bytes_for_crc = nbytes
             if self.bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
@@ -3103,7 +3097,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                               last_notify_time))
 
             if not self.buffer.empty():
-                Trace.trace(99, "write_ok_set")
+                Trace.trace(199, "write_ok_set")
                 self.buffer.write_ok.set()
             if bytes_read < nbytes and self.method == 'read_next':
                 # end of file?
@@ -3816,6 +3810,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if self.assert_return != e_errors.OK:
                         stat = self.assert_return
                     if self.tr_failed:
+                        stat = self._error
+                        ticket['return_file_list'][loc_cookie] = stat
+                        Trace.trace(24, "ticket!: %s"%(ticket['return_file_list'][loc_cookie],))
                         break
                         
                 if self.interrupt_assert:
@@ -4216,7 +4213,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=1):
+        exc = str(exc)
         if self.mode == ASSERT:
+            self._error = exc # I do this here to not break the rest of the code
             self.assert_ok.set()
         
         if self.state == OFFLINE:
@@ -4310,8 +4309,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.alarm(e_errors.ERROR, "tape thread is possibly stuck in D state")
                 self.log_state(logit=1)
             if error_source == DRIVE:
-                after_dismount_function = self.offline
-                Trace.alarm(e_errors.ERROR, "Possible drive failure")
+                Trace.log(e_errors.ERROR, "MODE %s"%(self.mode,))
+                Trace.alarm(e_errors.ERROR, "Possible drive failure %s %s"%(exc, msg))
+                if self.mode == WRITE:
+                    # offline mover only if it was writing
+                    # for READ and ASSERT
+                    # allow to proceed
+                    # the consecutive_failures count will
+                    # take care of the rest
+                    after_dismount_function = self.offline
 
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
