@@ -105,7 +105,6 @@ automatically.  It's confusing in this code when `eod' is a cookie vs a plain ol
 """
 
 WRAPPER_ERROR = 'WRAPPER_ERROR'
-CRC_ERROR = 'CRC_ERROR'
 BUF_SIZE_CH_ERR = 'Buffer error: changing blocksize of nonempty buffer'
 class MoverError(exceptions.Exception):
     def __init__(self, arg):
@@ -452,12 +451,12 @@ class Buffer:
             except:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 Trace.handle_error()
-                raise MoverError(CRC_ERROR)
+                raise MoverError(e_errors.CRC_ERROR)
             if crc_error:
                 Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, actual (%s,%s)" %
                           (self.sanity_cookie, self.sanity_bytes, self.sanity_crc)) 
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
-                raise MoverError(CRC_ERROR)
+                raise MoverError(e_errors.CRC_ERROR)
                 
         t3 = time.time()
         if data and fill_buffer:
@@ -536,7 +535,7 @@ class Buffer:
                             #            (self.sanity_crc, self.sanity_bytes))
                     except:
                         Trace.log(e_errors.ERROR,"block_write: CRC_ERROR")
-                        raise MoverError(CRC_ERROR)
+                        raise MoverError(e_errors.CRC_ERROR)
             t3 = time.time()
             self._freespace(data)
             t4 = time.time()
@@ -674,7 +673,7 @@ class Buffer:
                             Trace.log(e_errors.ERROR,
                                       "CRC Error: CRC sanity cookie %s, sanity CRC %s writing %s bytes. Written %s bytes" %
                                       (self.sanity_cookie[1],self.sanity_crc, bytes_to_write, nbytes)) 
-                            raise MoverError(CRC_ERROR)
+                            raise MoverError(e_errors.CRC_ERROR)
         else:
             bytes_written = bytes_to_write #discarding header stuff
         self._write_ptr = self._write_ptr + bytes_written
@@ -2766,7 +2765,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         
                     except MoverError, detail:
                         detail = str(detail)
-                        if detail == CRC_ERROR:
+                        if detail == e_errors.CRC_ERROR:
                             Trace.alarm(e_errors.ERROR, "selective CRC check error",
                                         {'outfile':self.current_work_ticket['outfile'],
                                          'infile':self.current_work_ticket['infile'],
@@ -2985,7 +2984,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             except MoverError, detail:
                 detail = str(detail)
-                if detail == CRC_ERROR:
+                if detail == e_errors.CRC_ERROR:
                     Trace.alarm(e_errors.ERROR, "CRC error reading tape",
                                 {'outfile':self.current_work_ticket['outfile'],
                                  'infile':self.current_work_ticket['infile'],
@@ -3378,7 +3377,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.stream_w_flag = 0
                 except MoverError, detail:
                     detail = str(detail)
-                    if detail == CRC_ERROR:
+                    if detail == e_errors.CRC_ERROR:
                         Trace.alarm(e_errors.ERROR, "CRC error in write client",
                                     {'outfile':self.current_work_ticket['outfile'],
                                      'infile':self.current_work_ticket['infile'],
@@ -6450,7 +6449,7 @@ class DiskMover(Mover):
                         
                     except MoverError, detail:
                         detail = str(detail)
-                        if detail == CRC_ERROR:
+                        if detail == e_errors.CRC_ERROR:
                             Trace.alarm(e_errors.ERROR, "selective CRC check error",
                                         {'outfile':self.current_work_ticket['outfile'],
                                          'infile':self.current_work_ticket['infile'],
@@ -6544,9 +6543,9 @@ class DiskMover(Mover):
                 t1 = time.time()
                 bytes_read = self.buffer.block_read(nbytes, driver)
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
-            except MoverError:
+            except MoverError, detail:
                 detail = str(detail)
-                if detail == CRC_ERROR:
+                if detail == e_errors.CRC_ERROR:
                     Trace.alarm(e_errors.ERROR, "CRC error reading tape",
                                 {'outfile':self.current_work_ticket['outfile'],
                                  'infile':self.current_work_ticket['infile'],
@@ -6688,13 +6687,22 @@ class DiskMover(Mover):
             bytes_written = 0
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
-            except CRC_ERROR:
-                Trace.alarm(e_errors.ERROR, "CRC error in write client",
-                            {'outfile':self.current_work_ticket['outfile'],
-                             'infile':self.current_work_ticket['infile'],
-                             'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                             'external_label':self.current_work_ticket['vc']['external_label']})
-                self.transfer_failed(e_errors.CRC_ERROR, None)
+            except MoverError, detail:
+                detail = str(detail)
+                if detail == e_errors.CRC_ERROR:
+                    Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                                {'outfile':self.current_work_ticket['outfile'],
+                                 'infile':self.current_work_ticket['infile'],
+                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                 'external_label':self.current_work_ticket['vc']['external_label']})
+                    self.transfer_failed(e_errors.CRC_ERROR, None)
+                else:
+                    if detail == e_errors.ENCP_GONE:
+                        err_source = NETWORK
+                    else:
+                        err_source = UNKNOWN
+                    self.transfer_failed(detail, error_source=err_source)
+                 
                 failed = 1
                 break
             except:
