@@ -127,7 +127,7 @@ def state_name(state):
 READ, WRITE, ASSERT = range(3)
 
 #error sources
-TAPE, ROBOT, NETWORK, DRIVE, USER, MOVER = ['TAPE', 'ROBOT', 'NETWORK', 'DRIVE', 'USER','MOVER']
+TAPE, ROBOT, NETWORK, DRIVE, USER, MOVER, UNKNOWN = ['TAPE', 'ROBOT', 'NETWORK', 'DRIVE', 'USER','MOVER', 'UNKNOWN']
 
 def mode_name(mode):
     if mode is None:
@@ -2765,11 +2765,20 @@ class Mover(dispatching_worker.DispatchingWorker,
                             self.buffer._freespace(self.buffer._writing_block)
                         
                     except MoverError, detail:
-                        Trace.alarm(e_errors.ERROR, "selective CRC check error",
-                                    {'outfile':self.current_work_ticket['outfile'],
-                                     'infile':self.current_work_ticket['infile'],
-                                     'external_label':self.current_work_ticket['vc']['external_label']})
-                        self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=DRIVE)
+                        detail = str(detail)
+                        if detail == CRC_ERROR:
+                            Trace.alarm(e_errors.ERROR, "selective CRC check error",
+                                        {'outfile':self.current_work_ticket['outfile'],
+                                         'infile':self.current_work_ticket['infile'],
+                                         'external_label':self.current_work_ticket['vc']['external_label']})
+                            self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=DRIVE)
+                        else:
+                            if detail == e_errors.ENCP_GONE:
+                                err_source = NETWORK
+                            else:
+                                err_source = UNKNOWN
+                            self.transfer_failed(detail, error_source=err_source)
+
                         failed = 1
                         break
                     except:
@@ -2974,14 +2983,23 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.MEMORY_ERROR, detail, error_source=MOVER,dismount_allowed=1)
                 return
-            except MoverError:
-                Trace.alarm(e_errors.ERROR, "CRC error reading tape",
-                            {'outfile':self.current_work_ticket['outfile'],
-                             'infile':self.current_work_ticket['infile'],
-                             'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                             'external_label':self.current_work_ticket['vc']['external_label']})
+            except MoverError, detail:
+                detail = str(detail)
+                if detail == CRC_ERROR:
+                    Trace.alarm(e_errors.ERROR, "CRC error reading tape",
+                                {'outfile':self.current_work_ticket['outfile'],
+                                 'infile':self.current_work_ticket['infile'],
+                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                 'external_label':self.current_work_ticket['vc']['external_label']})
+                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+                else:
+                    if detail == e_errors.ENCP_GONE:
+                        err_source = NETWORK
+                    else:
+                        err_source = UNKNOWN
+                    self.transfer_failed(detail, error_source=err_source)
+                
                 self.read_tape_running = 0
-                self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                 failed = 1
                 Trace.trace(24, "MODE %s"%(mode_name(self.mode),))
                 if self.mode == ASSERT:
@@ -3358,13 +3376,22 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.stream_w_flag = 1
                     bytes_written = self.buffer.stream_write(nbytes, driver)
                     self.stream_w_flag = 0
-                except MoverError:
-                    Trace.alarm(e_errors.ERROR, "CRC error in write client",
-                                {'outfile':self.current_work_ticket['outfile'],
-                                 'infile':self.current_work_ticket['infile'],
-                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                 'external_label':self.current_work_ticket['vc']['external_label']})
-                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+                except MoverError, detail:
+                    detail = str(detail)
+                    if detail == CRC_ERROR:
+                        Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                                    {'outfile':self.current_work_ticket['outfile'],
+                                     'infile':self.current_work_ticket['infile'],
+                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                     'external_label':self.current_work_ticket['vc']['external_label']})
+                        self.transfer_failed(detail, error_source=TAPE)
+                    else:
+                        
+                        if detail == e_errors.ENCP_GONE:
+                            err_source = NETWORK
+                        else:
+                            err_source = UNKNOWN
+                        self.transfer_failed(detail, error_source=err_source)
                     failed = 1
                     break
                 except:
@@ -6421,15 +6448,22 @@ class DiskMover(Mover):
                             #Trace.trace(22,"write_tape: freeing block")
                             self.buffer._freespace(self.buffer._writing_block)
                         
-                    except MoverError:
-                        exc, detail, tb = sys.exc_info()
-                        #Trace.handle_error(exc, detail, tb)
-                        Trace.alarm(e_errors.ERROR, "selective CRC check error",
-                                    {'outfile':self.current_work_ticket['outfile'],
-                                     'infile':self.current_work_ticket['infile'],
-                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                     'external_label':self.current_work_ticket['vc']['external_label']})
-                        self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                    except MoverError, detail:
+                        detail = str(detail)
+                        if detail == CRC_ERROR:
+                            Trace.alarm(e_errors.ERROR, "selective CRC check error",
+                                        {'outfile':self.current_work_ticket['outfile'],
+                                         'infile':self.current_work_ticket['infile'],
+                                         'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                         'external_label':self.current_work_ticket['vc']['external_label']})
+                            self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                        else:
+                            if detail == e_errors.ENCP_GONE:
+                                err_source = NETWORK
+                            else:
+                                err_source = UNKNOWN
+                            self.transfer_failed(detail, error_source=err_source)
+                        
                         failed = 1
                         break
                     except:
@@ -6511,12 +6545,21 @@ class DiskMover(Mover):
                 bytes_read = self.buffer.block_read(nbytes, driver)
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
             except MoverError:
-                Trace.alarm(e_errors.ERROR, "CRC error reading tape",
-                            {'outfile':self.current_work_ticket['outfile'],
-                             'infile':self.current_work_ticket['infile'],
-                             'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                             'external_label':self.current_work_ticket['vc']['external_label']})
-                self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+                detail = str(detail)
+                if detail == CRC_ERROR:
+                    Trace.alarm(e_errors.ERROR, "CRC error reading tape",
+                                {'outfile':self.current_work_ticket['outfile'],
+                                 'infile':self.current_work_ticket['infile'],
+                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                 'external_label':self.current_work_ticket['vc']['external_label']})
+                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+                else:
+                    if detail == e_errors.ENCP_GONE:
+                        err_source = NETWORK
+                    else:
+                        err_source = UNKNOWN
+                    self.transfer_failed(detail, error_source=err_source)
+                
                 failed = 1
                 break
             except:
