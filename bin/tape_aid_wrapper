@@ -111,9 +111,11 @@ until [ -n "${location:-}" ]; do
       ;;
     cdfen)
       echo " 1) GCC  if you are in GCC"
-      echo " 2) FCC2 if you are on the 2nd floor"
-      echo " 3) Quit if you are somewhere else"
-      locations="GCC FCC2"
+      echo " 2) FCCM if you are on the mezzanine in FCC"  # CDF-9940B-D0 library is in d0en silo
+      echo " 3) FCC2 if you are on the 2nd floor"
+      echo " 4) Quit if you are somewhere else"
+      locations="GCC FCCM FCC2"
+      mezz_acs=1                # Same as d0en
       ;;
   esac
   echo
@@ -121,6 +123,9 @@ until [ -n "${location:-}" ]; do
   select location in $locations Quit; do EOF=0; break; done
   [ $EOF -gt 0 ] && exit
 done
+
+# flag for cdfen 9940B tapes in d0en silo
+CDFinD0=0
 
 # some locations unambiguously define a library
 case ${gang}@${location} in
@@ -136,6 +141,14 @@ case ${gang}@${location} in
      icap="$mezz_acs,1,0"
      ocap="$mezz_acs,0,0"
      sun=fntt
+     ;;
+
+  cdfen@FCCM)    # CDF-9940B-D0 -- CDF overflow into D0en silo, but in cdfen enstore instance
+     robot="9310"
+     icap="$mezz_acs,1,0"
+     ocap="$mezz_acs,0,0"
+     sun=fntt2
+     CDFinD0=1
      ;;
 
   *en@FCC2)		# disambiguate the libraries on FCC2
@@ -215,7 +228,13 @@ case $script in
      action=${1:-"shelve"}
      case $action in
        shelve)
-	  work=$HOME/isa-tools/${robot}_shelf_volumes_work
+	 # Keep cdfen tapes in d0en silo in separate work directory
+	 if [ $CDFinD0 -eq 1 ]
+	 then
+	     work=$HOME/isa-tools/${robot}_CDFinD0_shelf_volumes_work
+	 else
+	     work=$HOME/isa-tools/${robot}_shelf_volumes_work
+	 fi
 	  ;;
        reload)
 	  work=$HOME/isa-tools/${robot}_refit_barcode_work
