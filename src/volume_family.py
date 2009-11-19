@@ -41,3 +41,14 @@ def extract_storage_group(volume_family):
 # combine volume family
 def make_volume_family(storage_group, file_family, wrapper):
     return string.join((storage_group, file_family, wrapper), '.')
+
+
+# compare 2 volume families
+def match_volume_families(a,b):
+    a = string.split(a, '.')
+    b = string.split(b, '.')
+    if len(a) != len(b):
+        min_len = min(len(a), len(b))
+        a = a[:min_len]
+        b = b[:min_len]
+    return a==b
