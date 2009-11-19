@@ -52,7 +52,7 @@ while 1:
             rqs = 0
             print 'KeyError', a
     elif a['status'][0] == e_errors.TIMEDOUT:
-        ql,put, deleted = -1
+        ql = put = deleted = -1
 
     if r_port:
         cmd = 'netstat -npl | grep %s'%(r_port,)
