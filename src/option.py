@@ -389,6 +389,7 @@ RECYCLE = "recycle"                          #volume
 REFRESH = "refresh"                          #inquisitor(c&s)
 REMEDY_TYPE = "remedy_type"                  #alarm_server
 REMOVE = "remove"                            #pnfs_agent, media
+RESET_CNT = "reset-queue-counters"           # library manager
 RESET_LIB = "reset-lib"                      #volume
 RESOLVE = "resolve"                          #alarm
 RESTORE = "restore"                          #volume, file
@@ -546,7 +547,7 @@ valid_option_list = [
     PTS_NODES, PUT_CACHE, PVOLS,
     QUERY, QL,
     RAISE, READ_ONLY, READ_TO_END_OF_TAPE, REASON, RECURSIVE, RECYCLE, REFRESH,
-    REMEDY_TYPE, REMOVE, RESET_LIB, RESOLVE,
+    REMEDY_TYPE, REMOVE, RESET_CNT, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RESUBMIT_TIMEOUT, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RMDIR, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG, SAAG_NETWORK, SAAG_STATUS,

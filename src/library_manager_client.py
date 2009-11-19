@@ -311,6 +311,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
     # get pending queue length
     def get_pending_queue_length(self, timeout=0, tries=0):
         return self.send({"work":"get_pending_queue_length"}, timeout, tries)
+
+    # reset pending request queue counters
+    def reset_pending_queue_counters(self, timeout=0, tries=0):
+        return self.send({"work":"reset_pending_queue_counters"}, timeout, tries)
             
     def storage_groups(self, timeout=0, tries=0):
         return self.send({"work":"storage_groups"}, timeout, tries)
@@ -351,6 +355,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.print_queue = 0
         self.list = 0
         self.queue_length = 0
+        self.reset_queue_counters = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -452,6 +457,11 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                                                },]},
         option.QL:{option.HELP_STRING:
                      "get length of pending requests",
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.RESET_CNT:{option.HELP_STRING:
+                     "reset pending queue counters",
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.ADMIN},
@@ -581,6 +591,8 @@ def do_work(intf):
     elif intf.queue_length:
         ticket = lmc.get_pending_queue_length()
         print ticket['queue_length']
+    elif intf.reset_queue_counters:
+        ticket = lmc.reset_pending_queue_counters()
     elif intf.storage_groups:
         ticket = lmc.storage_groups()
 	print "%-14s %-12s" % ('storage group', 'limit')
