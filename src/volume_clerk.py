@@ -35,37 +35,26 @@ import udp_common
 import enstore_functions2
 import enstore_functions3
 
-def hack_match(a,b): #XXX clean this up
-    a = string.split(a, '.')
-    b = string.split(b, '.')
-    if len(a) != len(b):
-        min_len = min(len(a), len(b))
-        a = a[:min_len]
-        b = b[:min_len]
-    return a==b
-
 # conditional comparison
 def mycmp(cond, a, b):
     # condition may be None or some other
     if not cond: return a==b        # if cond is not None use ==
     else: return a!=b               # else use !=
 
-# require 5% more space on a tape than the file size,
-#    this accounts for the wrapper overhead and "some" tape rewrites
-
-KB=1024
-MB=KB*KB
-GB=MB*KB
+KB=enstore_constants.KB
+MB=enstore_constants.MB
+GB=enstore_constants.GB
 
 # make pychecker happy
 
 if GB:
     pass
 
-SAFETY_FACTOR=1.05
-#MIN_LEFT=long(300*MB)
-MIN_LEFT=long(0) # for now, this is disabled.
+# require 5% more space on a tape than the file size,
+#    this accounts for the wrapper overhead and "some" tape rewrites
 
+SAFETY_FACTOR=enstore_constants.SAFETY_FACTOR
+MIN_LEFT=enstore_constants.MIN_LEFT
 
 MY_NAME = enstore_constants.VOLUME_CLERK   #"volume_clerk"
 MAX_CONNECTION_FAILURE = 5
@@ -2956,7 +2945,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                                 (ticket['volume_family'],record['volume_family']))
 
                     #XXX deal with 2-tuple vs 3-tuple...
-                    if (hack_match(ticket['volume_family'],record['volume_family']) or
+                    if (volume_family.match_volume_families(ticket['volume_family'],record['volume_family']) or
                         ff == 'ephemeral'):
                         ret = self.is_volume_full(record,ticket['file_size'])
                         if not ret:
