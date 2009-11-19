@@ -7,10 +7,19 @@
 ###############################################################################
 import sys
 import time
-import popen2 
+import subprocess
 import library_manager_client
 import configuration_client
+import e_errors
 
+def shell_command(command):
+    pipeObj = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+    if pipeObj == None:
+        return None
+    # get stdout
+    result = pipeObj.communicate()[0]
+    del(pipeObj)
+    return result 
 
 
 def usage(arg):
@@ -33,58 +42,53 @@ rqs1=0.
 t1=time.time()
 first = True
 while 1:
-    a = lmc.get_pending_queue_length()
-    try:
-        ql = a['queue_length']
-        #rqs = a['rqs']
-    except KeyError:
-        ql = 0
-        rqs = 0
-        print 'KeyError', a
+    a = lmc.get_pending_queue_length(timeout=5)
+    if a['status'][0] == e_errors.OK:
+        try:
+            ql = a['queue_length']
+            put, deleted = a['put_delete']
+        except KeyError:
+            ql,put, deleted = 0
+            rqs = 0
+            print 'KeyError', a
+    elif a['status'][0] == e_errors.TIMEDOUT:
+        ql,put, deleted = -1
 
     if r_port:
         cmd = 'netstat -npl | grep %s'%(r_port,)
-        pipeObj = popen2.Popen3(cmd, 0, 0)
-        stat = pipeObj.wait()
-        result = pipeObj.fromchild.readlines()
-
-        for l in result:
-            l.strip()
-            if l.find('udp') != -1:
-                a=l.split(' ')
-                c = 0
-                for i in a:
-                    if i == '':
-                        c = c + 1
-                for i in range(c):
-                    a.remove('')
-                r_queue = a[1]
+        l = shell_command(cmd)
+        r_queue = -1
+        l.strip()
+        if l.find('udp') != -1:
+            a=l.split(' ')
+            c = 0
+            for i in a:
+                if i == '':
+                    c = c + 1
+            for i in range(c):
+                a.remove('')
+            r_queue = a[1]
 
     if m_port:
         cmd = 'netstat -npl | grep %s'%(m_port,)
-        pipeObj = popen2.Popen3(cmd, 0, 0)
-        stat = pipeObj.wait()
-        result = pipeObj.fromchild.readlines()
-
-        for l in result:
-            l.strip()
-            if l.find('udp') != -1:
-                a=l.split(' ')
-                c = 0
-                for i in a:
-                    if i == '':
-                        c = c + 1
-                for i in range(c):
-                    a.remove('')
-                m_queue = a[1]
+        l = shell_command(cmd)
+        m_queue = -1
+        l.strip()
+        if l.find('udp') != -1:
+            a=l.split(' ')
+            c = 0
+            for i in a:
+                if i == '':
+                    c = c + 1
+            for i in range(c):
+                a.remove('')
+            m_queue = a[1]
 
     if e_port:
-        cmd = 'netstat -npl | grep %s'%(e_port,)
-        pipeObj = popen2.Popen3(cmd, 0, 0)
-        stat = pipeObj.wait()
-        result = pipeObj.fromchild.readlines()
-
-        for l in result:
+        try:
+            cmd = 'netstat -npl | grep %s'%(e_port,)
+            l = shell_command(cmd)
+            e_queue = -1
             l.strip()
             if l.find('udp') != -1:
                 a=l.split(' ')
@@ -95,15 +99,14 @@ while 1:
                 for i in range(c):
                     a.remove('')
                 e_queue = a[1]
+        except:
+            e_queue = -1
 
     cmd = 'netstat -s | grep "packet receive errors"'
-    pipeObj = popen2.Popen3(cmd, 0, 0)
-    stat = pipeObj.wait()
-    result = pipeObj.fromchild.readlines()
-    for l in result:
-        l.strip(' ')
-        if l.find('errors') != -1:
-            r_err = long(l.split(' ')[4])
+    result = shell_command(cmd)
+    result.strip(' ')
+    if result.find('errors') != -1:
+        r_err = long(result.split(' ')[4])
     t=time.time()
     if first:
         first = False
@@ -121,7 +124,7 @@ while 1:
     #print rqs-rqs1
     #print t
     #print t1
-    msg= '%s %s'%(time.ctime(time.time()), ql)
+    msg= '%s %s %s %s'%(time.ctime(time.time()), ql, put, deleted)
     if e_port:
         msg = '%s %s'%(msg, e_queue)
     if r_port:
