@@ -44,6 +44,8 @@ def make_volume_family(storage_group, file_family, wrapper):
 
 
 # compare 2 volume families
+# volume family syntax:
+# storage_group.file_family.wrapper
 def match_volume_families(a,b):
     a = string.split(a, '.')
     b = string.split(b, '.')

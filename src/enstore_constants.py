@@ -387,5 +387,5 @@ FILE_DELETED_FLAGS = ["y", "n","u","yes","no", "unknown"]
 
 # Volume clerk related constants
 SAFETY_FACTOR=1.05 # used to estimate volume space left
-#MIN_LEFT=long(300*MB) # minimal size of space allowed for volume
+#MIN_LEFT=long(300*MB) # minimal size of free space allowed for volume
 MIN_LEFT=0L # for now, this is disabled.
