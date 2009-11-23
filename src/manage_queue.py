@@ -70,9 +70,9 @@ class Request:
            
         self.work = ticket.get('work','')
         self.host = None
-        callback = ticket.get('callback_addr', None)
-        if callback:
-            self.host = hostaddr.address_to_name(callback[0])
+        self.callback = ticket.get('callback_addr', None)
+        if self.callback:
+            self.host = hostaddr.address_to_name(self.callback[0])
         wrapper = ticket.get('wrapper','')
         if wrapper:
             self.ofn = wrapper.get('pnfsFilename','')
@@ -137,7 +137,7 @@ class SortedList:
     # check if request with certain  id is in the list
     def test(self, id):
         if id in self.ids:
-            return 1,e_errors.OK 
+            return id,e_errors.OK 
         return 0,None
     
     # find request by its id
@@ -1042,10 +1042,10 @@ class Request_Queue:
            self.deleted = self.deleted + 1
            if self.deleted == MAX_LONG:
                self.deleted = 0L # to avoid overflow
-           if self.queue_length:
+           if self.queue_length == 0:
                # reset counters
                self.deleted = 0L
-               self.put_into_queue - 0L
+               self.put_into_queue = self.queue_length
 
     def get_admin_request(self, key='',location='', next=0, active_volumes=[], disabled_hosts=[]):
         rq = self.admin_queue.get(key=key, location= location, next=next,
