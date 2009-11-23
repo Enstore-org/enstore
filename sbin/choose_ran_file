@@ -182,10 +182,9 @@ while [ $done -gt 0 ]; do
     continue
   fi
   lm_status=`echo $raw_lm_status | tr ":" " " | awk '{print $3}' | tr -d "',"`
-  #If the state is locked, pause, ignore, noread or moverlock skip it.
+  #If the state is broken, locked, pause, ignore, noread or moverlock skip it.
   # The expected value is "unlocked", however, allow "nowrite".
-  if [ $lm_status = "locked" -o $lm_status = "pause" -o $lm_status = "ignore" \
-      -o $lm_status = "moverlock" -o $lm_status = "noread" ]; then
+  if [ $lm_status != "unlocked" -a $lm_status != "nowrite" ]; then
     echo "Library $library in $lm_status state for volume $tape." 1>&2
     continue
   fi
