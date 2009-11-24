@@ -26,19 +26,28 @@ PATH=/sbin:/usr/sbin:$PATH
 #Make sure to set a timeout.
 timeout='--timeout 3 --retries 3 --file-fallback'
 
-#Incase information about service ips is longer than the python 
-# pprint.pprint() function will print out. Get just the alias names now
-# and we will extract the rest shortly one at a time.
-service_aliases=`enstore conf $timeout --show  service_ips 2> /dev/null | grep -v status | sed -n "/^[{ ]'/p" | awk '{print $1}' | tr -d "{':"`
+#Get this configuration information only once.
+raw_service_ips=`enstore conf $timeout --print service_ips 2>&1`
+if [ $? -ne 0 ]; then
+   grep "KEYERROR" "$raw_service_ips"
+   if [ $? -eq 0 ]; then
+       echo "No entry for service alaises is found in configuration"
+       exit 0
+   else
+       echo "Unable to obtain configuration information:" $raw_service_ips
+   fi
+fi
 
+#Get just the unique alias names for now from all of the service IP info.
+service_aliases=`echo "$raw_service_ips" | tr "." " " | awk '{print $2}' | sort | uniq`
 if [ "${service_aliases:-x}" = "x" ]; then
     echo "No entry for service alaises is found in configuration"
     exit 0
 fi
 
 
-#First, get the list of service IP from the configuration.
-service_ip_map=`for alias in \`echo $service_aliases\`; do echo -n alias $alias " "; enstore conf $timeout --show service_ips $alias 2> /dev/null | sed 's/,/,\n/' | tr -d "{},:\'" | tr "\n" " "; echo; done`
+#Format the interface information onto one line for each interface.
+service_ip_map=`for alias in \`echo $service_aliases\`; do tmp_service_ip_info=\`echo "$raw_service_ips" | grep $alias\`; interface=\`echo "$tmp_service_ip_info" | grep interface | sed 's/^.*://'\`; host=\`echo "$tmp_service_ip_info" | grep host | sed 's/^.*://'\`; echo alias $alias "  " interface $interface "  " host $host ; done`
 
 #Each line in $service_ip_map looks like:
 #  alias www-gccen  interface www  host gccensrv1.fnal.gov
