@@ -4,7 +4,23 @@
 #  $Id$
 #
 #############################################################
+. $OSG_GRID/setup.sh
+echo "$@"
 #check if there are any encp processes running
+if [ ! -d $OSG_APP/moibenko/config ]; then mkdir -p $OSG_APP/moibenko/config;fi
+if [ ! -f $OSG_APP/moibenko/config/setup-enstore ]; 
+then 
+    #scp fnpcsrv1:/grid/app/moibenko/config/setup-enstore $OSG_APP/moibenko/config;
+    $OSG_GRID/globus/bin/globus-url-copy gsiftp://fnpcsrv1/grid/app/moibenko/config/setup-enstore file://$OSG_APP/moibenko/config/
+fi
+if [ ! -d $OSG_APP/moibenko/bin ]; 
+then 
+    mkdir -p $OSG_APP/moibenko/bin
+    $OSG_GRID/globus/bin/globus-url-copy gsiftp://fnpcsrv1/grid/app/moibenko/bin/ file://$OSG_APP/moibenko/bin/
+    #scp fnpcsrv1:/grid/app/moibenko/bin/* $OSG_APP/moibenko/bin
+    chmod 755 $OSG_APP/moibenko/bin/*
+fi
+scp fnpcsrv1:/grid/app/moibenko/bin/* $OSG_APP/moibenko/bin
 if [ "${OSG_APP:-x}" != "x" ]
 then
     # check if there are any encp processes running
@@ -33,6 +49,7 @@ read_by_filename() {
   suffix="3 4 5"
   RANDOM=$$$(date +"%s")
   rm -f tmp_$$.data
+  echo $n_cycles
 
   i=0
   while [ $i -le $n_cycles ] 
@@ -65,7 +82,7 @@ read_by_filename() {
       fi
     done
     let i=i+1
-    #echo $i
+    echo $i
   done 
   wait
 }
@@ -75,9 +92,9 @@ read_by_bf_id() {
   i=0
   for entry in $(cat $bfid_list_file)
   do
-    #echo $entry
+    echo $entry
     let i=i+1
-    #echo $i
+    echo $i
     encp --get_bfid $entry /dev/null &
     if [ $i -gt $n_cycles ]; then break;fi
   done
