@@ -6,8 +6,7 @@ import os
 import sys
 import getpass
 import posixpath
-import regex_syntax
-import regex
+import re
 import glob
 
 TMP_DIR = "/tmp/enstore"
@@ -65,13 +64,12 @@ def find_enstore():
     return (config_host, config_port)
 
 def set_pattern_search(pat, sensit):
-    regex.set_syntax(regex_syntax.RE_SYNTAX_EGREP)
     if sensit:
 	# case sensitive pattern matching.
-	patr = regex.compile(pat)
+	patr = re.compile(pat)
     else:
 	# case insensitive pattern matching
-	patr = regex.compile(pat, regex.casefold)
+	patr = re.compile(pat, re.IGNORECASE)
     return patr
 
 def pgrep_html(pat, files, sensit):
