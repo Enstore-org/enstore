@@ -58,58 +58,60 @@ class PnfsAgentClient(generic_client.GenericClient,
     def status(self, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         return self.send({"work" : "show_state"}, rcv_timeout, tries)
 
-    def show_state(self):
-        return self.send({'work':'show_state'})
+    def show_state(self, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        return self.send({'work':'show_state'},
+                         rcv_timeout=rcv_timeout, tries=tries)
 
 ###############################################################################
  
-    def is_pnfs_path(self, filename, check_name_only = None):
+    def is_pnfs_path(self, filename, check_name_only = None,
+                     rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = { 'work' : 'is_pnfs_path',
                    'fname' : filename,
                    'check_name_only' : check_name_only
                    }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(ticket):
             return None   #Should this raise an exception instead?
         return ticket['rc']
 
-    def isdir(self, filename):
+    def isdir(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_stat',
                   'filename'      : filename,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(ticket):
             return None
         else:
             return stat.S_ISDIR(ticket['statinfo'][stat.ST_MODE])
 
-    def isfile(self, filename):
+    def isfile(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_stat',
                   'filename'      : filename,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(ticket):
             return None
         else:
             return stat.S_ISREG(ticket['statinfo'][stat.ST_MODE])
 
-    def islink(self, filename):
+    def islink(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_stat',
                   'filename'      : filename,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(ticket):
             return None
         else:
             return stat.S_ISLNK(ticket['statinfo'][stat.ST_MODE])
 
-    def e_access(self,path,mode):
+    def e_access(self, path, mode, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = { 'work' : 'e_access',
                    'path' : path,
                    'mode' : mode,
                    'rc'   : 1
                    }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(ticket):
             return None
         return ticket['rc']
@@ -129,10 +131,12 @@ class PnfsAgentClient(generic_client.GenericClient,
 
 ###############################################################################
 
-    def get_file_stat(self,filename) :
+    def get_file_stat(self, filename, rcv_timeout=RCV_TIMEOUT,
+                      tries=RCV_TRIES):
         if ( self.r_ticket['filename'] != filename ) :
             self.r_ticket['filename'] = filename 
-            self.r_ticket=self.send(self.r_ticket)
+            self.r_ticket = self.send(self.r_ticket, rcv_timeout=rcv_timeout,
+                                      tries=tries)
             if self.r_ticket['status'][0] == e_errors.OK:
                 return self.r_ticket['statinfo'], self.r_ticket['bfid'], self.r_ticket['pinfo']
             else:
@@ -143,11 +147,11 @@ class PnfsAgentClient(generic_client.GenericClient,
             else:
                 return None, None, None
 
-    def get_pnfsstat(self, filename):
+    def get_pnfsstat(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_pnfsstat',
                   'filename'      : filename,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if e_errors.is_ok(ticket):
             return ticket['statinfo']
         elif ticket['status'][0] == e_errors.IOERROR:
@@ -156,11 +160,11 @@ class PnfsAgentClient(generic_client.GenericClient,
             raise OSError, (ticket.get('errno', e_errors.UNKNOWN),
                             ticket['status'][1])
 
-    def get_stat(self, filename):
+    def get_stat(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_stat',
                   'filename'      : filename,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if e_errors.is_ok(ticket):
             return ticket['statinfo']
         elif ticket['status'][0] == e_errors.IOERROR:
@@ -171,148 +175,168 @@ class PnfsAgentClient(generic_client.GenericClient,
 
 ###############################################################################
 
-    def p_get_library(self,dirname):
+    def p_get_library(self, dirname,
+                      rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_library',
                   'dirname'       : dirname,
                   'library'       : None
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_set_library(self,library,dirname):
+    def p_set_library(self, library, dirname,
+                      rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'set_library',
                   'dirname'       : dirname,
                   'library'       : library
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
         
-    def p_get_file_family(self,dirname):
+    def p_get_file_family(self, dirname,
+                          rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_file_family',
                   'dirname'       : dirname,
                   'file_family'   : None
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_set_file_family(self,file_family, dirname):
+    def p_set_file_family(self, file_family, dirname,
+                          rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'set_file_family',
                   'dirname'       : dirname,
                   'file_family'   : file_family
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_get_file_family_width(self,dirname):
+    def p_get_file_family_width(self, dirname, rcv_timeout=RCV_TIMEOUT,
+                                tries=RCV_TRIES):
         ticket = {'work'                : 'get_file_family_width',
                   'dirname'             : dirname,
                   'file_family_width'   : None
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_set_file_family_width(self,file_family_width, dirname):
+    def p_set_file_family_width(self, file_family_width, dirname,
+                                rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'                : 'set_file_family_width',
                   'dirname'             : dirname,
                   'file_family_width'   : file_family_width
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_get_file_family_wrapper(self,dirname):
+    def p_get_file_family_wrapper(self, dirname,
+                                  rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'                : 'get_file_family_wrapper',
                   'dirname'             : dirname,
                   'file_family_wrapper'   : None
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_set_file_family_wrapper(self,file_family_wrapper, dirname):
+    def p_set_file_family_wrapper(self, file_family_wrapper, dirname,
+                                  rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'                : 'set_file_family_wrapper',
                   'dirname'             : dirname,
                   'file_family_wrapper'   : file_family_wrapper
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_get_storage_group(self,dirname):
+    def p_get_storage_group(self, dirname,
+                            rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'                : 'get_storage_group',
                   'dirname'             : dirname,
                   'storage_group'      : None
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_set_storage_group(self,storage_group,dirname):
+    def p_set_storage_group(self, storage_group, dirname,
+                            rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'                : 'set_storage_group',
                   'dirname'             : dirname,
                   'storage_group'      : storage_group
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
 ###############################################################################
 
-    def p_get_path(self, pnfs_id, mount_point, shortcut=None):
+    def p_get_path(self, pnfs_id, mount_point, shortcut=None,
+                   rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = { 'work'    : 'get_path',
                    'pnfs_id' : pnfs_id,
                    'dirname' : mount_point,
                    'shortcut' : shortcut,
                    'path' : None
                    }
-        ticket=self.send(ticket)
+        ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_set_bit_file_id(self,bfid,fname):
+    def p_set_bit_file_id(self, bfid, fname, rcv_timeout=RCV_TIMEOUT,
+                          tries=RCV_TRIES):
         ticket = {'work'  : 'set_bit_file_id',
                   'fname' : fname,
                   'bfid'  : bfid
                   }
-        ticket=self.send(ticket)
+        ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_get_bit_file_id(self,fname):
+    def p_get_bit_file_id(self, fname, rcv_timeout=RCV_TIMEOUT,
+                          tries=RCV_TRIES):
         ticket = {'work'  : 'get_bit_file_id',
                   'fname' : fname,
                   'bfid'  : None
                   }
-        ticket=self.send(ticket)
+        ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_get_id(self,fname):
+    def p_get_id(self, fname, rcv_timeout=RCV_TIMEOUT,
+                        tries=RCV_TRIES):
         ticket = {'work'  : 'get_id',
                   'fname' : fname,
                   'file_id'  : None
                   }
-        ticket=self.send(ticket)
+        ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_get_parent_id(self,pnfsid):
+    def p_get_parent_id(self, pnfsid, rcv_timeout=RCV_TIMEOUT,
+                        tries=RCV_TRIES):
         ticket = {'work'  : 'get_parent_id',
                   'pnfsid' : pnfsid,
                   'parent_id'  : None
                   }
-        ticket=self.send(ticket)
+        ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_get_file_size(self, fname):
+    p_get_parent = p_get_parent_id  #backward compatibility
+
+    def p_get_file_size(self, fname, rcv_timeout=RCV_TIMEOUT,
+                        tries=RCV_TRIES):
         ticket = {'work'  : 'get_file_size',
                   'fname' : fname,
                   }
-        ticket=self.send(ticket)
+        ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_set_file_size(self, size, fname):
+    def p_set_file_size(self, size, fname, rcv_timeout=RCV_TIMEOUT,
+                        tries=RCV_TRIES):
         ticket = {'work'  : 'set_file_size',
                   'fname' : fname,
                   'size'  : size
                   }
-        ticket=self.send(ticket)
+        ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
     def p_set_xreference(self, volume, location_cookie, size, file_family,
                          pnfsFilename, volume_filepath, id, volume_fileP,
-                         bit_file_id, drive, crc, filepath):
+                         bit_file_id, drive, crc, filepath,
+                         rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         
         ticket = {'work'             : 'set_xreference',
                   'volume'           : volume,
@@ -328,61 +352,66 @@ class PnfsAgentClient(generic_client.GenericClient,
                   'crc'              : crc,
                   'filepath'         : filepath
                   }
-        ticket=self.send(ticket)
+        ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    def p_get_xreference(self, fname):
+    def p_get_xreference(self, fname, rcv_timeout=RCV_TIMEOUT,
+                         tries=RCV_TRIES):
         ticket = {'work' : 'get_xreference',
                   'fname' : fname,
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
 ###############################################################################
     
-    def readlayer(self, layer, fname):
+    def readlayer(self, layer, fname, rcv_timeout=RCV_TIMEOUT,
+                  tries=RCV_TRIES):
         ticket = {'work' : 'readlayer',
                   'fname' : fname,
                   'layer' : layer
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if e_errors.is_ok(ticket):
             return ticket['layer_info']
         return [] #What sould happen here?
 
-    def writelayer(self, layer, value, fname):
+    def writelayer(self, layer, value, fname, rcv_timeout=RCV_TIMEOUT,
+                   tries=RCV_TRIES):
         ticket = {'work' : 'writelayer',
                   'fname' : fname,
                   'layer' : layer,
                   'value' : value
                   }
-        ticket = self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(ticket):
             raise OSError, ticket['status'][1]
 
 ###############################################################################
 
     # modify the permissions of the target
-    def p_chmod(self, mode, filename):
+    def p_chmod(self, mode, filename, rcv_timeout=RCV_TIMEOUT,
+                tries=RCV_TRIES):
         ticket = { 'work' : 'chmod',
                    'fname' : filename,
                    'mode' : mode
                    }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
     # create a new file or update its times
-    def p_touch(self, filename):
+    def p_touch(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'touch',
                   'filename'      : filename,
                   'uid'           : os.geteuid(),
                   'gid'           : os.getegid(),
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
     # create a new file
-    def p_creat(self, filename, mode = None):
+    def p_creat(self, filename, mode = None, rcv_timeout=RCV_TIMEOUT,
+                tries=RCV_TRIES):
         ticket = {'work'          : 'creat',
                   'filename'      : filename,
                   'uid'           : os.geteuid(),
@@ -390,35 +419,36 @@ class PnfsAgentClient(generic_client.GenericClient,
                   }
         if mode:
             ticket['mode'] = mode
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
     # update the access and mod time of a file
-    def p_utime(self, filename):
+    def p_utime(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'utime',
                   'fname'         : filename,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
         
     # delete a pnfs file including its metadata
-    def p_rm(self, filename):
+    def p_rm(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'rm',
                   'fname'         : filename,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
         
     # delete a pnfs file (leaving the metadata do be put in the trashcan)
-    def p_remove(self, filename):
+    def p_remove(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'remove',
                   'fname'         : filename,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
     # make a directory
-    def p_mkdir(self, dirname, uid = None, gid = None):
+    def p_mkdir(self, dirname, uid = None, gid = None, rcv_timeout=RCV_TIMEOUT,
+                tries=RCV_TRIES):
         if uid == None:
             uid = os.getuid()
         if gid == None:
@@ -428,40 +458,44 @@ class PnfsAgentClient(generic_client.GenericClient,
                   'uid': uid,
                   'gid':gid
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
     # make a directory
-    def p_mkdirs(self, dirname, uid=None, gid=None):
+    def p_mkdirs(self, dirname, uid=None, gid=None, rcv_timeout=RCV_TIMEOUT,
+                 tries=RCV_TRIES):
         ticket = {'work'          : 'mkdirs',
                   'dirname'       : dirname,
                   'uid':uid,
                   'gid':gid
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
     # remove a directory
-    def p_rmdir(self, dirname):
+    def p_rmdir(self, dirname, rcv_timeout=RCV_TIMEOUT,
+                tries=RCV_TRIES):
         ticket = {'work'          : 'rmdir',
                   'dirname'       : dirname,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
     # remove a directory
-    def p_list_dir(self, dirname, just_files = 0):
+    def p_list_dir(self, dirname, just_files = 0, rcv_timeout=RCV_TIMEOUT,
+                   tries=RCV_TRIES):
         ticket = {'work'          : 'list_dir',
                   'dirname'       : dirname,
                   'just_files'    : just_files,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
     # find a file knowning pnfsid and bfid
     def p_find_pnfsid_path(self, pnfsid, bfid, file_record = None,
                            likely_path = None,
-                           path_type = find_pnfs_file.BOTH):
+                           path_type = find_pnfs_file.BOTH,
+                           rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'find_pnfsid_path',
                   'pnfsid'        : pnfsid,
                   'bfid'          : bfid,
@@ -469,7 +503,7 @@ class PnfsAgentClient(generic_client.GenericClient,
                   'likely_path'   : likely_path,
                   'path_type'     : path_type,
                   }
-        ticket=self.send(ticket)
+        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
 ###############################################################################
@@ -492,164 +526,222 @@ class PnfsAgentClient(generic_client.GenericClient,
             #Is there anything better?
             raise OSError, (ticket.get('errno', 0), ticket['status'][1])
 
-    def get_library(self, dirname):
-        reply_ticket = self.p_get_library(dirname)
+    def get_library(self, dirname, rcv_timeout=RCV_TIMEOUT,
+                              tries=RCV_TRIES):
+        reply_ticket = self.p_get_library(dirname, rcv_timeout=rcv_timeout,
+                                          tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['library']
         
-    def set_library(self, library, dirname):
-        reply_ticket = self.p_set_library(library, dirname)
+    def set_library(self, library, dirname, rcv_timeout=RCV_TIMEOUT,
+                              tries=RCV_TRIES):
+        reply_ticket = self.p_set_library(library, dirname,
+                                          rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return library #legacy
 
-    def get_file_family(self, dirname):
-        reply_ticket = self.p_get_file_family(dirname)
+    def get_file_family(self, dirname, rcv_timeout=RCV_TIMEOUT,
+                              tries=RCV_TRIES):
+        reply_ticket = self.p_get_file_family(dirname, rcv_timeout=rcv_timeout,
+                                              tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['file_family']
         
-    def set_file_family(self, file_family, dirname):
-        reply_ticket = self.p_set_file_family_width(file_family, dirname)
+    def set_file_family(self, file_family, dirname, rcv_timeout=RCV_TIMEOUT,
+                              tries=RCV_TRIES):
+        reply_ticket = self.p_set_file_family_width(file_family, dirname,
+                                                    rcv_timeout=rcv_timeout,
+                                                    tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return file_family #legacy
         
-    def get_file_family_width(self, dirname):
-        reply_ticket = self.p_get_file_family_width(dirname)
+    def get_file_family_width(self, dirname, rcv_timeout=RCV_TIMEOUT,
+                              tries=RCV_TRIES):
+        reply_ticket = self.p_get_file_family_width(dirname,
+                                                    rcv_timeout=rcv_timeout,
+                                                    tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['file_family_width']
         
-    def set_file_family_width(self, file_family_width, dirname):
-        reply_ticket = self.p_set_file_family_width(file_family_width, dirname)
+    def set_file_family_width(self, file_family_width, dirname,
+                              rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_set_file_family_width(file_family_width, dirname,
+                                                    rcv_timeout=rcv_timeout,
+                                                    tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return file_family_width #legacy
 
-    def get_file_family_wrapper(self, dirname):
-        reply_ticket = self.p_get_file_family_wrapper(dirname)
+    def get_file_family_wrapper(self, dirname, rcv_timeout=RCV_TIMEOUT,
+                              tries=RCV_TRIES):
+        reply_ticket = self.p_get_file_family_wrapper(dirname,
+                                                      rcv_timeout=rcv_timeout,
+                                                      tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['file_family_wrapper']
         
-    def set_file_family_wrapper(self, file_family_wrapper, dirname):
+    def set_file_family_wrapper(self, file_family_wrapper, dirname,
+                                rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_set_file_family_wrapper(file_family_wrapper,
-                                                      dirname)
+                                                      dirname,
+                                                      rcv_timeout=rcv_timeout,
+                                                      tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return file_family_wrapper #legacy
         
-    def get_storage_group(self, dirname):
-        reply_ticket = self.p_get_storage_group(dirname)
+    def get_storage_group(self, dirname, rcv_timeout=RCV_TIMEOUT,
+                              tries=RCV_TRIES):
+        reply_ticket = self.p_get_storage_group(dirname,
+                                                rcv_timeout=rcv_timeout,
+                                                tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['storage_group']
 
-    def set_storage_group(self, storage_group,dirname):
-        reply_ticket = self.p_set_storage_group(storage_group, dirname)
+    def set_storage_group(self, storage_group, dirname,
+                          rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_set_storage_group(storage_group, dirname,
+                                                rcv_timeout=rcv_timeout,
+                                                tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return storage_group #legacy
         
-    def chmod(self, mode, filename):
-        reply_ticket = self.p_chmod(mode, filename)
+    def chmod(self, mode, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_chmod(mode, filename, rcv_timeout=rcv_timeout,
+                                    tries=tries)
         self.raise_exception(reply_ticket)
 
-    def touch(self, filename):
-        reply_ticket = self.p_touch(filename)
+    def touch(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_touch(filename, rcv_timeout=rcv_timeout,
+                                    tries=tries)
         self.raise_exception(reply_ticket)
 
-    def creat(self, filename, mode = None):
-        reply_ticket = self.p_creat(filename, mode = mode)
+    def creat(self, filename, mode = None, rcv_timeout=RCV_TIMEOUT,
+                              tries=RCV_TRIES):
+        reply_ticket = self.p_creat(filename, mode=mode,
+                                    rcv_timeout=rcv_timeout, tries=tries)
         self.raise_exception(reply_ticket)
 
-    def utime(self, filename):
-        reply_ticket = self.p_utime(filename)
+    def utime(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_utime(filename, rcv_timeout=rcv_timeout,
+                                    tries=tries)
         self.raise_exception(reply_ticket)
 
-    def rm(self, filename):
-        reply_ticket = self.p_rm(filename)
+    def rm(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_rm(filename, rcv_timeout=rcv_timeout,
+                                 tries=tries)
         self.raise_exception(reply_ticket)
 
-    def remove(self, filename):
-        reply_ticket = self.p_remove(filename)
+    def remove(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_remove(filename, rcv_timeout=rcv_timeout,
+                                     tries=tries)
         self.raise_exception(reply_ticket)
 
-    def mkdir(self, dirname):
-        reply_ticket = self.p_mkdir(dirname)
+    def mkdir(self, dirname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_mkdir(dirname, rcv_timeout=rcv_timeout,
+                                    tries=tries)
         self.raise_exception(reply_ticket)
 
-    def mkdirs(self, dirname):
-        reply_ticket = self.p_mkdirs(dirname)
+    def mkdirs(self, dirname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_mkdirs(dirname, rcv_timeout=rcv_timeout,
+                                     tries=tries)
         self.raise_exception(reply_ticket)
 
-    def rmdir(self, dirname):
-        reply_ticket = self.p_rmdir(dirname)
+    def rmdir(self, dirname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_rmdir(dirname, rcv_timeout=rcv_timeout,
+                                    tries=tries)
         self.raise_exception(reply_ticket)
 
-    def list_dir(self, dirname):
-        reply_ticket = self.p_list_dir(dirname)
+    def list_dir(self, dirname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_list_dir(dirname, rcv_timeout=rcv_timeout,
+                                       tries=tries)
         self.raise_exception(reply_ticket)
 
-    def set_file_size(self, size, fname):
-        reply_ticket = self.p_set_file_size(size, fname)
+    def set_file_size(self, size, fname, rcv_timeout=RCV_TIMEOUT,
+                      tries=RCV_TRIES):
+        reply_ticket = self.p_set_file_size(size, fname,
+                                            rcv_timeout=rcv_timeout,
+                                            tries=tries)
         self.raise_exception(reply_ticket)
             
     def set_xreference(self, volume, location_cookie, size, file_family,
                        pnfsFilename, volume_filepath, id, volume_fileP,
-                       bit_file_id, drive, crc, filepath):
+                       bit_file_id, drive, crc, filepath,
+                       rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_set_xreference(
             volume, location_cookie, size, file_family,
             pnfsFilename, volume_filepath, id, volume_fileP,
-            bit_file_id, drive, crc, filepath)
+            bit_file_id, drive, crc, filepath,
+            rcv_timeout=rcv_timeout, tries=tries)
         self.raise_exception(reply_ticket)
 
-    def get_xreference(self, fname):
-        reply_ticket = self.p_get_xreference(fname)
+    def get_xreference(self, fname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_get_xreference(fname, rcv_timeout=rcv_timeout,
+                                             tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['xref']
 
-    def get_file_size(self, fname):
-        reply_ticket = self.p_get_file_size(fname)
+    def get_file_size(self, fname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_get_file_size(fname, rcv_timeout=rcv_timeout,
+                                            tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['size']
 
-    def get_path(self, pnfs_id, mount_point, shortcut=None):
-        reply_ticket = self.p_get_path(pnfs_id, mount_point, shortcut)
+    def get_path(self, pnfs_id, mount_point, shortcut=None,
+                 rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_get_path(pnfs_id, mount_point, shortcut,
+                                       rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['path']
         
-    def set_bit_file_id(self, bfid, fname):
-        reply_ticket = self.p_set_bit_file_id(bfid, fname)
+    def set_bit_file_id(self, bfid, fname, rcv_timeout=RCV_TIMEOUT,
+                        tries=RCV_TRIES):
+        reply_ticket = self.p_set_bit_file_id(bfid, fname,
+                                              rcv_timeout=rcv_timeout,
+                                              tries=tries)
         self.raise_exception(reply_ticket)
 
-    def get_bit_file_id(self, fname):
-        reply_ticket = self.p_get_bit_file_id(fname)
+    def get_bit_file_id(self, fname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_get_bit_file_id(fname, rcv_timeout=rcv_timeout,
+                                              tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['bfid']
 
-    def get_id(self, fname):
-        reply_ticket = self.p_get_id(fname)
+    def get_id(self, fname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        reply_ticket = self.p_get_id(fname, rcv_timeout=rcv_timeout,
+                                     tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['file_id']
 
-    def get_parent_id(self, pnfsid):
-        reply_ticket = self.p_get_parent_id(pnfsid)
+    def get_parent_id(self, pnfsid, rcv_timeout=RCV_TIMEOUT,
+                      tries=RCV_TRIES):
+        reply_ticket = self.p_get_parent_id(pnfsid, rcv_timeout=rcv_timeout,
+                                            tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['parent_id']
 
+    get_parent = get_parent_id
+
     def find_pnfsid_path(self, pnfsid, bfid, file_record = None,
-                         likely_path = None, path_type = find_pnfs_file.BOTH):
+                         likely_path = None, path_type = find_pnfs_file.BOTH,
+                         rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_find_pnfsid_path(
-            pnfsid, bfid, file_record, likely_path, path_type)
+            pnfsid, bfid, file_record, likely_path, path_type,
+            rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['paths']
