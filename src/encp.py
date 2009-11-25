@@ -673,19 +673,26 @@ def get_directory_name(filepath):
         parent_id_name = os.path.join(dirname, ".(parent)(%s)" % pnfsid)
 
         #Read the parent id.
-        try:
-            f = open(parent_id_name)
-            parent_id = f.readlines()[0].strip()
-            f.close()
-        except (OSError, IOError), msg:
-            if msg.args[0] == errno.ENOENT and \
-                   (pnfs_agent_client_requested or pnfs_agent_client_allowed):
-                pac = get_pac()
-                parent_id = pac.get_parent_id(pnfsid)
-                if not parent_id: #Does this work to catch errors?
+        if pnfs_agent_client_requested:
+            pac = get_pac()
+            #get_parent_id() will raise an exception on error.
+            parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5, tries=6)
+        else:
+            try:
+                f = open(parent_id_name)
+                parent_id = f.readlines()[0].strip()
+                f.close()
+            except (OSError, IOError), msg:
+                if msg.args[0] == errno.ENOENT and \
+                       (pnfs_agent_client_requested or \
+                        pnfs_agent_client_allowed):
+                    pac = get_pac()
+                    parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5,
+                                                  tries=6)
+                    if not parent_id: #Does this work to catch errors?
+                        raise OSError, msg
+                else:
                     raise OSError, msg
-            else:
-                raise OSError, msg
 
         #Build the .(access)() filename of the parent directory.
         directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
@@ -1987,7 +1994,7 @@ def __get_vcc(parameter = None):
                 return __vcc, volume_info
             else:
                 Trace.log(e_errors.WARNING,
-                          "Volume inquiry to default volume_clerk failed: %s" \
+                          "Volume inquiry to default volume_clerk failed [1]: %s" \
                           % (volume_info['status'],))
                 if match_fc(match_fc_addr):
                     #If the address matches the Enstore system we want,
@@ -2015,7 +2022,7 @@ def __get_vcc(parameter = None):
             return __vcc, volume_info
         else:
             Trace.log(e_errors.WARNING,
-                      "Volume inquiry to default volume_clerk failed: %s" \
+                      "Volume inquiry to default volume_clerk failed [2]: %s" \
                       % (volume_info['status'],))
 
     #Get the list of all config servers and remove the 'status' element.
@@ -4828,7 +4835,7 @@ def open_data_socket(mover_addr, interface_ip = None):
                                          [data_path_socket],[],30)
             break
         except (socket.error, select.error), msg:
-            if errno.EINTR == msg.args[0]:
+            if msg.args[0] in [errno.EINTR, errno.EAGAIN]: 
                 #Screen out interuptions from signals.
                 continue
             else:
@@ -4997,7 +5004,7 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
 		control_socket, mover_address, ticket = open_control_socket(
 		    use_listen_socket, duration)
         except (socket.error, select.error, EncpError), msg:
-            if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
+            if msg.args[0] in [errno.EINTR, errno.EAGAIN]:
                 #If a select (or other call) was interupted,
                 # this is not an error, but should continue.
                 continue
@@ -5360,6 +5367,10 @@ def submit_one_request_send(ticket, encp_intf):
           "outputfile: %s" \
           % (filename, transfer_type, ticket['unique_id'],
              ticket['infile'], ticket['outfile'])
+    print "#############################################"
+    import traceback
+    traceback.print_stack()
+    print "#############################################"
     Trace.log(e_errors.INFO, message)
     #Tell the user what the current state of the transfer is.
     message = "Submitting %s %s request to LM.%s" % \
@@ -5601,9 +5612,11 @@ def adjust_resubmit_request(ticket, encp_intf):
                 dname = get_directory_name(ticket['outfile']) #only for writes.
                 if encp_intf.outtype == RHSMFILE:
                     t = get_pac()
+                    file_family_width = t.get_file_family_width(
+                        dname, rcv_timeout=5, tries=6)
                 else:
                     t = pnfs.Tag()
-                file_family_width = t.get_file_family_width(dname)
+                    file_family_width = t.get_file_family_width(dname)
                 ticket['vc']['file_family_width'] = file_family_width
             except (OSError, IOError), msg:
                 if msg.args[0] in [errno.ENOENT]:
@@ -6715,8 +6728,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                                             [], [], 0.0)
                     break  #No exception raised; success.
                 except select.error, msg:
-                    if msg.args[0] == errno.EINTR or \
-                           msg.args[0] == errno.EAGAIN:
+                    if msg.args[0] in [errno.EINTR, errno.EAGAIN]:
                         #If the call was interupted, continue.
                         continue
                     else:
@@ -8645,7 +8657,7 @@ def stall_write_transfer(data_path_socket, control_socket, e):
                                      duration)[1]
             break
         except (select.error, socket.error), msg:
-            if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
+            if msg.args[0] in [errno.EINTR, errno.EAGAIN]:
                 #If the select was interupted by a signal, keep going.
                 duration = duration - (time.time() - start_time)
                 continue
@@ -8691,7 +8703,7 @@ def stall_write_transfer(data_path_socket, control_socket, e):
                                      duration)[0]
             break
         except (select.error, socket.error), msg:
-            if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
+            if msg.args[0] in [errno.EINTR, errno.EAGAIN]:
                 #If the select was interupted by a signal, keep going.
                 duration = duration - (time.time() - start_time)
                 continue
@@ -9109,146 +9121,148 @@ def write_to_hsm(e, tinfo):
         if not e_errors.is_ok(work_ticket):
             return work_ticket
 
-        #Wait for all possible messages or connections.
-        request_ticket, control_socket, data_path_socket = \
-                                wait_for_message(listen_socket, lmc,
-                                                 [work_ticket],
-                                                 transaction_id_list, e)
+        while requests_outstanding([work_ticket]):
 
-        #If we connected with the mover, add these two checks.
-        # Skip them if we only heard from the LM.
-        if control_socket:
-            local_filename = request_ticket.get(
-                'wrapper', {}).get('fullname', None)
-            external_label = request_ticket.get(
-                'fc', {}).get('external_label', None)
-        else:
-            local_filename = None
-            external_label = None
+            #Wait for all possible messages or connections.
+            request_ticket, control_socket, data_path_socket = \
+                                    wait_for_message(listen_socket, lmc,
+                                                     [work_ticket],
+                                                     transaction_id_list, e)
 
-        #Make sure done_ticket exists by this point.
-        done_ticket = request_ticket 
-
-        result_dict = handle_retries([work_ticket], work_ticket,
-                                     request_ticket, e,
-                                     listen_socket = listen_socket,
-                                     local_filename = local_filename,
-                                     external_label = external_label)
-
-        #If USE_NEW_EVENT_LOOP is true, we need these ids.
-        transaction_id_list = result_dict.get('transaction_id_list', [])
-
-        #For LM submission errors (i.e. tape went NOACCESS), use
-        # any request information in result_dict to identify which
-        # request gave an error.
-        #
-        #Writes included work_ticket in this combine.  That doesn't
-        # work for reads because we don't know which read request
-        # will get picked first.
-        done_ticket = combine_dict(result_dict, done_ticket, work_ticket)
-
-        if e_errors.is_non_retriable(result_dict):
-
-            #Regardless if index is None or not, make sure that
-            # exit_status gets set to failure.
-            if e.migration_or_duplication:
-                #Handle migration cases a little differently.
-
-                # Make sure the migration knows not to try this
-                # file again.
-                exit_status = 2
+            #If we connected with the mover, add these two checks.
+            # Skip them if we only heard from the LM.
+            if control_socket:
+                local_filename = request_ticket.get(
+                    'wrapper', {}).get('fullname', None)
+                external_label = request_ticket.get(
+                    'fc', {}).get('external_label', None)
             else:
-                exit_status = 1
-            # Make sure the correct error is reported.  If
-            # we don't set this here, then we end up with the
-            # non-useful ("OK", "Error after transfering... )
-            # error messages from calculate_final_statistics.
-            err_msg[thread.get_ident()] = str(result_dict['status'])
+                local_filename = None
+                external_label = None
 
-            if index == None:
-                message = "Unknown transfer failed."
-                try:
-                    sys.stderr.write(message + "\n")
-                    sys.stderr.flush()
-                except IOError:
-                    pass
-                Trace.log(e_errors.ERROR,
-                          message + "  " + str(done_ticket))
+            #Make sure done_ticket exists by this point.
+            done_ticket = request_ticket 
 
-            else:
+            result_dict = handle_retries([work_ticket], work_ticket,
+                                         request_ticket, e,
+                                         listen_socket = listen_socket,
+                                         local_filename = local_filename,
+                                         external_label = external_label)
+
+            #If USE_NEW_EVENT_LOOP is true, we need these ids.
+            transaction_id_list = result_dict.get('transaction_id_list', [])
+
+            #For LM submission errors (i.e. tape went NOACCESS), use
+            # any request information in result_dict to identify which
+            # request gave an error.
+            #
+            #Writes included work_ticket in this combine.  That doesn't
+            # work for reads because we don't know which read request
+            # will get picked first.
+            done_ticket = combine_dict(result_dict, done_ticket, work_ticket)
+
+            if e_errors.is_non_retriable(result_dict):
+
+                #Regardless if index is None or not, make sure that
+                # exit_status gets set to failure.
+                if e.migration_or_duplication:
+                    #Handle migration cases a little differently.
+
+                    # Make sure the migration knows not to try this
+                    # file again.
+                    exit_status = 2
+                else:
+                    exit_status = 1
+                # Make sure the correct error is reported for migration.
+                # If we don't set this here, then we end up with the
+                # non-useful ("OK", "Error after transfering... )
+                # error messages from calculate_final_statistics.
+                err_msg[thread.get_ident()] = str(result_dict['status'])
+
+                if index == None:
+                    message = "Unknown transfer failed."
+                    try:
+                        sys.stderr.write(message + "\n")
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
+                    Trace.log(e_errors.ERROR,
+                              message + "  " + str(done_ticket))
+
+                else:
+                    #Combine the dictionaries.
+                    work_ticket = combine_dict(done_ticket,
+                                               request_list[index])
+                    #Set completion status to successful.
+                    work_ticket['completion_status'] = FAILURE
+                    #Set the exit status value.
+                    work_ticket['exit_status'] = exit_status
+                    #Store these changes back into the master list.
+                    request_list[index] = work_ticket
+                    #Make sure done_ticket points to the new info too.
+                    done_ticket = work_ticket
+
+                return done_ticket
+
+            if not e_errors.is_ok(result_dict):
                 #Combine the dictionaries.
-                work_ticket = combine_dict(done_ticket,
-                                           request_list[index])
-                #Set completion status to successful.
-                work_ticket['completion_status'] = FAILURE
-                #Set the exit status value.
-                work_ticket['exit_status'] = exit_status
+                work_ticket = combine_dict(done_ticket, request_list[index])
                 #Store these changes back into the master list.
                 request_list[index] = work_ticket
-                #Make sure done_ticket points to the new info too.
-                done_ticket = work_ticket
+                continue
 
-            return done_ticket
+            if not control_socket:
+                #We only got a response from the LM, we did not connect
+                # with the mover yet.
+                continue
 
-        if not e_errors.is_ok(result_dict):
-            #Combine the dictionaries.
-            work_ticket = combine_dict(done_ticket, request_list[index])
-            #Store these changes back into the master list.
+            work_ticket = combine_dict(request_ticket, work_ticket)
+
+            ############################################################
+            #In this function call is where most of the work in transfering
+            # a single file is done.
+            #
+            #Send (write) the file to the mover.
+            done_ticket = write_hsm_file(work_ticket, control_socket,
+                                         data_path_socket, tinfo, e)
+            ############################################################
+
+            # Close these descriptors before they are forgotten about.
+            close_descriptors(control_socket, data_path_socket)
+
+            #Set the value of bytes to the number of bytes transfered before
+            # the error occured.
+            exfer_ticket = done_ticket.get('exfer', {'bytes_transfered' : 0L})
+            byte_sum = byte_sum + exfer_ticket.get('bytes_transfered', 0L)
+
+            #Store the combined tickets back into the master list.
+            work_ticket = combine_dict(done_ticket, work_ticket)
             request_list[index] = work_ticket
-            continue
 
-        if not control_socket:
-            #We only got a response from the LM, we did not connect
-            # with the mover yet.
-            continue
+            #The completion_status is modified in the request ticket.
+            # what_to_do = 0 for stop
+            #            = 1 for continue
+            #            = 2 for continue after retry
+            what_to_do = finish_request(work_ticket, request_list, index)
 
-        work_ticket = combine_dict(request_ticket, work_ticket)
-
-        ############################################################
-        #In this function call is where most of the work in transfering
-        # a single file is done.
-        #
-        #Send (write) the file to the mover.
-        done_ticket = write_hsm_file(work_ticket, control_socket,
-                                     data_path_socket, tinfo, e)
-        ############################################################
-
-        # Close these descriptors before they are forgotten about.
-        close_descriptors(control_socket, data_path_socket)
-
-        #Set the value of bytes to the number of bytes transfered before the
-        # error occured.
-        exfer_ticket = done_ticket.get('exfer', {'bytes_transfered' : 0L})
-        byte_sum = byte_sum + exfer_ticket.get('bytes_transfered', 0L)
-
-        #Store the combined tickets back into the master list.
-        work_ticket = combine_dict(done_ticket, work_ticket)
-        request_list[index] = work_ticket
-
-        #The completion_status is modified in the request ticket.
-        # what_to_do = 0 for stop
-        #            = 1 for continue
-        #            = 2 for continue after retry
-        what_to_do = finish_request(work_ticket, request_list, index)
-
-        #If on non-success exit status was returned from
-        # finish_request(), keep it around for later.
-        if request_ticket.get('exit_status', None):
-            #We get here only on an error.  If the value is 1, then
-            # the error should be transient.  If the value is 2, then
-            # the error will likely require human intervention to
-            # resolve.
-            exit_status = request_ticket['exit_status']
-        # Do what finish_request() says to do.
-        if what_to_do == STOP:
-            #We get here only on a non-retriable error.
-            if not exit_status:
-                #Just in case this got missed somehow.
-                exit_status = 1
-                break
-        elif what_to_do == CONTINUE_FROM_BEGINNING:
-            #We get here only on a retriable error.
-            continue
+            #If on non-success exit status was returned from
+            # finish_request(), keep it around for later.
+            if request_ticket.get('exit_status', None):
+                #We get here only on an error.  If the value is 1, then
+                # the error should be transient.  If the value is 2, then
+                # the error will likely require human intervention to
+                # resolve.
+                exit_status = request_ticket['exit_status']
+            # Do what finish_request() says to do.
+            if what_to_do == STOP:
+                #We get here only on a non-retriable error.
+                if not exit_status:
+                    #Just in case this got missed somehow.
+                    exit_status = 1
+                    break
+            elif what_to_do == CONTINUE_FROM_BEGINNING:
+                #We get here only on a retriable error.
+                continue
                 
     # we are done transferring - close out the listen socket
     close_descriptors(listen_socket)
@@ -10498,7 +10512,7 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
                                                     [], [], duration)
             break
         except (select.error, socket.error), msg:
-            if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
+            if msg.args[0] in [errno.EINTR, errno.EAGAIN]:
                 #If the select was interupted by a signal, keep going.
                 duration = duration - (time.time() - start_time)
                 continue
@@ -11070,8 +11084,8 @@ def read_from_hsm(e, tinfo):
                         exit_status = 2
                     else:
                         exit_status = 1
-                    # Make sure the correct error is reported.  If
-                    # we don't set this here, then we end up with the
+                    # Make sure the correct error is reported for migration.
+                    # If we don't set this here, then we end up with the
                     # non-useful ("OK", "Error after transfering... )
                     # error messages from calculate_final_statistics.
                     err_msg[thread.get_ident()] = str(result_dict['status'])
