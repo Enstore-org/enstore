@@ -5367,10 +5367,6 @@ def submit_one_request_send(ticket, encp_intf):
           "outputfile: %s" \
           % (filename, transfer_type, ticket['unique_id'],
              ticket['infile'], ticket['outfile'])
-    print "#############################################"
-    import traceback
-    traceback.print_stack()
-    print "#############################################"
     Trace.log(e_errors.INFO, message)
     #Tell the user what the current state of the transfer is.
     message = "Submitting %s %s request to LM.%s" % \
