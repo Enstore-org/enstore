@@ -153,6 +153,10 @@ class PnfsAgentClient(generic_client.GenericClient,
                   }
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if e_errors.is_ok(ticket):
+            if not ticket['statinfo']:
+                message = "Received non-error stat() reply with missing " \
+                          "stat info: %s" % (ticket,)
+                Trace.log(e_errors.ERROR, message)
             return ticket['statinfo']
         elif ticket['status'][0] == e_errors.IOERROR:
             raise IOError, (ticket['errno'], ticket['status'][1])
@@ -166,6 +170,10 @@ class PnfsAgentClient(generic_client.GenericClient,
                   }
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         if e_errors.is_ok(ticket):
+            if not ticket['statinfo']:
+                message = "Received non-error stat() reply with missing " \
+                          "stat info: %s" % (ticket,)
+                Trace.log(e_errors.ERROR, message)
             return ticket['statinfo']
         elif ticket['status'][0] == e_errors.IOERROR:
             raise IOError, (ticket['errno'], ticket['status'][1])
@@ -617,43 +625,51 @@ class PnfsAgentClient(generic_client.GenericClient,
     def chmod(self, mode, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_chmod(mode, filename, rcv_timeout=rcv_timeout,
                                     tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def touch(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_touch(filename, rcv_timeout=rcv_timeout,
                                     tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def creat(self, filename, mode = None, rcv_timeout=RCV_TIMEOUT,
                               tries=RCV_TRIES):
         reply_ticket = self.p_creat(filename, mode=mode,
                                     rcv_timeout=rcv_timeout, tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def utime(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_utime(filename, rcv_timeout=rcv_timeout,
                                     tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def rm(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_rm(filename, rcv_timeout=rcv_timeout,
                                  tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def remove(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_remove(filename, rcv_timeout=rcv_timeout,
                                      tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def mkdir(self, dirname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_mkdir(dirname, rcv_timeout=rcv_timeout,
                                     tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def mkdirs(self, dirname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_mkdirs(dirname, rcv_timeout=rcv_timeout,
                                      tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def rmdir(self, dirname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_rmdir(dirname, rcv_timeout=rcv_timeout,
@@ -663,14 +679,16 @@ class PnfsAgentClient(generic_client.GenericClient,
     def list_dir(self, dirname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_list_dir(dirname, rcv_timeout=rcv_timeout,
                                        tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def set_file_size(self, size, fname, rcv_timeout=RCV_TIMEOUT,
                       tries=RCV_TRIES):
         reply_ticket = self.p_set_file_size(size, fname,
                                             rcv_timeout=rcv_timeout,
                                             tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
             
     def set_xreference(self, volume, location_cookie, size, file_family,
                        pnfsFilename, volume_filepath, id, volume_fileP,
@@ -681,7 +699,8 @@ class PnfsAgentClient(generic_client.GenericClient,
             pnfsFilename, volume_filepath, id, volume_fileP,
             bit_file_id, drive, crc, filepath,
             rcv_timeout=rcv_timeout, tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def get_xreference(self, fname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_get_xreference(fname, rcv_timeout=rcv_timeout,
@@ -710,7 +729,8 @@ class PnfsAgentClient(generic_client.GenericClient,
         reply_ticket = self.p_set_bit_file_id(bfid, fname,
                                               rcv_timeout=rcv_timeout,
                                               tries=tries)
-        self.raise_exception(reply_ticket)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
 
     def get_bit_file_id(self, fname, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_get_bit_file_id(fname, rcv_timeout=rcv_timeout,
