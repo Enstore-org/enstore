@@ -4695,7 +4695,13 @@ def open_control_socket(listen_socket, mover_timeout):
         time_to_read_control_socket = time.time()
 
         try:
-            ticket = callback.read_tcp_obj(control_socket)
+            #Set the timeout for this part to 30 seconds.  On 12-3-2009,
+            # it was observed that movers where unable to establish
+            # control connections and send the control ticket because the
+            # encps where sitting in read_tcp_obj() waiting on a bogus
+            # security scan connection for a control ticket that
+            # never arives.
+            ticket = callback.read_tcp_obj(control_socket, timeout = 30)
         except (select.error, socket.error, e_errors.EnstoreError):
             try:
                 control_socket.close()
