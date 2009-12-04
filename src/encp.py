@@ -4730,6 +4730,11 @@ def open_control_socket(listen_socket, mover_timeout):
             return control_socket, address, ticket
 
         break
+    else:
+        #We left the loop, and got here, because we ran out of time.
+        raise EncpError(errno.ETIMEDOUT,
+                        "Mover did not call control back.",
+                        e_errors.TIMEDOUT)
 
     message = "Control socket %s is connected to %s for %s." % \
               (control_socket.getsockname(),
