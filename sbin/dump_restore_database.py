@@ -152,7 +152,8 @@ if __name__ == "__main__" :
     filename=dbname+".dump"
     if options.filename:
         filename=options.filename
-    current_dir = os.getcwd() 
+    current_dir = os.getcwd()
+    print current_dir 
     #
     # Need to extract data defining database
     #

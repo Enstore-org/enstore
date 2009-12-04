@@ -83,6 +83,7 @@ if __name__ == "__main__":
         pass
     cgi_dir=server.get_cgi_directory();
     os.system("cp *cgi*py %s"%cgi_dir)
+    os.system("cp active_volumes.sh %s"%cgi_dir)
     os.system("cp enstore_log_file_search_cgi.py %s/log"%cgi_dir)
     os.system("cp enstore_utils_cgi.py %s/log"%cgi_dir)
     try:
