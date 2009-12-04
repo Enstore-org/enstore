@@ -81,7 +81,7 @@ if __name__ == "__main__":
     except:
         print "Failed to change ownership of ",html_dir," to ",uid,gid
         pass
-    cgi_dir=server.get_cgi_directory();
+    cgi_dir=server.get_cgi_directory()
     os.system("cp *cgi*py %s"%cgi_dir)
     os.system("cp active_volumes.sh %s"%cgi_dir)
     os.system("cp enstore_log_file_search_cgi.py %s/log"%cgi_dir)
