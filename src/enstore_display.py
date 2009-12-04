@@ -18,8 +18,9 @@ import stat
 import types
 import threading
 import re
-import gc
+#import gc
 import resource
+import traceback
 
 import Trace
 import mover_client
@@ -88,7 +89,7 @@ try:
         IMAGE_DIR = os.path.join(ENTV_DIR, 'Images')
 
         set_tcltk_library(TCLTK_DIR)
-except:
+except Tkinter.TclError:
     pass
 
 #Make sure the environment has at least one copy of TCL/TK.
@@ -117,7 +118,7 @@ if not IMAGE_DIR:
 #print "TK_LIBRARY =", os.environ["TK_LIBRARY"]
 
 import Tkinter
-import tkFont
+import tkFont  #Starts a thread not reported by threading.enumerate().
 
 #A lock to allow only one thread at a time access the display class instance.
 display_lock = threading.Lock()
@@ -155,12 +156,17 @@ offline_reason_thread = None
 inqc_dict_cache = {}
 
 st = 0
-pt = 0
+#pt = 0
 
 class Queue:
     def __init__(self):
         self.queue = {}
         self.lock = threading.Lock()
+
+        #These are the timestamps that something was put in or taken out
+        # of the queue.
+        self.get_time = None
+        self.put_time = None
 
     def len_queue(self, tid=None):
         self.lock.acquire()
@@ -202,7 +208,16 @@ class Queue:
         try:
             for queue in self.queue.values():
                 del queue[:]
+        except KeyError:
+            pass
+        except (KeyboardInterrupt, SystemExit):
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+        try:
             self.queue = {}
         except (KeyboardInterrupt, SystemExit):
             self.lock.release()
@@ -221,12 +236,15 @@ class Queue:
                 self.queue[tid] = []
         
             self.queue[tid].append({'item' : queue_item, 'tid' : tid})
+        
         except (KeyboardInterrupt, SystemExit):
             self.lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             self.lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        self.put_time = time.time()  #Update the time this was done.
 
         self.lock.release()
 
@@ -244,22 +262,27 @@ class Queue:
         except:
             self.lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        self.get_time = time.time()  #Update the time this was done.
         
         self.lock.release()
 
         return temp['item']
 
-#These are the queue classes.
+#These are the queue classes.  The message_queue contains items received by
+# entv and need to be processed to update the display.  The request_queue
+# is the list of Enstore servers that the display/main thread has decided
+# that the netork thread needs to query their status.
 message_queue = Queue()
 request_queue = Queue()
 
 #Older python versions don't have a sum() function.  Define one for them.
-if sys.version_info < (2, 3, 0):
-    def local_sum(sequence, start = 0):
-        import operator
-        return reduce(operator.add, sequence, start)
-
-    sum = local_sum
+#if sys.version_info < (2, 3, 0):
+#    def local_sum(sequence, start = 0):
+#        import operator
+#        return reduce(operator.add, sequence, start)
+#
+#    sum = local_sum
 
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
@@ -293,6 +316,9 @@ def get_font(height_wanted, family='Helvetica', fit_string="", width_wanted=0):
 
     size = height_wanted
     while size >= 0:
+        ### Unfortuneatly, it has been observed that, either the Font
+        ### constructor or the metrics() is able to hang.  Thus, the use
+        ### of alarm() in entv.py to mitigate this behavior.
         f = tkFont.Font(size=size, family=family)
         metrics = f.metrics()  #f.metrics returns something like:
         # {'ascent': 11, 'linespace': 15, 'descent': 4, 'fixed': 1}
@@ -1454,6 +1480,7 @@ class Mover:
                                 self.display.height)
 
     def position_linear(self, N):
+        __pychecker__ = "no-argsused"
         #N = number of movers
 
         position = self.display.get_mover_position(self.name)
@@ -1798,7 +1825,7 @@ class Connection:
 
         #Despite the local_variables and if statements it is still faster
         # to perform these actions then do the itemconfigure() every time;
-        # includeing when it will have now effect.
+        # including when it will have no effect.
 
         new_offset = int(self.dashoffset + \
                               self.rate * (now - self.segment_start_time))
@@ -1920,13 +1947,14 @@ class Connection:
 
         if position == None:
             #Is this necessary anymore?
-            print "An unknown error occured.  Please send the enstore " \
-                  "developers the following output."
-            print "ERROR:", position, self.client.name, self.mover.name
-            pprint.pprint(self.display.clients)
+            Trace.trace(0, "An unknown error occured.  Please send the "\
+                           "enstore developers the following output.")
+            Trace.trace(0, "ERROR: %s %s %s" % (position, self.client.name,
+                                                self.mover.name))
+            Trace.trace(0, pprint.pformat(self.display.clients))
             for i in range(len(self.display.client_positions.keys())):
-                print "COLUMN:", i + 1
-                pprint.pprint(self.display.client_positions[i + 1].item_positions)
+                Trace.trace(0, "COLUMN: %s" % (i + 1,))
+                Trace.trace(0, pprint.pformat(self.display.client_positions[i + 1].item_positions))
 
             return
         
@@ -2080,7 +2108,7 @@ class MoverDisplay(Tkinter.Toplevel):
                                          background = self.mover_color,)
             self.state_display.pack(side=Tkinter.LEFT, expand=Tkinter.YES,
                                     fill=Tkinter.BOTH)
-        except:
+        except Tkinter.TclError:
             #If the state_display variable does not yet exist; create it.
             self.state_display = Tkinter.Label(master=self,
                                                justify=Tkinter.LEFT,
@@ -2572,7 +2600,7 @@ class Display(Tkinter.Canvas):
         
     def reposition_movers(self, number_of_movers=None):
 
-        Trace.trace(6, "Starting reposition_movers()")
+        Trace.trace(7, "Starting reposition_movers()")
         
         items = self.movers.values()
         if number_of_movers:
@@ -2583,32 +2611,32 @@ class Display(Tkinter.Canvas):
         for mover in items:
             mover.reposition(N)            
 
-        Trace.trace(6, "Finishing reposition_movers()")
+        Trace.trace(7, "Finishing reposition_movers()")
          
     def reposition_clients(self):
 
-        Trace.trace(6, "Starting reposition_clients()")
+        Trace.trace(7, "Starting reposition_clients()")
         
         for client in self.clients.values():
             client.reposition()
 
-        Trace.trace(6, "Finishing reposition_clients()")
+        Trace.trace(7, "Finishing reposition_clients()")
 
     def reposition_connections(self):
 
-        Trace.trace(6, "Starting reposition_connections()")
+        Trace.trace(7, "Starting reposition_connections()")
         
         for connection in self.connections.values():
             connection.reposition()
 
-        Trace.trace(6, "Finish reposition_connections()")
+        Trace.trace(7, "Finish reposition_connections()")
 
     #########################################################################
 
     #Called from smooth_animation().
     def connection_animation(self):
 
-        Trace.trace(6, "Starting connection_animation()")
+        Trace.trace(15, "Starting connection_animation()")
 
         #If the user turned off animation, don't do it.
         #if not self.animate:
@@ -2624,7 +2652,7 @@ class Display(Tkinter.Canvas):
         for connection in self.connections.values():
             connection.animate(now)
 
-        Trace.trace(6, "Starting connection_animation()")
+        Trace.trace(15, "Starting connection_animation()")
 
     #Called from process_messages().
     def is_up_to_date(self, command):
@@ -2653,28 +2681,32 @@ class Display(Tkinter.Canvas):
     def _join_thread(self, waitall = None):
         global status_request_threads
 
-        Trace.trace(7, "Starting _join_thread()")
+        Trace.trace(15, "Starting _join_thread()")
         
         thread_lock.acquire()
 
-        #del_list = []
         alive_list = []
-        for i in range(len(status_request_threads)):
-            if waitall:
-                status_request_threads[i].join()
-            else:
-                status_request_threads[i].join(0.0)
-            if status_request_threads[i].isAlive():
-                alive_list.append(status_request_threads[i])
-            #else:
-            #    del_list.append(i)
+        try:
+            for i in range(len(status_request_threads)):
+                if waitall:
+                    status_request_threads[i].join()
+                else:
+                    status_request_threads[i].join(0.0)
+                if status_request_threads[i].isAlive():
+                    alive_list.append(status_request_threads[i])
+        except (KeyboardInterrupt, SystemExit):
+            thread_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
 
-        #del status_request_threads[0]
         status_request_threads = alive_list
 
         thread_lock.release()
 
-        Trace.trace(7, "Finishing _join_thread()")
+        Trace.trace(15, "Finishing _join_thread()")
 
     #########################################################################
 
@@ -2686,11 +2718,11 @@ class Display(Tkinter.Canvas):
     def process_messages(self):
 
 
-        Trace.trace(5, "Starting process_messages()")
+        Trace.trace(10, "Starting process_messages()")
         t0 = time.time()
         
         if self.stopped: #If we should stop, then stop.
-            Trace.trace(5, "Finishing process_messages() early")
+            Trace.trace(10, "Finishing process_messages() early")
             return
 
         #Only process the messages in the queue at this time.
@@ -2713,9 +2745,18 @@ class Display(Tkinter.Canvas):
             if not self.is_up_to_date(command):
                 result = startup_lock.acquire(0)
                 if result:
-                    words = command.split()
-                    request_queue.put_queue(words[1],
+                    try:
+                        words = command.split()
+                        request_queue.put_queue(words[1],
                                             tid = words[1].split("@")[-1])
+                    except (KeyboardInterrupt, SystemExit):
+                        startup_lock.release()
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+                    except:
+                        exc, msg, tb = sys.exc_info()
+                        traceback.print_exception(exc, msg, tb)
+                        del tb  #Avoid resource leak.
                     startup_lock.release()
 
             #Process the next item in the queue.
@@ -2735,58 +2776,82 @@ class Display(Tkinter.Canvas):
                 # signal handler needing it to detect if we are hung.
                 self.last_message_processed = time.time()
 
-        Trace.trace(5, "Finishing process_messages() (%f sec/%d messages)" %
+        Trace.trace(10, "Finishing process_messages() (%f sec/%d messages)" %
                     (time.time() - t0, remember_number - number))
         
     #Called from self.after().
     def smooth_animation(self):
 
-        Trace.trace(5, "Starting smooth_animation()")
+        Trace.trace(10, "Starting smooth_animation()")
 
         display_lock.acquire()
-        
-        #If necessary, process the animation of the connections lines.
-        self.connection_animation()
 
-        #Schedule the next animation.
-        self.after_smooth_animation_id = self.after(animate_time(),
+        try:
+            #If necessary, process the animation of the connections lines.
+            self.connection_animation()
+
+            #Schedule the next animation.
+            self.after_smooth_animation_id = self.after(animate_time(),
                                                     self.smooth_animation)
+        except (KeyboardInterrupt, SystemExit):
+            display_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:  #Tkinter.TclError
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
 
         display_lock.release()
 
-        Trace.trace(5, "Finishing smooth_animation()")
+        Trace.trace(10, "Finishing smooth_animation()")
 
     #Called from self.after().
     def disconnect_clients(self):
-
         Trace.trace(5, "Starting disconnect_clients()")
 
         clients_lock.acquire()
-        
-        now = time.time()
-        #### Check for unconnected clients
-        for client_name, client in self.clients.items():
-            #if (client.n_connections > 0 or client.waiting == 1):
-            if len(client.mover_names) > 0 or client.waiting == 1:
-                continue
-            if now - client.last_activity_time > 5: # grace period
-                Trace.trace(2, "It's been longer than 5 seconds, %s " \
-                            " client must be deleted" % (client_name,))
 
-                display_lock.acquire()
-                client.undraw()
-                display_lock.release()
+        try:
+            now = time.time()
+            #### Check for unconnected clients
+            for client_name, client in self.clients.items():
+                #if (client.n_connections > 0 or client.waiting == 1):
+                if len(client.mover_names) > 0 or client.waiting == 1:
+                    continue
+                if now - client.last_activity_time > 5: # grace period
+                    Trace.trace(2, "It's been longer than 5 seconds, %s " \
+                                " client must be deleted" % (client_name,))
 
-                try:
-                    # Remove client from the client list.
-                    del self.clients[client_name]
-                except KeyError:
-                    pass
-                try:
-                    # Mark this spot as unoccupied.
-                    self.del_client_position(client_name)
-                except KeyError:
-                    pass
+                    display_lock.acquire()
+                    try:
+                        client.undraw()
+                    except (KeyboardInterrupt, SystemExit):
+                        display_lock.release()
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+                    except:  #Tkinter.TclError
+                        exc, msg, tb = sys.exc_info()
+                        traceback.print_exception(exc, msg, tb)
+                        del tb  #Avoid resource leak.
+                    display_lock.release()
+
+                    try:
+                        # Remove client from the client list.
+                        del self.clients[client_name]
+                    except KeyError:
+                        pass
+                    try:
+                        # Mark this spot as unoccupied.
+                        self.del_client_position(client_name)
+                    except KeyError:
+                        pass
+        except (KeyboardInterrupt, SystemExit):
+            clients_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
 
         clients_lock.release()
 
@@ -2797,16 +2862,25 @@ class Display(Tkinter.Canvas):
 
         Trace.trace(5, "Finishing disconnect_clients()")
 
+
     #Called from self.after().
     def join_thread(self):
 
-        Trace.trace(5, "Starting join_thread()")
+        Trace.trace(10, "Starting join_thread()")
 
         display_lock.acquire()
 
-        self._join_thread()
+        try:
+            self._join_thread()
         
-        self.after_join_id = self.after(JOIN_TIME, self.join_thread)
+            self.after_join_id = self.after(JOIN_TIME, self.join_thread)
+        except (KeyboardInterrupt, SystemExit):
+            display_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:  #Tkinter.TclError
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
 
         display_lock.release()
 
@@ -2820,29 +2894,38 @@ class Display(Tkinter.Canvas):
 
         display_lock.acquire()
 
-        already_requested = [] #For multiple inquisitors; one for each system.
+        try:
+            #For multiple inquisitors; one for each system.
+            already_requested = []
 
-        for mover in self.movers.values():
-            system_name = mover.name.split("@")[1]
-            
-            if mover.state in ['ERROR']:
-                if mover.offline_reason == None:
-                    request_queue.put_queue(mover.name, system_name)
+            for mover in self.movers.values():
+                system_name = mover.name.split("@")[1]
 
-            elif mover.state in ['OFFLINE', 'Unknown']:
-                #Do some extra steps to see if we need to change the
-                # background color.
-                mover.if_dead()
-                
-                if system_name in already_requested:
-                    #We've already asked this Enstore system's inquisitor.
-                    pass
-                elif not mover.offline_reason:
-                    request_queue.put_queue('inquisitor', system_name)
-                    already_requested.append(system_name)
+                if mover.state in ['ERROR']:
+                    if mover.offline_reason == None:
+                        request_queue.put_queue(mover.name, system_name)
 
-        self.after_offline_reason_id = self.after(OFFLINE_REASON_TIME,
-                                                  self.check_offline_reason)
+                elif mover.state in ['OFFLINE', 'Unknown']:
+                    #Do some extra steps to see if we need to change the
+                    # background color.
+                    mover.if_dead()
+
+                    if system_name in already_requested:
+                        #We've already asked this Enstore system's inquisitor.
+                        pass
+                    elif not mover.offline_reason:
+                        request_queue.put_queue('inquisitor', system_name)
+                        already_requested.append(system_name)
+
+            self.after_offline_reason_id = self.after(OFFLINE_REASON_TIME,
+                                                   self.check_offline_reason)
+        except (KeyboardInterrupt, SystemExit):
+            display_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:  #Tkinter.TclError
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
 
         display_lock.release()
 
@@ -2853,16 +2936,24 @@ class Display(Tkinter.Canvas):
     #
     #    display_lock.acquire()
     #
-    #    now = time.time()
-    #    #### Handle titling
-    #    if self.title_animation:
-    #        if now > self.title_animation.stop_time:
-    #            self.title_animation = None
-    #        else:
-    #            self.title_animation.animate(now)
+    #    try:
+    #        now = time.time()
+    #        #### Handle titling
+    #        if self.title_animation:
+    #            if now > self.title_animation.stop_time:
+    #                self.title_animation = None
+    #            else:
+    #                self.title_animation.animate(now)
     #
-    #    ####force the display to refresh
-    #    self.update()
+    #        ####force the display to refresh
+    #        self.update()
+    #    except (KeyboardInterrupt, SystemExit):
+    #        display_lock.release()
+    #        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    #    except:
+    #        exc, msg, tb = sys.exc_info()
+    #        traceback.print_exception(exc, msg, tb)
+    #        del tb  #Avoid resource leak.
     #
     #    display_lock.release()
 
@@ -3134,12 +3225,12 @@ class Display(Tkinter.Canvas):
                 #  failures.  Wait 1 minutes before starting over.
                 time.sleep(60)
                 self.queue_command("reinit")
-        except KeyboardInterrupt:
-            raise sys.exc_info()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
-            exc, msg = sys.exc_info()[:2]
-            print "Error processing %s: %s" % (str(command_list),
-                                               (str(exc), str(msg)))
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
 
     def client_command(self, command_list):
         ## For now, don't draw waiting clients (there are just
@@ -3147,24 +3238,32 @@ class Display(Tkinter.Canvas):
         return
 
         clients_lock.acquire()
-            
-        client_name = normalize_name(command_list[1])
-        client = self.clients.get(client_name) 
-        if client is None: #it's a new client
-            old_number = self.get_client_column_count()
-            
-            self.add_client_position(client_name)
-            client = Client(client_name, self)
-            self.clients[client_name] = client
 
-            #If the number of client columns changed we need to reposition.
-            new_number = self.get_client_column_count()
-            if old_number != new_number:
-                self.reposition_canvas()
-            
-            client.update_state(WAITING) #change fill color if needed
-            client.draw()
+        try:
+            client_name = normalize_name(command_list[1])
+            client = self.clients.get(client_name) 
+            if client is None: #it's a new client
+                old_number = self.get_client_column_count()
 
+                self.add_client_position(client_name)
+                client = Client(client_name, self)
+                self.clients[client_name] = client
+
+                #If the number of client columns changed we need to reposition.
+                new_number = self.get_client_column_count()
+                if old_number != new_number:
+                    self.reposition_canvas()
+
+                client.update_state(WAITING) #change fill color if needed
+                client.draw()
+        except (KeyboardInterrupt, SystemExit):
+            clients_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
+        
         clients_lock.release()
 
     def connect_command(self, command_list):
@@ -3173,109 +3272,125 @@ class Display(Tkinter.Canvas):
         # collection to happen perhapse?) in between the client 
         clients_lock.acquire()
 
-        now = time.time()
+        try:
+            now = time.time()
 
-        mover = self.movers.get(command_list[1])
-        if mover.state in ['ERROR', 'IDLE', 'OFFLINE']:
-            Trace.trace(2,
-                "Cannot connect to mover that is %s." % (mover.state,))
-            return
+            mover = self.movers.get(command_list[1])
+            if mover.state in ['ERROR', 'IDLE', 'OFFLINE']:
+                Trace.trace(2,
+                    "Cannot connect to mover that is %s." % (mover.state,))
+                return
 
-        #Draw the client.
-        
-        client_name = normalize_name(command_list[2])
-        client = self.clients.get(client_name)
-        if not client: ## New client, we must add it
-            old_number = self.get_client_column_count()
+            #Draw the client.
 
-            self.add_client_position(client_name)
-            client = Client(client_name, self)
-            self.clients[client_name] = client
+            client_name = normalize_name(command_list[2])
+            client = self.clients.get(client_name)
+            if not client: ## New client, we must add it
+                old_number = self.get_client_column_count()
 
-            #If the client command is ever used, these lines are necessary.
-            #   client.update_state(CONNECTED) #change fill color if needed
-            client.draw()  #Draws the client.
+                self.add_client_position(client_name)
+                client = Client(client_name, self)
+                self.clients[client_name] = client
 
-            #If the number of client columns changed we need to reposition.
-            new_number = self.get_client_column_count()
-            if old_number != new_number:
-                if client_name not in self.clients:
-                    print "ERROR: Newly added client not found in client list."
-                self.reposition_canvas(force = 1)
-        else:
-            client.waiting = 0
-            client.update_state(CONNECTED) #change fill color if needed
+                #If the client command is ever used, these lines are necessary.
+                #   client.update_state(CONNECTED) #change fill color if needed
+                client.draw()  #Draws the client.
 
-        #Draw the connection.
+                #If the number of client columns changed we need to reposition.
+                new_number = self.get_client_column_count()
+                if old_number != new_number:
+                    if client_name not in self.clients:
+                        print "ERROR: Newly added client not found in client list."
+                    self.reposition_canvas(force = 1)
+            else:
+                client.waiting = 0
+                client.update_state(CONNECTED) #change fill color if needed
 
-        #First test if a connection is already present.
-        if self.connections.get(mover.name, None):
-            connection = self.connections[mover.name]
-            #Decrease the old clients connection count.
-            old_client = connection.client
-            old_client.n_connections = old_client.n_connections - 1
-            del old_client.mover_names[mover.name]
-            #Take the existing connection and make it like new.
-            connection.undraw()
-            connection.__init__(mover, client, self)
-            #Increase the number of connections this client has.
-            client.n_connections = client.n_connections + 1
-            client.mover_names[mover.name] = mover.name
-        #If not create a new connection.
-        else:
-            connection = Connection(mover, client, self)
-            self.connections[mover.name] = connection
-            connection.update_rate(0)
-            #Increase the number of connections this client has.
-            client.n_connections = client.n_connections + 1
-            client.mover_names[mover.name] = mover.name
+            #Draw the connection.
 
-        connection.draw() #Either draw or redraw correctly.
+            #First test if a connection is already present.
+            if self.connections.get(mover.name, None):
+                connection = self.connections[mover.name]
+                #Decrease the old clients connection count.
+                old_client = connection.client
+                old_client.n_connections = old_client.n_connections - 1
+                del old_client.mover_names[mover.name]
+                #Take the existing connection and make it like new.
+                connection.undraw()
+                connection.__init__(mover, client, self)
+                #Increase the number of connections this client has.
+                client.n_connections = client.n_connections + 1
+                client.mover_names[mover.name] = mover.name
+            #If not create a new connection.
+            else:
+                connection = Connection(mover, client, self)
+                self.connections[mover.name] = connection
+                connection.update_rate(0)
+                #Increase the number of connections this client has.
+                client.n_connections = client.n_connections + 1
+                client.mover_names[mover.name] = mover.name
 
-        ###What are these for?
-        mover.t0 = now
-        mover.b0 = 0L
+            connection.draw() #Either draw or redraw correctly.
+
+            ###What are these for?
+            mover.t0 = now
+            mover.b0 = 0L
+        except (KeyboardInterrupt, SystemExit):
+            clients_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
 
         clients_lock.release()
 
     def disconnect_command(self, command_list):
 
         clients_lock.acquire()
-        
-        Trace.trace(2, "mover %s is disconnecting from %s" %
-                    (command_list[1], command_list[2]))
-        
-        mover = self.movers.get(command_list[1])
 
-        client_name = normalize_name(command_list[2])
-        client = self.clients.get(client_name)
+        try:
+            Trace.trace(2, "mover %s is disconnecting from %s" %
+                        (command_list[1], command_list[2]))
 
-        #Decrease the number of connections this client has.
-        try:
-            client.n_connections = client.n_connections - 1
-        except (AttributeError, KeyError):
-            pass
-        try:
-            del client.mover_names[mover.name]
-        except (AttributeError, KeyError):
-            pass
-        
-        #Remove all references to the connection.
-        try:
-            self.connections[mover.name].undraw()
-        except (AttributeError, KeyError, Tkinter.TclError):
-            pass
-        try:
-            del self.connections[mover.name]
-        except (AttributeError, KeyError):
-            pass
+            mover = self.movers.get(command_list[1])
 
-        #Remove the progress bar.
-        if mover == None:
-            mover.update_progress(None, None)
-            mover.update_buffer(None)
-            mover.update_rate(None)
+            client_name = normalize_name(command_list[2])
+            client = self.clients.get(client_name)
 
+            #Decrease the number of connections this client has.
+            try:
+                client.n_connections = client.n_connections - 1
+            except (AttributeError, KeyError):
+                pass
+            try:
+                del client.mover_names[mover.name]
+            except (AttributeError, KeyError):
+                pass
+
+            #Remove all references to the connection.
+            try:
+                self.connections[mover.name].undraw()
+            except (AttributeError, KeyError, Tkinter.TclError):
+                pass
+            try:
+                del self.connections[mover.name]
+            except (AttributeError, KeyError):
+                pass
+
+            #Remove the progress bar.
+            if mover == None:
+                mover.update_progress(None, None)
+                mover.update_buffer(None)
+                mover.update_rate(None)
+        except (KeyboardInterrupt, SystemExit):
+            clients_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
+            
         clients_lock.release()
     
     def loaded_command(self, command_list):
@@ -3349,7 +3464,7 @@ class Display(Tkinter.Canvas):
             #Redraw/reposition the buffer bar.
             mover.update_buffer(command_list[5])
         except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
@@ -3499,7 +3614,15 @@ class Display(Tkinter.Canvas):
 
             #Run the corresponding function.
             display_lock.acquire()
-            apply(self.comm_dict[words[0]]['function'], (self, words,))
+            try:
+                apply(self.comm_dict[words[0]]['function'], (self, words,))
+            except (KeyboardInterrupt, SystemExit):
+                display_lock.release()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:
+                exc, msg, tb = sys.exc_info()
+                traceback.print_exception(exc, msg, tb)
+                del tb  #Avoid resource leak.
             display_lock.release()
 
     #########################################################################
@@ -3531,12 +3654,20 @@ class Display(Tkinter.Canvas):
             except KeyError:
                 Trace.trace(1, "Unable to remove mover %s" % key)
         clients_lock.acquire()
-        for key in self.clients.keys():
-            try:
-                self.clients[key].display = None
-                del self.clients[key]
-            except KeyError:
-                Trace.trace(1, "Unable to remove client %s" % key)
+        try:
+            for key in self.clients.keys():
+                try:
+                    self.clients[key].display = None
+                    del self.clients[key]
+                except KeyError:
+                    Trace.trace(1, "Unable to remove client %s" % key)
+        except (KeyboardInterrupt, SystemExit):
+            clients_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
         clients_lock.release()
         for key in self.connections.keys():
             try:
@@ -3566,16 +3697,22 @@ class Display(Tkinter.Canvas):
         for key in _font_cache.keys():
             try:
                 del _font_cache[key]
+            except (KeyboardInterrupt, SystemExit):
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
-                exc, msg = sys.exc_info()[:2]
-                Trace.trace(1, "ERROR: %s: %s" % (str(exc), str(msg)))
+                exc, msg, tb = sys.exc_info()
+                traceback.print_exception(exc, msg, tb)
+                del tb  #Avoid resource leak.
 
         for key in _image_cache.keys():
             try:
                 del _image_cache[key]
+            except (KeyboardInterrupt, SystemExit):
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
-                exc, msg = sys.exc_info()[:2]
-                Trace.trace(1, "ERROR: %s: %s" % (str(exc), str(msg)))
+                exc, msg, tb = sys.exc_info()
+                traceback.print_exception(exc, msg, tb)
+                del tb  #Avoid resource leak.
 
         _font_cache = {}
         _image_cache = {}
@@ -3633,11 +3770,20 @@ class Display(Tkinter.Canvas):
         #Grab last thread if necessary.
         if offline_reason_thread:
             thread_lock.acquire()
-            offline_reason_thread.join()
-            del offline_reason_thread
-            offline_reason_thread = None
+            try:
+                offline_reason_thread.join()
+                del offline_reason_thread
+                offline_reason_thread = None
+            except (KeyboardInterrupt, SystemExit):
+                thread_lock.release()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:
+                exc, msg, tb = sys.exc_info()
+                traceback.print_exception(exc, msg, tb)
+                del tb  #Avoid resource leak.
             thread_lock.release()        
 
+    """
     def mainloop(self, threshold = None):
 
         self.startup()
@@ -3650,6 +3796,8 @@ class Display(Tkinter.Canvas):
         #Let the other startup threads go.
         try:
             startup_lock.release()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             #Will get here if run from enstore_display.py not entv.py.
             pass
@@ -3662,6 +3810,7 @@ class Display(Tkinter.Canvas):
             self.master.mainloop(threshold)
 
         self.shutdown()
+    """
 
 #########################################################################
 
