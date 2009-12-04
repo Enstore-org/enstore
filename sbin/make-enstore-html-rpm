@@ -83,6 +83,7 @@ cp enstore/www/conf/httpd.conf "$package"
 cp enstore/sbin/deploy_enstore_html "$package"
 cp enstore/sbin/undeploy_enstore_html "$package"
 cp enstore/src/*cgi*py "$package"
+cp enstore/sbin/active_volumes.sh "$package"
 
 
 #======================================================================
