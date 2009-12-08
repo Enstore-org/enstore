@@ -7295,6 +7295,15 @@ class DiskMover(Mover):
             Trace.log(e_errors.ERROR, "status should be 2-tuple, is %s" % (status,))
             status = (status, None)
 
+        if self.current_work_ticket:
+            encp = self.current_work_ticket.get('encp', None)
+            if encp:
+                pri = (encp.get('curpri', None), encp.get('adminpri', None))
+            else:
+                pri = (None, None)
+        else:
+            pri = (None, None)
+
         now = time.time()
         if self.unique_id and state in (IDLE, HAVE_BOUND):
             ## If we've been idle for more than 15 minutes, force the LM to clear
@@ -7328,7 +7337,8 @@ class DiskMover(Mover):
             'time_in_state': now - self.state_change_time,
             "library": self.current_library,
             "volume_clerk": self.vc_address,
-
+            "library_list":self.libraries, # this is needed for the federation project
+            'current_priority': pri,
             }
         return ticket
 
