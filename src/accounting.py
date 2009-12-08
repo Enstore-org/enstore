@@ -47,41 +47,43 @@ class accDB:
 				'state': 'm',
 				'id': res['oid_tape_mounts']})
 		except:
-			q = "select oid as oid_tape_mounts_tmp, volume, state from tape_mounts_tmp where volume = '%s' and state = 'm';"%(volume)
-			res2 = self.db.query(q).dictresult()[0]
+			try:
+				q =  "select oid as oid_tape_mounts_tmp, "\
+				    "volume, state from tape_mounts_tmp "\
+				    "where volume = '%s' and state = 'm'"%(volume,)
+				res2 = self.db.query(q).dictresult()[0]
+				res2 = self.db.update('tape_mounts_tmp',
+						      {'oid_tape_mounts_tmp':
+						       res2['oid_tape_mounts_tmp'],
+						       'id': res['oid_tape_mounts']})
 
-			# res2 = self.db.get('tape_mounts_tmp', {
-			#	'volume': volume,
-			#	'state': 'm'})
+			except:
+				return
 
-			res2 = self.db.update('tape_mounts_tmp', {
-				'oid_tape_mounts_tmp': res2['oid_tape_mounts_tmp'],
-				'id': res['oid_tape_mounts']})
 
 	def log_finish_mount(self, node, volume, finish, state='M'):
 		if type(finish) != type(""):
 			finish = time2timestamp(finish)
 		try:
-			q = "select oid as oid_tape_mounts_tmp, volume, state, id from tape_mounts_tmp where volume = '%s' and state = 'm';"%(volume)
+			q = "select oid as oid_tape_mounts_tmp, "\
+			    "volume, state, id from tape_mounts_tmp "\
+			    "where volume = '%s' and state = 'm';"%(volume)
 			res = self.db.query(q).dictresult()[0]
-			# res = self.db.get('tape_mounts_tmp', {
-			#	'volume': volume,
-			#	'state': 'm'})
+			res2 = self.db.update('tape_mounts', {
+				'oid_tape_mounts': res['id'],
+				'finish': finish,
+				'state': state})
+
+			res2 = self.db.delete('tape_mounts_tmp', {
+				'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
 		except:
 			return
 
-		res2 = self.db.update('tape_mounts', {
-			'oid_tape_mounts': res['id'],
-			'finish': finish,
-			'state': state})
-
-		res2 = self.db.delete('tape_mounts_tmp', {
-			'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
 
 	def log_start_dismount(self, node, volume, mtype, logname, start):
 		if type(start) != type(""):
 			start = time2timestamp(start)
-		
+
 		# This is the main table
 		res = self.db.insert('tape_mounts', {
 			'node': node,
@@ -98,35 +100,35 @@ class accDB:
 				'state': 'd',
 				'id': res['oid_tape_mounts']})
 		except:
-			q = "select oid as oid_tape_mounts_tmp, volume, state from tape_mounts_tmp where volume = '%s' and state = 'd';"%(volume)
-			res2 = self.db.query(q).dictresult()[0]
-			# res2 = self.db.get('tape_mounts_tmp', {
-			#	'volume': volume,
-			#	'state': 'd'})
-
-			res2 = self.db.update('tape_mounts_tmp', {
-				'oid_tape_mounts_tmp': res2['oid_tape_mounts_tmp'],
-				'id': res['oid_tape_mounts']})
+			try:
+				q = "select oid as oid_tape_mounts_tmp, "\
+				    "volume, state from tape_mounts_tmp "\
+				    "where volume = '%s' and state = 'd';"%(volume)
+				res2 = self.db.query(q).dictresult()[0]
+				res2 = self.db.update('tape_mounts_tmp',
+						      {'oid_tape_mounts_tmp':
+						       res2['oid_tape_mounts_tmp'],
+						       'id': res['oid_tape_mounts']})
+			except:
+				return
 
 	def log_finish_dismount(self, node, volume, finish, state='D'):
 		if type(finish) != type(""):
 			finish = time2timestamp(finish)
 		try:
-			q = "select oid as oid_tape_mounts_tmp, volume, state, id from tape_mounts_tmp where volume = '%s' and state = 'd';"%(volume)
+			q = "select oid as oid_tape_mounts_tmp, "\
+			    "volume, state, id from tape_mounts_tmp "\
+			    "where volume = '%s' and state = 'd';"%(volume)
 			res = self.db.query(q).dictresult()[0]
-			# res = self.db.get('tape_mounts_tmp', {
-			#	'volume': volume,
-			#	'state': 'd'})
+			res2 = self.db.update('tape_mounts', {
+				'oid_tape_mounts': res['id'],
+				'finish': finish,
+				'state': state})
+			res2 = self.db.delete('tape_mounts_tmp', {
+				'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
 		except:
 			return
 
-		res2 = self.db.update('tape_mounts', {
-			'oid_tape_mounts': res['id'],
-			'finish': finish,
-			'state': state})
-
-		res2 = self.db.delete('tape_mounts_tmp', {
-			'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
 
 	def log_encp_xfer2(self, xfer):
 		if type(xfer['date']) != type(""):
@@ -134,11 +136,12 @@ class accDB:
 		self.insert('encp_xfer', xfer)
 
 	def log_encp_xfer(self, date, node, pid, username, src, dst,
-		size, volume, network_rate, drive_rate, disk_rate,
-		overall_rate, transfer_rate, mover,
-		drive_id, drive_sn, elapsed, media_changer,
-		mover_interface, driver, storage_group, encp_ip,
-		encp_id, rw, encp_version=None, file_family=None, wrapper=None,library=None):
+			  size, volume, network_rate, drive_rate, disk_rate,
+			  overall_rate, transfer_rate, mover,
+			  drive_id, drive_sn, elapsed, media_changer,
+			  mover_interface, driver, storage_group, encp_ip,
+			  encp_id, rw, encp_version=None, file_family=None,
+			  wrapper=None,library=None):
 
 		if type(date) != type(""):
 			date = time2timestamp(date)
@@ -180,9 +183,10 @@ class accDB:
 		self.insert('encp_xfer', xfer)
 
 	def log_encp_error(self, date, node, pid, username, src, dst,
-		size, storage_group, encp_id, version, e_type, error,
-		file_family = None, wrapper = None, mover = None,
-		drive_id = None, drive_sn = None, rw = None, volume = None, library=None):
+			   size, storage_group, encp_id, version, e_type, error,
+			   file_family = None, wrapper = None, mover = None,
+			   drive_id = None, drive_sn = None, rw = None,
+			   volume = None,library=None):
 		if type(date) != type(""):
 			date = time2timestamp(date)
 
@@ -229,7 +233,7 @@ class accDB:
 
 
 		self.insert('encp_error', en_error)
-			
+
 	# This pair of function need a unique tag to work
 	# The calling function should provide such a tag
 	# A simple key is host_ip.pid.time
@@ -253,6 +257,8 @@ class accDB:
 			commentstr = ", comment = '%s'"%(comment)
 		else:
 			commentstr = ""
-		
-		qs = "update event set finish = '%s', status = %d%s where tag = '%s' and finish is null;"%(finish, status, commentstr, tag) 
+
+		qs = "update event set finish = '%s', "\
+		     "status = %d%s where tag = '%s' and "\
+		     "finish is null;"%(finish, status, commentstr, tag)
 		res = self.db.query(qs)
