@@ -311,7 +311,7 @@ class SortedList:
                     (self.my_name, old_current_index,self.current_index,
                      self.start_index, self.sorted_list[self.current_index]))  
         rq = self.sorted_list[self.current_index]
-        rq.ticket['encp']['curpri'] = rq.ticket['encp']['curpri'] + self.cummulative_delta_pri
+        rq.ticket['encp']['curpri'] = rq.ticket['encp']['basepri'] + self.cummulative_delta_pri
 
         return rq
 
