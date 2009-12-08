@@ -317,6 +317,21 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                         raise sys.exc_info()[0], sys.exc_info()[1], \
                               sys.exc_info()[2]
                     layer4_dict = {}
+
+                #We also need to grab the pnfs id of the file that is there.
+                #  This way we can differentiate the cases were the file
+                # does not exist and those replaced.
+                s_list = [pnfs.get_enstore_pnfs_path(file_record['pnfs_name0']),
+                          pnfs.get_enstore_fs_path(file_record['pnfs_name0'])]
+                for path in s_list:
+                    try:
+                        pnfs_pnfsid = pnfs.get_pnfsid(path)
+                        break
+                    except (OSError, IOError):
+                        continue
+                else:
+                    pnfs_pnfsid = ""
+
                 #We through away the (err_l, warn_l, info_l) values becuase we
                 # expect them to not be there if layer 1 is not there.  It does
                 # not make sense to report what we already know.
@@ -341,6 +356,9 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                                        afn)
                      else:
                          raise OSError(errno.ENOENT, "missing layer 1", afn)
+                elif pnfs_pnfsid and pnfs_pnfsid != file_record['pnfsid']:
+                     raise OSError(errno.ENOENT, "has been replaced",
+                                   pnfsid)
                 else:
                     #Since the file exists, but has no layers, report the error.
                     raise OSError(errno.ENOENT, os.strerror(errno.ENOENT),
