@@ -43,6 +43,9 @@ if __name__== '__main__':
         pass
     sys.exit(-1)
 
+"""
+The use of print_lock has been commented out at the request of Sasha Moibenko.
+"""
 if have_multiprocessing:
     print_lock = multiprocessing.Lock()
 else:
@@ -186,29 +189,29 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, detail = sys.exc_info()[:2]
-            print_lock.acquire()
+            #print_lock.acquire()
             try:
                 sys.stderr.write("Failure writing message to log %s %s\n" %
                                  (msg, detail))
                 sys.stderr.flush()
             except (KeyboardInterrupt, SystemExit):
-                print_lock.release()
+                #print_lock.release()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
                 pass
-            print_lock.release()
+            #print_lock.release()
         
     if doprint and print_levels.has_key(severity):
-        print_lock.acquire()
+        #print_lock.acquire()
         try:
             print msg
             sys.stdout.flush()
         except (KeyboardInterrupt, SystemExit):
-            print_lock.release()
+            #print_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
-        print_lock.release()
+        #print_lock.release()
         
 def alarm(severity, root_error, rest={},
           condition=None, remedy_type=None):
@@ -217,16 +220,16 @@ def alarm(severity, root_error, rest={},
         alarm_func(time.time(), os.getpid(), logname, root_error, severity,
 		   condition, remedy_type, rest)
     if print_levels.has_key(severity):
-        print_lock.acquire()
+        #print_lock.acquire()
         try:
             print root_error
             sys.stdout.flush()
         except (KeyboardInterrupt, SystemExit):
-            print_lock.release()
+            #print_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
-        print_lock.release()
+        #print_lock.release()
 
 def trace(severity, msg):
     global thread_name
@@ -264,13 +267,13 @@ def trace(severity, msg):
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
-            print_lock.acquire()
+            #print_lock.acquire()
             print "Failed to make trace message"
             sys.stdout.flush()
-            print_lock.release()
+            #print_lock.release()
             return
 
-        print_lock.acquire()
+        #print_lock.acquire()
         try:
             print severity, tm, new_msg
 	    # the following line will output the memory usage of the process
@@ -278,11 +281,11 @@ def trace(severity, msg):
 	    #print "================================="  # a usefull divider
             sys.stdout.flush()
         except (KeyboardInterrupt, SystemExit):
-            print_lock.release()
+            #print_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
-        print_lock.release()
+        #print_lock.release()
         
     if log_levels.has_key(severity):
         log(severity, msg_truncated, doprint=0)
@@ -292,16 +295,16 @@ def trace(severity, msg):
 def message(severity, msg):
     msg = trunc(msg)
     if message_levels.has_key(severity):
-        print_lock.acquire()
+        #print_lock.acquire()
         try:
             print msg
             sys.stdout.flush()
         except (KeyboardInterrupt, SystemExit):
-            print_lock.release()
+            #print_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
-        print_lock.release()
+        #print_lock.release()
 
 def set_alarm_func(func):
     global alarm_func
