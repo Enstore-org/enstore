@@ -269,7 +269,7 @@ class SortedList:
         else:
             ret = None
         if ret:
-            ret.ticket['encp']['curpri'] = ret.ticket['encp']['curpri'] + self.cummulative_delta_pri
+            ret.ticket['encp']['curpri'] = ret.ticket['encp']['basepri'] + self.cummulative_delta_pri
 
         self.lock.acquire()
         self.start_index = self.current_index
