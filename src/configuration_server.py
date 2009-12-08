@@ -41,7 +41,7 @@ class ConfigurationDict:
         self.config_load_timestamp = None
         self.use_thread = 1
         self.system_name = None  #Cache return value from _get_system_name().
-        self.cached_domains = None #Cache return value from _get_system_name().
+        self.cached_domains = None  #Cache return value from _get_domains().
         #The average dump2() execution time, in seconds, for these three
         # copy levels are (n = 9, for each):
         # deepcopy: 0.017653094397633334
@@ -189,19 +189,34 @@ class ConfigurationDict:
     ## These are internal functions that pull information out of the
     ## configuration in a thread safe manner.  All other functions should
     ## use these functions instead of accessing self.configdict directly.
-        
-    def get_dict_entry(self, skeyValue):
-        copy_level = self.get_copy_level()
-        self.config_lock.acquire()
+
+    # __get_config_value() is an internal function used by, get_dict_entry(),
+    # get_server_list(), et. al.  The calling function should hold the
+    # appropriate lock, self.config_lock or self.member_lock, before
+    # calling this function.
+    def __get_config_value(self, value, copy_level):
         try:
             t0 = time.time()
             if copy_level >= 2:
-                value = copy.deepcopy(self.configdict[skeyValue])
+                copied_value = copy.deepcopy(value)
             elif copy_level == 1:
-                value = copy.copy(self.configdict[skeyValue])
+                copied_value = copy.copy(value)
             else:
-                value = self.configdict[skeyValue]
-            Trace.trace(25, "get_dict_entry: extract time: %f" % (time.time() - t0,))
+                copied_value = value
+            message = "__get_config_value: extract time: %f" \
+                      % (time.time() - t0,)
+            Trace.trace(25, message)
+        except:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        return copied_value
+        
+    def get_dict_entry(self, skeyValue):
+        copy_level = self.get_copy_level()  #Avoid holding both locks at once.
+        self.config_lock.acquire()
+        try:
+            value = self.__get_config_value(self.configdict[skeyValue],
+                                            copy_level)
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -209,17 +224,11 @@ class ConfigurationDict:
         return value
 
     def get_config_keys(self):
-        copy_level = self.get_copy_level()
+        copy_level = self.get_copy_level()  #Avoid holding both locks at once.
         self.config_lock.acquire()
         try:
-            t0 = time.time()
-            if copy_level >= 2:
-                key_list = copy.deepcopy(self.configdict.keys())
-            elif copy_level == 1:
-                key_list = copy.copy(self.configdict.keys())
-            else:
-                key_list = self.configdict.keys()
-            Trace.trace(25, "get_config_keys: extract time: %f" % (time.time() - t0,))
+            key_list = self.__get_config_value(self.configdict.keys(),
+                                               copy_level)
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -227,17 +236,10 @@ class ConfigurationDict:
         return key_list
 
     def get_config_dict(self):
-        copy_level = self.get_copy_level()
+        copy_level = self.get_copy_level()  #Avoid holding both locks at once.
         self.config_lock.acquire()
         try:
-            t0 = time.time()
-            if copy_level >= 2:
-                configdict = copy.deepcopy(self.configdict)
-            elif copy_level == 1:
-                configdict = copy.copy(self.configdict)
-            else:
-                configdict = self.configdict
-            Trace.trace(25, "get_config_dict: extract time: %f" % (time.time() - t0,))
+            configdict = self.__get_config_value(self.configdict, copy_level)
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -248,17 +250,10 @@ class ConfigurationDict:
     ## need to lock two locks to safely update the data member.
 
     def get_server_list(self):
-        copy_level = self.get_copy_level()
+        copy_level = self.get_copy_level()  #Avoid holding both locks at once.
         self.config_lock.acquire()
         try:
-            t0 = time.time()
-            if copy_level >= 2:
-                slist = copy.deepcopy(self.serverlist)
-            elif copy_level == 1:
-                slist = copy.copy(self.serverlist)
-            else:
-                slist = self.serverlist
-            Trace.trace(25, "get_server_list: extract time: %f" % (time.time() - t0,))
+            slist = self.__get_config_value(self.serverlist, copy_level)
         except:
             self.config_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -268,17 +263,11 @@ class ConfigurationDict:
     ## The following use member_lock instead of config_lock.
     
     def get_config_load_timestamp(self):
-        copy_level = self.get_copy_level()
+        copy_level = self.get_copy_level()  #Avoid holding both locks at once.
         self.member_lock.acquire()
         try:
-            t0 = time.time()
-            if copy_level >= 2:
-                clt = copy.deepcopy(self.config_load_timestamp)
-            elif copy_level == 1:
-                clt = copy.copy(self.config_load_timestamp)
-            else:
-                clt = self.config_load_timestamp
-            Trace.trace(25, "get_config_load_timestamp: extract time: %f" % (time.time() - t0,))
+            clt = self.__get_config_value(self.config_load_timestamp,
+                                          copy_level)
         except:
             self.member_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -286,17 +275,10 @@ class ConfigurationDict:
         return clt
 
     def get_threaded_imp(self):
-        copy_level = self.get_copy_level()
+        copy_level = self.get_copy_level()  #Avoid holding both locks at once.
         self.member_lock.acquire()
         try:
-            t0 = time.time()
-            if copy_level >= 2:
-                use_thread = copy.deepcopy(self.use_thread)
-            elif copy_level == 1:
-                use_thread = copy.copy(self.use_thread)
-            else:
-                use_thread = self.use_thread
-            Trace.trace(25, "get_threaded_imp: extract time: %f" % (time.time() - t0,))
+            use_thread = self.__get_config_value(self.use_thread, copy_level)
         except:
             self.member_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -316,14 +298,7 @@ class ConfigurationDict:
     def get_copy_level(self):
         self.member_lock.acquire()
         try:
-            t0 = time.time()
-            if self.do_copies >= 2:
-                copy_level = copy.deepcopy(self.do_copies)
-            elif self.do_copies == 1:
-                copy_level = copy.copy(self.do_copies)
-            else:
-                copy_level = self.do_copies
-            Trace.trace(25, "get_copy_level: extract time: %f" % (time.time() - t0,))
+            copy_level = self.__get_config_value(self.do_copies, self.do_copies)
         except:
             self.member_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -424,7 +399,11 @@ class ConfigurationDict:
             except:
                 domains = None # Some error.
                 
-            if domains != None:
+            if type(domains) == types.DictType:
+                #Add an empty list where we expect it if there isn't one.
+                if not domains.has_key('valid_domains'):
+                    domains['valid_domains'] = []
+                
                 cached_domains = {}
                 #Put the domains into the reply ticket.
                 cached_domains['domains'] = domains
@@ -444,6 +423,12 @@ class ConfigurationDict:
                 self.member_lock.acquire()
                 self.cached_domains = cached_domains
                 self.member_lock.release()
+            elif domains:
+                #If domains is python true, but not a dictionary, make a
+                # log entry.
+                message = "excpected 'domains' in the configuration to be" \
+                          " a dictionary not %s" % (type(domains),)
+                Trace.log(e_errors.ERROR, message)
                 
             Trace.trace(25, "_get_domains: extract time: %f" % (time.time() - t0,))
 
