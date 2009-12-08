@@ -101,7 +101,22 @@ import udp_client
 import file_utils
 import cleanUDP
 
+#Disabling USE_NEW_EVENT_LOOP wil cause encp to wait for an LM response,
+# before waiting for a mover.  With this set to true, it will wait for
+# both the LM response and the mover control connection simultaniously.
+#False matches the default behavior prior to 1.927.  True, is the new
+# desired value so that encp can handle multi-threaded library managers.
 USE_NEW_EVENT_LOOP = True
+#Revision 1.909 was the first with library manager client caching.
+USE_LMC_CACHE = True
+#Prior to 1.927, if the library manager failed to reply, encp treated it like
+# an error.  Starting with 1.927 and when USE_NEW_EVENT_LOOP is true; the
+# library manager not responding was treated like RESUBMITTING and not an
+# error.
+USE_LM_TIMEOUT = True
+#If a timeout error occurs before receiving a request, assign the blame
+# for the failure to the first uncompleted request in the work list.
+USE_FIRST_REQUEST = True
 
 #Hack for migration to report an error, instead of having to go to the log
 # file for every error.
@@ -2175,7 +2190,7 @@ def get_pac():
                                                   server_address = pac_addr)
         return __pac
 
-def get_lmc(library):
+def get_lmc(library, use_lmc_cache = True):
     global __lmc
     
     #If the shortname was supplied, make it the longname.
@@ -2184,11 +2199,18 @@ def get_lmc(library):
     else:
         lib = library
 
-    if __lmc and __lmc.server_name == lib:
-        return __lmc
+    #If we disable the use of using the cached library manager, we can
+    # simulate encp prior to revision 1.909.  In wait_for_message(), if
+    # USE_LM_TIMEOUT is true and transaction_id_list is not empty,
+    # __lmc is reset there only with the error occuring.  This allows us
+    # to avoid having to figure out here if the cached lmc is still valid
+    # or if the (IP, port) might have changed.
+    if USE_LMC_CACHE and use_lmc_cache:
+        if __lmc and __lmc.server_name == lib:
+            return __lmc
 
     csc = get_csc()
-
+    
     #Determine which IP and port to use.  By default it will use the standard
     # 'port' value from the configuration file.  However, if the configuration
     # key 'encp_port' exists then this port will be used.
@@ -5306,6 +5328,20 @@ def wait_for_message(listen_socket, lmc, work_list,
             control_socket = mover_handshake_response[0]
             data_path_socket = mover_handshake_response[1]
             response_ticket = mover_handshake_response[2]
+    elif USE_LM_TIMEOUT and transaction_id_list: #We got nothing.
+        #We did not get any response back from the library manager.  Allow
+        # this situation to be an error.
+        message = "never received response from %s" % (lmc.server_name,)
+        Trace.log(e_errors.INFO, message)
+
+        response_ticket = {'status' : (e_errors.TIMEDOUT, lmc.server_name)}
+
+        control_socket = None 
+        data_path_socket = None
+
+        #If the library manager moved to a new host or port, we need to
+        # update the cached library mananger client.
+        get_lmc(lmc.server_name, use_lmc_cache = False)
     else:  #We got nothing.
         response_ticket = {'status' : (e_errors.RESUBMITTING, None)}
 
@@ -6669,6 +6705,16 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
 
     #error_dictionary must have 'status':(e_errors.XXX, "explanation").
     dict_status = error_dictionary.get('status', (e_errors.OK, None))
+
+    #If we did not get far enough in the processing for this to get the
+    # next request from the library manager, use the first one in the list
+    # that hasn't already been done to assign the blame to it.
+    if USE_FIRST_REQUEST and not request_dictionary.has_key('infile') and \
+           not request_dictionary.has_key('outfile'):
+        request_dictionary, unused, unused = get_next_request(request_list)
+        message = "using request %s instead for error processing" \
+                  % (request_dictionary['unique_id'],)
+        Trace.log(e_errors.INFO, message)
 
     #These fields need to be retrieved with possible defaults.  If the transfer
     # failed before encp could determine which transfer failed (aka failed
