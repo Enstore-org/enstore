@@ -698,9 +698,9 @@ def get_directory_name(filepath):
                 parent_id = f.readlines()[0].strip()
                 f.close()
             except (OSError, IOError), msg:
-                if msg.args[0] == errno.ENOENT and \
-                       (pnfs_agent_client_requested or \
-                        pnfs_agent_client_allowed):
+                #We only need to worry about pnfs_agent_client_allowed here,
+                # pnfs_agent_client_requested is addressed a few lines earlier.
+                if msg.args[0] == errno.ENOENT and pnfs_agent_client_allowed:
                     pac = get_pac()
                     parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5,
                                                   tries=6)
@@ -9204,14 +9204,16 @@ def write_to_hsm(e, tinfo):
                                                      [work_ticket],
                                                      transaction_id_list, e)
 
-            #If we connected with the mover, add these two checks.
-            # Skip them if we only heard from the LM.
             if control_socket:
+                #If we connected with the mover, add these two handle_retries()
+                # checks.
                 local_filename = request_ticket.get(
                     'wrapper', {}).get('fullname', None)
                 external_label = request_ticket.get(
                     'fc', {}).get('external_label', None)
-            else:
+            else: 
+                # Skip these two handle_retries() checks if we only heard from
+                # the library manager.
                 local_filename = None
                 external_label = None
 
@@ -9268,7 +9270,7 @@ def write_to_hsm(e, tinfo):
                     #Combine the dictionaries.
                     work_ticket = combine_dict(done_ticket,
                                                request_list[index])
-                    #Set completion status to successful.
+                    #Set completion status to failed.
                     work_ticket['completion_status'] = FAILURE
                     #Set the exit status value.
                     work_ticket['exit_status'] = exit_status
@@ -11179,7 +11181,7 @@ def read_from_hsm(e, tinfo):
                         #Combine the dictionaries.
                         work_ticket = combine_dict(done_ticket,
                                                    request_list[index])
-                        #Set completion status to successful.
+                        #Set completion status to failed.
                         work_ticket['completion_status'] = FAILURE
                         #Set the exit status value.
                         work_ticket['exit_status'] = exit_status
