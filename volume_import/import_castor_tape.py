@@ -271,7 +271,7 @@ class CastorTape:
         self.vd['capacity_bytes'] = volume_size
         self.vd['media_type'] = media
         self.vd['library'] = library
-	self.vd['volume_family'] = 'vo-'+vo_name+'.castor.cern',
+	self.vd['volume_family'] = 'vo-'+vo_name+'.castor.cern'
            
                     
     def create_volume_entry(self):
