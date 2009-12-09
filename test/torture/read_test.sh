@@ -20,7 +20,8 @@ then
     #scp fnpcsrv1:/grid/app/moibenko/bin/* $OSG_APP/moibenko/bin
     chmod 755 $OSG_APP/moibenko/bin/*
 fi
-scp fnpcsrv1:/grid/app/moibenko/bin/* $OSG_APP/moibenko/bin
+$OSG_GRID/globus/bin/globus-url-copy gsiftp://fnpcsrv1/grid/app/moibenko/bin/ file://$OSG_APP/moibenko/bin/
+#scp fnpcsrv1:/grid/app/moibenko/bin/* $OSG_APP/moibenko/bin
 if [ "${OSG_APP:-x}" != "x" ]
 then
     # check if there are any encp processes running
