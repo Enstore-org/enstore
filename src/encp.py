@@ -1283,10 +1283,24 @@ def requests_outstanding(request_list):
     files_left = 0
 
     for i in range(len(request_list)):
+        if request_list[i] == None:
+            #Ignore the item if None is in the list.  This will likely happen
+            # for the inner loop of write_to_hsm() all non-multiple copy
+            # writes.
+            #
+            # Multiple copy writes will have two tickets in the list
+            # for the inner loop of write_to_hsm(); one is the current request
+            # being worked on, the other is the original that needed to succeed
+            # in order for the multiple copies to be considered for writing.
+            continue
         completion_status = request_list[i].get('completion_status', None)
         if completion_status == None:
-            if did_original_succeed(request_list, i):
-                #Don't worry about copies when the original failed.
+            if request_list[i].get('copy', None) != None:
+                if did_original_succeed(request_list, i):
+                    #Don't worry about copies when the original failed.
+                    files_left = files_left + 1
+            else:
+                #This is an original copy.
                 files_left = files_left + 1
 
     return files_left
@@ -8688,7 +8702,7 @@ def submit_write_request(work_ticket, encp_intf):
               (1, time.time() - submit_write_request_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-        
+
     return ticket, lmc
 
 ############################################################################
@@ -9174,7 +9188,15 @@ def write_to_hsm(e, tinfo):
         if not e_errors.is_ok(work_ticket):
             return work_ticket
 
-        while requests_outstanding([work_ticket]):
+        #We could just set original_ticket to whatever get_original_request()
+        # returns.  It is None in the same cases as the else clause.
+        # However, this short cuircuts looping over the entire list of files.
+        if work_ticket.get('copy', None):
+            original_ticket = get_original_request(request_list, index)
+        else:
+            original_ticket = None
+
+        while requests_outstanding([work_ticket, original_ticket]):
 
             #Wait for all possible messages or connections.
             request_ticket, control_socket, data_path_socket = \
