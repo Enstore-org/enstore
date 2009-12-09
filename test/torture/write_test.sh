@@ -25,17 +25,19 @@ then
     #scp fnpcsrv1:/grid/app/moibenko/bin/* $OSG_APP/moibenko/bin
     chmod 755 $OSG_APP/moibenko/bin/*
 fi
- 
-scp fnpcsrv1:/grid/app/moibenko/bin/* $OSG_APP/moibenko/bin
+$OSG_GRID/globus/bin/globus-url-copy gsiftp://fnpcsrv1/grid/app/moibenko/bin/ file://$OSG_APP/moibenko/bin/ 
+#scp fnpcsrv1:/grid/app/moibenko/bin/* $OSG_APP/moibenko/bin
 echo `ls -l $OSG_APP/moibenko/bin`
 
 . $OSG_APP/moibenko/config/setup-enstore
 pnfs_path=''
-if [ "${OSG_DATA:-x}" = "x" ];
+#if [ "${OSG_DATA:-x}" = "x" ];
+if [ "${OSG_WN_TMP:-x}" = "x" ];
 then 
     data=''
 else
-    data=${OSG_DATA}/enstore_w_test
+    data=${OSG_WN_TMP}/enstore_w_test
+    #data=${OSG_DATA}/enstore_w_test
 fi
 #echo OSG_APP is ${OSG_APP}
 #echo OSG_DATA is ${OSG_DATA}
