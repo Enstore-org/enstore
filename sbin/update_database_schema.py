@@ -17,6 +17,7 @@ LOCATION_OF_XML_FILES="databases/schemas/xml"
 LOCATION_OF_DDL_FILES="databases/schemas/ddl"
 
 def get_command_output(command):
+    print_message("Executing command %s"%(cmd,))
     child = os.popen(command)
     data  = child.read()
     err   = child.close()
@@ -105,36 +106,36 @@ if __name__ == "__main__":
     dbhost = server.get("dbhost","localhost")
     if options.host:
         dbhost=options.host
+    if options.port:
+        dbport=options.port
     # get the schema 
     diff_file="%s_diff.sql"%(dbname,)
+    diff_file_tmp="%s_diff_tmp.sql"%(dbname,)
     f=open("schema.xml","w")
-    f.write(get_command_output("downloadXml --dbms=postgres --host=%s --dbname=%s --port=%d --user=%s"%(dbhost,dbname,dbport,dbuser,)))
+    cmd="downloadXml --dbms=postgres --host=%s --dbname=%s --port=%d --user=%s"%(dbhost,dbname,dbport,dbuser,)
+    f.write(get_command_output(cmd))
     f.close()
-
-    #f=open("schema_diff_create.sql","w")
-    #f.write(get_command_output("diffxml2ddl --dbms=postgres %s schema.xml | grep -v ALTER"%(schema_file,)))
-    #f.close()
-
-    #cmd="diffxml2ddl --dbms=postgres %s schema.xml | grep -v ALTER > schema_diff_create.sql"%(schema_file,)
-    #rc=os.system(cmd)
-    #if rc != 0 :
-    #    print_error("rc=%d failed to execute %s"%(rc,cmd))
-    #    sys.exit(1)
-    
-
-    #f=open("schema_diff_alter.sql","w")
-    #f.write(get_command_output("diffxml2ddl --dbms=postgres %s schema.xml | grep ALTER"%(schema_file,)))
-    #f.close()
-
-    #cmd="diffxml2ddl --dbms=postgres %s schema.xml | grep ALTER > schema_diff_alter.sql"%(schema_file,)
-    cmd="diffxml2ddl --dbms=postgres %s schema.xml > %s "%(schema_file,diff_file,)
-
+    #
+    # produce diff file
+    #
+    cmd="diffxml2ddl --dbms=postgres %s schema.xml > %s "%(schema_file,diff_file_tmp,)
+    print cmd
     if (os.system(cmd)):
         print_error("failed to execute %s"%(cmd))
         sys.exit(1)
-
-    #os.system("cat schema_diff_create.sql schema_diff_alter.sql > %s"%(diff_file,))
-
+    #
+    # move ALTER at the end 
+    #
+    no_alter_file="%s_diff_1.sql"%(dbname,)
+    alter_file="%s_diff_2.sql"%(dbname,)
+    cmd="cat %s | grep -v ALTER > %s"%(diff_file_tmp,no_alter_file,)
+    os.system(cmd)
+    cmd="cat %s | grep ALTER > %s"%(diff_file_tmp,alter_file,)
+    os.system(cmd)
+    cmd="cat %s %s > %s"%(no_alter_file,alter_file,diff_file,)
+    if (os.system(cmd)):
+        print_error("failed to execute %s"%(cmd))
+        sys.exit(1)
     update_file="%s_update.sql"%(dbname,)
     # take care of sequences, types, triggers and functions
     cmd="cat %s/%s_header.sql %s  %s/%s_types.sql %s/%s_sequences.sql %s/%s_functions.sql %s/%s_triggers.sql > %s "%(ddl_directory_path,
@@ -150,8 +151,9 @@ if __name__ == "__main__":
                                                                                                                      dbname,
                                                                                                                      update_file,)
     os.system(cmd)
-    #os.unlink("schema_diff_alter.sql")
-    #os.unlink("schema_diff_create.sql")
+    os.unlink(alter_file)
+    os.unlink(no_alter_file)
+    os.unlink(diff_file_tmp)
     os.unlink("schema.xml")
     os.unlink(diff_file)
     print_message("successfully created diff DDL file: %s"%(update_file,))
