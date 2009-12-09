@@ -101,6 +101,15 @@ import udp_client
 import file_utils
 import cleanUDP
 
+### The following constants:
+###     USE_NEW_EVENT_LOOP
+###     USE_LMC_CACHE
+###     USE_LM_TIMEOUT
+###     USE_FIRST_REQUEST
+### are not meant to be modified by the rest of the code.  They are only
+### intended to be used by a developer/tester to intentionally "break"
+### encp for a particular test.
+
 #Disabling USE_NEW_EVENT_LOOP wil cause encp to wait for an LM response,
 # before waiting for a mover.  With this set to true, it will wait for
 # both the LM response and the mover control connection simultaniously.
