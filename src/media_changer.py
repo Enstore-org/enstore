@@ -39,6 +39,8 @@ import pprint
 import re
 import subprocess
 import copy
+import select
+import errno
 
 # enstore imports
 import configuration_client
@@ -1369,6 +1371,23 @@ class STK_MediaLoader(MediaLoaderMethods):
             (ut, st,cut, cst,now) = os.times()
             return (now-begin, now)
 
+    #Kill the process with pid, use cmd as the command string that is
+    # getting killed for logging purposes.
+    def kill_it(self, pid, cmd):
+        message = "killing %d => %s" % (pid, cmd)
+	print timeofday.tod(), message
+	Trace.trace(e_errors.INFO, message)
+	os.kill(pid,signal.SIGTERM)
+	time.sleep(1)
+	p, r = os.waitpid(pid,os.WNOHANG)
+	if p == 0:
+	    message = "kill -9ing %d => %s" % (pid, cmd)
+	    print timeofday.tod(), message
+	    Trace.trace(e_errors.INFO, message)
+	    os.kill(pid, signal.SIGKILL)
+	    time.sleep(2)
+	    p, r = os.waitpid(pid,os.WNOHANG)
+
     # execute a stk cmd_proc command, but don't wait forever for it to complete
     #mostly stolen from Demo/tkinter/guido/ShellWindow.py - spawn function
     def timed_command(self,cmd,min_response_length=0,timeout=60):
@@ -1436,41 +1455,77 @@ class STK_MediaLoader(MediaLoaderMethods):
             while active<timeout:
                 p,r = os.waitpid(pid,os.WNOHANG)
                 if p!=0:
+		    #When we detect that the process has exited, leave
+		    # the loop.  This allows us to avoid the ETIMEDOUT
+		    # and re-raised select errors.
                     break
 	        #We need to start reading this now for really long responses.
 		# Otherwise, the buffer fills up with the child waiting
 		# for the parent to read something from the full buffer.
 		# And the parent waits for the child to finish.
-	        msg=os.read(c2pread,2000)
-		if msg:
+		wait_duration = max(timeout - active, 0)
+		try:
+		    r, w, x = select.select([c2pread], [], [], wait_duration)
+		except (select.error, OSError, IOError), msg:
+		    Trace.log(79, "select error in timed_command(): %s" % \
+			      (str(msg),))
+		    if msg.args[0] in [errno.EINTR]:
+		        r, w, x = [], [], []
+			#The process was interupted by a signal; we need
+			# to keep it going.
+			active = time.time() - start
+		        continue
+		    else:
+		        #We want to jump to the error handling code.
+		        raise sys.exc_info()[0], sys.exc_info()[1], \
+			      sys.exc_info()[2]
+			
+		#If nothing was received, we want to wait again instead of
+		# falling into the os.read().  If the robot side hangs
+		# without closing the pipe we can timeout in select(), but
+		# not read().
+		if c2pread not in r:
+		    active = time.time() - start
+		    time.sleep(1)
+		    continue
+	        raw_msg = os.read(c2pread, 2000)
+		if raw_msg:
 		    if self.DEBUG:
-		        print msg,
-		    message = message+msg
+		        print raw_msg,
+		    message = message + raw_msg
 		    #Need to reset the timeout period.
 		    start = time.time()
 		    active = 0
 		else:
-		    if msg == '':
+		    if raw_msg == '':
 		        blanks = blanks+1
 		    active = time.time() - start
 		    time.sleep(1)
             else:
-                msg="killing %d => %s" % (pid,cmd)
-                print timeofday.tod(),msg
-                Trace.trace(e_errors.INFO,msg)
-                os.kill(pid,signal.SIGTERM)
-                time.sleep(1)
-                p,r = os.waitpid(pid,os.WNOHANG)
-                if p==0:
-                    msg="kill -9ing %d => %s" % (pid,cmd)
-                    print timeofday.tod(),msg
-                    Trace.trace(e_errors.INFO,msg)
-                    os.kill(pid,signal.SIGKILL)
-                    time.sleep(2)
-                    p,r = os.waitpid(pid,os.WNOHANG)
+	        #We want to jump to the error handling code.
+	        raise select.error(errno.ETIMEDOUT, None)
+               
+	except (KeyboardInterrupt, SystemExit):
+	    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
+	    #Log the original error.
             exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "timed_command wait for child failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
+	    message = "timed_command wait for child failed doing: %s" % (cmd,)
+            Trace.log(e_errors.ERROR, message)
+	    Trace.handle_error(exc, msg, tb)
+	    del tb  #avoid cyclic references
+
+	    #Make sure to clean up after ourselves, so kill the forked process.
+	    try:
+	        self.kill_it(pid, cmd)
+	    except (KeyboardInterrupt, SystemExit):
+	        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+	    except:
+	        message = "Failed to kill %d: %s: %s" % (pid, cmd,
+							 sys.exc_info()[1])
+		Trace.log(e_errors.ERROR, message)
+
+	    #Close the socket and return.
 	    os.close(c2pread)
             return -1,[], self.delta_t(mark)[0]
 
@@ -1494,17 +1549,20 @@ class STK_MediaLoader(MediaLoaderMethods):
 	  ntries=ntries+1
           #while blanks<2 and nread<maxread:
 	  while nread<maxread:
-            msg=os.read(c2pread,2000)
-	    message = message + msg
-	    if msg:
+	    #We should not need to use select() here, since the sending
+	    # process is known to have exited, if there is no more data
+	    # we know we have it all.
+            raw_msg=os.read(c2pread,2000)
+	    message = message + raw_msg
+	    if raw_msg:
 	        if self.DEBUG:
-		    print msg,
+		    print raw_msg,
             nread = nread+1
-            if msg == '':
+            if raw_msg == '':
                 blanks = blanks+1
 #	    if self.DEBUG:
 #	        nl=0
-#		ml=string.split(msg,'\012')
+#		ml=string.split(raw_msg,'\012')
 #		for l in ml:
 #                   nl=nl+1
 #		   print "nread=",nread, "line=",nl, l
