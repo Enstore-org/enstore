@@ -28,7 +28,7 @@ def get_command_output(command):
 def print_message(text):
     sys.stdout.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : " +text+"\n")
     sys.stdout.flush()
-    
+
 def print_error(text):
     sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : " +text+"\n")
     sys.stderr.flush()
@@ -43,8 +43,8 @@ def help():
     txt=txt+"This script attempts to dowload database schema, compare it with schema \n"
     txt=txt+"stored in CVS and produce a difference DDL file that needs to be applied to \n"
     txt=txt+"database."
-    
-      
+
+
     return txt
 
 name_to_servermap = {
@@ -58,7 +58,7 @@ def get_server_name(name):
     server=name_to_servermap.get(name,None)
     if not server:
         txt="Unknown database name is specified: %s\n"%(name)
-        txt=txt+"Known databases : [" 
+        txt=txt+"Known databases : ["
         for db in name_to_servermap.keys():
             txt=txt+db+", "
         txt=txt[:-2]
@@ -85,13 +85,17 @@ if __name__ == "__main__":
         sys.exit(1)
     dbname=args[0]
     filename=dbname+".xml"
-    schema_file=os.path.join(ENSTORE_DIR,LOCATION_OF_XML_FILES)
-    schema_file=os.path.join(schema_file,filename)
+    schema_file=os.path.join(ENSTORE_DIR,
+                             LOCATION_OF_XML_FILES,
+                             schema_file,
+                             filename)
     if not os.access(schema_file, os.F_OK):
         print_error("schema file (",schema_file,")is not found ")
         sys.exit(1)
-    ddl_directory_path=os.path.join(ENSTORE_DIR,LOCATION_OF_DDL_FILES)
-    ddl_directory_path=os.path.join(ddl_directory_path,dbname)
+    ddl_directory_path=os.path.join(ENSTORE_DIR,
+                                    LOCATION_OF_DDL_FILES,
+                                    ddl_directory_path,
+                                    dbname)
     if not os.access(ddl_directory_path, os.F_OK):
         print_error("ddl directory (",ddl_directory_path,")is not found ")
         sys.exit(1)
@@ -108,7 +112,7 @@ if __name__ == "__main__":
         dbhost=options.host
     if options.port:
         dbport=options.port
-    # get the schema 
+    # get the schema
     diff_file="%s_diff.sql"%(dbname,)
     diff_file_tmp="%s_diff_tmp.sql"%(dbname,)
     f=open("schema.xml","w")
@@ -124,7 +128,7 @@ if __name__ == "__main__":
         print_error("failed to execute %s"%(cmd))
         sys.exit(1)
     #
-    # move ALTER at the end 
+    # move ALTER at the end
     #
     no_alter_file="%s_diff_1.sql"%(dbname,)
     alter_file="%s_diff_2.sql"%(dbname,)
