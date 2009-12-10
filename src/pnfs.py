@@ -1400,26 +1400,27 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         #Munge the mount point and the directories.  First check if the two
         # paths can be munged without modification.
-        if os.access(os.path.join(search_path, filepath), os.F_OK):
+        if file_utils.e_access(os.path.join(search_path, filepath), os.F_OK):
             filepath = os.path.join(search_path, filepath)
         #Then check if removing the last compenent of the mount point path
         # (search_path) will help when munged.
-        elif os.access(os.path.join(os.path.dirname(search_path), filepath),
-                       os.F_OK):
+        elif file_utils.e_access(
+            os.path.join(os.path.dirname(search_path), filepath), os.F_OK):
             filepath = os.path.join(os.path.dirname(search_path), filepath)
         #Lastly, remove the first entry in the file path before munging.
-        elif os.access(os.path.join(search_path, filepath.split("/", 1)[1]),
-                       os.F_OK):
+        elif file_utils.e_access(
+            os.path.join(search_path, filepath.split("/", 1)[1]), os.F_OK):
             filepath = os.path.join(search_path, filepath.split("/", 1)[1])
         #If the path is "/pnfs/fs" try inserting "usr".
         elif os.path.basename(search_path) == "fs" and \
-             os.access(os.path.join(search_path, "usr", filepath), os.F_OK):
+             file_utils.e_access(os.path.join(search_path, "usr", filepath),
+                                 os.F_OK):
             filepath = os.path.join(search_path, "usr", filepath)
         else:
             #One last thing to try, if an admin path is found, try it.
             for amp in get_enstore_admin_mount_point(): #amp = Admin Mount Path
                 try_path = os.path.join(amp, filepath)
-                if os.access(try_path, os.F_OK):
+                if file_utils.e_access(try_path, os.F_OK):
                     filepath = try_path
                     break
             else:
@@ -1989,8 +1990,72 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # report the original file.
         self.verify_existance(use_filepath)
         fname = self.fset_file(use_filepath, size)
-        f = file_utils.open(fname,'w')
-        f.close()
+        try:
+            f = file_utils.open(fname,'w')
+            f.close()    
+        except (OSError, IOError), msg:
+            if msg.args[0] == errno.ENAMETOOLONG:
+                Trace.log(e_errors.ERROR, "fset[1]")
+                #If the .(fset) filename is too long for PNFS, then we need
+                # to make a shorter temproary link to it and try it again.
+                
+                #First, using .(access)() paths access the directory for
+                # the file stored in use_filepath.
+                try_dir = self.get_pnfs_db_directory(use_filepath)
+                try_dir_pnfsid = self.get_id(os.path.dirname(use_filepath))
+                try_dir = self.access_file(try_dir, try_dir_pnfsid)
+
+                Trace.log(e_errors.ERROR, "fset[2]")
+                #Second, create the .(access)() path to the inode record
+                # for the filename stored in use_filepath.
+                try_pnfsid = self.get_id(use_filepath)
+                try_path = self.access_file(try_dir, try_pnfsid)
+
+                Trace.log(e_errors.ERROR, "fset[3]")
+                #Third, create a new link name using the .(access)()
+                # directory path.
+                short_tmp_name = ".%s_%s" % (os.uname()[1], os.getpid())
+                link_name = os.path.join(try_dir, short_tmp_name)
+
+                Trace.log(e_errors.ERROR, "fset[4]")
+                #Get the existing link count.
+                link_count = file_utils.get_stat(try_path)[stat.ST_NLINK]
+
+                Trace.log(e_errors.ERROR, "fset[5]")
+                #Make the temporary link using the sorter name.
+                try:
+                    os.link(try_path, link_name)
+                except (OSError, IOError), msg:
+                    if msg.args[0] == errno.EEXIST \
+                       and file_utils.get_stat(link_name)[stat.ST_NLINK] == link_count + 1:
+                        # If the link count increased by one, we succeded
+                        # even though there was an EEXIST error.  This
+                        # situation can occur over NFS V2.
+                        pass
+                    else:
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+
+                Trace.log(e_errors.ERROR, "fset[6]")
+                #Set the new file size.
+                try:
+                    fname = self.fset_file(link_name, size)
+                    f = file_utils.open(fname, "w")
+                    f.close()
+                except (OSError, IOError), msg:
+                    os.unlink(link_name)
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
+
+                Trace.log(e_errors.ERROR, "fset[7]")
+                #Cleanup the temporary link.
+                os.unlink(link_name)
+
+                Trace.log(e_errors.ERROR, "fset[8]")
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            Trace.log(e_errors.ERROR, "fset[9]")
 
         #Update the times.
         if filepath:
@@ -4004,7 +4069,7 @@ class File:
 				else:	# corrupted L4
 					self.volume = "corrupted L4"
 					self.location_cookie = ""
-					self.size = 0
+					self.size = None
 					self.file_family = ""
 					self.volmap = ""
 					self.pnfs_id = "corrputed L4"
@@ -4022,7 +4087,7 @@ class File:
                         except IOError:
 				self.volume = ""
 				self.location_cookie = ""
-				self.size = 0
+				self.size = None
 				self.file_family = ""
 				self.volmap = ""
 				self.pnfs_id = ""
@@ -4162,7 +4227,8 @@ class File:
 	# consistent() -- to see if data is consistent
 	def consistent(self):
 		# required field
-		if not self.bfid or not self.volume or not self.size \
+		if not self.bfid or not self.volume \
+                        or self.size == None  \
 			or not self.location_cookie \
 			or not self.file_family or not self.path \
 			or not self.pnfs_id or not self.bfid \
