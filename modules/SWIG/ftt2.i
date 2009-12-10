@@ -96,6 +96,17 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
     }
 }
 
+/* global variables need varout, not just out with swig 1.3 */
+%typemap (varout) char *[] {
+    int len, i;
+    len = 0;
+    while ($1[len]) len++;
+    $result = PyList_New(len);
+    for (i = 0; i < len; i++) {
+	PyList_SetItem($result, i, PyString_FromString($1[i]));
+    }
+}
+
 %{
 /* Include in the generated wrapper file */
 typedef char * cptr;
@@ -130,7 +141,7 @@ typedef char * cptr;
     for (i = 0; i < len; i++) {
 	PyList_SetItem($target, i, PyString_FromString($source[i]));
     }
-}    
+}
 
 %typedef char * cptr;
 
