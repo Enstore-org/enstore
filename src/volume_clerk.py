@@ -14,6 +14,7 @@ import errno
 import string
 import socket
 import select
+import threading
 
 # enstore imports
 import hostaddr
@@ -59,6 +60,10 @@ MIN_LEFT=enstore_constants.MIN_LEFT
 MY_NAME = enstore_constants.VOLUME_CLERK   #"volume_clerk"
 MAX_CONNECTION_FAILURE = 5
 
+MAX_THREADS = 50 
+MAX_CONNECTIONS=20
+
+
 class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### This class of Volume Clerk methods should only be readonly operations.
     ### This class is inherited by Info Server (to increase code reuse)
@@ -100,6 +105,9 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         db_host = dbInfo['db_host']
         db_port = dbInfo['db_port']
 
+        self.max_connections = dbInfo.get('max_connections',MAX_CONNECTIONS)
+        self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
+
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening volume database using edb.VolumeDB")
         try:
@@ -133,6 +141,19 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             self.sgdb.rebuild_sg_count()
 
         return
+
+    def invoke_function(self, function, args=()):
+        c = threading.activeCount()
+        Trace.trace(5, "threads %s"%(c,))
+        if c < self.max_threads:
+            dispatching_worker.run_in_thread(thread_name=None,
+                                             function=function,
+                                             args=args,
+                                             after_function=self._done_cleanup)
+        else:
+            Trace.log(e_errors.WARNING, "Run out of threads for %s"%(function.__name__,))
+            apply(function,args)
+            self._done_cleanup()
     
     ####################################################################
 
@@ -288,9 +309,12 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # has_undeleted_file(vol) -- check if vol has undeleted file
 
     def has_undeleted_file(self, vol):
-        q = "select * from file, volume where volume.label = '%s' and volume.id = file.volume and file.deleted <> 'y' limit 1"%(vol)
-        res = self.volumedb_dict.db.query(q)
-        return res.ntuples()
+        q = "select (unknown_files+active_files) from volume where label = '%s'"%(vol)
+        res = self.volumedb_dict.query_getresult(q)
+        if len(res)>0:
+            return res[0][0]
+        else:
+            return 0
 
     # check if quota is enabled in the configuration #### DONE
     def quota_enabled2(self):
@@ -310,12 +334,12 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     # it is backward compatible with old quota_enabled()
     def quota_enabled(self):
-        q = "select value from option where key = 'quota';"
-        state = self.volumedb_dict.db.query(q).getresult()[0][0]
+        q = "select value from option where key = 'quota'"
+        state = self.volumedb_dict.query_getresult(q)[0][0]
         if state != "enabled":
             return None
         q = "select library, storage_group, quota, significance from quota;"
-        res = self.volumedb_dict.db.query(q).dictresult()
+        res = self.volumedb_dict.query_dictresult(q)
         libraries = {}
         order = {'bottom':[], 'top':[]}
         for i in res:
@@ -382,12 +406,14 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         for i in self.__dict__.keys():
             ticket['state'][i] = `self.__dict__[i]`
         ticket['status'] = (e_errors.OK, None)
+        
         self.reply_to_caller(ticket)
         return
 
     # __history(vol) -- show state change history of vol
     def __history(self, vol):
-        q = "select time, label, state_type.name as type, state.value \
+        q = "select to_char(time,'YYYY-MM-DD HH24:MI:SS'), \
+        label, state_type.name as type, state.value \
              from state, state_type, volume \
              where \
                 label like '%s%%' and \
@@ -395,7 +421,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 state.type = state_type.id \
              order by time desc;"%(vol)
         try:
-            res = self.volumedb_dict.db.query(q).dictresult()
+            res = self.volumedb_dict.query_dictresult(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             message = '__history(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
@@ -481,7 +507,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     # get the remaining bytes value for this volume #### DONE
     def get_remaining_bytes(self, ticket):
-
+        saved_reply_address = ticket.get('r_a', None)
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
@@ -494,17 +520,19 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             return #extract_value_from_ticket handles its own errors.
 
         ticket['remaining_bytes'] = remaining_bytes
+        ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
         return
     
     # get the current database volume about a specific entry #### DONE
     def inquire_vol(self, ticket):
-
+        saved_reply_address = ticket.get('r_a', None)
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
 
         record["status"] = (e_errors.OK, None)
+        record['r_a'] = saved_reply_address
         self.reply_to_caller(record)
 
     #### DONE, probably not completely
@@ -584,7 +612,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         q = q + ' order by label;'
 
         try:
-            res = self.volumedb_dict.db.query(q).dictresult()
+            res = self.volumedb_dict.query_dictresult(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             mesg = 'get_vols(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
@@ -693,13 +721,13 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         q = q + ' order by label;'
 
         try:
-            res = self.volumedb_dict.db.query(q).dictresult()
+            res = self.volumedb_dict.query_dictresult(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             mesg = 'get_vols(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, mesg)
             res = []
-        reply['volumes'] = res
+        reply['volumes'] = edb.sanitize_datetime_values(res)
 
         return reply
 
@@ -781,13 +809,13 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             order by label;"
 
         try:
-            res = self.volumedb_dict.db.query(q).dictresult()
+            res = self.volumedb_dict.query_dictresult(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             mesg = '__get_pvols(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, mesg)
             res = []
-        reply['volumes'] = res
+        reply['volumes'] = edb.sanitize_datetime_values(res)
 
         return reply
 
@@ -909,7 +937,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     def __get_vol_list(self):
         q = "select label from volume order by label;"
         try:
-            res2 = self.volumedb_dict.db.query(q).getresult()
+            res2 = self.volumedb_dict.query_getresult(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             message = '__get_vol_list(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
@@ -995,7 +1023,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             "  and f2.bfid = migration.dst_bfid;" % (src_vol, dst_vol)
 
         try:
-            ticket['migrated_files'] = self.volumedb_dict.db.query(q).dictresult()
+            ticket['migrated_files'] = edb.sanitize_datetime_values(self.volumedb_dict.query_dictresult(q))
             ticket['status'] = (e_errors.OK, None)
         except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
             ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
@@ -1023,7 +1051,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             "  and f2.bfid = file_copies_map.alt_bfid;" % (src_vol, dst_vol)
 
         try:
-            ticket['duplicated_files'] = self.volumedb_dict.db.query(q).dictresult()
+            ticket['duplicated_files'] = edb.sanitize_datetime_values(self.volumedb_dict.query_dictresult(q))
             ticket['status'] = (e_errors.OK, None)
         except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
             ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
@@ -1051,7 +1079,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             q = "select id from volume where label = '%s'" % (vol,)
 
             try:
-                res = self.volumedb_dict.db.query(q).getresult()
+                res = self.volumedb_dict.query_getresult(q)
 
                 if len(res) == 0:
                     ticket['status'] = (e_errors.NOVOLUME,
@@ -1086,10 +1114,10 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
                                         ticket['dst_vol_id'])
 
         try:
-            res = self.volumedb_dict.db.query(q).dictresult()
+            res = self.volumedb_dict.query_dictresult(q)
 
             ticket['status'] = (e_errors.OK, None)
-            ticket['migration_history'] = res
+            ticket['migration_history'] = edb.sanitize_datetime_values(res)
         except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
             ticket['status'] = (e_errors.DATABASE_ERROR,
                       "Failed to update migration_history for %s due to: %s" \
@@ -1121,7 +1149,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
              lookup_vol('%s'), lookup_stype('%s'), '%s');" % \
              (volume, type, value)
         try:
-	    self.volumedb_dict.db.query(q)
+	    self.volumedb_dict.insert(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             message = "change_state(): "+str(exc_type)+' '+str(exc_value)+' query: '+q
@@ -1296,7 +1324,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                     file_family, wrapper, vito_q)
         Trace.trace(20, "start query: %s"%(q))
         try:
-            res = self.volumedb_dict.db.query(q).dictresult()
+            res = self.volumedb_dict.query_dictresult(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             message = 'find_matching_volume(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
@@ -1496,7 +1524,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return e_errors.ERROR, error_msg
 
         q = "select id from volume where label = '%s';" % (vol)
-        res = self.volumedb_dict.db.query(q).getresult()
+        res = self.volumedb_dict.query_getresult(q)
         if not res:
             message = 'volume "%s" does not exist' % (vol)
             Trace.log(e_errors.ERROR, message)
@@ -1506,7 +1534,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
         q = "delete from file where volume = %d;"%(vid)
         try:
-            res = self.volumedb_dict.db.query(q)
+            self.volumedb_dict.delete(q)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             message = '__erase_volume(): '+str(exc_type)+' '+str(exc_value)+' '+ q
@@ -1677,7 +1705,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                         volume.label = '%s' \
                         order by time desc limit 1;"%(renamed)
                 try:
-                    res = self.volumedb_dict.db.query(q).dictresult()
+                    res = self.volumedb_dict.query_dictresult(q)
                     if res:
                         self.change_state(vol, 'write_protect', res[0]['value'])
                         message = 'volume "%s" has been recycled' % (vol,)
@@ -2150,6 +2178,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     # Get the next volume that satisfy criteria #### DONE
     def next_write_volume (self, ticket):
         Trace.trace(20, "next_write_volume %s" % (ticket,))
+        saved_reply_address = ticket.get('r_a', None)
             
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = udp_common.r_eval(vol_veto)
@@ -2197,6 +2226,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                     Trace.log(e_errors.INFO, "Assigning fake volume %s from storage group %s to library %s, volume family %s"
                       % (vol['external_label'], pool, library, vol_fam))
                     vol["status"] = (e_errors.OK, None)
+                    vol['r_a'] = saved_reply_address
                     self.reply_to_caller(vol)
                 else:
                     message = "%s: no new volumes available [%s, %s]" \
@@ -2297,6 +2327,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                                     message)
             self.volumedb_dict[label] = vol  
             vol['status'] = (e_errors.OK, None)
+            vol['r_a'] = saved_reply_address
             self.reply_to_caller(vol)
             return
 
@@ -2361,7 +2392,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     ##This should really be renamed, it does more than set_remaining_bytes
     # update the database entry for this volume
     def set_remaining_bytes(self, ticket):
-
+        saved_reply_address = ticket.get('r_a', None)
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
@@ -2396,14 +2427,15 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             record['non_del_files'] = record['non_del_files'] + 1
             
         # record our changes
-        self.volumedb_dict[external_label] = record  
+        self.volumedb_dict[external_label] = record
+        record['r_a'] = saved_reply_address
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         return
 
     # decrement the file count on the volume #### DONE
     def decr_file_count(self, ticket):
-
+        saved_reply_address = ticket.get('r_a', None)
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
@@ -2415,12 +2447,13 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         record ["non_del_files"] = record["non_del_files"] - count
         self.volumedb_dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
+        record['r_a'] = saved_reply_address
         self.reply_to_caller(record)
         return
 
     # update the database entry for this volume #### DONE
     def update_counts(self, ticket):
-        
+        saved_reply_address = ticket.get('r_a', None)
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
@@ -2451,6 +2484,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         # record our changes
         self.volumedb_dict[external_label] = record  
         record["status"] = (e_errors.OK, None)
+        record['r_a'] = saved_reply_address
         self.reply_to_caller(record)
         return
 
@@ -2493,7 +2527,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
     # flag the database that we are now writing the system #### DONE
     def clr_system_inhibit(self, ticket):
-
+        saved_reply_address = ticket.get('r_a', None)
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             print "external_label:", external_label
@@ -2542,12 +2576,13 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             message = "system inhibit %d cleared for %s" \
                       % (position, external_label)
             Trace.log(e_errors.INFO, message)
+        record['r_a'] = saved_reply_address
         self.reply_to_caller(record)
         return
 
     # move a volume to a new library #### DONE
     def new_library(self, ticket):
-
+        saved_reply_address = ticket.get('r_a', None)
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
@@ -2564,12 +2599,13 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         Trace.log(e_errors.INFO, 'volume %s is assigned from library %s to library %s'%(external_label, old_library, new_library))
         # log to its history
         self.change_state(external_label, 'new_library', '%s -> %s'%(old_library, new_library))
+        record['r_a'] = saved_reply_address
         self.reply_to_caller(record)
         return
 
     # set system_inhibit flag #### DONE
     def set_system_inhibit(self, ticket, flag, index=0):
-
+        saved_reply_address = ticket.get('r_a', None)
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return ticket["status"] #extract_external_lable_from_ticket handles its own errors.
@@ -2590,6 +2626,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         self.change_state(external_label, 'system_inhibit_'+`index`, flag)
         record["status"] = (e_errors.OK, None)
         Trace.log(e_errors.INFO,external_label+" system inhibit set to "+flag)
+        record['r_a'] = saved_reply_address
         self.reply_to_caller(record)
         return record["status"]
 
@@ -2973,7 +3010,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                 ticket['dst_vol'], ticket['dst_vol_id'])
 
         try:
-            self.volumedb_dict.db.query(q)
+            self.volumedb_dict.insert(q)
 
             ticket['status'] = (e_errors.OK, None)
         except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
@@ -2998,7 +3035,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             (ticket['src_vol_id'], ticket['dst_vol_id'])
 
         try:
-            self.volumedb_dict.db.query(q)
+            self.volumedb_dict.insert(q)
 
             ticket['status'] = (e_errors.OK, None)
         except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:

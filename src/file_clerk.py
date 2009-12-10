@@ -610,8 +610,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
              where \
                  file.volume = volume.id and volume.label = '%s' \
              order by location_cookie;" % (external_label,)
-        db =  self.filedb_dict.pool.connection()
-        res = db.query(q).dictresult()
+        res = self.filedb_dict.query_dictresult(q)
         # convert to external format
         file_list = []
         for file_info in res:
