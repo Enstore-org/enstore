@@ -255,6 +255,7 @@ FULL = "full"                                #volume
 GENERATE_MESSAGES_FILE = "generate-messages-file"  #entv
 GET_ASSERTS = "get-asserts"                  #library
 GET_BFID = "get-bfid"                        #encp
+GET_BFIDS = "get-bfids"                      #encp
 GET_CACHE = "get-cache"                      #encp
 GET_CRCS = "get-crcs"                        #file
 GET_LAST_ALIVE = "get-last-alive"            #inquisitor
@@ -515,7 +516,7 @@ valid_option_list = [
     FIND_DUPLICATES,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GENERATE_MESSAGES_FILE,
-    GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_ALIVE,
+    GET_ASSERTS, GET_BFID, GET_BFIDS, GET_CACHE, GET_CRCS, GET_LAST_ALIVE,
     GET_LAST_LOGFILE_NAME,
     GET_LOGFILE_NAME, GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE,
     GET_REFRESH, GET_SUSPECT_VOLS, GET_UPDATE_INTERVAL, GET_WORK,
@@ -905,18 +906,17 @@ class Interface:
                                                opt_arg.get(VALUE_NAME, BLANK)))
                 arg = arg.replace("-", "_")
                 value = opt_arg.get(VALUE_USAGE, IGNORED)
-                                  
+
                 if value == REQUIRED:
                     has_value = has_value + "<" + arg + "> "
                 elif value == OPTIONAL:
                     has_value = has_value + "[" + arg + "] "
                 elif value == IGNORED and \
-                     opt_arg.get(DEFAULT_LABEL, None) != None:
+                     self.options[opts].get(VALUE_LABEL, None) != None:
                     #This case may be true for switches that take zero
                     # or more (unknown number of) arguments that are
                     # processed via intf.args.
-                    has_value = opt_arg[VALUE_LABEL]
-                    
+                    has_value = has_value + "[" + arg + "] "
 
             #Get and calculate various variables needed to format the output.
             # help_string - shorter than accessing the dictionary
