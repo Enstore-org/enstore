@@ -123,8 +123,15 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
             continue
 
         #If we want a specific type of pnfs path, ignore the others.
-        if path_type == FS and pnfs.is_normal_pnfs_path(mp):
-            continue
+        if path_type == FS:
+            if db_num == 0:
+                #If the admin mount point is /pnfs/fs/usr then
+                # is_normal_pnfs_path() does the correct thing, but if it is
+                # just /pnfs/fs, then we need this if statement to do the
+                # correct thing knowning the admin DB number is always zero.
+                pass
+            elif pnfs.is_normal_pnfs_path(mp):
+                continue
         elif path_type == NONFS and pnfs.is_admin_pnfs_path(mp):
             continue
         
@@ -145,7 +152,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
         # to know if it exists.  The path could be different
         # between two machines anyway.
         #afn =  Access File Name
-        afn = pnfs.access_file(mp, enstoredb_pnfsid)
+        afn = pnfs.access_file(mp, pnfsid)
 
         #Check layer 1 to get the bfid.
         try:
@@ -166,7 +173,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
 
                 if file_record['deleted'] == 'yes':
                     try:
-                        tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
+                        tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(pnfsid, mp)
                         #Deal with multiple possible matches.
                         if len(tmp_name_list) == 1:
                             #There is one known case where asking for layer
@@ -289,6 +296,44 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                     if pnfsid_mp == None:
                         continue
                     break
+            
+            else:
+                try:
+                    p =  pnfs.Pnfs(shortcut = True)
+                    tmp_name_list = p.get_path(enstoredb_pnfsid, mp)
+                    #Deal with multiple possible matches.
+                    if len(tmp_name_list) == 1:
+                        #There is one known case where asking for layer
+                        # 1 using the pnfsid and seperately using the
+                        # filename returned different values.  This
+                        # attempts to catch such situations.
+                        if db_num != 0 and pnfsid_db != db_num:
+                            continue
+                        alt_layer1_bfid = pnfs.get_layer_1(tmp_name_list[0])
+                        if alt_layer1_bfid != layer1_bfid:
+                            message = "conflicting layer 1 values " \
+                                      "(id %s, name %s) for %s" % \
+                                      (layer1_bfid, alt_layer1_bfid, pnfsid)
+                            raise OSError(errno.EBADF, message,
+                                          tmp_name_list[0])
+
+                    else:
+                        raise OSError(errno.EIO, "to many matches",
+                                      tmp_name_list)
+                except (OSError, IOError), detail:
+                    if detail.errno in [errno.EBADFD, errno.EIO]:
+                        raise OSError(errno.ENOENT, "orphaned file",
+                                      pnfsid)
+                    else:
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+
+
+            #To recap:
+            # By this point we found a file with the pnfsid that we are
+            # looking for.  However, the bfid in layer 1 didn't match the
+            # bfid we are looking for.
+
 
             #If we found the right bfid brand, we know the right pnfs system
             # was found.
@@ -296,7 +341,9 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
             filedb_brand = enstore_functions3.extract_brand(file_record['bfid'])
             if pnfs_brand and filedb_brand and pnfs_brand == filedb_brand:
                 if file_record['deleted'] == 'yes':
-                    return afn  #What else to do?
+                    raise OSError(errno.ENOENT,
+                                  replaced_error_string(layer1_bfid, bfid),
+                                  tmp_name_list[0])
 
                 possible_reused_pnfsid = possible_reused_pnfsid + 1
                 continue
@@ -368,19 +415,9 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
         if layer1_bfid and layer1_bfid != file_record['bfid']:
             #If this is the case that the bfids don't match,
             # also include this piece of information.
-            try:
-                layer1_time = int(enstore_functions3.strip_brand(layer1_bfid)[:-5])
-                bfid_time = int(enstore_functions3.strip_brand(file_record['bfid'])[:-5])
-            except (KeyError, ValueError, AttributeError, TypeError):
-                raise OSError(errno.EEXIST, "found different file",
-                              enstoredb_path)
-
-            if bfid_time < layer1_time:
-                raise OSError(errno.EEXIST, "replaced with newer file",
-                              enstoredb_path)
-            else:
-                raise OSError(errno.EEXIST, "replaced with another file",
-                              enstoredb_path)
+            raise OSError(errno.EEXIST,
+                          replaced_error_string(layer1_bfid, bfid),
+                          enstoredb_path)
 
         if possible_reused_pnfsid > 0:
             raise OSError(errno.EEXIST, "reused pnfsid",
@@ -513,3 +550,18 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
 
     return pnfs_path
 
+
+#Return the specific 'replaced with %s file" we want.
+def replaced_error_string(layer1_bfid, bfid):
+    #If this is the case that the bfids don't match,
+    # also include this piece of information.
+    try:
+        layer1_time = int(enstore_functions3.strip_brand(layer1_bfid)[:-5])
+        bfid_time = int(enstore_functions3.strip_brand(bfid)[:-5])
+    except (KeyError, ValueError, AttributeError, TypeError):
+        return "found different file"
+
+    if bfid_time < layer1_time:
+        return "replaced with newer file"
+    else:
+        return "replaced with another file"
