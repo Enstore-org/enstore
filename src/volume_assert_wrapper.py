@@ -7,6 +7,7 @@ different threads.
 
 import string
 import sys
+import thread
 
 import Trace
 
@@ -22,7 +23,7 @@ class VolumeAssert:
 	# eg. volume_assert("volume_assert --verbose 4 --volume TEST19")
 	def volume_assert(self, cmd):
 		self.exit_status = -10 #Reset this every time.
-		self.err_msgs = ""
+		self.err_msg = []
 
                 #Insert the command if it is not already there.
                 CMD = "volume_assert"
@@ -41,13 +42,13 @@ class VolumeAssert:
 				#return -10
 				res = -10  #Same as initial value.
 
-			self.err_msgs = self.my_volume_assert.err_msgs
+			self.err_msg = self.my_volume_assert.err_msg[thread.get_ident()]
 		except (KeyboardInterrupt, SystemExit):
 			Trace.logname = logname #Reset the log file name.
 			raise sys.exc_info()[0], sys.exc_info()[1], \
 			      sys.exc_info()[2]
 		except:
-			self.err_msgs = [{'status':(str(sys.exc_info()[0]),
+			self.err_msg = [{'status':(str(sys.exc_info()[0]),
                                                     str(sys.exc_info()[1]))}]
 			res = 1
 
