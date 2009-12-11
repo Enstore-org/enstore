@@ -14,7 +14,7 @@ import pprint
 #import select
 #import socket
 #import errno
-#import copy
+import copy
 #import types
 #import stat
 
@@ -58,52 +58,73 @@ def put_client_version():
     if get_file: version_string = version_string + get_file
     return version_string
 
-def setup_put_interface():
+#encp.encp_client_version = put_client_version
 
-    encp.EncpInterface.put = 1
-    
-    encp.EncpInterface.parameters = [
+class PutInterface(encp.EncpInterface):
+    #  define our specific parameters
+    user_parameters = [
         "<source file> [source file [...]] <destination directory>",
         ]
+    admin_parameters = user_parameters
+    parameters = user_parameters #gets overridden in __init__().
+    
+    def __init__(self, args=sys.argv, user_mode=0):
 
-    #encp.encp_client_version = put_client_version
+        #Get a copy, so we don't modifiy encp's Inferace class too.
+        self.encp_options = copy.deepcopy(self.encp_options)
 
-    try:
-        del encp.EncpInterface.encp_options[option.VOLUME]
-    except KeyError:
-        pass
-    try:
-        del encp.EncpInterface.encp_options[option.PUT_CACHE]
-    except KeyError:
-        pass
-    try:
-        del encp.EncpInterface.encp_options[option.OVERRIDE_RO_MOUNT]
-    except KeyError:
-        pass
-    try:
-        del encp.EncpInterface.encp_options[option.OVERRIDE_PATH]
-    except KeyError:
-        pass
-    try:
-        del encp.EncpInterface.encp_options[option.OVERRIDE_DELETED]
-    except KeyError:
-        pass
-    try:
-        del encp.EncpInterface.encp_options[option.GET_CACHE]
-    except KeyError:
-        pass
-    try:
-        del encp.EncpInterface.encp_options[option.GET_BFID]
-    except KeyError:
-        pass
-    try:
-        del encp.EncpInterface.encp_options[option.ECRC]
-    except KeyError:
-        pass
-    try:
-        del encp.EncpInterface.encp_options[option.COPY]
-    except KeyError:
-        pass
+        try:
+            del self.encp_options[option.VOLUME]
+        except KeyError:
+            pass
+        try:
+            del self.encp_options[option.PUT_CACHE]
+        except KeyError:
+            pass
+        try:
+            del self.encp_options[option.OVERRIDE_RO_MOUNT]
+        except KeyError:
+            pass
+        try:
+            del self.encp_options[option.OVERRIDE_PATH]
+        except KeyError:
+            pass
+        try:
+            del self.encp_options[option.OVERRIDE_DELETED]
+        except KeyError:
+            pass
+        try:
+            del self.encp_options[option.GET_CACHE]
+        except KeyError:
+            pass
+        try:
+            del self.encp_options[option.GET_BFID]
+        except KeyError:
+            pass
+        try:
+            del self.encp_options[option.ECRC]
+        except KeyError:
+            pass
+        try:
+            del self.encp_options[option.COPY]
+        except KeyError:
+            pass
+
+        encp.EncpInterface.__init__(self, args=args, user_mode=user_mode)
+        
+        self.put = 1
+
+        if self.args[-1] == "/dev/null":
+            pass  #If the output is /dev/null, this is okay.
+        elif not os.path.exists(self.args[-1]) or not os.path.isdir(self.args[-1]):
+            try:
+                message = "Last argument is not an output directory.\n"
+                sys.stderr.write(message)
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+
 
 """
 def finish_request(done_ticket, request_list, index):
@@ -181,9 +202,9 @@ def finish_request(done_ticket, request_list, index):
         return CONTINUE_FROM_BEGINNING
 """
 
-def writetape_from_hsm(e, tinfo):
+def writetape_to_hsm(e, tinfo):
 
-    Trace.trace(16,"writetape_from_hsm input_files=%s  output=%s  verbose=%s  "
+    Trace.trace(16,"writetape_to_hsm input_files=%s  output=%s  verbose=%s  "
                 "chk_crc=%s t0=%s" % (e.input, e.output, e.verbose,
                                       e.chk_crc, tinfo['encp_start_time']))
     
@@ -373,7 +394,7 @@ def writetape_from_hsm(e, tinfo):
             #            = 1 for continue
             #            = 2 for continue after retry
             what_to_do = encp.finish_request(request, request_list,
-                                        index)
+                                             index, e)
 
             #If on non-success exit status was returned from
             # finish_request(), keep it around for later.
@@ -454,11 +475,11 @@ def main(intf):
         encp.data_access_layer_requested = -1
         intf.verbose = 0
         
-    done_ticket = writetape_from_hsm(intf, tinfo)
+    done_ticket = writetape_to_hsm(intf, tinfo)
 
     return encp.final_say(intf, done_ticket)
     
-
+"""
 def do_work(intf):
     delete_at_exit.setup_signal_handling()
 
@@ -485,19 +506,16 @@ def do_work(intf):
         #Remove any zero-length files left haning around.  Also, return
         # a non-zero exit status to the calling program/shell.
         get.halt(1)
+"""
 
 if __name__ == '__main__':
 
-    setup_put_interface()
+    #setup_put_interface()
 
-    #First handle an incorrect command line.
-    #if len(sys.argv) < 4:
-    #    intf_of_encp = encp.EncpInterface(sys.argv, 1) #one = user
-    #    intf_of_encp.print_usage()
-    intf_of_encp = encp.EncpInterface(sys.argv, 0)
+    #intf_of_put = PutInterface(sys.argv, 0)
 
     """
-    if intf_of_encp.volume and \
+    if intf_of_put.volume and \
        ( not os.path.exists(sys.argv[-2]) or not os.path.isdir(sys.argv[-2]) \
          or not pnfs.is_pnfs_path(sys.argv[-2]) ):
         try:
@@ -508,6 +526,7 @@ if __name__ == '__main__':
         sys.exit(1)
     """
 
+    """
     if sys.argv[-1] == "/dev/null":
         pass  #If the output is /dev/null, this is okay.
     elif not os.path.exists(sys.argv[-1]) or not os.path.isdir(sys.argv[-1]):
@@ -517,8 +536,9 @@ if __name__ == '__main__':
         except IOError:
             pass
         sys.exit(1)
+    """
 
-    #print encp.format_class_for_print(intf_of_encp, "intf_of_encp")
+    #print encp.format_class_for_print(intf_of_put, "intf_of_put")
 
-    delete_at_exit.quit(do_work(intf_of_encp))
-
+    #delete_at_exit.quit(do_work(intf_of_put))
+    delete_at_exit.quit(encp.start(encp.do_work, main, PutInterface))

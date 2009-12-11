@@ -9,34 +9,37 @@ import thread
 
 import Trace
 import file_utils
+import e_errors
 
 class Encp:
 	def __init__(self, tid=None):
 		import encp
+		import get
+		import put
 		self.my_encp = encp
+		self.my_get = get
+		self.my_put = put
 		self.tid = tid
 		self.exit_status = -10
 		self.err_msg = ""
 
-	# encp(argv) -- argv is the same as the command line
-	# eg. encp(["encp", "--verbose=4", "/pnfs/.../file", "file"])
-	def encp(self, argv):
+	def __encp(self, argv, my_encp, my_interface, exe="encp"):
 		self.exit_status = -10 #Reset this every time.
 		self.err_msg = ""
 
 		#Insert the command if it is not already there.
-                CMD = "encp"
+		CMD = exe
 		if argv[0] != CMD:
 			argv = [CMD] + argv
 		
 		try:
 			logname=Trace.logname #Grab this to reset this after encp.
-			intf = self.my_encp.EncpInterface(argv, 0)
+			intf = my_interface(argv, 0)
 			intf.migration_or_duplication = 1 #Set true for performance.
 			if self.tid:
 				intf.include_thread_name = self.tid
 			
-			res = self.my_encp.do_work(intf)
+			res = self.my_encp.do_work(intf, main=my_encp.main)
 			if res == None:
 				#return -10
 				res = -10  #Same as initial value.
@@ -53,7 +56,6 @@ class Encp:
 			res = 1
 
 		if res and not self.err_msg:
-			import e_errors
 			Trace.log(e_errors.INFO,
 				  "unexpected combination of values: exit_status[%s]: %s  err_msg[%s]: %s" % (type(res), res, type(self.err_msg), self.err_msg))
 
@@ -77,7 +79,26 @@ class Encp:
 		self.exit_status = res #Return value if used in a thread.
 		return res  #Return value if used directly.
 
-	
+
+	# encp(argv) -- argv is the same as the command line
+	# eg. encp(["encp", "--verbose=4", "/pnfs/.../file", "file"])
+	def encp(self, argv):
+		return self.__encp(argv, self.my_encp,
+				   self.my_encp.EncpInterface)
+
+
+	# get(argv) -- argv is the same as the command line
+	# eg. get(["get", "--verbose=4", "/pnfs/.../file", "file"])
+	def get(self, argv):
+		return self.__encp(argv, self.my_get,
+				   self.my_get.GetInterface, exe="get")
+
+	# put(argv) -- argv is the same as the command line
+	# eg. get(["put", "--verbose=4", "/pnfs/.../file", "file"])
+	def put(self, argv):
+		return self.__encp(argv, self.my_put,
+				   self.my_put.PutInterface, exe="put")
+		
 
 if __name__ == '__main__':
 	test_encp = Encp()

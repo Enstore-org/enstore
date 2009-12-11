@@ -30,7 +30,6 @@ import option
 #import enstore_functions3
 import callback
 
-
 #Completion status field values.
 SUCCESS = encp.SUCCESS    #"SUCCESS"
 FAILURE = encp.FAILURE    #"FAILURE"
@@ -58,54 +57,89 @@ def get_client_version():
     if get_file: version_string = version_string + get_file
     return version_string
 
-def setup_get_interface():
+#encp.encp_client_version = get_client_version
 
-    encp.EncpInterface.get = 1
-    
-    encp.EncpInterface.parameters = [
-        "--volume <volume> <destination dir>",
-        "--read-to-end-of-tape --volume <volume> <source dir> <destination dir>",
-        "<source file> [source file [...]] <destination directory>"
-        ]
-    
-    #encp.encp_client_version = get_client_version
+class GetInterface(encp.EncpInterface):
+    #  define our specific parameters
+    user_parameters = [
+            "--volume <volume> <destination dir>",
+            "--read-to-end-of-tape --volume <volume> <source dir> <destination dir>",
+            "<source file> [source file [...]] <destination directory>"
+            ]
+    admin_parameters = user_parameters
+    parameters = user_parameters #gets overridden in __init__().
 
-    encp.EncpInterface.encp_options[option.LIST] = {
-        option.HELP_STRING: "Takes in a filename of a file containing a list "
-                            "of locations and filenames.",
-        option.VALUE_USAGE:option.REQUIRED,
-        option.VALUE_TYPE:option.STRING,
-        option.VALUE_LABEL:"name_of_list_file",
-        option.USER_LEVEL:option.USER,}
-    encp.EncpInterface.encp_options[option.SEQUENTIAL_FILENAMES] = {
-        option.HELP_STRING: "Override known filenames and use sequentially "
-                            "numbered filenames.",
-        option.VALUE_USAGE:option.IGNORED,
-        option.VALUE_TYPE:option.INTEGER,
-        option.USER_LEVEL:option.USER,}
-    encp.EncpInterface.encp_options[option.SKIP_DELETED_FILES] = {
-        option.HELP_STRING: "Skip over deleted files.",
-        option.VALUE_USAGE:option.IGNORED,
-        option.VALUE_TYPE:option.INTEGER,
-        option.USER_LEVEL:option.USER,}
-    encp.EncpInterface.encp_options[option.READ_TO_END_OF_TAPE] = {
-        option.HELP_STRING: "After the last file known is read keep reading "
-                            "until EOD or EOT.",
-        option.VALUE_USAGE:option.IGNORED,
-        option.VALUE_TYPE:option.INTEGER,
-        option.USER_LEVEL:option.USER,}
-    try:
-        del encp.EncpInterface.encp_options[option.EPHEMERAL]
-    except KeyError:
-        pass
-    try:
-        del encp.EncpInterface.encp_options[option.FILE_FAMILY]
-    except KeyError:
-        pass
     
-    encp.EncpInterface.list = None                # Used for "get" only.
-    encp.EncpInterface.skip_deleted_files = None  # Used for "get" only.
-    encp.EncpInterface.read_to_end_of_tape = None # Used for "get" only.
+    def __init__(self, args=sys.argv, user_mode=0):
+
+        #Get a copy, so we don't modifiy encp's Inferace class too.
+        self.encp_options = copy.deepcopy(self.encp_options)
+
+        self.encp_options[option.LIST] = {
+            option.HELP_STRING: "Takes in a filename of a file containing a list "
+                                "of locations and filenames.",
+            option.VALUE_USAGE:option.REQUIRED,
+            option.VALUE_TYPE:option.STRING,
+            option.VALUE_LABEL:"name_of_list_file",
+            option.USER_LEVEL:option.USER,}
+        self.encp_options[option.SEQUENTIAL_FILENAMES] = {
+            option.HELP_STRING: "Override known filenames and use sequentially "
+                                "numbered filenames.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,}
+        self.encp_options[option.SKIP_DELETED_FILES] = {
+            option.HELP_STRING: "Skip over deleted files.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,}
+        self.encp_options[option.READ_TO_END_OF_TAPE] = {
+            option.HELP_STRING: "After the last file known is read keep reading "
+                                "until EOD or EOT.",
+            option.VALUE_USAGE:option.IGNORED,
+            option.VALUE_TYPE:option.INTEGER,
+            option.USER_LEVEL:option.USER,}
+        try:
+            del self.encp_options[option.EPHEMERAL]
+        except KeyError:
+            pass
+        try:
+            del self.encp_options[option.FILE_FAMILY]
+        except KeyError:
+            pass
+
+        self.list = None                # Used for "get" only.
+        self.skip_deleted_files = None  # Used for "get" only.
+        self.read_to_end_of_tape = None # Used for "get" only.
+
+        encp.EncpInterface.__init__(self, args=args, user_mode=user_mode)
+        
+        self.get = 1
+
+        if self.volume and self.read_to_end_of_tape and \
+               ( not os.path.exists(self.args[-2]) \
+                 #or not os.path.isdir(self.args[-2]) \
+                 or not pnfs.is_pnfs_path(self.args[-2]) ):
+            try:
+                message = "Second argument is not an input file or directory.\n"
+                sys.stderr.write(message)
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+
+        if self.args[-1] == "/dev/null":
+            pass  #If the output is /dev/null, this is okay.
+        elif not os.path.exists(self.args[-1]) or not os.path.isdir(self.args[-1]):
+            try:
+                message = "Third argument is not an output directory.\n"
+                sys.stderr.write(message)
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+
+
 
 def error_output(request):
     #Get the info.
@@ -637,14 +671,14 @@ def mover_handshake2_original(work_ticket, udp_socket, e):
         return data_path_socket, work_ticket
 
 mover_handshake = mover_handshake_original
-encp.mover_handshake = mover_handshake  #For encp.wait_for_message().
+#encp.mover_handshake = mover_handshake  #For encp.wait_for_message().
 mover_handshake2 = mover_handshake2_original
 
 def set_metadata(ticket, intf):
 
     #Set these now so the metadata can be set correctly.
-    ticket['wrapper']['fullname'] = ticket['outfile']
-    ticket['wrapper']['pnfsFilename'] = ticket['infile']
+    ticket['wrapper']['fullname'] = ticket['outfilepath']
+    ticket['wrapper']['pnfsFilename'] = ticket['infilepath']
     try:
         ticket['file_size'] = ticket['exfer'].get("bytes", 0L)
     except:
@@ -660,10 +694,10 @@ def set_metadata(ticket, intf):
     #Create the pnfs file.
     try:
         #encp.create_zero_length_files(ticket['infile'], raise_error = 1)
-        encp.create_zero_length_pnfs_files(ticket)
-        Trace.log(e_errors.INFO, "Pnfs file created for %s."%ticket['infile'])
+        encp.create_zero_length_pnfs_files(ticket['infile'])
+        Trace.log(e_errors.INFO, "Pnfs file created for %s."%ticket['infilepath'])
     except OSError, detail:
-        msg = "Pnfs file create failed for %s: %s" % (ticket['infile'],
+        msg = "Pnfs file create failed for %s: %s" % (ticket['infilepath'],
                                                       str(detail))
         Trace.message(TRANSFER_LEVEL, msg)
         Trace.log(e_errors.ERROR, msg)
@@ -676,7 +710,7 @@ def set_metadata(ticket, intf):
     encp.set_pnfs_settings(ticket, intf)
 
     if not e_errors.is_ok(ticket):
-        msg = "Metadata update failed for %s: %s" % (ticket['infile'],
+        msg = "Metadata update failed for %s: %s" % (ticket['infilepath'],
                                                      ticket['status'])
         Trace.message(ERROR_LEVEL, msg)
         Trace.log(e_errors.ERROR, msg)
@@ -684,8 +718,8 @@ def set_metadata(ticket, intf):
         #Be sure to cleanup after the metadata error.
         encp.clear_layers_1_and_4(ticket)
     else:
-        delete_at_exit.unregister(ticket['infile']) #Don't delete good file.
-        msg = "Successfully updated %s metadata." % ticket['infile']
+        delete_at_exit.unregister(ticket['infilepath']) #Don't delete good file.
+        msg = "Successfully updated %s metadata." % ticket['infilepath']
         Trace.message(INFO_LEVEL, msg)
         Trace.log(e_errors.INFO, msg)
 
@@ -808,42 +842,58 @@ def get_next_request(request_list, e): #, filenumber = None):
 def finish_request(done_ticket, request_list, index, e):
     #Everything is fine.
     if e_errors.is_ok(done_ticket):
-
-        #Tell the user what happend.
-        Trace.message(e_errors.INFO,
-               "File %s copied successfully." % done_ticket['infile'])
-        Trace.log(e_errors.INFO,
-               "File %s copied successfully." % done_ticket['infile'])
-        #Remember the completed transfer.
-        #files_transfered = files_transfered + 1
-
         #Set the metadata if it has not already been set.
-        try:
-            p = pnfs.Pnfs(done_ticket['infile'])
-            p.get_bit_file_id()
-        except (IOError, OSError, TypeError):
-            Trace.message(TRANSFER_LEVEL, "Updating metadata for %s." %
-                          done_ticket['infile'])
-            set_metadata(done_ticket, e)
+        if done_ticket['fc']['deleted'] == 'no':
+            try:
+                p = pnfs.Pnfs(done_ticket['infilepath'])
+                p.get_bit_file_id()
+            except (IOError, OSError, TypeError):
+                Trace.message(TRANSFER_LEVEL, "Updating metadata for %s." %
+                              done_ticket['infilepath'])
+                set_metadata(done_ticket, e)
 
-        #Set completion status to successful.
-        done_ticket['completion_status'] = SUCCESS
-        done_ticket['exit_status'] = 0
+        
+        return encp.finish_request(done_ticket, request_list, index, e)
 
-        #Store these changes back into the master list.
-        request_list[index] = done_ticket
+        """
+        if index == None:
+            #How can we succed at a transfer, that is not in the
+            # request list?
+            message = "Successfully transfered a file that " \
+                      "is not in the file transfer list."
+            try:
+                sys.stderr.write(message + "\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
+            Trace.log(e_errors.ERROR,
+                      message + "  " + str(done_ticket))
 
-        #Get the next request before continueing.
-        #request, index = get_next_request(request_list,e)
-        #If the read mode is "read until end of data", we need to
-        # create the new output file.
-        #if request.get('completion_status', None) == "EOD":
-        #if not e.list or e.read_to_end_of_tape:
-        #    if not os.path.exists(request['outfile']):
-        #        encp.create_zero_length_local_files(request)
+        else:
+            #Tell the user what happend.
+            message = "File %s copied successfully." % \
+                      (done_ticket['outfilepath'],)
+            Trace.message(e_errors.INFO, message)
+            Trace.log(e_errors.INFO, message)
+
+            #Set the metadata if it has not already been set.
+            try:
+                p = pnfs.Pnfs(done_ticket['infilepath'])
+                p.get_bit_file_id()
+            except (IOError, OSError, TypeError):
+                Trace.message(TRANSFER_LEVEL, "Updating metadata for %s." %
+                              done_ticket['infile'])
+                set_metadata(done_ticket, e)
+
+            #Set completion status to successful.
+            done_ticket['completion_status'] = SUCCESS
+            done_ticket['exit_status'] = 0
+
+            #Store these changes back into the master list.
+            request_list[index] = done_ticket
 
         return CONTINUE
-        #continue
+        """
 
     #The requested file does not exist on the tape.  (i.e. the
     # tape has only 6 files and the seventh file was requested.)
@@ -860,8 +910,6 @@ def finish_request(done_ticket, request_list, index, e):
             #Set completion status to failure.
             done_ticket['completion_status'] = FAILURE
             done_ticket['exit_status'] = 1
-            #request['status'] = done_ticket['status']
-            #exit_status = 1
 
             #Tell the calling process, this file failed.
             error_output(done_ticket)
@@ -880,13 +928,10 @@ def finish_request(done_ticket, request_list, index, e):
         #Store these changes back into the master list.
         request_list[index] = done_ticket
 
-        #We are done with this mover.
-        #end_session(udp_socket, control_socket)
         #Tell the calling process, of those files not attempted.
         untried_output(request_list)
 
         #Perform any necessary file cleanup.
-        #return request
         return STOP
 
     #Give up on this file.  If a persistant media problem occurs
@@ -903,21 +948,19 @@ def finish_request(done_ticket, request_list, index, e):
         #Set completion status to failure.
         done_ticket['completion_status'] = FAILURE
         done_ticket['exit_status'] = 1
-        #done_ticket['status'] = done_ticket['status']
-        #exit_status = 1
         #Store these changes back into the master list.
         request_list[index] = done_ticket
 
-        #We are done with this mover.
-        #end_session(udp_socket, control_socket)
         #Tell the calling process, this file failed.
         error_output(done_ticket)
 
-        #break
         return CONTINUE_FROM_BEGINNING
 
     #Give up.
     elif e_errors.is_non_retriable(done_ticket['status'][0]):
+        encp.finish_request(done_ticket, request_list, index, e)
+
+        """
         #Tell the user what happend.
         message = "File %s read failed: %s" % \
                   (done_ticket['infile'], done_ticket['status'])
@@ -931,19 +974,20 @@ def finish_request(done_ticket, request_list, index, e):
         #exit_status = 2
         #Store these changes back into the master list.
         request_list[index] = done_ticket
+        """
 
-        #We are done with this mover.
-        #end_session(udp_socket, control_socket)
         #Tell the calling process, this file failed.
         error_output(done_ticket)
         #Tell the calling process, of those files not attempted.
         untried_output(request_list)
 
-        #return done_ticket
         return STOP
 
     #Keep trying.
     elif e_errors.is_retriable(done_ticket['status'][0]):
+        encp.finish_request(done_ticket, request_list, index, e)
+
+        """
         #On retriable error go back and resubmit what is left
         # to the LM.
 
@@ -955,6 +999,8 @@ def finish_request(done_ticket, request_list, index, e):
         #end_session(udp_socket, control_socket)
 
         #break
+        """
+                      
         return CONTINUE_FROM_BEGINNING
 
     ### Should never get here!!!
@@ -1055,7 +1101,8 @@ def readtape_from_hsm(e, tinfo):
                     encp.wait_for_message(listen_socket, lmc,
                                           request_list,
                                           transaction_id_list, e,
-                                          udp_serv = udp_serv)
+                                          udp_serv = udp_serv,
+                                          mover_handshake = mover_handshake)
 
             """
             # Establish control socket connection with the mover.
@@ -1465,56 +1512,13 @@ def main(intf):
     return encp.final_say(intf, done_ticket)
     
 
-def do_work(intf):
-    delete_at_exit.setup_signal_handling()
-
-    try:
-        exit_status = main(intf)
-	halt(exit_status)
-    except (SystemExit, KeyboardInterrupt):
-	halt(1)
-    except:
-        #Get the uncaught exception.
-        exc, msg, tb = sys.exc_info()
-        ticket = {'status' : (e_errors.UNCAUGHT_EXCEPTION,
-                              "%s: %s" % (str(exc), str(msg)))}
-
-        #Print the data access layer and send the information to the
-        # accounting server (if possible).
-        encp.print_data_access_layer_format(None, None, None, ticket)
-        #Send to the log server the traceback dump.  If unsuccessful,
-        # print the traceback to standard error.
-        Trace.handle_error(exc, msg, tb)
-        del tb #No cyclic references.
-        #Remove any zero-length files left haning around.  Also, return
-        # a non-zero exit status to the calling program/shell.
-        halt(1)
 
 if __name__ == '__main__':
 
-    setup_get_interface()
-
-    #First handle an incorrect command line.
-    #if len(sys.argv) < 4:
-    #    intf_of_encp = encp.EncpInterface(sys.argv, 1) #one = user
-    #    intf_of_encp.print_usage()
-
-    #intf_of_encp = encp.EncpInterface(sys.argv[:-3] + sys.argv[-2:], 0)
-    intf_of_encp = encp.EncpInterface(sys.argv, 0)
-    #intf_of_encp.volume = sys.argv[-3] #Hackish
-    #intf_of_encp.argv = sys.argv[:] #Hackish
+    #intf_of_get = GetInterface(sys.argv, 0)
 
     """
-    if not enstore_functions3.is_volume(sys.argv[-3]):
-        try:
-            sys.stderr.write("First argument is not a volume name.\n")
-            sys.stderr.flush()
-        except IOError:
-            pass
-        sys.exit(1)
-    """
-
-    if intf_of_encp.volume and intf_of_encp.read_to_end_of_tape and \
+    if intf_of_get.volume and intf_of_get.read_to_end_of_tape and \
        ( not os.path.exists(sys.argv[-2]) or not os.path.isdir(sys.argv[-2]) \
          or not pnfs.is_pnfs_path(sys.argv[-2]) ):
         try:
@@ -1533,7 +1537,8 @@ if __name__ == '__main__':
         except IOError:
             pass
         sys.exit(1)
+    """
 
-    #print encp.format_class_for_print(intf_of_encp, "intf_of_encp")
+    #print encp.format_class_for_print(intf_of_get, "intf_of_get")
 
-    delete_at_exit.quit(do_work(intf_of_encp))
+    delete_at_exit.quit(encp.start(encp.do_work, main, GetInterface))
