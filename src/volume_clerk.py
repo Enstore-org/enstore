@@ -60,7 +60,7 @@ MIN_LEFT=enstore_constants.MIN_LEFT
 MY_NAME = enstore_constants.VOLUME_CLERK   #"volume_clerk"
 MAX_CONNECTION_FAILURE = 5
 
-MAX_THREADS = 50 
+MAX_THREADS = 50
 MAX_CONNECTIONS=20
 
 
@@ -85,7 +85,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         #Setup the ability to handle requests.
         dispatching_worker.DispatchingWorker.__init__(
             self, (self.keys['hostip'], self.keys['port']))
-        
+
         self.sgdb = None
         self.paused_lms = {}
         self.common_blank_low = {'warning':100, 'alarm':10}
@@ -154,14 +154,14 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.WARNING, "Run out of threads for %s"%(function.__name__,))
             apply(function,args)
             self._done_cleanup()
-    
+
     ####################################################################
 
     # These extract value functions are used to get a value from the ticket
     # and perform validity checks in a consistant fashion.  These functions
     # duplicated in volume_clerk.py; they should be made more generic to
     # eliminate maintaining two sets of identical code.
-    
+
     def extract_value_from_ticket(self, key, ticket, fail_None = False):
         try:
             value = ticket[key]
@@ -183,7 +183,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     def extract_bfid_from_ticket(self, ticket, key = "bfid",
                                  check_exists = True):
-        
+
         return_record = False
         if hasattr(self, "filedb_dict"):
             return_record = True
@@ -270,7 +270,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             return external_label
 
     ####################################################################
-    
+
     #### DONE
     # get a port for the data transfer
     # tell the user I'm your volume clerk and here's your ticket
@@ -305,7 +305,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         return 1
 
     ####################################################################
-    
+
     # has_undeleted_file(vol) -- check if vol has undeleted file
 
     def has_undeleted_file(self, vol):
@@ -363,13 +363,13 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         if not quotas.has_key('libraries'):
             Trace.log(e_errors.ERROR, "Wrong quota config")
             return 0
-            
+
         if quotas['libraries'].has_key(library):
             if not quotas['libraries'][library].has_key(storage_group):
                 return 1
             vol_count = self.sgdb.get_sg_counter(library, storage_group)
             quota = quotas['libraries'][library].get(storage_group, 0)
-            Trace.log(e_errors.INFO, "storage group %s, vol counter %s, quota %s" % (storage_group, vol_count, quota)) 
+            Trace.log(e_errors.INFO, "storage group %s, vol counter %s, quota %s" % (storage_group, vol_count, quota))
             if quota == 0 or (vol_count >= quota):
                 return 0
             else:
@@ -393,20 +393,20 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.INFO, message)
             return 1
         return 0
-    
+
     ####################################################################
 
     # The following functions are run by dispatching worker in response to
     # a ticket request ariving.  Helper __name() functions are left next to
     # their non-doubleunderscore counterpart.
-    
+
     # show_state -- show internal configuration values
     def show_state(self, ticket):
         ticket['state'] = {}
         for i in self.__dict__.keys():
             ticket['state'][i] = `self.__dict__[i]`
         ticket['status'] = (e_errors.OK, None)
-        
+
         self.reply_to_caller(ticket)
         return
 
@@ -437,7 +437,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             return #extract_external_lable_from_ticket handles its own errors.
 
         ticket["status"] = (e_errors.OK, None)
-        
+
         self.reply_to_caller(ticket)
 
         # get a user callback
@@ -492,11 +492,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         elif write_protected == 'n':
             status = "OFF"
         else:
-            status = "UNKNOWN" 
+            status = "UNKNOWN"
         ticket['status'] = (e_errors.OK, status)
         self.reply_to_caller(ticket)
         return
-        
+
     # show_quota() -- return quota information #### DONE
 
     def show_quota(self, ticket):
@@ -507,7 +507,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     # get the remaining bytes value for this volume #### DONE
     def get_remaining_bytes(self, ticket):
-        saved_reply_address = ticket.get('r_a', None)
+        saved_reply_address = ticket.get('r_a')
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
@@ -523,7 +523,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
         return
-    
+
     # get the current database volume about a specific entry #### DONE
     def inquire_vol(self, ticket):
         saved_reply_address = ticket.get('r_a', None)
@@ -657,7 +657,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     # return all the volumes in our dictionary.  Not so useful!
     def __get_vols2(self, ticket):
-        
+
         reply = {}
         # q = "select * from volume "
         q = "select label, capacity_bytes, remaining_bytes, library, system_inhibit_0, system_inhibit_1, si_time_0, si_time_1, storage_group, file_family, wrapper, comment from volume "
@@ -783,7 +783,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         #Make sure the socket exists.
         if not control_socket:
             return
-        
+
         # get reply
         reply = self.__get_vols2(ticket)
         reply['status'] = (e_errors.OK, None)
@@ -872,7 +872,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         except (socket.error, select.error), msg:
             Trace.log(e_errors.INFO, "get_pvols2(): %s" % (str(msg),))
             return
-        
+
         # log it
         Trace.log(e_errors.INFO, "stop listing all problematic volumes (2)")
 
@@ -948,7 +948,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             res.append(i[0])
         return res
 
-    #### DONE        
+    #### DONE
     # return a list of all the volumes
     def get_vol_list(self, ticket):
         ticket['status'] = (e_errors.OK, None)
@@ -969,7 +969,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             Trace.handle_error(exc, msg)
         return
 
-    #### DONE        
+    #### DONE
     # return a list of all the volumes
     #
     # This is even newer and better implementation that replaces
@@ -1130,7 +1130,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
     def __init__(self, csc):
         VolumeClerkInfoMethods.__init__(self, csc)
-        
+
         self.noaccess_cnt = 0
         self.max_noaccess_cnt = self.keys.get('max_noaccess_cnt', 2)
         self.noaccess_to = self.keys.get('noaccess_to', 300.)
@@ -1142,7 +1142,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     ###
     ### These functions are internal volume_clerk functions.
     ###
-    
+
     # change_state(type, value) -- change a state
     def change_state(self, volume, type, value):
         q = "insert into state (volume, type, value) values (\
@@ -1188,7 +1188,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                 self.paused_lms[m_changer]['paused'] == 0):
                 self.paused_lms[m_changer]['paused'] = 1
                 Trace.log(e_errors.INFO,'pause library_managers for %s media_changerare paused due to too many volumes set to NOACCESS' % (m_changer,))
-                
+
     # check if Library Manager is paused #### DONE
     def lm_is_paused(self, library):
         # m_changer = self.csc.get_media_changer(library + ".library_manager")
@@ -1223,7 +1223,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     def is_volume_full(self, v, min_remaining_bytes):
         external_label = v['external_label']
         ret = ""
-        left = v["remaining_bytes"] 
+        left = v["remaining_bytes"]
         if left < long(min_remaining_bytes*SAFETY_FACTOR) or left < MIN_LEFT:
             # if it __ever__ happens that we can't write a file on a
             # volume, then mark volume as full.  This prevents us from
@@ -1256,7 +1256,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                 Trace.log(e_errors.INFO, 'volume %s is set to "full" by is_volume_full()'%(external_label))
             else: ret = e_errors.NOSPACE
         return ret
-    
+
 
     # find volume that matches given volume family #### DONE
     def find_matching_volume(self, library, vol_fam, pool,
@@ -1344,7 +1344,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                 return self.volumedb_dict.export_format(res[0])
         else:
             return {}
-        
+
     # get the actual state of the volume from the media changer #### DONE
     #
     ### Note: While this function only gets information, there is no reason
@@ -1365,7 +1365,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             Trace.log(e_errors.ERROR,
                       "vc.get_media_changer_state: ERROR: no media changer found (lib = %s) %s" % (lib, volume))
             return "no_mc"  #Not a fatal error.
-            
+
         import media_changer_client
         mcc = media_changer_client.MediaChangerClient(self.csc, m_changer )
         reply_ticket = mcc.viewvol(volume, m_type, rcv_timeout = 5,
@@ -1391,7 +1391,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     ###
     ### These functions are called via dispatching worker.
     ###
-    
+
     # set_write_protect
     def write_protect_on(self, ticket):
 
@@ -1476,7 +1476,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     # rename_volume() -- server version of __rename_volume()
 
     def rename_volume(self, ticket):
-
+        saved_reply_address = ticket.get('r_a', None)
         old = self.extract_external_label_from_ticket(
             ticket, key = "old", check_exists = False)
         if not old:
@@ -1486,19 +1486,17 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             ticket, key = "new", check_exists = False)
         if not new:
             return #extract_external_lable_from_ticket handles its own errors.
-        
+
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(saved_reply_address)
         if status:
             message = "attempt to rename volume %s to %s from %s" \
                       % (old, new, self.reply_address[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
-            #self.reply_to_caller(ticket)
-            #return
         else:
             ticket['status'] = self.__rename_volume(old, new)
-        
+        ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
         return
 
@@ -1557,23 +1555,21 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     # erase_volume(vol) -- server version of __erase_volume() #### DONE
 
     def erase_volume(self, ticket):
-
+        saved_reply_address = ticket.get('r_a')
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(saved_reply_address)
         if status:
             message = "attempt to erase volume %s from %s" \
                       % (external_label, self.reply_address[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
-            #self.reply_to_caller(ticket)
-            #return
         else:
             ticket['status'] = self.__erase_volume(external_label)
-            
+        ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
         return
 
@@ -1623,7 +1619,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             # (ret == "unknown) when the query to the media_changer times out.
             # (ret = "no_mc") when their is no media changer defined for
             #                 the volume's library.
-            
+
             if ret != "no_mc" and ret != "no_lib" \
                    and ret != 'O' and ret != "E" and ret != "U":
                 message = "volume state must be unmounted ('O') or " \
@@ -1741,18 +1737,19 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     # delete_volume(vol) -- server version of __delete_volume() #### DONE
 
     def delete_volume(self, ticket):
-
+        saved_reply_address = ticket.get('r_a')
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(saved_reply_address)
         if status:
             message = "attempt to delete volume %s from %s" \
                       % (external_label, self.reply_address[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
+            ticket['r_a'] = saved_reply_address
             self.reply_to_caller(ticket)
             return
 
@@ -1760,6 +1757,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             ticket['status'] = self.__delete_volume(external_label, check_state = ticket['check_state'], record = record)
         else:
             ticket['status'] = self.__delete_volume(external_label, record = record)
+        ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
         return
 
@@ -1767,17 +1765,18 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     # recycle_volume(vol) -- server version of __delete_volume(vol, 1)
 
     def recycle_volume(self, ticket):
-
+        saved_reply_address = ticket.get('r_a')
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(saved_reply_address)
         if status:
             message = "attempt to recycle volume %s from %s" \
                       % (external_label, self.reply_address[0])
             Trace.log(e_errors.ERROR, message)
+            ticket['r_a'] = saved_reply_address
             ticket['status'] = status
             self.reply_to_caller(ticket)
             return
@@ -1788,7 +1787,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             check_state = 1
 
         if ticket.has_key('clear_sg'):
-            clear_sg = True 
+            clear_sg = True
         else:
             clear_sg = False
         if ticket.has_key('reset_declared'):
@@ -1800,6 +1799,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             ticket['status'] = self.__delete_volume(
                 external_label, 1, check_state = check_state,
                 clear_sg = clear_sg, record = record)
+        ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
         return
 
@@ -1855,22 +1855,23 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     # restore_volume(vol) -- server version of __restore_volume()
 
     def restore_volume(self, ticket):
-
+        saved_reply_address = ticket.get('r_a')
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
-
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(saved_reply_address)
         if status:
             message = "attempt to restore volume %s from %s" \
                       % (external_label, self.reply_address[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
+            ticket['r_a'] = saved_reply_address
             self.reply_to_caller(ticket)
             return
 
         ticket['status'] = self.__restore_volume(external_label)
+        ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
         return
 
@@ -1916,7 +1917,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                 ticket["status"] = (e_errors.QUOTAEXCEEDED, message)
                 self.reply_to_caller(ticket)
                 return
-            
+
         record['volume_family'] = string.join((storage_group, ff, wp), '.')
 
         self.volumedb_dict[external_label] = record
@@ -1964,6 +1965,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
+        saved_reply_address = ticket.get('r_a')
         # create empty record and control what goes into database
         # do not pass ticket, for example to the database!
         record={}
@@ -1979,12 +1981,13 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if media and media == 'disk':
             status = None
         else:
-            status = self.restricted_access()
+            status = self.restricted_access(saved_reply_address)
         if status:
             message = "attempt to add volume %s from %s" \
                       % (external_label, self.reply_address[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
+            ticket['r_a'] = saved_reply_address
             self.reply_to_caller(ticket)
             return
 
@@ -1994,6 +1997,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                       % (MY_NAME, external_label,)
             ticket["status"] = (e_errors.VOLUME_EXISTS, message)
             Trace.log(e_errors.ERROR, message)
+            ticket['r_a'] = saved_reply_address
             self.reply_to_caller(ticket)
             return
 
@@ -2011,6 +2015,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                                   % (MY_NAME, library, sg, external_label)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, message)
                         Trace.log(e_errors.ERROR, message)
+                        ticket['r_a'] = saved_reply_address
                         self.reply_to_caller(ticket)
                         return
         else:
@@ -2018,6 +2023,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                       % (MY_NAME, 'library', 'storage_group')
             ticket["status"] = (e_errors.KEYERROR, message)
             Trace.log(e_errors.ERROR, message)
+            ticket['r_a'] = saved_reply_address
             self.reply_to_caller(ticket)
             return
 
@@ -2026,9 +2032,9 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         # "shelf" library is a special case
         if ticket['library']!='shelf' and not llm.has_key(ticket['library']):
             Trace.log(e_errors.INFO,
-                      " vc.addvol: Library Manager does not exist: %s " 
+                      " vc.addvol: Library Manager does not exist: %s "
                       % (ticket['library'],))
-            
+
         # mandatory keys
         for key in  ['external_label','media_type', 'library',
                      'eod_cookie', 'capacity_bytes']:
@@ -2036,7 +2042,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             if value == None:
                 return #extract_value_from_ticket handles its own errors.
             record[key] = value
-            
+
         # form a volume family
         storage_group = self.extract_value_from_ticket("storage_group", ticket)
         if not storage_group:
@@ -2047,7 +2053,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         wrapper = self.extract_value_from_ticket("wrapper", ticket)
         if not wrapper:
             return #extract_value_from_ticket handles its own errors.
-        
+
         record['volume_family'] = volume_family.make_volume_family(
             storage_group, file_family, wrapper)
 
@@ -2083,16 +2089,18 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                           % (MY_NAME,)
                 ticket['status'] = (e_errors.UNKNOWNMEDIA, message)
                 Trace.log(e_errors.ERROR, message)
+                ticket['r_a'] = saved_reply_address
                 self.reply_to_caller(ticket)
                 return
             record['blocksize'] = msize
 
-        
+
         # write the ticket out to the database
         self.volumedb_dict[external_label] = record
         # increase the sg count
         self.sgdb.inc_sg_counter(library, sg)
         ticket["status"] = (e_errors.OK, None)
+        ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
         return
 
@@ -2130,7 +2138,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if record['media_type']=='null':
             record['wrapper']='null'
             mdr['wrapper'] = 'null'
-            
+
         # write the ticket out to the database
         self.volumedb_dict[external_label] = record
         Trace.log(e_errors.INFO, "volume has been modifyed %s" % (record,))
@@ -2150,19 +2158,18 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     # Once an entry is removed, it is gone forever!
 
     def rmvolent(self, ticket):
-
+        saved_reply_address = ticket.get('r_a')
         external_label, record = self.extract_external_label_from_ticket(ticket)
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
-
-
         # This is a restricted service
-        status = self.restricted_access()
+        status = self.restricted_access(saved_reply_address)
         if status:
             message = "attempt to remove volume entry %s from %s" % \
                       (external_label, self.reply_address[0])
             Trace.log(e_errors.ERROR, message)
             ticket['status'] = status
+            ticket['r_a'] = saved_reply_address
             self.reply_to_caller(ticket)
             return
 
@@ -2171,6 +2178,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         Trace.log(e_errors.INFO, message)
         del self.volumedb_dict[external_label]
         ticket["status"] = (e_errors.OK, None)
+        ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
         return
 
@@ -2179,7 +2187,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     def next_write_volume (self, ticket):
         Trace.trace(20, "next_write_volume %s" % (ticket,))
         saved_reply_address = ticket.get('r_a', None)
-            
+
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = udp_common.r_eval(vol_veto)
 
@@ -2190,7 +2198,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             ticket['status'] = (e_errors.BROKEN,'Too many volumes set to NOACCESS')
             self.reply_to_caller(ticket)
             return
-        
+
         vol_fam = ticket['volume_family']
         first_found = ticket["first_found"]
         wrapper_type = volume_family.extract_wrapper(vol_fam)
@@ -2240,24 +2248,24 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             # nothing was available - see if we can assign a blank from a
             # given storage group and file family.
             pool = volume_family.make_volume_family(sg, ff, 'none')
-        
+
             Trace.trace(20, "next_write_volume %s %s" % (vol_fam, pool))
             vol = self.find_matching_volume(library, vol_fam, pool, wrapper_type,
                                             vol_veto_list, first_found,
                                             min_remaining_bytes,exact_match=0)
-        
+
             Trace.trace(20, "find matching volume returned %s" % (vol,))
 
         if not vol or len(vol) == 0:
             # nothing was available - see if we can assign a blank from a
             # given storage group
             pool = volume_family.make_volume_family(sg, 'none', 'none')
-        
+
             Trace.trace(20, "next_write_volume %s %s" % (vol_fam, pool))
             vol = self.find_matching_volume(library, vol_fam, pool, wrapper_type,
                                             vol_veto_list, first_found,
                                             min_remaining_bytes,exact_match=0)
-        
+
             Trace.trace(20, "find matching volume returned %s" % (vol,))
 
         inc_counter = 0
@@ -2325,7 +2333,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                                   % (library, 'none', sgc, self.common_blank_low['warning'])
                         Trace.alarm(e_errors.WARNING, "COMMON BLANK POOL LOW",
                                     message)
-            self.volumedb_dict[label] = vol  
+            self.volumedb_dict[label] = vol
             vol['status'] = (e_errors.OK, None)
             vol['r_a'] = saved_reply_address
             self.reply_to_caller(vol)
@@ -2420,12 +2428,12 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             record["first_access"] = record["last_access"]
         if record["modification_time"] == -1:
             record["modification_time"] = record["last_access"]
-            
+
         # update the non-deleted file count if we wrote a new file to the tape
         bfid = ticket.get("bfid") #will be present when a new file is added
         if bfid:
             record['non_del_files'] = record['non_del_files'] + 1
-            
+
         # record our changes
         self.volumedb_dict[external_label] = record
         record['r_a'] = saved_reply_address
@@ -2482,7 +2490,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                     return
 
         # record our changes
-        self.volumedb_dict[external_label] = record  
+        self.volumedb_dict[external_label] = record
         record["status"] = (e_errors.OK, None)
         record['r_a'] = saved_reply_address
         self.reply_to_caller(record)
@@ -2535,7 +2543,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
         inhibit = self.extract_value_from_ticket("inhibit", ticket)
         if not inhibit:
-            inhibit = "system_inhibit" # set default field 
+            inhibit = "system_inhibit" # set default field
 
         position = self.extract_value_from_ticket("position", ticket)
         if position == None:
@@ -2553,9 +2561,9 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if (inhibit == "system_inhibit" and position == 0):
             if record [inhibit][position] == e_errors.DELETED:
                 # if volume is deleted no data can be changed
-                record["status"] = (e_errors.DELETED, 
+                record["status"] = (e_errors.DELETED,
                                     "Cannot perform action on deleted volume")
-            else:    
+            else:
                 # update the fields that have changed
                 record[inhibit][position] = "none"
                 # set time stamp
@@ -2666,7 +2674,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     # flag that the current volume is being cloned #### DONE
     def set_system_cloning(self, ticket):
         return self.set_system_inhibit(ticket, "cloning", 1)
-    
+
     # flag that the current volume is full #### DONE
     def set_system_full(self, ticket):
         return self.set_system_inhibit(ticket, "full", 1)
@@ -2687,7 +2695,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         rc = self.set_system_inhibit(ticket, e_errors.NOACCESS)
         if rc[0] == e_errors.OK:
             self.pause_lm(ticket["external_label"])
-                
+
         return rc
 
     # flag that the current volume is marked as not allowed #### DONE
@@ -2788,12 +2796,12 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     def clear_lm_pause(self, ticket):
         # m_changer = self.csc.get_media_changer(ticket['library'] + ".library_manager")
         #lib = ticket['library']
-        
+
         lib = self.extract_value_from_ticket("library", ticket)
         if lib == None:
             return #extract_value_from_ticket handles its own errors.
-        
-        
+
+
         if len(lib) < 16 or lib[-16:] != '.library_manager':
             lib = lib + '.library_manager'
         m_changer = self.csc.get_media_changer(lib)
@@ -2840,7 +2848,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                 f = open(self.ignored_sg_file, 'w')
                 cPickle.dump(self.ignored_sg, f)
                 f.close()
-                
+
                 message = 'storage group "%s" has been ignored' % (sg,)
                 ticket['status'] = (e_errors.OK, self.ignored_sg)
                 Trace.log(e_errors.INFO, message)
@@ -2912,7 +2920,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         #ticket['status'] = (e_errors.OK, self.ignored_sg)
         self.reply_to_caller(ticket)
         return
-    
+
 
     #### DONE
     # Check if volume is available
@@ -2933,8 +2941,8 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             ticket['status'] = (e_errors.BROKEN, message)
             self.reply_to_caller(ticket)
             return
-            
-                             
+
+
         ret_stat = (e_errors.OK,None)
         message = "is_vol_available system_inhibit = %s user_inhibit = %s " \
                   "ticket = %s" % \
@@ -2945,14 +2953,14 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         else:
             if work == 'read_from_hsm':
                 Trace.trace(35, "is_vol_available: reading")
-                # if system_inhibit is NOT in one of the following 
+                # if system_inhibit is NOT in one of the following
                 # states it is NOT available for reading
                 if record['system_inhibit'][0] != 'none':
                     ret_stat = (record['system_inhibit'][0], None)
                 elif not enstore_functions2.is_readable_state(
                     record['system_inhibit'][1]):
                     ret_stat = (record['system_inhibit'][1], None)
-                # if user_inhibit is NOT in one of the following 
+                # if user_inhibit is NOT in one of the following
                 # states it is NOT available for reading
                 elif record['user_inhibit'][0] != 'none':
                     ret_stat = (record['user_inhibit'][0], None)
@@ -3002,7 +3010,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     def set_migration_history(self, ticket):
         #Get the source and destination volumes' DB ID.
         ticket = self._migration_history(ticket)
-        
+
         # Insert this volume combintation into the migration_history table.
         q = "insert into migration_history (src, src_vol_id, dst, dst_vol_id) \
              values ('%s', '%s', '%s', '%s');" \
@@ -3026,7 +3034,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     def set_migration_history_closed(self, ticket):
         #Get the source and destination volumes' DB ID.
         ticket = self._migration_history(ticket)
-        
+
         # Update the closed field for this volume combintation in the
         # migration_history table.
         q = "update migration_history set closed_time = current_timestamp " \
@@ -3053,7 +3061,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         generic_server.GenericServer.__init__(self, csc, MY_NAME,
                                               function = self.handle_er_msg)
         Trace.init(self.log_name)
-        
+
         VolumeClerkMethods.__init__(self, csc)
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
@@ -3074,7 +3082,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
                        self.resubscribe_rate)
 
         # start our heartbeat to the event relay process
-	self.erc.start_heartbeat(enstore_constants.VOLUME_CLERK, 
+	self.erc.start_heartbeat(enstore_constants.VOLUME_CLERK,
 				 self.alive_interval)
 
     def vol_error_handler(self, exc, msg, tb):
@@ -3107,7 +3115,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
             self.connection_failure = self.connection_failure + 1
             if self.connection_failure > MAX_CONNECTION_FAILURE:
                 pass	# place holder for future RED BALL
-            
+
     #### DONE
     def quit(self, ticket):
 	self.volumedb_dict.close()
@@ -3125,7 +3133,7 @@ if __name__ == "__main__":
     # get a volume clerk
     vc = VolumeClerk((intf.config_host, intf.config_port))
     vc.handle_generic_commands(intf)
-    
+
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
 
     while 1:

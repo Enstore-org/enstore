@@ -90,13 +90,13 @@ def run_in_thread(thread_name, function, args=(), after_function=None):
 # Note that the get_request actually read the data from the socket
 
 class DispatchingWorker(udp_server.UDPServer):
-    
+
     def __init__(self, server_address, use_raw=None):
         self.allow_callback = False
         if use_raw:
             # enable to spawn callback processing thread
             # by default in raw input mode
-            self.allow_callback = True 
+            self.allow_callback = True
         udp_server.UDPServer.__init__(self, server_address,
                                       receive_timeout=60.0,
                                       use_raw=use_raw)
@@ -105,17 +105,17 @@ class DispatchingWorker(udp_server.UDPServer):
             msg = "The udp server socket failed to open.  Aborting.\n"
             sys.stdout.write(msg)
             sys.exit(1)
-            
+
         #Deal with multiple interfaces.
 
         # fds that the worker/server also wants watched with select
-        self.read_fds = []    
+        self.read_fds = []
         self.write_fds = []
         # callback functions associated with above
         self.callback = {}
         # functions to call periodically -
         #  key is function, value is [interval, last_called]
-        self.interval_funcs = {} 
+        self.interval_funcs = {}
 
         ## Flag for whether we are in a child process.
         ## Server loops should be conditional on "self.is_child"
@@ -123,18 +123,18 @@ class DispatchingWorker(udp_server.UDPServer):
         self.is_child = 0
         self.n_children = 0
         self.kill_list = []
-        
+
         self.custom_error_handler = None
 
     # call this right after initialization
     # when use raw is enabled (last parameter in __init__
     def enable_callback(self):
-        self.allow_callback = True         
+        self.allow_callback = True
 
     # call this right after initialization
     # when use raw is enabled (last parameter in __init__
     def disable_callback(self):
-        self.allow_callback = False         
+        self.allow_callback = False
 
     def add_interval_func(self, func, interval, one_shot=0,
                           align_interval = None):
@@ -151,7 +151,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
             last_called = day_now + day_begin - \
                  (((day_now / interval) - int(day_now / interval)) * interval)
-            
+
         else:
             last_called = now
         self.interval_funcs[func] = [interval, last_called, one_shot]
@@ -159,10 +159,10 @@ class DispatchingWorker(udp_server.UDPServer):
     def set_interval_func(self, func,interval):
         #Backwards-compatibilty
         self.add_interval_func(func, interval)
-        
+
     def remove_interval_func(self, func):
         del self.interval_funcs[func]
-        
+
     def reset_interval_timer(self, func):
         self.interval_funcs[func][1] = time.time()
 
@@ -202,7 +202,7 @@ class DispatchingWorker(udp_server.UDPServer):
             os.kill(pid, signal)
         except os.error, msg:
             Trace.log(e_errors.ERROR, "kill %d: %s" %(pid, msg))
-        
+
     def fork(self, ttl=DEFAULT_TTL):
         """Fork off a child process.  Use this instead of os.fork for safety"""
         if self.n_children >= MAX_CHILDREN:
@@ -211,7 +211,7 @@ class DispatchingWorker(udp_server.UDPServer):
         if self.is_child: #Don't allow double-forking
             Trace.log(e_errors.ERROR, "Cannot fork from child process!")
             return os.getpid()
-        
+
         pid = os.fork()
         ### The incrementing of the number of childern should occur after
         ### the os.fork() call.  If it is before and os.fork() throws
@@ -320,7 +320,7 @@ class DispatchingWorker(udp_server.UDPServer):
             #Clear the list of the parent's other childern.  They are
             # not the childern of this current process.
             self.kill_list = []
-            
+
             try:
                 self.func_wrapper(function, args, after_function)
                 res = 0
@@ -331,11 +331,11 @@ class DispatchingWorker(udp_server.UDPServer):
                 del tb #Avoid cyclic references.
                 Trace.log(e_errors.ERROR, "error starting process %s: %s" \
                           % (process_name, msg))
-                
+
             os._exit(res) #child exit
 
     ####################################################################
-    
+
     # serve callback requests
     def serve_callback(self):
         while 1:
@@ -355,7 +355,7 @@ class DispatchingWorker(udp_server.UDPServer):
                 Trace.trace(5, "spawning get_fd_message")
                 # spawn callback processing thread (event relay messages)
                 run_in_thread("call_back_proc", self.serve_callback)
-            
+
             # start receiver thread or process
             self.raw_requests.receiver()
         while not self.is_child:
@@ -366,7 +366,7 @@ class DispatchingWorker(udp_server.UDPServer):
             if count > 20:
                 self.purge_stale_entries()
                 count = 0
-                
+
         if self.is_child:
             Trace.trace(6,"serve_forever, child process exiting")
             os._exit(0) ## in case the child process doesn't explicitly exit
@@ -379,7 +379,7 @@ class DispatchingWorker(udp_server.UDPServer):
         else:
             request, client_address = self._get_request_single()
         return request, client_address
-        
+
 
     def do_one_request(self):
         """Receive and process one request, possibly blocking."""
@@ -389,7 +389,7 @@ class DispatchingWorker(udp_server.UDPServer):
             request, client_address = self.get_request()
         except:
             exc, msg = sys.exc_info()[:2]
-             
+
         now=time.time()
 
         for func, time_data in self.interval_funcs.items():
@@ -404,7 +404,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
         if request is None: #Invalid request sent in
             return
-        
+
         if request == '':
             # nothing returned, must be timeout
             self.handle_timeout()
@@ -430,7 +430,7 @@ class DispatchingWorker(udp_server.UDPServer):
             if fd not in self.read_fds:
                 self.read_fds.append(fd)
         self.callback[fd]=callback
-        
+
     def remove_select_fd(self, fd):
         if fd is None:
             return
@@ -443,7 +443,7 @@ class DispatchingWorker(udp_server.UDPServer):
             del self.callback[fd]
 
     def read_fd(self, fd):
-        
+
             raw_bytecount = os.read(fd, 8)
 
             #Read on the number of bytes in the message.
@@ -483,7 +483,7 @@ class DispatchingWorker(udp_server.UDPServer):
         #      string is a stringified ticket, after CRC is removed
         # There are three cases:
         #   read from socket where crc is stripped and return address is valid
-        #   read from pipe where there is no crc and no r.a.     
+        #   read from pipe where there is no crc and no r.a.
         #   time out where there is no string or r.a.
 
         while True:
@@ -512,7 +512,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
             #now handle other incoming requests
             for fd in r:
-                
+
                 if (type(fd) == types.IntType and
                     fd in self.read_fds and
                     self.callback[fd]==None):
@@ -521,7 +521,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
                     (request, addr) = self.read_fd(fd)
                     return (request, addr)
-                
+
                 elif fd == self.server_socket:
                     #Get the 'raw' request and the address from whence it came.
                     (request, addr) = udp_server.UDPServer.get_message(self)
@@ -553,7 +553,7 @@ class DispatchingWorker(udp_server.UDPServer):
                                   % (addr[0],))
                         request = None
                         return (request, addr)
-                    
+
                     return (request, addr)
 
         return (None, ())
@@ -608,7 +608,7 @@ class DispatchingWorker(udp_server.UDPServer):
                               % (addr[0],))
                     request = None
                     return (request, addr)
-                
+
                 return rc
             else:
                 # process timeout
@@ -645,7 +645,7 @@ class DispatchingWorker(udp_server.UDPServer):
         return (None, ())
 
     ####################################################################
-    
+
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
 
@@ -667,7 +667,7 @@ class DispatchingWorker(udp_server.UDPServer):
         try:
             function_name = ticket["work"]
         except (KeyError, AttributeError, TypeError), detail:
-            ticket = {'status' : (e_errors.KEYERROR, 
+            ticket = {'status' : (e_errors.KEYERROR,
                                   "cannot find any named function")}
             msg = "%s process_request %s from %s" % \
                 (detail, ticket, client_address)
@@ -681,11 +681,11 @@ class DispatchingWorker(udp_server.UDPServer):
             Trace.trace(5,"process_request: function %s"%(function_name,))
             function = getattr(self,function_name)
         except (KeyError, AttributeError, TypeError), detail:
-            ticket = {'status' : (e_errors.KEYERROR, 
+            ticket = {'status' : (e_errors.KEYERROR,
                                   "cannot find requested function `%s'"
                                   % (function_name,))}
             msg = "%s process_request %s %s from %s" % \
-                (detail, ticket, function_name, client_address) 
+                (detail, ticket, function_name, client_address)
             Trace.trace(6, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -723,9 +723,9 @@ class DispatchingWorker(udp_server.UDPServer):
         if self.custom_error_handler:
             self.custom_error_handler(exc,msg,tb)
         else:
-            self.reply_to_caller( {'status':(str(exc),str(msg), 'error'), 
-                                   'request':request, 
-                                   'exc_type':str(exc), 
+            self.reply_to_caller( {'status':(str(exc),str(msg), 'error'),
+                                   'request':request,
+                                   'exc_type':str(exc),
                                    'exc_value':str(msg)} )
 
     ####################################################################
@@ -739,7 +739,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
     def _do_print(self, ticket):
         Trace.do_print(ticket['levels'])
-        
+
     def do_print(self, ticket):
         Trace.do_print(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
@@ -754,7 +754,7 @@ class DispatchingWorker(udp_server.UDPServer):
         Trace.do_log(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
-        
+
     def dont_log(self, ticket):
         Trace.dont_log(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
@@ -764,13 +764,13 @@ class DispatchingWorker(udp_server.UDPServer):
         Trace.do_alarm(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
-        
+
     def dont_alarm(self, ticket):
         Trace.dont_alarm(ticket['levels'])
         ticket['status']=(e_errors.OK, None)
         self.reply_to_caller(ticket)
-        
-        
+
+
     def quit(self,ticket):
         if sys.version_info >= (2, 6):
             import multiprocessing
@@ -833,7 +833,7 @@ class DispatchingWorker(udp_server.UDPServer):
                        'callback_addr' : (host, port),
                        'long_reply' : 1, #Tell the client the answer is long.
                        }
-       
+
         #Tell the client to wait for a connection.
         small_reply_copy = copy.copy(small_reply)
         self.reply_to_caller(small_reply_copy)
@@ -857,7 +857,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
         #Accept the servers connection.
         control_socket, address = listen_socket.accept()
-        
+
         #Veify that this connection is made from an acceptable
         # IP address.
         if not hostaddr.allow(address):
@@ -871,7 +871,7 @@ class DispatchingWorker(udp_server.UDPServer):
         listen_socket.close()
 
         return control_socket
-        
+
     #Generalize the code to have a really large ticket be returned.
     #This functions uses an acitve protocol.  This function uses UDP and TCP.
     def send_reply_with_long_answer_part2(self, control_socket, ticket):
@@ -899,8 +899,8 @@ class DispatchingWorker(udp_server.UDPServer):
         self.send_reply_with_long_answer_part2(control_socket, ticket)
 
     ####################################################################
-        
-    def restricted_access(self):
+
+    def restricted_access(self,reply_address=None):
         '''
         restricted_access(self) -- check if the service is restricted
 
@@ -909,11 +909,15 @@ class DispatchingWorker(udp_server.UDPServer):
         self.reply_address. If they match, return None. If not, return a
         error status that can be used in reply_to_caller.
         '''
-        if self.reply_address[0] in self.ipaddrlist:
-             return None
-
+        if not reply_address:
+            if self.reply_address[0] in self.ipaddrlist:
+                return None
+        else:
+            if reply_address in self.ipaddrlist:
+                return None
         return (e_errors.ERROR,
                 "This restricted service can only be requested from node %s"
                 % (self.node_name))
 
-    
+
+
