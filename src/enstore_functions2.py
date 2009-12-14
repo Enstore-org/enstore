@@ -640,7 +640,7 @@ def fullpath(filename):
     try_count = 0
     while try_count < 60:
         try:
-            machine = socket.gethostbyaddr(socket.gethostname())[0]
+            machine = socket.getfqdn(socket.gethostname())
             break
         except (socket.error), msg:
             #One known way to get here is to run out of file
@@ -675,7 +675,7 @@ def fullpath(filename):
     return machine, filepath, dirname, basename
 
 # generate the full path name to the file
-#No no_split is true, the last two paramaters for directory and basename
+#If no_split is true, the last two paramaters for directory and basename
 # are returned as None, to avoid calling stat() (via os.path.isdir()).
 def fullpath2(filename, no_split = None):
     if not filename:
@@ -716,8 +716,7 @@ def fullpath2(filename, no_split = None):
     try_count = 0
     while try_count < 60:
         try:
-            hostinfo = socket.gethostbyaddr(hostname)
-            machine = hostinfo[0]
+            machine = socket.getfqdn(hostname)
             break
         except (socket.error), msg:
             this_errno = msg.args[0]
