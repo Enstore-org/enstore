@@ -6,6 +6,7 @@
 #
 ###############################################################################
 
+#system imports
 import pprint
 import cmath
 import math
@@ -18,16 +19,16 @@ import stat
 import types
 import threading
 import re
-#import gc
 import resource
 import traceback
+import copy
 
+#enstore imports
 import Trace
 import mover_client
 import configuration_client
 import enstore_constants
-import e_errors
-#import inquisitor_client
+
 
 #Set up paths to find our private copy of tcl/tk 8.3
 
@@ -686,20 +687,34 @@ class Mover:
 
     #Used by draw_state().
     def draw_positioning_icon(self):
-        x, y                    = self.x, self.y
+        x, y = self.x + self.img_offset.x, self.y + self.img_offset.y
 
         #Path of the first "fast forward" line.
-        path = (x + self.img_offset.x, y + self.img_offset.y + (self.vol_height * 0.25),
-                x + self.img_offset.x + (self.vol_height * 0.25), y + self.img_offset.y + (self.vol_height * 0.5),
-                x + self.img_offset.x, y + self.img_offset.y + (self.vol_height * 0.75))
-
+        path = (
+            #Top point.
+            x,
+            y + (self.vol_height * 0.25),
+            #Middle point.
+            x + (self.vol_height * 0.25),
+            y + (self.vol_height * 0.50),
+            #Bottom point.
+            x,
+            y + (self.vol_height * 0.75)
+            )
         # path 2 is the same as one just moved to the right three pixels.
-        path2 = (x + self.img_offset.x + 3, y + self.img_offset.y + (self.vol_height * 0.25),
-                 x + self.img_offset.x + 3 + (self.vol_height * 0.25), y + self.img_offset.y + (self.vol_height * .05),
-                 x + self.img_offset.x + 3, y + self.img_offset.y + (self.vol_height * 0.75))
-        
-        if self.state_display and \
-               self.display.type(self.state_display) != "text":
+        path2 = (
+            #Top point.
+            path[0] + 3,
+            path[1],
+            #Middle point.
+            path[2] + 3,
+            path[3],
+            #Bottom point.
+            path[4] + 3,
+            path[5]
+            )
+
+        if self.state == self.old_state:
             self.display.coords(self.state_display, path)
             self.display.coords(self.state_display_2, path2)
         else:
@@ -720,19 +735,43 @@ class Mover:
 
     #Used by draw_state().
     def draw_active_icon(self):
-        x, y                    = self.x, self.y
+        if self.rate == None:
+            return
+
+        """
+        if self.rate < 0:
+            #Placeholder for someday having different icons for reads.
+            pass
+        else:
+            #placeholder for someday having different icons for writes.
+        """
+        
+        x, y = self.x + self.img_offset.x, self.y + self.img_offset.y
 
         #Circle bounding box.
-        coords = (x + self.img_offset.x, y + self.img_offset.y + (self.vol_height * 0.25),
-                  x + self.img_offset.x + (self.vol_height * 0.5), y + self.img_offset.y + (self.vol_height * 0.75))
+        coords = (
+            #Upper left.
+            x,
+            y + (self.vol_height * 0.25),
+            #Lower right.
+            x + (self.vol_height * 0.5),
+            y+ (self.vol_height * 0.75)
+            )
 
         #Triangle points.
-        coords2 = (x + self.img_offset.x + (self.vol_height * 0.5), y + self.img_offset.y + (self.vol_height * 0.25),
-                   x + self.img_offset.x + (self.vol_height * 0.75), y + self.img_offset.y + (self.vol_height * 0.5),
-                   x + self.img_offset.x + (self.vol_height * 0.5), y + self.img_offset.y + (self.vol_height * 0.75))
-        
-        if self.state_display and \
-               self.display.type(self.state_display) != "text":
+        coords2 = (
+            #Top point.
+            x + (self.vol_height * 0.5),
+            y + (self.vol_height * 0.25),
+            #Middle point.
+            x + (self.vol_height * 0.75),
+            y + (self.vol_height * 0.5),
+            #Bottom point.
+            x + (self.vol_height * 0.5),
+            y + (self.vol_height * 0.75)
+            )
+
+        if self.state == self.old_state:
             self.display.coords(self.state_display, coords)
             self.display.coords(self.state_display_2, coords2)
         else:
@@ -751,7 +790,7 @@ class Mover:
 
 
     def draw_state(self):
-        x, y                    = self.x, self.y
+        x, y = self.x + self.state_offset.x, self.y + self.state_offset.y
 
         #For small window sizes, the rate display is largely more important.
         # This is simalar to the percent display size drawing restrictions.
@@ -769,7 +808,7 @@ class Mover:
         #img = None
         if self.state_display:
             
-            if self.state in ("POSITIONING"):
+            if self.state in ("SEEK"):
                 self.draw_positioning_icon()
             elif self.state in ("ACTIVE"):
                 self.draw_active_icon()
@@ -777,8 +816,7 @@ class Mover:
             #if current state is in text and the new state is in text.
             else:
                 if self.display.type(self.state_display) == "text":
-                    self.display.coords(self.state_display,
-                                        x+self.state_offset.x, y+self.state_offset.y)
+                    self.display.coords(self.state_display, x, y)
                     self.display.itemconfigure(self.state_display,
                                            text=fit_string(self.font,
                                                            self.state,
@@ -790,21 +828,19 @@ class Mover:
                     if self.state_display_2:
                         self.display.delete(self.state_display_2)
                         self.state_display_2 = None
-                    self.state_display = self.display.create_text(
-                        x+self.state_offset.x, y+self.state_offset.y,
+                    self.state_display = self.display.create_text(x, y,
                         font = self.font,
                         text=fit_string(self.font, self.state, self.state_width),
                         fill=self.state_color, anchor=Tkinter.CENTER)
             
         #No currect state display.
         else:
-            if self.state in ("POSITIONING"):
+            if self.state in ("SEEK"):
                 self.draw_positioning_icon()
             elif self.state in ("ACTIVE"):
                 self.draw_active_icon()
             else:
-                self.state_display = self.display.create_text(
-                    x+self.state_offset.x, y+self.state_offset.y,
+                self.state_display = self.display.create_text(x, y,
                     font = self.font,
                     text=fit_string(self.font, self.state, self.state_width),
                     fill=self.state_color, anchor=Tkinter.CENTER)
@@ -824,7 +860,7 @@ class Mover:
                 font = self.font, anchor = Tkinter.SE)
 
     def draw_volume(self):
-        x, y                    = self.x, self.y
+        x, y = self.x + self.volume_offset.x, self.y + self.volume_offset.y
 
         #Diaplay the volume.
         if self.volume:
@@ -838,27 +874,22 @@ class Mover:
             #Draw the volume background.
             if self.volume_bg_display:
                 self.display.coords(
-                    self.volume_bg_display, self.x + self.volume_offset.x,
-                    self.y + self.volume_offset.y,
-                    self.x + self.volume_offset.x + self.vol_width,
-                    self.y + self.volume_offset.y + self.vol_height)
+                    self.volume_bg_display,
+                    x, y, x + self.vol_width, y + self.vol_height)
             else:
                 self.volume_bg_display = self.display.create_rectangle(
-                    self.x + self.volume_offset.x,
-                    self.y + self.volume_offset.y,
-                    self.x + self.volume_offset.x + self.vol_width,
-                    self.y + self.volume_offset.y + self.vol_height,
+                    x, y, x + self.vol_width, y + self.vol_height,
                     fill = self.volume_bg_color,)
             
-        
+            #Draw the volume label.
             if self.volume_display:
                 self.display.coords(self.volume_display,
-                                    x + self.volume_label_offset.x,
-                                    y + self.volume_label_offset.y)
+                                    x + (self.vol_width / 2.0) + 1,
+                                    y + (self.vol_height / 2.0) + 1)
             else:
                 self.volume_display = self.display.create_text(
-                   self.x + self.volume_offset.x + (self.vol_width / 2.0) + 1,
-                   self.y + self.volume_offset.y + (self.vol_height / 2.0) + 1,
+                   x + (self.vol_width / 2.0) + 1,
+                   y + (self.vol_height / 2.0) + 1,
                    text = fit_string(self.volume_font,
                                      self.volume, self.vol_width),
                    fill = self.volume_font_color,
@@ -1331,13 +1362,23 @@ class Mover:
 
         if rate == self.rate:
             return
+
+        old_rate = self.rate
             
         self.rate = rate
 
         if rate != None:
+            if (old_rate == None or old_rate == 0.0) and rate != 0.0:
+                #If we don't have any rate iformation yet, hold off on
+                # displaying the ACTIVE state icon.  If we wait until the
+                # transfer rate is non-zero we could make a different icon
+                # for reading and writing.
+                self.draw_state()
+
             self.rate_string = "%.2f MB/S" % (self.rate / 1048576)
             self.draw_rate()
         else:
+            self.rate_string = ""
             self.undraw_rate()
 
     def update_progress(self, percent_done, alt_percent_done):
@@ -2054,6 +2095,7 @@ class Title:
 class MoverDisplay(Tkinter.Toplevel):
     """  The mover state display """
     ##** means "variable number of keyword arguments" (passed as a dictionary)
+    ## mover - instantiated Mover class instance
     def __init__(self, mover, **attributes):
         if not hasattr(self, "state_display"):
             Tkinter.Toplevel.__init__(self)
@@ -2061,11 +2103,8 @@ class MoverDisplay(Tkinter.Toplevel):
             #Font geometry.
             self.font = get_font(12)  #, 'arial')
         
-        #Tell it to set the remaining configuration values and to apply them.
-        self.title(mover.name)
+        self.init_common(mover)
 
-        self.mover_name = mover.name
-        self.display = mover.display
         self.state_display = None
         self.after_mover_diplay_id = None
 
@@ -2076,19 +2115,27 @@ class MoverDisplay(Tkinter.Toplevel):
 
         self.update_status()
 
-    def reinit(self, mover = None, display = None):
+    def reinit(self, mover = None):
 
         self.after_cancel(self.after_mover_diplay_id)
+
+        Tkinter.Toplevel.__init__(self)  #Redraw the window.
+        self.init_common(mover)  #Set values for this mover's info.
+        self.update_status()  #Fill the mover window with the mover info.
+
+    #Tell it to set the remaining configuration values and to apply them.
+    def init_common(self, mover=None):
+        # The mover class values that are copied are done with copy.copy()
+        # to avoid cyclic references.
         
-        if display:
-            self.display = display
         if mover:
-            self.mover_name = mover.name
-        
-        self.status_text = self.format_mover_status(self.get_mover_status())
-
-        self.update_status()
-
+            self.mover_name = copy.copy(mover.name)  # mover31@stken
+            self.title(self.mover_name) #Update the title with mover name
+                        
+            self.system_name = self.mover_name.split("@")[1]
+            csc_address = copy.copy(mover.display.csc_dict[self.system_name].server_address)
+            self.csc = configuration_client.ConfigurationClient(csc_address)
+            
     def window_killed(self, event):
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
@@ -2098,7 +2145,8 @@ class MoverDisplay(Tkinter.Toplevel):
         self.after_cancel(self.after_mover_diplay_id)
 
         #Clear this to avoid a cyclic reference.
-        self.display = None
+        self.mover_name = ""
+        self.system_name = ""
 
     def draw(self):
 
@@ -2108,7 +2156,7 @@ class MoverDisplay(Tkinter.Toplevel):
                                          background = self.mover_color,)
             self.state_display.pack(side=Tkinter.LEFT, expand=Tkinter.YES,
                                     fill=Tkinter.BOTH)
-        except Tkinter.TclError:
+        except (Tkinter.TclError, AttributeError):
             #If the state_display variable does not yet exist; create it.
             self.state_display = Tkinter.Label(master=self,
                                                justify=Tkinter.LEFT,
@@ -2134,12 +2182,7 @@ class MoverDisplay(Tkinter.Toplevel):
         # a string of the format like: mover31@stken
         mover_name, system_name = tuple(self.mover_name.split("@"))
         mover_name = mover_name + ".mover"
-        try:
-            csc = self.display.csc_dict[system_name]
-        except (KeyError, AttributeError), msg:
-            return {'status' : (e_errors.DOESNOTEXIST, str(msg)),
-                    'state' : "ERROR"}
-        mov = mover_client.MoverClient(csc, mover_name)
+        mov = mover_client.MoverClient(self.csc, mover_name)
         status = mov.status(rcv_timeout=5, tries=1)
 
         #In case of timeout, set the state to Unknown.
@@ -2170,7 +2213,7 @@ class MoverDisplay(Tkinter.Toplevel):
             self.state_color = colors('state_idle_color')
             self.mover_color = colors('mover_stable_color')
         else:
-            self.state_color =colors('state_stable_color')
+            self.state_color = colors('state_stable_color')
             self.mover_color = colors('mover_stable_color')
 
         self.draw()
@@ -2426,7 +2469,6 @@ class Display(Tkinter.Canvas):
                 if mover.state_display == overlapping[i]:
                     #If the window already exits; reuse it.
                     if getattr(self, "mover_display", None):
-                        #self.mover_display.__init__(mover=mover)
                         self.mover_display.reinit(mover = mover)
                     else:
                         self.mover_display = MoverDisplay(mover)
