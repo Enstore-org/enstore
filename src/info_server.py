@@ -104,7 +104,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 
 	def reinit(self):
 		Trace.log(e_errors.INFO, "(Re)initializing server")
-		
+
 		# stop the communications with the event relay task
 		self.event_relay_unsubscribe()
 
@@ -226,7 +226,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 			return
 	        if ticket.has_key('file_list'):
 			ticket['file_list'].append(finfo)
-			return 
+			return
 		else:
 			if item_name:
 				ticket[item_name] = finfo
@@ -234,7 +234,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 				for key in finfo.keys():
 					ticket[key] = finfo[key]
 		ticket["status"] = (e_errors.OK, None)
-		return 
+		return
 
 	# find_file_by_path() -- find a file using pnfs_path
 	def __find_file_by_path(self, ticket):
@@ -265,7 +265,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		else:
 			bfid = res[0].get('bfid')
 			self.__find_file(bfid, ticket, pnfs_path)
-		return 
+		return
 
 	# find_file_by_path() -- find a file using pnfs id
 	def find_file_by_path(self, ticket):
@@ -278,7 +278,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		self.__find_file_by_path(ticket)
 		self.send_reply_with_long_answer(ticket)
 		return
-		
+
 	# find_file_by_pnfsid() -- find a file using pnfs id
 	def __find_file_by_pnfsid(self, ticket):
 		pnfs_id = self.extract_value_from_ticket("pnfsid", ticket,
@@ -300,7 +300,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 			ticket['status'] = (e_errors.DATABASE_ERROR,
 					    "failed to find bfid for pnfs_id %s"%(pnfs_id,))
 
-			return 
+			return
 		if not res :
 			ticket['status'] = (e_errors.NO_FILE,
 					    "%s: %s not found" % (MY_NAME, pnfs_id))
@@ -331,8 +331,8 @@ class Server(file_clerk.FileClerkInfoMethods,
 		self.__find_file_by_pnfsid(ticket)
 		self.send_reply_with_long_answer(ticket)
 		return
-				
-	
+
+
 	# find_file_by_location() -- find a file using pnfs_path
 	def __find_file_by_location(self, ticket):
 
@@ -368,12 +368,16 @@ class Server(file_clerk.FileClerkInfoMethods,
 			ticket['status'] = (e_errors.DATABASE_ERROR,
 					    "failed to find bfid for volume:location %s:%s"%(external_label, location_cookie,))
 			return ticket
-		bfid = res[0].get('bfid')
-		
 
-		# Obtain the file record(s).
-		self.__find_file(bfid, ticket, "%s:%s" % (external_label, location_cookie))
-		
+		if len(res)>1:
+			ticket["status"] = (e_errors.OK, None)
+			ticket['file_list'] = []
+			for db_info in res:
+				bfid = db_info.get('bfid')
+				self.__find_file(bfid, ticket, pnfs_path)
+		else:
+			bfid = res[0].get('bfid')
+			self.__find_file(bfid, ticket, pnfs_path)
 		return ticket
 
 	# find_file_by_location() -- find a file using pnfs_path
@@ -389,7 +393,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 
 		self.send_reply_with_long_answer(ticket)
 		return
-				
+
 	# find_same_file() -- find files that match the size and crc
 	def __find_same_file(self, ticket):
 		bfid, record = self.extract_bfid_from_ticket(ticket)
@@ -415,14 +419,14 @@ class Server(file_clerk.FileClerkInfoMethods,
 	# find_same_file() -- find files that match the size and crc
 	def find_same_file(self, ticket):
 		self.__find_same_file(ticket)
-		
+
 		self.reply_to_caller(ticket)
 		return
 
 	#This version can handle replying with a large number of file matches.
 	def find_same_file2(self, ticket):
 		self.__find_same_file(ticket)
-		
+
 		self.send_reply_with_long_answer(ticket)
 		return
 
@@ -502,7 +506,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 			#Errors are send back to the client.
 			self.reply_to_caller(ticket)
 			return
-		
+
 		# start communication
 		ticket["status"] = (e_errors.OK, None)
 		try:
@@ -520,7 +524,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		except (socket.error, select.error), msg:
 		    Trace.log(e_errors.INFO, "query_db2(): %s" % (str(msg),))
 		    return
-	
+
 if __name__ == '__main__':
 	Trace.init(string.upper(MY_NAME))
 	intf = Interface()
@@ -552,4 +556,4 @@ if __name__ == '__main__':
 			Trace.handle_error()
 			infoServer.reconnect("paranoid")
 			continue
-	
+
