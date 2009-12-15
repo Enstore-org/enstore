@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+###############################################################################
+# $Author$
+# $Date$
+# $Id$
+#
+#  Utility that tests database backup: creates database from backup and
+#  runs file listing on it
+#
+###############################################################################
 
 import os
 import sys
@@ -79,7 +88,7 @@ def configure(configuration = None):
 		print timeofday.tod(),"ERROR Backups are stored", backup_node,
 		print ' you are on',mynode,' - database check is not possible'
 		sys.exit(1)
-        
+
 	backup_dir = backup.get('dir')
 	if not backup_dir:
 		print timeofday.tod(), "ERROR Backup directory is not determined"
@@ -172,11 +181,11 @@ def stop_postmaster(db_path):
 		os.kill(int(pid), signal.SIGTERM)
 	else:
 		print timeofday.tod(), "postmaster is not running"
-    
+
 def extract_backup(check_dir, container):
 	print timeofday.tod(), "Extracting database files from backup container",
 	print container
-    
+
 	os.chdir(check_dir)
 	os.system("dropdb backup")
 	os.system("createdb backup")
@@ -254,7 +263,7 @@ if __name__ == "__main__":
 	if "--help" in sys.argv:
 		print_usage()
 		sys.exit(0)
-    
+
 	(backup_dir, check_dir, current_dir, backup_node, dest_path, db_path) = configure(1) #non-None argument!
 	# checking for the directories
 	if not os.access(check_dir, os.F_OK):
@@ -287,6 +296,6 @@ if __name__ == "__main__":
             if (file_utils.rmdir(db_path)) :
                 print "Failed to remove directory ",db_path
                 sys.exit(1)
-            
-            
+
+
 
