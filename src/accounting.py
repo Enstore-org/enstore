@@ -2,8 +2,12 @@
 
 import pg
 import os
+import sys
 import pprint
 import time
+
+import Trace
+import e_errors
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 def time2timestamp(t):
@@ -47,6 +51,8 @@ class accDB:
 				'state': 'm',
 				'id': res['oid_tape_mounts']})
 		except:
+			Trace.log(e_errors.INFO, "%s: %s" %
+				  (str(sys.exc_info()[0]), str(sys.exc_info()[1])))
 			try:
 				q =  "select oid as oid_tape_mounts_tmp, "\
 				    "volume, state from tape_mounts_tmp "\
@@ -58,6 +64,9 @@ class accDB:
 						       'id': res['oid_tape_mounts']})
 
 			except:
+				Trace.log(e_errors.ERROR, "%s: %s" %
+					  (str(sys.exc_info()[0]),
+					   str(sys.exc_info()[1])))
 				return
 
 
@@ -77,6 +86,9 @@ class accDB:
 			res2 = self.db.delete('tape_mounts_tmp', {
 				'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
 		except:
+			Trace.log(e_errors.ERROR, "%s: %s" %
+				  (str(sys.exc_info()[0]),
+				   str(sys.exc_info()[1])))
 			return
 
 
@@ -100,6 +112,8 @@ class accDB:
 				'state': 'd',
 				'id': res['oid_tape_mounts']})
 		except:
+			Trace.log(e_errors.INFO, "%s: %s" %
+				  (str(sys.exc_info()[0]), str(sys.exc_info()[1])))
 			try:
 				q = "select oid as oid_tape_mounts_tmp, "\
 				    "volume, state from tape_mounts_tmp "\
@@ -110,6 +124,9 @@ class accDB:
 						       res2['oid_tape_mounts_tmp'],
 						       'id': res['oid_tape_mounts']})
 			except:
+				Trace.log(e_errors.ERROR, "%s: %s" %
+					  (str(sys.exc_info()[0]),
+					   str(sys.exc_info()[1])))
 				return
 
 	def log_finish_dismount(self, node, volume, finish, state='D'):
@@ -127,6 +144,9 @@ class accDB:
 			res2 = self.db.delete('tape_mounts_tmp', {
 				'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
 		except:
+			Trace.log(e_errors.ERROR, "%s: %s" %
+				  (str(sys.exc_info()[0]),
+				   str(sys.exc_info()[1])))
 			return
 
 
