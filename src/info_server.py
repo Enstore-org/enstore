@@ -374,10 +374,13 @@ class Server(file_clerk.FileClerkInfoMethods,
 			ticket['file_list'] = []
 			for db_info in res:
 				bfid = db_info.get('bfid')
-				self.__find_file(bfid, ticket, pnfs_path)
+				self.__find_file(bfid,
+						 ticket,
+						 "%s:%s" %
+						 (external_label, location_cookie))
 		else:
 			bfid = res[0].get('bfid')
-			self.__find_file(bfid, ticket, pnfs_path)
+			self.__find_file(bfid, ticket, "%s:%s" % (external_label, location_cookie))
 		return ticket
 
 	# find_file_by_location() -- find a file using pnfs_path
