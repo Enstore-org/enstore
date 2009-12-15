@@ -668,8 +668,8 @@ def print_recyclable_volumes_header(fp):
 #rc_file2 is not really an open file handle.  Instead, it is a list of lines
 # to append to the end of the first rc_file.
 def print_recyclable_volumes_footer(fp, n_recyclable, rc_file2,
-                                    n_recyclable2, rc_file3,
-                                    n_recyclable3):
+                                    n_recyclable2, rc_contents_list3,
+                                    number_of_recyclable3):
 
     # write out the count of recyclable volumes
     fp.write("\n(%d volumes)" % (n_recyclable))
@@ -690,8 +690,8 @@ def print_recyclable_volumes_footer(fp, n_recyclable, rc_file2,
     fp.write("These are migrated/duplicated/cloned volumes of deleted files.\n")
     fp.write("They probably can be recycled.\n\n")
     #Append total before writing third category out.
-    rc_file3.append("\n(%d volumes)\n" % (n_recyclable3))
-    for l in rc_file3:
+    rc_contents_list3.append("\n(%d volumes)\n" % (number_of_recyclable3))
+    for l in rc_contents_list3:
         fp.write(l)
         
     
@@ -990,7 +990,7 @@ def inventory(output_dir, cache_dir):
     dv_file = open(duplicated_volumes, "w")
     rc_file = open(recyclable_volumes, "w")
     rc_file2 = []
-    rc_file3 = []
+    rc_contents_list3 = []
 
     #Print the headers for each type of output file.
     print_last_access_header(la_file)
@@ -1029,7 +1029,7 @@ def inventory(output_dir, cache_dir):
     n_duplicated = 0
     n_recyclable = 0
     n_recyclable2 = 0
-    n_recyclable3 = 0
+    number_of_recyclable3 = 0
     
 
     # read volume ... one by one
@@ -1228,11 +1228,11 @@ def inventory(output_dir, cache_dir):
                and active == 0 \
                and vv['media_type'] != "null" \
                and vv['library'].find("shelf") == -1:
-            rc_file3.append("%s\t%8s %6d %8s %10s\t%s\n" % (
+            rc_contents_list3.append("%s\t%8s %6d %8s %10s\t%s\n" % (
                 vv['external_label'], vv['system_inhibit'][1],
                 vv['sum_mounts'], vv['media_type'], vv['library'],
                 vv['volume_family']))
-            n_recyclable3 = n_recyclable3 + 1
+            number_of_recyclable3 = number_of_recyclable3 + 1
             recyclable_vol = 1
 
         # is this a deleted volume?
@@ -1482,7 +1482,8 @@ def inventory(output_dir, cache_dir):
     print_migrated_volumes_footer(mv_file, n_migrated)
     print_duplicated_volumes_footer(dv_file, n_duplicated)
     print_recyclable_volumes_footer(rc_file, n_recyclable, rc_file2,
-                                    n_recyclable2, rc_file3, n_recyclable3)
+                                    n_recyclable2, rc_contents_list3,
+                                    number_of_recyclable3)
 
     #Avoiding resource leaks, closing files.
     la_file.close()
