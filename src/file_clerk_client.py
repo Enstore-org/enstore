@@ -738,30 +738,30 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"bfid",
                       option.USER_LEVEL:option.HIDDEN},
-        option.FIND_COPIES:{option.HELP_STRING:"find the immediate copies of this file",
-                     option.VALUE_TYPE:option.STRING,
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_LABEL:"file",
-                     option.USER_LEVEL:option.ADMIN},
         option.FIND_ALL_COPIES:{option.HELP_STRING:"find all copies of this file",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_LABEL:"file",
+                     option.VALUE_LABEL:"bfid",
                      option.USER_LEVEL:option.ADMIN},
-        option.FIND_ORIGINAL:{option.HELP_STRING:"find the immediate original of this file",
+        option.FIND_COPIES:{option.HELP_STRING:"find the immediate copies of this file",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_LABEL:"file",
-                     option.USER_LEVEL:option.ADMIN},
-        option.FIND_THE_ORIGINAL:{option.HELP_STRING:"find the very first original of this file",
-                     option.VALUE_TYPE:option.STRING,
-                     option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_LABEL:"file",
+                     option.VALUE_LABEL:"bfid",
                      option.USER_LEVEL:option.ADMIN},
         option.FIND_DUPLICATES:{option.HELP_STRING:"find all duplicates related to this file",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
-                     option.VALUE_LABEL:"file",
+                     option.VALUE_LABEL:"bfid",
+                     option.USER_LEVEL:option.ADMIN},
+        option.FIND_ORIGINAL:{option.HELP_STRING:"find the immediate original of this file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"bfid",
+                     option.USER_LEVEL:option.ADMIN},
+        option.FIND_THE_ORIGINAL:{option.HELP_STRING:"find the very first original of this file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"bfid",
                      option.USER_LEVEL:option.ADMIN},
         #Additionally, --force can be used to talk to the file clerk and
         # not the info srver.  
@@ -1004,25 +1004,40 @@ def do_work(intf):
         if ticket['status'][0] == e_errors.OK:
             print "bfid =", ticket['bfid']
     elif intf.find_copies:
-        ticket = fcc.find_copies(intf.find_copies)
+        if intf.force:
+            ticket = fcc.find_copies(intf.find_copies)
+        else:
+            ticket = ifc.find_copies(intf.find_copies)
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['copies']:
                 print i
     elif intf.find_all_copies:
-        ticket = fcc.find_all_copies(intf.find_all_copies)
+        if intf.force:
+            ticket = fcc.find_all_copies(intf.find_all_copies)
+        else:
+            ticket = ifc.find_all_copies(intf.find_all_copies)
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['copies']:
                 print i
     elif intf.find_original:
-        ticket = fcc.find_original(intf.find_original)
+        if intf.force:
+            ticket = fcc.find_original(intf.find_original)
+        else:
+            ticket = ifc.find_original(intf.find_original)
         if ticket['status'][0] == e_errors.OK:
             print ticket['original']
     elif intf.find_the_original:
-        ticket = fcc.find_the_original(intf.find_the_original)
+        if intf.force:
+            ticket = fcc.find_the_original(intf.find_the_original)
+        else:
+            ticket = ifc.find_the_original(intf.find_the_original)
         if ticket['status'][0] == e_errors.OK:
             print ticket['original']
     elif intf.find_duplicates:
-        ticket = fcc.find_duplicates(intf.find_duplicates)
+        if intf.force:
+            ticket = fcc.find_duplicates(intf.find_duplicates)
+        else:
+            ticket = ifc.find_duplicates(intf.find_duplicates)
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['copies']:
                 print i

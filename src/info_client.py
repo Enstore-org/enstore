@@ -26,6 +26,7 @@ import hostaddr
 import e_errors
 import enstore_constants
 import enstore_functions3
+import volume_family
 
 MY_NAME = enstore_constants.INFO_CLIENT     #"info_client"
 MY_SERVER = enstore_constants.INFO_SERVER   #"info_server"
@@ -101,17 +102,18 @@ def show_volume(v):
 show_file_format = "%20s %8s %8s %8s %8s %22s %7s %12d %12d %20s %s"
 def show_file(f, verbose=0):
     print show_file_format % (
-        f['bfid'],
-        f['storage_group'],
-        f['library'],
-        f['media_type'],
-        f['external_label'],
-        f['location_cookie'],
-        f['deleted'],
-        f['size'],
-        f['complete_crc'],
-        f['pnfsid'],
-        f['pnfs_name0'])
+        f.get('bfid', ""),
+        f.get('storage_group',
+              volume_family.extract_storage_group(f.get('volume_family', ""))),
+        f.get('library', ""),
+        f.get('media_type', ""),
+        f.get('external_label', ""),
+        f.get('location_cookie', ""),
+        f.get('deleted', ""),
+        f.get('size', -1),
+        f.get('complete_crc', -1),
+        f.get('pnfsid', ""),
+        f.get('pnfs_name0', ""))
 
 class fileInfoMethods(generic_client.GenericClient):
     def __init__(self, csc, name, server_address=None, flags=0, logc=None,
@@ -1127,6 +1129,11 @@ class InfoClientInterface(generic_client.GenericClientInterface):
         self.file = None
         self.show_file = None
         self.show_copies = None
+        self.find_copies = None
+        self.find_all_copies = None
+        self.find_original = None
+        self.find_the_original = None
+        self.find_duplicates = None
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -1151,16 +1158,41 @@ class InfoClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_LABEL:"volume_name",
                             option.USER_LEVEL:option.ADMIN},
-            option.FIND_SAME_FILE:{option.HELP_STRING:"find a file of the same size and crc",
-                            option.VALUE_TYPE:option.STRING,
-                            option.VALUE_LABEL: "bfid",
-                            option.VALUE_USAGE:option.REQUIRED,
-                            option.USER_LEVEL:option.ADMIN},
             option.FILE:{option.HELP_STRING:"get info of a file",
                             option.VALUE_TYPE:option.STRING,
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_LABEL:"path|pnfsid|bfid|vol:loc",
                             option.USER_LEVEL:option.USER},
+            option.FIND_ALL_COPIES:{option.HELP_STRING:"find all copies of this file",
+                                    option.VALUE_TYPE:option.STRING,
+                                    option.VALUE_USAGE:option.REQUIRED,
+                                    option.VALUE_LABEL:"bfid",
+                                    option.USER_LEVEL:option.USER},
+            option.FIND_COPIES:{option.HELP_STRING:"find the immediate copies of this file",
+                                option.VALUE_TYPE:option.STRING,
+                                option.VALUE_USAGE:option.REQUIRED,
+                                option.VALUE_LABEL:"bfid",
+                                option.USER_LEVEL:option.USER},
+            option.FIND_DUPLICATES:{option.HELP_STRING:"find all duplicates related to this file",
+                                    option.VALUE_TYPE:option.STRING,
+                                    option.VALUE_USAGE:option.REQUIRED,
+                                    option.VALUE_LABEL:"bfid",
+                                    option.USER_LEVEL:option.USER},
+            option.FIND_ORIGINAL:{option.HELP_STRING:"find the immediate original of this file",
+                                  option.VALUE_TYPE:option.STRING,
+                                  option.VALUE_USAGE:option.REQUIRED,
+                                  option.VALUE_LABEL:"bfid",
+                                  option.USER_LEVEL:option.USER},
+            option.FIND_THE_ORIGINAL:{option.HELP_STRING:"find the very first original of this file",
+                                      option.VALUE_TYPE:option.STRING,
+                                      option.VALUE_USAGE:option.REQUIRED,
+                                      option.VALUE_LABEL:"bfid",
+                                      option.USER_LEVEL:option.USER},
+            option.FIND_SAME_FILE:{option.HELP_STRING:"find a file of the same size and crc",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_LABEL: "bfid",
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.USER_LEVEL:option.ADMIN},
             option.GET_SG_COUNT:{
                             option.HELP_STRING: 'check allocated count for lib,sg',
                             option.VALUE_TYPE:option.STRING,
@@ -1314,16 +1346,17 @@ def do_work(intf):
     elif intf.show_file:
         ticket = ifc.file_info(intf.show_file)
         if e_errors.is_ok(ticket):
-            #show_file(ticket['file_info'])
-            pprint.pprint(ticket['file_info'])
+            show_file(ticket['file_info'])
 
     elif intf.show_copies:
-        ticket = ifc.find_all_copies(intf.show_copies)
-        for i in ticket["copies"]:
-            ticket = ifc.file_info(i)
-            if e_errors.is_ok(ticket):
-                #show_file(ticket['file_info'])
-                pprint.pprint(ticket['file_info'])
+        ticket = ifc.find_the_original(intf.show_copies)
+        if ticket['status'][0] ==  e_errors.OK:
+            ticket = ifc.find_all_copies(ticket['original'])
+            if ticket['status'][0] ==  e_errors.OK:
+                for i in ticket["copies"]:
+                    ticket = ifc.file_info(i)
+                    if e_errors.is_ok(ticket):
+                        show_file(ticket['file_info'])
 
     elif intf.ls_active:
         ticket = ifc.list_active(intf.ls_active)
@@ -1362,7 +1395,29 @@ def do_work(intf):
                         record['bfid'], record['size'],
                         record['location_cookie'], deleted,
                         record['pnfs_name0'])
-
+    elif intf.find_copies:
+        ticket = ifc.find_copies(intf.find_copies)
+        if ticket['status'][0] == e_errors.OK:
+            for i in ticket['copies']:
+                print i
+    elif intf.find_all_copies:
+        ticket = ifc.find_all_copies(intf.find_all_copies)
+        if ticket['status'][0] == e_errors.OK:
+            for i in ticket['copies']:
+                print i
+    elif intf.find_original:
+        ticket = ifc.find_original(intf.find_original)
+        if ticket['status'][0] == e_errors.OK:
+            print ticket['original']
+    elif intf.find_the_original:
+        ticket = ifc.find_the_original(intf.find_the_original)
+        if ticket['status'][0] == e_errors.OK:
+            print ticket['original']
+    elif intf.find_duplicates:
+        ticket = ifc.find_duplicates(intf.find_duplicates)
+        if ticket['status'][0] == e_errors.OK:
+            for i in ticket['copies']:
+                print i
     elif intf.check:
         ticket = ifc.inquire_vol(intf.check)
         # guard against error

@@ -205,7 +205,9 @@ class Server(file_clerk.FileClerkInfoMethods,
 		bfid, record = self.extract_bfid_from_ticket(ticket)
 		if not bfid:
 			return #extract_bfid_from_ticket handles its own errors.
-		self.__find_file(bfid, ticket, error_target="file_info",item_name = "file_info")
+		self.__find_file(bfid, ticket, error_target="file_info",
+				 item_name = "file_info",
+				 include_volume_info = True)
 		self.reply_to_caller(ticket)
 		return
 
@@ -217,22 +219,43 @@ class Server(file_clerk.FileClerkInfoMethods,
 	# key.
 	#
 	# error_target is a string describing what is being looked for.
-	def __find_file(self, bfid, ticket, error_target, item_name = None):
+	def __find_file(self, bfid, ticket, error_target, item_name = None,
+			include_volume_info = False):
+		#Get the file information from the database.
 		finfo  = getattr(self, 'file', {})[bfid]
 		if not finfo:
 			ticket['status'] = (e_errors.NO_FILE,
 				"%s: %s not found" % (MY_NAME, error_target))
 			Trace.log(e_errors.ERROR, "%s" % (ticket,))
 			return
+		if include_volume_info:
+			#Get the volume information from the database.
+			vinfo  = getattr(self, 'volume', {})[finfo['external_label']]
+			if not vinfo:
+				ticket['status'] = (e_errors.NO_VOLUME,
+						    "%s: %s not found" % (MY_NAME, error_target))
+				Trace.log(e_errors.ERROR, "%s" % (ticket,))
+				return
+
+		#Combine the file and volume information together.
+		combined_dict = {}
+		for key in finfo.keys():
+			combined_dict[key] = finfo[key]
+		if include_volume_info:
+			for key in vinfo.keys():
+				combined_dict[key] = vinfo[key]
+
+		#Put the information into the ticket in the correct place.
 	        if ticket.has_key('file_list'):
-			ticket['file_list'].append(finfo)
+			ticket['file_list'].append(combined_dict)
 			return
 		else:
 			if item_name:
-				ticket[item_name] = finfo
+				ticket[item_name] = combined_dict
+				print "ticket:", ticket
 			else:
-				for key in finfo.keys():
-					ticket[key] = finfo[key]
+				for key in combined_dict.keys():
+					ticket[key] = combined_dict[key]
 		ticket["status"] = (e_errors.OK, None)
 		return
 
