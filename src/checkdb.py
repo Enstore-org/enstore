@@ -271,9 +271,7 @@ if __name__ == "__main__":
 	check_existance(check_dir, 0)
 	if os.access(db_path, os.F_OK):
             print db_path, "exists, removing it..."
-            if file_utils.rmdir(db_path) :
-                print "Failed"
-                sys.exit(1)
+            file_utils.rmdir(db_path)
         os.makedirs(db_path)
         # create database area
         cmd = "initdb -D %s"%(db_path)
@@ -293,9 +291,10 @@ if __name__ == "__main__":
 	print timeofday.tod(), cmd
 	os.system(cmd)
         if os.access(db_path, os.F_OK):
-            if (file_utils.rmdir(db_path)) :
-                print "Failed to remove directory ",db_path
-                sys.exit(1)
+            #
+            # clean up after ourselves so next
+            #
+            file_utils.rmdir(db_path)
 
 
 
