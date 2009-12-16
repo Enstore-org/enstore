@@ -1373,7 +1373,13 @@ class Mover:
                 # displaying the ACTIVE state icon.  If we wait until the
                 # transfer rate is non-zero we could make a different icon
                 # for reading and writing.
-                self.draw_state()
+                if self.state not in ["ACTIVE"]:
+                    #The mover "state" change message was dropped.  We
+                    # got a "transfer" message, which means we need to
+                    # implicitly put the mover into the ACTIVE state.
+                    self.update_state("ACTIVE")
+                else:
+                    self.draw_state()
 
             self.rate_string = "%.2f MB/S" % (self.rate / 1048576)
             self.draw_rate()
