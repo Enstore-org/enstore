@@ -34,13 +34,13 @@ def e_access(path, mode):
         file_stats = get_stat(path)
     except OSError:
         return 0
-    
+
     return e_access_cmp(file_stats, mode)
 
 #Check the bits to see if we have the requested mode access.
 def e_access_cmp(file_stats, mode):
     stat_mode = file_stats[stat.ST_MODE]
-    
+
     #Make sure a valid mode was passed in.
     if mode & (os.F_OK | os.R_OK | os.W_OK | os.X_OK) != mode:
         return 0
@@ -88,7 +88,7 @@ def e_access_cmp(file_stats, mode):
             pass
         else:
             return 0
-    
+
     if mode & os.X_OK:  #Check for execute permissions.
         #If the user is user root.
         if os.geteuid() == 0:
@@ -189,7 +189,7 @@ def open(fname, mode = "r"):
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
-        
+
             try:
                 os.seteuid(0)
                 os.setegid(0)
@@ -216,7 +216,7 @@ def open(fname, mode = "r"):
             release_lock_euid_egid()
         else:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            
+
     return file_p
 
 #Open the file fname.  This is a wrapper for os.open() (atomic.open() is
@@ -239,7 +239,7 @@ def open_fd(fname, flags, mode = 0777):
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
-        
+
             try:
                 os.seteuid(0)
                 os.setegid(0)
@@ -269,7 +269,7 @@ def open_fd(fname, flags, mode = 0777):
             release_lock_euid_egid()
         else:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            
+
     return file_fd
 
 #Obtain the contents of the specified directory.
@@ -284,7 +284,7 @@ def listdir(dname):
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
-        
+
             try:
                 os.seteuid(0)
                 os.setegid(0)
@@ -311,7 +311,7 @@ def listdir(dname):
             release_lock_euid_egid()
         else:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            
+
     return directory_listing
 
 
@@ -327,7 +327,7 @@ def chmod(fname, perms):
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
-        
+
             try:
                 os.seteuid(0)
                 os.setegid(0)
@@ -367,7 +367,7 @@ def chown(fname, uid, gid):
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
-        
+
             try:
                 os.seteuid(0)
                 os.setegid(0)
@@ -408,7 +408,7 @@ def utime(fname, times):
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
-        
+
             try:
                 os.seteuid(0)
                 os.setegid(0)
@@ -448,7 +448,7 @@ def remove(fname):
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
-        
+
             try:
                 os.seteuid(0)
                 os.setegid(0)
@@ -475,8 +475,8 @@ def remove(fname):
             release_lock_euid_egid()
         else:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        
-        
+
+
 #############################################################################
 
 #If root is running the process, we may need to change the euid.  Is this
@@ -485,7 +485,7 @@ euid_lock = threading.RLock()
 
 def acquire_lock_euid_egid():
     if euid_lock._RLock__count > 0 and \
-           euid_lock._RLock__owner == threading.currentThread(): 
+           euid_lock._RLock__owner == threading.currentThread():
         Trace.log(67, "lock count: %s" % (euid_lock._RLock__count,))
         Trace.log_stack_trace(severity = 67)
     euid_lock.acquire()
@@ -495,7 +495,7 @@ def release_lock_euid_egid():
         euid_lock.release()
     except RuntimeError:
         pass  #Already unlocked.
-    
+
 
 #Match the effective uid/gid of a file.
 # arg: could be a pathname, fileno or file object.
@@ -553,16 +553,54 @@ def end_euid_egid(reset_ids_back = False):
 
 # this function does "rm -f path"
 def rmdir(path):
-  try:
     if (os.path.isdir(path)):
-      direntries=os.listdir(os.path.abspath(path))
-      for direntry in os.listdir(os.path.abspath(path)):
-        rmdir(os.path.join(path,direntry))
-      os.rmdir(path)
+        for direntry in os.listdir(os.path.abspath(path)):
+            rmdir(os.path.join(path,direntry))
+        os.rmdir(path)
     else:
         os.unlink(path)
-  except (IOError, os.error), why:
-    print "rmdir %s: %s" % (str(path), str(why))
-    return 1
-  return 0
+#
+# wrapper to call os functions that takes care of euid/eid
+#
+def wrapper(function,args=()):
+    try:
+        if type(args) != types.TupleType:
+            apply(function, (args,))
+        else:
+            apply(function, args)
+    except (OSError, IOError), msg:
+        if msg.errno in [errno.EACCES, errno.EPERM] and \
+               os.getuid() == 0 and os.geteuid() != 0:
+            acquire_lock_euid_egid()
+            current_euid = os.geteuid()
+            current_egid = os.getegid()
+            try:
+                os.seteuid(0)
+                os.setegid(0)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            try:
+                if type(args) != types.TupleType:
+                    apply(function, (args,))
+                else:
+                    apply(function, args)
+            except (OSError, IOError), msg:  #Anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:  #Un-anticipated errors.
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            try:
+                os.setegid(current_egid)
+                os.seteuid(current_euid)
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            release_lock_euid_egid()
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
 
