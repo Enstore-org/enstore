@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
 
 #system imports
 import sys
@@ -39,7 +44,7 @@ def time2timestamp(t):
 
 # return filenames
 def get_vol_filenames(output_dir):
-    if string.find(output_dir, "/dev/stdout") != -1: 
+    if string.find(output_dir, "/dev/stdout") != -1:
         last_access_file = "/dev/stdout"
         volume_size_file = "/dev/stdout"
         volumes_defined_file = "/dev/stdout"
@@ -97,10 +102,10 @@ def format_storage_size(size_in_bytes,mode="GB"):
     if mode == "GB":
         z = size_in_bytes/1024./1024./1024. # GB
         return z,"GB"
-  
+
     #suffix list
     suffix = ("B", "KB", "MB", "GB", "TB", "PB")
-    
+
     #format the remaining bytes. collumn
     volume_size = float(size_in_bytes)
     count = 0
@@ -131,7 +136,7 @@ def create_clean_dirs(*dirs):
                 os.stat(dname)
             except OSError:
                 os.mkdir(dname, 0755)
-                
+
             remove_files(os.listdir(dname), dname)
 
 #Read in the information from the authorized tapes file.
@@ -273,9 +278,9 @@ def print_footer(volume, s_i, fd):
             to_print = "'" + volume[key] + "'"
         else:
             to_print = volume[key]
-        
+
         #Print each field on a seperate line.  Place braces (to suround the
-        # data) printed on the first and last lines. 
+        # data) printed on the first and last lines.
         if key == fields_list[0]:
             out_string = " {'%s': %s\n" % (key, to_print)
             os.write(fd, out_string)
@@ -310,7 +315,7 @@ def print_volume_size_stats(volume_sums, volume_list, output_file):
                                            volume['remaining_bytes'])
         format_string = \
            "%10s %7.2f%-2s %7.2f%-2s %9.2f%-2s %7.2f%-2s %7.2f%-2s %7.2f%-2s\n"
-        
+
         usage_file.write(format_string % format_tuple)
 
     usage_file.close()
@@ -333,11 +338,11 @@ def print_volumes_defined_status(volume_list, output_file):
 
     vd_file.write("Date this listing was generated: %s\n\n" % \
                   time.asctime(time.localtime(time.time())))
-    
+
     vd_file.write("%-10s  %-8s %-17s %17s  %012s %-12s\n" %
           ("label", "avail.", "system_inhibit", "user_inhibit",
            "library", "volume_family"))
-    
+
     for volume in volume_list:
         formated_size = format_storage_size(volume['remaining_bytes'])
 
@@ -351,7 +356,7 @@ def print_volumes_defined_status(volume_list, output_file):
                          volume['library'],
                          volume['volume_family']))
     vd_file.close()
-    
+
 def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quotas):
 
     order = quotas.get('order', {})
@@ -415,13 +420,13 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
     else:
         libraries = []
     quotas = volume_quotas.keys()
-    
+
     top = []
     bottom = []
     for keys in quotas:
         b_order = order.get('bottom', [])
         t_order = order.get('top', [])
-        
+
         if keys in b_order:
             bottom.append(keys)
         elif keys in t_order:
@@ -433,7 +438,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
                 elif t_order[1] == None and \
                      t_order[0] == volume_quotas[keys][0]:
                     top.append(keys)
-        
+
             for b_order in order.get('bottom', []):
                 if b_order[0] == None and b_order[1] == volume_quotas[keys][1]:
                     bottom.append(keys)
@@ -546,7 +551,7 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
     blanks = authorized_tapes.get('blanks', None)
     if blanks != None:
         vq_file.write("blanks=" + blanks + "\n")
-    
+
     vq_file.close()
     vq_format_file.close()
 
@@ -566,11 +571,11 @@ def print_total_bytes_on_tape(volume_sums, output_file):
 
 def print_common_header(fp):
     command_name = os.path.basename(sys.argv[0])
-    
+
     fp.write("Date this listing was generated: %s\n" % \
         (time.ctime(time.time())))
     fp.write("Brought to You by: %s\n\n" % (command_name,))
-    
+
 def print_last_access_header(fp):
     print_common_header(fp)
 
@@ -591,7 +596,7 @@ def print_volume_size_footer(fp):
 
 def print_volumes_defined_header(fp):
     fp.write("<html><pre>\n")
-    
+
     print_common_header(fp)
 
     vd_format = "%-10s %-10s %-25s %-20s %-12s %-3s %6s %-40s\n\n"
@@ -685,7 +690,7 @@ def print_recyclable_volumes_footer(fp, n_recyclable, rc_file2,
         fp.write(l)
     # write out empty spacer lines
     fp.write("\n\n\n\n")
-        
+
     #Output the migration recyclable volumes.
     fp.write("These are migrated/duplicated/cloned volumes of deleted files.\n")
     fp.write("They probably can be recycled.\n\n")
@@ -693,8 +698,8 @@ def print_recyclable_volumes_footer(fp, n_recyclable, rc_file2,
     rc_contents_list3.append("\n(%d volumes)\n" % (number_of_recyclable3))
     for l in rc_contents_list3:
         fp.write(l)
-        
-    
+
+
 ##############################################################################
 ##############################################################################
 
@@ -720,7 +725,7 @@ def create_fd_list(volume_list, output_dir):
             if fd == -1:
                 print "Error opening file " + file_string + "."
                 sys.exit(1)
-        
+
         #Place the fd in the file descriptor dictionary.
         fd_list[volume['external_label']] = fd
 
@@ -734,10 +739,10 @@ def process_out_string(short_list, fd):
         lc = vol.get('location_cookie', "unknown")
         deleted = vol.get('deleted', "unknown")
         pnfs = vol.get('pnfs_name0', "unknown")
-        
+
         out_string = "%10s %15s %15s %22s %7s %s\n" % \
                          (label, bfid, size, lc, deleted, pnfs)
-        
+
         #It doesn't matter if the value in out_string was set with or
         # without an exception being thrown.  Just stream it out.
         os.write(fd, out_string)
@@ -754,17 +759,17 @@ def parse_time(seconds):
         out_string = "%d hour " % (hour)
     elif hour > 0:
         out_string = "%d hours " % (hour)
-        
+
     if minute == 1:
         out_string = "%s%d minute " % (out_string, minute)
     elif minute > 0:
         out_string = "%s%d minutes " % (out_string, minute)
-        
+
     if second == 1:
         out_string = "%s%d second" % (out_string, second)
     elif second >= 0:
         out_string = "%s%d seconds" % (out_string, second)
-        
+
     return out_string
 
 
@@ -807,7 +812,7 @@ def verify_volume_quotas(volume_data, volume, volumes_allocated):
         quota = quotas['libraries'][library][storage_group]
     except KeyError:
         quota = "N/A"
-    
+
     #Since the data of which files are on what volume is already known,
     # that same data can be used here.
     if len(volume_data) == 0:
@@ -872,8 +877,8 @@ def verify_volume_quotas(volume_data, volume, volumes_allocated):
                                                        num_active_files,
                                                        num_deleted_files,
                                                        num_unknown_files)
-        
-    
+
+
 
 def is_b_library(lib):
     return lib.find('9940B') >= 0 or lib == 'eval-b' or lib[-9:] == 'Migration'
@@ -909,7 +914,7 @@ def sum(l):
         total = total + i
     return total
 """
-		
+
 #Proccess the inventory of the files specified.  This is the main source
 # function where all of the magic starts.
 #Takes the full filepath name to the volume file in the first parameter.
@@ -948,7 +953,7 @@ def inventory(output_dir, cache_dir):
     # log to accounting db
     accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
     acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
-    # 
+    #
     eq = equota.Quota(vol_db.db)
 
     #Get the media_types for each library.
@@ -1030,7 +1035,7 @@ def inventory(output_dir, cache_dir):
     n_recyclable = 0
     n_recyclable2 = 0
     number_of_recyclable3 = 0
-    
+
 
     # read volume ... one by one
 
@@ -1075,7 +1080,7 @@ def inventory(output_dir, cache_dir):
         # not been updated recently.
         skipped = False
         if vsum and long(vsum['last']) == long(vv['modification_time']):
-            skipped = True 
+            skipped = True
             # good, don't do anything
             active = vsum['active']
             deleted = vsum['deleted']
@@ -1095,16 +1100,16 @@ def inventory(output_dir, cache_dir):
                                     os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
                                     0666)
             print_header(vv, fd_output)
-    
+
             # some volume statistics
-    
+
             active = 0L
             deleted = 0L
             unknown = 0L
             active_size = 0L
             deleted_size = 0L
             unknown_size = 0L
-    
+
             # dealing with files
 
             # get all bfids of the volume
@@ -1127,7 +1132,7 @@ def inventory(output_dir, cache_dir):
                 else:
                     unknown = unknown + 1
                     unknown_size = unknown_size + f['size']
-    
+
                 # write out file information
                 os.write(fd_output, "%10s %15s %15s %22s %7s %s\n" % \
                     (f.get('external_label', "unknown"),
@@ -1136,7 +1141,7 @@ def inventory(output_dir, cache_dir):
                      f.get('location_cookie', "unknown"),
                      f.get('deleted', "unknown"),
                      f.get('pnfs_name0', "unknown")))
-    
+
                 n_files = n_files + 1
 
             #Sum the volume totals.
@@ -1154,7 +1159,7 @@ def inventory(output_dir, cache_dir):
                 'total_size' : total_size,
                 }
             vol_sum[vk] = vsum
-            
+
             #Print out the volume information at the end.
             print_footer(vv, vsum, fd_output)
 
@@ -1208,7 +1213,7 @@ def inventory(output_dir, cache_dir):
                 vv['volume_family']))
             n_recyclable = n_recyclable + 1
             recyclable_vol = 1
-            
+
         # can it be recycled?
         if vv['system_inhibit'][1] == 'readonly' \
                and active == 0 \
@@ -1370,11 +1375,11 @@ def inventory(output_dir, cache_dir):
                 format_storage_size(vv['remaining_bytes']) + \
                 format_storage_size(vv['capacity_bytes'] -
                                     vv['remaining_bytes']) + \
-                (active, deleted, unknown, vv['volume_family'])                
+                (active, deleted, unknown, vv['volume_family'])
         la_format = \
            "%10s %7.2f%-2s %7.2f%-2s %9.2f%-2s %7.2f%-2s %7.2f%-2s %7.2f%-2s %8d %8d %8d %-s\n"
         vs_file.write(la_format % la_values)
-        
+
         formated_size = format_storage_size(vv['remaining_bytes'])
 
         # too many mounts -- need more work
@@ -1456,11 +1461,11 @@ def inventory(output_dir, cache_dir):
         n_vols = n_vols + 1
         n_vols_lib[vv['library']] = n_vols_lib.get(vv['library'], 0) + 1
 
-        if skipped == True : 
+        if skipped == True :
             print 'skipped', time.time()-tt0
         else:
             print 'done', time.time()-tt0
-            
+
 
     ###
     ### Dump that summarizes all the volumes metadata.
@@ -1545,7 +1550,7 @@ def inventory_dirs():
         sys.exit(1)
     else:
         print tod(), 'Configuration Server ok'
-    
+
     inventory_dir = inven.get('inventory_dir','MISSING')
     inventory_rcp_dir = inven.get('inventory_rcp_dir','MISSING')
     inventory_cache_dir = inven.get('inventory_cache_dir', '/tmp')
@@ -1594,14 +1599,14 @@ if __name__ == "__main__":
         output_dir = sys.argv[sys.argv.index("-o") + 1]
     else:
         output_dir = inventory_dir
-        
+
     #Remove the contents of existing direcories and create them if they do
     # not exist.
     create_clean_dirs(output_dir)
 
     #Inventory is the main function that does work.
     counts = inventory(output_dir, inventory_cache_dir)
-    
+
     #Move all of the output files over to the web server node.
     if inventory_rcp_dir:
         if string.find(output_dir, "/dev/stdout") == -1:

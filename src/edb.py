@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 """
 edb.py -- a replacement for db.py
 edb.py -- a shelve wrapper to a postgreSQL database
@@ -53,8 +61,8 @@ def sanitize_datetime_values(dictionary) :
                     item[i] = item[i].isoformat(' ')
     return dictionary
 
-            
-# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
+
+# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
 def timestamp2time(s):
 	if not s : return -1
 	if s == '1969-12-31 17:59:59':
@@ -62,7 +70,7 @@ def timestamp2time(s):
 	if s == '1970-01-01 00:59:59':
 		return -1
 	if isinstance(s,datetime.datetime) :
-		try:  
+		try:
 			return time.mktime(s.utctimetuple())
 		except OverflowError:
 			return -1
@@ -176,7 +184,7 @@ class DbTable:
 		cursor = None
 		try:
 			db=self.pool.connection();
-			if cursor_factory : 
+			if cursor_factory :
 				cursor=db.cursor(cursor_factory=cursor_factory)
 			else:
 				cursor=db.cursor()
@@ -260,7 +268,7 @@ class DbTable:
 				self.jou[key] = self.__getitem__(key)
 			del self.jou[key]
 		res = self.delete(self.delete_query%(key))
-			
+
 
 	def keys(self):
 		res = self.query_getresult('select %s from %s order by %s;'%(self.pkey, self.table, self.pkey))
@@ -407,17 +415,17 @@ class FileDB(DbTable):
 
 		# Take care of sanity_cookie
 		if s['sanity_cookie'][0] == None:
-			sanity_size = -1 
+			sanity_size = -1
 		else:
 			sanity_size = s['sanity_cookie'][0]
 		if s['sanity_cookie'][1] == None:
-			sanity_crc = -1 
+			sanity_crc = -1
 		else:
 			sanity_crc = s['sanity_cookie'][1]
 
 		# take care of crc
 		if s['complete_crc'] == None:
-			crc = -1 
+			crc = -1
 		else:
 			crc = s['complete_crc']
 
@@ -571,14 +579,14 @@ if __name__ == '__main__':
 	volume = v[v.keys()[number]]
 	print volume
 	local_copy=copy.deepcopy(volume)
-	v[v.keys()[number]]=local_copy # update 
+	v[v.keys()[number]]=local_copy # update
 	label='XXXX01'
 	del v[label]
 	local_copy['external_label']=label
 	print local_copy
 	v[label]=local_copy #insert
 	del v[label]
-	
+
 	f=FileDB()
 	print f['CDMS115744790100000']
-	
+
