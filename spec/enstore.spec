@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 1.0.1
-Release: 9
+Release: 14
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -66,15 +66,8 @@ fi
 %build
 . /tmp/enstore-setup
 echo "BUILD"
-cd $RPM_BUILD_ROOT/%{prefix}/modules
-#cd $RPM_BUILD_ROOT/%{prefix}
 make clean
 make all
-cd ../PyGreSQL
-make clean
-make all
-
-#cp -r /%{prefix}/external_distr/setups.sh %{build_root}/usr/local/etc/setups.sh
 
 %install
 if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
@@ -101,6 +94,7 @@ if [ $? -ne 0 ]; then
 	useradd -u 5744 -g enstore enstore
 	chmod 775 ~enstore
 fi
+
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 #%post
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
@@ -169,7 +163,6 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /%{prefix}/etc/enstore_configuration
 %config /%{prefix}/etc/sam.conf
 %config /%{prefix}/etc/stk.conf
-%config /%{prefix}/etc/d0en_sde_test.conf
 %config /usr/local/etc/setups.sh
 #/etc/rc.d/init.d/enstore-boot
 #/etc/sudoers
