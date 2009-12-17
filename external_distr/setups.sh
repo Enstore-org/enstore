@@ -83,7 +83,7 @@ if [ "${ENSTORE_DIR:-x}" = "x" ];
 then
 	# this is a very trivial way to check if enstore is set
 	# the usual location of enstore is /home/enstore
-	e_home=
+	e_home=`grep enstore /etc/passwd | cut -f6 -d\:`
 	#e_dir=`rpm -ql enstore_sa | head -1`
 	# if ENSTORE_HOME is defined execute setup-enstore in the user area
 	user_home="${ENSTORE_HOME:-x}"
