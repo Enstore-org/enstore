@@ -269,7 +269,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		res=[]
 		try:
 			res = self.db.query(q).dictresult()
-		except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+		except (edb.pg.ProgrammingError, edb.pg.InternalError):
 			ticket['status'] = (e_errors.DATABASE_ERROR,
 					    "failed to find bfid for pnfs_path %s"%(pnfs_path,))
 
@@ -319,7 +319,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		res=[]
 		try:
 			res = self.db.query(q).dictresult()
-		except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+		except (edb.pg.ProgrammingError, edb.pg.InternalError):
 			ticket['status'] = (e_errors.DATABASE_ERROR,
 					    "failed to find bfid for pnfs_id %s"%(pnfs_id,))
 
@@ -387,7 +387,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		res=[]
 		try:
 			res=self.db.query(q).dictresult()
-		except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+		except (edb.pg.ProgrammingError, edb.pg.InternalError):
 			ticket['status'] = (e_errors.DATABASE_ERROR,
 					    "failed to find bfid for volume:location %s:%s"%(external_label, location_cookie,))
 			return ticket
