@@ -27,7 +27,7 @@ def work(total_bytes, vq_output_file, vq_output_file2):
 	output_file = open(vq_output_file2, 'w')
 	output_file.write("%.3f\n"%(total_bytes))
 	output_file.close()
-    
+
 def go(system, vq_file_name, vq_output_file, vq_output_file2):
 
     if system and system in LIBRARIES.keys():
@@ -65,16 +65,17 @@ def go(system, vq_file_name, vq_output_file, vq_output_file2):
 
 
 if __name__ == "__main__":
+    config_dict=configuration_client.get_config_dict()
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
     csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
-    system_name = csc.get_enstore_system(timeout=1,retry=0)        
+    system_name = csc.get_enstore_system(timeout=1,retry=0)
     config_dict={}
-    
+
     if system_name:
         config_dict = csc.dump(timeout=1, retry=3)
         config_dict = config_dict['dump']
     else:
-        try: 
+        try:
             configfile = os.environ.get('ENSTORE_CONFIG_FILE')
             print "Failed to connect to config server, using configuration file %s"%(configfile,)
             f = open(configfile,'r')
@@ -96,9 +97,9 @@ if __name__ == "__main__":
     acc = config_dict.get("database",{})
     total_bytes=0.
     q="select coalesce(sum(size),0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
-    if system_name.find("stken") != -1 or system_name.find("d0en") != -1 or system_name.find("cdfen") or system_name.find("gccen") :
+    if system_name.find("stken") != -1 or system_name.find("d0en") != -1 or system_name.find("cdfen") != -1  or system_name.find("gccen") != -1 :
 	    q="select sum(deleted_bytes+unknown_bytes+active_bytes)  from volume where system_inhibit_0!='DELETED' and media_type!='null' and library not like '%shelf%' and library not like '%test%'"
-    try: 
+    try:
         db = pg.DB(host  = acc.get('db_host', "localhost"),
                    dbname= acc.get('dbname', "enstoredb"),
                    port  = acc.get('db_port', 5432),
@@ -107,14 +108,14 @@ if __name__ == "__main__":
         for row in res.getresult():
             if not row:
                 continue
-            total_bytes=row[0]
+            total_bytes=float(row[0])
         db.close()
     except:
         Trace.handle_error()
         pass
 
     work(total_bytes, vq_output_file, vq_output_file2)
-    
+
 
 	# get the system from the args
 #	if argc > 2:
@@ -126,7 +127,7 @@ if __name__ == "__main__":
 #	if argc > 3:
 #	    vq_file_name = sys.argv[3]
 #	else:
-#	    # we were not passed a name, get the default name from the 
+#	    # we were not passed a name, get the default name from the
 #	    # inventory file
 #	    dirs = inventory.inventory_dirs()
 #	    vq_file_name = inventory.get_vq_format_file(dirs[0])
