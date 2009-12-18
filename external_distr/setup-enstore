@@ -25,7 +25,7 @@ if [ $? -eq 0 ]; then
 	PATH=$SWIG_DIR:$PATH
 fi
 
-PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$PATH
+PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$ENSTORE_DIR/tools:$PATH
 rpm -q pnfs > /dev/null
 if [ $? -eq 0 ]; then
         p_d=`rpm -ql pnfs | grep bin | head -1`
