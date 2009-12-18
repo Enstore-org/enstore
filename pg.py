@@ -29,6 +29,7 @@ try:
 except ImportError:
     pass # Python < 2.4
 
+set_decimal(float)
 
 # Auxiliary functions which are independent from a DB connection:
 
