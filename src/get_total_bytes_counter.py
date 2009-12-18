@@ -68,11 +68,11 @@ if __name__ == "__main__":
     config_dict=configuration_client.get_config_dict()
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
     csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
-    system_name = csc.get_enstore_system(timeout=1,retry=0)
+    system_name = csc.get_enstore_system(timeout=10,retry=2)
     config_dict={}
 
     if system_name:
-        config_dict = csc.dump(timeout=1, retry=3)
+        config_dict = csc.dump(timeout=10, retry=2)
         config_dict = config_dict['dump']
     else:
         try:
@@ -117,23 +117,3 @@ if __name__ == "__main__":
     work(total_bytes, vq_output_file, vq_output_file2)
 
 
-	# get the system from the args
-#	if argc > 2:
-#	    system = sys.argv[2]
-#	else:
-#	    system = ""
-#
-#	# get the file we need to read
-#	if argc > 3:
-#	    vq_file_name = sys.argv[3]
-#	else:
-#	    # we were not passed a name, get the default name from the
-#	    # inventory file
-#	    dirs = inventory.inventory_dirs()
-#	    vq_file_name = inventory.get_vq_format_file(dirs[0])
-#
-#	go(system, vq_file_name, vq_output_file, vq_output_file2)
-#    else:
-#	# this is an error we need to be given the file to write
-#	pass
-#
