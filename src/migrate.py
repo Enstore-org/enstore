@@ -3390,6 +3390,13 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
 		       src_file_record['pnfs_name0']))
 		src_path = "deleted-%s-%s"%(src_bfid, tmp_path) # for debug
 
+            #Handle deleted files that have been replaced.
+            elif getattr(msg, 'errno', msg.args[0]) == errno.EEXIST \
+                 and src_file_record['deleted'] == YES \
+                 and msg.args[1].find("replaced") != -1 \
+                 and dst_file_record == None:
+                src_path = "deleted-%s-%s"%(src_bfid, tmp_path) # for debug
+
             elif msg.args[0] == errno.EEXIST \
                  and getattr(msg, 'filename', None) \
                  and is_migration_path(msg.filename) \
