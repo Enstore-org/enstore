@@ -157,6 +157,7 @@ COMMON:
                 
                 pathPrepend(PATH, "${UPS_PROD_DIR}/sbin")
                 pathPrepend(PATH, "${UPS_PROD_DIR}/bin")
+                pathPrepend(PATH, "${UPS_PROD_DIR}/tools")
 
                 # the place where mail gets sent when there are problems
                 envSet(ENSTORE_MAIL,`${UPS_PROD_DIR}/ups/chooseConfig mail`)

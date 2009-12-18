@@ -28,7 +28,7 @@ then
 fi
 
 
-PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$PATH
+PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$ENSTORE_DIR/tools:$PATH
 
 CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc; export CVSROOT
 unset CVS_RSH 2>//dev/null;

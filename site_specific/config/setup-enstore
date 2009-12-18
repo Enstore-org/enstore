@@ -31,7 +31,7 @@ then
 fi
 
 
-PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$PATH
+PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$ENSTORE_DIR/tools:$PATH
 
 rpm -q pnfs > /dev/null
 if [ $? -eq 0 ]; then
