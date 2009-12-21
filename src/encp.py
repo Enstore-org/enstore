@@ -6384,6 +6384,9 @@ def verify_file_size(ticket, encp_intf = None):
         ticket['status'] = (e_errors.OSERROR, str(detail))
         return
 
+    #If we used ticket['wrapper']['pnfsFilename'] here we would run into
+    # the problem where the file could be moved in the namespace before
+    # the file is on tape.  For PNFS and Chimera, use the .(access)() paths.
     try:
         if is_read(ticket):
             pnfs_filename = ticket['infile']
@@ -6393,51 +6396,42 @@ def verify_file_size(ticket, encp_intf = None):
         ticket['status'] = (e_errors.OK, "No files sizes to verify.")
         return
 
-    #While dealing with a local admin pnfs mount, we need to get back to
-    # being user root if we are not their already.  Here we take advantage
-    # of the reenterant attribute of the threading.RLock.  If the directory
-    # and the file have different owners, we need to up the lock one more
-    # time to change the effective IDs one more time before giving up the
-    # lock completely.
-    file_utils.acquire_lock_euid_egid()
-    release_lock = True
     try:
-        pnfs.is_admin_pnfs_path(pnfs_filename)
-    except (OSError, IOError), msg:
-        if os.getuid() == 0 and os.geteuid() != 0 and \
-               msg.args[0] in [errno.EPERM, errno.EACCES]:
-            file_utils.set_euid_egid(0, 0)
-        release_lock = True  #Set this so we no if we need to release the lock.
-            
-    try:
-        if is_read(ticket):
-            pnfs_filename = ticket['infile']
-        else: #write
-            pnfs_filename = ticket['outfile']
-        
-        p = Pnfs()
-        pnfs_stat = p.get_stat(pnfs_filename)
-        pnfs_filesize = pnfs_stat[stat.ST_SIZE]
-        pnfs_inode = pnfs_stat[stat.ST_INO]
+        if ticket.get('fc', {}).get('deleted', None) == "yes" \
+               and encp_intf and encp_intf.override_deleted:
+            #If the file is deleted, just assign the input size to what
+            # the database has on file.
+            pnfs_filesize = ticket['file_size']
+            pnfs_real_size = pnfs_filesize
+        else:
+            #We need to obtain the size in PNFS.
+            p = Pnfs()
+            pnfs_stat = p.get_stat(pnfs_filename)
+            pnfs_filesize = pnfs_stat[stat.ST_SIZE]
+            pnfs_inode = pnfs_stat[stat.ST_INO]
+
+            if pnfs_filesize == 1 and ticket['file_size'] > 1:
+                #For files larger than 2GB, we need to look at the size in
+                # layer 4.  PNFS can't handle filesizes larger than that, so
+                # as a workaround encp sets large files to have a PNFS size
+                # of 1 and puts the real size in layer 4.
+                pnfs_real_size = p.get_file_size(pnfs_filename)
+            else:
+                pnfs_real_size = pnfs_filesize
     except (TypeError), detail:
         ticket['status'] = (e_errors.OK, "No files sizes to verify.")
-        if release_lock:
-            file_utils.release_lock_euid_egid()
         return
     except (OSError, IOError), detail:
-        if encp_intf and encp_intf.override_deleted:
+        if getattr(detail, 'errno', detail.args[0]) == errno.ENOENT \
+               and encp_intf and encp_intf.override_deleted:
             #When reading we need to be able to bypass obtaining the value
             # from the pnfs file that has been deleted.
             pnfs_filesize = ticket['fc']['size']
             pnfs_inode = None
         else:
             ticket['status'] = (e_errors.OSERROR, str(detail))
-            if release_lock:
-                file_utils.release_lock_euid_egid()
             return
     except: #Un-anticipated errors.
-        if release_lock:
-            file_utils.release_lock_euid_egid()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     try:
@@ -6457,53 +6451,23 @@ def verify_file_size(ticket, encp_intf = None):
                                     "Pnfs inode changed during transfer.")
                 return
     except: #Un-anticipated errors.
-        if release_lock:
-            file_utils.release_lock_euid_egid()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     try:
-        #Handle large files.
-        if pnfs_filesize == 1:
-            #Until pnfs supports NFS version 3 (for large file support) make
-            # sure we are using the correct file_size for the pnfs side.
-            try:
-                if is_read(ticket):
-                    pnfs_filename = ticket['infile']
-                else: #write
-                    pnfs_filename = ticket['outfile']
-
-                p = Pnfs(pnfs_filename)
-                pnfs_real_size = p.get_file_size(pnfs_filename)
-            except (OSError, IOError), detail:
-                ticket['status'] = (e_errors.OSERROR, str(detail))
-                if release_lock:
-                    file_utils.release_lock_euid_egid()
-                return
-
-            if full_filesize != pnfs_real_size:
-                msg = "Expected local file size (%s) to equal remote file " \
-                      "size (%s) for large file %s." \
-                      % (full_filesize, pnfs_real_size, ticket['outfile'])
-                ticket['status'] = (e_errors.FILE_MODIFIED, msg)
         #Test if the sizes are correct.
-        elif ticket['file_size'] != full_filesize:
+        if ticket['file_size'] != full_filesize:
             msg = "Expected file size (%s) to equal actuall file size " \
                   "(%s) for file %s." % \
                   (ticket['file_size'], full_filesize, ticket['outfile'])
             ticket['status'] = (e_errors.FILE_MODIFIED, msg)
-        elif full_filesize != pnfs_filesize:
+        elif full_filesize != pnfs_real_size:
             msg = "Expected local file size (%s) to equal remote file " \
                   "size (%s) for file %s." \
                   % (full_filesize, pnfs_filesize, ticket['outfile'])
             ticket['status'] = (e_errors.FILE_MODIFIED, msg)
     except: #Un-anticipated errors.
-        if release_lock:
-            file_utils.release_lock_euid_egid()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         
-    if release_lock:
-        file_utils.release_lock_euid_egid()
-
     message = "Time to verify file size: %s sec." % \
               (time.time() - verify_file_size_start_time,)
     Trace.message(TIME_LEVEL, message)
