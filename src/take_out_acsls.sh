@@ -31,6 +31,19 @@ for i in `ls -vI \*.\*`; do
 	exit 1
       fi
       ;;
+    xfer)
+      echo "Now moving volumes to be ejected to xfer library... (to be reinserted into another active library later)"
+      for vol; do
+	if enstore info --check $vol; then
+	  lib=`enstore info --vol $vol | awk -F\' '$2 == "library" {print $4}'`
+	  if ! echo $lib | grep "^shelf-" >/dev/null; then
+	    enstore vol --new-library=xfer-$lib $vol
+	    enstore vol --not-allowed $vol
+	    enstore vol --set-comment "Transferring to another robot" $vol
+	  fi
+	fi
+      done
+      ;;
   esac
 
   echo

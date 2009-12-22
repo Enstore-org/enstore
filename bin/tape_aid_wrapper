@@ -19,7 +19,7 @@ usage() { case $script in
 	       echo "       enter $script [[un]lock]"
 	       ;;
 	    *take_out)
-	       echo "       enter $script [shelve|remove|reload]"
+	       echo "       enter $script [shelve|remove|reload|xfer]"
 	       ;;
 	  esac
 	}
@@ -36,11 +36,12 @@ check_work() { local action1 work1
 		    fi
 		 fi
 	       done << EOD
-lock  	${robot}_write_protect_work
+lock	${robot}_write_protect_work
 unlock	${robot}_write_permit_work
 shelve	${robot}_shelf_volumes_work
 remove	${robot}_purge_volumes_work
 reload	${robot}_refit_barcode_work
+xfer	${robot}_xfer_volumes_work
 EOD
 
 	       ns=`find $work -follow -type f -name \*.done -daystart -mtime -1 -print | awk 'END {print NR}'`
@@ -242,6 +243,9 @@ case $script in
        remove)
 	  work=$HOME/isa-tools/${robot}_purge_volumes_work
 	  . $HOME/gettkt
+	  ;;
+       xfer)
+	  work=$HOME/isa-tools/${robot}_xfer_volumes_work
 	  ;;
        *) usage
 	  exit 1
