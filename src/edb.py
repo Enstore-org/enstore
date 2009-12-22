@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
-
 """
 edb.py -- a replacement for db.py
 edb.py -- a shelve wrapper to a postgreSQL database
@@ -29,51 +21,24 @@ Each derived class has to provide the following:
 """
 
 import time
-import random
-import datetime
 import string
 import types
-import copy
+import pg
 import ejournal
 import os
 import Trace
 import e_errors
-import pg
-import psycopg2
-import psycopg2.extras
-from DBUtils.PooledDB import PooledDB
-
+from DBUtils.PooledPg import PooledPg
 
 default_database = 'enstoredb'
 
-#
-# need this function to convert datetime.datetime to string
-#
-def sanitize_datetime_values(dictionary) :
-    for item in dictionary:
-        if type(item) == psycopg2.extras.RealDictRow:
-            for key in item.keys():
-                if isinstance(item[key],datetime.datetime):
-                    item[key] = item[key].isoformat(' ')
-        elif type(item) == psycopg2.extras.DictRow:
-            for i in range(0,len(item)):
-                if isinstance(item[i],datetime.datetime):
-                    item[i] = item[i].isoformat(' ')
-    return dictionary
-
-
-# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
+# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
 def timestamp2time(s):
 	if not s : return -1
 	if s == '1969-12-31 17:59:59':
 		return -1
 	if s == '1970-01-01 00:59:59':
 		return -1
-	if isinstance(s,datetime.datetime) :
-		try:
-			return time.mktime(s.utctimetuple())
-		except OverflowError:
-			return -1
 	else:
 		tt=[]
 		try:
@@ -88,8 +53,6 @@ def timestamp2time(s):
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 def time2timestamp(t):
-	if isinstance(t,datetime.datetime) :
-		t = time.mktime(t.utctimetuple())
 	try:
 		return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 	except TypeError:
@@ -142,7 +105,7 @@ def get_fields_and_values(s):
 # self.exprot_format(self, s) -- translate database output to external format
 
 class DbTable:
-	def __init__(self, host, port, database, table, pkey, jouHome ='.', auto_journal=0, rdb=None, max_connections=20):
+	def __init__(self, host, port, database, table, pkey, jouHome ='.', auto_journal=0, rdb=None, max_con=20):
 		self.host = host
 		self.port = port
 		self.database = database
@@ -172,59 +135,12 @@ class DbTable:
 			except:	# wait for 30 seconds and retry
 				time.sleep(30)
 				self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
-		self.pool =  PooledDB(psycopg2,
-				      maxconnections=max_connections,
+		self.pool =  PooledPg(maxconnections=max_con,
 				      blocking=True,
 				      host=self.host,
 				      port=self.port,
-				      database=self.database)
-
-	def query(self,s,cursor_factory=None) :
-		db = None
-		cursor = None
-		try:
-			db=self.pool.connection();
-			if cursor_factory :
-				cursor=db.cursor(cursor_factory=cursor_factory)
-			else:
-				cursor=db.cursor()
-			cursor.execute(s)
-			res=cursor.fetchall()
-			return res
-		finally:
-			if cursor : cursor.close()
-			if db: db.close()
-
-	def update(self,s):
-		db = None
-		cursor = None
-		try:
-			db=self.pool.connection();
-			cursor=db.cursor()
-			cursor.execute(s)
-			db.commit()
-		except:
-			if db : db.rollback()
-		if cursor : cursor.close()
-		if db: db.close()
-
-	def insert(self,s):
-		return self.update(s)
-
-	def remove(self,s):
-		return self.update(s)
-
-	def delete(self,s):
-		return self.remove(s)
-
-	def query_dictresult(self,s):
-		return self.query(s,cursor_factory=psycopg2.extras.RealDictCursor)
-
-	def query_getresult(self,s):
-		return self.query(s,cursor_factory=psycopg2.extras.DictCursor)
-
-	def query_tuple(self,s):
-		return self.query(s)
+				      dbname=self.database)
+		
 
 	# translate database output to external format
 	def export_format(self, s):
@@ -235,7 +151,7 @@ class DbTable:
 		return s
 
 	def __getitem__(self, key):
-		res=self.query_dictresult(self.retrieve_query%(key))
+		res = self.db.query(self.retrieve_query%(key)).dictresult()
 		if len(res) == 0:
 			return None
 		else:
@@ -245,11 +161,13 @@ class DbTable:
 		if self.auto_journal:
 			self.jou[key] = value
 		v1 = self.import_format(value)
-		res = self.query_dictresult(self.retrieve_query%(key))
+		# figure out whether this is an insert or an update
+		res = self.db.query(self.retrieve_query%(key)).dictresult()
+
 		if len(res) == 0:	# insert
 			cmd = self.insert_query%get_fields_and_values(v1)
 			# print cmd
-			self.insert(cmd)
+			res = self.db.query(cmd)
 		else:			# update
 			d = diff_fields_and_values(res[0], v1)
 			if d:	# only if there is any difference
@@ -260,18 +178,18 @@ class DbTable:
 				cmd = self.update_query%(setstmt, key)
 				Trace.log(e_errors.INFO, "Updating  "+cmd)
 				# print cmd
-				res = self.update(cmd)
+				res = self.db.query(cmd)
 
 	def __delitem__(self, key):
 		if self.auto_journal:
 			if not self.jou.has_key(key):
 				self.jou[key] = self.__getitem__(key)
 			del self.jou[key]
-		res = self.delete(self.delete_query%(key))
-
+		res = self.db.query(self.delete_query%(key))
+			
 
 	def keys(self):
-		res = self.query_getresult('select %s from %s order by %s;'%(self.pkey, self.table, self.pkey))
+		res = self.db.query('select %s from %s order by %s;'%(self.pkey, self.table, self.pkey)).getresult()
 		keys = []
 		for i in res:
 			keys.append(i[0])
@@ -284,7 +202,7 @@ class DbTable:
 			return 0
 
 	def __len__(self):
-		return int(self.query_getresult('select count(*) from %s;'%(self.table))[0][0])
+		return self.db.query('select %s from %s;'%(self.pkey, self.table)).ntuples()
 
 	def start_backup(self):
 		self.backup_flag = 0
@@ -330,8 +248,8 @@ class DbTable:
 		pass
 
 class FileDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1,max_connections=20):
-		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal=auto_journal, rdb = rdb, max_connections = max_connections)
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1):
+		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal=auto_journal, rdb = rdb)
 
 		self.retrieve_query = "\
         		select \
@@ -398,10 +316,7 @@ class FileDB(DbTable):
 		if s.has_key('gid'):
 			record['gid'] = s['gid']
 		if s.has_key('update'):
-			if isinstance(s['update'],datetime.datetime):
-				record['update'] = (s['update']).isoformat(' ')
-			else:
-				record['update'] = s['update']
+			record['update'] = s['update']
 
 		return record
 
@@ -415,17 +330,17 @@ class FileDB(DbTable):
 
 		# Take care of sanity_cookie
 		if s['sanity_cookie'][0] == None:
-			sanity_size = -1
+			sanity_size = -1 
 		else:
 			sanity_size = s['sanity_cookie'][0]
 		if s['sanity_cookie'][1] == None:
-			sanity_crc = -1
+			sanity_crc = -1 
 		else:
 			sanity_crc = s['sanity_cookie'][1]
 
 		# take care of crc
 		if s['complete_crc'] == None:
-			crc = -1
+			crc = -1 
 		else:
 			crc = s['complete_crc']
 
@@ -458,11 +373,12 @@ class FileDB(DbTable):
 			record["uid"] = s["uid"]
 		if s.has_key("gid"):
 			record["gid"] = s["gid"]
+
 		return record
 
 class VolumeDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1, max_connections=20):
-		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal=auto_journal, rdb = rdb, max_connections=max_connections)
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, auto_journal=1):
+		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal=auto_journal, rdb = rdb)
 
 		self.retrieve_query = "\
         		select \
@@ -571,22 +487,3 @@ class VolumeDB(DbTable):
 		else:
 			data['modification_time']=-1
 		return data;
-
-if __name__ == '__main__':
-	v=VolumeDB();
-	number = random.randint(0,len(v)-1)
-	print v.keys(), len(v)
-	volume = v[v.keys()[number]]
-	print volume
-	local_copy=copy.deepcopy(volume)
-	v[v.keys()[number]]=local_copy # update
-	label='XXXX01'
-	del v[label]
-	local_copy['external_label']=label
-	print local_copy
-	v[label]=local_copy #insert
-	del v[label]
-
-	f=FileDB()
-	print f['CDMS115744790100000']
-

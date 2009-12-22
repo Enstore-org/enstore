@@ -17,13 +17,6 @@ import time
 import errno
 #import re
 import types
-try:
-    import multiprocessing
-    multiprocessing_available = True
-except ImportError:
-    multiprocessing_available = False
-import threading
-import thread
 
 # enstore imports
 import configuration_client
@@ -44,11 +37,7 @@ MY_NAME = "ASSERT"
 
 #Hack for migration to report an error, instead of having to go to the log
 # file for every error.
-err_msg = {}
-try:
-    err_msg_lock = multiprocessing.Lock()
-except NameError:
-    err_msg_lock = threading.Lock()
+err_msgs = []
 
 ############################################################################
 ############################################################################
@@ -293,12 +282,9 @@ def submit_assert_requests(assert_list):
     return unique_id_list  #return the list of unique ids to wait for.
 
 def report_assert_results(done_ticket):
-    global err_msg
+    global err_msgs
 
-    err_msg_lock.acquire()
-    #For migration to report directly.
-    err_msg[thread.get_ident()].append(done_ticket)
-    err_msg_lock.release()
+    err_msgs.append(done_ticket) #For migration to report directly.
             
     Trace.trace(10, "DONE TICKET")
     Trace.trace(10, pprint.pformat(done_ticket))
@@ -490,23 +476,6 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
     return 0
 
 ############################################################################
-
-def log_volume_assert_start():
-    global err_msg #hack for migration to report any error.
-
-    #Clear the information that is used by migration to determine what
-    # failed and what succeeded.
-    err_msg_lock.acquire()
-    err_msg[thread.get_ident()] = []
-    err_msg_lock.release()
-
-    #log_volume_assert__start_time = time.time()
-
-    message = 'Volume assert called with args: %s' % (sys.argv,)
-    Trace.trace(3, message)
-    Trace.log(e_errors.INFO, message)
-
-############################################################################
 ############################################################################
 
 
@@ -574,9 +543,10 @@ def main(intf):
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.  (Ignore errors returned from clients.)
     encp.clients(intf)
-    #Log that we have started the assert.
-    log_volume_assert_start()
-    
+    message = 'Volume assert called with args: %s' % (sys.argv,)
+    Trace.trace(3, message)
+    Trace.log(e_errors.INFO, message)
+
     #Read in the list of vols.
     if intf.args:  #read from file.
         check_requests = parse_file(intf.args[0])
@@ -701,4 +671,4 @@ if __name__ == "__main__":
 
     intf._mode = "admin"
 
-    delete_at_exit.quit(do_work(intf))
+    do_work(intf)

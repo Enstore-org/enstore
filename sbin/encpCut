@@ -233,6 +233,8 @@ case ${FLAVOR} in
 		;;
 	Linux+2.6)
 		;;
+	Linux64bit+2.6)
+		;;
         *)
                 FLAVOR=`$UPS_DIR/bin/ups flavor -2`
 esac

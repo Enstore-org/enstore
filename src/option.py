@@ -255,7 +255,6 @@ FULL = "full"                                #volume
 GENERATE_MESSAGES_FILE = "generate-messages-file"  #entv
 GET_ASSERTS = "get-asserts"                  #library
 GET_BFID = "get-bfid"                        #encp
-GET_BFIDS = "get-bfids"                      #encp
 GET_CACHE = "get-cache"                      #encp
 GET_CRCS = "get-crcs"                        #file
 GET_LAST_ALIVE = "get-last-alive"            #inquisitor
@@ -390,7 +389,6 @@ RECYCLE = "recycle"                          #volume
 REFRESH = "refresh"                          #inquisitor(c&s)
 REMEDY_TYPE = "remedy_type"                  #alarm_server
 REMOVE = "remove"                            #pnfs_agent, media
-RESET_CNT = "reset-queue-counters"           # library manager
 RESET_LIB = "reset-lib"                      #volume
 RESOLVE = "resolve"                          #alarm
 RESTORE = "restore"                          #volume, file
@@ -516,7 +514,7 @@ valid_option_list = [
     FIND_DUPLICATES,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GENERATE_MESSAGES_FILE,
-    GET_ASSERTS, GET_BFID, GET_BFIDS, GET_CACHE, GET_CRCS, GET_LAST_ALIVE,
+    GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_ALIVE,
     GET_LAST_LOGFILE_NAME,
     GET_LOGFILE_NAME, GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE,
     GET_REFRESH, GET_SUSPECT_VOLS, GET_UPDATE_INTERVAL, GET_WORK,
@@ -548,7 +546,7 @@ valid_option_list = [
     PTS_NODES, PUT_CACHE, PVOLS,
     QUERY, QL,
     RAISE, READ_ONLY, READ_TO_END_OF_TAPE, REASON, RECURSIVE, RECYCLE, REFRESH,
-    REMEDY_TYPE, REMOVE, RESET_CNT, RESET_LIB, RESOLVE,
+    REMEDY_TYPE, REMOVE, RESET_LIB, RESOLVE,
     RESTORE, RESTORE_ALL, RESUBMIT_TIMEOUT, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RMDIR, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG, SAAG_NETWORK, SAAG_STATUS,
@@ -906,17 +904,18 @@ class Interface:
                                                opt_arg.get(VALUE_NAME, BLANK)))
                 arg = arg.replace("-", "_")
                 value = opt_arg.get(VALUE_USAGE, IGNORED)
-
+                                  
                 if value == REQUIRED:
                     has_value = has_value + "<" + arg + "> "
                 elif value == OPTIONAL:
                     has_value = has_value + "[" + arg + "] "
                 elif value == IGNORED and \
-                     self.options[opts].get(VALUE_LABEL, None) != None:
+                     opt_arg.get(DEFAULT_LABEL, None) != None:
                     #This case may be true for switches that take zero
                     # or more (unknown number of) arguments that are
                     # processed via intf.args.
-                    has_value = has_value + "[" + arg + "] "
+                    has_value = opt_arg[VALUE_LABEL]
+                    
 
             #Get and calculate various variables needed to format the output.
             # help_string - shorter than accessing the dictionary
