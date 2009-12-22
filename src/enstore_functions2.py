@@ -21,7 +21,6 @@ import re
 import errno
 import socket
 import pwd
-import subprocess
 
 # enstore imports
 ### enstore_constants should be the only enstore import in this module!
@@ -828,27 +827,3 @@ def is_migration_related_file_family(ff):
         return rtn
 
     return is_duplication_file_family(ff)
-
-# execute shell command
-# replaces popen2.popen3
-# diffrerence: popen2.popen3 returns file objects
-# subprocess.Popen returns stdout and stderror as a single lines
-# to make a list of lines do the following with returned
-# result: 
-# stdout_lines = result[0].split("\n")
-# stderr_lines = result[1].split("\n")
-# returns (stdout, stderr)
-# if there was no stdout or stderr None is returned in corresponding fields
-def shell_command(command):
-    pipeObj = subprocess.Popen(command,
-                               stdin=subprocess.PIPE,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE,
-                               shell=True,
-                               close_fds=True)
-    if pipeObj == None:
-        return None
-    # get stdout and stderr
-    result = pipeObj.communicate()
-    del(pipeObj)
-    return result 

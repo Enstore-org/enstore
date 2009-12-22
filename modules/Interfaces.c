@@ -437,6 +437,14 @@ PyObject * interfacesGet(void)
  * Helper function.  Since, hostname can have multiple IPs, we pass the
  * address here and find the hardware/ethernet/mac address.
  */
+#ifdef __APPLE__
+static PyObject* __arp(struct in_addr *ip, PyObject *arp_list)
+{
+   /* MacOS does not support the SIOCGARP ioctl().  For compatiblity,
+    * return the empty list passed in. */
+   return arp_list;
+}
+#else
 static PyObject* __arp(struct in_addr *ip, PyObject *arp_list)
 {
    struct arpreq arp_msg;
@@ -501,7 +509,6 @@ static PyObject* __arp(struct in_addr *ip, PyObject *arp_list)
 #endif /* __linux__ */
 
        errno = 0;
-       printf("%s\n", intf_confs->ifc_req[k].ifr_name);
        if(ioctl(as, SIOCGARP, &arp_msg) < 0)
        {
 	  /* This will only work if the destination is on a different subnet
@@ -516,7 +523,6 @@ static PyObject* __arp(struct in_addr *ip, PyObject *arp_list)
 #endif /* __linux__ */
 	 )
 	  {
-	     printf("%d\n", errno);
 	     continue;
 	  }  
        }
@@ -570,6 +576,7 @@ static PyObject* __arp(struct in_addr *ip, PyObject *arp_list)
    free(intf_confs);
    return arp_list;
 }
+#endif /* ! __APPLE */
 
 
 PyObject* arpGet(char *dest)

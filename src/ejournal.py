@@ -2,17 +2,6 @@
 
 import time
 import os
-import threading
-
-try:
-    import multiprocessing
-except ImportError:
-    pass
-
-try:
-    io_lock = multiprocessing.Lock()
-except NameError:
-    io_lock = threading.Lock()
 
 journal_size = 1000
 
@@ -30,20 +19,16 @@ class Journal:
 		self.limit = limit
 
 	def load(self):
-		io_lock.acquire()
-		try:
-			if os.access(self.journalfile, os.R_OK):
-				f = open(self.journalfile, "r")
+		if os.access(self.journalfile, os.R_OK):
+			f = open(self.journalfile, "r")
+			l = f.readline()
+			while l:
+				try:
+					exec(l)
+				except:
+					pass
 				l = f.readline()
-				while l:
-					try:
-						exec(l)
-					except:
-						pass
-					l = f.readline()
-				f.close()
-		finally:
-			io_lock.release()
+			f.close()
 
 	def keys(self):
 		return self.dict.keys()
@@ -58,39 +43,31 @@ class Journal:
 		return self.dict[key]
 
 	def __setitem__(self, key, value):
-		io_lock.acquire()
-		try:
-			self.dict[key] = value
-			j = "self.dict['%s'] = %s\n" % (key, value)
-			self.jfile.write(j)
-			self.jfile.flush()
-			self.count = self.count + 1
-			if self.limit and self.count >= self.limit:
-				self.__checkpoint()
-		finally:
-			io_lock.release()
+		self.dict[key] = value
+		j = "self.dict['%s'] = %s\n" % (key, value)
+		self.jfile.write(j)
+		self.jfile.flush()
+		self.count = self.count + 1
+		if self.limit and self.count >= self.limit:
+			self.checkpoint()
 
 	def __delitem__(self, key):
-		io_lock.acquire()
-		try:
-			if self.dict.has_key(key):
-				v = self.dict[key]
-			else:
-				v = {}
-			j = "del self.dict['%s'] # %s\n" % (key, `v`)
-			self.jfile.write(j)
-			self.jfile.flush()
-			if self.dict.has_key(key):
-				del self.dict[key]
-			self.count = self.count + 1
-			if self.limit and self.count >= self.limit:
-				self.__checkpoint()
-		finally:
-			io_lock.release()
-			
+		if self.dict.has_key(key):
+			v = self.dict[key]
+		else:
+			v = {}
+		j = "del self.dict['%s'] # %s\n" % (key, `v`)
+		self.jfile.write(j)
+		self.jfile.flush()
+		if self.dict.has_key(key):
+			del self.dict[key]
+		self.count = self.count + 1
+		if self.limit and self.count >= self.limit:
+			self.checkpoint()
+
 	def close(self):
-            self.jfile.close()
-            self.dict = {}
+		self.jfile.close()
+		self.dict = {}
 
 	def __del__(self):
 		self.close()
@@ -103,23 +80,12 @@ class Journal:
 		return `self.dict`
 
 	def checkpoint(self):
-		io_lock.acquire()
-		try:
-			self.jfile.close()
-			os.rename(self.journalfile, self.journalfile+'.'+repr(time.time()))
-			self.jfile = open(self.journalfile, "w")
-			self.dict = {}
-			self.count = 0
-		finally:
-			io_lock.release()
+		self.jfile.close()
+		os.rename(self.journalfile, self.journalfile+'.'+repr(time.time()))
+		self.jfile = open(self.journalfile, "w")
+		self.dict = {}
+		self.count = 0
 
-	def __checkpoint(self):
-            self.jfile.close()
-            os.rename(self.journalfile, self.journalfile+'.'+repr(time.time()))
-            self.jfile = open(self.journalfile, "w")
-            self.dict = {}
-            self.count = 0
-            
 if __name__ == '__main__':
 	jou = Journal('test.jou')
 	for i in range(20000):
