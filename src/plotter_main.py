@@ -27,6 +27,7 @@ import quotas_plotter_module
 import tapes_burn_rate_plotter_module
 import migration_summary_plotter_module
 import bytes_per_day_plotter_module
+import mover_summary_plotter_module
 
 
 def usage(cmd):
@@ -43,15 +44,16 @@ def usage(cmd):
     print "\t -t [--tapes-burn-rate] : plot tape usage by storage group"
     print "\t -i [--migration-summary] : plot migration progress"
     print "\t -b [--bytes-per-day]   : plot bytes transfered per day"
+    print "\t -M [--mover-summary]   : plot mover summary"
     print "\t -h [--help]        : show this message"
     
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfeqtib"
+        short_args = "hmrudspfeqtibM"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
                      "slots", "pnfs-bakup", "file-family-analysis",
                      "quotas", "tapes-burn-rate", "migration-summary",
-                     "bytes-per-day"]
+                     "bytes-per-day", "mover-summary"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError, msg:
         print msg
@@ -115,6 +117,10 @@ if __name__ == "__main__":
         # byes per day
         if o in ("-b","--bytes-per-day"):
             aModule = bytes_per_day_plotter_module.BytesPerDayPlotterModule("bytes-per-day")
+            f.add(aModule)
+        # mover summary 
+        if o in ("-M","--mover-summary"):
+            aModule = mover_summary_plotter_module.MoverSummaryPlotterModule("mover-summary")
             f.add(aModule)
 
     f.do_work()
