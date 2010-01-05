@@ -29,12 +29,13 @@ import string
 MY_NAME = "Plotter"
 BURN_RATE = "burn-rate"
 ENCP_RATE = "encp-rates"
+MOVERS_INFO = "movers"
 QUOTAS = "quotas"
 FILE_FAMILY_USAGE = "file_family_usage"
 
 class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 
-    def __init__(self, csc, rcv_timeout, rcv_retry, logfile_dir, 
+    def __init__(self, csc, rcv_timeout, rcv_retry, logfile_dir,
 		 start_time, stop_time, media_changer, keep,
 		 keep_dir, output_dir, html_file, mount_label=None,
 		 pts_dir=None, pts_nodes=None, no_plot_html=None):
@@ -67,7 +68,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	self.inq_d = self.config_d.get(enstore_constants.INQUISITOR, {})
 
         self.www_server = self.config_d.get(enstore_constants.WWW_SERVER, {})
-        self.system_tag = self.www_server.get(www_server.SYSTEM_TAG, 
+        self.system_tag = self.www_server.get(www_server.SYSTEM_TAG,
                                               www_server.SYSTEM_TAG_DEFAULT)
 
         # get the directory where the files we create will go.  this should
@@ -95,10 +96,10 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
         # already contains these plots, so skip this in that case
 	if not bpd_dir == self.html_dir:
 	    plot_file = "%s/%s"%(bpd_dir, enstore_files.plot_html_file_name())
-	    plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+	    plotfile2 = enstore_files.HTMLPlotFile(plot_file,
 						   self.system_tag, "../")
 	    self.plotfile_l.append([plotfile2, bpd_dir])
-	    links_to_add.append(("%s/%s"%(enstore_constants.BPD_SUBDIR, 
+	    links_to_add.append(("%s/%s"%(enstore_constants.BPD_SUBDIR,
 					  enstore_files.plot_html_file_name()),
 				 "Bytes/Day per Mover Plots"))
 	# --------------------------------------------------
@@ -113,12 +114,30 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                     "adding links to encp rate plots")
             # there are plots here
             plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
-            plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+            plotfile2 = enstore_files.HTMLPlotFile(plot_file,
 						   self.system_tag, "../")
             self.plotfile_l.append([plotfile2, dir])
-            links_to_add.append(("%s/%s"%(ENCP_RATE, 
+            links_to_add.append(("%s/%s"%(ENCP_RATE,
                                           enstore_files.plot_html_file_name()),
                                  "Encp rates per Storage Group Plots"))
+	# --------------------------------------------------
+        # added by Dmitry, subdirectory displays mover data
+        # --------------------------------------------------
+	dir = "%s/%s"%(self.html_dir, MOVERS_INFO)
+        if not os.access(dir, os.F_OK):
+            os.makedirs(dir)
+        os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
+	if os.path.isdir(dir):
+            Trace.trace(enstore_constants.PLOTTING,
+                    "adding links to mover plots")
+            # there are plots here
+            plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
+            plotfile2 = enstore_files.HTMLPlotFile(plot_file,
+						   self.system_tag, "../")
+            self.plotfile_l.append([plotfile2, dir])
+            links_to_add.append(("%s/%s"%(MOVERS_INFO,
+                                          enstore_files.plot_html_file_name()),
+                                 "Mover Plots"))
         # --------------------------------------------------
 	dir = "%s/%s"%(self.html_dir, FILE_FAMILY_USAGE)
         if not os.access(dir, os.F_OK):
@@ -129,10 +148,10 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                     "adding links to encp rate plots")
             # there are plots here
             plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
-            plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+            plotfile2 = enstore_files.HTMLPlotFile(plot_file,
 						   self.system_tag, "../")
             self.plotfile_l.append([plotfile2, dir])
-            links_to_add.append(("%s/%s"%(FILE_FAMILY_USAGE, 
+            links_to_add.append(("%s/%s"%(FILE_FAMILY_USAGE,
                                           enstore_files.plot_html_file_name()),
                                  "Tape occupancies per Storage Group Plots"))
         # --------------------------------------------------
@@ -145,10 +164,10 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                     "adding links to encp size plots")
             # there are plots here
             plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
-            plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+            plotfile2 = enstore_files.HTMLPlotFile(plot_file,
 						   self.system_tag, "../")
             self.plotfile_l.append([plotfile2, dir])
-            links_to_add.append(("%s/%s"%(inquisitor_plots.XFER_SIZE, 
+            links_to_add.append(("%s/%s"%(inquisitor_plots.XFER_SIZE,
                                           enstore_files.plot_html_file_name()),
                                  "Xfer size per Storage Group Plots"))
         # --------------------------------------------------
@@ -161,10 +180,10 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                         "adding links to burn rate plots")
             # there are plots here
 	    plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
-	    plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+	    plotfile2 = enstore_files.HTMLPlotFile(plot_file,
 						   self.system_tag, "../")
 	    self.plotfile_l.append([plotfile2, dir])
-	    links_to_add.append(("%s/%s"%(BURN_RATE, 
+	    links_to_add.append(("%s/%s"%(BURN_RATE,
 					  enstore_files.plot_html_file_name()),
 				 "Bytes Written per Storage Group Plots"))
         # --------------------------------------------------
@@ -177,10 +196,10 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                         "adding links to quotas plots")
             # there are plots here
 	    plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
-	    plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+	    plotfile2 = enstore_files.HTMLPlotFile(plot_file,
 						   self.system_tag, "../")
 	    self.plotfile_l.append([plotfile2, dir])
-	    links_to_add.append(("%s/%s"%(QUOTAS, 
+	    links_to_add.append(("%s/%s"%(QUOTAS,
 					  enstore_files.plot_html_file_name()),
 				 "Quota per Storage Group Plots"))
         # --------------------------------------------------
@@ -193,7 +212,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                 Trace.trace(enstore_constants.PLOTTING,
                             "adding extra link from config file")
 		links_to_add.append((link, plot_links_d[link]))
-	# the first plotfile needs to have a link to the second one on it, if 
+	# the first plotfile needs to have a link to the second one on it, if
 	# the second one exists
 	if not links_to_add:
 	    # no link is required
@@ -230,7 +249,7 @@ class PlotterInterface(generic_client.GenericClientInterface):
 	self.no_plot_html = None
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
-        
+
     plotter_options = {
         option.ENCP:{option.HELP_STRING:"create the bytes transfered and " \
                      "transfer activity plots",
@@ -325,14 +344,14 @@ class PlotterInterface(generic_client.GenericClientInterface):
                            option.USER_LEVEL:option.USER,
                            },
         }
-    
+
     def valid_dictionaries(self):
         return (self.plotter_options, self.help_options, self.trace_options)
 
 
 
 def do_work(intf):
-    
+
     if intf.do_print:
         Trace.do_print(intf.do_print)
 
@@ -345,14 +364,14 @@ def do_work(intf):
     # if not intf.total_bytes:
     config_interface  = configuration_client.ConfigurationClientInterface(user_mode=0)
     csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
-    system_name = csc.get_enstore_system(timeout=1,retry=0)        
+    system_name = csc.get_enstore_system(timeout=1,retry=0)
     config_dict={}
 
     if system_name:
         config_dict = csc.dump(timeout=1, retry=3)
         config_dict = config_dict['dump']
     else:
-        try: 
+        try:
             configfile = os.environ.get('ENSTORE_CONFIG_FILE')
             print "Failed to connect to config server, using configuration file %s"%(configfile,)
             f = open(configfile,'r')
@@ -366,12 +385,12 @@ def do_work(intf):
     intf.output_dir = inq_d["html_file"]
     if not intf.pts_dir:
         intf.pts_dir = intf.output_dir
-    
+
     # get the plotter
-    plotter = Plotter((intf.config_host, intf.config_port), 
+    plotter = Plotter((intf.config_host, intf.config_port),
 		      intf.alive_rcv_timeout, intf.alive_retries,
-		      intf.logfile_dir, intf.start_time, 
-		      intf.stop_time, intf.media_changer, intf.keep, 
+		      intf.logfile_dir, intf.start_time,
+		      intf.stop_time, intf.media_changer, intf.keep,
 		      intf.keep_dir, intf.output_dir, intf.html_file,
 		      intf.label, intf.pts_dir, intf.pts_nodes,
 		      intf.no_plot_html)
