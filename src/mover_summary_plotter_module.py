@@ -76,7 +76,6 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                    dbname= drv.get('dbname', 'drivestat'),
                    port  = drv.get('dbport', 5432),
                    user  = drv.get('dbuser_reader', 'enstore_reader'))
-        print drv
         for mover in self.mover_list:
             e=self.drive_error_ntuples.get(mover['name'])
             q=Q1%(mover['host'])
@@ -112,10 +111,12 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def plot_errors(self,ntuples):
         for n in ntuples:
             if not n.get_entries() : continue
+            n.get_data_file().close()
             pts_file_name=n.data_file_name
             name=n.get_name()
             ps_file_name=name+".ps"
             jpg_file_name=name+".jpg"
+            stamp_jpg_file_name=name + "_stamp.jpg"
             gnu_file_name=name+"_gnuplot.cmd"
             gnu_cmd = open(gnu_file_name,'w')
             long_string="set output '" + ps_file_name + "'\n"+ \
@@ -135,7 +136,9 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             gnu_cmd.write(long_string)
             gnu_cmd.close()
             os.system("gnuplot %s"%(gnu_file_name))
-            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(ps_file_name, jpg_file_name))
+            os.system("convert -rotate 90 -modulate 80 %s %s"
+                      % (ps_file_name, jpg_file_name))
+            os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(ps_file_name, stamp_jpg_file_name))
             os.unlink(gnu_file_name)
 
 
@@ -146,9 +149,6 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         for mover_name in mover_list:
             mover = frame.get_configuration_client().get(mover_name['mover'])
             mover['name']=mover_name['mover']
-            if mover_name['mover'] != 'LTO4_99.mover' : continue
-            print mover_name
-            print mover
             if type(mover['library']) == types.StringType:
                 if mover['library'].find("null") != -1 : continue
                 if mover['library'].find("disk") != -1 : continue
