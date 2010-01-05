@@ -34,6 +34,16 @@
 #                pnfs mount is not found, encp will try the pnfs_agent.
 #                If this is set to "only_pnfs_agent", then only the
 #                will be tried.
+# $FAIL_1ST_DATA_SOCKET_LATER = Not useful to users.  When set to boolean
+#                               true, will cause encp to simulate a network
+#                               error connecting the data socket.
+#
+#                               The motivation for adding this is that
+#                               a subtle error was found only for writes,
+#                               that this functionality was required to
+#                               duplicate.  (unique_id was not updated for
+#                               the correct object reference, like reads did,
+#                               for some errors.)
 ############################################################################
 
 # system imports
@@ -126,6 +136,12 @@ USE_LM_TIMEOUT = True
 #If a timeout error occurs before receiving a request, assign the blame
 # for the failure to the first uncompleted request in the work list.
 USE_FIRST_REQUEST = True
+#Allow for the FAIL_1ST_DATA_SOCKET_LATER environmental variable to allow
+# the user/tester/developer to intentionally simulate an error.  This
+# particular one should only occur once; retries should not repeat it.
+FAIL_1ST_DATA_SOCKET_LATER = bool(os.environ.get('FAIL_1ST_DATA_SOCKET_LATER',
+                                                 False))
+fail_1st_data_socket_later_state = False #Set to True after error is simulated.
 
 #Hack for migration to report an error, instead of having to go to the log
 # file for every error.
@@ -400,8 +416,9 @@ __pychecker__ = "no-objattrs"
 class Pnfs:
 
     def __init__(self, pnfsFilename="", mount_point="", shortcut=None,
-                 use_pnfs_agent = None):
+                 use_pnfs_agent = None, allow_pnfs_agent = None):
         global pnfs_agent_client_requested
+        global pnfs_agent_client_allowed
         
         ###Do we still need mount_point and shortcut here?
         __pychecker__ = "unusednames=mount_point,shortcut"
@@ -413,7 +430,8 @@ class Pnfs:
             if pnfs.is_pnfs_path(pnfsFilename):
                 self.use_pnfs_agent = 0
                 self.p = pnfs.Pnfs()
-            elif is_pnfs_path(pnfsFilename):
+            elif (allow_pnfs_agent or pnfs_agent_client_allowed) \
+                     and is_pnfs_path(pnfsFilename):
                 self.use_pnfs_agent = 1
                 self.p = get_pac()
             else:
@@ -422,8 +440,6 @@ class Pnfs:
         else:
             self.use_pnfs_agent = 0
             self.p = pnfs.Pnfs()
-
-            #pnfsFilename="", mount_point="", shortcut=None)
 
     def __getattr__(self, attr):
         return getattr(self.p, attr)
@@ -4867,6 +4883,7 @@ def open_control_socket(listen_socket, mover_timeout):
 ##############################################################################
 
 def open_data_socket(mover_addr, interface_ip = None):
+    global fail_1st_data_socket_later_state #For error simulating.
 
     time_to_open_data_socket = time.time()
     
@@ -4900,7 +4917,6 @@ def open_data_socket(mover_addr, interface_ip = None):
 
     try:
         data_path_socket.connect(mover_addr)
-        #error = 0 #MWZ: pychecker questioned this line.  
     except socket.error, msg:
         #We have seen that on IRIX, when the three way handshake is in
         # progress, we get an EISCONN error.
@@ -4911,7 +4927,8 @@ def open_data_socket(mover_addr, interface_ip = None):
             pass
         #A real or fatal error has occured.  Handle accordingly.
         else:
-            message = "Connecting data socket failed immediatly."
+            message = "Connecting data socket failed immediatly: %s" \
+                      % (str(msg),)
             Trace.log(e_errors.ERROR, message)
             Trace.trace(12, message)
             raise socket.error, msg
@@ -4934,7 +4951,18 @@ def open_data_socket(mover_addr, interface_ip = None):
         #Get the socket error condition...
         rtn = data_path_socket.getsockopt(socket.SOL_SOCKET,
                                           socket.SO_ERROR)
-        #error = 0 #MWZ: pychecker questioned this line.  
+
+        #If the environmental variable FAIL_1ST_DATA_SOCKET_LATER is boolean
+        # true, give an error here, but only for the first try.  All retries
+        # should succeed.
+        if FAIL_1ST_DATA_SOCKET_LATER and not fail_1st_data_socket_later_state:
+            rtn = 111  #111 is "Connection refused"
+            fail_1st_data_socket_later_state = True  #Don't do this again.
+            
+            message = "Simulating FAIL_1ST_DATA_SOCKET_LATER error."
+            Trace.log(e_errors.INFO, message)
+            Trace.message(ERROR_LEVEL, message)
+
     #If the select didn't return sockets ready for read or write, then the
     # connection timed out.
     else:
@@ -4942,7 +4970,8 @@ def open_data_socket(mover_addr, interface_ip = None):
 
     #If the return value is zero then success, otherwise it failed.
     if rtn != 0:
-        message = "Connecting data socket failed later."
+        message = "Connecting data socket failed later: %s" \
+                  % (os.strerror(rtn),)
         Trace.log(e_errors.ERROR, message)
         Trace.trace(12, message)
         raise socket.error(rtn, os.strerror(rtn))
@@ -9271,18 +9300,18 @@ def write_to_hsm(e, tinfo):
                 local_filename = None
                 external_label = None
 
-            #Make sure done_ticket exists by this point.
-            done_ticket = request_ticket 
-
             result_dict = handle_retries([work_ticket], work_ticket,
                                          request_ticket, e,
                                          listen_socket = listen_socket,
                                          local_filename = local_filename,
                                          external_label = external_label)
 
+
             #If USE_NEW_EVENT_LOOP is true, we need these ids.
             transaction_id_list = result_dict.get('transaction_id_list', [])
 
+            #Make sure done_ticket exists by this point.
+            #
             #For LM submission errors (i.e. tape went NOACCESS), use
             # any request information in result_dict to identify which
             # request gave an error.
@@ -9290,8 +9319,15 @@ def write_to_hsm(e, tinfo):
             #Writes included work_ticket in this combine.  That doesn't
             # work for reads because we don't know which read request
             # will get picked first.
-            done_ticket = combine_dict(result_dict, done_ticket, work_ticket)
-
+            #
+            #It is important to note that the write version works because,
+            # work_ticket is passed as the work ticket to handle_retries()
+            # and has the unique_id field updated on errors.  Reads pass
+            # the request_ticket as both the error ticket and work ticket,
+            # thus request_ticket has this info already when an error
+            # happens.
+            done_ticket = combine_dict(result_dict, work_ticket, request_ticket)
+            
             if e_errors.is_non_retriable(result_dict):
 
                 #Regardless if index is None or not, make sure that
@@ -11228,8 +11264,19 @@ def read_from_hsm(e, tinfo):
                     local_filename = None
                     external_label = None
 
-                #Make sure done_ticket exists by this point.
-                done_ticket = request_ticket
+                #Obtain the index of the returned request.  This needs to be
+                # done before handle_retries, becuase if an error occured
+                # request_list items, like unique_id, are modified by
+                # handle_retries().  get_request_index() searches based on
+                # unique_id, which needs to be found based on the unique_id
+                # before it is updated.
+                index, unused = get_request_index(request_list, request_ticket)
+                if index == None:
+                    #If the error happend before we knew the next request
+                    # (i.e. a timeout occured waiting), then pick the next
+                    # request so the retry/resubmits counts can be attributed
+                    # somewhere.
+                    unused, index, unused = get_next_request(request_list)
 
                 result_dict = handle_retries(request_list, request_ticket,
                                              request_ticket, e,
@@ -11240,6 +11287,8 @@ def read_from_hsm(e, tinfo):
                 #If USE_NEW_EVENT_LOOP is true, we need these ids.
                 transaction_id_list = result_dict.get('transaction_id_list',[])
 
+                #Make sure done_ticket exists by this point.
+                #
                 #For LM submission errors (i.e. tape went NOACCESS), use
                 # any request information in result_dict to identify which
                 # request gave an error.
@@ -11247,16 +11296,14 @@ def read_from_hsm(e, tinfo):
                 #Writes included work_ticket in this combine.  That doesn't
                 # work for reads because we don't know which read request
                 # will get picked first.
-                done_ticket = combine_dict(result_dict, done_ticket)
-                
-                #Obtain the index of the returned request.
-                index, unused = get_request_index(request_list, done_ticket)
-                if index == None:
-                    #If the error happend before we knew the next request
-                    # (i.e. a timeout occured waiting), then pick the next
-                    # request so the retry/resubmits counts can be attributed
-                    # somewhere.
-                    unused, index, unused = get_next_request(request_list)
+                #It is important to note that the write version works because,
+                # work_ticket is passed as the work ticket to handle_retries()
+                # and has the unique_id field updated on errors.  Reads pass
+                # the request_ticket as both the error ticket and work ticket,
+                # thus request_ticket has this info already when an error
+                # happened.
+                done_ticket = combine_dict(result_dict, request_ticket)
+
 
                 if e_errors.is_non_retriable(result_dict):
                    
