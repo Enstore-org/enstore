@@ -1178,7 +1178,7 @@ class LibraryManagerMethods:
             vol_info = self.vcc.inquire_vol(external_label, timeout=INQUIRE_VOL_TO, retry=INQUIRE_VOL_RETRY)
             Trace.trace(self.trace_level+2, 'inquire_vol %s'%(vol_info,))
             if vol_info['status'][0] == e_errors.TIMEDOUT:
-                Trace.alarm(e_errors.ALARM, "volume clerk problem inquire_volume %s TIMEDOUT"%(external_label,))
+                Trace.alarm(e_errors.INFO, "volume clerk problem inquire_volume %s TIMEDOUT"%(external_label,))
             if not self.known_volumes.has_key(external_label):
                 self.known_volumes[external_label] = vol_info
         Trace.trace(self.trace_level+2, 'inquire_vol %s'%(self.known_volumes,))
