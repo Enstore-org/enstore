@@ -562,8 +562,13 @@ class AtMovers:
         for rec in self.sg_vf.vf[volume_family_name]:
             vols.append(rec[1])
             if self.at_movers.has_key(rec[0]):
+                Trace.trace(self.trace_level+3,"busy_volumes: vol info %s" % (self.at_movers[rec[0]],))
                 if self.at_movers[rec[0]]['volume_status'][0][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
                     continue
+                #if ((self.at_movers[rec[0]]['volume_status'][0][1] == 'none') and
+                #    (self.at_movers[rec[0]]['state'] in ('IDLE', 'ACTIVE','SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT'))):
+                Trace.trace(self.trace_level+3,"busy_volumes: status %s" % (self.at_movers[rec[0]]['volume_status'][0],))
+                
                 if self.at_movers[rec[0]]['volume_status'][0][1] == 'none':
                     # system inhibit
                     # if volume can be potentially written increase number
@@ -574,6 +579,7 @@ class AtMovers:
                 elif self.at_movers[rec[0]]['state'] == 'ERROR':
                     if not (enstore_functions2.is_readonly_state(self.at_movers[rec[0]]['volume_status'][0][1])):
                         write_enabled = write_enabled + 1
+        Trace.trace(self.trace_level+3,"busy_volumes: returning %s %s" % (vols, write_enabled))
         return vols, write_enabled
 
     # return active volumes for a given storage group for
@@ -602,6 +608,20 @@ class AtMovers:
                 Trace.trace(self.trace_level+4, "volume %s is active. Mover=%s"%\
                           (external_label, key))
                 rc = 1
+                break
+        return rc
+
+    # return state of volume at mover
+    def get_vol_state(self, external_label, mover=None):
+        rc = None
+        # see if this volume is in voulemes_at movers list
+        for key in self.at_movers.keys():
+            if ((external_label == self.at_movers[key]['external_label']) and
+                (key != mover)):
+            
+                Trace.trace(self.trace_level+4, "volume state %s. Mover=%s"%\
+                          (self.at_movers[key]["state"], key))
+                rc = self.at_movers[key]["state"]
                 break
         return rc
 
@@ -951,7 +971,7 @@ class LibraryManagerMethods:
                
     # check if file is available
     # this method applies only to disk movers
-    # it checks wheter file is avalable on a disk of the disk mover
+    # it checks whether file is avalable on a disk of the disk mover
     def is_file_available(self, fcc, requested_file_bfid):
         ticket = fcc.bfid_info(requested_file_bfid)
         Trace.trace(self.trace_level+1, 'bfid info %s'%(ticket,))
@@ -978,16 +998,25 @@ class LibraryManagerMethods:
     # write request
     def busy_volumes(self, volume_family_name):
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(volume_family_name)
+        #vol_veto_list = []
+        #wr_en = 0
         # look in the list of work_at_movers
         for w in self.work_at_movers.list:
+            Trace.trace(self.trace_level+1, 'busy_volumes: w %s %s'%(w["vc"], w["fc"]))
             if w["vc"]["volume_family"] == volume_family_name:
                 if w["fc"]["external_label"] in vol_veto_list:
                     continue       # already processed
                 else:
                     vol_veto_list.append(w["fc"]["external_label"])
                     permissions = w["vc"].get("system_inhibit", None)
-                    if permissions and permissions[1] == 'none':
-                        wr_en = wr_en + 1
+                    Trace.trace(self.trace_level+1, 'busy_volumes: permissionss %s'%(permissions,))
+                    
+                    if permissions:
+                        if permissions[0][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+                            continue
+                        if permissions[0][1] == 'none':
+                            wr_en = wr_en + 1
+            
         return vol_veto_list, wr_en
 
     # check if a particular volume with given label is busy
@@ -1153,6 +1182,8 @@ class LibraryManagerMethods:
             if not self.known_volumes.has_key(external_label):
                 self.known_volumes[external_label] = vol_info
         Trace.trace(self.trace_level+2, 'inquire_vol %s'%(self.known_volumes,))
+        Trace.trace(self.trace_level+2, 'inquire_vol returns %s'%(vol_info,))
+        
         return vol_info
     
        
@@ -1340,15 +1371,18 @@ class LibraryManagerMethods:
     # priority - priority of completed request
     # it is a tuple (current_priority, admin_priority)
     # returns rq (possibly modified)
-    # and flag confirming wheter HIPRI request could go
+    # flag confirming whether HIPRI request could go
+    # flag indicating that the request will preempt the mounted volume
     def allow_hipri(self, rq, external_label, vol_family, last_work, requestor, priority):
         Trace.trace(self.trace_level+3, "allow_hi_pri %s %s %s %s %s %s"%
                     (external_label, vol_family, last_work, requestor,priority, rq))
+        if rq.adminpri < 0: # regular priority
+            return rq, False, False
         ret = True
         
         if priority and priority[1] >= 0:
             Trace.trace(self.trace_level+3, "allow_hi_pri: returning1 %s %s"%(rq, ret))
-            return rq, ret
+            return rq, ret, False 
          
         would_preempt = False
         if rq.work == "read_from_hsm" and rq.ticket["fc"]["external_label"] != external_label:
@@ -1359,7 +1393,7 @@ class LibraryManagerMethods:
                 would_preempt = True
             else:
                 # same file family
-                if last_work == "read_from_hsm":
+                if last_work == "READ":
                     rq, status = self.check_write_request(external_label, rq, requestor)
                     if rq and status[0] == e_errors.OK:
                         if rq.ticket["fc"]["external_label"] != external_label:
@@ -1370,8 +1404,8 @@ class LibraryManagerMethods:
                 Trace.trace(self.trace_level+3, "There are idle movers. Will not preempt the current one %s"%
                             (self.idle_movers,))
                 ret = False
-        Trace.trace(self.trace_level+3, "allow_hi_pri: returning %s %s"%(rq, ret))
-        return rq, ret
+        Trace.trace(self.trace_level+3, "allow_hi_pri: returning %s %s %s"%(rq, ret, would_preempt))
+        return rq, ret, would_preempt
 
     # make all necessary resets
     # before starting a new cycle of request selection
@@ -1554,7 +1588,7 @@ class LibraryManagerMethods:
             self.continue_scan = 0
         return rq, key_to_check
 
-    def process_write_request(self, request, requestor):
+    def process_write_request(self, request, requestor, last_work=None, would_preempt=False):
         self.continue_scan = 0 # disable "scan" of pending queue
         rq = request
         Trace.trace(self.trace_level+4, "process_write_request: %s"%(rq,))
@@ -1587,13 +1621,35 @@ class LibraryManagerMethods:
             # only so many volumes can be written to at one time
             permitted = rq.ticket["vc"]["file_family_width"]
             if self.process_for_bound_vol: # allow one more for bound to avoid dismounts
-                permitted = permitted + 1
-            Trace.trace(self.trace_level+4, "process_write_request: self.process_for_bound_vol %s permitted %s"%
+                # but check if this is a HiPri request and it will require dismount of currently
+                # mounted volume
+                permitted = permitted + (not would_preempt)
+                if self.process_for_bound_vol in vol_veto_list:
+                    # permit one more write request to avoid
+                    # tape dismount
+                    permitted = permitted+1
+                
+            Trace.trace(self.trace_level+4,
+                        "process_write_request: self.process_for_bound_vol %s permitted %s"%
                         (self.process_for_bound_vol, permitted)) 
+
+
+            if wr_en >= permitted:
+                if self.process_for_bound_vol:
+                    # check if there is a volume are in bound state for other volumes
+                    # in veto list and if yes (they are not active),
+                    # allow this request go to avoid dismount of the current volume
+                    for vol in vol_veto_list:
+                        if vol != self.process_for_bound_vol:
+                            volume_state = self.volumes_at_movers.get_vol_state(vol)
+                            if volume_state == "HAVE_BOUND" and last_work == "WRITE":
+                                permitted = permitted + 1
+                                break
+
             if wr_en >= permitted:
                 rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
                 if self.process_for_bound_vol:
-                   self.continue_scan = 0 # do not continue scan for bound volume
+                    self.continue_scan = 0 # do not continue scan for bound volume
                 else:
                     self.continue_scan = 1
                 #return rq, key_to_check
@@ -1665,7 +1721,8 @@ class LibraryManagerMethods:
         if bound_vol and requestor["current_priority"][1] < 0:
             # last prority was regular
             if rq.adminpri > -1: # HIRI
-                bound_vol = None # this will allow preemption of regular priority requests
+                if bound_vol not in vol_veto_list:
+                    bound_vol = None # this will allow preemption of regular priority requests
         
         if bound_vol not in vol_veto_list:
             # width not exceeded, ask volume clerk for a new volume.
@@ -2030,6 +2087,7 @@ class LibraryManagerMethods:
         # first see if there are any HiPri requests
         rq =self.pending_work.get_admin_request()
         checked_request = None
+        would_preempt = False # no preemption of low pri requests by default
         while rq:
             Trace.trace(self.trace_level+42, "next_work_this_volume: rq1 %s"%(rq,))
 
@@ -2071,8 +2129,8 @@ class LibraryManagerMethods:
                 
                 # for regular priority
                 # check if this request is allowed to go to a mounted tape
-                rq, allow = self.allow_hipri(rq, external_label, vol_family,
-                                             last_work, requestor, priority) 
+                rq, allow, would_preempt = self.allow_hipri(rq, external_label, vol_family,
+                                                            last_work, requestor, priority) 
                 if not allow:
                     # completed request had a regular proirity
                     # but the mounted tape can not be preempted by HIPRI request
@@ -2136,7 +2194,7 @@ class LibraryManagerMethods:
                     continue
                 break
             elif rq.work == 'write_to_hsm':
-                rq, key = self.process_write_request(rq, requestor) 
+                rq, key = self.process_write_request(rq, requestor, last_work=last_work, would_preempt=would_preempt) 
                 if self.continue_scan:
                     if rq:
                         rq, status = self.check_write_request(external_label, rq, requestor)
@@ -2267,7 +2325,7 @@ class LibraryManagerMethods:
                             continue
                         break
                     elif rq.work == 'write_to_hsm':
-                        rq, key = self.process_write_request(rq, requestor)
+                        rq, key = self.process_write_request(rq, requestor, last_work=last_work)
                         Trace.trace(self.trace_level+10, "next_work_this_volume:process_write_request returned %s %s "%(rq, key))
                         if self.continue_scan:
                             if rq:
@@ -3136,6 +3194,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # mover is idle - see what we can do
     def _mover_idle(self, mticket):
         Trace.trace(self.my_trace_level,"_mover_idle:IDLE RQ %s"%(mticket,))
+        Trace.trace(self.my_trace_level,"_mover_idle:idle movers %s"%(self.idle_movers,))
         
         # thread safe
         saved_reply_address = mticket.get('r_a', None)
@@ -3294,6 +3353,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         w['mover'] = mticket['mover']
         Trace.trace(self.my_trace_level, "mover_idle: File Family = %s" % (w['vc']['file_family']))
+
 	log_add_to_wam_queue(w['vc'])
         Trace.trace(self.my_trace_level, "mover_idle: appending to work_at_movers %s"%(w,))
         if not w in self.work_at_movers.list:
@@ -3325,9 +3385,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             vol_info = self.inquire_vol(mticket['external_label'], w['vc']['address'])
             mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                                         vol_info.get('user_inhibit',['Unknown', 'Unknown']))
+            if "Unknown" in mticket['volume_status'][0] or "Unknown" in mticket['volume_status'][1]:
+                # sometimes it happens: why?
+                Trace.trace(self.my_trace_level+1,"mover_idle:Unknown! %s"%(vol_info,))
         
-         #mticket['operation'] = work
-
         Trace.trace(self.my_trace_level+1,"mover_idle: Mover Ticket %s" % (mticket,))
         self.volumes_at_movers.put(mticket)
         Trace.trace(self.my_trace_level+1,"mover_idle:IDLE:postponed%s %s"%(self.postponed_requests.sg_list,self.postponed_requests.rq_list))
@@ -3397,6 +3458,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
    # we have a volume already bound - any more work??
     def _mover_bound_volume(self, mticket):
         Trace.trace(self.my_trace_level, "mover_bound_volume for %s: request: %s"%(mticket['mover'],mticket))
+        Trace.trace(self.my_trace_level,"_mover_bound_volume:idle movers %s"%(self.idle_movers,))
         # thread safe
         saved_reply_address = mticket.get('r_a', None)
         nowork = {'work': 'no_work', 'r_a': saved_reply_address}
@@ -3530,6 +3592,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.trace(self.my_trace_level+1, "_mover_bound_volume: HAVE_BOUND: DELETED")
             w['times']['lm_dequeued'] = time.time()
             w['mover'] = mticket['mover']
+
 	    log_add_to_wam_queue(w['vc'])
             #self.work_at_movers.append(w)
             Trace.trace(self.my_trace_level+1, "mover_bound_volume: appending to work_at_movers %s"%(w,))
@@ -3564,6 +3627,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                    (vol_info['status'],))
                     mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                                                 vol_info.get('user_inhibit',['Unknown', 'Unknown']))
+                    if "Unknown" in mticket['volume_status'][0] or "Unknown" in mticket['volume_status'][1]:
+                        # sometimes it happens: why?
+                        Trace.trace(self.my_trace_level+1,"mover_idle:Unknown! %s"%(vol_info,))
+                    
             # create new mover_info
             mticket['status'] = (e_errors.OK, None)
 
@@ -3626,6 +3693,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # just for a case when for some reason
             # mover idle request comes with mover state != IDLE
             self.remove_idle_mover(mticket["mover"])
+        Trace.trace(self.my_trace_level,"_mover_error:idle movers %s"%(self.idle_movers,))
+
         self.volumes_at_movers.put(mticket)
         #self.volumes_at_movers.delete(mticket)
         #self.volumes_at_movers.put(mticket) I don't remember why this was done
