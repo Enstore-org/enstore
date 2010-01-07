@@ -10,14 +10,11 @@
 import pg
 import os
 import time
-import sys
 import types
 import histogram
 # enstore imports
 import enstore_plotter_module
 import enstore_constants
-import mover_client
-import pg 
 
 WEB_SUB_DIRECTORY = enstore_constants.BYTES_PER_DAY_PLOTS_SUBDIR
 
@@ -90,14 +87,16 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
     def plot(self):
         for h in self.drive_rate_histograms.values():
-            if not h.get_entries() : continue
+            if not h.get_entries() :
+                continue
             h.set_opt_stat()
             h.set_xlabel("drive_rate [MB/s]")
             h.set_ylabel("Entries / 1 [MB/s]")
             h.plot()
 
         for h in self.drive_rate_ntuples.values():
-            if not h.get_entries() : continue
+            if not h.get_entries() :
+                continue
             h.set_time_axis()
             h.set_time_axis_format("%m-%d");
             h.get_data_file().close()
@@ -106,11 +105,16 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             h.set_xlabel("date")
             h.plot("1:3")
 
+        #
+        # to plot errors I need to superimpose two ntuples on the
+        # same plot. histogram module does not do it. So use this
+        # function:
         self.plot_errors(self.drive_error_ntuples.values());
 
     def plot_errors(self,ntuples):
         for n in ntuples:
-            if not n.get_entries() : continue
+            if not n.get_entries() :
+                continue
             n.get_data_file().close()
             pts_file_name=n.data_file_name
             name=n.get_name()
@@ -150,8 +154,10 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             mover = frame.get_configuration_client().get(mover_name['mover'])
             mover['name']=mover_name['mover']
             if type(mover['library']) == types.StringType:
-                if mover['library'].find("null") != -1 : continue
-                if mover['library'].find("disk") != -1 : continue
+                if mover['library'].find("null") != -1 :
+                    continue
+                if mover['library'].find("disk") != -1 :
+                    continue
             skip=False
             if type(mover['library']) == types.ListType:
                 for l in mover['library']:
@@ -162,16 +168,18 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                         skip=True
                         break
 
-            if  skip  : continue
+            if  skip  :
+                continue
+            name=mover_name['mover'].split(".")[0]
             self.mover_list.append(mover)
-            self.drive_rate_histograms[mover_name['mover']]= histogram.Histogram1D(mover_name['mover']+"_drive_rate",
-                                                                                   mover_name['mover']+" drive_rate",100,0,100)
-                
-            self.drive_rate_ntuples[mover_name['mover']]=histogram.Ntuple(mover_name['mover']+"_drive_rate_vs_date",
-                                                                          mover_name['mover'])
+            self.drive_rate_histograms[mover_name['mover']]= histogram.Histogram1D(name+"_drive_rate",
+                                                                                   name+" drive_rate",100,0,100)
 
-            self.drive_error_ntuples[mover_name['mover']]=histogram.Ntuple(mover_name['mover']+"_drive_error_vs_date",
-                                                                          mover_name['mover'])
-            
-            
-        
+            self.drive_rate_ntuples[mover_name['mover']]=histogram.Ntuple(name+"_drive_rate_vs_date",
+                                                                          name)
+
+            self.drive_error_ntuples[mover_name['mover']]=histogram.Ntuple(name+"_error_vs_date",
+                                                                           name)
+
+
+
