@@ -9136,6 +9136,8 @@ def prepare_write_to_hsm(tinfo, e):
     # library manager.
     try:
         request_list = create_write_requests(callback_addr, None, e, tinfo)
+    except (SystemExit, KeyboardInterrupt):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, AttributeError, ValueError, EncpError,
             socket.error, select.error), msg:
         if isinstance(msg, EncpError):
@@ -9160,6 +9162,19 @@ def prepare_write_to_hsm(tinfo, e):
             #ValueError???
             e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
 
+        return e_ticket, listen_socket, udp_serv, []
+    except:
+        e_ticket = {'status' : (e_errors.UNKNOWN,
+                                "%s: %s" % (str(sys.exc_info()[0]),
+                                            str(sys.exc_info()[1])))}
+        try:
+            Trace.handle_error()
+        except (SystemExit, KeyboardInterrupt):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            #We'll go with the original error here.
+            pass
+        
         return e_ticket, listen_socket, udp_serv, []
 
     #If this is the case, don't worry about anything.
@@ -10522,7 +10537,7 @@ def create_read_request(request, file_number,
                                  "File does not contain copy %s." % e.copy,
                                         e_errors.USERERROR,
                             {'infilepath' : ifullname,
-                             'outfilepath' : ofullname,})
+                             })
 
             vc_reply, fc_reply = get_clerks_info(bfid, e)
 
@@ -11058,7 +11073,8 @@ def prepare_read_from_hsm(tinfo, e):
     try:
         requests_per_vol = create_read_requests(callback_addr,
                                                 udp_callback_addr, tinfo, e)
-        #requests_per_vol = create_read_requests(callback_addr, None, tinfo, e)
+    except (SystemExit, KeyboardInterrupt):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
         if isinstance(msg, EncpError):
             e_ticket = msg.ticket
@@ -11082,6 +11098,19 @@ def prepare_read_from_hsm(tinfo, e):
             e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
 
         return e_ticket, listen_socket, udp_serv, {}
+    except:
+        e_ticket = {'status' : (e_errors.UNKNOWN,
+                                "%s: %s" % (str(sys.exc_info()[0]),
+                                                str(sys.exc_info()[1])))}
+        try:
+            Trace.handle_error()
+        except (SystemExit, KeyboardInterrupt):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            #We'll go with the original error here.
+            pass
+        
+        return e_ticket, listen_socket, udp_serv, []
 
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
