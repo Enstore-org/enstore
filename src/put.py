@@ -70,7 +70,12 @@ class PutInterface(encp.EncpInterface):
     
     def __init__(self, args=sys.argv, user_mode=0):
 
-        #Get a copy, so we don't modifiy encp's Inferace class too.
+        #Get a copy, so we don't modifiy encp's Interface class too.
+        # This is an issue only if migration:
+        # 1) uses get for reads and encp for writes
+        # 2) uses encp for reads and put for writes
+        # 3) uses get for reads and put for writes
+        # If migration uses encp for read and writes there is not a conflict.
         self.encp_options = copy.deepcopy(self.encp_options)
 
         try:
@@ -541,4 +546,4 @@ if __name__ == '__main__':
     #print encp.format_class_for_print(intf_of_put, "intf_of_put")
 
     #delete_at_exit.quit(do_work(intf_of_put))
-    delete_at_exit.quit(encp.start(encp.do_work, main, PutInterface))
+    delete_at_exit.quit(encp.start(0, encp.do_work, main, PutInterface))
