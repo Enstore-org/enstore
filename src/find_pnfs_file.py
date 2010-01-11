@@ -303,10 +303,11 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                     tmp_name_list = p.get_path(enstoredb_pnfsid, mp)
                     #Deal with multiple possible matches.
                     if len(tmp_name_list) == 1:
-                        #There is one known case where asking for layer
-                        # 1 using the pnfsid and seperately using the
-                        # filename returned different values.  This
-                        # attempts to catch such situations.
+                        #There is one known case where asking for layer 1
+                        # using the pnfsid and seperately using the
+                        # filename to ask for the same layer 1 returned
+                        # different values.  This attempts to catch such
+                        # situations.
                         if db_num != 0 and pnfsid_db != db_num:
                             continue
                         alt_layer1_bfid = pnfs.get_layer_1(tmp_name_list[0])
@@ -316,6 +317,10 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                                       (layer1_bfid, alt_layer1_bfid, pnfsid)
                             raise OSError(errno.EBADF, message,
                                           tmp_name_list[0])
+                        else:
+                            #The BFIDs match, so there isn't a problem here.
+                            # Keep going.
+                            pass
 
                     else:
                         raise OSError(errno.EIO, "to many matches",
