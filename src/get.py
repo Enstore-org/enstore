@@ -72,7 +72,12 @@ class GetInterface(encp.EncpInterface):
     
     def __init__(self, args=sys.argv, user_mode=0):
 
-        #Get a copy, so we don't modifiy encp's Inferace class too.
+        #Get a copy, so we don't modifiy encp's interface class too.
+        # This is an issue only if migration:
+        # 1) uses get for reads and encp for writes
+        # 2) uses encp for reads and put for writes
+        # 3) uses get for reads and put for writes
+        # If migration uses encp for read and writes there is not a conflict.
         self.encp_options = copy.deepcopy(self.encp_options)
 
         self.encp_options[option.LIST] = {
@@ -121,7 +126,7 @@ class GetInterface(encp.EncpInterface):
                  #or not os.path.isdir(self.args[-2]) \
                  or not pnfs.is_pnfs_path(self.args[-2]) ):
             try:
-                message = "Second argument is not an input file or directory.\n"
+                message = "Second to last argument is not an input file or directory.\n"
                 sys.stderr.write(message)
                 sys.stderr.flush()
             except IOError:
@@ -132,7 +137,7 @@ class GetInterface(encp.EncpInterface):
             pass  #If the output is /dev/null, this is okay.
         elif not os.path.exists(self.args[-1]) or not os.path.isdir(self.args[-1]):
             try:
-                message = "Third argument is not an output directory.\n"
+                message = "Last argument is not an output directory.\n"
                 sys.stderr.write(message)
                 sys.stderr.flush()
             except IOError:
@@ -1541,4 +1546,4 @@ if __name__ == '__main__':
 
     #print encp.format_class_for_print(intf_of_get, "intf_of_get")
 
-    delete_at_exit.quit(encp.start(encp.do_work, main, GetInterface))
+    delete_at_exit.quit(encp.start(0, encp.do_work, main, GetInterface))
