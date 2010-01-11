@@ -3189,7 +3189,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
                         ' mtx cant mount tape. Already in drive %d'%(d,))
 
         Trace.log(e_errors.INFO, 'found %s in slot %s ...mounting'%(volume, s))
-        a, b = return_by(self.load_local, (s, dr), self.mount_timeout)
+        a, b = return_by(self.load_unload_local, (s, dr, "load"), self.mount_timeout)
 
         self.status_valid = 0;
 
@@ -3198,10 +3198,9 @@ class MTX_MediaLoader(MediaLoaderMethods):
             return ('ERROR', e_errors.ERROR, [],'' ,' mtx mount timeout')
         else:
             return b
-    
-    def is_empty(self, drive):
-        __pychecker__ = "unusednames=media_type,view_first"
 
+    # is tape drive empty
+    def is_empty(self, drive):
         if 0 == self.status_valid:
             a, b = return_by(self.status_local, (), self.status_timeout)
             if -1 == a:
@@ -3247,7 +3246,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
 
         Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', d, \
                   '...dismounting'))
-        a,b = return_by(self.unload_local, (s, dr), self.mount_timeout)
+        a,b = return_by(self.load_unload_local, (s, dr, "unload"), self.mount_timeout)
 
         self.status_valid = 0;
 
@@ -3299,37 +3298,20 @@ class MTX_MediaLoader(MediaLoaderMethods):
 
         return idx_slot, idx_drive
     
-    #  This method tries to have device 'device' load the tape in slot
-    #  number 'slot' into drive number 'drive' The return value is
-    #  anything that MTX printed to stderr.  If mtx hangs, this method
-    #  will never return.
-    def load_local(self, slot, drive):
-        cmd = "%s mtx -f %s load %d %d"% (self.sudo_cmd, self.device_name, slot + 1, drive)
-        Trace.log(e_errors.INFO, "Invoking the following command: %s"%(cmd,))
-	result = enstore_functions2.shell_command(cmd)
-	if result:
-            if result[1]:
-                Trace.log(e_errors.ERROR,
-                          ' mtx load returned this message %s'%(result[1],))
-                return ('ERROR', e_errors.ERROR, [], "", result[1])
-            else:
-                # No error
-                return (e_errors.OK, 0, None, "", "")
-        else:
-            return ('ERROR', e_errors.ERROR, [], "", "Lost command")
-
-    #  This method tries to have device 'device' unload the tape in
-    #  drive number drive back into slot number 'slot'.  The return
+    #  This method tries to have device 'device' load or unload the tape in
+    #  or from drive number drive back into slot number 'slot'.  The return
     #  value is anything that MTX printed to stderr.  If mtx hangs,
     #  this method will never return.
-    def unload_local(self, slot, drive):
-        cmd = "%s mtx -f %s unload %d %d"% (self.sudo_cmd, self.device_name, slot + 1, drive)
+    def load_unload_local(self, slot, drive, load_command):
+        if load_command not in ("load", "unload"):
+            return ('ERROR', e_errors.ERROR, [], "%s"%(load_command,), "Wrong command")
+        cmd = "%s mtx -f %s %s %d %d"% (self.sudo_cmd, load_command, self.device_name, slot + 1, drive)
         Trace.log(e_errors.INFO, "Invoking the following command: %s"%(cmd,))
 	result = enstore_functions2.shell_command(cmd)
 	if result:
             if result[1]:
                 Trace.log(e_errors.ERROR,
-                          ' mtx load returned this message %s'%(result[1],))
+                          ' mtx unload returned this message: %s'%(result[1],))
                 return ('ERROR', e_errors.ERROR, [], "", result[1])
             else:
                 # No error
@@ -3337,18 +3319,18 @@ class MTX_MediaLoader(MediaLoaderMethods):
         else:
             return ('ERROR', e_errors.ERROR, [], "", "Lost command")
 
+    
+
     # This method blocks while it returns the status of the media
-    # changer at the specified device.  The first return value is a
-    # list of barcodes for the tapes in the drives, the second return
-    # value is a list of the barcodes for the tapes in the slots, the
-    # third return value are any messages that mtx printed to stderr.
+    # changer at the specified device.
+    # A return value are any messages that mtx printed to stderr.
     # If mtx hangs, this method will never return.
     def status_local(self):
         cmd = '%s mtx -f %s status'%(self.sudo_cmd, self.device_name)
         Trace.log(e_errors.INFO, "Invoking the following command: %s"%(cmd,))
 	result = enstore_functions2.shell_command(cmd)
-        self.drives = []
-        self.slots  = []
+        self.drives = [] # list of barcodes for the tapes in the drives
+        self.slots  = [] # list of the barcodes for the tapes in the slots
         errorString = ''
         
         if result:
@@ -3398,9 +3380,10 @@ class MTX_MediaLoader(MediaLoaderMethods):
             
         return errorString
 
+    # return status of all drives and slots
     def robot_status(self):
         #Trace.log(e_errors.INFO, 'Invoking the following command: %s mtx -f %s status'%(self.sudo_cmd, self.device_name))
-        result = self.shell_command("%s mtx -f %s status | grep 'Data Transfer Element'"%(self.sudo_cmd, self.device_name))
+        result = enstore_functions2.shell_command("%s mtx -f %s status | grep 'Data Transfer Element'"%(self.sudo_cmd, self.device_name))
 	
         #Trace.log(e_errors.INFO, 'The following command completed: %s mtx -f %s status'%(self.sudo_cmd, self.device_name))
 	return result
