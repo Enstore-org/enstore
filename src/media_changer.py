@@ -3107,9 +3107,11 @@ class MTX_MediaLoader(MediaLoaderMethods):
 
         Trace.log(e_errors.INFO, ('MTX_MediaLoader initialized with device: ', \
                   self.device_name, ' status time limit: ', self.status_timeout, \
-                  ' mount time limit: ', self.mount_timeout))
+                  'mount time limit: ', self.mount_timeout))
 
-        Trace.log(e_errors.INFO, 'MTX_MediaLoader initialized with device: %s status time limit: %s mount time limit: %s '%(self.device_name, self.status_timeout, self.mount_timeout))
+        Trace.log(e_errors.INFO,
+                  'MTX_MediaLoader initialized with device: %s status time limit: %s mount time limit: %s '%
+                  (self.device_name, self.status_timeout, self.mount_timeout))
 	
     #########################################################################
     # These functions are overridden from the generic class.
@@ -3179,14 +3181,14 @@ class MTX_MediaLoader(MediaLoaderMethods):
         if -1 == s:
             if -1 == d:
                 Trace.log(e_errors.ERROR,
-                          ' mtx cant mount tape. Not in library')
+                          'mtx cant mount tape. Not in library')
                 return ('ERROR', e_errors.ERROR, [],'' ,\
-                        ' mtx cant mount tape. Not in library')
+                        'mtx cant mount tape. Not in library')
             else:
                 Trace.log(e_errors.ERROR,
-                          ' mtx cant mount tape. Already in drive %d'%(d,))
+                          'mtx cant mount tape. Already in drive %d'%(d,))
                 return ('ERROR', e_errors.ERROR, [],'' ,\
-                        ' mtx cant mount tape. Already in drive %d'%(d,))
+                        'mtx cant mount tape. Already in drive %d'%(d,))
 
         Trace.log(e_errors.INFO, 'found %s in slot %s ...mounting'%(volume, s))
         a, b = return_by(self.load_unload_local, (s, dr, "load"), self.mount_timeout)
@@ -3194,8 +3196,8 @@ class MTX_MediaLoader(MediaLoaderMethods):
         self.status_valid = 0;
 
         if -1 == a:
-            Trace.log(e_errors.ERROR, ' mtx mount timeout')
-            return ('ERROR', e_errors.ERROR, [],'' ,' mtx mount timeout')
+            Trace.log(e_errors.ERROR, 'mtx mount timeout')
+            return ('ERROR', e_errors.ERROR, [],'' ,'mtx mount timeout')
         else:
             return b
 
@@ -3204,7 +3206,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
         if 0 == self.status_valid:
             a, b = return_by(self.status_local, (), self.status_timeout)
             if -1 == a:
-                Trace.log(e_errors.ERROR, ' mtx status request timeout')
+                Trace.log(e_errors.ERROR, 'mtx status request timeout')
                 return False
             self.status_valid = 1
         
@@ -3232,7 +3234,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
         if -1 == s:
             Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
             return ('ERROR', e_errors.ERROR, [],'' ,\
-                    ' mtx unload: No free slots')
+                    'mtx unload: No free slots')
 
         ignore,d = self.locate_volume(volume)
 
@@ -3240,7 +3242,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, ' mtx unload: %s is in %d, not %d'%
                       (volume, d, dr))
             return ('ERROR', e_errors.ERROR, [],'' ,\
-                    ' mtx unload: %s is not in %d'%
+                    'mtx unload: %s is not in %d'%
                     (volume, dr))
 
 
@@ -3311,7 +3313,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
 	if result:
             if result[1]:
                 Trace.log(e_errors.ERROR,
-                          ' mtx unload returned this message: %s'%(result[1],))
+                          'mtx unload returned this message: %s'%(result[1],))
                 return ('ERROR', e_errors.ERROR, [], "", result[1])
             else:
                 # No error
@@ -3373,10 +3375,10 @@ class MTX_MediaLoader(MediaLoaderMethods):
 
                 if '' != errorString:
                     Trace.log(e_errors.ERROR,
-                          ' mtx status returned this message %s'%(errorString,))
+                          'mtx status returned this message %s'%(errorString,))
         else:
             Trace.log(e_errors.ERROR,
-                      ' mtx status returned no result %s'%(result,))
+                      'mtx status returned no result %s'%(result,))
             
         return errorString
 
