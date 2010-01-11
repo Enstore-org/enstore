@@ -296,8 +296,20 @@ def report_assert_results(done_ticket):
     global err_msg
 
     err_msg_lock.acquire()
-    #For migration to report directly.
-    err_msg[thread.get_ident()].append(done_ticket)
+    try:
+        #For migration to report directly.
+        err_msg[thread.get_ident()].append(done_ticket)
+    except (KeyboardInterrupt, SystemExit):
+        err_msg_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        try:
+            Trace.handle_error()
+        except (KeyboardInterrupt, SystemExit):
+            err_msg_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            pass
     err_msg_lock.release()
             
     Trace.trace(10, "DONE TICKET")
@@ -497,7 +509,19 @@ def log_volume_assert_start():
     #Clear the information that is used by migration to determine what
     # failed and what succeeded.
     err_msg_lock.acquire()
-    err_msg[thread.get_ident()] = []
+    try:
+        err_msg[thread.get_ident()] = []
+    except (KeyboardInterrupt, SystemExit):
+        err_msg_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        try:
+            Trace.handle_error()
+        except (KeyboardInterrupt, SystemExit):
+            err_msg_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            pass
     err_msg_lock.release()
 
     #log_volume_assert__start_time = time.time()
