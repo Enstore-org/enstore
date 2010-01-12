@@ -1398,24 +1398,23 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
                                                     "Not a valid pnfs id"))
 
-        #Munge the mount point and the directories.  First check if the two
-        # paths can be munged without modification.
-        if file_utils.e_access(os.path.join(search_path, filepath), os.F_OK):
-            filepath = os.path.join(search_path, filepath)
-        #Then check if removing the last compenent of the mount point path
+        #Munge the mount point and the directories.
+        # First, check if the two paths can be munged without modification.
+        # Second, check if removing the last compenent of the mount point path
         # (search_path) will help when munged.
-        elif file_utils.e_access(
-            os.path.join(os.path.dirname(search_path), filepath), os.F_OK):
-            filepath = os.path.join(os.path.dirname(search_path), filepath)
-        #Lastly, remove the first entry in the file path before munging.
-        elif file_utils.e_access(
-            os.path.join(search_path, filepath.split("/", 1)[1]), os.F_OK):
-            filepath = os.path.join(search_path, filepath.split("/", 1)[1])
-        #If the path is "/pnfs/fs" try inserting "usr".
-        elif os.path.basename(search_path) == "fs" and \
-             file_utils.e_access(os.path.join(search_path, "usr", filepath),
-                                 os.F_OK):
-            filepath = os.path.join(search_path, "usr", filepath)
+        # Next, remove the first entry in the file path before munging.
+        # Lastly, *if* the path is "/pnfs/fs" try inserting "usr".
+        filepaths = [os.path.join(search_path, filepath),
+                     os.path.join(os.path.dirname(search_path), filepath),
+                     os.path.join(search_path, filepath.split("/", 1)[1]),
+                     ]
+        if os.path.basename(search_path) == "fs":
+            filepaths.append(os.path.join(search_path, "usr", filepath))
+        
+        #Check all the possible paths to check.
+        for checkpath in filepaths[0:3]:
+            if file_utils.e_access(checkpath, os.F_OK):
+                filepath = checkpath
         else:
             #One last thing to try, if an admin path is found, try it.
             for amp in get_enstore_admin_mount_point(): #amp = Admin Mount Path
