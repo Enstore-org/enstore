@@ -2815,13 +2815,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(self.my_trace_level+100, "write_to_hsm: ticket %s"%(ticket))
         saved_reply_address = ticket.get('r_a', None)
 
-        ticket = self.verify_data_transfer_request(ticket)
-        if not ticket:
-            # ticket did not pass verification
-            # client response has been sent by
-            # verify_data_transfer_request()
-            return
-
         # mangle file family for file copy request
         if ticket.has_key('copy'):
             if ticket['fc'].has_key('original_bfid'):
@@ -2869,6 +2862,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if ticket['fc'].has_key('external_label'):
             del(ticket['fc']['external_label'])
             
+        # verify data transfer request here after some entries in incoming
+        # ticket were modified
+        ticket = self.verify_data_transfer_request(ticket)
+        if not ticket:
+            # ticket did not pass verification
+            # client response has been sent by
+            # verify_data_transfer_request()
+            return
+
         # data for Trace.notify
         host = ticket['wrapper']['machine'][1]
         work = 'write'
