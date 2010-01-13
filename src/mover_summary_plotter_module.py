@@ -16,25 +16,7 @@ import histogram
 import enstore_plotter_module
 import enstore_constants
 
-WEB_SUB_DIRECTORY = enstore_constants.BYTES_PER_DAY_PLOTS_SUBDIR
-
-DAYS_IN_MONTH = 30
-DAYS_IN_WEEK = 7
-SECONDS_IN_DAY = 86400   #Seconds in one day. (24*60*60)
-
-MONTH_AGO = time.strftime("%m-%d-%Y",
-                 time.localtime(time.time() - DAYS_IN_MONTH * SECONDS_IN_DAY))
-WEEK_AGO = time.strftime("%m-%d-%Y",
-                 time.localtime(time.time() - DAYS_IN_MONTH * SECONDS_IN_DAY))
-
-DAYS_AGO_START = DAYS_IN_MONTH * 4  #4 months ago to start drawing the plot.
-DAYS_AHEAD_END = DAYS_IN_MONTH    #One month to plot ahead.
-
-#Set some sane limits to these values.
-if DAYS_AGO_START < DAYS_IN_MONTH:
-    DAYS_AGO_START = DAYS_IN_MONTH
-if DAYS_AHEAD_END < 0:
-    DAYS_AHEAD_END = 0
+WEB_SUB_DIRECTORY = enstore_constants.MOVER_SUMMARY_PLOTS_SUBDIR
 
 MB = 1048576L
 
@@ -92,7 +74,7 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             h.set_opt_stat()
             h.set_xlabel("drive_rate [MB/s]")
             h.set_ylabel("Entries / 1 [MB/s]")
-            h.plot()
+            h.plot(directory = self.web_dir)
 
         for h in self.drive_rate_ntuples.values():
             if not h.get_entries() :
@@ -103,7 +85,7 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             h.set_opt_stat()
             h.set_ylabel("drive_rate [MB/s]")
             h.set_xlabel("date")
-            h.plot("1:3")
+            h.plot("1:3", directory=self.web_dir)
 
         #
         # to plot errors I need to superimpose two ntuples on the
@@ -118,9 +100,9 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             n.get_data_file().close()
             pts_file_name=n.data_file_name
             name=n.get_name()
-            ps_file_name=name+".ps"
-            jpg_file_name=name+".jpg"
-            stamp_jpg_file_name=name + "_stamp.jpg"
+            ps_file_name=os.path.join(self.web_dir,name+".ps")
+            jpg_file_name=os.path.join(self.web_dir,name+".jpg")
+            stamp_jpg_file_name=os.path.join(self.web_dir,name + "_stamp.jpg")
             gnu_file_name=name+"_gnuplot.cmd"
             gnu_cmd = open(gnu_file_name,'w')
             long_string="set output '" + ps_file_name + "'\n"+ \
@@ -146,7 +128,18 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             os.unlink(gnu_file_name)
 
 
+
     def book(self, frame):
+        cron_dict = frame.get_configuration_client().get("crons", {})
+        self.html_dir = cron_dict.get("html_dir", "")
+        self.plot_dir = os.path.join(self.html_dir,
+                                     enstore_constants.PLOTS_SUBDIR)
+        if not os.path.exists(self.plot_dir):
+            os.makedirs(self.plot_dir)
+        self.web_dir = os.path.join(self.html_dir, WEB_SUB_DIRECTORY)
+        if not os.path.exists(self.web_dir):
+            os.makedirs(self.web_dir)
+
         mover_list=frame.get_configuration_client().get_movers(None,
                                                                timeout=5,
                                                                retry=3)

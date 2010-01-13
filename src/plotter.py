@@ -29,7 +29,6 @@ import string
 MY_NAME = "Plotter"
 BURN_RATE = "burn-rate"
 ENCP_RATE = "encp-rates"
-MOVERS_INFO = "movers"
 QUOTAS = "quotas"
 FILE_FAMILY_USAGE = "file_family_usage"
 
@@ -123,7 +122,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	# --------------------------------------------------
         # added by Dmitry, subdirectory displays mover data
         # --------------------------------------------------
-	dir = "%s/%s"%(self.html_dir, MOVERS_INFO)
+	dir = "%s/%s"%(self.html_dir, enstore_constants.MOVER_SUMMARY_PLOTS)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
         os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
