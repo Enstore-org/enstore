@@ -1994,9 +1994,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             f.close()    
         except (OSError, IOError), msg:
             if msg.args[0] == errno.ENAMETOOLONG:
-                Trace.log(e_errors.ERROR, "fset[1]")
                 #If the .(fset) filename is too long for PNFS, then we need
-                # to make a shorter temproary link to it and try it again.
+                # to make a shorter temporary link to it and try it again.
                 
                 #First, using .(access)() paths access the directory for
                 # the file stored in use_filepath.
@@ -2004,23 +2003,19 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 try_dir_pnfsid = self.get_id(os.path.dirname(use_filepath))
                 try_dir = self.access_file(try_dir, try_dir_pnfsid)
 
-                Trace.log(e_errors.ERROR, "fset[2]")
                 #Second, create the .(access)() path to the inode record
                 # for the filename stored in use_filepath.
                 try_pnfsid = self.get_id(use_filepath)
                 try_path = self.access_file(try_dir, try_pnfsid)
 
-                Trace.log(e_errors.ERROR, "fset[3]")
                 #Third, create a new link name using the .(access)()
                 # directory path.
                 short_tmp_name = ".%s_%s" % (os.uname()[1], os.getpid())
                 link_name = os.path.join(try_dir, short_tmp_name)
 
-                Trace.log(e_errors.ERROR, "fset[4]")
                 #Get the existing link count.
                 link_count = file_utils.get_stat(try_path)[stat.ST_NLINK]
 
-                Trace.log(e_errors.ERROR, "fset[5]")
                 #Make the temporary link using the sorter name.
                 try:
                     os.link(try_path, link_name)
@@ -2035,7 +2030,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         raise sys.exc_info()[0], sys.exc_info()[1], \
                               sys.exc_info()[2]
 
-                Trace.log(e_errors.ERROR, "fset[6]")
                 #Set the new file size.
                 try:
                     fname = self.fset_file(link_name, size)
@@ -2046,15 +2040,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     raise sys.exc_info()[0], sys.exc_info()[1], \
                           sys.exc_info()[2]
 
-                Trace.log(e_errors.ERROR, "fset[7]")
                 #Cleanup the temporary link.
                 os.unlink(link_name)
-
-                Trace.log(e_errors.ERROR, "fset[8]")
             else:
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            Trace.log(e_errors.ERROR, "fset[9]")
 
         #Update the times.
         if filepath:
