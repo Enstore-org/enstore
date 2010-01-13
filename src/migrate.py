@@ -654,9 +654,7 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
         exc_type, exc_value, exc_tb = sys.exc_info()
         del exc_tb #avoid resource leaks
 
-        if exc_value.args[0] not in [errno.EEXIST, errno.ENOENT]:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        else:
+        if exc_value.args[0] in [errno.EEXIST, errno.ENOENT]:
             try:
                 if bfid2:
                     #If the migration is interupted
@@ -676,8 +674,11 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
             if not src:
                 if exc_value.args[0] not in [errno.ENOENT]:
                     # Don't fill the log file when the situation is known.
-                    Trace.handle_error(exc_type, exc_value, sys.exc_info()[2])
+                    Trace.handle_error(exc_type, exc_value, sys.exc_info()[2],
+                                       severity=99)
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     return src
 
