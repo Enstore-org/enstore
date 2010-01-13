@@ -347,7 +347,8 @@ def default_log_func( timestamp, pid, name, args ):
 set_log_func(default_log_func)
 
 # log traceback info
-def handle_error(exc=None, value=None, tb=None, msg_type=MSG_DEFAULT):
+def handle_error(exc=None, value=None, tb=None, severity=e_errors.ERROR,
+                 msg_type=MSG_DEFAULT):
 
     # store traceback info
     locally_obtained = False
@@ -357,7 +358,7 @@ def handle_error(exc=None, value=None, tb=None, msg_type=MSG_DEFAULT):
         
     # log it
     for l in traceback.format_exception( exc, value, tb ):
-	log( e_errors.ERROR, l, msg_type, "TRACEBACK")
+	log(severity, l, msg_type, "TRACEBACK")
 
     if not locally_obtained:
         return exc, value, tb
@@ -365,7 +366,6 @@ def handle_error(exc=None, value=None, tb=None, msg_type=MSG_DEFAULT):
         #Avoid a cyclic reference.
         del tb
         return sys.exc_info()
-
 
 #log the current stack trace
 # Normally, severity is e_errors.INFO, e_errors.ERROR, et. al.  Here, we
