@@ -122,7 +122,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	# --------------------------------------------------
         # added by Dmitry, subdirectory displays mover data
         # --------------------------------------------------
-	dir = "%s/%s"%(self.html_dir, enstore_constants.MOVER_SUMMARY_PLOTS)
+	dir = "%s/%s"%(self.html_dir, enstore_constants.MOVER_SUMMARY_PLOTS_SUBDIR)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
         os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
@@ -134,7 +134,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
             plotfile2 = enstore_files.HTMLPlotFile(plot_file,
 						   self.system_tag, "../")
             self.plotfile_l.append([plotfile2, dir])
-            links_to_add.append(("%s/%s"%(MOVERS_INFO,
+            links_to_add.append(("%s/%s"%(enstore_constants.MOVER_SUMMARY_PLOTS_SUBDIR,
                                           enstore_files.plot_html_file_name()),
                                  "Mover Plots"))
         # --------------------------------------------------
