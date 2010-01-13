@@ -1,0 +1,19 @@
+[create_entry]
+johndoefirst=cd-srv
+johndoeLast=bridge
+assigntogroup=SSA
+Categorization_Tier_1=
+Categorization_Tier_2=
+Categorization_Tier_3=
+Product_Categorization_Tier_1=Storage Services
+Product_Categorization_Tier_2=
+Product_Categorization_Tier_3=
+
+[HelpDesk]
+submitUrl=https://ar-mtdev/arsys/WSDL/public/ar-srvdev/HPD_IncidentInterface_Create_WS
+generalUrl=https://ar-mtdev/arsys/WSDL/public/ar-srvdev/HPD_IncidentInterface_WS
+remedyAcct=cd-srv-bridge
+remedyPswd=run4Cover2
+#sudsdump=true
+
+
