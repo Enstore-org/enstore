@@ -1,7 +1,14 @@
 #! /bin/sh
 
-#LOCAL_DIR=/tmp
-#PNFS_DIR=/pnfs/mist
+# $Id$
+
+#Sourced from encp_test_script to run encp regression tests.
+#
+# Requires $ENSTORE_DIR/tools/encp_create_tests to work.
+# Requires $LOCAL_DIR and $PNFS_DIR to be set.
+#
+# It creates directories test_files_for_${username} and
+# encp_test_for_${username} in both $LOCAL_DIR AND $PNFS_DIR.
 
 #These variables can be overridden from the encp_test_script command line.
 encp_cmd=`which encp`
@@ -9,18 +16,29 @@ debug=0
 
 #LOCAL_DIR is set by the user in their environment.
 if [ ! -d "$LOCAL_DIR" ]; then
-    echo "\$LOCAL_DIR not set.  Stopping test."
+    echo "\$LOCAL_DIR not set.  Stopping test." 2>&1
     exit 1
 fi
 #PNFS_DIR is set by the user in their environment.
 if [ ! -d "$PNFS_DIR" ]; then
-    echo "\$PNFS_DIR not set.  Stopping test."
+    echo "\$PNFS_DIR not set.  Stopping test." 2>&1
     exit 1
 fi
 
 #Note: REMOTE_ENCP is an environmental variable that tells encp to use
 # pnfs_agent instead of PNFS directly.  We check for the same variable here to
 # handle running these tests through the pnfs agent too.
+
+if [ -n "$REMOTE_ENCP" ]; then
+    enstore pnfs_agent --timeout 10 --retries 3 --alive
+    if [ $? -ne 0 ]; then
+        echo 'pnfs_agent is not running and $REMOTE_ENCP is set.' \
+             'Stopping test.' 2>&1
+        exit 1.
+    fi
+fi
+
+#############################################################################
 
 #Handle making files in PNFS through mountpoint or pnfs_agent.
 make_pnfs_dir()
@@ -58,48 +76,7 @@ cleanup_files()
     done
 }
 
-LOCAL_INPUT_DIR=$LOCAL_DIR/test_files
-LOCAL_OUTPUT_DIR=$LOCAL_DIR/encp_test
-PNFS_INPUT_DIR=$PNFS_DIR/test_files
-PNFS_OUTPUT_DIR=$PNFS_DIR/encp_test
-PNFS_AGENT_OUTPUT_DIR=$PNFS_OUTPUT_DIR
-
-PNFS_HOSTNAME=`enstore conf --retries 3 --timeout 3 --show pnfs_agent | grep hostip | cut -f 4 -d "'"`
-
-if [ -z "$PNFS_HOSTNAME" ]; then
-    echo "Unable to obtain pnfs_agent information from configuration server."
-    exit 1
-fi
-
-ENSYNC_INPUT_DIR=$LOCAL_INPUT_DIR/ensync_test
-ENSYNC_OUTPUT_DIR=$PNFS_DIR/NULL/ensync_test
-
-ENCP_OUTPUT=/tmp/encp_test_output
-rm -f $ENCP_OUTPUT
-touch $ENCP_OUTPUT
-
-encp_create_tests
-mkdir -p $LOCAL_OUTPUT_DIR
-make_pnfs_dir $PNFS_INPUT_DIR
-make_pnfs_dir $PNFS_OUTPUT_DIR
-
-#Make test pnfs files.
-for fname in `ls $LOCAL_INPUT_DIR`; do
-    #Handle using mounted pnfs filesystem or using pnfs agent.
-    if [ -n "$REMOTE_ENCP" ]; then
-        enstore pnfs_agent --exists $PNFS_INPUT_DIR/$fname
-        pnfs_test=$?
-    else
-        test -f $PNFS_INPUT_DIR/$fname
-        pnfs_test=$?
-    fi
-    if [ -f $LOCAL_INPUT_DIR/$fname -a ! $pnfs_test ]; then
-	#We set the file family to volume_read_test for the benifit of the
-	# volume read test.
-        echo encp --file-family volume_read_test $LOCAL_INPUT_DIR/$fname $PNFS_INPUT_DIR/$fname
-	encp --file-family volume_read_test $LOCAL_INPUT_DIR/$fname $PNFS_INPUT_DIR/$fname
-    fi
-done
+#############################################################################
 
 truncate_encp_output()
 {
@@ -228,6 +205,83 @@ is_user2_encp()
 
     return 0
 }
+
+#############################################################################
+
+username=`id -u -n`
+
+#Include the username so multiple users' can run their own regression tests
+# on the same node at the same time.
+LOCAL_INPUT_DIR=$LOCAL_DIR/test_files_for_${username}
+LOCAL_OUTPUT_DIR=$LOCAL_DIR/encp_test_for_${username}
+PNFS_INPUT_DIR=$PNFS_DIR/test_files_for_${username}
+PNFS_OUTPUT_DIR=$PNFS_DIR/encp_test_for_${username}
+PNFS_AGENT_OUTPUT_DIR=$PNFS_OUTPUT_DIR
+
+is_admin_encp
+if [ $? -eq 1 ]; then
+    PNFS_HOSTNAME=`enstore conf --retries 3 --timeout 3 --show pnfs_agent | grep hostip | cut -f 4 -d "'"`
+
+    if [ -z "$PNFS_HOSTNAME" ]; then
+        echo "Unable to obtain pnfs_agent information from configuration server."
+        exit 1
+    fi
+fi
+
+ENSYNC_INPUT_DIR=$LOCAL_INPUT_DIR/ensync_test
+ENSYNC_OUTPUT_DIR=$PNFS_DIR/NULL/ensync_test
+
+ENCP_OUTPUT=/tmp/encp_test_output_for_${username}
+rm -f $ENCP_OUTPUT
+if [ $? -ne 0 ]; then
+    #Use rm error message.
+    exit 1
+fi
+touch $ENCP_OUTPUT
+if [ $? -ne 0 ]; then
+    #Use touch error message.
+    exit 1
+fi
+
+encp_create_tests
+mkdir -p $LOCAL_OUTPUT_DIR
+make_pnfs_dir $PNFS_INPUT_DIR
+make_pnfs_dir $PNFS_OUTPUT_DIR
+
+#Make sure we have correct permissions for these directories.
+for dir_to_check in "$LOCAL_INPUT_DIR" "$LOCAL_OUTPUT_DIR" \
+                    "$PNFS_INPUT_DIR" "$PNFS_OUTPUT_DIR" "$PNFS_OUTPUT_DIR"; do
+    if [ ! -x "$dir_to_check" ]; then
+        echo "No execute permissions for directory: $dir_to_check" 2>&1
+	exit 1
+    fi
+    if [ ! -r "$dir_to_check" ]; then
+	echo "No read permissions for directory: $dir_to_check" 2>&1
+	exit 1
+    fi
+    if [ ! -w "$dir_to_check" ]; then
+	echo "No write permissions for directory: $dir_to_check" 2>&1
+	exit 1
+    fi
+done
+
+#Make test pnfs files.
+for fname in `ls $LOCAL_INPUT_DIR`; do
+    #Handle using mounted pnfs filesystem or using pnfs agent.
+    if [ -n "$REMOTE_ENCP" ]; then
+        enstore pnfs_agent --exists $PNFS_INPUT_DIR/$fname
+        pnfs_test=$?
+    else
+        test -f $PNFS_INPUT_DIR/$fname
+        pnfs_test=$?
+    fi
+    if [ -f $LOCAL_INPUT_DIR/$fname -a ! $pnfs_test ]; then
+	#We set the file family to volume_read_test for the benifit of the
+	# volume read test.
+        echo encp --file-family volume_read_test $LOCAL_INPUT_DIR/$fname $PNFS_INPUT_DIR/$fname
+	encp --file-family volume_read_test $LOCAL_INPUT_DIR/$fname $PNFS_INPUT_DIR/$fname
+    fi
+done
 
 #############################################################################
 
@@ -1309,7 +1363,7 @@ pnfs_agent_read_write_test()
     fi
 
     #Test if pnfs agent is configured.
-    if [ -z $PNFS_HOSTNAME ]; then
+    if [ -z "$PNFS_HOSTNAME" ]; then
 	    echo "pnfs_agent is not configured.  Skipping test and continuing."
 	    return
     fi

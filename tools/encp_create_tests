@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# $Id$
+
 #Create test files for encp_test_script.
 
 if [ ! -d "$LOCAL_DIR" ]; then
@@ -7,8 +9,10 @@ if [ ! -d "$LOCAL_DIR" ]; then
     exit 1
 fi
 
+username=`id -u -n`
+
 RD=/dev/urandom
-O_DIR=/$LOCAL_DIR/test_files
+O_DIR=$LOCAL_DIR/test_files_for_${username}
 SYNC_DIR=$O_DIR/ensync_test
 
 mkdir -p $O_DIR
