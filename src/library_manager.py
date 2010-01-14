@@ -143,8 +143,10 @@ class Requests:
         # processing_function - request processing function
         # args - arguments of request processing function
 
+        if worker == None:
+           raise e_errors.EnstoreError(None, "Worker is not defined", e_errors.WRONGPARAMETER)
+           
         self.trace_level = 300 # trace level for class Requests
-
         self.worker = worker
         if lm_server:  
            self.lm_server = lm_server
@@ -3220,8 +3222,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # continue checking. This check requires synchronization between LM and mover machines.
                 if self.volumes_at_movers.at_movers[mover]['time_started'] > mticket['current_time']:
                     # idle request was issued before the request became active
-                    # ignore this request
-                    Trace.log(e_errors.INFO, "Duplicate IDLE request will be ignored for %s"%(mover,))
+                    # ignore this request, but send something to mover.
+                    # If nothing is sent the mover may hang wating for the
+                    # library manager reply in case when previous reply was lost (there were such cases)
+                    Trace.log(e_errors.INFO, "Duplicate IDLE request. Will send blank reply to %s"%(mover,))
+                    blank_reply = {'work': None, 'r_a': saved_reply_address}
+                    self.reply_to_caller(blank_reply)
                     return
         self.volumes_at_movers.delete(mticket)
 
@@ -3493,8 +3499,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # continue checking. This check requires synchronization between LM and mover machines.
                 if self.volumes_at_movers.at_movers[mover]['current_time'] >= mticket['current_time']:
                     # request was issued before the request became active
-                    # ignore this request
+                    # ignore this request, but send something to mover.
+                    # If nothing is sent the mover may hang wating for the
+                    # library manager reply in case when previous reply was lost (there were such cases)
                     Trace.log(e_errors.INFO, "Duplicate HAVE_BOUND request will be ignored for %s"%(mover,))
+                    blank_reply = {'work': None, 'r_a': saved_reply_address}
+                    self.reply_to_caller(blank_reply)
                     return
 
         if not mticket['volume_family']:
