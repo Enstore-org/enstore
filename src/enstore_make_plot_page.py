@@ -56,7 +56,7 @@ QUOTA = "quota"
 #
 
 
-ENGLISH_TITLES = { 
+ENGLISH_TITLES = {
 		   "ADICDrvBusy" : "(e)Get ADIC Drive Info",
 		   "aml2logs" : "(e)Get AML2 Logs",
 		   "aml2mirror" : "(e)Mirror AML2 Disk",
@@ -113,8 +113,8 @@ ENGLISH_TITLES = {
 		   "volmap" : "(r)Chmod volmap Dirs" }
 
 # find all the files under the current directory that are jpg files.
-# (*.jpg). then create a smaller version of each file (if it does not 
-# exist) with the name *_stamp.jpg, to serve as a stamp file on 
+# (*.jpg). then create a smaller version of each file (if it does not
+# exist) with the name *_stamp.jpg, to serve as a stamp file on
 # the web page and create a ps file (if it does not exist) with the
 # name *.ps.
 def find_jpg_files((jpgs, stamps, pss, input_dir, url), dirname, names):
@@ -142,7 +142,7 @@ def do_the_walk(input_dir, url):
         input_dir = "%s/"%(input_dir,)
     if url[-1] != "/":
         url = "%s/"%(url,)
-    os.path.walk(input_dir, find_jpg_files, (jpgs, stamps, pss, 
+    os.path.walk(input_dir, find_jpg_files, (jpgs, stamps, pss,
 					     input_dir, url))
     jpgs.sort()
     stamps.sort()
@@ -173,7 +173,7 @@ class CronPlotPage(PlotPage):
         PlotPage.__init__(self, title, gif, description, url, outofdate)
         self.help_file = "cronHelp.html"
         self.english_titles = ENGLISH_TITLES
-        
+
 
     def find_label(self, text):
         l = len(self.url)
@@ -383,6 +383,8 @@ def do_work2(intf):
          "Xfer size per Storage Group Plots"),
         (enstore_constants.MIGRATION_SUMMARY_PLOTS_SUBDIR,
          "Migration/Duplication Summary Plots per Media Type"),
+        (enstore_constants.MOVER_SUMMARY_PLOTS_SUBDIR,
+         "Mover Plots"),
         ]
 
     use_subdir_list = []
@@ -402,7 +404,7 @@ def do_work2(intf):
 
     #Create the top plot page.
     make_plot(plots_subdir, url_dir, "Enstore Plots", use_subdir_list)
-    
+
 #########################################################################
 #  END OF NEW WAY
 #########################################################################
