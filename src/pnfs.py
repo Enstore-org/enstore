@@ -3082,7 +3082,7 @@ class PnfsInterface(option.Interface):
                    option.VALUE_USAGE:option.REQUIRED,
                    option.VALUE_LABEL:"filename",
                    option.FORCE_SET_DEFAULT:option.FORCE,
-                   option.USER_LEVEL:option.ADMIN,
+                   option.USER_LEVEL:option.USER2,
               },
         option.IO:{option.HELP_STRING:"sets io mode (can't clear it easily)",
                    option.DEFAULT_VALUE:option.DEFAULT,
