@@ -1,45 +1,21 @@
 #!/usr/bin/env python
-# manage the pending Library Manager work queue
-#########################################################################
-# $Id$
-#########################################################################
-
-import sys
+# manage the pending Library Managerwork queue
+# src/$RCSfile$   $Revision$
 import string
-import threading
-import time
-
 import mpq  # binary search / put
+import time
 import Trace
 import e_errors
-import hostaddr
 
 MAX_PRI=1000001
 TR=400
-DELTA_PRI = 1
-AGE_TIME = 30 # min
-DEBUG=False
-MAX_LONG=(2<<64)-1
 
 # comparison functions
-# used to organize the list by priority
-# and time queued
 def compare_priority(r1,r2):
-    # the result of comparison should be so that
-    # the highes priority request is closer to the beginning of the sorted list
-    # hence:
-    # if r1.pri > r2.pri then result = -1 (r1 < r2)
-    # if r1.pri == r2.pri then
-    #    if r1.queued < r2.queued then result = -1 (r1 is older than r2)
     if r1 is r2:
         return 0
-    pri1=(r1.pri, -getattr(r1,'queued',0), id(r1))
-    pri2=(r2.pri, -getattr(r2,'queued',0), id(r2))
-    return -cmp(pri1, pri2)
+    return -cmp(r1.pri, r2.pri)
 
-
-# used to organize the list by value
-# location cookie, for instance
 def compare_value(r1,r2):
     return cmp(r1.value,r2.value)
 
@@ -52,8 +28,19 @@ class Request:
         encp = ticket.get('encp','')
         # by default priority grows by 1 every 1/2 hour
         if encp:
+            delpri = encp.get('delpri',1)
+            if delpri == 0:
+                delpri = 1
+            agetime = encp.get('agetime',30)
+            if agetime == 0:
+                agetime = 30
+            
+            self.delpri = delpri
+            self.agetime = agetime
             self.adminpri = encp.get('adminpri',-1)
         else:
+            self.delpri = 1
+            self.agetime = 30
             self.adminpri = -1
             
         self.unique_id = ticket.get('unique_id','')
@@ -63,224 +50,213 @@ class Request:
             ticket['times']['job_queued'] = self.queued
             ticket['at_the_top'] = 0
             ticket['encp']['curpri'] = self.pri
-            #ticket['encp']['agetime'] = self.agetime
-            #ticket['encp']['delpri'] = self.delpri
+            ticket['encp']['agetime'] = self.agetime
+            ticket['encp']['delpri'] = self.delpri
             self.sg = ticket['vc']['storage_group']
 
            
         self.work = ticket.get('work','')
-        self.host = None
-        self.callback = ticket.get('callback_addr', None)
-        if self.callback:
-            self.host = hostaddr.address_to_name(self.callback[0])
         wrapper = ticket.get('wrapper','')
         if wrapper:
             self.ofn = wrapper.get('pnfsFilename','')
-            if self.host == None:
-                self.host = wrapper.get("machine", (None, None))[1] 
         else:
             self.ofn = ''
-
         self.ticket = ticket
-        if timeq:
-            self.time = timeq
+        if timeq: self.time = timeq
         
     # compare 2 requestst
     def __cmp__(self,other):
-        #pri1=(self.pri, getattr(self,'time',0), id(self))
-        #pri2=(other.pri, getattr(other,'time',0), id(other))
-        pri1=(self.pri, getattr(self,'queued',0), id(self))
-        pri2=(other.pri, getattr(other,'queued',0), id(other))
-        rc = cmp(pri1,pri2)
-        return rc
+        pri1=(self.pri, getattr(self,'time',0), id(self))
+        pri2=(other.pri, getattr(other,'time',0), id(other))
+        return cmp(pri1,pri2)
     
 
     def __repr__(self):
         #return "<priority %s value %s ticket %s>" % (self.pri, self.value, self.ticket)
-        return "<priority %s value %s id %s tq %s>" % (self.pri, self.value, self.unique_id, self.queued)
+        return "<priority %s value %s id %s>" % (self.pri, self.value, self.unique_id)
+
+    # update request priority
+    def update_pri(self):
+        pri = self.basepri
+        now = time.time()
+        deltas = 0
+        if self.agetime > 0:
+            old_pri = self.pri
+            deltas = int(now-self.queued)/60/self.agetime
+            pri = pri + self.delpri*deltas
+            #Trace.trace(TR+23 , "update pri deltas %s pri % self.pri %s"%(deltas, pri, self.pri))
+            if pri != self.pri and self.pri > 0 and pri < MAX_PRI:
+                self.pri = pri
+                self.ticket['encp']['curpri'] = self.pri
+        #if pri != self.pri and self.pri > 0 and pri < MAX_PRI:
+        #    self.pri = pri
+        #    self.ticket['encp']['curpri'] = self.pri
+        return old_pri, self.pri
 
     def change_pri(self, pri):
         self.pri = pri
         self.ticket['encp']['curpri'] = self.pri
 
 class SortedList:
-# Sorted list of requests.
-# This class is the lowest in the hierarchy of
-# classes in this file and is used in 
-# all other classes to hold data.
-# This class need to be thread safe for putting data and modification of the list.
-# Sorting order is set by comparison function.
-# So for write requests the comparioson function will be compare_priority with descending order.
-# For read "opt" sublist it will be compare_value with ascending order
-
-    def __init__(self, comparison_function, by_pri=0, aging_quantum=60, name=None):
+# sorted list of requests    
+    def __init__(self, comparison_function, by_pri=1, aging_quantum=60, name=None):
         self.sorted_list = mpq.MPQ(comparison_function)
         self.last_aging_time = 0
-        self.aging_quantum = aging_quantum
+        self.aging_quantum = 60  #one minute
         self.highest_pri = 0
         self.ids = []
         self.of_names = []
         self.keys = []
-        self.update_flag = by_pri # update either by priority or by location
+        self.update_flag = by_pri
         self.current_index = 0
-        self.stop_rolling = 0 # flag for get_next. Stop if 1
+        self.stop_rolling = 0
         self.my_name = name
         self.last_deleted = None # to be used for read requests
-        self.delpri = DELTA_PRI # delta priority is common for all requests in the list 
-        self.agetime = AGE_TIME #age time is common for all requests in the list
-        self.cummulative_delta_pri = 0 # cummulative delta priority
-        self.highest_pri = 0 # highest priorioty in the list
-        self.highest_pri_id = None # highest priorioty id
-        self.queued = time.time()
-        self.lock = threading.Lock() # to synchronize changes in the list
         
     # check if request with certain  id is in the list
-    def test(self, id):
-        if id in self.ids:
-            return id,e_errors.OK 
+    # and if its outputfile name is in the list flag this
+    # with e_errors.INPROGRESS (needed for write requests)
+    def test(self, id, output_file_name=None):
+        if id in self.ids: return 1,e_errors.OK 
+        #if output_file_name in self.of_names: return 1, e_errors.INPROGRESS
         return 0,None
     
-    # find request by its id
-    def find(self, id):
+    # this probably is not needed
+    def find(self,id,output_file_name=None):
         if not id in self.ids:
             return None, None
 	for r in self.sorted_list:
 	    if r.unique_id == id:
 		return r,e_errors.OK
+            #if (output_file_name and
+            #    output_file_name == r.ticket["wrapper"]['pnfsFilename']):
+            #    return r,e_errors.INPROGRESS
         return None, None
 
-    # update delta priority
+    # update the sorted request list
     def update(self, now=None):
+        MAX_RESCAN=100
+        rescan_buf_counter=0
         if not self.update_flag: return  # no need to update by_location list
         time_now = time.time()
+        rescan_list = []
         #Trace.trace(TR+23, "now %s self.last_aging_time %s self.aging_quantum %s"%(time_now,self.last_aging_time, self.aging_quantum))
         if ((time_now - self.last_aging_time >= self.aging_quantum) or
             now):
-            if self.agetime > 0:
-                deltas = int((time_now - self.queued)/60/self.agetime)
-                self.cummulative_delta_pri = self.delpri*deltas
+            Trace.trace(5, "update priority")
+            # it is time to update priorities
+            for record in self.sorted_list:
+                #Trace.trace(TR+23, "record %s agetime %s"%(record, record.agetime))
+                if record.agetime > 0:
+                    old_pri,new_pri = record.update_pri()
+                    if new_pri != old_pri:
+                        # do not allow more than MAX_RESCAN entries get updated for better performance
+                        if rescan_buf_counter < MAX_RESCAN:  
+                            rescan_list.append(record)
+                            rescan_buf_counter = rescan_buf_counter + 1
+                        else:
+                            break
+            Trace.trace(5, "update priority %s"%(len(rescan_list),))
+            if rescan_list:
+                Trace.trace(5, "update priority delete")
+                # temporarily remove records that have changed priorities
+                for record in rescan_list:
+                    #Trace.trace(TR+23,"%s:::SortedList.update: delete Pri%s Ticket %s"%
+                    #            (self.my_name, record.pri, record.ticket))
+                    #self.delete(record)
+                    self.sorted_list.remove(record)
+                Trace.trace(5, "update priority deleted")
+                # put them pack according to new priority
+                Trace.trace(5, "update priority reinsert")
+                for record in rescan_list:
+                    Trace.trace(TR+23,"%s:::SortedList.update: reinsert Pri%s Ticket %s"%
+                                (self.my_name, record.pri, record.ticket))
+                    #self.put(record)
+                    self.sorted_list.insort(record)
+                Trace.trace(5, "update priority reinserted")
             self.last_aging_time = time_now
-            
 
     # put record into the sorted list
     def put(self, request, key=''):
-        # in library manager request queue
-        # there are 2 types of keys:
-        # volume family - used for write requests
-        # external label - used for read requests
-        # returns a tuple
-        # in_list - 0: was not in list
-        #         - 1: was in list
-        # status - e_errors.OK
-        #        - None
         if request.work == 'write_to_hsm':
-            output_file_name = request.ofn
-        else:
-            output_file_name = None
+                output_file_name = request.ofn
+        else: output_file_name = None
         # check if request is already in the list
-        res, stat = self.test(request.unique_id)
+        res, stat = self.test(request.unique_id,output_file_name)
         Trace.trace(TR+23,"SortedList.put: test returned res %s stat %s"%
                     (res, stat))
         if not res:
+            # udate the list before putting a record
+            Trace.trace(5, "put")
+            self.update()
             # put in the list
-            Trace.trace(TR+23,"SortedList.put: %s %s"%
+            Trace.trace(TR+23,"SortedList.put: put %s %s"%
                         (request.pri, request.ticket))
-            Trace.trace(TR+23,"SortedList.put: %s %s"%
-                        (self.my_name, request))
             self.ids.append(request.unique_id)
-
-            if output_file_name:
-                self.of_names.append(output_file_name)
-            if key and not key in self.keys:
-                self.keys.append(key)
-            self.lock.acquire()
-            try:
-                self.sorted_list.insort(request)
-                # change the highest priority request in the list
-                if request.pri > self.highest_pri:
-                  self.highest_pri = request.pri
-                  self.highest_pri_id = request.unique_id
-            except:
-                exc, detail, tb = sys.exc_info()
-                Trace.handle_error(exc, detail, tb)
-                del(tb)
-            self.lock.release()
-                  
+            if output_file_name: self.of_names.append(output_file_name)
+            if key and not key in self.keys: self.keys.append(key)
+            self.sorted_list.insort(request)
             stat = e_errors.OK
         else:
             # update routing_callback_addr
+            
             try:
-                r, err = self.find(request.unique_id)
+                r, err = self.find(request.unique_id,output_file_name)
             except TypeError:
-                res = None
-                stat = None
-                Trace.trace(TR+23, 'manage_queue put: find returned %s'%
-                            (self.find(request.unique_id),))
-            if (r and r.ticket.has_key('routing_callback_addr') and
-                request.ticket.has_key('routing_callback_addr')):
+                Trace.trace(5, '(Trace)manage_queue put: find returned %s'%(self.find(request.unique_id,output_file_name),))
+            if r and r.ticket.has_key('routing_callback_addr') and request.ticket.has_key('routing_callback_addr'):
                 r.ticket['routing_callback_addr'] = request.ticket['routing_callback_addr']
-
         return res, stat
 
     # get a record from the list
     def get(self, pri=0):
         self.stop_rolling = 0
         if not self.sorted_list:
-            self.lock.acquire()
             self.start_index = self.current_index
-            self.lock.release()
             return None    # list is empty
+        #self.update()
         Trace.trace(TR+23,"%s:::SortedList.get: pri %s, u_f %s"%
                     (self.my_name, pri, self.update_flag))
         # update flag is meaningful only for write list
         if self.update_flag and not pri:
             index = 0
-            self.lock.acquire()
             self.current_index = index
-            self.lock.release()
         else:
             # find request that has "priority" higher than pri
-            #Trace.trace(TR+23, '%s:::SortedList.get:sorted_list %s'%(self.my_name,self.sorted_list,))
+            Trace.trace(TR+23, '%s:::SortedList.get:sorted_list %s'%(self.my_name,self.sorted_list,))
             rq = Request(pri, pri, {})
             index = self.sorted_list.bisect(rq)
+            #index = len(self.sorted_list)-1
+            #if index < 0: index = 0
+            #rq = self.sorted_list[index]
             Trace.trace(TR+23, '%s:::SortedList.get: i %s rq %s rec %s'%(self.my_name, index, rq, self.sorted_list[index]))
             if not self.update_flag:
                 # must be a read request
-                # if update flag is 0
-                # then the list is sorted by location: no need to update sorted list
                 # check if request location is less than current
-                Trace.trace(TR+23, 'SortedList.get: pri %s value %s last deleted %s'%
-                            (pri, self.sorted_list[index].value, self.last_deleted))
-                Trace.trace(TR+23, 'SortedList.get: comparing %s %s'%
-                            (pri, self.sorted_list[index].value))
+                Trace.trace(TR+23, 'SortedList.get: pri %s value %s last deleted %s'%(pri, self.sorted_list[index].value, self.last_deleted))
+                Trace.trace(TR+23, 'SortedList.get: comparing %s %s'%(pri, self.sorted_list[index].value))
                 if pri > 0 and cmp(pri, self.sorted_list[index].value) == 1:
                     if self.last_deleted and self.last_deleted.value == pri:
-                        Trace.trace(TR+23, 'SortedList.get: setting index to 0 %s'%
-                                    (self.sorted_list[0],))
+                        Trace.trace(TR+23, 'SortedList.get: setting index to 0 %s'%(self.sorted_list[0],))
                         # if yes we rolled over the top of the list
                         # go to its beginning
                         index = 0
+            #if len(self.sorted_list) == 1: index = 0
         if index < len(self.sorted_list) and index >= 0:
             Trace.trace(TR+23,"%s:::SortedList.get: index %s"%(self.my_name, index,))
             record = self.sorted_list[index]
             record.ticket['at_the_top'] = record.ticket['at_the_top']+1
             self.current_index = index
             ret = record
-        else:
-            ret = None
-        if ret:
-            ret.ticket['encp']['curpri'] = ret.ticket['encp']['basepri'] + self.cummulative_delta_pri
-
-        self.lock.acquire()
+        else: ret = None
         self.start_index = self.current_index
-        self.lock.release()
-
         return ret
 
-    # get next pending request
-    def _get_next(self):
-        Trace.trace(TR+23, "%s:::SortedList.get_next stop_rolling %s current_index %s"%
-                    (self.my_name, self.stop_rolling,self.current_index))
+    ##def trace(nm,fmt,msg=None):
+    ##    print msg
+        
+    def get_next(self):
+        Trace.trace(TR+23, "%s:::SortedList.get_next %s stop_rolling %s current_index %s"%(self.my_name, self.sorted_list,self.stop_rolling,self.current_index))
         if not self.sorted_list:
             self.start_index = self.current_index
             return None    # list is empty
@@ -300,85 +276,44 @@ class SortedList:
             return self.sorted_list[self.current_index]
             #return None
         try:
-            if self.current_index == self.start_index: # returned to the beginning index
+            if self.current_index == self.start_index:
+                Trace.trace(TR+33,"%s:::!! o_i %s c_i %s s_i %s ret %s"%
+                            (self.my_name, old_current_index,self.current_index,self.start_index, None))
+                #self.stop_rolling = 1
                 Trace.trace(TR+33,"%s:::stop_rolling for %s"%(self.my_name,self.sorted_list,))
+
                 return None  # came back to where it started
-        except AttributeError, detail: # how this happens
+        except AttributeError: # how this happens
             self.start_index = self.current_index
-            Trace.trace(TR+33, "ATTR ERR %s"%(detail,))
+            Trace.trace(TR+33, "ATTR ERR")
             return None
         Trace.trace(TR+33,"%s:::o_i %s c_i %s s_i %s ret %s"%
-                    (self.my_name, old_current_index,self.current_index,
-                     self.start_index, self.sorted_list[self.current_index]))  
-        rq = self.sorted_list[self.current_index]
-        rq.ticket['encp']['curpri'] = rq.ticket['encp']['basepri'] + self.cummulative_delta_pri
-
-        return rq
-
-    # get next request, considering that there may be hosts
-    # requests from which have been alredy rejected by discipline
-    # in the current selection cycle
-    def get_next(self, disabled_hosts=[]):
-        self.lock.acquire()
-        rq = self._get_next()
-        self.lock.release()
-        if len(disabled_hosts) > 0:
-            while rq:
-                if rq.host in disabled_hosts:
-                    # if request came from host
-                    # for which discipline disables
-                    # tranfers, try to get another one
-                    self.lock.acquire()
-                    rq = self._get_next()
-                    self.lock.release()
-                else:
-                    break
-        return rq
+                    (self.my_name, old_current_index,self.current_index,self.start_index, self.sorted_list[self.current_index]))  
+        
+        return self.sorted_list[self.current_index]
     
-    # remove a request from the list (no updates)
+    # remove a request fro m the list (no updates)
     def rm(self,record,key=''):
         Trace.trace(TR+23,"SortedList.rm: %s %s"%(record.pri, record.ticket))
         if record in self.sorted_list:
-            self.lock.acquire()
-            try:
-                self.sorted_list.remove(record)
-                if record.unique_id in self.ids: self.ids.remove(record.unique_id)
-                if record.ofn in self.of_names: self.of_names.remove(record.ofn)
-                if key and key in self.keys:
-                    self.keys.remove(key)
-                self.last_deleted = record
-            except:
-                exc, detail, tb = sys.exc_info()
-                Trace.handle_error(exc, detail, tb)
-                del(tb)
-                
-                pass
-            self.lock.release()
+            self.sorted_list.remove(record)
+            self.last_deleted = record
+        if record.unique_id in self.ids: self.ids.remove(record.unique_id)
+        if record.ofn in self.of_names: self.of_names.remove(record.ofn)
+        record.ticket['times']['in_queue'] = time.time() - \
+                                             record.ticket['times']['job_queued']
+        if key and key in self.keys:
+            self.keys.remove(key)
 
             
     # same as remove but with updates
     def delete(self, record, key=''):
-        pri = record.pri
         self.rm(record, key)
-        # find the next highest priority request
-        if record.unique_id == self.highest_pri_id:
-            req = self.get(pri)
-            if req:
-              self.highest_pri = req.pri
-              self.highest_pri_id = req.unique_id
-             
-        # update priority
         self.update()
-
 
     # change priority
     def change_pri(self, record, pri):
         if pri <= 0: return None
-        # We are working with sorted list
-        # using binary tree and priority to order it.
-        # To update its element we need
-        # to pull it out and reinsert at the right
-        # place according to priority (comparison function) 
         self.rm(record)
         record.change_pri(pri)
         self.put(record)
@@ -387,25 +322,16 @@ class SortedList:
     # print the list
     def wprint(self):
         print "LIST LENGTH",len(self.sorted_list)
-        cnt = 0
         if len(self.sorted_list):
             for rq in self.sorted_list:
                 print rq
-                cnt = cnt + 1
-                if DEBUG and cnt > 100:
-                    break
 
     def sprint(self):
         m = ''
-        cnt = 0
         if len(self.sorted_list):
             m = "LIST LENGTH %s rolling %s\n"%(len(self.sorted_list),self.stop_rolling)
             for rq in self.sorted_list:
                 m = '%s %s\n'%(m,rq)
-                cnt = cnt + 1
-                if DEBUG and cnt > 100:
-                    break
-                
         return m
     
     def get_tickets(self):
@@ -428,11 +354,7 @@ class Queue:
         self.queue_type =''
 
     # put requests into the queue
-    def put(self, priority, ticket):
-        # returns a tuple
-        # result - request (instance) or None
-        # status - None or e_errors.OK or e_errors.WRONGPARAMETER
-        # see SortedList.put
+    def put(self, priority, ticket, time=0):
         Trace.trace(TR+21,"Queue.put: %s %s"%(priority, ticket,))
         # set type of the queue
         if not self.queue_type:
@@ -449,73 +371,39 @@ class Queue:
         rq = Request(priority, val, ticket, ticket['times']['t0'])
         if not self.queue.get(key,''):
             # create opt entry in the list. For writes it is Volume Family
-            # for reads - volume label. Create by_priority entry as well
+            # for reads - volume label. Create by_priority entyr as well
             self.queue[key] = {'opt':SortedList(compare_value, 0,self.aging_quantum, key), # no updates
                               'by_priority':SortedList(compare_priority, 1, self.aging_quantum, key)
-                              #'by_priority':SortedList(compare_priority, 1, self.aging_quantum, key)
                               }
                 
-        # put request into both queues
-        try:
-            res,stat = self.queue[key]['by_priority'].put(rq)
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.handle_error(exc, detail, tb)
-            del(tb)
-            return None, None
-        if res:
-            # already in the list
-            return None, stat
-        try:
-            res, stat = self.queue[key]['opt'].put(rq)
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.handle_error(exc, detail, tb)
-            del(tb)
-            # put into opt list failed
-            # remove request from by_priority list
-            self.queue[key]['by_priority'].delete(rq)
-            return None, None
+        # put requst into both queues
+        res,stat = self.queue[key]['by_priority'].put(rq)
+        if res: return None, stat
             
-        if res:
-            # already in the list
-            ret = None, stat
-        else:
-            ret = rq, stat
+        res, stat = self.queue[key]['opt'].put(rq)
+        if res: ret = None, stat
+        else: ret = rq, stat
         return  ret
 
-    def test(self, ticket):
-        if ticket['work'] == 'write_to_hsm':
-            key = ticket['vc']['volume_family']
-        elif ticket['work'] == 'read_from_hsm':
-            key = ticket['fc']['external_label']
-        unique_id = ticket.get('unique_id','')
-        if unique_id and self.queue.has_key(key):
-            return self.queue[key]['by_priority'].test(unique_id)
-        return 0,None
-            
 
     # get returns a record from the queue
-    # key is either volume family for write requests
-    # or external_label for read requsts
+    # volume may be specified for read queue
+    # volume family may be specified for write queue
     # "optional" location parameter for read requests indicates
     # what is current position of the tape (location_cookie)
     # for write requests it is file size
-    def get(self,key='',location=''):
+    def get(self,label='',location=''):
+         # label is either a volume label or file family
         #Trace.trace(TR+23, 'Queue.get: Queue list %s'% (self.sprint(),))
-        if not key:
-            return None
-        if not self.queue:
-            Trace.trace(TR+23, "Queue.get: queue is empty")
-            return None
+        if not label: return None
         Trace.trace(TR+23, "Queue.get: queue %s"%(self.queue,))
-        Trace.trace(TR+23, "Queue.get: key %s location %s"%(key, location))
-        if not self.queue.has_key(key):
-            Trace.trace(TR+23,"Queue.get: key %s is not in the queue"%(key,))
+        Trace.trace(TR+23, "Queue.get: label %s location %s"%(label, location))
+        if not self.queue.has_key(label):
+            Trace.trace(TR+23,"Queue.get: label %s is not in the queue"%(label,))
             return None
-        self.queue[key]['by_priority'].stop_rolling = 0
-        self.queue[key]['opt'].stop_rolling = 0
-        sublist = self.queue[key]['opt']
+        self.queue[label]['by_priority'].stop_rolling = 0
+        self.queue[label]['opt'].stop_rolling = 0
+        sublist = self.queue[label]['opt']
        
         if location:
             # location means location cookie for read request
@@ -525,7 +413,7 @@ class Queue:
             if self.queue_type == 'read_from_hsm':
                 record = sublist.get()
                 Trace.trace(TR+23,"Queue.get:read_from_hsm %s %s"%(sublist, record))
-            else: record = self.queue[key]['by_priority'].get()
+            else: record = self.queue[label]['by_priority'].get()
         Trace.trace(TR+23,"Queue.get: %s"%(repr(record),))
         return record
 
@@ -563,31 +451,22 @@ class Queue:
         Trace.log(e_errors.INFO,
                   "Queue.change_pri: key %s cur_pri %s pri %s"%(key, request.pri, pri))
         ret = self.queue[key]['opt'].change_pri(request, pri)
-        if ret:
-            ret = self.queue[key]['by_priority'].change_pri(request, pri)
+        if ret: ret = self.queue[key]['by_priority'].change_pri(request, pri)
         return ret
             
-    def get_next(self, key='', disabled_hosts = []):
-        # key is either a volume label or volume family
-        Trace.trace(TR+23, 'Queue.get_next: key %s'% (key,))
+    def get_next(self, label=''):
+        # label is either a volume label or volume family
+        Trace.trace(TR+23, 'Queue.get_next: label %s'% (label,))
+        #Trace.trace(TR+23, 'Queue.get_next: list %s'% (self.sprint(),))
 
-        if not key: return None
-        if not self.queue:
-            Trace.trace(TR+23, "Queue.get_next: queue is empty")
-            return None
+        if not label: return None
         Trace.trace(TR+23, "Queue.get_next: keys %s"%(self.queue.keys(),))
-        if not self.queue.has_key(key):
-            Trace.trace(TR+23,"Queue.get_next: key %s is not in the queue"%(key,))
+        if not self.queue.has_key(label):
+            Trace.trace(TR+23,"Queue.get_next: label %s is not in the queue"%(label,))
             return None
-        if self.queue_type == 'read_from_hsm':
-            sublist = self.queue[key]['opt']
-        else:
-            # write request"
-            sublist = self.queue[key]['by_priority']
+        sublist = self.queue[label]['opt']
         #Trace.trace(TR+23,"Queue.get_next: sublist %s"%(sublist.sprint(),))
-        rc = sublist.get_next(disabled_hosts=disabled_hosts)
-        Trace.trace(TR+23,"Queue.get_next: sublist returns %s"%(rc,))
-        return rc
+        return sublist.get_next()
         
 
     def wprint(self):
@@ -624,16 +503,15 @@ class Queue:
 
     # get all entries from the queue
     def get_queue(self, queue_key='by_priority'):
-        _list = []
+        list = []
         for key in self.queue.keys():
-            _list = _list+self.queue[key][queue_key].get_tickets()
-        return _list
+            list = list+self.queue[key][queue_key].get_tickets()
+        return list
 
     # find record in the queue
-    def find(self,id):
-        # id - request unuque id
+    def find(self,id,output_file_name=None):
         for key in self.queue.keys():
-            record, status = self.queue[key]['by_priority'].find(id)
+            record, status = self.queue[key]['by_priority'].find(id,output_file_name)
             if record: break
         else:
             record = None
@@ -658,13 +536,9 @@ class Atomic_Request_Queue:
         self.aging_quantum = aging_quantum
 
     def update(self, request, key):
-        Trace.trace(TR+23," Atomic_Request_Queue:update:key: %s"%(key,))
-        Trace.trace(TR+23," Atomic_Request_Queue:update:tags.keys: %s"%(self.tags.keys,))
-        Trace.trace(TR+23," Atomic_Request_Queue:update:refs.keys: %s"%(self.ref.keys(),))
         if self.ref.has_key(key):
             # see if priority of current requst is higher than
             # request in the queue and if yes remove it
-            Trace.trace(TR+23," Atomic_Request_Queue:update:tags1: %s"%(request,))
             if request.pri > self.ref[key].pri:
                 self.tags.rm(self.ref[key], key)
                 self.tags.put(request, key)
@@ -684,7 +558,7 @@ class Atomic_Request_Queue:
     def get_sg(self, tag):
         return self.tags[tag]
 
-    def put(self, priority, ticket):
+    def put(self, priority, ticket,t_time=0):
         if ticket['work'] == 'write_to_hsm':
             # backward compatibility
             if not ticket['vc'].has_key('storage_group'):
@@ -698,8 +572,7 @@ class Atomic_Request_Queue:
                 key = string.join((ticket['vc']['storage_group'],
                        ticket['vc']['file_family'],
                        ticket['vc']['wrapper']),'.')
-            else:
-                key = string.join((ticket['vc']['storage_group'],
+            else: key = string.join((ticket['vc']['storage_group'],
                                      'ephemeral',ticket['vc']['wrapper']), '.')
             ticket['vc']['volume_family'] = key
         elif ticket['work'] == 'read_from_hsm':
@@ -708,13 +581,11 @@ class Atomic_Request_Queue:
             return None, e_errors.WRONGPARAMETER
 
         if ticket['work'] == 'write_to_hsm':
-            rq, stat = self.write_queue.put(priority, ticket)
-            if not rq:
-                return rq, stat
+            rq, stat = self.write_queue.put(priority, ticket,t_time)
+            if not rq: return rq, stat
         elif ticket['work'] == 'read_from_hsm':
-            rq, stat = self.read_queue.put(priority, ticket)
-            if not rq:
-                return rq, stat
+            rq, stat = self.read_queue.put(priority, ticket,t_time)
+            if not rq: return rq, stat
 
 
         # now get the highest priority request from the queue
@@ -726,47 +597,29 @@ class Atomic_Request_Queue:
         #else: rc = None, e_errors.UNKNOWN
         return rc
     
-
-    def test(self,ticket):
-        if ticket['work'] == 'write_to_hsm':
-            if ticket['vc']['file_family'] != 'ephemeral':
-                key = string.join((ticket['vc']['storage_group'],
-                       ticket['vc']['file_family'],
-                       ticket['vc']['wrapper']),'.')
-            else: key = string.join((ticket['vc']['storage_group'],
-                                     'ephemeral',ticket['vc']['wrapper']), '.')
-            ticket['vc']['volume_family'] = key
-            q = self.write_queue
-        elif ticket['work'] == 'read_from_hsm':
-            q = self.read_queue
-        else:
-            return 0, None
-        if q:
-            return q.test(ticket)
-
     # delete the record
     def delete(self,record):
         if record.work == 'write_to_hsm':
-            key = record.ticket['vc']['volume_family']
+            label = record.ticket['vc']['volume_family']
             queue = self.write_queue
         if record.work == 'read_from_hsm':
-            key = record.ticket['fc']['external_label']
+            label = record.ticket['fc']['external_label']
             queue = self.read_queue
         queue.delete(record)
-        self.tags.delete(record, key)
+        self.tags.delete(record, label)
         try:
-            if record == self.ref[key]:
+            if record == self.ref[label]:
                 # if record is in the reference list (and hence in the
                 # tags list) these enrires must be replaced by record
-                # with the same key if exists
-                del(self.ref[key])
+                # with the same label if exists
+                del(self.ref[label])
                 # find the highest priority request for this
-                # key
-                hp_rq = queue.get(key)
-                if hp_rq: self.update(hp_rq,key)
+                # label
+                hp_rq = queue.get(label)
+                if hp_rq: self.update(hp_rq,label)
         except KeyError, detail:
-            Trace.log(e_errors.ERROR, "error deleting reference %s. Key %s references %s"%
-                      (detail, key, self.ref))
+            Trace.log(e_errors.ERROR, "error deleting reference %s. Label %s references %s"%
+                      (detail, label, self.ref))
             
     # get returns a record from the queue
     # volume may be specified for read queue
@@ -775,52 +628,39 @@ class Atomic_Request_Queue:
     # read requests and indicates what is current position
     # of the tape (location_cookie)
     # flag next indicates whether to get a first highest request
-    # or keep getting requsts for specified key
-    # active_volumes - list of volumes at movers
-    # this parameter is optional and meaningful only for
-    # read requests
-    # if specified, read requests for volumes in this list
-    # will be skipped
-    # disabled_hosts - list of hsts disabled by discipline.
-    
-    def get(self, key='',location='', next=0, active_volumes=[], disabled_hosts=[]):
-        record = None
-        Trace.trace(TR+21,'atomic_get:key %s location %s next %s active %s'%
-                    (key, location, next, active_volumes))
-        if key:
-            # see if key points to write queue
-            if key in self.ref.keys():
+    # or keep getting requsts for specified label
+    def get(self, label='',location='', next=0):
+        Trace.trace(TR+21,'atomic_get:label %s location %s next %s'%
+                    (label, location, next))
+        if label:
+            # see if label points to write queue
+            if label in self.ref.keys():
                 if next:
                     Trace.trace(TR+21, "GET_NEXT_0")
-                    record = self.write_queue.get_next(key, disabled_hosts = disabled_hosts)
+                    record = self.write_queue.get_next(label)
                     Trace.trace(TR+21, "write_queue.get_next returned %s"%(record,))
                 else:
                     Trace.trace(TR+21, "GET_0")
-                    record = self.write_queue.get(key, location)
-                # see if key points to read queue
+                    record = self.write_queue.get(label, location)
+                # see if label points to read queue
                 if not record:
-                    if next: record = self.read_queue.get_next(key, disabled_hosts = disabled_hosts)
+                    if next: record = self.read_queue.get_next(label)
                     else:
-                        record = self.read_queue.get(key, location)
+                        record = self.read_queue.get(label, location)
                         Trace.trace(TR+21, "GET_AA record %s"%(record,))
-                        #if not location: record = self.read_queue.get(key)
-                        #else: record = self.read_queue.get(key, location)
+                        #if not location: record = self.read_queue.get(label)
+                        #else: record = self.read_queue.get(label, location)
             else: record = None
             #return record
         else:
             Trace.trace(TR+21, "TAGS %s"%(self.tags.sorted_list,))
-            Trace.trace(TR+21, "TAGS_0 %s"%(self.tags.keys,))
-            # key is not specified, get the highest priority from
+            # label is not specified, get the highest priority from
             # the tags queue
             if next:
                 Trace.trace(TR+21, "GET_NEXT_1")
                 for r in self.tags.sorted_list:
                     Trace.trace(TR+21, "TAG %s" % (r,))
                 rq = self.tags.get_next()
-                while (rq and rq.work == 'read_from_hsm' and rq.ticket['fc']['external_label'] in active_volumes):
-                    Trace.trace(TR+21, "SKIPPING %s" % (rq.ticket['fc']['external_label'],))
-                    rq = self.tags.get_next()
-                    
                 Trace.trace(TR+21,"NEXT %s" % (rq,))
             else:
                 Trace.trace(TR+21, "GET_1")
@@ -828,20 +668,12 @@ class Atomic_Request_Queue:
                 Trace.trace(TR+21,"tags_get returned %s"%(rq,))
             if rq:
                 if rq.work == 'write_to_hsm':
-                    key = rq.ticket['vc']['volume_family']
-                    if next:
-                        record = self.write_queue.get_next(key, disabled_hosts = disabled_hosts)
-                    else:
-                        record = self.write_queue.get(key)
+                    label = rq.ticket['vc']['volume_family']
+                    record = self.write_queue.get(label)
                 if rq.work == 'read_from_hsm':
-                    key = rq.ticket['fc']['external_label']
-                    if not location:
-                        if next:
-                            record = self.read_queue.get_next(key, disabled_hosts = disabled_hosts)
-                        else:
-                            record = self.read_queue.get(key)
+                    label = rq.ticket['fc']['external_label']
+                    if not location: record = self.read_queue.get(label)
             else: record = rq
-            Trace.trace(TR+21,"Atomic_Request_Queue: get returning %s" % (record,))
         return record
 
     def get_queue(self):
@@ -850,42 +682,39 @@ class Atomic_Request_Queue:
                 self.read_queue.get_queue('opt'))
         
     # find record in the queue
-    def find(self,id):
-        record = self.write_queue.find(id)
+    def find(self,id,output_file_name=None):
+        record = self.write_queue.find(id,output_file_name)
         if not record:
-            record = self.read_queue.find(id)
+            record = self.read_queue.find(id,output_file_name)
         return record
 
     # change priority
     def change_pri(self, record, pri):
         if record.work == 'write_to_hsm':
-            key = record.ticket['vc']['volume_family']
+            label = record.ticket['vc']['volume_family']
             queue = self.write_queue
         if record.work == 'read_from_hsm':
-            key = record.ticket['fc']['external_label']
+            label = record.ticket['fc']['external_label']
             queue = self.read_queue
         ret = queue.change_pri(record, pri)
         if not ret: return ret
-        self.update(record,key)
+        self.update(record,label)
         #self.tags.delete(record)
         """
-        if cmp(id(record), id(self.ref[key])) == 0:
+        if cmp(id(record), id(self.ref[label])) == 0:
             # if record is in the reference list (and hence in the
             # tags list) these enries must be replaced by record
-            # with the same key if exists
-            del(self.ref[key])
+            # with the same label if exists
+            del(self.ref[label])
             # find the highest priority request for this
-            # key
-            hp_rq = queue.get(key)
-            if hp_rq: self.update(hp_rq,key)
+            # label
+            hp_rq = queue.get(label)
+            if hp_rq: self.update(hp_rq,label)
         """
         return ret
 
     def wprint(self):
         print "NAME", self.queue_name
-        if self.tags.keys == []:
-          print "EMPTY"
-          return
         print "TAGS"
         print "keys", self.tags.keys
         self.tags.wprint()
@@ -921,15 +750,9 @@ class Request_Queue:
         # mounted volume
         self.adm_pri_to = adm_pri_to
         self.adm_pri_t0 = 0.
-        self.queue_length = 0L
-        self.put_into_queue = 0L
-        self.deleted = 0L
+        self.queue_length = 0
         self.families = {}
         self.storage_groups = {}
-        # this lock is needed to synchronize
-        # work with self.families and self.families
-        self._lock = threading.Lock()
-
 
     def start_cycle(self):
         self.process_admin_queue = 1
@@ -939,10 +762,6 @@ class Request_Queue:
     def get_tags(self):
         return self.admin_queue.tags.keys+self.regular_queue.tags.keys
 
-    # get sg for a specified tag
-    # tag is:
-    # external label for read requests
-    # volume family for write requests
     def get_sg(self, tag):
         if self.admin_queue.ref.has_key(tag):
             return self.admin_queue.ref[tag].sg
@@ -951,7 +770,8 @@ class Request_Queue:
         else:
             return None
 
-    def put(self,ticket):
+    def put(self,ticket,t_time=0):
+
         basepri = ticket['encp']['basepri']
         adm_pri = ticket['encp']['adminpri']
         if basepri > MAX_PRI:
@@ -966,50 +786,22 @@ class Request_Queue:
             queue = self.regular_queue
         ticket['encp']['basepri'] = basepri
         ticket['encp']['adminpri'] = adm_pri
-        #self._lock.acquire()
-        try:
-            rq, stat = queue.put(basepri, ticket)
-        except:
-            rq = None
-            stat = None
-        #self._lock.release()
+        rq, stat = queue.put(basepri, ticket,t_time)
         if rq:
-            self._lock.acquire()
-            try:
-                Trace.trace(TR+21, "PUT %s"%(self.queue_length,))
-                if ticket['work'] == 'write_to_hsm' and ticket['vc'].has_key('file_family'):
-                    if self.families.has_key(ticket['vc']['file_family']):
-                       self.families[ticket['vc']['file_family']] = self.families[ticket['vc']['file_family']] + 1
-                    else:
-                       self.families[ticket['vc']['file_family']] = 1
-                    Trace.trace(TR+21, "PUT. FF %s"%(self.families,))
-                if self.storage_groups.has_key(rq.ticket["vc"]["storage_group"]):
-                    self.storage_groups[rq.ticket["vc"]["storage_group"]] = self.storage_groups[rq.ticket["vc"]["storage_group"]] + 1
+            self.queue_length = self.queue_length + 1
+            Trace.trace(TR+201, "PUT %s"%(self.queue_length,))
+            if ticket['work'] == 'write_to_hsm' and ticket['vc'].has_key('file_family'):
+                if self.families.has_key(ticket['vc']['file_family']):
+                   self.families[ticket['vc']['file_family']] = self.families[ticket['vc']['file_family']] + 1
                 else:
-                    self.storage_groups[rq.ticket["vc"]["storage_group"]] = 1
-                self.queue_length = self.queue_length + 1
-                self.put_into_queue = self.put_into_queue + 1
-                if self.put_into_queue == MAX_LONG:
-                   self.put_into_queue = 0L # to avoid overflow 
-                
-                        
-            except:
-                exc, detail, tb = sys.exc_info()
-                print "EXC", detail
-                Trace.handle_error(exc, detail, tb)
-                del(tb)
-        
-            self._lock.release()
+                   self.families[ticket['vc']['file_family']] = 1
+                Trace.trace(TR+201, "PUT. FF %s"%(self.families,))
+            if self.storage_groups.has_key(rq.ticket["vc"]["storage_group"]):
+                self.storage_groups[rq.ticket["vc"]["storage_group"]] = self.storage_groups[rq.ticket["vc"]["storage_group"]] + 1
+            else:
+                self.storage_groups[rq.ticket["vc"]["storage_group"]] = 1
                 
         return rq, stat
-
-    def test(self, ticket):
-        if ticket['encp']['adminpri'] > -1:
-            queue = self.admin_queue
-        else:
-            queue = self.regular_queue
-        return queue.test(ticket)
-    
     
     # delete the record
     def delete(self,record):
@@ -1017,39 +809,24 @@ class Request_Queue:
             queue = self.admin_queue
         else:
             queue = self.regular_queue
-        self._lock.acquire()
-        try:
-            if record.ticket['work'] == 'write_to_hsm' and record.ticket['vc'].has_key('file_family'):
-                if self.families.has_key(record.ticket['vc']['file_family']):
-                    self.families[record.ticket['vc']['file_family']] = self.families[record.ticket['vc']['file_family']] - 1
-                    if self.families[record.ticket['vc']['file_family']] <= 0 :
-                        del(self.families[record.ticket['vc']['file_family']])
-
-            if self.storage_groups.has_key(record.ticket["vc"]["storage_group"]):
-                self.storage_groups[record.ticket["vc"]["storage_group"]] = self.storage_groups[record.ticket["vc"]["storage_group"]] - 1
-                if self.storage_groups[record.ticket["vc"]["storage_group"]] <= 0:
-                    del(self.storage_groups[record.ticket["vc"]["storage_group"]])
-            
-            queue.delete(record)
-        except:
-            exc, detail, tb = sys.exc_info()
-            Trace.handle_error(exc, detail, tb)
-            del(tb)
-        
-        self._lock.release()
+        if record.ticket['work'] == 'write_to_hsm' and record.ticket['vc'].has_key('file_family'):
+            if self.families.has_key(record.ticket['vc']['file_family']):
+                self.families[record.ticket['vc']['file_family']] = self.families[record.ticket['vc']['file_family']] - 1
+                if self.families[record.ticket['vc']['file_family']] <= 0 :
+                    del(self.families[record.ticket['vc']['file_family']])
+                
+        if self.storage_groups.has_key(record.ticket["vc"]["storage_group"]):
+            self.storage_groups[record.ticket["vc"]["storage_group"]] = self.storage_groups[record.ticket["vc"]["storage_group"]] - 1
+            if self.storage_groups[record.ticket["vc"]["storage_group"]] <= 0:
+                del(self.storage_groups[record.ticket["vc"]["storage_group"]])
+                
+        queue.delete(record)
         if self.queue_length > 0:
            self.queue_length = self.queue_length - 1 
-           self.deleted = self.deleted + 1
-           if self.deleted == MAX_LONG:
-               self.deleted = 0L # to avoid overflow
-           if self.queue_length == 0:
-               # reset counters
-               self.deleted = 0L
-               self.put_into_queue = self.queue_length
+           Trace.trace(TR+201, "DELETE %s"%(self.queue_length,))
 
-    def get_admin_request(self, key='',location='', next=0, active_volumes=[], disabled_hosts=[]):
-        rq = self.admin_queue.get(key=key, location= location, next=next,
-                                  active_volumes=active_volumes, disabled_hosts = disabled_hosts)
+    def get_admin_request(self, label='',location='', next=0):
+        rq = self.admin_queue.get(label=label, location= location, next=next)
         if not rq:
             self.process_admin_queue = 0 # all admin queue is processed
         return rq
@@ -1061,29 +838,18 @@ class Request_Queue:
     # read requests and indicates what is current position
     # of the tape (location_cookie)
     # flag next indicates whether to get a first highest request
-    # or keep getting requsts for specified key
-    # active_volumes - list of volumes at movers
-    # this parameter is optional and meaningful only for
-    # read requests
-    # if specified, read requests for volumes in this list
-    # will be skipped
-    # disabled_hosts - list of hosts disabled by discipline
-    
-    def get(self, key='',location='', next=0, use_admin_queue=1, active_volumes=[], disabled_hosts=[]):
+    # or keep getting requsts for specified label
+    def get(self, label='',location='', next=0, use_admin_queue=1):
         t = time.time()
-        # the commented Trace may take a substantial time
-        # depending on a queue size
-        # uncomment only for debugging
-        #Trace.trace(TR+50, "Request_Queue.get: Queue: %s" % (self.sprint(),))
-        Trace.trace(TR+22,'Request_Queue.get: key %s location %s next %s use_admin_queue %s active %s hosts %s'%
-                    (key, location, next,use_admin_queue, active_volumes, disabled_hosts))
-        if key:
+        Trace.trace(TR+22,'Request_Queue.get: label %s location %s next %s use_admin_queue %s'%
+                    (label, location, next,use_admin_queue))
+        if label:
             if use_admin_queue and self.process_admin_queue != 0:
                 time_to_check = 0
-                # get came with key info, hence it is from
+                # get came with label info, hence it is from
                 # have bound volume
                 # see if there is a time to check hi_pri requests
-                # even if they are not for this key
+                # even if they are not for this label
                 now = time.time()
                 if (now - self.adm_pri_t0 >= self.adm_pri_to):
                     # admin request is highest no matter what
@@ -1092,30 +858,24 @@ class Request_Queue:
 
         record = None
         if use_admin_queue and self.process_admin_queue != 0:
-            if (not key) or (key and time_to_check):
-                # check admin request queue first
-                rq = self.admin_queue.get(key, location, next,
-                                          active_volumes=active_volumes, disabled_hosts = disabled_hosts)
+            if (not label) or (label and time_to_check):
+                # check admin request queu first
+                rq = self.admin_queue.get(label, location, next)
                 if rq:
                     Trace.trace(TR+22, "admin_queue=1 %s time %s"% (rq.ticket['unique_id'], time.time()-t))
-                    # get is called in the external loop
-                    # self.admin_rq_returned is used to
-                    # keep the information about what queue
-                    # is selected
                     self.admin_rq_returned = 1
                     return rq
                 else:
                    self.process_admin_queue = 0 
             
-        # key is not specified, get the highest priority from
+        # label is not specified, get the highest priority from
         # the tags queue
         if next and self.admin_rq_returned == 0:
             Trace.trace(TR+21, "GET_NEXT_2")
-            record = self.regular_queue.get(key, location, next=1,
-                                            active_volumes=active_volumes,disabled_hosts = disabled_hosts)
+            record = self.regular_queue.get(label, location, next=1)
         else:
             Trace.trace(TR+21, "GET_2")
-            record = self.regular_queue.get(key, location, active_volumes=active_volumes)
+            record = self.regular_queue.get(label, location)
 
         self.admin_rq_returned = 0
         Trace.trace(TR+22, "admin_queue=0 time %s"%(time.time()-t,))
@@ -1127,10 +887,10 @@ class Request_Queue:
         return (aqw+aqr, rqw, rqr)
         
     # find record in the queue
-    def find(self,id):
-        record = self.admin_queue.find(id)
+    def find(self,id,output_file_name=None):
+        record = self.admin_queue.find(id,output_file_name)
         if not record:
-            record = self.regular_queue.find(id)
+            record = self.regular_queue.find(id,output_file_name)
         return record
 
     # change priority
@@ -1148,6 +908,7 @@ class Request_Queue:
         print "==============================="
         print "REGULAR QUEUE"
         self.regular_queue.wprint()
+        print "TAGS"
 
     def sprint(self):
         m='+++++++++++++++++++++++++++++++\nADMIN QUEUE\n%s'%(self.admin_queue.sprint())
@@ -1158,8 +919,6 @@ if __name__ == "__main__":
   import pprint
   import os
   pending_work = Request_Queue()
-  #Trace.do_print(range(1,500))
-
   t1={}
   t1["encp"]={}
   t1['fc'] = {}
@@ -1174,14 +933,10 @@ if __name__ == "__main__":
   t1['work'] = 'read_from_hsm'
   t1['fc']['external_label'] = 'vol1'
   t1['fc']['location_cookie'] = '2'
-  t1['vc']['storage_group'] = 'D0'
-  print "PUT",t1['work'] 
-  res = pending_work.put(t1)
-  time.sleep(.5)
-  print "RESULT",res, t1['fc']['external_label']
+  res = pending_work.put(t1, t1["times"]["t0"])
+  print "RESULT",res
   #pending_work.wprint()
   s=pending_work.sprint()
-  
   #print "RES!!!!!\n%s"%(s,)
   t2={}
   t2["encp"]={}
@@ -1197,13 +952,10 @@ if __name__ == "__main__":
   t2['work'] = 'read_from_hsm'
   t2['fc']['external_label'] = 'vol2'
   t2['fc']['location_cookie'] = '1'
-  t2['vc']['storage_group'] = 'D0'
-  print "PUT", t2['work']
-  res = pending_work.put(t2)
-  time.sleep(.5)
-  print "RESULT",res, t2['fc']['external_label']
+  res = pending_work.put(t2, t2["times"]["t0"])
+  print "RESULT",res
   #pending_work.wprint()
-  """
+  
   t3={}
   t3["encp"]={}
   t3['fc'] = {}
@@ -1222,12 +974,10 @@ if __name__ == "__main__":
   t3['vc']['wrapper'] = 'cpio_odc'
   t3['vc']['storage_group'] = 'D0'
   t3['wrapper']['pnfsFilename']='file1'
-  print "PUT", t3['work']
-  res = pending_work.put(t3)
-  time.sleep(.5)
-  print "RESULT",res,t3['vc']['file_family'] 
+  res = pending_work.put(t3, t3["times"]["t0"])
+  print "RESULT",res
   #pending_work.wprint()
-  """
+
   t4={}
   t4["encp"]={}
   t4["times"]={}
@@ -1240,15 +990,12 @@ if __name__ == "__main__":
   t4["encp"]["agetime"]=0
   t4["times"]["t0"]=time.time()
   t4['work'] = 'read_from_hsm'
-  t4['fc']['external_label'] = 'vol3'
+  t4['fc']['external_label'] = 'vol1'
   t4['fc']['location_cookie'] = '5'
-  t4['vc']['storage_group'] = 'D0'
-  print "PUT", t4['work']
-  res = pending_work.put(t4)
-  time.sleep(.5)
-  print "RESULT",res, t4['fc']['external_label']
+  res = pending_work.put(t4, t4["times"]["t0"])
+  print "RESULT",res
   #pending_work.wprint()
-  """
+
   t5={}
   t5["encp"]={}
   t5["times"]={}
@@ -1267,33 +1014,8 @@ if __name__ == "__main__":
   t5['vc']['wrapper'] = 'cpio_odc'
   t5['vc']['storage_group'] = 'D0'
   t5['wrapper']['pnfsFilename']='file2'
-  print "PUT", t5['work']
-  res = pending_work.put(t5)
-  time.sleep(.5)
-  print "RESULT",res, t5['vc']['file_family']
-  #pending_work.wprint()
-  t5_1={}
-  t5_1["encp"]={}
-  t5_1["times"]={}
-  t5_1['fc'] = {}
-  t5_1['vc'] = {}
-  t5_1['wrapper']={}
-  t5_1['wrapper']['size_bytes']=200L
-  t5_1["unique_id"]=51
-  t5_1["encp"]["basepri"]=200
-  t5_1["encp"]["adminpri"]=-1
-  t5_1["encp"]["delpri"]=0
-  t5_1["encp"]["agetime"]=0
-  t5_1["times"]["t0"]=time.time()
-  t5_1['work'] = 'write_to_hsm'
-  t5_1['vc']['file_family'] = 'family2'
-  t5_1['vc']['wrapper'] = 'cpio_odc'
-  t5_1['vc']['storage_group'] = 'D0'
-  t5_1['wrapper']['pnfsFilename']='file2'
-  print "PUT", t5_1['work']
-  res = pending_work.put(t5_1)
-  time.sleep(.5)
-  print "RESULT",res, t5_1['vc']['file_family']
+  res = pending_work.put(t5, t5["times"]["t0"])
+  print "RESULT",res
   #pending_work.wprint()
 
   t6={}
@@ -1314,14 +1036,13 @@ if __name__ == "__main__":
   t6['vc']['file_family'] = 'family2'
   t6['vc']['storage_group'] = 'D0'
   t6['wrapper']['pnfsFilename']='file3'
-  print "PUT", t6['work']
-  res = pending_work.put(t6)
-  time.sleep(.5)
-  print "RESULT",res, t6['vc']['file_family']
-  #s=pending_work.sprint()
-  #print s
+  res = pending_work.put(t6, t6["times"]["t0"])
+  print "RESULT",res
+  s=pending_work.sprint()
+  print s
   #pending_work.wprint()
-    print "GO SLEEP"
+  #os._exit(0)
+  print "GO SLEEP"
   #time.sleep(65)
   print "WAKE UP"
   t7={}
@@ -1338,15 +1059,11 @@ if __name__ == "__main__":
   t7['work'] = 'read_from_hsm'
   t7['fc']['external_label'] = 'vol1'
   t7['fc']['location_cookie'] = '3'
-  t7['vc']['storage_group'] = 'D0'
-  print "PUT", t7['work']
-  
-  res = pending_work.put(t7)
-  time.sleep(.5)
-  print "RESULT",res,t7['fc']['external_label'] 
+  res = pending_work.put(t7, t7["times"]["t0"])
+  print "RESULT",res
   #pending_work.wprint()
-  #s=pending_work.sprint()
-  #print s
+  s=pending_work.sprint()
+  print s
 
   t8={}
   t8["encp"]={}
@@ -1367,13 +1084,11 @@ if __name__ == "__main__":
   t8['vc']['storage_group'] = 'D0'
   t8['vc']['file_family'] = 'family2'
   t8['wrapper']['pnfsFilename']='file4'
-  print "PUT", t8['work']
-  res = pending_work.put(t8)
-  time.sleep(.5)
-  print "RESULT",res, t8['vc']['file_family']
+  res = pending_work.put(t8, t8["times"]["t0"])
+  print "RESULT",res
 
-  #s=pending_work.sprint()
-  #print s
+  s=pending_work.sprint()
+  print s
   #pending_work.wprint()
   t9={}
   t9["encp"]={}
@@ -1394,22 +1109,20 @@ if __name__ == "__main__":
   t9['vc']['storage_group'] = 'D0'
   t9['vc']['file_family'] = 'family2'
   t9['wrapper']['pnfsFilename']='file4'
-  print "PUT", t9['work']
-  res = pending_work.put(t9)
-  time.sleep(.5)
-  print "RESULT",res, t9['vc']['file_family']
-  pending_work.start_cycle()
+  res = pending_work.put(t9, t9["times"]["t0"])
+  print "RESULT",res
+  os._exit(0)
   pending_work.wprint()
-  #print "enter volume: ",
-  #vol = raw_input()
-  #print "VOL",vol
-  #print "enter location: ",
-  #loc = raw_input()
-  #print "LOC",loc
-  #rq = pending_work.get()
+  os._exit(0)
+  print "enter volume: ",
+  vol = raw_input()
+  print "VOL",vol
+  print "enter location: ",
+  loc = raw_input()
+  print "LOC",loc
+  rq = pending_work.get()
   #print "RQ",rq
-  """
-  """
+  #os._exit(0)
   while 1:
       if rq:
           print "****************************************"
@@ -1426,35 +1139,13 @@ if __name__ == "__main__":
 
   os._exit(0)
   
-  
-  print "+++++++++++++++++++++++++++++"
-
-  while 1:
-      pending_work.start_cycle()
-      print "GET"
-      rq = pending_work.get()
-      if rq:
-          print "RQ", rq
-          pending_work.delete(rq)
-          print ">>>>>>>>>>>>>>>>>>>>>>>>>>"
-          pending_work.wprint()
-          print "<<<<<<<<<<<<<<<<<<<<<<<<<<"
-      else:
-          break
-  
+  """
+  print "GGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+  """
   v = pending_work.get(0,300)
-  print v
+  v.pr()
   #v = pending_work.f_get(t2["encp"]["basepri"])
   v = pending_work.get()
-  print v
+  v.pr()
   v = pending_work.get()
-  print v
-  """
-  pending_work.start_cycle()
-  rq = pending_work.get()
-  print "RQ", rq
-  rq1 = pending_work.get(next=1)
-  print "RQ1",rq1
-  rq2 = pending_work.get(next=1)
-  print "RQ2",rq2
-  
+  v.pr()
