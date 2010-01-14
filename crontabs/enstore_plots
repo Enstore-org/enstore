@@ -30,3 +30,5 @@
 0 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p burn-rate  $ENSTORE_DIR/src/plotter_main.py -t > /dev/null 2> /dev/null
 #migration summary
 41 7 * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p migration_summary_plots $ENSTORE_DIR/src/plotter_main.py --migration-summary > /dev/null 2> /dev/null
+#mover summary
+30 1 * * 1 enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p mover_summary_plots $ENSTORE_DIR/src/plotter_main.py -M > /dev/null 2> /dev/null
