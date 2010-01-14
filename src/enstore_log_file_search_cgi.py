@@ -18,7 +18,7 @@ def go():
     print
 
     # now start the real html
-    print "<HTML><TITLE>Enstore Command Output</TITLE><BODY>"
+    print "<HTML><HEAD><TITLE>Enstore Command Output</TITLE></HEAD><BODY>"
 
     try:
         # get the data from the form

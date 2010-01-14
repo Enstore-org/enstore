@@ -18,12 +18,11 @@ def go():
     print
 
     # now start the real html
-    print "<HTML><TITLE>Enstore Command Output</TITLE><BODY>"
+    print "<HTML><HEAD><TITLE>Enstore Command Output</TITLE></HEAD><BODY>"
 
     try:
         # get the data from the form
         form = cgi.FieldStorage()
-        keys = form.keys()
         an_argv = []
         if form.has_key("search"):
             search_string = form["search"].value
@@ -54,7 +53,7 @@ def go():
         else:
             # the user did not enter an alarm timeframe, assume all
             logfile = "all"
-
+     
 	# get a list of the log files we need
 	logc = log_client.LoggerClient((config_host, config_port))
 	ticket = logc.get_logfiles(logfile, enstore_utils_cgi.TIMEOUT,
@@ -62,7 +61,6 @@ def go():
 	logfile_names = ticket['logfiles']
 	if not logfile_names:
 	    # there were no matches
-	    print "<BR><P>"
 	    print "There were no log files found (to search for alarms) that matched the entered time frame."
 	else:
 	    # put the files in alphabetical order
@@ -72,7 +70,8 @@ def go():
                 logfile_names = [logfile_names[0],]
 	    # for each name, search the file for alarms and then each alarm using
 	    # the search string
-	    enstore_utils_cgi.agrep_html("%sALARM"%(Trace.MSG_TYPE,), search_string, 
+	    enstore_utils_cgi.agrep_html("%sALARM"%(Trace.MSG_TYPE,),
+                                         search_string, 
 					 logfile_names, 0)
     finally:
         print "</BODY></HTML>"
