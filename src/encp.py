@@ -2958,7 +2958,7 @@ def get_stat(filename):
                 statinfo = _get_stat(pathname)
                 return statinfo
             elif __is_pnfs_remote_path(pathname, check_name_only = 1):
-                #Also, when using the pnfs_agent, we will get ENOENT becuase
+                #Also, when using the pnfs_agent, we will get ENOENT because
                 # locally the file will not exist.
                 try:
                     pac = get_pac()
@@ -3358,7 +3358,7 @@ def tag_check(work_ticket):
         if work_ticket.get('copy', None):
             #If this is a copy request (via --copies), skip this check,
             # since checking the original is good enough.  Otherwise,
-            # the lack of 'file_family' (becuase on copies it is
+            # the lack of 'file_family' (because on copies it is
             # original_file_family) would fail all copies.
             break
             
@@ -4048,7 +4048,7 @@ def outputfile_check(work_list, e):
 ###                    file_utils.match_euid_egid(outputfile_use)
 
                     #Try to write an empty string to layer 1.  If this fails,
-                    # it will most likely fail becuase of:
+                    # it will most likely fail because of:
                     # 1) a lack of permission access to the file (EACCES)
                     # 2) the database is read-only (EPERM)
                     # 3) the user writing (usually root) is not the
@@ -7245,7 +7245,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             request_dictionary['resend']['resubmits'] = resubmits + 1
 
         #Update the tickets callback fields.  The actual sockets
-        # are updated becuase they are passed in by reference.  There
+        # are updated because they are passed in by reference.  There
         # are some cases (most notably when internal_handle_retries()
         # is used) that there isn't a socket passed in to change.
         if request_list[0].get('route_selection', None) and udp_serv:
@@ -11890,7 +11890,7 @@ class EncpInterface(option.Interface):
                                    "Used with --volume",
                                    option.VALUE_USAGE:option.IGNORED,
                                    option.VALUE_TYPE:option.INTEGER,
-                                   option.USER_LEVEL:option.USER,},
+                                   option.USER_LEVEL:option.ADMIN,},
         option.SKIP_PNFS:{option.HELP_STRING:
                                    "Skip checking with PNFS.  "
                                    "Used with --get-bfid",
