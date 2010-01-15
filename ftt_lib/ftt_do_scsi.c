@@ -276,6 +276,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
             buf[BD_SIZE + 2] |= (compression << 7);
 	        
 	    DEBUG3(stderr, "V26: ftt_scsi_set_compression %d\n",compression);
+	    /* do not use Mode Select to set compression
 
             if ((0 == strncmp(d->prod_id,"ULT",3))||
 	        (0 == strncmp(d->prod_id,"T9940",5))||
@@ -284,6 +285,8 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
             }else{
                res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 220, 1);
             }
+	    */
+	    res = ftt_set_compression(d,compression);
 
 /*
             if ((0 != strncmp(d->prod_id,"ULT",3))||(0 != strncmp(d->prod_id,"T9940B",6))){
@@ -307,6 +310,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    /* buf[BD_SIZE] = d->devinfo[d->which_is_default].hwdens; */
  	    buf[BD_SIZE + 14] = compression;
 
+	    /* do not use Mode Select to set compression
             if ((0 == strncmp(d->prod_id,"ULT",3))||
 	        (0 == strncmp(d->prod_id,"T9940",5))||
 	        (0 == strncmp(d->prod_id,"9840",4))) {
@@ -314,6 +318,9 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
             }else{
 	       res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, BD_SIZE+16, 220, 1);
 	    }
+	    */
+	    res = ftt_set_compression(d,compression);
+
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
