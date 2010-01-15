@@ -1408,10 +1408,17 @@ def check_bit_file(bfid, bfid_info = None):
                 err.append("migration(%s)" % (msg.args[1],))
         elif is_migrated_to_copy and file_record['deleted'] == "yes":
             if msg.args[0] == errno.ENOENT:
+                #The file is marked deleted and not found in PNFS.
                 pass #Normal situation
             elif msg.args[0] == errno.EEXIST and \
                  msg.args[1] in ["pnfs entry exists"]:
+                #The file is marked deleted and still exists in PNFS.
                 err.append(msg.args[1])
+            elif msg.args[0] == errno.EEXIST and \
+                 msg.args[1] in EXISTS_LIST:
+                #The file is marked deleted and a different file exists
+                # in its place.
+                pass #Normal situation
             else:
                 err.append("migration(%s)" % (msg.args[1]))
         elif is_migrated_to_copy and file_record['deleted'] == "unknown":
