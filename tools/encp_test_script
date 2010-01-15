@@ -19,12 +19,12 @@ print_help()
 
 #LOCAL_DIR is set by the user in their environment.
 if [ ! -d "$LOCAL_DIR" ]; then
-    echo "\$LOCAL_DIR not set.  Stopping test." 2>&1
+    echo "\$LOCAL_DIR not set.  Stopping test." 1>&2
     exit 1
 fi
 #PNFS_DIR is set by the user in their environment.
 if [ ! -d "$PNFS_DIR" ]; then
-    echo "\$PNFS_DIR not set.  Stopping test." 2>&1
+    echo "\$PNFS_DIR not set.  Stopping test." 1>&2
     exit 1
 fi
 
@@ -36,7 +36,7 @@ if [ -n "$REMOTE_ENCP" ]; then
     enstore pnfs_agent --timeout 10 --retries 3 --alive
     if [ $? -ne 0 ]; then
         echo 'pnfs_agent is not running and $REMOTE_ENCP is set.' \
-             'Stopping test.' 2>&1
+             'Stopping test.' 1>&2
         exit 1
     fi
 fi

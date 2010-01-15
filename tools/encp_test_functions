@@ -16,12 +16,12 @@ debug=0
 
 #LOCAL_DIR is set by the user in their environment.
 if [ ! -d "$LOCAL_DIR" ]; then
-    echo "\$LOCAL_DIR not set.  Stopping test." 2>&1
+    echo "\$LOCAL_DIR not set.  Stopping test." 1>&2
     exit 1
 fi
 #PNFS_DIR is set by the user in their environment.
 if [ ! -d "$PNFS_DIR" ]; then
-    echo "\$PNFS_DIR not set.  Stopping test." 2>&1
+    echo "\$PNFS_DIR not set.  Stopping test." 1>&2
     exit 1
 fi
 
@@ -33,7 +33,7 @@ if [ -n "$REMOTE_ENCP" ]; then
     enstore pnfs_agent --timeout 10 --retries 3 --alive
     if [ $? -ne 0 ]; then
         echo 'pnfs_agent is not running and $REMOTE_ENCP is set.' \
-             'Stopping test.' 2>&1
+             'Stopping test.' 1>&2
         exit 1.
     fi
 fi
@@ -252,15 +252,15 @@ make_pnfs_dir $PNFS_OUTPUT_DIR
 for dir_to_check in "$LOCAL_INPUT_DIR" "$LOCAL_OUTPUT_DIR" \
                     "$PNFS_INPUT_DIR" "$PNFS_OUTPUT_DIR" "$PNFS_OUTPUT_DIR"; do
     if [ ! -x "$dir_to_check" ]; then
-        echo "No execute permissions for directory: $dir_to_check" 2>&1
+        echo "No execute permissions for directory: $dir_to_check" 1>&2
 	exit 1
     fi
     if [ ! -r "$dir_to_check" ]; then
-	echo "No read permissions for directory: $dir_to_check" 2>&1
+	echo "No read permissions for directory: $dir_to_check" 1>&2
 	exit 1
     fi
     if [ ! -w "$dir_to_check" ]; then
-	echo "No write permissions for directory: $dir_to_check" 2>&1
+	echo "No write permissions for directory: $dir_to_check" 1>&2
 	exit 1
     fi
 done

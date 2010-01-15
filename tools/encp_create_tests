@@ -5,7 +5,7 @@
 #Create test files for encp_test_script.
 
 if [ ! -d "$LOCAL_DIR" ]; then
-    echo "\$LOCAL_DIR not set.  Stopping initialization."
+    echo "\$LOCAL_DIR not set.  Stopping initialization." 1>&2
     exit 1
 fi
 
