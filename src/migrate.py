@@ -1108,6 +1108,15 @@ def error_log(*args):
         log_f.flush()
     io_lock.release()
 
+def warning_log(*args):
+    io_lock.acquire()
+    open_log(*args)
+    print '... WARNING'
+    if log_f:
+        log_f.write('... WARNING\n')
+        log_f.flush()
+    io_lock.release()
+
 def ok_log(*args):
     io_lock.acquire()
     open_log(*args)
@@ -1928,16 +1937,24 @@ def get_file_info(MY_TASK, bfid, fcc, db):
 
         return return_copy
 
+volume_info_cache = {}  #Keyed by volume label.
+
 #Obtain information for the volume.
-def get_volume_info(MY_TASK, volume, vcc, db):
+def get_volume_info(MY_TASK, volume, vcc, db, use_cache=False):
+    global volume_info_cache
+
+    #First see if we should use the cache.
+    if use_cache:
+        return_copy = volume_info_cache.get(volume)
+        if return_copy:
+            return return_copy
+    
     if USE_CLERKS:
         reply_ticket = vcc.inquire_vol(volume)
         if not e_errors.is_ok(reply_ticket):
             error_log(MY_TASK, "%s info not found: %s" \
                       % (volume, reply_ticket['status']))
             return None
-
-        return reply_ticket
     else:
         #get volume info
         q = "select label as external_label, block_size as blocksize, \
@@ -2013,7 +2030,8 @@ def get_volume_info(MY_TASK, volume, vcc, db):
 
         return_copy['status'] = (e_errors.OK, None)
 
-        return return_copy
+    volume_info_cache[volume] = return_copy
+    return return_copy
 
 def get_volume_info_for_bfid(MY_TASK, bfid, vcc, fcc, db):
     bfid_dict = get_file_info(MY_TASK, bfid, fcc, db)
@@ -4970,21 +4988,23 @@ def final_scan_volume(vol, intf):
 
     log(MY_TASK, "verifying volume", vol)
 
-    v = vcc.inquire_vol(vol)
-    if v['status'][0] != e_errors.OK:
-        error_log(MY_TASK, "failed to find volume %s: %s" % (vol,
-                                                             v['status'][1]))
+    dst_volume_record = vcc.inquire_vol(vol)
+    if dst_volume_record['status'][0] != e_errors.OK:
+        error_log(MY_TASK,
+                  "failed to find volume %s: %s" % (vol,
+                                      dst_volume_record['status'][1]))
         return 1
     if debug:
-        log(MY_TASK, "volume_info:", str(v))
+        log(MY_TASK, "volume_info:", str(dst_volume_record))
 
     # make sure the volume is ok to scan (check system_inhibit 0)
-    if v['system_inhibit'][0] != 'none':
-        error_log(MY_TASK, 'volume %s is "%s"'%(vol, v['system_inhibit'][0]))
+    if dst_volume_record['system_inhibit'][0] != 'none':
+        error_log(MY_TASK, 'volume %s is "%s"' % (vol,
+                                      dst_volume_record['system_inhibit'][0]))
         return 1
 
     # make sure this is a migration volume
-    sg, ff, wp = string.split(v['volume_family'], '.')
+    sg, ff, wp = string.split(dst_volume_record['volume_family'], '.')
     if not migrated_from(vol, db):
         error_log(MY_TASK, "%s is not a %s volume" %
                   (vol, MIGRATION_NAME.lower()))
@@ -4996,21 +5016,22 @@ def final_scan_volume(vol, intf):
         return 1
 
     #Verify that the system_inhibit 1 is in a valid state too.
-    if (v['system_inhibit'][1] != 'full' and \
-            v['system_inhibit'][1] != 'none' and \
-            v['system_inhibit'][1] != 'readonly') \
+    if (dst_volume_record['system_inhibit'][1] != 'full' and \
+            dst_volume_record['system_inhibit'][1] != 'none' and \
+            dst_volume_record['system_inhibit'][1] != 'readonly') \
             and is_migrated_by_dst_vol(vol, intf, db):
-        error_log(MY_TASK, 'volume %s is "%s"'%(vol, v['system_inhibit'][1]))
+        error_log(MY_TASK, 'volume %s is "%s"' % (vol,
+                                      dst_volume_record['system_inhibit'][1]))
         return 1
     #Warn if the volume about to be scanned is not full.  Scan a non-
     # full tape will not allow future migration files to be written
     # onto it (without intervention anyway).
-    if v['system_inhibit'][1] != 'full':
+    if dst_volume_record['system_inhibit'][1] != 'full':
         log(MY_TASK, 'volume %s is not "full"'%(vol), "... WARNING")
     #If necessary set the system_inhibit_1 to readonly.  Leave "full"
     # alone, but change the others.
-    if v['system_inhibit'][1] != "readonly" and \
-           v['system_inhibit'][1] != 'full':
+    if dst_volume_record['system_inhibit'][1] != "readonly" and \
+           dst_volume_record['system_inhibit'][1] != 'full':
         vcc.set_system_readonly(vol)
         log(MY_TASK, 'set %s to readonly'%(vol))
 
@@ -5031,8 +5052,7 @@ def final_scan_volume(vol, intf):
             local_error = local_error + 1
             return local_error
 
-        #This is a dictionary, keyed by location cookie of
-        # any errors that occured reading the files.
+        #Look for the assert of this volume.  There should only be one though.
         for done_ticket in volume_assert.err_msg:
             if done_ticket['volume'] == vol:
                 break
@@ -5042,17 +5062,26 @@ def final_scan_volume(vol, intf):
             local_error = local_error + 1
             return local_error
 
+        #At this point, done_ticket['return_file_list'] is a dictionary,
+        # keyed by location cookie of any errors that occured reading
+        # the files.
+
         if res == 0:
-            #close_log("OK")
             ok_log(MY_TASK, vol)
             assert_errors = done_ticket['return_file_list']
         else: # error
-            #close_log("ERROR")
             error_log(MY_TASK, "failed on %s error = %s"
                       % (vol, done_ticket['status']))
-            local_error = local_error + 1
-            return local_error
-
+            assert_errors = done_ticket.get('return_file_list', [])
+            if len(assert_errors) == 0:
+                #If we had an error and didn't get anything in the file
+                # list, then give up.
+                local_error = local_error + 1
+                return local_error
+            else:
+                #If the volume assert failed, but did return some file
+                # information, try and proceed.
+                pass
 
     #tape_list is a list of file records
     tape_list = get_tape_list(MY_TASK, vol, fcc, db, intf)
@@ -5064,16 +5093,34 @@ def final_scan_volume(vol, intf):
     #Loop over all the files on the tape and verify everything is okay.
     for dst_file_record in tape_list:
         dst_bfid = dst_file_record['bfid']
-        dst_volume_record = get_volume_info(MY_TASK,
-                                            dst_file_record['external_label'],
-                                            vcc, db)
 
         #Get the source info.
-        src_bfid = get_bfids(dst_bfid, fcc, db)[0]
+        (src_bfid, check_dst_bfid) = get_bfids(dst_bfid, fcc, db)
+        if src_bfid == None and check_dst_bfid == None:
+            #The file is a failed migration file.
+            if dst_file_record['deleted'] in [YES, UNKNOWN]:
+                message = "found failed migration file %s, skipping" \
+                          % (dst_bfid,)
+                log(MY_TASK, message)
+                continue
+
+            #Now for active files.  These could be from new files written to
+            # the destination tape.  We only need to worry about this here
+            # if the tape is being rescanned after being release to users
+            # to write additional files onto it.
+            message = "found active file on destination tape without a source"
+            warning_log(MY_TASK, message)
+            continue
         src_file_record = get_file_info(MY_TASK, src_bfid, fcc, db)
+        if not e_errors.is_ok(src_file_record):
+            error_log(MY_TASK,
+                      "unable to obtain file information for %s" % (src_bfid,))
+            local_error = local_error + 1
+            continue
+            
         src_volume_record = get_volume_info(MY_TASK,
                                             src_file_record['external_label'],
-                                            vcc, db)
+                                            vcc, db, use_cache=True)
 
         job = (src_file_record, src_volume_record, None,
                dst_file_record, dst_volume_record, None, None)
@@ -5091,8 +5138,9 @@ def final_scan_volume(vol, intf):
         # deleted files, which is determined from the file_family
         # part of the volume_family triple, the allow for scanning
         # without --with-deleted to be required on the command line.
-        if dst_file_record['deleted'] == YES and (intf.with_deleted or
-                       v['volume_family'].find(DELETED_FILE_FAMILY) != -1):
+        if dst_file_record['deleted'] == YES and \
+               (intf.with_deleted or
+                dst_volume_record['volume_family'].find(DELETED_FILE_FAMILY) != -1):
             pass #Just use likely_path; the file is deleted anyway.
         elif dst_file_record['deleted'] == YES and not intf.with_deleted:
             log(MY_TASK,
