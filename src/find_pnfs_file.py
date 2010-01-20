@@ -21,6 +21,7 @@ import enstore_functions2
 import enstore_functions3
 import configuration_client
 import info_client
+import file_clerk_client
 import enstore_constants
 import e_errors
 import file_utils
@@ -34,8 +35,10 @@ NONFS="NONFS"
 #pnfsid is a string consisting of a files unique id in PNFS.
 #bfid is a string consisting of a files unique id in Enstore.
 #file_record is file information from the file_clerk's bfid_info() function.
+#use_info_server specifies if the info server or the file clerk should be
+#   used for bfid_info() calls.
 def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
-                     path_type = BOTH):
+                     path_type = BOTH, use_info_server=False):
 
     if not pnfs.is_pnfsid(pnfsid):
         raise ValueError("Expected pnfsid not: %s" % (pnfsid,))
@@ -63,7 +66,12 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
-    infc = info_client.infoClient(csc, flags = flags)
+    if use_info_server:
+        #PNFS scans should use the info server.
+        infc = info_client.infoClient(csc, flags=flags)
+    else:
+        #Things like encp and migration should not depend on the info_server.
+        infc = file_clerk_client.FileClient(csc, flags=flags)
 
     if not file_record:
         file_record = infc.bfid_info(bfid)

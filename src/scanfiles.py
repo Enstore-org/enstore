@@ -1322,7 +1322,8 @@ def check_bit_file(bfid, bfid_info = None):
         # lot of things to try before resorting to get_path().
         pnfs_path = find_pnfs_file.find_pnfsid_path(file_record['pnfsid'],
                                                     bfid,
-                                                    file_record = file_record)
+                                                    file_record=file_record,
+                                                    use_info_server=True)
     except (OSError, IOError), msg:
         #The following list contains responses that we need to handle special.
         # These will accompany an errno of EEXIST.
@@ -1382,7 +1383,8 @@ def check_bit_file(bfid, bfid_info = None):
                 try:
                     find_pnfs_file.find_pnfsid_path(file_record['pnfsid'],
                                                     src_bfids[0],
-                                                    file_record = file_record)
+                                                    file_record=file_record,
+                                                    use_info_server=True)
 
                     #If find_pnfsid_path() succeeds here, we really have
                     # an error.  This test allows for a more accurate
