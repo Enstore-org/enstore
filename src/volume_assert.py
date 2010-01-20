@@ -321,13 +321,15 @@ def report_assert_results(done_ticket):
         done_ticket.get('status', (e_errors.UNKNOWN, None)))
     if e_errors.is_ok(done_ticket['status']):
         Trace.trace(1, message)
+        exit_status = 0
     else:
         try:
             sys.stderr.write(message + "\n")
             sys.stderr.flush()
         except IOError:
             pass
-    Trace.log(e_errors.ERROR, message)
+        Trace.log(e_errors.ERROR, message)
+        exit_status = 1
 
     #If CRC checks were requested, report the results.
     lc_keys = done_ticket.get('return_file_list', {}).keys()
@@ -345,6 +347,8 @@ def report_assert_results(done_ticket):
             except IOError:
                 pass
             Trace.log(e_errors.ERROR, message) #log files only on error
+
+    return exit_status
         
 def stall_volume_assert(control_socket):
     while 1:
@@ -379,6 +383,8 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
 
     error_id_list = []
     completed_id_list = []
+
+    exit_status = 0  #set to 1 on error
     
     while len(error_id_list) + len(completed_id_list) < len(assert_list):
         
@@ -474,7 +480,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
 
         #Report on the success and failure of the volume asserts and any
         # CRC checks on files that might have been done too.
-        report_assert_results(done_ticket)
+        exit_status = exit_status + report_assert_results(done_ticket)
 
         #Perform some accounting so we know what is remaining.
         if done_ticket.get('unique_id', None) != None:
@@ -496,6 +502,8 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
 
     #There were errrors.
     if len(error_id_list) > 0:
+        return 1
+    if exit_status:
         return 1
 
     #Everything went fine.
