@@ -3313,7 +3313,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
 	if result:
             if result[1]:
                 Trace.log(e_errors.ERROR,
-                          'mtx unload returned this message: %s'%(result[1],))
+                          'mtx %s returned this message: %s'%(load_command, result[1],))
                 return ('ERROR', e_errors.ERROR, [], "", result[1])
             else:
                 # No error
