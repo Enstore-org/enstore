@@ -152,9 +152,8 @@ echo                                 >> $temp_file 2>&1
 echo "Creating Bytes recycled in last 7 days" `date`
 
 psql -p $EDB_PORT -h $EDB_HOST -U $EDB_USER $EDB_NAME -c "
-select v.storage_group, sum(v.deleted_bytes+v.unknown_bytes+v.active_bytes) as recycled_bytes from state s, \
-volume v where v.id=s.volume and s.value='RECYCLED' and s.time>=current_date-8 and s.time<current_date group by v.storage_group"
- >> $temp_file 2>&1
+select * from bytes_recycled_last_7days() order by storage_group;
+" >> $temp_file 2>&1
 
 echo                    >> $temp_file 2>&1
 echo "================" >> $temp_file 2>&1
