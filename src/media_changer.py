@@ -22,6 +22,7 @@ import os
 import sys
 import types
 import time
+import popen2
 import signal
 import string
 import socket
@@ -3103,26 +3104,17 @@ class MTX_MediaLoader(MediaLoaderMethods):
             self.mount_timeout = 120 #best guess
             Trace.log(e_errors.ERROR,
                       'mtx no mount timeout specified.  Using 120 seconds')
-	self.sudo_cmd = self.mc_config.get('sudo_cmd','')
 
         Trace.log(e_errors.INFO, ('MTX_MediaLoader initialized with device: ', \
                   self.device_name, ' status time limit: ', self.status_timeout, \
-                  'mount time limit: ', self.mount_timeout))
+                  ' mount time limit: ', self.mount_timeout))
 
-        Trace.log(e_errors.INFO,
-                  'MTX_MediaLoader initialized with device: %s status time limit: %s mount time limit: %s '%
-                  (self.device_name, self.status_timeout, self.mount_timeout))
+        Trace.log(e_errors.INFO, 'MTX_MediaLoader initialized with device: %s status time limit: %s mount time limit: %s '%(self.device_name, self.status_timeout, self.mount_timeout))
 	
     #########################################################################
     # These functions are overridden from the generic class.
     #########################################################################
     
-    # query robot
-    def query_robot(self, ticket):
-        __pychecker__ = "no-argsused"
-	rc = self.robot_status()
-	return (e_errors.OK, 0, rc, "", "")
-
     # load volume into the drive;
     def load(self, ticket):
         """
@@ -3172,49 +3164,35 @@ class MTX_MediaLoader(MediaLoaderMethods):
         try:
             dr = int(drive)
         except:
-            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive,))
+            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive))
             return ('ERROR', e_errors.ERROR, [],'' ,\
-                    'mtx_mount unrecognized drive: %s'%(drive,))
+                    'mtx_mount unrecognized drive: %s'%(drive))
 
         s,d = self.locate_volume(volume)
 
         if -1 == s:
             if -1 == d:
                 Trace.log(e_errors.ERROR,
-                          'mtx cant mount tape. Not in library')
+                          ' mtx cant mount tape. Not in library')
                 return ('ERROR', e_errors.ERROR, [],'' ,\
-                        'mtx cant mount tape. Not in library')
+                        ' mtx cant mount tape. Not in library')
             else:
                 Trace.log(e_errors.ERROR,
-                          'mtx cant mount tape. Already in drive %d'%(d,))
+                          ' mtx cant mount tape. Already in drive %d'%(d))
                 return ('ERROR', e_errors.ERROR, [],'' ,\
-                        'mtx cant mount tape. Already in drive %d'%(d,))
+                        ' mtx cant mount tape. Already in drive %d'%(d))
 
         Trace.log(e_errors.INFO, 'found %s in slot %s ...mounting'%(volume, s))
-        a, b = return_by(self.load_unload_local, (s, dr, "load"), self.mount_timeout)
+        a, b = return_by(self.load_local, (s, dr), self.mount_timeout)
 
         self.status_valid = 0;
 
         if -1 == a:
-            Trace.log(e_errors.ERROR, 'mtx mount timeout')
-            return ('ERROR', e_errors.ERROR, [],'' ,'mtx mount timeout')
+            Trace.log(e_errors.ERROR, ' mtx mount timeout')
+            return ('ERROR', e_errors.ERROR, [],'' ,' mtx mount timeout')
         else:
             return b
-
-    # is tape drive empty
-    def is_empty(self, drive):
-        if 0 == self.status_valid:
-            a, b = return_by(self.status_local, (), self.status_timeout)
-            if -1 == a:
-                Trace.log(e_errors.ERROR, 'mtx status request timeout')
-                return False
-            self.status_valid = 1
-        
-        if self.drives[drive] == 'empty':
-            return True
-        else:
-            return False
-        
+    
     # Find a free slot and unmount the tape from the drive.
     def mtx_dismount(self,volume, drive, media_type="", view_first=1):
         __pychecker__ = "unusednames=media_type,view_first"
@@ -3222,19 +3200,16 @@ class MTX_MediaLoader(MediaLoaderMethods):
         try:
             dr = int(drive)
         except:
-            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive,))
+            Trace.log(e_errors.ERROR, 'mtx_mount unrecognized drive: %s'%(drive))
             return ('ERROR', e_errors.ERROR, [],'' ,\
-                    'mtx_mount unrecognized drive: %s'%(drive,))
-
-        if self.is_empty(dr): # no need to dismount
-            return (e_errors.OK, 0, None, "", "")
+                    'mtx_mount unrecognized drive: %s'%(drive))
 
         s,ignore = self.locate_volume('empty')
-        
+
         if -1 == s:
             Trace.log(e_errors.ERROR, ' mtx unload: No free slots')
             return ('ERROR', e_errors.ERROR, [],'' ,\
-                    'mtx unload: No free slots')
+                    ' mtx unload: No free slots')
 
         ignore,d = self.locate_volume(volume)
 
@@ -3242,13 +3217,13 @@ class MTX_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, ' mtx unload: %s is in %d, not %d'%
                       (volume, d, dr))
             return ('ERROR', e_errors.ERROR, [],'' ,\
-                    'mtx unload: %s is not in %d'%
+                    ' mtx unload: %s is not in %d'%
                     (volume, dr))
 
 
         Trace.log(e_errors.INFO, ('found ', volume, ' in drive ', d, \
                   '...dismounting'))
-        a,b = return_by(self.load_unload_local, (s, dr, "unload"), self.mount_timeout)
+        a,b = return_by(self.unload_local, (s, dr), self.mount_timeout)
 
         self.status_valid = 0;
 
@@ -3269,7 +3244,8 @@ class MTX_MediaLoader(MediaLoaderMethods):
     # function or multiple tapes that have the same label in the
     # library.
     def locate_volume(self, vol):
-        Trace.log(e_errors.INFO, ' looking for volume %s'%(vol,))
+
+        Trace.log(e_errors.INFO, ' looking for volume %s'%(vol))
         if 0 == self.status_valid:
             a, b = return_by(self.status_local, (), self.status_timeout)
             if -1 == a:
@@ -3300,95 +3276,116 @@ class MTX_MediaLoader(MediaLoaderMethods):
 
         return idx_slot, idx_drive
     
-    #  This method tries to have device 'device' load or unload the tape in
-    #  or from drive number drive back into slot number 'slot'.  The return
+    #  This method tries to have device 'device' load the tape in slot
+    #  number 'slot' into drive number 'drive' The return value is
+    #  anything that MTX printed to stderr.  If mtx hangs, this method
+    #  will never return.
+    def load_local(self, slot, drive):
+
+        Trace.log(e_errors.INFO, 'Invoking the following command: sudo mtx -f %s load %d %d'%(self.device_name, slot + 1, drive))
+        processIO = popen2.popen3('sudo mtx -f %s load %d %d'%(self.device_name,
+                                                          slot + 1, drive))
+        Trace.log(e_errors.INFO, 'The following command completed: sudo mtx -f %s load %d %d'%(self.device_name, slot + 1, drive))
+        line = processIO[2].readline();
+        errorString = ''
+        while '' != line:
+            errorString = errorString + line
+            line = processIO[2].readline();
+            
+        processIO[2].close()
+            
+        if '' != errorString:
+            Trace.log(e_errors.ERROR,
+                      ' mtx load returned this message %s'%(errorString))
+
+        if '' == errorString:
+            return (e_errors.OK, 0, None, "", "")
+        else:
+            return ('ERROR', e_errors.ERROR, [], "", errorString)
+        
+    #  This method tries to have device 'device' unload the tape in
+    #  drive number drive back into slot number 'slot'.  The return
     #  value is anything that MTX printed to stderr.  If mtx hangs,
     #  this method will never return.
-    def load_unload_local(self, slot, drive, load_command):
-        if load_command not in ("load", "unload"):
-            return ('ERROR', e_errors.ERROR, [], "%s"%(load_command,), "Wrong command")
-        cmd = "%s mtx -f %s %s %d %d"% (self.sudo_cmd, load_command, self.device_name, slot + 1, drive)
-        Trace.log(e_errors.INFO, "Invoking the following command: %s"%(cmd,))
-	result = enstore_functions2.shell_command(cmd)
-	if result:
-            if result[1]:
-                Trace.log(e_errors.ERROR,
-                          'mtx unload returned this message: %s'%(result[1],))
-                return ('ERROR', e_errors.ERROR, [], "", result[1])
-            else:
-                # No error
-                return (e_errors.OK, 0, None, "", "")
-        else:
-            return ('ERROR', e_errors.ERROR, [], "", "Lost command")
+    def unload_local(self, slot, drive):
+        
+        Trace.log(e_errors.INFO, 'Invoking the following command: sudo mtx -f %s unload %d %d'%(self.device_name, slot + 1, drive))
+        processIO = popen2.popen3('sudo mtx -f %s unload %d %d'%(self.device_name,
+                                                            slot + 1, drive))
+        Trace.log(e_errors.INFO, 'The following command completed: sudo mtx -f %s unload %d %d'%(self.device_name, slot + 1, drive))
+        line = processIO[2].readline();
+        errorString = ''
+        while '' != line:
+            errorString = errorString + line
+            line = processIO[2].readline();
 
-    
+        processIO[2].close()
+
+        if '' != errorString:
+            Trace.log(e_errors.ERROR,
+                      ' mtx unload returned this message %s'%(errorString))
+
+        if '' == errorString:
+            return (e_errors.OK, 0, None, "", "")
+        else:
+            return ('ERROR', e_errors.ERROR, [], "",errorString)
 
     # This method blocks while it returns the status of the media
-    # changer at the specified device.
-    # A return value are any messages that mtx printed to stderr.
+    # changer at the specified device.  The first return value is a
+    # list of barcodes for the tapes in the drives, the second return
+    # value is a list of the barcodes for the tapes in the slots, the
+    # third return value are any messages that mtx printed to stderr.
     # If mtx hangs, this method will never return.
     def status_local(self):
-        cmd = '%s mtx -f %s status'%(self.sudo_cmd, self.device_name)
-        Trace.log(e_errors.INFO, "Invoking the following command: %s"%(cmd,))
-	result = enstore_functions2.shell_command(cmd)
-        self.drives = [] # list of barcodes for the tapes in the drives
-        self.slots  = [] # list of the barcodes for the tapes in the slots
-        errorString = ''
+
+        Trace.log(e_errors.INFO, 'Invoking the following command: sudo mtx -f %s status'%(self.device_name))
+        processIO = popen2.popen3('sudo mtx -f %s status'%(self.device_name))
+        Trace.log(e_errors.INFO, 'The following command completed: sudo mtx -f %s status'%(self.device_name))
         
-        if result:
-            if result[0]: # stdout
-                lines = result[0].split("\n")
-                index = 0
-                line = lines[index]
-                while '' != line:
-                    line = string.strip(line)
-                    if string.find(line, 'Data Transfer Element') != -1:
-                        if string.find(line, 'Empty') > 0:
-                            self.drives.append('empty');
-                        elif string.find(line, 'VolumeTag') != -1:
-                            i1 = string.find(line, '=') + 1
-                            i2 = len(line)
-                            self.drives.append(string.strip(line[i1:i2]))
-                        else:
-                            self.drives.append('unlabelled')
-                    elif string.find(line, 'Storage Element') != -1:
-                        if string.find(line, 'Empty') > 0:
-                            self.slots.append('empty')
-                        elif string.find(line, 'VolumeTag') != -1:
-                            i1 = string.find(line, '=') + 1
-                            i2 = len(line)
-                            self.slots.append(string.strip(line[i1:i2]))
-                        else:
-                            self.slots.append('unlabelled')
+        self.drives = []
+        self.slots  = []
 
-                    index = index+1
-                    line = lines[index]
-                    
-            if result[1]: # stderr
-                lines = result[0].split("\n")
-                index = 0
-                line = lines[index]
-                while '' != line:
-                    errorString = errorString + line
-                    index = index+1
-                    line = lines[index]
-
-                if '' != errorString:
-                    Trace.log(e_errors.ERROR,
-                          'mtx status returned this message %s'%(errorString,))
-        else:
-            Trace.log(e_errors.ERROR,
-                      'mtx status returned no result %s'%(result,))
+        counter = 1
+        line = processIO[0].readline()
+        while '' != line:
+            line = string.strip(line)
+            if string.find(line, 'Data Transfer Element') != -1:
+                if string.find(line, 'Empty') > 0:
+                    self.drives.append('empty');
+                elif string.find(line, 'VolumeTag') != -1:
+                    i1 = string.find(line, '=') + 1
+                    i2 = len(line)
+                    self.drives.append(string.strip(line[i1:i2]))
+                else:
+                    self.drives.append('unlabelled')
+            elif string.find(line, 'Storage Element') != -1:
+                if string.find(line, 'Empty') > 0:
+                    self.slots.append('empty')
+                elif string.find(line, 'VolumeTag') != -1:
+                    i1 = string.find(line, '=') + 1
+                    i2 = len(line)
+                    self.slots.append(string.strip(line[i1:i2]))
+                else:
+                    self.slots.append('unlabelled')
+                
+            line = processIO[0].readline()
+            counter = counter + 1
             
-        return errorString
+        processIO[0].close()
+                
+        line = processIO[2].readline();
+        errorString = ''
+        while '' != line:
+            errorString = errorString + line
+            line = processIO[2].readline();
+        
+        processIO[2].close()
 
-    # return status of all drives and slots
-    def robot_status(self):
-        #Trace.log(e_errors.INFO, 'Invoking the following command: %s mtx -f %s status'%(self.sudo_cmd, self.device_name))
-        result = enstore_functions2.shell_command("%s mtx -f %s status | grep 'Data Transfer Element'"%(self.sudo_cmd, self.device_name))
-	
-        #Trace.log(e_errors.INFO, 'The following command completed: %s mtx -f %s status'%(self.sudo_cmd, self.device_name))
-	return result
+        if '' != errorString:
+            Trace.log(e_errors.ERROR,
+                  ' mtx status returned this message %s'%(errorString))
+
+        return errorString
 
 #########################################################################
 #
