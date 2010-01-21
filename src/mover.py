@@ -1806,15 +1806,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ## skip sending lm _update
                     ## to allow network thread to complete
                     return
-                
-                Trace.alarm(e_errors.ALARM,
-                            "Net thread is running in the state %s. Will restart the mover"%
-                            (state_name(self.state),))
-                if self.state == HAVE_BOUND:
-                    self.run_in_thread('media_thread', self.dismount_volume, after_function=self.send_error_and_restart)
-                    #self.dismount_volume(after_function=self.restart)
-                else:
-                    self.restart()
+                if not hasattr(self,'restarting'):
+                    Trace.alarm(e_errors.ALARM,
+                                "Net thread is running in the state %s. Will restart the mover"%
+                                (state_name(self.state),))
+                    if self.state == HAVE_BOUND:
+                        self.run_in_thread('media_thread', self.dismount_volume, after_function=self.send_error_and_restart)
+                        #self.dismount_volume(after_function=self.restart)
+                    else:
+                        self.restart()
+                    self.restarting = True # set it to whatever
                 return
             elif t_thread and t_thread.isAlive():
                 if t_in_state <= 1:
@@ -2203,7 +2204,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     reason = "dropped connection"
                 message = "read_client: %s"%(reason,)
-                Trace.log(e_errors.ERROR, "RC==%s"%(bytes_read,))
                 self.transfer_failed(e_errors.ENCP_GONE, msg=message, error_source=NETWORK)
                 return
             self.bytes_read = self.bytes_read + bytes_read
@@ -2928,6 +2928,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         t_started = time.time()
         idle_time = 0. # accumulative time when not reading
         break_here = 0
+        network_slow = False
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             loop_start = time.time()
             Trace.trace(133,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
@@ -2950,8 +2951,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(9, "read_tape: time in state %s max %s, bf %s sent %s bf_c %s m_c %s" %
                             (int(now - buffer_full_t), self.max_time_in_state,
                              int(buffer_full_t),hasattr(self,'too_long_in_state_sent'),
-                             buffer_full_cnt, self.max_in_state_cnt)) 
-                if (int(now - buffer_full_t) > self.max_time_in_state) and int(buffer_full_t) > 0:
+                             buffer_full_cnt, self.max_in_state_cnt))
+
+                if self.time_in_state > 10 * self.expected_transfer_time:
+                    # expected transfer time is the file size / drive rate
+                    # drive rate is comparable with network rate
+                    # factor of 10 should be enough yet reasonable
+                    network_slow = True
+                
+                if (((int(now - buffer_full_t) > self.max_time_in_state) and int(buffer_full_t) > 0) or
+                    network_slow):
                     if not hasattr(self,'too_long_in_state_sent'):
                         if not self.state == ERROR:
                             Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
@@ -2959,10 +2968,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                             self.too_long_in_state_sent = 0 # send alarm just once
                         else:
                             return
-                    Trace.log(e_errors.INFO, "read: in state  %s max %s"%
-                              (int(now-buffer_full_t),self.max_time_in_state)) #!!! REMOVE WHEN PROBLEM is fixed
                     buffer_full_t = now
-                    if buffer_full_cnt >= self.max_in_state_cnt:
+                    if (buffer_full_cnt >= self.max_in_state_cnt) or network_slow:
                         msg = "data transfer to client stuck. Client host %s. Breaking connection"%(self.current_work_ticket['wrapper']['machine'][1],)
                         self.read_tape_running = 0
                         self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
@@ -3420,7 +3427,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     failed = 1
                     break
                 if bytes_written != nbytes:
-                    pass #this is not unexpected, since we send with MSG_DONTWAIT
+                    Trace.trace(22, "write_client: !!! bytes written %s bytes to write %s"%(bytes_written, nbytes))
+                    if self.client_socket:
+                        # get netstat for this socket
+                        data_port = self.client_socket.getsockname()[1]
+                        rc = self.shell_command("netstat -t | grep %s"%(data_port,))
+                        Trace.trace(22, "write_client: netstat: %s"%(rc,))
+                    pass                 
                 self.bytes_written = self.bytes_written + bytes_written
                 if not self.buffer.full():
                     self.buffer.read_ok.set()
