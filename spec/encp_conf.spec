@@ -1,8 +1,9 @@
 %if %{!?product:1}%{?product:0}
    %define product encp
 %endif
-
-%define _rpmdir %(echo $ENSTORE_DIR/rpmbuild)
+%if %{!?_rpmdir:1}%{?_rpmdir:0}
+   %define _rpmdir %(echo $ENSTORE_DIR/rpmbuild)
+%endif
 
 # turn off fascist build flag, so we don't whine about .manifest files
 # etc.
@@ -40,12 +41,9 @@ Vendor: Fermilab
 
 
 %description
-ENCP utility
+ENCP config files (FNAL specific)
 
 %prep
-echo %{buildroot}
-echo %{_rpmdir}
-echo %{prefix}
 
 %build
 
