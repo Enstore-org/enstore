@@ -1,18 +1,26 @@
+#product (if defined on the command line) needs to be one of the following:
+#   --define 'product encp'
+#   --define 'product enstore'
+#   --define 'product entv'
 %if %{!?product:1}%{?product:0}
    %define product encp
 %endif
+#One of upsversion or rpmversion should be passed in using --define.
 %if %{!?upsversion:1}%{?upsversion:0}
    %define upsversion v3_6d
 %endif
 %if %{!?rpmversion:1}%{?rpmversion:0}
    %define rpmversion %(echo %{upsversion} | sed -e 's/^[vx]//' -e 's/_/\./g')
 %endif
+#upsflags (if defined on the command line) needs to look something like:
+#   --define 'upsflags -q dcache'
 %if %{!?upsflags:1}%{?upsflags:0}
     %define upsflags -q :
 %endif
+%if %{!?_rpmdir:1}%{?_rpmdir:0}
+   %define _rpmdir %(echo $ENSTORE_DIR/rpmbuild)
+%endif
 %define setupvar   SETUP_ENCP
-#upsflags (if defined on the command line) needs to look something like:
-#   --define 'upsflags -q dcache'
 %define prefix     /opt/%{product}
 
 # turn off fascist build flag, so we don't whine about .manifest files
