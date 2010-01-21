@@ -1624,27 +1624,17 @@ class STK_MediaLoader(MediaLoaderMethods):
 
     # load volume into the drive;
     def load(self, ticket):
-        """
-	external_label,    # volume external label
-	drive,             # drive id
-	media_type):       # media type
-	"""
         drive = ticket['drive_id']
 	external_label = ticket['vol_ticket']['external_label']
-	media_type = ticket['vol_ticket']['media_type']
+	media_type = ticket['vol_ticket'].get('media_type', "")
         return self.retry_function(self.mount, external_label,
 				   drive, media_type, ticket)
 
     # unload volume from the drive
     def unload(self, ticket):
-        """
-	external_label,  # volume external label
-	drive,           # drive id
-	media_type):     # media type
-	"""
         drive = ticket['drive_id']
 	external_label = ticket['vol_ticket']['external_label']
-	media_type = ticket['vol_ticket']['media_type']
+	media_type = ticket['vol_ticket'].get('media_type', "")
         return self.retry_function(self.dismount, external_label,
 				   drive, media_type)
 
