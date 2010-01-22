@@ -1387,6 +1387,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ## (e.g. Mammoth-1) to have trouble spacing to end-of-media.
         self.single_filemark=self.config.get('single_filemark', 0)
         self.memory_debug = self.config.get('memory_debug', 0)
+        self.exp_time_factor = self.config.get('expected_time_factor', 50)
             
         self.check_written_file_period = self.config.get('check_written_file', 0)
         self.files_written_cnt = 0
@@ -2953,7 +2954,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                              int(buffer_full_t),hasattr(self,'too_long_in_state_sent'),
                              buffer_full_cnt, self.max_in_state_cnt))
 
-                if self.time_in_state > 20 * self.expected_transfer_time:
+                if self.time_in_state > self.exp_time_factor * self.expected_transfer_time:
                     # expected transfer time is the file size / drive rate
                     # drive rate is comparable with network rate
                     # factor of 10 should be enough yet reasonable
@@ -6303,6 +6304,7 @@ class DiskMover(Mover):
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
 
         self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3)
+        self.exp_time_factor = self.config.get('expected_time_factor', 50)
         
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.add_interval_func(self.update_lm, self.update_interval) #this sets the period for messages to LM.
