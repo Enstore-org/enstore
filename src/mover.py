@@ -2953,7 +2953,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                              int(buffer_full_t),hasattr(self,'too_long_in_state_sent'),
                              buffer_full_cnt, self.max_in_state_cnt))
 
-                if self.time_in_state > 10 * self.expected_transfer_time:
+                if self.time_in_state > 20 * self.expected_transfer_time:
                     # expected transfer time is the file size / drive rate
                     # drive rate is comparable with network rate
                     # factor of 10 should be enough yet reasonable
