@@ -5095,29 +5095,32 @@ def final_scan_volume(vol, intf):
         dst_bfid = dst_file_record['bfid']
 
         #Get the source info.
+
+        #First, get the src_bfid.
         (src_bfid, check_dst_bfid) = get_bfids(dst_bfid, fcc, db)
         if src_bfid == None and check_dst_bfid == None:
-            #The file is a failed migration file.
             if dst_file_record['deleted'] in [YES, UNKNOWN]:
+                #The file is a failed migration file.
                 message = "found failed migration file %s, skipping" \
                           % (dst_bfid,)
                 log(MY_TASK, message)
-                continue
+            else:
+                #Now for active files.  These could be from new files written
+                # to the destination tape.  We only need to worry about this
+                # here if the tape is being rescanned after being release to
+                # users to write additional files onto it.
+                message = "active file on destination tape without a source"
+                warning_log(MY_TASK, message)
 
-            #Now for active files.  These could be from new files written to
-            # the destination tape.  We only need to worry about this here
-            # if the tape is being rescanned after being release to users
-            # to write additional files onto it.
-            message = "found active file on destination tape without a source"
-            warning_log(MY_TASK, message)
             continue
+        #Second, get the bfid's file record.
         src_file_record = get_file_info(MY_TASK, src_bfid, fcc, db)
         if not e_errors.is_ok(src_file_record):
             error_log(MY_TASK,
                       "unable to obtain file information for %s" % (src_bfid,))
             local_error = local_error + 1
             continue
-            
+        #Third, get the source file's volume record.
         src_volume_record = get_volume_info(MY_TASK,
                                             src_file_record['external_label'],
                                             vcc, db, use_cache=True)
