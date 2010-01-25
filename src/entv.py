@@ -948,14 +948,16 @@ def send_mover_request(csc, send_request_dict, mover_name, u, count = 0):
     
     #Get the message, mover name and mover network address
     # for sending the status request.
-    m_addr = csc.get(mover_name, timeout=5, retry=6).get('hostip', None)
-    m_port = csc.get(mover_name, timeout=5, retry=6).get('port', None)
+    mover_conf_dict = csc.get(mover_name, timeout=5, retry=6)
+    m_addr = mover_conf_dict.get('hostip', None)
+    m_port = mover_conf_dict.get('port', None)
     if not m_addr or not m_port:
         return
 
     message = {'work' : 'status'}
     mover_system_name = mover_name.split(".")[0]
     tx_id = u.send_deferred(message, (m_addr, m_port))
+    Trace.trace(1, "Sent ID %s to %s." % (tx_id, mover_name))
     send_request_dict[tx_id] = {}
     send_request_dict[tx_id]['name']  = mover_system_name
     send_request_dict[tx_id]['time']  = time.time()
@@ -964,13 +966,15 @@ def send_mover_request(csc, send_request_dict, mover_name, u, count = 0):
 def send_sched_request(csc, send_request_dict, u, count = 0):
 
     #Get the address for sending the scheduled down information request.
-    i_addr = csc.get('inquisitor', timeout=5, retry=6).get('hostip', None)
-    i_port = csc.get('inquisitor', timeout=5, retry=6).get('port', None)
+    inquisitor_conf_dict = csc.get('inquisitor', timeout=5, retry=6)
+    i_addr = inquisitor_conf_dict.get('hostip', None)
+    i_port = inquisitor_conf_dict.get('port', None)
     if not i_addr or not i_port:
         return
 
     message = {'work' : 'show'}
     tx_id = u.send_deferred(message, (i_addr, i_port))
+    Trace.trace(1, "Sent ID %s to inquisitor %s." % (tx_id, (i_addr, i_port)))
     send_request_dict[tx_id] = {}
     send_request_dict[tx_id]['name']  = 'inquisitor'
     send_request_dict[tx_id]['time']  = time.time()
@@ -1202,6 +1206,13 @@ def handle_messages(csc_addr, system_name, intf):
                             send_request_dict[tx_id]['name'], mstatus)
 
                         del send_request_dict[tx_id]
+
+                        if mstatus.get('work', None) == "show":
+                            Trace.trace(1, "Recieved ID %s from inquisitor." \
+                                        % (tx_id,))
+                        else:
+                            Trace.trace(1, "Recieved ID %s from mover." \
+                                        % (tx_id,))
                     except (socket.error, select.error,
                             e_errors.EnstoreError):
                         pass

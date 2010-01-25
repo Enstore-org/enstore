@@ -148,7 +148,7 @@ ANIMATE_TIME = 42      #in milliseconds (~1/42nd of second)
 UPDATE_TIME = 1000     #in milliseconds (1 second)
 MESSAGES_TIME = 250    #in milliseconds (1/4th of second)
 JOIN_TIME = 10000      #in milliseconds (10 seconds)
-OFFLINE_REASON_TIME = 60000   #in milliseconds (1 minute)
+OFFLINE_REASON_TIME = 300000   #in milliseconds (5 minutes)
 
 status_request_threads = []
 offline_reason_thread = None
@@ -626,29 +626,19 @@ class Mover:
 
     #########################################################################
 
-    def if_dead(self):
-        if self.state in ['Unknown']:
-            #The "Unknown" state is the only state that we can
-            # use mover.timer_started this way.  All other states
-            # are/can have the time in state be seeded with an
-            # initial value from the mover.
-            now = time.time()
-            if now - self.timer_started < 5.0:
-                #Do a one time only check in 5 seconds.  #Don't use
-                # check_offline_reason() here, becuase it will
-                # schedule it for 1 minutes from now, not 5 seconds
-                # from now.
-                self.display.after(5000, self.display.check_offline_reason)
-            elif time.time() - self.timer_started >= 5.0:
-                self.update_offline_reason("")
-                
-
-    #########################################################################
-
     def animate_timer(self):
 
         self.update_timer(time.time())
 
+        #If the mover state is unknown for more than 5 seconds, we need
+        # to change the mover's color (if not already done so).
+        if self.state in ['Unknown'] and not self.offline_reason and \
+               self.state_color != colors('state_unknown_color'):
+            if time.time() - self.timer_started >= 5.0:
+                #By passing the empty string, we will change the client
+                # color without scheduling an inquisitor request.
+                self.update_offline_reason("")
+        
         #Carefull.  As long as draw_timer() gets called after animate_timer
         # in __init__() we are okay.
         #if self.timer_id:
@@ -1433,6 +1423,11 @@ class Mover:
             self.buffer_size = buffer_size
             self.draw_buffer()
 
+    #offline_reason normally will be a string containing a description of
+    # why the mover is down.  It may be set to None, which means that we
+    # we are scheduling a request to be sent to inquisitor.  Any other python
+    # false value will set the offline_reason to None, without scheduling the
+    # request to the inquisitor.
     def update_offline_reason(self, offline_reason):
 
         if self.state in ['OFFLINE', 'Unknown', 'ERROR']:
@@ -1443,12 +1438,15 @@ class Mover:
                 self.display.after_cancel(self.display.after_offline_reason_id)
                 self.display.after_offline_reason_id = self.display.after(1000,
                                           self.display.check_offline_reason)
+                self.offline_reason = None
                 return
             elif offline_reason == self.offline_reason:
                 return
             elif offline_reason:
                 self.offline_reason = offline_reason
-            
+            else:
+                #offline_reason was passed in as a python false value.
+                self.offline_reason = None
         else:
             self.undraw_offline_reason()
             return
@@ -2510,8 +2508,6 @@ class Display(Tkinter.Canvas):
                 self.after_cancel(self.after_reinitialize_id)
             if self.after_process_messages_id:
                 self.after_cancel(self.after_process_messages_id)
-            if self.after_offline_reason_id:
-                self.after_cancel(self.after_offline_reason_id)
             if self.after_reposition_id:
                 self.after_cancel(self.after_reposition_id)
         except AttributeError:
@@ -2532,8 +2528,6 @@ class Display(Tkinter.Canvas):
                                                     self.reinitialize)
             self.after_process_messages_id = self.after(UPDATE_TIME,
                                                         self.process_messages)
-            self.after_offline_reason_id = self.after(OFFLINE_REASON_TIME,
-                                                     self.check_offline_reason)
         except AttributeError:
             pass
 
@@ -2954,19 +2948,26 @@ class Display(Tkinter.Canvas):
                         request_queue.put_queue(mover.name, system_name)
 
                 elif mover.state in ['OFFLINE', 'Unknown']:
-                    #Do some extra steps to see if we need to change the
-                    # background color.
-                    mover.if_dead()
-
                     if system_name in already_requested:
                         #We've already asked this Enstore system's inquisitor.
                         pass
                     elif not mover.offline_reason:
+                        
                         request_queue.put_queue('inquisitor', system_name)
                         already_requested.append(system_name)
+        except (KeyboardInterrupt, SystemExit):
+            display_lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:  #Tkinter.TclError
+            exc, msg, tb = sys.exc_info()
+            traceback.print_exception(exc, msg, tb)
+            del tb  #Avoid resource leak.
 
+        try:
+            #Even if an error occurs above, schedule this function to be
+            # executed again in the future.
             self.after_offline_reason_id = self.after(OFFLINE_REASON_TIME,
-                                                   self.check_offline_reason)
+                                                  self.check_offline_reason)
         except (KeyboardInterrupt, SystemExit):
             display_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -3805,10 +3806,7 @@ class Display(Tkinter.Canvas):
         self.after_join_id = self.after(JOIN_TIME,
                                         self.join_thread)
         #Always set this for a one time check right after starting.
-        self.after(5000, #5 seconds
-                   self.check_offline_reason)
-        #Also set up the periodic checks for the future.
-        self.after_offline_reason_id = self.after(OFFLINE_REASON_TIME,
+        self.after_offline_reason_id = self.after(5000, #5 seconds
                                                   self.check_offline_reason)
         self.after_reposition_id = None
 
