@@ -29,7 +29,7 @@ if [ "$?" = "0" ];
 then
     export PYTHONPATH=$SETUPS_DIR:$PYTHONPATH
     CI=`echo $1 | awk '{ printf toupper($1) }'`
-    $ENSTORE_DIR/sbin/create_entry.py "${CI}" "$2" "$3" "$4"
+    $ENSTORE_DIR/sbin/create_remedy_ticket.py "${CI}" "$2" "$3" "$4"
     rc=$?
     if [ "${rc}" != "0" ];
     then
