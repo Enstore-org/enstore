@@ -18,7 +18,7 @@ class CreateEntry:
         self.cfp.read(cfg)
         uselast = self.cfp.get('create_entry','JohnDoeLast','')
         usefirst = self.cfp.get('create_entry','JohnDoeFirst','')
-        usegroup = self.cfp.get('create_entry','AssignToGroup',None)
+#        usegroup = self.cfp.get('create_entry','AssignToGroup','SSA')
 
         ciname = argv[1]
         condition = argv[2]
@@ -43,7 +43,7 @@ class CreateEntry:
 			      Urgency_Type = '1-Critical',
 				   Summary = summary,
 		      Reported_Source_Type = 'Other',
-			    Assigned_Group = usegroup,
+			    Assigned_Group = 'Storage Service',
 				    Action = 'CREATE',
 			       Status_Type = 'Assigned',
 		  Assigned_Support_Company = 'Fermilab',
