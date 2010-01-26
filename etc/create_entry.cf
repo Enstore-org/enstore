@@ -1,7 +1,7 @@
 [create_entry]
 johndoefirst=cd-srv
 johndoeLast=bridge
-assigntogroup=SSA
+assigntogroup=Storage Service
 Categorization_Tier_1=
 Categorization_Tier_2=
 Categorization_Tier_3=
@@ -10,10 +10,10 @@ Product_Categorization_Tier_2=
 Product_Categorization_Tier_3=
 
 [HelpDesk]
-submitUrl=https://ar-mtdev/arsys/WSDL/public/ar-srvdev/HPD_IncidentInterface_Create_WS
-generalUrl=https://ar-mtdev/arsys/WSDL/public/ar-srvdev/HPD_IncidentInterface_WS
-remedyAcct=cd-srv-bridge
-remedyPswd=run4Cover2
+submitUrl=https://ar-mt1.fnal.gov/arsys/WSDL/public/ar-srv1.fnal.gov/HPD_IncidentInterface_Create_WS
+generalUrl=https://ar-mt1.fnal.gov/arsys/WSDL/public/ar-srv1.fnal.gov/HPD_IncidentInterface_WS
+remedyAcct=ENStore
+remedyPswd=Enstore1810soyR
 #sudsdump=true
 
 
