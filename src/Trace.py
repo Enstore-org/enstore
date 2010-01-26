@@ -63,6 +63,13 @@ MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%(MSG_TYPE,)
 MSG_ADD_TO_LMQ = "%sADD_TO_LMQ "%(MSG_TYPE,)
 MSG_EVENT_RELAY = "%sEVENT_RELAY "%(MSG_TYPE,)
 
+#List of severities that should use standard error instead of standard out.
+STDERR_SEVERITIES = [e_errors.EMAIL,
+                     e_errors.ALARM,
+                     e_errors.ERROR,
+                     e_errors.USER_ERROR,]
+
+
 logname = ""
 alarm_func = None
 log_func = None
@@ -94,6 +101,27 @@ def trunc(x):
     if len(x)>=4096:
         x=x[:4080] + "(trunc. %s)"%(len(x),)
     return x
+
+def init(name, include_thread_name=''):
+    global logname,thread_name 
+    logname=name
+    thread_name = include_thread_name
+
+#message is a string to send to stdout or stderr.
+#out_fp is sys.stdout or sys.stderr.
+def write_trace_message(message, out_fp):
+    #print_lock.acquire()
+    try:
+        out_fp.write("%s\n" % (message,))
+        out_fp.flush()
+    except (KeyboardInterrupt, SystemExit):
+        #print_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        pass
+    #print_lock.release()
+    
+###############################################################################
 
 def do_print(levels):
     if type(levels) != type([]):
@@ -134,7 +162,6 @@ def dont_alarm(levels):
         levels = [levels]
     for level in levels:
         if level==0:
-            #raise e_errors.NOT_ALWD_EXCEPTION
             raise ValueError("alarm level 0 can not be turned off")
         if alarm_levels.has_key(level):
             del alarm_levels[level]
@@ -150,161 +177,200 @@ def dont_message(levels):
         levels = [levels]
     for level in levels:
         if level==0:
-            #raise e_errors.NOT_ALWD_EXCEPTION
             raise ValueError("message level 0 can not be turned off")
         if message_levels.has_key(level):
             del message_levels[level]
 
-def init(name, include_thread_name=''):
-    global logname,thread_name 
-    logname=name
-    thread_name = include_thread_name
+###############################################################################
 
-def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
+#Take the original message string and add the log message format header.
+def format_log_message(raw_message, msg_type=MSG_DEFAULT):
     global logname, thread_name
-    msg = trunc(msg)
+    
+    # build up message
+    if  msg_type != MSG_DEFAULT:
+        new_msg = "%s %s" % (msg_type, raw_message)
+    else:
+        new_msg = raw_message
+    # check for no logname
+    if logname == "":
+        logname = "UNKNOWN"
+    if thread_name:
+        thread = threading.currentThread()
+        if thread:
+            th_name = thread.getName()
+        else:
+            th_name = ''
+    else:
+        th_name = ''
+
+    if th_name:
+       new_msg = "%s Thread %s"%(new_msg, th_name) 
+
+    #Make sure log message will be sendable.
+    message_truncated = trunc(new_msg)
+
+    return message_truncated
+
+#Take the original message string and add the stderr/stdout message
+# format header.
+def format_trace_message(severity, raw_message):
+    t=time.time()
+    dp=("%3.2f"%(t-int(t),)).split('.')[1]
+    a=time.ctime(t).split(" ")
+    b="."
+    c=b.join((a[4],dp))
+    a[4]=c
+    b=" "
+    tm=b.join(a)
+    new_msg = raw_message
+    if thread_name:
+        thread = threading.currentThread()
+        if thread:
+            th_name = thread.getName()
+        else:
+            th_name = ''
+    else:
+        th_name = ''
+
+    if th_name:
+       new_msg = "%s Thread %s"%(new_msg, th_name)
+
+    #Note: we don't need to truncate messages going to stdout or stderr.
+
+    new_message = b.join((str(severity), tm, new_msg))
+
+    return new_message
+
+###############################################################################
+
+#For log(), alarm(), trace() and message():
+#  severity: This is an integer.  Typically it is one of e_errors.ALARM,
+#            e_errors.ERROR, e_errors.USER_ERROR, e_errors.EMAIL,
+#            e_errors.WARNING, e_errors.INFO or e_errors.MISC.
+#  root_error, message: The orignal string to format for output.
+#  out_fp: Either sys.stdout or sys.stderr.
+
+#Send the message to the log server.
+#  msg_type: One of the MSG_* constants from earlier in this file.
+#  doprint: If true, consider calling trace() too.
+def log(severity, message, msg_type=MSG_DEFAULT, doprint=1):
     if  log_func:
         try:
-	    # build up message
-            if  msg_type != MSG_DEFAULT:
-                new_msg = "%s %s" % (msg_type, msg)
-            else:
-                new_msg = msg
-	    # check for no logname
-	    if logname == "":
-		logname = "UNKNOWN"
-            if thread_name:
-                thread = threading.currentThread()
-                if thread:
-                    th_name = thread.getName()
-                else:
-                    th_name = ''
-            else:
-                th_name = ''
-                    
-            if th_name:
-               new_msg = "%s Thread %s"%(new_msg, th_name) 
+            #Format the log text to include some standard information.
+            new_msg = format_log_message(message, msg_type)
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            exc, detail = sys.exc_info()[:2]
+            write_trace_message("Failed to make log message %s: %s\n" %
+                                (message, str(detail)), sys.stderr)
+            return
+            
+        try:
+            #Send the log string to the log server.
             log_func(time.time(), os.getpid(), logname, (severity, new_msg))
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, detail = sys.exc_info()[:2]
-            #print_lock.acquire()
-            try:
-                sys.stderr.write("Failure writing message to log %s %s\n" %
-                                 (msg, detail))
-                sys.stderr.flush()
-            except (KeyboardInterrupt, SystemExit):
-                #print_lock.release()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:
-                pass
-            #print_lock.release()
+            write_trace_message("Failure writing message to log %s: %s\n" %
+                                (message, str(detail)), sys.stderr)
         
     if doprint and print_levels.has_key(severity):
-        #print_lock.acquire()
-        try:
-            print msg
-            sys.stdout.flush()
-        except (KeyboardInterrupt, SystemExit):
-            #print_lock.release()
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            pass
-        #print_lock.release()
-        
+        if severity in STDERR_SEVERITIES:
+            use_out = sys.stderr
+        else:
+            use_out = sys.stdout
+            
+        trace(severity, message, dolog=0, doalarm=0, out_fp=use_out)
+
+#Send the message to the log server.
+#  rest: A dictionary with extra information for the adminsitrators.
+#  condition:
+#  remedy_type: 
+#  doprint: If true, consider calling trace() too.
 def alarm(severity, root_error, rest={},
-          condition=None, remedy_type=None):
+          condition=None, remedy_type=None, doprint=1):
     #log(severity, root_error, MSG_ALARM)
     if alarm_func:
         alarm_func(time.time(), os.getpid(), logname, root_error, severity,
 		   condition, remedy_type, rest)
-    if print_levels.has_key(severity):
-        #print_lock.acquire()
-        try:
-            print root_error
-            sys.stdout.flush()
-        except (KeyboardInterrupt, SystemExit):
-            #print_lock.release()
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            pass
-        #print_lock.release()
+    
+    if doprint and print_levels.has_key(severity):
+        if severity in STDERR_SEVERITIES:
+            use_out = sys.stderr
+        else:
+            use_out = sys.stdout
+            
+        trace(severity, root_error, dolog=0, doalarm=0, out_fp=use_out)
 
-def trace(severity, msg):
+#Send the message to the standard out (the default) or standard error.
+#  dolog: If true, consider sending the message to the log server too.
+#  doalarm: If true, consider sending the message to the alarm server too.
+def trace(severity, message, dolog=1, doalarm=1, out_fp=sys.stdout):
     global thread_name
+    
     ## There is no need to waste time on creating a message, if it will not
     ## be sent.  Truncate all messages sent over the network, but not the
     ## messages to be printed to standard out.
     if (log_levels.has_key(severity) or
         alarm_levels.has_key(severity)):
-        msg_truncated = trunc(msg)
+        msg_truncated = trunc(message)
     else:
         if not print_levels.has_key(severity):
             return
     if print_levels.has_key(severity):
+        if out_fp not in [sys.stderr, sys.stdout]:
+            write_trace_message("Neither stdout or stderr given.\n",
+                                sys.stderr)
+            return
+        
         try:
-            t=time.time()
-            dp=("%3.2f"%(t-int(t),)).split('.')[1]
-            a=time.ctime(t).split(" ")
-            b="."
-            c=b.join((a[4],dp))
-            a[4]=c
-            b=" "
-            tm=b.join(a)
-            new_msg = msg
-            if thread_name:
-                thread = threading.currentThread()
-                if thread:
-                    th_name = thread.getName()
-                else:
-                    th_name = ''
-            else:
-                th_name = ''
-                    
-            if th_name:
-               new_msg = "%s Thread %s"%(new_msg, th_name)
+            #Format the trace text to include the standard information.
+            new_msg = format_trace_message(severity, message)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
-            #print_lock.acquire()
-            print "Failed to make trace message"
-            sys.stdout.flush()
-            #print_lock.release()
+            exc, detail = sys.exc_info()[:2]
+            write_trace_message("Failed to make trace message %s: %s\n" %
+                                (message, str(detail)), sys.stderr)
             return
 
+        #Send the trace string to standard out or standard error.
+        write_trace_message(new_msg, out_fp)
+
+        """
         #print_lock.acquire()
         try:
-            print severity, tm, new_msg
 	    # the following line will output the memory usage of the process
 	    #os.system("a=`ps -ef |grep '/inq'|grep -v grep|xargs echo|cut -f2 -d' '`;ps -el|grep $a|grep python")
 	    #print "================================="  # a usefull divider
-            sys.stdout.flush()
+            #sys.stdout.flush()
         except (KeyboardInterrupt, SystemExit):
             #print_lock.release()
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
         #print_lock.release()
+        """
         
-    if log_levels.has_key(severity):
+    if dolog and log_levels.has_key(severity):
         log(severity, msg_truncated, doprint=0)
-    if alarm_levels.has_key(severity):
-        alarm(severity, msg_truncated)
+    if doalarm and alarm_levels.has_key(severity):
+        alarm(severity, msg_truncated, doprint=0)
 
-def message(severity, msg):
-    msg = trunc(msg)
+#Send the message to the standard out (the default) or standard error.
+def message(severity, message, out_fp=sys.stdout):
+    new_msg = trunc(message)
     if message_levels.has_key(severity):
-        #print_lock.acquire()
-        try:
-            print msg
-            sys.stdout.flush()
-        except (KeyboardInterrupt, SystemExit):
-            #print_lock.release()
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            pass
-        #print_lock.release()
+        if out_fp not in [sys.stderr, sys.stdout]:
+            write_trace_message("Neither stdout or stderr given.\n",
+                                sys.stderr)
+            return
+        write_trace_message(new_msg, out_fp)
+
+###############################################################################
 
 def set_alarm_func(func):
     global alarm_func
@@ -345,6 +411,8 @@ def default_log_func( timestamp, pid, name, args ):
     return None
 
 set_log_func(default_log_func)
+
+###############################################################################
 
 # log traceback info
 def handle_error(exc=None, value=None, tb=None, severity=e_errors.ERROR,
