@@ -4961,7 +4961,7 @@ def open_data_socket(mover_addr, interface_ip = None):
             
             message = "Simulating FAIL_1ST_DATA_SOCKET_LATER error."
             Trace.log(e_errors.INFO, message)
-            Trace.message(ERROR_LEVEL, message)
+            Trace.message(ERROR_LEVEL, message, out_fp=sys.stderr)
 
     #If the select didn't return sockets ready for read or write, then the
     # connection timed out.
@@ -5686,12 +5686,12 @@ def __submit_request_recv(response_ticket, ticket = {}):
                       "Ticket receive failed for %s: %s" %
                       (infilepath, response_ticket['status']))
             Trace.message(ERROR_LEVEL, "Submission to LM failed: " \
-                          + str(response_ticket['status']))
+                          + str(response_ticket['status']), out_fp=sys.stderr)
         else:
             Trace.log(e_errors.ERROR,
                       "Ticket receive failed for %s - retrying" % infilepath)
             Trace.message(ERROR_LEVEL, "Submission to LM failed: - retrying" \
-                          + str(response_ticket['status']))
+                          + str(response_ticket['status']), out_fp=sys.stderr)
 
         #If the ticket was malformed, then we want to see what was sent
         # to the LM.
@@ -7078,7 +7078,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
        and status[0] == e_errors.RESUBMITTING:
         Trace.message(ERROR_LEVEL,
                       "To many resubmissions for %s -> %s." % (infile_print,
-                                                               outfile_print))
+                                                               outfile_print),
+                      out_fp=sys.stderr)
         status = (e_errors.TOO_MANY_RESUBMITS, status)
 
     #If the transfer has failed too many times, remove it from the queue.
@@ -7089,7 +7090,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
        and status[0] != e_errors.RESUBMITTING:
         Trace.message(ERROR_LEVEL,
                       "To many retries for %s -> %s." % (infile_print,
-                                                         outfile_print))
+                                                         outfile_print),
+                      out_fp=sys.stderr)
         status = (e_errors.TOO_MANY_RETRIES, status)
 
     #If we can an error (for example TCP_EXCEPTION), that does not result
@@ -7102,7 +7104,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
              and status[0] != e_errors.RESUBMITTING:
         Trace.message(ERROR_LEVEL,
                       "Treating error like resubmit for %s -> %s." % \
-                      (infile_print, outfile_print))
+                      (infile_print, outfile_print), out_fp=sys.stderr)
         status = (e_errors.RESUBMITTING, status)
 
     #For reads only when a media error occurs.
@@ -7147,7 +7149,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 retry_non_retriable_media_error = True
                 message = "Trying alternate BFID %s after media error.  %s" \
                           % (next_bfid, elapsed_string())
-                Trace.message(ERROR_LEVEL, message)
+                Trace.message(ERROR_LEVEL, message, out_fp=sys.stderr)
                 Trace.log(e_errors.WARNING, message)
                 break
             #elif not e_errors.is_ok(vc_ticket):
@@ -12616,8 +12618,8 @@ def main(intf):
     #Initialize the Trace module.  #We need to include the thread name for
     # the migration/duplication encps sharing a single process ID.
     Trace.init("ENCP", include_thread_name = intf.include_thread_name)
-    for x in xrange(6, intf.verbose + 1):
-        Trace.do_print(x)
+    #for x in xrange(6, intf.verbose + 1):
+    #    Trace.do_print(x)
     for x in xrange(1, intf.verbose + 1):
         Trace.do_message(x)
 
