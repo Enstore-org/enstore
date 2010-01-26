@@ -166,8 +166,8 @@ class Queue:
 
         #These are the timestamps that something was put in or taken out
         # of the queue.
-        self.get_time = None
-        self.put_time = None
+        self.get_time = time.time()
+        self.put_time = time.time()
 
     def len_queue(self, tid=None):
         self.lock.acquire()
@@ -186,6 +186,16 @@ class Queue:
         self.lock.release()
 
         return number
+
+    def last_get_time(self):
+        self.lock.acquire()
+
+        get_time = copy.copy(self.get_time)
+
+        self.lock.release()
+
+        return get_time
+                     
 
     def clear_queue(self, tid = None):
         self.lock.acquire()

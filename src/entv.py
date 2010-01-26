@@ -870,6 +870,25 @@ def destroy_display_panel(display):
 # The following functions start functions in new threads.
 #########################################################################
 
+#Wrapper function called from start_messages_thread() that allows for
+# thread tracebacks to be reported.
+def __func_smt_wrapper(function, args):
+    try:
+        apply(function, args)
+    except (KeyboardInterrupt, SystemExit):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        exc, msg = sys.exc_info()[:2]
+        import traceback
+        traceback.print_tb(sys.exc_info()[2])
+        #Report on the error.
+        try:
+            message = "Error in network thread for %s: (%s, %s)\n"
+            sys.stderr.write(message % (args[1], str(exc), str(msg)))
+            sys.stderr.flush()
+        except IOError:
+            pass
+
 def start_messages_thread(csc_addr, system_name, intf):
     global messages_threads
 
@@ -879,9 +898,14 @@ def start_messages_thread(csc_addr, system_name, intf):
         try:
             Trace.trace(1, "Creating thread for %s." % (system_name,))
             sys.stdout.flush()
+            #new_thread = threading.Thread(
+            #    target = handle_messages,
+            #    args = (csc_addr, system_name, intf),
+            #    name = system_name,
+            #    )
             new_thread = threading.Thread(
-                target = handle_messages,
-                args = (csc_addr, system_name, intf),
+                target = __func_smt_wrapper,
+                args = (handle_messages, (csc_addr, system_name, intf)),
                 name = system_name,
                 )
             new_thread.start()
@@ -1190,9 +1214,16 @@ def handle_messages(csc_addr, system_name, intf):
                     message = "Display is stuck.  Restarting entv."
                     Trace.trace(0, message, out_fp=sys.stderr)
                     restart_entv()
-                    
+
                 continue
 
+            # If the display/main thread hasn't done anything in 10
+            # minutes, let us restart entv.
+            if enstore_display.message_queue.len_queue(system_name) > 0 and \
+                   enstore_display.message_queue.last_get_time() <= \
+                   time.time() - TEN_MINUTES:
+                restart_entv()
+                
             commands = []
 
             #Read any status responses from movers or the inquisitor.
