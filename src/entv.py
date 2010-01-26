@@ -95,8 +95,8 @@ def entv_client_version():
 #Re-exec() entv.  It is hosed.
 def restart_entv():
     Trace.trace(0, "Starting new entv process.")
-    import traceback
-    traceback.print_stack()
+    #import traceback
+    #traceback.print_stack()
     os.execv(sys.argv[0], sys.argv)
 
 def to_restart_entv_alarm_signal_handler(sig, frame):
@@ -108,12 +108,9 @@ def to_restart_entv_alarm_signal_handler(sig, frame):
     for display in displays:
         time_passed = time.time() - display.last_message_processed
         if time_passed > TEN_MINUTES:
-            try:
-                sys.stderr.write("Seconds passed since last message: %s\n" %
-                                 (time_passed),)
-                sys.stderr.flush()
-            except IOError:
-                pass
+            message = "Seconds passed since last message: %s\n" \
+                      "Restarting entv." % (time_passed,)
+            Trace.trace(0, message, out_fp=sys.stderr)
             restart_entv()
             
     signal.alarm(TEN_MINUTES)
@@ -491,7 +488,8 @@ def set_entvrc(display, address):
             #If the file exists but still failed to open (ie permissions)
             # then skip this step.
             if msg.errno != errno.ENOENT:
-                Trace.trace(1, str(msg))
+                Trace.trace(1, "Unable to open .entvrc file: %s" % (str(msg),),
+                            out_fp=sys.stderr)
                 return
             #But if it simply did not exist, then prepare to create it.
             else:
@@ -563,7 +561,8 @@ def set_entvrc(display, address):
         entv_file.close()
                   
     except (IOError, IndexError, OSError), msg:
-        Trace.trace(1, str(msg))
+        Trace.trace(1, "Error writing .entvrc file: %s" % (str(msg),),
+                    out_fp=sys.stderr)
         pass #If the line isn't there to begin with don't change anything.
 
 #########################################################################
@@ -1102,7 +1101,8 @@ def handle_messages(csc_addr, system_name, intf):
                 event_relay_host = er_addr[0], event_relay_port = er_addr[1])
             retval = erc.start([event_relay_messages.ALL])
             if retval == erc.ERROR:
-                Trace.trace(0, "Could not contact event relay.")
+                Trace.trace(0, "Could not contact event relay.",
+                            out_fp=sys.stderr)
 
             #Get the list of movers that we need to send status requests to.
             movers = get_mover_list(intf, csc, 1)
@@ -1187,6 +1187,8 @@ def handle_messages(csc_addr, system_name, intf):
                 # minutes, let us restart entv.
                 if enstore_display.message_queue.get_time <= \
                        time.time() - TEN_MINUTES:
+                    message = "Display is stuck.  Restarting entv."
+                    Trace.trace(0, message, out_fp=sys.stderr)
                     restart_entv()
                     
                 continue
@@ -1239,7 +1241,7 @@ def handle_messages(csc_addr, system_name, intf):
             if erc.sock in readable:
                 msg = enstore_erc_functions.read_erc(erc)
 
-                if msg and not getattr(msg, "status", None):
+                if msg and not getattr(msg, 'status', None):
                     #Take the message from event relay.
                     commands = commands + ["%s %s" % (msg.type,
                                                       msg.extra_info)]
@@ -1247,10 +1249,8 @@ def handle_messages(csc_addr, system_name, intf):
                 ##If read_erc is valid it is a EventRelayMessage instance. If
                 # it gets here it is a dictionary with a status field error.
                 elif getattr(msg, "status", None):
-                    Trace.trace(1, msg["status"])
-                    #continue
-                #elif msg == None:
-                #    continue
+                    Trace.trace(1, "Event relay error: %s" % (str(msg),),
+                                out_fp=sys.stderr)
 
             if not commands:
                 continue
@@ -1808,16 +1808,18 @@ def main(intf):
 
         #Force reclaimation of memory (and other resources) and also
         # report if leaks are occuring.
-        restart_entv = cleanup_objects()
+        do_restart_entv = cleanup_objects()
 
         ### Do we really want a new entv process?  This has the issue of
         ### creating a new top level window which will be created on the
         ### users current desktop, not the one entv was started on.
         #If entv is consuming 50% or more of physical memory, restart
         # the entv process.
-        if continue_working and restart_entv:
+        if continue_working and do_restart_entv:
             #At this point a lot of objects have been unable to be freed.
             # Thus, we should re-exec() the entv process.
+            message = "Restarting entv from excessive memory usage."
+            Trace.trace(0, message, out_fp=sys.stderr)
             restart_entv()
 
         if continue_working:
