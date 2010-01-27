@@ -97,8 +97,8 @@ def default_status_html_file():
 class EnFile:
 
     def set_filename(self, file):
-        self.file_name = file 
-        self.real_file_name = file 
+        self.file_name = file
+        self.real_file_name = file
 	self.lockfile = "%s.lock"%(file,)
 
     def __init__(self, file, system_tag=""):
@@ -156,7 +156,7 @@ class EnFile:
 
     def install(self):
 	# move the file we created to the real file name
-        enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQFILEDBG,
 		    "Tmp file: %s, real file: %s"%(self.file_name, self.real_file_name))
         if (not self.real_file_name == self.file_name) and os.path.exists(self.file_name):
 	    os.system("mv %s %s"%(self.file_name, self.real_file_name))
@@ -205,7 +205,7 @@ class EnStatusFile(EnFile):
     def remove_key(self, key):
         if self.text.has_key(key):
             del self.text[key]
-    
+
     def set_refresh(self, refresh):
         self.refresh = refresh
 
@@ -276,11 +276,11 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	self.html_dir = enstore_functions2.get_dir(file)
         self.refresh = refresh
 	self.page_thresholds = page_thresholds
-	self.mover_file = HTMLMoverStatusFile("%s/enstore_movers.html"%(self.html_dir,), 
+	self.mover_file = HTMLMoverStatusFile("%s/enstore_movers.html"%(self.html_dir,),
 					      refresh, system_tag)
 	self.filelist_file = HTMLFileListFile("%s/enstore_files.html"%(self.html_dir,),
 					      refresh, system_tag)
-								  
+
 	self.filelist = []
 	self.docs_to_install = []
 
@@ -291,7 +291,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
     def dont_monitor(self, key, host):
         self.text[key] = {}
         self.text[key][enstore_constants.STATUS] = [enstore_constants.NOT_MONITORING,
-					 self.format_host(host), 
+					 self.format_host(host),
                                          enstore_functions2.format_time(time.time())]
 
     def set_alive_error_status(self, key):
@@ -302,7 +302,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
             pass
 
     def get_file_list(self, lm, name):
-	# we may have gotten an error while trying to get the info, 
+	# we may have gotten an error while trying to get the info,
 	# so check for a piece of it first
 	if lm.has_key(enstore_constants.LMSTATE) and \
 	   not lm[enstore_constants.LMSTATE] == enstore_constants.UNKNOWN_S:
@@ -310,13 +310,13 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	    if wam_q and not wam_q is enstore_constants.NO_WORK:
 		for wam_elem in wam_q:
 		    if wam_elem[enstore_constants.WORK] == enstore_constants.READ:
-			self.filelist.append([wam_elem[enstore_constants.NODE], 
-					      wam_elem[enstore_constants.FILE], name, 
+			self.filelist.append([wam_elem[enstore_constants.NODE],
+					      wam_elem[enstore_constants.FILE], name,
 					      wam_elem[enstore_constants.DEVICE]])
 		    else:
 			ff = wam_elem.get(enstore_constants.FILE_FAMILY, None)
-			self.filelist.append([wam_elem[enstore_constants.NODE], 
-					      wam_elem[enstore_constants.FILE], name, 
+			self.filelist.append([wam_elem[enstore_constants.NODE],
+					      wam_elem[enstore_constants.FILE], name,
 					      ff])
 	    pend_q = lm.get(enstore_constants.PENDING, None)
 	    if pend_q:
@@ -326,8 +326,8 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 		    pread_q = []
 		if pread_q:
 		    for pread_elem in pread_q:
-			self.filelist.append([pread_elem[enstore_constants.NODE], 
-					      pread_elem[enstore_constants.FILE], name, 
+			self.filelist.append([pread_elem[enstore_constants.NODE],
+					      pread_elem[enstore_constants.FILE], name,
 					      pread_elem[enstore_constants.DEVICE]])
 		if type(pend_q) == types.DictionaryType:
 		    pwrite_q = pend_q[enstore_constants.WRITE]
@@ -337,10 +337,10 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 		    for pwrite_elem in pwrite_q:
 			# instead of a volume we will include a file family
 			ff = pwrite_elem.get(enstore_constants.FILE_FAMILY, None)
-			self.filelist.append([pwrite_elem[enstore_constants.NODE], 
-					      pwrite_elem[enstore_constants.FILE], name, 
+			self.filelist.append([pwrite_elem[enstore_constants.NODE],
+					      pwrite_elem[enstore_constants.FILE], name,
 					      ff])
-			
+
     # write the status info to the files
     def write(self):
         if self.openfile:
@@ -358,9 +358,9 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 		if enstore_functions2.is_library_manager(key) and \
 		   not self.text[key][enstore_constants.STATUS][0] == \
 		                 enstore_constants.NOT_MONITORING:
-		    doc = enstore_html.EnLmFullStatusPage(key, self.refresh, 
-							  self.system_tag, 
-							  self.page_thresholds.get(key, 
+		    doc = enstore_html.EnLmFullStatusPage(key, self.refresh,
+							  self.system_tag,
+							  self.page_thresholds.get(key,
 									 NO_THRESHOLDS)[FULL_PAGE])
 		    doc.body(self.text[key])
 		    # save the file info for the filelist page
@@ -373,12 +373,12 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 		    lm_q_file.close()
 		    self.docs_to_install.append(lm_q_file)
 		    HTMLExtraPages.write(self, doc)
-		    doc = enstore_html.EnLmStatusPage(key, self.refresh, 
-						      self.system_tag, 
-						      self.page_thresholds.get(key, 
+		    doc = enstore_html.EnLmStatusPage(key, self.refresh,
+						      self.system_tag,
+						      self.page_thresholds.get(key,
 								NO_THRESHOLDS)[LM_PAGE])
 		    doc.body(self.text[key])
-		    lm_file = HTMLLmStatusFile("%s/%s.html"%(self.html_dir, key), 
+		    lm_file = HTMLLmStatusFile("%s/%s.html"%(self.html_dir, key),
 					       self.refresh, self.system_tag)
 		    lm_file.open()
 		    lm_file.write(doc)
@@ -393,7 +393,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	    self.mover_file.close()
 	    self.docs_to_install.append(self.mover_file)
 	    # now make the file list page
-	    doc = enstore_html.EnFileListPage(self.refresh, self.system_tag, 
+	    doc = enstore_html.EnFileListPage(self.refresh, self.system_tag,
 					      self.page_thresholds[enstore_constants.FILE_LIST])
 	    doc.body(self.filelist)
 	    self.filelist_file.open()
@@ -406,7 +406,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	EnStatusFile.install(self)
 	for doc in self.docs_to_install:
 	    doc.install()
-	
+
 
 class HTMLEncpStatusFile(EnStatusFile):
 
@@ -433,10 +433,10 @@ class HTMLEncpStatusFile(EnStatusFile):
             else:
                error = encp_line.type
             if encp_line.success:
-                formatted_lines.append([encp_line.time, 
-                                        node, user, encp_line.bytes, 
-                                        "%s %s"%(encp_line.direction, 
-                                                 encp_line.volume), 
+                formatted_lines.append([encp_line.time,
+                                        node, user, encp_line.bytes,
+                                        "%s %s"%(encp_line.direction,
+                                                 encp_line.volume),
                                         encp_line.network_rate, encp_line.transfer_rate,
                                         encp_line.infile, encp_line.outfile,
                                         encp_line.interface,
@@ -444,7 +444,7 @@ class HTMLEncpStatusFile(EnStatusFile):
                                         encp_line.drive_rate,
                                         encp_line.disk_rate])
             else:
-                formatted_lines.append([encp_line.time, 
+                formatted_lines.append([encp_line.time,
                                         node, user, "%s : (SRC: %s) (DST: %s)"%(error,
                                                                                 encp_line.infile,
                                                                                 encp_line.outfile)])
@@ -458,7 +458,7 @@ class HTMLEncpStatusFile(EnStatusFile):
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
                                        "update_encp - parsed out %s lines"%(len(eline),))
 
-            doc = enstore_html.EnEncpStatusPage(refresh=self.refresh, 
+            doc = enstore_html.EnEncpStatusPage(refresh=self.refresh,
                                                 system_tag=self.system_tag)
             doc.body(eline)
 	    self.do_write(str(doc))
@@ -510,7 +510,7 @@ class HTMLPlotFile(EnFile):
     def write(self, jpgs, stamps, pss, mount_label, links_l=None):
         if self.openfile:
             doc = enstore_html.EnPlotPage(system_tag=self.system_tag,
-					  mount_label=mount_label, 
+					  mount_label=mount_label,
 					  links_l=links_l,
 					  nav_link=self.nav_link,
                                           url_gif_dir=self.url_gif_dir)
@@ -529,7 +529,7 @@ class HTMLGeneratedFile(EnFile):
     def write(self, directory_list, mount_label, links_l=None):
         if self.openfile:
             doc = enstore_html.EnGeneratedWebPage(system_tag=self.system_tag,
-					  mount_label=mount_label, 
+					  mount_label=mount_label,
 					  links_l=links_l,
 					  nav_link=self.nav_link,
                                           url_gif_dir=self.url_gif_dir)
@@ -671,7 +671,7 @@ class EnMountDataFile(EnDataFile):
 	    else:
 		start = MMOUNT
 
-	    # parse out the file directory , a remnant from the grep in the time 
+	    # parse out the file directory , a remnant from the grep in the time
 	    # field
 	    etime = enstore_functions2.strip_file_dir(etime)
 
@@ -707,8 +707,8 @@ class EnEncpDataFile(EnDataFile):
                 # remove the directory and the log prefix to get just the
                 # date and time
                 etime = enstore_functions2.strip_file_dir(encp_line.time)
-                self.data.append([string.replace(etime, prefix, ""), 
-                                  encp_line.bytes, encp_line.direction, 
+                self.data.append([string.replace(etime, prefix, ""),
+                                  encp_line.bytes, encp_line.direction,
                                   encp_line.mover, encp_line.drive_id,
                                   encp_line.storage_group])
         del encp_line
@@ -731,7 +731,7 @@ class EnEncpDataFile(EnDataFile):
                         del line
             except:
                 pass
-        
+
 
 class EnSgDataFile(EnDataFile):
 
@@ -805,7 +805,7 @@ class EnAlarmFile(EnFile):
             except IOError:
                 pass
         return enAlarms
-                
+
     # write the alarm to the file
     def write(self, alarm):
         if self.openfile:
@@ -822,12 +822,12 @@ class HtmlSaagFile(EnFile):
         self.real_file_name = name
 	self.enstore_ball = ""
 
-    def write(self, enstore_contents, other_contents, media_contents, alarm_contents, 
+    def write(self, enstore_contents, other_contents, media_contents, alarm_contents,
 	      node_contents, outage, offline, status_file_name):
         if self.openfile:
             doc = enstore_html.EnSaagPage(system_tag=self.system_tag)
             media = enstore_functions.get_media()
-            doc.body(enstore_contents, other_contents, media_contents, alarm_contents, 
+            doc.body(enstore_contents, other_contents, media_contents, alarm_contents,
 		     node_contents, outage, offline, media, status_file_name)
 	    # save the status of the enstore ball
 	    self.enstore_ball = enstore_contents[enstore_constants.ENSTORE]
@@ -871,7 +871,7 @@ class ScheduleFile(EnFile):
 
     def read(self):
         try:
-            self.open('r')
+            EnFile.open(self, 'r')
             if self.openfile:
                 code=string.join(self.openfile.readlines(),'')
                 exec(code)
@@ -896,14 +896,13 @@ class ScheduleFile(EnFile):
             outage_d = {}
             offline_d = {}
             override_d = {}
-        self.close()
+        EnFile.close(self)
         return outage_d, offline_d, override_d
 
     # turn the dictionary into python code to be written out to the file
     def write(self, dict1, dict2, dict3):
         # open the file for writing
         self.open()
-
         # write out the dictionary
         if self.openfile:
 	    self.do_write("outage = %s\n"%(dict1,))
@@ -988,11 +987,11 @@ class EnstoreStatusFile(EnFile):
     def write(self, enstat, outage_d, offline_d, override_d):
 	self.do_write("status=%s"%([enstat[enstore_constants.ENSTORE],
 				    enstat[enstore_constants.TIME],
-				    offline_d.get(enstore_constants.ENSTORE, 
+				    offline_d.get(enstore_constants.ENSTORE,
 						  enstore_constants.ENONE),
-				    outage_d.get(enstore_constants.ENSTORE, 
+				    outage_d.get(enstore_constants.ENSTORE,
 						 enstore_constants.ENONE),
-				    override_d.get(enstore_constants.ENSTORE, 
+				    override_d.get(enstore_constants.ENSTORE,
 						   enstore_constants.ENONE),
 				    enstore_functions.get_www_host()],))
 
@@ -1024,9 +1023,6 @@ class EnstoreBpdFile(EnDataFile):
 	    start_time = enstore_functions2.get_days_ago(time.time(), 30)
 	    start_time = enstore_functions2.format_plot_time(start_time)
 	EnDataFile.timed_read(self, start_time, stop_time, "")
-
-
-
 
 def read_schedule_file(html_dir=None):
     if html_dir is None:

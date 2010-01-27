@@ -16,7 +16,7 @@ import os
 import stat
 import signal
 import threading
-import socket 
+import socket
 import re
 import copy
 import select
@@ -41,6 +41,7 @@ import volume_family
 import option
 import cleanUDP
 import udp_server
+import enstore_locks
 
 server_map = {"log_server" : enstore_constants.LOGS,
 	      "alarm_server" : enstore_constants.ALARMS,
@@ -93,9 +94,9 @@ FF_W = "file_family_width"
 NUM_IN_Q = "num_in_q"
 RESTRICTED_ACCESS = "RESTRICTED_ACCESS"
 #
-# maximum number of threads to spawn 
+# maximum number of threads to spawn
 #
-MAX_THREADS = 50 
+MAX_THREADS = 50
 defaults = {'update_interval': 20,
             'alive_rcv_timeout': 5,
             'alive_retries': 2,
@@ -143,21 +144,21 @@ class EventRelay:
     def __repr__(self):
         import pprint
         return "event_relay : %s\n%s"%(pprint.pformat(self.__dict__), DIVIDER)
-    
+
     def alive(self, now):
         self.last_alive = now
-        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "setting event relay as alive")
         self.state = ALIVE
 
     def dead(self):
-        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "setting event relay as dead")
         self.state = enstore_constants.DEAD
 
     def set_state(self, now):
         enstore_functions.inqTrace(enstore_constants.INQSERVERTIMESDBG,
-		 "Now: %s, Last alive: %s, Heartbeat: %s"%(time.ctime(now), 
+		 "Now: %s, Last alive: %s, Heartbeat: %s"%(time.ctime(now),
 						   time.ctime(self.last_alive),
 						   self.heartbeat))
         if (now - self.last_alive) > self.heartbeat:
@@ -208,8 +209,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.name = MY_NAME
 	self.html_dir = None
         self.er_lock = threading.Lock()
+        self.rw_lock = enstore_locks.ReadWriteLock()
         self.max_threads=MAX_THREADS
-    
+
     def get_server(self, name):
 	if type(name) == types.ListType:
 	    name = name[0]
@@ -223,23 +225,23 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # look for the hung_rcv_timeout value for the specified key in the inquisitor
     # config info.  if it does not exist, return the default
     def get_hung_to(self, key):
-        return self.inquisitor.get("hung_rcv_timeout", {}).get(key, 
+        return self.inquisitor.get("hung_rcv_timeout", {}).get(key,
                                                monitored_server.DEFAULT_HUNG_INTERVAL)
 
     def mark_event_relay(self, state):
         self.serverfile.output_etimedout(self.erc.event_relay_addr[0], state,
-                                         time.time(), enstore_constants.EVENT_RELAY, 
+                                         time.time(), enstore_constants.EVENT_RELAY,
                                          self.event_relay.last_alive)
 	self.new_server_status = 1
-        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "mark event relay as %s"%(state,))
 
     def mark_server(self, state, server):
         if server.no_thread():
-            self.serverfile.output_etimedout(server.host, state, time.time(), 
+            self.serverfile.output_etimedout(server.host, state, time.time(),
 					     server.name, server.output_last_alive)
             self.new_server_status = 1
-            enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
+            enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				       "mark %s as %s"%(server.name, state,))
 
     # mark a server as not having sent a heartbeat yet.
@@ -267,8 +269,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def is_server_known_down(self, server):
         # check to see if the server is known to be down by enstore.
-        sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
-        if offline_d.has_key(server.name):
+        (sfile, outage_d, offline_d, override_d)=(None,None,None,None)
+        self.rw_lock.acquire_read()
+        try:
+            sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
+        finally:
+            self.rw_lock.release_read()
+
+        if offline_d and offline_d.has_key(server.name):
             # server is known to be down
             return 1
         else:
@@ -287,14 +295,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             node = string.split(server.host, ".", 1)
             alarm_info['node'] = node
             while i < 3:
-                enstore_functions.inqTrace(enstore_constants.INQRESTARTDBG, 
+                enstore_functions.inqTrace(enstore_constants.INQRESTARTDBG,
 				      "Restart try %s for %s"%(i, server.name))
                 if server.delete:
                     # we no longer need to try to restart this server.  possibly
                     # while we were trying to restart it, it was removed from the
                     # config file.
-                    Trace.log(e_errors.INFO, 
-                              "%s: Aborting restart attempt of %s"%(prefix, 
+                    Trace.log(e_errors.INFO,
+                              "%s: Aborting restart attempt of %s"%(prefix,
                                                                     server.name))
                     break
                 # do not do the stop and start if the event relay is not alive or if this
@@ -334,7 +342,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     if not server.name == enstore_constants.ALARM_SERVER:
                         Trace.alarm(e_errors.ERROR, e_errors.CANTRESTART, alarm_info)
                     else:
-                        Trace.log(e_errors.ERROR, "%s: Can't restart %s"%(prefix, 
+                        Trace.log(e_errors.ERROR, "%s: Can't restart %s"%(prefix,
                                                                           server.name))
         except:
             # we catch any exception from the thread as we do not want it to
@@ -365,22 +373,22 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             else:
                 # do not attempt to do the restart if the event relay is not alive.
                 if (not server.restart_failed) and self.event_relay.is_alive():
-                    # we must keep track of the fact that we created a thread for this 
-                    # client so the next time we find the server dead we do not create 
+                    # we must keep track of the fact that we created a thread for this
+                    # client so the next time we find the server dead we do not create
                     # another one.
                     server.restart_thread = threading.Thread(group=None,
                                                              target=self.restart_function,
                                                              name="RESTART_%s"%(server.name,),
                                                              args=(server,))
                     enstore_functions.inqTrace(enstore_constants.INQRESTARTDBG,
-			     "Inquisitor creating thread to restart %s, event_relay is %s"%(server.name, 
+			     "Inquisitor creating thread to restart %s, event_relay is %s"%(server.name,
 											            self.event_relay.state))
                     server.restart_thread.setDaemon(1)
                     server.restart_thread.start()
 
     # do the actual write in the thread
     def do_server_status_write(self):
-	enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
+	enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
 				   "Starting write of status files")
 	if self.serverfile_new:
 	    self.serverfile_new.open()
@@ -398,7 +406,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    self.do_server_status_write()
 		    self.server_status_file_event.clear()
 		if self.exit_now_event.isSet():
-		    enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
+		    enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
 					       "Exiting write of status files thread")
 		    return
 	    except:
@@ -415,7 +423,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # there is no thread doing this, we can do it
 	    # copy the information to write out
 	    self.serverfile_new = copy.deepcopy(self.serverfile)
-	    enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
+	    enstore_functions.inqTrace(enstore_constants.INQFILEDBG,
 				       "Signaling thread to write out status files")
 	    self.server_status_file_event.set()
             self.new_server_status = 0
@@ -424,7 +432,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def make_log_html_file(self):
         log_dirs = self.inquisitor.user_log_dirs
         # add the web host to the dict of log directories if not already there
-        try: 
+        try:
             for key in log_dirs.keys():
                 if log_dirs[key][0:5] not in ["http:", "file:"]:
                     log_dirs[key] = "%s%s"%(self.inquisitor.www_host,log_dirs[key])
@@ -435,7 +443,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # first get a list of all of the log files and their sizes
         if self.log_server.log_file_path:
             # given a directory get a list of the files and their sizes
-            logfiles = get_file_list(self.log_server.log_file_path, 
+            logfiles = get_file_list(self.log_server.log_file_path,
                                      enstore_constants.LOG_PREFIX)
             if logfiles:
                 # create the new log listing file.
@@ -447,11 +455,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # and then a delete as this will work across disks
                 self.logfile.copy()
                 self.logfile.remove()
-                enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
+                enstore_functions.inqTrace(enstore_constants.INQFILEDBG,
 					   "make new log file")
 
     def add_new_server(self, key, config_d):
-        if enstore_functions2.is_mover(key):     
+        if enstore_functions2.is_mover(key):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
                 self.er_lock.acquire()
@@ -470,7 +478,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             if self.ok_to_monitor(cdict):
                 self.er_lock.acquire()
                 self.server_d[key] = monitored_server.MonitoredLibraryManager(cdict,
-									      key, 
+									      key,
 									      self.csc)
                 self.er_lock.release()
         elif enstore_functions2.is_generic_server(key):
@@ -499,7 +507,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.configfile.write(config)
         self.configfile.close()
         self.configfile.install()
-        enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQFILEDBG,
 				   "make new html config file")
 
     def stop_monitoring(self, server, skey):
@@ -510,7 +518,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def get_value(self, aKey, aValue):
 	self.got_from_cmdline[aKey] = aValue
-        if aValue == NOVALUE:         # nothing was entered on the command line 
+        if aValue == NOVALUE:         # nothing was entered on the command line
             new_val = self.inquisitor.config.get(aKey, defaults.get(aKey))
         else:
             new_val = aValue
@@ -519,7 +527,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_variables_from_config(self, config):
         self.inquisitor.update_config(config.get(self.inquisitor.name, {}))
         if not self.inquisitor.config:
-            # the inquisitor information is no longer in the config file.  exit 
+            # the inquisitor information is no longer in the config file.  exit
             self.update_exit(1)
         for skey in self.server_d.keys():
             server = self.server_d[skey]
@@ -579,7 +587,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def handle_lmc_error(self, lib_man, time, state):
         status = enstore_functions2.get_status(state)
         self.serverfile.output_error(lib_man.host, status, time, lib_man.name)
-        enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 				   "lm client - ERROR: %s"%(status,))
 
     # get the library manager suspect volume list and output it
@@ -617,11 +625,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					     enstore_constants.NO_SUSPECT_VOLS,
                                              time, lib_man.name,
 					     lib_man.output_last_alive)
-            enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+            enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 				       "suspect_vols - ERROR, timed out")
             return None
         elif not e_errors.is_ok(state):
-            self.handle_lmc_error(lib_man, time, state) 
+            self.handle_lmc_error(lib_man, time, state)
             return None
         return 1
 
@@ -695,9 +703,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 									     ff, node)
 	    Trace.alarm(e_errors.ERROR, txt)
 	    enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, txt)
-	    enstore_mail.send_mail(MY_NAME, 
+	    enstore_mail.send_mail(MY_NAME,
 	      enstore_mail.format_mail("Write data using the full file_family width to enstore from %s"%(node,),
-			  "Why are there %s elems in the pend queue and only %s elems in the wam queue?"%(pend_num, 
+			  "Why are there %s elems in the pend queue and only %s elems in the wam queue?"%(pend_num,
 													  wam_num),
 					    txt), "Write Queue Stall")
 	    enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
@@ -713,9 +721,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    # the pending queue is actually 3 queues, ignore the read queue
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
                                        "num in queue = %s"%(len(lib_man.pend_queue[enstore_constants.READ_QUEUE],),))
-	    pend_dict2 = self.num_in_queue(node, 
+	    pend_dict2 = self.num_in_queue(node,
 					  lib_man.pend_queue[enstore_constants.ADMIN_QUEUE])
-	    pend_dict = self.num_in_queue(node, 
+	    pend_dict = self.num_in_queue(node,
 					   lib_man.pend_queue[enstore_constants.WRITE_QUEUE],
 					  pend_dict2)
 	    # loop over all the file families that have an element in the pending queue.
@@ -780,7 +788,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					     enstore_constants.NO_WORK_QUEUE,
                                              time, lib_man.name,
 					     lib_man.output_last_alive)
-            enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+            enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 				       "work_queue - ERROR, timed out")
             return None
         elif not e_errors.is_ok(self.lm_queues[lib_man.name]):
@@ -835,7 +843,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					     enstore_constants.NO_ACTIVE_VOLS,
                                              time, lib_man.name,
 					     lib_man.output_last_alive)
-            enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+            enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 				       "active volumes - ERROR, timed out")
             return None
         elif not e_errors.is_ok(self.lm_queues[lib_man.name]):
@@ -883,7 +891,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 					     enstore_constants.NO_STATE,
                                              time, lib_man.name,
 					     lib_man.output_last_alive)
-            enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+            enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 				       "lm_state - ERROR, timed out")
             return None
         elif not e_errors.is_ok(state):
@@ -906,7 +914,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     else:
                         # there was an error, we do not have the active volumes  information,
                         # if we never did default it
-                        self.default_active_volumes(lib_man)                        
+                        self.default_active_volumes(lib_man)
                 else:
                     # there was an error, we do not have the work queue information,
                     # if we never did default it
@@ -932,9 +940,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the information from the mover
     def update_mover(self, mover):
         rtn = 1          # assume no timeouts
-        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "get new state from %s"%(mover.name,))
-        self.mover_state[mover.name] = mover.client.status(self.alive_rcv_timeout, 
+        self.mover_state[mover.name] = mover.client.status(self.alive_rcv_timeout,
 							   self.alive_retries)
 	mover.check_status_ticket(self.mover_state[mover.name])
         self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
@@ -944,7 +952,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             self.serverfile.output_etimedout(mover.host, enstore_constants.NO_STATE,
 					     time.time(), mover.name,
 					     mover.output_last_alive)
-            enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+            enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 				       "mover_status - ERROR, timed out")
         self.new_server_status = 1
         return rtn
@@ -956,12 +964,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                      "exiting", time.time(), self.name)
         # the above just stored the information, now write the page out and
 	# tell the thread to exit
-        enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQTHREADDBG,
 				   "setting exit event for threads")
 	self.exit_now_event.set()
 	self.write_server_status_file()
         # Don't fear the reaper!!
-        enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 				   "exiting inquisitor due to request")
 	if self.server_status_file_thread.isAlive():
 	    self.server_status_file_thread.join()
@@ -984,7 +992,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.encpfile.write(encplines)
         self.encpfile.close()
         self.encpfile.install()
-        enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQFILEDBG,
 				   "make new html encp file")
 
     # examine each server we are monitoring to see if we have received an alive from
@@ -1005,7 +1013,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         if self.event_relay.is_dead(time.time()):
             self.mark_event_relay(enstore_constants.DEAD)
             if not self.sent_event_relay_alarm:
-                Trace.alarm(e_errors.ERROR, 
+                Trace.alarm(e_errors.ERROR,
                             e_errors.TIMEDOUT, {'server' : self.event_relay.name,
                                                 'host' : self.erc.host })
                 self.sent_event_relay_alarm = 1
@@ -1024,18 +1032,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		# there is no problem
 		return
 	    else:
-		# make a list of the library managers that we will have to 
+		# make a list of the library managers that we will have to
 		# check.
 		lm = self.get_server(server.library)
 		if lm:
-		    Trace.trace(enstore_constants.INQWORKDBG, 
+		    Trace.trace(enstore_constants.INQWORKDBG,
 				"CBW: bad mover %s with lm %s"%(server.name, lm.name))
 		else:
 		    # we do not have information on this lm yet.
 		    return
 	elif enstore_functions2.is_library_manager(server.name):
 	    lm = server
-	    Trace.trace(enstore_constants.INQWORKDBG, 
+	    Trace.trace(enstore_constants.INQWORKDBG,
 			"CBW: lm %s"%(lm.name))
 	# now check the library managers' queue to make sure that -
 	#
@@ -1048,7 +1056,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# return, the enstore ball will be red already and we do not really
 	# know what is happening anyway.
 	if lm.server_status in [e_errors.BROKEN]:
-	    Trace.trace(enstore_constants.INQWORKDBG, 
+	    Trace.trace(enstore_constants.INQWORKDBG,
 			"CBW: lm in bad state (%s - %s), no checks done"%(lm.name,
 									  lm.server_status))
 	    return
@@ -1059,7 +1067,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	if lm.wam_queue:
 	    for qelem in lm.wam_queue:
 		# remove any '.fnal.gov' from the node name
-		node = enstore_functions2.strip_node(qelem['wrapper']['machine'][1])	    
+		node = enstore_functions2.strip_node(qelem['wrapper']['machine'][1])
 		vc = qelem['vc']
 		mover = self.get_server(qelem[enstore_constants.MOVER])
 		if mover and mover.server_status in MOVER_ERROR_STATES and \
@@ -1070,17 +1078,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			if enstore_functions2.is_readonly_state(vc['system_inhibit'][1]) \
                            or enstore_functions2.is_readonly_state(vc['user_inhibit'][1]):
 			    continue
-		    ff = vc.get('file_family', 
-				volume_family.extract_file_family(vc.get('volume_family', 
+		    ff = vc.get('file_family',
+				volume_family.extract_file_family(vc.get('volume_family',
 									 "")))
 		    key = "%s-%s"%(node, ff)
 		    if not bad_movers.has_key(key):
 			bad_movers[key] = [[vc.get('file_family_width', None), node, ff]]
-		    Trace.trace(enstore_constants.INQWORKDBG, 
-				"CBW: found a bad mover in check %s (%s %s)"%(mover.name, 
+		    Trace.trace(enstore_constants.INQWORKDBG,
+				"CBW: found a bad mover in check %s (%s %s)"%(mover.name,
 									      node, ff))
 		    bad_movers[key].append(mover)
-	# now see if the number of bad node-ff combinations 
+	# now see if the number of bad node-ff combinations
 	# is > the file_family_width
 	bad_mover_keys = bad_movers.keys()
 	for key in bad_mover_keys:
@@ -1092,22 +1100,22 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		# we have exceeded the file_family width, check to see how long
 		# this problem has been occurring.  if longer than the specified
 		# time do the specified actions
-		Trace.trace(enstore_constants.INQWORKDBG, 
-			    "CBW: exceeded file family width (%s) for %s on %s"%(ffw, 
+		Trace.trace(enstore_constants.INQWORKDBG,
+			    "CBW: exceeded file family width (%s) for %s on %s"%(ffw,
 										 ff, node))
 		time_bad = node_d[node][1]
 		now = time.time()
 		if lm.time_bad == 0:
 		    # this is the first time things are seen to be bad
 		    lm.time_bad = now
-		Trace.trace(enstore_constants.INQWORKDBG, 
+		Trace.trace(enstore_constants.INQWORKDBG,
 			    "CBW: check if do actions (%s) : now - time_bad = %s"%(time_bad,
 									   now - lm.time_bad))
 		if now - lm.time_bad >= time_bad:
 		    action_l = node_d[node][0]
 		    for action in action_l:
 			if action == enstore_constants.ALARM:
-			    Trace.trace(enstore_constants.INQWORKDBG, 
+			    Trace.trace(enstore_constants.INQWORKDBG,
 					"CBW: action is raise an alarm")
 			    # raise an alarm
 			    mover_info = ""
@@ -1116,10 +1124,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 							      mover.server_status)
 			    Trace.alarm(e_errors.ERROR,"file family %s, from node %s has exceeded the file_family_width of %s %s"%(ff, node, ffw, mover_info))
 			if action == enstore_constants.RED:
-			    Trace.trace(enstore_constants.INQWORKDBG, 
+			    Trace.trace(enstore_constants.INQWORKDBG,
 					"CBW: action is set ball red")
 			    # set the lm ball to red, this will set the enstore ball to red
-			    self.update_schedule_file({"work":"override", 
+			    self.update_schedule_file({"work":"override",
 						       "servers":lm.name,
 						       "saagStatus":"red"}, OVERRIDE)
 
@@ -1199,12 +1207,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def process_event_message(self, reason_called=TIMEOUT):
         # the event relay is alive
         now = time.time()
-        #self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+        #self.serverfile.output_alive(self.erc.event_relay_addr[0],
         #                             ALIVE, now, enstore_constants.EVENT_RELAY)
-        # if this is the first time alive after the event relay was thought 
+        # if this is the first time alive after the event relay was thought
 	# to be dead then we must adjust the last alive times for all of
 	# the servers,  otherwise we will think the server is dead immediately
-	# and not allow any time to receive the alive message from it.  
+	# and not allow any time to receive the alive message from it.
         #if not self.event_relay.is_alive():
         #    for server in self.server_d.keys():
         #        self.server_d[server].last_alive = now
@@ -1214,12 +1222,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # marked as connot update status.  return a list of server heartbeats rcvd
         # that have no error if further status is obtained.  this can be used to not
         # mark these down. so return success_servers
-        self.sent_event_relay_alarm = 0  
+        self.sent_event_relay_alarm = 0
         servers_just_done = []
         success_servers = []
         # ignore messages that originated with us
         if self.er_alive_event.isSet():
-            self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+            self.serverfile.output_alive(self.erc.event_relay_addr[0],
                                          ALIVE, now, enstore_constants.EVENT_RELAY)
             self.event_relay.alive(now)
             self.er_alive_event.clear()
@@ -1248,15 +1256,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 for server in servers_just_done:
                     del self.server_er_msg[server]
                 self.er_lock.release()
-                   
+
             # we may have taken awhile so mark the event relay as alive again
             now_after = time.time()
-            self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+            self.serverfile.output_alive(self.erc.event_relay_addr[0],
                                          ALIVE, now_after, enstore_constants.EVENT_RELAY)
             self.event_relay.alive(now_after)
-            
+
         if self.er_config_event.isSet():
-            self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+            self.serverfile.output_alive(self.erc.event_relay_addr[0],
                                          ALIVE, now, enstore_constants.EVENT_RELAY)
             self.event_relay.alive(now)
             enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
@@ -1273,24 +1281,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     #      o process any servers that have not reported in recently
     #      o generate a new server status web page
     def periodic_tasks(self, reason_called=TIMEOUT):
-        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 				   "periodic timeout")
         # check for all received event messages
         msgs_rcvd = self.process_event_message(reason_called)
         # just output the inquisitor alive info, if we are doing this, we are alive.
         self.server_is_alive(self.inquisitor.name)
         # see if there are any servers in cardiac arrest (no heartbeat)
-        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 				   "periodic timeout - check last alive")
         self.check_last_alive(msgs_rcvd)
         # check if we have received an event relay message recently
-        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 				   "periodic timeout - check event relay alive")
         self.check_event_relay_last_alive()
-        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 				   "periodic timeout - write server status file")
         self.write_server_status_file()
-        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 				   "periodic timeout - end")
         self.last_time_for_periodic_tasks = time.time()
         self.reset_interval_timer(self.periodic_tasks)
@@ -1303,11 +1311,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         # see if there has been notice of an encp transfer which happened too soon after
         # a previous transfer to trigger the web page to be updated.
         # if so then we must hand trigger the web page update
-        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 				   "encp periodic timeout")
         now = time.time()
         if self.er_encp_event.isSet():
-            self.serverfile.output_alive(self.erc.event_relay_addr[0], 
+            self.serverfile.output_alive(self.erc.event_relay_addr[0],
                                          ALIVE, now, enstore_constants.EVENT_RELAY)
             self.event_relay.alive(now)
             enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
@@ -1334,11 +1342,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def log_periodic_tasks(self, reason_called=TIMEOUT):
         # update the web page that lists all the current log files
-        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 				   "log periodic timeout")
         self.make_log_html_file()
         self.reset_interval_timer(self.log_periodic_tasks)
-	
+
     def time_for_override_mail(self, now, element):
 	if not self.override_mail_sent.has_key(element):
 	    # mail was never sent
@@ -1353,13 +1361,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def saag_periodic_tasks(self, reason_called=TIMEOUT):
 	# see if any enstore element has been overridden for longer than specified
 	# in the configuration file
-        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
 				   "saag periodic timeout")
 	interval = self.inquisitor.override_interval
 	if interval is None:
 	    interval = DEFAULT_OVERRIDE_INTERVAL
 	now = time.time()
-	sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
+        (sfile, outage_d, offline_d, override_d)=(None,None,None,None)
+        self.rw_lock.acquire_read()
+        try:
+            sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
+        finally:
+            self.rw_lock.release_read()
 	elements = override_d.keys()
 	for element in elements:
 	    elist = override_d[element]
@@ -1368,7 +1381,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		if now - origin_date > interval and self.time_for_override_mail(now, element):
 		    subject = "%s overridden too long"%(element,)
 		    msg = "The saag page element %s has been overridden to %s for %.0d seconds"%(element,
-									           elist[0], 
+									           elist[0],
 										   now - elist[1])
 		    enstore_mail.send_mail(MY_NAME, msg, subject)
 		    self.override_mail_sent[element] = now
@@ -1376,10 +1389,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # our client said to update the enstore system status information
     def update(self, ticket):
+        saved_reply_address = ticket.get('r_a')
         self.periodic_tasks(USER)
         ticket["status"] = (e_errors.OK, None)
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "update work from user")
 
     def do_dump(self):
@@ -1396,20 +1411,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # spill our guts
     def dump(self, ticket):
+        saved_reply_address = ticket.get('r_a')
         ticket["status"] = (e_errors.OK, None)
         self.do_dump()
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "dump work from user")
 
     # set the timeout for the periodic_tasks function
     def set_update_interval(self,ticket):
+        saved_reply_address = ticket.get('r_a')
         ticket["status"] = (e_errors.OK, None)
         self.update_interval = ticket["update_interval"]
         self.remove_interval_func(self.periodic_tasks)
         self.add_interval_func(self.periodic_tasks, self.update_interval)
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "update_interval work from user")
 
     def get_update_interval(self, ticket):
@@ -1417,7 +1436,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         ret_ticket = { 'update_interval' : self.update_interval,
                        'status'      : (e_errors.OK, None) }
         self.send_reply(ret_ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "get_update_interval work from user")
 
     # update the inq status and exit
@@ -1425,7 +1444,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         self.send_reply(ticket)
         self.update_exit(0)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "update_and_exit work from user")
 
     # set a new refresh value for the html files
@@ -1434,7 +1453,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.set_refresh(ticket['refresh'])
         self.encpfile.set_refresh(ticket['refresh'])
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "set_refresh work from user")
 
     # return the current refresh value
@@ -1442,7 +1461,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         ticket["refresh"] = self.serverfile.get_refresh()
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "get_refresh work from user")
 
     # set a new max encp lines displayed value
@@ -1450,7 +1469,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         self.max_encp_lines = ticket['max_encp_lines']
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "set_max_encp_lines work from user")
 
     # return the current number of displayed encp lines
@@ -1458,7 +1477,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         ticket["max_encp_lines"] = self.max_encp_lines
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "get_max_encp_lines work from user")
 
     # resubscribe to the event relay
@@ -1467,7 +1486,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "event relay resubscribe work")
         self.reset_interval_timer(self.resubscribe)
-    
+
     # subscribe to the event relay
     def subscribe(self, ticket):
         ticket["status"] = (e_errors.OK, None)
@@ -1512,7 +1531,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	ticket["status"] = (e_errors.OK, None)
 	bad_servers = []
 	server_l = string.split(ticket["servers"], ',')
-        sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
+        (sfile, outage_d, offline_d, override_d) = (None,None,None,None)
+        self.rw_lock.acquire_read()
+        try:
+            sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
+        finally:
+            self.rw_lock.release_read()
 	if (sfile.opened != 0) or (sfile.exists() == 0):
 	    for key in server_l:
 		# map the entered name to the name in the outage dictionary
@@ -1553,16 +1577,23 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			override_d[key] = [ticket["saagStatus"], time.time(), reason]
 		    elif func == NOOVERRIDE:
 			delkey(key, override_d)
-	    if not sfile.write(outage_d, offline_d, override_d):
+            rc=0
+            self.rw_lock.acquire_write()
+            try:
+                rc=sfile.write(outage_d, offline_d, override_d)
+            finally:
+                self.rw_lock.release_write()
+	    if not rc:
 		ticket["status"] = (e_errors.IOERROR, None)
-		Trace.log(e_errors.ERROR, 
-			  "Could not write to file %s/%s"%(self.html_dir, 
+		Trace.log(e_errors.ERROR,
+			  "Could not write to file %s/%s"%(self.html_dir,
 							 enstore_constants.OUTAGEFILE))
+
 	else:
 	    # file was not opened, maybe a problem with the lock file
 	    ticket["status"] = (e_errors.IOERROR, None)
 	    Trace.log(e_errors.ERROR,
-		      "Could not read file %s/%s"%(self.html_dir, 
+		      "Could not read file %s/%s"%(self.html_dir,
 						   enstore_constants.OUTAGEFILE))
 
     # return a dict of the last alive time for all requested servers.  if we are not
@@ -1583,55 +1614,69 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     last_time[server] = heartbeat_time
         ticket['servers'] = last_time
         return last_time
-        
+
     # return the last time the server heartbeat was received
     def get_last_alive(self, ticket):
+        saved_reply_address = ticket.get('r_a')
         last_time = self.get_last_heartbeat(ticket)
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "return last time server was alive (%s)"%(last_time,))
-        
+
 
     def up(self, ticket):
+        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, UP)
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "mark server up work from user")
 
     def down(self, ticket):
+        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, DOWN)
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "mark server down work from user")
 
     def outage(self, ticket):
+        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, OUTAGE)
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "mark server outage work from user")
 
     def nooutage(self, ticket):
+        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, NOOUTAGE)
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
-        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "mark server nooutage work from user")
 
     def override(self, ticket):
 	self.update_schedule_file(ticket, OVERRIDE)
         self.send_reply(ticket)
-        Trace.trace(enstore_constants.INQWORKDBG, 
+        Trace.trace(enstore_constants.INQWORKDBG,
 		    "mark server override work from user")
 
     def nooverride(self, ticket):
+        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, NOOVERRIDE)
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
-        Trace.trace(enstore_constants.INQWORKDBG, 
+        Trace.trace(enstore_constants.INQWORKDBG,
 		    "mark server nooverride work from user")
 
     def thread_wrapper(self, function, args=(), after_function=None):
+        t = time.time()
         function(args)
         if after_function:
             after_function()
+        Trace.trace(5,"process_request: function %s time %s"%(function.__name__,time.time()-t))
 
     #
     # spawn function in new thread of there is not alive thread with this name
@@ -1676,7 +1721,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             request, client_address = self.get_request()
         except:
             exc, msg = sys.exc_info()[:2]
-             
+
         now=time.time()
 
         for func, time_data in self.interval_funcs.items():
@@ -1692,7 +1737,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         if request is None: #Invalid request sent in
             return
-        
+
         if request == '':
             # nothing returned, must be timeout
             self.handle_timeout()
@@ -1718,11 +1763,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
         Trace.trace(6, "inquisitor:process_request %s; %s"%(request, ticket,))
-        if not ticket:  return
+        if not ticket:
+            return
+        saved_reply_address = ticket.get('r_a')
         try:
             function_name = ticket["work"]
         except (KeyError, AttributeError, TypeError), detail:
-            ticket = {'status' : (e_errors.KEYERROR, 
+            ticket = {'status' : (e_errors.KEYERROR,
                                   "cannot find any named function")}
             msg = "%s process_request %s from %s" % \
                 (detail, ticket, client_address)
@@ -1734,30 +1781,42 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(5,"process_request: function %s"%(function_name,))
             function = getattr(self,function_name)
         except (KeyError, AttributeError, TypeError), detail:
-            ticket = {'status' : (e_errors.KEYERROR, 
+            ticket = {'status' : (e_errors.KEYERROR,
                                   "cannot find requested function `%s'"
                                   % (function_name,))}
             msg = "%s process_request %s %s from %s" % \
-                (detail, ticket, function_name, client_address) 
+                (detail, ticket, function_name, client_address)
             Trace.trace(6, msg)
             Trace.log(e_errors.ERROR, msg)
+            ticket['r_a'] = saved_reply_address
             self.reply_to_caller(ticket)
             return
         # call the user function
-        t = time.time()
 	c = threading.activeCount()
 	Trace.trace(5, "threads %s"%(c,))
 	if c < self.max_threads:
 	    Trace.trace(5, "threads %s"%(c,))
 	    self.run_in_thread(function, (ticket,), after_function=self._done_cleanup)
 	else:
+            t = time.time()
 	    function(ticket)
-        Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
- 
+            Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
+
     def show(self, ticket):
+        saved_reply_address = ticket.get('r_a')
 	ticket["status"] = (e_errors.OK, None)
-        sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
-	dfile, seen_down_d = enstore_files.read_seen_down_file(self.html_dir)
+        (sfile, outage_d, offline_d, override_d)=(None,None,None,None)
+        self.rw_lock.acquire_read()
+        try:
+            sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
+        finally:
+            self.rw_lock.release_read()
+        (dfile, seen_down_d) = (None,None)
+        self.rw_lock.acquire_read()
+        try:
+            dfile, seen_down_d = enstore_files.read_seen_down_file(self.html_dir)
+        finally:
+            self.rw_lock.release_read()
 	if sfile and ((sfile.opened != 0) or (sfile.exists() == 0)):
 	    ticket["outage"] = outage_d
 	    ticket["offline"] = offline_d
@@ -1765,15 +1824,16 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	else:
 	    ticket["status"] = (e_errors.IOERROR, None)
 	    Trace.log(e_errors.ERROR,
-		      "Could not read file %s/%s"%(self.html_dir, 
+		      "Could not read file %s/%s"%(self.html_dir,
 						   enstore_constants.OUTAGEFILE))
 	if dfile and ((dfile.opened != 0) or (dfile.exists() == 0)):
 	    ticket["seen_down"] = seen_down_d
         else:
 	    ticket["status"] = (e_errors.IOERROR, None)
 	    Trace.log(e_errors.ERROR,
-		      "Could not read file %s/%s"%(self.html_dir, 
+		      "Could not read file %s/%s"%(self.html_dir,
 						   enstore_constants.SEENDOWNFILE))
+        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "show up/down status work from user")
@@ -1789,7 +1849,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         event_relay_messages.ENCPXFER], self.resubscribe_rate)
 
         # start our heartbeat to the event relay process
-        self.erc.start_heartbeat(enstore_constants.INQUISITOR, 
+        self.erc.start_heartbeat(enstore_constants.INQUISITOR,
                                  self.inquisitor.alive_interval)
         rcv_timeout = 5
         self.our_heartbeat = time.time()
@@ -1805,11 +1865,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # check if we have been signalled to exit
 		if self.exit_now_event.isSet():
                     self.erc.unsubscribe()
-		    enstore_functions.inqTrace(enstore_constants.INQERTHREAD, 
+		    enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
 					       "Exiting er read thread")
 		    return
                 if self.er_subscribe_event.isSet():
-		    enstore_functions.inqTrace(enstore_constants.INQERTHREAD, 
+		    enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
 					       "Resubscribing to event relay")
                     self.erc.subscribe()
                     self.er_subscribe_event.clear()
@@ -1827,7 +1887,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     if msg.type == event_relay_messages.ALIVE and \
                            not msg.server == self.inquisitor.name:
                         enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
-                                       "received event relay message type %s (%s)"%(msg.type, 
+                                       "received event relay message type %s (%s)"%(msg.type,
                                                                                     msg.server))
                         #enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
                         #                           "thread acquiring lock")
@@ -1857,11 +1917,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # Dmitry commented out the lines below so we do not see alarms in alarm page
                 #
 		#self.serve_forever_error(self.log_name+"ERRT")
-        
+
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
-    def __init__(self, csc, html_file="", update_interval=NOVALUE, alive_rcv_to=NOVALUE, 
+    def __init__(self, csc, html_file="", update_interval=NOVALUE, alive_rcv_to=NOVALUE,
                  alive_retries=NOVALUE, max_encp_lines=NOVALUE, refresh=NOVALUE, max_threads=NOVALUE):
 	global server_map
 	InquisitorMethods.__init__(self)
@@ -1894,27 +1954,27 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
         self.server_d = {enstore_constants.INQUISITOR : self.inquisitor}
         self.got_from_cmdline = {}
-        # if no interval to do updates was entered on the command line, get it from the 
+        # if no interval to do updates was entered on the command line, get it from the
         # configuration file.
         self.update_interval = self.get_value('update_interval', update_interval)
 
-        # if no alive timeout was entered on the command line, get it from the 
+        # if no alive timeout was entered on the command line, get it from the
         # configuration file.
         self.alive_rcv_timeout = self.get_value('alive_rcv_timeout', alive_rcv_to)
 
-        # if no alive retry # was entered on the command line, get it from the 
+        # if no alive retry # was entered on the command line, get it from the
         # configuration file.
         self.alive_retries = self.get_value('alive_retries', alive_retries)
 
-        # if no max number of encp lines was entered on the command line, get 
+        # if no max number of encp lines was entered on the command line, get
         # it from the configuration file.
         self.max_encp_lines = self.get_value('max_encp_lines', max_encp_lines)
-        # get max thread count 
+        # get max thread count
         self.max_threads = self.get_value('max_threads', max_threads)
 
         # get the keys that are associated with the web information
         self.www_server = self.config_d.get(enstore_constants.WWW_SERVER, {})
-	server_map["media"] = self.www_server.get(www_server.MEDIA_TAG, 
+	server_map["media"] = self.www_server.get(www_server.MEDIA_TAG,
 						  www_server.MEDIA_TAG_DEFAULT)
 
 	# get the thresholds which determine when we need an extra web page or two
@@ -1944,19 +2004,19 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             if not refresh:
                 refresh = DEFAULT_REFRESH
 
-        self.system_tag = self.www_server.get(www_server.SYSTEM_TAG, 
+        self.system_tag = self.www_server.get(www_server.SYSTEM_TAG,
                                               www_server.SYSTEM_TAG_DEFAULT)
 
         # these are the files to which we will write, they are html files
-        self.serverfile = enstore_files.HTMLStatusFile(html_file, refresh, 
-						       self.system_tag, 
+        self.serverfile = enstore_files.HTMLStatusFile(html_file, refresh,
+						       self.system_tag,
 						       self.page_thresholds)
         self.encpfile = enstore_files.HTMLEncpStatusFile(encp_file, refresh,
                                                          self.system_tag)
         self.logfile = enstore_files.HTMLLogFile(self.logc.log_dir,
                                                  LOGHTMLFILE_NAME,
                                                  self.html_dir, self.system_tag)
-        self.configfile = enstore_files.HTMLConfigFile(config_file, 
+        self.configfile = enstore_files.HTMLConfigFile(config_file,
                                                        self.system_tag)
 
         cdict = self.config_d.get(enstore_constants.ALARM_SERVER, {})
@@ -2002,7 +2062,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         for key in self.config_d.keys():
             self.add_new_server(key, self.config_d)
 
-        dispatching_worker.DispatchingWorker.__init__(self, 
+        dispatching_worker.DispatchingWorker.__init__(self,
                                                       (self.inquisitor.hostip,
                                                        self.inquisitor.port))
 
@@ -2032,7 +2092,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             self.mark_no_info(self.server_d[server])
         self.mark_event_relay(NO_INFO_YET)
 
-        # update the config page    
+        # update the config page
         self.update_config_page(self.config_d)
 
         # update the encp page
@@ -2105,7 +2165,7 @@ class InquisitorInterface(generic_server.GenericServerInterface):
                         option.USER_LEVEL:option.ADMIN,
                         },
         }
-    
+
     def valid_dictionaries(self):
         return generic_server.GenericServerInterface.valid_dictionaries(self)+\
                (self.inquisitor_options, self.alive_rcv_options)
@@ -2120,13 +2180,13 @@ if __name__ == "__main__":
     intf = InquisitorInterface()
 
     # get the inquisitor
-    inq = Inquisitor((intf.config_host, intf.config_port), 
+    inq = Inquisitor((intf.config_host, intf.config_port),
                      intf.html_file, intf.update_interval,
                      intf.alive_rcv_timeout, intf.alive_retries,
                      intf.max_encp_lines,intf.refresh)
 
     if inq.startup_state == e_errors.TIMEDOUT:
-        enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+        enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 		 "Inquisitor TIMED OUT when contacting %s"%(inq.startup_text,))
     else:
         inq.handle_generic_commands(intf)
@@ -2136,7 +2196,7 @@ if __name__ == "__main__":
                 Trace.log(e_errors.INFO, "Inquisitor (re)starting")
                 inq.serve_forever()
             except SystemExit, exit_code:
-                # we need to update the inquisitor page to show that the inquisitor 
+                # we need to update the inquisitor page to show that the inquisitor
                 # is not running, then exit fer sure.
                 inq.update_exit(exit_code)
             except:
@@ -2144,5 +2204,5 @@ if __name__ == "__main__":
                 inq.serve_forever_error(inq.log_name)
                 inq.do_dump()
             continue
-    enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
+    enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
 			       "Inquisitor finished (impossible)")
