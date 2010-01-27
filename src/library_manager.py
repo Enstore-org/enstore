@@ -562,15 +562,12 @@ class AtMovers:
         # look in the list of work_at_movers
         Trace.trace(self.trace_level+3,"busy_volumes: sg_vf %s" % (self.sg_vf,))
         for rec in self.sg_vf.vf[volume_family_name]:
+            # self.sg_vf.vf[volume_family_name] is a tuple: (volume, mover)
             vols.append(rec[1])
             if self.at_movers.has_key(rec[0]):
                 Trace.trace(self.trace_level+3,"busy_volumes: vol info %s" % (self.at_movers[rec[0]],))
                 if self.at_movers[rec[0]]['volume_status'][0][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
                     continue
-                #if ((self.at_movers[rec[0]]['volume_status'][0][1] == 'none') and
-                #    (self.at_movers[rec[0]]['state'] in ('IDLE', 'ACTIVE','SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT'))):
-                Trace.trace(self.trace_level+3,"busy_volumes: status %s" % (self.at_movers[rec[0]]['volume_status'][0],))
-                
                 if self.at_movers[rec[0]]['volume_status'][0][1] == 'none':
                     # system inhibit
                     # if volume can be potentially written increase number
@@ -1000,8 +997,6 @@ class LibraryManagerMethods:
     # write request
     def busy_volumes(self, volume_family_name):
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(volume_family_name)
-        #vol_veto_list = []
-        #wr_en = 0
         # look in the list of work_at_movers
         for w in self.work_at_movers.list:
             Trace.trace(self.trace_level+1, 'busy_volumes: w %s %s'%(w["vc"], w["fc"]))
