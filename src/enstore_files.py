@@ -945,7 +945,7 @@ class SeenDownFile(EnFile):
 
     def read(self):
         try:
-            self.open('r')
+            EnFile.open(self, 'r')
             if self.openfile:
                 code=string.join(self.openfile.readlines(),'')
                 exec(code)
@@ -958,7 +958,7 @@ class SeenDownFile(EnFile):
         except:
             # can't find the module
             seen_down_d = {}
-        self.close()
+        EnFile.close()
         return seen_down_d
 
     # turn the dictionary into python code to be written out to the file
