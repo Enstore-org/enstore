@@ -958,7 +958,7 @@ class SeenDownFile(EnFile):
         except:
             # can't find the module
             seen_down_d = {}
-        EnFile.close()
+        EnFile.close(self)
         return seen_down_d
 
     # turn the dictionary into python code to be written out to the file
