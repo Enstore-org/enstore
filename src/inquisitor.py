@@ -41,7 +41,7 @@ import volume_family
 import option
 import cleanUDP
 import udp_server
-import enstore_locks
+import read_write_condition_variable
 
 server_map = {"log_server" : enstore_constants.LOGS,
 	      "alarm_server" : enstore_constants.ALARMS,
@@ -209,7 +209,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.name = MY_NAME
 	self.html_dir = None
         self.er_lock = threading.Lock()
-        self.rw_lock = enstore_locks.ReadWriteLock()
+        self.rw_lock = read_write_condition_variable.ReadWriteConditionVariable()
         self.max_threads=MAX_THREADS
 
     def get_server(self, name):
@@ -1389,10 +1389,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # our client said to update the enstore system status information
     def update(self, ticket):
-        saved_reply_address = ticket.get('r_a')
         self.periodic_tasks(USER)
         ticket["status"] = (e_errors.OK, None)
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "update work from user")
@@ -1411,22 +1409,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # spill our guts
     def dump(self, ticket):
-        saved_reply_address = ticket.get('r_a')
         ticket["status"] = (e_errors.OK, None)
         self.do_dump()
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "dump work from user")
 
     # set the timeout for the periodic_tasks function
     def set_update_interval(self,ticket):
-        saved_reply_address = ticket.get('r_a')
         ticket["status"] = (e_errors.OK, None)
         self.update_interval = ticket["update_interval"]
         self.remove_interval_func(self.periodic_tasks)
         self.add_interval_func(self.periodic_tasks, self.update_interval)
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "update_interval work from user")
@@ -1617,42 +1611,32 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # return the last time the server heartbeat was received
     def get_last_alive(self, ticket):
-        saved_reply_address = ticket.get('r_a')
         last_time = self.get_last_heartbeat(ticket)
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "return last time server was alive (%s)"%(last_time,))
 
 
     def up(self, ticket):
-        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, UP)
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "mark server up work from user")
 
     def down(self, ticket):
-        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, DOWN)
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "mark server down work from user")
 
     def outage(self, ticket):
-        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, OUTAGE)
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "mark server outage work from user")
 
     def nooutage(self, ticket):
-        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, NOOUTAGE)
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "mark server nooutage work from user")
@@ -1664,9 +1648,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    "mark server override work from user")
 
     def nooverride(self, ticket):
-        saved_reply_address = ticket.get('r_a')
 	self.update_schedule_file(ticket, NOOVERRIDE)
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         Trace.trace(enstore_constants.INQWORKDBG,
 		    "mark server nooverride work from user")
@@ -1765,7 +1747,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(6, "inquisitor:process_request %s; %s"%(request, ticket,))
         if not ticket:
             return
-        saved_reply_address = ticket.get('r_a')
         try:
             function_name = ticket["work"]
         except (KeyError, AttributeError, TypeError), detail:
@@ -1788,7 +1769,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 (detail, ticket, function_name, client_address)
             Trace.trace(6, msg)
             Trace.log(e_errors.ERROR, msg)
-            ticket['r_a'] = saved_reply_address
             self.reply_to_caller(ticket)
             return
         # call the user function
@@ -1803,7 +1783,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
 
     def show(self, ticket):
-        saved_reply_address = ticket.get('r_a')
 	ticket["status"] = (e_errors.OK, None)
         (sfile, outage_d, offline_d, override_d)=(None,None,None,None)
         self.rw_lock.acquire_read()
@@ -1833,7 +1812,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    Trace.log(e_errors.ERROR,
 		      "Could not read file %s/%s"%(self.html_dir,
 						   enstore_constants.SEENDOWNFILE))
-        ticket['r_a'] = saved_reply_address
         self.send_reply(ticket)
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG,
 				   "show up/down status work from user")
