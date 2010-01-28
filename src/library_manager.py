@@ -3377,6 +3377,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         mticket['volume_family'] =  w['vc']['volume_family']
         mticket['unique_id'] =  w['unique_id']
         mticket['status'] =  (e_errors.OK, None)
+        mticket['state'] = 'SETUP'
+        
         # update volume status
         # get it directly from volume clerk as mover
         # in the idle state does not have it
@@ -3647,6 +3649,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 
             mticket['volume_family'] = w['vc']['volume_family']
             mticket['unique_id'] = w['unique_id']
+            mticket['state'] = 'SETUP'
             Trace.trace(self.my_trace_level,"mover_bound_volume: mover %s label %s vol_fam %s" %
                         (mticket['mover'], mticket['external_label'],
                          mticket['volume_family']))
