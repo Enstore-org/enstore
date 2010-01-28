@@ -177,6 +177,7 @@ def set_max_buffer():
         if mem_total:
             MAX_BUFFER = mem_total - GB
 
+set_max_buffer() # run it here
 
 def get_transfer_notify_threshold(bytes_to_transfer):
     if TRANSFER_THRESHOLD * 5 > bytes_to_transfer:
@@ -7503,7 +7504,6 @@ if __name__ == '__main__':
     if len(sys.argv)<2:
         sys.argv=["python", "null.mover"] #REMOVE cgw
     # get an interface, and parse the user input
-    set_max_buffer()
     intf = MoverInterface()
     csc  = configuration_client.ConfigurationClient((intf.config_host,
                                                      intf.config_port) )
