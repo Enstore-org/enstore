@@ -129,7 +129,7 @@ def mode_name(mode):
     else:
         return ['READ','WRITE','ASSERT'][mode]
 
-#KB=1L<<10
+KB=1L<<10
 MB=1L<<20
 GB=1L<<30
 
@@ -141,26 +141,27 @@ TRANSFER_THRESHOLD = 2*1024*1024
 # for 32 bit architecture maximal process size is 4 GB
 # so maximal buffer size can not be bigger than this value
 # practice shows that the safe size should be 2.5 GB
-MAX_BUFFER=2500*MB
+MAX_BUFFER = 2500*MB
 
 
 
 # set MAX_BUFFER
 def set_max_buffer():
+    global MAX_BUFFER
     if platform.architecture()[0].find("32") != -1:
         # 32 - bit python
         # maximal allowed buffer size
         # for 32 bit architecture maximal process size is 4 GB
         # so maximal buffer size can not be bigger than this value
         # practice shows that the safe size should be 2.5 GB
-        MAX_BUFFER=2500*MB
+        MAX_BUFFER = 2500*MB
     else:
         # 64 - bit python
         # set it to something reasonable
         # get total memory from /proc/meminfo
         res = enstore_functions2.shell_command("cat /proc/meminfo | grep MemTotal")
         if res:
-            r = res.split(" ")
+            r = res[0].split(" ")
             # the returned string looks like:
             # 'MemTotal:      1024980 kB\n'
             del(r[0]) # MemTotal:
@@ -170,7 +171,7 @@ def set_max_buffer():
                 else:
                     break
 
-            mem_total = long(r[0])
+            mem_total = long(r[0])*KB
         else:
             mem_total = None
         if mem_total:
@@ -1268,7 +1269,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.restart_unlock()
 
-        Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
+        Trace.log(e_errors.INFO, "starting mover %s. MAX_BUFFER=%s MB" % (self.name, MAX_BUFFER/MB))
         
         self.config['device'] = os.path.expandvars(self.config['device'])
         self.state = IDLE
