@@ -17,14 +17,14 @@ class ReadWriteLock:
     def acquire_read(self):
         self.__read_ready.acquire()
         try:
-            self.__readers += 1
+            self.__readers = self.__readers + 1
         finally:
             self.__read_ready.release()
 
     def release_read(self):
         self.__read_ready.acquire()
         try:
-            self.__readers -= 1
+            self.__readers = self.__readers - 1
             if not self.__readers:
                 self.__read_ready.notifyAll()
         finally:
