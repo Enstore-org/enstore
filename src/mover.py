@@ -1387,6 +1387,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ## (e.g. Mammoth-1) to have trouble spacing to end-of-media.
         self.single_filemark=self.config.get('single_filemark', 0)
         self.memory_debug = self.config.get('memory_debug', 0)
+        self.exp_time_factor = self.config.get('expected_time_factor', 50)
             
         self.check_written_file_period = self.config.get('check_written_file', 0)
         self.files_written_cnt = 0
@@ -1806,15 +1807,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ## skip sending lm _update
                     ## to allow network thread to complete
                     return
-                
-                Trace.alarm(e_errors.ALARM,
-                            "Net thread is running in the state %s. Will restart the mover"%
-                            (state_name(self.state),))
-                if self.state == HAVE_BOUND:
-                    self.run_in_thread('media_thread', self.dismount_volume, after_function=self.send_error_and_restart)
-                    #self.dismount_volume(after_function=self.restart)
-                else:
-                    self.restart()
+                if not hasattr(self,'restarting'):
+                    Trace.alarm(e_errors.ALARM,
+                                "Net thread is running in the state %s. Will restart the mover"%
+                                (state_name(self.state),))
+                    if self.state == HAVE_BOUND:
+                        self.run_in_thread('media_thread', self.dismount_volume, after_function=self.send_error_and_restart)
+                        #self.dismount_volume(after_function=self.restart)
+                    else:
+                        self.restart()
+                    self.restarting = True # set it to whatever
                 return
             elif t_thread and t_thread.isAlive():
                 if t_in_state <= 1:
@@ -1845,11 +1847,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             time_in_state = int(now - self.state_change_time)
             if not hasattr(self,'time_in_state'):
                 self.time_in_state = 0
-            Trace.trace(88, "time in state %s %s %s"%(time_in_state,self.time_in_state,self.state_change_time))
+            Trace.trace(88, "time in state %s %s %s %s"%
+                        (time_in_state,self.time_in_state,self.max_time_in_state, self.state_change_time))
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
                 (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
                 if self.state == ACTIVE:
-                    self.too_long_in_state_sent = 0 # set this to avoid sending a false alarm
                     transfer_stuck = 0 
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
                     if self.bytes_read_last == self.bytes_read:
@@ -1865,7 +1867,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                             # the data into the buffer and finished
                             # (buffer is bigger than file size)
                             transfer_stuck = 1
-                            del(self.too_long_in_state_sent)
+                            if hasattr(self,'too_long_in_state_sent'):
+                                del(self.too_long_in_state_sent)
                     else:
                         return
                             
@@ -2195,11 +2198,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.ENCP_GONE, msg, error_source=NETWORK)
                 return
             Trace.trace(134, "read_client: bytes read %s"%(bytes_read,))
+            
             if bytes_read <= 0:  #  The client went away!
-                Trace.log(e_errors.ERROR, "read_client: dropped connection")
-                #if self.state is not DRAINING: self.state = HAVE_BOUND
-                # if state is DRAINING transfer_failed will set it to OFFLINE
-                self.transfer_failed(e_errors.ENCP_GONE, error_source=NETWORK)
+                if bytes_read == 0:
+                    reason = "read timed out"
+                else:
+                    reason = "dropped connection"
+                message = "read_client: %s"%(reason,)
+                self.transfer_failed(e_errors.ENCP_GONE, msg=message, error_source=NETWORK)
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
@@ -2217,6 +2223,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                               last_notify_time))
                 
         if self.tr_failed:
+            driver.close()
             return
         if self.bytes_read == self.bytes_to_read:
             if self.trailer:
@@ -2224,12 +2231,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 trailer_bytes_read = 0
                 while trailer_bytes_read < self.buffer.trailer_size:
                     if self.tr_failed:
+                        driver.close()
                         break
                     bytes_to_read = self.buffer.trailer_size - trailer_bytes_read
                     bytes_read = self.buffer.stream_read(bytes_to_read, trailer_driver)
                     trailer_bytes_read = trailer_bytes_read + bytes_read
                     Trace.trace(8, "read %s bytes of trailer" % (trailer_bytes_read,))
             if self.tr_failed:
+                driver.close()
                 return
             self.buffer.eof_read() #pushes last partial block onto the fifo
             self.buffer.write_ok.set()
@@ -2395,6 +2404,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                             self.too_long_in_state_sent = 0 # send alarm just once
                         else:
                             return
+                    Trace.log(e_errors.INFO, "write:now %s t %s max %s empty %s defer %s br %s btr %s"%
+                              (now, buffer_empty_t,
+                               self.max_time_in_state, empty,
+                               defer_write,self.bytes_read, self.bytes_to_read)) #!!! REMOVE WHEN PROBLEM is fixed
                     buffer_empty_t = now
                     Trace.trace(9, "buf empty cnt %s max %s"%(buffer_empty_cnt, self.max_in_state_cnt))
                     if buffer_empty_cnt >= self.max_in_state_cnt:
@@ -2916,6 +2929,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         t_started = time.time()
         idle_time = 0. # accumulative time when not reading
         break_here = 0
+        network_slow = False
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             loop_start = time.time()
             Trace.trace(133,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
@@ -2935,17 +2949,28 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.read_ok.clear()
                 self.buffer.read_ok.wait(1)
                 now = time.time()
-                if (int(now - buffer_full_t) > self.max_time_in_state) and int(buffer_full_t) > 0:
+                Trace.trace(9, "read_tape: time in state %s max %s, bf %s sent %s bf_c %s m_c %s" %
+                            (int(now - buffer_full_t), self.max_time_in_state,
+                             int(buffer_full_t),hasattr(self,'too_long_in_state_sent'),
+                             buffer_full_cnt, self.max_in_state_cnt))
+
+                if self.time_in_state > self.exp_time_factor * self.expected_transfer_time:
+                    # expected transfer time is the file size / drive rate
+                    # drive rate is comparable with network rate
+                    # factor of 10 should be enough yet reasonable
+                    network_slow = True
+                
+                if (((int(now - buffer_full_t) > self.max_time_in_state) and int(buffer_full_t) > 0) or
+                    network_slow):
                     if not hasattr(self,'too_long_in_state_sent'):
                         if not self.state == ERROR:
                             Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
                                         (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
-                            Trace.log(e_errors.INFO, "read:now %s t %s max %s"%(now, buffer_full_t,self.max_time_in_state)) #!!! REMOVE WHEN PROBLEM is fixed
                             self.too_long_in_state_sent = 0 # send alarm just once
                         else:
                             return
                     buffer_full_t = now
-                    if buffer_full_cnt >= self.max_in_state_cnt:
+                    if (buffer_full_cnt >= self.max_in_state_cnt) or network_slow:
                         msg = "data transfer to client stuck. Client host %s. Breaking connection"%(self.current_work_ticket['wrapper']['machine'][1],)
                         self.read_tape_running = 0
                         self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
@@ -3403,7 +3428,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     failed = 1
                     break
                 if bytes_written != nbytes:
-                    pass #this is not unexpected, since we send with MSG_DONTWAIT
+                    Trace.trace(22, "write_client: !!! bytes written %s bytes to write %s"%(bytes_written, nbytes))
+                    if self.client_socket:
+                        # get netstat for this socket
+                        data_port = self.client_socket.getsockname()[1]
+                        rc = self.shell_command("netstat -t | grep %s"%(data_port,))
+                        Trace.trace(22, "write_client: netstat: %s"%(rc,))
+                    pass                 
                 self.bytes_written = self.bytes_written + bytes_written
                 if not self.buffer.full():
                     self.buffer.read_ok.set()
@@ -3422,10 +3453,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 break
 
         if self.tr_failed:
+            driver.close()
             return
         
         Trace.log(e_errors.INFO, "write_client: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
-        if failed or self.tr_failed: return
+        if failed or self.tr_failed:
+            driver.close() # just in case when it was not closed for some reason
+            return
   
         if self.bytes_written == self.bytes_to_write:
             # check crc
@@ -4361,11 +4395,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             self.transfers_failed = self.transfers_failed + 1
         encp_gone = exc in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK)
-        self.net_driver.close()
-        self.send_client_done(self.current_work_ticket, str(exc), str(msg))
-        if exc == e_errors.MOVER_STUCK:
-            self.log_state(logit=1)
-            broken = exc
 
         save_state = self.state
         # get the current thread
@@ -4374,6 +4403,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             cur_thread_name = cur_thread.getName()
         else:
             cur_thread_name = None
+        if cur_thread_name == 'net_thread':
+            self.net_driver.close()
+
+        self.send_client_done(self.current_work_ticket, str(exc), str(msg))
+        if exc == e_errors.MOVER_STUCK:
+            self.log_state(logit=1)
+            broken = exc
 
         # if encp is gone there is no need to dismount a tape
         dism_allowed = not encp_gone
@@ -6268,6 +6304,7 @@ class DiskMover(Mover):
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
 
         self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3)
+        self.exp_time_factor = self.config.get('expected_time_factor', 50)
         
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.add_interval_func(self.update_lm, self.update_interval) #this sets the period for messages to LM.

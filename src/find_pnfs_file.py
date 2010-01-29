@@ -20,11 +20,10 @@ import pnfs
 import enstore_functions2
 import enstore_functions3
 import configuration_client
-import info_client
-import file_clerk_client
 import enstore_constants
 import e_errors
 import file_utils
+#info_client or file_clerk_client is imported in get_clerk_client().
 
 #######################################################################
 
@@ -32,13 +31,17 @@ BOTH="BOTH"
 FS="FS"
 NONFS="NONFS"
 
+#If true, use the info_server.  If false, use the file_clerk.
+USE_INFO_SERVER_DEFAULT = False
+
 #pnfsid is a string consisting of a files unique id in PNFS.
 #bfid is a string consisting of a files unique id in Enstore.
 #file_record is file information from the file_clerk's bfid_info() function.
 #use_info_server specifies if the info server or the file clerk should be
 #   used for bfid_info() calls.
 def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
-                     path_type = BOTH, use_info_server=False):
+                     path_type = BOTH,
+                     use_info_server=USE_INFO_SERVER_DEFAULT):
 
     if not pnfs.is_pnfsid(pnfsid):
         raise ValueError("Expected pnfsid not: %s" % (pnfsid,))
@@ -61,23 +64,17 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
     else:
         pnfsid_db = None
 
-    #Get the configuration server and file info server clients.
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host, config_port))
-    flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
-    if use_info_server:
-        #PNFS scans should use the info server.
-        infc = info_client.infoClient(csc, flags=flags)
-    else:
-        #Things like encp and migration should not depend on the info_server.
-        infc = file_clerk_client.FileClient(csc, flags=flags)
-
+    #If we weren't passed a file_record, then we must get it ourselves.
     if not file_record:
+        #Get either the file_clerk_client or the info_client depending
+        # on our needs.
+        infc = get_clerk_client(use_info_server=use_info_server)
         file_record = infc.bfid_info(bfid)
         if not e_errors.is_ok(file_record):
             #ValueError = punt
             raise ValueError("Unable to obtain file information.")
+    else:
+        infc = None  #Make sure this exists, so we can test for it later.
 
     #Extract these values.  'pnfs_path' and 'pnfs_id' correlate if the file
     # record comes from the db directly.  'pnfs_name0' and 'pnfsid' are
@@ -168,6 +165,10 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
         except (OSError, IOError):
             layer1_bfid = None
         if layer1_bfid:
+            #If we haven't needed the file_clerk_client/info_client yet,
+            # get it now.
+            if not infc:
+                infc = get_clerk_client(use_info_server=use_info_server)
             #Make sure this is the correct file or copy thereof.
             if layer1_bfid == file_record['bfid'] or \
                    layer1_bfid == \
@@ -578,3 +579,21 @@ def replaced_error_string(layer1_bfid, bfid):
         return "replaced with newer file"
     else:
         return "replaced with another file"
+
+
+def get_clerk_client(use_info_server=USE_INFO_SERVER_DEFAULT):
+    #Get the configuration server and file info server clients.
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host, config_port))
+    flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
+    if use_info_server:
+        #PNFS scans should use the info server.
+        import info_client
+        infc = info_client.infoClient(csc, flags=flags)
+    else:
+        import file_clerk_client
+        #Things like encp and migration should not depend on the info_server.
+        infc = file_clerk_client.FileClient(csc, flags=flags)
+
+    return infc

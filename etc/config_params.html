@@ -115,6 +115,37 @@ corresponding server when generating the SAAG page, and will not use
 
 </tr>
 
+<tr><td><a
+	   NAME="mover_port">mover_port</a></td><td>Movers will
+	      communucate with library manager
+	      on this port if specified.
+	      </td>
+	   <td>Optional</td><td>None</td>
+
+</tr>
+<tr><td><a
+	   NAME="encp_port">encp_port</a></td><td>Clents (encp) will
+	      communucate with library manager
+	      on this port if specified.
+	      </td>
+	   <td>Optional</td><td>None</td>
+
+</tr>
+<tr><td><a
+	   NAME="use_raw_input">use_raw_input</a></td><td>Use buffer to
+	      pull out requests from UDP buffer as fast as possible.
+	      </td>
+	   <td>Optional</td><td>False</td>
+
+</tr>
+<tr><td><a
+	   NAME="use_threads">use_threads</a></td><td>Use separate
+	      threads for data client (encp), mover and all other clients.
+	      </td>
+	   <td>Optional</td><td>False</td>
+
+</tr>
+use_threads
 
 </table>
  
@@ -326,6 +357,13 @@ state. Default - do not restart</td>
 <tr><td><a
 		NAME="blank_error_increment">blank_error_increment</a></td><td>Sometimes ftt returns FTT_EBLANK for not blank tapes. To allow a tape to be in a pool and not to go to NOACCESS.</td>
 	   <td>Optional</td><td>5</td>
+
+</tr>
+<tr><td><a
+	NAME="expected_time_factor">expected_time_factor</a></td><td>If time in
+	state is more expected_time_factor * expected_transfer_time -
+	      break connection. Applies only for read requests.</td>
+	   <td>Optional</td><td>50</td>
 
 </tr>
 </table>
@@ -833,7 +871,7 @@ Uses only general keys (along with database keys which are the same
 <p>  
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Tue May 27 10:47:15 CDT 2008
+Last modified: Mon Jan 25 17:03:02 CST 2010
 <!-- hhmts end -->
   </body>
 </html>
