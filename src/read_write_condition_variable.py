@@ -51,6 +51,3 @@ class ReadWriteConditionVariable:
     def release_write(self):
         self.__read_ready.release()
 
-
-if __name__ == "__main__" :
-    print "Hi"
