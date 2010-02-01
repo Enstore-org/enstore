@@ -34,6 +34,8 @@ then
     if [ "${rc}" != "0" ];
     then
 	echo "enstore alarm --raise --root_error 'remedy_soap api call failed' --severity E"|at now+1min
+    else
+	exit 0
     fi
 else
     echo "enstore alarm --raise --root_error 'remedy_soap product missing or not current' --severity E"|at now+1min
