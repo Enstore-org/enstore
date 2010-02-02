@@ -1,6 +1,6 @@
 [create_entry]
-johndoefirst=cd-srv
-johndoeLast=bridge
+johndoefirst=ENStore
+johndoeLast=System
 assigntogroup=Storage Service
 Categorization_Tier_1=
 Categorization_Tier_2=
