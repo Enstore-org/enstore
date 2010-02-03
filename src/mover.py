@@ -161,7 +161,7 @@ def set_max_buffer():
         # get total memory from /proc/meminfo
         mem_total=None
         f = open('/proc/meminfo','r')
-        for line f.readlines():
+        for line in f.readlines():
             if not line:
                 break
             if line.startswith("MemTotal:"):
