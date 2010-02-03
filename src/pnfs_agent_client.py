@@ -407,17 +407,6 @@ class PnfsAgentClient(generic_client.GenericClient,
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    # modify the ownership of the target
-    def p_chown(self, uid, gid, filename, rcv_timeout=RCV_TIMEOUT,
-                tries=RCV_TRIES):
-        ticket = { 'work' : 'chown',
-                   'fname' : filename,
-                   'uid' : uid,
-                   'gid' : gid,
-                   }
-        ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
-        return ticket
-
     # create a new file or update its times
     def p_touch(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'touch',
@@ -636,13 +625,6 @@ class PnfsAgentClient(generic_client.GenericClient,
     def chmod(self, mode, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_chmod(mode, filename, rcv_timeout=rcv_timeout,
                                     tries=tries)
-        if not e_errors.is_ok(reply_ticket):
-            self.raise_exception(reply_ticket)
-
-    def chown(self, uid, gid, filename, rcv_timeout=RCV_TIMEOUT,
-              tries=RCV_TRIES):
-        reply_ticket = self.p_chown(uid, gid, filename,
-                                    rcv_timeout=rcv_timeout, tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
 
