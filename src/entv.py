@@ -95,8 +95,8 @@ def entv_client_version():
 #Re-exec() entv.  It is hosed.
 def restart_entv():
     Trace.trace(0, "Starting new entv process.")
-    #import traceback
-    #traceback.print_stack()
+    import traceback
+    traceback.print_stack()
     os.execv(sys.argv[0], sys.argv)
 
 def to_restart_entv_alarm_signal_handler(sig, frame):
@@ -108,9 +108,12 @@ def to_restart_entv_alarm_signal_handler(sig, frame):
     for display in displays:
         time_passed = time.time() - display.last_message_processed
         if time_passed > TEN_MINUTES:
-            message = "Seconds passed since last message: %s\n" \
-                      "Restarting entv." % (time_passed,)
-            Trace.trace(0, message, out_fp=sys.stderr)
+            try:
+                sys.stderr.write("Seconds passed since last message: %s\n" %
+                                 (time_passed),)
+                sys.stderr.flush()
+            except IOError:
+                pass
             restart_entv()
             
     signal.alarm(TEN_MINUTES)
@@ -488,8 +491,7 @@ def set_entvrc(display, address):
             #If the file exists but still failed to open (ie permissions)
             # then skip this step.
             if msg.errno != errno.ENOENT:
-                Trace.trace(1, "Unable to open .entvrc file: %s" % (str(msg),),
-                            out_fp=sys.stderr)
+                Trace.trace(1, str(msg))
                 return
             #But if it simply did not exist, then prepare to create it.
             else:
@@ -561,8 +563,7 @@ def set_entvrc(display, address):
         entv_file.close()
                   
     except (IOError, IndexError, OSError), msg:
-        Trace.trace(1, "Error writing .entvrc file: %s" % (str(msg),),
-                    out_fp=sys.stderr)
+        Trace.trace(1, str(msg))
         pass #If the line isn't there to begin with don't change anything.
 
 #########################################################################
@@ -870,25 +871,6 @@ def destroy_display_panel(display):
 # The following functions start functions in new threads.
 #########################################################################
 
-#Wrapper function called from start_messages_thread() that allows for
-# thread tracebacks to be reported.
-def __func_smt_wrapper(function, args):
-    try:
-        apply(function, args)
-    except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except:
-        exc, msg = sys.exc_info()[:2]
-        import traceback
-        traceback.print_tb(sys.exc_info()[2])
-        #Report on the error.
-        try:
-            message = "Error in network thread for %s: (%s, %s)\n"
-            sys.stderr.write(message % (args[1], str(exc), str(msg)))
-            sys.stderr.flush()
-        except IOError:
-            pass
-
 def start_messages_thread(csc_addr, system_name, intf):
     global messages_threads
 
@@ -898,14 +880,9 @@ def start_messages_thread(csc_addr, system_name, intf):
         try:
             Trace.trace(1, "Creating thread for %s." % (system_name,))
             sys.stdout.flush()
-            #new_thread = threading.Thread(
-            #    target = handle_messages,
-            #    args = (csc_addr, system_name, intf),
-            #    name = system_name,
-            #    )
             new_thread = threading.Thread(
-                target = __func_smt_wrapper,
-                args = (handle_messages, (csc_addr, system_name, intf)),
+                target = handle_messages,
+                args = (csc_addr, system_name, intf),
                 name = system_name,
                 )
             new_thread.start()
@@ -971,16 +948,14 @@ def send_mover_request(csc, send_request_dict, mover_name, u, count = 0):
     
     #Get the message, mover name and mover network address
     # for sending the status request.
-    mover_conf_dict = csc.get(mover_name, timeout=5, retry=6)
-    m_addr = mover_conf_dict.get('hostip', None)
-    m_port = mover_conf_dict.get('port', None)
+    m_addr = csc.get(mover_name, timeout=5, retry=6).get('hostip', None)
+    m_port = csc.get(mover_name, timeout=5, retry=6).get('port', None)
     if not m_addr or not m_port:
         return
 
     message = {'work' : 'status'}
     mover_system_name = mover_name.split(".")[0]
     tx_id = u.send_deferred(message, (m_addr, m_port))
-    Trace.trace(1, "Sent ID %s to %s." % (tx_id, mover_name))
     send_request_dict[tx_id] = {}
     send_request_dict[tx_id]['name']  = mover_system_name
     send_request_dict[tx_id]['time']  = time.time()
@@ -989,15 +964,13 @@ def send_mover_request(csc, send_request_dict, mover_name, u, count = 0):
 def send_sched_request(csc, send_request_dict, u, count = 0):
 
     #Get the address for sending the scheduled down information request.
-    inquisitor_conf_dict = csc.get('inquisitor', timeout=5, retry=6)
-    i_addr = inquisitor_conf_dict.get('hostip', None)
-    i_port = inquisitor_conf_dict.get('port', None)
+    i_addr = csc.get('inquisitor', timeout=5, retry=6).get('hostip', None)
+    i_port = csc.get('inquisitor', timeout=5, retry=6).get('port', None)
     if not i_addr or not i_port:
         return
 
     message = {'work' : 'show'}
     tx_id = u.send_deferred(message, (i_addr, i_port))
-    Trace.trace(1, "Sent ID %s to inquisitor %s." % (tx_id, (i_addr, i_port)))
     send_request_dict[tx_id] = {}
     send_request_dict[tx_id]['name']  = 'inquisitor'
     send_request_dict[tx_id]['time']  = time.time()
@@ -1125,8 +1098,7 @@ def handle_messages(csc_addr, system_name, intf):
                 event_relay_host = er_addr[0], event_relay_port = er_addr[1])
             retval = erc.start([event_relay_messages.ALL])
             if retval == erc.ERROR:
-                Trace.trace(0, "Could not contact event relay.",
-                            out_fp=sys.stderr)
+                Trace.trace(0, "Could not contact event relay.")
 
             #Get the list of movers that we need to send status requests to.
             movers = get_mover_list(intf, csc, 1)
@@ -1211,19 +1183,10 @@ def handle_messages(csc_addr, system_name, intf):
                 # minutes, let us restart entv.
                 if enstore_display.message_queue.get_time <= \
                        time.time() - TEN_MINUTES:
-                    message = "Display is stuck.  Restarting entv."
-                    Trace.trace(0, message, out_fp=sys.stderr)
                     restart_entv()
-
+                    
                 continue
 
-            # If the display/main thread hasn't done anything in 10
-            # minutes, let us restart entv.
-            if enstore_display.message_queue.len_queue(system_name) > 0 and \
-                   enstore_display.message_queue.last_get_time() <= \
-                   time.time() - TEN_MINUTES:
-                restart_entv()
-                
             commands = []
 
             #Read any status responses from movers or the inquisitor.
@@ -1239,13 +1202,6 @@ def handle_messages(csc_addr, system_name, intf):
                             send_request_dict[tx_id]['name'], mstatus)
 
                         del send_request_dict[tx_id]
-
-                        if mstatus.get('work', None) == "show":
-                            Trace.trace(1, "Recieved ID %s from inquisitor." \
-                                        % (tx_id,))
-                        else:
-                            Trace.trace(1, "Recieved ID %s from mover." \
-                                        % (tx_id,))
                     except (socket.error, select.error,
                             e_errors.EnstoreError):
                         pass
@@ -1272,7 +1228,7 @@ def handle_messages(csc_addr, system_name, intf):
             if erc.sock in readable:
                 msg = enstore_erc_functions.read_erc(erc)
 
-                if msg and not getattr(msg, 'status', None):
+                if msg and not getattr(msg, "status", None):
                     #Take the message from event relay.
                     commands = commands + ["%s %s" % (msg.type,
                                                       msg.extra_info)]
@@ -1280,8 +1236,10 @@ def handle_messages(csc_addr, system_name, intf):
                 ##If read_erc is valid it is a EventRelayMessage instance. If
                 # it gets here it is a dictionary with a status field error.
                 elif getattr(msg, "status", None):
-                    Trace.trace(1, "Event relay error: %s" % (str(msg),),
-                                out_fp=sys.stderr)
+                    Trace.trace(1, msg["status"])
+                    #continue
+                #elif msg == None:
+                #    continue
 
             if not commands:
                 continue
@@ -1839,18 +1797,16 @@ def main(intf):
 
         #Force reclaimation of memory (and other resources) and also
         # report if leaks are occuring.
-        do_restart_entv = cleanup_objects()
+        restart_entv = cleanup_objects()
 
         ### Do we really want a new entv process?  This has the issue of
         ### creating a new top level window which will be created on the
         ### users current desktop, not the one entv was started on.
         #If entv is consuming 50% or more of physical memory, restart
         # the entv process.
-        if continue_working and do_restart_entv:
+        if continue_working and restart_entv:
             #At this point a lot of objects have been unable to be freed.
             # Thus, we should re-exec() the entv process.
-            message = "Restarting entv from excessive memory usage."
-            Trace.trace(0, message, out_fp=sys.stderr)
             restart_entv()
 
         if continue_working:
