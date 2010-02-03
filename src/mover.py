@@ -24,7 +24,6 @@ import fcntl
 import random
 import subprocess
 import copy
-import platform
 
 
 # enstore modules
@@ -129,55 +128,17 @@ def mode_name(mode):
     else:
         return ['READ','WRITE','ASSERT'][mode]
 
-KB=1L<<10
+#KB=1L<<10
 MB=1L<<20
-GB=1L<<30
+#GB=1L<<30
 
 SANITY_SIZE = 65536
 
 #used in the threshold calculation
 TRANSFER_THRESHOLD = 2*1024*1024
 # maximal allowed buffer size
-# for 32 bit architecture maximal process size is 4 GB
-# so maximal buffer size can not be bigger than this value
-# practice shows that the safe size should be 2.5 GB
-MAX_BUFFER = 2500*MB
+MAX_BUFFER=4095*MB
 
-
-
-# set MAX_BUFFER
-def set_max_buffer():
-    global MAX_BUFFER
-    if platform.architecture()[0].find("32") != -1:
-        # 32 - bit python
-        # maximal allowed buffer size
-        # for 32 bit architecture maximal process size is 4 GB
-        # so maximal buffer size can not be bigger than this value
-        # practice shows that the safe size should be 2.5 GB
-        MAX_BUFFER = 2500*MB
-    else:
-        # 64 - bit python
-        # set it to something reasonable
-        # get total memory from /proc/meminfo
-        res = enstore_functions2.shell_command("cat /proc/meminfo | grep MemTotal")
-        if res:
-            r = res[0].split(" ")
-            # the returned string looks like:
-            # 'MemTotal:      1024980 kB\n'
-            del(r[0]) # MemTotal:
-            while True:
-                if r[0] == "":
-                    del(r[0])
-                else:
-                    break
-
-            mem_total = long(r[0])*KB
-        else:
-            mem_total = None
-        if mem_total:
-            MAX_BUFFER = mem_total - GB
-
-set_max_buffer() # run it here
 
 def get_transfer_notify_threshold(bytes_to_transfer):
     if TRANSFER_THRESHOLD * 5 > bytes_to_transfer:
@@ -888,11 +849,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     # execute shell command
     def shell_command(self, command):
-        res = enstore_functions2.shell_command(command)
-        if res:
-            result = res[0] # stdout
-        else:
-            result = None
+        pipeObj = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
+        if pipeObj == None:
+            return None
+        # get stdout
+        result = pipeObj.communicate()[0]
+        del(pipeObj)
         return result 
        
     def init_data_buffer(self):
@@ -1270,7 +1232,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.restart_unlock()
 
-        Trace.log(e_errors.INFO, "starting mover %s. MAX_BUFFER=%s MB" % (self.name, MAX_BUFFER/MB))
+        Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
         self.config['device'] = os.path.expandvars(self.config['device'])
         self.state = IDLE
@@ -7504,6 +7466,7 @@ if __name__ == '__main__':
     if len(sys.argv)<2:
         sys.argv=["python", "null.mover"] #REMOVE cgw
     # get an interface, and parse the user input
+
     intf = MoverInterface()
     csc  = configuration_client.ConfigurationClient((intf.config_host,
                                                      intf.config_port) )

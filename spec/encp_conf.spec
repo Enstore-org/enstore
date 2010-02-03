@@ -1,14 +1,8 @@
 %if %{!?product:1}%{?product:0}
    %define product encp
 %endif
-#rpm with SLF5 (4.4.2.3) has a bug that is causing it to not honor _rpmdir
-# specified on the command line.  So, we pass it rpmdir and assign it to
-# _rpmdir.
-%if %{!?rpmdir:1}%{?rpmdir:0}
-   %define _rpmdir %(echo $ENSTORE_DIR/rpmbuild)
-%else
-   %define _rpmdir %{rpmdir}
-%endif
+
+%define _rpmdir %(echo $ENSTORE_DIR/rpmbuild)
 
 # turn off fascist build flag, so we don't whine about .manifest files
 # etc.
@@ -18,7 +12,7 @@
 #
 # Usual RPM definitions...
 #
-Summary: %{product}-conf as an RPM
+Summary: %{product}-conf as an RPM in %{prefix}
 Release: 1
 Name: %{product}-conf-FNAL
 Version: %{rpmversion}
@@ -46,9 +40,12 @@ Vendor: Fermilab
 
 
 %description
-ENCP config files (FNAL specific)
+ENCP utility
 
 %prep
+echo %{buildroot}
+echo %{_rpmdir}
+echo %{prefix}
 
 %build
 
