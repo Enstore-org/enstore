@@ -160,7 +160,7 @@ def set_max_buffer():
         # set it to something reasonable
         # get total memory from /proc/meminfo
         mem_total=None
-        f = =open('/proc/meminfo','r')
+        f = open('/proc/meminfo','r')
         for line f.readlines():
             if not line:
                 break
