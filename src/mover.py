@@ -129,14 +129,14 @@ def mode_name(mode):
     else:
         return ['READ','WRITE','ASSERT'][mode]
 
-KB=1L<<10
-MB=1L<<20
-GB=1L<<30
+KB=enstore_constants.KB
+MB=enstore_constants.MB
+GB=enstore_constants.GB
 
 SANITY_SIZE = 65536
 
 #used in the threshold calculation
-TRANSFER_THRESHOLD = 2*1024*1024
+TRANSFER_THRESHOLD = 2*MB
 # maximal allowed buffer size
 # for 32 bit architecture maximal process size is 4 GB
 # so maximal buffer size can not be bigger than this value
@@ -159,23 +159,17 @@ def set_max_buffer():
         # 64 - bit python
         # set it to something reasonable
         # get total memory from /proc/meminfo
-        res = enstore_functions2.shell_command("cat /proc/meminfo | grep MemTotal")
-        if res:
-            r = res[0].split(" ")
-            # the returned string looks like:
-            # 'MemTotal:      1024980 kB\n'
-            del(r[0]) # MemTotal:
-            while True:
-                if r[0] == "":
-                    del(r[0])
-                else:
-                    break
-
-            mem_total = long(r[0])*KB
-        else:
-            mem_total = None
+        mem_total=None
+        f = =open('/proc/meminfo','r')
+        for line f.readlines():
+            if not line:
+                break
+            if line.startswith("MemTotal:"):
+                name, mem_total, unit = line.split()
+                break
         if mem_total:
-            MAX_BUFFER = mem_total - GB
+            MAX_BUFFER = long(mem_total) - GB
+        f.close()
 
 set_max_buffer() # run it here
 
