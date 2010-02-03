@@ -71,10 +71,10 @@ quit() {
   if test -w /dev/console -a $quiet -ne 1; then
     echo "$done: $0 $@ ...finished. code=$code" >/dev/console
   fi
-  if [ -f $genAlarm -a $code != 0 ] ; then
+  if [ -f $genAlarm -a $code != 0 ] ; then 
       echo enstore alarm --raise --severity "A" --root-error "$command STAT=$code"
            enstore alarm --raise --severity "A" --root-error "$command STAT=$code"
-  fi
+  fi   
   if [ "$logit" = "yes" ]
   then
       $ENSTORE_DIR/src/log_finish_event.py ${tag} $code
@@ -110,7 +110,7 @@ quit() {
 # multiple -d are allowed, but only the last one is effective
 
 # Sep 5, 2003 Modified again to add -c option
-#
+# 
 # $0 [[-setup product] | [-D VARIABLE=value] | [-p job_name] | [-d dir] | [-c error_count ]* cmd
 #
 # -c error_count will not sent out e-mail alert until contigous number
@@ -134,7 +134,7 @@ products=
 job=
 cwd=`pwd`
 cntlimit=1
-need_enstore="yes"
+need_enstore="no"
 logit="yes"
 
 while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ] || [ $1 = "-need-enstore" ] || [ $1 = "-no-enstore" ] || [ $1 = "-no-log" ]
@@ -238,8 +238,8 @@ echo "$start 10" >> $histogram
 
 #  check if a similar proc is already active
 mkdir $activeFlag 1>/dev/null 2>/dev/null
-if [ $? -ne 0 ] ; then
-   if [ ! -f $noNeg ] ; then
+if [ $? -ne 0 ] ; then 
+   if [ ! -f $noNeg ] ; then 
       quit "" -2 "$logit" "$tag" "keepactive"
    else
       if [ "$logit" = "yes" ]
@@ -258,7 +258,7 @@ then
  	setup ${products}
 fi
 
-# job is enabled and no other ones are still running.
+# job is enabled and no other ones are still running. 
 # delete old output and old possible mail file
 rm -f $procOutput
 rm -f $procMail

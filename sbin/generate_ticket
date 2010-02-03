@@ -12,7 +12,7 @@
 # password    : password to be able to access rememdy ('2p9u6c' for mass storage system)
 # category    : category of ticket ('MSS' for mass storage system)
 # type        : type of error within the category ('STK Enstore' or 'D0 Enstore' or 'CDF Enstore' for MSS)
-# item        : item within the type
+# item        : item within the type 
 #
 
 set -u  # force better programming and ability to use check for not set
@@ -22,27 +22,6 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 remedy_server="csdserver"
 
 . /usr/local/etc/setups.sh
-
-rc=1
-setup remedy_soap
-if [ "$?" = "0" ];
-then
-    export PYTHONPATH=$SETUPS_DIR:$PYTHONPATH
-    CI=`echo $1 | awk '{ printf toupper($1) }'`
-    $REMEDY_SOAP_DIR/bin/create_entry "${CI}" "$2" "$3" "$4"
-    rc=$?
-    if [ "${rc}" != "0" ];
-    then
-	echo "enstore alarm --raise --root_error 'remedy_soap api call failed' --severity E"|at now+1min
-    fi
-else
-    echo "enstore alarm --raise --root_error 'remedy_soap product missing or not current' --severity E"|at now+1min
-fi
-
-#
-# try old api as well. Let's generate two pages....
-#
-
 setup remedy_api
 if [ "$?" = "1" ];
 then

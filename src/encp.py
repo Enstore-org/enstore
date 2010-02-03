@@ -1233,27 +1233,25 @@ def do_layers_exist(pnfs_filename):
 def clear_layers_1_and_4(work_ticket):
 
     if is_read(work_ticket):
-        use_pnfs_filename = work_ticket['infile']
-        report_pnfs_filename = work_ticket['infilepath']
+        pnfs_filename = work_ticket['infile']
     else: #write
-        use_pnfs_filename = work_ticket['outfile']
-        report_pnfs_filename = work_ticket['outfilepath']
+        pnfs_filename = work_ticket['outfile']
     
-    if not use_pnfs_filename:
+    if not pnfs_filename:
         return False
 
-    if not is_pnfs_path(use_pnfs_filename):
+    if not is_pnfs_path(pnfs_filename):
         return False
 
     try:
-        p = Pnfs(use_pnfs_filename)
+        p = Pnfs(pnfs_filename)
 
         Trace.log(e_errors.INFO,
                   "Clearing layers 1 and 4 for file %s (%s)." %
-                  (report_pnfs_filename, work_ticket.get('unique_id', None)))
+                  (pnfs_filename, work_ticket.get('unique_id', None)))
         
-        p.writelayer(1, "", use_pnfs_filename)
-        p.writelayer(4, "", use_pnfs_filename)
+        p.writelayer(1, "", pnfs_filename)
+        p.writelayer(4, "", pnfs_filename)
     except (IOError, OSError):
         return False
 
@@ -2356,17 +2354,7 @@ def check_library(library, e):
         Trace.message(DONE_LEVEL, "LM status: %s" % status_ticket)
 
         return status_ticket
-    except (socket.error, select.error), msg:
-        #On 11-12-2009, tracebacks were found from migration encps that
-        # started failing because there were too many open files while
-        # trying to instantiate client classes.  The socket.error should
-        # have been caught here.  So now it is.
-        status = (e_errors.NET_ERROR, str(msg))
-        if e.check:
-            status_ticket = {'status' : status, 'exit_status' : 2}
-        else:
-            status_ticket = {'status' : status}
-        return status_ticket
+
     
     status_ticket = lmc.get_lm_state(timeout=5, tries=5)
 
@@ -2665,7 +2653,6 @@ def check_server(csc, server_name):
 def clients(intf):
     global __logc
     global __alarmc
-    global __pac
 
     # get a configuration server client
     csc_addr = (getattr(intf, "enstore_config_host",
@@ -2676,12 +2663,6 @@ def clients(intf):
         csc, config = __get_csc(csc_addr)
     except EncpError, msg:
         return {'status' : (msg.type, str(msg))}
-    except (socket.error, select.error):
-        #On 11-12-2009, tracebacks were found from migration encps that
-        # started failing because there were too many open files while
-        # trying to instantiate client classes.  The socket.error should
-        # have been caught here.  So now it is.
-        return {'status' : (e_errors.NET_ERROR, str(msg))}
 
     #Report on the success of getting the csc and logc.
     #Trace.message(CONFIG_LEVEL, format_class_for_print(client['csc'],'csc'))
@@ -2722,14 +2703,6 @@ def clients(intf):
             
             if pnfs_agent_ip and pnfs_agent_port:
                 pnfs_agent_address = (pnfs_agent_ip, pnfs_agent_port)
-                try:
-                    __pac = pnfs_agent_client.PnfsAgentClient(
-                        csc, 'ENCP', server_address=pnfs_agent_address)
-                except (KeyboardInterrupt, SystemExit):
-                    raise sys.exc_info()[0], sys.exc_info()[1], \
-                          sys.exc_info()[2]
-                except:
-                    pass
             elif pnfs_agent_client_requested:
                 return {'status' : (e_errors.PNFS_ERROR,
                                     "PNFS agent not found in configuration.")}
@@ -2749,17 +2722,13 @@ def clients(intf):
         __logc = log_client.LoggerClient(
             csc, 'ENCP', flags = enstore_constants.NO_ALARM,
             server_address = log_server_address)
-    except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except:
+    except SystemExit:
         pass
     try:
         __alarmc = alarm_client.AlarmClient(
             csc, 'ENCP', flags = enstore_constants.NO_LOG,
             server_address = alarm_server_address)
-    except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except:
+    except SystemExit:
         pass
 
     #return client
@@ -3373,7 +3342,6 @@ def tag_check(work_ticket):
 #Prevent null mover requests from proceeding without NULL in the directory
 # path.
 def null_mover_check(work_ticket, e):
-    __pychecker__="unusednames=e"
     csc = get_csc(work_ticket)
     library_name = work_ticket['vc']['library'] + ".library_manager"
     mover_list = csc.get_movers2(library_name)
@@ -5241,11 +5209,8 @@ def mover_handshake_part2(ticket, encp_intf):
 #Wait for the LM to reply that it received the resubmission and also wait for
 # the mover to connect the control socket.  We need to be able to wait for
 # both with the new multi-threaded library manager.
-#
-# Allow get/put to specify their own mover_handshake() function.
 def wait_for_message(listen_socket, lmc, work_list,
-                     transaction_id_list, e, udp_serv = None,
-                     mover_handshake = mover_handshake):
+                     transaction_id_list, e, udp_serv = None):
 
     lmc_socket = lmc.u.get_tsd().socket
 
@@ -5461,12 +5426,6 @@ def submit_one_request_send(ticket, encp_intf):
         ticket['status'] = (e_errors.USERERROR,
               "Unable to locate %s." % (library,))
         return ticket, None, None
-    except (socket.error, select.error), msg:
-        #On 11-12-2009, tracebacks were found from migration encps that
-        # started failing because there were too many open files.  That
-        # socket.error should have been caught here.  So now it is.
-        ticket['status'] = (e_errors.NET_ERROR, str(msg))
-        return ticket, None, None
     #If the lmc is not in a valid state, return an error.
     if lmc.server_address == None:
         ticket['status'] = (e_errors.USERERROR,
@@ -5479,7 +5438,6 @@ def submit_one_request_send(ticket, encp_intf):
           % (filename, transfer_type, ticket['unique_id'],
              ticket['infile'], ticket['outfile'])
     Trace.log(e_errors.INFO, message)
-    Trace.log(TICKET_1_LEVEL, "Sending ticket: %s" % (str(ticket),))
     #Tell the user what the current state of the transfer is.
     message = "Submitting %s %s request to LM.%s" % \
                   (filename, transfer_type, elapsed_string())
@@ -6605,8 +6563,8 @@ def set_outfile_permissions(ticket, encp_intf):
                                "Unable to set permissions: %s" % (str(msg),))
 
             #For root only, if an error hasn't already occured.
-            if (os.getuid() == 0 or os.getgid() == 0) and \
-                   e_errors.is_ok(ticket) and not encp_intf.put_cache:
+            if os.getuid() == 0 and e_errors.is_ok(ticket) and \
+                   not encp_intf.put_cache:
                 try:
                     uid = in_stat_info[stat.ST_UID]
                     gid = in_stat_info[stat.ST_GID]
@@ -6619,13 +6577,10 @@ def set_outfile_permissions(ticket, encp_intf):
                         file_utils.chown(ticket['outfile'], uid, gid)
                     ticket['status'] = (e_errors.OK, None)
                 except OSError, msg:
-                    message = "chown(%s, %s, %s) failed: (uid %s, gid %s, " \
-                              "euid %s, egid %s): %s" % \
-                              (ticket['outfile'], uid, gid, os.getuid(),
-                               os.getgid(), os.geteuid(), os.getegid(),
-                               str(msg))
-                    Trace.log(e_errors.INFO, message)
-                    ticket['status'] = (e_errors.USERERROR, message)
+                    Trace.log(e_errors.INFO, "chown %s failed: %s" % \
+                              (ticket['outfile'], msg))
+                    ticket['status'] = (e_errors.USERERROR,
+                                      "Unable to set owner: %s" % (str(msg),))
 
         message = "Time to set_outfile_permissions: %s sec." % \
                       (time.time() - set_outfile_permissions_start_time,)
@@ -6634,7 +6589,7 @@ def set_outfile_permissions(ticket, encp_intf):
 
 ############################################################################
         
-def finish_request(done_ticket, request_list, index, encp_intf):
+def finish_request(done_ticket, request_list, index):
     #Everything is fine.
     if e_errors.is_ok(done_ticket):
         if index == None:
@@ -6687,7 +6642,8 @@ def finish_request(done_ticket, request_list, index, encp_intf):
 
             #Set completion status to failure.
             done_ticket['completion_status'] = FAILURE
-            #done_ticket['exit_status'] = 1
+            done_ticket['exit_status'] = 1
+            """
             #Encp returns 1 on error, "get" and "put" will return 1 or 2
             # depending on the situation.
             if hasattr(encp_intf, 'put') or hasattr(encp_intf, 'get'):
@@ -6697,6 +6653,12 @@ def finish_request(done_ticket, request_list, index, encp_intf):
                     done_ticket['exit_status'] = 2
             else:
                 done_ticket['exit_status'] = 1
+            """
+
+        #Tell the calling process, this file failed.
+        #get.error_output(done_ticket)
+        #Tell the calling process, of those files not attempted.
+        #get.untried_output(request_list)
 
         return STOP
 
@@ -6711,9 +6673,6 @@ def finish_request(done_ticket, request_list, index, encp_intf):
         Trace.log(e_errors.WARNING, message)
 
         return CONTINUE_FROM_BEGINNING
-
-    ### Should never get here!!!
-    return None
     
 ############################################################################
 
@@ -7891,14 +7850,6 @@ def verify_write_request_consistancy(request_list, e):
                 raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                 {'infilepath' : request['infilepath'],
                                  'outfilepath' : request['outfilepath']})
-            except (socket.error, select.error), msg:
-                #On 11-12-2009, tracebacks were found from migration encps that
-                # started failing because there were too many open files while
-                # trying to instantiate client classes.  The socket.error
-                # should have been caught here.  So now it is.
-                raise EncpError(msg.ars, str(msg), e_errors.NET_ERROR,
-                                {'infilepath' : request['infilepath'],
-                                 'outfilepath' : request['outfilepath']})
             
         if request['outfile'] not in ["/dev/null", "/dev/zero",
                                       "/dev/random", "/dev/urandom"]:
@@ -7915,14 +7866,6 @@ def verify_write_request_consistancy(request_list, e):
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
-                except (socket.error, select.error), msg:
-                    #On 11-12-2009, tracebacks were found from migration encps
-                    # that started failing because there were too many open
-                    # files while trying to instantiate client classes.  The
-                    # socket.error should have been caught here.  So now it is.
-                    raise EncpError(msg.ars, str(msg), e_errors.NET_ERROR,
-                                    {'infilepath' : request['infilepath'],
-                                     'outfilepath' : request['outfilepath']})
             else:
                 #We should only get here when called from read_hsm_file()
                 # or write_hsm_file().  In any case, the file should still
@@ -7936,14 +7879,6 @@ def verify_write_request_consistancy(request_list, e):
                                      'outfilepath' : request['outfilepath']})
                 except OSError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
-                                    {'infilepath' : request['infilepath'],
-                                     'outfilepath' : request['outfilepath']})
-                except (socket.error, select.error), msg:
-                    #On 11-12-2009, tracebacks were found from migration encps
-                    # that started failing because there were too many open
-                    # files while trying to instantiate client classes.  The
-                    # socket.error should have been caught here.  So now it is.
-                    raise EncpError(msg.ars, str(msg), e_errors.NET_ERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
 
@@ -8563,7 +8498,6 @@ def create_write_request(work_ticket, file_number,
 
         #Determine the max resend values for this transfer.
         csc = get_csc()
-
         resend = max_attempts(csc, volume_clerk['library'], e)
 
         #Get these two pieces of information about the local input file.
@@ -9143,8 +9077,7 @@ def prepare_write_to_hsm(tinfo, e):
     # library manager.
     try:
         request_list = create_write_requests(callback_addr, None, e, tinfo)
-    except (OSError, IOError, AttributeError, ValueError, EncpError,
-            socket.error, select.error), msg:
+    except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
         if isinstance(msg, EncpError):
             e_ticket = msg.ticket
             if e_ticket.get('status', None) == None:
@@ -9157,14 +9090,7 @@ def prepare_write_to_hsm(tinfo, e):
                 e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
         elif isinstance(msg, IOError):
             e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
-        elif isinstance(msg, socket.error) or isinstance(msg, select.error):
-            #On 11-12-2009, tracebacks were found from migration encps that
-            # started failing because there were too many open files while
-            # trying to instantiate client classes.  The socket.error should
-            # have been caught here.  So now it is.
-            e_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
         else:
-            #ValueError???
             e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
 
         return e_ticket, listen_socket, udp_serv, []
@@ -9183,13 +9109,6 @@ def prepare_write_to_hsm(tinfo, e):
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket, listen_socket, udp_serv, request_list
-    except (socket.error, select.error), msg:
-        #On 11-12-2009, tracebacks were found from migration encps that
-        # started failing because there were too many open files while
-        # trying to instantiate client classes.  The socket.error should
-        # have been caught here.  So now it is.
-        return {'status' : (e_errors.NET_ERROR, str(msg))}, listen_socket, \
-               udp_serv, request_list
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
@@ -9410,7 +9329,7 @@ def write_to_hsm(e, tinfo):
             # what_to_do = 0 for stop
             #            = 1 for continue
             #            = 2 for continue after retry
-            what_to_do = finish_request(work_ticket, request_list, index, e)
+            what_to_do = finish_request(work_ticket, request_list, index)
 
             #If on non-success exit status was returned from
             # finish_request(), keep it around for later.
@@ -9591,14 +9510,6 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
-                except (socket.error, select.error), msg:
-                    #On 11-12-2009, tracebacks were found from migration encps
-                    # that started failing because there were too many open
-                    # files while trying to instantiate client classes.  The
-                    # socket.error should have been caught here.  So now it is.
-                    raise EncpError(msg.ars, str(msg), e_errors.NET_ERROR,
-                                    {'infilepath' : request['infilepath'],
-                                     'outfilepath' : request['outfilepath']})
 
                 try:
                     inputfile_check_pnfs(request, bfid_brand, e)
@@ -9608,14 +9519,6 @@ def verify_read_request_consistancy(requests_per_vol, e):
                                      'outfilepath' : request['outfilepath']})
                 except OSError, msg:
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
-                                    {'infilepath' : request['infilepath'],
-                                     'outfilepath' : request['outfilepath']})
-                except (socket.error, select.error), msg:
-                    #On 11-12-2009, tracebacks were found from migration encps
-                    # that started failing because there were too many open
-                    # files while trying to instantiate client classes.  The
-                    # socket.error should have been caught here.  So now it is.
-                    raise EncpError(msg.ars, str(msg), e_errors.NET_ERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
 
@@ -9634,16 +9537,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
                         raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                         {'infilepath' : request['infilepath'],
                                          'outfilepath' : request['outfilepath']})
-                    except (socket.error, select.error), msg:
-                        #On 11-12-2009, tracebacks were found from migration
-                        # encps that started failing because there were too
-                        # many open files while trying to instantiate client
-                        # classes.  The socket.error should have been caught
-                        # here.  So now it is.
-                        raise EncpError(msg.ars, str(msg), e_errors.NET_ERROR,
-                                        {'infilepath' : request['infilepath'],
-                                         'outfilepath' : request['outfilepath']})
-                    
+                
                 #This block of code makes sure the the user is not moving
                 # two files with the same basename in different directories
                 # into the same destination directory.
@@ -10126,11 +10020,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             request['fc'] = {}
             request['fc']['bfid'] = e.get_bfid
             use_infile = e.get_bfid  #used for error reporting
-        elif e.get_bfids:
-            request['bfid'] = list_of_files[i]
-            request['fc'] = {}
-            request['fc']['bfid'] = list_of_files[i]
-            use_infile = list_of_files[i]  #used for error reporting
         else:
             request['infile'] = list_of_files[i]
             use_infile = request['infile']  #used for error reporting
@@ -10322,12 +10211,12 @@ def create_read_request(request, file_number,
 
         #### BFID #######################################################
         #If the user specified a bfid for the file to read.
-        elif e.get_bfid or e.get_bfids:
+        elif e.get_bfid:
 
             #Get the system information from the clerks.  In this case
             # e.input[i] doesn't contain the filename, but the bfid.
 
-            vc_reply, fc_reply = get_clerks_info(request['bfid'], e)
+            vc_reply, fc_reply = get_clerks_info(e.get_bfid, e)
 
             pnfsid = fc_reply.get("pnfsid", None)
             if not pnfsid:
@@ -10381,11 +10270,11 @@ def create_read_request(request, file_number,
                 # we need to check the file bfids in layer 1 to determine
                 # which one we are looking for.
                 for cur_fname in ifullname_list:
-                    if p.get_bit_file_id(cur_fname) == request['bfid']:
+                    if p.get_bit_file_id(cur_fname) == e.get_bfid:
                         ifullname = cur_fname
                         use_dir = get_directory_name(ifullname)
                         break
-                    elif get_fcc().find_original(request['bfid']).get("original",
+                    elif get_fcc().find_original(e.get_bfid).get("original",
                                                                  None) == \
                                                  p.get_bit_file_id(cur_fname):
                         ifullname = cur_fname
@@ -10403,11 +10292,6 @@ def create_read_request(request, file_number,
             if e.output[0] in ["/dev/null", "/dev/zero",
                                "/dev/random", "/dev/urandom"]:
                 ofullname = e.output[0]
-            elif getattr(e, "sequential_filenames", None):
-                #The user overrode "get" to use numbered filenames.
-                ofullname = os.path.join(e.output[0],
-                                         "%s:%s" % (fc_reply['external_label'],
-                                                 fc_reply['location_cookie']))
             else:
                 unused, ofullname, unused, unused = fullpath(e.output[0])
 
@@ -10432,7 +10316,7 @@ def create_read_request(request, file_number,
             else:
                 istatinfo = p.get_stat(iaccessname)
 
-            bfid = request['bfid']
+            bfid = e.get_bfid
 
             read_work = 'read_from_hsm'
 
@@ -10504,6 +10388,8 @@ def create_read_request(request, file_number,
                                 e_errors.USERERROR,
                                 {'infilepath' : ifullname})
 
+            ofullname = get_oninfo(ifullname, e.output[0], e)
+
             original_bfid = p.get_bit_file_id(ifullname)
             if e.copy == 0:
                 bfid = original_bfid
@@ -10525,15 +10411,6 @@ def create_read_request(request, file_number,
                              'outfilepath' : ofullname,})
 
             vc_reply, fc_reply = get_clerks_info(bfid, e)
-
-            if getattr(e, "sequential_filenames", None):
-                #The user overrode "get" to use numbered filenames.
-                ofullname = os.path.join(e.output[0],
-                                         "%s:%s" % (fc_reply['external_label'],
-                                                 fc_reply['location_cookie']))
-            else:
-                ofullname = get_oninfo(ifullname, e.output[0], e)
-
             
             #Determine the access path name.
             iaccessname = pnfs.access_file(get_directory_name(ifullname),
@@ -11072,12 +10949,6 @@ def prepare_read_from_hsm(tinfo, e):
                 e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
         elif isinstance(msg, IOError):
             e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
-        elif isinstance(msg, socket.error) or isinstance(msg, select.error):
-            #On 11-12-2009, tracebacks were found from migration encps that
-            # started failing because there were too many open files while
-            # trying to instantiate client classes.  The socket.error should
-            # have been caught here.  So now it is.
-            e_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
         else:
             e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
 
@@ -11110,13 +10981,6 @@ def prepare_read_from_hsm(tinfo, e):
             return_ticket = {'status' : (e_errors.USERERROR, str(msg))}
         else:
             return_ticket = {'status' : (e_errors.OSERROR, str(msg))}
-        return return_ticket, listen_socket, udp_serv, requests_per_vol
-    except (socket.error, select.error):
-        #On 11-12-2009, tracebacks were found from migration encps that
-        # started failing because there were too many open files while
-        # trying to instantiate client classes.  The socket.error should
-        # have been caught here.  So now it is.
-        return_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
         return return_ticket, listen_socket, udp_serv, requests_per_vol
 
     #If we are only going to check if we can succeed, then the last
@@ -11377,7 +11241,7 @@ def read_from_hsm(e, tinfo):
                 #            = 2 for continue after retry
                 what_to_do = finish_request(request_ticket,
                                             requests_per_vol[vol],
-                                            index, e)
+                                            index)
 
                 #If on non-success exit status was returned from
                 # finish_request(), keep it around for later.
@@ -11528,7 +11392,6 @@ class EncpInterface(option.Interface):
         self.put_cache = 0         # true if dcache is writing by pnfs_id
         self.get_cache = 0         # true if dcache is reading by pnfs_id
         self.get_bfid = None       # true if dcache is reading by bfid
-        self.get_bfids = None      # true if dcache is reading by bfids
         self.pnfs_mount_point = "" # For dcache, used to specify which pnfs
                                    # mount point to use.  Naively, one can
                                    # not try them all.  If the wrong mount
@@ -11701,12 +11564,6 @@ class EncpInterface(option.Interface):
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
                          option.USER_LEVEL:option.ADMIN,},
-        option.GET_BFIDS:{option.HELP_STRING:
-                         "Specifies that dcache requested the file and that "
-                         "the first 'filename' is really the file's bfid.",
-                         option.VALUE_TYPE:option.INTEGER,
-                         option.VALUE_USAGE:option.IGNORED,
-                         option.USER_LEVEL:option.HIDDEN,},
         option.GET_CACHE:{option.HELP_STRING:
                           "Specifies that dcache requested the file and that "
                           "the first 'filename' is really the file's pnfs id.",
@@ -11907,7 +11764,7 @@ class EncpInterface(option.Interface):
             self.print_version()
 
         #Sanity check.  Only allow skip_pnfs to work if --get-bfid was used.
-        if not self.get_bfid and not self.get_bfids:
+        if not self.get_bfid:
             self.skip_pnfs = None
 
         #The values for --max-retry and --max-resubmit need special processing.
@@ -11956,10 +11813,6 @@ class EncpInterface(option.Interface):
             #self.intype = "hsmfile"  #What should this bee?
             #self.outtype = "unixfile"
             #return #Don't continue.
-
-        if self.get_bfids:
-            self.input = self.args[:-1]
-            self.output = self.argv[-1]  #[self.args[self.arglen-1]]
         
         if self.get_cache:
             self.input = None  #[self.args[0]]
@@ -11969,7 +11822,7 @@ class EncpInterface(option.Interface):
             #return #Don't continue.
 
         self.outtype = UNIXFILE
-        if self.volume or self.get_bfid or self.get_bfids or self.get_cache:
+        if self.volume or self.get_bfid or self.get_cache:
             if pnfs_agent_client_requested:
                 self.intype = RHSMFILE
             elif pnfs_agent_client_allowed:
@@ -12655,7 +12508,7 @@ def main(intf):
 
 
 
-def do_work(intf, main=main):
+def do_work(intf):
 
     #Keep multiple encps within a migration in sync.
     start_lock.acquire()
@@ -12718,7 +12571,7 @@ def do_work(intf, main=main):
 
 #If mode = 0 it means admin, 1 means user, 2 means dcache.
 #
-def start(mode, do_work=do_work, main=main, Interface=EncpInterface):
+def start(mode):
     if mode not in [0, 1, 2]:
         #Some ways of running encp (or get) allow for encp to return 2 which
         # indicates a non-retriable error.  Even for the normal encp return
@@ -12728,7 +12581,7 @@ def start(mode, do_work=do_work, main=main, Interface=EncpInterface):
     delete_at_exit.setup_signal_handling()
 
     try:
-        intf = Interface(user_mode=mode)
+        intf = EncpInterface(user_mode=mode)
     except (KeyboardInterrupt, SystemExit):
         return 1
     except:
@@ -12742,7 +12595,7 @@ def start(mode, do_work=do_work, main=main, Interface=EncpInterface):
         return 2
 
     try:
-        return do_work(intf, main)
+        return do_work(intf)
     except (KeyboardInterrupt, SystemExit):
         return 1
     except:

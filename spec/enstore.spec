@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 1.0.1
-Release: 14
+Version: 2.0.0
+Release: 0
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -11,7 +11,7 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: Python-enstore, ftt
+Requires: Python-enstore2.6, ftt
 
 %description
 Standalone Enstore. Enstore is a Distributed Mass Storage System. 
@@ -26,8 +26,8 @@ cd $RPM_BUILD_ROOT
 echo "BUILD ROOT $RPM_BUILD_ROOT " 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}
 rm -rf enstore-setup
-PYTHON_DIR=`rpm -ql Python-enstore | head -1`
-echo PYTHON_DIR=`rpm -ql Python-enstore | head -1`> /tmp/enstore-setup
+PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`
+echo PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`> /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
@@ -35,8 +35,8 @@ echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
 echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
-#echo ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix} >> /tmp/enstore-setup
-#echo export ENSTORE_DIR >> /tmp/enstore-setup
+echo ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix} >> /tmp/enstore-setup
+echo export ENSTORE_DIR >> /tmp/enstore-setup
 rpm -q swig-enstore > /dev/null
 if [ $? -eq 0 ]; then
 	swigdir=`rpm -ql swig-enstore | head -1`
@@ -51,12 +51,6 @@ else
 	echo export SWIG_LIB
 fi
 echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
-rpm -q aci > /dev/null
-if [ $? -eq 0 ]; then
-	echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
-	echo export ACI_DIR >> /tmp/enstore-setup
-	echo PATH="$"ACI_DIR:"$"PATH >> /tmp/enstore-setup
-fi
 
 #++++++++++++
 
