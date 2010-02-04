@@ -168,7 +168,7 @@ def set_max_buffer():
                 name, mem_total, unit = line.split()
                 break
         if mem_total:
-            MAX_BUFFER = long(mem_total) - GB
+            MAX_BUFFER = long(mem_total)*KB - GB
         f.close()
 
 set_max_buffer() # run it here
