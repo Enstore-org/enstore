@@ -221,7 +221,7 @@ def total_memory():
     if total_mem_in_pages == -1:
         return None
     
-    page_size = os.sysconf(os.sysconf_names['SC_PHYS_PAGES'])
+    page_size = os.sysconf(os.sysconf_names['SC_PAGE_SIZE'])
     if page_size == -1:
         return None
 
