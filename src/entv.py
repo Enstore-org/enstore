@@ -723,7 +723,13 @@ def handle_status(mover, status):
     volume = status.get('current_volume', None)
     client = status.get('client', "Unknown")
     connect = "connect %s %s" % (mover, client)
-    error_status = status.get('status', ('Unknown', None))[0]
+    #For error, see if a reason is mentioned in the second status field [1],
+    # otherwise just go with the first field [0].
+    _error_status = status.get('status', ('Unknown', None))
+    if _error_status[1]:
+        error_status = _error_status[1]
+    else:
+        error_status = _error_status[0]
     if not volume:
         return [mover_state]
     if state in ['ACTIVE', 'SEEK', 'SETUP']:
@@ -1231,9 +1237,18 @@ def handle_messages(csc_addr, system_name, intf):
                 for tx_id in send_request_dict.keys():
                     try:
                         mstatus = u.recv_deferred(tx_id, 0.0)
-                        if not e_errors.is_ok(mstatus):
-                            del send_request_dict[tx_id]
-                            continue
+                        if mstatus.has_key('time_in_state'):
+                            #We have a mover response.  Since the status
+                            # field might be for an error, we need to
+                            # avoid using is_ok() here, so that the error
+                            # gets displayed instead of getting the
+                            # response ignored.
+                            pass
+                        else:
+                            #We have an inquisitor response.
+                            if not e_errors.is_ok(mstatus):
+                                del send_request_dict[tx_id]
+                                continue
 
                         commands = commands + handle_status(
                             send_request_dict[tx_id]['name'], mstatus)
