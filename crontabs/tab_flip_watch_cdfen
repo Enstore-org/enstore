@@ -1,4 +1,4 @@
 #Needs to run on the web server.
-10 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500F1 $ENSTORE_DIR/src/tab_flipping_nanny.py -l CDF-LTO4F1 -a > /dev/null 2> /dev/null
-20 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500G1 $ENSTORE_DIR/src/tab_flipping_nanny.py -l CDF-LTO3,CDF-LTO4G1 -a > /dev/null 2> /dev/null
-30 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch $ENSTORE_DIR/src/tab_flipping_nanny.py -a > /dev/null 2> /dev/null
+10 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500F1 $ENSTORE_DIR/sbin/tab_flipping_nanny -l CDF-LTO4F1 -a > /dev/null 2> /dev/null
+20 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500G1 $ENSTORE_DIR/sbin/tab_flipping_nanny -l CDF-LTO3,CDF-LTO4G1 -a > /dev/null 2> /dev/null
+#30 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch $ENSTORE_DIR/src/tab_flipping_nanny.py -a > /dev/null 2> /dev/null

@@ -2,7 +2,7 @@
 """
 Schema
 
- Schema |       Name        |   Type   |  Owner  
+ Schema |       Name        |   Type   |  Owner
 --------+-------------------+----------+---------
  public | job               | table    | huangch
  public | job_definition    | table    | huangch
@@ -14,7 +14,7 @@ Schema
  public | task_id           | sequence | huangch
 
                                 Table "public.job"
- Column  |            Type             |                Modifiers                                                                                 
+ Column  |            Type             |                Modifiers
 ---------+-----------------------------+------------------------------------------
  id      | integer                     | not null default nextval('job_id'::text)
  name    | character varying           | not null
@@ -32,9 +32,9 @@ Indexes:
     "job_type_idx" btree ("type")
 Foreign-key constraints:
     "job_type_fkey" FOREIGN KEY ("type") REFERENCES job_definition(id) ON UPDATE CASCADE ON DELETE CASCADE
- 
+
                            Table "public.job_definition"
- Column  |       Type        |                      Modifiers                                                                                 
+ Column  |       Type        |                      Modifiers
 ---------+-------------------+-----------------------------------------------------
  id      | integer           | not null default nextval('job_definition_id'::text)
  name    | character varying | not null
@@ -43,7 +43,7 @@ Foreign-key constraints:
 Indexes:
     "job_definition_pkey" PRIMARY KEY, btree (id)
     "job_definition_name_idx" btree (name)
- 
+
                             Table "public.task"
    Column   |       Type        |                 Modifiers
 ------------+-------------------+-------------------------------------------
@@ -58,7 +58,7 @@ Indexes:
     "task_pkey" PRIMARY KEY, btree (seq, job_type)
 Foreign-key constraints:
     "task_job_type_fkey" FOREIGN KEY (job_type) REFERENCES job_definition(id) ON UPDATE CASCADE ON DELETE CASCADE
- 
+
                 Table "public.progress"
  Column  |            Type             |   Modifiers
 ---------+-----------------------------+---------------
@@ -74,7 +74,7 @@ Indexes:
     "progress_start_idx" btree ("start")
 Foreign-key constraints:
     "progress_job_fkey" FOREIGN KEY (job) REFERENCES job(id) ON UPDATE CASCADE ON DELETE CASCADE
- 
+
          Table "public.object"
  Column |       Type        | Modifiers
 --------+-------------------+-----------
@@ -102,12 +102,12 @@ import smtplib
 import option
 import configuration_client
 import e_errors
-
+import remedy_interface
 debug = False
 # debug = True
 csc = {}
 
-# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
+# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
 def timestamp2time(s):
 	if s == '1969-12-31 17:59:59':
 		return -1
@@ -362,7 +362,7 @@ def decode_job(job):
 			lt = '9310'
 			type = job[3]
 			t = job[4:].split('-')
-			job_range = range(int(t[0]), int(t[1])+1) 
+			job_range = range(int(t[0]), int(t[1])+1)
 	return cluster, type, job_range, lt
 
 # is_done(job) -- is this job done?
@@ -391,7 +391,7 @@ def is_done(job):
 		else:
 			return 0
 	return t0
-		
+
 # try_close_all(cluster) -- try close open job in cluster
 def try_close_all(cluster):
 	j_list = get_unfinished_job(cluster)
@@ -852,7 +852,7 @@ def help(topic=None):
 		print "operation.py find+|locate+ <objects>+"
 		print "    -- find|locate with details"
 		print "operation.py relate <job>+"
-		print "    -- find jobs that have common objects" 
+		print "    -- find jobs that have common objects"
 		print "operation.py recommend_write_protect_on [<library_list>] [limit <n>]"
 		print "    -- recommend volumes for flipping write protect tab on"
 		print "operation.py recommend_write_protect_off [<library_list>] [limit <n>]"
@@ -1020,7 +1020,7 @@ def volumes_per_cap(lib_type):
 	elif lib_type == 'aml2':
 		return 30
 	elif lib_type[:4] == '8500':
-		return 39 
+		return 39
 	else:
 		return None
 
@@ -1295,9 +1295,9 @@ def make_cap(l, library_type='9310', cap_n = 0):
 		for i in l:
 			cap_script = cap_script + ' ' + i
 		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
-			
+
 	return cap_script
-				
+
 # get_max_cap_number(cluster)
 def get_max_cap_number(cluster, op_type=''):
 	q = "select max(to_number(substr(association, 4), 'FM999999')) \
@@ -1322,18 +1322,17 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 
 	short_message = "write %s %d tapes (flip tabs) in %s %s tape library"%(job, n, cluster.lower()+'en', library_type.upper())
 	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore %s tape library.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster, library_type.upper())
-	submitter = "MSS"
-	user = "MSS"
-	password = "2p9u6c"
-	category = "Media Service"
-	aType = "Flip Tabs"
-	item = "Other"
-
-	cmd = os.path.join(os.environ['ENSTORE_DIR'], 'sbin', 'genMediaTicket')
-
-	cc = "%s %s '%s' '%s' %s %s %s '%s' '%s' %s"%(cmd, system_name, short_message, long_message, submitter, user, password, category, aType, item)
-	return cc
-
+	return remedy_interface.submit_ticket(
+		Service_Type='User Service Request',
+		Impact_Type='3-Moderate/Limited',
+		Urgency_Type='3-Medium',
+		Summary=short_message,
+		Notes=long_message,
+		Reported_Source_Type = 'Other',
+		Action = 'CREATE',
+		Status_Type = 'New',
+		CiName = system_name.upper(),
+		)
 # get_last_job_time(cluster, job_type)
 
 def get_last_job_time(cluster, job_type):
@@ -1359,7 +1358,7 @@ def get_last_write_protect_on_job_time(l=None,c=None):
 		if q:
 			c = c+q
 	return get_last_job_time(c, 'WRITE_PROTECTION_TAB_ON')
-		
+
 def get_last_write_protect_off_job_time(l=None, c=None):
 	if not c:
 		c = cluster
@@ -1369,7 +1368,7 @@ def get_last_write_protect_off_job_time(l=None, c=None):
 			return -1
 		q = get_qualifier(lt)
 		if q:
-			c = c+q 
+			c = c+q
 	return get_last_job_time(c, 'WRITE_PROTECTION_TAB_OFF')
 
 PROMPT = "operation> "
@@ -1542,12 +1541,7 @@ def execute(args):
 				get_write_protect_script_path(lt))
 			print cc
 			os.system(cc)
-			cc = make_help_desk_ticket(total, cluster, script_host, 'protect', lt)
-			print cc
-			# use popen to get the ticket number
-			rem_res = os.popen(cc, 'r').readlines()
-			print rem_res
-			ticket = get_rem_ticket_number(rem_res)
+			ticket = make_help_desk_ticket(total, cluster, script_host, 'protect', lt)
 			print "ticket =", ticket
 			res2 = start_next_task(job_name, ticket)
 			res2.append(show_current_task(job_name))
@@ -1590,12 +1584,7 @@ def execute(args):
 				get_write_permit_script_path(lt))
 			print cc
 			os.system(cc)
-			cc = make_help_desk_ticket(total, cluster, script_host, 'permit', lt)
-			print cc
-			# use popen to get the ticket number
-			rem_res = os.popen(cc, 'r').readlines()
-			print rem_res
-			ticket = get_rem_ticket_number(rem_res)
+			ticket = make_help_desk_ticket(total, cluster, script_host, 'protect', lt)
 			print "ticket =", ticket
 			res2 = start_next_task(job_name, ticket)
 			res2.append(show_current_task(job_name))
