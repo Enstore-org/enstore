@@ -1392,7 +1392,10 @@ class LibraryManagerMethods:
                 # same file family
                 if last_work == "READ":
                     would_preempt = True
+                    Trace.trace(self.trace_level+3, "allow_hi_pri: calling check_write_request")
                     nrq, status = self.check_write_request(external_label, rq, requestor)
+                    Trace.trace(self.trace_level+3, "allow_hi_pri: check_write_request returned: %s %s"%
+                                (nrq, status))
                     if nrq and status[0] == e_errors.OK:
                         if nrq.ticket["fc"]["external_label"] == external_label:
                             would_preempt = False
@@ -1721,6 +1724,11 @@ class LibraryManagerMethods:
             if rq.adminpri > -1: # HIRI
                 if bound_vol not in vol_veto_list:
                     bound_vol = None # this will allow preemption of regular priority requests
+                else:
+                    # Case when completed request was regular priority read request from this file family
+                    # but the file in the next request can not be written to this volume
+                    if would_preempt:
+                        bound_vol = None # this will allow preemption of regular priority requests
         
         if bound_vol not in vol_veto_list:
             # width not exceeded, ask volume clerk for a new volume.
@@ -2223,8 +2231,6 @@ class LibraryManagerMethods:
                 if rq and status[0] == e_errors.OK:
                     return rq, status
             elif rq.work == 'write_to_hsm':
-                                    
-
                 if checked_request and checked_request.unique_id == rq.unique_id:
                     # This is a case when rq != self.tmp_rq.
                     # Request was already checked
