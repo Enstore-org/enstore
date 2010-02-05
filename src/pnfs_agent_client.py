@@ -28,6 +28,8 @@ import e_errors
 import enstore_constants
 import find_pnfs_file
 
+# For layer_file()
+from pnfs import is_access_name
 
 MY_NAME = enstore_constants.PNFS_AGENT_CLIENT  #"PNFS_A_CLIENT"
 MY_SERVER = enstore_constants.PNFS_AGENT     #"pnfs_agent"
@@ -61,6 +63,63 @@ class PnfsAgentClient(generic_client.GenericClient,
     def show_state(self, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         return self.send({'work':'show_state'},
                          rcv_timeout=rcv_timeout, tries=tries)
+
+###############################################################################
+
+    # FIXME (Could replace with pnfs.Pnfs().layer_file()?)
+    def layer_file(self, filename, layer_number):
+        pn, fn = os.path.split(filename)
+        if is_access_name(fn):
+            return os.path.join(pn, "%s(%d)" % (fn, layer_number))
+        else:
+            return os.path.join(pn, ".(use)(%d)(%s)" % (layer_number, fn))
+
+    # FIXME (Could replace with pnfs.Pnfs().access_file()?)
+    def access_file(self, pn, pnfsid):
+        return os.path.join(pn, ".(access)(%s)" % pnfsid)
+
+    # FIXME (Could replace with pnfs.Pnfs().use_file()?)
+    def use_file(self, f, layer):
+        pn, fn = os.path.split(f)
+        if is_access_name(fn):
+            #Use the .(access)() extension path for layers.
+            return "%s(%s)" % (f, layer)
+        else:
+            return os.path.join(pn, '.(use)(%d)(%s)' % (layer, fn))
+
+    # FIXME (Could replace with pnfs.Pnfs().fset_file()?)
+    def fset_file(self, f, size):
+        pn, fn = os.path.split(f)
+        if is_access_name(fn):
+            pnfsid = fn[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+            parent_id = self.get_parent(pnfsid, pn)
+
+            directory = os.path.join(pn, ".(access)(%s)" % parent_id)
+            name = self.get_nameof(pnfsid, pn)
+        else:
+            directory = pn
+            name = fn
+            
+        return os.path.join(directory, ".(fset)(%s)(size)(%s)" % (name, size))
+
+    # FIXME (Could replace with pnfs.Pnfs().nameof_file()?)
+    def nameof_file(self, pn, pnfsid):
+        return os.path.join(pn, ".(nameof)(%s)" % (pnfsid,))
+
+    # FIXME (Could replace with pnfs.Pnfs().const_file()?)
+    def const_file(self, f):
+        pn, fn = os.path.split(f)
+        if is_access_name(fn):
+            pnfsid = fn[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+            parent_id = self.get_parent(pnfsid, pn)
+
+            directory = os.path.join(pn, ".(access)(%s)" % parent_id)
+            name = self.get_nameof(pnfsid, pn)
+        else:
+            directory = pn
+            name = fn
+            
+        return os.path.join(directory, ".(const)(%s)" % (name,))
 
 ###############################################################################
  
@@ -309,6 +368,15 @@ class PnfsAgentClient(generic_client.GenericClient,
         ticket = {'work'  : 'get_id',
                   'fname' : fname,
                   'file_id'  : None
+                  }
+        ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
+        return ticket
+
+    def p_get_nameof(self, pnfsid, rcv_timeout=RCV_TIMEOUT,
+                        tries=RCV_TRIES):
+        ticket = {'work'  : 'get_nameof',
+                  'pnfsid' : pnfsid,
+                  'nameof'  : None
                   }
         ticket=self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
@@ -643,6 +711,7 @@ class PnfsAgentClient(generic_client.GenericClient,
               tries=RCV_TRIES):
         reply_ticket = self.p_chown(uid, gid, filename,
                                     rcv_timeout=rcv_timeout, tries=tries)
+        print "reply_ticket:", reply_ticket
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
 
@@ -763,6 +832,14 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['file_id']
+
+    def get_nameof(self, pnfsid, rcv_timeout=RCV_TIMEOUT,
+                      tries=RCV_TRIES):
+        reply_ticket = self.p_get_nameof(pnfsid, rcv_timeout=rcv_timeout,
+                                         tries=tries)
+        if not e_errors.is_ok(reply_ticket):
+            self.raise_exception(reply_ticket)
+        return reply_ticket['nameof']
 
     def get_parent_id(self, pnfsid, rcv_timeout=RCV_TIMEOUT,
                       tries=RCV_TRIES):

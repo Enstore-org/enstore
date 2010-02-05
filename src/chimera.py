@@ -38,7 +38,7 @@ import file_utils
 #DISABLED = "disabled"
 #VALID = "valid"
 #INVALID =  "invalid"
-UNKNOWN = "unknown"  #Same in namespace and chimera.
+UNKNOWN = "unknown"  #Same in namespace and pnfs.
 #EXISTS = "file exists"
 #DIREXISTS = "directory exists"
 ERROR = -1
@@ -46,6 +46,14 @@ ERROR = -1
 PATH_MAX = 199
 
 ##############################################################################
+
+# FOr reverse lookup of dic
+def find_key(dic, val):
+   for item in dic.items():
+       if item[1] == val:
+          return item[0]
+   return None
+   #return [item[0] for item in dic.items() if item[1] == val]
 
 #This is used to print out some of the results to the terminal that are more
 # than one line long and contained in a list.  The list is usually generated
@@ -101,6 +109,7 @@ def access_file(dn, pnfsid):
 def database_file(directory):
     return os.path.join(directory, ".(get)(database)")
 
+
 ##############################################################################
 
 def is_access_name(filepath):
@@ -112,12 +121,13 @@ def is_access_name(filepath):
     return False
 
 def is_layer_access_name(filepath):
-    #Determine if it is an ".(access)(pnfsid)(1-8)" name.
+    #Determine if it is an ".(access)(chimeraid)(1-8)" name.
     access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)\([1-8]\)")
     if re.search(access_match, os.path.basename(filepath)):
         return True
 
     return False
+
 
 def is_nameof_name(filepath):
     #Determine if it is an ".(access)()" name.
@@ -127,6 +137,9 @@ def is_nameof_name(filepath):
 
     return False
 
+
+#This is common functionality used by 
+# is_chimera_path,is_pnfs_path and  is_pnfs_or_chimera_path functions
 def get_dirname_filename(pathname) :
     if is_access_name(pathname) or is_nameof_name(pathname):
         #We don't want to call fullpath() for these special files.
@@ -139,7 +152,7 @@ def get_dirname_filename(pathname) :
         #Expand the filename to the absolute path.
         #unused, filename, dirname, unused = fullpath(pathname)
         filename = enstore_functions2.expand_path(pathname)
-        
+
 
     #Some versions of python have gotten dirname wrong if filename was
     # already a directory.
@@ -150,16 +163,17 @@ def get_dirname_filename(pathname) :
         dirname = os.path.dirname(filename)
     return dirname, filename
 
-def is_pnfs_path(pathname, check_name_only = None):
+
+def is_chimera_path(pathname, check_name_only = None):
     if not pathname:  #Handle None and empty string.
         return False
-
+ 
     dirname, filename = get_dirname_filename(pathname)
     
     #Determine if the target file or directory is in the pnfs namespace.
     if string.find(dirname,"/pnfs/") < 0:
         return False #If we get here it is not a pnfs directory.
-
+    #print 'inside is_pnfs_or_chimera_path ',  pathname
     #Search all directories in the path for the cursor wormwhole file. These
     # extra steps are needed in case the user enters a name that does not
     # exist.
@@ -168,19 +182,38 @@ def is_pnfs_path(pathname, check_name_only = None):
         search_dir = os.path.join(search_dir, directory)
         
         #Determine the path for the cursor existance test.
-        fname = os.path.join(search_dir, ".(get)(database)")
+        fname = os.path.join(search_dir, ".(get)(cursor)")
 
         #If the cursor 'file' does not exist, then this is not a real pnfs
         # file system.
+        #print 'checking fname ', fname
         if os.path.exists(fname):
            break # return True
     else:
-       return False #The ".(get)(database)" files was not found in any directory.
+       return False #The ".(get)(cursor)" files was not found in any directory.
+
+    # At this point we have determined that the pathname is either pnfs or chimera
+    # Now we need to determine if it is only chimera or nor
+
+    for directory in dirname.split("/"):
+        search_dir = os.path.join(search_dir, directory)
+        
+        #Determine the path for the cursor existance test.
+        fname = os.path.join(search_dir, ".(get)(database)")
+
+        #If the database 'file' does not exist, then this is not a real chimera
+        # file system.
+        #print 'checking NEW fname' , fname
+        if os.path.exists(fname):
+           # It means that is itrs Pnfs
+           return False
+    
+    # At this point we know that it is only Chimera and not Pnfs 
 
     #If the pathname existance test should be skipped, return true at
     # this time.
     if check_name_only:
-        return True
+        return True 
     
     #If check_name_only is python false then we can reach this check
     # that checks to make sure that the filename exists.  Use os.stat()
@@ -200,7 +233,7 @@ def is_pnfs_path(pathname, check_name_only = None):
     return False
 
 def is_normal_pnfs_path(pathname, check_name_only = None):
-    rtn = is_pnfs_path(pathname, check_name_only)
+    rtn = is_chimera_path(pathname, check_name_only)
     if rtn:
         #Additional check to make sure that this is a normal path.  Remove
         # the directory component seperator "/" from the character list.
@@ -212,7 +245,11 @@ def is_normal_pnfs_path(pathname, check_name_only = None):
 
 
 def is_admin_pnfs_path(pathname, check_name_only = None):
-    rtn = is_pnfs_path(pathname, check_name_only)
+    #print "INSIDE is_admin_pnfs_path"
+    rtn = is_chimera_path(pathname, check_name_only)
+    # No admin path for chimera
+    return rtn
+    """
     if rtn:
         #Additional check to make sure that this is an admin path.  Remove
         # the directory component seperator "/" from the character list.
@@ -221,7 +258,7 @@ def is_admin_pnfs_path(pathname, check_name_only = None):
             rtn = 0 #Normal path.
 
     return rtn
-
+    """
 def isdir(pathname):
     return os.path.isdir(pathname)
 
@@ -231,13 +268,14 @@ def isfile(pathname):
 def islink(pathname):
     return os.path.islink(pathname)
 
-def is_pnfsid(pnfsid):
+def is_chimeraid(pnfsid):
     #This is an attempt to deterime if a string is a pnfsid.
     # 1) Is it a string?
     # 2) Is it 24 characters long?
     # 3) All characters are in the capital hex character set.
     #Note: Does it need to be capital set of hex characters???
-    if type(pnfsid) == types.StringType and len(pnfsid) == 24:
+    len_of_pnfsid = len(pnfsid)
+    if type(pnfsid) == types.StringType and len_of_pnfsid == 36:
         allowable_characters = string.upper(string.hexdigits)
         for c in pnfsid:
             if c not in allowable_characters:
@@ -285,6 +323,7 @@ def get_directory_name(filepath):
         dirname, filename = os.path.split(filepath)
         pnfsid = filename[10:-1]  #len(".(access)(") == 10 and len ")" == 1
         #We will need the pnfs database numbers.
+        """
         use_pnfsid_db=int(pnfsid[:4], 16)
 
         #If the mountpoint doesn't know about our database fail now.
@@ -299,7 +338,7 @@ def get_directory_name(filepath):
                 raise OSError(msg.args[0],
                               "Error accessing database: (%s, %s): %s" % \
                               (use_pnfsid_db, dirname, str(msg)))
-
+        """
         #Create the filename to obtain the parent id.
         parent_id_name = os.path.join(dirname, ".(parent)(%s)" % pnfsid)
         #Read the parent id.
@@ -318,25 +357,7 @@ def get_directory_name(filepath):
 ###############################################################################
 
 def get_database(f):
-    #err = []
-    #warn = []
-    #info = []
-    
-    db_a_dirpath = get_directory_name(f)
-    database_path = database_file(db_a_dirpath)
-
-    try:
-        database = get_layer(database_path)[0].strip()
-    except (OSError, IOError):
-        database = None
-        #if detail.errno in [errno.EACCES, errno.EPERM]:
-        #    err.append('no read permissions for .(get)(database)')
-        #elif detail.args[0] in [errno.ENOENT, errno.ENOTDIR]:
-        #    pass
-        #else:
-        #    err.append('corrupted .(get)(database) metadata')
-
-    return database
+    return "admin:0:r:enabled:/srv2/pnfs/db/admin"
 
 def get_layer(layer_filename, max_lines = None):
     RETRY_COUNT = 2
@@ -545,6 +566,7 @@ last_db_tried = ("", (-1, ""))
 
 #Get currently mounted pnfs mountpoints.
 def parse_mtab():
+    #print 'INSIDE parse_mtab'
     #Different systems have different names for this file.
     # /etc/mtab: Linux, IRIX
     # /etc/mnttab: SunOS
@@ -565,6 +587,7 @@ def parse_mtab():
         mtab_data = []
 
     found_mountpoints = {}
+    index = 0
     for line in mtab_data:
         #The 2nd and 3rd items in the list are important to us here.
         data = line[:-1].split()
@@ -575,14 +598,19 @@ def parse_mtab():
         if fs_type != "nfs":
             continue
 
+        # To figure out if the nfs mount is really a chimera/pnfs 
+        # we run a tags command. If exception is raised, then it is not 
+        # pnfs/chimera mount
         try:
-            dataname = os.path.join(mp, ".(get)(database)")
+            dataname = os.path.join(mp, ".(tags)()")
             db_fp = file_utils.open(dataname, "r")
-            db_data = db_fp.readline().strip()
+            db_fp.readline().strip()
             db_fp.close()
         except IOError:
             continue
-
+        #To generate a serial index  used as akey in the return dictionary
+        db_data = "admin:0:r:enabled:/" + str(index)
+        index += 1
         db_datas = db_data.split(":")
         #db_datas[0] is the database name
         #db_datas[1] is the database id
@@ -628,22 +656,6 @@ def process_mtab():
     if not db_pnfsid_cache:
         #Sets global db_pnfsid_cache.
         db_pnfsid_cache = parse_mtab()
-
-        for database_info, (db_num, mp) in db_pnfsid_cache.items():
-            if db_num == 0 or os.path.basename(mp) == "fs":
-                #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
-                p = Pnfs()
-                use_path = os.path.join(mp, "usr")
-                for dname in os.listdir(use_path):
-                    tmp_name = os.path.join(use_path, dname)
-                    if not os.path.isdir(tmp_name):
-                        continue
-                    tmp_db_info = p.get_database(os.path.join(use_path, dname)).strip()
-                    if tmp_db_info in db_pnfsid_cache.keys():
-                        continue
-
-                    tmp_db = int(tmp_db_info.split(":")[1])
-                    db_pnfsid_cache[tmp_db_info] = (tmp_db, tmp_name)
 
     return [last_db_tried] + sort_mtab()
 
@@ -785,7 +797,7 @@ def __get_special_path(filepath, replacement_path):
     canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
 
     #Return an error if the file is not a pnfs filename.
-    #if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
+    #if not pnfs.is_chimera_path(dirname, check_name_only = 1):
     #    raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
     #Build the list of patters to search for.  Start with the three we
@@ -818,7 +830,7 @@ def __get_special_path(filepath, replacement_path):
     ## it.
     for pattern in pattern_list:
         filename, count = re.subn(pattern, replacement_path, filepath, 1)
-        if count > 0 and is_pnfs_path(filename, check_name_only = 1):
+        if count > 0 and is_chimera_path(filename, check_name_only = 1):
             return filename
 
     #The file is not a pnfs file.
@@ -877,7 +889,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 self.dir = ""
 
         #Test if the filename passed in is really a pnfs id.
-        if is_pnfsid(pnfsFilename):
+        if is_chimeraid(pnfsFilename):
             self.id = pnfsFilename
             try:
                 if shortcut:
@@ -897,7 +909,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 #This was done in response to the pnfs database being
                 # corrupted.  There was a directory that had fewer entries
                 # than valid i-nodes that belonged in that directory.  With
-                # this type of database corruption, the is_pnfs_path() test
+                # this type of database corruption, the is_chimera_path() test
                 # still works correctly.
                 try:
                     dir_list, target = self._get_mount_point2(self.id,
@@ -914,7 +926,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     if msg.args[0] not in [errno.ENODEV]:
                         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-                if not is_pnfs_path(pnfsFilename):
+                if not is_chimera_path(pnfsFilename):
                     pnfsFilename = ""
 
         if pnfsFilename:
@@ -1007,15 +1019,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def fset_file(self, f, size):
         pn, fn = os.path.split(f)
         if is_access_name(fn):
-            pnfsid = fn[10:-1]  #len(".(access)(") == 10 and len ")" == 1
-            parent_id = self.get_parent(pnfsid, pn)
-
-            directory = os.path.join(pn, ".(access)(%s)" % parent_id)
+            pnfsid = fn[10:-1]  
             name = self.get_nameof(pnfsid, pn)
+            directory = pn
         else:
             directory = pn
             name = fn
-            
+           
         return os.path.join(directory, ".(fset)(%s)(size)(%s)" % (name, size))
 
     def nameof_file(self, pn, pnfsid):
@@ -1169,6 +1179,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # write a new value to the specified file layer (1-7)
     # the file needs to exist before you call this
     def writelayer(self, layer, value, filepath=None):
+        #print "Wrinting layeeeeerrrrrr ", layer,value 
         if filepath:
             use_filepath = filepath
         else:
@@ -1331,23 +1342,27 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # get the total path of the id
     def get_path(self, id=None, directory="", shortcut=None):
         if directory:
+            #print "directory:", directory
             use_dir = fullpath(directory)[1]
         else:
+            #print "self.dir:", self.dir
             use_dir = self.dir
 
         if id != None:
-            if is_pnfsid(id):
+            if is_chimeraid(id):
                 use_id = id
             else:
                 raise ValueError("The pnfs id (%s) is not valid." % id)
         elif self.id != None:
-            if is_pnfsid(self.id):
+            if is_chimeraid(self.id):
                 use_id = self.id
             else:
                 raise ValueError("The pnfs id (%s) is not valid." % self.id)
         else:
             raise ValueError("No valid pnfs id.")
 
+        #print "use_id:", use_id
+        #print "usd_dir:", use_dir
         try:
             search_path, target = self._get_mount_point2(use_id, use_dir,
                                                          ".(nameof)(%s)",
@@ -1364,12 +1379,15 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     search_paths = []
                 targets = msg.args[3]
             else:
+                #print "9999999999999999999999999999999999999999999"
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         rtn_filepaths = []
         for i in range(len(search_paths)):
+            #print "xxxxxxxxxxxxxxxxxxxxxxx", search_paths[i], targets[i]
             rtn_filepaths.append(self.__get_path(use_id, search_paths[i],
                                                  targets[i], shortcut))
+            #print "yyyyyyyyyyyyyyyyyyyyy", rtn_filepaths[-1]
 
         if len(rtn_filepaths) == 1:
             return rtn_filepaths
@@ -1378,7 +1396,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                           "%s: %s" % (os.strerror(errno.ENODEV),
                                       "Too many matching mount points",),
                           rtn_filepaths)
-        
     def __get_path(self, use_id, search_path, target, shortcut):
         filepath = target.replace("\n", "")
 
@@ -1387,8 +1404,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         #If the user doesn't want the pain of going through a full name
         # lookup, return this alternate name.
+        #the shortcut doesnot work with chimera
         if shortcut:
-            return os.path.join(search_path, ".(access)(%s)" % use_id)
+            pass
+        #    return os.path.join(search_path, ".(access)(%s)" % use_id)
 
         #Loop through the pnfs ids to find each ids parent until the "root"
         # id is found.  The comparison for the use_id is to prevent some
@@ -1396,18 +1415,27 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # as the real "root" directory.  Of course this only works if the
         # while uses an 'or' and not an 'and'.  Silly programmer error...
         # Grrrrrrr.
-        name = ""  # compoent name of a directory.
-        while name != "root" or use_id != "000000000000000000001020":
+        name = "dummy"  # compoent name of a directory.
+        #while name != "root" or use_id != "000000000000000000001020":
+        while use_id != "000000000000000000000000000000000000":
+            #print "name [1]:", name
             use_id = self._get_parent(use_id, search_path) #get parent id
+            #print "use_id:", use_id
             name = self._get_nameof(use_id, search_path) #get nameof parent id
+            #print "name [2]:", name
             filepath = os.path.join(name, filepath) #join filepath together
+            #print "filepath:", filepath
         filepath = os.path.join("/", filepath)
+        #print "filepath [3]:", filepath
+        #print "filepath.split(/):", filepath.split("/")
+        filepath = string.join((filepath.split("/")[2:]), "/")
+        #print "filepath [4]:", filepath
         #Truncate the begining false directories.
-        if filepath[:13] == "/root/fs/usr/":
-            filepath = filepath[13:]
-        else:
-            raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
-                                                    "Not a valid pnfs id"))
+        #if filepath[:13] == "/root/fs/usr/":
+        #    filepath = filepath[13:]
+        #else:
+        #    raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
+        #                                            "Not a valid pnfs id"))
 
         #Munge the mount point and the directories.  First check if the two
         # paths can be munged without modification.
@@ -1421,7 +1449,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #Lastly, remove the first entry in the file path before munging.
         elif file_utils.e_access(
             os.path.join(search_path, filepath.split("/", 1)[1]), os.F_OK):
-            filepath = os.path.join(search_path, filepath.split("/", 1)[1])
+          filepath = os.path.join(search_path, filepath.split("/", 1)[1])
         #If the path is "/pnfs/fs" try inserting "usr".
         elif os.path.basename(search_path) == "fs" and \
              file_utils.e_access(os.path.join(search_path, "usr", filepath),
@@ -1448,6 +1476,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         return filepath
 
+
+
+
     ##########################################################################
 
     #Return just the mount point section of a pnfs path.
@@ -1456,34 +1487,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = filepath
         else:
             fname = self.filepath
-
-        #Make sure that the original exits.
-        current_path = fname
-        try:
-            self.get_database(current_path)
-        except (OSError, IOError), msg:
-            if msg.args[0] == errno.ENOTDIR:
-                current_path = os.path.dirname(fname)
-                self.get_database(current_path)
-            else:
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-        #Strip off one directory segment at a time.  We are looking for
-        # where pnfs stops.
-        old_path = current_path
-        current_path = os.path.dirname(current_path)
-        while current_path:
-            try:
-                self.get_database(current_path)
-            except (OSError, IOError), msg:
-                if msg.args[0] == errno.ENOENT:
-                    return old_path
-
-            old_path = current_path
-            current_path = os.path.dirname(current_path)
-
+        mData = parse_mtab()
+        for aKey in mData.keys():
+            mPoint = mData[aKey][1]
+            if mPoint in fname:
+                return mPoint
         return None
 
+        
     def get_pnfs_db_directory(self, filepath = None):
         if filepath:
             fname = filepath
@@ -1537,10 +1548,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def _get_mount_point2(self, id, directory, pnfsname=None,
                           return_all = False):
         if id != None:
-            if not is_pnfsid(id):
+            if not is_chimeraid(id):
                 raise ValueError("The pnfs id (%s) is not valid." % id)
         else:
             raise ValueError("No valid pnfs id.")
+
 
         #Try and optimize things by looking for the target to begin with.
         if type(pnfsname) == types.StringType:
@@ -1555,6 +1567,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         pfn = os.path.join(directory, use_pnfsname)
         try:
             #If the mountpoint doesn't know about our database fail now.
+            """
             try:
                 N(use_pnfsid_db, directory).get_databaseN(use_pnfsid_db)
             except (OSError, IOError), msg:
@@ -1565,7 +1578,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     raise OSError(errno.ENOTDIR, "Force PNFS search")
                 else:
                     raise OSError(errno.ENOENT, "Force PNFS search")
-
+            """
             #
             # Get the requested information from PNFS.
             #
@@ -1576,22 +1589,23 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 pnfs_value = f.readline()
             f.close()
 
+            
             #Remember to truncate the original path to just the mount
             # point.
             search_path = self.get_mount_point(directory)
-
-            found_db_num = int(self.get_database(search_path).split(":")[1],
-                               16)
+                    #found_db_num = int(self.get_database(search_path).split(":")[1],
+            #                   16)
 
             #Small hack for the admin path.
             ## Hope that get_mount_point() always returns "/pnfs/fs"
             ## for the admin path.  If it were ever to return "/pnfs/fs/usr"
             ## this "Small hack for the admin path." will break.
-            if found_db_num == 0:
-                search_path = os.path.join(search_path, "usr")
+            #if found_db_num == 0:
+            #    search_path = os.path.join(search_path, "usr")
 
             mp_match_list = [search_path]
             pnfs_value_match_list = [pnfs_value]
+            #print "mp_match_list:", mp_match_list
         except (OSError, IOError), msg:
             if is_nameof_name(pfn) and msg.args[0] == errno.EIO and \
                os.geteuid() != 0:
@@ -1665,6 +1679,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             search_list = process_mtab()
             #Search all of the pnfs mountpoints that are mounted.
             for db_info, (db_num, mp) in search_list:
+                #print "db_info, (db_num, mp):", db_info, (db_num, mp)
                 
                 #If the mountpoint doesn't know about our database fail now.
                 try:
@@ -1713,12 +1728,17 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     # the same machine.  The current one knows about the
                     # db we are looking for, now just need to find the
                     # correctly matching mount point.
-                    db_dir = self.get_pnfs_db_directory(afn_dir)
+                    ###db_dir = self.get_pnfs_db_directory(afn_dir)
+                    db_dir = self.get_mount_point(afn_dir)
                     #The target_db_area step is necessary for databases like
                     # /pnfs/sdss/db2.  The if below handles things for
                     # locations like /pnfs/sdss.
                     target_db_area = get_directory_name(db_dir)
-                    db_db_info = self.get_database(target_db_area)
+                    #db_db_info = self.get_database(target_db_area)
+                    # This is a hack for chimera
+                    # Instead of passing target_db_area which can be /pnfs we are passing db_dir which can be /pnfs/sekhri to get_database
+                    # The get_database will return the correct key. All this is perhaps not needed
+                    db_db_info = self.get_database(db_dir)
                     db_data = db_pnfsid_cache.get(db_db_info, None)
                     #Determine if we found the admin database (db_data[0] == 0)
                     # and we weren't explicitly looking for it
@@ -1732,6 +1752,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         # /pnfs/sdss/.(access)(000000000000000000001080)
                         # (aka /pnfs/fs/usr) as the database we are looking
                         # for.
+                        #print "db_dir:", db_dir
                         db_db_info = self.get_database(db_dir)
                         db_data = db_pnfsid_cache.get(db_db_info, None)
                     if db_data != None:
@@ -1842,7 +1863,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
                                 continue
                                 
-                        except (OSError, IOError):
+                        except (OSError, IOError), msg:
                             parent_id = None
 
 
@@ -1922,21 +1943,15 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # get the database information
     def get_database(self, directory=None):
+        #return random data that is consistant with pnfs format
+        if directory != None:
+           val = (0, directory)
+           to_return = find_key(db_pnfsid_cache, val)
+           if to_return != None and len(to_return) > 0:
+               #return to_return[0]
+               return to_return
+        return "admin:0:r:enabled:/srv2/pnfs/db/admin" 
 
-        if directory:
-            fname = os.path.join(directory, ".(get)(database)")
-        else:
-            fname = os.path.join(self.dir, ".(get)(database)")
-
-        f=file_utils.open(fname,'r')
-        database = f.readlines()
-        f.close()
-        
-        database = string.replace(database[0], "\n", "")
-
-        if not directory:
-            self.database = database
-        return database
 
     ##########################################################################
 
@@ -1983,7 +1998,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             size = 1
         else:
             size = filesize
-        
+
         #xref = self.get_xreference()
         #formated_size = str(filesize)
         #if formated_size[-1] == "L":
@@ -2003,32 +2018,36 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         fname = self.fset_file(use_filepath, size)
         try:
             f = file_utils.open(fname,'w')
-            f.close()    
+            f.close()
         except (OSError, IOError), msg:
             if msg.args[0] == errno.ENAMETOOLONG:
                 Trace.log(e_errors.ERROR, "fset[1]")
                 #If the .(fset) filename is too long for PNFS, then we need
                 # to make a shorter temproary link to it and try it again.
-                
+
                 #First, using .(access)() paths access the directory for
                 # the file stored in use_filepath.
                 try_dir = self.get_pnfs_db_directory(use_filepath)
                 try_dir_pnfsid = self.get_id(os.path.dirname(use_filepath))
                 try_dir = self.access_file(try_dir, try_dir_pnfsid)
 
+                Trace.log(e_errors.ERROR, "fset[2]")
                 #Second, create the .(access)() path to the inode record
                 # for the filename stored in use_filepath.
                 try_pnfsid = self.get_id(use_filepath)
                 try_path = self.access_file(try_dir, try_pnfsid)
 
+                Trace.log(e_errors.ERROR, "fset[3]")
                 #Third, create a new link name using the .(access)()
                 # directory path.
                 short_tmp_name = ".%s_%s" % (os.uname()[1], os.getpid())
                 link_name = os.path.join(try_dir, short_tmp_name)
 
+                Trace.log(e_errors.ERROR, "fset[4]")
                 #Get the existing link count.
                 link_count = file_utils.get_stat(try_path)[stat.ST_NLINK]
 
+                Trace.log(e_errors.ERROR, "fset[5]")
                 #Make the temporary link using the sorter name.
                 try:
                     os.link(try_path, link_name)
@@ -2043,6 +2062,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         raise sys.exc_info()[0], sys.exc_info()[1], \
                               sys.exc_info()[2]
 
+                Trace.log(e_errors.ERROR, "fset[6]")
                 #Set the new file size.
                 try:
                     fname = self.fset_file(link_name, size)
@@ -2052,13 +2072,15 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     os.unlink(link_name)
                     raise sys.exc_info()[0], sys.exc_info()[1], \
                           sys.exc_info()[2]
-
+                Trace.log(e_errors.ERROR, "fset[7]")
                 #Cleanup the temporary link.
                 os.unlink(link_name)
 
+                Trace.log(e_errors.ERROR, "fset[8]")
             else:
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+            Trace.log(e_errors.ERROR, "fset[9]")
 
         #Update the times.
         if filepath:
@@ -2067,7 +2089,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.utime()
             self.pstatinfo()
 
-    ##########################################################################
 
     # set a new mode for the existing file
     def chmod(self, mode, filepath=None):
@@ -2228,16 +2249,29 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = filepath
         else:
             fname = self.filepath
-            
-        # first the file itself
-        pstat = file_utils.get_stat(fname)
+         
+        try :   
+            # first the file itself
+            pstat = file_utils.get_stat(fname)
+            pstat = tuple(pstat)
 
-        pstat = tuple(pstat)
-
-        if not filepath:
-            self.pstat = pstat
-
-        return pstat
+            if not filepath:
+                self.pstat = pstat
+            return pstat
+        except (OSError, IOError):
+      
+            """
+            if msg.args[0] in [errno.ENOENT]:
+                if is_layer_access_name(fname):
+                    # remove the level from the fname
+                    tmp_name = fname[: len(fname) - 3 ]
+                    tmp = file_utils.get_stat(tmp_name)
+                    return tmp
+            raise sys.exc_info()[0], sys.exc_info()[1], \
+                  sys.exc_info()[2]
+            """
+            pass
+        return tuple(['','','','','','','',''])
 
     # get the stat of file/directory, or if non-existant, its directory
     def get_pnfsstat(self, filepath=None):
@@ -3332,7 +3366,7 @@ class Tag:
         #        fname = ""
 
         #Determine if the target directory is in pnfs namespace
-        if is_pnfs_path(get_directory_name(fname)) == 0:
+        if is_chimera_path(get_directory_name(fname)) == 0:
             raise IOError(errno.EINVAL,
                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
 
@@ -3379,9 +3413,9 @@ class Tag:
         #    fname = os.path.join(os.getcwd(), fname)
         
         #Determine if the target directory is in pnfs namespace
-        if is_pnfs_path(get_directory_name(fname)) == 0:
+        if is_chimera_path(get_directory_name(fname)) == 0:
             raise IOError(errno.EINVAL,
-                   os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
+                   os.strerror(errno.EINVAL) + ": Not a valid chimera directory")
 
         try:
             f = file_utils.open(fname,'r')
@@ -3887,6 +3921,7 @@ class N:
             except OSError:
                 self.dir = ""
         self.dbnum = dbnum
+        self.databaseN = 0 
 
     # get the cursor information
     def get_countersN(self, dbnum=None):
@@ -3901,16 +3936,7 @@ class N:
 
     # get the database information
     def get_databaseN(self, dbnum=None):
-        if dbnum != None:
-            fname = os.path.join(self.dir,".(get)(database)(%s)"%(dbnum,))
-        else:
-            fname = os.path.join(self.dir,".(get)(database)(%s)"%(self.dbnum,))
-        f=file_utils.open(fname,'r')
-        self.databaseN = f.readlines()
-        f.close()
-        if len(self.databaseN) > 0 :
-           self.databaseN = string.replace(self.databaseN[0], "\n", "")
-        return self.databaseN
+        return "admin:0:r:enabled:/srv2/pnfs/db/admin"
 
     def pdatabaseN(self, intf):
         try:
@@ -4232,7 +4258,7 @@ class File:
 	def consistent(self):
 		# required field
 		if not self.bfid or not self.volume \
-                        or self.size == None  \
+                        or not self.size == None \
 			or not self.location_cookie \
 			or not self.file_family or not self.path \
 			or not self.pnfs_id or not self.bfid \
@@ -4305,8 +4331,8 @@ class File:
 
 
 ##############################################################################
-
 def do_work(intf):
+
     rtn = 0
 
     try:

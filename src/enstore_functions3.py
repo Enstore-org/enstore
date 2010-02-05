@@ -141,6 +141,7 @@ def is_location_cookie(lc):
     return 0
 
 from pnfs import is_pnfsid
+from chimera import is_chimeraid
 
 def is_ip_addr(address):
     if type(address) == types.StringType:
