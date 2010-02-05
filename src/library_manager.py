@@ -930,7 +930,7 @@ class LibraryManagerMethods:
                     rc = w
                     break
         # we need to log this information for investigation of queue processing problems
-        Trace.log(e_errors.INFO, "work at movers list:%s"%(work_at_movers,))
+        Trace.log(DEBUG_LOG, "work at movers list:%s"%(work_at_movers,))
         return rc
 
     # if returned ticket has no external label use the
@@ -1391,10 +1391,11 @@ class LibraryManagerMethods:
             else:
                 # same file family
                 if last_work == "READ":
-                    rq, status = self.check_write_request(external_label, rq, requestor)
-                    if rq and status[0] == e_errors.OK:
-                        if rq.ticket["fc"]["external_label"] != external_label:
-                            would_preempt = True
+                    would_preempt = True
+                    nrq, status = self.check_write_request(external_label, rq, requestor)
+                    if nrq and status[0] == e_errors.OK:
+                        if nrq.ticket["fc"]["external_label"] == external_label:
+                            would_preempt = False
         if would_preempt:
             # check whether there are idle movers availabe
             if len(self.idle_movers) > 0:
@@ -2134,7 +2135,7 @@ class LibraryManagerMethods:
                     # because there are idle movers tah could pick up HIPRI request  
                     rq = self.pending_work.get_admin_request(next=1) # get next request
                     continue
-                if rq.work == "write_to_hsm":
+                if rq and rq.work == "write_to_hsm":
                     # check if there is a potentially available tape at bound movers
                     # and if yes skip request so that it will be picked by bound mover
                     # this is done to aviod a sinle stream bouncing between different tapes
