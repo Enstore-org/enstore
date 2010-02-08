@@ -143,6 +143,17 @@ TRANSFER_THRESHOLD = 2*MB
 # practice shows that the safe size should be 2.5 GB
 MAX_BUFFER = 2500*MB
 
+#Return total system memory or None if unable to determine.
+def total_memory():
+    total_mem_in_pages = os.sysconf(os.sysconf_names['SC_PHYS_PAGES'])
+    if total_mem_in_pages == -1:
+        return None
+    
+    page_size = os.sysconf(os.sysconf_names['SC_PAGE_SIZE'])
+    if page_size == -1:
+        return None
+
+    return long(total_mem_in_pages) * long(page_size)
 
 
 # set MAX_BUFFER
@@ -158,18 +169,10 @@ def set_max_buffer():
     else:
         # 64 - bit python
         # set it to something reasonable
-        # get total memory from /proc/meminfo
-        mem_total=None
-        f = open('/proc/meminfo','r')
-        for line in f.readlines():
-            if not line:
-                break
-            if line.startswith("MemTotal:"):
-                name, mem_total, unit = line.split()
-                break
+        # get total memory
+        mem_total = total_memory()
         if mem_total:
-            MAX_BUFFER = long(mem_total)*KB - GB
-        f.close()
+            MAX_BUFFER = mem_total - GB
 
 set_max_buffer() # run it here
 
