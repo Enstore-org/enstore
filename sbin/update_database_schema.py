@@ -93,7 +93,6 @@ if __name__ == "__main__":
         sys.exit(1)
     ddl_directory_path=os.path.join(ENSTORE_DIR,
                                     LOCATION_OF_DDL_FILES,
-                                    ddl_directory_path,
                                     dbname)
     if not os.access(ddl_directory_path, os.F_OK):
         print_error("ddl directory (",ddl_directory_path,")is not found ")
