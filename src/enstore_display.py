@@ -149,6 +149,10 @@ UPDATE_TIME = 1000     #in milliseconds (1 second)
 MESSAGES_TIME = 250    #in milliseconds (1/4th of second)
 JOIN_TIME = 10000      #in milliseconds (10 seconds)
 OFFLINE_REASON_TIME = 300000   #in milliseconds (5 minutes)
+OFFLINE_REASON_INITIAL_TIME = 5000  #in milliseconds (5 seconds)
+MOVER_DISPLAY_TIME = 5000  #in milliseconds (5 seconds)
+
+YELLOW_WAIT_TIME_IN_SECONDS = 5.0  #status wait time before yellow background
 
 status_request_threads = []
 offline_reason_thread = None
@@ -644,7 +648,7 @@ class Mover:
         # to change the mover's color (if not already done so).
         if self.state in ['Unknown'] and not self.offline_reason and \
                self.state_color != colors('state_unknown_color'):
-            if time.time() - self.timer_started >= 5.0:
+            if time.time() - self.timer_started >= YELLOW_WAIT_TIME_IN_SECONDS:
                 #By passing the empty string, we will change the client
                 # color without scheduling an inquisitor request.
                 self.update_offline_reason("")
@@ -2120,7 +2124,7 @@ class MoverDisplay(Tkinter.Toplevel):
         self.init_common(mover)
 
         self.state_display = None
-        self.after_mover_diplay_id = None
+        self.after_mover_display_id = None
 
         self.status_text = self.format_mover_status(self.get_mover_status())
 
@@ -2131,7 +2135,7 @@ class MoverDisplay(Tkinter.Toplevel):
 
     def reinit(self, mover = None):
 
-        self.after_cancel(self.after_mover_diplay_id)
+        self.after_cancel(self.after_mover_display_id)
 
         Tkinter.Toplevel.__init__(self)  #Redraw the window.
         self.init_common(mover)  #Set values for this mover's info.
@@ -2156,7 +2160,7 @@ class MoverDisplay(Tkinter.Toplevel):
         __pychecker__ = "no-argsused"
 
         #With the window closed, don't do an update.
-        self.after_cancel(self.after_mover_diplay_id)
+        self.after_cancel(self.after_mover_display_id)
 
         #Clear this to avoid a cyclic reference.
         self.mover_name = ""
@@ -2233,7 +2237,8 @@ class MoverDisplay(Tkinter.Toplevel):
         self.draw()
         
         #Reset the time for 5 seconds.
-        self.after_mover_diplay_id = self.after(5000, self.update_status)
+        self.after_mover_display_id = self.after(MOVER_DISPLAY_TIME,
+                                                 self.update_status)
 
 #########################################################################
 ##
@@ -3816,7 +3821,7 @@ class Display(Tkinter.Canvas):
         self.after_join_id = self.after(JOIN_TIME,
                                         self.join_thread)
         #Always set this for a one time check right after starting.
-        self.after_offline_reason_id = self.after(5000, #5 seconds
+        self.after_offline_reason_id = self.after(OFFLINE_REASON_INITIAL_TIME,
                                                   self.check_offline_reason)
         self.after_reposition_id = None
 
