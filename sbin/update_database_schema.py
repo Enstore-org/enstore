@@ -87,7 +87,6 @@ if __name__ == "__main__":
     filename=dbname+".xml"
     schema_file=os.path.join(ENSTORE_DIR,
                              LOCATION_OF_XML_FILES,
-                             schema_file,
                              filename)
     if not os.access(schema_file, os.F_OK):
         print_error("schema file (",schema_file,")is not found ")
