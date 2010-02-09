@@ -23,7 +23,7 @@ AutoReqProv: no
 #echo TOP=%{_topdir}
 #cd $RPM_BUILD_ROOT
 #%%setup -q
-%setup -q -c -n $RPM_BUILD_ROOT/%{prefix}/%{name}-%{version}
+#%setup -q -c -n $RPM_BUILD_ROOT/%{prefix}/%{name}-%{version}
 %setup -q -c -n %{prefix}/%{name}-%{version}
 #%setup -c -n opt/python.2.4.3-enstore
 
