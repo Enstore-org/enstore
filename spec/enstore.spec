@@ -96,8 +96,8 @@ fi
 %post
 echo "POSTINSTALL"
 rm -rf /tmp/enstore-setup
-PYTHON_DIR=`rpm -ql Python-enstore | head -1`
-echo PYTHON_DIR=`rpm -ql Python-enstore | head -1`> /tmp/enstore-setup
+PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`
+echo PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`> /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
