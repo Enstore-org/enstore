@@ -118,8 +118,11 @@ if [ ! -f /etc/sudoers.enstore_save ]; then
 fi
 cp /etc/sudoers.enstore_save /etc/sudoers.e
 chmod 740 /etc/sudoers.e
-
-
+# Need to add env_keep because in RH5 the sudoers was modified to
+#reset all environment 
+echo 'Defaults env_keep =	"PATH PYTHON_DIR PYTHONPATH PYTHONINC PYTHONLIB \' >> /etc/sudoers.e
+echo '                        	ENSTORE_CONFIG_HOST ENSTORE_CONFIG_PORT ENSTORE_DIR ENSTORE_MAIL \' >> /etc/sudoers.e
+echo '                        	FTT_DIR	KRBTKFILE"' >> /etc/sudoers.e
 echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
 echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
 echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
