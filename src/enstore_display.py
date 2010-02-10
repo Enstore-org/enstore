@@ -3214,11 +3214,17 @@ class Display(Tkinter.Canvas):
 
         #First, use the whole number division to determine the number of
         # movers that each column must contain to be even.
+        if columns == 0:
+            #Avoid division by zero if entv.get_mover_list() returned an
+            # empty list of movers.
+            min_count = 0
+        else:
+            min_count = int(number) / int(columns)
+        #Second, set the minimum number of movers for each column.
         limits = {}
-        min_count = int(number) / int(columns)
         for i in range(1, columns + 1):
             limits[i] = min_count
-        #Second, take the remainder of movers and set them one at a time
+        #Third, take the remainder of movers and set them one at a time
         # to the columns to evenly distribute them.
         i2 = 1
         for i in range(number - (min_count * columns)):
