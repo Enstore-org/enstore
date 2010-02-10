@@ -116,7 +116,8 @@ echo "The original is saved into /etc/sudoers.enstore_save"
 if [ ! -f /etc/sudoers.enstore_save ]; then
     cp /etc/sudoers /etc/sudoers.enstore_save
 fi
-cp /etc/sudoers.enstore_save /etc/sudoers.e
+# we do not want tty, but it may be set by default
+sed -e /requiretty/{d} /etc/sudoers.enstore_save > /etc/sudoers.e
 chmod 740 /etc/sudoers.e
 # Need to add env_keep because in RH5 the sudoers was modified to
 #reset all environment 
