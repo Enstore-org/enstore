@@ -19,13 +19,14 @@ fi
 
 PATH=/usr/sbin:$PATH
 
-PYTHON_DIR=`rpm -ql Python-enstore | head -1`
+PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`
 rpm -q enstore > /dev/null
 if [ $? -eq 0 ]; 
 then
     ENSTORE_DIR=`rpm -ql enstore | head -1`
 else
-    ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
+    echo "enstore rpm is not installed"
+    exit 1
 fi
 FTT_DIR=`rpm -ql ftt | head -1`
 
@@ -37,7 +38,11 @@ fi
 cp /etc/sudoers.enstore_save /etc/sudoers.e
 chmod 740 /etc/sudoers.e
 
-
+# Need to add env_keep because in RH5 the sudoers was modified to
+#reset all environment 
+echo 'Defaults env_keep =	"PATH PYTHON_DIR PYTHONPATH PYTHONINC PYTHONLIB \' >> /etc/sudoers.e
+echo '                        	ENSTORE_CONFIG_HOST ENSTORE_CONFIG_PORT ENSTORE_DIR ENSTORE_MAIL \' >> /etc/sudoers.e
+echo '                        	FTT_DIR	KRBTKFILE"' >> /etc/sudoers.e
 echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
 echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
 echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
