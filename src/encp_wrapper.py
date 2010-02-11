@@ -31,9 +31,11 @@ class Encp:
 		CMD = exe
 		if argv[0] != CMD:
 			argv = [CMD] + argv
+
+		#Grab logname to reset it after encp is done.
+		logname=Trace.get_logname()
 		
 		try:
-			logname=Trace.logname #Grab this to reset this after encp.
 			intf = my_interface(argv, 0)
 			intf.migration_or_duplication = 1 #Set true for performance.
 			if self.tid:
@@ -46,7 +48,7 @@ class Encp:
 
 			self.err_msg = self.my_encp.err_msg[thread.get_ident()]
 		except (KeyboardInterrupt, SystemExit):
-			Trace.logname = logname #Reset the log file name.
+			Trace.set_logname(logname) #Reset the log file name.
 			raise sys.exc_info()[0], sys.exc_info()[1], \
 			      sys.exc_info()[2]
 		except:
@@ -68,14 +70,14 @@ class Encp:
 			raise sys.exc_info()[0], sys.exc_info()[1], \
 			      sys.exc_info()[2]
 		except:
-			Trace.logname = logname #Reset the log file name.
+			Trace.set_logname(logname) #Reset the log file name.
 			self.err_msg = str((str(sys.exc_info()[0]),
 					    str(sys.exc_info()[1])))
 			sys.stderr.write("%s\n" % self.err_msg)
 			res = 1
 		file_utils.release_lock_euid_egid()
 		
-		Trace.logname = logname #Reset the log file name.
+		Trace.set_logname(logname) #Reset the log file name.
 		self.exit_status = res #Return value if used in a thread.
 		return res  #Return value if used directly.
 

@@ -29,13 +29,27 @@ class VolumeAssert:
                 CMD = "volume_assert"
 		if cmd[:len(CMD)] != CMD:
 			cmd = CMD + " " + cmd
-                
-		argv = string.split(cmd)
-		intf = self.my_volume_assert.VolumeAssertInterface(argv, 0)
-		intf.migration_or_duplication = 1 #Set true for performance.
-		if self.tid:
-			intf.include_thread_name = self.tid
-		logname=Trace.logname #Grab this to reset this after volume_assert.
+
+		#Grab logname to reset it after volume_assert is done.
+		logname = Trace.get_logname()
+
+                try:
+			argv = string.split(cmd)
+			intf = self.my_volume_assert.VolumeAssertInterface(argv, 0)
+			intf.migration_or_duplication = 1 #Set true for performance.
+			if self.tid:
+				intf.include_thread_name = self.tid
+		except (KeyboardInterrupt, SystemExit):
+			Trace.set_logname(logname) #Reset the log file name.
+			raise sys.exc_info()[0], sys.exc_info()[1], \
+			      sys.exc_info()[2]
+		except:
+			Trace.set_logname(logname) #Reset the log file name.
+			self.err_msg = [{'status':(str(sys.exc_info()[0]),
+                                                    str(sys.exc_info()[1]))}]
+			res = 1
+			return res
+		
 		try:
 			res = self.my_volume_assert.do_work(intf)
 			if res == None:
@@ -44,7 +58,7 @@ class VolumeAssert:
 
 			self.err_msg = self.my_volume_assert.err_msg[thread.get_ident()]
 		except (KeyboardInterrupt, SystemExit):
-			Trace.logname = logname #Reset the log file name.
+			Trace.set_logname(logname) #Reset the log file name.
 			raise sys.exc_info()[0], sys.exc_info()[1], \
 			      sys.exc_info()[2]
 		except:
@@ -52,7 +66,7 @@ class VolumeAssert:
                                                     str(sys.exc_info()[1]))}]
 			res = 1
 
-		Trace.logname = logname #Reset the log file name.
+		Trace.set_logname(logname) #Reset the log file name.
 		self.exit_status = res #Return value if used in a thread.
 		return res  #Return value if used directly.
 

@@ -69,8 +69,22 @@ STDERR_SEVERITIES = [e_errors.EMAIL,
                      e_errors.ERROR,
                      e_errors.USER_ERROR,]
 
+#Provide a way to get the logname in a thread safe way.
+logname_data = threading.local()
+default_logname = "UNKNOWN"
+def get_logname():
+    return getattr(logname_data, "logname", default_logname)
+def set_logname(new_logname):
+    logname_data.logname = new_logname
 
-logname = ""
+#Provide a way to get the threadname in a thread safe way.
+threadname_data = threading.local()
+default_threadname = ""
+def get_threadname():
+    return getattr(threadname_data, "threadname", default_threadname)
+def set_threadname(new_threadname):
+    threadname_data.threadname = new_threadname
+
 alarm_func = None
 log_func = None
 
@@ -102,10 +116,16 @@ def trunc(x):
         x=x[:4080] + "(trunc. %s)"%(len(x),)
     return x
 
+#Initialize the log and thread values.  This is done for the current
+# thread and for the default of any future threads.
 def init(name, include_thread_name=''):
-    global logname,thread_name 
-    logname=name
-    thread_name = include_thread_name
+    global default_logname, default_threadname 
+
+    logname_data.logname = str(name)
+    threadname_data.threadname = str(include_thread_name)
+
+    default_logname = logname_data.logname
+    default_threadname = threadname_data.threadname
 
 #message is a string to send to stdout or stderr.
 #out_fp is sys.stdout or sys.stderr.
@@ -185,24 +205,15 @@ def dont_message(levels):
 
 #Take the original message string and add the log message format header.
 def format_log_message(raw_message, msg_type=MSG_DEFAULT):
-    global logname, thread_name
+    #global logname, thread_name
     
     # build up message
     if  msg_type != MSG_DEFAULT:
         new_msg = "%s %s" % (msg_type, raw_message)
     else:
         new_msg = raw_message
-    # check for no logname
-    if logname == "":
-        logname = "UNKNOWN"
-    if thread_name:
-        thread = threading.currentThread()
-        if thread:
-            th_name = thread.getName()
-        else:
-            th_name = ''
-    else:
-        th_name = ''
+
+    th_name = get_threadname()
 
     if th_name:
        new_msg = "%s Thread %s"%(new_msg, th_name) 
@@ -269,7 +280,7 @@ def log(severity, message, msg_type=MSG_DEFAULT, doprint=1):
             
         try:
             #Send the log string to the log server.
-            log_func(time.time(), os.getpid(), logname, (severity, new_msg))
+            log_func(time.time(), os.getpid(), get_logname(), (severity, new_msg))
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -294,8 +305,8 @@ def alarm(severity, root_error, rest={},
           condition=None, remedy_type=None, doprint=1):
     #log(severity, root_error, MSG_ALARM)
     if alarm_func:
-        alarm_func(time.time(), os.getpid(), logname, root_error, severity,
-		   condition, remedy_type, rest)
+        alarm_func(time.time(), os.getpid(), get_logname(), root_error,
+                   severity, condition, remedy_type, rest)
     
     if doprint and print_levels.has_key(severity):
         if severity in STDERR_SEVERITIES:
