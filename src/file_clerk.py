@@ -35,7 +35,7 @@ import udp_server
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
 MAX_CONNECTION_FAILURE = 5
 
-MAX_THREADS = 50 
+MAX_THREADS = 50
 MAX_CONNECTIONS=20
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
@@ -111,7 +111,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         else:
             apply(function,args)
             self._done_cleanup()
-    
+
 
     ####################################################################
 
@@ -119,7 +119,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # and perform validity checks in a consistant fashion.  These functions
     # duplicated in volume_clerk.py; they should be made more generic to
     # eliminate maintaining two sets of identical code.
-            
+
     def extract_value_from_ticket(self, key, ticket, fail_None = False):
         try:
             value = ticket[key]
@@ -141,7 +141,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     def extract_bfid_from_ticket(self, ticket, key = "bfid",
                                  check_exists = True):
-        
+
         return_record = False
         if hasattr(self, "filedb_dict"):
             return_record = True
@@ -196,7 +196,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 return None, None
             else:
                 return None
-            
+
         #Check volume/external_label format.
         if not enstore_functions3.is_volume(external_label):
             message = "%s: external_label %s not valid" \
@@ -235,7 +235,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             file_clerk_host, file_clerk_port, listen_socket = callback.get_callback()
             listen_socket.listen(4)
             ticket["file_clerk_callback_addr"] = (file_clerk_host, file_clerk_port)
-    
+
             self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.control_socket.connect(ticket['callback_addr'])
             callback.write_tcp_obj(self.control_socket, ticket)
@@ -383,19 +383,19 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     def __find_migrated(self, bfid):
         src_list = []
         dst_list = []
-        
+
         q = "select src_bfid,dst_bfid from migration where (dst_bfid = '%s' or src_bfid = '%s') ;" % (bfid, bfid)
-        
+
         res = self.filedb_dict.db.query(q).getresult()
         for row in res:
             src_list.append(row[0])
             dst_list.append(row[1])
-            
+
         return src_list, dst_list
 
     # report if this file has been migrated to or from another volume
     def find_migrated(self, ticket):
-        
+
         bfid, record = self.extract_bfid_from_ticket(ticket)
         if not bfid:
             return #extract_bfid_from_ticket handles its own errors.
@@ -546,7 +546,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     #        retrieve any information from primary file database
 
     def get_bfids(self, ticket):
-        
+
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
         if not external_label or external_label == (None, None):
@@ -557,7 +557,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
 
         self.reply_to_caller(ticket)
-        
+
         # get a user callback
         if not self.get_user_sockets(ticket):
             return
@@ -578,7 +578,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # get_bfids().  Now the network communications are done using
     # send_reply_with_long_answer().
     def get_bfids2(self, ticket):
-        
+
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
         if not external_label or external_label == (None, None):
@@ -623,7 +623,6 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             if not value.has_key('pnfs_name0'):
                 value['pnfs_name0'] = "unknown"
             file_list.append(value)
-        db.close()
         return file_list
 
     #### DONE
@@ -643,7 +642,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         # log the activity
         Trace.log(e_errors.INFO, "start listing " + external_label)
-        
+
         vol = self.__tape_list(external_label)
 
         # finishing up
@@ -675,7 +674,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, "start listing " + external_label + " (2)")
 
         vol = self.__tape_list(external_label)
-        
+
 
         # finishing up
 
@@ -734,7 +733,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     #     deletion of a volume
 
     def list_active(self, ticket):
-        
+
         external_label = self.extract_external_label_from_ticket(
             ticket, check_exists = False)
         if not external_label or external_label == (None, None):
@@ -808,7 +807,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     	callback.write_tcp_obj(self.data_socket, ticket)
 
         res = self.__list_active2(external_label)
-       
+
     	# finishing up
 
     	callback.write_tcp_obj_new(self.data_socket, res)
@@ -858,7 +857,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                  file.volume = volume.id;"
         return self.filedb_dict.db.query(q).dictresult()
 
-        
+
     def show_bad(self, ticket):
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -869,7 +868,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         callback.write_tcp_obj(self.data_socket,ticket)
 
         res = self.__show_bad()
-        
+
         # finishing up
 
         callback.write_tcp_obj_new(self.data_socket, res)
@@ -902,7 +901,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
     def __init__(self, csc):
         FileClerkInfoMethods.__init__(self, csc)
-        
+
         # find the brand
         Trace.log(e_errors.INFO, "find the brand")
         try:
@@ -1108,7 +1107,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         self.reply_to_caller(ticket)
         Trace.trace(10,'new_bit_file bfid=%s'%(bfid,))
         return
-    
+
     #### DONE
     # add_file_record() -- create a file record
     #
@@ -1140,7 +1139,7 @@ class FileClerkMethods(FileClerkInfoMethods):
                 sequence = sequence + 1
             bfid = self.brand+str(sequence)
 
-        # extracting the values 
+        # extracting the values
         try:
             complete_crc = ticket['complete_crc']
             deleted = ticket['deleted']
@@ -1259,12 +1258,12 @@ class FileClerkMethods(FileClerkInfoMethods):
             self.made_copy(original)
 
         # record our changes
-        self.filedb_dict[bfid] = record 
+        self.filedb_dict[bfid] = record
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         Trace.trace(12,'set_pnfsid %s'%(ticket,))
         return
-    
+
     #### DONE
     def set_crcs(self, ticket):
 
@@ -1292,7 +1291,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         ticket["sanity_cookie"]=record["sanity_cookie"]
         self.reply_to_caller(ticket)
 
-    #### DONE        
+    #### DONE
     # change the delete state element in the dictionary
     def set_deleted(self, ticket):
 
@@ -1313,7 +1312,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 		ticket["status"] = (e_errors.FILE_CLERK_ERROR, message)
 		self.reply_to_caller(ticket)
 		return
-	
+
         if record["deleted"] != deleted:
             record["deleted"] = deleted
             self.filedb_dict[bfid] = record
@@ -1414,7 +1413,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         # and return to the caller
         self.reply_to_caller(ticket)
         return
-    
+
     # __delete_volume(self, vol) -- mark all files belonging to vol as deleted
     #
     # Note: this is NOT the counter part of __delete_volume() in
@@ -1599,11 +1598,11 @@ class FileClerkMethods(FileClerkInfoMethods):
                                                              key = 'dst_bfid')
         if not dst_bfid:
             return #extract_bfid_from_ticket handles its own errors.
-        
+
         q = q_base % (time2timestamp(time.time()), src_bfid, dst_bfid)
 
         return self.__migration(q, ticket)
-        
+
     def __unset_migration(self, q_base, ticket):
         # extract the additional information if source and/or destination
         # information is requested.
@@ -1615,11 +1614,11 @@ class FileClerkMethods(FileClerkInfoMethods):
                                                              key = 'dst_bfid')
         if not dst_bfid:
             return #extract_bfid_from_ticket handles its own errors.
-        
+
         q = q_base % (src_bfid, dst_bfid)
 
         return self.__migration(q, ticket)
-    
+
     #set_copied(): Insert into the migration table a new record showing
     #   that the file has been copied to a new tape.
     def set_copied(self, ticket):
@@ -1738,9 +1737,9 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
         # setup the communications with the event relay task
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
         # start our heartbeat to the event relay process
-        self.erc.start_heartbeat(enstore_constants.FILE_CLERK, 
+        self.erc.start_heartbeat(enstore_constants.FILE_CLERK,
                                  self.alive_interval)
-        
+
 
     def file_error_handler(self, exc, msg, tb):
         __pychecker__ = "unusednames=tb"
@@ -1777,7 +1776,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
     def quit(self, ticket):
 	self.filedb_dict.close()
 	dispatching_worker.DispatchingWorker.quit(self, ticket)
-        
+
 
 class FileClerkInterface(generic_server.GenericServerInterface):
     pass
