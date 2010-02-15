@@ -9,7 +9,16 @@ set -u  # force better programming and ability to use check for not set
 quiet=0
 server=0
 fnal=""
-place="ftp://ssasrv1.fnal.gov/en/lts44"
+redhat_release=`sed -e 's/ /\n/g' /etc/redhat-release | while read i;do grep '[0-9'] | cut -d "." -f 1;done`
+echo "redhat_release ${redhat_release}"
+if [ $redhat_release = "5" ]; then
+    release_dir="slf5x"
+else
+    # default to 4
+    release_dir="lts44"
+fi
+echo "release dir ${release_dir}"
+place="ftp://ssasrv1.fnal.gov/en/${release_dir}"
 force=""
 
 usage() {
@@ -23,7 +32,7 @@ do
 		-c) shift; ENSTORE_CONFIG_HOST=$1;
 		    export ENSTORE_CONFIG_HOST;
 		    shift; ;;
-		-x) set -xv; shift;	;;
+		-x) set -xv; shift;export ENSTORE_VERBOSE="y";	;;
 		-q) export quiet=1; shift;	;;
 		-h) usage; exit 0;	;;
 		server) export server=1; shift;	;;
@@ -59,9 +68,9 @@ echo "Installing ftt"
 rpm -U $force ${place}/${processor}/ftt-2.26-4.${processor}.rpm 
 
 echo "Installing tcl"
-yum install tcl
+yum install tcl.${processor}
 echo "Installing tk"
-yum install tk
+yum install tk.${processor}
 echo "Installing python"
 rpm -U $force ${place}/${processor}/Python-enstore2.6-3.0.0-1.${processor}.rpm
 echo "installing swig"
