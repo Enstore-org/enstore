@@ -157,24 +157,22 @@ def total_memory():
 
 
 # set MAX_BUFFER
-def set_max_buffer():
+def set_max_buffer_limit():
     global MAX_BUFFER
+    mem_total = total_memory()
+    if mem_total:
+        # give 1GB for kernel and code
+        MAX_BUFFER = mem_total - GB
     if platform.architecture()[0].find("32") != -1:
         # 32 - bit python
         # maximal allowed buffer size
         # for 32 bit architecture maximal process size is 4 GB
         # so maximal buffer size can not be bigger than this value
         # practice shows that the safe size should be 2.5 GB
-        MAX_BUFFER = 2500*MB
-    else:
-        # 64 - bit python
-        # set it to something reasonable
-        # get total memory
-        mem_total = total_memory()
-        if mem_total:
-            MAX_BUFFER = mem_total - GB
+        if MAX_BUFFER > 2500*MB:
+            MAX_BUFFER = 2500*MB
 
-set_max_buffer() # run it here
+set_max_buffer_limit() # run it here
 
 def get_transfer_notify_threshold(bytes_to_transfer):
     if TRANSFER_THRESHOLD * 5 > bytes_to_transfer:
