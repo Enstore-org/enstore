@@ -11,13 +11,18 @@ if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 if [ "${1:-x}" = "fnal" ]; then export fnal=1; shift; else fnal=0;fi
 if [ "${1:-x}" = "demo" ]; then export demo=1; shift; else demo=0;fi
 
+env
+
+if [ "${ENSTORE_VERBOSE:-x}" != "x" ]; then
+    set -xv
+fi 
+
 echo "Creating setup-enstore file"
-if [ "`whoami`" != 'root' ]
+if [ "`whoami`" != "root" ]
 then
     echo You need to run this script as user "root"
     exit 1
 fi
-
 this_host=`uname -n`
 rpm -q enstore > /dev/null
 if [ $? -eq 0 ]; 
@@ -27,8 +32,8 @@ else
     echo "enstore rpm is not installed"
     exit 1
 fi
-PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`
-FTT_DIR=`rpm -ql ftt | head -1`
+PYTHON_DIR=$ENSTORE_DIR/Python
+FTT_DIR=$ENSTORE_DIR/FTT
 PATH=/usr/sbin:$PATH
 ENSTORE_HOME=`ls -d ~enstore`
 
@@ -54,7 +59,10 @@ if [ $fnal -eq 0 ]; then
 	fi
     fi
 else
-    ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
+    if [ "${ENSTORE_CONFIG_HOST:-x}" = "x" ]; then 
+	ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
+    fi
+
     #kdestroy
     KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
     defaultDomain=".fnal.gov"

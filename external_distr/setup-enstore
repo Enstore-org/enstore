@@ -2,11 +2,11 @@ rpm -q enstore > /dev/null
 if [ $? -eq 0 ]; then 
 	ENSTORE_DIR=`rpm -ql enstore | head -1`
 else
-	ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
-fi
+	echo "Enstore is not installed"
+	exit 1
 
-PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`
-FTT_DIR=`rpm -ql ftt | head -1`
+PYTHON_DIR=$ENSTORE_DIR/Python
+FTT_DIR=$ENSTORE_DIR/FTT
 ENSTORE_HOME=/home/enstore
 ENSTORE_OUT=/var/log/enstore
 
@@ -14,16 +14,11 @@ export ENSTORE_DIR
 export PYTHON_DIR
 export FTT_DIR
 export ENSTORE_HOME
-#. $ENSTORE_DIR/sbin/ENSTORE_HOME
 export ENSTORE_OUT
-
-rpm -q swig-enstore > /dev/null
-if [ $? -eq 0 ]; then
-	SWIG_DIR=`rpm -ql swig-enstore | head -1`
-	export SWIG_DIR
-	export SWIG_LIB=$SWIG_DIR/swig_lib
-	PATH=$SWIG_DIR:$PATH
-fi
+SWIG_DIR=$ENSTORE_DIR/SWIG
+export SWIG_DIR
+export SWIG_LIB=$SWIG_DIR/swig_lib
+PATH=$SWIG_DIR:$PATH
 
 PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$ENSTORE_DIR/tools:$PATH
 rpm -q pnfs > /dev/null

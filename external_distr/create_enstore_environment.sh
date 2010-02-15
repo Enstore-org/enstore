@@ -12,6 +12,11 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 if [ "${1:-x}" = "fnal" ]; then export fnal=$1; shift; else fnal="x";fi
+
+if [ "${ENSTORE_VERBOSE:-x}" != "x" ]; then
+    set -xv
+fi 
+
 if [ "`whoami`" != 'root' ]
 then
     echo You need to run this script as user "root"
@@ -19,8 +24,6 @@ then
 fi
 
 PATH=/usr/sbin:$PATH
-
-PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`
 
 rpm -q enstore > /dev/null
 if [ $? -eq 0 ]; 
@@ -30,7 +33,8 @@ else
     echo "enstore rpm is not installed"
     exit 1
 fi
-FTT_DIR=`rpm -ql ftt | head -1`
+PYTHON_DIR=$ENSTORE_DIR/Python
+FTT_DIR=$ENSTORE_DIR/FTT
 ENSTORE_HOME=`ls -d ~enstore`
 
 if [ $fnal = "fnal" ]; then
@@ -110,7 +114,8 @@ install=0
 	    install=1
 	else
 	    # check if e_home is empty and if yes install correct value
-	    s=` grep "e_home=" /usr/local/etc/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"="` > /dev/null 2>&1
+	    s=` grep "e_home=" /usr/local/etc/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"=" | awk '{print $2}'` > /dev/null 2>&1
+	    
 	    if [ -z $s ]; then
 		rm -rf /usr/local/etc/setups.sh
 		install=1

@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 2.0.0
-Release: 0
+Release: 1
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -11,51 +11,69 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: Python-enstore2.6, ftt
+#Requires: Python-enstore2.6, ftt
 
 %description
 Standalone Enstore. Enstore is a Distributed Mass Storage System. 
 The main storage media it uses is magnetic tape, although the new media can be added.
-This rpm has more functionality such as ADIC robot interface.
 For the postinstallation and configuration instructions please see enstore/README
 
 %prep
-# create a tepmorary setup file
-#+++++++++++
+# check if all supporting rpms are installed
+rpm -q Python-enstore2.6
+if [ $? -ne 0 ]; then
+	echo "Python-enstore2.6 is not installed"
+	exit 1
+fi
+rpm -q ftt
+if [ $? -ne 0 ]; then
+	echo "ftt is not installed"
+	exit 1
+fi
+
+rpm -q swig-enstore
+if [ $? -ne 0 ]; then
+	echo "swig-enstore is not installed"
+	exit 1
+fi
+
 cd $RPM_BUILD_ROOT
 echo "BUILD ROOT $RPM_BUILD_ROOT " 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}
 rm -rf enstore-setup
-PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`
-echo PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`> /tmp/enstore-setup
+
+%setup -q -c -n %{prefix}
+# copy all supporting products
+pydir=`rpm -ql Python-enstore2.6 | head -1`
+PYTHON_DIR=$RPM_BUILD_ROOT/%{prefix}/Python
+cp -rp $pydir $PYTHON_DIR
+rm -rf $PYTHON_DIR/*.tgz
+fttdir=`rpm -ql ftt | head -1`
+FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/FTT
+cp -rp $fttdir $FTT_DIR
+rm -rf $FTT_DIR/*.tgz
+swigdir=`rpm -ql swig-enstore | head -1`
+SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
+cp -rp $swigdir $SWIG_DIR
+
+# create a tepmorary setup file
+#+++++++++++
+echo PYTHON_DIR=$PYTHON_DIR> /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
 echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
-echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
+echo FTT_DIR=$FTT_DIR >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
 echo ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix} >> /tmp/enstore-setup
 echo export ENSTORE_DIR >> /tmp/enstore-setup
-rpm -q swig-enstore > /dev/null
-if [ $? -eq 0 ]; then
-	swigdir=`rpm -ql swig-enstore | head -1`
-	echo SWIG_DIR=$swigdir >> /tmp/enstore-setup
-	echo export SWIG_DIR >> /tmp/enstore-setup
-	echo SWIG_LIB=$swigdir/swig_lib >> /tmp/enstore-setup
-	echo export SWIG_LIB >> /tmp/enstore-setup
-else
-	echo SWIG_DIR=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883 >> /tmp/enstore-setup
-	echo export SWIG_DIR
-	echo SWIG_LIB=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883/swig_lib >> /tmp/enstore-setup
-	echo export SWIG_LIB
-fi
+echo SWIG_DIR=$SWIG_DIR >> /tmp/enstore-setup
+echo export SWIG_DIR >> /tmp/enstore-setup
+echo SWIG_LIB=$SWIG_DIR/swig_lib >> /tmp/enstore-setup
+echo export SWIG_LIB >> /tmp/enstore-setup
 echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 
-#++++++++++++
-
-%setup -q -c -n %{prefix}
-#find . -name "CVS" | xargs rm -rf
 
 %build
 . /tmp/enstore-setup
@@ -72,6 +90,7 @@ if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
 fi
 
 %pre
+
 PATH=/usr/sbin:$PATH
 # check if user "enstore" and group "enstore "exist"
 
@@ -95,17 +114,18 @@ fi
 
 %post
 echo "POSTINSTALL"
+export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 rm -rf /tmp/enstore-setup
-PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`
-echo PYTHON_DIR=`rpm -ql Python-enstore2.6 | head -1`> /tmp/enstore-setup
+PYTHON_DIR=$ENSTORE_DIR/Python
+echo PYTHON_DIR=$PYTHON_DIR
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
 echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
-echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
+FTT_DIR=$ENSTORE_DIR/FTT
+echo FTT_DIR=$FTT_DIR
 echo export FTT_DIR >> /tmp/enstore-setup
-
 
 echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 . /tmp/enstore-setup
