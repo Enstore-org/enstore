@@ -5,19 +5,44 @@
 #
 ###############################################################################
 set -u  # force better programming and ability to use check for not set
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
+
+usage() {
+echo "$0 [force] [url]"
+}
+while [ $# -gt 0 ];
+do
+	case $1 in
+		-x) set -xv; shift;	;;
+		-h) usage; exit 0;	;;
+		force)  force="--${1}"; shift;	;;
+		*) place_from_cmd=$1; shift;	;;
+	esac;
+done
+processor=`uname -p`
+if [ "${place:-x}" = "x" ]; then
+    place = $place_from_cmd
+fi
+
+if [ "${ENSTORE_VERBOSE:-x}" != "x" ]; then
+    set -xv
+fi 
+
 . /usr/local/etc/setups.sh
 setup enstore
 echo "installing enstore_html"
 /sbin/service httpd stop
-rpm -U --force --nodeps ${place}/enstore_html-1.0-1.noarch.rpm
+rpm -U ${force} --nodeps ${place}/noarch/enstore_html-1.0-1.noarch.rpm
 
 rpm -q postgresql > /dev/null
-if [ $? -ne 0 ]; 
+if [ $? -ne 0  -o -n $force ]; 
 then
     echo "installing postgres"
-    rpm -U --force ${place}/postgresql-libs-8.2.7-1PGDG.rhel4.i686.rpm ${place}/postgresql-8.2.7-1PGDG.rhel4.i686.rpm ${place}/postgresql-server-8.2.7-1PGDG.rhel4.i686.rpm ${place}/postgresql-devel-8.2.7-1PGDG.rhel4.i686.rpm
+    rpm -U $force ${place}/${processor}/postgresql-*
+    if [ $? -ne 0 ]; 
+    then
+	echo "installation of postgresql failed"
+	exit 1
+    fi;
     #yum update postgres
     rm -f /tmp/postgresql
     mv /etc/rc.d/init.d/postgresql /tmp/postgresql
@@ -29,78 +54,81 @@ then
     echo "kernel.shmall=1073741824" >> /etc/sysctl.conf
 fi
 
-echo "installing pnfs"
-if [ -r /etc/rc.d/init.d/pnfs ];
+rpm -q pnfs > /dev/null
+if [ $? -ne 0  -o -n $force ];
 then
-    chmod 755 /etc/rc.d/init.d/pnfs
-    /etc/rc.d/init.d/pnfs stop
-    if [ -x /etc/rc.d/init.d/postgresql ]; then /etc/rc.d/init.d/postgresql stop; fi
-    #/etc/rc.d/init.d/postgresql stop
-fi
-rpm -U --force ${place}/pnfs-3.1.10-2f.i386.rpm
-# complete after install pnfs configuration
-# copy setup
+    echo "installing pnfs"
+    if [ -r /etc/rc.d/init.d/pnfs ];
+    then
+	chmod 755 /etc/rc.d/init.d/pnfs
+	/etc/rc.d/init.d/pnfs stop
+	if [ -x /etc/rc.d/init.d/postgresql ]; then /etc/rc.d/init.d/postgresql stop; fi
+	#/etc/rc.d/init.d/postgresql stop
+    fi
+    rpm -U ${force} ${place}/${processor}/pnfs-postgresql-3.1.18-1-SL5x.x86_64.rpm
+    # complete after install pnfs configuration
+    # copy setup
 
-$ENSTORE_DIR/external_distr/extract_config_parameters.py pnfs_server | cut -f1,2 -d\: --output-delimiter=" " > /tmp/pnfs_conf.tmp
-while read f1 f2; do eval pnfs_${f1}=$f2; done < /tmp/pnfs_conf.tmp
-rm -rf install_database.tmp
-echo pnfs host: ${pnfs_host}
-this_host=`uname -n`
-echo "Creating pnfsSetup"
-case $this_host in
-	stken*)
-	    pnfsSetup_file=stken-pnfsSetup
-	    ;;
-	d0en*)
-	    pnfsSetup_file=d0en-pnfsSetup
-	    ;;
-	cdfen*)
-	    pnfsSetup_file=cdfen-pnfsSetup
-	    ;;
-	    *)
-	    pnfsSetup_file=stken-pnfsSetup
-esac
-if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
-if [ ! -r /usr/etc/pnfsSetup ]; then cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup; fi
-if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSetup.sh; fi
+    $ENSTORE_DIR/external_distr/extract_config_parameters.py pnfs_server | cut -f1,2 -d\: --output-delimiter=" " > /tmp/pnfs_conf.tmp
+    while read f1 f2; do eval pnfs_${f1}=$f2; done < /tmp/pnfs_conf.tmp
+    rm -rf install_database.tmp
+    echo pnfs host: ${pnfs_host}
+    this_host=`uname -n`
+    echo "Creating pnfsSetup"
+    case $this_host in
+	    stken*)
+		pnfsSetup_file=stken-pnfsSetup
+		;;
+	    d0en*)
+		pnfsSetup_file=d0en-pnfsSetup
+		;;
+	    cdfen*)
+		pnfsSetup_file=cdfen-pnfsSetup
+		;;
+		*)
+		pnfsSetup_file=stken-pnfsSetup
+    esac
+    if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
+    if [ ! -r /usr/etc/pnfsSetup ]; then cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup; fi
+    if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSetup.sh; fi
 
-. /usr/etc/pnfsSetup.sh
-echo "PGDATA=$database_postgres" > /etc/sysconfig/pgsql/postgresql
-if [ $this_host = $pnfs_host ];
-then
-    mkdir -p $database_postgres
-    mkdir -p $database
-    chown enstore $database_postgres
-    echo "Configuring this host to run postgres"
-    /sbin/chkconfig postgresql on
-    echo "Initializing postgres"
-    su enstore -c "initdb -D $database_postgres"    
-    echo "Starting postgres"
-    /etc/init.d/postgresql start
-    echo "Configuring this host to run pnfs server"
-    /sbin/chkconfig --add pnfs
-    /sbin/chkconfig pnfs on
-    echo "creating admin DB"
-    ./mdb create admin `dirname $database`/admin
-    echo "creating data DB"
-    ./mdb create data `dirname $database`/data
-    #echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
+    . /usr/etc/pnfsSetup.sh
+    echo "PGDATA=$database_postgres" > /etc/sysconfig/pgsql/postgresql
+    if [ $this_host = $pnfs_host ];
+    then
+	mkdir -p $database_postgres
+	mkdir -p $database
+	chown enstore $database_postgres
+	echo "Configuring this host to run postgres"
+	/sbin/chkconfig postgresql on
+	echo "Initializing postgres"
+	su enstore -c "initdb -D $database_postgres"    
+	echo "Starting postgres"
+	/etc/init.d/postgresql start
+	echo "Configuring this host to run pnfs server"
+	/sbin/chkconfig --add pnfs
+	/sbin/chkconfig pnfs on
+	echo "creating admin DB"
+	./mdb create admin `dirname $database`/admin
+	echo "creating data DB"
+	./mdb create data `dirname $database`/data
+	#echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
 	#/etc/init.d/pnfs startnst
-fi
+    fi
 
-# install compress
-yum -y install ncompress
-#create pnfs directory
-if [ ! -d /pnfs ];
-then
-    mkdir /pnfs
-    chmod 777 /pnfs
+    # install compress
+    yum -y install ncompress
+    #create pnfs directory
+    if [ ! -d /pnfs ];
+    then
+	mkdir /pnfs
+	chmod 777 /pnfs
+    fi
 fi
-
 echo "Enabling Enstore log directory"
 $ENSTORE_DIR/external_distr/extract_config_parameters.py log_server | grep "log_file_path" | cut -f1,2 -d\: --output-delimiter=" " > /tmp/log_conf.tmp
 while read f1 f2; do eval $f1=$f2; done < /tmp/log_conf.tmp
-rm -rf /tmp/log_conf.tmp
+#rm -rf /tmp/log_conf.tmp ---- REMOVE
 
 #log_dir=`dirname $log_file_path`
 if [ -d $log_file_path ];
