@@ -8,8 +8,8 @@ fi
 
 PATH=/usr/sbin:$PATH
 
-export PYTHON_DIR=`rpm -ql Python-enstore | head -1`
-export ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
+export ENSTORE_DIR=`rpm -ql enstore | head -1`
+export PYTHON_DIR=$ENSTORE_DIR/Python
 export PYTHONINC=`ls -d ${PYTHON_DIR}/include/python*`
 export PYTHONLIB=`ls -d ${PYTHON_DIR}/lib/python*`
 export PATH=${PYTHON_DIR}/bin:${PATH}
