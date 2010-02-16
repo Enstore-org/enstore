@@ -58,7 +58,9 @@ class ThreadWithResult(threading.Thread):
         # do my stuff here that generates results
         try:
             self.result = apply(self._Thread__target, self._Thread__args)
-        except KeyError:
+        except (KeyboardInterrupt, SystemExit):
+            pass
+        except:
             exc, msg, tb = sys.exc_info()
             import traceback
             traceback.print_tb(tb)
@@ -69,12 +71,35 @@ class ThreadWithResult(threading.Thread):
         
         # and now the thread exits
 
+    #The threading.Thread.join() function doesn't handle singals while waiting.
+    # Thus, this version overrides that behavior.
+    def join(self, timeout=None):
+        if self.is_joinable:
+            threading.Thread.join(self, timeout)
+        else:
+            start_time = time.time()
+            while timeout == None or time.time() - start_time < timeout:
+                #We need to check for is_joinable.  If we call join() while
+                # the thread is still running the call to join() will hang
+                # until the thread exists.  This normally wouldn't be a
+                # problem, but in python this allows the process to ignore
+                # signals, like the one generated from a Ctrl-C.
+                if self.is_joinable:
+
+                    threading.Thread.join(self)
+
+                    #If we joined the thread, leave the loop.
+                    break
+
+                else:
+                    time.sleep(0.1)
+
     def reset(self, *pargs):
         self._Thread__args = pargs
         self._Thread__started = 0
         self._Thread__stopped = 0
         self.result = None
-    
+
 
 infc = None
 vol_info = {} #File Family and Library Manager cache.
@@ -84,6 +109,23 @@ ts_check = []
 stop_threads_lock=threading.Lock()
 threads_stop = False
 alarm_lock=threading.Lock()
+
+#Collect all child threads.  Wait for them to exit if necessary.
+def cleanup_threads():
+    while len(ts_check) > 0:
+        for i in range(len(ts_check)):
+            ts_check[i].join()
+            result = ts_check[i].get_result()
+            try:
+                err_j, warn_j, info_j = result #Why do we do this?
+            except TypeError:
+                pass #???
+            del ts_check[i]
+
+            #If we joined a thread, go back to the top of the while.
+            # If we don't we will have a discrepancy between indexes
+            # from before the "del" and after the "del" of ts_check[i].
+            break
 
 # union(list_of_sets)
 ###copied from file_clerk_client.py
@@ -634,6 +676,12 @@ def get_volumedb_info(volume):
                     del vol_info[volume]['sum_wr_access']
                     del vol_info[volume]['sum_rd_err']
                     del vol_info[volume]['first_access']
+                    del vol_info[volume]['last_access']
+                    del vol_info[volume]['remaining_bytes']
+                    del vol_info[volume]['modification_time']
+                    del vol_info[volume]['write_protected']
+                    del vol_info[volume]['si_time']
+                    del vol_info[volume]['eod_cookie']
                 except KeyError:
                     pass
                 
@@ -989,7 +1037,7 @@ def check(f, f_stats = None):
     # if f is a directory, recursively check its files
     elif stat.S_ISDIR(f_stats[stat.ST_MODE]):
 
-        if is_new_database(f):
+        if intf_of_scanfiles.threaded and is_new_database(f):
             #If we have the top directory of a new database, fork off a thread
             # for it.
             ts_check.append(ThreadWithResult(target = check_dir,
@@ -1095,6 +1143,15 @@ def check_dir(d, dir_info):
 # check_vol(vol) -- check whole volume
 
 def check_vol(vol):
+
+    #We need to know if we should stop now.  Otherwise the main thread
+    # will wait for child threads to finish.
+    stop_threads_lock.acquire()
+    if threads_stop:
+        stop_threads_lock.release()
+        thread.exit()
+    stop_threads_lock.release()
+    
     err = []
     warn = []
     info = []
@@ -1154,12 +1211,44 @@ def check_vol(vol):
                     err = [message,]
                 errors_and_warnings(vol, err, warn, info)
                 break
-        else:
-            #Continue on with checking the bfid.
-            check_bit_file(tape_list[i]['bfid'],
-                           {'file_record' : tape_list[i],
-                            'volume_record' : volume_ticket})
-                
+
+    if intf_of_scanfiles.threaded:
+        #Past evidence has shone that more than three
+        # buckets/threads/coprocesses does not improve performance much,
+        # if at all.
+        THREADS = 3
+        #Add one to make sure we don't miss any at the end.
+        tapes_per_thread = (len(tape_list) / THREADS) + 1
+        #Beginning and end of the first set of files on the tape.
+        start = 0
+        end = tapes_per_thread
+        for i in range(THREADS):
+            #If we have the top directory of a new database, fork off a
+            # thread for it.
+            ts_check.append(ThreadWithResult(target = check_bit_files,
+                                             args = (tape_list[start:end],
+                                                     volume_ticket)))
+            ts_check[-1].start()
+
+            #Set the next loop to process the next section of the tape.
+            start = end
+            end = end + tapes_per_thread
+
+        #Wait for the threads to finish.
+        cleanup_threads()
+    else:
+        #Continue on with checking the bfids in one thread.
+        check_bit_files(tape_list, volume_ticket)
+
+#Intermediate function to handle scanning a list of files from check_vol(),
+# with different lists scanned in different threads.
+def check_bit_files(file_record_list, volume_record={}):
+
+    for file_record in file_record_list:
+        check_bit_file(file_record['bfid'],
+                       {'file_record' : file_record,
+                        'volume_record' : volume_record})
+
 last_db_tried = ("", (-1, ""))
 search_list = []
 
@@ -1172,6 +1261,14 @@ search_list = []
 
 def check_bit_file(bfid, bfid_info = None):
     global last_db_tried
+
+    #We need to know if we should stop now.  Otherwise the main thread
+    # will wait for child threads to finish.
+    stop_threads_lock.acquire()
+    if threads_stop:
+        stop_threads_lock.release()
+        thread.exit()
+    stop_threads_lock.release()
 
     err = []
     warn = []
@@ -2052,29 +2149,9 @@ def start_check(line):
 
     check(line)
 
-    while len(ts_check) > 0:
-        for i in range(len(ts_check)):
-            #We need to check for is_joinable().  If we call join() while the
-            # thread is still running the call to join() will hang until
-            # the thread exists.  This normally wouldn't be a problem,
-            # but in python this allows the process to ignore signals,
-            # like the one generated from a Ctrl-C.
-            if ts_check[i].is_joinable:
-                ts_check[i].join()
-                result = ts_check[i].get_result()
-                try:
-                    err_j, warn_j, info_j = result #Why do we do this?
-                except TypeError:
-                    pass #???
-                del ts_check[i]
+    #Wait for the threads to finish.
+    cleanup_threads()
 
-                #If we joined a thread, go back to the top of the while.
-                # If we don't we will have a discrepancy between indexes
-                # from before the "del" and after the "del" of ts_check[i].
-                break
-        else:
-            time.sleep(5)
-        
 ###############################################################################
     
 class ScanfilesInterface(option.Interface):
@@ -2088,6 +2165,7 @@ class ScanfilesInterface(option.Interface):
         self.profile = 0
         self.old_path = []
         self.new_path = []
+        self.threaded = 0
 
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -2118,6 +2196,13 @@ class ScanfilesInterface(option.Interface):
         option.PROFILE:{option.HELP_STRING:"Display profile info on exit.",
                             option.VALUE_USAGE:option.IGNORED,
                             option.USER_LEVEL:option.ADMIN,},
+        option.THREADED:{option.HELP_STRING:
+                         "Use multiple threads.  This will interlace the"
+                         " output.",
+                         option.DEFAULT_TYPE:option.INTEGER,
+                         option.DEFAULT_NAME:"threaded",
+                         option.DEFAULT_VALUE:1,
+                         option.USER_LEVEL:option.USER,},
         #--bfid is considered obsolete
         option.VOL:{option.HELP_STRING:"treat input as volumes",
                          option.VALUE_USAGE:option.IGNORED,
