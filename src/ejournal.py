@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# $I$
+# $Id$
 #
 ###############################################################################
 
@@ -111,11 +111,7 @@ class Journal:
 	def checkpoint(self):
 		io_lock.acquire()
 		try:
-			self.jfile.close()
-			os.rename(self.journalfile, self.journalfile+'.'+repr(time.time()))
-			self.jfile = open(self.journalfile, "w")
-			self.dict = {}
-			self.count = 0
+			self.__checkpoint()
 		finally:
 			io_lock.release()
 
