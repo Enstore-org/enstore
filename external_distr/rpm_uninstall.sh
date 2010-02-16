@@ -36,12 +36,10 @@ then
     echo "Removing farmlets"
     rm -rf $FARMLETS_DIR
     echo "Restoring /etc/rc.d/rc.local"
-    cp -pf /etc/rc.d/rc.local.enstore_save /etc/rc.d/rc.local
-    rm -rf /etc/rc.d/rc.local.enstore_save
+    mv -f /etc/rc.d/rc.local.enstore_save /etc/rc.d/rc.local
 
     echo "Restoring /etc/sudoers"
-    cp -pf /etc/sudoers.enstore_save /etc/sudoers
-    rm -rf /etc/sudoers.enstore_save
+    mv -f /etc/sudoers.enstore_save /etc/sudoers
 
     echo "Removing /etc/rc.d/init.d/enstore-boot"
     /etc/rc.d/init.d/enstore-boot stop
