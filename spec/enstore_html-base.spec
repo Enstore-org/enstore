@@ -36,7 +36,7 @@ cd %{prefix}/%{name}-%{version}
 %{prefix}
 
 %changelog
-* Tue Jun 12 2007 Dmitry Litvintsev <litvinse@cduqbar.fnal.gov> - html-1
-- Initial build.
 * Tue Feb 16 2010 Alexander Moibenko <moibenko@.fnal.gov> - html-2
 - Pyhton was moved
+* Tue Jun 12 2007 Dmitry Litvintsev <litvinse@cduqbar.fnal.gov> - html-1
+- Initial build.
