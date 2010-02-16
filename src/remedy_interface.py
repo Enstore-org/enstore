@@ -22,6 +22,11 @@ from SubmitTicket import SubmitTicket
 from ConfigParser import ConfigParser
 
 def submit_ticket(**kwargs):
+    #
+    # The default values of variuos fields are chosen in such a way that
+    # if executed w/o any arguments this function would create moderate urgency
+    # ticket assigned to "Storage Service" group (that us "us")
+    #
     config    = os.path.join(os.environ['ENSTORE_DIR'],'etc/create_entry.cf')
     help_desk = HelpDesk.create(config)
     config_parser = ConfigParser()
@@ -32,7 +37,7 @@ def submit_ticket(**kwargs):
     submitter = SubmitTicket(
         Last_Name      = config_parser.get('create_entry','JohnDoeLast','ENStore'),
         First_Name     = config_parser.get('create_entry','JohnDoeFirst','System'),
-        Assigned_Group = config_parser.get('create_entry','assigntogroup','Storage Service'),
+        Assigned_Group       = kwargs.get('Assigned_Group',config_parser.get('create_entry','assigntogroup','Storage Service')),
         Service_Type         = kwargs.get('Service_Type','Infrastructure Event'),
         Impact_Type          = kwargs.get('Impact_Type','3-Moderate/Limited'),
         Urgency_Type         = kwargs.get('Urgency_Type','3-Medium'),

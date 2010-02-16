@@ -1330,8 +1330,9 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 		Notes=long_message,
 		Reported_Source_Type = 'Other',
 		Action = 'CREATE',
-		Status_Type = 'New',
+		Status_Type = 'Assigned',
 		CiName = system_name.upper(),
+		Assigned_Group='Facilities Support Services', # group that takes care of tab flipping
 		)
 # get_last_job_time(cluster, job_type)
 
