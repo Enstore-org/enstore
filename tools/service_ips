@@ -39,7 +39,7 @@ if [ $? -ne 0 ]; then
 fi
 
 #Get just the unique alias names for now from all of the service IP info.
-service_aliases=`echo "$raw_service_ips" | tr "." " " | awk '{print $2}' | sort | uniq`
+service_aliases=`echo "$raw_service_ips" | grep -v service_ips.status | tr "." " " | awk '{print $2}' | sort | uniq`
 if [ "${service_aliases:-x}" = "x" ]; then
     echo "No entry for service alaises is found in configuration"
     exit 0
