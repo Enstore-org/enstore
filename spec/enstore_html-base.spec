@@ -8,7 +8,7 @@ Source: %{name}_%{version}.tar.gz
 BuildRoot: %{_topdir}/BUILD/%{name}-%{version}
 BuildArch: noarch
 Prefix: /opt/%{name}
-Requires: Python-enstore,  enstore_sa, httpd
+Requires: httpd enstore
 %description
 Fermilab enstore html 
 %pre 
@@ -38,4 +38,5 @@ cd %{prefix}/%{name}-%{version}
 %changelog
 * Tue Jun 12 2007 Dmitry Litvintsev <litvinse@cduqbar.fnal.gov> - html-1
 - Initial build.
-
+* Tue Feb 16 2010 Alexander Moibenko <moibenko@.fnal.gov> - html-2
+- Pyhton was moved
