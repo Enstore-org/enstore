@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+###############################################################################
+#
+# $I$
+#
+###############################################################################
+
 import time
 import os
 import threading
@@ -87,7 +93,7 @@ class Journal:
 				self.__checkpoint()
 		finally:
 			io_lock.release()
-			
+
 	def close(self):
             self.jfile.close()
             self.dict = {}
@@ -119,7 +125,7 @@ class Journal:
             self.jfile = open(self.journalfile, "w")
             self.dict = {}
             self.count = 0
-            
+
 if __name__ == '__main__':
 	jou = Journal('test.jou')
 	for i in range(20000):
