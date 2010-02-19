@@ -48,8 +48,10 @@ The use of print_lock has been commented out at the request of Sasha Moibenko.
 """
 if have_multiprocessing:
     print_lock = multiprocessing.Lock()
+    thread_lock = multiprocessing.Lock()
 else:
     print_lock = threading.Lock()
+    thread_lock = threading.Lock()
 
 # message types.  a message type will be appended to every message so that
 # identifying which message is which will be easier.  messages logged without
@@ -75,15 +77,25 @@ default_logname = "UNKNOWN"
 def get_logname():
     return getattr(logname_data, "logname", default_logname)
 def set_logname(new_logname):
-    logname_data.logname = new_logname
+    logname_data.logname = str(new_logname)
 
 #Provide a way to get the threadname in a thread safe way.
-threadname_data = threading.local()
-default_threadname = ""
+include_threadname = None
 def get_threadname():
-    return getattr(threadname_data, "threadname", default_threadname)
-def set_threadname(new_threadname):
-    threadname_data.threadname = new_threadname
+    global include_threadname
+    #thread_lock.acquire()
+    if include_threadname:
+        thread = threading.current_thread()
+        th_name = thread.getName()
+    else:
+        th_name = ""
+    #thread_lock.release()
+    return th_name
+def log_thread(threadname_flag):
+    global include_threadname
+    #thread_lock.acquire()
+    include_threadname = bool(threadname_flag)
+    #thread_lock.release()
 
 alarm_func = None
 log_func = None
@@ -119,13 +131,12 @@ def trunc(x):
 #Initialize the log and thread values.  This is done for the current
 # thread and for the default of any future threads.
 def init(name, include_thread_name=''):
-    global default_logname, default_threadname 
+    global default_logname
 
-    logname_data.logname = str(name)
-    threadname_data.threadname = str(include_thread_name)
-
+    set_logname(name)
     default_logname = logname_data.logname
-    default_threadname = threadname_data.threadname
+
+    log_thread(include_thread_name)
 
 #message is a string to send to stdout or stderr.
 #out_fp is sys.stdout or sys.stderr.
