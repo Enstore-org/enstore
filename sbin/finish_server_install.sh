@@ -30,8 +30,14 @@ fi
 . /usr/local/etc/setups.sh
 setup enstore
 echo "installing enstore_html"
-/sbin/service httpd stop
-rpm -U ${force} --nodeps ${place}/noarch/enstore_html-1.0-1.noarch.rpm
+/sbin/chkconfig --list httpd >/dev/null 2&>1
+if [ $? -eq 0 ]; then
+    /sbin/service httpd stop
+else
+    # install httpd
+    yum -y install httpd
+fi
+rpm -U ${force} --nodeps ${place}/noarch/enstore_html-2.0-0.noarch.rpm
 
 rpm -q postgresql > /dev/null
 if [ $? -ne 0  -o -n $force ]; 
