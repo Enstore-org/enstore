@@ -1,3 +1,8 @@
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 2.0.0
@@ -164,6 +169,8 @@ echo "Saving /etc/rc.d/rc.local to /etc/rc.d/rc.local.enstore_save"
 cp -pf /etc/rc.d/rc.local /etc/rc.d/rc.local.enstore_save
 echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
 cp -f $ENSTORE_DIR/sbin/rc.local /etc/rc.d
+echo "Updating symbolic links"
+$ENSTORE_DIR/external_distr/update_sym_links.sh
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
 rm /tmp/enstore-setup
