@@ -37,7 +37,7 @@ do
 		-h) usage; exit 0;	;;
 		server) export server=1; shift;	;;
 		fnal) export fnal=$1; shift;	;;
-		force)  force="--${1}"; shift;	;;
+		force)  export force=$1;force="--${1}"; shift;	;;
 		*) place=$1; shift;	;;
 
 	esac;
@@ -64,19 +64,12 @@ then
 fi
 
 
-echo "Installing ftt"
-rpm -U $force ${place}/${processor}/ftt-2.26-4.${processor}.rpm 
-
 echo "Installing tcl"
-yum install tcl.${processor}
+yum -y install tcl.${processor}
 echo "Installing tk"
-yum install tk.${processor}
-echo "Installing python"
-rpm -U $force ${place}/${processor}/Python-enstore2.6-3.0.0-1.${processor}.rpm
-echo "installing swig"
-    rpm -U $force ${place}/${processor}/swig-enstore-1_883-1.${processor}.rpm 
+yum -y install tk.${processor}
 echo "Installing enstore"
-rpm -U $force ${place}/${processor}/enstore-2.0.0-0.${processor}.rpm
+rpm -U $force ${place}/${processor}/enstore-2.0.0-1.${processor}.rpm
 ENSTORE_DIR=`rpm -ql enstore | head -1`
 
 $ENSTORE_DIR/external_distr/create_enstore_environment.sh $fnal
