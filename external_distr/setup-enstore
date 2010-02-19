@@ -97,7 +97,7 @@ if [ ! -r $ENSTORE_DIR/sbin/quickquota ]; then
 fi
 if [ ! -r $ENSTORE_DIR/bin/migrate ]; then 
 	rm -f $ENSTORE_DIR/bin/migrate
-	ln -s $ENSTORE_DIR/src/gmigrate.py   $ENSTORE_DIR/bin/migrate; 
+	ln -s $ENSTORE_DIR/src/migrate.py   $ENSTORE_DIR/bin/migrate; 
 fi
 if [ ! -r $ENSTORE_DIR/bin/duplicate ]; then 
 	rm -f $ENSTORE_DIR/bin/duplicate
@@ -159,7 +159,7 @@ if [ ! -r $ENSTORE_DIR/sbin/media_changer ];      then
 	ln -s $ENSTORE_DIR/src/media_changer.py   $ENSTORE_DIR/sbin/media_changer; 
 fi
 if [ ! -r $ENSTORE_DIR/sbin/mover ];      then 
-	rm -f $ENSTORE_DIR/sbin/move
+	rm -f $ENSTORE_DIR/sbin/mover
 	ln -s $ENSTORE_DIR/src/mover.py   $ENSTORE_DIR/sbin/mover; 
 fi
 if [ ! -r $ENSTORE_DIR/sbin/monitor_server ]; then 
