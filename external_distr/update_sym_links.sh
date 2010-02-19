@@ -29,7 +29,7 @@ ln -s $ENSTORE_DIR/src/get.py   $ENSTORE_DIR/bin/get;
 rm -f $ENSTORE_DIR/sbin/quickquota
 ln -s $ENSTORE_DIR/src/quickquota.py   $ENSTORE_DIR/sbin/quickquota; 
 rm -f $ENSTORE_DIR/bin/migrate
-ln -s $ENSTORE_DIR/src/gmigrate.py   $ENSTORE_DIR/bin/migrate; 
+ln -s $ENSTORE_DIR/src/migrate.py   $ENSTORE_DIR/bin/migrate; 
 rm -f $ENSTORE_DIR/bin/duplicate
 ln -s $ENSTORE_DIR/src/duplicate.py   $ENSTORE_DIR/bin/duplicate; 
 ###
