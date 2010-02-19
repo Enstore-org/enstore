@@ -102,7 +102,10 @@ import smtplib
 import option
 import configuration_client
 import e_errors
-import remedy_interface
+try:
+	import remedy_interface
+except:
+	pass
 debug = False
 # debug = True
 csc = {}
@@ -1331,7 +1334,7 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 		Reported_Source_Type = 'Other',
 		Action = 'CREATE',
 		Status_Type = 'Assigned',
-		CiName = system_name.upper(),
+		CiName = system_name.upper().split('.')[0],
 		Assigned_Group='Facilities Support Services', # group that takes care of tab flipping
 		)
 # get_last_job_time(cluster, job_type)
