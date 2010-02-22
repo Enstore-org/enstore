@@ -1336,6 +1336,8 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 		Status_Type = 'Assigned',
 		CiName = system_name.upper().split('.')[0],
 		Assigned_Group='Facilities Support Services', # group that takes care of tab flipping
+		Product_Categorization_Tier_1='Facility Support Services',
+		Product_Categorization_Tier_2='Tape Handling',
 		)
 # get_last_job_time(cluster, job_type)
 

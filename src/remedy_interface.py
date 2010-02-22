@@ -47,8 +47,8 @@ def submit_ticket(**kwargs):
         Summary              = kwargs.get('Summary',None))
 
     submitter.setProduct_Categorization(
-        config_parser.get('create_entry','Product_Categorization_Tier_1','Storage Services'),
-        config_parser.get('create_entry','Product_Categorization_Tier_2','Enstore'),
+        kwargs.get('Product_Categorization_Tier_1',config_parser.get('create_entry','Product_Categorization_Tier_1','Storage Services')),
+        kwarks.get('Product_Categorization_Tier_2',config_parser.get('create_entry','Product_Categorization_Tier_2','Enstore')),
         config_parser.get('create_entry','Product_Categorization_Tier_3',None))
     submitter.setCIName(ciname)
     submitter.setNotes(notes)
