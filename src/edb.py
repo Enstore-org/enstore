@@ -47,10 +47,12 @@ from DBUtils.PooledDB import PooledDB
 default_database = 'enstoredb'
 
 #
-# need this function to convert datetime.datetime to string
+# this function converts datetime.datetime key in a list of dictionaries
+# to string date representation. Input argument : list of dictionaries
+# (e.g. returned by query_dictresult())
 #
-def sanitize_datetime_values(dictionary) :
-    for item in dictionary:
+def sanitize_datetime_values(dictionaries) :
+    for item in dictionaries:
         if type(item) == psycopg2.extras.RealDictRow:
             for key in item.keys():
                 if isinstance(item[key],datetime.datetime):
@@ -59,12 +61,12 @@ def sanitize_datetime_values(dictionary) :
             for i in range(0,len(item)):
                 if isinstance(item[i],datetime.datetime):
                     item[i] = item[i].isoformat(' ')
-    return dictionary
+    return dictionaries
 
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
 def timestamp2time(s):
-	if not s : return -1
+        if not s : return -1
 	if s == '1969-12-31 17:59:59':
 		return -1
 	if s == '1970-01-01 00:59:59':
@@ -180,33 +182,93 @@ class DbTable:
 				      database=self.database)
 
 	def query(self,s,cursor_factory=None) :
-		db = None
-		cursor = None
-		try:
-			db=self.pool.connection();
-			if cursor_factory :
-				cursor=db.cursor(cursor_factory=cursor_factory)
-			else:
-				cursor=db.cursor()
-			cursor.execute(s)
-			res=cursor.fetchall()
-			return res
-		finally:
-			if cursor : cursor.close()
-			if db: db.close()
+            db = None
+            cursor = None
+            try:
+                db=self.pool.connection();
+                if cursor_factory :
+                    cursor=db.cursor(cursor_factory=cursor_factory)
+                else:
+                    cursor=db.cursor()
+                cursor.execute(s)
+                res=cursor.fetchall()
+                cursor.close()
+                db.close()
+                cursor = None
+                db     = None
+                return res
+            except psycopg2.Error, msg:
+                try:
+                    if cursor:
+                        cursor.close()
+                    if db:
+                        db.close()
+                except:
+                    # if we failed to close just silently ignore the exception
+                    pass
+                curor = None
+                db    = None
+                #
+                # propagate exception to caller
+                #
+                raise e_errors.EnstoreError(None,
+                                            str(msg),
+                                            e_errors.DATABASE_ERROR)
+            except:
+                try:
+                    if cursor:
+                        cursor.close()
+                    if db:
+                        db.close()
+                except:
+                    # if we failed to close just silently ignore the exception
+                    pass
+                #
+                # propagate exception to caller
+                #
+                raise
+
 
 	def update(self,s):
-		db = None
-		cursor = None
-		try:
-			db=self.pool.connection();
-			cursor=db.cursor()
-			cursor.execute(s)
-			db.commit()
-		except:
-			if db : db.rollback()
-		if cursor : cursor.close()
-		if db: db.close()
+            db = None
+            cursor = None
+            try:
+                db=self.pool.connection();
+                cursor=db.cursor()
+                cursor.execute(s)
+                db.commit()
+                cursor.close()
+                db.close()
+            except psycopg2.Error, msg:
+                try:
+                    if db:
+                        db.rollback()
+                    if cursor:
+                        cursor.close()
+                    if db:
+                        db.close()
+                except:
+                    # if we failed to close just silently ignore the exception
+                    pass
+                curor = None
+                db    = None
+                #
+                # propagate exception to caller
+                #
+                raise e_errors.EnstoreError(None,
+                                            str(msg),
+                                            e_errors.DATABASE_ERROR)
+            except:
+                if db:
+                    db.rollback()
+                if cursor:
+                    cursor.close()
+                if db:
+                    db.close()
+                #
+                # propagate exception to caller
+                #
+                raise
 
 	def insert(self,s):
 		return self.update(s)

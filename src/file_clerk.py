@@ -95,23 +95,21 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             sys.exit(1)
 
     def invoke_function(self, function, args=()):
-        if  function.__name__  == "tape_list3":
-
-            c = threading.activeCount()
+        if  function.__name__  == "tape_list3" or MY_NAME=="info_server":
+	    c = threading.activeCount()
             Trace.trace(5, "threads %s"%(c,))
             if c < self.max_threads:
-                Trace.trace(5, "threads %s"%(c,))
-                dispatching_worker.run_in_thread(thread_name=None,
-                                                 function=function,
-                                                 args=args,
-                                                 after_function=self._done_cleanup)
+		    Trace.trace(5, "threads %s"%(c,))
+		    dispatching_worker.run_in_thread(thread_name=None,
+						     function=function,
+						     args=args,
+						     after_function=self._done_cleanup)
             else:
-                apply(function,args)
-                self._done_cleanup()
+		    apply(function,args)
+		    self._done_cleanup()
         else:
             apply(function,args)
             self._done_cleanup()
-
 
     ####################################################################
 
@@ -266,7 +264,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
              where volume.label = '%s' and \
                    file.volume = volume.id \
                    order by location_cookie;"%(external_label)
-        res = self.filedb_dict.db.query(q).getresult()
+        res = self.filedb_dict.query_getresult(q)
         bfids = []
         for i in res:
             bfids.append(i[0])
@@ -325,7 +323,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         q = "select alt_bfid from file_copies_map where bfid = '%s';"%(bfid)
         bfids = []
         try:
-            for i in self.filedb_dict.db.query(q).getresult():
+            for i in self.filedb_dict.query_getresult(q):
                 bfids.append(i[0])
         except:
             pass
@@ -343,9 +341,15 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             bfids = self._find_copies(bfid)
             ticket["copies"] = bfids
             ticket["status"] = (e_errors.OK, None)
-        except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+	    #
+	    # edb module raises underlying DB errors as EnstoreError.
+	    #
+        except e_errors.EnstoreError, msg:
             ticket["copies"] = []
-            ticket["status"] = (e_errors.DATABASE_ERROR, str(msg))
+            ticket["status"] = (msg.type, str(msg))
+	except:
+	    ticket["copies"] = []
+	    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
         return
 
@@ -354,7 +358,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     def _find_original(self, bfid):
         q = "select bfid from file_copies_map where alt_bfid = '%s';"%(bfid)
         try:
-            res = self.filedb_dict.db.query(q).getresult()
+            res = self.filedb_dict.query_getresult(q)
             if len(res):
                 return res[0][0]
         except:
@@ -372,9 +376,15 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             original = self._find_original(bfid)
             ticket["original"] = original
             ticket["status"] = (e_errors.OK, None)
-        except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
+	    #
+	    # edb module raises underlying DB errors as EnstoreError.
+	    #
+        except e_errors.EnstoreError, msg:
             ticket["original"] = None
-            ticket["status"] = (e_errors.DATABASE_ERROR, str(msg))
+            ticket["status"] = (msg.type, str(msg))
+	except:
+            ticket["original"] = None
+	    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
         return
 
@@ -386,7 +396,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         q = "select src_bfid,dst_bfid from migration where (dst_bfid = '%s' or src_bfid = '%s') ;" % (bfid, bfid)
 
-        res = self.filedb_dict.db.query(q).getresult()
+        res = self.filedb_dict.query_getresult(q)
         for row in res:
             src_list.append(row[0])
             dst_list.append(row[1])
@@ -406,10 +416,17 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             ticket["src_bfid"] = src_bfid
             ticket["dst_bfid"] = dst_bfid
             ticket["status"] = (e_errors.OK, None)
-        except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
+	    #
+	    # edb module raises underlying DB errors as EnstoreError.
+	    #
+        except e_errors.EnstoreError, msg:
             ticket["src_bfid"] = None
             ticket["dst_bfid"] = None
-            ticket["status"] = (e_errors.DATABASE_ERROR, str(msg))
+            ticket["status"] = (msg.type, str(msg))
+	except:
+            ticket["src_bfid"] = None
+            ticket["dst_bfid"] = None
+	    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
         return
 
@@ -423,14 +440,20 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             q = "select * from migration where src_bfid = '%s' order by %s;" \
                 % (bfid, order_by)
             Trace.log(e_errors.INFO, q)
-            src_res = self.filedb_dict.db.query(q).dictresult()
+	    #
+	    # convert datetime.datetime to string
+	    #
+            src_res = edb.sanitize_datetime_values(self.filedb_dict.query_dictresult(q))
             Trace.log(e_errors.INFO, src_res)
 
         if find_dst:
             q = "select * from migration where dst_bfid = '%s' order by %s;" \
                 % (bfid, order_by)
             Trace.log(e_errors.INFO, q)
-            dst_res = self.filedb_dict.db.query(q).dictresult()
+	    #
+	    # convert datetime.datetime to string
+	    #
+            dst_res =  edb.sanitize_datetime_values(self.filedb_dict.query_dictresult(q))
             Trace.log(e_errors.INFO, dst_res)
 
         return src_res + dst_res
@@ -463,8 +486,10 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                                                                   find_dst,
                                                                   order_by)
             ticket['status'] = (e_errors.OK, None)
-        except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
-            ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
+        except e_errors.EnstoreError, msg:
+            ticket['status'] = (msg.type, str(msg))
+	except:
+	    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
         self.reply_to_caller(ticket)
         return
 
@@ -477,8 +502,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
              where volume.label = '%s' and \
                    file.volume = volume.id and \
                    file.deleted = 'n';"%(vol)
-        res = self.filedb_dict.db.query(q)
-        return res.ntuples()
+	res = self.filedb_dict.query(q)
+	return len(res)
 
     #### DONE
     # has_undeleted_file -- server service
@@ -494,8 +519,13 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         try:
             result = self.__has_undeleted_file(external_label)
             ticket["status"] = (e_errors.OK, result)
-        except (edb.pg.ProgrammingError,  edb.pg.InternalError), msg:
-            ticket["status"] = (e_errors.DATABASE_ERROR, str(msg))
+	    #
+	    # edb module raises underlying DB errors as EnstoreError.
+	    #
+        except e_errors.EnstoreError, msg:
+            ticket["status"] = (msg.type, str(msg))
+	except:
+	    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
         # and return to the caller
         self.reply_to_caller(ticket)
         return
@@ -755,7 +785,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
                  file.volume = volume.id and volume.label = '%s' \
              order by location_cookie;"%(external_label)
 
-        res = self.filedb_dict.db.query(q).dictresult()
+        res = self.filedb_dict.query_dictresult(q)
 
         alist = []
 
@@ -783,7 +813,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     			pnfs_path != '' order by location_cookie) a1;"%(
     		 external_label)
 
-    	return self.filedb_dict.db.query(q).getresult()
+    	return self.filedb_dict.query_getresult(q)
 
 
     # list_active2(self, ticket) -- list the active files on a volume
@@ -855,7 +885,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
              where \
                  bad_file.bfid = file.bfid and \
                  file.volume = volume.id;"
-        return self.filedb_dict.db.query(q).dictresult()
+        return self.filedb_dict.query_dictresult(q)
 
 
     def show_bad(self, ticket):
@@ -950,7 +980,7 @@ class FileClerkMethods(FileClerkInfoMethods):
                   'register copy %s of original %s' % (copy, original))
 	q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');"%(original, copy)
         try:
-            res = self.filedb_dict.db.query(q)
+            res = self.filedb_dict.insert(q)
         except:
             return 1
         return
@@ -961,7 +991,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         q = "insert into active_file_copying (bfid, remaining) \
                 values ('%s', %d);"%(bfid, n)
         try:
-            res = self.filedb_dict.db.query(q)
+            res = self.filedb_dict.insert(q)
         except:
             return 1
         return
@@ -970,7 +1000,7 @@ class FileClerkMethods(FileClerkInfoMethods):
     #                    if the count becomes zero, delete the record
     def made_copy(self, bfid):
         q = "select * from active_file_copying where bfid = '%s';"%(bfid)
-        res = self.filedb_dict.db.query(q).dictresult()
+        res = self.filedb_dict.query_dictresult(q)
         if not res:
             Trace.log(e_errors.ERROR, "made_copy(): %s does not have copies"%(bfid))
             return
@@ -978,13 +1008,13 @@ class FileClerkMethods(FileClerkInfoMethods):
             # all done, delete this entry
             q = "delete from active_file_copying where bfid = '%s';"%(bfid)
             try:
-                res = self.filedb_dict.db.query(q)
+                res = self.filedb_dict.remove(q)
             except:
                 return 1
         else: # decrease the number
             q = "update active_file_copying set remaining = %d where bfid = '%s';"%(res[0]['remaining'] - 1, bfid)
             try:
-                res = self.filedb_dict.db.query(q)
+                res = self.filedb_dict.insert(q)
             except:
                 return 1
         return
@@ -1508,7 +1538,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         # check if this file has already been marked bad
         q = "select * from bad_file where bfid = '%s';"%(bfid)
-        res = self.filedb_dict.db.query(q).dictresult()
+        res = self.filedb_dict.query_dictresult(q)
         if res:
             msg = "file %s has already been marked bad"%(bfid)
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
@@ -1519,7 +1549,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         q = "insert into bad_file (bfid, path) values('%s', '%s');"%(
             bfid, path)
         try:
-            res = self.filedb_dict.db.query(q)
+            res = self.filedb_dict.insert(q)
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
@@ -1538,7 +1568,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         q = "delete from bad_file where bfid = '%s';" %(bfid)
         try:
-            res = self.filedb_dict.db.query(q)
+            res = self.filedb_dict.remove(q)
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
@@ -1556,19 +1586,22 @@ class FileClerkMethods(FileClerkInfoMethods):
     # ticket - The original ticket received; the status field is set.
     def __migration(self, query, ticket):
         try:
-            self.filedb_dict.db.query(query)
+            self.filedb_dict.insert(query)
 
             ticket['status'] = (e_errors.OK, None)
-        except (edb.pg.ProgrammingError, edb.pg.InternalError), msg:
+	    #
+	    # edb module raises underlying DB errors as EnstoreError.
+	    #
+        except e_errors.EnstoreError, msg:
             if str(msg).find("duplicate key violates unique constraint") != -1:
                 #The old unique constraint was on each src & dst
                 # column.  For modern migration capable of migrating
                 # to multiple copies this constraint needs to be on
                 # the pair of src & dst columns.
-                ticket['status'] = (e_errors.DATABASE_ERROR,
+                ticket['status'] = (msg.type,
                                     "The database has an obsolete unique key constraint.")
             else:
-                ticket['status'] = (e_errors.DATABASE_ERROR, str(msg))
+                ticket['status'] = (msg.type, str(msg))
         except:
             ticket['status'] = (e_errors.FILE_CLERK_ERROR, str(msg))
 

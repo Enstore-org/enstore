@@ -268,11 +268,17 @@ class Server(file_clerk.FileClerkInfoMethods,
 		q="select bfid from file where pnfs_path='%s'"%(pnfs_path,)
 		res=[]
 		try:
-			res = self.db.query(q).dictresult()
-		except (edb.pg.ProgrammingError, edb.pg.InternalError):
-			ticket['status'] = (e_errors.DATABASE_ERROR,
+			res = self.file.query_dictresult(q)
+			#
+			# edb module raises underlying DB errors as EnstoreError.
+			#
+		except e_errors.EnstoreError, msg:
+			ticket['status'] = (msg.type,
 					    "failed to find bfid for pnfs_path %s"%(pnfs_path,))
-
+			return
+		except:
+			ticket['status'] = (e_errors.INFO_SERVER_ERROR,
+					    "failed to find bfid for pnfs_path %s"%(pnfs_path,))
 			return
 		if not res :
 			ticket['status'] = (e_errors.NO_FILE,
@@ -318,11 +324,18 @@ class Server(file_clerk.FileClerkInfoMethods,
 		q = "select bfid from file where pnfs_id = '%s'" % (pnfs_id,)
 		res=[]
 		try:
-			res = self.db.query(q).dictresult()
-		except (edb.pg.ProgrammingError, edb.pg.InternalError):
-			ticket['status'] = (e_errors.DATABASE_ERROR,
+			res = self.file_query_dictresult(q)
+			#
+			# edb module raises underlying DB errors as EnstoreError.
+			#
+		except e_errors.EnstoreError, msg:
+			ticket['status'] = (msg.type,
 					    "failed to find bfid for pnfs_id %s"%(pnfs_id,))
 
+			return
+		except:
+			ticket['status'] = (e_errors.INFO_SERVER_ERROR,
+					    "failed to find bfid for pnfs_id %s"%(pnfs_id,))
 			return
 		if not res :
 			ticket['status'] = (e_errors.NO_FILE,
@@ -386,9 +399,17 @@ class Server(file_clerk.FileClerkInfoMethods,
 		(external_label, location_cookie)
 		res=[]
 		try:
-			res=self.db.query(q).dictresult()
-		except (edb.pg.ProgrammingError, edb.pg.InternalError):
-			ticket['status'] = (e_errors.DATABASE_ERROR,
+			res=self.file.query_dictresult(q)
+			#
+			# edb module raises underlying DB errors as EnstoreError.
+			#
+		except e_errors.EnstoreError, msg:
+			ticket['status'] = (msg.type,
+					    "failed to find bfid for volume:location %s:%s"%(external_label, location_cookie,))
+
+			return ticket
+		except:
+			ticket['status'] = (e_errors.INFO_SERVER_ERROR,
 					    "failed to find bfid for volume:location %s:%s"%(external_label, location_cookie,))
 			return ticket
 
@@ -432,7 +453,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		    % (record['size'], record['complete_crc'],
 		       record['sanity_cookie'][0], record['sanity_cookie'][1])
 
-		res = self.db.query(q).getresult()
+		res = self.file.query_getresult(q)
 
 		files = []
 		for i in res:
