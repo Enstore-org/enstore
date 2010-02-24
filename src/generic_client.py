@@ -302,9 +302,10 @@ class GenericClient:
 
         #If the short answer says that the real answer is too long, continue
         # with obtaining the information over TCP.
-        if (long_reply == None and
-            type(x) == types.DictType and x.get('long_reply', None)) \
-               or (long_reply != None and long_reply):
+        if e_errors.is_ok(x) and \
+           ((long_reply == None and
+             type(x) == types.DictType and x.get('long_reply', None)) \
+            or (long_reply != None and long_reply)):
             
             try:
                 connect_socket = callback.connect_to_callback(x['callback_addr'])
