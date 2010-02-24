@@ -483,6 +483,11 @@ WITH_FINAL_SCAN = "with-final-scan"          #migrate
 WRITE_PROTECT_STATUS = "write-protect-status" #volume
 WRITE_PROTECT_ON = "write-protect-on"        #volume
 WRITE_PROTECT_OFF = "write-protect-off"      #volume
+XATTR = "xattr"                              #fs
+XATTRCHMOD = "xattrchmod"                    #fs
+XATTRCHOWN = "xattrchown"                    #fs
+XATTRRM = "xattrrm"                          #fs
+XATTRS = "xattrs"                            #fs
 XREF = "xref"                                #pnfs
 
 #these are this files test options
@@ -572,7 +577,7 @@ valid_option_list = [
     VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST, WITH_DELETED, WITH_FINAL_SCAN,
     WRITE_PROTECT_STATUS, WRITE_PROTECT_ON, WRITE_PROTECT_OFF,
-    XREF,
+    XATTR, XATTRCHMOD, XATTRCHOWN, XATTRRM, XATTRS, XREF,
     ]
 
 ############################################################################
@@ -1140,7 +1145,7 @@ class Interface:
 
         #For backward compatibility, convert options with underscores to
         # dashes.  This must be done before the getopt since the getopt breaks
-        # with dashes.  It should be noted that the use of underscores is
+        # with underscores.  It should be noted that the use of underscores is
         # a VAX thing, and that dashes is the UNIX way of things.
         self.convert_underscores(argv)
 
@@ -1151,7 +1156,7 @@ class Interface:
             # non-processeced arguments and remove it from the list of args.
             # This is done, because getopt.getopt() breaks if the first thing
             # it sees does not begin with a "-" or "--".
-            while len(argv) and not self.is_option(argv[0]):
+            while len(argv) and not self.is_switch_option(argv[0]):
                 self.args.append(argv[0])
                 del argv[0]
 
@@ -1163,9 +1168,7 @@ class Interface:
                 self.print_usage(detail.msg)
 
             #copy in this way, to keep self.args out of a dir() listing.
-            #for arg in argv:
-            #    self.args.append(arg)
-            while len(argv) and not self.is_option(argv[0]):
+            while len(argv) and not self.is_switch_option(argv[0]):
                 self.args.append(argv[0])
                 del argv[0]
 
@@ -1791,7 +1794,7 @@ class Interface:
                     self.args.remove(next_arg)
             except ValueError:
                 try:
-                    sys.stderr.write("Problem processing argument %s." %
+                    sys.stderr.write("Problem processing argument %s.\n" %
                                      (next_arg,))
                     sys.stderr.flush()
                 except IOError:
