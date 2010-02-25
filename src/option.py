@@ -793,7 +793,7 @@ class Interface:
     #text_string: the string that will be appended to the end of lines_of_text
     #filler_length: Minumum number of character columns to indent the
     #               text_string.
-    def build_help_string(self, lines_of_text, text_string,
+    def build_help_string(self, lines_of_text, text_string_line,
                           filler_length, num_of_cols):
         #Set this for the first loop below.
         use_existing_line = 1
@@ -806,7 +806,7 @@ class Interface:
         except IndexError:
             last_line = ""
 
-        if text_string:
+        for text_string in text_string_line.split("\n"):
             #value_line_length is the number of character collumns to space
             # over (or append to) before printing new characters.
             value_line_length = num_of_cols - max(len(last_line),
@@ -837,12 +837,18 @@ class Interface:
                     lines_of_text.append(temp)
                 else: #use new line
                     lines_of_text.append(" " * filler_length +
-                                         text_string[index:new_index].lstrip())
+                                         text_string[index:new_index])
                 #Reset this to the next indent point for future lines.
                 value_line_length = num_of_cols - (filler_length - 1)
                 index=new_index
                 #Set this false to use a new line.
                 use_existing_line = 0
+
+            #Reset this to the next indent point for future lines.
+            value_line_length = num_of_cols - (filler_length - 1)
+            index=new_index
+            #Set this false to use a new line.
+            use_existing_line = 0
 
     def print_help(self):
         #First print the usage line.
@@ -945,7 +951,7 @@ class Interface:
             else: #Insert spaces in case of long option name.
                 self.build_help_string(lines_of_text, "  ",
                                        len(option_names), num_of_cols)
-            #Build the HELP STRING part of the command output. Assume
+            #Build the HELP STRING part of the command output.  Assume
             # that option_names is less than 80 characters.
             self.build_help_string(lines_of_text, help_string,
                                    COMM_COLS, num_of_cols)
