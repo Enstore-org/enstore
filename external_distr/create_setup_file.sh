@@ -11,8 +11,6 @@ if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 if [ "${1:-x}" = "fnal" ]; then export fnal=1; shift; else fnal=0;fi
 if [ "${1:-x}" = "demo" ]; then export demo=1; shift; else demo=0;fi
 
-env
-
 if [ "${ENSTORE_VERBOSE:-x}" != "x" ]; then
     set -xv
 fi 
