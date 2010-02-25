@@ -2681,7 +2681,8 @@ def show_status(volume_list, db, intf):
         #When the volume is a source volume.
         q1a = "select f1.bfid, f1.deleted as src_del, " \
               "       case when b1.bfid is not NULL then 'B' " \
-              "            when f1.deleted in ('y', 'n') and f1.pnfs_id = '' then 'E' /*Mark failed and deleted files special*/ " \
+              "            when f1.pnfs_id = '' " \
+              "              or f1.pnfs_path = '' then 'E' /*Mark failed and deleted files special*/ " \
               "            else ' ' " \
               "       end as src_bad, " \
               "       case when (select fcm.bfid " \
@@ -2707,8 +2708,19 @@ def show_status(volume_list, db, intf):
               "            then 'M'" \
               "            else NULL" \
               "       end as src_dup, " \
-              "       f2.bfid, f2.deleted as dst_del, " \
+              "       case when f2.bfid is not NULL " \
+              "            then f2.bfid " \
+              "            when f2a.bfid is not NULL " \
+              "            then f2a.bfid " \
+              "            else NULL " \
+              "       end as dst_bfid, " \
+              "       case when f2.bfid is not NULL " \
+              "            then f2.deleted " \
+              "            when f2a.bfid is not NULL " \
+              "            then f2a.deleted " \
+              "       end as dst_del, " \
               "       case when b2.bfid is not NULL then 'B' " \
+              "            when b2a.bfid is not NULL then 'B' " \
               "            else ' ' " \
               "       end as dst_bad, " \
               "       case when (select fcm.bfid " \
@@ -2730,7 +2742,8 @@ def show_status(volume_list, db, intf):
               "            then 'O'" \
               "            when (select count(fcm.bfid)" \
               "                  from file_copies_map fcm" \
-              "                  where f2.bfid = fcm.alt_bfid) > 0" \
+              "                  where f2.bfid = fcm.alt_bfid " \
+              "                     or f2a.bfid = fcm.alt_bfid) > 0" \
               "            then 'M'" \
               "            else NULL" \
               "       end as dst_dup, " \
@@ -2740,14 +2753,32 @@ def show_status(volume_list, db, intf):
               "left join file f2 on f2.bfid = migration.dst_bfid " \
               "left join bad_file b1 on b1.bfid = f1.bfid " \
               "left join bad_file b2 on b2.bfid = f2.bfid " \
+              "/* These next three joins are for reporting the multiple " \
+              "   copy status of non-duplicated files. */ " \
+              "left join file_copies_map fcm1 on fcm1.bfid = f1.bfid " \
+              "left join file f2a on f2a.bfid = fcm1.alt_bfid " \
+              "left join bad_file b2a on b2a.bfid = fcm1.alt_bfid " \
               "where f1.volume = volume.id " \
               "  and volume.label = '%s' " \
               "order by f1.location_cookie ASC, f2.location_cookie DESC;" % (v,)
 
         #When the volume is a destination volume.
-        q1b = "select f1.bfid, f1.deleted as src_del, " \
+        q1b = "select case when f1.bfid is not NULL " \
+              "            then f1.bfid " \
+              "            when f1a.bfid is not NULL " \
+              "            then f1a.bfid " \
+              "            else NULL " \
+              "       end as src_bfid, " \
+              "       case when f1.deleted is not NULL " \
+              "            then f1.deleted " \
+              "            when f1a.deleted is not NULL " \
+              "            then f1a.deleted " \
+              "            else NULL " \
+              "       end as src_del, " \
               "       case when b1.bfid is not NULL then 'B' " \
-              "            when f1.deleted in ('y', 'n') and f1.pnfs_id = '' then 'E' /*Mark failed and deleted files special*/ " \
+              "            when b1a.bfid is not NULL then 'B' " \
+              "            when f1.pnfs_id = '' " \
+              "              or f1.pnfs_path = '' then 'E' /*Mark failed and deleted files special*/ " \
               "            else ' ' " \
               "       end as src_bad, " \
               "       case when (select fcm.bfid " \
@@ -2765,11 +2796,13 @@ def show_status(volume_list, db, intf):
               "               copies. */" \
               "            when (select count(fcm.bfid)" \
               "                  from file_copies_map fcm" \
-              "                  where f1.bfid = fcm.bfid) > 0" \
+              "                  where f1.bfid = fcm.bfid " \
+              "                        or f1a.bfid = fcm.bfid) > 0" \
               "            then 'O'" \
               "            when (select count(fcm.bfid)" \
               "                  from file_copies_map fcm" \
-              "                  where f1.bfid = fcm.alt_bfid) > 0" \
+              "                  where f1.bfid = fcm.alt_bfid " \
+              "                        or f1a.bfid = fcm.alt_bfid) > 0" \
               "            then 'M'" \
               "            else NULL" \
               "       end as src_dup, " \
@@ -2806,6 +2839,11 @@ def show_status(volume_list, db, intf):
               "right join file f2 on f2.bfid = migration.dst_bfid " \
               "left join bad_file b1 on b1.bfid = f1.bfid " \
               "left join bad_file b2 on b2.bfid = f2.bfid " \
+              "/* These next three joins are for reporting the multiple " \
+              "   copy status of non-duplicated files. */ " \
+              "left join file_copies_map fcm2 on fcm2.alt_bfid = f2.bfid " \
+              "left join file f1a on f1a.bfid = fcm2.bfid " \
+              "left join bad_file b1a on b1a.bfid = fcm2.bfid " \
               "where f2.volume = volume.id " \
               "  and volume.label = '%s' " \
               "order by f2.location_cookie;" % (v,)
@@ -6567,7 +6605,19 @@ class MigrateInterface(option.Interface):
                                           option.VALUE_USAGE:option.OPTIONAL,},
 						  ]},
 		option.STATUS:{option.HELP_STRING:
-			       "Report on the completion of a volume.",
+			       "Report on the completion of a volume.\n"
+                               "S = State of duplication:\n"
+                               "    P = Primary/original copy; duplication\n"
+                               "    C = Muliple copy; duplication\n"
+                               "    O = Original/primary copy\n"
+                               "    M = Multiple copy\n"
+                               "D = Deleted state:\n"
+                               "    N = Not deleted\n"
+                               "    Y = Yes deleted\n"
+                               "    U = Unknown; failed write\n"
+                               "B = Bad file\n"
+                               "    B = Bad file\n"
+                               "    E = Empty metadata fields\n",
 				 option.VALUE_USAGE:option.IGNORED,
 				 option.VALUE_TYPE:option.INTEGER,
 				 option.USER_LEVEL:option.USER,},
