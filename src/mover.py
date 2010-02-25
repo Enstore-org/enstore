@@ -768,21 +768,20 @@ class Mover(dispatching_worker.DispatchingWorker,
     def __init__(self, csc_address, name):
         generic_server.GenericServer.__init__(self, csc_address, name,
                                               function = self.handle_er_msg)
-        self.name = name
+        self.name = name # log name
         self.shortname = name
         self.unique_id = None #Unique id of last transfer, whether success or failure
-        self.notify_transfer_threshold = 2*1024*1024
-        self.state_change_time = 0.0
+        self.state_change_time = 0.0 # time when state has changed
         self.time_in_state = 0.0
         self.in_state_to_cnt = 0 # how many times timeot for being in the same state expired
-        self.connect_to = 5  # timeout for control socket connection
-        self.connect_retry = 3 # number of retries for control socket connection 
+        self.connect_to = 15  # timeout for control socket connection 
+        self.connect_retry = 4 # number of retries for control socket connection 
         self._state_lock = threading.Lock()
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
-        self.draining = 0
-        self.log_mover_state = None
-        self.override_ro_mount = None # if set override readonly mount MC option
+        self.draining = 0 # draining flag. Draining is not 0
+        self.log_mover_state = None # allow logging additional mover information (configurable)
+        self.override_ro_mount = None # if set override readonly mount MC option 
         self.just_mounted = 0 # to indicate that the volume was just mounted
         # self.need_lm_update is used in threads to flag LM update in
         # the main thread. First element flags update if not 0,
@@ -790,8 +789,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         # third -  reset timer
         # fourth - error source
         self.need_lm_update = (0, None, 0, None)
-        self.asc = None
-        self.send_update_cnt = 0
+        self.asc = None # accounting server client
+        self.send_update_cnt = 0 # send lm_update if this counter is not 0
         self.control_socket = None
         self.lock_file_info = 0   # lock until file info is updated
         self.read_tape_running = 0 # use this to synchronize read and network threads
@@ -800,20 +799,82 @@ class Mover(dispatching_worker.DispatchingWorker,
         # LMs across systems
 
         self.dont_update_lm = 0   # if this flag is set do not update LM to avoid mover restart
-        self.initial_crc_seed = 1L        # adler 32 default seed
-        self.crc_seed = self.initial_crc_seed
+        self.initial_crc_seed = 1L  # adler 32 default seed
+        self.crc_seed = self.initial_crc_seed # crc seed to use in adler32 (0 or 1)
         self.memory_error = 0 # to flag memory error
         self.starting = 1 # to disable changing interval
-        self._error = None
+        self._error = None 
         self._error_source = None
-        self.memory_debug = 0
+        self.memory_debug = 0 # enable memory debugging output if not 0
         self.saved_mode = None
         self.will_mount = None # this is to indicate that the new volume will be mounted and the current dismounted (HIPR)
         self.last_absolute_location = 0L
         self.write_in_progress = False # set this to True before tape write, if write comletes successfuly it will be set to False
         self.assert_ok = threading.Event() # for synchronization in ASSERT mode
 
-        
+
+
+        ##############################################
+        # moved from start()
+        self.buffer = None # data buffer
+        self.udpc = udp_client.UDPClient() # UDP client to communicate with LM(s)
+        self.udp_control_address = None  ## needed for tape ingest
+        self.udp_ext_control_address = None ## needed for tape ingest
+        self.udp_cm_sent = 0  ## needed for tape ingest 
+        self.last_error = (e_errors.OK, None)
+        self.current_location = 0L
+        self.current_volume = None #external label of current mounted volume
+        self.current_library = None
+        self.last_location = 0L
+        self.last_volume = None
+        self.last_volume_family = None
+        self.mode = None # READ, WRITE or ASSERT
+        self.setup_mode = None
+        self.compression = None # use default
+        self.bytes_to_transfer = 0L
+        self.bytes_to_read = 0L
+        self.bytes_to_write = 0L
+        self.bytes_read = 0L
+        self.bytes_read_last = 0L
+        self.bytes_written = 0L
+        self.bytes_written_last = 0L
+        self.volume_family = None 
+        self.files = ('','') # source and destination files
+        self.transfers_completed = 0 # number of completed transfers
+        self.transfers_failed = 0 # number of failed transfers
+        self.error_times = [] # list of times when transfer failed 
+        self.consecutive_failures = 0 # consecutive error counter
+        self.max_consecutive_failures = 2 # maximal number of consecutive errors (configurable)
+        self.max_failures = 3 # maximal number of failures before going OFFLINE (configurable)
+        self.failure_interval = 3600 # offline mover if number of failures>self.max_failures within this interval (configurable)
+        self.current_work_ticket = {}
+        # work may have a method. read_from_hsm work may have methods
+        # describing how read must be done. This is used for reading
+        # tapes bypassing LM. So called tape reads.
+        self.method = None # read_next, read_tape_start to be used with get client 
+        self.vol_info = {}
+        self.file_info = {}
+        self.dismount_time = None
+        self.delay = 0
+        self.fcc = None
+        self.vcc = None
+        self.stat_file = None # file to write statistics to (configurable)
+        self.media_transfer_time = 0.
+        self.client_hostname = None
+        self.client_ip = None  #NB: a client may have multiple interfaces, this is
+                                         ##the IP of the interface we're using
+        self.net_driver = net_driver.NetDriver()
+        self.client_socket = None
+        self.rewind_tape = 0
+        self.t0 = time.time()
+        self.tr_failed = 0 # do not proceed in transfer_failed() if not 0
+        self.on_start = 1 # to debug memory problems
+        self.restart_flag = 0
+
+        # get mover configuration
+        self.config = self.csc.get(self.name)
+        if self.config['status'][0] != 'ok':
+            raise MoverError('could not start mover %s: %s'%(self.name, self.config['status']))
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -1234,15 +1295,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   write_prot)
                 
     def start(self):
-        name = self.name
-        self.t0 = time.time()
-        self.tr_failed = 0
-        self.on_start = 1
-        self.restart_flag = 0
-        self.config = self.csc.get(name)
-        if self.config['status'][0] != 'ok':
-            raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
-        self.logname = self.config.get('logname', name)
+        self.logname = self.config.get('logname', self.name)
         Trace.init(self.logname, self.config.get('include_thread_name', 'yes'))
         # do not restart if some mover processes are already running
         cmd = "EPS | grep %s | grep %s | grep -v grep"%(self.name,"mover.py")
@@ -1274,17 +1327,48 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not os.path.exists(self.config['device']):
             Trace.alarm(e_errors.ALARM, "Cannot start. Device %s does not exist"%(self.config['device'],))
             sys.exit(-1)
+
+        #################################
+        ### Mover type dependent settings
+        #################################
+        if isinstance(self, DiskMover):
+            self.do_eject = 0
+            self.do_cleaning = 0
+            self.rem_stats = 0
+            default_media_type = "disk"
+            self.default_block_size = 131072
+            self.tape_driver = disk_driver.DiskDriver()
+            self.mover_type = self.config.get('type','DiskMover')
+            self.max_rate = self.config.get('max_rate', 100*MB) #XXX
+            self.ip_map = self.config.get('ip_map','cluster_fs')
+            # for cluster fs all files are available for any disk mover
+        else:
+            self.do_eject = 1
+            self.do_cleaning = 1
+            self.rem_stats = 1
+            default_media_type = '8MM'
+            self.mover_type = self.config.get('type','')
+            self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
+            self.ip_map = self.config.get('ip_map','')
+            self.mcc = media_changer_client.MediaChangerClient(self.csc,
+                                                               self.config['media_changer'])
+            mc_keys = self.csc.get(self.mcc.media_changer)
+            # STK robot can eject tape by either sending command directly to drive or
+            # by pushing a corresponding button
+            if mc_keys.has_key('type') and mc_keys['type'] == 'STK_MediaLoader':
+                self.can_force_eject = 1
+            else:
+                self.can_force_eject = 0
+
             
         #how often to send an alive heartbeat to the event relay
-        self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
+        self.alive_interval = monitored_server.get_alive_interval(self.csc, self.name, self.config)
         self.address = (self.config['hostip'], self.config['port'])
         self.lm_address = ('none',0) # LM that called mover
-        self.do_eject = 1
         if self.config.has_key('do_eject'):
             if self.config['do_eject'][0] in ('n','N'):
                 self.do_eject = 0
 
-        self.do_cleaning = 1
         if self.config.has_key('do_cleaning'):
             if self.config['do_cleaning'][0] in ('n','N'):
                 self.do_cleaning = 0
@@ -1294,15 +1378,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.config['get_remaining_from_stats'][0] in ('n','N'):
                 self.rem_stats = 0
 
-        self.mover_type = self.config.get('type','')
-        self.ip_map = self.config.get('ip_map','')
         self.mc_device = self.config.get('mc_device', 'UNDEFINED')
-        self.media_type = self.config.get('media_type', '8MM') #XXX
+        self.media_type = self.config.get('media_type', default_media_type) #XXX
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         if self.max_buffer > MAX_BUFFER:
            self.max_buffer = MAX_BUFFER # python list can not be more than this number
-        self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.log_mover_state = self.config.get('log_state', None)
         self.syslog_match = self.config.get("syslog_entry",None) # pattern to match in syslog for scsi error
         self.restart_on_error = self.config.get("restart_on_error", None)
@@ -1310,72 +1391,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.connect_retry = self.config.get("connect_retries", 4)
         self.stop =  self.config.get('stop_mover',None)
         self.check_first_written_enabled =self.config.get("check_first_written_file", 0)
-        self.max_idle_mem = self.config.get('max_idle_mem', 10) # pecentage of memory usage in idle state 
-        self.transfer_deficiency = 1.0
-        self.buffer = None
-        self.udpc = udp_client.UDPClient()
-        self.udp_control_address = None  ## needed for tape ingest
-        self.udp_ext_control_address = None ## needed for tape ingest
-        self.udp_cm_sent = 0  ## needed for tape ingest 
-        self.last_error = (e_errors.OK, None)
+        self.max_idle_mem = self.config.get('max_idle_mem', 10) # pecentage of memory usage in idle state
+
         if self.check_sched_down() or self.check_lockfile():
             self.state = OFFLINE
-        self.current_location = 0L
-        self.current_volume = None #external label of current mounted volume
-        self.current_library = None
-        self.last_location = 0L
-        self.last_volume = None
-        self.last_volume_family = None
-        self.mode = None # READ, WRITE or ASSERT
-        self.setup_mode = None
-        self.compression = None # use default
-        self.bytes_to_transfer = 0L
-        self.bytes_to_read = 0L
-        self.bytes_to_write = 0L
-        self.bytes_read = 0L
-        self.bytes_read_last = 0L
-        self.bytes_written = 0L
-        self.bytes_written_last = 0L
-        self.volume_family = None 
-        self.files = ('','')
-        self.transfers_completed = 0
-        self.transfers_failed = 0
-        self.error_times = []
-        self.consecutive_failures = 0
-        self.max_consecutive_failures = 2
-        self.max_failures = 3
-        self.failure_interval = 3600
-        self.current_work_ticket = {}
-        # work may have a method. read_from_hsm work may have methods
-        # describing how read must be done. This is used for reading
-        # tapes bypassing LM. So called tape reads.
-        self.method = None    
-        self.vol_info = {}
-        self.file_info = {}
-        self.dismount_time = None
-        self.delay = 0
-        self.fcc = None
-        self.vcc = None
-        self.stat_file = None
-        self.media_transfer_time = 0.
-        self.mcc = media_changer_client.MediaChangerClient(self.csc,
-                                                           self.config['media_changer'])
+
         self.asc = accounting_client.accClient(self.csc, self.logname)
-        mc_keys = self.csc.get(self.mcc.media_changer)
-        # STK robot can eject tape by either sending command directly to drive or
-        # by pushing a corresponding button
-        if mc_keys.has_key('type') and mc_keys['type'] == 'STK_MediaLoader':
-            self.can_force_eject = 1
-        else:
-            self.can_force_eject = 0
         
-        self.client_hostname = None
-        self.client_ip = None  #NB: a client may have multiple interfaces, this is
-                                         ##the IP of the interface we're using
-        
-        #import net_driver
-        self.net_driver = net_driver.NetDriver()
-        self.client_socket = None
 
         self.config['name']=self.name 
         self.config['product_id']='Unknown'
@@ -1427,8 +1449,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
         self.max_in_state_cnt = self.config.get('max_in_state_cnt', 2) 
         Trace.log(e_errors.INFO, "Starting in state %s"%(state_name(self.state),))
-        self.rewind_tape = 0
 
+        self.device = self.config['device']
         if self.driver_type == 'NullDriver':
             self.check_written_file_period = 0 # no file check for null mover
             self.device = None
@@ -1441,7 +1463,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO,"statitics path %s"%(self.stat_file,))
             self.compression = self.config.get('compression', None)
             if self.compression > 1: self.compression = None
-            self.device = self.config['device']
             import ftt_driver
             self.ftt = __import__("ftt")
             self.tape_driver = ftt_driver.FTTDriver()
@@ -1563,11 +1584,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                         have_tape = 0
                     
         else:
-            print "Sorry, only Null and FTT driver allowed at this time"
-            sys.exit(-1)
+            # disk mover
+            pass
 
-        self.mount_delay = self.config.get('mount_delay',
-                                           self.tape_driver.mount_delay)
+        self.mount_delay = int(self.config.get('mount_delay',
+                                           self.tape_driver.mount_delay))
         
         if type(self.mount_delay) != type(0):
             self.mount_delay = int(self.mount_delay)
@@ -1584,7 +1605,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
         if self.memory_debug:
             self.dump_vars("At the start")
-        ##end of __init__
+
 
     # restart itselfs
     def restart_lockfile_name(self):
@@ -4045,7 +4066,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.bytes_to_read = self.bytes_to_transfer
         Trace.trace(24, "BYTES TO READ %s"%(self.bytes_to_read,))
         self.real_transfer_time  = 0.
-        self.transfer_deficiency = 1.
         if (self.bytes_to_transfer == None) or (self.bytes_to_transfer < 0L) :
             self.transfer_failed(e_errors.BAD_FILE_SIZE, "bad file size is %s"%(self.bytes_to_transfer,), error_source=USER, dismount_allowed=0)
             
@@ -5315,8 +5335,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             volume_family = self.vol_info.get('volume_family', volume_family)
             volume_label = self.vol_info.get('external_label', volume_label)
             
-        if self.transfer_deficiency < 1.:
-            self.transfer_deficiency = 1.
         ticket =  {
             "mover":  self.name,
             "address": self.address,
@@ -5334,7 +5352,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             "error_source": error_source,
             "unique_id": self.unique_id,
             "work": work,
-            "transfer_deficiency": int(self.transfer_deficiency),
             "time_in_state": now - self.state_change_time,
             "current_time" : now,
             "library": self.current_library,
@@ -6202,152 +6219,29 @@ class MoverInterface(generic_server.GenericServerInterface):
             os._exit(1)
         else:
             self.name = self.args[0]
+# convert file id (pnfs id)
+# to local data file path
+def file_id2path(root, file_id):
+    # example:
+    #root = "/data_files"
+    #file_id = "00001E9281CFB7054652B62737ED1ED3B3F6"
+    #return value:
+    # "/data_files/A/000/01E/928/1CF/B70/546/52B/627/37E/D1E/D3B/00001E9281CFB7054652B62737ED1ED3B3F6"
+
+    path = [root]
+    d = "/"
+    i = 0
+    nl = 3
+    j = i + nl
+    while j <= len(file_id) - nl:
+        path.append(file_id[i:j])
+        i = i + nl
+        j = j + nl
+    path.append(file_id)
+    
+    return d.join(path)
 
 class DiskMover(Mover):
-
-    def start(self):
-        name = self.name
-        self.t0 = time.time()
-        self.tr_failed = 0
-        self.on_start = 1
-        self.restart_flag = 0
-        self.config = self.csc.get(name)
-        if self.config['status'][0] != 'ok':
-            raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
-
-        logname = self.config.get('logname', name)
-        Trace.init(logname)
-        
-        self.config['device'] = os.path.expandvars(self.config['device'])
-        self.state = IDLE
-        # check if device exists
-        if not os.path.exists(self.config['device']):
-            try:
-                os.makedirs(self.config['device'])
-            except:
-                Trace.alarm(e_errors.ERROR, "Cannot start. Device %s does not exist"%(self.config['device'],))
-                self.state = OFFLINE
-            
-        #how often to send an alive heartbeat to the event relay
-        self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
-        self.address = (self.config['hostip'], self.config['port'])
-        self.lm_address = ('none',0) # LM that called mover
-        self.lm_address_saved = self.lm_address
-        self.default_block_size = 131072
-        self.mover_type = self.config.get('type','')
-        self.ip_map = self.config.get('ip_map','')
-        Trace.log(e_errors.INFO, "starting %s mover %s" % (self.mover_type, self.name,))
-        self.media_type = self.config.get('media_type', 'disk') #XXX
-        self.min_buffer = self.config.get('min_buffer', 8*MB)
-        self.max_buffer = self.config.get('max_buffer', 64*MB)
-        if self.max_buffer > MAX_BUFFER:
-           self.max_buffer = MAX_BUFFER # python list can not be more than this number
-        self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
-        self.log_mover_state = self.config.get('log_state', None)
-        self.restart_on_error = self.config.get("restart_on_error", None)
-        self.max_idle_mem = self.config.get('max_idle_mem', 10) # pecentage of memory usage in idle state 
-        self.stop =  self.config.get('stop_mover',None)
-        self.transfer_deficiency = 1.0
-        self.buffer = None
-        self.udpc = udp_client.UDPClient()
-        self.udp_control_address = None  ## needed for tape ingest
-        self.udp_ext_control_address = None ## needed for tape ingest
-        self.udp_cm_sent = 0  ## needed for tape ingest 
-        self.last_error = (e_errors.OK, None)
-        if self.check_sched_down() or self.check_lockfile():
-            self.state = OFFLINE
-        self.current_volume = None #external label of current mounted volume
-        self.current_library = None
-        self.last_volume = None
-        self.last_volume_family = None
-
-        self.mode = None # READ, WRITE or ASSERT
-        self.setup_mode = None
-        self.bytes_to_transfer = 0L
-        self.bytes_to_read = 0L
-        self.bytes_to_write = 0L
-        self.bytes_read = 0L
-        self.bytes_read_last = 0L
-        self.bytes_written = 0L
-        self.bytes_written_last = 0L
-        self.volume_family = None 
-        self.files = ('','')
-        self.transfers_completed = 0
-        self.transfers_failed = 0
-        self.error_times = []
-        self.consecutive_failures = 0
-        self.max_consecutive_failures = 2
-        self.max_failures = 3
-        self.failure_interval = 3600
-        self.current_work_ticket = {}
-        self.method = None
-        self.vol_info = {}
-        self.file_info = {}
-        self.dismount_time = None
-        self.delay = 0
-        self.fcc = None
-        self.media_transfer_time = 0.
-        
-        self.client_hostname = None
-        self.client_ip = None  #NB: a client may have multiple interfaces, this is
-                                         ##the IP of the interface we're using
-        
-        self.tape_driver = disk_driver.DiskDriver()
-        #import net_driver
-        self.net_driver = net_driver.NetDriver()
-        self.client_socket = None
-
-        self.config['name']=self.name 
-        self.config['product_id']='Unknown'
-        self.config['serial_num']=0
-        self.config['vendor_id']='Unknown'
-        self.config['local_mover'] = 0 #XXX who still looks at this?
-        self.driver_type = self.config['driver']
-
-        self.max_consecutive_failures = self.config.get('max_consecutive_failures',
-                                                        self.max_consecutive_failures)
-        self.max_failures = self.config.get("max_failures", self.max_failures)
-        self.failure_interval = self.config.get("failure_interval", self.failure_interval)
-        
-        self.default_dismount_delay = self.config.get('dismount_delay', 0)
-        if self.default_dismount_delay < 0:
-            self.default_dismount_delay = 31536000 #1 year
-        self.max_dismount_delay = max(
-            self.config.get('max_dismount_delay', 600),
-            self.default_dismount_delay)
-        
-        self.libraries = []
-        lib_list = self.config['library']
-        if type(lib_list) != type([]):
-            lib_list = [lib_list]
-        for lib in lib_list:
-            lib_config = self.csc.get(lib)
-            if lib_config.has_key('mover_port'):
-                port = lib_config['mover_port']
-            else:
-                port = lib_config['port']
-            self.libraries.append((lib, (lib_config['hostip'], port)))
-
-        #how often to send a message to the library manager
-        self.update_interval = self.config.get('update_interval', 15)
-        self.update_interval_in_bound = self.config.get('update_interval_in_bound', self.update_interval)
-
-        self.check_written_file_period = self.config.get('check_written_file', 0)
-        self.files_written_cnt = 0
-        self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
-
-        self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3)
-        self.exp_time_factor = self.config.get('expected_time_factor', 50)
-        
-        dispatching_worker.DispatchingWorker.__init__(self, self.address)
-        self.add_interval_func(self.update_lm, self.update_interval) #this sets the period for messages to LM.
-        self.add_interval_func(self.need_update, 1) #this sets the period for checking if child thread has asked for update.
-        self.set_error_handler(self.handle_mover_error)
-        ##start our heartbeat to the event relay process
-        self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
-        ##end of __init__
-
-    # device_dump_S(self, ticket) -- server hook for device_dump()
 
     def device_dump_S(self, ticket):
         x =ticket # to trick pychecker
@@ -6355,7 +6249,7 @@ class DiskMover(Mover):
         self.reply_to_caller(t)
 	return
 
-    def idle(self):
+    def __idle(self):
         if self.state == ERROR:
             return
         self.state = IDLE
@@ -6363,6 +6257,9 @@ class DiskMover(Mover):
         self.vol_info = {}
         self.file_info = {}
         self.current_library = None
+
+    def idle(self):
+        self.__idle()
         thread = threading.currentThread()
         if thread:
             thread_name = thread.getName()
@@ -6374,6 +6271,18 @@ class DiskMover(Mover):
         else: # else just set the update flag
             self.need_lm_update = (1, None, 0, None)
 
+    def nowork(self):
+        Trace.trace(98, "NOWORK")
+        Mover.nowork(self,{})
+        self.__idle()
+        pass
+        
+    def no_work(self, ticket):
+        #x = ticket # to trick pychecker
+        Trace.trace(98, "no_work %s"%(ticket,))
+        # no_work is No work: do nothing.
+        self.nowork()
+        
     def write_tape(self):
         Trace.trace(8, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         Trace.trace(8, "bytes_to_transfer=%s" % (self.bytes_to_transfer,))
@@ -6719,135 +6628,11 @@ class DiskMover(Mover):
 
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
-    '''
-    def write_client(self):
-        Trace.trace(8, "write_client starting, bytes_to_write=%s" % (self.bytes_to_write,))
-        if not self.buffer.client_crc_on:
-            # calculate checksum when writing to
-            # the network (see comment in setup_transfer)
-            # CRC when sending to the network if client does not CRC
-            do_crc = 1
-        else:
-            do_crc = 0
-        driver = self.net_driver
-        #be careful about 0-length files
-        if self.bytes_to_write > 0 and self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
-            while self.buffer.header_size is None and self.state in (ACTIVE, DRAINING):
-                Trace.trace(8, "write_client: waiting for read_tape to set header info")
-                self.buffer.write_ok.clear()
-                self.buffer.write_ok.wait(1)
-            # writing to "None" will discard headers, leaving stream positioned at
-            # start of data
-            self.buffer.stream_write(self.buffer.header_size, None)
-            Trace.trace(8, "write_client: discarded %s bytes of header info"%(self.buffer.header_size))
-        failed = 0
 
-        #Initialize thresholded transfer notify messages.
-        bytes_notified = 0L
-        last_notify_time = time.time()
-        Trace.notify("transfer %s %s %s network %s %.3f" %
-                     (self.shortname, -self.bytes_written,
-                      self.bytes_to_write, self.buffer.nbytes(), time.time()))
-           
-        while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
-            if self.tr_failed:
-                break
-            if self.buffer.empty():
-                Trace.trace(9, "write_client: buffer empty, wrote %s/%s" %
-                            (self.bytes_written, self.bytes_to_write))
-                self.buffer.write_ok.clear()
-                self.buffer.write_ok.wait(1)
-                continue
-                
-            nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
-            bytes_written = 0
-            try:
-                bytes_written = self.buffer.stream_write(nbytes, driver)
-            except MoverError, detail:
-                detail = str(detail)
-                if detail == e_errors.CRC_ERROR:
-                    Trace.alarm(e_errors.ERROR, "CRC error in write client",
-                                {'outfile':self.current_work_ticket['outfile'],
-                                 'infile':self.current_work_ticket['infile'],
-                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                 'external_label':self.current_work_ticket['vc']['external_label']})
-                    self.transfer_failed(e_errors.CRC_ERROR, None)
-                else:
-                    if detail == e_errors.ENCP_GONE:
-                        err_source = NETWORK
-                    else:
-                        err_source = UNKNOWN
-                    self.transfer_failed(detail, error_source=err_source)
-                 
-                failed = 1
-                break
-            except:
-                exc, detail, tb = sys.exc_info()
-                #Trace.handle_error(exc, detail, tb)
-                #if self.state is not DRAINING: self.state = HAVE_BOUND
-                # if state is DRAINING transfer_failed will set it to OFFLINE
-                self.transfer_failed(e_errors.ENCP_GONE, detail)
-                failed = 1
-                break
-            if bytes_written < 0:
-                #if self.state is not DRAINING: self.state = HAVE_BOUND
-                # if state is DRAINING transfer_failed will set it to OFFLINE
-                self.transfer_failed(e_errors.ENCP_GONE, "write returns %s"%(bytes_written,))
-                failed = 1
-                break
-            if bytes_written != nbytes:
-                pass #this is not unexpected, since we send with MSG_DONTWAIT
-            self.bytes_written = self.bytes_written + bytes_written
-
-            if not self.buffer.full():
-                self.buffer.read_ok.set()
-
-            #If it is time to do so, send the notify message.
-            if is_threshold_passed(self.bytes_written, bytes_notified,
-                                   self.bytes_to_write, last_notify_time):
-                bytes_notified = self.bytes_written
-                last_notify_time = time.time()
-                #negative byte-count to indicate direction
-                Trace.notify("transfer %s %s %s network %s %.3f" %
-                             (self.shortname, -self.bytes_written,
-                              self.bytes_to_write, self.buffer.nbytes(),
-                              last_notify_time))
-
-        if self.tr_failed:
-            return
-        
-        Trace.trace(8, "write_client exiting: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
-        if failed: return
-  
-        if self.bytes_written == self.bytes_to_write:
-            # check crc
-            if do_crc:
-                Trace.trace(22,"write_client: calculated CRC %s File DB CRC %s"%
-                            (self.buffer.complete_crc, self.file_info['complete_crc']))
-                if self.buffer.complete_crc != self.file_info['complete_crc']:
-                    Trace.alarm(e_errors.ERROR, "CRC error in write client",
-                                {'outfile':self.current_work_ticket['outfile'],
-                                 'infile':self.current_work_ticket['infile'],
-                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                 'external_label':self.current_work_ticket['vc']['external_label']})
-                    self.transfer_failed(e_errors.CRC_ERROR, None)
-                    return
-                
-            # this is for crc check in ASSERT mode
-            # do not call transfer_completed
-            # it will be done by volume_assert
-            if self.mode != ASSERT:
-                self.transfer_completed()
-
-    '''    
     def create_volume_name(self, ip_map, volume_family):
-        return string.join((ip_map,volume_family,'%s'%(long(time.time()*1000),)),':')
+        # time format: ISO8601
+        return string.join((ip_map, volume_family,time.strftime("%Y-%m-%dT%H:%M:%SZ")),':')
 
-    def no_work(self, ticket):
-        #x = ticket # to trick pychecker
-        Trace.trace(98, "no_work %s"%(ticket,))
-        # no_work is No work: do nothing.
-        
     def setup_transfer(self, ticket, mode):
         self.lock_state()
         self.save_state = self.state
@@ -6877,9 +6662,6 @@ class DiskMover(Mover):
         self.tmp_vol = ticket['fc'].get('external_label', None)
         self.tmp_vf = ticket['vc'].get('volume_family', None)
         self.need_lm_update = (1, self.state, 1, None)
-        #prevent a delayed dismount from kicking in right now
-        if self.dismount_time:
-            self.dismount_time = None
         self.unlock_state()
         
         ticket['mover']={}
@@ -6897,8 +6679,6 @@ class DiskMover(Mover):
             Trace.trace(20, "finish_transfer_setup: connection to client failed")
             self.state = self.save_state
             ## Connecting to client failed
-            if self.state is HAVE_BOUND:
-                self.dismount_time = time.time() + self.default_dismount_delay
             self.need_lm_update = (1, self.state, 1, None)
             #self.update_lm(reset_timer=1)
             return
@@ -6940,19 +6720,7 @@ class DiskMover(Mover):
         # restore self.current_work_ticket after it gets cleaned in the reset()
         self.current_work_ticket = ticket
         self.current_volume =  self.file_info.get('external_label', None)
-        if self.current_work_ticket['encp'].has_key('delayed_dismount'):
-            if ((type(self.current_work_ticket['encp']['delayed_dismount']) is type(0)) or
-                (type(self.current_work_ticket['encp']['delayed_dismount']) is type(0.))):
-                delay = 60 * self.current_work_ticket['encp']['delayed_dismount']
-            else:
-                delay = self.default_dismount_delay
-        if delay > 0:
-            self.delay = max(delay, self.default_dismount_delay)
-        elif delay < 0:
-            self.delay = 31536000  # 1 year
-        else:
-            self.delay = 0   
-        self.delay = min(self.delay, self.max_dismount_delay)
+        self.delay = 31536000  # 1 year
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
@@ -7013,7 +6781,6 @@ class DiskMover(Mover):
         self.bytes_to_read = self.bytes_to_transfer
         self.expected_transfer_time = self.bytes_to_write*1.0 / self.max_rate
         self.real_transfer_time  = 0.
-        self.transfer_deficiency = 1.
 
         ##NB: encp v2_5 supplies this information for writes but not reads. Somebody fix this!
         try:
@@ -7024,8 +6791,8 @@ class DiskMover(Mover):
         if client_hostname:
             client_filename = client_hostname + ":" + client_filename
                                 
+        self.file = file_id2path(self.device, fc['pnfsid'])
         if self.mode == READ:
-            self.file = fc['location_cookie']
             self.files = (pnfs_filename, client_filename)
             self.buffer.header_size = None
         elif self.mode == WRITE:
@@ -7038,7 +6805,6 @@ class DiskMover(Mover):
                 filename = filename[0:max_fn_len-len(t)-1]
             fullname = os.path.join(directory,filename)
             f = string.join((fullname,t),':')
-            self.file = string.join((self.config['device'],self.config['ip_map'],f),'/')  
             if self.wrapper:
                 self.header, self.trailer = self.wrapper.headers(self.current_work_ticket['wrapper'])
             else:
@@ -7074,7 +6840,8 @@ class DiskMover(Mover):
         self.start_transfer()
         return 1
             
-    def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=1):
+    def transfer_failed(self, exc=None, msg=None, error_source=None):
+        Trace.trace(25, "TR FAILED")
         self.timer('transfer_time')
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
@@ -7139,35 +6906,10 @@ class DiskMover(Mover):
         else:
             cur_thread_name = None
 
-        dismount_allowed = 0
         Trace.trace(26,"current thread %s"%(cur_thread_name,))
-        if cur_thread_name:
-            if cur_thread_name == 'tape_thread':
-                dismount_allowed = 1
-
-            elif cur_thread_name == 'net_thread':
-                # check if tape_thread is active before allowing dismount
-                Trace.trace(26,"checking thread %s"%('tape_thread',))
-                thread = getattr(self, 'tape_thread', None)
-                for wait in range(60):
-                    if thread and thread.isAlive():
-                        Trace.trace(27, "thread %s is already running, waiting %s" % ('tape_thread', wait))
-                        time.sleep(1)
-                    else:
-                        dismount_allowed = 1
-                        break
-                else:
-                    dismount_allowed = 1
-            else:
-                # Main thread ?
-                dismount_allowed = 1
-                
-        if dismount_allowed:
-            self.dismount_volume(after_function=self.idle)
 
         if save_state == DRAINING:
-            self.dismount_volume()
-            #self.state = OFFLINE
+
             self.offline()
         else:
             self.idle()
@@ -7178,6 +6920,7 @@ class DiskMover(Mover):
         #self.update_lm()
         #self.need_lm_update = (1, 0, None)    
         
+    
     def transfer_completed(self):
         self.consecutive_failures = 0
         self.timer('transfer_time')
@@ -7214,11 +6957,12 @@ class DiskMover(Mover):
         ##########################
         
         if self.state == DRAINING:
-            self.dismount_volume(after_function=self.offline)
+            self.idle()
         else:
             self.state = HAVE_BOUND
         self.need_lm_update = (1, None, 1, None)
         self.log_state()
+    
 
     def update_after_writing(self):
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
@@ -7384,8 +7128,6 @@ class DiskMover(Mover):
                 self.unique_id = None
 
         volume_status = (['none', 'none'], ['none','none'])
-        if self.transfer_deficiency < 1.:
-            self.transfer_deficiency = 1.
         ticket =  {
             "mover":  self.name,
             "address": self.address,
@@ -7403,7 +7145,6 @@ class DiskMover(Mover):
             "error_source": error_source,
             "unique_id": self.unique_id,
             "work": work,
-            "transfer_deficiency": int(self.transfer_deficiency),
             'time_in_state': now - self.state_change_time,
             "library": self.current_library,
             "volume_clerk": self.vc_address,
@@ -7411,7 +7152,7 @@ class DiskMover(Mover):
             'current_priority': pri,
             }
         return ticket
-
+    """
     def dismount_volume(self, after_function=None):
         self.dismount_time = None
         self.state = DISMOUNT_WAIT
@@ -7429,6 +7170,7 @@ class DiskMover(Mover):
             self.idle()
         self.current_volume = None
         return
+    """
     
     def status(self, ticket):
         x =ticket # to trick pychecker
@@ -7488,8 +7230,6 @@ class DiskMover(Mover):
                  'max_dismount_delay': self.max_dismount_delay,
                  'client': self.client_ip,
                  }
-        if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
-            tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
             
         self.reply_to_caller(tick)
         return
