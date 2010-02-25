@@ -565,9 +565,9 @@ def rmdir(path):
 def wrapper(function,args=()):
     try:
         if type(args) != types.TupleType:
-            apply(function, (args,))
+            rtn = apply(function, (args,))
         else:
-            apply(function, args)
+            rtn = apply(function, args)
     except (OSError, IOError), msg:
         if msg.errno in [errno.EACCES, errno.EPERM] and \
                os.getuid() == 0 and os.geteuid() != 0:
@@ -582,9 +582,9 @@ def wrapper(function,args=()):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             try:
                 if type(args) != types.TupleType:
-                    apply(function, (args,))
+                    rtn =  apply(function, (args,))
                 else:
-                    apply(function, args)
+                    rtn = apply(function, args)
             except (OSError, IOError), msg:  #Anticipated errors.
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -603,4 +603,5 @@ def wrapper(function,args=()):
         else:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+    return rtn
 
