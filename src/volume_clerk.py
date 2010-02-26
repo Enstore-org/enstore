@@ -1488,7 +1488,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access(saved_reply_address)
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to rename volume %s to %s from %s" \
                       % (old, new, self.reply_address[0])
@@ -1561,7 +1561,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access(saved_reply_address[0][0])
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to erase volume %s from %s" \
                       % (external_label, self.reply_address[0])
@@ -1743,7 +1743,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access(saved_reply_address[0][0])
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to delete volume %s from %s" \
                       % (external_label, self.reply_address[0])
@@ -1771,7 +1771,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             return #extract_external_lable_from_ticket handles its own errors.
 
         # This is a restricted service
-        status = self.restricted_access(saved_reply_address[0][0])
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to recycle volume %s from %s" \
                       % (external_label, self.reply_address[0])
@@ -1860,7 +1860,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
         # This is a restricted service
-        status = self.restricted_access(saved_reply_address[0][0])
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to restore volume %s from %s" \
                       % (external_label, self.reply_address[0])
@@ -1981,7 +1981,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if media and media == 'disk':
             status = None
         else:
-            status = self.restricted_access(saved_reply_address[0][0])
+            status = self.restricted_access(ticket)
         if status:
             message = "attempt to add volume %s from %s" \
                       % (external_label, self.reply_address[0])
@@ -2163,7 +2163,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
         # This is a restricted service
-        status = self.restricted_access(saved_reply_address[0][0])
+        status = self.restricted_access(ticket)
         if status:
             message = "attempt to remove volume entry %s from %s" % \
                       (external_label, self.reply_address[0])

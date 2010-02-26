@@ -900,7 +900,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
     ####################################################################
 
-    def restricted_access(self,reply_address=None):
+    def restricted_access(self,ticket=None):
         '''
         restricted_access(self) -- check if the service is restricted
 
@@ -909,12 +909,18 @@ class DispatchingWorker(udp_server.UDPServer):
         self.reply_address. If they match, return None. If not, return a
         error status that can be used in reply_to_caller.
         '''
-        if not reply_address:
-            if self.reply_address[0] in self.ipaddrlist:
-                return None
+        local_reply_address=None
+        if not ticket:
+            local_reply_address = self.reply_address[0]
         else:
-            if reply_address in self.ipaddrlist:
-                return None
+            r_a = ticket.get('r_a', None)
+            if not r_a:
+                local_reply_address = self.reply_address[0]
+            else:
+                local_reply_address = r_a[0][0]
+        if local_reply_address in self.ipaddrlist:
+            return None
+
         return (e_errors.ERROR,
                 "This restricted service can only be requested from node %s"
                 % (self.node_name))
