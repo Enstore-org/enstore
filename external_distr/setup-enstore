@@ -4,6 +4,7 @@ if [ $? -eq 0 ]; then
 else
 	echo "Enstore is not installed"
 	exit 1
+fi
 
 PYTHON_DIR=$ENSTORE_DIR/Python
 FTT_DIR=$ENSTORE_DIR/FTT
@@ -46,4 +47,4 @@ PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
 
 GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
 
-$ENSTORE_DIR/update_sym_links.sh -c
+$ENSTORE_DIR/external_distr/update_sym_links.sh -c
