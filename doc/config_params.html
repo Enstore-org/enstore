@@ -1,0 +1,306 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Enstore Configuration Keys</title>
+  </head>
+
+  <body>
+    <body text="#000066" bgcolor="#FFFFFF" link="#0000EF" vlink="#55188A" aqlink="#FF0000" background="enstore.gif">
+    <h1>Enstore Configuration Keys</h1>
+
+
+
+    <hr>
+<p>
+&nbsp;
+<p>
+<h2>Common Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+<tr><td><a NAME="host">host</a></td><td>server host name</td><tr>
+<tr><td><a NAME="hostip">hostip</a></td><td>server host IP address</td></tr>
+<tr><td><a NAME="port">port</a></td><td>server port number</td></tr>
+<tr><td><a NAME="logname">logname</a></td><td>server name in the log</td></tr>
+<tr><td><a NAME="inq_ignore">inq_ignore</a></td><td>if present the inquisitor will not monitor corresponding server</td></tr>
+<tr><td><a NAME="norestart">norestart</a></td><td>if present inq will not restart corresponding  server/mover</td></tr>
+<tr><td><a NAME="noupdown">noupdown</a></td><td>'enstore system' process will not look at the
+corresponding server when generating the SAAG page, and will not use
+		      the information in deciding to turn the ball red</td></tr>
+</table>
+
+<h2>Library Manager Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="lock">lock</a></td><td>if specified LM will start in
+this state. Allowed values:locked, unlocked, ignore, pause, nowrite, noread</td></tr>
+<tr><td><a NAME="max_encp_retries">max_encp_retries</a></td><td>maximal number of encp retries for a given LM</td></tr>
+<tr><td><a NAME="max_suspect_movers">max_suspect_movers</a></td><td>if number of suspect movers on which a given volume failed >= of max_suspect_movers, this volume will be set to NOACCESS state (default value - 3)</td></tr>
+<tr><td><a NAME="suspect_volume_expiration_time">suspect_volume_expiration_time</a></td><td>remove entry from suspect volume list after this period of time (default value - None)</td></tr>
+<tr><td><a NAME="min_file_size">min_file_size</a></td><td>minimal file
+		  size (default value - 0)</td></tr>
+<tr><td><a NAME="max_file_size">max_file_size</a></td><td>maximal size of the file allowed by this library (default value 2GB - 2kB)</td></tr>
+<tr><td><a NAME="blank_error_increment">blank_error_increment</a></td><td>do not set volume to NOACCESS in case of FTT_EBLANK error until the number of erros exceeds max_suspect_movers+blank_error_increment (default value - 5)</td></tr>
+<tr><td><a NAME="legal_encp_version">legal_encp_version</a></td><td>minimal encp version number allowed to acess enstore</td></tr>
+<tr><td><a
+	   NAME="CleanTapeVolumeFamily">CleanTapeVolumeFamily</a></td><td>volume family for cleaning tapes</td></tr>
+<tr><td><a
+	   NAME="storage_group_limits">storage_group_limits</a></td><td>Minimal amount of drives that can be used by a certain storage group (fair share) when different storage groups compete for tape drives</td></tr>
+
+
+</table>
+ 
+<h2>Mover Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+
+<tr><td><a NAME="do_eject">do_eject</a></td><td>eject tape on dismount (default value - 'yes')</td></tr>
+
+<tr><td><a NAME="do_cleaning">do_cleaning</a></td><td>clean tape drive by the mover request (defaults value - 'yes')</td></tr>
+
+<tr><td><a NAME="mc_device">mc_device</a></td><td>media changer device as declared in the robot</td></tr>
+
+<tr><td><a NAME="min_buffer">min_buffer</a></td><td> minimal amount of memory to allocate for buffering when transferring data (default value - 8MB)</td</tr>
+
+<tr><td><a NAME="max_buffer">max_buffer</a></td><td>maximal amount of memory to allocate for buffering (defaults value - 64MB)</td></tr>
+
+<tr><td><a NAME="max_rate">max_rate</a></td><td>maximum sustained transfer rate for writes. This is used to calculate optimal buffer size</td></tr>
+
+<tr><td><a NAME="device">device</a></td><td>pathname to the UNIX tape device</td></tr>
+
+<tr><td><a NAME="dismount_delay">dismount_delay</a></td><td>delayed dismount value to use when none specified by the client (default value 60 seconds).Set to negative value to get "infinite" dismount delay</td></tr>
+
+<tr><td><a NAME="mount_delay">mount_delay</a></td><td>number of seconds to wait after media changer mount completes, before trying to open device. Default is 15 for FTT driver, 0 for NULL driver</td></tr>
+
+<tr><td><a NAME="max_dismount_delay">max_dismount_delay</a></td><td>maximal dismount delay that can be set for this mover (default value - 600 seconds)</td></tr>
+
+<tr><td><a NAME="library">library</a></td><td>library(ies) that this mover serve</td></tr>
+
+<tr><td><a NAME="driver">driver</a></td><td>low lewel media driver ('FTTDriver' for tape, 'NullDriver'
+for null mover)</td></tr>
+
+<tr><td><a
+	   NAME="max_consecutive_failures">max_consecutive_failures</a></td><td>number of any consecutive errors after which the mover goes OFFLINE</td></tr>
+
+<tr><td><a NAME="max_failures">max_failures</a></td><td>Mover will go OFFLINE if this many transfers fail within failure_interval (see below)</td></tr>
+
+<tr><td><a NAME="failure_interval">failure_interval</a></td><td>Interval for above (default value 3600 sec.)</td></tr>
+
+<tr><td><a NAME="send_stats">send_stats</a></td><td>send tape drive statistics to the drivestat Data Base (defaul value - 1, which means "send")</td></tr>
+
+<tr><td><a NAME="type">type</a></td><td>specifies the type of mover ('','Mover','DiskMover')</td></tr>
+
+<tr><td><a NAME="media_type">media_type</a></td><td>media type used for the mover</td></tr>
+
+<tr><td><a NAME="log_state">log_state</a></td><td>if set log the state of the mover processes</td></tr>
+
+<tr><td><a NAME="syslog_entry">syslog_entry</a></td><td>expression to match in the syslog for the low level failure diagnostics</td></tr>
+
+<tr><td><a NAME="restart_on_error">restart_on_error</a></td><td>restart mover if it went to the ERROR
+state. Default - do not restart</td></tr>
+
+<tr><td><a NAME="connect_timeout">connect_timeout</a></td><td>TimeOut for mover connection to encp (default value - 15 s)</td></tr>
+
+<tr><td><a NAME="connect_retries">connect_retries</a></td><td>number of connection retries to encp (default value - 4)</td></tr>
+
+<tr><td><a NAME="update_interval">update_interval</a></td><td>interval for the mover to ask LM for the work (default value - 15 s)</td></tr>
+
+<tr><td><a NAME="single_filemark">single_filemark</a></td><td>if not 0 write single file mark (Default value - 0 - write 2 filemarks)</td></tr>
+
+<tr><td><a NAME="check_written_file">check_written_file</a></td><td>if
+		  greater than 0, then randomly check files written
+		  using this number as the mean (default value:0 - no check)</td></tr>
+
+<tr><td><a
+	   NAME="check_first_written_file">check_first_written_file</a></td><td>Reread and check CRC on a first write after a tape mount</td></tr>
+<tr><td><a
+	   NAME="max_time_in_state">max_time_in_state</a></td><td>maximal time for a mover to be in any transfer state (other than IDLE or ACTIVE) (default - 600 s)</td></tr>
+
+<tr><td><a NAME="max_in_state_cnt">max_in_state_cnt</a></td><td>if this counter expires Mover errors out with "Mover stuck..." message. (default - 3)</td></tr>
+
+<tr><td><a NAME="statistics_path">statistics_path</a></td><td>path to
+		  the statistics file(default - None)</td></tr>
+
+<tr><td><a NAME="compression">compression</a></td><td>0 means no compression. Everything else means use the drive compression (default: None - use the drive compression)</td></tr>
+
+<tr><td><a
+		NAME="get_remaining_from_stats">get_remaining_from_stats</a></td><td>get remaining bytes info from drive</td></tr>
+<tr><td><a
+		NAME="get_remaining_from_stats">blank_error_increment</a></td><td>Sometimes ftt returns FTT_EBLANK for not blank tapes. To allow a tape to be in a pool and not to go to NOACCESS. Integer, default 5</td></tr>
+</table>
+
+
+<h2>Media Changer Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+<tr><td><a NAME="type">type</a></td><td>type of the media changer (name of the media changer class)</td></tr>
+<tr><td><a NAME="acls_host">acls_host</a></td><td>host name of STK robot control machine (specific for STK Library)</td></tr>
+<tr><td><a NAME="acls_uname">acls_uname</a></td><td>user name to access STK robot control program (specific for STK Library)</td></tr>
+<tr><td><a NAME="RobotArm">RobotArm</a></td><td>robot arm in AML2 robot (specific for AML2 robotic library)</td></tr>
+<tr><td><a NAME="IdleTimeHome">IdleTimeHome</a></td><td>home robot arm if it is idle and not in a home position after this period of time has expired (default 5 min, specific for AML2 robotic library)</td></tr>
+<tr><td><a NAME="IOBoxMedia">IOBoxMedia</a></td><td>specifies types of media and addresses of IO box for importing/exporting tapes into the robot (specific for AML2 robotic library)</td></tr>
+<tr><td><a NAME="DriveCleanTime">DriveCleanTime</a></td><td>if
+	      present, specifes the type of media, time until cleaning
+	      tape gets dismounted and number of cleaning cycles to
+	      clean a tape drive</td></tr>
+<tr><td><a NAME="max_work">DriveCleanTime</a></td><td>if
+	      present, specifes the maximal number of simultaneous
+	      requests to robot. Integer, default 7</td></tr>
+</table>
+
+<h2>Volume Clerk Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="max_noaccess_cnt">max_noaccess_cnt</a></td><td>if number of volumes consecutively set to NOACCES reaches this number, the corresponding library will be paused (default - 2)</td></tr>
+</table>
+
+<h2>File Clerk Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="brand">brand</a></td><td>brand for bit file id to distinguish between systems</td></tr>
+</table>
+
+<h2>Info Server Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="dbhost">dbhost</a></td><td>enstore database host</td></tr>
+<tr><td><a NAME="dbname">dbname</a></td><td>enstore data base name</td></tr>
+</table>
+
+<h2>Database Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+<tr><td><a NAME="db_dir">db_dir</a></td><td>enstore database directory</td></tr>
+<tr><td><a NAME="jou_dir">jou_dir</a></td><td>enstore database journal directory</td></tr>
+<tr><td><a NAME="db_host">db_host</a></td><td>enstore database host</td></tr>
+<tr><td><a NAME="dbname">dbname</a></td><td>enstore database name
+<tr><td><a NAME="db_port">db_port</a></td><td>enstore database port</td></tr>
+</table>
+
+<h2>Accounting Server Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="dbhost">dbhost</a></td><td>accounting data base host machine</td></tr>
+
+<tr><td><a NAME="dbname">dbname</a></td><td>accounting data base name</td></tr>
+</table>
+
+
+<h2>Drivestat Server Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="dbhost">dbhost</a></td><td>drivestat database host</td></tr>
+<tr><td><a NAME="dbport">dbport</a></td><td>drivestat database port</td></tr>
+<tr><td><a NAME="dbname">dbname</a></td><td>drivestat data base name</td></tr>
+</table>
+
+<h2>Inquisitor Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="alive_rcv_timeout">alive_rcv_timeout</a></td><td>amount of time to wait when doing a tcp transfer</td></tr>
+
+<tr><td><a NAME="alive_retries">alive_retries</a></td><td>number of times to retry a failed tcp transfer</td></tr>
+
+<tr><td><a NAME="default_alive_interval">default_alive_interval</a></td><td>number of seconds expected between alive messages from the event_relay</td></tr>
+
+<tr><td><a NAME="default_hung_interval">default_hung_interval</a></td><td>number of seconds after which if no alive message is received, the server is marked as dead</td></tr>
+
+<tr><td><a NAME="html_file">html_file</a></td><td>directory location of the html web area</td></tr>
+
+<tr><td><a NAME="http_log_file_path">http_log_file_path</a></td><td>path to log files in the as used in a url</td></tr>
+
+<tr><td><a NAME="max_encp_lines">max_encp_lines</a></td><td>maximum number of encps reported on the encp history page</td></tr>
+
+<tr><td><a NAME="node_write_check">node_write_check</a></td><td>set an alarm if there are writes in the library manager queue (from these nodes) and there are no active transfers from the nodes</td></tr>
+
+<tr><td><a NAME="refresh">refresh</a></td><td>automatic refresh rate for the web pages</td></tr>
+
+<tr><td><a NAME="user_log_dirs">user_log_dirs</a></td><td>dictionary specifying
+		  additional links that should be added to the log
+		  file web page under user log dirs</td></tr>
+
+<tr><td><a NAME="www_host">www_host</a></td><td>url description of the web host</td></tr>
+</table>
+
+
+
+<h2>Alarm Server Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="alarm_actions">alarm_actions</a></td><td>dictionary describing actions to be taken when the specified alarms are received.  the format is as follows - [severity_string:[[action1, action_parameters, action_parameters], ...], ...}.supported actions are - send email; params = [action_name, 1|*, optional_params...]; if 1, only send mail the first time the alarm is seen, * -  always send mail when get this alarm or add the alarm to the web page only</td></tr>
+</table>
+
+<h2>System Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="allowed_down">allowed_down</a></td><td>dictionary defining how many times a server is allowed down before it is marked with a red ball by the 'enstore system' command.  each server has a list associated with it that has the followinw format -  [number of consecutive times when checked and no alive message rcvd, timeout]</td></tr>
+</table>
+
+<p>  
+<!-- Created: Thu May  6 09:12:39 CDT 2004 -->
+<!-- hhmts start -->
+Last modified: Mon Nov 20 09:08:43 CST 2006
+<!-- hhmts end -->
+  </body>
+</html>

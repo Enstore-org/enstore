@@ -483,11 +483,6 @@ WITH_FINAL_SCAN = "with-final-scan"          #migrate
 WRITE_PROTECT_STATUS = "write-protect-status" #volume
 WRITE_PROTECT_ON = "write-protect-on"        #volume
 WRITE_PROTECT_OFF = "write-protect-off"      #volume
-XATTR = "xattr"                              #fs
-XATTRCHMOD = "xattrchmod"                    #fs
-XATTRCHOWN = "xattrchown"                    #fs
-XATTRRM = "xattrrm"                          #fs
-XATTRS = "xattrs"                            #fs
 XREF = "xref"                                #pnfs
 
 #these are this files test options
@@ -577,7 +572,7 @@ valid_option_list = [
     VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
     WARM_RESTART, WEB_HOST, WITH_DELETED, WITH_FINAL_SCAN,
     WRITE_PROTECT_STATUS, WRITE_PROTECT_ON, WRITE_PROTECT_OFF,
-    XATTR, XATTRCHMOD, XATTRCHOWN, XATTRRM, XATTRS, XREF,
+    XREF,
     ]
 
 ############################################################################
@@ -793,7 +788,7 @@ class Interface:
     #text_string: the string that will be appended to the end of lines_of_text
     #filler_length: Minumum number of character columns to indent the
     #               text_string.
-    def build_help_string(self, lines_of_text, text_string_line,
+    def build_help_string(self, lines_of_text, text_string,
                           filler_length, num_of_cols):
         #Set this for the first loop below.
         use_existing_line = 1
@@ -806,7 +801,7 @@ class Interface:
         except IndexError:
             last_line = ""
 
-        for text_string in text_string_line.split("\n"):
+        if text_string:
             #value_line_length is the number of character collumns to space
             # over (or append to) before printing new characters.
             value_line_length = num_of_cols - max(len(last_line),
@@ -837,18 +832,12 @@ class Interface:
                     lines_of_text.append(temp)
                 else: #use new line
                     lines_of_text.append(" " * filler_length +
-                                         text_string[index:new_index])
+                                         text_string[index:new_index].lstrip())
                 #Reset this to the next indent point for future lines.
                 value_line_length = num_of_cols - (filler_length - 1)
                 index=new_index
                 #Set this false to use a new line.
                 use_existing_line = 0
-
-            #Reset this to the next indent point for future lines.
-            value_line_length = num_of_cols - (filler_length - 1)
-            index=new_index
-            #Set this false to use a new line.
-            use_existing_line = 0
 
     def print_help(self):
         #First print the usage line.
@@ -951,7 +940,7 @@ class Interface:
             else: #Insert spaces in case of long option name.
                 self.build_help_string(lines_of_text, "  ",
                                        len(option_names), num_of_cols)
-            #Build the HELP STRING part of the command output.  Assume
+            #Build the HELP STRING part of the command output. Assume
             # that option_names is less than 80 characters.
             self.build_help_string(lines_of_text, help_string,
                                    COMM_COLS, num_of_cols)
@@ -1151,7 +1140,7 @@ class Interface:
 
         #For backward compatibility, convert options with underscores to
         # dashes.  This must be done before the getopt since the getopt breaks
-        # with underscores.  It should be noted that the use of underscores is
+        # with dashes.  It should be noted that the use of underscores is
         # a VAX thing, and that dashes is the UNIX way of things.
         self.convert_underscores(argv)
 
@@ -1162,7 +1151,7 @@ class Interface:
             # non-processeced arguments and remove it from the list of args.
             # This is done, because getopt.getopt() breaks if the first thing
             # it sees does not begin with a "-" or "--".
-            while len(argv) and not self.is_switch_option(argv[0]):
+            while len(argv) and not self.is_option(argv[0]):
                 self.args.append(argv[0])
                 del argv[0]
 
@@ -1174,7 +1163,9 @@ class Interface:
                 self.print_usage(detail.msg)
 
             #copy in this way, to keep self.args out of a dir() listing.
-            while len(argv) and not self.is_switch_option(argv[0]):
+            #for arg in argv:
+            #    self.args.append(arg)
+            while len(argv) and not self.is_option(argv[0]):
                 self.args.append(argv[0])
                 del argv[0]
 
@@ -1800,7 +1791,7 @@ class Interface:
                     self.args.remove(next_arg)
             except ValueError:
                 try:
-                    sys.stderr.write("Problem processing argument %s.\n" %
+                    sys.stderr.write("Problem processing argument %s." %
                                      (next_arg,))
                     sys.stderr.flush()
                 except IOError:
