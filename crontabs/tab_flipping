@@ -1,2 +1,0 @@
-#Needs access to the robots.
-0 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p closing_tab_flipping_job $ENSTORE_DIR/src/operation.py auto_close_all > /dev/null 2> /dev/null

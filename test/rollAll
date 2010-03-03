@@ -1,9 +1,0 @@
-#!/bin/sh
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-set -u  # force better programming and ability to use check for not set
-
-node=`uname -n`
-for i in fndapr hppc  ; do
-    echo Starting $i tests from $node
-    $ENSTORE_DIR/test/roll $i
-done

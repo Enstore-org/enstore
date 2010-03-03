@@ -1,3 +1,0 @@
-#30 4 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p vacuumACC -l db_vacuum.py accounting > /dev/null 2> /dev/null
-#30 4 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p vacuumACC -l vacuumdb -p 8800 -d accounting -v -z > /dev/null 2> /dev/null
-
