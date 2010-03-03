@@ -99,13 +99,28 @@ def is_volume_tape(volume):
     return 0
 
 def is_volume_disk(volume):
+    rc = 0
     if type(volume) == types.StringType:
-        if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[0-9]+(.deleted){0,1}$"
+        # volume name is
+        # hostname:SG.FF.WRAPPER:YYYY-mm-ddTHH:MM:SSZ
+        # or 
+        # hostname:SG.FF.WRAPPER:YYYY-mm-ddTHH:MM:SSZ.deleted
+        # time format: ISO8601
+        if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[TZ:\-0-9]+(.deleted){0,1}$"
                       % (charset.hostnamecharset, charset.charset,
                          charset.charset, charset.charset), volume):
-            return 1   #If passed a disk volume.
+            rc = 1   #If passed a disk volume.
+        else:
+            # legacy naming
+            # hostname:SG.FF.WRAPPER.time_in_seconds
+            # or 
+            # hostname:SG.FF.WRAPPER.time_in_seconds.deleted
+            if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[0-9]+(.deleted){0,1}$"
+                         % (charset.hostnamecharset, charset.charset,
+                            charset.charset, charset.charset), volume):
+                rc = 1   #If passed a disk volume.
 
-    return 0
+    return rc
 
 def is_location_cookie_tape(lc):
     if type(lc) == types.StringType:
