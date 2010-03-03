@@ -105,8 +105,6 @@ log_levels = {}
 alarm_levels = {}
 message_levels = {}
 
-thread_name = None
-
 # stuff added by efb for new event_relay_client
 erc = None
 
@@ -216,7 +214,6 @@ def dont_message(levels):
 
 #Take the original message string and add the log message format header.
 def format_log_message(raw_message, msg_type=MSG_DEFAULT):
-    #global logname, thread_name
     
     # build up message
     if  msg_type != MSG_DEFAULT:
@@ -237,6 +234,8 @@ def format_log_message(raw_message, msg_type=MSG_DEFAULT):
 #Take the original message string and add the stderr/stdout message
 # format header.
 def format_trace_message(severity, raw_message):
+    global include_threadname
+    
     t=time.time()
     dp=("%3.2f"%(t-int(t),)).split('.')[1]
     a=time.ctime(t).split(" ")
@@ -246,7 +245,7 @@ def format_trace_message(severity, raw_message):
     b=" "
     tm=b.join(a)
     new_msg = raw_message
-    if thread_name:
+    if include_threadname:
         thread = threading.currentThread()
         if thread:
             th_name = thread.getName()
@@ -331,7 +330,6 @@ def alarm(severity, root_error, rest={},
 #  dolog: If true, consider sending the message to the log server too.
 #  doalarm: If true, consider sending the message to the alarm server too.
 def trace(severity, message, dolog=1, doalarm=1, out_fp=sys.stdout):
-    global thread_name
     
     ## There is no need to waste time on creating a message, if it will not
     ## be sent.  Truncate all messages sent over the network, but not the
