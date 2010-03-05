@@ -87,13 +87,13 @@ def dump_database(dbhost,dbname,dbuser,dbport,file):
     else:
         print_error("Failed to execute command  %s"%(cmd))
         return 1
-    return 0 
+    return 0
 
 def get_server_name(name):
     server=name_to_servermap.get(name,None)
     if not server:
         txt="Unknown database name is specified: %s\n"%(name)
-        txt=txt+"Known databases : [" 
+        txt=txt+"Known databases : ["
         for db in name_to_servermap.keys():
             txt=txt+db+", "
         txt=txt[:-2]
@@ -153,7 +153,7 @@ if __name__ == "__main__" :
     if options.filename:
         filename=options.filename
     current_dir = os.getcwd()
-    print current_dir 
+    print current_dir
     #
     # Need to extract data defining database
     #
@@ -230,34 +230,5 @@ if __name__ == "__main__" :
             print_error("Failed to restore database %s"%(dbname))
             sys.exit(1)
         print_message("Done");
-        os.unlink(backup_file)
         os.chdir(current_dir)
-        os.rmdir(restore_tmp)
     sys.exit(0)
-    
-
-#    os.system("dropdb -p 8800 -U enstore accounting")
-#    if os.system("createdb -p 8800 -U enstore accounting") != 0 : sys.exit(1)
-#    os.system("pg_restore -p 8800 -U enstore -d accounting -i --schema-only -v accounting.dump")
-#    db = pg.DB(host  = "localhost",
-#               dbname= "accounting",
-#               port  = 8800,
-#               user  = "enstore")
-#    
-#    tables = db.get_tables()
-#    db.close()
-#
-#    for t in tables:
-#        if t[:3] == "sql" :
-#            continue
-#        start = time.time()
-#        txt="Starting to restore table %s %f "%(t,start,)
-#        sys.stdout.write(txt)
-#        sys.stdout.flush()
-#        os.system("pg_restore -U enstore -p 8800 -d accounting -i --data-only --table=%s -v accounting.dump >> acc_dump.log 2>&1"%(t,))
-#        end   = time.time()
-#        txt="Took %f seconds to restore table %s\n"%(end-start, t)
-#        sys.stdout.write(txt)
-#        sys.stdout.flush()
-#    sys.exit(0)
-#time pg_dump -F c -U enstore -f accounting.dump accounting
