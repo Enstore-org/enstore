@@ -412,7 +412,7 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
     # __history(vol) -- show state change history of vol
     def __history(self, vol):
-        q = "select to_char(time,'YYYY-MM-DD HH24:MI:SS'), \
+        q = "select to_char(time,'YYYY-MM-DD HH24:MI:SS') as time, \
         label, state_type.name as type, state.value \
              from state, state_type, volume \
              where \
