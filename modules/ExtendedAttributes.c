@@ -238,7 +238,13 @@ static char* extended_attributes(char *path, char *name)
 
    /* Obtain the initial guess of the length of the current return
     * value from getxattr(). */
+#ifdef __linux__
    xattr_len = getxattr(path, name, NULL, 0); /* Get initial length to try. */
+#elif defined ( __APPLE__ )
+   xattr_len = getxattr(path, name, NULL, 0, 0, 0); /* Get initial length to try. */
+#else
+#error "not MacOS X or Linux"
+#endif
    ex_at = malloc(xattr_len + 1);
    memset(ex_at, 0, xattr_len + 1);
 
@@ -249,7 +255,13 @@ static char* extended_attributes(char *path, char *name)
    errno = ERANGE;
    while(sts == -1 && errno == ERANGE)
    {
+#ifdef __linux__
       sts = getxattr(path, name, ex_at, xattr_len);
+#elif defined ( __APPLE__ )
+      sts = getxattr(path, name, ex_at, xattr_len, 0, 0);
+#else
+#error "not MacOS X or Linux"
+#endif
       if(sts == -1 && errno == ERANGE)
       {
 	 xattr_len += 100;
@@ -283,7 +295,13 @@ PyObject * extendedAttributesGet(char *path, char *name)
 
    /* Obtain the initial guess of the length of the current return
     * value from listxattr(). */
+#ifdef __linux__
    if((xattr_len = listxattr(path, NULL, 0)) < 0)
+#elif defined ( __APPLE__ )
+   if((xattr_len = listxattr(path, NULL, 0, 0)) < 0)
+#else
+#error "not MacOS X or Linux"
+#endif
    {
       return raise_exception("Failed to obtain extened attribute list1");
    }
@@ -297,7 +315,13 @@ PyObject * extendedAttributesGet(char *path, char *name)
    errno = ERANGE;
    while(sts == -1 && errno == ERANGE)
    {
+#ifdef __linux__
       sts = listxattr(path, ex_at_list, xattr_len);
+#elif defined ( __APPLE__ )
+      sts = listxattr(path, ex_at_list, xattr_len, 0);
+#else
+#error "not MacOS X or Linux"
+#endif
       if(sts == -1 && errno == ERANGE)
       {
 	 xattr_len += 100; /* make it bigger */
@@ -401,7 +425,13 @@ PyObject * extendedAttributesPut(char *path, char *name, void *contents,
    if(contents == NULL)
    {
       /* Treat None for the contents like a deleted. */
+#ifdef __linux__
       if(removexattr(path, use_name) < 0)
+#elif defined ( __APPLE__ )
+      if(removexattr(path, use_name, 0) < 0)
+#else
+#error "not MacOS X or Linux"
+#endif
       {
 	 free(use_name);  /* Avoid resource leaks. */
 	 return raise_exception("Failed to remove extended attribute");
@@ -410,7 +440,13 @@ PyObject * extendedAttributesPut(char *path, char *name, void *contents,
    else
    {
       /* Write the contents of the extended attribute file. */
+#ifdef __linux__
       if(setxattr(path, use_name, contents, length, 0) < 0)
+#elif defined ( __APPLE__ )
+	 if(setxattr(path, use_name, contents, length, 0, 0) < 0)
+#else
+#error "not MacOS X or Linux"
+#endif
       {
 	 free(use_name);  /* Avoid resource leaks. */
 	 return raise_exception("Failed to write extended attribute");
@@ -548,5 +584,10 @@ PyObject * extendedAttributesPut(char *path, char *name, void *contents,
 
    return Py_RETURN_NONE;
 }
-
+#elif defined ( __bsdi__ )
+/* For FreeBSD the functions that need to be looked at are called:
+ * extattr_get_file()
+ * extattr_set_file()
+ * extattr_delete_file()
+ * extattr_list_file() */
 #endif /* defined(__linux__) or defined(__APPLE__) */
