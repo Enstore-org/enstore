@@ -4,6 +4,7 @@
 # $Id$
 #
 ###############################################################################
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
 # check if file exist
@@ -95,3 +96,32 @@ then
 fi
 ######
 
+do_update=1
+if [ $check = "-c" -a -r $ENSTORE_DIR/bin/take_out ]
+then 
+    # if we wanted to check for the existance of the file
+    # and it existed do not update it
+    do_update=0
+fi
+if [ $do_update -ne 0 ]
+then
+    rm -f $ENSTORE_DIR/bin/take_out
+    ln -s $ENSTORE_DIR/bin/tape_aid_wrapper  $ENSTORE_DIR/bin/take_out 
+
+fi
+######
+
+do_update=1
+if [ $check = "-c" -a -r $ENSTORE_DIR/bin/flip_tab ]
+then 
+    # if we wanted to check for the existance of the file
+    # and it existed do not update it
+    do_update=0
+fi
+if [ $do_update -ne 0 ]
+then
+    rm -f $ENSTORE_DIR/bin/flip_tab
+    ln -s $ENSTORE_DIR/bin/tape_aid_wrapper  $ENSTORE_DIR/bin/flip_tab 
+
+fi
+######
