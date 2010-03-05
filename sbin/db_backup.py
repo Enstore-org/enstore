@@ -37,7 +37,7 @@ if sys.argv[1] == 'accounting':
 elif sys.argv[1] == 'drivestat':
 	server = csc.get('drivestat_server')
 elif sys.argv[1] == 'operation':
-	server = csc.get('operation')
+	server = csc.get('operation_db')
 else:
 	usage()
 	sys.exit(0)
