@@ -114,16 +114,6 @@ if [ $? -eq 0 ]; then
     echo "success"
     echo
 
-    # overkill - run through lint too
-    #echo "Checking $config by running python linter"
-    echo "Checking $config2 by running python linter"
-    #rm -f $config2
-    #cp $config $config2
-    #python $ENSTORE_DIR/tools/mylint.py $config
-    python $ENSTORE_DIR/tools/mylint.py $config2
-    if [ $? -ne 0 ]; then abort "Running lint found errors"; fi
-    echo "success"
-    echo
 # check if it is an authorized volume file
 elif [ `echo $config | cut -c1-4` = "auth" ]; then
     # make sure the auth file is correct
@@ -165,8 +155,9 @@ echo
 
 # bless the changes - make production status
 echo "Setting production tag"
-$ENSTORE_DIR/tools/bless.py $config
+cvs tag -F production $config
 if [ $? -ne 0 ]; then abort "Something wrong with setting production tag.. Investigate"; fi
+
 echo "success"
 echo
 
