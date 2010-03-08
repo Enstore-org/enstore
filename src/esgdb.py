@@ -14,10 +14,10 @@ class SGDb:
 	# use shelve for persistent storage
 	def __init__(self, db):
 		# two ways of initialize SGDb
-		# a tuple of (host, dbname) or an instantiated db
+		# a tuple of (host, dbname, user) or an instantiated db
 		if type(db) == type(()):
-			(host, dbname) = db
-			self.db = pg.DB(host=host, dbname=dbname)
+			(host, dbname, user) = db
+			self.db = pg.DB(host=host, dbname=dbname, user=user)
 		else:
 			self.db = db
 		self.table = table
@@ -64,7 +64,7 @@ class SGDb:
 	def inc_sg_counter(self, library, storage_group, increment=1):
 		try:
 			count = self.get_sg_counter(library, storage_group)
-			
+
 			q = "update %s set count = %d where library = '%s' and storage_group = '%s';"%(self.table, count+increment, library, storage_group)
 			self.db.query(q)
 		except:

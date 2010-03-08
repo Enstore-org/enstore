@@ -161,6 +161,7 @@ DATABASEHOST = 'stkensrv0n.fnal.gov'
 #DATABASEHOST = 'localhost'
 DATABASEPORT = 8800
 DATABASENAME = 'operation'
+DATABASEUSER = None
 
 # This is a hard wired configuration
 def library_type(cluster, lib):
@@ -266,6 +267,7 @@ if operation_db['status'][0] == e_errors.OK:
 	DATABASENAME = operation_db['dbname']
 	DATABASEPORT = operation_db['dbport']
 	DATABASEHOST = operation_db['dbhost']
+	DATABASEUSER = operation_db['dbuser']
 elif enstoredb['dbhost'].find('.fnal.gov') == -1:
 	print "no database host defined for this node"
 	sys.exit(0)
@@ -276,10 +278,10 @@ DEFAULT_LIBRARIES = get_default_library(cluster)
 
 # get_db() -- initialize a database connection
 def get_db():
-	return pg.DB(dbname = DATABASENAME, port = DATABASEPORT, host = DATABASEHOST)
+	return pg.DB(dbname = DATABASENAME, port = DATABASEPORT, host = DATABASEHOST, user = DATABASEUSER )
 
 def get_edb(enstoredb):
-	return pg.DB(host=enstoredb['db_host'], port=enstoredb['db_port'], dbname=enstoredb['dbname'])
+	return pg.DB(host=enstoredb['db_host'], port=enstoredb['db_port'], dbname=enstoredb['dbname'], user = enstoredb['dbuser'])
 
 # global db connection
 db = get_db()

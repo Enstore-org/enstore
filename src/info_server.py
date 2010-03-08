@@ -78,6 +78,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		try:
 			self.file = edb.FileDB(host=dbInfo['db_host'],
 					       port=dbInfo['db_port'],
+					       user=dbInfo['dbuser'],
 					       auto_journal=0)
 		except:
 			exc_type, exc_value = sys.exc_info()[:2]
@@ -92,6 +93,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		self.db = self.file.db
 		self.volume = edb.VolumeDB(host=dbInfo['db_host'],
 					   port=dbInfo['db_port'],
+					   user=dbInfo['dbuser'],
 					   auto_journal=0, rdb=self.db)
 		self.sgdb = esgdb.SGDb(self.db)
 

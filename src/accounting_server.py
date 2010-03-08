@@ -69,19 +69,23 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			(att['hostip'], att['port']))
 		dbport = att.get('dbport')
 		try:
-			self.accDB = accounting.accDB(att['dbhost'],
-						att['dbname'], dbport)
+			self.accDB = accounting.accDB(host=att['dbhost'],
+						      dbname=att['dbname'],
+						      user=att['dbuser'],
+						      port=dbport)
 		except: # wait for 30 seconds and retry
 			time.sleep(30)
-			self.accDB = accounting.accDB(att['dbhost'],
-						att['dbname'], dbport)
+			self.accDB = accounting.accDB(host=att['dbhost'],
+						      dbname=att['dbname'],
+						      user=att['dbuser'],
+						      port=dbport)
 
 		# setup the communications with the event relay task
 		self.resubscribe_rate = 300
 		self.erc.start([event_relay_messages.NEWCONFIGFILE],
 			       self.resubscribe_rate)
 		# start our heartbeat to the event relay process
-		self.erc.start_heartbeat(enstore_constants.ACCOUNTING_SERVER, 
+		self.erc.start_heartbeat(enstore_constants.ACCOUNTING_SERVER,
                                  self.alive_interval)
 
 
@@ -91,9 +95,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 				       one_shot=0, align_interval = True)
 		#Run this function, every 20 minutes.
 		self.add_interval_func(self.filler_func,
-				       FILLER_INTERVAL,  
+				       FILLER_INTERVAL,
 				       one_shot=0, align_interval = True)
-		
+
 		return
 
 	# The following are local methods
@@ -137,11 +141,11 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			acc_db = pg.DB(host  = acc_conf.get('dbhost', "localhost"),
 				       port  = acc_conf.get('dbport', 5432),
 				       dbname= acc_conf.get('dbname', "accounting"),
-				       user  = acc_conf.get('dbuser', "enstore"))
-			
+				       user  = acc_conf.get('dbuser', None))
+
 			acc_db.query("select * from make_daily_xfer_size();")
 			acc_db.query("select * from make_daily_xfer_size_by_mover();")
-		
+
 			day = time.localtime(time.time())[2]
 			if day == 1:	# beginning of the month
 				acc_db.query("select * from make_monthly_xfer_size();")
@@ -173,8 +177,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			acc_db = pg.DB(host  = acc_conf.get('dbhost', "localhost"),
 				       port  = acc_conf.get('dbport', 5432),
 				       dbname= acc_conf.get('dbname', "accounting"),
-				       user  = acc_conf.get('dbuser', "enstore"))
-			
+				       user  = acc_conf.get('dbuser', None))
+
 			SELECT_LAST_TIME="select max(unix_time) from encp_xfer_average_by_storage_group"
 			res = acc_db.query(SELECT_LAST_TIME);
 			for row in res.getresult():
@@ -249,7 +253,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			e, v, tb = sys.exc_info()
 			Trace.handle_error(e, v, tb)
 			Trace.log(e_errors.ERROR, err_msg('filler()', {}, e, v, tb))
-			
+
 	# The following are server methods ...
 	# Most of them do not need confirmation/reply
 
@@ -302,7 +306,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		dt = time.time() - st
 		if self.debug:
 			print time.ctime(st), 'start_mount\t', dt
-		
+
 	# log_finish_mount(self, node, volume, finish, state='M')
 	def log_finish_mount(self, ticket):
 		st = time.time()
@@ -390,7 +394,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 						ticket['library'] = None
 				else:
 					ticket['library'] = None
-				
+
 			self.accDB.log_encp_xfer(
 				ticket['date'],
 				ticket['node'],
@@ -426,7 +430,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		dt = time.time() - st
 		if self.debug:
 			print time.ctime(st), 'encp_xfer\t', dt
-		
+
 
 	# log_encp_error(....)
 	def log_encp_error(self, ticket):
@@ -450,7 +454,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 						ticket['library'] = None
 				else:
 					ticket['library'] = None
-					
+
 		if not ticket.has_key('mover'):
 			ticket['mover'] = None
 		if not ticket.has_key('drive_id'):
@@ -461,7 +465,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			ticket['rw'] = None
 		if not ticket.has_key('volume'):
 			ticket['volume'] = None
-			
+
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
 			self.accDB.log_encp_error(
@@ -549,4 +553,4 @@ if __name__ == '__main__':
 		except:
 			accServer.serve_forever_error(accServer.log_name)
 			continue
-	
+

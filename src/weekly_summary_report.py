@@ -33,8 +33,8 @@ volume_clerk = csc.get('volume_clerk')
 inventory = csc.get('inventory')
 
 # connections to the databases
-enstoredb = pg.DB(host=database['db_host'], port=database['db_port'], dbname=database['dbname'])
-accdb = pg.DB(host=accounting_server['dbhost'], port=accounting_server.get('dbport', 5432), dbname=accounting_server['dbname'])
+enstoredb = pg.DB(host=database['db_host'], port=database['db_port'], user=database['dbuser'],dbname=database['dbname'])
+accdb = pg.DB(host=accounting_server['dbhost'], port=accounting_server.get('dbport', 5432), user=accounting_server['dbuser'],dbname=accounting_server['dbname'])
 
 
 def eprint(ff, s):

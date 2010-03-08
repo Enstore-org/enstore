@@ -95,7 +95,7 @@ def whoami():
 
 	return "%s(%s)"%(logname, kk)
 
-# handles everthing with quota		
+# handles everthing with quota
 class Quota:
 	def __init__(self, db):
 		self.db = db
@@ -326,7 +326,7 @@ class Quota:
 		for i in res:
 			values[(i[0], i[1])] = (i[2], i[3])
 		return values
-				
+
 class Interface(option.Interface):
 	def __init__(self, args=sys.argv, user_mode=0):
 		self.show = None
@@ -460,7 +460,7 @@ class Interface(option.Interface):
 			option.DEFAULT_TYPE:option.INTEGER,
 			option.VALUE_USAGE:option.IGNORED,
 			option.USER_LEVEL: option.ADMIN},
-			
+
 	}
 
 def do_work(intf):
@@ -468,7 +468,10 @@ def do_work(intf):
 	csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
 	dbInfo = csc.get('database')
 	try:
-		db = pg.DB(host='localhost', port=dbInfo['db_port'], dbname=dbInfo['dbname'])
+		db = pg.DB(host='localhost',
+			   port=dbInfo['db_port'],
+			   user=dbInfo['dbuser'],
+			   dbname=dbInfo['dbname'])
 	except:
 		exc_type, exc_value = sys.exc_info()[:2]
 		print str(exc_type)+' '+str(exc_value)

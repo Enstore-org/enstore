@@ -6,7 +6,7 @@
 #
 #  public | xfer_by_day                        | table | enstore
 #  public | xfer_by_month                      | table | enstore
-# 
+#
 ###############################################################################
 import sys
 import os
@@ -44,7 +44,7 @@ def decorate(h,color,ylabel,marker):
     h.set_line_width(20)
     h.set_marker_text(marker)
     h.set_marker_type("impulses")
-            
+
 exitmutexes=[]
 
 def fill_histograms(i,server_name,server_port,hlist):
@@ -56,16 +56,16 @@ def fill_histograms(i,server_name,server_port,hlist):
     name           = db_server_name.split('.')[0]
     name=db_server_name.split('.')[0]
     print "we are in thread ",i,db_server_name,db_name,db_port
-    
+
     h   = hlist[4*i]
     h1  = hlist[4*i+1]
     h2  = hlist[4*i+2]
     h3  = hlist[4*i+3]
-    
+
     if db_port:
-        db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
+        db = pg.DB(host=db_server_name, user=acc.get('dbuser'),dbname=db_name, port=db_port);
     else:
-        db = pg.DB(host=db_server_name, dbname=db_name);
+        db = pg.DB(host=db_server_name, user=acc.get('dbuser'),dbname=db_name);
     res=db.query(SELECT_DELETED_BYTES)
     for row in res.getresult():
         if not row:
@@ -96,11 +96,11 @@ def plot_bpd():
     servers=[]
     servers=csc.get('known_config_servers')
     histograms=[]
-    
+
     now_time    = time.time()
     t           = time.ctime(time.time())
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
-    
+
     now_time    = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
     start_time  = now_time-31*3600*24
     start_day   = time.mktime((2002, 12, 31, 23, 59, 59, 0, 0, 0))
@@ -114,7 +114,7 @@ def plot_bpd():
     s   = histogram.Histogram1D("xfers_total_by_day","Total Bytes Transferred per Day By Enstore",31,float(start_time),float(now_time))
     s1  = histogram.Histogram1D("xfers_write_by_day","Total Bytes Written per Day By Enstore",31,float(start_time),float(now_time))
     s2  = histogram.Histogram1D("xfers_read_by_da","Total Bytes Read per Day By Enstore",31,float(start_time),float(now_time))
-    
+
     s3  = histogram.Histogram1D("xfers_total_by_month","Total Bytes Transferred per Month By",nbins,float(start_day),float(now_day))
     s4  = histogram.Histogram1D("xfers_write_by_month","Total Bytes Written per Month By",nbins,float(start_day),float(now_day))
     s5  = histogram.Histogram1D("xfers_read_by_month","Total Bytes Read per Month By",nbins,float(start_day),float(now_day))
@@ -180,38 +180,38 @@ def plot_bpd():
 
             h1.set_time_axis(True)
             h1.set_ylabel("Bytes");
-            h1.set_xlabel("Date (year-month-day)")            
+            h1.set_xlabel("Date (year-month-day)")
             h1.set_line_color(color)
             h1.set_line_width(20)
 
             h2.set_time_axis(True)
             h2.set_ylabel("Bytes");
-            h2.set_xlabel("Date (year-month-day)")            
+            h2.set_xlabel("Date (year-month-day)")
             h2.set_line_color(color)
             h2.set_line_width(20)
 
             h3.set_time_axis(True)
             h3.set_ylabel("Bytes");
-            h3.set_xlabel("Date (year-month-day)")            
+            h3.set_xlabel("Date (year-month-day)")
             h3.set_line_color(color)
             h3.set_line_width(20)
 
             h4.set_time_axis(True)
             h4.set_ylabel("Bytes");
-            h4.set_xlabel("Date (year-month-day)")            
+            h4.set_xlabel("Date (year-month-day)")
             h4.set_line_color(color)
             h4.set_line_width(20)
 
             h5.set_time_axis(True)
             h5.set_ylabel("Bytes");
-            h5.set_xlabel("Date (year-month-day)")            
+            h5.set_xlabel("Date (year-month-day)")
             h5.set_line_color(color)
             h5.set_line_width(20)
             color=color+1
             if db_port:
-                db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
+                db = pg.DB(host=db_server_name, user=acc.get('dbuser'),dbname=db_name, port=db_port);
             else:
-                db = pg.DB(host=db_server_name, dbname=db_name);
+                db = pg.DB(host=db_server_name, user=acc.get('dbuser'),dbname=db_name);
             res=db.query(SELECT_STMT)
             for row in res.getresult():
                 if not row:
@@ -306,11 +306,11 @@ def plot_bpd():
         if ( tmp.get_bin_content(i) < t_day_min and  tmp.get_bin_content(i) > 0 ) :
             t_day_min = tmp.get_bin_content(i)
             i_day_min = i
-            
+
     tmp.set_line_color(1)
 
     delta =  tmp.binarray[i_day_max]*0.05
-    
+
     tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_max]+0.5,
         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
         tmp.binarray[i_day_max]+delta,))
@@ -345,7 +345,7 @@ def plot_bpd():
     i_month_min = 0
 
     for i in range(tmp.n_bins()) :
-        if (  tmp.get_bin_content(i) > 0 ) : n_month = n_month + 1 
+        if (  tmp.get_bin_content(i) > 0 ) : n_month = n_month + 1
         t_month = t_month + tmp.get_bin_content(i)
         if (  tmp.get_bin_content(i) > t_month_max ) :
             t_month_max = tmp.get_bin_content(i)
@@ -353,11 +353,11 @@ def plot_bpd():
         if ( tmp.get_bin_content(i) < t_month_min and  tmp.get_bin_content(i) > 0 ) :
             t_month_min = tmp.get_bin_content(i)
             i_month_min = i
-            
+
     tmp.set_line_color(1)
 
     delta =  tmp.binarray[i_month_max]*0.05
-    
+
     tmp.add_text("set label \"%10d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_month_max]+0.5,
         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_month_max))),
         tmp.binarray[i_month_max]+delta,))
@@ -399,11 +399,11 @@ def plot_bytes():
     servers=[]
     servers=csc.get('known_config_servers')
     histograms=[]
-    
+
     now_time    = time.time()
     t           = time.ctime(time.time())
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
-    
+
     now_time    = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
     start_time  = now_time-31*3600*24
     start_day   = time.mktime((2001, 12, 31, 23, 59, 59, 0, 0, 0))
@@ -454,7 +454,7 @@ def plot_bytes():
             h   = histogram.Histogram1D("writes_by_month_%s"%(server,),"Total Bytes Written by Month By %s"%(server,),nbins,float(start_day),float(now_day))
             decorate(h,color,"TB/month",server)
             histograms.append(h)
-            
+
             h   = histogram.Histogram1D("writes_by_day_%s"%(server,),"Total Bytes Written by Day By %s"%(server,),31,float(start_time),float(now_time))
             decorate(h,color,"TB/day",server)
             histograms.append(h)
@@ -462,7 +462,7 @@ def plot_bytes():
             h   = histogram.Histogram1D("deletes_by_month_%s"%(server,),"Total Bytes Deleted by Month By %s"%(server,),nbins,float(start_day),float(now_day))
             decorate(h,color,"TB/month",server)
             histograms.append(h)
-            
+
             h   = histogram.Histogram1D("deletes_by_day_%s"%(server,),"Total Bytes Deleted by Day By %s"%(server,),31,float(start_time),float(now_time))
             decorate(h,color,"TB/day",server)
             histograms.append(h)
@@ -473,7 +473,7 @@ def plot_bytes():
             color=color+1
 
     while 0 in exitmutexes: pass
-    
+
     i = 0
     for i in range(len(histograms)/4):
         h  = histograms[i*4]
@@ -481,7 +481,7 @@ def plot_bytes():
         h2 = histograms[4*i+2]
         h3 = histograms[4*i+3]
         color = int(i/4) + 1
-        
+
         tmp=s+h
         tmp.set_name("writes_monthly_%s"%(h.get_marker_text(),))
         tmp.set_data_file_name("writes_monthly_%s"%(h.get_marker_text(),))

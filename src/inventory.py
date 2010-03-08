@@ -948,11 +948,14 @@ def inventory(output_dir, cache_dir):
     wpa_excluded_libraries = invinfo.get('wpa_excluded_libraries', [])
     dbinfo = csc.get('database')
 
-    vol_db = edb.VolumeDB(host=dbinfo['db_host'], jou='/tmp')
-    file_db = edb.FileDB(host=dbinfo['db_host'], jou='/tmp', rdb = vol_db.db)
+    vol_db = edb.VolumeDB(host=dbinfo['db_host'], user=dbinfo['dbuser'],jou='/tmp')
+    file_db = edb.FileDB(host=dbinfo['db_host'], user=dbinfo['dbuser'],jou='/tmp', rdb = vol_db.db)
     # log to accounting db
     accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
-    acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
+    acs = accounting.accDB(accinfo['dbhost'],
+                           accinfo['dbname'],
+                           accinfo.get("dbport"),
+                           accinfo['dbuser'])
     #
     eq = equota.Quota(vol_db.db)
 

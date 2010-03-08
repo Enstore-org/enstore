@@ -15,9 +15,14 @@ def acc_encp_lines(csc, numEncps=100):
     try:
         dbport = acc.get('dbport', None)
         if dbport:
-            db = pg.DB(host=acc['dbhost'], port=dbport, dbname=acc['dbname'])
+            db = pg.DB(host=acc['dbhost'],
+                       port=dbport,
+                       dbname=acc['dbname'],
+                       user=acc['dbuser'])
         else:
-            db = pg.DB(host=acc['dbhost'], dbname=acc['dbname'])
+            db = pg.DB(host=acc['dbhost'],
+                       dbname=acc['dbname'],
+                       user=acc['dbuser'])
     except pg.Error, detail:
         # could not connect to the db
         print " %s  %s"%(pg.Error, detail)

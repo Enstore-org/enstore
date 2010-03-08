@@ -29,7 +29,7 @@ set style line 1 lt %d lw 25
 set xrange ['%s':'%s']
 set yrange [:%d]
 set mxtics 2
-plot '-' using 1:2 t "LTO2" w imp ls 1 
+plot '-' using 1:2 t "LTO2" w imp ls 1
 """
 
 if len(sys.argv) > 1 and sys.argv[1] == '--default-log':
@@ -37,7 +37,7 @@ if len(sys.argv) > 1 and sys.argv[1] == '--default-log':
 	sys.stdout = open(outfile+'.html', 'w')
 	print "<pre>"
 
-db = pg.DB(host=dbinfo['dbhost'], port=dbinfo['dbport'], dbname=dbinfo['dbname'])
+db = pg.DB(host=dbinfo['dbhost'], port=dbinfo['dbport'], user=dbinfo['dbuser'],dbname=dbinfo['dbname'])
 print time.ctime(time.time())
 print
 print "================="

@@ -78,6 +78,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             jouHome = dbHome
         db_host = dbInfo['db_host']
         db_port = dbInfo['db_port']
+	db_user = dbInfo['dbuser']
 
         self.max_connections = dbInfo.get('max_connections',MAX_CONNECTIONS)
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
@@ -85,7 +86,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
         try:
-            self.filedb_dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome)
+            self.filedb_dict = edb.FileDB(host=db_host, port=db_port, user=db_user, jou=jouHome)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
