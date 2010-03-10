@@ -24,6 +24,14 @@ def time2timestamp(t):
 def timestamp2time(s):
 	return time.mktime(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
 
+#
+# need this function to handle 8.2 and higher postgresql
+#
+def massage_tape_mounts_result(res) :
+	if not res.has_key('oid_tape_mounts'):
+		res['oid_tape_mounts'] = res.get('oid(public.tape_mounts)')
+
+
 class accDB:
 	def __init__(self, host, dbname, port= None, user=None, logname='UNKNOWN'):
 		self.logname = logname
@@ -50,7 +58,10 @@ class accDB:
 			'logname': logname,
 			'start': start,
 			'state': 'm'})
-
+		#
+		# handle 8.2 vs 8.{3,4} difference (the latter does not have oid_tape_mounts key)
+		#
+		massage_tape_mounts_result(res)
 		# remember the start part
 		try:
 			res2 = self.db.insert('tape_mounts_tmp', {
@@ -58,18 +69,17 @@ class accDB:
 				'state': 'm',
 				'id': res['oid_tape_mounts']})
 		except:
-			Trace.log(e_errors.INFO, "%s: %s" %
-				  (str(sys.exc_info()[0]), str(sys.exc_info()[1])))
+			#
+			# no need ot report error here. Failure to insert is part of the workflow
+			#
 			try:
 				q =  "select oid as oid_tape_mounts_tmp, "\
 				    "volume, state from tape_mounts_tmp "\
 				    "where volume = '%s' and state = 'm'"%(volume,)
 				res2 = self.db.query(q).dictresult()[0]
-				res2 = self.db.update('tape_mounts_tmp',
-						      {'oid_tape_mounts_tmp':
-						       res2['oid_tape_mounts_tmp'],
-						       'id': res['oid_tape_mounts']})
 
+				res2 = self.db.query("update tape_mounts_tmp set id=%d where oid=%d"%(res['oid_tape_mounts'],
+												      res2['oid_tape_mounts_tmp'],))
 			except:
 				Trace.log(e_errors.ERROR, "%s: %s" %
 					  (str(sys.exc_info()[0]),
@@ -85,13 +95,25 @@ class accDB:
 			    "volume, state, id from tape_mounts_tmp "\
 			    "where volume = '%s' and state = 'm';"%(volume)
 			res = self.db.query(q).dictresult()[0]
-			res2 = self.db.update('tape_mounts', {
-				'oid_tape_mounts': res['id'],
-				'finish': finish,
-				'state': state})
+			try:
+				#
+				# this works in postgresql 8.2
+				#
+				res2 = self.db.update('tape_mounts', {
+					'oid_tape_mounts': res['id'],
+					'finish': finish,
+					'state': state})
 
-			res2 = self.db.delete('tape_mounts_tmp', {
-				'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
+				res2 = self.db.delete('tape_mounts_tmp', {
+					'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
+			except:
+				#
+				# this works in  postgresql 8.{3,4}
+				#
+				q="update tape_mounts set finish='%s', state='%s' where tape_mounts.oid=%d"%(finish,state,res['id'],)
+				res2 = self.db.query(q)
+				res2 = self.db.query("delete from tape_mounts_tmp where tape_mounts_tmp.oid=%d"%(res['oid_tape_mounts_tmp'],))
+
 		except:
 			Trace.log(e_errors.ERROR, "%s: %s" %
 				  (str(sys.exc_info()[0]),
@@ -111,7 +133,10 @@ class accDB:
 			'logname': logname,
 			'start': start,
 			'state': 'd'})
-
+		#
+		# handle 8.2 vs 8.{3,4} difference (the latter does not have oid_tape_mounts key)
+		#
+		massage_tape_mounts_result(res)
 		# remember the start part
 		try:
 			res2 = self.db.insert('tape_mounts_tmp', {
@@ -119,17 +144,16 @@ class accDB:
 				'state': 'd',
 				'id': res['oid_tape_mounts']})
 		except:
-			Trace.log(e_errors.INFO, "%s: %s" %
-				  (str(sys.exc_info()[0]), str(sys.exc_info()[1])))
+			#
+			# no need ot report error here. Failure to insert is part of the workflow
+			#
 			try:
 				q = "select oid as oid_tape_mounts_tmp, "\
 				    "volume, state from tape_mounts_tmp "\
 				    "where volume = '%s' and state = 'd';"%(volume)
 				res2 = self.db.query(q).dictresult()[0]
-				res2 = self.db.update('tape_mounts_tmp',
-						      {'oid_tape_mounts_tmp':
-						       res2['oid_tape_mounts_tmp'],
-						       'id': res['oid_tape_mounts']})
+				res2 = self.db.query("update tape_mounts_tmp set id=%d where oid=%d"%(res['oid_tape_mounts'],
+												      res2['oid_tape_mounts_tmp'],))
 			except:
 				Trace.log(e_errors.ERROR, "%s: %s" %
 					  (str(sys.exc_info()[0]),
@@ -144,12 +168,23 @@ class accDB:
 			    "volume, state, id from tape_mounts_tmp "\
 			    "where volume = '%s' and state = 'd';"%(volume)
 			res = self.db.query(q).dictresult()[0]
-			res2 = self.db.update('tape_mounts', {
-				'oid_tape_mounts': res['id'],
-				'finish': finish,
-				'state': state})
-			res2 = self.db.delete('tape_mounts_tmp', {
-				'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
+			try:
+				#
+				#  this works in postgresql 8.2
+				#
+				res2 = self.db.update('tape_mounts', {
+					'oid_tape_mounts': res['id'],
+					'finish': finish,
+					'state': state})
+				res2 = self.db.delete('tape_mounts_tmp', {
+					'oid_tape_mounts_tmp': res['oid_tape_mounts_tmp']})
+			except:
+				#
+				# this works in  postgresql 8.{3,4}
+				#
+				q="update tape_mounts set finish='%s', state='%s' where tape_mounts.oid=%d"%(finish,state,res['id'],)
+				res2 = self.db.query(q)
+				res2 = self.db.query("delete from tape_mounts_tmp where tape_mounts_tmp.oid=%d"%(res['oid_tape_mounts_tmp'],))
 		except:
 			Trace.log(e_errors.ERROR, "%s: %s" %
 				  (str(sys.exc_info()[0]),
