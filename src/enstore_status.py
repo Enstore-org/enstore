@@ -160,7 +160,8 @@ class SgLine:
         self.sg = None
         try:
             dummy, sg = string.split(self.text, ":")
-            self.sg = string.strip(sg)
+            # The parsed string may not end with storage group
+            self.sg = string.strip(sg).split(" ")[0]
         except ValueError:
             # the text was not in the right format so ignore it
             pass
