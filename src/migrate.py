@@ -190,7 +190,7 @@ if PARALLEL_FILE_TRANSFER and \
 #Pass --threaded to encp if true.
 USE_THREADED_ENCP = True
 
-#Number of processes/threads to juggle at once.
+#Number of read/write processes/threads pairs to juggle at once.
 PROC_LIMIT = 3
 
 ##
@@ -204,7 +204,7 @@ PROC_LIMIT = 3
 USE_CLERKS = False
 
 #Default size of the Queue class objects.
-DEFUALT_QUEUE_SIZE = 1024
+DEFAULT_QUEUE_SIZE = 1024
 
 #The value sent over a pipe to signal the receiving end there are no more
 # comming.
@@ -477,32 +477,41 @@ def init(intf):
 
 	return
 
-#
-def get_proceed_number(src_bfids, intf):
-    #If the user specified that all the files should be read, before
-    # starting to write; achive this by setting the proceed_number
-    # ot the number of files on the tape.
+
+#Return two important values for the copy queue:
+# 1) The number of files that should be read, per thread, before writes
+# should start.
+# 2) The optimal size the copy queue should be.
+# 
+# src_bfids: A sequence of source BFIDs.
+# intf: A MigrateInterface class.
+def get_queue_numbers(src_bfids, intf, volume_record=None):
     if intf.read_to_end_of_tape:
-        return len(src_bfids)
-    elif type(intf.proceed_number) == types.IntType:
-        #Map the user supplied proceed number to be within the
-        # bounds of 1 and the default queue size.
-        proceed_number = min(intf.proceed_number, DEFUALT_QUEUE_SIZE)
-        proceed_number = max(proceed_number, 1)
-        return proceed_number
+        #If the user specified that all the files should be read, before
+        # starting to write; achive this by setting the proceed_number
+        # to the number of files on the tape.
+        proceed_number = len(src_bfids)
+        # Adjust size of the copy queue, if necessary.  Always add one to
+        # leave room for the SENTINEL.
+        queue_size = proceed_number + 1
+        return proceed_number, queue_size
 
     if len(src_bfids) == 0:
         #If the volume contains only deleted files and --with-deleted
         # was not used; src_bfids will be an empty list.  In this
         # case, skip setting this value to avoid raising an
         # IndexError doing the "get_media_type(src_bfids[0], db)" below.
-        return 1
+        proceed_number = 1
+        queue_size = proceed_number + 1
+        return proceed_number, queue_size
 
     # get a db connection
     db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
     ###############################################################
     #Determine the media speeds that the migration will be going at.
+
+    #First, for the source volume.
     if type(src_bfids[0]) == types.ListType:
         #If the first item is itself a list, get the first item of that list.
         if type(src_bfids[0][0]) == types.DictType:
@@ -515,6 +524,8 @@ def get_proceed_number(src_bfids, intf):
         else:
             src_bfid_0 = src_bfids[0]
     src_media_type = get_media_type(src_bfid_0, db)
+
+    #Second, for the destination volume.
     if intf.library and type(intf.library) == types.StringType:
         dst_media_type = get_media_type(intf.library.split(",")[0], db)
     else:
@@ -525,38 +536,107 @@ def get_proceed_number(src_bfids, intf):
             #If we get here, we would need to look at the tags
             # in the original directory, but since we don't have
             # that available here, lets just drop it for now.
-            return FILE_LIMIT
+            return FILE_LIMIT, DEFAULT_QUEUE_SIZE
 
+    #These rates are in MegaBytes
     src_rate = getattr(enstore_constants,
                        "RATE_" + str(src_media_type), None)
     dst_rate = getattr(enstore_constants,
                        "RATE_" + str(dst_media_type), None)
+    if debug:
+        log("src_rate:", src_rate)
+        log("dst_rate:", dst_rate)
 
     #If the tape speeds for the new media are faster then the old media; this
     # should be: int(NUM_OBJS * (1 - (old_rape_rate / new_tape_rate)))
     if src_rate and dst_rate:
-        proceed_number = int(len(src_bfids) * (1 - (src_rate / dst_rate)))
+        if volume_record:
+            #If we know we have files belonging to one volume, then we can
+            # include the write file mark time in the rate.
+            
+            file_mark_seconds = 3 #Observed time for many types of drives.
+            #Knowning the time it takes to write a filemark, we can calculate
+            # the equivalent amount of data in Megabytes.
+            dst_filemark_MB = (file_mark_seconds * dst_rate)
+            #We get the number of bytes used on the tape.
+            use_bytes = volume_record['capacity_bytes'] \
+                        - volume_record['remaining_bytes']
+            #Get the average filesize on the tape.
+            avg_size_MB = use_bytes / volume_record['sum_wr_access'] / enstore_constants.MB
+            #Apply the ratios to find the slightly slower rate.  The smaller
+            # the average size the bigger the impact the dst_filemark_MB
+            # value has.
+            dst_rate = (dst_rate * avg_size_MB) / \
+                       (avg_size_MB + dst_filemark_MB)
+            if debug:
+                log("dst_rate considering filemarks:", dst_rate)
+
+        if src_rate > dst_rate:
+            #If the destination side is faster, set the proceed_number
+            # (aka low water mark) to 1.  Set the fraction of the file
+            # list that is likely to need to be buffered to the queue size.
+            proceed_number = 1
+            queue_size = int(len(src_bfids) * (dst_rate / src_rate))
+        else:
+            #Take the ratio of the two rates (we want to know the part
+            # of the ratio that the destination is bigger, hence the "1 -").
+            # By multiplying this number by the list size we find out what
+            # number of files that should be read by the slower read stream
+            # before the faster write stream should start writing in order
+            # for both steams to be done at the same time.
+            proceed_number = int(len(src_bfids) * (1 - (src_rate / dst_rate)))
+            #Determine the theoretical queue_size to be the fraction of
+            # files that we need to buffer in order to maintain a steady
+            # state even at the peek of waiting for the proceed_number
+            # of files to be read before we start writing.
+            queue_size = int(len(src_bfids) * (src_rate / dst_rate))
+            
         if debug:
-            log("unlimited proceed_number:", proceed_number)
+            log("unrestricted proceed_number:", proceed_number)
+        if debug:
+            log("unrestricted queue size:", queue_size)
     else:
         proceed_number = FILE_LIMIT
+        queue_size = DEFAULT_QUEUE_SIZE
 
-    #Adjust the file limit to account for the number of processes/threads.
-    if PARALLEL_FILE_TRANSFER:
-        use_limit = FILE_LIMIT / PROC_LIMIT
+    ###############################################################
+
+    # Sometimes there are extra constraints for these values.  Apply
+    # them here.
+
+    if type(intf.proceed_number) == types.IntType:
+        #Map the user supplied proceed number to be within the
+        # bounds of 1 and the number of files in the list.
+        proceed_number = min(intf.proceed_number, len(src_bfids))
+        proceed_number = max(proceed_number, 1)
     else:
-        use_limit = FILE_LIMIT
+        #Adjust the file limit to account for the number of processes/threads.
+        if PARALLEL_FILE_TRANSFER:
+            use_file_limit = FILE_LIMIT / PROC_LIMIT
+        else:
+            use_file_limit = FILE_LIMIT
 
-    #Put some form of bound on this value until its effect on performance
-    # is better understood.
-    proceed_number = min(proceed_number, use_limit)
-    proceed_number = max(proceed_number, 1)
+        #Put some form of bound on this value until its effect on performance
+        # is better understood.
+        proceed_number = min(proceed_number, use_file_limit)
+        proceed_number = max(proceed_number, 1)
+
+    queue_size = max(min(len(src_bfids), DEFAULT_QUEUE_SIZE), queue_size)
+    #Make sure the queue size is larger than the proceed_number (aka
+    # the low water mark).
+    queue_size = max(proceed_number + 1, queue_size)
+
+    #More often than not, the proceed_number (aka low water mark) is
+    # lowered by these hard limits.  The opposite is true for queue_size,
+    # where it is often raised to the file list length for tapes with less
+    # than DEFAULT_QUEUE_SIZE files per thread.
 
     ###############################################################
     if debug:
         log("proceed_number:", proceed_number)
+        log("queue_size:", queue_size)
 
-    return proceed_number
+    return proceed_number, queue_size
     
 #If the source and destination media_types are the same, set this to be
 # a cloning job rather than a migration.
@@ -2861,7 +2941,11 @@ def show_status(volume_list, db, intf):
             volume_list.append(("", v))  #We have a source volume.
         else:
             #Get the results.
+            if debug:
+                log(MY_TASK, "check volume as source volume")
             res1a = db.query(q1a).getresult()
+            if debug:
+                log(MY_TASK, "check volume as destination volume")
             res1b = db.query(q1b).getresult()
 
             for row in res1a:
@@ -5411,9 +5495,6 @@ def migrate(bfids, intf, volume_record=None):
                     files_per_thread = int((media_rate * 60.0) / avg_size)
                     files_per_thread = max(1, files_per_thread)
 
-            files_per_thread = 2
-            print "files_per_thread:", files_per_thread
-
             i = 0
             j = 0
             for j in range(0, len(bfids), files_per_thread):
@@ -5456,18 +5537,12 @@ def migrate(bfids, intf, volume_record=None):
 	for i in range(len(use_bfids_lists)):
 		bfid_list = use_bfids_lists[i]
 
-                # Low water mark for the copy queue to proceed.
-                proceed_number = get_proceed_number(bfid_list, intf)
-                # Size of the copy queue.  Always add one to leave room
-                # for the SENTINEL.
-                if intf.read_to_end_of_tape:
-                    if USE_GET and type(volume_record) == types.DictType:
-                        copy_queue_size = files_per_thread * len(bfid_list) + 1
-                    else:
-                        copy_queue_size = len(bfid_list) + 1
-                else:
-                    copy_queue_size = max(proceed_number + 1, DEFUALT_QUEUE_SIZE)
-		
+                # Low water mark for the write-to-tape thread to proceed.
+                # Also, get the size to use for the copy_queue.
+                proceed_number, copy_queue_size = \
+                                get_queue_numbers(bfid_list, intf,
+                                                  volume_record=volume_record)
+                
 	        #Get new queues for each set of processes/threads.
 
                 #Active file queue.
@@ -5487,7 +5562,7 @@ def migrate(bfids, intf, volume_record=None):
                         # for the SENTINEL.
                         if intf.read_to_end_of_tape:
                             if USE_GET and type(volume_record) == types.DictType:
-                                scan_queue_size = files_per_thread * len(bfid_list) + 1
+                                scan_queue_size = len(bfids) + 1
                             else:
                                 scan_queue_size = len(bfid_list) + 1
                         else:
