@@ -31,7 +31,6 @@ import migrate
 import duplication_util
 import e_errors
 import enstore_functions2
-import find_pnfs_file
 import Trace
 import option
 
@@ -89,60 +88,56 @@ def is_migration_file_family(ff):
     return True
 
 # This is to change the behavior of migrate.swap_metadata.
-# duplicate_metadata(bfid1, src, bfid2, dst, db) -- duplicate metadata for src and dst
+# duplicate_metadata(job, fcc, db) -- duplicate metadata for src and dst
 #
 # * return None if succeeds, otherwise, return error message
 # * to avoid deeply nested "if ... else", it takes early error return
-def duplicate_metadata(bfid1, src, bfid2, dst, db):
-	MY_TASK = "DUPLICATE_METADATA"
+#
+# The format of job is a 7-tuple in the following order:
+# 1) The file record of the file being duplicated.
+# 2) The volume record of source file.
+# 3) The current path in PNFS/Chimera of the file being duplicated.
+# 4) The file record of the file written to the new volume.
+# 5) The volume record of the volume the new file was written onto.
+# 6) The path of the file used to cache the file on local disk.
+# 7) The temporary path of the new copy in PNFS/Chimera.
+# By the time duplicate_metadata() is called, all seven of these values
+# will be filled in.
+def duplicate_metadata(job, fcc, db):
+    MY_TASK = "DUPLICATE_METADATA"
 
-	# get its own file clerk client
-	config_host = enstore_functions2.default_host()
-	config_port = enstore_functions2.default_port()
-	csc = configuration_client.ConfigurationClient((config_host,
-							config_port))
-	fcc = file_clerk_client.FileClient(csc)
+    #Get information about the files to copy and swap.
+    (src_file_record, src_volume_record, src_path,
+     dst_file_record, dst_volume_record, tmp_path, mig_path) = job
 
-	# get all the file db metadata
-	f1 = fcc.bfid_info(bfid1)
-        if not e_errors.is_ok(f1):
-            return "src_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
-	
-	f2 = fcc.bfid_info(bfid2)
-        if not e_errors.is_ok(f2):
-            return "dst_bfid: %s: %s" % (f1['status'][0], f1['status'][1])
+    #shortcuts
+    src_bfid = src_file_record['bfid']
+    dst_bfid = dst_file_record['bfid']
 
-        #It is possible to duplicate a duplicate.  Need to handle finding
-	# the original bfid's file recored, if there is one.
-        original_reply = fcc.find_the_original(bfid1)
-	f0 = {}
-	if e_errors.is_ok(original_reply) \
-	       and original_reply['original'] != None \
-	       and original_reply['original'] != bfid1:
-		f0 = fcc.bfid_info(original_reply['original'])
-		if not e_errors.is_ok(f2):
-			return "original bfid: %s: %s" % (f1['status'][0],
-							  f1['status'][1])
+    # get its own file clerk client
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host,
+						    config_port))
+    fcc = file_clerk_client.FileClient(csc)
 
-	# get all pnfs metadata - first the source file
-	if f1['deleted'] == "no":
-                try:
-                        # This version handles the seteuid() locking.
-                        p1 = migrate.File(src)
-                except (KeyboardInterrupt, SystemExit):
-                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-                except (OSError, IOError), msg:
-                        return str(msg)
-                except:
-                        exc, msg = sys.exc_info()[:2]
-                        return str(msg)
-        else:
-                # What do we need an empty File class for?
-                p1 = pnfs.File(src)
+    #It is possible to duplicate a duplicate.  Need to handle finding
+    # the original bfid's file recored, if there is one.
+    original_reply = fcc.find_the_original(src_bfid)
+    f0 = {}
+    if e_errors.is_ok(original_reply) \
+	   and original_reply['original'] != None \
+	   and original_reply['original'] != src_bfid:
+        f0 = fcc.bfid_info(original_reply['original'])
+	if not e_errors.is_ok(dst_file_record):
+	    return "original bfid: %s: %s" % (src_file_record['status'][0],
+					      src_file_record['status'][1])
 
-	# get all pnfs metadata - second the destination file
+    # get all pnfs metadata - first the source file
+    if src_file_record['deleted'] == "no":
 	try:
-		p2 = migrate.File(dst)
+		# This version handles the seteuid() locking.
+		p1 = migrate.File(src_path)
 	except (KeyboardInterrupt, SystemExit):
 		raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 	except (OSError, IOError), msg:
@@ -150,107 +145,82 @@ def duplicate_metadata(bfid1, src, bfid2, dst, db):
 	except:
 		exc, msg = sys.exc_info()[:2]
 		return str(msg)
+    else:
+        # What do we need an empty File class for?
+	p1 = pnfs.File(src_path)
+
+    # get all pnfs metadata - second the destination file
+    try:
+        p2 = migrate.File(mig_path)
+    except (KeyboardInterrupt, SystemExit):
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except (OSError, IOError), msg:
+        return str(msg)
+    except:
+        exc, msg = sys.exc_info()[:2]
+	return str(msg)
 	
-	# check if the metadata are consistent
-	res = migrate.compare_metadata(p1, f1)
-	if res == "bfid" and f0:
-		#Compare original, if applicable.
-		res = migrate.compare_metadata(p1, f0)
+    # check if the metadata are consistent
+    res = migrate.compare_metadata(p1, src_file_record)
+    if res == "bfid" and f0:
+        #Compare original, if applicable.
+	res = migrate.compare_metadata(p1, f0)
+    if res:
+        return "[3] metadata %s %s are inconsistent on %s" % \
+	       (src_bfid, src_path, res)
+
+    if not p2.bfid and not p2.volume:
+        #The migration path has already been deleted.  There is
+	# no file to compare with.
+	pass
+    else:
+        res = migrate.compare_metadata(p2, dst_file_record)
+	# deal with already swapped file record
+	if res == 'pnfsid':
+	    res = migrate.compare_metadata(p2, dst_file_record, p1.pnfs_id)
 	if res:
-		return "[3] metadata %s %s are inconsistent on %s"%(bfid1, src, res)
+	    return "[4] metadata %s %s are inconsistent on %s" % \
+		   (dst_bfid, mig_path, res)
 
-	if not p2.bfid and not p2.volume:
-		#The migration path has already been deleted.  There is
-		# no file to compare with.
-		pass
-	else:
-		res = migrate.compare_metadata(p2, f2)
-		# deal with already swapped file record
-		if res == 'pnfsid':
-			res = migrate.compare_metadata(p2, f2, p1.pnfs_id)
-		if res:
-			return "[4] metadata %s %s are inconsistent on %s"%(bfid2, dst, res)
+    # cross check
+    if src_file_record['size'] != dst_file_record['size']:
+        err_msg = "%s and %s have different size" % (src_bfid, dst_bfid)
+    elif src_file_record['complete_crc'] != dst_file_record['complete_crc']:
+        err_msg = "%s and %s have different crc" % (src_bfid, dst_bfid)
+    elif src_file_record['sanity_cookie'] != dst_file_record['sanity_cookie']:
+        err_msg = "%s and %s have different sanity_cookie" \
+		  % (src_file_record, dst_file_record)
+    else:
+        err_msg = None
+    if err_msg:
+        if dst_file_record['deleted'] == migrate.YES \
+	       and not migrate.is_swapped(src_bfid, fcc, db):
+	    migrate.log(MY_TASK,
+			"undoing duplication of %s to %s do to error" % \
+			(src_bfid, dst_bfid))
+	    migrate.log_uncopied(src_bfid, dst_bfid, fcc, db)
+	return err_msg
 
-	# cross check
-	if f1['size'] != f2['size']:
-		err_msg = "%s and %s have different size" % (bfid1, bfid2)
-	elif f1['complete_crc'] != f2['complete_crc']:
-		err_msg = "%s and %s have different crc" % (bfid1, bfid2)
-	elif f1['sanity_cookie'] != f2['sanity_cookie']:
-		err_msg = "%s and %s have different sanity_cookie" \
-			  % (bfid1, bfid2)
-	else:
-		err_msg = None
-	if err_msg:
-		if f2['deleted'] == migrate.YES \
-                   and not migrate.is_swapped(bfid1, fcc, db):
-			migrate.log(MY_TASK,
-			    "undoing duplication of %s to %s do to error"         % (bfid1, bfid2))
-			migrate.log_uncopied(bfid1, bfid2, fcc, db)
-		return err_msg
+    # check if p1 is writable
+    if not os.access(src_path, os.W_OK):
+        return "%s is not writable"%(src_path)
 
-	# check if p1 is writable
-	if not os.access(src, os.W_OK):
-		return "%s is not writable"%(src)
+    # swapping metadata
+    m1 = {'bfid': dst_bfid, 'pnfsid':src_file_record['pnfsid'],
+	  'pnfs_name0':src_file_record['pnfs_name0']}
+    res = fcc.modify(m1)
+    # res = {'status': (e_errors.OK, None)}
+    if not res['status'][0] == e_errors.OK:
+        return "failed to change pnfsid for %s" % (dst_bfid,)
 
-	# swapping metadata
-	m1 = {'bfid': bfid2, 'pnfsid':f1['pnfsid'], 'pnfs_name0':f1['pnfs_name0']}
-	res = fcc.modify(m1)
-	# res = {'status': (e_errors.OK, None)}
-	if not res['status'][0] == e_errors.OK:
-		return "failed to change pnfsid for %s"%(bfid2)
+    # register duplication
 
-	# register duplication
+    # get a duplication manager
+    dm = duplication_util.DuplicationManager()
+    rtn = dm.make_duplicate(src_bfid, dst_bfid)
+    dm.db.close()
+    return rtn
 
-	# get a duplication manager
-	dm = duplication_util.DuplicationManager()
-	rtn = dm.make_duplicate(bfid1, bfid2)
-	dm.db.close()
-	return rtn
-
-# Return the actual filename and the filename for encp.  The filename for
-# encp may not be a real filename (i.e. --get-bfid <bfid>).
-def get_filenames(MY_TASK, dst_bfid, pnfs_id, likely_path, deleted):
-
-	if deleted == migrate.YES:
-		use_path = "--override-deleted --get-bfid %s" \
-			   % (dst_bfid,)
-		pnfs_path = likely_path #Is anything else more correct?
-	else:
-		try:
-			# get the real path
-			pnfs_path = find_pnfs_file.find_pnfsid_path(
-				pnfs_id, dst_bfid,
-				likely_path = likely_path,
-				path_type = find_pnfs_file.FS)
-		except (KeyboardInterrupt, SystemExit):
-			raise (sys.exc_info()[0],
-			       sys.exc_info()[1],
-			       sys.exc_info()[2])
-		except:
-			exc_type, exc_value, exc_tb = sys.exc_info()
-			Trace.handle_error(exc_type, exc_value, exc_tb)
-			del exc_tb #avoid resource leaks
-			migrate.error_log(MY_TASK, str(exc_type),
-				  str(exc_value),
-				  " %s %s is not a valid pnfs file" \
-				  % (
-				#vol,
-				     dst_bfid,
-				     #location_cookie,
-				     pnfs_id))
-			#local_error = local_error + 1
-			#continue
-			return (None, None)
-
-		if type(pnfs_path) == type([]):
-			pnfs_path = pnfs_path[0]
-
-		#Regardless of the path, we need to use the bfid
-		# since the file we are scanning is a duplicate.
-		use_path = "--get-bfid %s" % (dst_bfid,)
-
-	return (pnfs_path, use_path)
 
 #This is a no-op for duplication.
 def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
@@ -320,7 +290,6 @@ def setup_cloning():
 migrate.is_expected_volume = is_expected_volume
 migrate.cleanup_after_scan = cleanup_after_scan
 migrate.swap_metadata = duplicate_metadata
-migrate.get_filenames = get_filenames
 migrate.restore = restore
 migrate.restore_volume = restore_volume
 migrate.setup_cloning = setup_cloning
