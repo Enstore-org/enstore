@@ -524,6 +524,7 @@ class UDPServer:
         except:
             list_copy = None
             Trace.handle_error()
+            Trace.log(e_errors.INFO, "Exception when doing deepcopy. List %s"%(list,))
         self._lock.release()
 
         if not list_copy:
