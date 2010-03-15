@@ -18,11 +18,16 @@ import e_errors
 def copy_it(src, dst):
     crontab=os.path.basename(src)
 
+    #Verify the source file exists.
+    if not os.path.exists(src):
+        sys.stderr.write("%s does not exist.\n" % (src,) )
+        return 1
+
     #Don't clobber a good file.  Make sure that the src is newer 
     # before overwriting.
     if os.path.exists(dst) and os.path.getmtime(src) <= os.path.getmtime(dst):
         sys.stderr.write("%s already exists.\n" % (crontab,) )
-        return
+        return 0
 
     print "Installing crontab:", crontab
 
@@ -37,26 +42,46 @@ def copy_it(src, dst):
 
     except (OSError, IOError), msg:
         sys.stderr.write("%s\n" % (str(msg),))
-        return
+        return 1
 
     try:
         src_stat = os.stat(src)
+    except (OSError, IOError), msg:
+        sys.stderr.write("stat:  %s\n" % (str(msg),))
+        return 1
+
+    try:
         os.utime(dst, (src_stat[stat.ST_ATIME], src_stat[stat.ST_MTIME]))
-    except:
-        pass
+    except (OSError, IOError), msg:
+        sys.stderr.write("utime:  %s\n" % (str(msg),))
+        return 1
 
     try:
         os.chmod(dst, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
-        os.chown(dst, 0,0)
-    except:
-        pass
+    except (OSError, IOError), msg:
+        sys.stderr.write("chmod: %s\n" % (str(msg),))
+        return 1
+
+    try:
+        os.chown(dst, 0, 0)
+    except (OSError, IOError), msg:
+        sys.stderr.write("chown: %s\n" % (str(msg),))
+        return 1
+
+    return 0
 
 def delete_it(target):
     crontab=os.path.basename(target)
 
     if os.path.exists(target):
         print "Uninstalling crontab:", crontab
-        os.remove(target)
+        try:
+            os.remove(target)
+        except (OSError, IOError), msg:
+            sys.stderr.write("%s\n" % (str(msg),))
+            return 1
+
+    return 0
 
 
 if __name__ == '__main__':
@@ -109,6 +134,7 @@ if __name__ == '__main__':
         del cronjobs_dict['status']
 
     installed_crons = []
+    rtn = 0 #exit status return value
     for (configuration_key, cron_info) in cronjobs_dict.items():
         #Determine the host the cronjob should run on.
         use_host = None
@@ -128,7 +154,7 @@ if __name__ == '__main__':
             for cron in cron_info['cronfiles']:
                 src = os.path.join(CRONJOB_SRC_DIR, cron)
                 dst = os.path.join(CRONJOB_DST_DIR, cron)
-                copy_it(src, dst)
+                rtn = rtn + copy_it(src, dst)
 
                 #Rememember the crons that should be installed on this
                 # node.  We will use this list to prevent them from being
@@ -138,7 +164,7 @@ if __name__ == '__main__':
         else:
             for cron in cron_info['cronfiles']:
                 dst = os.path.join(CRONJOB_DST_DIR, cron)
-                delete_it(dst)
+                rtn = rtn + delete_it(dst)
 
     #There is one more situation to consider.  If a cronjob is totally
     # removed from the configuration, we need a way to distinguish these
@@ -151,4 +177,6 @@ if __name__ == '__main__':
     for cron in os.listdir(CRONJOB_DST_DIR):
         if cron in os.listdir(CRONJOB_SRC_DIR) and cron not in installed_crons:
             dst = os.path.join(CRONJOB_DST_DIR, cron)
-            delete_it(dst)
+            rtn = delete_it(dst)
+
+    sys.exit(rtn)
