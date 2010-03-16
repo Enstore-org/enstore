@@ -8,7 +8,7 @@
 
 all:
 	@echo "building psycopg2"
-	python setup.py build --build-lib=../modules --build-scripts=../bin
+	python setup.py build --executable="/usr/bin/env python" --build-lib=../modules --build-scripts=../bin
 	python setup.py clean
 	rm -rf build
 	cd ../modules/xml2ddl && python -m compileall .
