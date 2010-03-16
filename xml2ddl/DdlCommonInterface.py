@@ -26,6 +26,9 @@ class DdlCommonInterface:
             # Column Default
             'drop_default'    : ['ALTER TABLE %(table_name)s ALTER %(column_name)s DROP DEFAULT'],
             'alter_default'   : ['ALTER TABLE %(table_name)s ALTER %(column_name)s SET DEFAULT %(new_default)s'],
+            # Column Null
+            'drop_null'       : ['ALTER TABLE %(table_name)s SET %(column_name)s DROP NOT NULL'],
+            'set_null'        : ['ALTER TABLE %(table_name)s SET %(column_name)s SET NOT NULL'],
             # Relation
             'add_relation'    : ['ALTER TABLE %(tablename)s ADD CONSTRAINT %(constraint)s FOREIGN KEY (%(thiscolumn)s) REFERENCES %(othertable)s(%(fk)s)%(ondelete)s%(onupdate)s'],
             'drop_relation'   : ['ALTER TABLE %(tablename)s DROP CONSTRAINT %(constraintname)s'],
@@ -272,7 +275,6 @@ class DdlCommonInterface:
         if self.params['has_auto_increment']:
             self.doChangeColType(strTableName, strColName, self.retColTypeEtc(col), diffs)
             return
-
         
         if self.dbmsType == 'firebird':
             diffs.append(('Drop Autoincrement Trigger', 
@@ -310,6 +312,25 @@ class DdlCommonInterface:
         for strDdl in self.params['alter_default']:
             diffs.append(('Change Default',  strDdl % info))
 
+    # Column null
+    def dropNull(self, strTableName,strColumnName,diffs):
+        info = {
+            'table_name'  : self.quoteName(strTableName),
+            'column_name' : self.quoteName(strColumnName),
+        }
+        
+        for strDdl in self.params['drop_null']:
+            diffs.append(('Drop Null', strDdl % info))
+
+    def setNull(self, strTableName, strColumnName, diffs):
+        info = {
+            'table_name'  : self.quoteName(strTableName),
+            'column_name' : self.quoteName(strColumnName),
+        }
+        
+        for strDdl in self.params['set_null']:
+            diffs.append(('Set Null',  strDdl % info))
+
     # Column type
     def doChangeColType(self, strTableName, strColumnName, strNewColType, diffs):
         info = {
@@ -317,7 +338,7 @@ class DdlCommonInterface:
             'column_name' : strColumnName,
             'column_type' : strNewColType,
         }
-        
+
         for strDdl in self.params['change_col_type']:
             diffs.append(('Change Col Type', strDdl % info))
 
@@ -404,7 +425,6 @@ class DdlCommonInterface:
             strRet = '%s(%s)%s%s' % (strType, strSize, strDefault, strNull)
         else:
             strRet = '%s%s%s' % (strType, strDefault, strNull)
-
         return strRet
 
     def quoteName(self, strName):

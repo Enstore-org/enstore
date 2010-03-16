@@ -76,6 +76,8 @@ class DiffXml2Ddl:
         
         self.changeColComments(strTableName, old, new)
 
+        self.changeColNulls(strTableName, old, new)
+
     def changeColType(self, strTableName, old, new):
         oldDefault = None
         if 'default' in old:
@@ -88,13 +90,32 @@ class DiffXml2Ddl:
             del new['default']
         strOldColType = self.ddli.retColTypeEtc(old)
         strNewColType = self.ddli.retColTypeEtc(new)
+
+        oldNull = None
+        if 'null' in old:
+            oldNull = old.get('null')
+            del old['null']
+
+        newNull = None
+        if 'null' in new:
+            newNull = new.get('null')
+            del new['null']
+
+        strOldColType = self.ddli.retColTypeEtc(old)
+        strNewColType = self.ddli.retColTypeEtc(new)
         
         if oldDefault:
             old['default'] = oldDefault
 
         if newDefault:
             new['default'] = newDefault
-        
+            
+        if oldNull:
+            old['null'] = oldNull
+
+        if newNull:
+            new['null'] = newNull
+
         if self.normalizedColType(strNewColType) != self.normalizedColType(strOldColType):
             #print "Different\n%s\n%s" % (self.normalizedColType(strNewColType), self.normalizedColType(strOldColType))
             self.ddli.doChangeColType(strTableName, old.get('name'), strNewColType, self.diffs)
@@ -123,6 +144,16 @@ class DiffXml2Ddl:
         strNewDefault = new.getAttribute('default')
         if strNewDefault != strOldDefault:
             self.ddli.changeColDefault(strTableName, getColName(new), strNewDefault, self.ddli.retColTypeEtc(attribsToDict(new)), self.diffs)
+
+    def changeColNulls(self, strTableName, old, new):
+        strOldNull = old.getAttribute('null')
+        strNewNull = new.getAttribute('null')
+        if strNewNull != strOldNull :
+            if strNewNull == "":
+                self.ddli.dropNull(strTableName, getColName(new),self.diffs)
+            else:
+                self.ddli.setNull(strTableName, getColName(new),self.diffs)
+
 
     def changeColComments(self, strTableName, old, new):
         # Check for difference in comments.
@@ -284,7 +315,6 @@ class DiffXml2Ddl:
         for nIndex, newX in enumerate(newXs):
             strnewXName = getName(newX)
             oldX = findSomething(oldXs, strnewXName)
-            
             if oldX:
                 changeFunc(self.strTableName, oldX, newX)
             else:
@@ -619,6 +649,8 @@ class DiffXml2Ddl:
             'Drop Autoincrement Trigger'          :  0,
             'Drop Autoincrement'                  : 99, # Do last
             'Change Col Type'                     : -9, # Change col type needs to be before change default
+            'Drop Null'                           : -6,
+            'Set Null'                            : -6,
             'Change Default'                      : -5,
             'Drop Default'                        : -5,
             'Add for change type'                 : -4,
