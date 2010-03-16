@@ -9,6 +9,7 @@ set -u  # force better programming and ability to use check for not set
 usage() {
 echo "$0 [force] [url]"
 }
+force=""
 while [ $# -gt 0 ];
 do
 	case $1 in
