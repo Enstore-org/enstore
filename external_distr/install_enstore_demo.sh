@@ -69,7 +69,7 @@ yum -y install tcl.${processor}
 echo "Installing tk"
 yum -y install tk.${processor}
 echo "Installing enstore"
-rpm -U $force ${place}/${processor}/enstore-2.0.0-1.${processor}.rpm
+rpm -U $force ${place}/${processor}/enstore-2.0.0-2.${processor}.rpm
 ENSTORE_DIR=`rpm -ql enstore | head -1`
 
 $ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh
