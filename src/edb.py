@@ -73,7 +73,7 @@ def timestamp2time(s):
 		return -1
 	if isinstance(s,datetime.datetime) :
 		try:
-			return time.mktime(s.utctimetuple())
+			return time.mktime(s.timetuple())
 		except OverflowError:
 			return -1
 	else:
@@ -91,7 +91,7 @@ def timestamp2time(s):
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 def time2timestamp(t):
 	if isinstance(t,datetime.datetime) :
-		t = time.mktime(t.utctimetuple())
+		t = time.mktime(t.timetuple())
 	try:
 		return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 	except TypeError:
