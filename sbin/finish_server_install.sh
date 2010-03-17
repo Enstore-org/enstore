@@ -9,7 +9,6 @@ set -u  # force better programming and ability to use check for not set
 usage() {
 echo "$0 [force] [url]"
 }
-force=""
 while [ $# -gt 0 ];
 do
 	case $1 in
@@ -38,7 +37,12 @@ else
     # install httpd
     yum -y install httpd
 fi
-rpm -U ${force} --nodeps ${place}/noarch/enstore_html-2.0-0.noarch.rpm
+if [ -n $force ]
+then
+    rpm -U ${force} --nodeps ${place}/noarch/enstore_html-2.0-0.noarch.rpm
+else
+    rpm -U --nodeps ${place}/noarch/enstore_html-2.0-0.noarch.rpm
+fi
 
 rpm -q postgresql > /dev/null
 if [ $? -ne 0  -o -n $force ]; 
