@@ -1608,7 +1608,7 @@ class LibraryManagerMethods:
                 self.continue_scan = 1
                 return None,key_to_check
             else:
-               self.processed_admin_requests.append(vol_family) 
+               self.processed_admin_requests.append(vol_family)
         if self.mover_type(requestor) != 'DiskMover':
             if not self.write_vf_list.has_key(vol_family):
                 vol_veto_list, wr_en = self.busy_volumes(vol_family)
@@ -1729,7 +1729,6 @@ class LibraryManagerMethods:
                     # but the file in the next request can not be written to this volume
                     if would_preempt:
                         bound_vol = None # this will allow preemption of regular priority requests
-        
         if bound_vol not in vol_veto_list:
             # width not exceeded, ask volume clerk for a new volume.
             Trace.trace(self.trace_level+4,"process_write_request for %s" % (rq.ticket,))
@@ -1783,7 +1782,7 @@ class LibraryManagerMethods:
                 rq.ticket["status"] = v["status"]
                 external_label = v["external_label"]
         else:
-           external_label = self.process_for_bound_vol 
+            external_label = self.process_for_bound_vol 
                 
         # found a volume that has write work pending - return it
         rq.ticket["fc"]["external_label"] = external_label
@@ -1815,6 +1814,8 @@ class LibraryManagerMethods:
             rq = None
             self.contunue_scan = 0
             key_to_check = None
+        Trace.trace(self.trace_level+4, "process_write_request: returning %s %s"%(rq, key_to_check))
+        
         return rq, key_to_check
 
 
@@ -1832,10 +1833,17 @@ class LibraryManagerMethods:
         while rq:
             rej_reason = None
 
-            Trace.trace(self.trace_level+10, "next_work_any_volume: rq %s"%(rq,))
+            Trace.trace(self.trace_level+10, "next_work_any_volume: rq %s"%(rq.ticket,))
             if rq.ticket.has_key('reject_reason'):
-                rej_reason = rq.ticket['reject_reason'][0]
-                del(rq.ticket['reject_reason'])
+                try:
+                    rej_reason = rq.ticket['reject_reason'][0]
+                    del(rq.ticket['reject_reason'])
+                except KeyError:
+                    exc, msg, tb = sys.exc_info()
+                    Trace.handle_error(exc, msg, tb)
+                    Trace.trace(self.trace_level+10, "next_work_any_volume KeyError: rq %s"%(rq.ticket,))
+                    continue
+
 
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
@@ -1921,10 +1929,11 @@ class LibraryManagerMethods:
                                                     w['vc']['address'])
                         Trace.trace(100, "next_work_any_volume: vcc.is_vol_available, time in state %s"%(time.time()-start_t, ))
 
-                    except KeyError:
+                    except KeyError, msg:
                         ret = w
                         ret['status'] = (e_errors.ERROR, "KeyError")
-                        Trace.log(e_errors.ERROR, "Keyerror calling is_vol_available %s"%(w,))
+                        Trace.log(e_errors.ERROR, "Keyerror calling is_vol_available %s %s"%(w, msg))
+                        return (None, (e_errors.NOWORK, None))
                         
                 if ret['status'][0] != e_errors.OK:
                     if ret['status'][0] == e_errors.BROKEN:
@@ -3091,12 +3100,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 return
 
         # check if this volume is OK
-
-        v = self.inquire_vol(ticket['fc']['external_label'], ticket['vc']['address'])
-        if v['status'][0] != e_errors.OK:
-            Trace.log(e_errors.ERROR, "read_from_hsm: can't update volume info %s"%
-                      (v['status'][0],))
-            return
+        # use vc subticket
+        v = ticket['vc']
             
         if (v['system_inhibit'][0] == e_errors.NOACCESS or
             v['system_inhibit'][0] == e_errors.NOTALLOWED):
