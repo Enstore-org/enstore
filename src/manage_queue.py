@@ -1103,6 +1103,11 @@ class Request_Queue:
                     # keep the information about what queue
                     # is selected
                     self.admin_rq_returned = 1
+                    if rq.work == "write_to_hsm" and rq.ticket['fc'].has_key('external_label'):
+                        # this entry could have been created when selecting requests
+                        # in the previous cycle and left there because request
+                        # was not picked up for some reason
+                        del(rq.ticket['fc']['external_label'])
                     return rq
                 else:
                    self.process_admin_queue = 0 
@@ -1119,6 +1124,11 @@ class Request_Queue:
 
         self.admin_rq_returned = 0
         Trace.trace(TR+22, "admin_queue=0 time %s"%(time.time()-t,))
+        if record and record.work == "write_to_hsm" and record.ticket['fc'].has_key('external_label'):
+            # this entry could have been created when selecting requests
+            # in the previous cycle and left there because request
+            # was not picked up for some reason
+            del(record.ticket['fc']['external_label'])
         return record
 
     def get_queue(self):
