@@ -859,9 +859,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #          full filepath.  Use the .../.(access)(%s) name instead.
     def __init__(self, pnfsFilename="", mount_point="", shortcut=None):
 
-                 #get_details=1, get_pinfo=0, timeit=0, mount_point=""):
+        #self.print_id is unique in each of pnfs.Pnfs, chimera.ChimeraFS,
+        # and pnfs_agent_client.PnfsAgentClient.  It is to be used for
+        # the printing of messages to name the specific interface
+        # being used by namespace.StorageFS.
+        self.print_id = "PNFS"
 
-        #self.print_id = "PNFS"
         self.mount_point = mount_point
         #Make sure self.id exists.  __init__ should set it correctly
         # if necessary a little later on.
@@ -4354,4 +4357,4 @@ if __name__ == "__main__":
 
     intf._mode = "admin"
 
-    do_work(intf)
+    sys.exit(do_work(intf))

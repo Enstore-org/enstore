@@ -44,6 +44,12 @@ class PnfsAgentClient(generic_client.GenericClient,
                   alarmc=None, rcv_timeout = RCV_TIMEOUT,
                   rcv_tries = RCV_TRIES):
 
+        #self.print_id is unique in each of pnfs.Pnfs, chimera.ChimeraFS,
+        # and pnfs_agent_client.PnfsAgentClient.  It is to be used for
+        # the printing of messages to name the specific interface
+        # being used by namespace.StorageFS.
+        self.print_id = "pnfs_agent"
+
         generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
                                               flags=flags, logc=logc,
                                               alarmc=alarmc,
