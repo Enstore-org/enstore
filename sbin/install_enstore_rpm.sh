@@ -43,10 +43,9 @@ do
 	esac;
 done
 export place
-processor=`uname -p`
+processor=`uname -i`
 
 echo "Installing enstore rpm and required products from $place"
-echo "This is a fermilab specific installation"
 if [ "`whoami`" != 'root' ]
 then
     echo You need to run this script as user "root"
@@ -69,14 +68,14 @@ yum -y install tcl.${processor}
 echo "Installing tk"
 yum -y install tk.${processor}
 echo "Installing enstore"
-rpm -U $force ${place}/${processor}/enstore-2.0.0-1.${processor}.rpm
+rpm -U $force ${place}/${processor}/enstore-2.0.0-2.${processor}.rpm
 ENSTORE_DIR=`rpm -ql enstore | head -1`
 
 $ENSTORE_DIR/external_distr/create_enstore_environment.sh $fnal
 $ENSTORE_DIR/sbin/copy_farmlets.sh
 if [ $server -eq 1 ]
 then
-    $ENSTORE_DIR/sbin/finish_server_install.sh $place
+    $ENSTORE_DIR/sbin/finish_server_install.sh $place $force
 fi
 unset ENSTORE_DIR
 source /usr/local/etc/setups.sh
