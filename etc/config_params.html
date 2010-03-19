@@ -49,6 +49,39 @@ corresponding server when generating the SAAG page, and will not use
 </tr>
 </table>
 
+<h2>Priority</h2>
+<table border="1" cellpadding="4" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+<tr><td><a NAME="priority">priority</a></td><td>priority of incoming requests</td><td>Optional</td><td>None</td><tr>
+
+</tr>
+</table>
+
+<h2>Discipline</h2>
+<table border="1" cellpadding="4" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+<tr><td><a NAME="discipline">discipline</a></td><td>restrict requests
+	      coming from certain (set of) host(s)</td><td>Optional</td><td>None</td><tr>
+
+</tr>
+</table>
+
 <h2>Library Manager Keys</h2>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
 <tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
@@ -61,7 +94,10 @@ corresponding server when generating the SAAG page, and will not use
 </th>
 </tr>
 
-<tr><td><a NAME="lock">lock</a></td><td>if specified LM will start in
+<tr><td><a NAME="allow">lock</a></td><td>allow host access on a per storage group. 
+	      </td>
+	      <td>Optional</td><td>None</td>
+</tr><tr><td><a NAME="lock">lock</a></td><td>if specified LM will start in
 	      this state. 
 	      Allowed values:locked, unlocked, ignore, pause, nowrite,
 	      noread</td>
@@ -111,7 +147,7 @@ corresponding server when generating the SAAG page, and will not use
 	   NAME="max_requests">max_requests</a></td><td>Maximal amount
 	      of requests in the queue. The rest will be ignored (and
 	      retried later by encp)</td>
-	   <td>Optional</td><td>2000</td>
+	   <td>Optional</td><td>3000 (No restart)</td>
 
 </tr>
 
@@ -871,7 +907,7 @@ Uses only general keys (along with database keys which are the same
 <p>  
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Mon Jan 25 17:03:02 CST 2010
+Last modified: Mon Mar  8 17:14:07 CST 2010
 <!-- hhmts end -->
   </body>
 </html>
