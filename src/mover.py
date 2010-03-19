@@ -5864,6 +5864,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                     returned_work=None)
                 self.send_client_done(self.current_work_ticket, e_errors.MOUNTFAILED, s_status[0])
                 self.net_driver.close()
+                    
                 if status[1] == e_errors.MC_DRVNOTEMPTY:
                     Trace.alarm(e_errors.ERROR, "mount %s failed: %s" % (volume_label, status))
                     self.offline()
@@ -6791,20 +6792,17 @@ class DiskMover(Mover):
         if client_hostname:
             client_filename = client_hostname + ":" + client_filename
                                 
-        self.file = file_id2path(self.device, fc['pnfsid'])
         if self.mode == READ:
+            self.file = fc['location_cookie']
             self.files = (pnfs_filename, client_filename)
             self.buffer.header_size = None
         elif self.mode == WRITE:
-            self.files = (client_filename, pnfs_filename)
-            t = "%s"%(int(time.time()),)
-            import statvfs
-            max_fn_len = os.statvfs(self.config['device'])[statvfs.F_NAMEMAX]
-            directory,filename = os.path.split(pnfs_filename)
-            if len(filename) > max_fn_len-len(t)-1: #truncate filename
-                filename = filename[0:max_fn_len-len(t)-1]
-            fullname = os.path.join(directory,filename)
-            f = string.join((fullname,t),':')
+            if fc.has_key('pnfsid'):
+                self.file = file_id2path(self.device, fc['pnfsid'])
+                self.files = (client_filename, pnfs_filename)
+            else:
+                self.transfer_failed(e_errors.MALFORMED, 'expected Key "pnfsid". Current dictionary %s'%(fc,), error_source=USER)
+                return
             if self.wrapper:
                 self.header, self.trailer = self.wrapper.headers(self.current_work_ticket['wrapper'])
             else:
@@ -6916,9 +6914,6 @@ class DiskMover(Mover):
             self.current_volume = None
         
         self.tr_failed = 0   
-        #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
-        #self.update_lm()
-        #self.need_lm_update = (1, 0, None)    
         
     
     def transfer_completed(self):
