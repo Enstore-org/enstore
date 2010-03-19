@@ -9,6 +9,9 @@ set -u  # force better programming and ability to use check for not set
 usage() {
 echo "$0 [force] [url]"
 }
+
+force=""
+
 while [ $# -gt 0 ];
 do
 	case $1 in
@@ -18,9 +21,9 @@ do
 		*) place_from_cmd=$1; shift;	;;
 	esac;
 done
-processor=`uname -p`
+processor=`uname -i`
 if [ "${place:-x}" = "x" ]; then
-    place = $place_from_cmd
+    place=$place_from_cmd
 fi
 
 if [ "${ENSTORE_VERBOSE:-x}" != "x" ]; then
@@ -37,7 +40,7 @@ else
     # install httpd
     yum -y install httpd
 fi
-if [ -n $force ]
+if [ -n "${force}" ]
 then
     rpm -U ${force} --nodeps ${place}/noarch/enstore_html-2.0-0.noarch.rpm
 else
@@ -45,10 +48,10 @@ else
 fi
 
 rpm -q postgresql > /dev/null
-if [ $? -ne 0  -o -n $force ]; 
+if [ $? -ne 0  -o -n "${force}" ]; 
 then
     echo "installing postgres"
-    rpm -U $force ${place}/${processor}/postgresql-*
+    rpm -U ${force} ${place}/${processor}/postgresql-*
     if [ $? -ne 0 ]; 
     then
 	echo "installation of postgresql failed"
@@ -66,7 +69,7 @@ then
 fi
 
 rpm -q pnfs > /dev/null
-if [ $? -ne 0  -o -n $force ];
+if [ $? -ne 0  -o -n "${force}" ];
 then
     echo "installing pnfs"
     if [ -r /etc/rc.d/init.d/pnfs ];
