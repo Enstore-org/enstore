@@ -299,10 +299,46 @@ class DbTable:
 		return self.remove(s)
 
 	def query_dictresult(self,s):
-		return self.query(s,cursor_factory=psycopg2.extras.RealDictCursor)
+                result=self.query(s,cursor_factory=psycopg2.extras.RealDictCursor)
+                #
+                # code below converts the result, which is
+                # psycopg2.extras.RealDictCursor object into ordinary
+                # dictionary. We need it b/c some parts of volume_clerk, file_clerk
+                # send the result over the wire to the client, and client
+                # chokes on psycopg2.extras.RealDictCursor is psycopg2.extras is not
+                # installed on the client side
+                #
+                res=[]
+                for row in result:
+                    r={}
+                    for key in row.keys():
+                        if isinstance(row[key],datetime.datetime):
+                            r[key] = row[key].isoformat(' ')
+                        else:
+                            r[key] = row[key]
+                    res.append(r)
+		return res
 
 	def query_getresult(self,s):
-		return self.query(s,cursor_factory=psycopg2.extras.DictCursor)
+		result=self.query(s,cursor_factory=psycopg2.extras.DictCursor)
+                #
+                # code below converts the result, which is
+                # psycopg2.extras.DictCursor object into list lists
+                # We need it b/c some parts of volume_clerk, file_clerk
+                # send the result over the wire to the client, and client
+                # chokes on psycopg2.extras.DictCursor is psycopg2.extras is not
+                # installed on the client side
+                #
+                res=[]
+                for row in result:
+                    r=[]
+                    for item in row:
+                        if isinstance(item,datetime.datetime):
+                            r.append(item.isoformat(' '))
+                        else:
+                            r.append(item)
+                    res.append(r)
+                return res
 
 	def query_tuple(self,s):
 		return self.query(s)
@@ -339,7 +375,7 @@ class DbTable:
 					setstmt = setstmt + i + ' = ' + str_value(d[i]) + ', '
 				setstmt = setstmt[:-2]	# get rid of last ', '
 				cmd = self.update_query%(setstmt, key)
-				Trace.log(e_errors.INFO, "Updating  "+cmd)
+				Trace.log(e_errors.MISC, "Updating  "+cmd)
 				# print cmd
 				res = self.update(cmd)
 
