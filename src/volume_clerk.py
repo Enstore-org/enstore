@@ -60,9 +60,12 @@ MIN_LEFT=enstore_constants.MIN_LEFT
 MY_NAME = enstore_constants.VOLUME_CLERK   #"volume_clerk"
 MAX_CONNECTION_FAILURE = 5
 
-MAX_THREADS = 50
-MAX_CONNECTIONS=20
-
+MAX_THREADS = 20
+# we have run into issues with volume_clerk locking up
+# when number of max threads was more than number of max
+# connections. Set it to max number of threads + 1 (counting
+# main thread)
+MAX_CONNECTIONS=MAX_THREADS+1
 
 class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### This class of Volume Clerk methods should only be readonly operations.
@@ -106,13 +109,18 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         db_port = dbInfo['db_port']
         db_user = dbInfo['dbuser']
 
-        self.max_connections = dbInfo.get('max_connections',MAX_CONNECTIONS)
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
+        self.max_connections = max(dbInfo.get('max_connections',MAX_CONNECTIONS),
+                                   self.max_threads+1)
 
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening volume database using edb.VolumeDB")
         try:
-            self.volumedb_dict = edb.VolumeDB(host=db_host, port=db_port, user=db_user, jou=jouHome)
+            self.volumedb_dict = edb.VolumeDB(host=db_host,
+                                              port=db_port,
+                                              user=db_user,
+                                              jou=jouHome,
+                                              max_connections=self.max_connections)
             self.sgdb = esgdb.SGDb(self.volumedb_dict.db)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
