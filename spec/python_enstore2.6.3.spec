@@ -1,7 +1,7 @@
 Summary: Python for enstore
 Name: Python-enstore2.6
 Version: 3.0.0
-Release: 1
+Release: 2
 License: GPL
 Group: Development/Languages
 Source: python-enstore-2.6.3.tgz
