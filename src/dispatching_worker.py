@@ -34,12 +34,15 @@ MAX_CHILDREN = 32 #Do not allow forking more than this many child processes
 DEFAULT_TTL = 60 #One minute lifetime for child processes
 
 def thread_wrapper(function, args=(), after_function=None):
+    t = time.time()
+    Trace.trace(5,"dispatching_worker.thread_wrapper: function %s "%(function.__name__,))
     if type(args) != types.TupleType:
         apply(function, (args,))
     else:
         apply(function, args)
     if after_function:
         after_function()
+    Trace.trace(5,"dispatching_worker.thread_wrapper: function %s time %s"%(function.__name__,time.time()-t))
 
 # run_in_thread():
 # thread_name: A string containing the name of the thread to use, or None.
