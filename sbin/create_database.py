@@ -28,6 +28,8 @@ import dump_restore_database
 
 USERID=1342
 GROUPID=4525
+ENSTORE_USERID=5744
+ENSTORE_GROUPID=6209
 creategroup="/usr/sbin/groupadd"
 createuser="/usr/sbin/useradd"
 dbserver_cmd = "postmaster"
@@ -198,6 +200,14 @@ if __name__ == "__main__" :
         sys.exit(1)
     uid = user_data[2]
     gid = user_data[3]
+    if create_user_and_group(dbuser,ENSTORE_GROUPID,dbuser,ENSTORE_USERID) != 0 :
+        sys.exit(1)
+    enstore_user_data = get_user_info(dbuser)
+    if not enstore_user_data :
+        dump_restore_database.print_error("Failed to find user data for user %s"%(dbuser))
+        sys.exit(1)
+    enstore_uid = enstore_user_data[2]
+    enstore_gid = enstore_user_data[3]
     if not dbarea :
         dump_restore_database.print_error("Failed to extract database are for database %s"%(dbname))
         sys.exit(1)
@@ -247,15 +257,15 @@ if __name__ == "__main__" :
                         dump_restore_database.print_error("Failed to create %s directory %s"%(d,value))
                         sys.exit(1)
                 else:
-                    dump_restore_database.print_message("Directory %s %s alredy exist"%(d,value))
+                    dump_restore_database.print_message("Directory %s %s already exists"%(d,value))
                 try:
-                    os.chown(value,uid,gid)
+                    os.chown(value,enstore_uid,enstore_gid)
                 except:
-                    dump_restore_database.print_error("Failed to chown %s directory %s to uid=%d, gid=%d"%(d,value,uid,gid))
+                    dump_restore_database.print_error("Failed to chown %s directory %s to uid=%d, gid=%d"%(d,value,enstore_uid,enstore_gid))
                     sys.exit(1)
     pg_hba=os.path.join(enstore_dir,"databases/control_files/pg_hba.conf")
     #
-    # take care of Fermi specific setups 
+    # take care of Fermi specific setups
     #
     if ourhost.startswith("cdfen"):
         pg_hba=os.path.join(enstore_dir,"databases/control_files/pg_hba.conf-stken-%s"%(dbname))
@@ -274,16 +284,16 @@ if __name__ == "__main__" :
     os.setgid(gid)
     os.setuid(uid)
     #
-    # run initdb 
+    # run initdb
     #
     if init_database(dbarea) != 0:
         dump_restore_database.print_error("Failed to initdb %s"%(dbarea))
         sys.exit(1)
     #
-    # copy pg_hba in place 
+    # copy pg_hba in place
     #
     dst=os.path.join(dbarea,os.path.basename(pg_hba))
-    if copy_file(pg_hba,dst)!=0 : 
+    if copy_file(pg_hba,dst)!=0 :
         sys.exit(1)
     #
     # modify pg_hba in place
@@ -306,20 +316,20 @@ if __name__ == "__main__" :
         dump_restore_database.print_error("Failed to create database schema %s"%(dbname))
         sys.exit(1)
     sys.exit(0)
-    
-        
-        
-    
-    
-       
-        
-                 
-    
-    
-        
-        
-        
-    
 
-    
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
