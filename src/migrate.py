@@ -347,7 +347,10 @@ def init(intf):
 							intf.config_port))
 
 	db_info = csc.get('database')
-	dbhost = db_info['dbhost']
+        if socket.gethostname() == "gccenmvr2a.fnal.gov":
+            dbhost = "gccenmvr2a.fnal.gov"
+        else:
+            dbhost = db_info['dbhost']
 	dbport = db_info['dbport']
 	dbname = db_info['dbname']
 	dbuser = db_info['dbuser']
@@ -1306,12 +1309,48 @@ def is_copied(bfid, fcc, db):
                 return file_result['dst_bfid']
         else:
             return res[0]['dst_bfid']
+
+# is_copied_by_dst(bfid) -- has the file already been copied?
+#	we check the destination file
+#       As a side effect, this one returns the destination bfid instead
+#       of the timestamp that the copy step completed.
+def is_copied_by_dst(bfid, fcc, db):
+
+    res = __is_migrated_state(bfid, 0, 1, fcc, db) # 0, 1 => destination only
+    
+    if len(res) == 0:
+        return None
+    elif len(res) == 1:
+        return res[0]['src_bfid']
+    else: #len(res) > 1
+        for file_result in res:
+            if not file_result['src_bfid']:
+                return file_result['src_bfid']
+        else:
+            return res[0]['src_bfid']
         
 # is_swapped(bfid) -- has the file already been swapped?
 #	we check the source file
 def is_swapped(bfid, fcc, db):
 
     res = __is_migrated_state(bfid, 1, 0, fcc, db) # 1, 0 => source only
+    
+    if len(res) == 0:
+        return None
+    elif len(res) == 1:
+        return res[0]['swapped']
+    else: #len(res) > 1
+        for file_result in res:
+            if not file_result['swapped']:
+                return file_result['swapped']
+        else:
+            return res[0]['swapped']
+
+# is_swapped_by_dst(bfid) -- has the file already been swapped?
+#	we check the destination file
+def is_swapped_by_dst(bfid, fcc, db):
+
+    res = __is_migrated_state(bfid, 0, 1, fcc, db) # 0, 1 => destination only
     
     if len(res) == 0:
         return None
@@ -1849,23 +1888,32 @@ def get_migration_type(src_vol, dst_vol, vcc, db):
         except IndexError:
                 return None
 
+    return __get_migration_type(migration_result, duplication_result,
+                                None, cloning_result)
+
+def __get_migration_type(migration_result, duplication_result,
+                         multiple_copy_result, cloning_result):
     #print "migration_result:", migration_result
     #print "duplication_result:", duplication_result
     #print "cloning_result:", cloning_result
+    #print "multiple_copy_result:", multiple_copy_result
     if migration_result and duplication_result:
-            return "The metadata is inconsistent between migration " \
-                   "and duplication."
+        return "The metadata is inconsistent between migration " \
+               "and duplication."
     elif (not migration_result and cloning_result) and duplication_result:
-            #If duplicating to the same media...
-            return duplication_result
+        #If duplicating to the same media...
+        return "DUPLICATION"
     elif cloning_result:
-            return cloning_result
+        return "CLONING"
     elif migration_result:
-            return migration_result
+        return "MIGRATION"
     elif duplication_result:
-            return duplication_result
+        return "DUPLICATION"
+    elif multiple_copy_result:
+        return "MULTIPLE_COPY"
 
     return None
+
 
 #Helper for get_multiple_copy_bfids() and is_multiple_copy_bfid().
 def __multiple_copy(bfid, db):
@@ -2127,7 +2175,7 @@ def get_volume_info_for_bfid(MY_TASK, bfid, vcc, fcc, db):
 
 #Return the list of files to migrate for the volume.
 
-def get_tape_list(MY_TASK, volume, fcc, db, intf):
+def get_tape_list(MY_TASK, volume, fcc, db, intf, all_files = False):
     if USE_CLERKS:
         list_ticket = fcc.tape_list(volume)
 
@@ -2172,12 +2220,18 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf):
             migration_match = "dst_bfid"
         else:
             migration_match = "src_bfid"
-        if intf.with_deleted:
+        if all_files:
+            use_deleted_sql = "or deleted in ('y', 'u')"
+            use_empty_sql = ""
+        elif intf.with_deleted:
             use_deleted_sql = "or deleted = 'y'"
+            use_empty_sql = "and pnfs_path != ''"
         elif intf.force:
             use_deleted_sql = "or (deleted = 'y' and migration.dst_bfid is not NULL)"
+            use_empty_sql = "and pnfs_path != ''"
         else:
             use_deleted_sql = "or migration.dst_bfid is not NULL"
+            use_empty_sql = "and pnfs_path != ''"
         if intf.skip_bad:
             use_skip_bad = "and bad_file.bfid is NULL"
         else:
@@ -2196,11 +2250,11 @@ def get_tape_list(MY_TASK, volume, fcc, db, intf):
             "join volume on file.volume = volume.id " \
             "left join migration on migration.%s = file.bfid " \
             "where file.volume = volume.id and label = '%s' " \
-            "      and (deleted = 'n' %s) and pnfs_path != '' " \
+            "      and (deleted = 'n' %s) %s " \
             "%s " \
             "order by location_cookie;" \
             % (YES, NO, UNKNOWN, migration_match, volume,
-               use_deleted_sql, use_skip_bad)
+               use_deleted_sql, use_empty_sql, use_skip_bad)
 
         if debug:
             log(MY_TASK, q)
@@ -2753,358 +2807,834 @@ def show_migrated_to(volume_list, vcc, db):
             print to_vol,
         print
 
+#__find_record() is used by show_status() to quickly find the file_record
+# for the bfid in the tape_list.
+start_index = 0
+def __find_record(tape_list, bfid):
+    global start_index
+    if start_index == len(tape_list):
+        start_index = 0  #Start over.
+
+    #These two variables are used to help backtrack when two file records
+    # point to the same location cookie on a tape.
+    repeat_start_index = False
+    original_location_cookie = tape_list[start_index]['location_cookie']
+
+    #If we happen to be migrating a disk volume, the optimazation logic
+    # will not work.
+    if enstore_functions3.is_location_cookie_disk(original_location_cookie):
+        keep_start_index_zero = True
+    else:
+        keep_start_index_zero = False
+    
+    for i in xrange(start_index, len(tape_list)):
+        if tape_list[i]['bfid'] == bfid:
+            if not keep_start_index_zero:
+                #If we have a tape location_cookie, consider increasing
+                # the start_index search point.  The situation we don't
+                # want to update this is when we have multiple locations
+                # with the same location_cookie (which is rare, but happens).
+                if repeat_start_index and \
+                       tape_list[i]['location_cookie'] == \
+                       tape_list[start_index]['location_cookie']:
+                    pass
+                else:
+                    start_index = start_index + 1
+            return tape_list[i]
+        else:
+            repeat_start_index = True
+    else:
+        start_index = 0
+        return {}
+
+def __reset_start_index():
+    global start_index
+    start_index = 0
+
 def show_status(volume_list, db, intf):
     MY_TASK = "STATUS"
     exit_status = 0
 
-    for v in volume_list:
-        #When the volume is a source volume.
-        q1a = "select f1.bfid, f1.deleted as src_del, " \
-              "       case when b1.bfid is not NULL then 'B' " \
-              "            when f1.pnfs_id = '' " \
-              "              or f1.pnfs_path = '' then 'E' /*Mark failed and deleted files special*/ " \
-              "            else ' ' " \
-              "       end as src_bad, " \
-              "       case when (select fcm.bfid " \
-              "                  from file_copies_map fcm " \
-              "                  where f1.bfid = fcm.bfid " \
-              "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
-              "            then 'P'" \
-              "            when (select fcm.bfid" \
-              "                  from file_copies_map fcm" \
-              "                  where f1.bfid = fcm.alt_bfid " \
-              "                    and f2.bfid = fcm.bfid) is not NULL" \
-              "            then 'C'" \
-              "            /* This last section is for reporting if " \
-              "               the destination copy has multiple " \
-              "               copies. */" \
-              "            when (select count(fcm.bfid)" \
-              "                  from file_copies_map fcm" \
-              "                  where f1.bfid = fcm.bfid) > 0" \
-              "            then 'O'" \
-              "            when (select count(fcm.bfid)" \
-              "                  from file_copies_map fcm" \
-              "                  where f1.bfid = fcm.alt_bfid) > 0" \
-              "            then 'M'" \
-              "            else NULL" \
-              "       end as src_dup, " \
-              "       case when f2.bfid is not NULL " \
-              "            then f2.bfid " \
-              "            when f2a.bfid is not NULL " \
-              "            then f2a.bfid " \
-              "            else NULL " \
-              "       end as dst_bfid, " \
-              "       case when f2.bfid is not NULL " \
-              "            then f2.deleted " \
-              "            when f2a.bfid is not NULL " \
-              "            then f2a.deleted " \
-              "       end as dst_del, " \
-              "       case when b2.bfid is not NULL then 'B' " \
-              "            when b2a.bfid is not NULL then 'B' " \
-              "            else ' ' " \
-              "       end as dst_bad, " \
-              "       case when (select fcm.bfid " \
-              "                  from file_copies_map fcm " \
-              "                  where f1.bfid = fcm.alt_bfid " \
-              "                    and f2.bfid = fcm.bfid) is not NULL" \
-              "            then 'P'" \
-              "            when (select fcm.bfid" \
-              "                  from file_copies_map fcm" \
-              "                  where f1.bfid = fcm.bfid " \
-              "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
-              "            then 'C'" \
-              "            /* This last section is for reporting if " \
-              "               the destination copy has multiple " \
-              "               copies. */" \
-              "            when (select count(fcm.bfid)" \
-              "                  from file_copies_map fcm" \
-              "                  where f2.bfid = fcm.bfid) > 0" \
-              "            then 'O'" \
-              "            when (select count(fcm.bfid)" \
-              "                  from file_copies_map fcm" \
-              "                  where f2.bfid = fcm.alt_bfid " \
-              "                     or f2a.bfid = fcm.alt_bfid) > 0" \
-              "            then 'M'" \
-              "            else NULL" \
-              "       end as dst_dup, " \
-              "       copied, swapped, checked, closed " \
-              "from volume, migration " \
-              "right join file f1 on f1.bfid = migration.src_bfid " \
-              "left join file f2 on f2.bfid = migration.dst_bfid " \
-              "left join bad_file b1 on b1.bfid = f1.bfid " \
-              "left join bad_file b2 on b2.bfid = f2.bfid " \
-              "/* These next three joins are for reporting the multiple " \
-              "   copy status of non-duplicated files. */ " \
-              "left join file_copies_map fcm1 on fcm1.bfid = f1.bfid " \
-              "left join file f2a on f2a.bfid = fcm1.alt_bfid " \
-              "left join bad_file b2a on b2a.bfid = fcm1.alt_bfid " \
-              "where f1.volume = volume.id " \
-              "  and volume.label = '%s' " \
-              "order by f1.location_cookie ASC, f2.location_cookie DESC;" % (v,)
+    #Fix me.  These will be necessary in order for USE_CLERKS to be set to
+    # true.
+    fcc = None
+    vcc = None
 
-        #When the volume is a destination volume.
-        q1b = "select case when f1.bfid is not NULL " \
-              "            then f1.bfid " \
-              "            when f1a.bfid is not NULL " \
-              "            then f1a.bfid " \
-              "            else NULL " \
-              "       end as src_bfid, " \
-              "       case when f1.deleted is not NULL " \
-              "            then f1.deleted " \
-              "            when f1a.deleted is not NULL " \
-              "            then f1a.deleted " \
-              "            else NULL " \
-              "       end as src_del, " \
-              "       case when b1.bfid is not NULL then 'B' " \
-              "            when b1a.bfid is not NULL then 'B' " \
-              "            when f1.pnfs_id = '' " \
-              "              or f1.pnfs_path = '' then 'E' /*Mark failed and deleted files special*/ " \
-              "            else ' ' " \
-              "       end as src_bad, " \
-              "       case when (select fcm.bfid " \
-              "                  from file_copies_map fcm " \
-              "                  where f1.bfid = fcm.bfid " \
-              "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
-              "            then 'P'" \
-              "            when (select fcm.bfid" \
-              "                  from file_copies_map fcm" \
-              "                  where f1.bfid = fcm.alt_bfid " \
-              "                    and f2.bfid = fcm.bfid) is not NULL" \
-              "            then 'C'" \
-              "            /* This last section is for reporting if " \
-              "               the destination copy has multiple " \
-              "               copies. */" \
-              "            when (select count(fcm.bfid)" \
-              "                  from file_copies_map fcm" \
-              "                  where f1.bfid = fcm.bfid " \
-              "                        or f1a.bfid = fcm.bfid) > 0" \
-              "            then 'O'" \
-              "            when (select count(fcm.bfid)" \
-              "                  from file_copies_map fcm" \
-              "                  where f1.bfid = fcm.alt_bfid " \
-              "                        or f1a.bfid = fcm.alt_bfid) > 0" \
-              "            then 'M'" \
-              "            else NULL" \
-              "       end as src_dup, " \
-              "       f2.bfid, f2.deleted as dst_del, " \
-              "       case when b2.bfid is not NULL then 'B' " \
-              "            else ' ' " \
-              "       end as dst_bad, " \
-              "       case when (select fcm.bfid " \
-              "                  from file_copies_map fcm " \
-              "                  where f1.bfid = fcm.alt_bfid " \
-              "                    and f2.bfid = fcm.bfid) is not NULL" \
-              "            then 'P'" \
-              "            when (select fcm.bfid " \
-              "                  from file_copies_map fcm " \
-              "                  where f1.bfid = fcm.bfid " \
-              "                    and f2.bfid = fcm.alt_bfid) is not NULL" \
-              "            then 'C'" \
-              "            /* This last section is for reporting if " \
-              "               the destination copy has multiple " \
-              "               copies. */" \
-              "            when (select count(fcm.bfid)" \
-              "                  from file_copies_map fcm" \
-              "                  where f2.bfid = fcm.bfid) > 0" \
-              "            then 'O'" \
-              "            when (select count(fcm.bfid)" \
-              "                  from file_copies_map fcm" \
-              "                  where f2.bfid = fcm.alt_bfid) > 0" \
-              "            then 'M'" \
-              "            else NULL" \
-              "       end as dst_dup, " \
-              "       copied, swapped, checked, closed " \
-              "from volume, migration " \
-              "left join file f1 on f1.bfid = migration.src_bfid " \
-              "right join file f2 on f2.bfid = migration.dst_bfid " \
-              "left join bad_file b1 on b1.bfid = f1.bfid " \
-              "left join bad_file b2 on b2.bfid = f2.bfid " \
-              "/* These next three joins are for reporting the multiple " \
-              "   copy status of non-duplicated files. */ " \
-              "left join file_copies_map fcm2 on fcm2.alt_bfid = f2.bfid " \
-              "left join file f1a on f1a.bfid = fcm2.bfid " \
-              "left join bad_file b1a on b1a.bfid = fcm2.bfid " \
-              "where f2.volume = volume.id " \
-              "  and volume.label = '%s' " \
-              "order by f2.location_cookie;" % (v,)
+    column_volume_list = []
+    show_list = []  #Holds the search results.
+    output_type = []
 
+    ## Here is the matrix that describes which method is used to show the
+    ## migration status information of the volume(s).
+    ##
+    ##                  |     True               |        False    USE_CLERKS
+    ## -----------------------------------------------------------------------
+    ##                  |                        |
+    ##  True            |        NA              | one db direct query
+    ##  False           |        NA              | multiple db direct queries
+    ##                  |
+    ## USE_SINGLE_QUERY |
+    ##
+    ## Using one query to retrieve all the information for the volume
+    ## works the fastest.
 
-        show_list = []  #Holds the search results.
-        volume_list = []  #Holds the volume position in the header.
-        if intf.source_only:
-            res1a = db.query(q1a).getresult() #Get the results.
-            show_list.append(res1a)
-            volume_list.append((v, ""))  #We have a source volume.
-        elif intf.destination_only:
-            res1b = db.query(q1b).getresult() #Get the results.
-            show_list.append(res1b)
-            volume_list.append(("", v))  #We have a source volume.
+    USE_SINGLE_QUERY = True
+    if USE_CLERKS:
+        error_log(MY_TASK, "Clerk DB access not implemented at this time.")
+        exit_status = 1
+        return exit_status
+
+    for volume in volume_list:
+        #These values are used to report the type of migration/duplication.
+        migration = False
+        duplication = False
+        multiple_copy = False
+        cloning = False
+
+        #Clear these between volumes.
+        show_list = []
+        column_volume_list = []
+
+        #tape_list is a list of file records
+        tape_list = get_tape_list(MY_TASK, volume, fcc, db, intf,
+                                  all_files=True)
+        # Detect empty tapes.
+        if len(tape_list) == 0:
+            log(MY_TASK, volume, "volume is empty")
+            continue
+        
+        if USE_SINGLE_QUERY:
+            #################################################################
+            # Begin method using one large SQL query.  This query retrieves
+            # all migration/duplication information for this volume.
+            # Any bad file information is also recovered to save time
+            # running an additional query.
+
+            if USE_CLERKS:
+                pass  #Fix me.
+            else:
+                q = "select current_bfid, \
+                            src_bfid, dst_bfid, \
+                            copied, swapped, checked, closed, \
+                            bfid, alt_bfid, src_bad, dst_bad \
+                     from ( \
+                     \
+                     /* \
+                      * This first of four unioned selects pulls out all \
+                      * the files that have been migrated, duplicated, \
+                      * cloned or totally left alone. \
+                      */ \
+                     \
+                     select bfids1.bfid as current_bfid, location_cookie, \
+                            case when src_bfid is not NULL \
+                                 then src_bfid \
+                                 else bfids1.bfid \
+                            end as src_bfid, mig1.dst_bfid, \
+                            mig1.copied, mig1.swapped, mig1.checked, \
+                            mig1.closed, mig1.remark, mc1.*, \
+                            bfs.bfid as src_bad, \
+                            bfd.bfid as dst_bad \
+                     from \
+                     (select f1.bfid, location_cookie \
+                      from file f1, volume v1 \
+                      where f1.volume = v1.id \
+                        and v1.label = '%s' \
+                      order by f1.location_cookie \
+                     ) as bfids1 \
+                     left join \
+                     migration mig1 on mig1.src_bfid = bfids1.bfid \
+                     left join \
+                     file_copies_map mc1 on (mc1.bfid = bfids1.bfid or \
+                                             mc1.alt_bfid = bfids1.bfid) and \
+                                            (mc1.bfid = mig1.src_bfid or \
+                                             mc1.bfid = mig1.dst_bfid) and \
+                                            (mc1.alt_bfid = mig1.src_bfid or \
+                                             mc1.alt_bfid = mig1.dst_bfid) \
+                     left join \
+                     bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
+                                         mc1.bfid = bfs.bfid) \
+                     left join \
+                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
+                                         mc1.bfid = bfd.bfid) \
+                     \
+                     union \
+                     \
+                     /* \
+                      * This second of four unioned selects pulls out all \
+                      * the files that have been migrated to, duplicated to, \
+                      * cloned to or totally left alone. \
+                      */ \
+                     \
+                     select bfids1.bfid as current_bfid, location_cookie, \
+                            mig1.src_bfid, \
+                            case when mig1.dst_bfid is not NULL \
+                                 then mig1.dst_bfid \
+                                 else bfids1.bfid \
+                            end as dst_bfid, \
+                            mig1.copied, mig1.swapped, mig1.checked, \
+                            mig1.closed, mig1.remark, mc1.*, \
+                            bfs.bfid as src_bad, \
+                            bfd.bfid as dst_bad \
+                     from \
+                     (select f1.bfid, location_cookie \
+                      from file f1, volume v1 \
+                      where f1.volume = v1.id \
+                        and v1.label = '%s' \
+                      order by f1.location_cookie \
+                     ) as bfids1 \
+                     left join \
+                     migration mig1 on mig1.dst_bfid = bfids1.bfid \
+                     left join \
+                     file_copies_map mc1 on (mc1.bfid = bfids1.bfid or \
+                                             mc1.alt_bfid = bfids1.bfid) and \
+                                            (mc1.bfid = mig1.src_bfid or \
+                                             mc1.bfid = mig1.dst_bfid) and \
+                                            (mc1.alt_bfid = mig1.src_bfid or \
+                                             mc1.alt_bfid = mig1.dst_bfid) \
+                     left join \
+                     bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
+                                         mc1.bfid = bfs.bfid) \
+                     left join \
+                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
+                                         mc1.bfid = bfd.bfid) \
+                     \
+                     union \
+                     \
+                     /* \
+                      * This third of four unioned selects pulls out just \
+                      * original copies. \
+                      */ \
+                     \
+                     select bfids1.bfid as current_bfid, location_cookie, \
+                            NULL as src_bfid, NULL as dst_bfid, \
+                            NULL as copied, NULL as swapped, NULL as checked, \
+                            NULL as closed, \
+                            NULL as remark, \
+                            case when mc1.bfid is not NULL \
+                                 then mc1.bfid \
+                                 else bfids1.bfid \
+                            end as bfid, mc1.alt_bfid, \
+                            bfs.bfid as src_bad, \
+                            bfd.bfid as dst_bad \
+                     from \
+                     (select f1.bfid, location_cookie \
+                      from file f1, volume v1 \
+                      where f1.volume = v1.id \
+                        and v1.label = '%s' \
+                      order by f1.location_cookie \
+                     ) as bfids1 \
+                     left join \
+                     file_copies_map mc1 on mc1.bfid = bfids1.bfid \
+                     left join \
+                     migration mig1 on (mig1.src_bfid = mc1.bfid or \
+                                        mig1.dst_bfid = mc1.bfid) and \
+                                       (mig1.src_bfid = mc1.alt_bfid or \
+                                        mig1.dst_bfid = mc1.alt_bfid) \
+                     left join \
+                     bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
+                                         mc1.bfid = bfs.bfid) \
+                     left join \
+                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
+                                         mc1.bfid = bfd.bfid) \
+                     where mig1.src_bfid is NULL \
+                       and mig1.dst_bfid is NULL \
+                     \
+                     union \
+                     \
+                     /* \
+                      * This forth of four unioned selects pulls out just \
+                      * multiple copies. \
+                      */ \
+                     \
+                     select bfids1.bfid as current_bfid, location_cookie, \
+                            NULL as src_bfid, NULL as dst_bfid, \
+                            NULL as copied, NULL as swapped, NULL as checked, \
+                            NULL as closed, \
+                            NULL as remark, \
+                            mc1.bfid, \
+                            case when mc1.alt_bfid is not NULL \
+                                 then mc1.alt_bfid \
+                                 else bfids1.bfid \
+                            end as alt_bfid, \
+                            bfs.bfid as src_bad, \
+                            bfd.bfid as dst_bad \
+                     from \
+                     (select f1.bfid, location_cookie \
+                      from file f1, volume v1 \
+                      where f1.volume = v1.id \
+                        and v1.label = '%s' \
+                      order by f1.location_cookie \
+                     ) as bfids1 \
+                     left join \
+                     file_copies_map mc1 on mc1.alt_bfid = bfids1.bfid \
+                     left join \
+                     migration mig1 on (mig1.src_bfid = mc1.bfid or \
+                                        mig1.dst_bfid = mc1.bfid) and \
+                                       (mig1.src_bfid = mc1.alt_bfid or \
+                                        mig1.dst_bfid = mc1.alt_bfid) \
+                     left join \
+                     bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
+                                         mc1.bfid = bfs.bfid) \
+                     left join \
+                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
+                                         mc1.bfid = bfd.bfid) \
+                     where mig1.src_bfid is NULL \
+                       and mig1.dst_bfid is NULL \
+                     ) as blah \
+                     order by location_cookie, copied;" \
+                % (volume, volume, volume, volume)
+
+                res = db.query(q).dictresult()
+                full_output_list = res
+
+            # End method using one large SQL query.
+            #################################################################
         else:
-            #Get the results.
-            if debug:
-                log(MY_TASK, "check volume as source volume")
-            res1a = db.query(q1a).getresult()
-            if debug:
-                log(MY_TASK, "check volume as destination volume")
-            res1b = db.query(q1b).getresult()
+            #################################################################
+            # Begin method that breaks the information gathering into multiple
+            # queries or clerk requests.
 
-            for row in res1a:
-                if row[4]:
+            full_output_list = []
+            #Loop over all the files on the tape.
+            for file_record in tape_list:
+                if USE_CLERKS:
+                    pass  #Fix me.
+                else:
+                    # This query retrieves all migration/duplication
+                    # information for this volume.  Any bad file
+                    # information is also recovered to save time
+                    # running an additional query.
+                    q = "select current_bfid, \
+                            src_bfid, dst_bfid, \
+                            copied, swapped, checked, closed, \
+                            bfid, alt_bfid, src_bad, dst_bad \
+                     from ( \
+                     \
+                     /* \
+                      * This first of four unioned selects pulls out all \
+                      * the files that have been migrated, duplicated, \
+                      * cloned or totally left alone. \
+                      */ \
+                     \
+                     select bfids1.bfid as current_bfid, \
+                            case when src_bfid is not NULL \
+                                 then src_bfid \
+                                 else bfids1.bfid \
+                            end as src_bfid, mig1.dst_bfid, \
+                            mig1.copied, mig1.swapped, mig1.checked, \
+                            mig1.closed, mig1.remark, mc1.*, \
+                            bfs.bfid as src_bad, \
+                            bfd.bfid as dst_bad \
+                     from \
+                     (select f1.bfid \
+                        from file f1 \
+                        where f1.bfid = '%s' \
+                       ) as bfids1 \
+                     left join \
+                     migration mig1 on mig1.src_bfid = bfids1.bfid \
+                     left join \
+                     file_copies_map mc1 on (mc1.bfid = bfids1.bfid or \
+                                             mc1.alt_bfid = bfids1.bfid) and \
+                                            (mc1.bfid = mig1.src_bfid or \
+                                             mc1.bfid = mig1.dst_bfid) and \
+                                            (mc1.alt_bfid = mig1.src_bfid or \
+                                             mc1.alt_bfid = mig1.dst_bfid) \
+                     left join \
+                     bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
+                                         mc1.bfid = bfs.bfid) \
+                     left join \
+                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
+                                         mc1.bfid = bfd.bfid) \
+                     \
+                     union \
+                     \
+                     /* \
+                      * This second of four unioned selects pulls out all \
+                      * the files that have been migrated to, duplicated to, \
+                      * cloned to or totally left alone. \
+                      */ \
+                     \
+                     select bfids1.bfid as current_bfid, \
+                            mig1.src_bfid, \
+                            case when dst_bfid is not NULL \
+                                 then dst_bfid \
+                                 else bfids1.bfid \
+                            end as dst_bfid, \
+                            mig1.copied, mig1.swapped, mig1.checked, \
+                            mig1.closed, mig1.remark, mc1.*, \
+                            bfs.bfid as src_bad, \
+                            bfd.bfid as dst_bad \
+                     from \
+                     (select f1.bfid \
+                        from file f1 \
+                        where f1.bfid = '%s' \
+                       ) as bfids1 \
+                     left join \
+                     migration mig1 on mig1.dst_bfid = bfids1.bfid \
+                     left join \
+                     file_copies_map mc1 on (mc1.bfid = bfids1.bfid or \
+                                             mc1.alt_bfid = bfids1.bfid) and \
+                                            (mc1.bfid = mig1.src_bfid or \
+                                             mc1.bfid = mig1.dst_bfid) and \
+                                            (mc1.alt_bfid = mig1.src_bfid or \
+                                             mc1.alt_bfid = mig1.dst_bfid) \
+                     left join \
+                     bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
+                                         mc1.bfid = bfs.bfid) \
+                     left join \
+                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
+                                         mc1.bfid = bfd.bfid) \
+                     \
+                     union \
+                     \
+                     /* \
+                      * This third of four unioned selects pulls out just \
+                      * original copies. \
+                      */ \
+                     \
+                     select bfids1.bfid as current_bfid, \
+                            NULL as src_bfid, NULL as dst_bfid, \
+                            NULL as copied, NULL as swapped, NULL as checked, \
+                            NULL as closed, \
+                            NULL as remark, \
+                            case when mc1.bfid is not NULL \
+                                 then mc1.bfid \
+                                 else bfids1.bfid \
+                            end as bfid, mc1.alt_bfid, \
+                            bfs.bfid as src_bad, \
+                            bfd.bfid as dst_bad \
+                     from \
+                     (select f1.bfid \
+                        from file f1 \
+                        where f1.bfid = '%s' \
+                     ) as bfids1 \
+                     left join \
+                     file_copies_map mc1 on mc1.bfid = bfids1.bfid \
+                     left join \
+                     migration mig1 on (mig1.src_bfid = mc1.bfid or \
+                                        mig1.dst_bfid = mc1.bfid) and \
+                                       (mig1.src_bfid = mc1.alt_bfid or \
+                                        mig1.dst_bfid = mc1.alt_bfid) \
+                     left join \
+                     bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
+                                         mc1.bfid = bfs.bfid) \
+                     left join \
+                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
+                                         mc1.bfid = bfd.bfid) \
+                     where mig1.src_bfid is NULL \
+                       and mig1.dst_bfid is NULL \
+                     \
+                     union \
+                     \
+                     /* \
+                      * This forth of four unioned selects pulls out just \
+                      * multiple copies. \
+                      */ \
+                     \
+                     select bfids1.bfid as current_bfid, \
+                            NULL as src_bfid, NULL as dst_bfid, \
+                            NULL as copied, NULL as swapped, NULL as checked, \
+                            NULL as closed, \
+                            NULL as remark, \
+                            mc1.bfid, \
+                            case when mc1.alt_bfid is not NULL \
+                                 then mc1.alt_bfid \
+                                 else bfids1.bfid \
+                            end as alt_bfid, \
+                            bfs.bfid as src_bad, \
+                            bfd.bfid as dst_bad \
+                     from \
+                     (select f1.bfid \
+                        from file f1 \
+                        where f1.bfid = '%s' \
+                     ) as bfids1 \
+                     left join \
+                     file_copies_map mc1 on mc1.alt_bfid = bfids1.bfid \
+                     left join \
+                     migration mig1 on (mig1.src_bfid = mc1.bfid or \
+                                        mig1.dst_bfid = mc1.bfid) and \
+                                       (mig1.src_bfid = mc1.alt_bfid or \
+                                        mig1.dst_bfid = mc1.alt_bfid) \
+                     left join \
+                     bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
+                                         mc1.bfid = bfs.bfid) \
+                     left join \
+                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
+                                         mc1.bfid = bfd.bfid) \
+                     where mig1.src_bfid is NULL \
+                       and mig1.dst_bfid is NULL \
+                     ) as blah \
+                     order by copied \
+                     ;" % (file_record['bfid'], file_record['bfid'],
+                           file_record['bfid'], file_record['bfid'])
+                     
+                    res = db.query(q).dictresult()
+
+                    full_output_list = full_output_list + res
+
+            # End method that breaks the information gathering into multiple
+            # queries or clerk requests.
+            #################################################################
+
+        # At this point these are the field names that will be set with
+        # the respective bfids:
+        # Migration: src_bfid and dst_bfid
+        # Multiple copy: bfid and alt_bfid
+        # Duplication: src_bfid, dst_bfid, bfid and alt_bfid
+        # Cloning: src_bfid and dst_bfid
+        #
+        # Nothing: src_bfid and bfid in separate rows.
+
+        # A file can be involved in multiple ways for this output.
+        # The max is three where a volume (1) is the destination of other
+        # volumes, (2) has multiple copies of its files located on other
+        # volumes and (3) has been migrated/cloned/duplicated itself.
+
+        #################################################################
+        # Search the list verifying if the volume is a source or
+        # destination volume.  Or both.  Set show_list accordingly.
+
+        DO_MIG_SRC = 1  #migration, duplication or cloning source
+        DO_MC_SRC = 2   #multiple copy source
+        DO_MIG_DST = 3  #migration, duplication or cloning destination
+        DO_MC_DST = 4   #multiple copy destination
+        if not intf.destination_only:
+            for row in full_output_list:
+                if row['src_bfid'] == row['current_bfid'] \
+                       and row['dst_bfid']:
                     #We found a source volume.
-                    show_list.append(res1a)
-                    volume_list.append((v, ""))
+                    output_type.append(DO_MIG_SRC)
+                    column_volume_list.append((volume, ""))
+                    show_list.append(full_output_list)
                     break
-            for row in res1b:
-                if row[0]: #We found a destination volume.
-                    show_list.append(res1b)
-                    volume_list.append(("", v))
+            
+            for row in full_output_list:
+                if row['bfid'] == row['current_bfid'] \
+                       and row['alt_bfid'] and not row['src_bfid']:
+                    #We found a source volume.
+                    output_type.append(DO_MC_SRC)
+                    column_volume_list.append((volume, ""))
+                    show_list.append(full_output_list)
+                    break
+        if not intf.source_only:
+            for row in full_output_list:
+                if row['dst_bfid'] == row['current_bfid'] \
+                       and row['src_bfid']:
+                    #We found a destination volume.
+                    output_type.append(DO_MIG_DST)
+                    column_volume_list.append(("", volume))
+                    show_list.append(full_output_list)
+                    break
+            
+            for row in full_output_list:
+                if row['alt_bfid'] == row['current_bfid'] \
+                    and row['bfid'] and not row['dst_bfid']:
+                    #We found a destination volume.
+                    output_type.append(DO_MC_DST)
+                    column_volume_list.append(("", volume))
+                    show_list.append(full_output_list)
                     break
 
+        if not intf.destination_only:
             if show_list == []:
-                #If this volume has not been involved in
-                # any migration, report that nothing
-                # currently has been migrated.
-                show_list.append(res1a)
-                volume_list.append((v, ""))
+                output_type.append(DO_MIG_SRC)
+                column_volume_list.append((volume, ""))
+                show_list.append(full_output_list)
+        else:
+            if show_list == []:
+                output_type.append(DO_MIG_DST)
+                column_volume_list.append(("", volume))
+                show_list.append(full_output_list)
 
-        #for rows in show_list:
+        #################################################################
+            
+        #
+        # The code to print out the migration status information is the same
+        # for all methods.
+        #
+
+        #Think of these as being used like lambda functions...
+        def __print_y( value, uTrue="y", uFalse="" ):
+            return ( uTrue, uFalse )[ not value ]
+        def __print_deleted(file_record):
+            if not file_record.has_key('deleted'):
+                deleted = " "
+            elif file_record['deleted'] == "yes":
+                deleted = "Y"
+            elif file_record['deleted'] == "no":
+                deleted = "N"
+            else:
+                deleted = "U"
+            return deleted
+        def __print_bad(bad_status, file_record):
+            if bad_status:
+                bad = 'B'
+            elif (file_record.has_key('pnfs_name0') and
+                  not file_record['pnfs_name0']) or \
+                  (file_record.has_key('pnfsid') and
+                   not file_record['pnfsid']):
+                bad = "E"
+            else:
+                bad = " "
+            return bad
+
+        #Now loop over the files printing them out.
         for i in range(len(show_list)):
             rows = show_list[i]  #Create variable shortcut.
-      
-            #migration type will be set to MIGRATION, DUPLICATION or CLONING
-            mig_type = None
 
+            #Start over from the begining of tape_list.
+            __reset_start_index()
+      
             #In the header for the output, include the volume name in the
             # correct location.  Limit it to tape labels only; 6 in the
             # AAXX00 pattern and an addtional two to handle the L1 appended
             # to LTO tapes in ADIC robots.
-            if volume_list[i][0]:
-                src_column_header = "(%.8s) src_bfid" % volume_list[i][0]
+            if column_volume_list[i][0]:
+                src_column_header = "(%.8s) src_bfid" % column_volume_list[i][0]
             else:
                 src_column_header = "src_bfid"
-            if volume_list[i][1]:
-                dst_column_header = "(%.8s) dst_bfid" % volume_list[i][1]
+            if column_volume_list[i][1]:
+                dst_column_header = "(%.8s) dst_bfid" % column_volume_list[i][1]
             else:
                 dst_column_header = "dst_bfid"
 
-            #Output the header.
-            print "%19s %1s%1s%1s %19s %1s%1s%1s %6s %6s %6s %6s" % \
-                  (src_column_header, "S", "D", "B",
-                   dst_column_header, "S", "D", "B",
-                   "copied", "swapped", "checked", "closed")
+            #Reset the type of migration that is reported after each
+            # ouput grouping.  This prevents the first one from being reported
+            # for all the rest.
+            mig_type = None
+            migration = False
+            duplication = False
+            multiple_copy = False
+            cloning = False
 
-            for row2 in rows:
+            if len(rows) > 0:
+                #Output the header.
+                print "%19s %1s%1s%1s %19s %1s%1s%1s %6s %6s %6s %6s" % \
+                      (src_column_header, "S", "D", "B",
+                       dst_column_header, "S", "D", "B",
+                       "copied", "swapped", "checked", "closed")
 
-                #Name these for easier reading.
+            #Print out the information.
+            last_current_bfid = None
+            last_current_bfid_count = 0
+            for row in rows:
+                if output_type[i] == DO_MC_SRC and \
+                       row['bfid'] != row['current_bfid']:
+                    #print "skipped [1]:", row
+                    continue
+                elif output_type[i] == DO_MC_DST and \
+                         row['alt_bfid'] != row['current_bfid']:
+                    #print "skipped [2]:", row
+                    continue
+                elif output_type[i] == DO_MIG_SRC and \
+                         row['src_bfid'] != row['current_bfid']:
+                    #print "skipped [3]:", row
+                    continue
+                elif output_type[i] == DO_MIG_DST and \
+                         row['dst_bfid'] != row['current_bfid']:
+                    #print "skipped [4]:", row
+                    continue
 
-                #source bfid
-                if row2[0] == None:
-                    src_bfid = ""
-                else:
-                    src_bfid = row2[0]
-                #source bfid deleted status (in uppercase)
-                if row2[1] == None:
-                    src_del_status = ""
-                else:
-                    src_del_status = row2[1].upper()
-                #source bfid bad status (in uppercase)
-                if row2[2] == None:
-                    src_bad_status = ""
-                else:
-                    src_bad_status = row2[2].upper()
-                #source bfid duplication status
-                if row2[3] == None:
-                    src_dup_status = ""
-                else:
-                    src_dup_status = row2[3].upper()
-                #destination bfid
-                if row2[4] == None:
-                    dst_bfid = ""
-                else:
-                    dst_bfid = row2[4]
-                #destination bfid deleted status (in uppercase)
-                if row2[5] == None:
-                    dst_del_status = ""
-                else:
-                    dst_del_status = row2[5].upper()
-                if row2[6] == None:
-                    dst_bad_status = ""
-                else:
-                    dst_bad_status = row2[6].upper()
-                #destination bfid duplication status
-                if row2[7] == None:
-                    dst_dup_status = ""
-                else:
-                    dst_dup_status = row2[7].upper()
+                ### I don't believe this loop is needed anymore...
+                #Map any None values to empty strings.
+                #for key in row.keys():
+                #    if row[key] == None:
+                #        row[key] = ""
 
-                #Determine migration status.
-                if row2[8]:
-                    copied = "y"
+                #Determine the duplication status for the source
+                # and destination files.
+                if row['bfid'] and row['src_bfid']:
+                    src_bfid = row['src_bfid']
+                    if row['src_bfid'] == row['bfid']:
+                        src_dup = "P"
+                    else:
+                        src_dup = "C"
+                elif row['bfid']:
+                    src_bfid = row['bfid']
+                    if row['alt_bfid']:
+                        src_dup = "O"
+                    else:
+                        src_dup = " "
                 else:
-                    copied = ""
-                    exit_status = 1
-                if row2[9]:
-                    swapped = "y"
+                    if row['src_bfid']:
+                        src_bfid = row['src_bfid']
+                    elif row['current_bfid']:
+                        src_bfid = ""
+                    else:
+                        src_bfid = ""
+                    src_dup = " "
+                    
+                if row['alt_bfid'] and row['dst_bfid']:
+                    dst_bfid = row['dst_bfid']
+                    if row['dst_bfid'] == row['alt_bfid']:
+                        dst_dup = "C"
+                    else:
+                        dst_dup = "P"
+                elif row['alt_bfid']:
+                    dst_bfid = row['alt_bfid']
+                    if row['bfid']:
+                        dst_dup = "M"
+                    else:
+                        dst_dup = " "
                 else:
-                    swapped = ""
-                    exit_status = 1
-                if row2[10]:
-                    checked = "y"
-                else:
-                    checked = ""
-                    exit_status = 1
-                if row2[11]:
-                    closed = "y"
-                else:
-                    closed = "" 
-                    exit_status = 1
+                    if  row['dst_bfid']:
+                        dst_bfid = row['dst_bfid']
+                    else:
+                        dst_bfid = ""
+                    dst_dup = " "
 
+                #When migrating to multiple copies, the same source
+                # bfid will be listed twice, or more.  To help visually
+                # make this obvious, in the S column show the multiple
+                # copy number.  If the number of copies is greater than
+                # nine, making it a more than one character long, replace
+                # the number with and "X".
+                if last_current_bfid == row['current_bfid']:
+                    last_current_bfid_count = last_current_bfid_count + 1
+                    if dst_dup == " ":
+                        dst_dup = str(last_current_bfid_count)
+                        if len(dst_dup) > 1:
+                            dst_dup = "X"
+                else:
+                    last_current_bfid = row['current_bfid']
+                    last_current_bfid_count = 0
+
+                #Retrieve the corresponding file records.  This is the
+                # slow part.  One side is already in tape_list.  However,
+                # the other side needs to be retrieved one at a time,
+                # if necessary, and may take a while.
+                if column_volume_list[i][0]:
+                    src_file_record = __find_record(tape_list, src_bfid)
+                    if dst_bfid:
+                        dst_file_record = get_file_info(MY_TASK, dst_bfid,
+                                                        fcc, db)
+                        if not dst_file_record:
+                            #Turn None into {}.
+                            dst_file_record = {}
+                    else:
+                        dst_file_record = {}
+                else:
+                    if src_bfid:
+                        src_file_record = get_file_info(MY_TASK, src_bfid,
+                                                        fcc, db)
+                        if not src_file_record:
+                            #Turn None into {}.
+                            src_file_record = {}
+                    else:
+                        src_file_record = {}
+                    dst_file_record = __find_record(tape_list, dst_bfid)
+
+                #Format the infomation for output.
+                src_bad = __print_bad(row['src_bad'], src_file_record)
+                src_del = __print_deleted(src_file_record)
+                dst_bad = __print_bad(row['dst_bad'], dst_file_record)
+                dst_del = __print_deleted(dst_file_record)
+                copied = __print_y(row['copied'])
+                swapped = __print_y(row['swapped'])
+                checked = __print_y(row['checked'])
+                closed = __print_y(row['closed'])
+
+                #Output the information.
                 line = "%19s %1s%1s%1s %19s %1s%1s%1s %6s %6s %6s %6s" % \
-                       (src_bfid, src_dup_status,
-                        src_del_status, src_bad_status,
-                        dst_bfid, dst_dup_status,
-                        dst_del_status, dst_bad_status,
+                       (src_bfid, src_dup, src_del, src_bad,
+                        dst_bfid, dst_dup, dst_del, dst_bad,
                         copied, swapped, checked, closed)
                 print line
 
-                #We should only need to do this once.  When the first
-                # migrated/duplicated/cloned file is found, mig_type gets
-                # set to a non-None value and should prevent us from
-                # executing this if block again.  We can't just look at
-                # the first file record on the volume, because it might
-                # be an unknown or skipped deleted file.
-                if not mig_type and len(rows) > 0 and src_bfid and dst_bfid:
-                    # get its own file clerk client and volume clerk client
-                    config_host = enstore_functions2.default_host()
-                    config_port = enstore_functions2.default_port()
-                    csc = configuration_client.ConfigurationClient(
-                        (config_host, config_port))
-                    fcc = file_clerk_client.FileClient(csc)
-                    vcc = volume_clerk_client.VolumeClerkClient(csc)
-
-                    #Get the volume information for the files.
+                ##############################################################
+                #If a file is not done yet, ignore bad/empty files, make
+                # sure the exit status returned indicates the file is not
+                # done.  Ignore deleted, bad and/or empty files if necessary.
+                if src_bad != " " or dst_bad != " ":
+                    pass  #skip bad or empty files.
+                elif src_bfid and not dst_bfid:
+                    # The file is not yet migrated/duplicated.
+                    if intf.with_deleted and src_del in ["N", "Y"]:
+                        exit_status = 1
+                    elif src_del in ["N"]:
+                        exit_status = 1
+                elif (src_bfid and dst_bfid) and \
+                         (copied != "y" and swapped != "y" and \
+                          checked != "y" and closed != "y"):
+                    # The file is migrated/duplicated, but has not been
+                    # checked and/or closed.
+                    if src_dup not in ["0", "M"] and \
+                       dst_dup not in ["O", "M"]:
+                        exit_status = 1
+                ##############################################################
                     
-                    src_vol_dict = get_volume_info_for_bfid(MY_TASK, src_bfid,
-                                                            vcc, fcc, db)
-                    if src_vol_dict:
-                        src_vol = src_vol_dict['external_label']
-                    else:
-                        continue
+                ##############################################################
+                # Determine if we have cloning, migration, duplication or
+                # multiple_copies.
+                if src_dup in ["P", "C"]:
+                    duplication = True
+                elif src_dup in ["O", "M"]:
+                    multiple_copy = True
+                #Make sure that we have migration/cloning.
+                elif src_bfid and dst_bfid:
+                    #Only check for migration or cloning if we haven't
+                    # determined cloning or migration, yet.
+                    if not cloning and not migration:
+                        src_media_type = None
+                        dst_media_type = None
 
-                    dst_vol_dict = get_volume_info_for_bfid(MY_TASK, dst_bfid,
-                                                            vcc, fcc, db)
-                    if dst_vol_dict:
-                        dst_vol = dst_vol_dict['external_label']
-                    else:
-                        continue
+                        if column_volume_list[i][0]:
+                            #Get the source volume information.
+                            src_volume = column_volume_list[i][0]
+                            src_volume_dist = get_volume_info(MY_TASK,
+                                                              src_volume,
+                                                              vcc, db,
+                                                              use_cache=True)
+                            if e_errors.is_ok(src_volume_dist):
+                                src_media_type = src_volume_dist['media_type']
+                            else:
+                                src_media_type = None
 
-                    #Using the volumes' info, get the migration type.
-                    mig_type = get_migration_type(src_vol, dst_vol, vcc, db)
+                            #Get the destination volume information.
+                            dst_volume_dict = get_volume_info_for_bfid(
+                                MY_TASK, dst_bfid, vcc, fcc, db)
+                            if e_errors.is_ok(dst_volume_dict):
+                                dst_media_type = dst_volume_dict['media_type']
+                            else:
+                                dst_media_type = None
 
+                        elif column_volume_list[i][1]:
+                            #Get the source volume information.
+                            src_volume_dict = get_volume_info_for_bfid(
+                                MY_TASK, src_bfid, vcc, fcc, db)
+                            if e_errors.is_ok(src_volume_dict):
+                                src_media_type = src_volume_dict['media_type']
+                            else:
+                                src_media_type = None
+
+                            #Get the destination volume information.
+                            dst_volume = column_volume_list[i][1]
+                            dst_volume_dist = get_volume_info(MY_TASK,
+                                                              dst_volume,
+                                                              vcc, db,
+                                                              use_cache=True)
+                            if e_errors.is_ok(dst_volume_dist):
+                                dst_media_type = dst_volume_dist['media_type']
+                            else:
+                                dst_media_type = None
+
+                        #If the media_types are the same, we have cloning.
+                        if src_media_type and dst_media_type \
+                           and src_media_type == dst_media_type:
+                            cloning = True
+                        else:
+                            migration = True
+                            
+            ##############################################################
+            
+            mig_type = __get_migration_type(migration, duplication,
+                                            multiple_copy, cloning)
             if mig_type:
                 print "\n%s" % (mig_type,)
+            print   #Add seperator line between groupings.
 
     return exit_status
+
 
 def show_show(intf, db):
     #Build the sql query.
@@ -3485,10 +4015,10 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                 # Fix the deleted status of the file.
                 if mark_undeleted(MY_TASK, dst_bfid, None , db):
                     error_log(MY_TASK,
-                         "bfid %s is marked deleted, but %s exists in PNFS"
+                          "bfid %s is marked deleted, but %s exists in PNFS"
                               % (dst_bfid, src_path))
                     return
-
+                    
             #If the migration is interupted after the copy, but before the
             # swap we don't want to modify the src_file_record.  There must
             # have been a reason for the following code.
@@ -3960,10 +4490,15 @@ def swap_metadata(job, fcc, db):
         finfo = copy.copy(dst_file_record)
         if e_errors.is_ok(dst_file_record):
             del finfo['status']
-            #finfo['bfid'] = dst_bfid
-            #finfo['location_cookie'] = dst_file_record['location_cookie']
             finfo['pnfs_name0'] = src_file_record['pnfs_name0']
-            finfo['deleted'] = YES
+            if f0:
+                #We need to do use f0 when fixing files migrated to multiple
+                # copies before the constraints in the DB were modified
+                # to make the pair (src_bfid, dst_bfid) unique instead of
+                # each column src_bfid & dst_bfid being unique.
+                finfo['deleted'] = f0['deleted']
+            else:
+                finfo['deleted'] = YES
             res2 = fcc.modify(finfo)
             if not e_errors.is_ok(res2['status']):
                 res = res2['status'][1]
@@ -4490,10 +5025,11 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
     ## Perform modifications to the file metadata.  It does
     ## not need to be an actual swap (duplication isn't) but
     ## some type of modification is done.
+    print "mc_dst_bfids:", mc_dst_bfids
     MY_TASK2 = "SWAPPING_METADATA"  #Switch to swapping task.
-    log(MY_TASK2, "swapping %s %s %s %s" % \
-        (src_bfid, src_path, dst_bfid, mig_path))
     if not is_swapped(src_bfid, fcc, db):
+        log(MY_TASK2, "swapping %s %s %s %s" % \
+            (src_bfid, src_path, dst_bfid, mig_path))
 
         if not dst_file_record:
             #Just written new files will get here.  Files already written
@@ -4530,48 +5066,63 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                       % (src_bfid, src_path, dst_bfid,
                          mig_path, res))
             keep_file = True
-
-        #Now do the same for all multiple copies (though not as much is
-        # actully done).
-        for cur_dst_bfid in mc_dst_bfids:
-            #Obtain new multiple copy volume information.
-            mc_dst_file_record = fcc.bfid_info(cur_dst_bfid,
-                                               timeout = 10, retry = 4)
-            if not e_errors.is_ok(dst_file_record):
-                message = "no file record found(%s)" % (cur_dst_bfid,)
-                error_log(MY_TASK2, message)
-                return
-
-            #Obtain new multiple copy volume information.
-            mc_dst_volume_record = vcc.inquire_vol(mc_dst_file_record['external_label'])
-            if not e_errors.is_ok(dst_volume_record):
-                error_log(MY_TASK2, dst_volume_record['status'])
-                return
-
-            mc_job = (src_file_record, src_volume_record, src_path,
-                      mc_dst_file_record, mc_dst_volume_record, tmp_path,
-                      mig_path)
-
-            res = swap_metadata(mc_job, fcc, db)
-
-            if not res:
-                ok_log(MY_TASK2,
-                       "%s %s %s %s have been swapped" \
-                       % (src_bfid, src_path, cur_dst_bfid,
-                          mig_path))
-                log_swapped(src_bfid, cur_dst_bfid, fcc, db)
-                mc_jobs.append(mc_job)  #include this for return
-            if res:
-                error_log(MY_TASK2,
-                          "%s %s %s %s failed due to %s" \
-                          % (src_bfid, src_path, cur_dst_bfid,
-                             mig_path, res))
-                keep_file = True
     else:
         ok_log(MY_TASK2, "%s %s %s %s have already been swapped" \
                % (src_bfid, src_path, dst_bfid, mig_path))
         job = (src_file_record, src_volume_record, src_path,
                dst_file_record, dst_volume_record, tmp_path, mig_path)
+        res = None #No error.
+
+    #Now do the same for all multiple copies (though not as much is
+    # actully done).
+    if not res:
+        for cur_dst_bfid in mc_dst_bfids:
+            if not is_swapped_by_dst(cur_dst_bfid, fcc, db):
+                #Obtain new multiple copy volume information.
+                mc_dst_file_record = fcc.bfid_info(cur_dst_bfid,
+                                                   timeout = 10, retry = 4)
+                if not e_errors.is_ok(dst_file_record):
+                    message = "no file record found(%s)" % (cur_dst_bfid,)
+                    error_log(MY_TASK2, message)
+                    return
+
+                #Obtain new multiple copy volume information.
+                mc_dst_volume_record = vcc.inquire_vol(mc_dst_file_record['external_label'])
+                if not e_errors.is_ok(mc_dst_volume_record):
+                    error_log(MY_TASK2, mc_dst_volume_record['status'])
+                    return
+
+                mc_job = (src_file_record, src_volume_record, src_path,
+                          mc_dst_file_record, mc_dst_volume_record, tmp_path,
+                          mig_path)
+
+                res = swap_metadata(mc_job, fcc, db)
+
+                if not res:
+                    ok_log(MY_TASK2,
+                           "%s %s %s %s have been swapped" \
+                           % (src_bfid, src_path, cur_dst_bfid,
+                              mig_path))
+                    #First we need to see if we need to include logging
+                    # that the copy has been made.  This is likely if
+                    # we are fixing multiple copies sometime after the
+                    # original were done.
+                    if not is_copied_by_dst(cur_dst_bfid, fcc, db):
+                        log_copied(src_bfid, cur_dst_bfid, fcc, db)
+                    #Now we can update the swapped field for these files.
+                    log_swapped(src_bfid, cur_dst_bfid, fcc, db)
+                    mc_jobs.append(mc_job)  #include this for return
+                if res:
+                    error_log(MY_TASK2,
+                              "%s %s %s %s failed due to %s" \
+                              % (src_bfid, src_path, cur_dst_bfid,
+                                 mig_path, res))
+                    keep_file = True
+            else:
+                ok_log(MY_TASK2, "%s %s %s %s have already been swapped" \
+                       % (src_bfid, src_path, dst_bfid, mig_path))
+                job = (src_file_record, src_volume_record, src_path,
+                       dst_file_record, dst_volume_record, tmp_path, mig_path)
 
     # Now remove the temporary file on disk.  We need to free
     # up the disk resources for more files.  We leave the file
@@ -6666,7 +7217,7 @@ class MigrateInterface(option.Interface):
 					 {option.VALUE_NAME:"media_type",
 					  option.VALUE_TYPE:option.STRING,
 					  option.VALUE_USAGE:option.REQUIRED,},
-					 {option.VALUE_NAME:"library",
+                                         {option.VALUE_NAME:"library",
                                           option.VALUE_TYPE:option.STRING,
                                           option.VALUE_USAGE:option.OPTIONAL,},
                                          {option.VALUE_NAME:"storage_group",
