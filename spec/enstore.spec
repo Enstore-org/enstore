@@ -5,8 +5,8 @@
 ###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 2.0.0
-Release: 1
+Version: 2.0.1
+Release: 0
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -16,7 +16,7 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-#Requires: Python-enstore2.6, ftt
+Requires: postgresql-libs
 
 %description
 Standalone Enstore. Enstore is a Distributed Mass Storage System. 
@@ -174,6 +174,7 @@ $ENSTORE_DIR/external_distr/update_sym_links.sh
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
 rm /tmp/enstore-setup
+echo "Enstore installed. Please read README file"
 
 %preun
 echo "PRE UNINSTALL"
@@ -194,6 +195,10 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Tue Mar 23 2010  <moibenko@fnal.gov> -
+- added dependency on postgresql-libs, because there now are many clients that require it
+- added a message: Enstore installed. Please read README file
+- changed Version to 2.0.1 and Release to 0  
 * Mon Nov 05 2007  <moibenko@fnal.gov> -
 - added configuration files
 * Fri Aug 17 2007  <moibenko@fnal.gov> -
