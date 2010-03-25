@@ -2393,6 +2393,8 @@ class STK_MediaLoader(MediaLoaderMethods):
                 
             if compared == 0:
                 E=13
+		if answer.find("Unreadable label") != -1:
+		     E = e_errors.MC_VOLNOTFOUND	
                 msg = "MOUNT %i: %s => %i,%s" % (E,command,status,answer)
                 Trace.log(e_errors.ERROR, msg)
                 return ("ERROR", E, response, "", msg)
