@@ -67,8 +67,14 @@ echo "Installing tcl"
 yum -y install tcl.${processor}
 echo "Installing tk"
 yum -y install tk.${processor}
+
+# enstore depends on postgresql-libs beginning with version 2.0.1-0
+echo "Installing postgresql-libs"
+rpm -U $force ${place}/${processor}/postgresql-libs*
+
 echo "Installing enstore"
-rpm -U $force ${place}/${processor}/enstore-2.0.0-2.${processor}.rpm
+rpm -U $force ${place}/${processor}/enstore-2.0.1-0.${processor}.rpm
+
 ENSTORE_DIR=`rpm -ql enstore | head -1`
 
 $ENSTORE_DIR/external_distr/create_enstore_environment.sh $fnal
