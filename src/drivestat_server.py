@@ -55,16 +55,16 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
 		try:
-			self.dsDB = drivestat2.dsDB(att['dbhost'], att['dbname'], att['dbport'])
+			self.dsDB = drivestat2.dsDB(att['dbhost'], att['dbname'], att['dbuser'], att['dbport'])
 		except: # wait for 30 seconds and retry
 			time.sleep(30)
-			self.dsDB = drivestat2.dsDB(att['dbhost'], att['dbname'], att['dbport'])
+			self.dsDB = drivestat2.dsDB(att['dbhost'], att['dbname'], att['dbuser'], att['dbport'])
 		# setup the communications with the event relay task
 		self.resubscribe_rate = 300
 		self.erc.start([event_relay_messages.NEWCONFIGFILE],
 			       self.resubscribe_rate)
 		# start our heartbeat to the event relay process
-		self.erc.start_heartbeat(enstore_constants.DRIVESTAT_SERVER, 
+		self.erc.start_heartbeat(enstore_constants.DRIVESTAT_SERVER,
 			self.alive_interval)
 
 		return
@@ -159,4 +159,4 @@ if __name__ == '__main__':
 		except:
 			dsServer.serve_forever_error(dsServer.log_name)
 			continue
-	
+

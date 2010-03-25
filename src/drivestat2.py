@@ -14,12 +14,12 @@ def timestamp2time(s):
 	return time.mktime(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
 
 class dsDB:
-	def __init__(self, host, dbname, port=None, logname='UNKNOWN'):
+	def __init__(self, host, dbname, user, port=None, logname='UNKNOWN'):
 		self.logname = logname
 		if port:
-			self.db = pg.DB(host=host, dbname=dbname, port=port)
+			self.db = pg.DB(host=host, dbname=dbname, user=user, port=port)
 		else:
-			self.db = pg.DB(host=host, dbname=dbname)
+			self.db = pg.DB(host=host, dbname=dbname, user=user)
 		self.pid = os.getpid()
 
 	def close(self):
