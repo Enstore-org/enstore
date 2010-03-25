@@ -6,11 +6,11 @@ debug=0
 do_rcp () {
    cmd=$1
    shift
-   $cmd $@
+   $cmd $@ 2> /dev/null 
    rc=$?
    if [ "$rc" == "1" ]; then
       # there was an error, maybe rcp support is turned off
-      scp -c blowfish $@
+      scp -c blowfish $@ 
       rc=$?
    fi
    return $rc
