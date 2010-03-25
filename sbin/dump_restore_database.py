@@ -76,12 +76,17 @@ def create_database(dbname,user,port):
         return 1
     return 0
 
-def dump_database(dbhost,dbname,dbuser,dbport,file):
-    cmd = pg_dump + " -p %d -h %s -F c -U %s -f %s %s"%(dbport,
-                                                        dbhost,
-                                                        dbuser,
-                                                        file,
-                                                        dbname)
+def dump_database(dbhost,dbname,dbuser,dbport,file,insert=False):
+    insert_string=""
+    if insert:
+        insert_string="--insert"
+    cmd = pg_dump + " -p %d -h %s %s -F c -U %s -f %s %s"%(dbport,
+                                                           dbhost,
+                                                           insert_string,
+                                                           dbuser,
+                                                           file,
+                                                           dbname)
+    print_message("Executing command %s"%(cmd,))
     if os.system(cmd) == 0 :
         print_message("Successfully executed command %s"%(cmd))
     else:
@@ -142,6 +147,10 @@ if __name__ == "__main__" :
                       help="database host if it should be different from setup file")
     parser.add_option("-f", "--filename",type=str,
                       metavar="FILE", help="output or sourvce datbase backup"),
+
+    parser.add_option("-i", "--insert",
+                      action="store_true", dest="insert", default=False,
+                      help="dump data as INSERT commands, rather than COPY")
     (options, args) = parser.parse_args()
 
     if len(args) != 1:
@@ -153,15 +162,16 @@ if __name__ == "__main__" :
     if options.filename:
         filename=options.filename
     current_dir = os.getcwd()
-    print current_dir
     #
     # Need to extract data defining database
     #
     server_name=get_server_name(dbname)
-    if not server_name : sys.exit(1)
+    if not server_name :
+        sys.exit(1)
     csc=configuration_client.get_config_dict()
     server=csc.get(server_name,None)
-    if not server : sys.exit(1)
+    if not server :
+        sys.exit(1)
     #extract all what we need for the database connection
     dbport = server.get("dbport",5432)
     dbname = server.get("dbname",dbname)
@@ -181,7 +191,8 @@ if __name__ == "__main__" :
         print_message("Sleeping 10 seconds");
         time.sleep(10)
         print_message("Dumping ....");
-        if dump_database(dbhost,dbname,dbuser,dbport,filename)!=0: sys.exit(1)
+        if dump_database(dbhost,dbname,dbuser,dbport,filename,options.insert)!=0:
+            sys.exit(1)
         print_message("Done");
     if options.restore==True:
         backup_file=filename
