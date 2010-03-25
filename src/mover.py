@@ -5864,6 +5864,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                                     returned_work=None)
                 self.send_client_done(self.current_work_ticket, e_errors.MOUNTFAILED, s_status[0])
                 self.net_driver.close()
+                if status[1] == e_errors.MC_VOLNOTFOUND:
+                    try:
+                        self.set_volume_noaccess(volume_label)
+                    except:
+                        exc, msg = sys.exc_info()[:2]
+                        Trace.alarm(e_errors.WARNING, "set_system_noaccess failed: %s %s" %(exc, msg))
                     
                 if status[1] == e_errors.MC_DRVNOTEMPTY:
                     Trace.alarm(e_errors.ERROR, "mount %s failed: %s" % (volume_label, status))
