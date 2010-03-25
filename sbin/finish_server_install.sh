@@ -10,7 +10,7 @@ usage() {
 echo "$0 [force] [url]"
 }
 
-force=""
+lforce=""
 
 while [ $# -gt 0 ];
 do
@@ -21,6 +21,10 @@ do
 		*) place_from_cmd=$1; shift;	;;
 	esac;
 done
+if [ "${force:-x}" != "x" ]
+then lforce=$force
+fi
+
 processor=`uname -i`
 if [ "${place:-x}" = "x" ]; then
     place=$place_from_cmd
@@ -32,26 +36,17 @@ fi
 
 . /usr/local/etc/setups.sh
 setup enstore
-echo "installing enstore_html"
-/sbin/chkconfig --list httpd >/dev/null 2&>1
-if [ $? -eq 0 ]; then
-    /sbin/service httpd stop
-else
-    # install httpd
-    yum -y install httpd
-fi
-if [ -n "${force}" ]
-then
-    rpm -U ${force} --nodeps ${place}/noarch/enstore_html-2.0-0.noarch.rpm
-else
-    rpm -U --nodeps ${place}/noarch/enstore_html-2.0-0.noarch.rpm
-fi
 
+# enstore html requires postgresql
+# install postgresql first
 rpm -q postgresql > /dev/null
-if [ $? -ne 0  -o -n "${force}" ]; 
+if [ $? -ne 0  -o -n "${lforce}" ]; 
 then
     echo "installing postgres"
-    rpm -U ${force} ${place}/${processor}/postgresql-*
+    # always use --force as we need to make sure that
+    # the postgres rpms are installed from our repository
+    rpm -U --force ${place}/${processor}/postgresql-*
+    rpm -U --force ${place}/${processor}/compat-postgresql-libs-*
     if [ $? -ne 0 ]; 
     then
 	echo "installation of postgresql failed"
@@ -68,8 +63,19 @@ then
     echo "kernel.shmall=1073741824" >> /etc/sysctl.conf
 fi
 
+echo "installing enstore_html"
+/sbin/chkconfig --list httpd >/dev/null 2&>1
+if [ $? -eq 0 ]; then
+    /sbin/service httpd stop
+else
+    # install httpd
+    yum -y install httpd
+fi
+
+rpm -U ${lforce} --nodeps ${place}/noarch/enstore_html-2.0-0.noarch.rpm
+
 rpm -q pnfs > /dev/null
-if [ $? -ne 0  -o -n "${force}" ];
+if [ $? -ne 0  -o -n "${lforce}" ];
 then
     echo "installing pnfs"
     if [ -r /etc/rc.d/init.d/pnfs ];
@@ -79,7 +85,7 @@ then
 	if [ -x /etc/rc.d/init.d/postgresql ]; then /etc/rc.d/init.d/postgresql stop; fi
 	#/etc/rc.d/init.d/postgresql stop
     fi
-    rpm -U ${force} ${place}/${processor}/pnfs-postgresql-3.1.18-1-SL5x.x86_64.rpm
+    rpm -U ${lforce} ${place}/${processor}/pnfs-postgresql-3.1.18-1-SL5x.x86_64.rpm
     # complete after install pnfs configuration
     # copy setup
 
@@ -110,8 +116,14 @@ then
     echo "PGDATA=$database_postgres" > /etc/sysconfig/pgsql/postgresql
     if [ $this_host = $pnfs_host ];
     then
+	PATH=$PATH:$pnfs/tools
 	mkdir -p $database_postgres
 	mkdir -p $database
+	mkdir -p /pnfs/fs
+	chmod 777 /pnfs/fs
+	mkdir -p $trash/1
+	mkdir -p $trash/2
+	mkdir -p $trash/4
 	chown enstore $database_postgres
 	echo "Configuring this host to run postgres"
 	/sbin/chkconfig postgresql on
@@ -123,11 +135,11 @@ then
 	/sbin/chkconfig --add pnfs
 	/sbin/chkconfig pnfs on
 	echo "creating admin DB"
-	./mdb create admin `dirname $database`/admin
+	mdb create admin `dirname $database`/admin
 	echo "creating data DB"
-	./mdb create data `dirname $database`/data
+	mdb create data `dirname $database`/data
 	#echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
-	#/etc/init.d/pnfs startnst
+	#/etc/init.d/pnfs start
     fi
 
     # install compress
