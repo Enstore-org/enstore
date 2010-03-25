@@ -60,19 +60,19 @@ else
 install=0
     if [ -r "/usr/local/etc/setups.sh" ]; then
 	grep "e_home=" /usr/local/etc/setups.sh
-	if [ $? -ne 0 ]; then
-	    # real ups setup file
-	    d=`date +%F.%R`
-	    mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
-	    install=1
-	else
-	    # check if e_home is empty and if yes install correct value
-	    s=` grep "e_home=" /usr/local/etc/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"="` > /dev/null 2>&1
-	    if [ -z $s ]; then
-		rm -rf /usr/local/etc/setups.sh
-		install=1
-	    fi	
-	fi
+	##if [ $? -ne 0 ]; then
+	##    # real ups setup file
+	##    d=`date +%F.%R`
+	##    mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
+	##    install=1
+	##else
+	##    # check if e_home is empty and if yes install correct value
+	##    s=` grep "e_home=" /usr/local/etc/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"="` > /dev/null 2>&1
+	##    if [ -z $s ]; then
+	##	rm -rf /usr/local/etc/setups.sh
+	##	install=1
+	##    fi	
+	##fi
     else
 	install=1
     fi
@@ -100,11 +100,35 @@ echo ${host_name} > ${FARMLETS_DIR}/enstore
 echo ${host_name} > ${FARMLETS_DIR}/enstore-down
 chown -R enstore.enstore $ENSTORE_HOME
 
+# Create necessary directories
 if [ "${ENSTORE_OUT:-x}" != "x" ]; then
     if [ ! -d ${ENSTORE_OUT} ]; then
 	mkdir -p ${ENSTORE_OUT}
 	chmod 777 ${ENSTORE_OUT}
     fi
+fi
+html_dir=`$ENSTORE_DIR/external_distr/extract_config_parameters.py inquisitor | grep html_file | cut -f2 -d\:`
+if [ -n $html_dir ]
+then 
+    echo "creating $html_dir"
+    mkdir -p $html_dir
+    chown enstore.enstore $html_dir
+fi
+
+backup_dir=`$ENSTORE_DIR/external_distr/extract_config_parameters.py backup | grep ^dir | cut -f2 -d\:`
+if [ -n $backup_dir ]
+then 
+    echo "creating $backup_dir"
+    mkdir -p $backup_dir
+    chown enstore.enstore $backup_dir
+fi
+log_dir=`$ENSTORE_DIR/external_distr/extract_config_parameters.py log_server | grep log_file_path | cut -f2 -d\:`
+if [ -n $log_dir ]
+then 
+    echo "creating $log_dir"
+    mkdir -p $log_dir
+    en_log_root_dir=`dirname ${log_dir}`
+    chown -R enstore.enstore $en_log_root_dir
 fi
 
 exit 0

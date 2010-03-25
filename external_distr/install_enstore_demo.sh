@@ -37,13 +37,13 @@ do
 		-h) usage; exit 0;	;;
 		server) export server=1; shift;	;;
 		fnal) export fnal=$1; shift;	;;
-		force)  export force=$1;force="--${1}"; shift;	;;
+		force)  export force; force="--${1}"; shift;	;;
 		*) place=$1; shift;	;;
 
 	esac;
 done
 export place
-processor=`uname -p`
+processor=`uname -i`
 
 echo "Installing enstore rpm and required products from $place"
 echo "This is a demo installation"
@@ -68,15 +68,24 @@ echo "Installing tcl"
 yum -y install tcl.${processor}
 echo "Installing tk"
 yum -y install tk.${processor}
+# enstore depends on postgresql-libs beginning with version 2.0.1-0
+echo "Installing postgresql-libs"
+rpm -U $force ${place}/${processor}/postgresql-libs*
 echo "Installing enstore"
-rpm -U $force ${place}/${processor}/enstore-2.0.0-2.${processor}.rpm
+rpm -U $force ${place}/${processor}/enstore-2.0.1-0.${processor}.rpm
 ENSTORE_DIR=`rpm -ql enstore | head -1`
 
 $ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh
-$ENSTORE_DIR/sbin/finish_server_install.sh $place
+$ENSTORE_DIR/sbin/finish_server_install.sh $place $force
 unset ENSTORE_DIR
 source /usr/local/etc/setups.sh
 setup enstore
+
+ln -s $ENSTORE_DIR $ENSTORE_HOME/enstore
+#start pnfs
+echo "Starting pnfs"
+/etc/init.d/pnfs start
+
 
 echo Installing crons
 $ENSTORE_DIR/tools/install_crons.py
@@ -105,12 +114,12 @@ then
     exit 1
 fi
 
-python $ENSTORE_DIR/sbin/create_database.py operation
-if [ $? -ne 0 ]
-then
-    echo "Failed to create operation DB"
-    exit 1
-fi
+#python $ENSTORE_DIR/sbin/create_database.py operation
+#if [ $? -ne 0 ]
+#then
+#    echo "Failed to create operation DB"
+#    exit 1
+#fi
 
 
 
@@ -161,9 +170,23 @@ entv&
 sleep 10
 
 
-echo "Making initial transfer. Watch entv"
+echo "Making initial transfer. Watch entv!"
 echo "Copy ${ENSTORE_DIR}/bin/encp to enstore disk"
 set -xv
+mkdir -p /pnfs/fs/usr/data1/disk
+cd /pnfs/fs/usr/data1/disk
+# check if disk library manager exists
+enstore conf --show disk.library_manager
+if [ $? -ne 0 ]
+then
+    echo "disk.library_manager does not exist in configuration. Can not proceed with testing"
+    exit 1
+fi
+enstore pnfs --storage_group TEST
+enstore pnfs --library disk
+enstore pnfs --file_family TEST
+enstore pnfs --file_family_width 1
+enstore pnfs --file_family_wrapper null
 encp --verbose 4 ${ENSTORE_DIR}/bin/encp /pnfs/fs/usr/data1/disk/encp_0.$$
 if [ $? -ne 0 ]; then
     echo "encp failed. Check the output. Do not forget to remove firewalls"
@@ -180,4 +203,5 @@ fi
 
 echo "Compare ${ENSTORE_DIR}/bin/encp to /tmp/encp_0"
 diff ${ENSTORE_DIR}/bin/encp /tmp/encp_0.$$
+exit 0
  
