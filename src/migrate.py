@@ -1397,6 +1397,57 @@ def is_closed(bfid, fcc, db):
         else:
             return res[0]['closed']
 
+# is_duplicated(bfid) -- check the source bfid
+def is_duplicated(bfid, fcc, db, find_src=0, find_dst=1):
+
+    src_res = []
+    dst_res = []
+    
+    if USE_CLERKS:
+        ## Use the file clerk to obtain the migration information in the
+        ## database.
+        if find_src:
+            reply_ticket = fcc.find_original(bfid)
+            if e_errors.is_ok(reply_ticket):
+                src_res = [reply_ticket['original']]
+            else:
+                raise e_errors.EnstoreError(None, reply_ticket['status'][1],
+                                        reply_ticket['status'][0])
+
+        if find_dst:
+            reply_ticket = fcc.find_copies(bfid)
+            if e_errors.is_ok(reply_ticket):
+                dst_res = reply_ticket['copies']
+            else:
+                raise e_errors.EnstoreError(None, reply_ticket['status'][1],
+                                        reply_ticket['status'][0])
+    else:
+        ## Use the database directly to obtain the migration information in
+        ## the database.
+        
+
+        # The dst_bfid's are sorted in descending order to make sure that any
+        # multiple copies get processed first, then the originals.  This
+        # ordering is for get_bifds() which is called from restore_files().
+        
+        if find_src:
+            q = "select * from file_copies_map where alt_bfid = '%s';" \
+                % (bfid,)
+            if debug:
+                log("is_duplicated():", q)
+            src_res = db.query(q).dictresult()
+
+        if find_dst:
+            q = "select * from file_copies_map where bfid = '%s';" \
+                % (bfid,)
+            if debug:
+                log("is_duplicated():", q)
+            dst_res = db.query(q).dictresult()
+
+    res = src_res + dst_res
+    return res
+    
+
 # get_bfids(bfid) -- get the src and destination bfid
 #	we check the destination file
 #       The order will put multiple copies first.  This is okay since
@@ -1936,16 +1987,6 @@ def get_multiple_copy_bfids(bfid, db):
 
     return multiple_copy_list
     
-#Report if the bfid is an original copy bfid.
-def is_original_copy_bfid(bfid, db):
-
-    res = __multiple_copy(bfid, db)
-
-    if len(res) > 0:
-        return True
-
-    return False
-
 #Report if the bfid is a multiple copy bfid.
 def is_multiple_copy_bfid(bfid, db):
 
@@ -1960,6 +2001,55 @@ def is_multiple_copy_bfid(bfid, db):
         return True
 
     return False
+
+#Helper for get_original_copy_bfid() and is_original_copy_bfid().
+def __original_copy(bfid, db):
+    # Extract the multiple copy list; exclude destinations that are unknown.
+    q = "select file_copies_map.bfid from file_copies_map,file " \
+        "where file_copies_map.alt_bfid = '%s'" \
+        "  and file_copies_map.bfid = file.bfid " \
+        "  and file.deleted in ('y', 'n')" % (bfid,)
+    res = db.query(q).getresult()
+    return res
+
+#Report the multiple copies a file has.
+def get_original_copy_bfid(bfid, db):
+
+    res = __original_copy(bfid, db)
+
+    original_copy_list = []
+    for row in res:
+        original_copy_list.append(row[0])
+
+    return original_copy_list
+
+#Report the multiple copies a file has.
+def get_the_original_copy_bfid(bfid, db):
+
+    current_bfid = bfid
+    res = -1 #dummy starter value
+    while current_bfid:
+        res = __original_copy(current_bfid, db)
+        if len(res) == 0:
+            return current_bfid
+        elif len(res) == 1:
+            current_bfid = res[0][0]
+        else:
+            #Should never happen!!!
+            raise ValueError("Too many bfids found")
+            
+    return None
+
+#Report if the bfid is an original copy bfid.
+def is_original_copy_bfid(bfid, db):
+
+    res = __original_copy(bfid, db)
+
+    if len(res) > 0:
+        return True
+
+    return False
+
 
 #
 def search_directory(original_path):
@@ -3665,80 +3755,147 @@ def show_show(intf, db):
         print "%10s %s" % (row[0], row[1])
 
 ##########################################################################
+
+#Set the remaining failed count to the negative value of what is currently
+# remaining.
+def update_failed_done(bfid, db):
+    #Set the remaining value to the negative value of what was
+    # remaining, just in case we have a problem and want to undo
+    # this.
+    q = "update active_file_copying " \
+        "set remaining = -(remaining) " \
+        "where bfid = '%s'" % (bfid,)
+    
+    #Get the results.
+    db.query(q)
         
 #For duplication only.
 def make_failed_copies(fcc, db, intf):
-	MY_TASK = "MAKE_FAILED_COPIES"
-	#Build the sql query.
-	q = "select * from active_file_copying, volume, file " \
-	    "where file.volume = volume.id " \
-	    "      and remaining > 0 " \
-	    "      and active_file_copying.bfid = file.bfid " \
-	    "      and time < CURRENT_TIMESTAMP - interval '24 hours' " \
-            "  --These 4 pnfs_id/pnfs_path checks remove failed original " \
-            "  -- transfers from the output list. " \
-            "      and file.pnfs_id is not NULL " \
-            "      and file.pnfs_id != '' " \
-            "      and file.pnfs_path is not NULL " \
-            "      and file.pnfs_path != '' " \
-	    "order by volume.id,time;"
-	#Get the results.
-	res = db.query(q).getresult()
+    MY_TASK = "MAKE_FAILED_COPIES"
 
-	bfid_list = []
-	for row in res:
-		#row[0] is bfid
-		#row[1] is count
-		#row[2] is time
+    return_exit_status = 0
+    
+    #Build the sql query.
+    q = "select * from active_file_copying, volume, file " \
+        "where file.volume = volume.id " \
+        "      and remaining > 0 " \
+        "      and active_file_copying.bfid = file.bfid " \
+        "      and time < CURRENT_TIMESTAMP - interval '24 hours' " \
+        "  --These 4 pnfs_id/pnfs_path checks remove failed original " \
+        "  -- transfers from the output list. " \
+        "      and file.pnfs_id is not NULL " \
+        "      and file.pnfs_id != '' " \
+        "      and file.pnfs_path is not NULL " \
+        "      and file.pnfs_path != '' " \
+        "order by volume.id,time;"
+    #Get the results.
+    res = db.query(q).getresult()
 
-		#Loop over the remaining count to insert the bfid N times
-		# into the bfid list to duplicate.
-		for unused in range(1, int(row[1]) + 1):
-			if row[1] > 0:
-				#Limit this to those bfids with positive
-				# remaing copies-to-be-made counts.
-				bfid_list.append(row[0])
+    bfid_list = []
+    for row in res:
+        #row[0] is bfid
+        #row[1] is count
+        #row[2] is time
 
-	#Loop over each file making a multiple copy each time.
-        for bfid in bfid_list:
-                file_record = get_file_info(MY_TASK, bfid, fcc, db)
-            
-		#Do the duplication.
-		exit_status = migrate_files([file_record], intf)
+        #Loop over the remaining count to insert the bfid N times
+        # into the bfid list to duplicate.
+        for unused in range(1, int(row[1]) + 1):
+            if row[1] > 0:
+                #Limit this to those bfids with positive
+                # remaing copies-to-be-made counts.
+                bfid_list.append(row[0])
+                
+    #Loop over each file making a multiple copy each time.
+    for bfid in bfid_list:
+        file_record = get_file_info(MY_TASK, bfid, fcc, db)
+        if not e_errors.is_ok(file_record):
+            error_log(MY_TASK, "Unable to obtain file record for %s" % (bfid,))
+            #For debugging, do only one file.
+            if debug:
+                log("limiting to one file in debug mode")
+                break
+            continue
+        elif file_record['deleted'] == "unknown":
+            log(MY_TASK, "Setting unknown file %s as done." % (bfid,))
 
-		if not exit_status:
-			### The duplicatation was successfull.
+            #Can't duplicate failed original copy.
+            update_failed_done(bfid, db)
 
-			log(MY_TASK, "Decrementing the remaining count by " \
-				     "one for bfid %s." % (bfid,))
-			
-			#Build the sql query.
-			#Decrement the number of files remaining by one.
-			### Note: What happens when this values reaches zero?
-			q = "update active_file_copying " \
-			    "set remaining = remaining - 1 " \
-			    "where bfid = '%s'" % (bfid,)
+            #For debugging, do only one file.
+            if debug:
+                log("limiting to one file in debug mode")
+                break
+            continue
 
-			#Get the results.
-			db.query(q)
+        if is_swapped(bfid, fcc, db):
+            log(MY_TASK, "Setting already migrated file %s as done." % (bfid,))
 
-			log(MY_TASK, "Removing the bfid from the migration " \
-				     "table for bfid %s." % (bfid,))
+            #Can't duplicate since it has already been migrated.
+            update_failed_done(bfid, db)
 
-			#Build the sql query.
-			#Remove this file from the migration table.  We do
-			# not want the source volume to look like it has
-			# started to be migrated/duplicated.
-			q = "delete from migration " \
-			    "where src_bfid = '%s'" % (bfid,)
+            #For debugging, do only one file.
+            if debug:
+                log("limiting to one file in debug mode")
+                break
+            continue
 
-			#Get the results.
-			db.query(q)
+        if is_multiple_copy_bfid(bfid, db):
+            original_bfid = get_the_original_copy_bfid(bfid, db)
+            if is_copied(original_bfid, fcc, db):
+                error_log(MY_TASK,
+                          "found original copy %s already migrated for %s" \
+                          % (original_bfid, bfid))
 
+                #Can't duplicate since the original copy has already been
+                # migrated.
+                update_failed_done(bfid, db)
+                
                 #For debugging, do only one file.
                 if debug:
-                        log("limiting to one file in debug mode")
-                        break
+                    log("limiting to one file in debug mode")
+                    break
+                continue
+
+        #Do the duplication.
+        exit_status = migrate([file_record], intf)
+        return_exit_status = return_exit_status + exit_status
+        
+        if not exit_status:
+            ### The duplicatation was successfull.
+
+            log(MY_TASK, "Decrementing the remaining count by " \
+                "one for bfid %s." % (bfid,))
+            
+            #Build the sql query.
+            #Decrement the number of files remaining by one.
+            ### Note: What happens when this values reaches zero?
+            q = "update active_file_copying " \
+                "set remaining = remaining - 1 " \
+                "where bfid = '%s'" % (bfid,)
+            
+            #Get the results.
+            db.query(q)
+            
+            log(MY_TASK, "Removing the bfid from the migration " \
+                "table for bfid %s." % (bfid,))
+            
+            #Build the sql query.
+            #Remove this file from the migration table.  We do
+            # not want the source volume to look like it has
+            # started to be migrated/duplicated.
+            q = "delete from migration " \
+                "where src_bfid = '%s'" % (bfid,)
+            
+            #Get the results.
+            db.query(q)
+
+
+        #For debugging, do only one file.
+        if debug:
+            log("limiting to one file in debug mode")
+            break
+
+    return return_exit_status
    
 ##########################################################################
 
@@ -3972,6 +4129,30 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
         dst_bfids.append(dst_bfid)  #Add it to the list.
 	is_it_swapped = is_swapped(src_bfid, fcc, db)
 
+        #We need to verify that we are doing the correct thing if only
+        # given a bfid as input.  
+        dup_files = is_duplicated(src_bfid, fcc, db)
+        if dup_files and is_it_copied and MIGRATION_NAME in ["MIGRATION",
+                                                             "CLONING"]:
+            error_log(MY_TASK,
+                        "trying to migrate file %s already duplicated to %s" \
+                        % (src_bfid, dup_files))
+            return
+        elif not dup_files and is_it_copied and \
+                 MIGRATION_NAME in ["DUPLICATION"]:
+            error_log(MY_TASK,
+                        "trying to duplicate file %s already migrated to %s" \
+                        % (src_bfid, dst_bfid))
+            return
+        #Warn about this, but allow it to proceed.
+        if dup_files and not is_it_copied:
+            warning_log(MY_TASK,
+                        "trying to copy an original copy file, %s, " \
+                        "with multiple copies %s" \
+                        % (src_bfid, dup_files))
+        
+        
+        
 	#Define the directory for the temporary file on disk.
 	tmp_path = temp_file(src_file_record)
 
@@ -5025,7 +5206,6 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
     ## Perform modifications to the file metadata.  It does
     ## not need to be an actual swap (duplication isn't) but
     ## some type of modification is done.
-    print "mc_dst_bfids:", mc_dst_bfids
     MY_TASK2 = "SWAPPING_METADATA"  #Switch to swapping task.
     if not is_swapped(src_bfid, fcc, db):
         log(MY_TASK2, "swapping %s %s %s %s" % \
@@ -5331,6 +5511,10 @@ def scan_file(MY_TASK, job, src_path, dst_path, intf, encp):
 
 # Return the actual filename and the filename for encp.  The filename for
 # encp may not be a real filename (i.e. --get-bfid <bfid>).
+#
+# Note: Because is_multiple_copy is now a required argument for
+#       get_filenames(), it can now be used for duplication eliminating
+#       the need for a duplicate.get_filenames() version of this function.
 def get_filenames(MY_TASK, dst_bfid, pnfs_id, likely_path, deleted,
                   is_multiple_copy, fcc, db):
         __pychecker__ = "unusednames=MY_TASK"
