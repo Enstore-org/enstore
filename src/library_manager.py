@@ -2098,52 +2098,40 @@ class LibraryManagerMethods:
         
         self.init_request_selection()
         self.process_for_bound_vol = external_label
+        # use this key for slecting admin priority requests
+        key_for_admin_priority = None
+        # use this key for selecting admin priority requests
+        # if no admin priority request was found using
+        # key_for_admin_priority
+        alt_key_for_admin_priority = None
 
+        # if current rq for bound volume has adminpri, process only admin requests for current
+        # volume or current file family
+        # priority is a tuple (regular_priority, admin_priority)
+        # request has admin pri if (priority[1]) >= 0
+        if priority and priority[1] >= 0:
+            if last_work == 'WRITE':
+               key_for_admin_priority = vol_family
+               alt_key_for_admin_priority = external_label 
+            else:
+                # read
+                key_for_admin_priority = external_label
+                alt_key_for_admin_priority = vol_family
+            
         # first see if there are any HiPri requests
-        rq =self.pending_work.get_admin_request()
+        rq = self.pending_work.get_admin_request(key=key_for_admin_priority)
+        if not rq:
+            rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority)
         checked_request = None
         would_preempt = False # no preemption of low pri requests by default
         while rq:
             Trace.trace(self.trace_level+42, "next_work_this_volume: rq1 %s"%(rq,))
 
-            # if current rq for bound volume has adminpri, process only admin requests for current
-            # volume or current file family
-            # priority is a tuple (regular_priority, admin_priority)
-            # request has admin pri if (priority[1]) >= 0
-            if priority and priority[1] >= 0:
-                if last_work == 'WRITE':
-                    if rq.ticket['work'] == 'write_to_hsm':
-                        Trace.trace(self.trace_level+42, 'next_work_this_volume: HIPRI cur label %s cur vf %s rq vf %s'%
-                                    (external_label, vol_family, rq.ticket['vc']['volume_family'])) 
-                        if rq.ticket['vc']['volume_family'] != vol_family:
-                            rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts)
-                            continue
-                    else:
-                        Trace.trace(self.trace_level+42, 'next_work_this_volume: HIPRI cur label %s rq label %s'%
-                                    (external_label, rq.ticket["fc"].get("external_label", None)))
-                        if rq.ticket["fc"]["external_label"] != external_label:
-                            rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts)
-                            continue
-
-                else:
-                    if rq.ticket['work'] == 'read_from_hsm':
-                        Trace.trace(self.trace_level+42, 'next_work_this_volume: HIPRI cur label %s rq label %s'%
-                                    (external_label, rq.ticket["fc"].get("external_label", None)))
-
-                        if rq.ticket["fc"]["external_label"] != external_label:
-                            rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts)
-                            continue
-                    else:
-                        Trace.trace(self.trace_level+42, 'next_work_this_volume: HIPRI cur label %s cur vf %s rq vf %s'%
-                                    (external_label, vol_family, rq.ticket['vc']['volume_family'])) 
-                        if rq.ticket['vc']['volume_family'] != vol_family:
-                            rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts)
-                            continue
-                        
-            elif priority and priority[0] > 0:
+            # The completed request had a regular priority
+            if priority and priority[0] > 0 and priority[1] < 0:
                 
-                # for regular priority
-                # check if this request is allowed to go to a mounted tape
+                # If priority of completed request was regular
+                # check if selected request is allowed to go to a mounted tape
                 rq, allow, would_preempt = self.allow_hipri(rq, external_label, vol_family,
                                                             last_work, requestor, priority) 
                 if not allow:
@@ -2204,7 +2192,14 @@ class LibraryManagerMethods:
                         if rq.ticket['fc']['external_label'] == external_label:
                             checked_request = rq
                             break
-                    rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts) # get next request
+                    rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
+                                                             next=1,
+                                                             disabled_hosts=self.disabled_hosts) # get next request
+                    if not rq:
+                        # try alternative key
+                        rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
+                                                                 next=1,
+                                                                 disabled_hosts=self.disabled_hosts)
                     Trace.trace(self.trace_level+10, "next_work_this_volume: continue with %s"%(rq,))
                     continue
                 break
@@ -2216,7 +2211,14 @@ class LibraryManagerMethods:
                         if rq and status[0] == e_errors.OK:
                             checked_request = rq
                             break
-                    rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts) # get next request
+                    rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
+                                                             next=1,
+                                                             disabled_hosts=self.disabled_hosts) # get next request
+                    if not rq:
+                        # try alternative key
+                        rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
+                                                                 next=1,
+                                                                 disabled_hosts=self.disabled_hosts)
                     Trace.trace(self.trace_level+10, "next_work_this_volume: continue with %s"%(rq,))
                     continue
                 break
