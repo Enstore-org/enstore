@@ -38,7 +38,7 @@ import file_utils
 #DISABLED = "disabled"
 #VALID = "valid"
 #INVALID =  "invalid"
-UNKNOWN = "unknown"  #Same in namespace and chimera.
+UNKNOWN = "unknown"
 #EXISTS = "file exists"
 #DIREXISTS = "directory exists"
 ERROR = -1
@@ -111,14 +111,6 @@ def is_access_name(filepath):
 
     return False
 
-def is_layer_access_name(filepath):
-    #Determine if it is an ".(access)(pnfsid)(1-8)" name.
-    access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)\([1-8]\)")
-    if re.search(access_match, os.path.basename(filepath)):
-        return True
-
-    return False
-
 def is_nameof_name(filepath):
     #Determine if it is an ".(access)()" name.
     nameof_match = re.compile("\.\(nameof\)\([0-9A-Fa-f]+\)")
@@ -127,7 +119,11 @@ def is_nameof_name(filepath):
 
     return False
 
-def get_dirname_filename(pathname) :
+def is_pnfs_path(pathname, check_name_only = None):
+
+    if not pathname:  #Handle None and empty string.
+        return 0
+
     if is_access_name(pathname) or is_nameof_name(pathname):
         #We don't want to call fullpath() for these special files.
         # fullpath doesn't know how to protect from accessing an unknown
@@ -148,17 +144,10 @@ def get_dirname_filename(pathname) :
         #basename = ""
     else:
         dirname = os.path.dirname(filename)
-    return dirname, filename
-
-def is_pnfs_path(pathname, check_name_only = None):
-    if not pathname:  #Handle None and empty string.
-        return False
-
-    dirname, filename = get_dirname_filename(pathname)
     
     #Determine if the target file or directory is in the pnfs namespace.
     if string.find(dirname,"/pnfs/") < 0:
-        return False #If we get here it is not a pnfs directory.
+        return 0 #If we get here it is not a pnfs directory.
 
     #Search all directories in the path for the cursor wormwhole file. These
     # extra steps are needed in case the user enters a name that does not
@@ -168,19 +157,19 @@ def is_pnfs_path(pathname, check_name_only = None):
         search_dir = os.path.join(search_dir, directory)
         
         #Determine the path for the cursor existance test.
-        fname = os.path.join(search_dir, ".(get)(database)")
+        fname = os.path.join(search_dir, ".(get)(cursor)")
 
         #If the cursor 'file' does not exist, then this is not a real pnfs
         # file system.
         if os.path.exists(fname):
-           break # return True
+           break # return 0
     else:
-       return False #The ".(get)(database)" files was not found in any directory.
+        return 0 #The ".(get)(cursor)" files was not found in any directory.
 
     #If the pathname existance test should be skipped, return true at
     # this time.
     if check_name_only:
-        return True
+        return 1
     
     #If check_name_only is python false then we can reach this check
     # that checks to make sure that the filename exists.  Use os.stat()
@@ -188,16 +177,16 @@ def is_pnfs_path(pathname, check_name_only = None):
     # ENOENT errors that really should have been EACCES errors.
     try:
         if file_utils.get_stat(filename):
-            return True
+            return 1
     except OSError, msg:
         if msg.args[0] == errno.ENOENT:
             pass
         else:
-            return True
+            return 1
     
     #If we get here, then the path contains a directory named 'pnfs' but does
     # not point to a pnfs directory.
-    return False
+    return 0
 
 def is_normal_pnfs_path(pathname, check_name_only = None):
     rtn = is_pnfs_path(pathname, check_name_only)
@@ -859,12 +848,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #          full filepath.  Use the .../.(access)(%s) name instead.
     def __init__(self, pnfsFilename="", mount_point="", shortcut=None):
 
-        #self.print_id is unique in each of pnfs.Pnfs, chimera.ChimeraFS,
-        # and pnfs_agent_client.PnfsAgentClient.  It is to be used for
-        # the printing of messages to name the specific interface
-        # being used by namespace.StorageFS.
-        self.print_id = "PNFS"
+                 #get_details=1, get_pinfo=0, timeit=0, mount_point=""):
 
+        #self.print_id = "PNFS"
         self.mount_point = mount_point
         #Make sure self.id exists.  __init__ should set it correctly
         # if necessary a little later on.
@@ -1412,24 +1398,23 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
                                                     "Not a valid pnfs id"))
 
-        #Munge the mount point and the directories.  First check if the two
-        # paths can be munged without modification.
-        if file_utils.e_access(os.path.join(search_path, filepath), os.F_OK):
-            filepath = os.path.join(search_path, filepath)
-        #Then check if removing the last compenent of the mount point path
+        #Munge the mount point and the directories.
+        # First, check if the two paths can be munged without modification.
+        # Second, check if removing the last compenent of the mount point path
         # (search_path) will help when munged.
-        elif file_utils.e_access(
-            os.path.join(os.path.dirname(search_path), filepath), os.F_OK):
-            filepath = os.path.join(os.path.dirname(search_path), filepath)
-        #Lastly, remove the first entry in the file path before munging.
-        elif file_utils.e_access(
-            os.path.join(search_path, filepath.split("/", 1)[1]), os.F_OK):
-            filepath = os.path.join(search_path, filepath.split("/", 1)[1])
-        #If the path is "/pnfs/fs" try inserting "usr".
-        elif os.path.basename(search_path) == "fs" and \
-             file_utils.e_access(os.path.join(search_path, "usr", filepath),
-                                 os.F_OK):
-            filepath = os.path.join(search_path, "usr", filepath)
+        # Next, remove the first entry in the file path before munging.
+        # Lastly, *if* the path is "/pnfs/fs" try inserting "usr".
+        filepaths = [os.path.join(search_path, filepath),
+                     os.path.join(os.path.dirname(search_path), filepath),
+                     os.path.join(search_path, filepath.split("/", 1)[1]),
+                     ]
+        if os.path.basename(search_path) == "fs":
+            filepaths.append(os.path.join(search_path, "usr", filepath))
+        
+        #Check all the possible paths to check.
+        for checkpath in filepaths[0:3]:
+            if file_utils.e_access(checkpath, os.F_OK):
+                filepath = checkpath
         else:
             #One last thing to try, if an admin path is found, try it.
             for amp in get_enstore_admin_mount_point(): #amp = Admin Mount Path
@@ -2009,9 +1994,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             f.close()    
         except (OSError, IOError), msg:
             if msg.args[0] == errno.ENAMETOOLONG:
-                Trace.log(e_errors.ERROR, "fset[1]")
                 #If the .(fset) filename is too long for PNFS, then we need
-                # to make a shorter temproary link to it and try it again.
+                # to make a shorter temporary link to it and try it again.
                 
                 #First, using .(access)() paths access the directory for
                 # the file stored in use_filepath.
@@ -2058,10 +2042,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
                 #Cleanup the temporary link.
                 os.unlink(link_name)
-
             else:
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
 
         #Update the times.
         if filepath:
@@ -3100,7 +3082,7 @@ class PnfsInterface(option.Interface):
                    option.VALUE_USAGE:option.REQUIRED,
                    option.VALUE_LABEL:"filename",
                    option.FORCE_SET_DEFAULT:option.FORCE,
-                   option.USER_LEVEL:option.ADMIN,
+                   option.USER_LEVEL:option.USER2,
               },
         option.IO:{option.HELP_STRING:"sets io mode (can't clear it easily)",
                    option.DEFAULT_VALUE:option.DEFAULT,
@@ -3911,8 +3893,7 @@ class N:
         f=file_utils.open(fname,'r')
         self.databaseN = f.readlines()
         f.close()
-        if len(self.databaseN) > 0 :
-           self.databaseN = string.replace(self.databaseN[0], "\n", "")
+        self.databaseN = string.replace(self.databaseN[0], "\n", "")
         return self.databaseN
 
     def pdatabaseN(self, intf):
@@ -4308,8 +4289,8 @@ class File:
 
 
 ##############################################################################
-
 def do_work(intf):
+
     rtn = 0
 
     try:
@@ -4357,4 +4338,4 @@ if __name__ == "__main__":
 
     intf._mode = "admin"
 
-    sys.exit(do_work(intf))
+    do_work(intf)
