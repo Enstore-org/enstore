@@ -6,47 +6,12 @@
 ###############################################################################
 
 set -u  # force better programming and ability to use check for not set
-quiet=0
-server=0
-fnal=""
-redhat_release=`sed -e 's/ /\n/g' /etc/redhat-release | while read i;do grep '[0-9'] | cut -d "." -f 1;done`
-echo "redhat_release ${redhat_release}"
-if [ $redhat_release = "5" ]; then
-    release_dir="slf5x"
-else
-    # default to 4
-    release_dir="lts44"
-fi
-echo "release dir ${release_dir}"
-place="ftp://ssasrv1.fnal.gov/en/${release_dir}"
-force=""
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 
-usage() {
-echo "$0 [-c config_server] [-hqx] [force] [server] [fnal] [url]"
-}
-
-# parse command line 
-while [ $# -gt 0 ];
-do
-	case $1 in
-		-c) shift; ENSTORE_CONFIG_HOST=$1;
-		    export ENSTORE_CONFIG_HOST;
-		    shift; ;;
-		-x) set -xv; shift;export ENSTORE_VERBOSE="y";	;;
-		-q) export quiet=1; shift;	;;
-		-h) usage; exit 0;	;;
-		server) export server=1; shift;	;;
-		fnal) export fnal=$1; shift;	;;
-		force)  export force=$1;force="--${1}"; shift;	;;
-		*) place=$1; shift;	;;
-
-	esac;
-done
-export place
-processor=`uname -p`
+place="${1:-ftp://ssasrv1.fnal.gov/en/lts44/i386}"
 
 echo "Installing enstore rpm and required products from $place"
-echo "This is a demo installation"
 if [ "`whoami`" != 'root' ]
 then
     echo You need to run this script as user "root"
@@ -64,55 +29,51 @@ then
 fi
 
 
-echo "Installing tcl"
-yum -y install tcl.${processor}
-echo "Installing tk"
-yum -y install tk.${processor}
+rpm -q ftt > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing ftt"
+    rpm -U --force ${place}/ftt-2.26-2.i386.rpm
+fi
+ 
+rpm -q tcl > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing tcl"
+    yum install tcl
+fi
+rpm -q tk > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing tk"
+    yum install tk
+fi
+rpm -q Python-enstore > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing python"
+    rpm -U --force ${place}/Python-enstore-1.0.0-3.i386.rpm
+fi
 echo "Installing enstore"
-rpm -U $force ${place}/${processor}/enstore-2.0.0-2.${processor}.rpm
-ENSTORE_DIR=`rpm -ql enstore | head -1`
+
+#rpm -Uvh --force --nodeps ${place}/enstore-1.0b.1-10.i386.rpm
+rpm -Uvh --force --nodeps ${place}/enstore_sa-1.0.1-11.i386.rpm
+rpm -q enstore > /dev/null
+if [ $? -eq 0 ]; 
+then
+    ENSTORE_DIR=`rpm -ql enstore | head -1`
+else
+    ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
+fi
 
 $ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh
-$ENSTORE_DIR/sbin/finish_server_install.sh $place
+# install crons
+echo "installing crons"
 unset ENSTORE_DIR
 source /usr/local/etc/setups.sh
-setup enstore
-
-echo Installing crons
 $ENSTORE_DIR/tools/install_crons.py
-chmod 644 /etc/cron.d/*
+
+$ENSTORE_DIR/external_distr/finish_demo_server_install.sh
 
 # create database
 echo "creating enstore databases"
-python $ENSTORE_DIR/sbin/create_database.py enstoredb
-if [ $? -ne 0 ]
-then
-    echo "Failed to create enstore DB"
-    exit 1
-fi
-
-python $ENSTORE_DIR/sbin/create_database.py accounting
-if [ $? -ne 0 ]
-then
-    echo "Failed to create accounting DB"
-    exit 1
-fi
-
-python $ENSTORE_DIR/sbin/create_database.py drivestat
-if [ $? -ne 0 ]
-then
-    echo "Failed to create drivestat DB"
-    exit 1
-fi
-
-python $ENSTORE_DIR/sbin/create_database.py operation
-if [ $? -ne 0 ]
-then
-    echo "Failed to create operation DB"
-    exit 1
-fi
-
-
+$ENSTORE_DIR/external_distr/install_database.sh
 
 #start enstore
 echo "Starting enstore"

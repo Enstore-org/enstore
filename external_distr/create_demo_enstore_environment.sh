@@ -19,16 +19,15 @@ fi
 
 PATH=/usr/sbin:$PATH
 
+PYTHON_DIR=`rpm -ql Python-enstore | head -1`
+
 rpm -q enstore > /dev/null
 if [ $? -eq 0 ]; 
 then
     ENSTORE_DIR=`rpm -ql enstore | head -1`
 else
-    echo "enstore rpm is not installed"
-    exit 1
+    ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 fi
-PYTHON_DIR=$ENSTORE_DIR/Python
-FTT_DIR=$ENSTORE_DIR/FTT
 ENSTORE_HOME=`ls -d ~enstore`
 
 if [ ! -d $ENSTORE_HOME/site_specific/config ];

@@ -62,8 +62,9 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
     # files greater than 8GB are just not allowed right now
     max = long(2**30) * 8 - 1
     if filesize > max :
-        msg = "Files are limited to %s bytes and your %s has %s bytes" %(max, filename, filesize)
-        raise e_errors.EnstoreError(errno.EOVERFLOW, msg,"")  
+	raise errno.errorcode[errno.EOVERFLOW],"Files are limited to "\
+	      +repr(max) + " bytes and your "+filename+" has "\
+	      +repr(filesize)+" bytes"
     fname = filename
     fsize = filesize
     # set this dang mode to something that works on all machines!

@@ -89,13 +89,13 @@ if __name__ == "__main__":
                              LOCATION_OF_XML_FILES,
                              filename)
     if not os.access(schema_file, os.F_OK):
-        print_error("schema file (%s) is not found "%(schema_file,))
+        print_error("schema file (",schema_file,")is not found ")
         sys.exit(1)
     ddl_directory_path=os.path.join(ENSTORE_DIR,
                                     LOCATION_OF_DDL_FILES,
                                     dbname)
     if not os.access(ddl_directory_path, os.F_OK):
-        print_error("ddl directory (%s)is not found "%(ddl_directory_path,))
+        print_error("ddl directory (",ddl_directory_path,")is not found ")
         sys.exit(1)
     server_name=get_server_name(dbname)
     if not server_name : sys.exit(1)
