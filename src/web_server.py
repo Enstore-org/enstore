@@ -16,17 +16,20 @@ SUFFIX=".orig"
 SERVER_ROOT="ServerRoot"
 FNAL_DOMAIN="131.225"
 import errno
-import configuration_client
-import enstore_constants
-import enstore_files
+import traceback
 import sys
 import types
 import os
-import e_errors
 import getopt
 import string
 import socket
 import pwd
+import configuration_client
+import enstore_constants
+import enstore_files
+import e_errors
+import Trace
+
 
 class WebServer:
     def __init__(self,timeout=1,retry=0):
@@ -45,7 +48,12 @@ class WebServer:
             try: 
                 configfile = os.environ.get('ENSTORE_CONFIG_FILE')
                 print "Failed to connect to config server, using configuration file %s"%(configfile,)
-                f = open(configfile,'r')
+                try:
+                    f = open(configfile,'r')
+                except:
+                    exc,msg=sys.exc_info()[:2]
+                    print exc,msg
+                
                 code = string.join(f.readlines(),'')
                 configdict={}
                 exec(code)
@@ -71,6 +79,7 @@ class WebServer:
         self.inq_d = self.config_dict.get(enstore_constants.INQUISITOR, {})
         self.Root = self.server_dict.get(SERVER_ROOT,'/etc/httpd')
         self.config_file = "%s/conf/httpd.conf"%(self.Root)
+        print "CONF",self.config_file 
 
     def get_ok(self):
         return self.is_ok
@@ -89,7 +98,16 @@ class WebServer:
         if not self.is_ok :
             return 1
         self.lines=[]
-        f=open("httpd.conf","r")
+        # always work with configuration file copy
+        s = "."
+        fcopy = s.join((self.config_file, "enstore_copy"))
+        try:
+            os.system("cp -p %s %s"%(self.config_file, fcopy))
+        except OSError, detail:
+            print "Faile to create %s"%(fcopy,)
+            return 1
+        #f=open("httpd.conf","r")
+        f=open(fcopy,"r")
         try:
             for line in f:
                 self.lines.append(line)
@@ -361,6 +379,9 @@ def install():
         if not os.path.exists(os.path.join(server.get_document_root(),"enstore")):
             os.symlink(html_dir,os.path.join(server.get_document_root(),"enstore"))
         log_dir=server.config_dict.get('log_server', {})['log_file_path']
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
         print "log directory ",log_dir
         log_dir_link=os.path.join(html_dir,"log")
         if not os.path.exists(log_dir_link):
@@ -368,9 +389,7 @@ def install():
 
     except (KeyboardInterrupt, IOError, OSError):
         exc, msg, tb = sys.exc_info()
-        import traceback
-        for l in traceback.format_exception( exc, msg, tb ):
-            print l
+        Trace.handle_error(exc, msg, tb)
         return 1
     #except:
     #    return 1
