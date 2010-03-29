@@ -1,5 +1,9 @@
-#if [ -z "${PS1-}" ] ; then return; fi
+if [ -z "${PS1-}" ] ; then return; fi
 # Source global definitions
+if [ -f /etc/bashrc ]; then
+        . /etc/bashrc
+fi
+
 if [ -f /etc/bashrc ]; then
         . /etc/bashrc
 fi
