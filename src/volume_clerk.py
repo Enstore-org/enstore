@@ -67,6 +67,8 @@ MAX_THREADS = 20
 # main thread)
 MAX_CONNECTIONS=MAX_THREADS+1
 
+sg_lock = threading.Lock()
+
 class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### This class of Volume Clerk methods should only be readonly operations.
     ### This class is inherited by Info Server (to increase code reuse)
@@ -146,8 +148,12 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             self.common_blank_low = res
 
         # rebuild it if it was not loaded
-        if len(self.sgdb) == 0:
-            self.sgdb.rebuild_sg_count()
+        sg_lock.acquire()
+        try:
+            if len(self.sgdb) == 0:
+                self.sgdb.rebuild_sg_count()
+        finally:
+            sg_lock.release()
 
         return
 
@@ -376,7 +382,12 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         if quotas['libraries'].has_key(library):
             if not quotas['libraries'][library].has_key(storage_group):
                 return 1
-            vol_count = self.sgdb.get_sg_counter(library, storage_group)
+            vol_count=0
+            sg_lock.acquire()
+            try:
+                vol_count = self.sgdb.get_sg_counter(library, storage_group)
+            finally:
+                sg_lock.release()
             quota = quotas['libraries'][library].get(storage_group, 0)
             Trace.log(e_errors.INFO, "storage group %s, vol counter %s, quota %s" % (storage_group, vol_count, quota))
             if quota == 0 or (vol_count >= quota):
@@ -896,7 +907,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         if not sg:
             return #extract_value_from_ticket handles its own errors.
 
-	ticket['count'] = self.sgdb.get_sg_counter(lib, sg)
+        sg_lock.acquire()
+        try:
+            ticket['count'] = self.sgdb.get_sg_counter(lib, sg)
+        finally:
+            sg_lock.release()
         if ticket['count'] == -1:
             ticket['status'] = (e_errors.NO_SG,
                                 "failed to get %s.%s" % (lib, sg))
@@ -908,8 +923,12 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     def list_sg_count(self, ticket):
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-
-        sgcnt = self.sgdb.list_sg_count()
+        sgcnt=0
+        sg_lock.acquire()
+        try:
+            sgcnt = self.sgdb.list_sg_count()
+        finally:
+            sg_lock.release()
 
         try:
             if not self.get_user_sockets(ticket):
@@ -930,8 +949,12 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # list_sg_count().  Now the network communications are done using
     # send_reply_with_long_answer().
     def list_sg_count2(self, ticket):
-
-        sgcnt = self.sgdb.list_sg_count()
+        sgcnt=0
+        sg_lock.acquire()
+        try:
+            sgcnt = self.sgdb.list_sg_count()
+        finally:
+            sg_lock.release()
 
         ticket["status"] = (e_errors.OK, None)
         ticket['sgcnt'] = sgcnt
@@ -1697,8 +1720,12 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             Trace.log(e_errors.INFO, 'volume "%s" has been recycled'%(vol))
             # take care of sg_count
             if clear_sg and sg != 'none':
-                self.sgdb.inc_sg_counter(record['library'], sg, increment=-1)
-                self.sgdb.inc_sg_counter(record['library'], 'none', increment=1)
+                sg_lock.acquire()
+                try:
+                    self.sgdb.inc_sg_counter(record['library'], sg, increment=-1)
+                    self.sgdb.inc_sg_counter(record['library'], 'none', increment=1)
+                finally:
+                    sg_lock.release()
 
             # take care of write_protect state
             if renamed: # take it from its previous life
@@ -1724,7 +1751,11 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
             library = record['library']
             sg = volume_family.extract_storage_group(record['volume_family'])
-            self.sgdb.inc_sg_counter(library, sg, increment=-1)
+            sg_lock.acquire()
+            try:
+                self.sgdb.inc_sg_counter(library, sg, increment=-1)
+            finally:
+                sg_lock.release()
             # deleting blank?
             if sg == 'none':
                 sgc = self.sgdb.get_sg_counter(library, 'none')
@@ -1931,9 +1962,13 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
         self.volumedb_dict[external_label] = record
         # adjust sg-count
-        self.sgdb.inc_sg_counter(library, storage_group)
-        self.sgdb.inc_sg_counter(library, 'none', increment=-1)
-        sgc = self.sgdb.get_sg_counter(library, 'none')
+        sg_lock.acquire()
+        try:
+            self.sgdb.inc_sg_counter(library, storage_group)
+            self.sgdb.inc_sg_counter(library, 'none', increment=-1)
+            sgc = self.sgdb.get_sg_counter(library, 'none')
+        finally:
+            sg_lock.release()
         if sgc < self.common_blank_low['alarm']:
             message = "(%s, %s) has only %d tapes left, less than %d" % \
                       (library, 'none', sgc, self.common_blank_low['alarm'])
@@ -2107,7 +2142,11 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         # write the ticket out to the database
         self.volumedb_dict[external_label] = record
         # increase the sg count
-        self.sgdb.inc_sg_counter(library, sg)
+        sg_lock.acquire()
+        try:
+            self.sgdb.inc_sg_counter(library, sg)
+        finally:
+            sg_lock.release()
         ticket["status"] = (e_errors.OK, None)
         ticket['r_a'] = saved_reply_address
         self.reply_to_caller(ticket)
@@ -2328,20 +2367,24 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                       % (filled_state, label, pool, library, vol_fam)
             Trace.log(e_errors.INFO, message)
             if inc_counter:
-                self.sgdb.inc_sg_counter(library, sg)
-                self.sgdb.inc_sg_counter(library, osg, increment=-1)
-                if osg == 'none':
-                    sgc = self.sgdb.get_sg_counter(library, osg)
-                    if sgc < self.common_blank_low['alarm']:
-                        message = "(%s, %s) has only %d tapes left, less than %d" \
-                                  % (library, 'none', sgc, self.common_blank_low['alarm'])
-                        Trace.alarm(e_errors.ERROR, "COMMON BLANK POOL LOW",
-                                    message)
-                    elif sgc < self.common_blank_low['warning']:
-                        message = "(%s, %s) has only %d tapes left, less than %d" \
-                                  % (library, 'none', sgc, self.common_blank_low['warning'])
-                        Trace.alarm(e_errors.WARNING, "COMMON BLANK POOL LOW",
-                                    message)
+                sg_lock.acquire()
+                try:
+                    self.sgdb.inc_sg_counter(library, sg)
+                    self.sgdb.inc_sg_counter(library, osg, increment=-1)
+                    if osg == 'none':
+                        sgc = self.sgdb.get_sg_counter(library, osg)
+                        if sgc < self.common_blank_low['alarm']:
+                            message = "(%s, %s) has only %d tapes left, less than %d" \
+                                      % (library, 'none', sgc, self.common_blank_low['alarm'])
+                            Trace.alarm(e_errors.ERROR, "COMMON BLANK POOL LOW",
+                                        message)
+                        elif sgc < self.common_blank_low['warning']:
+                            message = "(%s, %s) has only %d tapes left, less than %d" \
+                                      % (library, 'none', sgc, self.common_blank_low['warning'])
+                            Trace.alarm(e_errors.WARNING, "COMMON BLANK POOL LOW",
+                                        message)
+                finally:
+                    sg_lock.release()
             self.volumedb_dict[label] = vol
             vol['status'] = (e_errors.OK, None)
             vol['r_a'] = saved_reply_address
@@ -2720,7 +2763,11 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
 
     #### DONE
     def rebuild_sg_count(self, ticket):
-        self.sgdb.rebuild_sg_count()
+        sg_lock.acquire()
+        try:
+            self.sgdb.rebuild_sg_count()
+        finally:
+            sg_lock.release()
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
@@ -2738,8 +2785,11 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         count = self.extract_value_from_ticket("count", ticket)
         if count == None:
             return #extract_value_from_ticket handles its own errors.
-
-	ticket['count'] = self.sgdb.set_sg_counter(lib, sg, count)
+        sg_lock.acquire()
+        try:
+            ticket['count'] = self.sgdb.set_sg_counter(lib, sg, count)
+        finally:
+            sg_lock.release()
         if ticket['count'] == -1:
             message = "failed to set %s.%s" % (lib, sg)
             ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, message)
