@@ -29,7 +29,7 @@ timeout='--timeout 3 --retries 3 --file-fallback'
 #Get this configuration information only once.
 raw_service_ips=`enstore conf $timeout --print service_ips 2>&1`
 if [ $? -ne 0 ]; then
-   grep "KEYERROR" "$raw_service_ips"
+   echo "$raw_service_ips" | grep "KEYERROR" 2>&1 > /dev/null
    if [ $? -eq 0 ]; then
        echo "No entry for service alaises is found in configuration"
        exit 0
