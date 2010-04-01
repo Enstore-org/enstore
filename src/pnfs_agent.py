@@ -508,24 +508,6 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         Trace.trace(10, 'get_id %s %s'%(fname,ticket['file_id'],))
         return
 
-    def get_nameof(self, ticket):
-        pnfsid = ticket['pnfsid']
-        try:
-            p=pnfs.Pnfs()
-            ticket['nameof'] = p.get_nameof(pnfsid)
-            ticket['status']  = (e_errors.OK, None)
-        except OSError, msg:
-            ticket['nameof']=None
-            ticket['errno'] = msg.args[0]
-            ticket['status'] = (e_errors.OSERROR, str(msg))
-        except IOError, msg:
-            ticket['nameof']=None
-            ticket['errno'] = msg.args[0]
-            ticket['status'] = (e_errors.IOERROR, str(msg))
-        self.reply_to_caller(ticket)
-        Trace.trace(10, 'get_nameof %s %s'%(pnfsid, ticket['pnfsid'],))
-        return
-
     def get_parent_id(self, ticket):
         pnfsid = ticket['pnfsid']
         try:
