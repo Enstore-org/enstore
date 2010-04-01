@@ -2099,6 +2099,10 @@ class LibraryManagerMethods:
         self.init_request_selection()
         self.process_for_bound_vol = external_label
         # use this key for slecting admin priority requests
+        # this will select from reads for last op 
+        # read and writes for last op writes 
+        # these will remain "None" for elevated
+        # non-admin priority
         key_for_admin_priority = None
         # use this key for selecting admin priority requests
         # if no admin priority request was found using
@@ -2119,6 +2123,10 @@ class LibraryManagerMethods:
                 alt_key_for_admin_priority = vol_family
             
         # first see if there are any HiPri requests
+        # To avoid bouncing back and forth, if last 
+        # op was read, we look at admin reads first
+        # (via "key_for_admin_priority") and writes
+        # second. vice versa for last op write
         rq = self.pending_work.get_admin_request(key=key_for_admin_priority)
         if not rq:
             rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority)
@@ -2138,7 +2146,8 @@ class LibraryManagerMethods:
                     # completed request had a regular proirity
                     # but the mounted tape can not be preempted by HIPRI request
                     # because there are idle movers tah could pick up HIPRI request  
-                    rq = self.pending_work.get_admin_request(next=1) # get next request
+                    rq = self.pending_work.get_admin_request(next=1,
+                                                             disabled_hosts=self.disabled_hosts) # get next request
                     continue
                 if rq and rq.work == "write_to_hsm":
                     # check if there is a potentially available tape at bound movers
