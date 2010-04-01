@@ -157,16 +157,10 @@ case ${gang}@${location} in
        echo
        echo "Which library are you working with ?  Choose"
        case $gang in
-	 d0en|stken)
+	 cdfen|d0en|stken)
 	   echo " 1) 8500 if you are working with the SL8500"
 	   echo " 2) Quit if you are doing something else"
 	   libs="8500"
-	   ;;
-	 cdfen)
-	   echo " 1) 9310 if you are working with the silos"
-	   echo " 2) 8500 if you are working with the SL8500"
-	   echo " 3) Quit if you are doing something else"
-	   libs="9310 8500"
 	   ;;
        esac
        echo
@@ -175,24 +169,28 @@ case ${gang}@${location} in
        [ $EOF -gt 0 ] && exit
      done
 
+     # keep d0en tapes in SL8500-5 and cdfen and stken in SL8500-3
      case ${gang}@${location}.${lib} in
-       *en@FCC2.8500)
+       cdfen@FCC2.8500)
 	  robot="8500F1"
-	  icap="1,5,0"       # library 2, lsm 5, rail 2, cap A
-	  ocap="1,1,0"       # library 1, lsm 1, rail 2, cap A
+	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
+	  ocap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
 	  sun="fntt2"
 	  ;;
-
-       cdfen@FCC2.9310)
-	  robot="9310"
-	  icap="0,1,0"
-	  ocap="0,0,0"
-	  sun=fntt2
+       d0en@FCC2.8500)
+	  robot="8500F1"
+	  icap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
+	  ocap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
+	  sun="fntt2"
 	  ;;
-
+       stken@FCC2.8500)
+	  robot="8500F1"
+	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
+	  ocap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
+	  sun="fntt2"
+	  ;;
        *) exit 1
 	  ;;
-
      esac
      ;;
 
