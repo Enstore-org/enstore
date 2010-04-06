@@ -985,7 +985,12 @@ def send_mover_request(csc, send_request_dict, mover_name, u, count = 0):
 
     message = {'work' : 'status'}
     mover_system_name = mover_name.split(".")[0]
-    tx_id = u.send_deferred(message, (m_addr, m_port))
+    try:
+        tx_id = u.send_deferred(message, (m_addr, m_port))
+    except (socket.error, socket.gaierror, socket.herror), msg:
+        Trace.trace(0, "Failed to send message to %s at (%s, %s):  %s" % \
+                    (mover_name, m_addr, m_port, str(msg)))
+        return
     Trace.trace(1, "Sent ID %s to %s." % (tx_id, mover_name))
     send_request_dict[tx_id] = {}
     send_request_dict[tx_id]['name']  = mover_system_name
@@ -1002,7 +1007,12 @@ def send_sched_request(csc, send_request_dict, u, count = 0):
         return
 
     message = {'work' : 'show'}
-    tx_id = u.send_deferred(message, (i_addr, i_port))
+    try:
+        tx_id = u.send_deferred(message, (i_addr, i_port))
+    except (socket.error, socket.gaierror, socket.herror), msg:
+        Trace.trace(0, "Failed to send message to %s at (%s, %s):  %s" % \
+                    ("inquisitor", i_addr, i_port, str(msg)))
+        return
     Trace.trace(1, "Sent ID %s to inquisitor %s." % (tx_id, (i_addr, i_port)))
     send_request_dict[tx_id] = {}
     send_request_dict[tx_id]['name']  = 'inquisitor'
