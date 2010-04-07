@@ -128,7 +128,7 @@ if __name__ == "__main__" :
             dict['file_family']=vol_info['volume_family'].split('.')[2]
             dict['library'] = vol_info['library']
             #counter = counter + 1
-            q="select * from encp_xfer where node='%s' and pid=%s and date>'%s' and volume='%s'"%(dict['node'],dict['pid'],dict['date'],dict['volume'],)
+            q="select * from encp_xfer where node='%s' and pid=%s and date='%s' and volume='%s'"%(dict['node'],dict['pid'],dict['date'],dict['volume'],)
             res=db.query(q)
             if res.ntuples():
                 print "Skipping.... ",  res.ntuples() , dict['date']
