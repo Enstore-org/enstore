@@ -398,7 +398,7 @@ while [ $done -gt 0 ]; do
         echo "Unable to obtain schedule information." 2>&1
 	exit 1
     fi
-    servers_down=`echoe "$raw_servers_down" | egrep -v " Enstore | -----|^$"`
+    servers_down=`echo "$raw_servers_down" | egrep -v " Enstore | -----|^$"`
     #Pull out just the server names.
     echo "$servers_down" | awk '{print $1}' > /tmp/copy_ran_file_servers_down
     #Loop over the configured movers looking for a match to a down mover.
