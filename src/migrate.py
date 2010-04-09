@@ -1295,9 +1295,18 @@ def __is_migrated_state(bfid, find_src, find_dst, fcc, db, order_by = "copied"):
 #	we check the source file
 #       As a side effect, this one returns the destination bfid instead
 #       of the timestamp that the copy step completed.
-def is_copied(bfid, fcc, db):
+def is_copied(bfid, fcc, db, all_copies=False):
 
     res = __is_migrated_state(bfid, 1, 0, fcc, db) # 1, 0 => source only
+
+    #If all_copies is true, return the answer as a list.  Normally, this
+    # isn't an issue, but for files that are migrated to multiple copies,
+    # this is important.
+    if all_copies:
+        bfid_list = []
+        for file_result in res:
+            bfid_list.append(file_result['dst_bfid'])
+        return bfid_list
     
     if len(res) == 0:
         return None
@@ -6813,8 +6822,10 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
             error_log(MY_TASK, src_volume_record['status'])
             sys.exit(1)
 
-    #Determine if the file has been copied to a new tape already.
-    is_it_copied = is_copied(src_bfid, fcc, db)
+    #Determine if the file has been copied to a new tape already.  Need to
+    # worry if the file has been migrated to multiple copies.
+    is_it_copied_list = is_copied(src_bfid, fcc, db, all_copies=True)
+    is_it_copied = is_it_copied_list[0]
     dst_bfid = is_it_copied #side effect of is_copied()
     if dst_bfid == None:
         check_src_bfid, check_dst_bfid = get_bfids(src_bfid, fcc, db)
@@ -6879,6 +6890,39 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         # to the list of metadata to check.  Put this first.
         pairs_to_search.insert(0, (src_file_record['pnfsid'],
                                    original_bfid))
+    if len(is_it_copied_list) > 1:
+        #is_it_copied_list[1:] are extra migration copies that the file to be
+        # restored has.  If a file has correctly been migrated to multiple
+        # copies, this list should match that of copies_reply['copies'],
+        # but VOB796 proved this wrong.  It was found to have metadata like
+        #  CDMS117895302800000  N  CDMS126841354300000  Y       y      y
+        #  CDMS117895302800000  N  CDMS126841359000000 1N       y
+        # which were the result of running two migrations at the same time.
+        # CDMS126841354300000 and CDMS126841359000000 are not related
+        # as multiple copies of each other like the "1N" would normally
+        # indicate.
+        for extra_copy_bfid in is_it_copied_list[1:]:
+            extra_file_record = get_file_info(MY_TASK, extra_copy_bfid,
+                                              fcc, db)
+            #As long as we are looping over the migration copies, we should
+            # verify that they all have the same deleted status.  Otherwise,
+            # we don't know whether to do an active or deleted file restore.
+            if not e_errors.is_ok(extra_file_record):
+                
+                error_log(MY_TASK, extra_file_record['status'])
+                sys.exit(1)
+            if extra_file_record['deleted'] != dst_file_record['deleted']:
+                error_log(MY_TASK, "Not all destination deleted statuses are"
+                          " the same: (%s, %s) != (%s, %s)" % \
+                          (dst_bfid, dst_file_record['deleted'],
+                           extra_file_record['bfid'],
+                           extra_file_record['deleted']))
+                sys.exit(1)
+
+            #If we are restoring a file with extra migration copies, add
+            # this to the list of metadata to check.
+            pairs_to_search.append((src_file_record['pnfsid'],
+                                    extra_copy_bfid))
 
     for search_pnfsid, search_bfid in pairs_to_search:
         try:
@@ -6889,6 +6933,15 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
             raise sys.exc_info()[0], sys.exc_info()[1], \
                   sys.exc_info()[2]
         except OSError, msg:
+            if getattr(msg, "errno", msg.args[0]) == errno.EEXIST and \
+                msg.args[1].find("pnfs entry exists") != -1:
+                #This "if" clause, was found to be needed to undue a migration
+                # to multiple copies.  The original situation was a tape
+                # that had two migrations running at the same time, but was
+                # found to be similar in details.
+                src = getattr(msg, "filename", None)
+                if src:
+                    break
             continue
         except:
             exc_type, exc_value, exc_tb = sys.exc_info()
@@ -6911,6 +6964,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
                       % (active_bfid, nonactive_bfid,
                          src_file_record['pnfsid'])
             error_log(MY_TASK, message)
+            sys.exit(1)
 
         #Just set this to something.
         src = src_file_record['pnfs_name0']
@@ -7123,8 +7177,10 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
             return 1
 
     #Undo the migration for the destination file and any
-    # multiple copies that it has.
-    for cur_dst_bfid in [dst_bfid] + copies_reply['copies']:
+    # multiple copies that it has.  The is_it_copied_list[1:] are the bfids
+    # of any extra migration copies.
+    for cur_dst_bfid in [dst_bfid] + copies_reply['copies'] + \
+            is_it_copied_list[1:]:
         if not cur_dst_bfid:
             #cur_dst_bfid will be None when restoring
             # a multiple copy file.  (It got done
