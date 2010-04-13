@@ -2046,7 +2046,6 @@ class LibraryManagerMethods:
             # return this status for the immediate dismount
             if (rq.work == "write_to_hsm" and
                 (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
-                 ret['status'][0] == e_errors.NOSPACE or
                  ret['status'][0] == 'full')):
                 return None, ret['status']
         return rq, ret['status']
