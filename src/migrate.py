@@ -1407,14 +1407,16 @@ def is_closed(bfid, fcc, db):
             return res[0]['closed']
 
 # is_duplicated(bfid) -- check the source bfid
-def is_duplicated(bfid, fcc, db, find_src=0, find_dst=1):
+def is_duplicated(bfid, fcc, db, find_src=0, find_dst=1,
+                  include_multiple_copies=False):
 
     src_res = []
     dst_res = []
     
     if USE_CLERKS:
-        ## Use the file clerk to obtain the migration information in the
-        ## database.
+        ## Use the file clerk to obtain the duplication/multiple_copy
+        ## information in the database.
+        
         if find_src:
             reply_ticket = fcc.find_original(bfid)
             if e_errors.is_ok(reply_ticket):
@@ -1430,25 +1432,64 @@ def is_duplicated(bfid, fcc, db, find_src=0, find_dst=1):
             else:
                 raise e_errors.EnstoreError(None, reply_ticket['status'][1],
                                         reply_ticket['status'][0])
+
+        #Need to exclude multiple copies if necessary.
+        if not include_multiple_copies and (src_res or dst_res):
+            reply_ticket = fcc.find_migrated(bfid)
+            if e_errors.is_ok(reply_ticket):
+                if src_res:
+                    if reply_ticket['src_bfid'] not in src_res:
+                        src_res = []
+                if dst_res:
+                    if reply_ticket['dst_bfid'] not in dst_res:
+                        dst_res = []
+            else:
+                raise e_errors.EnstoreError(None, reply_ticket['status'][1],
+                                        reply_ticket['status'][0])
     else:
         ## Use the database directly to obtain the migration information in
         ## the database.
-        
-
-        # The dst_bfid's are sorted in descending order to make sure that any
-        # multiple copies get processed first, then the originals.  This
-        # ordering is for get_bifds() which is called from restore_files().
-        
+                
         if find_src:
-            q = "select * from file_copies_map where alt_bfid = '%s';" \
-                % (bfid,)
+            if include_multiple_copies:
+                #Need to include multiple copies.
+                q = "select * from file_copies_map where alt_bfid = '%s';" \
+                    % (bfid,)
+            else:
+                #Need to exclude multiple copies, return just duplication
+                # copies.
+                q = "select file_copies_map.* " \
+                    "from file_copies_map,migration " \
+                    "where alt_bfid = '%s' " \
+                    "  and ((alt_bfid = src_bfid and " \
+                    "        bfid = dst_bfid) " \
+                    "       or " \
+                    "       (alt_bfid = dst_bfid and " \
+                    "        bfid = src_bfid) " \
+                    "      );" \
+                    % (bfid,)
             if debug:
                 log("is_duplicated():", q)
             src_res = db.query(q).dictresult()
 
         if find_dst:
-            q = "select * from file_copies_map where bfid = '%s';" \
-                % (bfid,)
+            if include_multiple_copies:
+                #Need to include multiple copies.
+                q = "select * from file_copies_map where bfid = '%s';" \
+                    % (bfid,)
+            else:
+                #Need to exclude multiple copies, return just duplication
+                # copies.
+                q = "select file_copies_map.* " \
+                    "from file_copies_map,migration " \
+                    "where bfid = '%s' " \
+                    "   and ((alt_bfid = src_bfid and " \
+                    "         bfid = dst_bfid) " \
+                    "        or " \
+                    "        (alt_bfid = dst_bfid and " \
+                    "        bfid = src_bfid) " \
+                    "       );" \
+                    % (bfid,)
             if debug:
                 log("is_duplicated():", q)
             dst_res = db.query(q).dictresult()
