@@ -336,7 +336,6 @@ MOUNT = "mount"                              #media, plotter
 MOUNT_POINT = "mount-point"                  #pnfs
 MOVER_DUMP = "mover_dump"                    #mover
 MOVER_TIMEOUT = "mover-timeout"              #assert, encp
-MOVERS_FILE = "movers-file"                  #entv
 NAMEOF = "nameof"                            #pnfs
 NEW_LIBRARY = "new-library"                  #volume
 NO_ACCESS = "no-access"                      #volume
@@ -541,7 +540,7 @@ valid_option_list = [
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MESSAGES_FILE, MIGRATED, MIGRATED_FROM, MIGRATED_TO,
     MKDIR, MKDIRS, MMAP_IO, MMAP_SIZE,
-    MODIFY, MOUNT, MOUNT_POINT, MOVER_DUMP, MOVER_TIMEOUT, MOVERS_FILE, 
+    MODIFY, MOUNT, MOUNT_POINT, MOVER_DUMP, MOVER_TIMEOUT, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NO_CRC, NOT_ALLOWED, NO_MAIL,
     NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
