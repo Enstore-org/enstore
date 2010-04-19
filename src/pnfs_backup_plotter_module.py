@@ -115,16 +115,28 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             duration = row[1]  #hh:mm:ss
 
             #Convert the duration into a single numerical value in seconds.
+
+            #First, handle any possible "day" values.
             try:
-                split_time = duration.split(":")
+                days, hms = duration.split(" days ")
+            except ValueError:
+                try:
+                    days, hms = duration.split(" day ")
+                except ValueError:
+                    days = 0
+                    hms = duration
+            #Second, process the hour, minutes and seconds.
+            try:
+                split_time_hms = hms.split(":")
             except AttributeError:
                 #When we get here, it just so happens that a pnfs backup is
                 # in progress.  start is set to a time, but duration is
                 # set to None because it is still empty in the DB.
                 continue
-            seconds = int(split_time[0]) * 3600 + \
-                      int(split_time[1]) * 60 + \
-                      int(split_time[2])
+            seconds = int(days) * 86400 + \
+                      int(split_time_hms[0]) * 3600 + \
+                      int(split_time_hms[1]) * 60 + \
+                      int(split_time_hms[2])
 
             #Write the data to be plotted into a file that will be read
             # by gnuplot.
