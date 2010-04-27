@@ -933,6 +933,8 @@ class Request_Queue:
 
     def start_cycle(self):
         self.process_admin_queue = 1
+        # list of requests, processed in this cycle
+        self.processed_requests = []
         
     # see how many different keys has tags list
     # needed for fair share distribution
@@ -1052,6 +1054,19 @@ class Request_Queue:
                                   active_volumes=active_volumes, disabled_hosts = disabled_hosts)
         if not rq:
             self.process_admin_queue = 0 # all admin queue is processed
+        if rq and not (rq in self.processed_requests):
+            # allow to remove rq.ticket['fc']['external_label'] only if
+            # request has not yet been processed in this cycle
+            # othrewise leave this entry as it may be later get used
+            # from the library manager postponed requests
+            if rq.work == "write_to_hsm" and rq.ticket['fc'].has_key('external_label'):
+                # this entry could have been created when selecting requests
+                # in the previous cycle and left there because request
+                # was not picked up for some reason
+                Trace.trace(TR+22, "get_admin_request: delete %s in %s"%(rq.ticket['fc']['external_label'], rq))
+                del(rq.ticket['fc']['external_label'])
+            self.processed_requests.append(rq)
+        
         return rq
     
     # get returns a record from the queue
@@ -1103,11 +1118,19 @@ class Request_Queue:
                     # keep the information about what queue
                     # is selected
                     self.admin_rq_returned = 1
-                    if rq.work == "write_to_hsm" and rq.ticket['fc'].has_key('external_label'):
-                        # this entry could have been created when selecting requests
-                        # in the previous cycle and left there because request
-                        # was not picked up for some reason
-                        del(rq.ticket['fc']['external_label'])
+                    if not (rq in self.processed_requests):
+                        # allow to remove rq.ticket['fc']['external_label'] only if
+                        # request has not yet been processed in this cycle
+                        # othrewise leave this entry as it may be later get used
+                        # from the library manager postponed requests
+                        if rq.work == "write_to_hsm" and rq.ticket['fc'].has_key('external_label'):
+                            # this entry could have been created when selecting requests
+                            # in the previous cycle and left there because request
+                            # was not picked up for some reason
+                            Trace.trace(TR+22, "get_admin_request: delete %s in %s"%(rq.ticket['fc']['external_label'], rq))
+                            del(rq.ticket['fc']['external_label'])
+                        self.processed_requests.append(rq)
+
                     return rq
                 else:
                    self.process_admin_queue = 0 
@@ -1124,11 +1147,20 @@ class Request_Queue:
 
         self.admin_rq_returned = 0
         Trace.trace(TR+22, "admin_queue=0 time %s"%(time.time()-t,))
-        if record and record.work == "write_to_hsm" and record.ticket['fc'].has_key('external_label'):
-            # this entry could have been created when selecting requests
-            # in the previous cycle and left there because request
-            # was not picked up for some reason
-            del(record.ticket['fc']['external_label'])
+        
+        if record and not (record in self.processed_requests):
+            # allow to remove rq.ticket['fc']['external_label'] only if
+            # request has not yet been processed in this cycle
+            # othrewise leave this entry as it may be later get used
+            # from the library manager postponed requests
+            if record.work == "write_to_hsm" and record.ticket['fc'].has_key('external_label'):
+                # this entry could have been created when selecting requests
+                # in the previous cycle and left there because request
+                # was not picked up for some reason
+                Trace.trace(TR+22, "get_admin_request: delete %s in %s"%(record.ticket['fc']['external_label'], record))
+                del(record.ticket['fc']['external_label'])
+            self.processed_requests.append(record)
+
         return record
 
     def get_queue(self):
