@@ -111,6 +111,10 @@ class PnfsBackupPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
         # Loop over the SQL query results.
         for row in res:
+            if not row[0] or not row[1]:
+                #row[1] could be None if a backup is still going on.
+                continue
+            
             start = row[0]     #YYYY:MM:DD HH:MM:SS
             duration = row[1]  #hh:mm:ss
 
