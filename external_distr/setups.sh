@@ -25,9 +25,9 @@ setup() {
 		    rpm -q $last > /dev/null
 		    if [ $? -eq 0 ]
 		    then
-			if [ -f /usr/etc/pnfsSetup.sh ]
+			if [ -f /usr/etc/pnfsSetup ]
 			then
-			    source /usr/etc/pnfsSetup.sh
+			    source /usr/etc/pnfsSetup
 			    PATH=$PATH:$pnfs/bin:$pnfs/tools
 			fi    
 			return 0
@@ -38,9 +38,9 @@ setup() {
                         rpm -q "pnfs-postgresql" > /dev/null
                         if [ $? -eq 0 ]
                         then
-                                if [ -f /usr/etc/pnfsSetup.sh ]
+                                if [ -f /usr/etc/pnfsSetup ]
                                 then
-                                        source /usr/etc/pnfsSetup.sh
+                                        source /usr/etc/pnfsSetup
                                         PATH=$PATH:$pnfs/bin:$pnfs/tools
                                 fi
                                 return 0
