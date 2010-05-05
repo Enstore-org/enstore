@@ -1312,11 +1312,6 @@ def check_bit_file(bfid, bfid_info = None):
     prefix = string.join([prefix, "...", file_record['external_label'],
                           file_record['location_cookie']], " ")
 
-    if file_record['deleted'] == "unknown":
-        info.append("deleted=unknown")
-        errors_and_warnings(prefix, err, warn, info)
-        return
-
     #Determine if this file is a multiple copy.  Multiple copies made using
     # duplicate.py would set this True too.
     original_bfid = infc.find_original(bfid).get('original', None)
@@ -1388,6 +1383,12 @@ def check_bit_file(bfid, bfid_info = None):
     elif is_migrated_to_copy and "is migrated to copy" not in info:
         info.append("is migrated to copy")
 
+    #If the file is not active, add this information to the output.
+    if file_record['deleted'] in ("yes", "unknown"):
+        info_message = "deleted(%s)" % (file_record['deleted'],)
+        if info_message not in info:
+            info.append(info_message)
+
     # we can not simply skip deleted files
     #
     # for each deleted file, we have to make sure:
@@ -1395,9 +1396,6 @@ def check_bit_file(bfid, bfid_info = None):
     # [1] no pnfsid, or
     # [2] no valid pnfsid, or
     # [3] in reused pnfsid case, the bfids are not the same
-    if file_record['deleted'] == 'yes':
-        if "deleted(yes)" not in info:
-            info = info + ["deleted(yes)"]
     if (is_migrated_copy or is_multiple_copy) and \
            file_record['deleted'] == 'yes':
         #The file is migrated.  The file was already deleted (and
@@ -1409,6 +1407,14 @@ def check_bit_file(bfid, bfid_info = None):
        not file_record['pnfsid']:
         #The file is deleted, no pnfs id was recorded.  Not an error,
         # so move on to the next file.
+        errors_and_warnings(prefix, err, warn, info)
+        return
+    if (is_migrated_copy or is_migrated_to_copy) and \
+       file_record['deleted'] == "unknown":
+        #The file is unknown, but yet recorded as being involved in migration.
+        # This can not happen.  Unknown files can not be migrated and
+        # there is a serious problem if a destination file is unknown.
+        err.append("unknown file can not be involved in migration")
         errors_and_warnings(prefix, err, warn, info)
         return
 
