@@ -37,7 +37,6 @@ do
 		-x) set -xv; shift;export ENSTORE_VERBOSE="y";	;;
 		-q) export quiet=1; shift;	;;
 		-h) usage; exit 0;	;;
-		-c
 		server) export server=1; shift;	;;
 		fnal) export fnal=$1; shift;	;;
 		force)  export force=$1;force="--${1}"; shift;	;;
