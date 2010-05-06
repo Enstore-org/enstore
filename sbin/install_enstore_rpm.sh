@@ -33,7 +33,7 @@ do
 		-c) shift; ENSTORE_CONFIG_HOST=$1;
 		    export ENSTORE_CONFIG_HOST;
 		    shift; ;;
-		-n) shift; rpm_name=$1;shift;
+		-n) shift; rpm_name=$1;shift; ;;
 		-x) set -xv; shift;export ENSTORE_VERBOSE="y";	;;
 		-q) export quiet=1; shift;	;;
 		-h) usage; exit 0;	;;
