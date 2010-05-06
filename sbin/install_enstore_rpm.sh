@@ -20,9 +20,10 @@ fi
 echo "release dir ${release_dir}"
 place="ftp://ssasrv1.fnal.gov/en/${release_dir}"
 force=""
+rpm_name="enstore-2.0.1-2"
 
 usage() {
-echo "$0 [-c config_server] [-hqx] [force] [server] [fnal] [url]"
+echo "$0 [-c config_server] [-n rpm-name] [-hqx] [force] [server] [fnal] [url]"
 }
 
 # parse command line 
@@ -32,9 +33,11 @@ do
 		-c) shift; ENSTORE_CONFIG_HOST=$1;
 		    export ENSTORE_CONFIG_HOST;
 		    shift; ;;
+		-n) shift; rpm_name=$1;shift;
 		-x) set -xv; shift;export ENSTORE_VERBOSE="y";	;;
 		-q) export quiet=1; shift;	;;
 		-h) usage; exit 0;	;;
+		-c
 		server) export server=1; shift;	;;
 		fnal) export fnal=$1; shift;	;;
 		force)  export force=$1;force="--${1}"; shift;	;;
@@ -73,7 +76,7 @@ echo "Installing postgresql-libs"
 rpm -U $force ${place}/${processor}/postgresql-libs*
 
 echo "Installing enstore"
-rpm -U $force ${place}/${processor}/enstore-2.0.1-1.${processor}.rpm
+rpm -U $force ${place}/${processor}/${rpm_name}.${processor}.rpm
 
 ENSTORE_DIR=`rpm -ql enstore | head -1`
 
