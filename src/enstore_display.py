@@ -28,8 +28,6 @@ import Trace
 import mover_client
 import configuration_client
 import enstore_constants
-import enstore_functions2
-import e_errors
 
 
 #Set up paths to find our private copy of tcl/tk 8.3
@@ -164,9 +162,6 @@ inqc_dict_cache = {}
 
 st = 0
 #pt = 0
-
-#Cache the default configuration server client.
-__csc = None
 
 class Queue:
     def __init__(self):
@@ -547,107 +542,6 @@ def process_time():
     return rtn
 
 #########################################################################
-
-#Get the list of all known Enstore systems from the default configuration
-# servers 'known_config_servers' section.
-def get_all_systems(csc=None):
-
-    #Get the list of all config servers and remove the 'status' element.
-    if csc:
-        use_csc = csc
-    else:
-        use_csc = get_csc()
-    config_servers = copy.copy(use_csc.get('known_config_servers', {}))
-    if config_servers['status'][0] == e_errors.OK:
-        del config_servers['status']
-    else:
-        return None
-
-    #Special section for test systems that are not in their own
-    # config file's 'known_config_servers' section.
-    config_host = enstore_functions2.default_host()
-    for system_name, csc_addr in config_servers.items():
-        if config_host == csc_addr[0]:
-            break
-    else:
-        i = 0
-        while i < 3:
-            try:
-                ip = socket.gethostbyname(config_host)
-                addr_info = socket.gethostbyaddr(ip)
-                break
-            except socket.error:
-                time.sleep(1)
-                continue
-        else:
-            try:
-                sys.stderr.write("Unable to obtain ip information.  Aborting.\n")
-                sys.stderr.flush()
-            except IOError:
-                pass
-            sys.exit(1)
-        if addr_info[1] != []:
-            short_name = addr_info[1][0]
-        else:
-            short_name = addr_info[0].split(".")[0]
-        config_servers[short_name] = (ip,
-                                      enstore_functions2.default_port())
-        
-    return config_servers
-
-#Get the ConfigurationClient object for the default enstore system.
-def get_csc(system_name = None):
-    global __csc
-
-    #If we have a configuration client cached, return that.
-    if not system_name and __csc:
-        return __csc
-    
-    # get a configuration server
-    default_config_host = enstore_functions2.default_host()
-    default_config_port = enstore_functions2.default_port()
-    try:
-        csc = configuration_client.ConfigurationClient(
-            (default_config_host, default_config_port))
-    except (socket.error,), msg:
-        Trace.trace(0, "Error contacting configuration server: %s\n" %
-                    msg.args[1],
-                    out_fp=sys.stderr)
-        return None
-    rtn_ticket = csc.dump_and_save(timeout = 2, retry = 2)
-    if not e_errors.is_ok(rtn_ticket):
-        Trace.trace(0, "Unable to contact configuration server: %s\n" %
-                    str(rtn_ticket['status']),
-                    out_fp=sys.stderr)
-        return None
-    csc.new_config_obj.enable_caching()
-
-    #Cache the default configuration server.
-    __csc = csc
-
-    #Return the requested configuration client if requested.
-    if system_name:
-        config_servers = get_all_systems(csc)
-        for sys_name, csc_addr in config_servers.items():
-            if sys_name == system_name:
-                try:
-                    rtn_csc = configuration_client.ConfigurationClient(csc_addr)
-                except (socket.error,), msg:
-                    Trace.trace(0, "Error contacting configuration server: %s\n" %
-                                msg.args[1],
-                                out_fp=sys.stderr)
-                    return None
-                rtn_csc.new_config_obj.enable_caching()
-                return rtn_csc
-        else:
-            Trace.trace(0,
-                "Unable to find Enstore system for %s." % (system_name,),
-                        out_fp=sys.stderr)
-            return None
-
-    return __csc
-
-#########################################################################
 # Most of the functions will be handled by the mover.
 # its  functions include:
 #     draw_mover() - draws the mover background and the label
@@ -729,8 +623,7 @@ class Mover:
 
         #Find out information about the mover.
         try:
-            system_name = self.name.split("@")[1]
-            csc = get_csc(system_name)
+            csc = self.display.csc_dict[self.name.split("@")[1]]
             minfo = csc.get(self.name.split("@")[0] + ".mover")
             #64MB is the default listed in mover.py.
             self.max_buffer = long(minfo.get('max_buffer', 67108864))
@@ -1822,8 +1715,7 @@ class Mover:
 
     def get_mover_client(self):
         name = self.name.split("@")[0] + ".mover"
-        system_name = self.name.split("@")[1]
-        csc = get_csc(system_name)
+        csc = self.display.csc_dict[self.name.split("@")[1]]
         mov = mover_client.MoverClient(csc, name,
                 flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,)
         return mov
@@ -2040,10 +1932,6 @@ class Connection:
         # has mover columns 1, 2 and 3.
         position = self.display.get_mover_position(self.mover.name)
 
-        if position == None:
-            print self.mover.name, ":", position, self.display.system_name
-            
-
         column = position[0]
         row = position[1]
 
@@ -2055,8 +1943,6 @@ class Connection:
         # past the first column.
         if column > 1:
             pos = self.display.get_mover_coordinates((column - 1, row))
-            if pos == None:
-                print self.mover.name, ":", position, self.display.system_name, pos
             mx = (pos[0] + self.mover.width + self.mover.x) / 2.0
             my = self.mover.y + self.mover.height/2.0 + 1
             self.path.extend([mx,my])
@@ -2240,7 +2126,7 @@ class MoverDisplay(Tkinter.Toplevel):
         self.state_display = None
         self.after_mover_display_id = None
 
-        self.status_text = "" #self.format_mover_status(self.get_mover_status())
+        self.status_text = self.format_mover_status(self.get_mover_status())
 
         #When the window is closed, we have some things to cleanup.
         self.bind('<Destroy>', self.window_killed)
@@ -2263,15 +2149,10 @@ class MoverDisplay(Tkinter.Toplevel):
         if mover:
             self.mover_name = copy.copy(mover.name)  # mover31@stken
             self.title(self.mover_name) #Update the title with mover name
-
+                        
             self.system_name = self.mover_name.split("@")[1]
-            self.csc = get_csc(self.system_name)
-
-            short_mover_name = self.mover_name.split("@")[0]
-            mover_name = short_mover_name + ".mover" #mover31.mover
-            self.mc = mover_client.MoverClient(self.csc, mover_name)
-
-            self.transaction_ids = []
+            csc_address = copy.copy(mover.display.csc_dict[self.system_name].server_address)
+            self.csc = configuration_client.ConfigurationClient(csc_address)
             
     def window_killed(self, event):
         #This is a callback function that must take as arguments self and
@@ -2284,19 +2165,6 @@ class MoverDisplay(Tkinter.Toplevel):
         #Clear this to avoid a cyclic reference.
         self.mover_name = ""
         self.system_name = ""
-
-        #Make sure to close any open file desctiptors.
-        try:
-            del self.csc
-        except AttributeError:
-            pass
-        self.csc = None
-        try:
-            del self.mc
-        except AttributeError:
-            pass
-        self.mc = None
-        
 
     def draw(self):
 
@@ -2322,88 +2190,51 @@ class MoverDisplay(Tkinter.Toplevel):
         try:
             self.state_display.destroy()
             self.state_display = None
+        #except AttributeError:
+        #    pass
         except Tkinter.TclError:
             pass
 
-    #Wrapper for generic_client.send_deferred().
-    def send_mover_status_request(self):
-        if self.mc:
-            txn_id = self.mc.u.send_deferred({'work':"status"},
-                                             self.mc.server_address)
-            self.transaction_ids.append(txn_id)
+    def get_mover_status(self):
+        #Find out information about the mover.  self.mover.name must be
+        # a string of the format like: mover31@stken
+        mover_name, system_name = tuple(self.mover_name.split("@"))
+        mover_name = mover_name + ".mover"
+        mov = mover_client.MoverClient(self.csc, mover_name)
+        status = mov.status(rcv_timeout=5, tries=1)
 
-    #Wrapper for generic_client.recv_deferred().
-    def receive_mover_status_request(self, timeout):
-        if self.mc:
-            if self.transaction_ids:
-                try:
-                    status = self.mc.u.recv_deferred(self.transaction_ids,
-                                                     timeout)
-                except (socket.error, socket.herror, socket.gaierror), msg:
-                    status = {'status' : (e_errors.NET_ERROR, str(msg))}
-                except (e_errors.EnstoreError), msg:
-                    status = {'status' : (msg.type, str(msg))}
-                                          
-                #In case of timeout, set the state to Unknown.
-                if status.get('state', None) == None:
-                    status['state'] = "Unknown"
-                    
-                return status
-
-            #Will get here the first time called from update_status().
-            return None
-
-        #Should never get here.
-        return None
+        #In case of timeout, set the state to Unknown.
+        if status.get('state', None) == None:
+            status['state'] = "Unknown"
+        
+        return status
 
     def format_mover_status(self, status_dict):
-        if status_dict == None:
-            return ""
-        else:
-            order = status_dict.keys()
-            order.sort()
-            msg = ""
-            for item in order:
-                msg = msg + "%s: %s\n" % (item,
-                                          pprint.pformat(status_dict[item]))
-            return msg
+        order = status_dict.keys()
+        order.sort()
+        msg = ""
+        for item in order:
+            msg = msg + "%s: %s\n" % (item, pprint.pformat(status_dict[item]))
+        return msg
 
     def update_status(self):
-        ## We want to separate the sending and receiving of these requests
-        ## and answers.  Otherwise, while waiting for the response, the
-        ## display is not updating, which we want it to continue doing.
+        status = self.get_mover_status()
+        self.status_text = self.format_mover_status(status)
         
-        #Get any pending status updates.
-        status = self.receive_mover_status_request(0.0)
-        if status:
-            self.status_text = self.format_mover_status(status)
+        if status['state'] in ['ERROR']:
+            self.state_color = colors('state_error_color')
+            self.mover_color = colors('mover_error_color')
+        elif status['state'] in ['OFFLINE']:
+            self.state_color = colors('state_offline_color')
+            self.mover_color = colors('mover_offline_color')
+        elif status['state'] in ['IDLE', 'Unknown']:
+            self.state_color = colors('state_idle_color')
+            self.mover_color = colors('mover_stable_color')
+        else:
+            self.state_color = colors('state_stable_color')
+            self.mover_color = colors('mover_stable_color')
 
-            if status['state'] in ['ERROR']:
-                self.state_color = colors('state_error_color')
-                self.mover_color = colors('mover_error_color')
-            elif status['state'] in ['OFFLINE']:
-                self.state_color = colors('state_offline_color')
-                self.mover_color = colors('mover_offline_color')
-            elif status['state'] in ['IDLE']:
-                self.state_color = colors('state_idle_color')
-                self.mover_color = colors('mover_stable_color')
-            elif status['state'] in ['Unknown']:
-                if hasattr(self, 'state_color'):
-                    self.state_color = colors('state_unknown_color')
-                    self.mover_color = colors('mover_unknown_color')
-                else:
-                    #We get here in the first call from __init__().
-                    self.state_color = colors('state_idle_color')
-                    self.mover_color = colors('mover_stable_color')
-            else:
-                self.state_color = colors('state_stable_color')
-                self.mover_color = colors('mover_stable_color')
-
-            self.draw()
-
-        #Send another status update request.
-        self.transactions_ids = []
-        self.send_mover_status_request()
+        self.draw()
         
         #Reset the time for 5 seconds.
         self.after_mover_display_id = self.after(MOVER_DISPLAY_TIME,
@@ -2475,7 +2306,7 @@ class Column:
 
     def add_seq_item(self, item_name):
         i = 0
-
+        
         while self.item_positions.has_key(i):
             i = i + 1
 
@@ -2522,6 +2353,8 @@ class Display(Tkinter.Canvas):
         self.system_name = system_name
         self.library_colors = entvrc_info.get('library_colors', {})
         self.client_colors = entvrc_info.get('client_colors', {})
+
+        self.csc_dict = {}
 
         #Only call Tkinter.Canvas.__init__() on the first time through.
         if not reinited:
@@ -2670,7 +2503,7 @@ class Display(Tkinter.Canvas):
 
         Trace.trace(6, "Finishing action()")
                                                  
-    def resize(self, event=None):
+    def resize(self, event):
 
         Trace.trace(6, "Starting resize()")
         
@@ -3193,28 +3026,18 @@ class Display(Tkinter.Canvas):
     def create_movers(self, mover_names):
 
         Trace.trace(6, "Starting create_movers()")
-
-        #Determine which mover names in the list are new.
-        new_mover_names = []
-        for mover_name in mover_names:
-            if not self.get_mover_position(mover_name):
-                new_mover_names.append(mover_name)
         
-        #Shorten the number of new movers.
-        N = len(new_mover_names)
+        #Shorten the number of movers.
+        N = len(mover_names)
 
         #Make sure to reserve the movers' positions before creating them.
-        # Be sure to take into account any previously created movers.
-        self.reserve_mover_columns(N + self.get_mover_count())
+        self.reserve_mover_columns(N)
 
-        #Create a Mover class instance to represent each new mover.
+        #Create a Mover class instance to represent each mover.
         for k in range(N):
-            mover_name = new_mover_names[k]
-            #If the mover already exists, skip creating it.
-            if not self.movers.has_key(mover_name):
-                column, row = self.add_mover_position(mover_name)
-                self.movers[mover_name] = Mover(mover_name, self,
-                                                index=row, N=column)
+            mover_name = mover_names[k]
+            self.add_mover_position(mover_name)
+            self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
 
         Trace.trace(6, "Finishing create_movers()")
 
@@ -3260,9 +3083,8 @@ class Display(Tkinter.Canvas):
     def add_client_position(self, client_name):
         # searching the existing columns for the client's name.
         for i in range(len(self.client_positions) + 1)[1:]:
-            i2 = self.client_positions[i].get_index(client_name)
-            if i2:
-                return (i, i2)
+            if self.client_positions[i].has_item(client_name):
+                return
 
         #The variable search_order is a list of two-tuples, where each
         # two-tuple consits of the number in each column and the index number
@@ -3279,7 +3101,7 @@ class Display(Tkinter.Canvas):
             if rtn: #Filled the column, search the next one.
                 continue
             #Otherwise return success.
-            return (i, self.client_positions[i].get_index(client_name))
+            return
         else:
             #Need to add another column.
             index = len(self.client_positions) + 1
@@ -3287,7 +3109,7 @@ class Display(Tkinter.Canvas):
             #The following line is temporary
             self.client_positions[index].add_item(client_name)
 
-            return (index, self.client_positions[index].get_index(client_name))
+        return
 
     def del_client_position(self, client_name):
         #Start searching the existing columns for the existing slot.
@@ -3327,23 +3149,24 @@ class Display(Tkinter.Canvas):
     def add_mover_position(self, mover_name):
         #Start searching the existing columns for the movers's name.
         for i in range(len(self.mover_positions) + 1)[1:]:
-            i2 = self.mover_positions[i].get_index(mover_name)
-            if i2 != None:
-                return (i, i2) #Aleady existed, return existing location.
+            if self.mover_positions[i].has_item(mover_name):
+                return
 
         for i in range(len(self.mover_positions) + 1)[1:]:
             rtn = self.mover_positions[i].add_item(mover_name)
             if rtn: #Filled the column, search the next one.
                 continue
             #Otherwise return success.
-            return (i, self.mover_positions[i].get_index(mover_name))
+            #return
+            break
         else:
             #Need to add another column.
             index = len(self.mover_positions) + 1
             self.mover_positions[index] = Column(index, MOVERS)
             self.mover_positions[index].add_item(mover_name)
+            #self.reposition_canvas()
 
-            return (index, self.mover_positions[index].get_index(mover_name))
+        return
 
     def del_mover_position(self, mover_name):
         #Start searching the existing columns for the existing slot.
@@ -3414,8 +3237,7 @@ class Display(Tkinter.Canvas):
         #Create the nessecary columns and set the limit on the number of
         # movers allowed in each of them.
         for i in range(1, columns + 1):
-            if not self.mover_positions.has_key(i):
-                self.mover_positions[i] = Column(i, MOVERS)
+            self.mover_positions[i] = Column(i, MOVERS)
             self.mover_positions[i].set_max_limit(limits[i])
 
     def get_mover_column_count(self):
@@ -3431,7 +3253,7 @@ class Display(Tkinter.Canvas):
     def get_mover_coordinates(self, position):
         if type(position) != types.TupleType and len(position) != 2:
             return None
-
+        
         name = self.get_mover_name(position)
 
         mover = self.movers.get(name)
@@ -3458,8 +3280,6 @@ class Display(Tkinter.Canvas):
         self.title_animation = Title(title, self)
 
     def csc_command(self, command_list):
-        return
-    """
         try:
             csc = configuration_client.ConfigurationClient((command_list[1],
                                                          int(command_list[2])))
@@ -3481,7 +3301,6 @@ class Display(Tkinter.Canvas):
             exc, msg, tb = sys.exc_info()
             traceback.print_exception(exc, msg, tb)
             del tb  #Avoid resource leak.
-    """
 
     def client_command(self, command_list):
         ## For now, don't draw waiting clients (there are just
@@ -3539,7 +3358,7 @@ class Display(Tkinter.Canvas):
             if not client: ## New client, we must add it
                 old_number = self.get_client_column_count()
 
-                column, row = self.add_client_position(client_name)
+                self.add_client_position(client_name)
                 client = Client(client_name, self)
                 self.clients[client_name] = client
 
@@ -3742,6 +3561,7 @@ class Display(Tkinter.Canvas):
             connection.client.last_activity_time = time.time()
 
     def movers_command(self, command_list):
+        self.number_of_movers = len(command_list[1:])
         self.create_movers(command_list[1:])
 
     def newconfig_command(self, command_list):
@@ -3795,7 +3615,7 @@ class Display(Tkinter.Canvas):
                  'movers' : {'function':movers_command, 'length':2},
                  'newconfigfile' : {'function':newconfig_command, 'length':1}}
 
-    def get_valid_command(self):
+    def get_valid_command(self):  #, command):
 
         command = message_queue.get_queue(self.system_name)
         if not command:
@@ -3805,32 +3625,27 @@ class Display(Tkinter.Canvas):
         words = string.split(command)
 
         if not words: #input was blank, nothing to do!
-            return ""
+            return ""  #[]
 
         if words[0] not in self.comm_dict.keys():
-            return ""
+            return ""  #[]
 
         #Don't bother processing transfer messages if we are not keeping up.
         if words[0] in ["transfer"] and \
                message_queue.len_queue(self.system_name) > \
                max(20, (len(self.movers))):
-            return ""
+            return ""  #[]
 
         if len(words) < self.comm_dict[words[0]]['length']:
             Trace.trace(1, "Insufficent length for %s command." % (words[0],))
-            return ""
+            return ""  #[]
 
         if self.comm_dict[words[0]].get('mover_check', None) and \
            not self.movers.get(words[1]):
             #This is an error, a message from a mover we never heard of
-            #Trace.trace(1, "Don't recognize mover %s, continuing ...."
-            #            % words[1])
-
-            #Adding new mover.
-            self.create_movers([words[1]])
-            #Force the canvas to move everything around now that a mover
-            # has been added.
-            self.reposition_canvas(force=True)
+            Trace.trace(1, "Don't recognize mover %s, continuing ...."
+                        % words[1])
+            return ""  #[]
 
         return command
 
@@ -3893,7 +3708,7 @@ class Display(Tkinter.Canvas):
 
         self._join_thread(waitall = True)
 
-        #Undraw the display before deleting the objects (in the lists).
+        #Undraw the diplay before deleting the objects (in the lists).
         try:
             if self.winfo_exists():
                 self.undraw()
@@ -3936,6 +3751,15 @@ class Display(Tkinter.Canvas):
         self.movers = {}
         self.clients = {}
         self.connections = {}
+        
+        #When a reinitialization occurs, there is a resource leak.
+        for key in self.csc_dict.keys():
+            try:
+                del self.csc_dict[key]
+            except (AttributeError, KeyError):
+                pass
+
+        self.csc_dict = {}
 
         #Perform the following two deletes explicitly to avoid obnoxious
         # tkinter warning messages printed to the terminal when using

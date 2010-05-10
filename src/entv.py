@@ -13,23 +13,25 @@ import socket
 import select
 import string
 import time
+#import thread
 import threading
+#import re
 import errno
 import gc, inspect
 import types
 import pprint
 import signal
 import resource
-import stat
-import math
 
 
 #enstore imports
 import enstore_display
 import configuration_client
 import enstore_functions2
+#import enstore_constants
 import enstore_erc_functions
 import e_errors
+#import mover_client
 import event_relay_messages
 import event_relay_client
 import Trace
@@ -77,12 +79,6 @@ old_len  = 0
 
 #For callbacks called from the master window.  This is the list of canvases.
 displays = []
-#For callbacks called from the master window.  This is the global name of
-# the master window frame.
-master_windowframe = None
-
-#Trace.message level for generating a messages file for replaying later.
-MESSAGES_LEVEL = 10
 
 #########################################################################
 # common support functions
@@ -95,9 +91,6 @@ def entv_client_version():
     entv_file = globals().get('__file__', "")
     if entv_file: version_string = version_string + entv_file
     return version_string
-
-#Get the ConfigurationClient object for the default enstore system.
-get_csc = enstore_display.get_csc
 
 #Re-exec() entv.  It is hosed.
 def restart_entv():
@@ -234,6 +227,109 @@ def total_memory():
 
     return long(total_mem_in_pages) * long(page_size)
 
+
+def get_all_systems(csc, intf=None): #, system_name=None):
+    #global _system_csc
+    #if _system_csc:  #used cached version.
+    #    return _system_csc
+
+    #If intf is not given and the cached version is already known not to
+    # exist throw an error an abort.
+    if not intf:
+        try:
+            sys.stderr.write("Unknown error.  Aborting.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
+        sys.exit(1)
+
+    #If running on 'canned' version, don't bother with configuration server.
+    if intf.movers_file:
+        return None
+    
+    #Get the list of all config servers and remove the 'status' element.
+    config_servers = csc.get('known_config_servers', {})
+    if config_servers['status'][0] == e_errors.OK:
+        del config_servers['status']
+    else:
+        return None
+
+    if intf.args:
+        for system_name in config_servers.keys():
+            if system_name not in intf.args:
+                del config_servers[system_name]
+
+        if len(config_servers) == 0:
+            try:
+                sys.stderr.write("Unknown enstore systems.  Aborting.\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+    else:
+        config_host = enstore_functions2.default_host()
+
+        #Based on the config file determine which config server was specified.
+        for name in config_servers.keys():
+            if len(config_host) >= len(name) and \
+                   config_host[:len(name)] == name:
+                pass
+            else:
+                del config_servers[name]
+
+    #Special section for test systems that are not in their own
+    # config file's 'known_config_servers' section.
+    if not config_servers:
+        i = 0
+        while i < 3:
+            try:
+                ip = socket.gethostbyname(config_host)
+                addr_info = socket.gethostbyaddr(ip)
+                break
+            except socket.error:
+                time.sleep(1)
+                continue
+        else:
+            try:
+                sys.stderr.write("Unable to obtain ip information.  Aborting.\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+        if addr_info[1] != []:
+            short_name = addr_info[1][0]
+        else:
+            short_name = addr_info[0].split(".")[0]
+        config_servers[short_name] = (ip,
+                                      enstore_functions2.default_port())
+        
+    return config_servers
+
+def get_system_name(intf, cscs_info):
+    
+    if intf.movers_file:
+        return "local_host"
+
+    if len(intf.args) > 1:
+        #If more than one system is specified, return default text.
+        return "Enstore: %s" % intf.args
+
+    if len(cscs_info.keys()) == 0:
+        try:
+            sys.stderr.write("Config not found.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
+        sys.exit(1)
+
+    elif len(cscs_info.keys()) == 1:
+        return cscs_info.keys()[0]
+
+    else:
+        return "Enstore: %s" % intf.args
+        
+
+
 #########################################################################
 # .entrc file related functions
 #########################################################################
@@ -259,23 +355,45 @@ def get_entvrc_file():
 
     return lines
 
-def get_entvrc():
+def get_entvrc(csc, intf):
 
     library_colors = {}
     client_colors = {}
-    system_info = {}
+    found_server = False
 
     try:
-        csc = get_csc()
-        config_servers = csc.get('known_config_servers', {})
-        if not e_errors.is_ok(config_servers):
-            config_servers = {}
+        if intf.movers_file:
+            address = "localhost"
+        elif intf.args:
+            # get a configuration server
+            #default_config_host = enstore_functions2.default_host()
+            #default_config_port = enstore_functions2.default_port()
+            #csc = configuration_client.ConfigurationClient(
+            #    (default_config_host, default_config_port))
+
+            config_servers = csc.get('known_config_servers', {})
+
+            #Based on the config file determine which config server was
+            # specified.
+            for name in config_servers.keys():
+                if name == intf.args[0]:
+                    address = config_servers[name][0]
+                    break
+                elif len(config_servers[name][0]) >= len(intf.args[0]) and \
+                   config_servers[name][0][len(intf.args[0]):] == intf.args[0]:
+                    address = config_servers[name][0]
+                    break
+            else:
+                #Set this to the last address we were using.  This can happen
+                #if the local machines configuration names a system
+                # in 'known_config_hosts' differently than what the
+                # target system names itself in it own 'known_config_hosts'
+                # section of the configuration.
+                address = csc.server_address[0]
         else:
-            try:
-                del config_servers['status']
-            except KeyError:
-                pass
-        
+            #We need a default.
+            address = os.environ['ENSTORE_CONFIG_HOST']
+
         #Only need to grab this once.
         entvrc_data = get_entvrc_file()
 
@@ -311,49 +429,44 @@ def get_entvrc():
                     pass
                 continue
 
-            #We have a line we belive contains information about an Enstore
-            # system.
-            try:
-                geometry = words[1]
-            except IndexError:
-                geometry = "1200x1600+0+0"
-            try:
-                background = words[2]
-            except IndexError:
-                background = DEFAULT_BG_COLOR
-            try:
-                if words[3] == "animate":
+            #Check if the hostname matches that of the current
+            # configuration server.
+            if not found_server and \
+                   socket.getfqdn(words[0]) == socket.getfqdn(address):
+                try:
+                    geometry = words[1]
+                except IndexError:
+                    geometry = "1200x1600+0+0"
+                try:
+                    background = words[2]
+                except IndexError:
+                    background = DEFAULT_BG_COLOR
+                try:
+                    if words[3] == "animate":
+                        animate = 1
+                    else:
+                        animate = 0
+                except IndexError:
                     animate = 1
-                else:
-                    animate = 0
-            except IndexError:
-                animate = 1
+                found_server = True
 
-            for system_name, csc_addr in config_servers.items():
-                if socket.getfqdn(words[0]) == socket.getfqdn(csc_addr[0]):
-                    enstore_system = system_name
-                    break
+        if not found_server:
+            #If it wasn't found raise this to set the defaults.
+            if entvrc_data and len(words):
+                raise IndexError(words[0])
             else:
-                enstore_system = None
-
-            try:
-                system_info[words[0]] = {'config_host' : words[0],
-                                         'geometry' : geometry,
-                                         'background' : background, #color
-                                         'animate' : animate,
-                                         'system_name' : enstore_system,
-                                         }
-            except (IndexError, KeyError, AttributeError, ValueError,
-                    TypeError):
-                pass
-
+                raise IndexError("Unknown")
     except (IOError, IndexError):
-        pass
+        geometry = "1200x1600+0+0"
+        background = DEFAULT_BG_COLOR
+        animate = 1
 
     rtn_dict = {}
+    rtn_dict['geometry'] = geometry
+    rtn_dict['background'] = background
+    rtn_dict['animate'] = animate
     rtn_dict['library_colors'] = library_colors
     rtn_dict['client_colors'] = client_colors
-    rtn_dict['system_info'] = system_info
 
     return rtn_dict
 
@@ -392,6 +505,7 @@ def set_entvrc(display, address):
         #Loop through any existing data from the file.
         getfqdn = socket.getfqdn  #Speed up lookups.
         for line in data:
+            #t1 = time.time()
             #Split the line into its individual words.
             words = line.split()
 
@@ -410,6 +524,7 @@ def set_entvrc(display, address):
 
             #If this is the correct line to update; update it.
             elif getfqdn(words[0]) == csc_server_name:
+
                 #We can't assume a user that puts together there own
                 # .entvrc file will do it correctly.
                 try:
@@ -450,153 +565,141 @@ def set_entvrc(display, address):
                     out_fp=sys.stderr)
         pass #If the line isn't there to begin with don't change anything.
 
-#Return the system_info dictionary that correlates to the currently
-# configured system.  Takes the  Tk() instance object and the return
-# value from get_entvrc() as parameters.
-def get_system_info_from_entvrc(tk, entvrc_dict):
-    #If the number of enabled systems is one, set the geometry from its
-    # configuration information.  This allows a long running entv process
-    # to pick up new entvrc information with a reinitialization.
-    if systems_enabled_statistics(tk)[0] == 1:
-        #Create the default information.
-        entvrc_info = {'geometry' : DEFAULT_GEOMETRY,
-                       'background' : DEFAULT_BG_COLOR,
-                       'animate' : 1,
-                       }
-        for system_name in configurated_systems(tk):
-            if is_system_enabled(system_name, tk):
-                for config_host, tmp_entvrc_info in \
-                        entvrc_dict.get('system_info', {}).items():
-                    if system_name == tmp_entvrc_info['system_name']:
-                        entvrc_info = tmp_entvrc_info
-                        break
-    else:
-        #We either have 0 or more than 1 enstore system displayed in the
-        # window.  Set some values.
-        entvrc_info = {'background' : DEFAULT_BG_COLOR,
-                       'animate' : 1,
-                       }
-        if tk.state() == "normal":
-            entvrc_info['geometry'] = tk.geometry()
-        else:
-            entvrc_info['geometry'] = DEFAULT_GEOMETRY
-
-    return entvrc_info
-
 #########################################################################
 # entv functions
 #########################################################################
-
-ignored_movers = {} #cache for ignore_mover_by_library
-#Return True if the mover, which must have the form name.mover@system should
-# be dropped.  False otherwise.
-def ignore_mover_by_library(mover_name, intf, mover_config=None):
-    global ignored_movers
-    
-    if intf and intf.messages_file:
-        #Let --generate-messages-file filter out the contents for us
-        # on creation of the messages file.
-        return False
-
-    #If we have already cached this movers library information.
-    if mover_name in ignored_movers.keys():
-        return True
-
-    #Obtain the mover name that will be in the configuration.
-    alt_mover_name, enstore_system = mover_name.split("@")
-    short_mover_name = alt_mover_name.split(".")[0]
-    full_mover_name = short_mover_name + ".mover"
-
-    #Get the mover's configuration information.
-    csc = get_csc(enstore_system)
-    if mover_config == None:
-        mover_config_info = csc.get(full_mover_name, 3, 3)
-        if not e_errors.is_ok(mover_config_info):
-            #One known source of getting here is if a mover is scheduled
-            # down then removed from the configuration.  Since it is still
-            # in the scheduled down list it is included in the response
-            # from the inquisitor, but csc.get() will fail.
-            message = "Failed to get %s (%s) configuration information: %s" % \
-                 (full_mover_name, enstore_system, mover_config_info['status'])
-            Trace.trace(1, message, out_fp=sys.stderr)
-            return False
-    else:
-        mover_config_info = mover_config
-
-    #Extract the library information.  There might be more than one, so
-    # lets put everything into a list.
-    if type(mover_config_info['library']) == types.ListType:
-        libraries = mover_config_info['library']
-    else:
-        libraries = [mover_config_info['library']]
-
-    #Split the comma seperated libraries to ignore and put them into
-    # their fullname form.
-    skip_library_list = string.split(intf.dont_show, ",")
-    #Get the libraries in the current configuration.
-    libraries_config_info = csc.get_library_managers2(3, 3)
-    valid_libraries = []
-    for lib in libraries_config_info:
-        valid_libraries.append(lib['library_manager'])
-
-    for library in libraries:
-        use_library = library[:-16] #remove trailing ".library_manager"
-        if use_library not in valid_libraries:
-            # We found a library that is not in the configuration.
-            return True
-        if use_library not in skip_library_list:
-            # We found a library not in this movers list of libraries.
-            #
-            # We don't ingore a mover if only one library is ignored.  If
-            # a test library is ignored, we don't want to ignore any
-            # production movers that have the production and test libraries
-            # in their configuration.
-            return False
-
-    #cache the miss
-    ignored_movers["%s@%s" % (full_mover_name, enstore_system)] = libraries
-    return True
 
 #The parameters fullnames and with_system determine what strings are
 # appended to each mover name.  Assume short mover name test01.  This
 # is what would be returned if fullnames and with_system are python false.
 #fullnames true -> test01.mover
 #with_system true -> test01@test01
-def get_mover_list(system_name, intf, fullnames=None, with_system=None):
+def get_mover_list(intf, csc, fullnames=None, with_system=None):
 
-    if intf and intf.messages_file:
-        #We build the mover list as we go in this case.
+    #If a 'canned' (aka recorded) entv is running, read the movers file
+    # for the list of movers.
+    if intf.movers_file:
+        try:
+            mf_fp = open(intf.movers_file, "r")
+            data = mf_fp.readlines()
+            for i in range(len(data)):
+                data[i] = data[i][:-1]
+                #If fullnames is python true, then make sure that the
+                # entire ".mover" appended names (as they appears in the
+                # configuration file) are returned.
+                if fullnames:
+                    data[i] = data[i] + ".mover"
+                if with_system:
+                    data[i] = data[i] + "@" + DEFAULT_SYSTEM_NAME
+            mf_fp.close()
+            data.sort()
+            return data  #Return from here on success.
+        except (OSError, IOError), msg:
+            print str(msg)
+            sys.exit(1)
+    elif intf.messages_file:
         return []
 
-    #Get the list of movers for this enstore system.
-    csc = get_csc(system_name)
-    if csc == None or csc.server_address == None:
+    if csc.new_config_obj.is_caching_enabled():
+        #If necessary, cache the entire mover_list.
+        config = csc.dump_and_save()
+        enstore_system = csc.get_enstore_system(3, 3)
+
+        #Get the list of library managers.
+        lm_list = []
+        for key in config.keys():
+            if not enstore_functions2.is_library_manager(key):
+                continue
+
+            lm_name = key.split(".")[0]
+            if lm_name not in string.split(intf.dont_show, ","):
+                #Store the full library manager name.
+                # i.e. 'name.library_manager' not just 'name'
+                lm_list.append(key)
+
+        #Get the list of movers.
         mover_list = []
-    else:
-        mover_list = csc.get_movers2(None, 3, 3)
+        for key in config.keys():
+            if not enstore_functions2.is_mover(key):
+                continue
 
-    allowed_mover_list = []
-    for mover_dict in mover_list:
-        #mover_dict['name'] is the fullname; mover_dict['mover'] would
-        # contain the short mover name if we wanted it.
-        short_name = mover_dict['mover']
-        #full_name = mover_dict['name']
-        entv_full_mover_name = "%s@%s" % (mover_dict['name'], system_name)
-
-        #Determine if it is allowed to be shone.
-        if not ignore_mover_by_library(entv_full_mover_name, intf,
-                                       mover_config=mover_dict):
-            #Return the format of the mover name with the requested format.
-            use_mover_name = short_name
+            #Create the type of name the user is looking for.
             if fullnames:
-                use_mover_name = "%s.mover" % (use_mover_name,)
+                m_name = key
+            else:
+                m_name = key.split(".")[0]  #Get the short name.
             if with_system:
-                use_mover_name = "%s@%s" % (use_mover_name, system_name)
-            allowed_mover_list.append(use_mover_name)
+                m_name = m_name + "@" + enstore_system
 
-    allowed_mover_list.sort()
-    return allowed_mover_list
-    
+            #First obtain the library manager name the mover is
+            # associated with.
+            if type(config[key]['library']) == types.ListType:
+                lm_name = config[key]['library'][0]
+            else:
+                lm_name = config[key]['library']
+            #If the mover's library manager is on the don't show list,
+            # do not include this in the list of things to do.
+            if lm_name not in lm_list:
+                continue
+
+            #Append the request (type of) mover name to the list.
+            mover_list.append(m_name)
+
+        mover_list.sort()
+        return mover_list
+
+    #If necessary, do this the long way without using the cached config.
+
+    #Get the list of library managers.
+    lm_dict = csc.get_library_managers()
+    lm_list = lm_dict.keys()
+
+    #If the user selected to hide some movers, remove their LM from the list.
+    for ds_lm_name in string.split(intf.dont_show, ","):
+        if ds_lm_name in lm_list:
+            del lm_list[lm_list.index(ds_lm_name)]
+
+    #For each LM that should have its movers displayed, go through and
+    # get each mover's name.
+    movers = []
+    for lm in lm_list:
+        try:
+            mover_list = csc.get_movers(lm_dict[lm]['name'])
+        except (TypeError, NameError):
+            #try:
+            #    sys.stderr.write(str(lm_dict[lm]))
+            #    sys.stderr.flush()
+            #except IOError:
+            #    pass
+            continue
+
+        try:
+            for mover in mover_list:
+                #If fullnames is python false, then make sure that the
+                # ".mover" appended names (as they appears in the
+                # configuration file) are truncated before being returned.
+                if not fullnames:
+                    mover_name = mover['mover'][:-6]
+                else:
+                    mover_name = mover['mover']
+
+                #If the mover name is not in the list of mover names; add it.
+                # If it already is, then don't add it another time.  This
+                # can happen for movers belonging to multiple libraries.
+                if mover_name not in movers:
+                    movers = movers + [mover_name,]
+        except (ValueError, TypeError, IndexError, KeyError):
+            msg = sys.exc_info()[1]
+            Trace.trace(1, "No movers found: %s" % str(msg))
+
+    movers.sort()
+    if with_system:
+        #The following line is rejected by mylint.py.  This would be the
+        # preferable way to do this.
+        #movers = map(lambda m: m + "@" + enstore_system, movers)
+        for i in range(len(movers)):
+            movers[i] = movers[i] + "@" + enstore_system
+    return movers
 
 #Takes the name of the mover and the status dictionary.  Returns the
 # list of display commands to update the display to show the mover in
@@ -607,15 +710,9 @@ def handle_status(mover, status):
         outage_dict = status.get('outage', {})
         send_error_list = {}  #Really a dictionary.
         for mover_name, outage in outage_dict.items():
-            if not enstore_functions2.is_mover(mover_name):
-                #This isn't a scheduled down mover.
-                continue
             send_error_list[mover_name] = "error %s %s" % \
                                           (mover_name.split(".")[0], outage)
         for mover_name, reason in offline_dict.items():
-            if not enstore_functions2.is_mover(mover_name):
-                #This isn't a scheduled down mover.
-                continue
             send_error_list[mover_name] = "error %s %s" % \
                                           (mover_name.split(".")[0], reason)
         return send_error_list.values()
@@ -657,19 +754,33 @@ def handle_status(mover, status):
 
 #Returns a list of the display panels.  If the empty list is returned,
 # then an error occured and the caller should try again later.
-def make_display_panels(master, entvrc_dict,
+def make_display_panels(master, entvrc_dict, cscs, cscs_info,
                         mover_display, intf):
     #Set the size of the window.
     set_geometry(master, entvrc_dict)
 
+    #Determine the size of each Enstore systems panel in the display.
+    size = entvrc_dict['geometry'].split("+")[0]
+    sizes = size.split("x")
+    if len(cscs_info) == 0:
+        width = int(sizes[0]) # --messages-file
+    else:
+        width = int(sizes[0]) / len(cscs_info)
+    height = int(sizes[1])
+
     display_list = []
-    for system_name in configurated_systems(master):
-        if not is_system_enabled(system_name, master):
-            continue
+    for system_name, csc_addr in cscs_info.items():
+        Trace.trace(1, "creating display for %s" % (system_name,))
 
         try:
-            new_display_panel = make_display_panel(master, system_name,
-                                                   mover_display, intf)
+            display = enstore_display.Display(entvrc_dict, system_name,
+                                              master = master,
+                                              width = width,
+                                              height = height,
+                                              mover_display = mover_display,
+                            background = entvrc_dict.get('background', None))
+            display.pack(side = Tkinter.LEFT, fill = Tkinter.BOTH,
+                         expand = Tkinter.YES)
         except:
             #Note: KeyboardInterrupt and SystemExit are handled below.
             
@@ -688,6 +799,7 @@ def make_display_panels(master, entvrc_dict,
             else:
                 import traceback
                 traceback.print_tb(sys.exc_info()[2])
+                print "%s: %s" % (str(exc), str(msg))
                 #Report on the error.
                 try:
                     message = "Destroying display failed unexpectedly: (%s, %s)\n"
@@ -699,160 +811,42 @@ def make_display_panels(master, entvrc_dict,
                 #Give up.  By return an empty list we tell the caller to try
                 # again later.
                 return []
+        
+        Trace.trace(1, "created display for %s" % (system_name,))
 
-        if new_display_panel:
-            display_list.append(new_display_panel)
+        #This function can be called for 'canned' entv too.
+        # This is because a None value is inserted into the
+        # cscs list.
+        display.handle_command("csc %s %s" % csc_addr)
+
+        if not intf.messages_file:
+            #Obtain the list of all movers.
+            mover_list = get_mover_list(intf, cscs[system_name], 0, 1)
+            mover_list = ["movers"] + mover_list
+            movers_command = string.join(mover_list, " ")
+
+            #Inform the display the names of all the movers.
+            display.handle_command(movers_command)
+
+        #If we want a clean commands file, we need to set the inital movers
+        # state to idle.
+        elif intf.generate_messages_file:
+            for mover in display.movers.keys():
+                idle_command = string.join(["state", mover, "IDLE"], " ")
+                display.handle_command(idle_command)
+
+
+        display_list.append(display)
+
+        Trace.trace(1, "created display for %s" % (system_name,))
         
     return display_list
 
-#Return a display panel object.  On error raise an exception.
-def make_display_panel(master, system_name,
-                       mover_display, intf, entvrc_dict=None):
-    Trace.trace(1, "creating display for %s" % (system_name,))
-
-    #Get the entvrc file info.
-    if not entvrc_dict:
-        entvrc_dict = get_entvrc()
-
-    #Determine the size of the panel in the display.
-    if intf and intf.messages_file:
-        #When --messages-file is used.
-
-        if master.state() == "normal":
-            #The four states are "normal", "iconic", "icon" and
-            # "withdrawn".
-            use_geometry = master.geometry()
-        else:
-            use_geometry = DEFAULT_GEOMETRY
-
-        entvrc_info = {'geometry' : use_geometry,
-                       'background' : DEFAULT_BG_COLOR,
-                       'animate' : 1,
-                       }
-    else:
-        #Extract the system_info dictionary that correlates to the currently
-        # configured system.
-        entvrc_info = get_system_info_from_entvrc(master, entvrc_dict)
-
-        use_geometry = entvrc_info.get('geometry', DEFAULT_GEOMETRY)
-
-    size = use_geometry.split("+")[0]
-    sizes = size.split("x")
-    #Determine width, which is width of window divided by number of systems
-    # to display.
-    count = 0
-    for value in master.enstore_systems_enabled:
-        if value:
-            count = count + 1
-    width = int(sizes[0]) / count
-    #Now determine the height.
-    height = int(sizes[1])
-
-    #Create the object that will be drawn in the window.
-    display = enstore_display.Display(entvrc_dict, system_name,
-                                      master = master,
-                                      width = width,
-                                      height = height,
-                                      mover_display = mover_display,
-                         background = entvrc_info.get('background', None))
-    display.pack(side = Tkinter.LEFT, fill = Tkinter.BOTH,
-                 expand = Tkinter.YES)
-
-    Trace.trace(1, "created display for %s" % (system_name,))
-
-    if not intf or not intf.messages_file:
-        #Only pass the csc info if we are displaying live info,
-        # skip it if replaying old events.
-        csc = get_csc(system_name)
-        if csc == None or csc.server_address == None:
-            print "rrrrrrrrrrrrrrrrrrrrr", system_name
-        else:
-            display.handle_command("csc %s %s" % csc.server_address)
-
-        #Obtain the list of all movers.
-        mover_list = get_mover_list(system_name, intf, 0, 1)
-        mover_list = ["movers"] + mover_list
-        movers_command = string.join(mover_list, " ")
-
-        #Inform the display the names of all the movers.
-        display.handle_command(movers_command)
-        #Be sure to include this for proper replay.
-        if intf and intf.generate_messages_file:
-            Trace.message(MESSAGES_LEVEL,
-                          string.join((time.ctime(),
-                                       movers_command), " "))
-
-    #If we want a clean commands file, we need to set the inital movers
-    # state to idle.
-    elif intf and intf.generate_messages_file:
-        for mover in display.movers.keys():
-            idle_command = string.join(["state", mover, "IDLE"], " ")
-            display.handle_command(idle_command)
-
-    Trace.trace(1, "created display for %s" % (system_name,))
-
-    return display
-
-#Return true, means that this is a reinit and that the caller should
-# make new display panels and keep working.  Return false, indicates
-# that entv should proceed to exit cleanly.
-def destroy_display_panels():
-    global displays
-
-    continue_working = 0
-    for display in displays:
-        #Determine if this is a reinitialization (True) or not (False).
-        continue_working = continue_working + display.attempt_reinit()
-
-        try:
-            destroy_display_panel(display)
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except Tkinter.TclError:
-            pass
-        except:
-            exc, msg = sys.exc_info()[:2]
-            import traceback
-            traceback.print_tb(sys.exc_info()[2])
-            #Report on the error.
-            try:
-                message = "Destroying display failed unexpectedly: (%s, %s)\n"
-                sys.stderr.write(message % (str(exc), str(msg)))
-                sys.stderr.flush()
-            except IOError:
-                pass
-    else:
-        if len(displays) == 0:
-            #The only way to get here is if one display is choosen in the
-            # drop down list and the user just deselected it.
-            continue_working = 1
-        
-    try:
-        del displays[:]
-    except:
-        displays = []
-    return continue_working
-
 def destroy_display_panel(display):
-
-    #We need to remove the associated detailed mover display window,
-    # if present.
-    if display.mover_display:
-        try:
-            display.mover_display.destroy()
-        except Tkinter.TclError:
-            #It might already be destroyed (i.e. window closed by user).
-            pass
-        try:
-            del display.mover_display
-        except AttributeError:
-            pass
-        display.mover_display = None
-    
     try:
-        
         display.cleanup_display()
         display.shutdown()
+        del display.mover_display
         #Forces cleanup of objects that would not happen otherwise.  As
         # part of the destroy call Tkinter does generate a Destroy event
         # that results in window_killed() being called.  Skipping a
@@ -868,6 +862,7 @@ def destroy_display_panel(display):
         exc, msg = sys.exc_info()[:2]
         import traceback
         traceback.print_tb(sys.exc_info()[2])
+        print "%s: %s" % (str(exc), str(msg))
         #Report on the error.
         try:
             message = "Destroying display failed unexpectedly: (%s, %s)\n"
@@ -875,6 +870,7 @@ def destroy_display_panel(display):
             sys.stderr.flush()
         except IOError:
             pass
+
 
 #########################################################################
 # The following functions start functions in new threads.
@@ -899,7 +895,7 @@ def __func_smt_wrapper(function, args):
         except IOError:
             pass
 
-def start_messages_thread(system_name, intf):
+def start_messages_thread(csc_addr, system_name, intf):
     global messages_threads
 
     __pychecker__ = "unusednames=i"
@@ -908,9 +904,14 @@ def start_messages_thread(system_name, intf):
         try:
             Trace.trace(1, "Creating thread for %s." % (system_name,))
             sys.stdout.flush()
+            #new_thread = threading.Thread(
+            #    target = handle_messages,
+            #    args = (csc_addr, system_name, intf),
+            #    name = system_name,
+            #    )
             new_thread = threading.Thread(
                 target = __func_smt_wrapper,
-                args = (handle_messages, (system_name, intf)),
+                args = (handle_messages, (csc_addr, system_name, intf)),
                 name = system_name,
                 )
             new_thread.start()
@@ -949,6 +950,10 @@ def start_messages_thread(system_name, intf):
             
     return
 
+#########################################################################
+# The following functions run in their own thread.
+#########################################################################
+
 def stop_messages_threads():
     global messages_threads
 
@@ -958,15 +963,9 @@ def stop_messages_threads():
         messages_threads[0].join(5) #Wait 5 seconds before giving up.
         del messages_threads[0]
 
-    del messages_threads[:]
     messages_threads = []
 
     return
-
-#########################################################################
-# The following functions run in their own thread.
-#########################################################################
-
 
 ##send_mover_request(), send_sched_request(), send_all_requests() and
 ## stop_waiting_all_requests() control obtaining status information from
@@ -1059,29 +1058,12 @@ def drop_stale_status_requests(send_request_dict, u):
 #handle_messages() reads event relay messages from the specified event
 # relay.  It is called within a new thread (one for each event relay).
 #
+#display: is an instance of the enstore_display.Display class.
+#event_relay_addr is a 2-tuple of ip/hostname and port number.
 #intf is an instance of the EntvInterface class.
-def handle_messages(system_name, intf):
-    #Use this like a lamda function inside handle_messages().
-    def should_stop(system_name):
-        global stop_now
-        global displays
-
-        if stop_now:
-            return True
-        for display in displays:
-            if display.system_name == system_name:
-                if display.stopped:
-                    #Found display, but it is supposed to be stopped.
-                    return True
-                else:
-                    return False
-        else:
-            #Did not find this enstore system in the list, return True
-            # to trigger thread exit.
-            return True
-
-        return False  #Should never get here.
-    #### End of should_stop().
+#def handle_messages(display, csc, intf):
+def handle_messages(csc_addr, system_name, intf):
+    global stop_now
 
     threading.currentThread().setName("MESSAGES")
 
@@ -1102,9 +1084,28 @@ def handle_messages(system_name, intf):
     if intf.messages_file:
         messages_file = open(intf.messages_file, "r")
         
-        last_timestamp = -1 #Used to space the commands in real time.
+        enstore_system = DEFAULT_SYSTEM_NAME
     else:
-        csc = get_csc(system_name)
+        if not csc_addr:
+            enstore_display.startup_lock.release()
+            return
+        if type(csc_addr) != types.TupleType or len(csc_addr) != 2:
+            enstore_display.startup_lock.release()  #Avoid resource leak.
+            return
+        
+        csc = configuration_client.ConfigurationClient(csc_addr)
+
+        enstore_system = None
+        while enstore_system == None:
+            enstore_system = csc.get_enstore_system(3, 3)
+
+            #If the user said it needs to die, then die.  Don't wait for all of
+            # the movers to be contacted.  If there is a known problem then
+            # this could possibly take a while to time out with each of the
+            # movers.
+            if stop_now: # or display.stopped:
+                enstore_display.startup_lock.release()  #Avoid resource leak.
+                return
 
         er_dict = None
         while er_dict == None or not e_errors.is_ok(er_dict):
@@ -1120,7 +1121,7 @@ def handle_messages(system_name, intf):
             # the movers to be contacted.  If there is a known problem then
             # this could possibly take a while to time out with each of the
             # movers.
-            if should_stop(system_name):
+            if stop_now: # or display.stopped:
                 enstore_display.startup_lock.release()  #Avoid resource leak.
                 return
 
@@ -1131,7 +1132,7 @@ def handle_messages(system_name, intf):
                 time.sleep(60)
                 #display.queue_command("reinit")
                 enstore_display.message_queue.put_queue("reinit",
-                                                        system_name)
+                                                        enstore_system)
                 enstore_display.startup_lock.release()  #Avoid resource leak.
                 return
 
@@ -1144,7 +1145,7 @@ def handle_messages(system_name, intf):
                             out_fp=sys.stderr)
 
             #Get the list of movers that we need to send status requests to.
-            movers = get_mover_list(system_name, intf, fullnames=1)
+            movers = get_mover_list(intf, csc, 1)
 
             for mover_name in movers:
                 send_mover_request(csc, send_request_dict, mover_name, u)
@@ -1152,7 +1153,7 @@ def handle_messages(system_name, intf):
         #If the client fails to initialize then wait a minute and start over.
         # The largest known error to occur is that socket.socket() fails
         # to return a file descriptor because to many files are open.
-        if should_stop(system_name):
+        if stop_now: # or display.stopped:
             enstore_display.startup_lock.release()  #Avoid resource leak.
             return
 
@@ -1162,59 +1163,34 @@ def handle_messages(system_name, intf):
     #Allow the main thread to queue status requests.
     enstore_display.startup_lock.release()
     
-    while not should_stop(system_name):
+    while not stop_now: # and not display.stopped:
+
+        #Send any status requests to the movers or the inquisitor.  This only
+        # sends these requests, it does not wait for responses here.
+        send_all_status_requests(csc, send_request_dict, enstore_system, u)
+
         # If commands are listed, use 'canned' version of entv.
         if intf.messages_file:
             try:
                 #Get the next line from the commands list file.
                 line = messages_file.readline()
-                if not line:
-                    try:
-                        position = messages_file.tell()
-                        size = os.fstat(messages_file.fileno())[stat.ST_SIZE]
-                    except (OSError, IOError), msg:
-                        Trace.trace(0,
-                                    "Error accessing messages file: %s" %
-                                    (str(msg),),
-                                     out_fp=sys.stderr)
-                        sys.exit(1)
-                    if position == size:
-                        messages_file.seek(0, 0) #Position at beginning of file.
-                        last_timestamp = -1  #Reset this too.
-                        
                 #For each line strip off the timestamp information from
                 # the espion.py.
-                words = line.split()
-                recorded_time = string.join(words[:5])
-                command = string.join(words[5:])
+                command = string.join(line.split()[5:])
                 if not command:
-                    continue
-                    #break  #Is this correct to break here?
+                    break  #Is this correct to break here?
                 #Store the command into the list (in this case of 1).
                 commands = [command]
             except (OSError, IOError, TypeError, ValueError,
                     KeyError, IndexError):
                 messages_file.seek(0, 0) #Position at beginning of file.
-                last_timestamp = -1  #Reset this too.
                 continue
 
-            try:
-                timestamp = time.mktime(time.strptime(recorded_time))
-            except ValueError:
-                #Other content.
-                continue
-            #Don't overwhelm the display thread.  This code attempts to wait
-            # the same amount of time as it happended the first time.
-            if last_timestamp != -1:
-                now = time.time()
-                sleep_duration = timestamp - last_timestamp - (1 - math.modf(now)[0])
-                time.sleep(max(sleep_duration, 0))
-            last_timestamp = timestamp
+            #Don't overwhelm the display thread.
+            time.sleep(0.03)
+            while enstore_display.message_queue.len_queue(enstore_system) > 20:
+                time.sleep(0.01)
         else:
-            #Send any status requests to the movers or the inquisitor.  This
-            # only sends these requests, it does not wait for responses here.
-            send_all_status_requests(csc, send_request_dict, system_name, u)
-
             #Test whether there is a command or status response ready to read,
             # timeout in 5 seconds.
             try:
@@ -1343,47 +1319,34 @@ def handle_messages(system_name, intf):
                             "state", "unload", "transfer", "error"):
                 
                 if len(words[1].split("@")) == 1:
-                    full_entv_mover_name = words[1] + "@" + system_name
+                    full_entv_mover_name = words[1] + "@" + enstore_system
                     #If the name already has the enstore_system appended to
                     # the end (from messages_file) then don't do this step.
                     commands[i] = "%s %s %s" % (words[0],
                                                 full_entv_mover_name,
                                                 string.join(words[2:], " "))
                 else:
-                    #Input is from the messages file.
                     full_entv_mover_name = words[1]
 
-                #If the mover belongs to a library that we don't care
-                # about, skip it.
-                if ignore_mover_by_library(full_entv_mover_name, intf):
-                    commands[i] = ""
-                    continue
-
                 #Output this if --generate-messages-file was used.
-                now = time.time()
-                if timeout_time and timeout_time > now:
+                if timeout_time and timeout_time > time.time():
                     #Building this string is resource expensive, only build it
                     # if necessary.
-                    Trace.message(MESSAGES_LEVEL,
-                                  string.join((time.ctime(now),
-                                               commands[i]), " "))
+                    Trace.message(10, string.join((time.ctime(), commands[i]), " "))
                 elif timeout_time: #timeout expired.
                     try:
-                        if displays[0].movers[full_entv_mover_name].state \
-                               not in ("IDLE", "Unknown", "HAVE_BOUND"):
+                        if displays[0].movers[full_entv_mover_name].state not in \
+                               ("IDLE", "Unknown", "HAVE_BOUND"):
                             #Keep outputing until the mover is done.
-                            Trace.message(MESSAGES_LEVEL,
-                                          string.join((time.ctime(now),
-                                                       commands[i]), " "))
-                    except (KeyError, IndexError):
+                            Trace.message(10, string.join((time.ctime(), commands[i]), " "))
+                    except KeyError:
                         pass
                         
 
         put_func = enstore_display.message_queue.put_queue #Shortcut.
         for command in commands:
-            if command:
-                #For normal use put everything into the queue.
-                put_func(command, system_name)  #, enstore_system)
+            #For normal use put everything into the queue.
+            put_func(command, system_name)  #, enstore_system)
             
             
         #If necessary, handle resubscribing.
@@ -1418,26 +1381,24 @@ def handle_messages(system_name, intf):
     return
 
 #########################################################################
-# The following function sets the window geometry and related window
-# frame attributes.
+# The following function sets the window geometry.
 #########################################################################
 
 #tk is the toplevel window.
-def set_geometry(tk, entvrc_dict):
+def set_geometry(tk, entvrc_info):
 
     #Don't draw the window until all geometry issues have been worked out.
     #tk.withdraw()
 
-    #Extract the system_info dictionary that correlates to the currently
-    # configured system.
-    entvrc_info = get_system_info_from_entvrc(tk, entvrc_dict)
-
-    geometry = entvrc_info.get('geometry', DEFAULT_GEOMETRY)
+    geometry = entvrc_info.get('geometry', None)
     window_width = entvrc_info.get('window_width', None)
     window_height = entvrc_info.get('window_height', None)
     x_position = entvrc_info.get('x_position', None)
     y_position = entvrc_info.get('y_position', None)
     
+    #self.library_colors = entvrc_info.get('library_colors', {})
+    #self.client_colors = entvrc_info.get('client_colors', {})
+
     #Use the geometry argument first.
     if geometry != None:
         window_width, window_height, x_position, y_position = \
@@ -1468,74 +1429,18 @@ def set_geometry(tk, entvrc_dict):
     # that the window appears to migrate upward without human intervention.
     tk.update()
 
-def resize(event = None):
-    global displays
-
-    __pychecker__ = "no-argsused"
-
-    #Recalculating this for each display is not efficent.
-    if len(displays) > 0:
-        size = displays[0].master.geometry().split("+")[0]
-        sizes = size.split("x")
-        width = int(sizes[0]) / len(displays)
-        height = int(sizes[1])
-
-    for display in displays:
-        #Get the height and width info.  We do end up getting everything...
-        try:
-            conf_dict = display.configure()
-        except Tkinter.TclError:
-            continue
-
-        try:
-            #Index 4 is the location in each of these tuples for the value
-            # to make these comparisons.
-            if conf_dict['height'][4] != height and \
-                   conf_dict['width'][4] != width:
-                display.configure(height = height, width = width)
-            elif conf_dict['height'][4] != height:
-                display.configure(height = height)
-            elif conf_dict['width'][4] != width:
-                display.configure(width = width)
-        except Tkinter.TclError:
-            pass
-
-def set_title(master, intf):
-    #We need to update the title if the user selected or deselected
-    # an enstore system from the list.
-    if intf.messages_file:
-        title_name = "%s: %s" % ("entv", DEFAULT_SYSTEM_NAME)
-    else:
-        title_list = []
-        for system_name in configurated_systems(master):
-            if not is_system_enabled(system_name, master):
-                continue
-            else:
-                title_list.append(system_name)
-        if len(title_list) == 1:
-            title_name = "%s: %s" % ("entv", title_list[0])
-        elif len(title_list) > 1:
-            title_name = "%s: %s" % ("entv", str(title_list))
-        else:
-            title_name = "entv"
-
-    #(re)set the title of the window.
-    master.title(title_name)
-    
 #########################################################################
-#  Create and manage menubar 
+#  Create menubar
 #########################################################################
 
-def create_menubar(menu_defaults, system_defaults, master, intf):
+def create_menubar(menu_defaults, master):
     if not master:
         return
     
     #Menubar attributes.
     master.entv_menubar = Tkinter.Menu(master = master)
     #Options menu.
-    master.entv_option_menu = Tkinter.Menu(tearoff = 0)
-    #List of Enstore systems.
-    master.enstore_systems_menu = Tkinter.Menu(tearoff = 0)
+    master.entv_option_menu = Tkinter.Menu(tearoff = 0) #,master = self.entv_menubar)
 
     #Create the animate check button and set animate accordingly.
     master.entv_do_animation = Tkinter.BooleanVar()
@@ -1577,59 +1482,11 @@ def create_menubar(menu_defaults, system_defaults, master, intf):
         variable = master.connection_color,
         command = toggle_connection_color,
         )
-
-    master.enstore_systems_enabled = {}
-    for system_name, on_off in system_defaults.items():
-        master.enstore_systems_enabled[system_name] = Tkinter.BooleanVar()
-        master.enstore_systems_enabled[system_name].set(on_off)
-        master.enstore_systems_menu.add_checkbutton(
-            label = system_name,
-            indicatoron = Tkinter.TRUE,
-            onvalue = Tkinter.TRUE,
-            offvalue = Tkinter.FALSE,
-            variable = master.enstore_systems_enabled[system_name],
-            command = toggle_systems_enabled,
-            )
-        
+    
     #Added the menus to there respective parent widgets.
     master.entv_menubar.add_cascade(label = "options",
                                     menu = master.entv_option_menu)
-    if not intf.messages_file and not intf.generate_messages_file:
-        #Only add the list of valid systems if showing live data.  If
-        # replaying past information from the messages file don't allow
-        # this feature.
-        #
-        #Only one enstore system can be used with --generate-messages-file
-        # or with espion.py at a time, so removing these options does
-        # not limit any functionality under those situations.
-        master.entv_menubar.add_cascade(label = "systems",
-                                        menu = master.enstore_systems_menu)
     master.config(menu = master.entv_menubar)
-
-def is_system_enabled(system_name, master):
-    ese = getattr(master, "enstore_systems_enabled", {})
-    tmp = ese.get(system_name, None)
-    if tmp == None:
-        return False
-    return bool(tmp.get())
-
-#Return triple of the number of Enstore systems enabled for display,
-# disabled for display and the total number.
-def systems_enabled_statistics(master):
-    ese = getattr(master, "enstore_systems_enabled", {})
-    enabled = 0
-    disabled = 0
-    for boolean in ese.values():
-        if boolean.get():
-            enabled = enabled + 1
-        else:
-            disabled = disabled + 1
-
-    return (enabled, disabled, len(ese.keys()))
-
-def configurated_systems(master):
-    ese = getattr(master, "enstore_systems_enabled", {})
-    return ese.keys()
 
 def toggle_animation():
     global displays
@@ -1657,39 +1514,29 @@ def toggle_connection_color():
         for connection in display.connections.values():
             connection.update_color(cc)
 
-def toggle_systems_enabled():
+def resize(event = None):
     global displays
-    global master_windowframe
-    global intf_of_entv
 
-    #Hopefully, we can create and destroy display panels without needing
-    # to destroy and create all of them.
-    for system_name, enabled in \
-            master_windowframe.enstore_systems_enabled.items():
-        if is_system_enabled(system_name, master_windowframe):
-            for display in displays:
-                if display.system_name == system_name:
-                    break  #System already enabled.
-            else:
-                #Need to add display.
-                new_display = make_display_panel(master_windowframe,
-                                                 system_name,
-                                                 None, intf_of_entv)
-                displays.append(new_display)
-                start_messages_thread(system_name, intf_of_entv)
-        else:
-            for display in displays:
-                if display.system_name == system_name:
-                    destroy_display_panel(display)
-                    displays.remove(display)
-                    #Need to destroy messages thread for this system.
-                    break
+    __pychecker__ = "no-argsused"
 
-    #Resize the displays to account for the change in the number of displays.
-    resize()
-    #Need to retitle the main window with the new list of Enstore systems.
-    set_title(master_windowframe, intf_of_entv)
+    #Recalculating this for each display is not efficent.
+    if len(displays) > 0:
+        size = displays[0].master.geometry().split("+")[0]
+        sizes = size.split("x")
+        width = int(sizes[0]) / len(displays)
+        height = int(sizes[1])
 
+    for display in displays:
+        """
+        #Recalculating this for each display is not efficent.
+        size = display.master.geometry().split("+")[0]
+        sizes = size.split("x")
+        width = int(sizes[0]) / len(displays)
+        height = int(sizes[1])
+        """
+
+        display.configure(height = height, width = width)
+    
 #########################################################################
 #  Interface class
 #########################################################################
@@ -1711,6 +1558,7 @@ class EntvClientInterface(generic_client.GenericClientInterface):
         self.verbose = 0
         self.display = os.environ.get("DISPLAY", ":0.0")
         self.generate_messages_file = 0
+        self.movers_file = ""
         self.messages_file = ""
         self.profile = 0
         self.version = 0
@@ -1746,6 +1594,11 @@ class EntvClientInterface(generic_client.GenericClientInterface):
                               option.VALUE_TYPE:option.STRING,
                               option.VALUE_LABEL:"messages_file",
                               option.USER_LEVEL:option.ADMIN,},
+        option.MOVERS_FILE:{option.HELP_STRING:"Use 'canned' version of entv.",
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_LABEL:"movers_file",
+                            option.USER_LEVEL:option.ADMIN,},
         option.PROFILE:{option.HELP_STRING:"Display profile info on exit.",
                             option.VALUE_USAGE:option.IGNORED,
                             option.USER_LEVEL:option.ADMIN,},
@@ -1767,7 +1620,6 @@ class EntvClientInterface(generic_client.GenericClientInterface):
 def main(intf):
     global stop_now
     global displays
-    global master_windowframe
 
     #Setup trace levels with thread names.
     threading.currentThread().setName("MAIN")
@@ -1777,33 +1629,43 @@ def main(intf):
     if intf.generate_messages_file:
         Trace.do_message(10)
 
-    #Switch --generate-messages-file has a restriction, only one enstore
-    # system at a time.
-    if len(intf.args) > 1 and intf.generate_messages_file:
-        print intf.args
-        try:
-            sys.stderr.write("--generate-messages-file cannot be specified"
-                             " with multiple enstore systems.\n")
-            sys.stderr.flush()
-        except IOError:
-            pass
-        sys.exit(1)
-
-    if intf.messages_file:
+    if intf.movers_file or intf.messages_file:
         csc = None
 
         system_name = DEFAULT_SYSTEM_NAME
-        #title_name = DEFAULT_SYSTEM_NAME
+        title_name = DEFAULT_SYSTEM_NAME
 
         cscs_info = {system_name : (None, None)}
-        cscs = {}
+        cscs = [None]
     else:
-        # get a configuration client
-        csc = get_csc()
+        # get a configuration server
+        default_config_host = enstore_functions2.default_host()
+        default_config_port = enstore_functions2.default_port()
+        try:
+            csc = configuration_client.ConfigurationClient(
+                (default_config_host, default_config_port))
+        except (socket.error,), msg:
+            try:
+                sys.stderr.write("Error contacting configuration server: %s\n" %
+                                 msg.args[1])
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+        rtn_tkt = csc.dump_and_save(timeout = 2, retry = 2)
+        if not e_errors.is_ok(rtn_tkt):
+            try:
+                sys.stderr.write("Unable to contact configuration server: %s\n" %
+                                 str(rtn_tkt['status']))
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+        csc.new_config_obj.enable_caching()
 
         #cscs_info contains the known_config_servers section of the
         # configuration with all unspecified systems removed.
-        cscs_info = enstore_display.get_all_systems()
+        cscs_info = get_all_systems(csc, intf)
         if not cscs_info:
             try:
                 sys.stderr.write("Unable to find configuration server.\n")
@@ -1811,46 +1673,36 @@ def main(intf):
             except IOError:
                 pass
             sys.exit(1)
+        
+        #Get the short name for the enstore system specified.
+        system_name = get_system_name(intf, cscs_info)
 
-        #Obtain the list of configuration servers.
         cscs = {}
         for system_name, address in cscs_info.items():
             cscs[system_name] = configuration_client.ConfigurationClient(address)
             try:
+                cscs[system_name].dump_and_save()
+
                 # Once, the enable_caching() function is called the
                 # csc get() function is okay to use.
                 cscs[system_name].new_config_obj.enable_caching()
-            except (KeyboardInterrupt, SystemExit):
-                raise sys.exc_info()[0], sys.exc_info()[1], \
-                      sys.exc_info()[2]
             except:
                 pass
 
+        if len(cscs_info) == 1:
+            title_name = cscs_info.keys()[0]
+        else:
+            title_name = "%s: %s" % ("Enstore", cscs_info.keys())
+
+
     #Get the main window.
     master = Tkinter.Tk(screenName = intf.display)
-    master_windowframe = master #Global name for callbacks to use.
     master.withdraw()
-    master.title("entv")
+    master.title(title_name)
     master.bind('<Configure>', resize)
     menu_defaults = {'animate' : enstore_display.STILL,
                      'connection_color' : enstore_display.CLIENT_COLOR }
- 
-    system_defaults = {}
-    if intf.args:
-        for system_name, address in cscs_info.items():
-            if system_name in intf.args:
-                system_defaults[system_name] = 1  #Enable this system.
-            else:
-                system_defaults[system_name] = 0  #Disable this system.
-    elif intf.messages_file:
-        system_defaults[system_name] = 1
-    else:
-        for system_name, address in cscs_info.items():
-            if address[0] == csc.server_address[0]:
-                system_defaults[system_name] = 1  #Enable this system.
-            else:
-                system_defaults[system_name] = 0  #Disable this system.
-    create_menubar(menu_defaults, system_defaults, master, intf)
+    create_menubar(menu_defaults, master)
     master.display_count = len(cscs_info.keys())
     
     continue_working = 1
@@ -1859,28 +1711,17 @@ def main(intf):
 
     while continue_working:
 
-        #We need to update the title if the user selected or deselected
-        # an enstore system from the list.
-        set_title(master, intf)
-
         #Set this to not stop.
         stop_now = 0
         
         #Get the entvrc file information.  Get this every time so that
         # if something changes, then we can pick up the changes.
-        entvrc_dict = get_entvrc()
-
-        for system_name, csc_addr in cscs_info.items():
-            if not is_system_enabled(system_name, master):
-                continue
-
-            try:
-                cscs[system_name].dump_and_save()
-            except (KeyboardInterrupt, SystemExit):
-                raise sys.exc_info()[0], sys.exc_info()[1], \
-                      sys.exc_info()[2]
-            except:
-                pass
+        if intf.movers_file:
+            entvrc_dict = {}
+            #entvrc_dict['title'] = "Enstore"
+        else:
+            entvrc_dict = get_entvrc(csc, intf)
+            #entvrc_dict['title'] = system_name #For simplicity put this here.
 
         #If we hang, making the display panels, try and catch this situation
         # and restart the entv process.  It has been observed that
@@ -1893,6 +1734,7 @@ def main(intf):
         # enstore system requested by the user.
         try:
             displays = make_display_panels(master, entvrc_dict,
+                                           cscs, cscs_info,
                                            mover_display, intf)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -1900,6 +1742,7 @@ def main(intf):
             exc, msg = sys.exc_info()[:2]
             import traceback
             traceback.print_tb(sys.exc_info()[2])
+            print "%s: %s" % (str(exc), str(msg))
             #Report on the error.
             try:
                 message = "Failed to make panels: (%s, %s)\n"
@@ -1912,7 +1755,6 @@ def main(intf):
 
         signal.alarm(0) #Stop the alarm clock.
 
-        """
         if len(displays) == 0:
             # We had a failure.  Lets wait a while and try again.
 
@@ -1922,7 +1764,6 @@ def main(intf):
 
             time.sleep(5)
             continue
-        """
 
         Trace.trace(1, "starting message threads")
         
@@ -1938,15 +1779,14 @@ def main(intf):
         
         if intf.messages_file:
             #Read from file the event relay messages to process.
-            start_messages_thread("Enstore", intf)
+            start_messages_thread(None, "Enstore", intf)
         else:
             #Start a thread for each event relay we should contact.
-            for system_name, current_csc in cscs.items():
-                if not is_system_enabled(system_name, master):
-                    continue
-                
+            for system_name, csc in cscs.items():
                 Trace.trace(1, "starting thread for %s" % (system_name,))
-                start_messages_thread(system_name, intf)
+                start_messages_thread((csc.server_address[0],
+                                       csc.server_address[1]),
+                                      system_name, intf)
                 Trace.trace(1, "started thread for %s" % (system_name,))
 
         #Let the other startup threads go.
@@ -1976,6 +1816,7 @@ def main(intf):
             exc, msg = sys.exc_info()[:2]
             import traceback
             traceback.print_tb(sys.exc_info()[2])
+            print "%s: %s" % (str(exc), str(msg))
             #Report on the error.
             try:
                 message = "Exited mainloop unexpectedly: (%s, %s)\n"
@@ -1994,18 +1835,17 @@ def main(intf):
         stop_now = 1
 
         #Cleanup the display.
-        continue_working = destroy_display_panels()
+        continue_working = 0
+        for display in displays:
+            #Determine if this is a reinitialization (True) or not (False).
+            continue_working = continue_working + display.attempt_reinit()
+
+            destroy_display_panel(display)
 
         #Set the geometry of the .entvrc file (if necessary).
-        if not intf.messages_file and len(displays) == 1:
-            #Find the one Enstore system that is being displayed.
-            for system_name, current_csc in cscs.items():
-                if is_system_enabled(system_name, master):
-                    #Since we know only one display is currently being
-                    # displayed, save the geometry.
-                    address = cscs_info[system_name][0]
-                    set_entvrc(displays[0], address)
-                    break
+        if not intf.messages_file:
+            address = cscs_info[displays[0].system_name][0]
+            set_entvrc(displays[0], address)
 
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
@@ -2054,17 +1894,17 @@ if __name__ == "__main__":
 
     delete_at_exit.setup_signal_handling()
 
-    intf_of_entv = EntvClientInterface(user_mode=0)
+    intf = EntvClientInterface(user_mode=0)
 
-    if intf_of_entv.profile:
+    if intf.profile:
         #If the user wants to see the profile of entv...
         import profile
         import pstats
         profile.run("main(intf)", "/tmp/entv_profile")
         p = pstats.Stats("/tmp/entv_profile")
         p.sort_stats('cumulative').print_stats(100)
-    elif intf_of_entv.version:
+    elif intf.version:
         #Just print the version of entv.
         print entv_client_version()
     else:
-        main(intf_of_entv)
+        main(intf)
