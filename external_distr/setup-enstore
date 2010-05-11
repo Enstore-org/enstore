@@ -48,3 +48,12 @@ PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
 GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
 
 $ENSTORE_DIR/external_distr/update_sym_links.sh -c
+
+# uncomment the following lines
+# modify them as needed
+# export ENSTORE_CONFIG_HOST= # put config host name here
+# export ENSTORE_CONFIG_PORT=7500
+# export ENSTORE_CONFIG_FILE= # put config file path here
+# export ENSTORE_MAIL= # put enstore admin mail address here
+# export FARMLETS_DIR=/usr/local/etc/farmlets
+
