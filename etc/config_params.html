@@ -792,13 +792,39 @@ Uses only general keys (along with database keys which are the same
 
 <tr><td><a NAME="alarm_actions">alarm_actions</a></td><td>dictionary
 	      describing actions to be taken when the specified alarms
-	      are received.  the format is as follows -
-	      [severity_string:[[action1, action_parameters,
-	      action_parameters], ...], ...}.supported actions are -
-	      send email; params = [action_name, 1|*,
-	      optional_params...]; if 1, only send mail the first time
-	      the alarm is seen, * -  always send mail when get this
-	      alarm or add the alarm to the web page only</td>
+	      are received.  the format is as follows:
+	      <p>
+	      {severity_string:[[action1, action_parameters, action_parameters],
+              <p>
+              ...],
+	      <p>
+	       ...}
+	      <p>
+              <ul>
+		<lh>severity_string is one of:</lh>
+		<li>A - for a regular alarm
+		<li>E - for an error alarm
+		<li>U - for a User error/alarm
+		<li>W - for a warning alarm
+		<li>I - for an information alarm
+		<li>C - for an e-mailable alarm - only type with currently defined actions
+	      </ul>
+	      <ul>
+		<lh>there currently is only one supported action:</lh>
+		<li>send_mail
+		   <ul>
+			<lh>send_mail first action_parameter</lh>
+			<li>* - to send e-mail for every occurance
+			<li>1 - to send e-mail for just the first occurance,
+				any additional alarms go to the alarms page
+		   </ul>
+		   <p>
+		   <ul>
+			<lh>send_mail second action_parameter is a dictionary of storage_group and e-mail address pairs</lh>
+			<li>{'test' : 'enstore-auto@fnal.gov',<p>
+				'ssa_test' : 'ssa-group@fnal.gov,enstore-auto@fnal.gov'}<p>
+		   </ul>
+	      </ul></td>
 	   <td>Mandatory</td><td>None</td>
 </tr>
 </table>
