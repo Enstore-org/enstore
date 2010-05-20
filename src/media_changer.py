@@ -464,11 +464,29 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	else:
 	    queue = self.work_query_list
 
+	if not ticket.has_key('r_a'):
+	    Trace.log(e_errors.ERROR,
+		      "Trying to remove item from work list that does not"
+		      " contain an r_a value: %s" % (str(ticket),))
+	    #There is no way to match this to any of the queued items.
+	    # Thus, we skip it.  
+	    return
+		      
 	for i in queue:
 	    #These elements contain the unique value r_a, which is set by
 	    # UDPserver.
+	    if not i.has_key('r_a'):
+	        Trace.log(e_errors.ERROR,
+			  "Found item in queue without an r_a value: %s" %
+			  (str(i),))
+		#This item can never be deleted though normal operation.
+		# Thus, we remove it now to keep the queue from growing.
+		queue.remove(i)
+		continue
+	    
 	    if i['r_a'] == ticket['r_a']:
 		queue.remove(i)
+		break
 
     def exists_in_work_list(self, ticket):
 	    
@@ -1778,20 +1796,22 @@ class STK_MediaLoader(MediaLoaderMethods):
         status,response,delta = self.timed_command(command,5,60)
         if status != 0:
             E=18
-            msg = "query server %i: %s => %i,%s" % (E,command,status,response)
-            Trace.log(e_errors.ERROR, msg)
-            return ("ERROR", E, response, "", msg)
+            message = "query server %i: %s => %i,%s" % \
+		      (E, command, status, response)
+            Trace.log(e_errors.ERROR, message)
+            return ("ERROR", E, response, "", message)
 
         # got response, parse it and put it into the standard form
         answer = string.strip(response[4])
         if string.find(answer, answer_lookfor,0) != 0:
             E=19
-            msg = "query server %i: %s => %i,%s, %f" % (E,command,status,response,delta)
-            Trace.log(e_errors.ERROR, msg)
-            return ("ERROR", E, response, "", msg)
-        msg = "%s => %i,%s, %f" % (command,status,answer[0:17],delta)
-        Trace.log(e_errors.INFO, msg)
-        return (e_errors.OK, 0, msg, "", "")
+            message = "query server %i: %s => %i,%s, %f" % \
+		      (E, command, status, response, delta)
+            Trace.log(e_errors.ERROR, message)
+            return ("ERROR", E, response, "", message)
+        message = "%s => %i,%s, %f" % (command,status,answer[0:17],delta)
+        Trace.log(e_errors.INFO, message)
+        return (e_errors.OK, 0, message, "", "")
 
     query_server = query_robot  #Backward compatiblity. (Still needed?)
 
@@ -1808,11 +1828,12 @@ class STK_MediaLoader(MediaLoaderMethods):
         status,response, delta = self.timed_command(command,4,60)
         if status != 0:
             E=4
-            msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
-            Trace.log(e_errors.ERROR, msg)
-	    ticket['status'] = ("ERROR", E, response, "", msg)
+            message = "QUERY_DRIVE %i: %s => %i,%s" % \
+		      (E, command, status, response)
+            Trace.log(e_errors.ERROR, message)
+	    ticket['status'] = ("ERROR", E, response, "", message)
 	    self.reply_to_caller(ticket)
-            return ("ERROR", E, response, "", msg)
+            return ticket['status']
 
         drive_list = []
         for line in response:
@@ -1835,10 +1856,6 @@ class STK_MediaLoader(MediaLoaderMethods):
 
 	ticket['drive_list'] = drive_list
 	return (e_errors.OK, 0, None, "", "")
-        """
-	ticket['status'] = (e_errors.OK, 0, "")
-	self.reply_to_caller(ticket)
-	"""
 
     def listVolumes2(self, ticket):
         ticket['work'] = "list_volumes" #Use old method for STK now too.
@@ -1940,7 +1957,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 		      "Callback address %s" % (ticket['callback_addr'],))
 
 	    E=6
-	    reply['status'] =  ("ERROR", E, str(sys.exc_info()[1]), "", "")
+	    reply['status'] =  (e_errors.NET_ERROR, E, str(sys.exc_info()[1]), "", "")
 	
 	#Don't forget to close the sockets and FIFOs.
 	lv_proc.stdout.close()
@@ -1963,10 +1980,10 @@ class STK_MediaLoader(MediaLoaderMethods):
 	except KeyError:
 		E = 20
 		message = "Unable to obtain list of movers."
-		Trace.log(e_errors.ERROR, msg)
-		ticket['status'] = (e_errors.NET_ERROR, E, "", "", msg)
+		Trace.log(e_errors.ERROR, message)
+		ticket['status'] = (e_errors.NET_ERROR, E, "", "", message)
 		self.reply_to_caller(ticket)
-		return (e_errors.NET_ERROR, E, "", "", message)
+		return ticket['status']
 
 	#Build the list of ACSes that we have movers configured in.  ACSes
 	# are the first number in the list like 0,0,1,27.
@@ -1987,10 +2004,10 @@ class STK_MediaLoader(MediaLoaderMethods):
             E=4
             message = "QUERY_SLOTS %i: %s => %i,%s" % \
 		      (E, command, status, response)
-            Trace.log(e_errors.ERROR, msg)
-	    ticket['status'] = ("ERROR", E, response, "", msg)
+            Trace.log(e_errors.ERROR, message)
+	    ticket['status'] = ("ERROR", E, response, "", message)
 	    self.reply_to_caller(ticket)
-            return ("ERROR", E, response, "", msg)
+            return ticket['status']
 
         slot_list = []
         for line in response:
@@ -2115,10 +2132,6 @@ class STK_MediaLoader(MediaLoaderMethods):
 
         ticket['slot_list'] = slot_list
 	return (e_errors.OK, 0, None, "", "")
-        """
-	ticket['status'] = (e_errors.OK, 0, "")
-	self.reply_to_caller(ticket)
-	"""
 
     def listClean(self, ticket):
         # build the command, and what to look for in the response
@@ -2140,7 +2153,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 		      "Callback address %s" % (ticket['callback_addr'],))
 
 	    E=6
-	    return ("ERROR", E, str(sys.exc_info()[1]), "", "")
+	    return (e_errors.NET_ERROR, E, str(sys.exc_info()[1]), "", "")
 
         ticket['no_reply'] = 1 #Tell WorkDone() not to send the ticket again.
         reply = ticket.copy() #Make a copy to keep things clean.  But why?
@@ -2152,9 +2165,10 @@ class STK_MediaLoader(MediaLoaderMethods):
         status, response, delta = self.timed_command(command,4,60)
         if status != 0:
             E=4
-            msg = "QUERY_CLEAN %i: %s => %i,%s" % (E,command,status,response)
-            Trace.log(e_errors.ERROR, msg)
-	    return ("ERROR", E, response, "", msg)
+            message = "QUERY_CLEAN %i: %s => %i,%s" % \
+		       (E, command, status, response)
+            Trace.log(e_errors.ERROR, message)
+	    return ("ERROR", E, response, "", message)
         else:
 	    #Get the information from the robot.
 	    for line in response:
@@ -2199,7 +2213,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 		      "Callback address %s" % (ticket['callback_addr'],))
 
 	    E=6
-	    return ("ERROR", E, str(sys.exc_info()[1]), "", "")
+	    return (e_errors.NET_ERROR, E, str(sys.exc_info()[1]), "", "")
 
 	return (e_errors.OK, 0, None, "", "")
 
