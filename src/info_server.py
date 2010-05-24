@@ -326,7 +326,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		q = "select bfid from file where pnfs_id = '%s'" % (pnfs_id,)
 		res=[]
 		try:
-			res = self.file_query_dictresult(q)
+			res = self.file.query_dictresult(q)
 			#
 			# edb module raises underlying DB errors as EnstoreError.
 			#
