@@ -614,18 +614,27 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                 # of the file.
                 file_utils.chown(bit_file['pnfs_name0'], uid, gid)
 
-            pnfs_id = pf.get_pnfs_id()
-            if pnfs_id != pf.pnfs_id:
-                # update file record
-                return self.modify({'bfid': bfid, 'pnfsid':pnfs_id,
-                                    'deleted':'no'})
+            
         else: #DOES EXIST
+            file_utils.match_euid_egid(bit_file['pnfs_name0'])
             try:
                 pf.update()
+                message = ""
             except:
                 message = "can not update %s: %s" % (pf.path,
                                                      sys.exc_info()[1])
+            
+            file_utils.set_euid_egid(0, 0)
+            file_utils.release_lock_euid_egid()
+                
+            if message:
                 return {'status': (e_errors.FILE_CLERK_ERROR, message)}
+
+        pnfs_id = pf.get_pnfs_id()
+        if pnfs_id != pf.pnfs_id or bit_file['deleted'] != "no":
+            # update file record
+            return self.modify({'bfid': bfid, 'pnfsid':pnfs_id,
+                                'deleted':'no'})
 
         return {'status':(e_errors.OK, None)}
 
