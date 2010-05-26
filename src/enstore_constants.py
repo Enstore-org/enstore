@@ -39,6 +39,10 @@ GB=KB*MB
 TB=KB*GB
 PB=KB*TB
 
+#These strings are the beginning parts of the capacity and rate constants.
+CAPACITY_PREFIX="CAP_"
+RATE_PREFIX="RATE_"
+
 # tape capacity in GB
 CAP_9840=20
 CAP_9940=60
