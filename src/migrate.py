@@ -330,6 +330,21 @@ def drive_rate(volume_record):
         return None
     return media_rate * 1024 * 1024  #In bytes per second.
 
+# return True or False if the target string is a valid media type.
+def is_media_type(target):
+    if type(target) != types.StringType:
+        return False
+    
+    supported_media_types = []
+    for object_name in dir(enstore_constants):
+        if object_name[:len(enstore_constants.CAPACITY_PREFIX)] == enstore_constants.CAPACITY_PREFIX:
+            supported_media_types.append(object_name[4:])
+
+    if target in supported_media_types:
+        return True
+
+    return False
+
 # initialize csc, db, ... etc.
 def init(intf):
 	global log_f, dbhost, dbport, dbname, dbuser, errors
@@ -3876,6 +3891,17 @@ def make_failed_copies(fcc, db, intf):
                 log("limiting to one file in debug mode")
                 break
             continue
+        elif file_record['deleted'] == "yes" and \
+             (not file_record['pnfsid'] or not file_record['pnfs_name0']):
+            log(MY_TASK, "Setting failed file %s as done." % (bfid,))
+            #Can't duplicate failed original copy.
+            update_failed_done(bfid, db)
+
+            #For debugging, do only one file.
+            if debug:
+                log("limiting to one file in debug mode")
+                break
+            continue
 
         if is_swapped(bfid, fcc, db):
             log(MY_TASK, "Setting already migrated file %s as done." % (bfid,))
@@ -3947,6 +3973,173 @@ def make_failed_copies(fcc, db, intf):
 
     return return_exit_status
    
+##########################################################################
+
+def choose_remaining_volume(vcc, db, intf, skip_volume_list=[]):
+    if USE_CLERKS:
+        vols_dict = vcc.get_vols()
+        if not e_errors.is_ok(vols_dict):
+            return None
+
+        not_full_volumes_list = []
+        for volume_record in vols_dict['volumes']:
+            #Keep searching if the volume is already in the skip list.
+            if volume_record['label'] in skip_volume_list:
+                continue
+
+            #Keep searching if the media_type does not match.
+            try:
+                if volume_record['media_type'] != intf.args[0]:
+                    continue
+            except KeyError:
+                #At this time, get_vols() does not include the media_type
+                # with the rest of the volume information.  Ignore this
+                # and hope that the library is supplied.
+                pass
+            except IndexError:
+                #No media supplied by the user.  This error should never
+                # happen, since at least the media_type needs to be specified
+                # in order to get this far.
+                continue
+
+            #Keep searching if the library does not match.
+            try:
+                if volume_record['library'] != intf.args[1]:
+                    continue
+            except IndexError:
+                #No storage group supplied by the user.
+                pass
+
+            #Keep searching if the storage_group does not match.
+            try:
+                if volume_record['storage_group'] != intf.args[2]:
+                    continue
+            except IndexError:
+                #No storage group supplied by the user.
+                pass
+            
+            #Keep searching if the file_family does not match.
+            try:
+                if volume_record['file_family'] != intf.args[3]:
+                    continue
+            except IndexError:
+                #No storage group supplied by the user.
+                pass
+
+            #Keep searching if the file_family does not match.
+            try:
+                if volume_record['wrapper'] != intf.args[4]:
+                    continue
+            except IndexError:
+                #No storage group supplied by the user.
+                pass
+            
+            #Keep searching if the volume is not available.
+            system_inhibit_0 = volume_record.get('system_inhibit_0',
+                                      volume_record.get('system_inhibit',
+                                                        ("none", "none")[0]))
+            if  system_inhibit_0 in ("DELETED", "NOACCESS", "NOTALLOWED"):
+                continue
+
+            #Keep searching if the volume has already been started to be
+            # migrated/duplicated/cloned.
+            system_inhibit_1 = volume_record.get('system_inhibit_1',
+                                      volume_record.get('system_inhibit',
+                                                        ("none", "none")[1]))
+            if system_inhibit_1 in \
+               ("migrating", "migrated", "duplicating", "duplicated",
+                "cloning", 'cloned'):
+                continue
+
+            #Favor, but don't exclude non-full tapes.  Put these in a
+            # list for possible use if no full tapes are found.
+            if system_inhibit_1 != "full":
+                not_full_volumes_list.append(volume_record['label'])
+                
+            return volume_record['label']
+
+        try:
+            return not_full_volumes_list[0]
+        except IndexError:
+            #Must be all done.
+            return None
+    else:
+
+        #Skip the volumes that match the following conditions.
+        
+        try:
+            library = intf.args[1]
+            library_sql = " and library = '%s' " % (library,)
+        except IndexError:
+            library_sql = ""
+
+        try:
+            storage_group = intf.args[2]
+            storage_group_sql = " and storage_group = '%s' " % (storage_group,)
+        except IndexError:
+            storage_group_sql = ""
+
+        try:
+            file_family = intf.args[3]
+            file_family_sql = " and file_family = '%s' " % (file_family,)
+        except IndexError:
+            file_family_sql = ""
+
+        try:
+            wrapper = intf.args[4]
+            wrapper_sql = " and wrapper = '%s' " % (wrapper,)
+        except IndexError:
+            wrapper_sql = ""
+
+        if skip_volume_list:
+            skip_sql = " and label not in ('%s') " % string.join(skip_volume_list,
+                                                                 "', '")
+        else:
+            skip_sql = ""
+
+
+        q = "select label " \
+            "from volume " \
+            "where system_inhibit_0 not in ('DELETED', 'NOACCESS', 'NOALLOWED') " \
+            "  and system_inhibit_1 not in ('migrating', " \
+            "                               'migrated', " \
+            "                               'duplicating', " \
+            "                               'duplicated', " \
+            "                               'cloning', " \
+            "                               'cloned') " \
+            "  and media_type = '%s' " \
+            "  %s %s %s %s %s" \
+            "limit 1;" % (intf.args[0], library_sql, storage_group_sql,
+                          file_family_sql, wrapper_sql, skip_sql)
+
+        if debug:
+            log("choose_remaining_volume():", q)
+
+        res = db.query(q).getresult()
+        if len(res) == 0:
+            return None
+        else:
+            return res[0][0]
+
+def migrate_remaining_volumes(vcc, db, intf):
+
+    rtn = 0  #return value.
+    skip_volume_list = [] #List of volumes that failed for skipping.
+
+    #Pick the first volume to migrate with the specified constraints.
+    volume = choose_remaining_volume(vcc, db, intf)
+    while volume:
+        rtn_val = migrate_volume(volume, intf)
+        rtn = rtn + rtn_val
+        if rtn_val:
+            skip_volume_list.append(volume)
+
+        #Pick the next volume to migrate with the specified constraints.
+        volume = choose_remaining_volume(vcc, db, intf,
+                                         skip_volume_list = skip_volume_list)
+
+    return rtn
+
 ##########################################################################
 
 #def read_file(MY_TASK, src_bfid, src_path, tmp_path, volume,
@@ -4299,13 +4492,23 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                  and dst_file_record == None:
                 src_path = "deleted-%s-%s"%(src_bfid, tmp_path) # for debug
 
+            #Handle the case where the swap didn't complete.
             elif msg.args[0] == errno.EEXIST \
                  and getattr(msg, 'filename', None) \
                  and is_migration_path(msg.filename) \
                  and src_file_record['deleted'] == YES \
                  and dst_file_record != None \
                  and dst_file_record['deleted'] == YES:
-                src_path = msg.args[2]
+                src_path = msg.filename
+
+            #Handle the case where this version of the file is deleted and
+            # a new file was written by the user with the same filename.
+            elif msg.args[0] == errno.EEXIST \
+                 and msg.args[1].find("replaced") != -1 \
+                 and src_file_record['deleted'] == YES \
+                 and dst_file_record != None \
+                 and dst_file_record['deleted'] == YES:
+                src_path = msg.filename
             else:
                 if debug:
                     Trace.handle_error()
@@ -4316,28 +4519,36 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
 		log(MY_TASK, "tmp_path:", tmp_path)
 
         if dst_bfid == None:
-            if intf.use_disk_files:
-                try:
-                    tfstat = os.stat(tmp_path)
-                except (OSError, IOError), msg:
+            try:
+                tfstat = os.stat(tmp_path)
+            except (OSError, IOError), msg:
+                if intf.use_disk_files:
                     # We wan't to give up on these files, so that migrating
                     # the dumped good files from a bad tape won't hang trying
                     # to read the bad files.
-                    error_log(MY_TASK, "can not find temporary file %s" % (tmp_path,))
+                    error_log(MY_TASK,
+                              "can not find temporary file: %s" % (str(msg),))
                     return
-                if tfstat[stat.ST_SIZE] == src_file_record['size']:
+                else:
+                    #There is not a copy on disk, need to read the source
+                    # media for the file.
+                    tfstat = None
                 
-                    #Don't read this file (again), but put it in the list of
-                    # files to pass to the write thread.
-                    pass_along_jobs.append((src_file_record,
-                                            src_volume_record,
-                                            src_path,
-                                            None,  #destination file record
-                                            None,  #destination volume record
-                                            tmp_path,
-                                            None,  #migration path
-                                            ))
-                    continue  #try next file
+            if tfstat and tfstat[stat.ST_SIZE] == src_file_record['size']:
+
+                #Don't read this file (again), but put it in the list of
+                # files to pass to the write thread.
+                pass_along_jobs.append((src_file_record,
+                                        src_volume_record,
+                                        src_path,
+                                        None,  #destination file record
+                                        None,  #destination volume record
+                                        tmp_path,
+                                        None,  #migration path
+                                        ))
+                ok_log(MY_TASK, "%s has already been copied to disk" \
+                       % (src_bfid,))
+                continue  #try next file
 
             #We need to read this file, so put in on the list.
             read_jobs.append((src_file_record,
@@ -4379,14 +4590,14 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
 
 # copy_files(files) -- copy a list of files to disk and mark the status
 # through copy_queue
-def copy_files(thread_num, files, volume_record, copy_queue,
+def copy_files(thread_num, file_records, volume_record, copy_queue,
                deleted_copy_queue, grab_lock, release_lock, intf):
 
     MY_TASK = "COPYING_TO_DISK"
 
     # if files is not a list, make a list for it
-    if type(files) != type([]):
-            files = [files]
+    if type(file_records) != type([]):
+            file_records = [file_records]
 
     # get a db connection
     db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
@@ -4406,7 +4617,7 @@ def copy_files(thread_num, files, volume_record, copy_queue,
     encp = encp_wrapper.Encp(tid = "READ%s" % (name_ending,))
 
     # copy files one by one
-    for file_record in files:
+    for file_record in file_records:
         if grab_lock:  # and release_lock:
             grab_lock.acquire()
             release_lock.release()
@@ -6501,40 +6712,6 @@ def migrate_volume(vol, intf):
     if len(tape_list) == 0:
         log(MY_TASK, vol, "volume is empty")
         return 0
-    """
-    # now try to copy the file one by one
-    if intf.with_deleted:
-        use_deleted_sql = "or deleted = 'y'"
-    elif intf.force:
-        use_deleted_sql = "or (deleted = 'y' and migration.dst_bfid is not NULL)"
-    else:
-        use_deleted_sql = "or migration.dst_bfid is not NULL"
-    if intf.skip_bad:
-        use_skip_bad = "and bad_file.bfid is NULL"
-    else:
-        use_skip_bad = ""
-    q = "select file.bfid,bad_file.bfid,file.pnfs_path from file " \
-        "left join bad_file on bad_file.bfid = file.bfid " \
-        "left join migration on migration.src_bfid = file.bfid " \
-        "join volume on file.volume = volume.id " \
-        "where file.volume = volume.id and label = '%s' " \
-        "      and (deleted = 'n' %s) and pnfs_path != '' " \
-        "%s " \
-        "order by location_cookie;" % (vol, use_deleted_sql, use_skip_bad)
-    res = db.query(q).getresult()
-
-    #Don't do anything for empty volumes.
-    if len(res) == 0:
-        log(MY_TASK, vol, "volume is empty")
-        return 0
-    """
-
-    """
-    #Build the list of files to migrate.
-    bfids = []
-    for row in res:
-        bfids.append(row[0])
-    """
 
     media_types = []
     #Need to obtain the output media_type.  If --library
@@ -7555,142 +7732,153 @@ class MigrateInterface(option.Interface):
 
 
 def main(intf):
-	init(intf)
+    init(intf)
 
-	if intf.migrated_from:
-		# get a db connection
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-                # get its own volume clerk client
-                config_host = enstore_functions2.default_host()
-                config_port = enstore_functions2.default_port()
-                csc = configuration_client.ConfigurationClient((config_host,
-                                                                config_port))
-                vcc = volume_clerk_client.VolumeClerkClient(csc)
+    if intf.migrated_from:
+        # get a db connection
+        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+        # get its own volume clerk client
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        vcc = volume_clerk_client.VolumeClerkClient(csc)
 
-		show_migrated_from(intf.args, vcc, db)
-		return 0
+        show_migrated_from(intf.args, vcc, db)
+        return 0
 
-	elif intf.migrated_to:
-		# get a db connection
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-                # get its own volume clerk client
-                config_host = enstore_functions2.default_host()
-                config_port = enstore_functions2.default_port()
-                csc = configuration_client.ConfigurationClient((config_host,
-                                                                config_port))
-                vcc = volume_clerk_client.VolumeClerkClient(csc)
+    elif intf.migrated_to:
+        # get a db connection
+        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+        # get its own volume clerk client
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        vcc = volume_clerk_client.VolumeClerkClient(csc)
 
-		show_migrated_to(intf.args, vcc, db)
-		return 0
+        show_migrated_to(intf.args, vcc, db)
+        return 0
 
-	elif intf.status:
-		# get a db connection
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-		exit_status = show_status(intf.args, db, intf)
-		return exit_status
+    elif intf.status:
+        # get a db connection
+        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+        exit_status = show_status(intf.args, db, intf)
+        return exit_status
 
-	elif intf.show:
-		# get a db connection
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-		show_show(intf, db)
+    elif intf.show:
+        # get a db connection
+        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+        show_show(intf, db)
 
-	elif intf.restore:
-		bfid_list = []
-		volume_list = []
-		for target in intf.args:
-			if enstore_functions3.is_bfid(target):
-				bfid_list.append(target)
-			elif enstore_functions3.is_volume(target):
-				volume_list.append(target)
-			else:
-				message = "%s is not a volume or bfid.\n"
-				sys.stderr.write(message % (target,))
-				sys.exit(1)
-
-		if bfid_list:
-			restore_files(bfid_list, intf)
-		for volume in volume_list:
-                	restore_volume(volume, intf)
-
-                return errors
-
-        elif intf.scan:
-		bfid_list = []
-		volume_list = []
-		for target in intf.args:
-			if enstore_functions3.is_bfid(target):
-				bfid_list.append(target)
-			elif enstore_functions3.is_volume(target):
-				volume_list.append(target)
-			else:
-				message = "%s is not a volume or bfid.\n"
-				sys.stderr.write(message % (target,))
-				sys.exit(1)
-
-                rtn = 0
-		if bfid_list:
-			rtn = rtn + final_scan_files(bfid_list, intf)
-		for volume in volume_list:
-			rtn = rtn + final_scan_volume(volume, intf)
-
-                return rtn
-
-	elif intf.scan_volumes:
-                """
-		exit_status = 0
-		for v in intf.args:
-			exit_status = exit_status + final_scan_volume(v, intf)
-                return exit_status
-                """
-                message = "The --scan-volumes switch is depricated.  " \
-                          "Use --scan instead.\n"
-                sys.stderr.write(message)
+    elif intf.restore:
+        bfid_list = []
+        volume_list = []
+        for target in intf.args:
+            if enstore_functions3.is_bfid(target):
+                bfid_list.append(target)
+            elif enstore_functions3.is_volume(target):
+                volume_list.append(target)
+            else:
+                message = "%s is not a volume or bfid.\n"
+                sys.stderr.write(message % (target,))
                 sys.exit(1)
 
-	#For duplicate only.
-	elif getattr(intf, "make_failed_copies", None):
-		
-		# get a db connection
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
-                # get its own file clerk client and volume clerk client
-                config_host = enstore_functions2.default_host()
-                config_port = enstore_functions2.default_port()
-                csc = configuration_client.ConfigurationClient((config_host,
-                                                                config_port))
-                fcc = file_clerk_client.FileClient(csc)
+        if bfid_list:
+            restore_files(bfid_list, intf)
+        for volume in volume_list:
+            restore_volume(volume, intf)
 
-		return make_failed_copies(fcc, db, intf)
-	
-	else:
-		bfid_list = []
-		volume_list = []
-		for target in intf.args:
-			if enstore_functions3.is_bfid(target):
-                                bfid_list.append(target)
-			elif enstore_functions3.is_volume(target):
-				volume_list.append(target)
-			else:
-				try:
-					f = pnfs.File(target)
-					if f.bfid:
-						bfid_list.append(f.bfid)
-					else:
-						raise ValueError(target)
-				except:
-					# abort on error
-					error_log("can not find bfid of",
-						  target)
-					return 1
+        return errors
 
-		rtn = 0
-		if bfid_list:
-			rtn = rtn + migrate_files(bfid_list, intf)
-		for volume in volume_list:
-			rtn = rtn + migrate_volume(volume, intf)
+    elif intf.scan:
+        bfid_list = []
+        volume_list = []
+        for target in intf.args:
+            if enstore_functions3.is_bfid(target):
+                bfid_list.append(target)
+            elif enstore_functions3.is_volume(target):
+                volume_list.append(target)
+            else:
+                message = "%s is not a volume or bfid.\n"
+                sys.stderr.write(message % (target,))
+                sys.exit(1)
 
-		return rtn
+        rtn = 0
+        if bfid_list:
+            rtn = rtn + final_scan_files(bfid_list, intf)
+        for volume in volume_list:
+            rtn = rtn + final_scan_volume(volume, intf)
 
-	return 0
+        return rtn
+
+    elif intf.scan_volumes:
+        message = "The --scan-volumes switch is depricated.  " \
+                  "Use --scan instead.\n"
+        sys.stderr.write(message)
+        sys.exit(1)
+
+    #For duplicate only.
+    elif getattr(intf, "make_failed_copies", None):
+
+        # get a db connection
+        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+        # get its own file clerk client and volume clerk client
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        fcc = file_clerk_client.FileClient(csc)
+
+        return make_failed_copies(fcc, db, intf)
+
+    else:
+        bfid_list = []
+        volume_list = []
+        for target in intf.args:
+            if enstore_functions3.is_bfid(target):
+                bfid_list.append(target)
+            elif enstore_functions3.is_volume(target):
+                volume_list.append(target)
+            elif is_media_type(target) and target == intf.args[0]:
+                break
+            else:
+                try:
+                    f = pnfs.File(target)
+                    if f.bfid:
+                        bfid_list.append(f.bfid)
+                    else:
+                        raise ValueError(target)
+                except (SystemExit, KeyboardInterrupt):
+                    raise sys.exc_info()[0], \
+                          sys.exc_info()[1], \
+                          sys.exc_info()[2]
+                except:
+                    # abort on error
+                    error_log("can not find bfid of",
+                              target)
+                    return 1
+
+        rtn = 0
+        if bfid_list:
+            rtn = rtn + migrate_files(bfid_list, intf)
+        for volume in volume_list:
+            rtn = rtn + migrate_volume(volume, intf)
+
+        if not bfid_list and not volume_list and intf.args:
+            # get a db connection
+            db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+            # get its own file clerk client and volume clerk client
+            config_host = enstore_functions2.default_host()
+            config_port = enstore_functions2.default_port()
+            csc = configuration_client.ConfigurationClient((config_host,
+                                                            config_port))
+            vcc = volume_clerk_client.VolumeClerkClient(csc)
+            rtn = rtn + migrate_remaining_volumes(vcc, db, intf)
+
+        return rtn
+
+    return 0
 
 
 def do_work(intf):
@@ -7726,8 +7914,11 @@ def do_work(intf):
 		wait_for_threads()
 	else:
 		wait_for_processes(kill = True)
-	
-	sys.exit(exit_status)
+
+	#With the possibility that exactly 256 failures could occur, the
+        # default sys.exit() behavior when passed 256 is to return an exit
+        # status to the caller.  Map all non-zero values to one.
+	sys.exit(bool(exit_status))
 
 
 if __name__ == '__main__':
