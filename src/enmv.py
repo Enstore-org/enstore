@@ -171,13 +171,15 @@ def move_file(input_filename, output_filename):
         print_error(e_errors.CONFLICT,
                     "File size information does not match.")
         sys.exit(1)
-    elif p.origff != volume_family.extract_file_family(db_volume_family):
-        #Note: Due to automigration the file family check in encp has been
-        # removed.  We keep it here because changing the metadata while
-        # the automigration is proceding is a bad idea.
-        print_error(e_errors.CONFLICT,
-                    "File family information does not match.")
-        sys.exit(1)
+    ##In order to squeeze small file_families together on one tape using
+    ## migration this check needs to be disabled.
+    #elif p.origff != volume_family.extract_file_family(db_volume_family):
+    #    #Note: Due to automigration the file family check in encp has been
+    #    # removed.  We keep it here because changing the metadata while
+    #    # the automigration is proceding is a bad idea.
+    #    print_error(e_errors.CONFLICT,
+    #                "File family information does not match.")
+    #    sys.exit(1)
     elif p.origname != file_info['pnfs_name0']:
         print_error(e_errors.CONFLICT,
                     "File name information does not match.")
