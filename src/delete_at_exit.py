@@ -255,6 +255,7 @@ def setup_signal_handling():
     sig_leave_alone_list.append(signal.SIGCONT)
     sig_leave_alone_list.append(signal.SIGCHLD)
     sig_leave_alone_list.append(signal.SIGWINCH)
+    sig_leave_alone_list.append(signal.SIGPIPE)  #Use python's default.
     
     #Handle all signals not in the known skip list.
     for sig in range(1, signal.NSIG):
