@@ -130,7 +130,7 @@ import volume_assert_wrapper
 import delete_at_exit
 from scanfiles import ThreadWithResult
 
-debug = True	# debugging mode
+debug = False	# debugging mode
 
 ###############################################################################
 
