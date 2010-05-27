@@ -1188,7 +1188,6 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # write a new value to the specified file layer (1-7)
     # the file needs to exist before you call this
     def writelayer(self, layer, value, filepath=None):
-        #print "Wrinting layeeeeerrrrrr ", layer,value 
         if filepath:
             use_filepath = filepath
         else:
@@ -1214,10 +1213,20 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             use_filepath = self.filepath
 
         fname = self.use_file(use_filepath, layer)
-            
-        f = file_utils.open(fname,'r')
-        l = f.readlines()
-        f.close()
+
+        try:
+           f = file_utils.open(fname,'r')
+           l = f.readlines()
+           f.close()
+        except (OSError, IOError), msg:
+           if getattr(msg, 'errno', msg.args[0]) == errno.ENOENT and \
+                  file_utils.e_access(use_filepath, os.F_OK):
+              #The layer file does not exists, but we have confirmed that the
+              # file really does exist.  Return an empty list instead of
+              # re-raising the exception.
+              l = []
+           else:
+              raise sys.exc_info()
         
         return l
 

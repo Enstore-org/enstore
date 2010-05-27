@@ -18,7 +18,7 @@ import time
 import option
 import delete_at_exit
 import e_errors
-import pnfs
+import namespace
 import enstore_functions2
 import configuration_client
 import file_clerk_client
@@ -28,9 +28,9 @@ import atomic
 import charset
 import Trace
 
-description = "enmv stands for ENstore MV.  It is a PNFS and Enstore" \
-              " aware tool for moving\nfiles around in pnfs.  enmv is" \
-              " required to move files between PNFS directories\nlocated" \
+description = "enmv stands for ENstore MV.  It is a PNFS/Chimera and Enstore" \
+              " aware tool for moving\nfiles around in PNFS/Chimera.  enmv" \
+              " is required to move files between PNFS directories\nlocated" \
               " in different databases.\n"
 
 #def quit(exit_code=1):
@@ -103,26 +103,27 @@ def move_file(input_filename, output_filename):
 
     #Obtain layer 1 and layer 4 information.
     try:
-        p = pnfs.Pnfs(input_filename)
+        #p = pnfs.Pnfs(input_filename)
+        sfs = namespace.StorageFS(input_filename)
     except (IOError, OSError), msg:
         print_error(e_errors.USERERROR,
-                    "Trouble with pnfs: %s" % str(msg))
+                    "Trouble with storage file system: %s" % (str(msg),))
         sys.exit(1)
     try:
-        p.get_bit_file_id()
+        sfs.get_bit_file_id()
     except (IOError, OSError), msg:
         print_error(e_errors.USERERROR,
                     "Unable to read layer 1: %s" % str(msg))
         sys.exit(1)
     try:
-        p.get_xreference()
+        sfs.get_xreference()
     except (IOError, OSError), msg:
         print_error(e_errors.USERERROR,
                     "Unable to read layer 4: %s" % str(msg))
         sys.exit(1)
 
     #Consistancy check that the bfids in layers 1 and 4 match.
-    if p.bfid != p.bit_file_id:
+    if sfs.bfid != sfs.bit_file_id:
         print_error(e_errors.CONFLICT, "Bit file ids do not match.")
         sys.exit(1)
 
@@ -138,7 +139,7 @@ def move_file(input_filename, output_filename):
         print_error(e_errors.TIMEDOUT, "Unable to contact file clerk.")
         sys.exit(1)
 
-    file_info = fcc.bfid_info(p.bit_file_id)
+    file_info = fcc.bfid_info(sfs.bit_file_id)
     if not e_errors.is_ok(file_info):
         print_error(file_info['status'][0], file_info['status'][1])
         sys.exit(1)
@@ -159,46 +160,43 @@ def move_file(input_filename, output_filename):
 
 
     #Check for inconsistancies.
-    if p.volume != file_info['external_label']:
+    if sfs.volume != file_info['external_label']:
         print_error(e_errors.CONFLICT,
                     "Volume information does not match.")
         sys.exit(1)
-    elif not same_cookie(p.location_cookie, file_info['location_cookie']):
+    elif not same_cookie(sfs.location_cookie, file_info['location_cookie']):
         print_error(e_errors.CONFLICT,
                     "Location cookie information does not match.")
         sys.exit(1)
-    elif long(p.size) != long(file_info['size']):
+    elif long(sfs.size) != long(file_info['size']):
         print_error(e_errors.CONFLICT,
                     "File size information does not match.")
         sys.exit(1)
     ##In order to squeeze small file_families together on one tape using
     ## migration this check needs to be disabled.
-    #elif p.origff != volume_family.extract_file_family(db_volume_family):
+    #elif sfs.origff != volume_family.extract_file_family(db_volume_family):
     #    #Note: Due to automigration the file family check in encp has been
     #    # removed.  We keep it here because changing the metadata while
     #    # the automigration is proceding is a bad idea.
     #    print_error(e_errors.CONFLICT,
     #                "File family information does not match.")
     #    sys.exit(1)
-    elif p.origname != file_info['pnfs_name0']:
-        print_error(e_errors.CONFLICT,
-                    "File name information does not match.")
-        sys.exit(1)
     #Mapfile is obsolete.
-    elif p.pnfsid_file != file_info['pnfsid']:
+    elif sfs.pnfsid_file != file_info['pnfsid']:
         print_error(e_errors.CONFLICT,
-                    "Pnfs id information does not match.")
+                    "Pnfs/Chimera id information does not match.")
         sys.exit(1)
-    elif p.bfid != file_info['bfid']:
+    elif sfs.bfid != file_info['bfid']:
         print_error(e_errors.CONFLICT,
                     "Bfid information does not match.")
         sys.exit(1)
     #Original drive not always recorded.
-    elif p.origdrive != file_info['drive']:
+    elif sfs.origdrive != file_info['drive']:
         print_error(e_errors.CONFLICT,
                     "Original drive information does not match.")
         sys.exit(1)
-    elif p.crc != pnfs.UNKNOWN and long(p.crc) != file_info['complete_crc']:
+    elif sfs.crc != namespace.UNKNOWN and \
+             long(sfs.crc) != file_info['complete_crc']:
         print_error(e_errors.CONFLICT,
                     "CRC information does not match.")
         sys.exit(1)
@@ -212,23 +210,25 @@ def move_file(input_filename, output_filename):
               "Moving %s to %s." % (input_filename, output_filename))
     #List the input file's metadata.
     file_information = ("Old File Name: %s" % input_filename,
-                        "Volume: %s" % p.volume,
-                        "Location Cookie: %s" % p.location_cookie,
-                        "Size: %s" % p.size,
-                        "File Family: %s" % p.origff,
-                        "PNFS ID: %s" % p.pnfsid_file,
-                        "BFID: %s" % p.bfid,
-                        "Original Drive: %s" % p.origdrive,
+                        "Volume: %s" % sfs.volume,
+                        "Location Cookie: %s" % sfs.location_cookie,
+                        "Size: %s" % sfs.size,
+                        "File Family: %s" % sfs.origff,
+                        "PNFS ID: %s" % sfs.pnfsid_file,
+                        "BFID: %s" % sfs.bfid,
+                        "Original Drive: %s" % sfs.origdrive,
                         "CRC: %s" % file_info['complete_crc'],
-                        "UID: %s" % p.pstat[stat.ST_UID],
-                        "GID: %s" % p.pstat[stat.ST_GID],
+                        "UID: %s" % sfs.pstat[stat.ST_UID],
+                        "GID: %s" % sfs.pstat[stat.ST_GID],
                         "Permissions: %s (%s)" %
-                 (enstore_functions2.bits_to_rwx(p.pstat[stat.ST_MODE]),
-                  p.pstat[stat.ST_MODE]),
+                 (enstore_functions2.bits_to_rwx(sfs.pstat[stat.ST_MODE]),
+                  sfs.pstat[stat.ST_MODE]),
                         "Last Access: %s (%s)" %
-                 (time.ctime(p.pstat[stat.ST_ATIME]), p.pstat[stat.ST_ATIME]),
+                 (time.ctime(sfs.pstat[stat.ST_ATIME]),
+                  sfs.pstat[stat.ST_ATIME]),
                         "Last Modification: %s (%s)" %
-                 (time.ctime(p.pstat[stat.ST_MTIME]), p.pstat[stat.ST_MTIME]))
+                 (time.ctime(sfs.pstat[stat.ST_MTIME]),
+                  sfs.pstat[stat.ST_MTIME]))
     Trace.message(5, ("%s\n" * len(file_information) % file_information))
     Trace.log(e_errors.INFO,
               ("%s  " * len(file_information) % file_information))
@@ -238,20 +238,21 @@ def move_file(input_filename, output_filename):
     for i in [2, 3, 5, 6, 7]:
         try:
             #Copy layer N metadata.
-            layer_info[i] = p.readlayer(i)
+            layer_info[i] = sfs.readlayer(i)
         except (OSError, IOError), msg:
             #Ignore EACCESS errors.  That is the error given when a layer is
             # turned off in the pnfs configuration file.
             if msg.args[0] != errno.EACCES:
                 print_error(e_errors.OSERROR,
-                            "Pnfs layer %s update failed: %s" % (i, str(msg)))
+                            "%s layer %s update failed: %s" % \
+                            (sfs.print_id, i, str(msg)))
                 sys.exit(1)
 
     #Try to set euid and egid.  This is useful for using enmv on the
     # /pnfs/xyz type paths (not /pnfs/fs/usr/xyz) while being user root.
     try:
-        os.setregid(os.getgid(), p.pstat[stat.ST_GID])
-        os.setreuid(os.getuid(), p.pstat[stat.ST_UID])
+        os.setregid(os.getgid(), sfs.pstat[stat.ST_GID])
+        os.setreuid(os.getuid(), sfs.pstat[stat.ST_UID])
     except OSError:
         pass
 
@@ -267,20 +268,20 @@ def move_file(input_filename, output_filename):
 
         if os.geteuid() == 0:
             pass
-        elif os.geteuid() == p.pstat[stat.ST_UID]:
-             if not (p.pstat[stat.ST_MODE] & stat.S_IRUSR) or \
-                  not (p.pstat[stat.ST_MODE] & stat.S_IWUSR):
+        elif os.geteuid() == sfs.pstat[stat.ST_UID]:
+             if not (sfs.pstat[stat.ST_MODE] & stat.S_IRUSR) or \
+                  not (sfs.pstat[stat.ST_MODE] & stat.S_IWUSR):
                  os.chmod(output_filename,
-                          p.pstat[stat.ST_MODE] | stat.S_IRUSR | stat.S_IWUSR)
-        elif os.getegid() == p.pstat[stat.ST_GID] \
-             and (p.pstat[stat.ST_MODE] & stat.S_IRGRP) and \
-             (p.pstat[stat.ST_MODE] & stat.S_IWGRP):
+                          sfs.pstat[stat.ST_MODE] | stat.S_IRUSR | stat.S_IWUSR)
+        elif os.getegid() == sfs.pstat[stat.ST_GID] \
+             and (sfs.pstat[stat.ST_MODE] & stat.S_IRGRP) and \
+             (sfs.pstat[stat.ST_MODE] & stat.S_IWGRP):
             #Since, we don't need to change the permissions in this case,
             # we should be okay to proceed.
             pass
-        elif p.pstat[stat.ST_GID] in os.getgroups() \
-             and (p.pstat[stat.ST_MODE] & stat.S_IRGRP) and \
-             (p.pstat[stat.ST_MODE] & stat.S_IWGRP):
+        elif sfs.pstat[stat.ST_GID] in os.getgroups() \
+             and (sfs.pstat[stat.ST_MODE] & stat.S_IRGRP) and \
+             (sfs.pstat[stat.ST_MODE] & stat.S_IWGRP):
             #Since, we don't need to change the permissions in this case,
             # we should be okay to proceed.
             pass
@@ -339,72 +340,73 @@ def move_file(input_filename, output_filename):
                         (input_filename, str(msg)))
             sys.exit(1)
 
-    new_p = pnfs.Pnfs(output_filename)
+    #new_p = pnfs.Pnfs(output_filename)
+    new_sfs = namespace.StorageFS(output_filename)
 
     #List the output file's metadata.
     file_information = ("New File Name: %s" % output_filename,
-                        "PNFS ID: %s" % new_p.get_id())
+                        "PNFS/Chimera ID: %s" % new_sfs.get_id())
     Trace.message(5, ("%s\n" * len(file_information) % file_information))
     Trace.log(e_errors.INFO,
               ("%s  " * len(file_information) % file_information))
 
     #Create new pnfs values.
-    new_volume = p.volume
-    new_location_cookie = p.location_cookie
-    new_size = p.size
-    new_file_family = p.origff
+    new_volume = sfs.volume
+    new_location_cookie = sfs.location_cookie
+    new_size = sfs.size
+    new_file_family = sfs.origff
     new_filename = output_filename  #Changed.
-    new_volume_filepath = p.mapfile
-    new_pnfsid = new_p.get_id() #Changed.
-    new_volume_file = p.pnfsid_map
-    new_bfid = p.bfid
-    if p.origdrive != pnfs.UNKNOWN:
-        new_drive = p.origdrive
+    new_volume_filepath = sfs.mapfile
+    new_sfs_id = new_sfs.get_id() #Changed.
+    new_volume_file = sfs.pnfsid_map
+    new_bfid = sfs.bfid
+    if sfs.origdrive != namespace.UNKNOWN:
+        new_drive = sfs.origdrive
     else:
         new_drive = file_info['drive']  #Added if not present.
-    if p.crc != pnfs.UNKNOWN:
-        new_crc = p.crc
+    if sfs.crc != namespace.UNKNOWN:
+        new_crc = sfs.crc
     else:
         new_crc = file_info['complete_crc']  #Added if not present.
 
     #Create new file clerk values.
     fc_ticket = {}
     fc_ticket['fc'] = file_info.copy()
-    fc_ticket['fc']['pnfsid'] = new_pnfsid
+    fc_ticket['fc']['pnfsid'] = new_sfs_id
     fc_ticket['fc']['pnfs_name0'] = output_filename
     #fc_ticket['fc']['drive'] = new_drive
-    fc_ticket['fc']['uid'] = p.pstat[stat.ST_UID]
-    fc_ticket['fc']['gid'] = p.pstat[stat.ST_GID]
+    fc_ticket['fc']['uid'] = sfs.pstat[stat.ST_UID]
+    fc_ticket['fc']['gid'] = sfs.pstat[stat.ST_GID]
 
     try:
         #Update file's layer 1 information.
-        new_p.set_bit_file_id(new_bfid)
+        new_sfs.set_bit_file_id(new_bfid)
     except (OSError, IOError), msg:
         print_error(e_errors.OSERROR,
-                    "Pnfs layer 1 update failed: %s" % str(msg))
+                    "%s layer 1 update failed: %s" % (sfs.print_id, str(msg)))
         sys.exit(1)
 
     try:
         #Update file's layer 4 information.
-        new_p.set_xreference(new_volume, new_location_cookie, new_size,
-                             new_file_family, new_filename,
-                             new_volume_filepath, new_pnfsid, new_volume_file,
-                             new_bfid, new_drive, new_crc)
+        new_sfs.set_xreference(new_volume, new_location_cookie, new_size,
+                               new_file_family, new_filename,
+                               new_volume_filepath, new_sfs_id,
+                               new_volume_file, new_bfid, new_drive, new_crc)
     except OSError, msg:
         print_error(e_errors.OSERROR,
-                    "Pnfs layer 4 update failed: %s" % str(msg))
+                    "%s layer 4 update failed: %s" % (sfs.print_id, str(msg)))
         sys.exit(1)
 
     #Update the layer information that is NOT layer 1 and 4.
     for i in [2, 3, 5, 6, 7]:
         try:
             #If rename() succeded this will not be necessary.
-            if layer_info[i] and not new_p.readlayer(i):
+            if layer_info[i] and not new_sfs.readlayer(i):
                 tmp_string = ""
                 for item in layer_info[i]:
                     #Loop over the lines to build the string.
                     tmp_string = tmp_string + item
-                new_p.writelayer(i, tmp_string)
+                new_sfs.writelayer(i, tmp_string)
         except KeyError:
             #We didn't read in a layer before.  Just skip it.
             pass
@@ -413,7 +415,8 @@ def move_file(input_filename, output_filename):
             # turned off in the pnfs configuration file.
             if msg.args[0] != errno.EACCES:
                 print_error(e_errors.OSERROR,
-                            "Pnfs layer %s update failed: %s" % (i, str(msg)))
+                            "%s layer %s update failed: %s" % \
+                            (sfs.print_id, i, str(msg)))
                 sys.exit(1)
                     
     if out_fd: #If the rename failed and we did it the hard way.
@@ -424,7 +427,7 @@ def move_file(input_filename, output_filename):
         # the rest won't be there.
         
         try:
-            new_p.set_file_size(file_info['size'])
+            new_sfs.set_file_size(file_info['size'])
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "Pnfs filesize update failed: %s" % str(msg))
@@ -439,7 +442,7 @@ def move_file(input_filename, output_filename):
 
         try:
             os.utime(output_filename,
-                     (p.pstat[stat.ST_ATIME], p.pstat[stat.ST_MTIME]))
+                     (sfs.pstat[stat.ST_ATIME], sfs.pstat[stat.ST_MTIME]))
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File access and modification time update failed: %s" \
@@ -448,7 +451,7 @@ def move_file(input_filename, output_filename):
             
         try:
             os.chown(output_filename,
-                     p.pstat[stat.ST_UID], p.pstat[stat.ST_GID])
+                     sfs.pstat[stat.ST_UID], sfs.pstat[stat.ST_GID])
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File ownership update failed: %s" % str(msg))
@@ -459,8 +462,8 @@ def move_file(input_filename, output_filename):
         # They would have been modified if the original file was read-only.
         
         try:
-            if os.stat(output_filename)[stat.ST_MODE] != p.pstat[stat.ST_MODE]:
-                os.chmod(output_filename, p.pstat[stat.ST_MODE])
+            if os.stat(output_filename)[stat.ST_MODE] != sfs.pstat[stat.ST_MODE]:
+                os.chmod(output_filename, sfs.pstat[stat.ST_MODE])
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File permissions update failed: %s" % str(msg))
@@ -468,7 +471,6 @@ def move_file(input_filename, output_filename):
             # pnfs part of the move is completed, but the Enstore DB
             # part won't be.  That confict will prevent encp from reading
             # the file.
-            #sys.exit(1)
 
     #Update the file clerk information.  This must be last.  If any of the
     # the prevous steps fail in setting the pnfs information, the
@@ -507,7 +509,7 @@ def move_file(input_filename, output_filename):
             # before the actual file is deleted.  If os.remove() were to be
             # used, the layer information is "trashed" and delfile would mark
             # the moved file as deleted.
-            p.rm()
+            sfs.rm()
     except OSError, msg:
         print_error(e_errors.OSERROR,
                     "Unable to remove original file %s: %s" %
@@ -573,13 +575,13 @@ def main(intf):
 
 
     for item in intf.input:
-        if not pnfs.is_pnfs_path(item):
+        if not namespace.is_storage_path(item):
             print_error(e_errors.USERERROR,
                         "Source file %s is not a valid pnfs file." % (item,))
             sys.exit(1)
 
     for item in intf.output:
-        if not pnfs.is_pnfs_path(item, check_name_only = 1):
+        if not namespace.is_storage_path(item, check_name_only = 1):
             print_error(e_errors.USERERROR,
                    "Destination file %s is not a valid pnfs file." % (item,))
             sys.exit(1)
@@ -595,15 +597,17 @@ def do_work(intf):
         delete_at_exit.quit(0)
     except SystemExit:
         delete_at_exit.quit(1)
-    #except:
-        #exc, msg, tb = sys.exc_info()
-        #try:
-        #    sys.stderr.write("%s\n" % (tb,))
-        #    sys.stderr.write("%s %s\n" % (exc, msg))
-        #    sys.stderr.flush()
-        #except IOError:
-        #    pass
-        #delete_at_exit.quit(1)
+    except:
+        exc, msg, tb = sys.exc_info()
+        try:
+            sys.stderr.write("%s\n" % (tb,))
+            sys.stderr.write("%s %s\n" % (exc, msg))
+            sys.stderr.flush()
+        except IOError:
+            pass
+        Trace.handle_error(exc, msg, tb)
+        del tb  #Avoid resource leak.
+        delete_at_exit.quit(1)
         
 
 if __name__ == '__main__':
