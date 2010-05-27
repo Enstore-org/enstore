@@ -44,6 +44,41 @@ class DuplicationManager:
 			self.good = False
 			return
 
+	# register the second bfid as a copy of the first bfid
+	def register_duplicate(self, bfid1, bfid2):
+		# register
+		q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');"%(bfid1, bfid2)
+		try:
+			self.db.query(q)
+		except:
+			return "failed to register copy (%s, %s)" \
+			       % (bfid1, bfid2)
+
+		return
+
+	# unregister the second bfid as a copy of the first bfid
+	def unregister_duplicate(self, bfid1, bfid2):
+		# check if f1 and f2 are already undone
+		q = "select * from file_copies_map " \
+		    "where (bfid = '%s' and alt_bfid = '%s') " \
+		    "   or (bfid = '%s' and alt_bfid = '%s');" \
+		    % (bfid1, bfid2, bfid2, bfid1)
+		res = self.db.query(q).getresult()
+		if res:
+			q2 = "delete from file_copies_map " \
+			     "where (bfid = '%s' and alt_bfid = '%s') " \
+			     "   or (bfid = '%s' and alt_bfid = '%s');" \
+			     % (bfid1, bfid2, bfid2, bfid1)
+			try:
+				res = self.db.query(q2).getresult()
+			except:
+				return "failed to unregister copy (%s, %s)" \
+				       % (bfid1, bfid2)
+		else:
+			return "(%s, %s) are already removed" % (bfid1, bfid2)
+
+		return
+
 	# make_duplicate(bfid1, bfid2): make bfid2 a copy of bfid1
 	def make_duplicate(self, bfid1, bfid2):
 		# make sure both are in file database
@@ -67,12 +102,10 @@ class DuplicationManager:
 				return "different %s: (%s, %s)"%(i, `f1[i]`, `f2[i]`)
 
 		# check if f1 and f2 are already copies
-		q = "select * from file_copies_map where bfid = '%s' and alt_bfid = '%s';"%(bfid1, bfid2)
-		res = self.db.query(q).getresult()
-		if res:
-			return "(%s, %s) are already copies"%(bfid1, bfid2)
-		# check the other way
-		q = "select * from file_copies_map where bfid = '%s' and alt_bfid = '%s';"%(bfid2, bfid1)
+		q = "select * from file_copies_map " \
+		    " where (bfid = '%s' and alt_bfid = '%s') " \
+		    "    or (bfid = '%s' and alt_bfid = '%s');" \
+		    % (bfid1, bfid2, bfid2, bfid1)
 		res = self.db.query(q).getresult()
 		if res:
 			return "(%s, %s) are already copies"%(bfid1, bfid2)
@@ -139,12 +172,7 @@ class DuplicationManager:
 				return "failed to undelete file %s" % (bfid2,)
 
 		# register
-		q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');"%(bfid1, bfid2)
-		try:
-			res = self.db.query(q)
-		except:
-			return "failed to register copy (%s, %s)" \
-			       % (bfid1, bfid2)
+		self.register_duplicate(bfid1, bfid2)
 
 		# set pnfs entry
 		if pf.bfid != bfid1:
@@ -154,6 +182,21 @@ class DuplicationManager:
 
 		return
 
+	# unmake_duplicate(bfid1, bfid2): remove file_copies_map table entry
+	# for bfid1 and bfid2
+	def unmake_duplicate(self, bfid1, bfid2):
+		# check if f1 and f2 are swapped copies
+		q = "select * from file_copies_map, migration " \
+		    " where (bfid = '%s' and alt_bfid = '%s' and " \
+		    "        src_bfid = '%s' and dst_bfid = '%s');" \
+		    % (bfid2, bfid1, bfid1, bfid2)
+		res = self.db.query(q).getresult()
+		if res:
+			#Note eventually this should be automatic.
+			return "need to swap %s and %s" % (bfid1, bfid2)
+		
+		return self.unregister_duplicate(bfid1, bfid2)
+		
 	# swap original with its first copy
 	def swap_original_and_copy(self, bfid):
 		# get file information

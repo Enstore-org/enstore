@@ -130,7 +130,7 @@ import volume_assert_wrapper
 import delete_at_exit
 from scanfiles import ThreadWithResult
 
-debug = False	# debugging mode
+debug = True	# debugging mode
 
 ###############################################################################
 
@@ -750,7 +750,6 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError):
         exc_type, exc_value, exc_tb = sys.exc_info()
-        del exc_tb #avoid resource leaks
 
         if exc_value.args[0] in [errno.EEXIST, errno.ENOENT]:
             try:
@@ -769,14 +768,15 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
             except:
                 pass
 
-            if not src:
-                if exc_value.args[0] not in [errno.ENOENT]:
-                    # Don't fill the log file when the situation is known.
-                    Trace.handle_error(exc_type, exc_value, sys.exc_info()[2],
-                                       severity=99)
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        if not src:
+            # Don't fill the log file when the situation is known.
+            #Trace.handle_error(exc_type, exc_value, exc_tb, severity=99)
+            pass
+            
+        del exc_tb #avoid resource leaks
+
+        if not src:
+            raise exc_type, exc_value, sys.exc_info()[2]
 
     return src
 
@@ -1084,18 +1084,28 @@ def wait_for_thread():
         else:
             time.sleep(5)
     return rtn
-
+    
 def wait_for_threads():
-	global tid_list
-		
-	rtn = 0
-        while len(tid_list):
-                wft_rtn = wait_for_thread()
-                rtn = rtn + wft_rtn
-                time.sleep(5)
+    global tid_list
 
-	return rtn
-		
+    rtn = 0
+
+    while len(tid_list) > 0:
+        for i in range(len(tid_list)):
+            tid_list[i].join()
+            result = tid_list[i].get_result()
+            del tid_list[i]
+
+            if result:
+                rtn = rtn + 1
+
+            #If we joined a thread, go back to the top of the while.
+            # If we don't we will have a discrepancy between indexes
+            # from before the "del" and after the "del" of ts_check[i].
+            break
+
+    return rtn
+
 #Run in either threads or processes depending on the value of USE_THREADS.
 def run_in_parallel(function, arg_list, my_task = "RUN_IN_PARALLEL",
 		    on_exception = None):
@@ -1310,7 +1320,7 @@ def __is_migrated_state(bfid, find_src, find_dst, fcc, db, order_by = "copied"):
 #	we check the source file
 #       As a side effect, this one returns the destination bfid instead
 #       of the timestamp that the copy step completed.
-def is_copied(bfid, fcc, db, all_copies=False):
+def is_copied_migration(bfid, fcc, db, all_copies=False):
 
     res = __is_migrated_state(bfid, 1, 0, fcc, db) # 1, 0 => source only
 
@@ -1333,6 +1343,9 @@ def is_copied(bfid, fcc, db, all_copies=False):
                 return file_result['dst_bfid']
         else:
             return res[0]['dst_bfid']
+
+#Duplication may override this.
+is_copied = is_copied_migration
 
 # is_copied_by_dst(bfid) -- has the file already been copied?
 #	we check the destination file
@@ -1529,7 +1542,7 @@ def get_bfids(bfid, fcc, db):
         return (res[0]['src_bfid'], res[0]['dst_bfid'])    
 
 # log_copied(src_bfid, dst_bfid) -- log a successful copy
-def log_copied(src_bfid, dst_bfid, fcc, db):
+def log_copied_migration(src_bfid, dst_bfid, fcc, db):
     #String used to check for match of one type of error to log special
     # error message.
     DUPLICATE_KEY_ERROR = "duplicate key violates unique constraint"
@@ -1537,6 +1550,8 @@ def log_copied(src_bfid, dst_bfid, fcc, db):
     # match is found.
     OBSOLETE_WARNING = "The database has an obsolete unique key constraint." \
                        "This will prevent multiple copies from being scanned."
+
+    rtn_val = 0  #So far no errors.
     
     if USE_CLERKS:
         reply_ticket = fcc.set_copied(src_bfid, dst_bfid)
@@ -1549,6 +1564,7 @@ def log_copied(src_bfid, dst_bfid, fcc, db):
                     log(OBSOLETE_WARNING)
             
             error_log("LOG_COPIED", str(reply_ticket['status']))
+            rtn_val = 1  #Error
     else:
 
         q = "insert into migration (src_bfid, dst_bfid, copied) \
@@ -1568,17 +1584,27 @@ def log_copied(src_bfid, dst_bfid, fcc, db):
 
             exc_type, exc_value = sys.exc_info()[:2]
             error_log("LOG_COPIED", str(exc_type), str(exc_value), q)
+            rtn_val = 1  #Error
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             error_log("LOG_COPIED", str(exc_type), str(exc_value), q)
-    return
+            rtn_val = 1  #Error
+            
+    return rtn_val
+
+#Duplication may override this.
+log_copied = log_copied_migration
 
 # log_uncopied(src_bfid, dst_bfid) -- log a successful uncopy (aka restore)
-def log_uncopied(src_bfid, dst_bfid, fcc, db):
+def log_uncopied_migration(src_bfid, dst_bfid, fcc, db):
+
+    rtn_val = 0  #So far no errors.
+    
     if USE_CLERKS:
         reply_ticket = fcc.unset_copied(src_bfid, dst_bfid)
         if not e_errors.is_ok(reply_ticket):
             error_log("LOG_UNCOPIED", str(reply_ticket['status']))
+            rtn_val = 1  #Error
     else:
         q = "update migration set copied = NULL where \
                 src_bfid = '%s' and dst_bfid = '%s'; \
@@ -1592,7 +1618,12 @@ def log_uncopied(src_bfid, dst_bfid, fcc, db):
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             error_log("LOG_UNCOPIED", str(exc_type), str(exc_value), q)
-    return
+            rtn_val = 1  #Error
+            
+    return rtn_val  #Success.
+
+#Duplication may override this.
+log_uncopied = log_uncopied_migration
 
 # log_swapped(src_bfid, dst_bfid) -- log a successful swap
 def log_swapped(src_bfid, dst_bfid, fcc, db):
@@ -2486,47 +2517,83 @@ def mark_undeleted(MY_TASK, bfid, fcc, db):
 #                          a migration path is: /pnfs/fs/usr/Migration/X/...
 # deleted is either 'no' or 'yes'; anything else is equal to 'no'
 def migration_path(path, deleted = NO):
-	admin_mount_points = pnfs.get_enstore_admin_mount_point()
-	if len(admin_mount_points) == 0:
-		#If the admin path is not mounted, use the normal path...
-		dname, fname = os.path.split(path)
-		#...just be sure to stick .m. at the beginning and to
-		# limit the character count.
-		use_fname = ".m.%s" % (fname,)[:pnfs.PATH_MAX]
-		mig_path = os.path.join(dname, use_fname)
-		return mig_path
-	elif len(admin_mount_points) >= 1:
-		admin_mount_point = admin_mount_points[0]
-	else:
-		return None
+    admin_mount_points = pnfs.get_enstore_admin_mount_point()
+    if len(admin_mount_points) == 0:
+        if deleted == NO:
+            #If the admin path is not mounted, use the normal path...
+            mig_dir, fname = os.path.split(path)
+        else:
+            #We have a deleted file without the /pnfs/fs mount point.
+            
+            if path[0] != "/":
+                #We have a relative path.  We will get this for deleted files.
+                #Return None.  The caller should then call this function again
+                # with the original absolute path.
+                return None
 
-	if not admin_mount_point:
-			admin_mount_point = DEFAULT_FS_PNFS_PATH
+            #Need to find the mounted non-/pnfs/fs mount point.
+            search_path, fname = os.path.split(path)
+            while search_path:
+                dirname = os.path.dirname(search_path)
+                if os.path.ismount(dirname):
+                    try:
+                        if namespace.is_storage_local_path(dirname):
+                            mig_dir = dirname
+                            break
+                    except NameError:
+                        #If we only have pnfs support at this time.
+                        if pnfs.is_pnfs_path(dirname):
+                            mig_dir = dirname
+                            break
 
-	if deleted == YES:
-		return os.path.join(admin_mount_point,
-				    MIGRATION_DB,
-				    DELETED_TMP,
-				    os.path.basename(path))
+                    #If we get here, we have found a mountpoint, but it
+                    # is not for a storage filesystem.
+                    return None
 
-	stripped_name = pnfs.strip_pnfs_mountpoint(path)
+                search_path = os.path.dirname(dirname)
+            else:
+                #We should never be able to get here.  The absolute path
+                # did not find the root directory (/) in the path.
+                return None
 
-	#Already had the migration path.
-	if stripped_name.startswith(MIGRATION_DB + "/"):
-		return os.path.join(admin_mount_point, stripped_name)
+            
+        #...just be sure to stick .m. at the beginning and to
+        # limit the character count.
+        use_fname = ".m.%s" % (fname,)[:pnfs.PATH_MAX]
+        mig_path = os.path.join(mig_dir, use_fname)
+        return mig_path
+    elif len(admin_mount_points) >= 1:
+        admin_mount_point = admin_mount_points[0]
+    else:
+        return None
 
-	return os.path.join(admin_mount_point,
-			    MIGRATION_DB, stripped_name)
+    if not admin_mount_point:
+        admin_mount_point = DEFAULT_FS_PNFS_PATH
+
+    if deleted == YES:
+        return os.path.join(admin_mount_point,
+                            MIGRATION_DB,
+                            DELETED_TMP,
+                            os.path.basename(path))
+
+    stripped_name = pnfs.strip_pnfs_mountpoint(path)
+
+    #Already had the migration path.
+    if stripped_name.startswith(MIGRATION_DB + "/"):
+        return os.path.join(admin_mount_point, stripped_name)
+
+    return os.path.join(admin_mount_point,
+                        MIGRATION_DB, stripped_name)
 
 # temp_file(file_record) -- get a temporary destination file from file
 def temp_file(file_record):
-	if enstore_functions3.is_volume_disk(file_record['external_label']):
-		#We need to treat disk files differently.
-		return os.path.join(SPOOL_DIR, file_record['bfid'])
+    if enstore_functions3.is_volume_disk(file_record['external_label']):
+        #We need to treat disk files differently.
+        return os.path.join(SPOOL_DIR, file_record['bfid'])
 	
-	return os.path.join(SPOOL_DIR,
-			    "%s:%s" % (file_record['external_label'],
-				       file_record['location_cookie']))
+    return os.path.join(SPOOL_DIR,
+                        "%s:%s" % (file_record['external_label'],
+                                   file_record['location_cookie']))
 
 ##########################################################################
 
@@ -2708,7 +2775,8 @@ class MigrateQueue:
 
         #Set a flag indicating that we have read the last item.
         if job == SENTINEL:
-            log("received SENTINEL")
+            if self.debug:
+                log("received SENTINEL")
             #Acquire the lock to access a self data member.
             self.lock.acquire()
             self.finished = True
@@ -3456,7 +3524,7 @@ def show_status(volume_list, db, intf):
         if not intf.destination_only:
             for row in full_output_list:
                 if row['src_bfid'] == row['current_bfid'] \
-                       and row['dst_bfid']:
+                       and row['dst_bfid'] and not row['bfid']:
                     #We found a source volume.
                     output_type.append(DO_MIG_SRC)
                     column_volume_list.append((volume, ""))
@@ -3474,7 +3542,7 @@ def show_status(volume_list, db, intf):
         if not intf.source_only:
             for row in full_output_list:
                 if row['dst_bfid'] == row['current_bfid'] \
-                       and row['src_bfid']:
+                       and row['src_bfid'] and not row['alt_bfid']:
                     #We found a destination volume.
                     output_type.append(DO_MIG_DST)
                     column_volume_list.append(("", volume))
@@ -3894,6 +3962,7 @@ def make_failed_copies(fcc, db, intf):
         elif file_record['deleted'] == "yes" and \
              (not file_record['pnfsid'] or not file_record['pnfs_name0']):
             log(MY_TASK, "Setting failed file %s as done." % (bfid,))
+
             #Can't duplicate failed original copy.
             update_failed_done(bfid, db)
 
@@ -3903,7 +3972,7 @@ def make_failed_copies(fcc, db, intf):
                 break
             continue
 
-        if is_swapped(bfid, fcc, db):
+        if is_swapped(bfid, fcc, db) and is_duplication(bfid, db):
             log(MY_TASK, "Setting already migrated file %s as done." % (bfid,))
 
             #Can't duplicate since it has already been migrated.
@@ -3951,7 +4020,7 @@ def make_failed_copies(fcc, db, intf):
             
             #Get the results.
             db.query(q)
-            
+
             log(MY_TASK, "Removing the bfid from the migration " \
                 "table for bfid %s." % (bfid,))
             
@@ -3964,7 +4033,6 @@ def make_failed_copies(fcc, db, intf):
             
             #Get the results.
             db.query(q)
-
 
         #For debugging, do only one file.
         if debug:
@@ -4373,20 +4441,38 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
 	is_it_swapped = is_swapped(src_bfid, fcc, db)
 
         #We need to verify that we are doing the correct thing if only
-        # given a bfid as input.  
+        # given a bfid as input.
         dup_files = is_duplicated(src_bfid, fcc, db)
         if dup_files and is_it_copied and MIGRATION_NAME in ["MIGRATION",
                                                              "CLONING"]:
-            error_log(MY_TASK,
+            if is_it_swapped:
+                error_log(MY_TASK,
                         "trying to migrate file %s already duplicated to %s" \
                         % (src_bfid, dup_files))
-            return
+                return
+            else:
+                #The swap step failed.  We need to assume that the user
+                # knows if migration or duplication was used in the first
+                # place, so that the metadata can successfully be set.
+                # Now that duplicate.log_copied() updates both the
+                # migration and file_copies_map tables, this logic should
+                # not be needed in the future.
+                pass
         elif not dup_files and is_it_copied and \
                  MIGRATION_NAME in ["DUPLICATION"]:
-            error_log(MY_TASK,
+            if is_it_swapped:
+                error_log(MY_TASK,
                         "trying to duplicate file %s already migrated to %s" \
                         % (src_bfid, dst_bfid))
-            return
+                return
+            else:
+                #The swap step failed.  We need to assume that the user
+                # knows if migration or duplication was used in the first
+                # place, so that the metadata can successfully be set.
+                # Now that duplicate.log_copied() updates both the
+                # migration and file_copies_map tables, this logic should
+                # not be needed in the future.
+                pass
         #Warn about this, but allow it to proceed.
         if dup_files and not is_it_copied:
             warning_log(MY_TASK,
@@ -4642,10 +4728,8 @@ def copy_files(thread_num, file_records, volume_record, copy_queue,
                 use_bfid = file_record[0]['bfid']
             else:  #using encp
                 use_bfid = file_record['bfid']
-            error_log(MY_TASK, str(exc_type),
-                      str(exc_value),
-                      " reading file %s: %s" \
-                      % (use_bfid, str(exc_value)))
+            error_log(MY_TASK, "reading file %s: (%s, %s)" \
+                      % (use_bfid, str(exc_type), str(exc_value)))
 
         if pass_along_jobs:
             #pass_along_jobs will contain more than one file if "get" is used.
@@ -4704,11 +4788,14 @@ def copy_files(thread_num, file_records, volume_record, copy_queue,
                 break
 
     # terminate the copy_queue
-    log(MY_TASK, "no more to copy, terminating the copy queue")
+    if debug:
+        log(MY_TASK, "no more to copy, terminating the copy queue")
     copy_queue.put(SENTINEL, block = True)
-    log(MY_TASK, "no more to copy, terminating the deleted copy queue")
+    if debug:
+        log(MY_TASK, "no more to copy, terminating the deleted copy queue")
     deleted_copy_queue.put(SENTINEL, block = True)
-    log(MY_TASK, "leaving thread/process")
+    if debug:
+        log(MY_TASK, "leaving thread/process")
 
     #Before launching the next thread, lets cleanup the stack on
     # this side.
@@ -4825,6 +4912,7 @@ def compare_metadata(p, f, pnfsid = None):
 		p.show()
 		log("compare_metadata():", `f`)
 	if p.bfid != f['bfid']:
+                print "p.bfid:", p.bfid, "f['bfid']:", f['bfid']
 		return "bfid"
 	if p.volume != f['external_label']:
 		return "external_label"
@@ -4843,24 +4931,12 @@ def compare_metadata(p, f, pnfsid = None):
 	#	p.drive != f['drive'] and f['drive'] != "unknown:unknown":
 	#	return "drive"
 	return None
-
-# swap_metadata(bfid1, src, bfid2, dst) -- swap metadata for src and dst
-#
-# This got to be very paranoid.
-#
-# [1] check the meta data consistency
-# [2] f[bfid2][pnfsid] = f[bfid1][pnfsid] # use old pnfsid
-# [3] pnfsid = f[bfid1][pnfsid]           # save it
-# [4] p[src] = p[dst]                     # copy pnfs layer 4
-# [5] p[src][pnfsid] = pnfsid
-#
-# * return None if succeeds, otherwise, return error message
-# * to avoid deeply nested "if ... else", it takes early error return
-#def swap_metadata(bfid1, src, bfid2, dst, db):
-def swap_metadata(job, fcc, db):
-    MY_TASK = "SWAPPING_METADATA"
-
-    #Get information about the files to copy and swap.
+    
+#Get information about the files to copy and swap.  This is the common
+# code for migration and duplication.  This function does not modify
+# any metadata.
+def _verify_metadata(MY_TASK, job, fcc, db):
+    
     (src_file_record, src_volume_record, src_path,
      dst_file_record, dst_volume_record, tmp_path, mig_path) = job
 
@@ -4868,11 +4944,18 @@ def swap_metadata(job, fcc, db):
     src_bfid = src_file_record['bfid']
     dst_bfid = dst_file_record['bfid']
 
+    #If we happen to be migrating a multiple copy (which is only allowed
+    # with --force), then we need to do not modify layers 1 and 4.
+    is_migrating_multiple_copy = None
+
+    log(MY_TASK, "swapping %s %s %s %s" % \
+        (src_bfid, src_path, dst_bfid, mig_path))
+
     #It is possible to migrate a duplicate.  Need to handle finding
     # the original bfid's file recored, if there is one.
     #
     #It is also possible to make multiple copies while migrating, need
-    # to check bfid2 for this possibility.
+    # to check dst_bfid for this possibility.
     for mc_check_bfid in (src_bfid, dst_bfid):
         original_reply = fcc.find_the_original(mc_check_bfid)
         f0 = {}
@@ -4881,8 +4964,11 @@ def swap_metadata(job, fcc, db):
                and original_reply['original'] != mc_check_bfid:
             f0 = fcc.bfid_info(original_reply['original'])
             if not e_errors.is_ok(dst_file_record):
-                return "original bfid: %s: %s" % (src_file_record['status'][0],
-                                                  src_file_record['status'][1])
+                return_error = "original bfid: %s: %s" % \
+                               (src_file_record['status'][0],
+                                src_file_record['status'][1])
+                return return_error, job, None, None, f0, \
+                       is_migrating_multiple_copy
         if f0:
             break #found our original.
 
@@ -4896,7 +4982,6 @@ def swap_metadata(job, fcc, db):
     # avoid tracebacks.
     """
 
-
     # get all pnfs metadata - first the source file
     if src_file_record['deleted'] == "no":
         try:
@@ -4905,10 +4990,10 @@ def swap_metadata(job, fcc, db):
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (OSError, IOError), msg:
-            return str(msg)
+            return str(msg), job, None, None, f0, is_migrating_multiple_copy
         except:
             exc, msg = sys.exc_info()[:2]
-            return str(msg)
+            return str(msg), job, None, None, f0, is_migrating_multiple_copy
     else:
         # What do we need an empty File class for?
         p1 = pnfs.File(src_path)
@@ -4919,34 +5004,18 @@ def swap_metadata(job, fcc, db):
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError), msg:
-        return str(msg)
+        return str(msg), job, None, None, f0, is_migrating_multiple_copy
     except:
         exc, msg = sys.exc_info()[:2]
-        return str(msg)
+        return str(msg), job, None, None, f0, is_migrating_multiple_copy
 
     ##################################################################
     #Handle deleted files specially.
     if src_file_record['deleted'] == YES:
+        # We can skip the checking that is performed in the rest of
+        # this function.
         res = ''
-        # copy the metadata
-        finfo = copy.copy(dst_file_record)
-        if e_errors.is_ok(dst_file_record):
-            del finfo['status']
-            finfo['pnfs_name0'] = src_file_record['pnfs_name0']
-            if f0:
-                #We need to do use f0 when fixing files migrated to multiple
-                # copies before the constraints in the DB were modified
-                # to make the pair (src_bfid, dst_bfid) unique instead of
-                # each column src_bfid & dst_bfid being unique.
-                finfo['deleted'] = f0['deleted']
-            else:
-                finfo['deleted'] = YES
-            res2 = fcc.modify(finfo)
-            if not e_errors.is_ok(res2['status']):
-                res = res2['status'][1]
-        else:
-            res = "destination file info missing"
-        return res
+        return res, job, p1, p2, f0, is_migrating_multiple_copy
     ###################################################################
 
     #If we happen to be migrating a multiple copy (which is only allowed
@@ -4967,10 +5036,11 @@ def swap_metadata(job, fcc, db):
         else:
             if not res:
                 #The metadata has already been swapped.
-                return None
+                return None, job, p1, p2, f0, is_migrating_multiple_copy
     if res:
-        return "[1] metadata %s %s are inconsistent on %s" \
-               % (src_bfid, src_path, res)
+        return_error = "[1] metadata %s %s are inconsistent on %s" \
+                       % (src_bfid, src_path, res)
+        return return_error, job, p1, p2, f0, is_migrating_multiple_copy
 
     if not p2.bfid and not p2.volume:
         #The migration path has already been deleted.  There is
@@ -4984,8 +5054,9 @@ def swap_metadata(job, fcc, db):
         elif res == "bfid" and f0:
             res = compare_metadata(p2, f0, p1.pnfs_id)
         if res:
-            return "[2] metadata %s %s are inconsistent on %s" \
-                   % (dst_bfid, mig_path, res)
+            return_error = "[2] metadata %s %s are inconsistent on %s" \
+                           % (dst_bfid, mig_path, res)
+            return return_error, job, p1, p2, f0, is_migrating_multiple_copy
 
     # cross check
     err_msg = ""
@@ -5001,12 +5072,55 @@ def swap_metadata(job, fcc, db):
             log(MY_TASK,
                 "undoing migration of %s to %s do to error" % (src_bfid, dst_bfid))
             log_uncopied(src_bfid, dst_bfid, fcc, db)
-        return err_msg
+        return err_msg, job, p1, p2, f0, is_migrating_multiple_copy
+
+
+    job = (src_file_record, src_volume_record, src_path,
+           dst_file_record, dst_volume_record, tmp_path, mig_path)
+    return None, job, p1, p2, f0, is_migrating_multiple_copy
+
+# swap_metadata(job, fcc, db) -- swap metadata for src and dst
+#
+# This got to be very paranoid.
+#
+# [1] check the meta data consistency
+# [2] f[bfid2][pnfsid] = f[bfid1][pnfsid] # use old pnfsid
+# [3] pnfsid = f[bfid1][pnfsid]           # save it
+# [4] p[src] = p[dst]                     # copy pnfs layer 4
+# [5] p[src][pnfsid] = pnfsid
+#
+# * return None if succeeds, otherwise, return error message
+# * to avoid deeply nested "if ... else", it takes early error return
+def _swap_metadata(MY_TASK, job, fcc, db):
+
+    return_error, job, p1, p2, f0, is_migrating_multiple_copy = \
+                  _verify_metadata(MY_TASK, job, fcc, db)
+
+    if return_error:
+        #The return_error value is a string with the error message.
+        return return_error
+
+    #Get information about the files to copy and swap.
+    (src_file_record, src_volume_record, src_path,
+     dst_file_record, dst_volume_record, tmp_path, mig_path) = job
+
+    #shortcuts
+    src_bfid = src_file_record['bfid']
+    dst_bfid = dst_file_record['bfid']
 
     ### swapping the Enstore DB metadata
     m1 = {'bfid': dst_bfid,
           'pnfsid':src_file_record['pnfsid'],
           'pnfs_name0':src_file_record['pnfs_name0']}
+    if src_file_record['deleted'] == YES:
+        if f0:
+            #We need to do use f0 when fixing files migrated to multiple
+            # copies before the constraints in the DB were modified
+            # to make the pair (src_bfid, dst_bfid) unique instead of
+            # each column src_bfid & dst_bfid being unique.
+            m1['deleted'] = f0['deleted']
+        else:
+            m1['deleted'] = YES
     res = fcc.modify(m1)
     if not e_errors.is_ok(res['status']):
         return "failed to change pnfsid for %s" % (dst_bfid,)
@@ -5088,6 +5202,36 @@ def swap_metadata(job, fcc, db):
                % (dst_bfid, src_path, res)
 
     return None
+
+def swap_metadata(job, fcc, db):
+    MY_TASK = "SWAP_METADATA"
+
+    #Get information about the files to copy and swap.
+    (src_file_record, src_volume_record, src_path,
+     dst_file_record, dst_volume_record, tmp_path, mig_path) = job
+
+    #Don't continue if this is already done.  However, do log that the
+    # metadata updating is already done.
+    if dst_file_record and is_swapped(src_file_record['bfid'], fcc, db):
+        ok_log(MY_TASK, "%s %s %s %s have already been swapped" \
+               % (src_file_record['bfid'], src_path,
+                  dst_file_record['bfid'], mig_path))
+        return None
+
+    res = _swap_metadata(MY_TASK, job, fcc, db)
+
+    if not res:
+        ok_log(MY_TASK,
+               "%s %s %s %s have been swapped" \
+               % (src_file_record['bfid'], src_path,
+                  dst_file_record['bfid'], mig_path))
+    if res:
+        error_log(MY_TASK,
+                  "%s %s %s %s failed due to %s" \
+                  % (src_file_record['bfid'], src_path,
+                     dst_file_record['bfid'], mig_path, res))
+
+    return res
 
 # tmp_path refers to the path that the file temporarily exists on disk.
 # mig_path is the path that the file will be written to pnfs.
@@ -5342,7 +5486,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                 error_log(MY_TASK, "no file record found(%s)" % (dst_bfid,))
                 return
 
-        if dst_file_record['deleted'] == "no":
+        if dst_file_record['deleted'] == NO:
             try:
                 mig_path = find_pnfs_file.find_pnfsid_path(
                     dst_file_record['pnfsid'], dst_bfid,
@@ -5351,8 +5495,27 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                 mig_path = migration_path(src_path, src_file_record['deleted'])
         else:
             mig_path = migration_path(src_path, src_file_record['deleted'])
+            if mig_path == None:
+                #We need to use the original pathname, since the file is
+                # currently deleted (and /pnfs/fs was not able to be found).
+                mig_path = migration_path(src_file_record['pnfs_name0'],
+                                          src_file_record['deleted'])
+            if mig_path == None:
+                #Is PNFS mounted?
+                error_log(MY_TASK, "No valid migration path found.")
+                return
     else:
         mig_path = migration_path(src_path, src_file_record['deleted'])
+        if mig_path == None and src_file_record['deleted'] != NO:
+            #We need to use the original pathname, since the file is
+            # currently deleted (and /pnfs/fs was not able to be found).
+            mig_path = migration_path(src_file_record['pnfs_name0'],
+                                      src_file_record['deleted'])
+        if mig_path == None:
+            #Is PNFS mounted?
+            error_log(MY_TASK, "No valid migration path found.")
+            return
+
         #Try and catch situations were an error left a zero
         # length file in the migration spool directory.  We
         # don't want to 'migrate' this wrong file to tape.
@@ -5469,8 +5632,6 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
     ## some type of modification is done.
     MY_TASK2 = "SWAPPING_METADATA"  #Switch to swapping task.
     if not is_swapped(src_bfid, fcc, db):
-        log(MY_TASK2, "swapping %s %s %s %s" % \
-            (src_bfid, src_path, dst_bfid, mig_path))
 
         if not dst_file_record:
             #Just written new files will get here.  Files already written
@@ -5496,23 +5657,20 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
         res = swap_metadata(job, fcc, db)
 
         if not res:
-            ok_log(MY_TASK2,
-                   "%s %s %s %s have been swapped" \
-                   % (src_bfid, src_path, dst_bfid,
-                      mig_path))
             log_swapped(src_bfid, dst_bfid, fcc, db)
-        if res:
-            error_log(MY_TASK2,
-                      "%s %s %s %s failed due to %s" \
-                      % (src_bfid, src_path, dst_bfid,
-                         mig_path, res))
+        elif res:
             keep_file = True
     else:
-        ok_log(MY_TASK2, "%s %s %s %s have already been swapped" \
-               % (src_bfid, src_path, dst_bfid, mig_path))
+        #Reasons for calling swap_metadata even though it is already swapped:
+        # 1) To have the correct migration/duplication function use the
+        #    correct name in the log.
+        # 2) In case the duplication updated the migration table, but
+        #    failed to update the file_copies_map table.  The latter can
+        #    now be set.
+        res = swap_metadata(job, fcc, db)
         job = (src_file_record, src_volume_record, src_path,
                dst_file_record, dst_volume_record, tmp_path, mig_path)
-        res = None #No error.
+        #res = None #No error.
 
     #Now do the same for all multiple copies (though not as much is
     # actully done).
@@ -5540,10 +5698,6 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                 res = swap_metadata(mc_job, fcc, db)
 
                 if not res:
-                    ok_log(MY_TASK2,
-                           "%s %s %s %s have been swapped" \
-                           % (src_bfid, src_path, cur_dst_bfid,
-                              mig_path))
                     #First we need to see if we need to include logging
                     # that the copy has been made.  This is likely if
                     # we are fixing multiple copies sometime after the
@@ -5554,10 +5708,6 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                     log_swapped(src_bfid, cur_dst_bfid, fcc, db)
                     mc_jobs.append(mc_job)  #include this for return
                 if res:
-                    error_log(MY_TASK2,
-                              "%s %s %s %s failed due to %s" \
-                              % (src_bfid, src_path, cur_dst_bfid,
-                                 mig_path, res))
                     keep_file = True
             else:
                 ok_log(MY_TASK2, "%s %s %s %s have already been swapped" \

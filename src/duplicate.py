@@ -23,14 +23,11 @@ import string
 import re
 
 # enstore imports
-import configuration_client
-import file_clerk_client
 import volume_clerk_client
 import pnfs
 import migrate
 import duplication_util
 import e_errors
-import enstore_functions2
 import Trace
 import option
 
@@ -48,31 +45,39 @@ migrate.LOG_FILE = migrate.LOG_FILE.replace('Migration', 'Duplication')
 
 DuplicateInterface = migrate.MigrateInterface
 DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
-	option.HELP_STRING:
-	"Make duplicates where the multiple copy write failed.",
-	option.VALUE_USAGE:option.IGNORED,
-	option.VALUE_TYPE:option.INTEGER,
-	option.USER_LEVEL:option.USER,
-	}
+    option.HELP_STRING:
+    "Make duplicates where the multiple copy write failed.",
+    option.VALUE_USAGE:option.IGNORED,
+    option.VALUE_TYPE:option.INTEGER,
+    option.USER_LEVEL:option.USER,
+ }
 del DuplicateInterface.migrate_options[option.RESTORE]
 
+#Avoid duplicate code testing for possible okay error messages.
+def handle_string_return_code(rtn_str,txt) : 
+    if rtn_str and rtn_str.find(txt) != -1:
+        return None  #Error returned, but for this case pretend it's okay.
+    elif rtn_str:
+        return rtn_str  #Error.
+
+    return ""  #Success.
 
 # migration_file_family(ff) -- making up a file family for migration
 def migration_file_family(bfid, ff, fcc, intf, deleted = migrate.NO):
-	reply_ticket = fcc.find_all_copies(bfid)
-	if e_errors.is_ok(reply_ticket):
-		count = len(reply_ticket['copies'])
-	else:
-		raise e_errors.EnstoreError(None, reply_ticket['status'][1],
-					    reply_ticket['status'][0])
-	
-	if deleted == migrate.YES:
-		return migrate.DELETED_FILE_FAMILY + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
-	else:
-		if intf.file_family:
-			return intf.file_family + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
-		else:
-			return ff + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
+    reply_ticket = fcc.find_all_copies(bfid)
+    if e_errors.is_ok(reply_ticket):
+        count = len(reply_ticket['copies'])
+    else:
+        raise e_errors.EnstoreError(None, reply_ticket['status'][1],
+				    reply_ticket['status'][0])
+
+    if deleted == migrate.YES:
+        return migrate.DELETED_FILE_FAMILY + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
+    else:
+        if intf.file_family:
+	    return intf.file_family + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
+        else:
+	    return ff + migrate.MIGRATION_FILE_FAMILY_KEY % (count,)
 
 # normal_file_family(ff) -- making up a normal file family from a
 #				migration file family
@@ -86,6 +91,46 @@ def is_migration_file_family(ff):
         return False
 
     return True
+
+#This does everything that the migrate.py version does, plus inserts
+# the multiple_copy/duplication relationship into the file_copies_map
+# table.
+def log_copied_duplication(src_bfid, dst_bfid, fcc, db):
+    rtn_val = migrate.log_copied_migration(src_bfid, dst_bfid, fcc, db)
+    if rtn_val:
+        return rtn_val  #Error.
+
+    # register duplication
+
+    # get a duplication manager
+    dm = duplication_util.DuplicationManager()
+    rtn_str = dm.make_duplicate(src_bfid, dst_bfid)
+    dm.db.close()
+
+    if handle_string_return_code(rtn_str, "are already copies"):
+        return 1  #Error
+    else:
+        return 0  #Success
+
+#This does everything that the migrate.py version does, plus removes
+# the multiple_copy/duplication relationship from the file_copies_map
+# table.
+def log_uncopied_duplication(src_bfid, dst_bfid, fcc, db):
+    rtn_val = migrate.log_uncopied_migration(src_bfid, dst_bfid, fcc, db)
+    if rtn_val:
+        return rtn_val  #Error.
+
+    # unregister duplication
+
+    # get a duplication manager
+    dm = duplication_util.DuplicationManager()
+    rtn_str = dm.unmake_duplicate(src_bfid, dst_bfid)
+    dm.db.close()
+
+    if handle_string_return_code(rtn_str, "are already removed"):
+        return 1  #Error
+    else:
+        return 0  #Success.
 
 # This is to change the behavior of migrate.swap_metadata.
 # duplicate_metadata(job, fcc, db) -- duplicate metadata for src and dst
@@ -103,8 +148,14 @@ def is_migration_file_family(ff):
 # 7) The temporary path of the new copy in PNFS/Chimera.
 # By the time duplicate_metadata() is called, all seven of these values
 # will be filled in.
-def duplicate_metadata(job, fcc, db):
-    MY_TASK = "DUPLICATE_METADATA"
+def _duplicate_metadata(MY_TASK, job, fcc, db):
+
+    return_error, job, p1, p2, f0, is_migrating_multiple_copy = \
+		  migrate._verify_metadata(MY_TASK, job, fcc, db)
+
+    if return_error:
+        #The return_error value is a string with the error message.
+        return return_error
 
     #Get information about the files to copy and swap.
     (src_file_record, src_volume_record, src_path,
@@ -114,113 +165,78 @@ def duplicate_metadata(job, fcc, db):
     src_bfid = src_file_record['bfid']
     dst_bfid = dst_file_record['bfid']
 
-    # get its own file clerk client
-    config_host = enstore_functions2.default_host()
-    config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host,
-						    config_port))
-    fcc = file_clerk_client.FileClient(csc)
-
-    #It is possible to duplicate a duplicate.  Need to handle finding
-    # the original bfid's file recored, if there is one.
-    original_reply = fcc.find_the_original(src_bfid)
-    f0 = {}
-    if e_errors.is_ok(original_reply) \
-	   and original_reply['original'] != None \
-	   and original_reply['original'] != src_bfid:
-        f0 = fcc.bfid_info(original_reply['original'])
-	if not e_errors.is_ok(dst_file_record):
-	    return "original bfid: %s: %s" % (src_file_record['status'][0],
-					      src_file_record['status'][1])
-
-    # get all pnfs metadata - first the source file
-    if src_file_record['deleted'] == "no":
-	try:
-		# This version handles the seteuid() locking.
-		p1 = migrate.File(src_path)
-	except (KeyboardInterrupt, SystemExit):
-		raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-	except (OSError, IOError), msg:
-		return str(msg)
-	except:
-		exc, msg = sys.exc_info()[:2]
-		return str(msg)
-    else:
-        # What do we need an empty File class for?
-	p1 = pnfs.File(src_path)
-
-    # get all pnfs metadata - second the destination file
-    try:
-        p2 = migrate.File(mig_path)
-    except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except (OSError, IOError), msg:
-        return str(msg)
-    except:
-        exc, msg = sys.exc_info()[:2]
-	return str(msg)
-	
-    # check if the metadata are consistent
-    res = migrate.compare_metadata(p1, src_file_record)
-    if res == "bfid" and f0:
-        #Compare original, if applicable.
-	res = migrate.compare_metadata(p1, f0)
-    if res:
-        return "[3] metadata %s %s are inconsistent on %s" % \
-	       (src_bfid, src_path, res)
-
-    if not p2.bfid and not p2.volume:
-        #The migration path has already been deleted.  There is
-	# no file to compare with.
-	pass
-    else:
-        res = migrate.compare_metadata(p2, dst_file_record)
-	# deal with already swapped file record
-	if res == 'pnfsid':
-	    res = migrate.compare_metadata(p2, dst_file_record, p1.pnfs_id)
-	if res:
-	    return "[4] metadata %s %s are inconsistent on %s" % \
-		   (dst_bfid, mig_path, res)
-
-    # cross check
-    if src_file_record['size'] != dst_file_record['size']:
-        err_msg = "%s and %s have different size" % (src_bfid, dst_bfid)
-    elif src_file_record['complete_crc'] != dst_file_record['complete_crc']:
-        err_msg = "%s and %s have different crc" % (src_bfid, dst_bfid)
-    elif src_file_record['sanity_cookie'] != dst_file_record['sanity_cookie']:
-        err_msg = "%s and %s have different sanity_cookie" \
-		  % (src_file_record, dst_file_record)
-    else:
-        err_msg = None
-    if err_msg:
-        if dst_file_record['deleted'] == migrate.YES \
-	       and not migrate.is_swapped(src_bfid, fcc, db):
-	    migrate.log(MY_TASK,
-			"undoing duplication of %s to %s do to error" % \
-			(src_bfid, dst_bfid))
-	    migrate.log_uncopied(src_bfid, dst_bfid, fcc, db)
-	return err_msg
-
-    # check if p1 is writable
-    if not os.access(src_path, os.W_OK):
-        return "%s is not writable"%(src_path)
-
     # swapping metadata
-    m1 = {'bfid': dst_bfid, 'pnfsid':src_file_record['pnfsid'],
+    m1 = {'bfid': dst_bfid,
+	  'pnfsid':src_file_record['pnfsid'],
 	  'pnfs_name0':src_file_record['pnfs_name0']}
+    if src_file_record['deleted'] == migrate.YES:
+        if f0:
+            #We need to do use f0 when fixing files migrated to multiple
+            # copies before the constraints in the DB were modified
+            # to make the pair (src_bfid, dst_bfid) unique instead of
+            # each column src_bfid & dst_bfid being unique.
+            m1['deleted'] = f0['deleted']
+        else:
+            m1['deleted'] = migrate.YES
     res = fcc.modify(m1)
-    # res = {'status': (e_errors.OK, None)}
-    if not res['status'][0] == e_errors.OK:
+    if not e_errors.is_ok(res['status']):
         return "failed to change pnfsid for %s" % (dst_bfid,)
-
+    
     # register duplication
 
     # get a duplication manager
     dm = duplication_util.DuplicationManager()
-    rtn = dm.make_duplicate(src_bfid, dst_bfid)
+    rtn = None
+    if not dm.is_primary(src_bfid):
+        #If the file_copies_map table was not set by log_copied(), we
+        # need to do so now.  This can happen if the duplication began
+        # with duplicate.py less than 1.37 or log_copied() starting with
+        # revision 1.37 failed between updating the two tables.
+        if src_file_record['deleted'] == migrate.YES:
+            #The make_duplicate() function doesn't handle deleted files.
+            rtn = dm.register_duplicate(src_bfid, dst_bfid)
+        elif src_file_record['deleted'] == migrate.NO:
+            rtn = dm.make_duplicate(src_bfid, dst_bfid)
+        else:
+            #We should never get here!
+            pass
     dm.db.close()
-    return rtn
 
+    return handle_string_return_code(rtn, "are already copies")
+
+def duplicate_metadata(job, fcc, db):
+    MY_TASK = "DUPLICATE_METADATA"
+
+    #Get information about the files to copy and swap.
+    (src_file_record, src_volume_record, src_path,
+     dst_file_record, dst_volume_record, tmp_path, mig_path) = job
+
+    #Don't continue if this is already done.  However, do log that the
+    # metadata updating is already done.  Be sure to verify that
+    # the migration table has the migration side as "swapped" and the
+    # file_copies_map has recorded the multiple_copy side of the duplication.
+    if dst_file_record and \
+           migrate.is_swapped(src_file_record['bfid'], fcc, db) and \
+           migrate.is_duplication(src_file_record['bfid'], db):
+        migrate.ok_log(MY_TASK, "%s %s %s %s have already been duplicated" \
+               % (src_file_record['bfid'], src_path,
+                  dst_file_record['bfid'], mig_path))
+        return None
+    
+    res = _duplicate_metadata(MY_TASK, job, fcc, db)
+
+    if res:
+        migrate.error_log(MY_TASK,
+                  "%s %s %s %s failed due to %s" \
+                  % (src_file_record['bfid'], src_path,
+                     dst_file_record['bfid'], mig_path, res))
+    else:
+        migrate.ok_log(MY_TASK,
+               "%s %s %s %s have been duplicated" \
+               % (src_file_record['bfid'], src_path,
+                  dst_file_record['bfid'], mig_path))
+
+    return res
 
 #This is a no-op for duplication.
 def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
@@ -296,7 +312,8 @@ migrate.setup_cloning = setup_cloning
 migrate.migration_file_family = migration_file_family
 migrate.normal_file_family = normal_file_family
 migrate.is_migration_file_family = is_migration_file_family
-
+migrate.log_copied = log_copied_duplication
+migrate.log_uncopied = log_uncopied_duplication
 
 if __name__ == '__main__':
 
