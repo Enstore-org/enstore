@@ -194,12 +194,14 @@ class UDPClient:
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
                         return out
-                except (SyntaxError, TypeError):
+                except (SyntaxError, TypeError, ValueError):
                     #If TypeError occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
                     #If SyntaxError occurs, also keep trying, most likely
                     # it is from and empty UDP datagram.
-                    exc, msg = sys.exc_info()[:2]
+                    #A ValueError can happen if the eval-ed reply does
+                    # not contain a triple, but some other number of elements.
+                    exc, msg, tb = sys.exc_info()
                     try:
                         message = "%s: %s: From server %s:%s" % \
                                   (exc, msg, server_addr, reply[:100])
@@ -207,6 +209,8 @@ class UDPClient:
                         message = "%s: %s: From server %s: %s" % \
                                   (exc, msg, server_addr, reply)
                     Trace.log(10, message)
+                    #Trace.handle_error(exc, msg, tb, severity=10)
+                    del tb  #Avoid resource leak.
 
                     #Set this to something.
                     rcvd_txn_id=None
@@ -355,7 +359,7 @@ class UDPClient:
                     # an "expected string without null bytes".
                     #If SyntaxError occurs, also keep trying, most likely
                     # it is from and empty UDP datagram.
-                    exc, msg = sys.exc_info()[:2]
+                    exc, msg, tb = sys.exc_info()
                     try:
                         message = "%s: %s: From server %s:%s" % \
                                   (exc, msg, server_addr, reply[:100])
@@ -363,6 +367,8 @@ class UDPClient:
                         message = "%s: %s: From server %s: %s" % \
                                   (exc, msg, server_addr, reply)
                     Trace.log(10, message)
+                    #Trace.handle_error(exc, msg, tb, severity=10)
+                    del tb  #Avoid resource leak.
 
                     #Set this to none.  Since it is invalid, don't add it
                     # to the queue and instead skip the following if and
@@ -434,8 +440,7 @@ class UDPClient:
                         self.repeat_deferred(txn_ids)
                         continue
                     else:
-                        raise sys.exc_info()[0], sys.exc_info()[1], \
-                              sys.exc_info()[2]
+                        raise sys.exc_info()
                     
     #If we are giving up on a reponse, we can remove it from the send and 
     # receive lists explicitly.

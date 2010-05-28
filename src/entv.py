@@ -82,7 +82,9 @@ displays = []
 master_windowframe = None
 
 #Trace.message level for generating a messages file for replaying later.
-MESSAGES_LEVEL = 10
+MESSAGES_LEVEL = enstore_display.MESSAGES_LEVEL
+#Trace.message level for fixing lock deadlocks.
+LOCK_LEVEL = enstore_display.LOCK_LEVEL 
 
 #########################################################################
 # common support functions
@@ -487,29 +489,68 @@ def get_system_info_from_entvrc(tk, entvrc_dict):
 # entv functions
 #########################################################################
 
+#Wrapper around csc.get_library_managers2().
+def get_library_managers(system_name):
+    libraries_config_info = []
+    count = 0
+    while libraries_config_info == [] and count < 3:
+        try:
+            csc = get_csc(system_name)
+            libraries_config_info = csc.get_library_managers2(3, 3)
+        except KeyError:
+            #Place a limit on how many times to try.
+            count = count + 1
+        
+    return libraries_config_info
+
+#Wrapper around csc.get_movers2().
+def get_movers(system_name):
+    movers_config_info = []
+    count = 0
+    while movers_config_info == [] and count < 3:
+        try:
+            csc = get_csc(system_name)
+            movers_config_info = csc.get_movers2(None, 3, 3)
+        except KeyError:
+            #Place a limit on how many times to try.
+            count = count + 1
+    
+    return movers_config_info
+
 ignored_movers = {} #cache for ignore_mover_by_library
+allowed_movers = {}
 #Return True if the mover, which must have the form name.mover@system should
 # be dropped.  False otherwise.
-def ignore_mover_by_library(mover_name, intf, mover_config=None):
+#
+# mover_name: String name of the mover: 9940B_1@gccen or 9940B_1.mover@gccen
+# intf: EntvInterface instance
+# mover_config:  Configuration for the "mover_name" mover.
+# library_configs:  Returned value from get_library_mangers().
+def ignore_mover_by_library(mover_name, intf, mover_config=None,
+                            library_configs=None):
     global ignored_movers
+    global allowed_movers
     
     if intf and intf.messages_file:
         #Let --generate-messages-file filter out the contents for us
         # on creation of the messages file.
         return False
 
-    #If we have already cached this movers library information.
-    if mover_name in ignored_movers.keys():
-        return True
-
     #Obtain the mover name that will be in the configuration.
     alt_mover_name, enstore_system = mover_name.split("@")
     short_mover_name = alt_mover_name.split(".")[0]
     full_mover_name = short_mover_name + ".mover"
+    full_entv_mover_name = "%s@%s" % (full_mover_name, enstore_system)
+
+    #If we have already cached this movers library information.
+    if full_entv_mover_name in ignored_movers.keys():
+        return True
+    if full_entv_mover_name in allowed_movers.keys():
+        return False
 
     #Get the mover's configuration information.
-    csc = get_csc(enstore_system)
     if mover_config == None:
+        csc = get_csc(enstore_system)
         mover_config_info = csc.get(full_mover_name, 3, 3)
         if not e_errors.is_ok(mover_config_info):
             #One known source of getting here is if a mover is scheduled
@@ -522,6 +563,11 @@ def ignore_mover_by_library(mover_name, intf, mover_config=None):
             return False
     else:
         mover_config_info = mover_config
+    #Get the libraries' configuration information.
+    if library_configs == None:
+        libraries_config_info = get_library_managers(enstore_system)
+    else:
+        libraries_config_info = library_configs
 
     #Extract the library information.  There might be more than one, so
     # lets put everything into a list.
@@ -530,19 +576,21 @@ def ignore_mover_by_library(mover_name, intf, mover_config=None):
     else:
         libraries = [mover_config_info['library']]
 
-    #Split the comma seperated libraries to ignore and put them into
-    # their fullname form.
-    skip_library_list = string.split(intf.dont_show, ",")
-    #Get the libraries in the current configuration.
-    libraries_config_info = csc.get_library_managers2(3, 3)
+    #Pull out all the libraries in the configuration and put just the
+    # names in a list.
     valid_libraries = []
     for lib in libraries_config_info:
         valid_libraries.append(lib['library_manager'])
 
+    #Split the comma seperated libraries to ignore.
+    skip_library_list = string.split(intf.dont_show, ",")
+
+    #Report True or False if the mover is to be igored or not.
     for library in libraries:
         use_library = library[:-16] #remove trailing ".library_manager"
         if use_library not in valid_libraries:
             # We found a library that is not in the configuration.
+            ignored_movers["%s@%s" % (full_mover_name, enstore_system)] = libraries
             return True
         if use_library not in skip_library_list:
             # We found a library not in this movers list of libraries.
@@ -551,6 +599,7 @@ def ignore_mover_by_library(mover_name, intf, mover_config=None):
             # a test library is ignored, we don't want to ignore any
             # production movers that have the production and test libraries
             # in their configuration.
+            allowed_movers["%s@%s" % (full_mover_name, enstore_system)] = libraries
             return False
 
     #cache the miss
@@ -573,7 +622,8 @@ def get_mover_list(system_name, intf, fullnames=None, with_system=None):
     if csc == None or csc.server_address == None:
         mover_list = []
     else:
-        mover_list = csc.get_movers2(None, 3, 3)
+        mover_list = get_movers(system_name)
+        library_list = get_library_managers(system_name)
 
     allowed_mover_list = []
     for mover_dict in mover_list:
@@ -585,7 +635,8 @@ def get_mover_list(system_name, intf, fullnames=None, with_system=None):
 
         #Determine if it is allowed to be shone.
         if not ignore_mover_by_library(entv_full_mover_name, intf,
-                                       mover_config=mover_dict):
+                                       mover_config=mover_dict,
+                                       library_configs=library_list):
             #Return the format of the mover name with the requested format.
             use_mover_name = short_name
             if fullnames:
@@ -765,7 +816,7 @@ def make_display_panel(master, system_name,
         # skip it if replaying old events.
         csc = get_csc(system_name)
         if csc == None or csc.server_address == None:
-            print "rrrrrrrrrrrrrrrrrrrrr", system_name
+            pass
         else:
             display.handle_command("csc %s %s" % csc.server_address)
 
@@ -821,12 +872,7 @@ def destroy_display_panels():
                 sys.stderr.flush()
             except IOError:
                 pass
-    else:
-        if len(displays) == 0:
-            #The only way to get here is if one display is choosen in the
-            # drop down list and the user just deselected it.
-            continue_working = 1
-        
+
     try:
         del displays[:]
     except:
@@ -1086,7 +1132,7 @@ def handle_messages(system_name, intf):
     threading.currentThread().setName("MESSAGES")
 
     #Prevent the main thread from queuing status requests.
-    enstore_display.startup_lock.acquire()
+    enstore_display.acquire(enstore_display.startup_lock, "startup_lock")
 
     #This is a time hack to get a clean output file.
     if intf.generate_messages_file:
@@ -1122,9 +1168,12 @@ def handle_messages(system_name, intf):
             # movers.
             if should_stop(system_name):
                 enstore_display.startup_lock.release()  #Avoid resource leak.
+                Trace.trace(1, "Detected stop flag in %s messages thread." %
+                            (system_name,))
                 return
 
             if er_dict == None or e_errors.is_timedout(er_dict):
+                time.sleep(60)
                 continue
 
             if not e_errors.is_ok(er_dict):
@@ -1133,6 +1182,8 @@ def handle_messages(system_name, intf):
                 enstore_display.message_queue.put_queue("reinit",
                                                         system_name)
                 enstore_display.startup_lock.release()  #Avoid resource leak.
+                Trace.trace(0, "ER config info: %s" % (er_dict,),
+                            out_fp=sys.stderr)
                 return
 
             er_addr = (er_dict.get('hostip', None), er_dict.get('port', None))
@@ -1153,14 +1204,17 @@ def handle_messages(system_name, intf):
         # The largest known error to occur is that socket.socket() fails
         # to return a file descriptor because to many files are open.
         if should_stop(system_name):
-            enstore_display.startup_lock.release()  #Avoid resource leak.
+            enstore_display.release(enstore_display.startup_lock,
+                                    "startup_lock")  #Avoid resource leak.
+            Trace.trace(1, "Detected stop flag in %s messages thread." %
+                            (system_name,))
             return
 
     start = time.time()
     count = 0
     
     #Allow the main thread to queue status requests.
-    enstore_display.startup_lock.release()
+    enstore_display.release(enstore_display.startup_lock, "startup_lock")
     
     while not should_stop(system_name):
         # If commands are listed, use 'canned' version of entv.
@@ -1251,7 +1305,7 @@ def handle_messages(system_name, intf):
                 # minutes, let us restart entv.
                 if enstore_display.message_queue.get_time <= \
                        time.time() - TEN_MINUTES:
-                    message = "Display is stuck.  Restarting entv."
+                    message = "Display is stuck.  Restarting entv. [1]"
                     Trace.trace(0, message, out_fp=sys.stderr)
                     restart_entv()
 
@@ -1262,6 +1316,8 @@ def handle_messages(system_name, intf):
             if enstore_display.message_queue.len_queue(system_name) > 0 and \
                    enstore_display.message_queue.last_get_time() <= \
                    time.time() - TEN_MINUTES:
+                message = "Display is stuck.  Restarting entv. [2]"
+                Trace.trace(0, message, out_fp=sys.stderr)
                 restart_entv()
                 
             commands = []
@@ -1319,7 +1375,19 @@ def handle_messages(system_name, intf):
 
             #Read the next message from the event relay.
             if erc.sock in readable:
-                msg = enstore_erc_functions.read_erc(erc)
+                try:
+                    msg = enstore_erc_functions.read_erc(erc)
+                except SyntaxError:
+                    exc, msg = sys.exc_info()[:2]
+                    import traceback
+                    traceback.print_tb(sys.exc_info()[2])
+                    #Report on the error.
+                    try:
+                        message = "Failed to read erc message: (%s, %s)\n"
+                        sys.stderr.write(message % (str(exc), str(msg)))
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
 
                 if msg and not getattr(msg, 'status', None):
                     #Take the message from event relay.
@@ -1415,6 +1483,8 @@ def handle_messages(system_name, intf):
                 # mov.server_address is equal to None
                 pass
 
+    Trace.trace(1, "Detected stop flag in %s messages thread." %
+                (system_name,))
     return
 
 #########################################################################
@@ -1775,7 +1845,9 @@ def main(intf):
     for x in xrange(0, intf.verbose + 1):
         Trace.do_print(x)
     if intf.generate_messages_file:
-        Trace.do_message(10)
+        Trace.do_message(MESSAGES_LEVEL)
+
+    #Trace.do_print(LOCK_LEVEL)
 
     #Switch --generate-messages-file has a restriction, only one enstore
     # system at a time.
@@ -1912,18 +1984,6 @@ def main(intf):
 
         signal.alarm(0) #Stop the alarm clock.
 
-        """
-        if len(displays) == 0:
-            # We had a failure.  Lets wait a while and try again.
-
-            # This would be a good time to cleanup before things get hairy.
-            gc.collect()
-            del gc.garbage[:]
-
-            time.sleep(5)
-            continue
-        """
-
         Trace.trace(1, "starting message threads")
         
         #On average collecting the status of all the movers takes 10-15
@@ -1934,7 +1994,7 @@ def main(intf):
         # from consuming resources that would be better spent on this
         # thread at the moment.  This lock is released inside of
         # enstore_display.mainloop().
-        enstore_display.startup_lock.acquire()
+        enstore_display.acquire(enstore_display.startup_lock, "startup_lock")
         
         if intf.messages_file:
             #Read from file the event relay messages to process.
@@ -1950,7 +2010,7 @@ def main(intf):
                 Trace.trace(1, "started thread for %s" % (system_name,))
 
         #Let the other startup threads go.
-        enstore_display.startup_lock.release()
+        enstore_display.release(enstore_display.startup_lock, "startup_lock")
 
         Trace.trace(1, "started message threads")
 
@@ -2060,7 +2120,7 @@ if __name__ == "__main__":
         #If the user wants to see the profile of entv...
         import profile
         import pstats
-        profile.run("main(intf)", "/tmp/entv_profile")
+        profile.run("main(intf_of_entv)", "/tmp/entv_profile")
         p = pstats.Stats("/tmp/entv_profile")
         p.sort_stats('cumulative').print_stats(100)
     elif intf_of_entv.version:

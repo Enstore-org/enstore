@@ -89,7 +89,7 @@ def en_eval(expr, debug=False, check=True, compile=False):
 		if debug:
 			sys.stderr.write("en_eval Error: %s parsing string: %s\n" % (str(msg), expr))
 		#return None
-		raise SyntaxError, msg
+		raise sys.exc_info()
 	except NameError, detail:
 		Trace.trace(5, "NameError %s %s"%(detail, expr))
 		val = expr
