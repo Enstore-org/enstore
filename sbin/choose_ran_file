@@ -276,7 +276,7 @@ while [ $done -gt 0 ]; do
      file_list=$*
 
      for filename in `echo "$file_list"`; do
-        pnfs_bfid=`enstore pnfs --bfid $filename`
+        pnfs_bfid=`enstore pnfs --bfid $filename 2> /dev/null`
 	if [ "$pnfs_bfid" = "$file_bfid" ]; then
 	   echo $filename
 	   return 0
@@ -417,6 +417,11 @@ while [ $done -gt 0 ]; do
     #Determine the number of drives available right now.
     online_movers=`expr $total_movers - $down_movers`
 
+    #Report the number of drives that are busy and those that exist.
+    echo
+    echo "Busy Drives: $busy_movers  Total Drives: $total_movers  Down Drives: $down_movers  Online Drives: $online_movers"
+    echo
+
     #There needs to be at least one mover up for this library.
     if [ $online_movers -le 0 ]; then
 	echo "Unable to find available movers for ${library}.library_manager." 1>&2
@@ -425,16 +430,11 @@ while [ $done -gt 0 ]; do
     fi
 
     #This test should compare this number to the number of drives in the
-    # library.  I don't know of a good way from bash to get the number of
-    # drives in a library, so for now using the value 6.  If -F was specified
-    # on the command line (force_try = 1), we will force choose_ran_file to 
-    # skip this test and force it to run the encp(s).
+    # library.  If -F was specified on the command line (force_try = 1),
+    # we will force choose_ran_file to skip this test and force it to run
+    # the encp(s).
     mover_threshold=`expr $online_movers - 1` #Leave one idle.
     if [ $busy_movers -gt $mover_threshold -a $force_try -eq 0 ]; then
-        echo
-	#Report the number of drives that are busy and those that exist.
-	echo "Busy Drives: $busy_movers  Total Drives: $total_movers  Down Drives: $down_movers  Online Drives: $online_movers"
-	echo
 	echo "Aborting early from high mover usage."
 	echo
 	#5 seems like a good number. Its greater than 3 indicating 3 failures.
