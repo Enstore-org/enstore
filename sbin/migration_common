@@ -241,13 +241,26 @@ select /* It should be as simple as just using the media_type. However,
                            THEN label
                            ELSE NULL
                       END) as total,
-       round(count(distinct CASE WHEN (select count(*)
+       round(count(distinct CASE WHEN (/* Make sure that at least one
+                                          destination has been scanned. */
+                                       select count(*)
                                  from migration_history
                                  where migration_history.src_vol_id = volume.id
-                                       and migration_history.closed_time is not NULL) > 0
+                                   and migration_history.closed_time is not NULL) > 0
+                                      and
+                                      /* Reject if any destination volumes have
+                                         not been scanned. */
+                                      (select count(*)
+                                 from migration_history
+                                 where migration_history.src_vol_id = volume.id
+                                   and migration_history.closed_time is NULL) = 0
+
                                  THEN label
+				 WHEN volume.sum_wr_access - volume.sum_wr_err = 0
+				 THEN label  --Include blank tapes.
                                  ELSE NULL
-                   END) / cast(count(distinct label) as DECIMAL(9,2)) * 100,2) as percentage_done
+                                 END)
+                  / cast(count(distinct label) as DECIMAL(9,2)) * 100,2) as percentage_done
 from volume
 where (system_inhibit_0 != 'DELETED' 
        and label not like '%.deleted')
@@ -372,7 +385,7 @@ select date(time) as day,
 
 from volume,migration_history
 where volume.id = migration_history.src_vol_id
-      and volume.library not like '%shelf%'
+      /*and volume.library not like '%shelf%'*/
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('$2')
       /* This time sub-query is needed to limit test volumes migrated
@@ -405,7 +418,7 @@ select date(state.time) as day,
 from volume,migration_history,state
 where volume.id = migration_history.src_vol_id
       and volume.id = state.volume
-      and volume.library not like '%shelf%'
+      /*and volume.library not like '%shelf%'*/
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('$1', '$2')
       /* Hopefully, setting state.time like this will correctly handle
@@ -452,7 +465,7 @@ select date(closed_time) as day,
        count(distinct label) as closed
 from volume,migration_history
 where volume.id = migration_history.src_vol_id
-      and volume.library not like '%shelf%'
+      /*and volume.library not like '%shelf%'*/
       and volume.media_type != 'null'
       and volume.system_inhibit_1 in ('$2')
       /* This time sub-query is needed to limit test volumes migrated
@@ -603,4 +616,51 @@ left join volume as v2 on v2.id = migration_history.dst_vol_id
 where volume.system_inhibit_1 = '$1'
 order by time;
 "
+}
+
+make_html()
+{
+    title=$1
+    temp_text_file=$2
+    output_file=$3
+    url_dir=$4
+
+    temp_html_file=$temp_text_file.html
+
+    #Remove the temporary file on failure.
+    trap "rm -f $temp_html_file; exit 1" HUP INT QUIT ABRT ALRM TERM
+
+    echo "Starting to making html file for \"$title\"."
+    rm -f $output_file
+    cat << EOF >> $temp_html_file
+<html> <head> <title>$title</title> </head>
+<body>
+<body bgcolor="#ffffff" text=#000000">
+<meta http-equiv="Refresh" content="900">
+<pre>
+EOF
+
+    #We need to add a link to the web page with the plots on it.
+    link="<a href=$url_dir/migration_summary/plot_enstore_system.html>Migration Summary Plots</a>"
+
+    #The following sed is used more like cat to append $temp_text_file
+    # to $output_file.html.  The fancy sed part just inserts the link
+    # on line 3 in the process of "cat"ing the file.
+    sed "3s;\(.*\);${link}\n\1;" $temp_text_file >> $temp_html_file
+
+    echo >> $temp_html_file
+    echo ${link} >> $temp_html_file
+    echo >> $temp_html_file
+
+    cat << EOF >> $temp_html_file
+</pre>
+</body>
+EOF
+
+    #Slide the new file into place.
+    echo "Moving $temp_html_file to $output_file"
+    mv $temp_html_file $output_file
+
+    #Remove the temporary html file.
+    rm -f $temp_html_file
 }

@@ -43,14 +43,10 @@ while read line; do
     tl_name=`echo $mc | tr "." " " | cut -f 1 -d " " | tr '[a-z]' '[A-Z]'`
     #Create the variables that point to the files to output to.
     fname=${tl_name}-VOLUMES
-    output_file=$inventory_dir/$fname
-    temp_file=$output_file.temp
+    output_file=$inventory_dir/$fname.html
+    temp_file=$inventory_dir/.$fname$$.temp
+    trap "rm -f $temp_file; exit 1" HUP INT QUIT ABRT ALRM TERM
     
-    #If we write to a temp file, and swap in it when we are done, there will
-    # not any time when the page is empty becuase the scipt is still writing
-    # the file.
-    rm -f $temp_file
-
     echo Starting to making output file for $tl_name.
 
     #Make sure we know how up-to-date this is.
@@ -62,31 +58,29 @@ while read line; do
     #Give and end time so we know how long it took.
     echo -e $fname Report Completed: `date` "\n" >> $temp_file 2>&1
 
-    mv $temp_file $output_file   #Do the temp file swap.
-    
     echo Done making output file for $tl_name.
 
     #For backward compatiblity make an html file too.
     echo Starting to making html file for $tl_name.
     rm -f $output_file.html
-    cat << EOF >> $output_file.html
+    cat << EOF >> $output_file
 <html> <head> <title>$tl_name Volume Status Page</title> </head>
 <body>
-<body bgcolor="#ffffff" text=#a0a0ff">
+<body bgcolor="#ffffff" text=#000000">
 <meta http-equiv="Refresh" content="900">
-<hr>
 <pre>
 EOF
 
-    cat $output_file >> $output_file.html
+    cat $temp_file >> $output_file
 
-    cat << EOF >> $output_file.html
+    cat << EOF >> $output_file
 </pre>
-<hr>
-<hr>
 </body>
 EOF
     #End of making the html file.
     echo Done making html file for $tl_name.
+
+    #Remove the temp file.
+    rm -f $temp_file
 
 done

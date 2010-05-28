@@ -5,17 +5,35 @@
 #Dump the duplication information.
 
 #Get all the common stuff for migration, duplication and cloning reporting.
-source migration_common
+mig_com=`which migration_common 2> /dev/null`
+if [ -z $mig_com ]; then
+    #When run interactively, bash was picking the wrong version of
+    # migration_common.  Even when 'which' was able to find the correct
+    # one with the same environment.
+    #
+    #If 'which' didn't find it, next try the path of this script.
+
+    mig_com=`dirname $0`/migration_common
+    if [ ! -x "$mig_com" ]; then
+        #If this fails, fall back to the old way.
+	mig_com=migration_common
+    fi
+fi
+source $mig_com
 
 #Create the variables that point to the files to output to.
 fname=DUPLICATION_SUMMARY
-output_file=$inventory_dir/$fname
-temp_file=$temp_dir/$fname.temp
+old_output_file=$inventory_dir/$fname  #ASCII and HTML were both once created.
+output_file=$inventory_dir/$fname.html
+temp_file=$temp_dir/$fname$$.temp
+
+#Remove the temporary file on failure.
+trap "rm -f $temp_file; exit 1" HUP INT QUIT ABRT ALRM TERM
 
 #If we write to a temp file, and swap in it when we are done, there will
 # not any time when the page is empty becuase the scipt is still writing
 # the file.
-rm -f $temp_file
+rm -f $temp_file $old_output_file
 
 #Make sure we know how up-to-date this is.
 echo -e Duplication Report: `date` > $temp_file 2>&1
@@ -72,35 +90,8 @@ echo "Creating Duplication History" `date`
 duplication_history >> $temp_file 2>&1
 
 
-mv "$temp_file" "$output_file" #Do the temp file swap.
+#Turn out the html page.
+make_html "$tl_name Duplication Summary Page" $temp_file $output_file $url_dir
 
-#For backward compatiblity make an html file too.
-echo Starting to making html file for duplication.
-rm -f $output_file.html
-cat << EOF >> $output_file.html
-<html> <head> <title>$tl_name Duplication Summary Page</title> </head>
-<body>
-<body bgcolor="#ffffff" text=#a0a0ff">
-<meta http-equiv="Refresh" content="900">
-<hr>
-<pre>
-EOF
-
-    #We need to add a link to the web page with the plots on it.
-    link="<a href=$url_dir/migration_summary/plot_enstore_system.html>Migration Summary Plots</a>"
-
-    #The following sed is used more like cat to append $output_file
-    # to $output_file.html.  The fancy sed part just inserts the link
-    # on line 3 in the process of "cat"ing the file.
-    sed "3s;\(.*\);${link}\n\1;" $output_file >> $output_file.html
-
-    echo >> $output_file.html
-    echo ${link} >> $output_file.html
-    echo >> $output_file.html
-
-    cat << EOF >> $output_file.html
-</pre>
-<hr>
-<hr>
-</body>
-EOF
+#Remove the temp file.
+rm -f $temp_file
