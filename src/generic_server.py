@@ -160,17 +160,36 @@ class GenericServer(generic_client.GenericClient):
 
     # we got an uncaught error while in serve_forever
     def serve_forever_error(self, id):
-        exc,msg,tb=sys.exc_info()
-        traceback.print_exc()
-        message = "%s %s %s %s %s: serve_forever continuing" % (
-            timeofday.tod(),sys.argv,exc,msg,id)
-        Trace.log(e_errors.ERROR, str(message))
-        filename = tb.tb_frame.f_code.co_filename
-        if not filename or type(filename)!=type(""):
-            filename="???"
-        lineno = tb.tb_lineno
-        Trace.alarm(e_errors.ERROR, "Exception in file %s at line %s: %s. See system log for details." %
-                    (filename, lineno, msg))
+        #Get the traceback information.
+        exc, msg, tb = sys.exc_info()
+        #Extract filename and line number information.
+        try:
+            filename = tb.tb_frame.f_code.co_filename
+            if not filename or type(filename)!= type(""):
+                filename = "???"
+        except:
+            filename = "???"
+        try:
+            lineno = tb.tb_lineno
+        except:
+            lineno = -1
+
+        #Format the error message.
+        message = "Exception in file %s at line %s: (%s, %s)." \
+                  "  See system log for details." % \
+                  (filename, lineno, exc, msg)
+
+        #Log the error to stdout and to the log server.
+        Trace.trace(e_errors.ERROR, str(message))
+        Trace.alarm(e_errors.ALARM, str(message))
+
+        message2 = "%s argv: %s" % (id, sys.argv)
+        Trace.log(e_errors.INFO, message2)
+
+        #Be sure to include a traceback in the log file.
+        Trace.handle_error(exc, msg, tb)
+
+        del tb  #Avoid resource leak.
 
     """
     # send back our response
