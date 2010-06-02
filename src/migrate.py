@@ -1155,6 +1155,13 @@ def get_migration_db_path():
 	return mig_path
 
 ###############################################################################
+
+#If the source path is just a made up string, return true, otherwise false.
+def is_deleted_path(filepath):
+    if filepath[:8] == "deleted-":  #Made up paths begin with "deleted-".
+        return True
+
+    return False
 	
 def is_migration_path(filepath):
 	#Make sure this is a string.
@@ -4912,7 +4919,6 @@ def compare_metadata(p, f, pnfsid = None):
 		p.show()
 		log("compare_metadata():", `f`)
 	if p.bfid != f['bfid']:
-                print "p.bfid:", p.bfid, "f['bfid']:", f['bfid']
 		return "bfid"
 	if p.volume != f['external_label']:
 		return "external_label"
@@ -5125,9 +5131,10 @@ def _swap_metadata(MY_TASK, job, fcc, db):
     if not e_errors.is_ok(res['status']):
         return "failed to change pnfsid for %s" % (dst_bfid,)
 
-    #If we are migrating a multiple_copy/duplicate, we do not update the
-    # layer 1 and layer 4 information.
-    if not is_migrating_multiple_copy:
+    #If we are migrating a multiple_copy/duplicate or a deleted file,
+    # we do not update the layer 1 and layer 4 information.
+    if not is_migrating_multiple_copy and not is_deleted_path(src_path) \
+       and src_file_record['deleted'] == NO:
         ### swapping the PNFS layer metadata
         p1.volume = dst_file_record['external_label']
         p1.location_cookie = dst_file_record['location_cookie']
@@ -5193,13 +5200,27 @@ def _swap_metadata(MY_TASK, job, fcc, db):
     # check it again
     p1 = pnfs.File(src_path)
     src_file_record = fcc.bfid_info(dst_bfid)
-    res = compare_metadata(p1, src_file_record)
-    if res == "bfid" and f0:
-        # Handle the possibility of migrating a multiple copy.
-        res = compare_metadata(p1, f0)
-    if res:
-        return "swap_metadata(): %s %s has inconsistent metadata on %s" \
-               % (dst_bfid, src_path, res)
+    if src_file_record['deleted'] == NO:
+        if is_deleted_path(src_path):
+            #This case is an error situation.  It should never be possible that
+            # a deleted file is not deleted.
+            return "a deleted path, %s, is not marked deleted" % (src_path,)
+        else:
+            res = compare_metadata(p1, src_file_record)
+            if res == "bfid" and f0:
+                # Handle the possibility of migrating a multiple copy.
+                res = compare_metadata(p1, f0)
+            if res:
+                return "%s %s has inconsistent metadata on %s after swapping" \
+                       % (dst_bfid, src_path, res)
+    else:
+        #We get here when the file is in the deleted state.  We need to skip
+        # the metadata check between the EnstoreDB and PNFS/Chimera because
+        # there is no PNFS/Chimera metadata to check with.
+        #
+        # An unknown file should never get this far, though, if it did it
+        # would also fall through to here.
+        pass
 
     return None
 
