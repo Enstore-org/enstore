@@ -28,7 +28,7 @@ import enstore_functions2
 import e_errors
 import pnfs_agent_client
 import file_utils
-import pnfs
+import namespace
 
 #global value with each item for a different thread
 thread_specific_data = threading.local()  
@@ -124,57 +124,16 @@ def delete():
             # The unlink() fails (without an error) if the parent directory is
             # not included in the path.  This also requires that the basename
             # not be a .(access)() name, so convert its real name.
-            if pnfs.is_access_name(f):
-                pnfsid = os.path.basename(f)[10:-1]
-                use_f = os.path.join(pnfs.get_directory_name(f),
-                                     pnfs.Pnfs().get_nameof(pnfsid))
-            else:
-                use_f = f
+            fs = namespace.StorageFS(f)
             try:
-                os.unlink(use_f)
+                fs.rm(f)
                 _deletion_list.remove(f) #Remove from the list.
-            except OSError, msg:
-                if msg.errno in [errno.EPERM, errno.EACCES] \
-                   and os.getuid() == 0 and os.geteuid() != 0:
-                    #Reset the euid and egid.
-                    directory = pnfs.get_directory_name(f)
-                    file_utils.match_euid_egid(directory)
-                
-                    try:
-                        os.unlink(f)
-                        _deletion_list.remove(f) #Remove from the list.
-                    except OSError, msg2:
-                        message = "Can not delete file %s. (%s)" % (f, msg2)
-                        Trace.log(e_errors.ERROR, message)
-                        try:
-                            sys.stderr.write("%s%s" % (message, "\n"))
-                            sys.stderr.flush()
-                        except IOError:
-                            pass
+            except:
+                Trace.log(e_errors.ERROR,
+                      "Can not delete file %s from fs.\n" % (f,))
 
-                    #Release the lock.
-                    file_utils.end_euid_egid()
-                else:
-                    message = "Can not delete file %s. (%s)" % (f, msg)
-                    Trace.log(e_errors.ERROR, message)
-                    try:
-                        sys.stderr.write("%s%s" % (message, "\n"))
-                        sys.stderr.flush()
-                    except IOError:
-                        pass
 
-        else:
-            pnfs_agent_answer = csc.get("pnfs_agent", 5, 5)
-            #We need to check if the optional pnfs_agent is even configured.
-            # If it is, then we can continue to try and remove the file.
-            if e_errors.is_ok(pnfs_agent_answer):
-                pac = pnfs_agent_client.PnfsAgentClient(csc)
-                #If pac.remove() had the protections on the pnfs agent side
-                # to make sure only pnfs files were deleted this is_pnfs_path()
-                # check would not be necessary.
-                if pac.is_pnfs_path(f):
-                    pac.remove(f)
-                    _deletion_list.remove(f) #Remove from the list.
+
             
     # Delete registered bfids.
     for b in _deletion_list_bfids:

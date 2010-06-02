@@ -1155,6 +1155,16 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def rm(self, filename=None):
         if not filename:
             filename = self.pnfsFilename
+
+        # if the file name has access then we would 
+        # strip the pnfs id from the .(access)() file basename. 
+        # and then use get_nameof function to retrieve a file name.
+        # Finally we will append the directory part with the filename
+        # to generate the fully qualified path 
+        if is_access_name(filename):
+            pnfsid = os.path.basename(filename)[10:-1]
+            filename = os.path.join(filename[:filename.find('.(access)')],
+                     self.get_nameof(pnfsid))
             
         self.writelayer(1,"", filename)
         self.writelayer(2,"", filename)
@@ -1164,8 +1174,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # It would be better to move the file to some trash space.
         # I don't know how right now.
         file_utils.remove(filename)
-
-        self.pstatinfo()
+        if not filename:
+           self.pstatinfo()
 
     ##########################################################################
 

@@ -1164,13 +1164,12 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def rm(self, filename=None):
         if not filename:
             filename = self.pnfsFilename
-        # if the file name has access then we would first get the chimeraid
-        # strip access from the file name and 
-        # and finally generate a fully qualified path 
+        # if the file name has access then we would first 
+        # strip the chimera id from the .(access)() file basename.
+        # and use get_path function to retrieve the fully qualified path 
         if is_access_name(filename):
             chimeraid = os.path.basename(filename)[10:-1]
-            filename = os.path.join(filename[:filename.find('.(access)')],
-                     self.get_nameof(chimeraid))
+            filename = self.get_path(chimeraid)
             
         self.writelayer(1,"", filename)
         self.writelayer(2,"", filename)
