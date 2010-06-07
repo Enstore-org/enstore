@@ -2,7 +2,7 @@ Summary: Python for enstore
 Name: swig-enstore
 Version: 1_883
 Release: 1
-License: GPL
+Copyright: GPL
 Group: Development/Languages
 Source: swig.%{version}.tgz
 BuildRoot: /usr/src/redhat/BUILD
