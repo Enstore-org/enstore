@@ -8,7 +8,6 @@
 
 #system imports
 import pprint
-import cmath
 import math
 import os
 import socket
@@ -170,7 +169,6 @@ def release(lock, lock_name="<generic_lock>"):
 #########################################################################
 
 CIRCULAR, LINEAR = range(2)
-layout = LINEAR
 
 ANIMATE = 1
 STILL = 0
@@ -751,18 +749,23 @@ def get_csc(system_name = None, timeout = 3, retry = 3):
 #
 #########################################################################
 class Mover:
-    def __init__(self, name, display, index=0,N=0):
+    def __init__(self, name, display, index=0, column=0, row=0, movers=1):
         self.display       = display
-        self.index         = index
         self.name          = name
         self.state         = None
+
+        self.index         = index  #Used for CIRCULAR display.
+        self.column        = column #Movers may be laid out in multiple columns
+        self.row           = row    #Row for column display.
+        #Don't save the number of movers as a member.  This value can
+        # change as movers are configured and added to the system.
 
         #Classes that are used.
         self.volume        = None
 
         #Set geometry of mover.
         self.resize() #Even though this is the initial size, still works.
-        self.x, self.y  = self.position(N)
+        self.x, self.y  = self.position(movers)
         
         #These 4 pieces make up the progress gauge display
         self.progress_bar             = None
@@ -1715,16 +1718,40 @@ class Mover:
     #########################################################################
 
     def position_circular(self, N):
-        k = self.index
+        #N = number of movers
+        
+        #k is the sequence number of this mover in the display.
+        k = self.display.get_mover_index(self.name)
+
+        #mcc = Motal Column Count
+        mcc = self.display.get_mover_column_count()
+        #ccc = Cliet Column Count
+        ccc = self.display.get_client_column_count()
+        #tcc = Motal Column Count
+        tcc = self.display.get_total_column_count()
+
+        #x_ratio is used to make the "circle" really a vertical oval.
+        x_ratio = float(mcc) / float(tcc)
+        #x_offset is used to slide the "circle" of movers to the right.
+        x_offset = (float(ccc) - 1) / float(tcc)
+        
         if N == 1: ## special positioning for a single mover.
             k = 1
             angle = math.pi / 2
         else:
-            angle = math.pi / (N-1)
-        i=(0+1J)
-        coord=.75+.8*cmath.exp(i*(math.pi/2 + angle*k))
-        return scale_to_display(coord.real, coord.imag, self.display.width,
-                                self.display.height)
+            #angle = math.pi / (N-1)
+            angle = (2 * math.pi) / N
+        x =  x_ratio * math.sin(angle*k) + x_offset
+        y =  .9 * math.cos(angle*k)
+
+        scaled_x, scaled_y = scale_to_display(x, y,
+                                              self.display.width,
+                                              self.display.height)
+
+        #mcc = Total Column Count
+        mcc = self.display.get_mover_column_count()
+        
+        return scaled_x, scaled_y
 
     def position_linear(self, N):
         __pychecker__ = "no-argsused"
@@ -1732,7 +1759,7 @@ class Mover:
 
         position = self.display.get_mover_position(self.name)
         
-        #k = self.index  # k = number of this movers
+        #k = self.index  # k = number of this mover
         mmpc = float(MMPC) #Maximum movers per column
 
         #total number of columns 
@@ -1742,7 +1769,8 @@ class Mover:
         #this mover's column
         column = position[0]
         #this mover's row
-        row = self.display.mover_positions[column].get_index(self.name)
+        #row = self.display.mover_positions[column].get_index(self.name)
+        row = position[1]
 
         #vertical distance seperating the bottom of one mover with the top
         #  of the next.  Use MMPC instead of (MMPC - 1) for the
@@ -1794,9 +1822,10 @@ class Mover:
         return int(x), int(y)
         
     def position(self, N):
-        if layout==CIRCULAR:
+        layout = self.display.master.layout.get()
+        if layout == CIRCULAR:
             return self.position_circular(N)
-        elif layout==LINEAR:
+        elif layout == LINEAR:
             return self.position_linear(N)
         else:
             Trace.trace(1, "Unknown layout %s." % (layout,))
@@ -1869,7 +1898,7 @@ class Mover:
         #difference of column width and mover rectangle with fudge factor.
         return (column_width - self.width) - 10
 
-    def reposition(self, N): #, state=None):
+    def reposition(self, N):
         #Undraw the mover before moving it.
         self.undraw()
 
@@ -3338,8 +3367,9 @@ class Display(Tkinter.Canvas):
             #If the mover already exists, skip creating it.
             if not self.movers.has_key(mover_name):
                 column, row = self.add_mover_position(mover_name)
-                self.movers[mover_name] = Mover(mover_name, self,
-                                                index=row, N=column)
+                self.movers[mover_name] = Mover(mover_name, self, index=k,
+                                                row=row, column=column,
+                                                movers=N)
 
         Trace.trace(6, "Finishing create_movers()")
 
@@ -3475,11 +3505,29 @@ class Display(Tkinter.Canvas):
         for i in range(len(self.mover_positions) + 1)[1:]:
             self.mover_positions[i].del_item(mover_name)
 
+    #Return mover position information for linear layout.
     def get_mover_position(self, mover_name):
+        #Start searching the existing columns for the requested mover.
         for i in range(len(self.mover_positions) + 1)[1:]:
             i2 = self.mover_positions[i].get_index(mover_name)
             if i2 != None:
                 return (i, i2) #Tuple of the column number and row index. 
+
+        return None
+
+    #Return mover position information for circular layout.
+    def get_mover_index(self, mover_name):
+        #Start searching the existing columns for the existing slot.
+        running_sum = 0
+        for i in range(len(self.mover_positions) + 1)[1:]:
+            i2 = self.mover_positions[i].get_index(mover_name)
+            if i2 != None:
+                #Include the row of this movers column.
+                running_sum = running_sum + i2
+                return running_sum
+            else:
+                #Include the number of movers in this summation count.
+                running_sum = running_sum + self.mover_positions[i].count()
 
         return None
 
@@ -3609,9 +3657,9 @@ class Display(Tkinter.Canvas):
     """
 
     def client_command(self, command_list):
-        ## For now, don't draw waiting clients (there are just
-        ## too many of them)
-        return
+        ## Only draw waiting clients if the user really wants to see them all.
+        if self.master.show_waiting_clients.get() == CONNECTED:
+            return
 
         acquire(clients_lock, "clients_lock")
 
@@ -3701,7 +3749,6 @@ class Display(Tkinter.Canvas):
                 if client_name not in self.clients.keys():
                     print "ERROR: Newly added client not found in client list."
             else:
-                client.waiting = 0
                 client.update_state(CONNECTED) #change fill color if needed
 
             #Update this set of movers that this client has connections to.

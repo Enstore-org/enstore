@@ -1609,12 +1609,23 @@ def create_menubar(menu_defaults, system_defaults, master, intf):
 
     #Create the animate check button and set animate accordingly.
     master.entv_do_animation = Tkinter.BooleanVar()
-    master.connection_color = Tkinter.IntVar()
-    master.connection_color.set(menu_defaults['connection_color'])
-    
     #By default animation is off.  If we need to turn animation, do so now.
     #if menu_defaults['animate'] == enstore_display.ANIMATE:
     master.entv_do_animation.set(menu_defaults['animate'])
+
+    #By default the connection lines match the color of the client outlines.
+    master.connection_color = Tkinter.IntVar()
+    master.connection_color.set(menu_defaults['connection_color'])
+    
+    #By default show the movers in columns.  The other choice is circular
+    # which does not look good for large number of movers.
+    master.layout = Tkinter.IntVar()
+    master.layout.set(enstore_display.LINEAR)
+
+    #By default do not show "greyed" out clients that are waiting in
+    # their LM queue.
+    master.show_waiting_clients = Tkinter.BooleanVar()
+    master.show_waiting_clients.set(enstore_display.CONNECTED)
                                 
     #Add the checkbutton to the menu.
     ## Note: There is no way to obtain the actual checkbutton object.
@@ -1646,6 +1657,30 @@ def create_menubar(menu_defaults, system_defaults, master, intf):
         value = enstore_display.LIBRARY_COLOR,
         variable = master.connection_color,
         command = toggle_connection_color,
+        )
+    master.entv_option_menu.add_separator()
+    master.entv_option_menu.add_radiobutton(
+        label = "Linear layout",
+        indicatoron = Tkinter.TRUE,
+        value = enstore_display.LINEAR,
+        variable = master.layout,
+        command = toggle_layout,
+        )
+    master.entv_option_menu.add_radiobutton(
+        label = "Circular layout",
+        indicatoron = Tkinter.TRUE,
+        value = enstore_display.CIRCULAR,
+        variable = master.layout,
+        command = toggle_layout,
+        )
+    master.entv_option_menu.add_separator()
+    master.entv_option_menu.add_checkbutton(
+        label = "Show Waiting Clients",
+        indicatoron = Tkinter.TRUE,
+        onvalue = enstore_display.WAITING,
+        offvalue = enstore_display.CONNECTED,
+        variable = master.show_waiting_clients,
+        command = toggle_clients,
         )
 
     master.enstore_systems_enabled = {}
@@ -1726,6 +1761,22 @@ def toggle_connection_color():
         cc = display.master.connection_color.get()
         for connection in display.connections.values():
             connection.update_color(cc)
+
+def toggle_layout():
+    global displays
+    
+    #Relocate where each mover is shown on the screen.  Either in the
+    # LINEAR (default) or CIRCULAR patterns.
+    for display in displays:
+        display.reposition_canvas(force=1)
+
+def toggle_clients():
+    global displays
+    
+    #Reserved for future use.
+
+    #This function could be used to show or hide all known waiting clients
+    # at once, instead of letting them slowly build up over time.
 
 def toggle_systems_enabled():
     global displays
@@ -2053,11 +2104,9 @@ def main(intf):
         #Tell other thread(s) to stop.
         stop_now = 1
 
-        #Cleanup the display.
-        continue_working = destroy_display_panels()
-
         #Set the geometry of the .entvrc file (if necessary).
-        if not intf.messages_file and len(displays) == 1:
+        if not intf.messages_file and \
+               systems_enabled_statistics(master)[0] == 1:
             #Find the one Enstore system that is being displayed.
             for system_name, current_csc in cscs.items():
                 if is_system_enabled(system_name, master):
@@ -2066,6 +2115,9 @@ def main(intf):
                     address = cscs_info[system_name][0]
                     set_entvrc(displays[0], address)
                     break
+
+        #Cleanup the display.
+        continue_working = destroy_display_panels()
 
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
