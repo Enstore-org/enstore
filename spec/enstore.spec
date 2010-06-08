@@ -5,8 +5,8 @@
 ###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 2.0.1
-Release: 3
+Version: 2.1.0
+Release: 0
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -195,6 +195,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Tue Jun 08 2010  <moibenko@fnal.gov> -
+- using python with enabled ssl
 * Tue Mar 23 2010  <moibenko@fnal.gov> -
 - added dependency on postgresql-libs, because there now are many clients that require it
 - added a message: Enstore installed. Please read README file
