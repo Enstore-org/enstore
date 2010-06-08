@@ -1,7 +1,7 @@
 Summary: Python for enstore
 Name: Python-enstore2.6
 Version: 3.0.0
-Release: 2
+Release: 3
 License: GPL
 Group: Development/Languages
 Source: python-enstore-2.6.3.tgz
@@ -33,3 +33,6 @@ rm -rf $RPM_BUILD_ROOT/*
 %files
 %defattr(-,root,root,-)
 /%{prefix}/python-enstore-2.6.3
+%changelog
+* Tue Jun 08 2010  <moibenko@fnal.gov> -
+- added ssl support
