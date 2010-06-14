@@ -1723,11 +1723,11 @@ class Mover:
         #k is the sequence number of this mover in the display.
         k = self.display.get_mover_index(self.name)
 
-        #mcc = Motal Column Count
+        #mcc = Mover Column Count
         mcc = self.display.get_mover_column_count()
         #ccc = Cliet Column Count
         ccc = self.display.get_client_column_count()
-        #tcc = Motal Column Count
+        #tcc = Total Column Count
         tcc = self.display.get_total_column_count()
 
         #x_ratio is used to make the "circle" really a vertical oval.
