@@ -334,6 +334,9 @@ class SG_VF:
         self.trace_level = 310
 
     def delete(self, mover, volume, sg, vf):
+        #returns
+        # 0 - success
+        # -1 - failure
         rc = 0
         #if not (mover and volume and sg and vf): return
         Trace.trace(self.trace_level, "SG:delete mover %s, volume %s, sg %s, vf %s" % (mover, volume, sg, vf))
@@ -344,16 +347,20 @@ class SG_VF:
         else:
             Trace.log(DEBUG_LOG,'can not remove from sg %s %s' % (mover, volume))
             Trace.log(DEBUG_LOG, 'SG: %s' % (self.sg,))
-            rc = rc - 1
+            rc = -1
         if self.vf.has_key(vf) and (mover, volume) in self.vf[vf]:
             self.vf[vf].remove((mover, volume))
             if len(self.vf[vf]) == 0:
                 del(self.vf[vf])
         else:
-            rc = rc - 1
+            rc = -1
         return rc
 
     def delete_mover(self, mover):
+        #returns
+        # 0 - success
+        # -1 - failure
+        rc = 0
         m,v = None, None
         # delete from sg
         for key in self.sg.keys():
@@ -387,8 +394,10 @@ class SG_VF:
             if len(self.vf[key]) == 0:
                 del(self.vf[key])
         else:
+            rc = -1
             Trace.log(DEBUG_LOG,'delete_mover can not remove from vf %s %s' % (m, v))
             Trace.log(DEBUG_LOG,'delete_mover VF: %s' % (self.vf,))
+        return rc
 
     def put(self, mover, volume, sg, vf):
         self.delete(mover, volume, sg, vf) # delete entry to update content
@@ -433,7 +442,9 @@ class AtMovers:
         # volume_family
         # work (read/write)
         # current location
-        Trace.trace(self.trace_level,"put: %s" % (mover_info,))
+        Trace.trace(self.trace_level,"AtMovers:put: %s" % (mover_info,))
+        Trace.trace(self.trace_level,"AtMovers put before: at_movers: %s" % (self.at_movers,))
+        Trace.trace(self.trace_level+1,"AtMovers put before: sg_vf: %s" % (self.sg_vf,))
         Trace.trace(self.trace_level,"dont_update: %s" % (self.dont_update,))
         if not mover_info['external_label']: return
         if not mover_info['volume_family']: return
@@ -465,10 +476,15 @@ class AtMovers:
         Trace.trace(self.trace_level+1,"AtMovers put: sg_vf: %s" % (self.sg_vf,))
 
     def delete(self, mover_info):
+        # returns
+        # 0 - success
+        # -1 - failure
+       
         Trace.trace(self.trace_level, "AtMovers delete. before: %s" % (self.at_movers,))
         Trace.trace(self.trace_level+1, "AtMovers delete. before: sg_vf: %s" % (self.sg_vf,))
         mover = mover_info['mover']
         mover_state = mover_info.get('state', None)
+        rc = -1
         if self.at_movers.has_key(mover):
             Trace.trace(self.trace_level, "MOVER %s" % (self.at_movers[mover],))
             if  mover_info.has_key('volume_family') and mover_info['volume_family']:
@@ -487,18 +503,20 @@ class AtMovers:
             #vol_family = self.at_movers[mover]['volume_family']
             #self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family)
             storage_group = volume_family.extract_storage_group(vol_family)
-            if (self.sg_vf.delete(mover, label, storage_group, vol_family) < 0 and
-                mover_state == 'IDLE'):
+            rc = self.sg_vf.delete(mover, label, storage_group, vol_family)
+            Trace.trace(self.trace_level, "AtMovers delete. sg_vf.delete returned %s" % (rc,))
+            if (rc < 0 and mover_state == 'IDLE'):
                 # the pair (mover, volume) is wrong.
                 # This usually happens when mover automatically goes to
                 # IDLE after ERROR in cases when the tape mount fails
-                self.sg_vf.delete_mover(mover)
+                rc = self.sg_vf.delete_mover(mover)
 
             self._lock.acquire()
             del(self.at_movers[mover])
             self._lock.release()
         Trace.trace(self.trace_level+1,"AtMovers delete: at_movers: %s" % (self.at_movers,))
         Trace.trace(self.trace_level,"AtMovers delete: sg_vf: %s" % (self.sg_vf,))
+        return rc
 
     # check how long mover did not update its state
     def check(self):
@@ -773,6 +791,7 @@ class LibraryManagerMethods:
     # Built in networking methods
     ########################################
     def del_udp_client(self, udp_client):
+        __pychecker__ = "unusednames=server"
         if not udp_client: return
         # tell server we're done - this allows it to delete our unique id in
         # its dictionary - this keeps things cleaner & stops memory from growing
@@ -1290,7 +1309,7 @@ class LibraryManagerMethods:
     ## check if there are any additional restrictions for mounted
     ## volumes from discipline
     def client_host_busy_for_mounted(self, external_label, vol_family, w):
-        Trace.trace(self.trace_level+3,"client_host_busy:restrict_access_in_bound %s"%(self.restrict_access_in_bound))
+        Trace.trace(self.trace_level+3,"client_host_busy_for_mounted: %s"%(self.restrict_access_in_bound))
         ret = False
         if not self.restrict_access_in_bound:
             return False
@@ -2796,7 +2815,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rc, status = self.pending_work.test(ticket)
             if rc:
                 ticket['status'] = (status, None)
-                rq = self.pending_work.find(rc)
 
                 if work =="write_to_hsm":
                     _format = "Rq. is already in the queue %s %s (%s) -> %s : library=%s family=%s requester:%s volume_family:%s"
@@ -3470,7 +3488,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         t=time.time()
         Trace.trace(5, "mover_bound_volume %s"%(mticket['mover'],))
         if self.use_threads:
-            if self.mover_request_in_progress == False:
+            if not self.mover_request_in_progress:
                self.set_mover_request_in_progress(value=True)
                self._mover_bound_volume(mticket)
                self.set_mover_request_in_progress(value=False)
@@ -3730,25 +3748,45 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(self.my_trace_level,"_mover_error:idle movers %s"%(self.idle_movers,))
 
         self.volumes_at_movers.put(mticket)
-        #self.volumes_at_movers.delete(mticket)
-        #self.volumes_at_movers.put(mticket) I don't remember why this was done
-        # but it causes problems with correct request processing.
-        #if mticket.has_key(['volume_family']):
-        #    sg = volume_family.extract_storage_group(mticket['volume_family'])
-        #    self.postponed_requests.update(sg, -1)
+
         # get the work ticket for the volume
+        w = {}
         if mticket['external_label']:
             w = self.get_work_at_movers(mticket['external_label'], mticket['mover'])
-        else:
-            # use alternative fuction
+        if w == {}:
+            # Try to get work by mover name.
+            # This may be a case for the volume preempted with admin priority request.
+            # In this case external label from mover and external label in at_movers list
+            # may be different.
             w = self.get_work_at_movers_m(mticket['mover'])
+        Trace.trace(self.my_trace_level,"mover_error: work_at_movers %s"%(w,))
         if w:
-            Trace.trace(self.my_trace_level,"mover_error: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
         if ((mticket['state'] == mover_constants.OFFLINE) or # mover finished request and went offline
-            (((mticket['status'][0] == e_errors.ENCP_GONE) or (mticket['status'][0] == e_errors.ENCP_STUCK))
-             and mticket['state'] != 'HAVE_BOUND')):
-            self.volumes_at_movers.delete(mticket)
+            (((mticket['status'][0] == e_errors.ENCP_GONE) or
+              (mticket['status'][0] == e_errors.ENCP_STUCK) or
+              (mticket['status'][0] == e_errors.DISMOUNTFAILED)) and # preempted volume dismount failed
+             mticket['state'] != 'HAVE_BOUND')):
+            rc = self.volumes_at_movers.delete(mticket)
+            Trace.trace(self.my_trace_level,"mover_error: volumes_at_movers.delete returned %s"%(rc,))
+            if mticket['status'][0] == e_errors.DISMOUNTFAILED:
+                if rc != 0:
+                    # check what kind of request was the last request, sent to this mover
+                    if w:
+                        admin_pri = w.get('encp',{}).get('adminpri', -1)
+                        Trace.trace(self.my_trace_level,"mover_error: admin_pri %s"%(admin_pri,))
+                        if admin_pri > 0:
+                            # There was an attempt to preempt a mounted volume
+                            # with admin. priority request.
+                            # This is why the volume returned by mover
+                            # was not equal to the volume in at_movers list 
+                            # and self.volumes_at_movers.delete has not succeded
+                            # (see volumes_at_movers.delete).
+                            # Try to delete mover from the at_movers list.
+                            rc = self.volumes_at_movers.sg_vf.delete_mover(mticket['mover'])
+                            Trace.trace(self.my_trace_level,"mover_error: volumes_at_movers.sg_vf.delete_mover returned %s"%(rc,))
+                # put back the actual mover, tape combination
+                self.volumes_at_movers.put(mticket)
             return
         if mticket.has_key('returned_work') and mticket['returned_work']:
             # put this ticket back into the pending queue
