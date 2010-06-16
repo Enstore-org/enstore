@@ -97,7 +97,7 @@ class Request:
 
     def __repr__(self):
         #return "<priority %s value %s ticket %s>" % (self.pri, self.value, self.ticket)
-        return "<priority %s value %s id %s tq %s>" % (self.pri, self.value, self.unique_id, self.queued)
+        return "<priority %s value %s id %s work %s %s>" % (self.pri, self.value, self.unique_id, self.work, self.queued)
 
     def change_pri(self, pri):
         self.pri = pri
@@ -785,15 +785,15 @@ class Atomic_Request_Queue:
     
     def get(self, key='',location='', next=0, active_volumes=[], disabled_hosts=[]):
         record = None
-        Trace.trace(TR+21,'atomic_get:key %s location %s next %s active %s'%
+        Trace.trace(TR+21,'Atomic_Request_Queue:get:key %s location %s next %s active %s'%
                     (key, location, next, active_volumes))
         if key:
             # see if key points to write queue
             if key in self.ref.keys():
                 if next:
-                    Trace.trace(TR+21, "GET_NEXT_0")
+                    Trace.trace(TR+21, "Atomic_Request_Queue:get:GET_NEXT_0")
                     record = self.write_queue.get_next(key, disabled_hosts = disabled_hosts)
-                    Trace.trace(TR+21, "write_queue.get_next returned %s"%(record,))
+                    Trace.trace(TR+21, "Atomic_Request_Queue:get:write_queue.get_next returned %s"%(record,))
                 else:
                     Trace.trace(TR+21, "GET_0")
                     record = self.write_queue.get(key, location)
@@ -802,46 +802,64 @@ class Atomic_Request_Queue:
                     if next: record = self.read_queue.get_next(key, disabled_hosts = disabled_hosts)
                     else:
                         record = self.read_queue.get(key, location)
-                        Trace.trace(TR+21, "GET_AA record %s"%(record,))
+                        Trace.trace(TR+21, "Atomic_Request_Queue:get:GET_AA record %s"%(record,))
                         #if not location: record = self.read_queue.get(key)
                         #else: record = self.read_queue.get(key, location)
             else: record = None
             #return record
         else:
-            Trace.trace(TR+21, "TAGS %s"%(self.tags.sorted_list,))
-            Trace.trace(TR+21, "TAGS_0 %s"%(self.tags.keys,))
+            Trace.trace(TR+21, "Atomic_Request_Queue:get:TAGS %s"%(self.tags.sorted_list,))
+            Trace.trace(TR+21, "Atomic_Request_Queue:get:TAGS_0 %s"%(self.tags.keys,))
             # key is not specified, get the highest priority from
             # the tags queue
             if next:
-                Trace.trace(TR+21, "GET_NEXT_1")
+                Trace.trace(TR+21, "Atomic_Request_Queue:get:GET_NEXT_1")
                 for r in self.tags.sorted_list:
-                    Trace.trace(TR+21, "TAG %s" % (r,))
+                    Trace.trace(TR+21, "Atomic_Request_Queue:get:TAG %s" % (r.ticket,))
+                # go thhrough all tags
+                
                 rq = self.tags.get_next()
+                
                 while (rq and rq.work == 'read_from_hsm' and rq.ticket['fc']['external_label'] in active_volumes):
-                    Trace.trace(TR+21, "SKIPPING %s" % (rq.ticket['fc']['external_label'],))
+                    Trace.trace(TR+21, "Atomic_Request_Queue:get:SKIPPING %s" % (rq.ticket['fc']['external_label'],))
                     rq = self.tags.get_next()
                     
-                Trace.trace(TR+21,"NEXT %s" % (rq,))
+                Trace.trace(TR+21,"Atomic_Request_Queue:get:NEXT %s" % (rq,))
             else:
-                Trace.trace(TR+21, "GET_1")
+                Trace.trace(TR+21, "Atomic_Request_Queue:get:GET_1")
                 rq = self.tags.get()
-                Trace.trace(TR+21,"tags_get returned %s"%(rq,))
+                Trace.trace(TR+21,"Atomic_Request_Queue:get:tags_get returned %s"%(rq,))
             if rq:
-                if rq.work == 'write_to_hsm':
-                    key = rq.ticket['vc']['volume_family']
-                    if next:
-                        record = self.write_queue.get_next(key, disabled_hosts = disabled_hosts)
-                    else:
-                        record = self.write_queue.get(key)
-                if rq.work == 'read_from_hsm':
-                    key = rq.ticket['fc']['external_label']
-                    if not location:
+                # go trough all tags
+                while True:
+                    Trace.trace(TR+21,"Atomic_Request_Queue:get:NEXT_01 %s" % (rq,))
+                    if rq.work == 'write_to_hsm':
+                        key = rq.ticket['vc']['volume_family']
                         if next:
-                            record = self.read_queue.get_next(key, disabled_hosts = disabled_hosts)
+                            record = self.write_queue.get_next(key, disabled_hosts = disabled_hosts)
                         else:
-                            record = self.read_queue.get(key)
-            else: record = rq
-            Trace.trace(TR+21,"Atomic_Request_Queue: get returning %s" % (record,))
+                            record = self.write_queue.get(key)
+                    if rq.work == 'read_from_hsm':
+                        key = rq.ticket['fc']['external_label']
+                        if not location:
+                            if next:
+                                record = self.read_queue.get_next(key, disabled_hosts = disabled_hosts)
+                            else:
+                                record = self.read_queue.get(key)
+                    Trace.trace(TR+21,"Atomic_Request_Queue:get:record %s" % (record,))
+                    if not record:
+                        if next:
+                            rq = self.tags.get_next()
+                            Trace.trace(TR+21,"Atomic_Request_Queue:get: tags.get_next %s" % (rq,))
+                            if not rq:
+                                # all tags were processes
+                                record = rq
+                                break
+                    else:
+                        break
+            else:
+                record = rq
+        Trace.trace(TR+21,"Atomic_Request_Queue: get returning %s" % (record,))
         return record
 
     def get_queue(self):
@@ -1196,307 +1214,466 @@ class Request_Queue:
         m='%s===============================\nREGULAR QUEUE\n%s'%(m,self.regular_queue.sprint())
         return m
          
-if __name__ == "__main__":
-  import pprint
-  import os
-  pending_work = Request_Queue()
-  #Trace.do_print(range(1,500))
 
-  t1={}
-  t1["encp"]={}
-  t1['fc'] = {}
-  t1['vc'] = {}
-  t1["times"]={}
-  t1["unique_id"]=1
-  t1["encp"]["basepri"]=100
-  t1["encp"]["adminpri"]=-1
-  t1["encp"]["delpri"]=176
-  t1["encp"]["agetime"]=1
-  t1["times"]["t0"]=time.time()
-  t1['work'] = 'read_from_hsm'
-  t1['fc']['external_label'] = 'vol1'
-  t1['fc']['location_cookie'] = '2'
-  t1['vc']['storage_group'] = 'D0'
-  print "PUT",t1['work'] 
-  res = pending_work.put(t1)
-  time.sleep(.5)
-  print "RESULT",res, t1['fc']['external_label']
-  #pending_work.wprint()
-  s=pending_work.sprint()
-  
-  #print "RES!!!!!\n%s"%(s,)
-  t2={}
-  t2["encp"]={}
-  t2['fc'] = {}
-  t2['vc'] = {}
-  t2["times"]={}
-  t2["unique_id"]=2
-  t2["encp"]["basepri"]=200
-  t2["encp"]["adminpri"]=-1
-  t2["encp"]["delpri"]=125
-  t2["encp"]["agetime"]=2
-  t2["times"]["t0"]=time.time()
-  t2['work'] = 'read_from_hsm'
-  t2['fc']['external_label'] = 'vol2'
-  t2['fc']['location_cookie'] = '1'
-  t2['vc']['storage_group'] = 'D0'
-  print "PUT", t2['work']
-  res = pending_work.put(t2)
-  time.sleep(.5)
-  print "RESULT",res, t2['fc']['external_label']
-  #pending_work.wprint()
-  """
-  t3={}
-  t3["encp"]={}
-  t3['fc'] = {}
-  t3['vc'] = {}
-  t3["times"]={}
-  t3['wrapper']={}
-  t3['wrapper']['size_bytes']=100L
-  t3["unique_id"]=3
-  t3["encp"]["basepri"]=300
-  t3["encp"]["adminpri"]=-1
-  t3["encp"]["delpri"]=0
-  t3["encp"]["agetime"]=0
-  t3["times"]["t0"]=time.time()
-  t3['work'] = 'write_to_hsm'
-  t3['vc']['file_family'] = 'family1'
-  t3['vc']['wrapper'] = 'cpio_odc'
-  t3['vc']['storage_group'] = 'D0'
-  t3['wrapper']['pnfsFilename']='file1'
-  print "PUT", t3['work']
-  res = pending_work.put(t3)
-  time.sleep(.5)
-  print "RESULT",res,t3['vc']['file_family'] 
-  #pending_work.wprint()
-  """
-  t4={}
-  t4["encp"]={}
-  t4["times"]={}
-  t4['fc'] = {}
-  t4['vc'] = {}
-  t4["unique_id"]=4
-  t4["encp"]["basepri"]=160
-  t4["encp"]["adminpri"]=-1
-  t4["encp"]["delpri"]=0
-  t4["encp"]["agetime"]=0
-  t4["times"]["t0"]=time.time()
-  t4['work'] = 'read_from_hsm'
-  t4['fc']['external_label'] = 'vol3'
-  t4['fc']['location_cookie'] = '5'
-  t4['vc']['storage_group'] = 'D0'
-  print "PUT", t4['work']
-  res = pending_work.put(t4)
-  time.sleep(.5)
-  print "RESULT",res, t4['fc']['external_label']
-  #pending_work.wprint()
-  """
-  t5={}
-  t5["encp"]={}
-  t5["times"]={}
-  t5['fc'] = {}
-  t5['vc'] = {}
-  t5['wrapper']={}
-  t5['wrapper']['size_bytes']=200L
-  t5["unique_id"]=5
-  t5["encp"]["basepri"]=200
-  t5["encp"]["adminpri"]=-1
-  t5["encp"]["delpri"]=0
-  t5["encp"]["agetime"]=0
-  t5["times"]["t0"]=time.time()
-  t5['work'] = 'write_to_hsm'
-  t5['vc']['file_family'] = 'family2'
-  t5['vc']['wrapper'] = 'cpio_odc'
-  t5['vc']['storage_group'] = 'D0'
-  t5['wrapper']['pnfsFilename']='file2'
-  print "PUT", t5['work']
-  res = pending_work.put(t5)
-  time.sleep(.5)
-  print "RESULT",res, t5['vc']['file_family']
-  #pending_work.wprint()
-  t5_1={}
-  t5_1["encp"]={}
-  t5_1["times"]={}
-  t5_1['fc'] = {}
-  t5_1['vc'] = {}
-  t5_1['wrapper']={}
-  t5_1['wrapper']['size_bytes']=200L
-  t5_1["unique_id"]=51
-  t5_1["encp"]["basepri"]=200
-  t5_1["encp"]["adminpri"]=-1
-  t5_1["encp"]["delpri"]=0
-  t5_1["encp"]["agetime"]=0
-  t5_1["times"]["t0"]=time.time()
-  t5_1['work'] = 'write_to_hsm'
-  t5_1['vc']['file_family'] = 'family2'
-  t5_1['vc']['wrapper'] = 'cpio_odc'
-  t5_1['vc']['storage_group'] = 'D0'
-  t5_1['wrapper']['pnfsFilename']='file2'
-  print "PUT", t5_1['work']
-  res = pending_work.put(t5_1)
-  time.sleep(.5)
-  print "RESULT",res, t5_1['vc']['file_family']
-  #pending_work.wprint()
+def unit_test():
+    pending_work = Request_Queue()
 
-  t6={}
-  t6["encp"]={}
-  t6["times"]={}
-  t6['fc'] = {}
-  t6['vc'] = {}
-  t6['wrapper']={}
-  t6['wrapper']['size_bytes']=300L
-  t6["unique_id"]=6
-  t6["encp"]["basepri"]=400
-  t6["encp"]["adminpri"]=-1
-  t6["encp"]["delpri"]=50
-  t6["encp"]["agetime"]=0
-  t6["times"]["t0"]=time.time()
-  t6['work'] = 'write_to_hsm'
-  t6['vc']['wrapper'] = 'cpio_odc'
-  t6['vc']['file_family'] = 'family2'
-  t6['vc']['storage_group'] = 'D0'
-  t6['wrapper']['pnfsFilename']='file3'
-  print "PUT", t6['work']
-  res = pending_work.put(t6)
-  time.sleep(.5)
-  print "RESULT",res, t6['vc']['file_family']
-  #s=pending_work.sprint()
-  #print s
-  #pending_work.wprint()
+    t1={}
+    t1["encp"]={}
+    t1['fc'] = {}
+    t1['vc'] = {}
+    t1["times"]={}
+    t1["unique_id"]=1
+    t1["encp"]["basepri"]=100
+    t1["encp"]["adminpri"]=-1
+    t1["encp"]["delpri"]=176
+    t1["encp"]["agetime"]=1
+    t1["times"]["t0"]=time.time()
+    t1['work'] = 'read_from_hsm'
+    t1['fc']['external_label'] = 'vol1'
+    t1['fc']['location_cookie'] = '2'
+    t1['vc']['storage_group'] = 'D0'
+    print "PUT",t1['work'] 
+    res = pending_work.put(t1)
+    time.sleep(.5)
+    print "RESULT",res, t1['fc']['external_label']
+    pending_work.sprint()
+
+    t2={}
+    t2["encp"]={}
+    t2['fc'] = {}
+    t2['vc'] = {}
+    t2["times"]={}
+    t2["unique_id"]=2
+    t2["encp"]["basepri"]=200
+    t2["encp"]["adminpri"]=-1
+    t2["encp"]["delpri"]=125
+    t2["encp"]["agetime"]=2
+    t2["times"]["t0"]=time.time()
+    t2['work'] = 'read_from_hsm'
+    t2['fc']['external_label'] = 'vol2'
+    t2['fc']['location_cookie'] = '1'
+    t2['vc']['storage_group'] = 'D0'
+    print "PUT", t2['work']
+    res = pending_work.put(t2)
+    time.sleep(.5)
+    print "RESULT",res, t2['fc']['external_label']
+    #pending_work.wprint()
+    """
+    t3={}
+    t3["encp"]={}
+    t3['fc'] = {}
+    t3['vc'] = {}
+    t3["times"]={}
+    t3['wrapper']={}
+    t3['wrapper']['size_bytes']=100L
+    t3["unique_id"]=3
+    t3["encp"]["basepri"]=300
+    t3["encp"]["adminpri"]=-1
+    t3["encp"]["delpri"]=0
+    t3["encp"]["agetime"]=0
+    t3["times"]["t0"]=time.time()
+    t3['work'] = 'write_to_hsm'
+    t3['vc']['file_family'] = 'family1'
+    t3['vc']['wrapper'] = 'cpio_odc'
+    t3['vc']['storage_group'] = 'D0'
+    t3['wrapper']['pnfsFilename']='file1'
+    print "PUT", t3['work']
+    res = pending_work.put(t3)
+    time.sleep(.5)
+    print "RESULT",res,t3['vc']['file_family'] 
+    #pending_work.wprint()
+    """
+    t4={}
+    t4["encp"]={}
+    t4["times"]={}
+    t4['fc'] = {}
+    t4['vc'] = {}
+    t4["unique_id"]=4
+    t4["encp"]["basepri"]=160
+    t4["encp"]["adminpri"]=-1
+    t4["encp"]["delpri"]=0
+    t4["encp"]["agetime"]=0
+    t4["times"]["t0"]=time.time()
+    t4['work'] = 'read_from_hsm'
+    t4['fc']['external_label'] = 'vol3'
+    t4['fc']['location_cookie'] = '5'
+    t4['vc']['storage_group'] = 'D0'
+    print "PUT", t4['work']
+    res = pending_work.put(t4)
+    time.sleep(.5)
+    print "RESULT",res, t4['fc']['external_label']
+    #pending_work.wprint()
+    """
+    t5={}
+    t5["encp"]={}
+    t5["times"]={}
+    t5['fc'] = {}
+    t5['vc'] = {}
+    t5['wrapper']={}
+    t5['wrapper']['size_bytes']=200L
+    t5["unique_id"]=5
+    t5["encp"]["basepri"]=200
+    t5["encp"]["adminpri"]=-1
+    t5["encp"]["delpri"]=0
+    t5["encp"]["agetime"]=0
+    t5["times"]["t0"]=time.time()
+    t5['work'] = 'write_to_hsm'
+    t5['vc']['file_family'] = 'family2'
+    t5['vc']['wrapper'] = 'cpio_odc'
+    t5['vc']['storage_group'] = 'D0'
+    t5['wrapper']['pnfsFilename']='file2'
+    print "PUT", t5['work']
+    res = pending_work.put(t5)
+    time.sleep(.5)
+    print "RESULT",res, t5['vc']['file_family']
+    #pending_work.wprint()
+    t5_1={}
+    t5_1["encp"]={}
+    t5_1["times"]={}
+    t5_1['fc'] = {}
+    t5_1['vc'] = {}
+    t5_1['wrapper']={}
+    t5_1['wrapper']['size_bytes']=200L
+    t5_1["unique_id"]=51
+    t5_1["encp"]["basepri"]=200
+    t5_1["encp"]["adminpri"]=-1
+    t5_1["encp"]["delpri"]=0
+    t5_1["encp"]["agetime"]=0
+    t5_1["times"]["t0"]=time.time()
+    t5_1['work'] = 'write_to_hsm'
+    t5_1['vc']['file_family'] = 'family2'
+    t5_1['vc']['wrapper'] = 'cpio_odc'
+    t5_1['vc']['storage_group'] = 'D0'
+    t5_1['wrapper']['pnfsFilename']='file2'
+    print "PUT", t5_1['work']
+    res = pending_work.put(t5_1)
+    time.sleep(.5)
+    print "RESULT",res, t5_1['vc']['file_family']
+    #pending_work.wprint()
+    
+    t6={}
+    t6["encp"]={}
+    t6["times"]={}
+    t6['fc'] = {}
+    t6['vc'] = {}
+    t6['wrapper']={}
+    t6['wrapper']['size_bytes']=300L
+    t6["unique_id"]=6
+    t6["encp"]["basepri"]=400
+    t6["encp"]["adminpri"]=-1
+    t6["encp"]["delpri"]=50
+    t6["encp"]["agetime"]=0
+    t6["times"]["t0"]=time.time()
+    t6['work'] = 'write_to_hsm'
+    t6['vc']['wrapper'] = 'cpio_odc'
+    t6['vc']['file_family'] = 'family2'
+    t6['vc']['storage_group'] = 'D0'
+    t6['wrapper']['pnfsFilename']='file3'
+    print "PUT", t6['work']
+    res = pending_work.put(t6)
+    time.sleep(.5)
+    print "RESULT",res, t6['vc']['file_family']
+    #s=pending_work.sprint()
+    #print s
+    #pending_work.wprint()
     print "GO SLEEP"
-  #time.sleep(65)
-  print "WAKE UP"
-  t7={}
-  t7["encp"]={}
-  t7["times"]={}
-  t7['fc'] = {}
-  t7['vc'] = {}
-  t7["unique_id"]=7
-  t7["encp"]["basepri"]=150
-  t7["encp"]["adminpri"]=-1
-  t7["encp"]["delpri"]=0
-  t7["encp"]["agetime"]=0
-  t7["times"]["t0"]=time.time()
-  t7['work'] = 'read_from_hsm'
-  t7['fc']['external_label'] = 'vol1'
-  t7['fc']['location_cookie'] = '3'
-  t7['vc']['storage_group'] = 'D0'
-  print "PUT", t7['work']
-  
-  res = pending_work.put(t7)
-  time.sleep(.5)
-  print "RESULT",res,t7['fc']['external_label'] 
-  #pending_work.wprint()
-  #s=pending_work.sprint()
-  #print s
+    #time.sleep(65)
+    print "WAKE UP"
+    t7={}
+    t7["encp"]={}
+    t7["times"]={}
+    t7['fc'] = {}
+    t7['vc'] = {}
+    t7["unique_id"]=7
+    t7["encp"]["basepri"]=150
+    t7["encp"]["adminpri"]=-1
+    t7["encp"]["delpri"]=0
+    t7["encp"]["agetime"]=0
+    t7["times"]["t0"]=time.time()
+    t7['work'] = 'read_from_hsm'
+    t7['fc']['external_label'] = 'vol1'
+    t7['fc']['location_cookie'] = '3'
+    t7['vc']['storage_group'] = 'D0'
+    print "PUT", t7['work']
+    
+    res = pending_work.put(t7)
+    time.sleep(.5)
+    print "RESULT",res,t7['fc']['external_label'] 
+    #pending_work.wprint()
+    #s=pending_work.sprint()
+    #print s
+    
+    t8={}
+    t8["encp"]={}
+    t8['routing_callback_addr'] = ('131.225.215.253', 56728)
+    t8["times"]={}
+    t8['fc'] = {}
+    t8['vc'] = {}
+    t8['wrapper']={}
+    t8['wrapper']['size_bytes']=150L
+    t8["unique_id"]=8
+    t8["encp"]["basepri"]=450
+    t8["encp"]["adminpri"]=-1
+    t8["encp"]["delpri"]=50
+    t8["encp"]["agetime"]=0
+    t8["times"]["t0"]=time.time()
+    t8['work'] = 'write_to_hsm'
+    t8['vc']['wrapper'] = 'cpio_odc'
+    t8['vc']['storage_group'] = 'D0'
+    t8['vc']['file_family'] = 'family2'
+    t8['wrapper']['pnfsFilename']='file4'
+    print "PUT", t8['work']
+    res = pending_work.put(t8)
+    time.sleep(.5)
+    print "RESULT",res, t8['vc']['file_family']
+    
+    #s=pending_work.sprint()
+    #print s
+    #pending_work.wprint()
+    t9={}
+    t9["encp"]={}
+    t9['routing_callback_addr'] = ('131.225.215.253', 40000)
+    t9["times"]={}
+    t9['fc'] = {}
+    t9['vc'] = {}
+    t9['wrapper']={}
+    t9['wrapper']['size_bytes']=150L
+    t9["unique_id"]=8
+    t9["encp"]["basepri"]=450
+    t9["encp"]["adminpri"]=-1
+    t9["encp"]["delpri"]=50
+    t9["encp"]["agetime"]=0
+    t9["times"]["t0"]=time.time()
+    t9['work'] = 'write_to_hsm'
+    t9['vc']['wrapper'] = 'cpio_odc'
+    t9['vc']['storage_group'] = 'D0'
+    t9['vc']['file_family'] = 'family2'
+    t9['wrapper']['pnfsFilename']='file4'
+    print "PUT", t9['work']
+    res = pending_work.put(t9)
+    time.sleep(.5)
+    print "RESULT",res, t9['vc']['file_family']
+    pending_work.start_cycle()
+    pending_work.wprint()
+    #print "enter volume: ",
+    #vol = raw_input()
+    #print "VOL",vol
+    #print "enter location: ",
+    #loc = raw_input()
+    #print "LOC",loc
+    #rq = pending_work.get()
+    #print "RQ",rq
+    """
+    """
+    while 1:
+    if rq:
+        print "****************************************"
+        print "REQUEST IS",rq
+        #pending_work.delete(rq)
+        #location = rq.ticket['fc']['location_cookie']
+    else:
+        print "No requests in the queue"
+        break
+    #print "QUEUE", pending_work.wprint()
+    print "enter volume: ",
+    vol = raw_input()
+    rq = pending_work.get(next=1)
 
-  t8={}
-  t8["encp"]={}
-  t8['routing_callback_addr'] = ('131.225.215.253', 56728)
-  t8["times"]={}
-  t8['fc'] = {}
-  t8['vc'] = {}
-  t8['wrapper']={}
-  t8['wrapper']['size_bytes']=150L
-  t8["unique_id"]=8
-  t8["encp"]["basepri"]=450
-  t8["encp"]["adminpri"]=-1
-  t8["encp"]["delpri"]=50
-  t8["encp"]["agetime"]=0
-  t8["times"]["t0"]=time.time()
-  t8['work'] = 'write_to_hsm'
-  t8['vc']['wrapper'] = 'cpio_odc'
-  t8['vc']['storage_group'] = 'D0'
-  t8['vc']['file_family'] = 'family2'
-  t8['wrapper']['pnfsFilename']='file4'
-  print "PUT", t8['work']
-  res = pending_work.put(t8)
-  time.sleep(.5)
-  print "RESULT",res, t8['vc']['file_family']
+    os._exit(0)
 
-  #s=pending_work.sprint()
-  #print s
-  #pending_work.wprint()
-  t9={}
-  t9["encp"]={}
-  t9['routing_callback_addr'] = ('131.225.215.253', 40000)
-  t9["times"]={}
-  t9['fc'] = {}
-  t9['vc'] = {}
-  t9['wrapper']={}
-  t9['wrapper']['size_bytes']=150L
-  t9["unique_id"]=8
-  t9["encp"]["basepri"]=450
-  t9["encp"]["adminpri"]=-1
-  t9["encp"]["delpri"]=50
-  t9["encp"]["agetime"]=0
-  t9["times"]["t0"]=time.time()
-  t9['work'] = 'write_to_hsm'
-  t9['vc']['wrapper'] = 'cpio_odc'
-  t9['vc']['storage_group'] = 'D0'
-  t9['vc']['file_family'] = 'family2'
-  t9['wrapper']['pnfsFilename']='file4'
-  print "PUT", t9['work']
-  res = pending_work.put(t9)
-  time.sleep(.5)
-  print "RESULT",res, t9['vc']['file_family']
-  pending_work.start_cycle()
-  pending_work.wprint()
-  #print "enter volume: ",
-  #vol = raw_input()
-  #print "VOL",vol
-  #print "enter location: ",
-  #loc = raw_input()
-  #print "LOC",loc
-  #rq = pending_work.get()
-  #print "RQ",rq
-  """
-  """
-  while 1:
-      if rq:
-          print "****************************************"
-          print "REQUEST IS",rq
-          #pending_work.delete(rq)
-          #location = rq.ticket['fc']['location_cookie']
-      else:
-          print "No requests in the queue"
-          break
-      #print "QUEUE", pending_work.wprint()
-      print "enter volume: ",
-      vol = raw_input()
-      rq = pending_work.get(next=1)
 
-  os._exit(0)
-  
-  
-  print "+++++++++++++++++++++++++++++"
+    print "+++++++++++++++++++++++++++++"
 
-  while 1:
-      pending_work.start_cycle()
-      print "GET"
-      rq = pending_work.get()
-      if rq:
+    while 1:
+       pending_work.start_cycle()
+       print "GET"
+       rq = pending_work.get()
+       if rq:
           print "RQ", rq
           pending_work.delete(rq)
           print ">>>>>>>>>>>>>>>>>>>>>>>>>>"
           pending_work.wprint()
           print "<<<<<<<<<<<<<<<<<<<<<<<<<<"
-      else:
+       else:
           break
-  
-  v = pending_work.get(0,300)
-  print v
-  #v = pending_work.f_get(t2["encp"]["basepri"])
-  v = pending_work.get()
-  print v
-  v = pending_work.get()
-  print v
-  """
-  pending_work.start_cycle()
-  rq = pending_work.get()
-  print "RQ", rq
-  rq1 = pending_work.get(next=1)
-  print "RQ1",rq1
-  rq2 = pending_work.get(next=1)
-  print "RQ2",rq2
+
+    v = pending_work.get(0,300)
+    print v
+    #v = pending_work.f_get(t2["encp"]["basepri"])
+    v = pending_work.get()
+    print v
+    v = pending_work.get()
+    print v
+    """
+    pending_work.start_cycle()
+    rq = pending_work.get()
+    print "RQ", rq
+    rq1 = pending_work.get(next=1)
+    print "RQ1",rq1
+    rq2 = pending_work.get(next=1)
+    print "RQ2",rq2
+ 
+def unit_test_bz_769():
+    # unit test for bugzilla ticket 769
+    # at least 2 tickets shoiuld be returned
+    pending_work = Request_Queue()
+
+    t1={}
+    t1["encp"]={}
+    t1['fc'] = {}
+    t1['vc'] = {}
+    t1["times"]={}
+    t1["unique_id"]=1
+    t1["encp"]["basepri"]=100
+    t1["encp"]["adminpri"]=-1
+    t1["encp"]["delpri"]=176
+    t1["encp"]["agetime"]=1
+    t1["times"]["t0"]=time.time()
+    t1['work'] = 'read_from_hsm'
+    t1['fc']['external_label'] = 'vol1'
+    t1['fc']['location_cookie'] = '2'
+    t1['vc']['storage_group'] = 'D0'
+    t1['callback_addr'] = ('131.225.13.129', 7000)
+    print "PUT",t1['work'] 
+    res = pending_work.put(t1)
+    print "RESULT",res, t1['fc']['external_label']
+
+    t3={}
+    t3["encp"]={}
+    t3['fc'] = {}
+    t3['vc'] = {}
+    t3["times"]={}
+    t3['wrapper']={}
+    t3['wrapper']['size_bytes']=100L
+    t3["unique_id"]=3
+    t3["encp"]["basepri"]=300
+    t3["encp"]["adminpri"]=-1
+    t3["encp"]["delpri"]=0
+    t3["encp"]["agetime"]=0
+    t3["times"]["t0"]=time.time()
+    t3['work'] = 'write_to_hsm'
+    t3['vc']['file_family'] = 'family1'
+    t3['vc']['wrapper'] = 'cpio_odc'
+    t3['vc']['storage_group'] = 'D0'
+    t3['wrapper']['pnfsFilename']='file1'
+    t3['callback_addr'] = ('131.225.84.71', 7000)
+    print "PUT", t3['work']
+    res = pending_work.put(t3)
+    print "RESULT",res,t3['vc']['file_family'] 
+
+    t31={}
+    t31["encp"]={}
+    t31['fc'] = {}
+    t31['vc'] = {}
+    t31["times"]={}
+    t31['wrapper']={}
+    t31['wrapper']['size_bytes']=100L
+    t31["unique_id"]=31
+    t31["encp"]["basepri"]=300
+    t31["encp"]["adminpri"]=-1
+    t31["encp"]["delpri"]=0
+    t31["encp"]["agetime"]=0
+    t31["times"]["t0"]=time.time()
+    t31['work'] = 'write_to_hsm'
+    t31['vc']['file_family'] = 'family1'
+    t31['vc']['wrapper'] = 'cpio_odc'
+    t31['vc']['storage_group'] = 'D0'
+    t31['wrapper']['pnfsFilename']='file31'
+    t31['callback_addr'] = ('131.225.84.71', 7000)
+    print "PUT", t31['work']
+    res = pending_work.put(t31)
+    print "RESULT",res,t31['vc']['file_family']
+    
+    t311={}
+    t311["encp"]={}
+    t311['fc'] = {}
+    t311['vc'] = {}
+    t311["times"]={}
+    t311['wrapper']={}
+    t311['wrapper']['size_bytes']=100L
+    t311["unique_id"]=311
+    t311["encp"]["basepri"]=300
+    t311["encp"]["adminpri"]=-1
+    t311["encp"]["delpri"]=0
+    t311["encp"]["agetime"]=0
+    t311["times"]["t0"]=time.time()
+    t311['work'] = 'write_to_hsm'
+    t311['vc']['file_family'] = 'family1'
+    t311['vc']['wrapper'] = 'cpio_odc'
+    t311['vc']['storage_group'] = 'D0'
+    t311['wrapper']['pnfsFilename']='file311'
+    t311['callback_addr'] = ('131.225.84.71', 7000)
+    print "PUT", t311['work']
+    res = pending_work.put(t311)
+    print "RESULT",res,t311['vc']['file_family'] 
+
+    t32={}
+    t32["encp"]={}
+    t32['fc'] = {}
+    t32['vc'] = {}
+    t32["times"]={}
+    t32['wrapper']={}
+    t32['wrapper']['size_bytes']=100L
+    t32["unique_id"]=32
+    t32["encp"]["basepri"]=300
+    t32["encp"]["adminpri"]=-1
+    t32["encp"]["delpri"]=0
+    t32["encp"]["agetime"]=0
+    t32["times"]["t0"]=time.time()
+    t32['work'] = 'write_to_hsm'
+    t32['vc']['file_family'] = 'family32'
+    t32['vc']['wrapper'] = 'cpio_odc'
+    t32['vc']['storage_group'] = 'D0'
+    t32['wrapper']['pnfsFilename']='file32'
+    t32['callback_addr'] = ('131.225.84.71', 7000)
+    print "PUT", t32['work']
+    res = pending_work.put(t32)
+    print "RESULT",res,t32['vc']['file_family'] 
+
+    # Trace.do_print(range(5, 500)) # uncomment this line for debugging
+    pending_work.start_cycle()
+    print "PR_GET"
+    rq = pending_work.get()
+    print "RQ", rq
+    if rq:
+        print "TICKET", rq.ticket
+        print "HOST", rq.host
+    cnt = 0
+    if rq.ticket['work'] == 'write_to_hsm':
+        key = rq.ticket['vc']['volume_family']
+    else:
+        key = rq.ticket['fc']['external_label']
+    while rq:
+        print "PR_GET1"
+        rq = pending_work.get(key, next=1, disabled_hosts=['tundra.fnal.gov'])
+        cnt = cnt + 1
+        if rq:
+            print "RQ%s %s"%(cnt, rq)
+            print "TICKET", rq.ticket
+        else:
+            print "NO KEY"
+            rq = pending_work.get(next=1, disabled_hosts=['tundra.fnal.gov'])
+            if rq:
+                print "NKRQ%s %s"%(cnt, rq)
+                print "NKTICKET", rq.ticket
+          
+def usage(prog_name):
+    print "usage: %s arg"%(prog_name,)
+    print "where arg is"
+    print "0 - main unit test"
+    print "1 - unit test for bugzilla ticket 769 (http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=769)"
+
+if __name__ == "__main__":
+    import os
+    if len(sys.argv) == 2:
+        if int(sys.argv[1]) == 0:
+            unit_test()
+            os._exit(0)
+        elif int(sys.argv[1]) == 1:
+            unit_test_bz_769()
+            os._exit(0)
+    usage(sys.argv[0])
+    os._exit(1)
+    
   
