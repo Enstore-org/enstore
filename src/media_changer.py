@@ -1371,6 +1371,10 @@ class STK_MediaLoader(MediaLoaderMethods):
                    if self.logdetail:
                       Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count))
                    if function==self.mount:
+                       if sts[1] == e_errors.MC_VOLNOTHOME:
+                           # Volume is mounted in another drive.
+                           # break loop here
+                           break
                        time.sleep(60)
                        fixsts=apply(self.dismount,args)
                        Trace.log(e_errors.INFO, 'Tried %s %s  status=%s %s  Desperation dismount  status %s %s'%(repr(function),args,sts[1],sts[2],fixsts[1],fixsts[2]))
