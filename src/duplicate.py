@@ -53,6 +53,44 @@ DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
  }
 del DuplicateInterface.migrate_options[option.RESTORE]
 
+# search_order()
+#Return in the following order:
+#  1) first bfid to check
+#  2) second bfid to check
+#  3) first bfid's file record
+#  4) second bfid's file record
+#This is necessary to optimize the search order for both migration and
+# duplication.  It orders the bfids to determine which is the active one
+# in PNFS.
+def search_order(src_bfid, src_file_record, dst_bfid, dst_file_record,
+                 is_it_copied, is_it_swapped, fcc, db):
+    #src_bfid:  The bfid of the source file.
+    #src_file_record:  The file record of the source file.
+    #dst_bfid:  The bfid of the destination file (or None if not known).
+    #dst_file_record:  The file record of the destination file (or None if
+    #                  not known).
+    #is_it_copied: boolean true if the copied step is completed,
+    #              false otherwise.
+    #is_it_swapped: boolean true if the swap step is completed,
+    #               false otherwise.
+    #fcc: File Clerk Client instance.
+    #db: postgres connection object instance.
+    
+    #Arguements is_it_copied and is_it_swapped used by migrate.py version.
+    __pychecker__="unusednames=is_it_copied,is_it_swapped"
+    
+    if dst_bfid:
+        duplicates = migrate.is_duplicated(dst_bfid, fcc, db)
+        if src_bfid in duplicates:
+            #If the original and duplicate have been swapped to leave
+            # the duplicate copy as the primary copy, we need to alter the
+            # order.
+
+            return dst_bfid, src_bfid, dst_file_record, src_file_record
+
+    return src_bfid, dst_bfid, src_file_record, dst_file_record
+    
+
 #Avoid duplicate code testing for possible okay error messages.
 def handle_string_return_code(rtn_str,txt) : 
     if rtn_str and rtn_str.find(txt) != -1:
@@ -314,6 +352,7 @@ migrate.normal_file_family = normal_file_family
 migrate.is_migration_file_family = is_migration_file_family
 migrate.log_copied = log_copied_duplication
 migrate.log_uncopied = log_uncopied_duplication
+migrate.search_order = search_order
 
 if __name__ == '__main__':
 
