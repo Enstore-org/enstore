@@ -122,7 +122,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         # setup the communications with the event relay task
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
 	# start our heartbeat to the event relay process
-	self.erc.start_heartbeat(enstore_constants.LOG_SERVER, 
+	self.erc.start_heartbeat(enstore_constants.LOG_SERVER,
 				 self.alive_interval)
 
     #This is the function for Trace.log to use from withing the log server.
@@ -139,7 +139,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         if severity > e_errors.MISC:
             msg = '%s %s' % (severity, msg)
             severity = e_errors.MISC
-            
+
 	msg = '%.6d %.8s %s %s  %s' % (pid, pwd.getpwuid(os.getuid())[0],
 				       e_errors.sevdict[severity], name, msg)
 	ticket = {'work':'log_message', 'message':msg}
@@ -217,7 +217,7 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    lfiles = []
 	    for fname in files:
 		if fname[0:4] == FILE_PREFIX:
-		    lfiles.append("%s/%s"%(self.logfile_dir_path,file))
+		    lfiles.append("%s/%s"%(self.logfile_dir_path,fname))
 		    num_files = num_files +1
 		    if num_files >= num_files_to_get and  not period == "all":
 			break
@@ -286,7 +286,7 @@ class Logger(  dispatching_worker.DispatchingWorker
             self.debug_logfile.flush()
         if message_type !=  e_errors.sevdict[e_errors.MISC]:
             self.write_to_extra_logfile(message)
-        
+
     def check_for_extended_files(self, filename):
         if not self.max_log_file_size == NO_MAX_LOG_FILE_SIZE:
             file_l = os.listdir(self.logfile_dir_path)
@@ -375,7 +375,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                         # and open the new one
                         self.logfile_name = "%s.%s"%(self.logfile_name_orig, self.index)
                         self.index = self.index + 1
-                        self.open_logfile(self.logfile_name)        
+                        self.open_logfile(self.logfile_name)
             else :
                 # if test flag is set reopen log file every minute
                 if min1 != current_min :
@@ -385,7 +385,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                         self.debug_logfile.close()
                     current_min = min;
                     # and open the new one
-                    fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], 
+                    fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1],
 					       tm[2])
                     ft = '-%02d-%02d' % (tm[3], tm[4])
                     fn = fn + ft
@@ -414,7 +414,7 @@ class LoggerInterface(generic_server.GenericServerInterface):
 			    option.USER_LEVEL:option.ADMIN
                             }
         }
-    
+
     """
     # define the command line options that are valid
     def options(self):
@@ -430,7 +430,7 @@ if __name__ == "__main__" :
 
     logserver = Logger((intf.config_host, intf.config_port), intf.test)
     logserver.handle_generic_commands(intf)
-    
+
     while 1:
         try:
             logserver.serve_forever()
