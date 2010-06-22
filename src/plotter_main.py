@@ -5,7 +5,7 @@
 # $Date$
 # $Id$
 #
-# generic framework class 
+# generic framework class
 # Author: Dmitry Litvintsev (litvinse@fnal.gov) 08/05
 #
 ###############################################################################
@@ -28,7 +28,7 @@ import tapes_burn_rate_plotter_module
 import migration_summary_plotter_module
 import bytes_per_day_plotter_module
 import mover_summary_plotter_module
-
+import mount_latency_plotter_module
 
 def usage(cmd):
     print "Usage: %s [options] "%(cmd,)
@@ -45,15 +45,16 @@ def usage(cmd):
     print "\t -i [--migration-summary] : plot migration progress"
     print "\t -b [--bytes-per-day]   : plot bytes transfered per day"
     print "\t -M [--mover-summary]   : plot mover summary"
+    print "\t -l [--latencies]       : plot latencies plot"
     print "\t -h [--help]        : show this message"
-    
+
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfeqtibM"
+        short_args = "hmrudspfeqtibMl"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
                      "slots", "pnfs-bakup", "file-family-analysis",
                      "quotas", "tapes-burn-rate", "migration-summary",
-                     "bytes-per-day", "mover-summary"]
+                     "bytes-per-day", "mover-summary","latencies"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError, msg:
         print msg
@@ -73,7 +74,7 @@ if __name__ == "__main__":
     f = enstore_plotter_framework.EnstorePlotterFramework()
 
     for o, a in opts:
-            
+
         # mounts plots
         if o in ("-m", "--mounts"):
             aModule = mounts_plotter_module.MountsPlotterModule("mounts")
@@ -118,9 +119,13 @@ if __name__ == "__main__":
         if o in ("-b","--bytes-per-day"):
             aModule = bytes_per_day_plotter_module.BytesPerDayPlotterModule("bytes-per-day")
             f.add(aModule)
-        # mover summary 
+        # mover summary
         if o in ("-M","--mover-summary"):
             aModule = mover_summary_plotter_module.MoverSummaryPlotterModule("mover-summary")
+            f.add(aModule)
+        # latencies
+        if o in ("-l","--latencies"):
+            aModule = mount_latency_plotter_module.MountLatencyPlotterModule("latencies")
             f.add(aModule)
 
     f.do_work()

@@ -1,6 +1,6 @@
 ###############################################################################
 # $Id$
-# $Author$ 
+# $Author$
 #
 # Routines to create the inquisitor plots.
 #
@@ -37,7 +37,7 @@ class InquisitorPlots:
                                                                port  = acc.get('dbport', 5432),
                                                                dbname= acc.get('dbname', ""),
                                                                user  = acc.get('dbuser', "enstore"))
-                
+
     def close_db_connection(self):
         if self.acc_db:
             self.acc_db.close()
@@ -124,26 +124,7 @@ class InquisitorPlots:
                                                                            accounting_query.AND, type_col,
                                                                            aType)
             total_mounts_type[aType] = self.acc_db.query(query).dictresult()
-            if total_mounts_type[aType] :
-                # get the mount latencies  the results are in a list
-                # where each element looks like -
-                #  {'start': '2003-03-27 00:05:55', 'latency': '00:00:25'}
-                query = "select %s, to_char(%s-%s, 'HH24:MI:SS') as latency from %s %s and type = '%s' order by %s"%(start_col,
-                                                                                                                     finish_col,
-                                                                                                                     start_col,
-                                                                                                                     table, time_q,
-                                                                                                                     aType,
-                                                                                                                     start_col)
-                latencys = self.acc_db.query(query)
-                mlatfile = enstore_plots.MlatDataFile(self.output_dir,aType)
-                mlatfile.name=enstore_constants.MLAT_FILE+"_"+aType
-                mlatfile.psfile = mlatfile.name+enstore_constants.PS
-                mlatfile.open()
-                mlatfile.plot(latencys.dictresult())
-                mlatfile.close()
-                mlatfile.install(self.html_dir)
-                mlatfile.cleanup(self.keep, self.keep_dir)                
-        
+
         # only do the plotting if we have some data
         if total_mounts:
 	    # now save any new mount count data for the continuing total
@@ -183,8 +164,8 @@ class InquisitorPlots:
                 continue
             storage_groups.append(row[0])
 
-	# always add /dev/null to the end of the list of files to search thru 
-	# so that grep always has > 1 file and will always print the name of 
+	# always add /dev/null to the end of the list of files to search thru
+	# so that grep always has > 1 file and will always print the name of
 	# the file at the beginning of the line. do not count any null moves.
 
 	encpfile = enstore_files.EnEncpDataFile("%s* /dev/null"%(prefix,), ofn,
@@ -200,7 +181,7 @@ class InquisitorPlots:
         encpfile.cleanup(self.keep, self.keep_dir)
 
         #
-        # This is a test, this is a test. I am testing retrieval of data from DB. I replaces encpfile.data -> self.data 
+        # This is a test, this is a test. I am testing retrieval of data from DB. I replaces encpfile.data -> self.data
         #
         self.data=[]
         self.start_time = self.acc_db.days_ago(30)
@@ -211,7 +192,7 @@ class InquisitorPlots:
             if not row:
                 continue
             self.data.append([row[0],row[1],row[2],row[3],row[4],row[5]])
-    
+
 
         # only do the plotting if we have some data
         if self.data:
@@ -239,10 +220,10 @@ class InquisitorPlots:
             #
             # check if there are other storage groups
             #
-            
+
             if (len(storage_groups)>1) :
                 for sg in storage_groups:
-                
+
                     xferfile = enstore_plots.XferDataFile(self.output_dir,
                                                           mbpdfile.ptsfile,sg)
                     xferfile.open()
@@ -250,7 +231,7 @@ class InquisitorPlots:
                     xferfile.close()
                     xferfile.install(self.html_dir+"/"+XFER_SIZE) # Kludge (Dmitry)
                     xferfile.cleanup(self.keep, self.keep_dir)
-                
+
             # delete any extraneous files. do it here because the xfer file
             # plotting needs the bpd data file
             bpdfile.cleanup(self.keep, self.keep_dir)
@@ -265,8 +246,8 @@ class InquisitorPlots:
         # open connection to db.
         self.open_db_connection()
 
-	# always add /dev/null to the end of the list of files to search thru 
-	# so that grep always has > 1 file and will always print the name of 
+	# always add /dev/null to the end of the list of files to search thru
+	# so that grep always has > 1 file and will always print the name of
 	# the file at the beginning of the line.
 	sgfile = enstore_files.EnSgDataFile("%s* /dev/null"%(prefix,), ofn,
 					    "-e %s"%(Trace.MSG_ADD_TO_LMQ,),
@@ -345,7 +326,7 @@ class InquisitorPlots:
 					       enstore_plots.CTR : enstore_plots.get_ctr(fields),
 					       enstore_plots.WRITES : float(fields[3])}
 		else:
-		    data_d[fields[0]][node] = {enstore_plots.TOTAL : 0.0, 
+		    data_d[fields[0]][node] = {enstore_plots.TOTAL : 0.0,
 					       enstore_plots.CTR : 0L,
 					       enstore_plots.WRITES : 0.0}
 

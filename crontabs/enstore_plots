@@ -34,3 +34,7 @@
 30 1 * * 1 enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p mover_summary_plots $ENSTORE_DIR/src/plotter_main.py -M > /dev/null 2> /dev/null
 # fills slot usage in DB
 30 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p fill_slot_usage python $ENSTORE_DIR/src/fill_slot_usage.py > /dev/null 2> /dev/null
+# plots mount latency plots
+30 0 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p mount_latencies $ENSTORE_DIR/src/plotter_main.py -l > /dev/null 2> /dev/null
+
+

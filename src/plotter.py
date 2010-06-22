@@ -137,6 +137,24 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
             links_to_add.append(("%s/%s"%(enstore_constants.MOVER_SUMMARY_PLOTS_SUBDIR,
                                           enstore_files.plot_html_file_name()),
                                  "Mover Plots"))
+	# --------------------------------------------------
+        # added by Dmitry, subdirectory displays latency data
+        # --------------------------------------------------
+	dir = "%s/%s"%(self.html_dir, enstore_constants.MOUNT_LATENCY_SUMMARY_PLOTS_SUBDIR)
+        if not os.access(dir, os.F_OK):
+            os.makedirs(dir)
+        os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
+	if os.path.isdir(dir):
+            Trace.trace(enstore_constants.PLOTTING,
+                    "adding links to mount latency plots")
+            # there are plots here
+            plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
+            plotfile2 = enstore_files.HTMLPlotFile(plot_file,
+						   self.system_tag, "../")
+            self.plotfile_l.append([plotfile2, dir])
+            links_to_add.append(("%s/%s"%(enstore_constants.MOUNT_LATENCY_SUMMARY_PLOTS_SUBDIR,
+                                          enstore_files.plot_html_file_name()),
+                                 "Mount Latency"))
         # --------------------------------------------------
 	dir = "%s/%s"%(self.html_dir, FILE_FAMILY_USAGE)
         if not os.access(dir, os.F_OK):

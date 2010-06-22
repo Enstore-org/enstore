@@ -216,6 +216,7 @@ XFER_SIZE_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "xfer-size")
 MIGRATION_SUMMARY_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "migration_summary")
 BYTES_PER_DAY_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "bpd_per_mover")
 MOVER_SUMMARY_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "movers")
+MOUNT_LATENCY_SUMMARY_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "latencies")
 
 #The following are directory names appened by the html_main.py to
 # the html_dir to put different types of pages in different sub-directories.

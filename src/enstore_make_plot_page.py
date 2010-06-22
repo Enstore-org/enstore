@@ -385,6 +385,8 @@ def do_work2(intf):
          "Migration/Duplication Summary Plots per Media Type"),
         (enstore_constants.MOVER_SUMMARY_PLOTS_SUBDIR,
          "Mover Plots"),
+        (enstore_constants.MOUNT_LATENCY_SUMMARY_PLOTS_SUBDIR,
+         "Mount Latency plots"),
         ]
 
     use_subdir_list = []
