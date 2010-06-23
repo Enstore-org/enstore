@@ -4334,14 +4334,16 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if type(msg) != type(""):
             msg = str(msg)
-        thread = threading.currentThread()
-        if thread:
-            thread_name = thread.getName()
+
+        # get the current thread
+        cur_thread = threading.currentThread()
+        if cur_thread:
+            cur_thread_name = cur_thread.getName()
         else:
-            thread_name = None
+            cur_thread_name = None
         
         Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s thread %s" % (
-            exc, msg, error_source,self.current_volume, self.current_location, thread_name))
+            exc, msg, error_source,self.current_volume, self.current_location, cur_thread_name))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         self._error = exc
         self._error_source = error_source
@@ -4450,13 +4452,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         encp_gone = exc in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK)
 
         save_state = self.state
-        # get the current thread
-        cur_thread = threading.currentThread()
-        if cur_thread:
-            cur_thread_name = cur_thread.getName()
-        else:
-            cur_thread_name = None
-        if cur_thread_name == 'net_thread':
+
+        if (cur_thread_name == 'net_thread' or
+            (cur_thread_name == 'media_thread' and exc == e_errors.DISMOUNTFAILED)):
+            #For the 2nd enrty in if ... If dismount fails close net_driver (data connection).
+            # If there is a preemptive dismount and net_driver is not closed,
+            # the client (encp) port does not get disconnected.
+            #This resulted in 15 min timeout for encp retry.
+            # When fixed, encp retries immediately. (bz # 767)
             self.net_driver.close()
 
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
@@ -5653,7 +5656,6 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if self.current_volume:
                 try:
-                    #self.vcc.set_system_noaccess(volume_label)
                     self.set_volume_noaccess(self.current_volume)
                 except:
                     exc, msg, tb = sys.exc_info()
