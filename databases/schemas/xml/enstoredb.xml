@@ -1,5 +1,21 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <schema generated="yes">
+  <table name="active_file_copying">
+    <column name="bfid" type="varchar" null="no" key="1"/>
+    <column name="remaining" type="integer"/>
+    <column name="time" type="timestamptz" default="now()"/>
+  </table>
+  <table name="quotas">
+    <column name="time" type="timestamptz" null="no" default="now()" key="1"/>
+    <column name="library" type="varchar" null="no" key="2"/>
+    <column name="storage_group" type="varchar" null="no" key="3"/>
+    <column name="allocated" type="integer"/>
+    <column name="blank" type="integer" null="no"/>
+    <column name="written" type="integer" null="no"/>
+    <column name="requested" type="integer"/>
+    <column name="authorized" type="integer"/>
+    <column name="quota" type="integer"/>
+  </table>
   <table name="qa">
     <column name="media_type" type="varchar"/>
     <column name="library" type="varchar"/>
@@ -19,11 +35,6 @@
     <column name="storage_group" type="varchar"/>
     <column name="volumes" type="numeric"/>
   </table>
-  <table name="active_file_copying">
-    <column name="bfid" type="varchar" null="no" key="1"/>
-    <column name="remaining" type="integer"/>
-    <column name="time" type="timestamptz" default="now()"/>
-  </table>
   <table name="bad_file">
     <column name="bfid" type="varchar"/>
     <column name="path" type="varchar"/>
@@ -33,83 +44,6 @@
     <relations>
         <relation name="$1" column="bfid" table="file" fk="bfid" ondelete="cascade"/>
     </relations>
-  </table>
-  <table name="file_copies_map">
-    <column name="bfid" type="varchar"/>
-    <column name="alt_bfid" type="varchar"/>
-    <indexes>
-        <index name="file_copies_map_alt_bfid_idx" columns="alt_bfid"/>
-        <index name="file_copies_map_bfid_idx" columns="bfid"/>
-    </indexes>
-    <relations>
-        <relation name="file_copies_map_alt_bfid_fkey" column="alt_bfid" table="file" fk="bfid" ondelete="cascade"/>
-        <relation name="file_copies_map_bfid_fkey" column="bfid" table="file" fk="bfid" ondelete="cascade"/>
-    </relations>
-  </table>
-  <table name="media_capacity">
-    <column name="type" type="varchar" null="no" key="1"/>
-    <column name="capacity" type="bigint"/>
-  </table>
-  <table name="migration">
-    <column name="src_bfid" type="varchar" null="no" key="1"/>
-    <column name="dst_bfid" type="varchar" null="no" key="2"/>
-    <column name="copied" type="timestamp"/>
-    <column name="swapped" type="timestamp"/>
-    <column name="checked" type="timestamp"/>
-    <column name="closed" type="timestamp"/>
-    <column name="remark" type="varchar"/>
-    <indexes>
-        <index name="migration_dst_bfid_idx" columns="dst_bfid"/>
-        <index name="migration_src_bfid_idx" columns="src_bfid"/>
-    </indexes>
-    <relations>
-        <relation name="$1" column="src_bfid" table="file" fk="bfid" ondelete="cascade"/>
-        <relation name="$2" column="dst_bfid" table="file" fk="bfid" ondelete="cascade"/>
-    </relations>
-  </table>
-  <table name="no_flipping_file_family">
-    <column name="storage_group" type="varchar"/>
-    <column name="file_family" type="varchar"/>
-  </table>
-  <table name="quota">
-    <column name="library" type="varchar" null="no" key="1"/>
-    <column name="storage_group" type="varchar" null="no" key="2"/>
-    <column name="requested" type="integer" default="0"/>
-    <column name="authorized" type="integer" default="0"/>
-    <column name="quota" type="integer" default="0"/>
-    <column name="significance" type="bpchar" default="'y'::bpchar"/>
-    <indexes>
-        <index name="quota_library_idx" columns="library"/>
-        <index name="quota_storage_group_idx" columns="storage_group"/>
-    </indexes>
-  </table>
-  <table name="quotas">
-    <column name="time" type="timestamptz" null="no" default="now()" key="1"/>
-    <column name="library" type="varchar" null="no" key="2"/>
-    <column name="storage_group" type="varchar" null="no" key="3"/>
-    <column name="allocated" type="integer"/>
-    <column name="blank" type="integer" null="no"/>
-    <column name="written" type="integer" null="no"/>
-    <column name="requested" type="integer"/>
-    <column name="authorized" type="integer"/>
-    <column name="quota" type="integer"/>
-  </table>
-  <table name="sg_count">
-    <column name="library" type="varchar" null="no" key="1"/>
-    <column name="storage_group" type="varchar" null="no" key="2"/>
-    <column name="count" type="integer"/>
-  </table>
-  <table name="migration_history">
-    <column name="src" type="varchar" null="no"/>
-    <column name="dst" type="varchar" null="no"/>
-    <column name="time" type="timestamp" default="now()"/>
-    <column name="src_vol_id" type="integer" null="no" default="(-1)" key="1"/>
-    <column name="dst_vol_id" type="integer" null="no" default="(-1)" key="2"/>
-    <column name="closed_time" type="timestamp"/>
-    <indexes>
-        <index name="migration_history_dst_idx" columns="dst"/>
-        <index name="migration_history_src_idx" columns="src"/>
-    </indexes>
   </table>
   <table name="volume">
     <column name="id" type="integer" null="no" default="nextval(('volume_seq')::regclass)" key="1"/>
@@ -167,8 +101,108 @@
         <index name="volume_write_protected_idx" columns="write_protected"/>
     </indexes>
   </table>
+  <table name="file">
+    <column name="bfid" type="varchar" null="no" key="1"/>
+    <column name="crc" type="bigint" default="-1"/>
+    <column name="deleted" type="bpchar" default="'u'::bpchar"/>
+    <column name="drive" type="varchar"/>
+    <column name="volume" type="integer"/>
+    <column name="location_cookie" type="varchar"/>
+    <column name="pnfs_path" type="varchar"/>
+    <column name="pnfs_id" type="varchar"/>
+    <column name="sanity_size" type="bigint" default="-1"/>
+    <column name="sanity_crc" type="bigint" default="-1"/>
+    <column name="size" type="bigint" default="0"/>
+    <column name="uid" type="integer" default="-1"/>
+    <column name="gid" type="integer" default="-1"/>
+    <column name="update" type="timestamp"/>
+    <indexes>
+        <index name="file_crc_idx" columns="crc"/>
+        <index name="file_deleted_idx" columns="deleted"/>
+        <index name="file_location_cookie_idx" columns="location_cookie"/>
+        <index name="file_pnfs_id_idx" columns="pnfs_id"/>
+        <index name="file_pnfs_path_idx" columns="pnfs_path"/>
+        <index name="file_sanity_crc_idx" columns="sanity_crc"/>
+        <index name="file_sanity_size_idx" columns="sanity_size"/>
+        <index name="file_size_idx" columns="size"/>
+        <index name="file_volume_idx" columns="volume"/>
+    </indexes>
+    <relations>
+        <relation name="$1" column="volume" table="volume" fk="id"/>
+    </relations>
+  </table>
+  <table name="file_copies_map">
+    <column name="bfid" type="varchar"/>
+    <column name="alt_bfid" type="varchar"/>
+    <indexes>
+        <index name="file_copies_map_alt_bfid_idx" columns="alt_bfid"/>
+        <index name="file_copies_map_bfid_idx" columns="bfid"/>
+    </indexes>
+    <relations>
+        <relation name="file_copies_map_alt_bfid_fkey" column="alt_bfid" table="file" fk="bfid" ondelete="cascade"/>
+        <relation name="file_copies_map_bfid_fkey" column="bfid" table="file" fk="bfid" ondelete="cascade"/>
+    </relations>
+  </table>
+  <table name="media_capacity">
+    <column name="type" type="varchar" null="no" key="1"/>
+    <column name="capacity" type="bigint"/>
+  </table>
+  <table name="migration">
+    <column name="src_bfid" type="varchar"/>
+    <column name="dst_bfid" type="varchar"/>
+    <column name="copied" type="timestamp"/>
+    <column name="swapped" type="timestamp"/>
+    <column name="checked" type="timestamp"/>
+    <column name="closed" type="timestamp"/>
+    <column name="remark" type="varchar"/>
+    <indexes>
+        <index name="migration_dst_bfid_key" columns="dst_bfid"/>
+        <index name="migration_src_bfid_key" columns="src_bfid"/>
+    </indexes>
+    <relations>
+        <relation name="$1" column="src_bfid" table="file" fk="bfid" ondelete="cascade"/>
+        <relation name="$2" column="dst_bfid" table="file" fk="bfid" ondelete="cascade"/>
+    </relations>
+  </table>
+  <table name="migration_history">
+    <column name="src" type="varchar" null="no"/>
+    <column name="dst" type="varchar" null="no"/>
+    <column name="time" type="timestamp" default="now()"/>
+    <column name="src_vol_id" type="integer" null="no" default="-1" key="1"/>
+    <column name="dst_vol_id" type="integer" null="no" default="-1" key="2"/>
+    <column name="closed_time" type="timestamp"/>
+    <indexes>
+        <index name="migration_history_dst_idx" columns="dst"/>
+        <index name="migration_history_src_idx" columns="src"/>
+    </indexes>
+  </table>
+  <table name="no_flipping_file_family">
+    <column name="storage_group" type="varchar"/>
+    <column name="file_family" type="varchar"/>
+  </table>
   <table name="no_flipping_storage_group">
     <column name="storage_group" type="varchar"/>
+  </table>
+  <table name="option">
+    <column name="key" type="varchar"/>
+    <column name="value" type="varchar"/>
+  </table>
+  <table name="quota">
+    <column name="library" type="varchar" null="no" key="1"/>
+    <column name="storage_group" type="varchar" null="no" key="2"/>
+    <column name="requested" type="integer" default="0"/>
+    <column name="authorized" type="integer" default="0"/>
+    <column name="quota" type="integer" default="0"/>
+    <column name="significance" type="bpchar" default="'y'::bpchar"/>
+    <indexes>
+        <index name="quota_library_idx" columns="library"/>
+        <index name="quota_storage_group_idx" columns="storage_group"/>
+    </indexes>
+  </table>
+  <table name="sg_count">
+    <column name="library" type="varchar" null="no" key="1"/>
+    <column name="storage_group" type="varchar" null="no" key="2"/>
+    <column name="count" type="integer"/>
   </table>
   <table name="state">
     <column name="time" type="timestamp" default="now()"/>
@@ -186,10 +220,6 @@
         <relation name="$2" column="type" table="state_type" fk="id"/>
     </relations>
   </table>
-  <table name="option">
-    <column name="key" type="varchar"/>
-    <column name="value" type="varchar"/>
-  </table>
   <table name="state_type">
     <column name="id" type="integer" null="no" default="nextval(('state_type_seq')::regclass)" key="1"/>
     <column name="name" type="varchar" null="no"/>
@@ -197,65 +227,38 @@
         <index name="state_type_name_key" columns="name"/>
     </indexes>
   </table>
-  <table name="file">
-    <column name="bfid" type="varchar" null="no" key="1"/>
-    <column name="crc" type="bigint" default="(-1)"/>
-    <column name="deleted" type="bpchar" default="'u'::bpchar"/>
-    <column name="drive" type="varchar"/>
-    <column name="volume" type="integer"/>
-    <column name="location_cookie" type="varchar"/>
-    <column name="pnfs_path" type="varchar"/>
-    <column name="pnfs_id" type="varchar"/>
-    <column name="sanity_size" type="bigint" default="(-1)"/>
-    <column name="sanity_crc" type="bigint" default="(-1)"/>
-    <column name="size" type="bigint" default="0"/>
-    <column name="uid" type="integer" default="(-1)"/>
-    <column name="gid" type="integer" default="(-1)"/>
-    <column name="update" type="timestamp"/>
-    <indexes>
-        <index name="file_crc_idx" columns="crc"/>
-        <index name="file_deleted_idx" columns="deleted"/>
-        <index name="file_location_cookie_idx" columns="location_cookie"/>
-        <index name="file_pnfs_id_idx" columns="pnfs_id"/>
-        <index name="file_pnfs_path_idx" columns="pnfs_path"/>
-        <index name="file_sanity_crc_idx" columns="sanity_crc"/>
-        <index name="file_sanity_size_idx" columns="sanity_size"/>
-        <index name="file_size_idx" columns="size"/>
-        <index name="file_volume_idx" columns="volume"/>
-    </indexes>
-    <relations>
-        <relation name="$1" column="volume" table="volume" fk="id"/>
-    </relations>
-  </table>
   <view name="cms_volume_with_only_deleted_files">
     SELECT volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1 AS state, volume.media_type, volume.library FROM volume WHERE (((((volume.storage_group)::text = 'cms'::text) AND ((volume.system_inhibit_0)::text = 'none'::text)) AND ((volume.active_files + volume.unknown_files) = 0)) AND (volume.deleted_files &gt; 0));
   </view>
   <view name="duplicates">
-    SELECT m.bfid AS "primary", m.alt_bfid AS copy, f.deleted, f.pnfs_path FROM file_copies_map m, file f WHERE ((f.bfid)::text = (m.bfid)::text);
+    SELECT m.bfid AS "primary", m.alt_bfid AS "copy", f.deleted, f.pnfs_path FROM file_copies_map m, file f WHERE ((f.bfid)::text = (m.bfid)::text);
   </view>
   <view name="file_info">
-    SELECT f.bfid, f.crc AS complete_crc, CASE WHEN (f.deleted = 'y'::bpchar) THEN 'deleted'::text WHEN (f.deleted = 'n'::bpchar) THEN 'active'::text ELSE 'unknown'::text END AS deleted, v.label AS external_label, f.location_cookie, v.storage_group, v.file_family, v.library, v.media_type, f.size, f.gid, f.uid, f.pnfs_id AS pnfsid, f.pnfs_path AS pnfs_name0, f.sanity_size, f.sanity_crc, f.drive, f.update FROM file f, volume v WHERE (f.volume = v.id);
-  </view>
-  <view name="remaining_blanks">
-    SELECT volume.media_type, count(*) AS blanks FROM volume WHERE ((((volume.storage_group)::text = 'none'::text) AND ((volume.file_family)::text = 'none'::text)) AND ((volume.wrapper)::text = 'none'::text)) GROUP BY volume.media_type;
+    SELECT f.bfid, f.crc AS complete_crc, CASE WHEN (f.deleted = 'y'::bpchar) THEN 'deleted'::text WHEN (f.deleted = 'n'::bpchar) THEN 'active'::text ELSE 'unknown'::text END AS deleted, v.label AS external_label, f.location_cookie, v.storage_group, v.file_family, v.library, v.media_type, f.size, f.gid, f.uid, f.pnfs_id AS pnfsid, f.pnfs_path AS pnfs_name0, f.sanity_size, f.sanity_crc, f.drive, f."update" FROM file f, volume v WHERE (f.volume = v.id);
   </view>
   <view name="enstore_tables">
-    SELECT n.nspname AS schemaname, c.relname AS tablename, pg_get_userbyid(c.relowner) AS tableowner, c.reltuples AS rows, c.relpages AS pages, t.spcname AS tablespace, c.relhaspkey AS haspkey, c.relhasindex AS hasindexes, c.relhasrules AS hasrules, (c.reltriggers &gt; 0) AS hastriggers FROM ((pg_class c LEFT JOIN pg_namespace n ON ((n.oid = c.relnamespace))) LEFT JOIN pg_tablespace t ON ((t.oid = c.reltablespace))) WHERE ((c.relkind = 'r'::"char") AND (n.nspname = 'public'::name));
+    SELECT n.nspname AS schemaname, c.relname AS tablename, pg_get_userbyid(c.relowner) AS tableowner, c.reltuples AS "rows", c.relpages AS pages, t.spcname AS "tablespace", c.relhaspkey AS haspkey, c.relhasindex AS hasindexes, c.relhasrules AS hasrules, (c.reltriggers &gt; 0) AS hastriggers FROM ((pg_class c LEFT JOIN pg_namespace n ON ((n.oid = c.relnamespace))) LEFT JOIN pg_tablespace t ON ((t.oid = c.reltablespace))) WHERE ((c.relkind = 'r'::"char") AND (n.nspname = 'public'::name));
   </view>
   <view name="file2">
     SELECT file.bfid, file.crc, file.deleted, file.drive, file.volume, file.location_cookie, file.pnfs_path, file.pnfs_id, file.sanity_size, file.sanity_crc, file.size, file.uid, file.gid, CASE WHEN (file.deleted = 'y'::bpchar) THEN 1 ELSE 0 END AS n_deleted, CASE WHEN (file.deleted = 'y'::bpchar) THEN file.size ELSE (0)::bigint END AS size_deleted, CASE WHEN (file.deleted = 'n'::bpchar) THEN 1 ELSE 0 END AS n_active, CASE WHEN (file.deleted = 'n'::bpchar) THEN file.size ELSE (0)::bigint END AS size_active, CASE WHEN ((file.deleted &lt;&gt; 'y'::bpchar) AND (file.deleted &lt;&gt; 'n'::bpchar)) THEN 1 ELSE 0 END AS n_unknown, CASE WHEN ((file.deleted &lt;&gt; 'y'::bpchar) AND (file.deleted &lt;&gt; 'n'::bpchar)) THEN file.size ELSE (0)::bigint END AS size_unknown FROM file;
   </view>
+  <view name="lock_status">
+    SELECT (SELECT pg_class.relname FROM pg_class WHERE (pg_class.oid = pg_locks.relation)) AS "table", (SELECT pg_database.datname FROM pg_database WHERE (pg_database.oid = pg_locks."database")) AS "database", pg_locks."transaction", (SELECT pg_stat_activity.usename FROM pg_stat_activity WHERE (pg_stat_activity.procpid = pg_locks.pid)) AS "user", pg_locks."mode", pg_locks."granted" FROM pg_locks;
+  </view>
+  <view name="remaining_blanks">
+    SELECT volume.media_type, count(*) AS blanks FROM volume WHERE ((((volume.storage_group)::text = 'none'::text) AND ((volume.file_family)::text = 'none'::text)) AND ((volume.wrapper)::text = 'none'::text)) GROUP BY volume.media_type;
+  </view>
   <view name="volume_summary">
-    SELECT volume.label, volume.capacity_bytes, sum(file2.size) AS used, sum(file2.n_active) AS n_active, sum(file2.size_active) AS active, sum(file2.n_deleted) AS n_deleted, sum(file2.size_deleted) AS deleted, sum(file2.n_unknown) AS n_unknown, sum(file2.size_unknown) AS unknown, volume.remaining_bytes, (((volume.capacity_bytes - volume.remaining_bytes))::numeric - sum(file2.size)) AS unaccountable, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume.comment FROM file2, volume WHERE (file2.volume = volume.id) GROUP BY volume.label, volume.capacity_bytes, volume.remaining_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume.comment;
+    SELECT volume.label, volume.capacity_bytes, sum(file2.size) AS used, sum(file2.n_active) AS n_active, sum(file2.size_active) AS active, sum(file2.n_deleted) AS n_deleted, sum(file2.size_deleted) AS deleted, sum(file2.n_unknown) AS n_unknown, sum(file2.size_unknown) AS "unknown", volume.remaining_bytes, (((volume.capacity_bytes - volume.remaining_bytes))::numeric - sum(file2.size)) AS unaccountable, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment" FROM file2, volume WHERE (file2.volume = volume.id) GROUP BY volume.label, volume.capacity_bytes, volume.remaining_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment";
   </view>
   <view name="volume_summary2">
-    SELECT volume.label, volume.capacity_bytes, sum(CASE WHEN (file.size IS NULL) THEN (0)::bigint ELSE file.size END) AS used, count(CASE WHEN (file.deleted = 'n'::bpchar) THEN 1 ELSE NULL::integer END) AS n_active, sum(CASE WHEN ((file.deleted = 'n'::bpchar) AND (file.size IS NOT NULL)) THEN file.size ELSE (0)::bigint END) AS active, count(CASE WHEN (file.deleted = 'y'::bpchar) THEN 1 ELSE NULL::integer END) AS n_deleted, sum(CASE WHEN ((file.deleted = 'y'::bpchar) AND (file.size IS NOT NULL)) THEN file.size ELSE (0)::bigint END) AS deleted, count(CASE WHEN (file.deleted = 'u'::bpchar) THEN 1 ELSE NULL::integer END) AS n_unknown, sum(CASE WHEN ((file.deleted = 'u'::bpchar) AND (file.size IS NOT NULL)) THEN file.size ELSE (0)::bigint END) AS unknown, volume.remaining_bytes, (((volume.capacity_bytes - volume.remaining_bytes))::numeric - sum(file.size)) AS unaccountable, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume.comment FROM (volume LEFT JOIN file ON ((file.volume = volume.id))) GROUP BY volume.label, volume.capacity_bytes, volume.remaining_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume.comment;
+    SELECT volume.label, volume.capacity_bytes, sum(CASE WHEN (file.size IS NULL) THEN (0)::bigint ELSE file.size END) AS used, count(CASE WHEN (file.deleted = 'n'::bpchar) THEN 1 ELSE NULL::integer END) AS n_active, sum(CASE WHEN ((file.deleted = 'n'::bpchar) AND (file.size IS NOT NULL)) THEN file.size ELSE (0)::bigint END) AS active, count(CASE WHEN (file.deleted = 'y'::bpchar) THEN 1 ELSE NULL::integer END) AS n_deleted, sum(CASE WHEN ((file.deleted = 'y'::bpchar) AND (file.size IS NOT NULL)) THEN file.size ELSE (0)::bigint END) AS deleted, count(CASE WHEN (file.deleted = 'u'::bpchar) THEN 1 ELSE NULL::integer END) AS n_unknown, sum(CASE WHEN ((file.deleted = 'u'::bpchar) AND (file.size IS NOT NULL)) THEN file.size ELSE (0)::bigint END) AS "unknown", volume.remaining_bytes, (((volume.capacity_bytes - volume.remaining_bytes))::numeric - sum(file.size)) AS unaccountable, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment" FROM (volume LEFT JOIN file ON ((file.volume = volume.id))) GROUP BY volume.label, volume.capacity_bytes, volume.remaining_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment";
   </view>
   <view name="volume_with_only_deleted_files">
     SELECT foo.label, foo.storage_group, foo.file_family, foo.state, foo.media_type, foo.library, foo.n_active, foo.n_deleted, foo.n_unknown FROM (SELECT volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1 AS state, volume.media_type, volume.library, count(CASE WHEN (file.deleted = 'n'::bpchar) THEN 1 ELSE NULL::integer END) AS n_active, count(CASE WHEN (file.deleted = 'y'::bpchar) THEN 1 ELSE NULL::integer END) AS n_deleted, count(CASE WHEN (file.deleted = 'u'::bpchar) THEN 1 ELSE NULL::integer END) AS n_unknown FROM (volume LEFT JOIN file ON ((file.volume = volume.id))) WHERE (NOT ((volume.label)::text ~~ '%.deleted'::text)) GROUP BY volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1, volume.media_type, volume.library) foo WHERE ((foo.n_active = 0) AND (foo.n_deleted &gt; 0));
   </view>
   <view name="write_protection_audit">
-    SELECT volume.id, volume.label, volume.block_size, volume.capacity_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.non_del_files, volume.remaining_bytes, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume.comment, volume.write_protected FROM volume WHERE ((NOT ((volume.label)::text ~~ '%.deleted'::text)) AND ((((volume.system_inhibit_1)::text &lt;&gt; 'none'::text) AND (volume.write_protected &lt;&gt; 'y'::bpchar)) OR (((volume.system_inhibit_1)::text = 'none'::text) AND (volume.write_protected &lt;&gt; 'n'::bpchar))));
+    SELECT volume.id, volume.label, volume.block_size, volume.capacity_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.non_del_files, volume.remaining_bytes, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment", volume.write_protected FROM volume WHERE ((NOT ((volume.label)::text ~~ '%.deleted'::text)) AND ((((volume.system_inhibit_1)::text &lt;&gt; 'none'::text) AND (volume.write_protected &lt;&gt; 'y'::bpchar)) OR (((volume.system_inhibit_1)::text = 'none'::text) AND (volume.write_protected &lt;&gt; 'n'::bpchar))));
   </view>
   <function name="all_deleted" arguments="integer" returns="integer" language="plpgsql">
 begin
@@ -320,48 +323,48 @@ order by media_type;
   <function name="update_volume_file_counters" arguments="" returns="trigger" language="plpgsql">
 BEGIN
 IF(TG_OP='INSERT') THEN
-IF(NEW.deleted='u') THEN
-update volume set unknown_files=unknown_files+1, unknown_bytes=unknown_bytes+NEW.size where volume.id=NEW.volume;
-ELSEIF (NEW.deleted='y') THEN 
-update volume set deleted_files=deleted_files+1, deleted_bytes=deleted_bytes+NEW.size where volume.id=NEW.volume;
-ELSEIF (NEW.deleted='n') THEN 
-update volume set active_files=active_files+1, active_bytes=active_bytes+NEW.size  where volume.id=NEW.volume;
-END IF;
+	IF(NEW.deleted='u') THEN
+		update volume set unknown_files=unknown_files+1, unknown_bytes=unknown_bytes+NEW.size where volume.id=NEW.volume;
+	ELSEIF (NEW.deleted='y') THEN 
+		update volume set deleted_files=deleted_files+1, deleted_bytes=deleted_bytes+NEW.size where volume.id=NEW.volume;
+	ELSEIF (NEW.deleted='n') THEN 
+		update volume set active_files=active_files+1, active_bytes=active_bytes+NEW.size  where volume.id=NEW.volume;
+	END IF;
 ELSEIF (TG_OP='UPDATE') THEN
-delta := NEW.size-OLD.size;
-IF(NEW.deleted&lt;&gt;OLD.deleted) THEN
-IF(OLD.deleted='y') THEN
-update volume set deleted_files=deleted_files-1, deleted_bytes=deleted_bytes-OLD.size where volume.id=NEW.volume;
-ELSEIF (OLD.deleted='n') THEN 
-update volume set active_files= active_files-1, active_bytes=active_bytes-OLD.size  where volume.id=NEW.volume;
-ELSEIF (OLD.deleted='u') THEN 
-update volume set unknown_files= unknown_files-1, unknown_bytes=unknown_bytes-OLD.size where volume.id=NEW.volume;
-END IF;
-IF(NEW.deleted='u') THEN
-update volume set unknown_files= unknown_files+1, unknown_bytes=unknown_bytes+OLD.size+delta where volume.id=NEW.volume;
-ELSEIF (NEW.deleted='y') THEN 
-update volume set deleted_files= deleted_files+1, deleted_bytes=deleted_bytes+OLD.size+delta where volume.id=NEW.volume;
-ELSEIF (NEW.deleted='n') THEN 
-update volume set active_files= active_files+1, active_bytes=active_bytes+OLD.size+delta where volume.id=NEW.volume;
-END IF;
-ELSEIF (OLD.size&lt;&gt;NEW.size) THEN 
-IF(OLD.deleted='y') THEN
-update volume set deleted_bytes=deleted_bytes+delta where volume.id=NEW.volume;
-ELSEIF (OLD.deleted='n') THEN 
-update volume set active_bytes=active_bytes+delta  where volume.id=NEW.volume;
-ELSEIF (OLD.deleted='u') THEN 
-update volume set unknown_bytes=unknown_bytes+delta where volume.id=NEW.volume;
-END IF;
-END IF;
+	delta := NEW.size-OLD.size;
+	IF(NEW.deleted&lt;&gt;OLD.deleted) THEN
+		IF(OLD.deleted='y') THEN
+			update volume set deleted_files=deleted_files-1, deleted_bytes=deleted_bytes-OLD.size where volume.id=NEW.volume;
+		ELSEIF (OLD.deleted='n') THEN 
+			update volume set active_files= active_files-1, active_bytes=active_bytes-OLD.size  where volume.id=NEW.volume;
+		ELSEIF (OLD.deleted='u') THEN 
+			update volume set unknown_files= unknown_files-1, unknown_bytes=unknown_bytes-OLD.size where volume.id=NEW.volume;	
+		END IF;
+		IF(NEW.deleted='u') THEN
+			update volume set unknown_files= unknown_files+1, unknown_bytes=unknown_bytes+OLD.size+delta where volume.id=NEW.volume;
+		ELSEIF (NEW.deleted='y') THEN 
+			update volume set deleted_files= deleted_files+1, deleted_bytes=deleted_bytes+OLD.size+delta where volume.id=NEW.volume;
+		ELSEIF (NEW.deleted='n') THEN 
+			update volume set active_files= active_files+1, active_bytes=active_bytes+OLD.size+delta where volume.id=NEW.volume;
+		END IF;
+	ELSEIF (OLD.size&lt;&gt;NEW.size) THEN 
+		IF(OLD.deleted='y') THEN
+			update volume set deleted_bytes=deleted_bytes+delta where volume.id=NEW.volume;
+		ELSEIF (OLD.deleted='n') THEN 
+			update volume set active_bytes=active_bytes+delta  where volume.id=NEW.volume;
+		ELSEIF (OLD.deleted='u') THEN 
+			update volume set unknown_bytes=unknown_bytes+delta where volume.id=NEW.volume;	
+		END IF;		
+	END IF;
 ELSEIF (TG_OP='DELETE') THEN
-IF(OLD.deleted='y') THEN
-update volume set  deleted_files=deleted_files-1, deleted_bytes=deleted_bytes-OLD.size  where volume.id=OLD.volume;
-ELSEIF (OLD.deleted='n') THEN 
-update volume set active_files= active_files-1, active_bytes=active_bytes-OLD.size where volume.id=OLD.volume;
-ELSEIF (OLD.deleted='u') THEN 
-update volume set unknown_files= unknown_files-1, unknown_bytes=unknown_bytes-OLD.size where volume.id=OLD.volume;
-END IF;
-RETURN OLD;
+	IF(OLD.deleted='y') THEN
+		update volume set  deleted_files=deleted_files-1, deleted_bytes=deleted_bytes-OLD.size  where volume.id=OLD.volume;
+	ELSEIF (OLD.deleted='n') THEN 
+		update volume set active_files= active_files-1, active_bytes=active_bytes-OLD.size where volume.id=OLD.volume;
+	ELSEIF (OLD.deleted='u') THEN 
+		update volume set unknown_files= unknown_files-1, unknown_bytes=unknown_bytes-OLD.size where volume.id=OLD.volume;	
+	END IF;
+	RETURN OLD;	
 END IF;
 RETURN NEW;
 END;

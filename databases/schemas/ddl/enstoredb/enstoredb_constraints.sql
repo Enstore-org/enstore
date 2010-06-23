@@ -2,7 +2,7 @@ ALTER TABLE ONLY volume
    ADD  CONSTRAINT volume_write_protected_check CHECK ((((write_protected = 'u'::bpchar) OR (write_protected = 'y'::bpchar)) OR (write_protected = 'n'::bpchar)));
 
 --
--- Name: active_file_copying_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: active_file_copying_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY active_file_copying
@@ -10,7 +10,7 @@ ALTER TABLE ONLY active_file_copying
 
 
 --
--- Name: file_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: file_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY file
@@ -18,28 +18,38 @@ ALTER TABLE ONLY file
 
 
 --
--- Name: media_capacity_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: media_capacity_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY media_capacity
     ADD CONSTRAINT media_capacity_pkey PRIMARY KEY ("type");
 
+
 --
--- Name: migration_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: migration_dst_bfid_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY migration
-    ADD CONSTRAINT migration_pkey PRIMARY KEY  (src_bfid,dst_bfid);
+    ADD CONSTRAINT migration_dst_bfid_key UNIQUE (dst_bfid);
 
 --
--- Name: migration_history_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: migration_history_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY migration_history
     ADD CONSTRAINT migration_history_pkey PRIMARY KEY (src_vol_id, dst_vol_id);
 
+
 --
--- Name: quota_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: migration_src_bfid_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+--
+
+ALTER TABLE ONLY migration
+    ADD CONSTRAINT migration_src_bfid_key UNIQUE (src_bfid);
+
+
+--
+-- Name: quota_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY quota
@@ -47,7 +57,7 @@ ALTER TABLE ONLY quota
 
 
 --
--- Name: quotas_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: quotas_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY quotas
@@ -55,7 +65,7 @@ ALTER TABLE ONLY quotas
 
 
 --
--- Name: sg_count_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: sg_count_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY sg_count
@@ -63,7 +73,7 @@ ALTER TABLE ONLY sg_count
 
 
 --
--- Name: state_type_name_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: state_type_name_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY state_type
@@ -71,7 +81,7 @@ ALTER TABLE ONLY state_type
 
 
 --
--- Name: state_type_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: state_type_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY state_type
@@ -79,7 +89,7 @@ ALTER TABLE ONLY state_type
 
 
 --
--- Name: volume_label_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: volume_label_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY volume
@@ -87,7 +97,7 @@ ALTER TABLE ONLY volume
 
 
 --
--- Name: volume_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
+-- Name: volume_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY volume
