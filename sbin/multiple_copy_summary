@@ -157,19 +157,31 @@ echo                                  >> $temp_file 2>&1
 echo "Creating Failed Multiple Copies Skipped" `date`
 
 echo "These are:" >> $temp_file 2>&1
-echo "1) failed write transfers" >> $temp_file 2>&1
-echo "2) files that have already been migrated" >> $temp_file 2>&1
+echo "1) original copies where the write failed" >> $temp_file 2>&1
+echo " or" >> $temp_file 2>&1
+echo "2) original copies that have already been migrated" >> $temp_file 2>&1
 echo >> $temp_file 2>&1
 
-psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c '
+psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
 select active_file_copying.bfid,
-       remaining as "copies remaining",
-       active_file_copying.time as "waiting since"
+       active_file_copying.time as waiting_since,
+       case when (select deleted from file
+                  where file.bfid = active_file_copying.bfid
+                    and file.deleted = 'u') is not NULL
+            then 'failed'
+            when (select pnfs_id from file
+                 where file.bfid = active_file_copying.bfid) = ''
+            then 'failed'
+            when (select dst_bfid from migration
+                  where migration.src_bfid = active_file_copying.bfid) is not NULL
+            then 'migrated'
+            else ' '
+       end
 from active_file_copying
 left join file_copies_map on active_file_copying.bfid = file_copies_map.bfid
 where remaining < 0
 order by time;
-' >> $temp_file 2>&1
+" >> $temp_file 2>&1
 
 echo                                                         >> $temp_file 2>&1
 echo "=====================================================" >> $temp_file 2>&1
@@ -196,15 +208,34 @@ echo "Failed Multiple Copies per Day" >> $temp_file 2>&1
 echo "==============================" >> $temp_file 2>&1
 echo                                  >> $temp_file 2>&1
 
+echo "The day is the date the user's multiple copy failed." >> $temp_file 2>&1
+echo "The multiple_copies_failed is the number of failures on that day." >> $temp_file 2>&1
+echo "The next three columns show what state these failures are in, respectively:  " >> $temp_file 2>&1
+echo "   copy retro-actively made, skipped or remaining to do." >> $temp_file 2>&1
+echo >> $temp_file 2>&1
+
 echo "Creating Failed Multiple Copies" `date`
 
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
 select date(time) as day,
-       count(bfid) as mulitple_copies_failed
+       count(active_file_copying.bfid) as mulitple_copies_failed,
+       count(case remaining 
+                  when 0
+                  then file_copies_map.alt_bfid
+                  else NULL
+                  end) as failures_made,
+       count(case when remaining < 0
+             then active_file_copying.bfid
+             else NULL
+             end) as failures_skipped,
+       count(case when remaining > 0
+             then active_file_copying.bfid
+             else NULL
+             end) as failures_remaining
 from active_file_copying
-where remaining > 0
+left join file_copies_map on active_file_copying.bfid = file_copies_map.bfid
 group by day
-having date(time) < date(current_timestamp - interval '72 hours')
+having date(time) <= date(current_timestamp - interval '24 hours')
 order by day
 ;
 " >> $temp_file 2>&1
