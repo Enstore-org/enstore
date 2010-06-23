@@ -68,6 +68,26 @@ summary()
 ## clerk set_system_migrated()/set_system_duplicated() function(s) to set
 ## the system_inhibit_1 value.  
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
+select media_type, sum(migrating) as migrating, sum(migrated) as migrated,
+       sum(migration_started) as migration_started,
+       sum(migrated_closed_not_shelved) as migrated_closed_not_shelved,
+       sum(migrated_closed_shelved) as migrated_closed_shelved,
+       sum(duplicating) as duplicating, sum(duplicated) as duplicated,
+       sum(duplication_started) as duplication_started,
+       sum(duplicated_closed_not_shelved) as duplicated_closed_not_shelved,
+       sum(duplicated_closed_shelved) as duplicated_closed_shelved,
+       sum(remaining_to_start_migrating) as remaining_to_start_migrating,
+       sum(remaining_to_finish_migrating) as remaining_to_finish_migrating,
+       sum(remaining_to_scan_and_close) as remaining_to_scan_and_close,
+       sum(blank_volumes) as blank_volumes, sum(total) as total,
+       sum(percentage_done) as percentage_done
+       -- The reason for this outer select is to combine all disk volumes
+       -- onto one line.  Disk volumes have many different sizes and in
+       -- order to split LTO1 and LTO2 from 3480 too, this extra select
+       -- level is needed.  This also has the added benifit of combining
+       -- any media_type that has some number of tapes set to the wrong
+       -- capacity_bytes.
+from (
 select /* It should be as simple as just using the media_type. However,
           LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
           in the AML/2 when it was first put into use. */
@@ -80,6 +100,10 @@ select /* It should be as simple as just using the media_type. However,
             THEN NULL    --Cleaning tape; skip it.
             ELSE media_type
        END as media_type,
+       CASE WHEN media_type = 'disk'
+            THEN -1  --Trick all disk volumes onto one line.
+            ELSE capacity_bytes
+       END as capacity_bytes,
        count(distinct CASE WHEN system_inhibit_1 = 'migrating'
                            THEN label
                            ELSE NULL
@@ -267,7 +291,10 @@ where (system_inhibit_0 != 'DELETED'
       and media_type != 'null'
       and capacity_bytes > 500  --Skip cleaning tapes.
 group by media_type, capacity_bytes
-order by media_type;
+order by media_type
+) as inner_result
+group by media_type, capacity_bytes
+order by capacity_bytes;
 "
 }
 
