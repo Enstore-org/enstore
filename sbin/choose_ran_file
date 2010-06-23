@@ -325,6 +325,10 @@ while [ $done -gt 0 ]; do
     *)             thefiles=$ran_file; thebfids=$ran_bfid;;
   esac
 
+  #Make the list of bfids unique.  This avoids repeat reads if the first
+  # and/or last file happen to be the randomly chosen file.
+  thebfids=`echo "$thebfids" | tr " " "\n" | uniq`
+
   # ok, just tell the user the name of the file and do another if needed
   # or copy the file to /dev/null if user requested this
   if [ $copyit -eq 0 ]; then
