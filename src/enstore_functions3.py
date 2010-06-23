@@ -106,15 +106,15 @@ def is_volume_disk(volume):
         # or 
         # hostname:SG.FF.WRAPPER:YYYY-mm-ddTHH:MM:SSZ.deleted
         # time format: ISO8601
-        if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[TZ:\-0-9]+(.deleted){0,1}$"
+        if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[-TZ:0-9]+(.deleted){0,1}$"
                       % (charset.hostnamecharset, charset.charset,
                          charset.charset, charset.charset), volume):
             rc = 1   #If passed a disk volume.
         else:
             # legacy naming
-            # hostname:SG.FF.WRAPPER.time_in_seconds
+            # hostname:SG.FF.WRAPPER:time_in_seconds
             # or 
-            # hostname:SG.FF.WRAPPER.time_in_seconds.deleted
+            # hostname:SG.FF.WRAPPER:time_in_seconds.deleted
             if re.search("^[%s]+[:]{1}[%s]+[.]{1}[%s]+[.]{1}[%s]+[:]{1}[0-9]+(.deleted){0,1}$"
                          % (charset.hostnamecharset, charset.charset,
                             charset.charset, charset.charset), volume):
@@ -138,10 +138,20 @@ is_location_cookie_null = is_location_cookie_tape
 
 def is_location_cookie_disk(lc):
     if type(lc) == types.StringType:
-        #For disk volumes.
+        #For old disk volumes.
+        #  /data/rain//pnfs/mist/test_files/Makefile2:1192477203
         disk_regex = re.compile("^[/0-9A-Za-z_]*(//)[/0-9A-Za-z_]*(:)[0-9]*$")
 
         if disk_regex.match(lc):
+            return 1
+
+        #For new disk volumes.
+        #  /scratch/000/100/000/000/000/000/0AF/0001000000000000000AF418
+        # This should also match locations based on Chimera IDs, but this is
+        # currently untested.
+        new_disk_regex = re.compile("^[/0-9A-Za-z_]*(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-F]{3}(/)[0-9A-Fa-f]{24}|[0-9A-Fa-f]{36}")
+
+        if new_disk_regex.match(lc):
             return 1
 
     return 0
