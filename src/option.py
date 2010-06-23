@@ -327,6 +327,7 @@ MESSAGES_FILE = "messages-file"              #entv
 MIGRATED = "migrated"                        #volume
 MIGRATED_FROM = "migrated-from"              #migrate
 MIGRATED_TO = "migrated-to"                  #migrate
+MIGRATION_ONLY = "migration-only"            #migrate
 MKDIR = "mkdir"                              #pnfs_agent
 MKDIRS = "mkdirs"                            #pnfs_agent
 MMAP_IO = "mmap-io"                          #encp
@@ -336,6 +337,7 @@ MOUNT = "mount"                              #media, plotter
 MOUNT_POINT = "mount-point"                  #pnfs
 MOVER_DUMP = "mover_dump"                    #mover
 MOVER_TIMEOUT = "mover-timeout"              #assert, encp
+MULTIPLE_COPY_ONLY = "multiple-copy-only"    #migrate
 NAMEOF = "nameof"                            #pnfs
 NEW_LIBRARY = "new-library"                  #volume
 NO_ACCESS = "no-access"                      #volume
@@ -539,8 +541,10 @@ valid_option_list = [
     MAKE_HTML, MAKE_FAILED_COPIES, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MESSAGES_FILE, MIGRATED, MIGRATED_FROM, MIGRATED_TO,
+    MIGRATION_ONLY,
     MKDIR, MKDIRS, MMAP_IO, MMAP_SIZE,
-    MODIFY, MOUNT, MOUNT_POINT, MOVER_DUMP, MOVER_TIMEOUT, 
+    MODIFY, MOUNT, MOUNT_POINT, MOVER_DUMP, MOVER_TIMEOUT,
+    MULTIPLE_COPY_ONLY, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NO_CRC, NOT_ALLOWED, NO_MAIL,
     NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
