@@ -51,7 +51,7 @@ DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
     option.VALUE_TYPE:option.INTEGER,
     option.USER_LEVEL:option.USER,
  }
-del DuplicateInterface.migrate_options[option.RESTORE]
+#del DuplicateInterface.migrate_options[option.RESTORE]
 
 # search_order()
 #Return in the following order:
@@ -317,23 +317,6 @@ def is_expected_volume(MY_TASK, vol, likely_path, fcc, db):
 	return True
 
 
-# The restore operation is not defined for duplication.  So, disable the
-# functionality.
-def restore(bfids, intf):
-	__pychecker__ = "unusednames=bfids,intf"
-	
-	message = "Restore for duplication is not defined.\n"
-	sys.stderr.write(message)
-	sys.exit(1)
-# The restore_volume operation is not defined for duplication.  So, disable the
-# functionality.
-def restore_volume(vol, intf):
-	__pychecker__ = "unusednames=vol,intf"
-	
-	message = "Restore for duplication is not defined.\n"
-	sys.stderr.write(message)
-	sys.exit(1)
-
 #Duplication doesn't do cloning.
 def setup_cloning():
 	pass
@@ -344,8 +327,7 @@ def setup_cloning():
 migrate.is_expected_volume = is_expected_volume
 migrate.cleanup_after_scan = cleanup_after_scan
 migrate.swap_metadata = duplicate_metadata
-migrate.restore = restore
-migrate.restore_volume = restore_volume
+migrate.is_expected_restore_type = migrate.is_duplication
 migrate.setup_cloning = setup_cloning
 migrate.migration_file_family = migration_file_family
 migrate.normal_file_family = normal_file_family

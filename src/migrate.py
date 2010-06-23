@@ -466,6 +466,9 @@ def init(intf):
                                                  (library,))
                                 sys.exit(1)
 
+        if debug:
+            log("library check okay")
+
 	#Make sure we got the spool directory from command line or
 	# from configuration.
 	if intf.spool_dir:
@@ -513,6 +516,9 @@ def init(intf):
                 pnfs_is_trusted = True
                 do_seteuid = False
 
+        if debug:
+            log("trusted PNFS check okay")
+
         #If we are running duplication in make_failed_copies mode,
         # do seteuid() calls.
         if not pnfs_is_trusted and getattr(intf, 'make_failed_copies', None):
@@ -538,6 +544,9 @@ def init(intf):
 			sys.exit(1)
 		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 		log(MIGRATION_NAME, string.join(sys.argv, " "))
+
+        if debug:
+            log("log check okay")
 	
 	# check for spool_dir commands
 	if not intf.migrated_to and not intf.migrated_from and \
@@ -576,6 +585,8 @@ def init(intf):
 				log(message)
 				sys.exit(1)
 
+        if debug:
+            log("spool_dir check okay")
 
 	return
 
@@ -635,6 +646,8 @@ def get_queue_numbers(src_bfids, intf, volume_record=None):
         if mig_path != None:
             dst_media_type = get_media_type(mig_path, db)
         else:
+            db.close()  #Avoid resource leaks.
+            
             #If we get here, we would need to look at the tags
             # in the original directory, but since we don't have
             # that available here, lets just drop it for now.
@@ -737,6 +750,8 @@ def get_queue_numbers(src_bfids, intf, volume_record=None):
     if debug:
         log("proceed_number:", proceed_number)
         log("queue_size:", queue_size)
+
+    db.close()  #Avoid resource leaks.
 
     return proceed_number, queue_size
     
@@ -1805,26 +1820,15 @@ def log_history(src_vol, dst_vol, vcc, db):
         return 0  #Success
     else:
         # Obtain the unique volume id for the source and destination volumes.
-
-        #source
-        q = "select id from volume where label = '%s'" % (src_vol,)
-        try:
-            res = db.query(q).getresult()
-            src_vol_id = res[0][0]  #volume id
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            error_log(MY_TASK, str(exc_type), str(exc_value), q)
-            return 1  #Error
-        #destination
-        q = "select id from volume where label = '%s'" % (dst_vol,)
-        try:
-            res = db.query(q).getresult()
-            dst_vol_id =  res[0][0]  #volume id
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            error_log(MY_TASK, str(exc_type), str(exc_value), q)
-            return 1  #Error
-
+        src_vol_id = get_volume_id(MY_TASK, src_vol, db)
+        if src_vol_id == None:
+            #An error occured.  get_volume_id() reports it own errors.
+            return None
+        dst_vol_id = get_volume_id(MY_TASK, dst_vol, db)
+        if dst_vol_id == None:
+            #An error occured.  get_volume_id() reports it own errors.
+            return None
+       
         # Determine if this pair is already in the migration_history table.
         q = "select * from migration_history " \
             " where src_vol_id = %s and dst_vol_id = %s" \
@@ -1853,28 +1857,27 @@ def log_history(src_vol, dst_vol, vcc, db):
             exc_type, exc_value = sys.exc_info()[:2]
             #If the volume is being rerun, ignore the unique constraint
             # error from postgres.
-            if not str(exc_value).startswith(
+            if str(exc_value).startswith(
                 "ERROR:  duplicate key violates unique constraint"):
+                res = "0"
+            else:
                 error_log(MY_TASK, str(exc_type), str(exc_value), q)
-                return 1 #Error
+                return 1  #Error
 
-        res = long(res)  #Make sure this is a numeric type.
-        
-        if res == 1:
-            ok_log(MY_TASK, "set %s to %s as migrated" % (src_vol, dst_vol))
-            return 0  #Success
-        elif res > 0:
+        try:
+            #Make sure this is a numeric type.  If it is, then we know that
+            # the insert succeeded.  This value is the oid or the row.
+            long(res)
+
+            ok_log(MY_TASK, "set %s to %s as closed" % (src_vol, dst_vol))
+        except ValueError:
             #Should never happen with unique volume ids.
             error_log(MY_TASK,
-                      "set %s %s to %s as migrated" % (res, src_vol, dst_vol))
-            return 1  #Error
-        else:
-            error_log(MY_TASK,
-                      "did not set %s to %s as migrated" % (src_vol, dst_vol))
+                      "did not set %s to %s as closed" % (src_vol, dst_vol))
             return 1  #Error
 
-        return None  #Should never happen.
-
+        return 0  #Success
+        
 def log_history_closed(src_vol, dst_vol, vcc, db):
     MY_TASK = "LOG_HISTORY_CLOSED"
     if USE_CLERKS:
@@ -1884,25 +1887,15 @@ def log_history_closed(src_vol, dst_vol, vcc, db):
             return 1  #Error
     else:
         # Obtain the unique volume id for the source and destination volumes.
-        q = "select id from volume where label = '%s'" % (src_vol,)
-
-        try:
-            res = db.query(q).getresult()
-            src_vol_id = res[0][0]  #volume id
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            error_log(MY_TASK, str(exc_type), str(exc_value), q)
-            return 1  #Error
-        q = "select id from volume where label = '%s'" % (dst_vol,)
-
-        try:
-            res = db.query(q).getresult()
-            dst_vol_id =  res[0][0]  #volume id
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            error_log(MY_TASK, str(exc_type), str(exc_value), q)
-            return 1  #Error
-
+        src_vol_id = get_volume_id(MY_TASK, src_vol, db)
+        if src_vol_id == None:
+            #An error occured.  get_volume_id() reports it own errors.
+            return None
+        dst_vol_id = get_volume_id(MY_TASK, dst_vol, db)
+        if dst_vol_id == None:
+            #An error occured.  get_volume_id() reports it own errors.
+            return None
+        
         #Update the closed_time column in the migration_history table
         # for these two volumes.
         q = "update migration_history set closed_time = current_timestamp " \
@@ -1936,6 +1929,138 @@ def log_history_closed(src_vol, dst_vol, vcc, db):
         
         return None  #Should never happen.
 
+#Return True if the source volume has all of its destination volumes
+# recorded in the migration_history table.  False otherwise.  Errors
+# return None.
+def is_migration_history_done(MY_TASK, src_vol, db):
+    # MY_TASK - string to use in log() and error_log().
+    # src_vol - string respresenting the source volume to check if all
+    #           pairs of this volume are done or closed
+    # db - A pg.DB instantiated object.
+
+    if USE_CLERKS:
+        #This mode not yet implemented for this function.
+        error_log(MY_TASK, "Clerk implementation does not exist yet.")
+        return None  #Error
+    else:
+        # Obtain the unique volume id for the source volume.
+        src_vol_id = get_volume_id(MY_TASK, src_vol, db)
+        if src_vol_id == None:
+            #An error occured.  get_volume_id() reports it own errors.
+            return None
+            
+        #Currently migrated_to() only supports direct DB access.
+        to_volume_list = migrated_to(src_vol, db)
+
+        for dst_volume in to_volume_list:
+            # Obtain the unique volume id for the destination volume.
+            dst_vol_id = get_volume_id(MY_TASK, dst_volume, db)
+            if dst_vol_id == None:
+                #An error occured.  get_volume_id() reports it own errors.
+                return None
+            
+            q = "select * from migration_history " \
+                "where src_vol_id = '%s' and dst_vol_id = '%s';" \
+                % (src_vol_id, dst_vol_id)
+
+            try:
+                res = db.query(q).dictresult()
+            except:
+                exc_type, exc_value = sys.exc_info()[:2]
+                error_log(MY_TASK, str(exc_type), str(exc_value), q)
+                return None  #Error
+
+            if len(res) == 0:
+                #Their is not a record made for this source and destination
+                # combination.
+                return False
+            elif not res[0]['time']:
+                #This pair of source and destination volumes are not
+                # recorded as closed.
+                return False
+
+        #All the volume pairs have been found to be recored as closed in
+        # the migration_history table.
+        return True
+
+#Return True if the destination volume has all of its source volumes
+# recorded in the migration_history table and the "closed_time" field
+# is filled in.  False otherwise.  Errors return None.
+def is_migration_history_closed(MY_TASK, dst_vol, db):
+    # MY_TASK - string to use in log() and error_log().
+    # src_vol - string respresenting the source volume to check if all
+    #           pairs of this volume are done or closed
+    # db - A pg.DB instantiated object.
+    
+    if USE_CLERKS:
+        #This mode not yet implemented for this function.
+        error_log(MY_TASK, "Clerk implementation does not exist yet.")
+        return None  #Error
+    else:
+        # Obtain the unique volume id for the destination volume.
+        dst_vol_id = get_volume_id(MY_TASK, dst_vol, db)
+        if dst_vol_id == None:
+            #An error occured.  get_volume_id() reports it own errors.
+            return None
+        
+        #Currently migrated_to() only supports direct DB access.
+        from_volume_list = migrated_from(dst_vol, db)
+
+        for src_volume in from_volume_list:
+            # Obtain the unique volume id for the source volume.
+            src_vol_id = get_volume_id(MY_TASK, src_volume, db)
+            if src_vol_id == None:
+                #An error occured.  get_volume_id() reports it own errors.
+                return None
+            
+            q = "select * from migration_history " \
+                "where src_vol_id = '%s' and dst_vol_id = '%s';" \
+                % (src_vol_id, dst_vol_id)
+
+            try:
+                res = db.query(q).dictresult()
+            except:
+                exc_type, exc_value = sys.exc_info()[:2]
+                error_log(MY_TASK, str(exc_type), str(exc_value), q)
+                return None  #Error
+
+            if len(res) == 0:
+                #Their is not a record made for this source and destination
+                # combination.
+                return False
+            elif not res[0]['closed_time']:
+                #This pair of source and destination volumes are not
+                # recorded as closed.
+                return False
+
+        #All the volume pairs have been found to be recored as closed in
+        # the migration_history table.
+        return True
+
+def get_volume_id(MY_TASK, volume, db):
+    # MY_TASK - string to use in log() and error_log().
+    # volume - string respresenting the volume get its DB id.
+    # db - A pg.DB instantiated object.
+    
+    if USE_CLERKS:
+        #This mode not yet implemented for this function.  More specificaly,
+        # it should not be needed.
+        error_log(MY_TASK, "Clerk implementation does not exist yet.")
+        return None  #Error
+    else:
+        # Obtain the unique volume id for the destination volume.
+        q = "select id from volume where label = '%s'" % (volume,)
+
+        try:
+            res = db.query(q).getresult()
+            volume_id =  res[0][0]  #volume id
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            error_log(MY_TASK, str(exc_type), str(exc_value), q)
+            return None  #Error
+
+        return volume_id
+        
 #Return the volume that the bfid refers to.
 """
 def get_volume_from_bfid(bfid, fcc, db):
@@ -2708,7 +2833,7 @@ def migration_path(path, file_record, deleted = NO):
                                 string.join([file_record['external_label'],
                                              file_record['location_cookie']],
                                             ":"))
-        if os.path.exist(old_path):
+        if os.path.exists(old_path):
             #We want to use the old path if it still exists.
             return old_path
 
@@ -3425,16 +3550,6 @@ def __print_header(src_volume, dst_volume):
     # correct location.  Limit it to tape labels only; 6 in the
     # AAXX00 pattern and an addtional two to handle the L1 appended
     # to LTO tapes in ADIC robots.
-    """
-    if column_volume_list[i][0]:
-        src_column_header = "(%.8s) src_bfid" % column_volume_list[i][0]
-    else:
-        src_column_header = "src_bfid"
-    if column_volume_list[i][1]:
-        dst_column_header = "(%.8s) dst_bfid" % column_volume_list[i][1]
-    else:
-        dst_column_header = "dst_bfid"
-    """
     if src_volume:
         src_column_header = "(%.8s) src_bfid" % (src_volume,)
     else:
@@ -3793,65 +3908,69 @@ def __show_status(MY_TASK, full_output_list, tape_list, fcc, vcc, db, intf,
     DO_MIG_DST = 3  #migration, duplication or cloning destination
     DO_MC_DST = 4   #multiple copy destination
     if not intf.destination_only:
-        for row in full_output_list:
-            # The three cases the inner expression checks for are:
-            # 1) Migration:  (row['dst_bfid'] and not row['bfid'])
-            # 2) Duplication with original as primary:
-            #    row['src_bfid'] == row['bfid'] and
-            #    row['dst_bfid'] == row['alt_bfid']
-            # 3) Duplication with copy as primary:
-            #    row['src_bfid'] == row['alt_bfid'] and
-            #    row['dst_bfid'] == row['bfid']
-            if row['src_bfid'] == row['current_bfid'] \
-                   and ((row['dst_bfid'] and not row['bfid']) \
-                        or (row['src_bfid'] == row['bfid'] and \
-                            row['dst_bfid'] == row['alt_bfid']) \
-                        or (row['src_bfid'] == row['alt_bfid'] and \
-                            row['dst_bfid'] == row['bfid'])):
-                #We found a source volume.
-                output_type.append(DO_MIG_SRC)
-                column_volume_list.append((volume, ""))
-                show_list.append(full_output_list)
-                break
+        if not intf.multiple_copy_only:
+            for row in full_output_list:
+                # The three cases the inner expression checks for are:
+                # 1) Migration:  (row['dst_bfid'] and not row['bfid'])
+                # 2) Duplication with original as primary:
+                #    row['src_bfid'] == row['bfid'] and
+                #    row['dst_bfid'] == row['alt_bfid']
+                # 3) Duplication with copy as primary:
+                #    row['src_bfid'] == row['alt_bfid'] and
+                #    row['dst_bfid'] == row['bfid']
+                if row['src_bfid'] == row['current_bfid'] \
+                       and ((row['dst_bfid'] and not row['bfid']) \
+                            or (row['src_bfid'] == row['bfid'] and \
+                                row['dst_bfid'] == row['alt_bfid']) \
+                            or (row['src_bfid'] == row['alt_bfid'] and \
+                                row['dst_bfid'] == row['bfid'])):
+                    #We found a source volume.
+                    output_type.append(DO_MIG_SRC)
+                    column_volume_list.append((volume, ""))
+                    show_list.append(full_output_list)
+                    break
 
-        for row in full_output_list:
-            if row['bfid'] == row['current_bfid'] \
-                   and row['alt_bfid'] and not row['src_bfid']:
-                #We found a source volume.
-                output_type.append(DO_MC_SRC)
-                column_volume_list.append((volume, ""))
-                show_list.append(full_output_list)
-                break
+        if not intf.migration_only:
+            for row in full_output_list:
+                if row['bfid'] == row['current_bfid'] \
+                       and row['alt_bfid'] and not row['src_bfid']:
+                    #We found a source volume.
+                    output_type.append(DO_MC_SRC)
+                    column_volume_list.append((volume, ""))
+                    show_list.append(full_output_list)
+                    break
     if not intf.source_only:
-        for row in full_output_list:
-            # The three cases the inner experession checks for are:
-            # 1) Migration:  (row['dst_bfid'] and not row['bfid'])
-            # 2) Duplication with original as primary:
-            #    row['src_bfid'] == row['bfid'] and
-            #    row['dst_bfid'] == row['alt_bfid']
-            # 3) Duplication with copy as primary:
-            #    row['src_bfid'] == row['alt_bfid'] and
-            #    row['dst_bfid'] == row['bfid']
-            if row['dst_bfid'] == row['current_bfid'] \
-                   and ((row['src_bfid'] and not row['alt_bfid']) \
-                        or (row['src_bfid'] == row['bfid'] and \
-                            row['dst_bfid'] == row['alt_bfid']) \
-                        or (row['src_bfid'] == row['alt_bfid'] and
-                            row['dst_bfid'] == row['bfid'])):
-                #We found a destination volume.
-                output_type.append(DO_MIG_DST)
-                column_volume_list.append(("", volume))
-                show_list.append(full_output_list)
-                break
+        if not intf.multiple_copy_only:
+            for row in full_output_list:
+                # The three cases the inner experession checks for are:
+                # 1) Migration:  (row['dst_bfid'] and not row['bfid'])
+                # 2) Duplication with original as primary:
+                #    row['src_bfid'] == row['bfid'] and
+                #    row['dst_bfid'] == row['alt_bfid']
+                # 3) Duplication with copy as primary:
+                #    row['src_bfid'] == row['alt_bfid'] and
+                #    row['dst_bfid'] == row['bfid']
+                if row['dst_bfid'] == row['current_bfid'] \
+                       and ((row['src_bfid'] and not row['alt_bfid']) \
+                            or (row['src_bfid'] == row['bfid'] and \
+                                row['dst_bfid'] == row['alt_bfid']) \
+                            or (row['src_bfid'] == row['alt_bfid'] and
+                                row['dst_bfid'] == row['bfid'])):
+                    #We found a destination volume.
+                    output_type.append(DO_MIG_DST)
+                    column_volume_list.append(("", volume))
+                    show_list.append(full_output_list)
+                    break
 
-        for row in full_output_list:
-            if row['alt_bfid'] == row['current_bfid'] \
-                and row['bfid'] and not row['dst_bfid']:
-                #We found a destination volume.
-                output_type.append(DO_MC_DST)
-                column_volume_list.append(("", volume))
-                show_list.append(full_output_list)
-                break
+        if not intf.migration_only:
+            for row in full_output_list:
+                if row['alt_bfid'] == row['current_bfid'] \
+                    and row['bfid'] and not row['dst_bfid']:
+                    #We found a destination volume.
+                    output_type.append(DO_MC_DST)
+                    column_volume_list.append(("", volume))
+                    show_list.append(full_output_list)
+                    break
 
     if not intf.destination_only:
         if show_list == []:
@@ -5150,6 +5269,8 @@ def copy_files(thread_num, file_records, volume_record, copy_queue,
     del copy_queue
     del deleted_copy_queue
 
+    db.close()  #Avoid resource leaks.
+
 ##########################################################################
 
 # migration_file_family(ff) -- making up a file family for migration
@@ -5857,43 +5978,58 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                 error_log(MY_TASK, "no file record found(%s)" % (dst_bfid,))
                 return
 
-        if dst_file_record['deleted'] == NO:
-            try:
-                mig_path = pnfs_find(src_bfid, dst_bfid,
-                                     src_file_record['pnfsid'],
-                                     file_record = src_file_record,
-                                     alt_file_record = dst_file_record,
-                                     intf = intf)
-                if not is_migration_path(mig_path):
-                    #Need to make sure this is a migration path in case
-                    # duplication is interupted.
-                    mig_path = migration_path(mig_path, src_file_record)
-            except (OSError, IOError), msg:
-                mig_path = migration_path(src_path, src_file_record)
+        if not mig_path:
+            if dst_file_record['deleted'] == NO:
+                #In order to determine the search order, we need to know
+                # if it has been swapped or not.
+                is_it_swapped = is_swapped(src_bfid, fcc, db)
+                
+                #Determine the search order of the bfids.  This is important,
+                # because the defaluts for migration and duplication are
+                # opposites and picking the wrong order slows things down.
+                active_bfid, inactive_bfid, active_file_record, \
+                             inactive_file_record = search_order(
+                    src_bfid, src_file_record, dst_bfid, dst_file_record,
+                    is_it_copied, is_it_swapped, fcc, db)
 
-        else:
+                try:
+                    mig_path = pnfs_find(active_bfid, inactive_bfid,
+                                         src_file_record['pnfsid'],
+                                         file_record = active_file_record,
+                                         alt_file_record = dst_file_record,
+                                         intf = intf)
+                    if not is_migration_path(mig_path):
+                        #Need to make sure this is a migration path in case
+                        # duplication is interupted.
+                        mig_path = migration_path(mig_path, src_file_record)
+                except (OSError, IOError), msg:
+                    mig_path = migration_path(src_path, src_file_record)
+
+            else:
+                mig_path = migration_path(src_path, src_file_record)
+                if mig_path == None:
+                    #We need to use the original pathname, since the file is
+                    # currently deleted (and /pnfs/fs was not able to be
+                    # found).
+                    mig_path = migration_path(src_file_record['pnfs_name0'],
+                                              src_file_record)
+                if mig_path == None:
+                    #Is PNFS mounted?
+                    error_log(MY_TASK, "No valid migration path found.")
+                    return
+    else:
+        if not mig_path:
             mig_path = migration_path(src_path, src_file_record)
-            if mig_path == None:
+            if mig_path == None and src_file_record['deleted'] != NO:
                 #We need to use the original pathname, since the file is
                 # currently deleted (and /pnfs/fs was not able to be found).
+
                 mig_path = migration_path(src_file_record['pnfs_name0'],
                                           src_file_record)
             if mig_path == None:
                 #Is PNFS mounted?
                 error_log(MY_TASK, "No valid migration path found.")
                 return
-    else:
-        mig_path = migration_path(src_path, src_file_record['deleted'])
-        if mig_path == None and src_file_record['deleted'] != NO:
-            #We need to use the original pathname, since the file is
-            # currently deleted (and /pnfs/fs was not able to be found).
-
-            mig_path = migration_path(src_file_record['pnfs_name0'],
-                                      src_file_record)
-        if mig_path == None:
-            #Is PNFS mounted?
-            error_log(MY_TASK, "No valid migration path found.")
-            return
 
         #Try and catch situations were an error left a zero
         # length file in the migration spool directory.  We
@@ -6226,6 +6362,8 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf,
     # this side.
     del copy_queue
     del scan_queue
+
+    db.close()  #Avoid resource leaks.
 	
 ##########################################################################
 
@@ -6539,6 +6677,8 @@ def final_scan_files(dst_bfids, intf):
                 log_closed(src_bfid, dst_bfid, fcc, db)
                 close_log('OK')
 
+        db.close()  #Avoid resource leaks.
+
         return local_error
 
 # final_scan() -- last part of migration, driven by scan_queue
@@ -6602,6 +6742,8 @@ def final_scan(thread_num, scan_queue, intf, deleted_files = NO):
     # this side.
     del scan_queue
 
+    db.close()  #Avoid resource leaks.
+
 # NOT DONE YET, consider deleted file in final scan
 # Is the file deleted due to copying error?
 # or was it deleted before migration?
@@ -6623,9 +6765,6 @@ def final_scan_volume(vol, intf):
                                                     config_port))
     fcc = file_clerk_client.FileClient(csc)
     vcc = volume_clerk_client.VolumeClerkClient(csc)
-
-    # get a db connection
-    db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
     # get an encp
     threading.currentThread().setName('FINAL_SCAN')
@@ -6650,16 +6789,34 @@ def final_scan_volume(vol, intf):
                                       dst_volume_record['system_inhibit'][0]))
         return 1
 
+    # get a db connection
+    db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+
     # make sure this is a migration volume
     sg, ff, wp = string.split(dst_volume_record['volume_family'], '.')
+    is_migration_closed = is_migration_history_closed(MY_TASK, vol, db)
+    if is_migration_closed == None:
+        #Confirm that the history does not return an error case.  If it did
+        # we get here.
+        error_log(MY_TASK, "Unable to continue, migration history error")
+        db.close()  #Avoid resource leaks.
+        return 1
     if not migrated_from(vol, db):
+        #This volume is not a destination volume.
         error_log(MY_TASK, "%s is not a %s volume" %
                   (vol, MIGRATION_NAME.lower()))
+        db.close()  #Avoid resource leaks.
         return 1
+    elif not is_migration_closed:
+        #If the scanning is not recorded as completed in the migration_history
+        # table, let the scanning proceed regardless of the following
+        # file_family test.
+        pass
     elif not is_migration_file_family(ff) and \
              not getattr(intf, "force", None):
         error_log(MY_TASK, "%s has a non-%s file family" %
                   (vol, MIGRATION_NAME.lower()))
+        db.close()  #Avoid resource leaks.
         return 1
 
     #Verify that the system_inhibit 1 is in a valid state too.
@@ -6669,6 +6826,7 @@ def final_scan_volume(vol, intf):
             and is_migrated_by_dst_vol(vol, intf, db):
         error_log(MY_TASK, 'volume %s is "%s"' % (vol,
                                       dst_volume_record['system_inhibit'][1]))
+        db.close()  #Avoid resource leaks.
         return 1
     #Warn if the volume about to be scanned is not full.  Scan a non-
     # full tape will not allow future migration files to be written
@@ -6697,6 +6855,7 @@ def final_scan_volume(vol, intf):
             traceback.print_tb(tb)
             print exc, msg
             local_error = local_error + 1
+            db.close()  #Avoid resource leaks.
             return local_error
 
         #Look for the assert of this volume.  There should only be one though.
@@ -6707,6 +6866,7 @@ def final_scan_volume(vol, intf):
             message = "volume %s return information not found" % (vol,)
             error_log(MY_TASK, message)
             local_error = local_error + 1
+            db.close()  #Avoid resource leaks.
             return local_error
 
         #At this point, done_ticket['return_file_list'] is a dictionary,
@@ -6724,6 +6884,7 @@ def final_scan_volume(vol, intf):
                 #If we had an error and didn't get anything in the file
                 # list, then give up.
                 local_error = local_error + 1
+                db.close()  #Avoid resource leaks.
                 return local_error
             else:
                 #If the volume assert failed, but did return some file
@@ -6735,6 +6896,7 @@ def final_scan_volume(vol, intf):
     # Detect empty tapes.
     if len(tape_list) == 0:
         log(MY_TASK, vol, "volume is empty")
+        db.close()  #Avoid resource leaks.
         return 0
 
     #Loop over all the files on the tape and verify everything is okay.
@@ -6917,6 +7079,8 @@ def final_scan_volume(vol, intf):
     else:
         error_log(MY_TASK,
                   "skipping volume metadata update since not all files have been scanned")
+
+    db.close()  #Avoid resource leaks.
 
     return local_error
 
@@ -7222,22 +7386,41 @@ def migrate_volume(vol, intf):
     volume_record = get_volume_info(MY_TASK, vol, vcc, db)
     if volume_record['status'][0] != e_errors.OK:
             error_log(MY_TASK, 'volume %s does not exist' % vol)
+            db.close()  #Avoid resource leaks.
             return 1
     if volume_record['system_inhibit'][0] != 'none':
             error_log(MY_TASK, vol, 'is', volume_record['system_inhibit'][0])
+            db.close()  #Avoid resource leaks.
             return 1
+
     #If volume is migrated, report that it is done and stop.
-    if enstore_functions2.is_migrated_state(volume_record['system_inhibit'][1]) \
-           and is_migrated_by_src_vol(vol, intf, db,
-                                      checked = 0, closed = 0) \
-                                      and not getattr(intf, "force", None):
+
+    #First, determine if all of the migration history is up-to-date.
+    is_history_done = is_migration_history_done(MY_TASK, vol, db)
+    if is_history_done == None:
+        #Confirm that the history does not return an error case.  If it did
+        # we get here.
+        error_log(MY_TASK, "Unable to continue, migration history error")
+        db.close()  #Avoid resource leaks.
+        return 1
+    #Second, determine if the system inhibit is correct.
+    is_migrated_state = enstore_functions2.is_migrated_state(
+        volume_record['system_inhibit'][1])
+    #Third, determine if all files are copied and swapped.
+    is_migrated_files =  is_migrated_by_src_vol(vol, intf, db,
+                                                checked = 0, closed = 0)
+    if is_migrated_state and is_migrated_files and is_history_done and \
+           not getattr(intf, "force", None):
         log(MY_TASK, vol, "is already", volume_record['system_inhibit'][1])
+        db.close()  #Avoid resource leaks.
         return 0
+
     #Make sure the library exists.
     library_fullname = volume_record['library'] + ".library_manager"
     lib_dict = csc.get(library_fullname)
     if not e_errors.is_ok(lib_dict):
         error_log("library %s does not exist" % (library_fullname,))
+        db.close()  #Avoid resource leaks.
         return 1
 
     # Do not duplicate multiple copy tapes.  We want to duplicate just
@@ -7246,6 +7429,7 @@ def migrate_volume(vol, intf):
     if re.compile(".*_copy_[1-9]*$").match(file_family) != None \
            and not intf.force:
         error_log("%s is a multiple copy volume" % (vol,))
+        db.close()  #Avoid resource leaks.
         return 1
 
     #tape_list is a list of file records
@@ -7253,6 +7437,7 @@ def migrate_volume(vol, intf):
     # Detect empty tapes.
     if len(tape_list) == 0:
         log(MY_TASK, vol, "volume is empty")
+        db.close()  #Avoid resource leaks.
         return 0
 
     media_types = []
@@ -7290,11 +7475,13 @@ def migrate_volume(vol, intf):
         # of migration, don't continue.
         log(MY_TASK, vol, 'has already been set to %s while trying to set it to %s' \
             % (volume_record['system_inhibit'][1], IN_PROGRESS_STATE))
+        db.close()  #Avoid resource leaks.
         return 1
     if volume_record['system_inhibit'][1] == INHIBIT_STATE and \
            is_migrated_by_src_vol(vol, intf, db) and \
            not getattr(intf, "force", None):
         log(MY_TASK, vol, 'has already been %s' % INHIBIT_STATE)
+        db.close()  #Avoid resource leaks.
         return 0
     if volume_record['system_inhibit'][1] != IN_PROGRESS_STATE:
         set_system_migrating_func(vcc, vol)
@@ -7311,6 +7498,9 @@ def migrate_volume(vol, intf):
         message = "do not set %s to %s due to previous error" % \
                   (vol, INHIBIT_STATE)
         error_log(MY_TASK, message)
+
+    db.close()  #Avoid resource leaks.
+        
     return res
 
 def set_src_volume_migrated(MY_TASK, vol, vcc, db):
@@ -7483,6 +7673,44 @@ def is_migrated(src_vol, dst_vol, intf, db, copied = 1, swapped = 1, checked = 1
 
 #Report True if the bfid is a duplication bfid, False if not and None
 # if there is some type of error.
+def is_migration(bfid, db):
+	q1 = "select * from migration " \
+	    "where src_bfid = '%s' or dst_bfid = '%s';" % (bfid, bfid)
+
+	q2 = "select bfid,alt_bfid from file_copies_map,migration " \
+	     "where ((bfid = src_bfid and alt_bfid = dst_bfid) " \
+	     "   or (bfid = dst_bfid and alt_bfid = src_bfid)) " \
+	     "  and (bfid = '%s' or alt_bfid = '%s');" % (bfid, bfid)
+
+	#Determine if the file is a duplicated file.
+        if debug:
+		print q1
+	res1 = db.query(q1).getresult()
+
+	#Determine if the file_copies_map (duplication only) table and the
+	# migration (migration and duplication) table agree.
+        if debug:
+		print q2
+	res2 = db.query(q2).getresult()
+
+	if len(res1) >= 1 and len(res2) == 0:
+                #We have a healthy migrated to/from file.
+		return True
+	elif len(res1) >= 1 and len(res2) >= 1:
+		#This is a healthy duplicated to/from file.
+		return False
+	elif len(res1) == 0 and len(res2) >= 1:
+		#How could this possiblely even happen?  It would require
+		# the more restrictive query to return an answer the less
+		# restrictive one did not.
+		return None
+	else:
+		#The bfid was nowhere to be found.
+		return False
+
+
+#Report True if the bfid is a duplication bfid, False if not and None
+# if there is some type of error.
 def is_duplication(bfid, db):
 	q1 = "select * from file_copies_map " \
 	    "where bfid = '%s' or alt_bfid = '%s';" % (bfid, bfid)
@@ -7519,6 +7747,9 @@ def is_duplication(bfid, db):
 	else:
 		#The bfid was nowhere to be found.
 		return False
+
+#Duplication overrides this to is_duplication.
+is_expected_restore_type = is_migration
 
 ##########################################################################
 
@@ -7565,6 +7796,7 @@ def is_expected_volume(MY_TASK, vol, likely_path, fcc, db):
 
 #restore_file(file_record):
 #  Restore the source file record's file to be the primary file users access.
+#  This works for both migration and duplication.
 def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     MY_TASK = "RESTORE"
 
@@ -7617,22 +7849,25 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         dst_file_record = None
         dst_volume_record = None
 
-    #If swapped, the current src_bfid is the new copy, ...
-    if is_swapped(src_bfid, fcc, db):
-        active_bfid = dst_bfid
-        nonactive_bfid = src_bfid
-    # ... otherwise we have a copied file that is not swapped
-    # (probably something is very wrong, after all the user is
-    # trying to set the original file back as the active file).
-    else:
-        active_bfid = src_bfid
-        nonactive_bfid = dst_bfid
+    is_it_swapped = is_swapped(src_bfid, fcc, db)
+
+    #Determine the search order of the bfids.  This is important, because
+    # the defaluts for migration and duplication are opposites and picking
+    # the wrong order slows things down.
+    active_bfid, nonactive_bfid, unused, unused = search_order(
+        src_bfid, src_file_record, dst_bfid, dst_file_record,
+        is_it_copied, is_it_swapped, fcc, db)
 
     #The restoring of a bfid is only allowed for migrated or
     # cloned files.  We need to fail duplicated files now.
-    if is_duplication(src_bfid, db):
-        error_log("bfid %s is a duplication bfid not"
-                  " a migration/cloning bfid" % (src_bfid,))
+    migration_type_answer = is_expected_restore_type(src_bfid, db)
+    if migration_type_answer == None:
+        #Some sort of error.
+        error_log("bfid %s is not %s" % (src_bfid, INHIBIT_STATE))
+        sys.exit(1)
+    elif not migration_type_answer:
+        error_log("bfid %s is not a %s bfid" % (src_bfid,
+                                                MIGRATION_NAME.lower()))
         sys.exit(1)
 
     #We need to handle restoring a multiple copy.
@@ -7879,7 +8114,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
                       % (src_bfid, src,))
             return 1
 
-    #Remove the temporary path in PNFS if it still exists.
+    #Remove the temporary migration path in PNFS if it still exists.
     if os.path.exists(mig_path):
 
         try:
@@ -7998,6 +8233,8 @@ def restore_files(bfids, intf, src_volume_record=None):
 
         restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record)
 
+    db.close()  #Avoid resource leaks.
+
     return errors  #global value
 
 # restore_volume(vol) -- restore all migrated files on original volume
@@ -8022,14 +8259,17 @@ def restore_volume(vol, intf):
     if not e_errors.is_ok(src_volume_record):
         error_log(MY_TASK, "error obtaining %s volume record: %s" % \
                   (vol, src_volume_record['status']))
+        db.close()  #Avoid resource leaks.
         sys.exit(1)
     if src_volume_record['system_inhibit'][0] in ("NOACCESS", "NOTALLOWED"):
         error_log(MY_TASK, "volume %s is %s" % \
                   (vol, src_volume_record['system_inhibit'][0]))
+        db.close()  #Avoid resource leaks.
         sys.exit(1)
     if src_volume_record['user_inhibit'][0] in ("NOACCESS", "NOTALLOWED"):
         error_log(MY_TASK, "volume %s is %s" % \
                   (vol, src_volume_record['user_inhibit'][0]))
+        db.close()  #Avoid resource leaks.
         sys.exit(1)
 
     #Get the list of files to restore.
@@ -8073,6 +8313,8 @@ def restore_volume(vol, intf):
             error_log(MY_TASK,
                       "failed to last access time update %s" % (vol,))
 
+    db.close()  #Avoid resource leaks.
+
     return errors #global value
 
 ##########################################################################
@@ -8102,6 +8344,8 @@ class MigrateInterface(option.Interface):
 		self.use_volume_assert = None
                 self.debug = None
                 self.scan = None
+                self.migration_only = None
+                self.multiple_copy_only = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -8162,6 +8406,20 @@ class MigrateInterface(option.Interface):
 				    option.VALUE_USAGE:option.IGNORED,
 				    option.VALUE_TYPE:option.INTEGER,
 				    option.USER_LEVEL:option.ADMIN,},
+                option.MIGRATION_ONLY:{option.HELP_STRING:
+                                       "Used with --status to only list "
+                                       "output assuming the target is not or"
+                                       "has not a multiple copy.",
+                                       option.VALUE_USAGE:option.IGNORED,
+                                       option.VALUE_TYPE:option.INTEGER,
+                                       option.USER_LEVEL:option.USER,},
+                option.MULTIPLE_COPY_ONLY:{option.HELP_STRING:
+                                           "Used with --status to only list "
+                                           "output assuming the target is or"
+                                           "has a multiple copy.",
+                                           option.VALUE_USAGE:option.IGNORED,
+                                           option.VALUE_TYPE:option.INTEGER,
+                                           option.USER_LEVEL:option.USER,},
 		option.PRIORITY:{option.HELP_STRING:
 				 "Sets the initial job priority."
 				 "  Only knowledgeable users should set this.",
@@ -8290,6 +8548,8 @@ def main(intf):
         vcc = volume_clerk_client.VolumeClerkClient(csc)
 
         show_migrated_from(intf.args, vcc, db)
+
+        db.close()  #Avoid resource leaks.
         return 0
 
     elif intf.migrated_to:
@@ -8303,12 +8563,15 @@ def main(intf):
         vcc = volume_clerk_client.VolumeClerkClient(csc)
 
         show_migrated_to(intf.args, vcc, db)
+
+        db.close()  #Avoid resource leaks.
         return 0
 
     elif intf.show:
         # get a db connection
         db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
         show_show(intf, db)
+        db.close()  #Avoid resource leaks.
 
     elif intf.scan_volumes:
         message = "The --scan-volumes switch is depricated.  " \
@@ -8328,7 +8591,10 @@ def main(intf):
                                                         config_port))
         fcc = file_clerk_client.FileClient(csc)
 
-        return make_failed_copies(fcc, db, intf)
+        ret_val = make_failed_copies(fcc, db, intf)
+
+        db.close()  #Avoid resource leaks.
+        return ret_val
 
     else:
         #--status, --restore, --scan and normal migration take the same
@@ -8403,6 +8669,7 @@ def main(intf):
             for volume in volume_list:
                 rtn = rtn + show_status_volumes(volume, db, intf)
 
+            db.close()  #Avoid resource leaks.
             return rtn
         elif intf.restore:
             if bfid_list:
@@ -8431,6 +8698,8 @@ def main(intf):
             ##                                                    config_port))
             ##    vcc = volume_clerk_client.VolumeClerkClient(csc)
             ##    rtn = rtn + scan_remaining_volumes(vcc, db, intf)
+            ##
+            ##    db.close()  #Avoid resource leaks.
 
             return rtn
 
@@ -8451,6 +8720,7 @@ def main(intf):
                 vcc = volume_clerk_client.VolumeClerkClient(csc)
                 rtn = rtn + migrate_remaining_volumes(vcc, db, intf)
 
+                db.close()  #Avoid resource leaks.
             return rtn
 
     return 0
