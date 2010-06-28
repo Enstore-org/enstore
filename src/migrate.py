@@ -6783,12 +6783,6 @@ def final_scan_volume(vol, intf):
     if debug:
         log(MY_TASK, "volume_info:", str(dst_volume_record))
 
-    # make sure the volume is ok to scan (check system_inhibit 0)
-    if dst_volume_record['system_inhibit'][0] != 'none':
-        error_log(MY_TASK, 'volume %s is "%s"' % (vol,
-                                      dst_volume_record['system_inhibit'][0]))
-        return 1
-
     # get a db connection
     db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
@@ -6810,17 +6804,23 @@ def final_scan_volume(vol, intf):
     elif not is_migration_closed:
         #If the scanning is not recorded as completed in the migration_history
         # table, let the scanning proceed regardless of the following
-        # file_family test.
+        # system_inhibit and file_family tests.
         pass
+    # make sure the volume is ok to scan (check system_inhibit 0)
+    elif dst_volume_record['system_inhibit'][0] != 'none':
+        error_log(MY_TASK, 'volume %s is "%s"' % (vol,
+                                      dst_volume_record['system_inhibit'][0]))
+        db.close()  #Avoid resource leaks.
+        return 1
+    # If the destination tapes are already migrated, don't continue.
     elif not is_migration_file_family(ff) and \
              not getattr(intf, "force", None):
         error_log(MY_TASK, "%s has a non-%s file family" %
                   (vol, MIGRATION_NAME.lower()))
         db.close()  #Avoid resource leaks.
         return 1
-
     #Verify that the system_inhibit 1 is in a valid state too.
-    if (dst_volume_record['system_inhibit'][1] != 'full' and \
+    elif (dst_volume_record['system_inhibit'][1] != 'full' and \
             dst_volume_record['system_inhibit'][1] != 'none' and \
             dst_volume_record['system_inhibit'][1] != 'readonly') \
             and is_migrated_by_dst_vol(vol, intf, db):
@@ -6828,11 +6828,12 @@ def final_scan_volume(vol, intf):
                                       dst_volume_record['system_inhibit'][1]))
         db.close()  #Avoid resource leaks.
         return 1
+
     #Warn if the volume about to be scanned is not full.  Scan a non-
     # full tape will not allow future migration files to be written
     # onto it (without intervention anyway).
     if dst_volume_record['system_inhibit'][1] != 'full':
-        log(MY_TASK, 'volume %s is not "full"'%(vol), "... WARNING")
+        warning_log(MY_TASK, 'volume %s is not "full"'%(vol))
     #If necessary set the system_inhibit_1 to readonly.  Leave "full"
     # alone, but change the others.
     if dst_volume_record['system_inhibit'][1] != "readonly" and \
