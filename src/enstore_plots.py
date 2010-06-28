@@ -86,7 +86,7 @@ def init_date_hash(sdate, edate):
 	    break
 	iday = iday + 1
 	if imon == 2:
-	    mday = calendar.mdays[imon] + is_leap 
+	    mday = calendar.mdays[imon] + is_leap
 	else:
 	    mday = calendar.mdays[imon]
 	if iday <= mday:
@@ -118,7 +118,7 @@ def sort_stamp_files(tmp_stamps):
     num_stamps = len(tmp_stamps)
     while i < num_stamps:
 	if string.find(tmp_stamps[i][0], enstore_constants.MPH_FILE) == -1:
-	    # this is not an mph stamp 
+	    # this is not an mph stamp
 	    jpg_stamp_files.append(tmp_stamps.pop(i))
 	    num_stamps = num_stamps - 1
 	else:
@@ -140,7 +140,7 @@ def ignore_file(file, ignore):
 
 def find_files(files, dir, ignore):
     # find all files with ".jpg" in them. fill
-    # in the lists above with those files with and without the "_stamp" 
+    # in the lists above with those files with and without the "_stamp"
     # string from this group. also find the ps files
     tmp_stamps = []
     jpg_files = []
@@ -152,7 +152,7 @@ def find_files(files, dir, ignore):
 	    # this file has '.jpg' in it
 	    if not string.find(file, STAMP_JPG) == -1:
 		# this is a postage stamp file
-		tmp_stamps.append((file, 
+		tmp_stamps.append((file,
 				   os.stat("%s/%s"%(dir, file))[stat.ST_MTIME]))
 	    else:
 		jpg_files.append((file,
@@ -164,7 +164,7 @@ def find_files(files, dir, ignore):
 
 def find_jpg_files(dir):
     # given the directory to look in, find all files with ".jpg" in them. fill
-    # in the lists above with those files with and without the "_stamp" 
+    # in the lists above with those files with and without the "_stamp"
     # string from this group. also find the ps files
     files = os.listdir(dir)
     ignore = [enstore_constants.MPH,]
@@ -178,7 +178,7 @@ def convert_to_jpg(psfile, file_name):
     os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s%s"%(psfile, file_name,
                                                               STAMP_JPG))
     #JPG_STAMP_FILES.append("%s%s"%(file_name, STAMP_JPG))
-    os.system("convert -rotate 90 -modulate 80 %s %s%s"%(psfile, file_name, 
+    os.system("convert -rotate 90 -modulate 80 %s %s%s"%(psfile, file_name,
                                                          enstore_constants.JPG))
     #JPG_FILES.append("%s%s"%(file_name, enstore_constants.JPG))
 
@@ -261,7 +261,7 @@ class MpdDriveTypeDataFile(EnPlot):
         gnucmds.open('w')
         gnucmds.write(self.psfile, self.ptsfile, repr(total), self.drive_type, self.lw)
         gnucmds.close()
-            
+
 
 class MpdDataFile(EnPlot):
 
@@ -377,57 +377,12 @@ class MpdMonthDataFile(EnPlot):
             self.files_to_install[file].install(html_dir)
 
 
-class MlatGnuFile(enstore_files.EnFile):
-
-    def write(self, outfile, ptsfile, mount_label):
-	if mount_label is None:
-	    mount_label = ""
-	self.openfile.write("set output '"+outfile+"\n"+ \
-                           "set terminal postscript color solid\n"+ \
-                           "set title '%s Mount Latency in Seconds "%(mount_label,)+ \
-			    plot_time()+"'\n"+ \
-                           "set xlabel 'Date (year-month-day)'\n"+ \
-                           "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
-                           "set logscale y\n"+ \
-                           "set size 1.5,1\n"+ \
-	                   "set xdata time\n"+ \
-	                   "set xrange [ : ]\n"+ \
-	                   "set ylabel 'Latency'\n"+ \
-	                   "set grid\n"+ \
-	                   "set format x \"%y-%m-%d\"\n"+ \
-	                   "plot '"+ptsfile+"' using 1:2 t '' with points\n")
-
-class MlatDataFile(EnPlot):
-
-    def __init__(self, dir, mount_label=None):
-	EnPlot.__init__(self, dir, enstore_constants.MLAT_FILE)
-	self.mount_label = mount_label
-
-    # make the mount latency plot file.  we assume data_l is of
-    # the form [ {'start': '2003-03-27 00:05:55', 'latency': '00:00:25'},
-    #            {'start': '2003-03-27 00:05:56', 'latency': '00:00:25'}...]
-    def plot(self, data_l):
-	last_mount_req = ""
-	# write out the data points
-        for data in data_l:
-            day = string.replace(data['start']," ", ":")
-            hour,minute,sec = string.split(data['latency'], ":")
-            ltnc = int(hour)*3600.0 + int(minute)*60.0 + int(sec)
-            self.openfile.write("%s %s\n"%(day, ltnc))
-
-	# we must create our gnu plot command file too
-	gnucmds = MlatGnuFile(self.gnufile)
-	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, self.mount_label)
-	gnucmds.close()
-
-
 class XferGnuFile(enstore_files.EnFile):
 
     def write(self, outfile1, outfile2, ptsfile1, ptsfile2,extra=None):
         long_string="set output '"+outfile2+"'\n"+ \
                      "set terminal postscript color solid\n"
-        if ( extra == None ) :  
+        if ( extra == None ) :
             long_string = long_string + "set title 'Individual Transfer Activity (no null mvs)"
         else:
             long_string = long_string + "set title '"+extra+": Individual Transfer Activity (no null mvs)"
@@ -460,14 +415,14 @@ class XferDataFile(EnPlot):
 	self.bpdfile = bpdfile
 	EnPlot.__init__(self, dir, enstore_constants.XFER_FILE)
         self.sg = sg
-        if ( self.sg != None ) : 
+        if ( self.sg != None ) :
             self.name = self.name+"_"+self.sg
             self.dir   = dir
             self.ptsfile    = self.file_name+"_"+self.sg+PTS
             self.tmpptsfile = self.file_name+"_"+self.sg+TMP+PTS
             self.psfile     = self.file_name+"_"+self.sg+enstore_constants.PS
             self.gnufile    = self.file_name+GNU
-            
+
 
 
 	self.logfile = "%s/%s%s"%(dir, enstore_constants.XFERLOG_FILE,
@@ -489,15 +444,15 @@ class XferDataFile(EnPlot):
 	gnucmds = XferGnuFile(self.gnufile)
 	gnucmds.open('w')
         gnucmds.write(self.psfile, self.logfile, self.ptsfile, self.bpdfile,self.sg)
-            
+
 	gnucmds.close()
 
     def install(self, dir):
         EnPlot.install(self, dir)
 	os.system("cp %s %s"%(self.logfile, dir))
-	convert_to_jpg(self.logfile, "%s/%s%s"%(dir, self.name, 
+	convert_to_jpg(self.logfile, "%s/%s%s"%(dir, self.name,
 						enstore_constants.LOG))
-	
+
 
 class BpdGnuFile(enstore_files.EnFile):
 
@@ -672,7 +627,7 @@ class BpdDataFile(EnPlot):
                 day = self.ndata[adate]
             except(KeyError):
                 continue
-            
+
 	    day[CTR] = day[CTR] + 1
 	    if fypt > day[LARGEST]:
 		day[LARGEST] = fypt
@@ -775,7 +730,7 @@ class BpdDataFile(EnPlot):
 	    # first.  above ndata has all dates initialized to 0 so no check is
 	    # necessary.
 	    numxfers = numxfers + day[CTR]
-	    
+
 	# we must create our gnu plot command file too
 	gnucmds = BpdGnuFile(self.gnufile)
 	gnucmds.open('w')
@@ -981,7 +936,7 @@ class TotalBpdGnuFile(enstore_files.EnFile):
 	    color = 3
 	    column = 3
 	    for node in max_nodes[1:]:
-		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s lt %s "%(ptsfile, 
+		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s lt %s "%(ptsfile,
 										    column,
 										    node, lw,
 										    color))
@@ -999,7 +954,7 @@ class TotalBpdGnuFile(enstore_files.EnFile):
 	    color = 3
 	    column = 6
 	    for node in max_nodes[1:]:
-		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s lt %s "%(ptsfile, 
+		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s lt %s "%(ptsfile,
 										    column,
 										    node, lw,
 										    color))
@@ -1027,7 +982,7 @@ class TotalBpdDataFile(EnPlot):
 	for key in keys:
 	    day = data_d[key]
 	    nodes = day.keys()
-	    # keep track of the max  nodes we will be plotting. each node 
+	    # keep track of the max  nodes we will be plotting. each node
 	    # corresponds to a column in the gnuplot file
 	    nodes.sort()
 	    if len(nodes) > len(max_nodes):
@@ -1067,14 +1022,14 @@ class TotalBpdDataFile(EnPlot):
 	    else:
 		# all data is 0
 	        self.openfile.write("%s\n"%(key,))
-	    
+
 	# we must create our gnu plot command file too
 	gnucmds = TotalBpdGnuFile(self.gnufile)
 	gnucmds.open('w')
 	# reverse the order of the nodes as we did the columns we wrote to the
 	# data file
 	max_nodes.reverse()
-	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, 
+	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers,
 		      numxfers, max_nodes, total_writes, self.lw)
 	gnucmds.close()
 
