@@ -80,7 +80,14 @@ select media_type, sum(migrating) as migrating, sum(migrated) as migrated,
        sum(remaining_to_finish_migrating) as remaining_to_finish_migrating,
        sum(remaining_to_scan_and_close) as remaining_to_scan_and_close,
        sum(blank_volumes) as blank_volumes, sum(total) as total,
-       sum(percentage_done) as percentage_done
+       round(((CASE WHEN sum(total) > 0
+            THEN (sum(migrated_closed_not_shelved) + 
+                  sum(migrated_closed_shelved) +
+                  sum(duplicated_closed_not_shelved) + 
+                  sum(duplicated_closed_shelved) + 
+                  sum(blank_volumes)) / sum(total)
+            ELSE 0
+       END) * 100), 2) as percentage_done
        -- The reason for this outer select is to combine all disk volumes
        -- onto one line.  Disk volumes have many different sizes and in
        -- order to split LTO1 and LTO2 from 3480 too, this extra select
@@ -121,15 +128,21 @@ select /* It should be as simple as just using the media_type. However,
                                    has been scanned. */
                                 and (select count(*)
                                      from migration_history
+                                     left join volume v2 on v2.id = migration_history.dst_vol_id
                                      where migration_history.src_vol_id = volume.id
                                        and migration_history.closed_time is not NULL
+                                       /* Ingore recycled destination volumes. */
+                                       and v2.system_inhibit_0 != 'DELETED'
                                      limit 1) > 0
                                 /* Reject if any destination volumes have
                                    not been scanned. */
                                 and (select count(*)
                                      from migration_history
+                                     left join volume v2 on v2.id = migration_history.dst_vol_id
                                      where migration_history.src_vol_id = volume.id
-                                       and migration_history.closed_time is NULL) = 0
+                                       and migration_history.closed_time is NULL
+                                       /* Ingore recycled destination volumes. */
+                                       and v2.system_inhibit_0 != 'DELETED') = 0
                                 and volume.sum_wr_access - volume.sum_wr_err > 0 --skip blank tapes
                                 and library not like '%shelf%'
                            THEN label
@@ -140,15 +153,21 @@ select /* It should be as simple as just using the media_type. However,
                                    has been scanned. */
                                 and (select count(*)
                                      from migration_history
+                                     left join volume v2 on v2.id = migration_history.dst_vol_id
                                      where migration_history.src_vol_id = volume.id
                                        and migration_history.closed_time is not NULL
+                                       /* Ingore recycled destination volumes. */
+                                       and v2.system_inhibit_0 != 'DELETED'
                                      limit 1) > 0
                                 /* Reject if any destination volumes have
                                    not been scanned. */
                                 and (select count(*)
                                      from migration_history
+                                     left join volume v2 on v2.id = migration_history.dst_vol_id
                                      where migration_history.src_vol_id = volume.id
-                                       and migration_history.closed_time is NULL) = 0
+                                       and migration_history.closed_time is NULL
+                                       /* Ingore recycled destination volumes. */
+                                       and v2.system_inhibit_0 != 'DELETED') = 0
                                 and volume.sum_wr_access - volume.sum_wr_err > 0 --skip blank tapes
                                 and library like '%shelf%'
                            THEN label
@@ -171,15 +190,21 @@ select /* It should be as simple as just using the media_type. However,
                                    has been scanned. */
                                 and (select count(*)
                                      from migration_history
+                                     left join volume v2 on v2.id = migration_history.dst_vol_id
                                      where migration_history.src_vol_id = volume.id
                                        and migration_history.closed_time is not NULL
+                                       /* Ingore recycled destination volumes. */
+                                       and v2.system_inhibit_0 != 'DELETED'
                                      limit 1) > 0
                                 /* Reject if any destination volumes have
                                    not been scanned. */
                                 and (select count(*)
                                      from migration_history
+                                     left join volume v2 on v2.id = migration_history.dst_vol_id
                                      where migration_history.src_vol_id = volume.id
-                                       and migration_history.closed_time is NULL) = 0
+                                       and migration_history.closed_time is NULL
+                                       /* Ingore recycled destination volumes. */
+                                       and v2.system_inhibit_0 != 'DELETED') = 0
                                 and volume.sum_wr_access - volume.sum_wr_err > 0 --skip blank tapes
                                 and library not like '%shelf%'
                       THEN label
@@ -190,15 +215,21 @@ select /* It should be as simple as just using the media_type. However,
                                    has been scanned. */
                                 and (select count(*)
                                      from migration_history
+                                     left join volume v2 on v2.id = migration_history.dst_vol_id
                                      where migration_history.src_vol_id = volume.id
                                        and migration_history.closed_time is not NULL
+                                       /* Ingore recycled destination volumes. */
+                                       and v2.system_inhibit_0 != 'DELETED'
                                      limit 1) > 0
                                 /* Reject if any destination volumes have
                                    not been scanned. */
                                 and (select count(*)
                                      from migration_history
+                                     left join volume v2 on v2.id = migration_history.dst_vol_id
                                      where migration_history.src_vol_id = volume.id
-                                       and migration_history.closed_time is NULL) = 0
+                                       and migration_history.closed_time is NULL
+                                       /* Ingore recycled destination volumes. */
+                                       and v2.system_inhibit_0 != 'DELETED') = 0
                                 and volume.sum_wr_access - volume.sum_wr_err > 0 --skip blank tapes
                                 and library like '%shelf%'
                       THEN label
@@ -224,28 +255,32 @@ select /* It should be as simple as just using the media_type. However,
                            ELSE NULL
                       END) AS remaining_to_finish_migrating,
        count(distinct CASE WHEN volume.sum_wr_access - volume.sum_wr_err > 0 /*skip blanks*/
-                                and (system_inhibit_1 not in ('migrated',
+                                and ((system_inhibit_1 not in ('migrated',
                                                               'duplicated',
                                                               'cloned',
                                                               'cloning')
-                                    or
-                                      /* At least one needs to be NULL for
-                                        this to still be remaing to complete */
-                                     ((select count(*)
-                                       from migration_history
-                                       where src_vol_id = volume.id
-                                         and closed_time is NULL) > 0
+                                     and
+                                      library not like '%shelf%')
                                      or
-                                      /* A scan has not yet been started. */
-                                      (select count(*)
-                                       from migration_history
-                                       where migration_history.src_vol_id = volume.id) = 0
-                                     )
-                                    )
-                                /* Skip cloning tapes for accurate numbers. */
-                                and system_inhibit_1 not in ('cloned',
-                                                             'cloning')
-                                and library not like '%shelf%'
+                                     ( /* At least one needs to be NULL for
+                                        this to still be remaing to complete */
+                                      ((select count(*)
+                                        from migration_history
+                                        left join volume v2 on v2.id = migration_history.dst_vol_id
+                                        where src_vol_id = volume.id
+                                          and closed_time is NULL
+                                          /* Ingore recycled destination volumes. */
+                                          and v2.system_inhibit_0 != 'DELETED') > 0
+                                      or
+                                       /* A scan has not yet been started. */
+                                       (select count(*)
+                                        from migration_history
+                                        left join volume v2 on v2.id = migration_history.dst_vol_id
+                                        where migration_history.src_vol_id = volume.id
+                                          /* Ingore recycled destination volumes. */
+                                          and v2.system_inhibit_0 != 'DELETED') = 0
+                                      )
+                                    ))
                            THEN label
                            ELSE NULL
                       END) AS remaining_to_scan_and_close,
@@ -269,15 +304,21 @@ select /* It should be as simple as just using the media_type. However,
                                           destination has been scanned. */
                                        select count(*)
                                  from migration_history
+                                 left join volume v2 on v2.id = migration_history.dst_vol_id
                                  where migration_history.src_vol_id = volume.id
-                                   and migration_history.closed_time is not NULL) > 0
+                                   and migration_history.closed_time is not NULL
+                                   /* Ingore recycled destination volumes. */
+                                   and v2.system_inhibit_0 != 'DELETED') > 0
                                       and
                                       /* Reject if any destination volumes have
                                          not been scanned. */
                                       (select count(*)
                                  from migration_history
+                                 left join volume v2 on v2.id = migration_history.dst_vol_id
                                  where migration_history.src_vol_id = volume.id
-                                   and migration_history.closed_time is NULL) = 0
+                                   and migration_history.closed_time is NULL
+                                   /* Ingore recycled destination volumes. */
+                                   and v2.system_inhibit_0 != 'DELETED') = 0
 
                                  THEN label
 				 WHEN volume.sum_wr_access - volume.sum_wr_err = 0
@@ -291,10 +332,9 @@ where (system_inhibit_0 != 'DELETED'
       and media_type != 'null'
       and capacity_bytes > 500  --Skip cleaning tapes.
 group by media_type, capacity_bytes
-order by media_type
+order by capacity_bytes
 ) as inner_result
-group by media_type, capacity_bytes
-order by capacity_bytes;
+group by media_type
 "
 }
 
@@ -317,11 +357,16 @@ select /* It should be as simple as just using the media_type. However,
             ELSE media_type
        END as media_type,
        system_inhibit_1 as migration_type,
-       count(distinct src) as completed_volumes_with_skipped_bad_files
+       count(distinct src) as completed_volumes_with_skipped_bad_files,
+       count(CASE WHEN migration.swapped is NULL
+                  THEN bad_file.bfid
+                  ELSE NULL
+             END) as bad_files
 from volume
 left join migration_history on migration_history.src_vol_id = volume.id
 left join file on file.volume = volume.id
 left join bad_file on bad_file.bfid = file.bfid
+left join migration on bad_file.bfid = migration.src_bfid
 where (system_inhibit_1 = 'migrated' or system_inhibit_1 = 'duplicated')
       and volume.label not like '%.deleted'
       and library not like '%shelf%'
@@ -555,34 +600,57 @@ select /* It should be as simple as just using the media_type. However,
           LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
           in the AML/2 when it was first put into use. */
        /*media_type,*/
-       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+       CASE WHEN volume.media_type = '3480' 
+             and volume.capacity_bytes = '107374182400'
             THEN 'LTO1'
-            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            WHEN volume.media_type = '3480'
+             and volume.capacity_bytes = '214748364800'
             THEN 'LTO2'
-            WHEN media_type = '3480' and capacity_bytes < 100
+            WHEN volume.media_type = '3480'
+             and volume.capacity_bytes < 100
             THEN NULL    --Cleaning tape; skip it.
-            ELSE media_type
+            ELSE volume.media_type
        END as media_type,
-       label,
-       CASE WHEN system_inhibit_1 in ('migrated', 'duplicated', 'cloned',
-                                      'migrating', 'duplicating', 'cloning')
-            THEN system_inhibit_1
+       volume.label,
+       CASE WHEN volume.system_inhibit_1 in ('migrated', 'migrating',
+                                             'duplicated', 'duplicating',
+                                             'cloned', 'cloning')
+            THEN volume.system_inhibit_1
             ELSE NULL
        END as migration_state
 from volume
-left join migration_history mh on mh.src_vol_id = volume.id
-where ((system_inhibit_1 not in ('migrated', 'duplicated', 'cloned'))
+where ( /* We obviously need to include un-migrated tapes in the robot. */
+       (volume.system_inhibit_1 not in ('migrated', 'duplicated', 'cloned')
+        and
+        volume.library not like '%shelf%')
        or
-       (mh.closed_time is NULL))
-      and label not like '%.deleted'
-      and library not like '%shelf%'
-      and media_type != 'null'
-      and media_type in (${media_list})
-      and capacity_bytes > 500  --Skip cleaning tapes.
-      and sum_wr_access > 0  --Skip most blank tapes.
-      and wrapper != 'none' --Skip blank tapes recycled after write error.
-group by media_type,capacity_bytes,label,system_inhibit_1
-order by media_type,label;
+        (( /* Include migrated tapes without any entries in the 
+              migration_history table. */
+          (select count(*)
+              from migration_history mh2
+              left join volume v3 on mh2.dst_vol_id = v3.id
+              where volume.id = mh2.src_vol_id
+                and v3.system_inhibit_0 != 'DELETED') = 0
+             and
+              volume.system_inhibit_1 in ('migrated', 'duplicated', 'cloned'))
+           or /* Include migrated tapes with missing closed_time entries
+                 in the migration_history table. */
+            ((select count(*)
+              from migration_history mh2
+              left join volume v3 on mh2.dst_vol_id = v3.id
+               where volume.id = mh2.src_vol_id
+                 and v3.system_inhibit_0 != 'DELETED'
+                 and mh2.closed_time is NULL) > 0
+             and
+              volume.system_inhibit_1 in ('migrated', 'duplicated', 'cloned'))))
+      and volume.system_inhibit_0 != 'DELETED'
+      and volume.media_type != 'null'
+      and volume.media_type in (${media_list})
+      and volume.capacity_bytes > 500  --Skip cleaning tapes.
+      and volume.sum_wr_access > 0  --Skip most blank tapes.
+      and volume.wrapper != 'none' --Skip blank tapes recycled after write error.
+group by volume.media_type,volume.capacity_bytes,volume.label,volume.system_inhibit_1
+order by volume.media_type,volume.label;
 "
 }
 

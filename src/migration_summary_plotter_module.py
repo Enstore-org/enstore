@@ -197,14 +197,18 @@ where volume.id = migration_history.src_vol_id
       /* Make sure that at least one destination has been scanned. */
       and (select count(*)
            from migration_history
+           left join volume v3 on migration_history.dst_vol_id = v3.id
            where migration_history.src_vol_id = volume.id
              and migration_history.closed_time is not NULL
+             and v3.system_inhibit_0 != 'DELETED'
            limit 1) > 0
       /* Make sure all the destination volumes have been scanned. */
       and (select count(*)
            from migration_history
+           left join volume v3 on migration_history.dst_vol_id = v3.id
            where migration_history.src_vol_id = volume.id
-           and migration_history.closed_time is NULL) = 0
+             and migration_history.closed_time is NULL
+             and v3.system_inhibit_0 != 'DELETED') = 0
       and capacity_bytes > 500  --Skip cleaning tapes.
 group by day,media_type,capacity_bytes
 order by day,media_type
@@ -235,10 +239,31 @@ select /* It should be as simple as just using the media_type. However,
        count(distinct label) as remaining_volumes
 from volume
 left join migration_history on migration_history.src_vol_id = volume.id
-where (system_inhibit_1 not in ('migrated', 'duplicated', 'cloned', 'cloning')
-       or migration_history.closed_time is NULL)
+where ( /* We obviously need to include un-migrated tapes in the robot. */
+       (system_inhibit_1 not in ('migrated', 'duplicated', 'cloned', 'cloning')
+        and
+        library not like '%shelf%')
+       or
+       (( /* Include migrated tapes without any entries in the 
+              migration_history table. */
+          (select count(*)
+              from migration_history mh2
+              left join volume v3 on mh2.dst_vol_id = v3.id
+              where volume.id = mh2.src_vol_id
+                and v3.system_inhibit_0 != 'DELETED') = 0
+             and
+              volume.system_inhibit_1 in ('migrated', 'duplicated', 'cloned'))
+           or /* Include migrated tapes with missing closed_time entries
+                 in the migration_history table. */
+            ((select count(*)
+              from migration_history mh2
+              left join volume v3 on mh2.dst_vol_id = v3.id
+               where volume.id = mh2.src_vol_id
+                 and v3.system_inhibit_0 != 'DELETED'
+                 and mh2.closed_time is NULL) > 0
+             and
+              volume.system_inhibit_1 in ('migrated', 'duplicated', 'cloned'))))
       and system_inhibit_0 != 'DELETED'
-      and library not like '%shelf%'
       and media_type != 'null'
       and volume.sum_wr_access - volume.sum_wr_err > 0
       and capacity_bytes > 500  --Skip cleaning tapes.
@@ -310,7 +335,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         plot_fp.write('set xtics rotate\n')
         plot_fp.write('set grid\n')
         #plot_fp.write('set nokey\n')
-        plot_fp.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (time.ctime(),))
+        plot_fp.write('set label "Plotted %s " at graph 1.01,0 rotate font "Helvetica,10"\n' % (time.ctime(),))
 
         if plot_type == ACCUMULATED:
             
