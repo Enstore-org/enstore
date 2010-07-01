@@ -5,20 +5,19 @@
 # $Date$
 # $Id$
 #
-# generic framework class
+# generic framework class 
 # Author: Dmitry Litvintsev (litvinse@fnal.gov) 08/05
 #
 ###############################################################################
 
 import configuration_client
 import enstore_plotter_module
-import enstore_functions2
 
 class EnstorePlotterFramework:
     def __init__(self):
         self.module_list=[]
-        self.csc   = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
-                                                              enstore_functions2.default_port()))
+        intf       = configuration_client.ConfigurationClientInterface(user_mode=0)
+        self.csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
     def get_configuration_client(self):
         return self.csc
     def add(self,module):
@@ -40,4 +39,4 @@ class EnstorePlotterFramework:
         self.book()
         self.fill()
         self.plot()
-
+    
