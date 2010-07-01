@@ -1506,6 +1506,23 @@ def is_swapped_by_dst(bfid, fcc, db):
         else:
             return res[0]['swapped']
 
+# is_checked_by_src(bfid) -- has the file already been checked?
+#	we check the source file
+def is_checked_by_src(bfid, fcc, db):
+
+    res = __is_migrated_state(bfid, 1, 0, fcc, db) # 1, 0 => source only
+    
+    if len(res) == 0:
+        return None
+    elif len(res) == 1:
+        return res[0]['checked']
+    else: #len(res) > 1
+        for file_result in res:
+            if not file_result['checked']:
+                return file_result['checked']
+        else:
+            return res[0]['checked']
+
 # is_checked(bfid) -- has the file already been checked?
 #	we check the destination file
 def is_checked(bfid, fcc, db):
@@ -2774,7 +2791,7 @@ def mark_undeleted(MY_TASK, bfid, fcc, db):
 def migration_path(path, file_record, deleted = NO):
     admin_mount_points = pnfs.get_enstore_admin_mount_point()
     if len(admin_mount_points) == 0:
-        if deleted == NO:
+        if file_record.get('deleted', None) == NO and deleted == NO:
             #If the admin path is not mounted, use the normal path...
             mig_dir, fname = os.path.split(path)
         else:
@@ -4307,6 +4324,8 @@ def __show_status(MY_TASK, full_output_list, tape_list, fcc, vcc, db, intf,
 
 
 def show_show(intf, db):
+    MY_TASK = "SHOW STATUS"
+    
     #Build the sql query.
     q = "select label,system_inhibit_1 from volume " \
         "where system_inhibit_0 != 'DELETED' " \
@@ -4326,6 +4345,9 @@ def show_show(intf, db):
            intf.wrapper != None and intf.wrapper != "None":
         q = q + "and wrapper = '%s' " % (intf.wrapper,)
     q = q + ";"
+
+    if debug:
+        log(MY_TASK, q)
 
     #Get the results.
     res = db.query(q).getresult()
@@ -4420,16 +4442,24 @@ def make_failed_copies(fcc, db, intf):
             continue
 
         if is_swapped(bfid, fcc, db) and is_duplication(bfid, db):
-            log(MY_TASK, "Setting already migrated file %s as done." % (bfid,))
+            #At th is point we know that the file has been duplicated
+            # through the swap step.  If --with-final-scan was used, also
+            # check if the tape is already scanned.  If everything is
+            # done decrement the file's remaining count.  Normally this will
+            # never happen, but it might if a previous run is interrupted.
+            if (intf.with_final_scan and is_checked_by_src(bfid, fcc, db)) \
+                   or not intf.with_final_scan:
+                log(MY_TASK,
+                    "Setting already migrated file %s as done." % (bfid,))
 
-            #Can't duplicate since it has already been migrated.
-            update_failed_done(bfid, db)
+                #Can't duplicate since it has already been migrated.
+                update_failed_done(bfid, db)
 
-            #For debugging, do only one file.
-            if debug:
-                log("limiting to one file in debug mode")
-                break
-            continue
+                #For debugging, do only one file.
+                if debug:
+                    log("limiting to one file in debug mode")
+                    break
+                continue
 
         if is_multiple_copy_bfid(bfid, db):
             original_bfid = get_the_original_copy_bfid(bfid, db)
