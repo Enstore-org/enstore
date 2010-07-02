@@ -480,11 +480,31 @@ def check_server(csc, name, intf, cmd):
             ch_cmd = 'EPS | egrep "%s" | egrep python | egrep -v "%s|%s|%s"'%(name, "enstore start", "enstore stop", "enstore restart")
             pipeObj = subprocess.Popen(ch_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=True, close_fds=True)
             if pipeObj:
-                result = pipeObj.communicate()[0]
+                rc = pipeObj.communicate()[0]
+                if rc:
+                    result = rc.split("\n")
+                else:
+                    result = rc
+                if len(result) > 1:
+                    # get rid of empty lines
+                    while result.count("") > 0:
+                        result.remove("")
                 if len(result) >= 1:
+                    dont_start = True
+                    if len(result) == 1:
+                        # the command line for the running server looks like:
+                        # python <path>server_name server_name.<suffix>
+                        # check that the command line returned by ch_cmd
+                        # satisfies this rule
+                        c_l = result[0].split(' ')
+                        if c_l[1].find(name) != -1 and c_l[2].find(name) != -1:
+                            pass
+                        else:
+                           dont_start = False 
                     # running, don't start
-                    rtn = {'status':(e_errors.OK,"running")}
-                    print "Server %s does not respond but is running as \n %s" % (name, result)
+                    if dont_start:
+                        rtn = {'status':(e_errors.OK,"running")}
+                        print "Server %s does not respond but is running as \n %s" % (name, result)
                 else:
                     rtn = {'status':("e_errors.SERVERDIED","not running")}
 
