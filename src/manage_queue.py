@@ -229,6 +229,8 @@ class SortedList:
             self.lock.acquire()
             self.start_index = self.current_index
             self.lock.release()
+            Trace.trace(TR+23,"%s:::SortedList.get: c_i %s s_i %s"%
+                        (self.my_name, self.current_index, self.start_index))
             return None    # list is empty
         Trace.trace(TR+23,"%s:::SortedList.get: pri %s, u_f %s"%
                     (self.my_name, pri, self.update_flag))
@@ -273,16 +275,21 @@ class SortedList:
 
         self.lock.acquire()
         self.start_index = self.current_index
+        
         self.lock.release()
+        Trace.trace(TR+23,"%s:::SortedList.get: at exit c_i %s s_i %s"%
+                    (self.my_name, self.current_index, self.start_index))
 
         return ret
 
     # get next pending request
     def _get_next(self):
-        Trace.trace(TR+23, "%s:::SortedList.get_next stop_rolling %s current_index %s"%
+        Trace.trace(TR+23, "%s:::SortedList._get_next stop_rolling %s current_index %s"%
                     (self.my_name, self.stop_rolling,self.current_index))
         if not self.sorted_list:
             self.start_index = self.current_index
+            Trace.trace(TR+23,"%s:::SortedList._get_next: c_i %s s_i %s"%
+                        (self.my_name, self.current_index, self.start_index))
             return None    # list is empty
         if self.stop_rolling:
             self.stop_rolling = 0
@@ -291,23 +298,27 @@ class SortedList:
         self.current_index = self.current_index + 1
         if self.current_index >= len(self.sorted_list):
             self.current_index = 0
+        Trace.trace(TR+23,"%s:::SortedList._get_next:?????"%(self.my_name,))
+        Trace.trace(TR+23,"%s:::SortedList._get_next: c_i %s s_i %s list_len %s"%
+                    (self.my_name, self.current_index, self.start_index, len(self.sorted_list)))
+        
         if old_current_index == self.current_index: # only one element in the list
             self.start_index = self.current_index
-            Trace.trace(TR+33,"%s:::o_i %s c_i %s s_i %s ret %s"%
+            Trace.trace(TR+33,"%s:::SortedList._get_next:o_i %s c_i %s s_i %s ret %s"%
                         (self.my_name, old_current_index,self.current_index,self.start_index, None))
             self.stop_rolling = 1
-            Trace.trace(TR+33,"%s:::stop_rolling for %s"%(self.my_name, self.sorted_list,))
+            Trace.trace(TR+33,"%s:::SortedList._get_next:stop_rolling for %s"%(self.my_name, self.sorted_list,))
             return self.sorted_list[self.current_index]
             #return None
         try:
             if self.current_index == self.start_index: # returned to the beginning index
-                Trace.trace(TR+33,"%s:::stop_rolling for %s"%(self.my_name,self.sorted_list,))
+                Trace.trace(TR+33,"%s:::SortedList._get_next stop_rolling for %s"%(self.my_name,self.sorted_list,))
                 return None  # came back to where it started
         except AttributeError, detail: # how this happens
             self.start_index = self.current_index
-            Trace.trace(TR+33, "ATTR ERR %s"%(detail,))
+            Trace.trace(TR+33, "SortedList._get_next: ATTR ERR %s"%(detail,))
             return None
-        Trace.trace(TR+33,"%s:::o_i %s c_i %s s_i %s ret %s"%
+        Trace.trace(TR+33,"%s:::SortedList._get_next: o_i %s c_i %s s_i %s ret %s"%
                     (self.my_name, old_current_index,self.current_index,
                      self.start_index, self.sorted_list[self.current_index]))  
         rq = self.sorted_list[self.current_index]
@@ -319,6 +330,9 @@ class SortedList:
     # requests from which have been alredy rejected by discipline
     # in the current selection cycle
     def get_next(self, disabled_hosts=[]):
+        if not hasattr(self,'start_index'): # get was not called in this selection cycle, call it
+            Trace.trace(TR+33,"%s SortedList.get_next: will call get"%(self.my_name,))
+            return self.get()
         self.lock.acquire()
         rq = self._get_next()
         self.lock.release()
