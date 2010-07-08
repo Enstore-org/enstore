@@ -20,8 +20,9 @@ WEB_SUB_DIRECTORY = enstore_constants.MOVER_SUMMARY_PLOTS_SUBDIR
 
 MB = 1048576L
 
-Q = "select date, drive_rate from encp_xfer where date between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP and mover='%s' and size>2147483648"
+Q = "select date, drive_rate from encp_xfer where date between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP and mover='%s' and size>536870912" # files greater than 500MiB
 Q1 = "select time,write_errors,read_errors from status where time between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP and  host='%s' "
+SELECT_MIN_MAX = "select min(drive_rate),max(drive_rate)  from encp_xfer where date between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP"
 
 class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def __init__(self,name,isActive=True):
@@ -30,6 +31,70 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         self.drive_rate_histograms={}
         self.drive_rate_ntuples={}
         self.drive_error_ntuples={}
+
+    def book(self, frame):
+        cron_dict = frame.get_configuration_client().get("crons", {})
+        self.html_dir = cron_dict.get("html_dir", "")
+        self.plot_dir = os.path.join(self.html_dir,
+                                     enstore_constants.PLOTS_SUBDIR)
+        if not os.path.exists(self.plot_dir):
+            os.makedirs(self.plot_dir)
+        self.web_dir = os.path.join(self.html_dir, WEB_SUB_DIRECTORY)
+        if not os.path.exists(self.web_dir):
+            os.makedirs(self.web_dir)
+
+        mover_list=frame.get_configuration_client().get_movers(None,
+                                                               timeout=5,
+                                                               retry=3)
+
+        acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER)
+        #
+        # histograms are booked(aka created) in advance, and then filled. We
+        # need to get values for lowest and highest bins first
+        #
+        db = pg.DB(host  = acc.get('dbhost', 'localhost'),
+                   dbname= acc.get('dbname', 'accounting'),
+                   port  = acc.get('dbport', 5432),
+                   user  = acc.get('dbuser_reader', 'enstore_reader'))
+
+        res = db.query(SELECT_MIN_MAX).getresult()
+        min = res[0][0]/MB
+        max = res[0][1]/MB
+        min = int(min)
+        max = int(max)
+        db.close()
+
+        for mover_name in mover_list:
+            mover = frame.get_configuration_client().get(mover_name['mover'])
+            mover['name']=mover_name['mover']
+            if type(mover['library']) == types.StringType:
+                if mover['library'].find("null") != -1 :
+                    continue
+                if mover['library'].find("disk") != -1 :
+                    continue
+            skip=False
+            if type(mover['library']) == types.ListType:
+                for l in mover['library']:
+                    if l.find("null") != -1 :
+                        skip=True
+                        break
+                    if l.find("disk") != -1 :
+                        skip=True
+                        break
+
+            if  skip  :
+                continue
+            name=mover_name['mover'].split(".")[0]
+            self.mover_list.append(mover)
+            self.drive_rate_histograms[mover_name['mover']]= histogram.Histogram1D(name+"_drive_rate",
+                                                                                   name+" drive_rate",max-min,float(min),float(max))
+
+            self.drive_rate_ntuples[mover_name['mover']]=histogram.Ntuple(name+"_drive_rate_vs_date",
+                                                                          name)
+
+            self.drive_error_ntuples[mover_name['mover']]=histogram.Ntuple(name+"_error_vs_date",
+                                                                           name)
+
 
     def fill(self, frame):
         acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER)
@@ -66,11 +131,12 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
 
 
-
     def plot(self):
         for h in self.drive_rate_histograms.values():
             if not h.get_entries() :
                 continue
+            h.set_marker_type("impulses")
+            h.set_line_width(10)
             h.set_opt_stat()
             h.set_xlabel("drive_rate [MB/s]")
             h.set_ylabel("Entries / 1 [MB/s]")
@@ -91,9 +157,9 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         # to plot errors I need to superimpose two ntuples on the
         # same plot. histogram module does not do it. So use this
         # function:
-        self.plot_errors(self.drive_error_ntuples.values());
+        self.__plot_errors(self.drive_error_ntuples.values());
 
-    def plot_errors(self,ntuples):
+    def __plot_errors(self,ntuples):
         for n in ntuples:
             if not n.get_entries() :
                 continue
@@ -129,50 +195,7 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
 
 
-    def book(self, frame):
-        cron_dict = frame.get_configuration_client().get("crons", {})
-        self.html_dir = cron_dict.get("html_dir", "")
-        self.plot_dir = os.path.join(self.html_dir,
-                                     enstore_constants.PLOTS_SUBDIR)
-        if not os.path.exists(self.plot_dir):
-            os.makedirs(self.plot_dir)
-        self.web_dir = os.path.join(self.html_dir, WEB_SUB_DIRECTORY)
-        if not os.path.exists(self.web_dir):
-            os.makedirs(self.web_dir)
 
-        mover_list=frame.get_configuration_client().get_movers(None,
-                                                               timeout=5,
-                                                               retry=3)
-        for mover_name in mover_list:
-            mover = frame.get_configuration_client().get(mover_name['mover'])
-            mover['name']=mover_name['mover']
-            if type(mover['library']) == types.StringType:
-                if mover['library'].find("null") != -1 :
-                    continue
-                if mover['library'].find("disk") != -1 :
-                    continue
-            skip=False
-            if type(mover['library']) == types.ListType:
-                for l in mover['library']:
-                    if l.find("null") != -1 :
-                        skip=True
-                        break
-                    if l.find("disk") != -1 :
-                        skip=True
-                        break
-
-            if  skip  :
-                continue
-            name=mover_name['mover'].split(".")[0]
-            self.mover_list.append(mover)
-            self.drive_rate_histograms[mover_name['mover']]= histogram.Histogram1D(name+"_drive_rate",
-                                                                                   name+" drive_rate",100,0,100)
-
-            self.drive_rate_ntuples[mover_name['mover']]=histogram.Ntuple(name+"_drive_rate_vs_date",
-                                                                          name)
-
-            self.drive_error_ntuples[mover_name['mover']]=histogram.Ntuple(name+"_error_vs_date",
-                                                                           name)
 
 
 
