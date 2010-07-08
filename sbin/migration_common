@@ -84,8 +84,8 @@ select media_type, sum(migrating) as migrating, sum(migrated) as migrated,
             THEN (sum(migrated_closed_not_shelved) + 
                   sum(migrated_closed_shelved) +
                   sum(duplicated_closed_not_shelved) + 
-                  sum(duplicated_closed_shelved) + 
-                  sum(blank_volumes)) / sum(total)
+                  sum(duplicated_closed_shelved))
+                  / (sum(total) - sum(blank_volumes))
             ELSE 0
        END) * 100), 2) as percentage_done
        -- The reason for this outer select is to combine all disk volumes
@@ -358,7 +358,7 @@ select /* It should be as simple as just using the media_type. However,
        END as media_type,
        system_inhibit_1 as migration_type,
        count(distinct src) as completed_volumes_with_skipped_bad_files,
-       count(CASE WHEN migration.swapped is NULL
+       count(CASE WHEN migration.copied is NULL
                   THEN bad_file.bfid
                   ELSE NULL
              END) as bad_files
@@ -594,6 +594,21 @@ having count(v2.label) > 0;
 #media_list=`echo $media_types | tr " " ","`
 media_list=`echo $media_types | sed -e "s/^/\'/" -e "s/ /\',\'/g" -e "s/$/\'/"`
 
+psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
+/* We need to use this function to convert a row of values into a single
+   row string.  A temporary modifier or builtin function would be useful
+   in this situation.  There should be a way to use CREATE FUNCTION
+   to do this, but that syntax is more complicated. */
+CREATE AGGREGATE rows2string(
+  basetype  = text,
+  sfunc     = textcat,
+  stype     = text,
+  initcond  = ''
+);
+" > /dev/null  #leave errors alone, just hide success messages.
+
+echo "Source tapes not yet finished."
+echo
 
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
 select /* It should be as simple as just using the media_type. However,
@@ -612,12 +627,20 @@ select /* It should be as simple as just using the media_type. However,
             ELSE volume.media_type
        END as media_type,
        volume.label,
+       /* Report if the migration is in progress.  If it is done, then
+          it is waiting on one or more destination tapes to be scanned. */
        CASE WHEN volume.system_inhibit_1 in ('migrated', 'migrating',
                                              'duplicated', 'duplicating',
                                              'cloned', 'cloning')
             THEN volume.system_inhibit_1
             ELSE NULL
-       END as migration_state
+       END as migration_state,
+       /* Report all the tapes that have files migrated from this tape. */
+       (select trim(E'\n' from rows2string(v3.label || E'\n'))
+        from migration_history mh2
+        left join volume v3 on mh2.dst_vol_id = v3.id
+        where volume.id = mh2.src_vol_id
+          and v3.system_inhibit_0 != 'DELETED') as migrated_to
 from volume
 where ( /* We obviously need to include un-migrated tapes in the robot. */
        (volume.system_inhibit_1 not in ('migrated', 'duplicated', 'cloned')
@@ -648,10 +671,89 @@ where ( /* We obviously need to include un-migrated tapes in the robot. */
       and volume.media_type in (${media_list})
       and volume.capacity_bytes > 500  --Skip cleaning tapes.
       and volume.sum_wr_access > 0  --Skip most blank tapes.
-      and volume.wrapper != 'none' --Skip blank tapes recycled after write error.
-group by volume.media_type,volume.capacity_bytes,volume.label,volume.system_inhibit_1
-order by volume.media_type,volume.label;
+      and volume.wrapper != 'none' --Skip blank tapes recycled after write erro
+group by media_type,capacity_bytes,label,system_inhibit_1,volume.id
+order by media_type,label;
 "
+
+echo
+echo "Destination tapes not yet finished."
+echo
+
+#Lets include the list destination tapes that need to be scanned.
+psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
+select /* It should be as simple as just using the media_type. However,
+          LTO1 and LTO2 at FNAL are both set as 3480 do to limitations
+          in the AML/2 when it was first put into use. */
+       /*media_type,*/
+       CASE WHEN media_type = '3480' and capacity_bytes = '107374182400'
+            THEN 'LTO1'
+            WHEN media_type = '3480' and capacity_bytes = '214748364800'
+            THEN 'LTO2'
+            WHEN media_type = '3480' and capacity_bytes < 100
+            THEN NULL    --Cleaning tape; skip it.
+            ELSE media_type
+       END as media_type,
+       label,
+       CASE WHEN system_inhibit_1 = 'none'
+            THEN 'not full'
+            WHEN system_inhibit_1 = 'readonly'
+            THEN 'not full (readonly)'
+            WHEN system_inhibit_1 = 'full'
+            THEN 'full'
+            ELSE NULL
+       END as fill_state,
+       /* Report if the scanning has started for this destination tape. */
+       CASE WHEN (select count(*)
+                  from migration, file
+                  where volume.id = file.volume
+                    and file.bfid = migration.dst_bfid
+                    and migration.checked is not NULL
+                  limit 1) > 0
+            THEN 'scanning'
+            ELSE NULL
+       END as scanning_state,
+       /* Report all the tapes that have files migrated to this tape. */
+       (select trim(E'\n' from rows2string(v3.label || E'\n'))
+        from migration_history mh2
+        left join volume v3 on mh2.src_vol_id = v3.id
+        where volume.id = mh2.dst_vol_id) as migrated_from
+from volume
+where /* Pull out migration or duplication destination tapes.  Include
+         destination tapes that have had there file_families changed,
+         but not all the migration history is updated. */
+      ((file_family like '%-MIGRATION%' or file_family like '%_copy_%')
+      or
+       (select count(*)
+        from migration_history mh2
+        left join volume v3 on mh2.src_vol_id = v3.id
+        where volume.id = mh2.dst_vol_id
+          and v3.system_inhibit_0 != 'DELETED'
+          and mh2.closed_time is NULL) > 0)
+   /* Make sure at least one file has been migration scanned.  This check
+      also serves to remove multiple copy tapes (not made with duplication)
+      from the output list. */
+   and (select count(*)
+        from migration, file
+        where volume.id = file.volume
+          and file.bfid = migration.dst_bfid
+          and migration.copied is not NULL
+        limit 1) > 0
+   and volume.system_inhibit_0 != 'DELETED'
+   and volume.media_type != 'null'
+   and volume.capacity_bytes > 500  --Skip cleaning tapes.
+   and volume.sum_wr_access > 0  --Skip most blank tapes.
+group by media_type,capacity_bytes,label,system_inhibit_1,volume.id
+order by media_type,label;
+"
+
+psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
+/* Lets not leave this lying around.  A temporary modifier would be useful
+   in this situation. */
+DROP AGGREGATE rows2string(text);
+" > /dev/null  #leave errors alone, just hide success messages.
+
+
 }
 
 
