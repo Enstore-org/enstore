@@ -47,6 +47,10 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         # library and storage_group.  The values are file handles to the
         # pts files written out in the fill() function.
         self.PLOT_dict = {}
+        #
+        # This dictionay stores slopes in MB/s 
+        #
+        self.slopes    = {}
 
         #This one is used by summary_burn_rate_plotter_module.py.  Appears here
         # only for compatibility.
@@ -66,7 +70,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
         if db == None:
             return (None, None)
-        
+
         q = "select distinct library,media_type from volume " \
             " where system_inhibit_0 != 'DELETED' and library = '%s';" \
             % (library,)
@@ -98,14 +102,14 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         media_capacity = getattr(enstore_constants,
                                  "CAP_%s" % (media_type,),
                                  None)
-        
+
         if media_capacity:
             #Cache this value for next time, but only for libraries we
             # care about.
             self.library_capacity[library] = (media_capacity, media_type)
 
         return media_capacity, media_type
-        
+
 
     #Write out the file that gnuplot will use to plot the data.
     # plot_filename = The file that will be read in by gnuplot containing
@@ -147,13 +151,13 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             full_tapes = len(self.full_tape_cache[key])
         except KeyError:
             full_tapes = 0 #punt?
-            
+
         #Get the blank and used number of tapes.
         try:
             blanks, written = self.tape_totals[key]
         except KeyError:
             blanks, written = 0, 0  #What can cause this???
-            
+
         #Need the current time to add to the plot.
         now = time.strftime("%m-%d-%Y %H:%M:%S")
 
@@ -171,7 +175,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #In case there is something else we want to add.
         if hasattr(self, "extra_title_info"):
             label = "%s %s" % (label, self.extra_title_info)
-        
+
         plot_fp = open(plot_filename, "w+")
 
         plot_fp.write('set terminal postscript color solid\n')
@@ -188,7 +192,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         plot_fp.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (now,))
         plot_fp.write('set xrange["%s":"%s"]\n' % (day_start, day_end))
         plot_fp.write('set yrange[ 0 : ]\n')
-        
+
         plot_fp.write('set label "%s tapes written last month" at graph .05,.95\n' % (int(tapes_written_last_month),))
         plot_fp.write('set label "%s tapes written last week" at graph .05,.90\n' % (int(tapes_written_last_week),))
         plot_fp.write('set label "%s new tapes drawn last month" at graph .05,.85\n' % (int(new_tapes_written_last_month),))
@@ -197,26 +201,31 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         plot_fp.write('set label "%s total tapes used" at graph .05,.70\n' % (int(written),))
         plot_fp.write('set label "%s tapes blank" at graph .05,.65\n' % (int(blanks),))
         plot_fp.write('set label "%sGB media capacity" at graph .05,.60\n' % (media_capacity,))
+        try :
+            plot_fp.write('set label "slope %5.1f MB/s " at graph .05,.55\n' % (self.slopes[key],))
+        except KeyError, msg:
+            pass
         
+
         ## The first plot is the summation of bytes written over the last 4
         ## months.  The second plot is the daily bytes written.  The third
         ## plot is a line connecting the summation bars together in case of
         ## a hole in the data.  The last plot contains three points
         ## representing the bytes written at a month ago to the present and
         ## to the estimated amount a month from now.
-        
+
         plot_fp.write('plot "%s" using 1:3 with impulses linewidth 10, ' \
                       '"%s" using 1:2 with impulses linewidth 10, ' \
                       '"%s" using 1:3 with lines, ' \
                       '"%s" using 1:4 title "estimated usage" w lp lt 3 lw 5 pt 5\n' % \
                       (data_filename, data_filename, data_filename, data_filename))
-        
+
         plot_fp.close()
 
     #######################################################################
     # The following functions must be defined by all plotting modules.
     #######################################################################
-        
+
     def book(self, frame):
         #Get cron directory information.
         cron_dict = frame.get_configuration_client().get("crons", {})
@@ -235,7 +244,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
 
     def fill(self, frame):
-        
+
         #  here we create data points
 
         edb_info = frame.get_configuration_client().get("database", {})
@@ -260,7 +269,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 # for it.  (This usually excludes null and disk libraries.)
                 #print "DEAD LIBRARY1:", library
                 continue
-            
+
             #Open the file to output the data points to plot.
             fname = os.path.join(self.temp_dir,
                                  "burn_rate_%s.pts" % (library,))
@@ -304,7 +313,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         for key in self.LM_dict.keys():
             self.PLOT_dict[key] = self.LM_dict[key]
         for key in self.LM_SG_dict.keys():
-            self.PLOT_dict[key] = self.LM_SG_dict[key]        
+            self.PLOT_dict[key] = self.LM_SG_dict[key]
 
         #Get the library and storage group for each volume.  It is possible
         # that a file gets written and the tape in is on gets recycled; thus
@@ -364,8 +373,8 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             # row[2] == total written tapes
             self.tape_totals[row[0]] = (row[1], row[2])
 
-                             
-        
+
+
         ###
         ### Get the bytes written for recent write transfers from the
         ### drivestat DB.
@@ -475,14 +484,14 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                         self.full_tape_cache[lm] = {}
                     self.full_tape_cache[lm][volume] = is_full_tape
 
-            
+
             #Update the LM and SG byte counts into day increments.
             lm_sg_summary = bytes_summary.get((lm, sg), {})
             if lm_sg_summary == {}:
                 bytes_summary[(lm, sg)] = {} #Initial value.
             summary = lm_sg_summary.get(date, {'mb_read':0, 'mb_write':0,})
             summary['mb_write'] = summary['mb_write'] + mb_user_write
-            summary['mb_read'] = summary['mb_read'] + mb_user_read            
+            summary['mb_read'] = summary['mb_read'] + mb_user_read
             bytes_summary[(lm, sg)][date] = summary
 
             #Update the LM byte counts into day increments.
@@ -491,7 +500,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 bytes_summary[lm] = {} #Initial value.
             summary = lm_summary.get(date, {'mb_read':0, 'mb_write':0,})
             summary['mb_write'] = summary['mb_write'] + mb_user_write
-            summary['mb_read'] = summary['mb_read'] + mb_user_read            
+            summary['mb_read'] = summary['mb_read'] + mb_user_read
             bytes_summary[lm][date] = summary
 
 
@@ -542,7 +551,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 if new_tape_lm_summary == {}:
                     self.new_tapes_summary_week[(lm, sg)] = {}
                 self.new_tapes_summary_week[(lm, sg)][volume] = 1
-            
+
         ## Now we can write out the data to the pts files that gnuplot
         ## will plot for us.
 
@@ -588,7 +597,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             # the correct points for month ago, today and month ahead.
             is_month_ago_plotted = False
             month_ago_total_gb = 0
-            
+
             #Write out the plot information to the entire librarys' data files.
             summary_keys = use_bytes_summary.keys()
             summary_keys.sort()
@@ -606,12 +615,12 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 #The line written to the data file for one month ago
                 # gets an extra point.
                 if month_ago_date == date:
-                    
+
                     #fdodamo = First Day Of Data After Month Ago
                     # We need this for groups that don't write data
                     # every single day.
                     #fdodamo_date = date
-                    
+
                     is_month_ago_plotted = True
                     month_ago_total_gb = total_gb
 
@@ -629,7 +638,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                     # We need this for groups that don't write data
                     # every single day.
                     #fdodamo_date = date
-                    
+
                     is_month_ago_plotted = True
                     month_ago_total_gb = total_gb
 
@@ -637,7 +646,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                     line2 = "%s %s %s %s\n" % (
                         date, "skip", "skip", total_gb)
                     self.PLOT_dict[key].write(line2)
-                
+
                 #Write out the information to the correct data file.
                 self.PLOT_dict[key].write(line)
 
@@ -651,13 +660,13 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
                 is_month_ago_plotted = True
                 month_ago_total_gb = total_gb
-                    
+
                 #Write out the information to the correct data file.
                 line2 = "%s %s %s %s\n" % (
                     month_ago_date, "skip", "skip", total_gb)
                 self.PLOT_dict[key].write(line2)
 
-            ##    
+            ##
             ## Plot the end of the interpolation line.
             ##
 
@@ -671,6 +680,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             #Write out the information to the correct data file.
             line2 = "%s %s %s %s\n" % (
                 today_date, "skip", "skip", final_value)
+            self.slopes[key] = ( final_value - month_ago_total_gb ) * 1024. / ( DAYS_IN_MONTH * SECONDS_IN_DAY )
             self.PLOT_dict[key].write(line2)
 
         #Cleanup after ourselves.
