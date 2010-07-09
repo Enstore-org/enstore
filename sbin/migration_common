@@ -587,7 +587,7 @@ where (v2.system_inhibit_1 = 'migrated'
       and capacity_bytes > 500  --Skip cleaning tapes.
 group by media_type,capacity_bytes
 having count(v2.label) > 0;
-" | sed '1,2d'`  #Remove the first to header lines.
+" | sed '1,2d'`  #Remove the first two header lines.
 
 #Now we use that to build a list of comma seperated media_types.  This uses
 # an echo trick to put all the media_types on one line seperated by spaces.
@@ -634,13 +634,13 @@ select /* It should be as simple as just using the media_type. However,
                                              'cloned', 'cloning')
             THEN volume.system_inhibit_1
             ELSE NULL
-       END as migration_state,
+       END as migration_state
        /* Report all the tapes that have files migrated from this tape. */
-       (select trim(E'\n' from rows2string(v3.label || E'\n'))
+       /*(select trim(' ' from rows2string(v3.label || ' '))
         from migration_history mh2
         left join volume v3 on mh2.dst_vol_id = v3.id
         where volume.id = mh2.src_vol_id
-          and v3.system_inhibit_0 != 'DELETED') as migrated_to
+          and v3.system_inhibit_0 != 'DELETED') as migrated_to*/
 from volume
 where ( /* We obviously need to include un-migrated tapes in the robot. */
        (volume.system_inhibit_1 not in ('migrated', 'duplicated', 'cloned')
@@ -704,7 +704,9 @@ select /* It should be as simple as just using the media_type. However,
             ELSE NULL
        END as fill_state,
        /* Report if the scanning has started for this destination tape. */
-       CASE WHEN (select count(*)
+       /* Adding this column really slows down execution.  Commenting out
+          for now. */
+       /*CASE WHEN (select count(*)
                   from migration, file
                   where volume.id = file.volume
                     and file.bfid = migration.dst_bfid
@@ -712,37 +714,49 @@ select /* It should be as simple as just using the media_type. However,
                   limit 1) > 0
             THEN 'scanning'
             ELSE NULL
-       END as scanning_state,
+       END as scanning_state*/
        /* Report all the tapes that have files migrated to this tape. */
-       (select trim(E'\n' from rows2string(v3.label || E'\n'))
+       (select trim(' ' from rows2string(v3.label || ' '))
         from migration_history mh2
         left join volume v3 on mh2.src_vol_id = v3.id
         where volume.id = mh2.dst_vol_id) as migrated_from
 from volume
-where /* Pull out migration or duplication destination tapes.  Include
-         destination tapes that have had there file_families changed,
-         but not all the migration history is updated. */
-      ((file_family like '%-MIGRATION%' or file_family like '%_copy_%')
-      or
+where volume.system_inhibit_0 != 'DELETED'
+  and volume.media_type != 'null'
+  and volume.capacity_bytes > 500  --Skip cleaning tapes.
+  and volume.sum_wr_access > 0  --Skip most blank tapes.
+  and volume.library not like '%shelf%'
+  /* If we fail the following condition the volume was not used in migration.
+     or duplication.  Need to use it to exclude multiple copy tapes, since
+     multiple copy and duplication destination tapes both have _copy_ in
+     the file_family. */
+  and (select count(src_vol_id)
+       from migration_history
+       where volume.id = dst_vol_id
+         and src_vol_id is not NULL
+         /* The src_vol_id and dst_vol_id columns in the migration_history
+             table were added later on.  Some 9940A to 9940B migrations
+             had dummy volume IDs inserted because they had been recycled
+             multiple times.  These dummy IDs were all negative integers.
+             We need to skip these. */
+         and src_vol_id > 0
+       limit 1) > 0
+  /* If there is a missing migration_history entry, include the tape
+     as work to be done. */
+  and (file_family like '%-MIGRATION%' or
+       file_family like '%_copy_%' or
        (select count(*)
-        from migration_history mh2
-        left join volume v3 on mh2.src_vol_id = v3.id
-        where volume.id = mh2.dst_vol_id
-          and v3.system_inhibit_0 != 'DELETED'
-          and mh2.closed_time is NULL) > 0)
-   /* Make sure at least one file has been migration scanned.  This check
-      also serves to remove multiple copy tapes (not made with duplication)
-      from the output list. */
-   and (select count(*)
-        from migration, file
-        where volume.id = file.volume
-          and file.bfid = migration.dst_bfid
-          and migration.copied is not NULL
+        from migration_history
+        where volume.id = dst_vol_id
+          and closed_time is NULL
+          /* The src_vol_id and dst_vol_id columns in the migration_history
+             table were added later on.  Some 9940A to 9940B migrations
+             had dummy volume IDs inserted because they had been recycled
+             multiple times.  These dummy IDs were all negative integers.
+             We need to skip these. */
+          and src_vol_id > 0
         limit 1) > 0
-   and volume.system_inhibit_0 != 'DELETED'
-   and volume.media_type != 'null'
-   and volume.capacity_bytes > 500  --Skip cleaning tapes.
-   and volume.sum_wr_access > 0  --Skip most blank tapes.
+      )
 group by media_type,capacity_bytes,label,system_inhibit_1,volume.id
 order by media_type,label;
 "
