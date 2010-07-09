@@ -316,6 +316,7 @@ LOGFILE_DIR = "logfile-dir"                  #plotter
 LS = "ls"                                    #pnfs
 LS_ACTIVE = "ls-active"                      #volume, file
 MAKE_HTML = "make-html"                      #up_down
+MAKE_COPIES = "make-copies"                  #duplicate
 MAKE_FAILED_COPIES = "make-failed-copies"    #duplicate
 MARK_BAD = "mark-bad"                        #file
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
@@ -538,7 +539,7 @@ valid_option_list = [
     LIST_LIBRARY_MANAGERS, LIST_MEDIA_CHANGERS, LIST_MOVERS,
     LIST_SG_COUNT, LIST_SLOTS, LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
-    MAKE_HTML, MAKE_FAILED_COPIES, MARK_BAD,
+    MAKE_HTML, MAKE_COPIES, MAKE_FAILED_COPIES, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MESSAGES_FILE, MIGRATED, MIGRATED_FROM, MIGRATED_TO,
     MIGRATION_ONLY,
@@ -1133,7 +1134,15 @@ class Interface:
             if self.options[opt].get(VALUE_USAGE, None) in [REQUIRED]:
                 temp.append(opt + "=")
             else:
-                temp.append(opt)
+                #If the extra values section starts with a required element,
+                # we also need to include it in the list of switches that
+                # take a required arguement.
+                extra_values = self.options[opt].get(EXTRA_VALUES, [])
+                if len(extra_values) > 0 and \
+                   extra_values[0].get(VALUE_USAGE, None) in [REQUIRED]:
+                    temp.append(opt + "=")
+                else:
+                    temp.append(opt)
                 
         return temp
 
@@ -1248,8 +1257,12 @@ class Interface:
                 self.set_value(long_opt, None) #Uses 'default'
 
         else: #INGORED
-            self.set_value(long_opt, None) #Uses 'default'
-            
+            #Do pass value, there might be an extra values section.
+            if value:
+                self.set_value(long_opt, value)
+            else:
+                self.set_value(long_opt, None)
+
     #Do the same thing with the short options that is done with the long
     # options.  For all intensive purposes, this gets the long opt that
     # is the short option equivalet and uses the long opt.
@@ -1631,12 +1644,23 @@ class Interface:
         if not self.options[long_opt].get(VALUE_NAME, None):
             self.options[long_opt][VALUE_NAME] = long_opt
 
-        #Pass in the long option dictionary, long option and its value to
-        # use them to set this interfaces variable.
-        self.set_from_dictionary(self.options[long_opt], long_opt, value)
-
-        #Some options may require more than one value.
-        self.set_extra_values(long_opt, value)
+        value_usage = self.options[long_opt].get(VALUE_USAGE, IGNORED)
+        extra_values = self.options[long_opt].get(EXTRA_VALUES, [])
+        if value_usage == IGNORED and len(extra_values) > 0 and \
+               extra_values[0].get(VALUE_USAGE, None) in (REQUIRED):
+            #We get here if the option/switch only defines required
+            # arguements in the EXTRA_VALUES section.  We need to
+            # pass value_is_used as false so that set_extra_values()
+            # knows it still needs to assign the value's value.
+            self.set_from_dictionary(self.options[long_opt], long_opt, None)
+            #Some options may require more than one value.
+            self.set_extra_values(long_opt, value)
+        else:
+            #Pass in the long option dictionary, long option and its value to
+            # use them to set this interfaces variable.
+            self.set_from_dictionary(self.options[long_opt], long_opt, value)
+            #Some options may require more than one value.
+            self.set_extra_values(long_opt, None)
 
     #Called from set_from_dictionary().
     def __set_value(self, opt_name, opt_typed_value):
@@ -1694,6 +1718,9 @@ class Interface:
                 self.some_args = self.some_args[2:]
             ###elif self.some_args[1] == value:
             ###    self.some_args = self.some_args[2:]
+            elif opt_dict.get(VALUE_USAGE, IGNORED) in (REQUIRED) \
+                 and not opt_dict.get(EXTRA_OPTION, None):
+                self.some_args = self.some_args[2:]
             else:
                 self.some_args = self.some_args[1:]
 
@@ -1707,7 +1734,9 @@ class Interface:
                 value = self.get_default_value(opt_dict, value)
                 #Get the value in the correct type to set.
                 opt_type = self.get_default_type(opt_dict)  #, value)
-                if opt_type != None:
+                if value == None:
+                    opt_typed_value = value
+                elif opt_type != None:
                     opt_typed_value = apply(opt_type, (value,))
                 else:
                     opt_typed_value = value
@@ -1748,7 +1777,7 @@ class Interface:
             #keep this list up to date for finding the next argument.
             if opt_dict.get(EXTRA_VALUES, None) == None:
                 self.some_args = self.some_args[1:]
-
+        
         #For the cases where this needs to be set also.
         if opt_dict.get(FORCE_SET_DEFAULT, None):
             try:
@@ -1780,12 +1809,13 @@ class Interface:
             EXTRA_VALUES, [])
 
         next_arg = None
-        
+
+        value_is_used = False
         for extra_option in extras:
-            if next_arg:
+            if value and not value_is_used:
+                next_arg = value
+            elif next_arg:
                 next_arg = self.next_argument(next_arg)
-            elif value:
-                next_arg = self.next_argument(value)
             else:
                 next_arg = self.next_argument(opt)
 
@@ -1799,7 +1829,11 @@ class Interface:
             extra_option[EXTRA_OPTION] = 1 #This is sometimes important...
             self.set_from_dictionary(extra_option, long_opt, next_arg)
             try:
-                if next_arg:
+                #Keep the list of arguments still to process correct.
+                # If the first required arguement is specified in extra_values
+                # then we don't need to remove it from the list, because
+                # it is already not there.
+                if next_arg and value_is_used:
                     self.args.remove(next_arg)
             except ValueError:
                 try:
@@ -1808,6 +1842,8 @@ class Interface:
                     sys.stderr.flush()
                 except IOError:
                     pass
+
+            value_is_used = True  #Set this back to the default.
 
 ############################################################################
     

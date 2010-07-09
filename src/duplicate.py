@@ -50,8 +50,31 @@ DuplicateInterface.migrate_options[option.MAKE_FAILED_COPIES] = {
     option.VALUE_USAGE:option.IGNORED,
     option.VALUE_TYPE:option.INTEGER,
     option.USER_LEVEL:option.USER,
- }
-#del DuplicateInterface.migrate_options[option.RESTORE]
+    }
+DuplicateInterface.migrate_options[option.MAKE_COPIES] = {
+    option.HELP_STRING:"Make copies of the supplied volume group.",
+    option.VALUE_USAGE:option.IGNORED,
+    option.VALUE_TYPE:option.INTEGER,
+    option.USER_LEVEL:option.USER,
+    option.FORCE_SET_DEFAULT:option.FORCE,
+    option.EXTRA_VALUES:[
+    {option.VALUE_NAME:"media_type",
+     option.VALUE_TYPE:option.STRING,
+     option.VALUE_USAGE:option.REQUIRED,},
+    {option.VALUE_NAME:"library__",  #Avoid colision with --library.
+     option.VALUE_TYPE:option.STRING,
+     option.VALUE_USAGE:option.OPTIONAL,
+     option.VALUE_LABEL:"library"},
+    {option.VALUE_NAME:"storage_group",
+     option.VALUE_TYPE:option.STRING,
+     option.VALUE_USAGE:option.OPTIONAL,},
+    {option.VALUE_NAME:"file_family",
+     option.VALUE_TYPE:option.STRING,
+     option.VALUE_USAGE:option.OPTIONAL,},
+    {option.VALUE_NAME:"wrapper",
+     option.VALUE_TYPE:option.STRING,
+     option.VALUE_USAGE:option.OPTIONAL,},
+    ]}
 
 # search_order()
 #Return in the following order:

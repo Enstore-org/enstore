@@ -487,7 +487,8 @@ def init(intf):
             #Get a list of /pnfs/fs/usr like mount points.
             amp = pnfs.get_enstore_admin_mount_point() #amp = Admin Mount Point
             if len(amp) == 0 and \
-                   not getattr(intf, 'make_failed_copies', None):
+                   not getattr(intf, 'make_failed_copies', None) and \
+                   not getattr(intf, 'make_copies', None):
                 #If PNFS is not trusted, give up.
                 sys.stderr.write("no PNFS admin mount points found\n")
                 sys.exit(1)
@@ -596,7 +597,7 @@ def init(intf):
 # should start.
 # 2) The optimal size the copy queue should be.
 # 
-# src_bfids: A sequence of source BFIDs.
+# src_bfids: A sequence of source BFIDs or file_records.
 # intf: A MigrateInterface class.
 def get_queue_numbers(src_bfids, intf, volume_record=None):
     if intf.read_to_end_of_tape:
@@ -2900,6 +2901,7 @@ class MigrateQueue:
 	self.debug = debug
         self.initial_wait = True #Wait until low_watermark items are queued.
         self.low_watermark = low_watermark
+        self.maxsize = maxsize
         
 	self.r_pipe, self.w_pipe = os.pipe() #Used with processes.
 
@@ -3080,7 +3082,7 @@ class MigrateQueue:
 
         #Set a flag indicating that we have read the last item.
         if job == SENTINEL:
-            if self.debug:
+            if 1: #self.debug:
                 log("received SENTINEL")
             #Acquire the lock to access a self data member.
             self.lock.acquire()
@@ -4213,6 +4215,13 @@ def __show_status(MY_TASK, full_output_list, tape_list, fcc, vcc, db, intf,
                     # The other side can/will have multiple volumes.
                     __print_header(column_volume_list[i][0],
                                    column_volume_list[i][1])
+                elif len(rows) > 4:
+                    #For a single bfid migration to multple copies, there
+                    # will be multiple destination volumes.  For these
+                    # bfids we need to avoid showing the first file's
+                    # destination volume information.
+                    __print_header(src_file_record.get('external_label', ""),
+                                   "")
                 else:
                     #For a single bfid, we want to include all the volume
                     # information to make it easier to determine where a
@@ -4372,13 +4381,14 @@ def update_failed_done(bfid, db):
     db.query(q)
         
 #For duplication only.
-def make_failed_copies(fcc, db, intf):
+def make_failed_copies(vcc, fcc, db, intf):
     MY_TASK = "MAKE_FAILED_COPIES"
 
     return_exit_status = 0
     
     #Build the sql query.
-    q = "select * from active_file_copying, volume, file " \
+    q = "select active_file_copying.*, volume.label " \
+        "from active_file_copying, volume, file " \
         "where file.volume = volume.id " \
         "      and remaining > 0 " \
         "      and active_file_copying.bfid = file.bfid " \
@@ -4392,12 +4402,18 @@ def make_failed_copies(fcc, db, intf):
         "order by volume.id,time;"
     #Get the results.
     res = db.query(q).getresult()
+    #res = [("CDMS124656633600000", 1, "2009-07-02 15:25:36.43736-05", "VOO446")]
 
-    bfid_list = []
+    bfid_lists = {} #sort into list by volume.
     for row in res:
         #row[0] is bfid
         #row[1] is count
         #row[2] is time
+        #row[3] is external_label
+
+        if bfid_lists.get(row[3], None) == None:
+            #We need to add an empty list for this volume.
+            bfid_lists[row[3]] = []
 
         #Loop over the remaining count to insert the bfid N times
         # into the bfid list to duplicate.
@@ -4405,13 +4421,175 @@ def make_failed_copies(fcc, db, intf):
             if row[1] > 0:
                 #Limit this to those bfids with positive
                 # remaing copies-to-be-made counts.
+                bfid_lists[row[3]].append(row[0])
+
+    #Print out the list of files, if requested.
+    if debug:
+        for volume, bfid_list in bfid_lists.items():
+            print "Volume:", volume, "First bfid:", bfid_list[0],
+            print "Total bfids:", len(bfid_list)
+
+    for volume, bfid_list in bfid_lists.items():
+        if debug:
+            #For debugging, do only one file.
+            use_bfid_list = [bfid_list[0]]
+        else:
+            use_bfid_list = bfid_list
+
+        exit_status = _make_copies(MY_TASK, volume, use_bfid_list,
+                                   vcc, fcc, db, intf)
+        return_exit_status = return_exit_status + exit_status
+        
+        if not exit_status:
+            for bfid in use_bfid_list:
+                ### The duplicatation was successfull.
+
+                log(MY_TASK, "Decrementing the remaining count by " \
+                    "one for bfid %s." % (bfid,))
+
+                #Build the sql query.
+                #Decrement the number of files remaining by one.
+                ### Note: What happens when this values reaches zero?
+                q = "update active_file_copying " \
+                    "set remaining = remaining - 1 " \
+                    "where bfid = '%s'" % (bfid,)
+
+                #Get the results.
+                try:
+                    update_res = db.query(q)
+                except:
+                    exc_type, exc_value = sys.exc_info()[:2]
+                    error_log(MY_TASK, str(exc_type), str(exc_value), q)
+                    return 1 + return_exit_status
+
+                #Make sure this is a numeric type.
+                update_res = long(update_res)
+
+                if update_res == 1:
+                    ok_log(MY_TASK, "Decremented the remaining count by " \
+                           "one for bfid %s." % (bfid,))
+                elif update_res > 0:
+                    #Should never happen with unique volume ids.
+                    error_log(MY_TASK,
+                              "Decremented %s the remaining count by " \
+                              "one for bfid %s." % (update_res, bfid))
+                    return 1 + return_exit_status  #Error
+                else:
+                    error_log(MY_TASK,
+                              "Failed to decremented the remaining count by " \
+                              "one for bfid %s." % (bfid,))
+                    return 1 + return_exit_status  #Error
+        
+        #For debugging, do only one file.
+        if debug:
+            log("limiting to one file in debug mode")
+            break
+
+    return return_exit_status
+
+
+def make_copies(vcc, fcc, db, intf):
+    MY_TASK = "MAKE_COPIES"
+
+    return_exit_status = 0
+
+    #Build the sql query to get the list of volumes with the user's criteria.
+    q = "select label from volume " \
+        "where system_inhibit_0 != 'DELETED' " \
+        "  and media_type = '%s' " \
+        "  and library not like '%%shelf%%' " \
+        "  and file_family not like '%%-MIGRATION%%' " \
+        "  and file_family not like '%%_copy_%%' " \
+        % (intf.media_type,)
+    if intf.library__ and \
+           intf.library__ != None and intf.library__ != "None":
+        # intf.library__ is used here to avoid conflict with --library.
+        q = q + "and library = '%s' " % (intf.library__,)
+    if intf.storage_group and \
+           intf.storage_group != None and \
+           intf.storage_group != "None":
+        q = q + "and storage_group = '%s' " % (intf.storage_group,)
+    if intf.file_family and \
+           intf.file_family != None and intf.file_family != "None":
+        q = q + "and file_family = '%s' " % (intf.file_family,)
+    if intf.wrapper and \
+           intf.wrapper != None and intf.wrapper != "None":
+        q = q + "and wrapper = '%s' " % (intf.wrapper,)
+    q = q + ";"
+
+    if debug:
+        log(MY_TASK, q)
+
+    #Get the results.
+    res = db.query(q).getresult()
+
+    for row in res:
+        volume = row[0]  #shortcut
+
+        #Get the active files without multple copies on the current volume.
+        q1 = "select file.bfid " \
+             "from file " \
+             "left join volume on volume.id = file.volume " \
+             "left join file_copies_map on file.bfid = file_copies_map.bfid " \
+             "left join migration on file.bfid = migration.src_bfid " \
+             "where label = '%s' " \
+             "      and " \
+             "      (/* Found a file not yet started. */ " \
+             "       (file_copies_map.alt_bfid is NULL and " \
+             "        file.deleted = 'n') " \
+             "       or " \
+             "       /* Found a file started but not yet finished to " \
+             "          --make-copies completion state. */ " \
+             "       (volume.system_inhibit_1 not in ('duplicating', " \
+             "                                        'duplicated', " \
+             "                                        'migrating', " \
+             "                                        'migrated', " \
+             "                                        'cloning', " \
+             "                                        'cloned') " \
+             "        and migration.dst_bfid = file_copies_map.alt_bfid) " \
+             "      ) " \
+             "order by file.bfid;" % (volume,)
+
+        res1 = db.query(q1).getresult()
+
+        bfid_list = []
+        if len(res1) > 0:
+            for row in res1:
                 bfid_list.append(row[0])
-                
+
+            if debug:
+                #For debugging, do only one file.
+                use_bfid_list = [bfid_list[0]]
+            else:
+                use_bfid_list = bfid_list
+
+            exit_status = _make_copies(MY_TASK, volume, use_bfid_list,
+                                       vcc, fcc, db, intf)
+            return_exit_status = return_exit_status + exit_status
+
+            if debug:
+                log("limiting to one file in debug mode")
+                break
+
+    return return_exit_status  #Success
+
+def _make_copies(MY_TASK, volume, bfid_list, vcc, fcc, db, intf):
+    file_record_list = [] # Clear for each volume.
+
+    return_exit_status = 0
+
+    if debug:
+        #For debugging, do only one file.
+        use_bfid_list = [bfid_list[0]]
+    else:
+        use_bfid_list = bfid_list
+
     #Loop over each file making a multiple copy each time.
-    for bfid in bfid_list:
+    for bfid in use_bfid_list:
         file_record = get_file_info(MY_TASK, bfid, fcc, db)
         if not e_errors.is_ok(file_record):
-            error_log(MY_TASK, "Unable to obtain file record for %s" % (bfid,))
+            error_log(MY_TASK,
+                      "Unable to obtain file record for %s" % (bfid,))
             #For debugging, do only one file.
             if debug:
                 log("limiting to one file in debug mode")
@@ -4445,8 +4623,9 @@ def make_failed_copies(fcc, db, intf):
             #At th is point we know that the file has been duplicated
             # through the swap step.  If --with-final-scan was used, also
             # check if the tape is already scanned.  If everything is
-            # done decrement the file's remaining count.  Normally this will
-            # never happen, but it might if a previous run is interrupted.
+            # done decrement the file's remaining count.  Normally this
+            # will never happen, but it might if a previous run is
+            # interrupted.
             if (intf.with_final_scan and is_checked_by_src(bfid, fcc, db)) \
                    or not intf.with_final_scan:
                 log(MY_TASK,
@@ -4465,56 +4644,71 @@ def make_failed_copies(fcc, db, intf):
             original_bfid = get_the_original_copy_bfid(bfid, db)
             if is_copied(original_bfid, fcc, db):
                 error_log(MY_TASK,
-                          "found original copy %s already migrated for %s" \
+                       "found original copy %s already migrated for %s" \
                           % (original_bfid, bfid))
 
                 #Can't duplicate since the original copy has already been
                 # migrated.
                 update_failed_done(bfid, db)
-                
+
                 #For debugging, do only one file.
                 if debug:
                     log("limiting to one file in debug mode")
                     break
                 continue
 
-        #Do the duplication.
-        exit_status = migrate([file_record], intf)
-        return_exit_status = return_exit_status + exit_status
+        file_record_list.append(file_record)
+
+    #Do the duplication.
+    if file_record_list:
+        volume_record = get_volume_info(MY_TASK, volume, vcc, db)
+        if not e_errors.is_ok(volume_record):
+            error_log(MY_TASK, "Unable to obtain %s volume record" % (volume,))
+            return 1
         
+        exit_status = migrate(file_record_list, intf,
+                              volume_record=volume_record)
+
+        return_exit_status = return_exit_status + exit_status
+
         if not exit_status:
-            ### The duplicatation was successfull.
+            for bfid in use_bfid_list:
+                log(MY_TASK, "Removing the bfid from the migration " \
+                    "table for bfid %s." % (bfid,))
 
-            log(MY_TASK, "Decrementing the remaining count by " \
-                "one for bfid %s." % (bfid,))
-            
-            #Build the sql query.
-            #Decrement the number of files remaining by one.
-            ### Note: What happens when this values reaches zero?
-            q = "update active_file_copying " \
-                "set remaining = remaining - 1 " \
-                "where bfid = '%s'" % (bfid,)
-            
-            #Get the results.
-            db.query(q)
+                #Build the sql query.
+                #Remove this file from the migration table.  We do
+                # not want the source volume to look like it has
+                # started to be migrated/duplicated.
+                q = "delete from migration " \
+                    "where src_bfid = '%s'" % (bfid,)
 
-            log(MY_TASK, "Removing the bfid from the migration " \
-                "table for bfid %s." % (bfid,))
-            
-            #Build the sql query.
-            #Remove this file from the migration table.  We do
-            # not want the source volume to look like it has
-            # started to be migrated/duplicated.
-            q = "delete from migration " \
-                "where src_bfid = '%s'" % (bfid,)
-            
-            #Get the results.
-            db.query(q)
+                #Get the results.
+                try:
+                    delete_res = db.query(q)
+                except:
+                    exc_type, exc_value = sys.exc_info()[:2]
+                    error_log(MY_TASK, str(exc_type), str(exc_value), q)
+                    return 1 + return_exit_status
 
-        #For debugging, do only one file.
-        if debug:
-            log("limiting to one file in debug mode")
-            break
+                #Make sure this is a numeric type.
+                delete_res = long(delete_res)
+
+                if delete_res == 1:
+                    ok_log(MY_TASK, "Removed the bfid from the migration " \
+                           "table for bfid %s." % (bfid,))
+                elif delete_res > 0:
+                    #Should never happen with unique volume ids.
+                    error_log(MY_TASK,
+                              "Removed %s the bfid from the migration " \
+                              "table for bfid %s." % (delete_res, bfid,))
+                    return 1 + return_exit_status  #Error
+                else:
+                    error_log(MY_TASK,
+                              "Failed to removed the bfid from the " \
+                              "migration table for bfid %s." % (bfid,))
+                    return 1 + return_exit_status  #Error        
+
 
     return return_exit_status
    
@@ -4879,7 +5073,7 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
 
     #
     read_jobs = []
-    dst_bfids = []
+    #dst_bfids = []
     pass_along_jobs = []
 
     #If the migration is being re-run, after a failure, we can optimize
@@ -4915,244 +5109,249 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                 error_log(MY_TASK, "can not copy failed file %s" % (src_bfid,))
 		return
 
-	# check if it has been copied and swapped
-	is_it_copied = is_copied(src_bfid, fcc, db)
-	dst_bfid = is_it_copied  #side effect
-        dst_bfids.append(dst_bfid)  #Add it to the list.
-	is_it_swapped = is_swapped(src_bfid, fcc, db)
+	# check if all copies have been copied and swapped for this source file
+        is_it_copied_list = is_copied(src_bfid, fcc, db, all_copies=True)
+        if not is_it_copied_list:
+            #If the list was empty, put one false item in the list so
+            # that the following loop gets executed once.
+            is_it_copied_list = [None]
+        for is_it_copied in is_it_copied_list:
+            dst_bfid = is_it_copied #side effect of is_copied()
+            #dst_bfids.append(dst_bfid)  #Add it to the list.
+            is_it_swapped = is_swapped_by_dst(dst_bfid, fcc, db)
 
-        #We need to verify that we are doing the correct thing if only
-        # given a bfid as input.
-        dup_files = is_duplicated(src_bfid, fcc, db)
-        if dup_files and is_it_copied and MIGRATION_NAME in ["MIGRATION",
-                                                             "CLONING"]:
-            if is_it_swapped:
-                error_log(MY_TASK,
-                        "trying to migrate file %s already duplicated to %s" \
-                        % (src_bfid, dup_files))
-                return
-            else:
-                #The swap step failed.  We need to assume that the user
-                # knows if migration or duplication was used in the first
-                # place, so that the metadata can successfully be set.
-                # Now that duplicate.log_copied() updates both the
-                # migration and file_copies_map tables, this logic should
-                # not be needed in the future.
-                pass
-        elif not dup_files and is_it_copied and \
-                 MIGRATION_NAME in ["DUPLICATION"]:
-            if is_it_swapped:
-                error_log(MY_TASK,
-                        "trying to duplicate file %s already migrated to %s" \
-                        % (src_bfid, dst_bfid))
-                return
-            else:
-                #The swap step failed.  We need to assume that the user
-                # knows if migration or duplication was used in the first
-                # place, so that the metadata can successfully be set.
-                # Now that duplicate.log_copied() updates both the
-                # migration and file_copies_map tables, this logic should
-                # not be needed in the future.
-                pass
-        #Warn about this, but allow it to proceed.
-        if dup_files and not is_it_copied:
-            warning_log(MY_TASK,
-                        "trying to copy an original copy file, %s, " \
-                        "with multiple copies %s" \
-                        % (src_bfid, dup_files))
-        
-        
-        
-	#Define the directory for the temporary file on disk.
-	tmp_path = temp_file(src_file_record)
-
-        # get destination file info (if available)
-        if dst_bfid:
-            dst_file_record = get_file_info(MY_TASK, dst_bfid, fcc, db)
-            if not dst_file_record:
-		error_log(MY_TASK, "%s does not exist in db" % (dst_bfid,))
-		return
-        else:
-            dst_file_record = None
-            
-	#Handle finding the name differently for migration and duplication.
-        use_bfid, alt_bfid, use_file_record, use_alt_file_record = \
-                  search_order(src_bfid, src_file_record,
-                               dst_bfid, dst_file_record,
-                               is_it_copied, is_it_swapped, fcc, db)
-
-        #If this is a re-run of the migration, we can obtain the destination
-        # volume record now.
-        if dst_bfid and (not dst_volume_record or \
-                         dst_volume_record['external_label'] != dst_file_record['external_label']):
-            dst_volume_record = vcc.inquire_vol(dst_file_record['external_label'])
-            if not e_errors.is_ok(dst_volume_record):
-                error_log(MY_TASK, dst_volume_record['status'])
-                return
-                
-        #We need to do this for files marked and unmarked deleted.  The reason
-        # for doing this with the deleted files is to catch cases were the
-        # metadata is inconsistent between PNFS and Enstore DB.
-        try:
-            #Determine if the destination volume contains just deleted files.
-            if dst_volume_record:
-                is_deleted_volume = is_deleted_file_family(dst_volume_record['volume_family'])
-            else:
-                is_deleted_volume = False
-
-            if dst_volume_record and is_deleted_volume \
-                   and dst_file_record['deleted'] == YES:
-                #When re-running migration, try and avoid looking for a file
-                # in PNFS that was deleted the first time around.
-                src_path = "deleted-%s-%s" % (src_bfid, tmp_path)
-            else:
-                src_path = pnfs_find(use_bfid, alt_bfid,
-                                     src_file_record['pnfsid'],
-                                     file_record = use_file_record,
-                                     alt_file_record = use_alt_file_record,
-                                     intf = intf)
-
-            #There is/was a bug in migrate that allowed for a destination
-            # file to be set deleted while the PNFS entry was perfectly
-            # correct.  Detect and correct this situation here.
-            
-            if is_it_swapped and dst_file_record['deleted'] == YES \
-                   and not is_deleted_volume:
-                
-                # Fix the deleted status of the file.
-                if mark_undeleted(MY_TASK, dst_bfid, None , db):
+            #We need to verify that we are doing the correct thing if only
+            # given a bfid as input.
+            dup_files = is_duplicated(src_bfid, fcc, db)
+            if dup_files and is_it_copied and MIGRATION_NAME in ["MIGRATION",
+                                                                 "CLONING"]:
+                if is_it_swapped:
                     error_log(MY_TASK,
-                          "bfid %s is marked deleted, but %s exists in PNFS"
-                              % (dst_bfid, src_path))
-                    return
-                    
-            #If the migration is interupted after the copy, but before the
-            # swap we don't want to modify the src_file_record.  There must
-            # have been a reason for the following code.
-            
-            #if not is_it_swapped and src_file_record['deleted'] == YES:
-            #    # Fix the deleted status of the file.
-            #    if mark_undeleted(MY_TASK, src_bfid, None, db):
-            #        error_log(MY_TASK,
-            #             "bfid %s is marked deleted, but %s exists in PNFS"
-            #                  % (src_bfid, src_path))
-            #        return
-        except (OSError, IOError), msg:
-            src_path = None
-
-            #The file has been migrated, however the file has been
-            # deleted; removing the entry from pnfs for both.
-            # Prove this by checking the deleted status of the new copy.
-            if msg.errno == errno.ENOENT and is_it_copied and is_it_swapped \
-                   and dst_file_record['deleted'] == YES:
-                src_path = "deleted-%s-%s" % (src_bfid, tmp_path) # for debug
-
-            #If the file has already been copied, swapped, checked and closed
-            # handle this better than to put fear into the user with false
-            # warning messags.  The most likely scenario for getting here is
-            # that the user used --force on an already completed migration.
-            elif msg.errno == errno.ENOENT \
-                     and src_file_record['deleted'] == YES \
-                     and is_it_copied and is_it_swapped \
-                     and is_checked(dst_bfid, fcc, db) \
-                     and is_closed(dst_bfid, fcc, db):
-                src_path = "deleted-%s-%s" % (src_bfid, tmp_path) # for debug
-
-            #Lastly, we need to handle user deleted files by making up some
-            # information.
-            elif msg.errno == errno.ENOENT \
-                     and src_file_record['deleted'] == YES \
-                     and not is_it_swapped:
-                log(MY_TASK, "%s %s %s is a DELETED FILE" \
-		    % (src_file_record['bfid'], src_file_record['pnfsid'],
-		       src_file_record['pnfs_name0']))
-		src_path = "deleted-%s-%s"%(src_bfid, tmp_path) # for debug
-
-            #Handle deleted files that have been replaced.
-            elif getattr(msg, 'errno', msg.args[0]) == errno.EEXIST \
-                 and src_file_record['deleted'] == YES \
-                 and msg.args[1].find("replaced") != -1 \
-                 and dst_file_record == None:
-                src_path = "deleted-%s-%s"%(src_bfid, tmp_path) # for debug
-
-            #Handle the case where the swap didn't complete.
-            elif msg.args[0] == errno.EEXIST \
-                 and getattr(msg, 'filename', None) \
-                 and is_migration_path(msg.filename) \
-                 and src_file_record['deleted'] == YES \
-                 and dst_file_record != None \
-                 and dst_file_record['deleted'] == YES:
-                src_path = msg.filename
-
-            #Handle the case where this version of the file is deleted and
-            # a new file was written by the user with the same filename.
-            elif msg.args[0] == errno.EEXIST \
-                 and msg.args[1].find("replaced") != -1 \
-                 and src_file_record['deleted'] == YES \
-                 and dst_file_record != None \
-                 and dst_file_record['deleted'] == YES:
-                src_path = msg.filename
-            else:
-                if debug:
-                    Trace.handle_error()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-	if debug:
-		log(MY_TASK, "src_path:", src_path)
-		log(MY_TASK, "tmp_path:", tmp_path)
-
-        if dst_bfid == None:
-            try:
-                tfstat = os.stat(tmp_path)
-            except (OSError, IOError), msg:
-                if intf.use_disk_files:
-                    # We wan't to give up on these files, so that migrating
-                    # the dumped good files from a bad tape won't hang trying
-                    # to read the bad files.
-                    error_log(MY_TASK,
-                              "can not find temporary file: %s" % (str(msg),))
+                            "trying to migrate file %s already duplicated to %s" \
+                            % (src_bfid, dup_files))
                     return
                 else:
-                    #There is not a copy on disk, need to read the source
-                    # media for the file.
-                    tfstat = None
-                
-            if tfstat and tfstat[stat.ST_SIZE] == src_file_record['size']:
+                    #The swap step failed.  We need to assume that the user
+                    # knows if migration or duplication was used in the first
+                    # place, so that the metadata can successfully be set.
+                    # Now that duplicate.log_copied() updates both the
+                    # migration and file_copies_map tables, this logic should
+                    # not be needed in the future.
+                    pass
+            elif not dup_files and is_it_copied and \
+                     MIGRATION_NAME in ["DUPLICATION"]:
+                if is_it_swapped:
+                    error_log(MY_TASK,
+                            "trying to duplicate file %s already migrated to %s" \
+                            % (src_bfid, dst_bfid))
+                    return
+                else:
+                    #The swap step failed.  We need to assume that the user
+                    # knows if migration or duplication was used in the first
+                    # place, so that the metadata can successfully be set.
+                    # Now that duplicate.log_copied() updates both the
+                    # migration and file_copies_map tables, this logic should
+                    # not be needed in the future.
+                    pass
+            #Warn about this, but allow it to proceed.
+            if dup_files and not is_it_copied:
+                warning_log(MY_TASK,
+                            "trying to copy an original copy file, %s, " \
+                            "with multiple copies %s" \
+                            % (src_bfid, dup_files))
 
-                #Don't read this file (again), but put it in the list of
-                # files to pass to the write thread.
+
+
+            #Define the directory for the temporary file on disk.
+            tmp_path = temp_file(src_file_record)
+
+            # get destination file info (if available)
+            if dst_bfid:
+                dst_file_record = get_file_info(MY_TASK, dst_bfid, fcc, db)
+                if not dst_file_record:
+                    error_log(MY_TASK, "%s does not exist in db" % (dst_bfid,))
+                    return
+            else:
+                dst_file_record = None
+
+            #Handle finding the name differently for migration and duplication.
+            use_bfid, alt_bfid, use_file_record, use_alt_file_record = \
+                      search_order(src_bfid, src_file_record,
+                                   dst_bfid, dst_file_record,
+                                   is_it_copied, is_it_swapped, fcc, db)
+
+            #If this is a re-run of the migration, we can obtain the destination
+            # volume record now.
+            if dst_bfid and (not dst_volume_record or \
+                             dst_volume_record['external_label'] != dst_file_record['external_label']):
+                dst_volume_record = vcc.inquire_vol(dst_file_record['external_label'])
+                if not e_errors.is_ok(dst_volume_record):
+                    error_log(MY_TASK, dst_volume_record['status'])
+                    return
+
+            #We need to do this for files marked and unmarked deleted.  The reason
+            # for doing this with the deleted files is to catch cases were the
+            # metadata is inconsistent between PNFS and Enstore DB.
+            try:
+                #Determine if the destination volume contains just deleted files.
+                if dst_volume_record:
+                    is_deleted_volume = is_deleted_file_family(dst_volume_record['volume_family'])
+                else:
+                    is_deleted_volume = False
+
+                if dst_volume_record and is_deleted_volume \
+                       and dst_file_record['deleted'] == YES:
+                    #When re-running migration, try and avoid looking for a file
+                    # in PNFS that was deleted the first time around.
+                    src_path = "deleted-%s-%s" % (src_bfid, tmp_path)
+                else:
+                    src_path = pnfs_find(use_bfid, alt_bfid,
+                                         src_file_record['pnfsid'],
+                                         file_record = use_file_record,
+                                         alt_file_record = use_alt_file_record,
+                                         intf = intf)
+
+                #There is/was a bug in migrate that allowed for a destination
+                # file to be set deleted while the PNFS entry was perfectly
+                # correct.  Detect and correct this situation here.
+
+                if is_it_swapped and dst_file_record['deleted'] == YES \
+                       and not is_deleted_volume:
+
+                    # Fix the deleted status of the file.
+                    if mark_undeleted(MY_TASK, dst_bfid, None , db):
+                        error_log(MY_TASK,
+                              "bfid %s is marked deleted, but %s exists in PNFS"
+                                  % (dst_bfid, src_path))
+                        return
+
+                #If the migration is interupted after the copy, but before the
+                # swap we don't want to modify the src_file_record.  There must
+                # have been a reason for the following code.
+
+                #if not is_it_swapped and src_file_record['deleted'] == YES:
+                #    # Fix the deleted status of the file.
+                #    if mark_undeleted(MY_TASK, src_bfid, None, db):
+                #        error_log(MY_TASK,
+                #             "bfid %s is marked deleted, but %s exists in PNFS"
+                #                  % (src_bfid, src_path))
+                #        return
+            except (OSError, IOError), msg:
+                src_path = None
+
+                #The file has been migrated, however the file has been
+                # deleted; removing the entry from pnfs for both.
+                # Prove this by checking the deleted status of the new copy.
+                if msg.errno == errno.ENOENT and is_it_copied and is_it_swapped \
+                       and dst_file_record['deleted'] == YES:
+                    src_path = "deleted-%s-%s" % (src_bfid, tmp_path) # for debug
+
+                #If the file has already been copied, swapped, checked and closed
+                # handle this better than to put fear into the user with false
+                # warning messags.  The most likely scenario for getting here is
+                # that the user used --force on an already completed migration.
+                elif msg.errno == errno.ENOENT \
+                         and src_file_record['deleted'] == YES \
+                         and is_it_copied and is_it_swapped \
+                         and is_checked(dst_bfid, fcc, db) \
+                         and is_closed(dst_bfid, fcc, db):
+                    src_path = "deleted-%s-%s" % (src_bfid, tmp_path) # for debug
+
+                #Lastly, we need to handle user deleted files by making up some
+                # information.
+                elif msg.errno == errno.ENOENT \
+                         and src_file_record['deleted'] == YES \
+                         and not is_it_swapped:
+                    log(MY_TASK, "%s %s %s is a DELETED FILE" \
+                        % (src_file_record['bfid'], src_file_record['pnfsid'],
+                           src_file_record['pnfs_name0']))
+                    src_path = "deleted-%s-%s"%(src_bfid, tmp_path) # for debug
+
+                #Handle deleted files that have been replaced.
+                elif getattr(msg, 'errno', msg.args[0]) == errno.EEXIST \
+                     and src_file_record['deleted'] == YES \
+                     and msg.args[1].find("replaced") != -1 \
+                     and dst_file_record == None:
+                    src_path = "deleted-%s-%s"%(src_bfid, tmp_path) # for debug
+
+                #Handle the case where the swap didn't complete.
+                elif msg.args[0] == errno.EEXIST \
+                     and getattr(msg, 'filename', None) \
+                     and is_migration_path(msg.filename) \
+                     and src_file_record['deleted'] == YES \
+                     and dst_file_record != None \
+                     and dst_file_record['deleted'] == YES:
+                    src_path = msg.filename
+
+                #Handle the case where this version of the file is deleted and
+                # a new file was written by the user with the same filename.
+                elif msg.args[0] == errno.EEXIST \
+                     and msg.args[1].find("replaced") != -1 \
+                     and src_file_record['deleted'] == YES \
+                     and dst_file_record != None \
+                     and dst_file_record['deleted'] == YES:
+                    src_path = msg.filename
+                else:
+                    if debug:
+                        Trace.handle_error()
+                    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            if debug:
+                    log(MY_TASK, "src_path:", src_path)
+                    log(MY_TASK, "tmp_path:", tmp_path)
+
+            if dst_bfid == None:
+                try:
+                    tfstat = os.stat(tmp_path)
+                except (OSError, IOError), msg:
+                    if intf.use_disk_files:
+                        # We wan't to give up on these files, so that migrating
+                        # the dumped good files from a bad tape won't hang trying
+                        # to read the bad files.
+                        error_log(MY_TASK,
+                                  "can not find temporary file: %s" % (str(msg),))
+                        return
+                    else:
+                        #There is not a copy on disk, need to read the source
+                        # media for the file.
+                        tfstat = None
+
+                if tfstat and tfstat[stat.ST_SIZE] == src_file_record['size']:
+
+                    #Don't read this file (again), but put it in the list of
+                    # files to pass to the write thread.
+                    pass_along_jobs.append((src_file_record,
+                                            src_volume_record,
+                                            src_path,
+                                            dst_file_record,  #destination file record
+                                            dst_volume_record,
+                                            tmp_path,
+                                            None,  #migration path
+                                            ))
+                    ok_log(MY_TASK, "%s has already been copied to disk" \
+                           % (src_bfid,))
+                    continue  #try next file
+
+                #We need to read this file, so put in on the list.
+                read_jobs.append((src_file_record,
+                                  src_volume_record,
+                                  src_path,
+                                  None,  #destination file record
+                                  None,  #destination volume record
+                                  tmp_path,
+                                  None,  #migration path
+                                  ))
+            else:
+                ok_log(MY_TASK, "%s has already been copied to %s" \
+                   % (src_bfid, dst_bfid))
                 pass_along_jobs.append((src_file_record,
                                         src_volume_record,
                                         src_path,
-                                        dst_file_record,  #destination file record
+                                        dst_file_record,
                                         dst_volume_record,
                                         tmp_path,
                                         None,  #migration path
                                         ))
-                ok_log(MY_TASK, "%s has already been copied to disk" \
-                       % (src_bfid,))
-                continue  #try next file
-
-            #We need to read this file, so put in on the list.
-            read_jobs.append((src_file_record,
-                              src_volume_record,
-                              src_path,
-                              None,  #destination file record
-                              None,  #destination volume record
-                              tmp_path,
-                              None,  #migration path
-                              ))
-        else:
-            ok_log(MY_TASK, "%s has already been copied to %s" \
-               % (src_bfid, dst_bfid))
-            pass_along_jobs.append((src_file_record,
-                                    src_volume_record,
-                                    src_path,
-                                    dst_file_record,
-                                    dst_volume_record,
-                                    tmp_path,
-                                    None,  #migration path
-                                    ))
 
     if len(read_jobs) == 0:
         res = 0  #all files copied already
@@ -6382,12 +6581,6 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf,
             # writes are done.
             scan_queue.put(pass_along_job, block = True)
 
-    if intf.with_final_scan:
-        log(MY_TASK, "no more to copy, terminating the scan queue")
-        
-        #Since we are done, flag the condition variable.
-        scan_queue.put(SENTINEL, block = True)
-
     #Before launching the next thread, lets cleanup the stack on
     # this side.
     del copy_queue
@@ -6586,11 +6779,16 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
     if not ct:
         #log(MY_TASK, "start checking %s %s"%(dst_bfid, src))
 
+        if is_deleted_file_family(dst_volume_record['volume_family']):
+            use_deleted = YES
+        else:
+            use_deleted = dst_file_record['deleted']
+
         try:
             (pnfs_path, use_path) = get_filenames(
                 MY_TASK, dst_bfid, dst_file_record['pnfsid'],
                 dst_file_record['pnfs_name0'],
-                dst_file_record['deleted'],
+                use_deleted,
                 is_multiple_copy, fcc, db)
         except (OSError, IOError), msg:
             if msg.args[0] == errno.EBADF and \
@@ -6713,16 +6911,18 @@ def final_scan_files(dst_bfids, intf):
 
 # final_scan() -- last part of migration, driven by scan_queue
 #   read the file as user to reasure everything is fine
-def final_scan(thread_num, scan_queue, intf, deleted_files = NO):
+def final_scan(thread_num, scan_list, intf, deleted_files = NO):
     if deleted_files == YES:
         MY_TASK = "FINAL_SCAN_DELETED"
     else:
         MY_TASK = "FINAL_SCAN"
 
+    """
     if not USE_THREADS:
         #We need to delay starting this thread (only for processes)
         # until after the fork().
         scan_queue.start_waiting()
+    """
 
     # get its own file clerk client
     config_host = enstore_functions2.default_host()
@@ -6744,8 +6944,9 @@ def final_scan(thread_num, scan_queue, intf, deleted_files = NO):
     encp = encp_wrapper.Encp(tid = "FINAL_SCAN%s" % (name_ending,))
 
     #Loop over the files ready for scanning.
-    job = scan_queue.get(block = True)
-    while job:
+    #job = scan_queue.get(block = True)
+    #while job:
+    for job in scan_list:
 
         try:
             final_scan_file(MY_TASK, job, fcc, encp, intf, db)
@@ -6766,11 +6967,11 @@ def final_scan(thread_num, scan_queue, intf, deleted_files = NO):
             break
 
         #Get the next file.
-        job = scan_queue.get(block = True)
+        #job = scan_queue.get(block = True)
 
     #Before launching the next thread, lets cleanup the stack on
     # this side.
-    del scan_queue
+    #del scan_queue
 
     db.close()  #Avoid resource leaks.
 
@@ -7178,11 +7379,11 @@ def set_dst_volume_migrated(MY_TASK, vol, sg, ff, wp, vcc, db):
 
 # migrate(file_records): -- migrate a list of files
 #
-# bfids - list of file_records to migrate (To do: rename bfids)
+# file_records - list of file_records to migrate
 # intf - Instantiated MigrateInterface class
 # volume_record - If all of these files in the list belong on the same tape,
 #                 then this should be set to the volume information in the DB.
-def migrate(bfids, intf, volume_record=None):
+def migrate(file_records, intf, volume_record=None):
 	global errors
 
 	errors = 0
@@ -7190,9 +7391,9 @@ def migrate(bfids, intf, volume_record=None):
         #Limit the number of processes/threads if only one or two files
         # is in the list.
 	if PARALLEL_FILE_TRANSFER:
-		use_proc_limit = min(PROC_LIMIT, len(bfids))
+		use_proc_limit = min(PROC_LIMIT, len(file_records))
 	else:
-		use_proc_limit = min(1, len(bfids))
+		use_proc_limit = min(1, len(file_records))
 	
 	i = 0
 	#Make a list of PROC_LIMIT length.  Each element should
@@ -7212,7 +7413,7 @@ def migrate(bfids, intf, volume_record=None):
             #Organize the round-robin into groups of files_per_thread
             # in length for each get.
             if intf.read_to_end_of_tape:
-                files_per_thread = len(bfids)
+                files_per_thread = len(file_records)
             else:
                 avg_size = average_size(volume_record)
                 media_rate = drive_rate(volume_record)
@@ -7230,14 +7431,14 @@ def migrate(bfids, intf, volume_record=None):
 
             i = 0
             j = 0
-            for j in range(0, len(bfids), files_per_thread):
-                    use_bfids_lists[i].append(bfids[j:j+files_per_thread])
+            for j in range(0, len(file_records), files_per_thread):
+                    use_bfids_lists[i].append(file_records[j:j+files_per_thread])
                     i = (i + 1) % use_proc_limit
         else:
             #Just put them into the round-robin order.
             i = 0
-            for bfid in bfids:
-                use_bfids_lists[i].append(bfid)
+            for file_record in file_records:
+                use_bfids_lists[i].append(file_record)
                 i = (i + 1) % use_proc_limit
 
 	#Create a set of locks for keeping the transfers in sync if
@@ -7256,15 +7457,15 @@ def migrate(bfids, intf, volume_record=None):
 
 	#Get scan queue once if volume assert is being used.
         # Leave room for the SENTINEL.
-	if intf.use_volume_assert or USE_VOLUME_ASSERT:
-                # For active files...
-		scan_queue = MigrateQueue(len(bfids) + 1,
+
+        # For active files...
+        scan_queue = MigrateQueue(len(file_records) + 1,
+                                  notify_every_time = False)
+        scan_queue.debug = debug
+        # and deleted files.
+        deleted_scan_queue = MigrateQueue(len(file_records) + 1,
                                           notify_every_time = False)
-		scan_queue.debug = debug
-                # and deleted files.
-                deleted_scan_queue = MigrateQueue(len(bfids) + 1,
-                                          notify_every_time = False)
-		deleted_scan_queue.debug = debug
+        deleted_scan_queue.debug = debug
 
 	#For each list of bfids start the migrations.
 	for i in range(len(use_bfids_lists)):
@@ -7286,29 +7487,6 @@ def migrate(bfids, intf, volume_record=None):
                 deleted_copy_queue = MigrateQueue(copy_queue_size,
                                           low_watermark = proceed_number)
                 deleted_copy_queue.debug = debug
-		if not (intf.use_volume_assert or USE_VOLUME_ASSERT):
-                        # Leave room for the SENTINEL.  Set notify_every_time
-                        # to False here, we want to wait until all items are
-                        # in the queue before starting to scan.
-
-                        # Size of the scan queue.  Always add one to leave room
-                        # for the SENTINEL.
-                        if intf.read_to_end_of_tape:
-                            if USE_GET and type(volume_record) == types.DictType:
-                                scan_queue_size = len(bfids) + 1
-                            else:
-                                scan_queue_size = len(bfid_list) + 1
-                        else:
-                            scan_queue_size = len(bfid_list) + 1
-
-                        #Active files to be scanned queue.
-			scan_queue = MigrateQueue(scan_queue_size,
-                                                  notify_every_time = False)
-			scan_queue.debug = debug
-                        #Deleted files to be scanned queue.
-                        deleted_scan_queue = MigrateQueue(scan_queue_size,
-                                                  notify_every_time = False)
-                        deleted_scan_queue.debug = debug
 
 		# Start the reading in parallel.
 		run_in_parallel(copy_files,
@@ -7336,38 +7514,91 @@ def migrate(bfids, intf, volume_record=None):
 
 		# Only the parent should get here.
 
-		#If we are scanning too, start the scan in parallel.
-		if intf.with_final_scan and \
-		       not (intf.use_volume_assert or USE_VOLUME_ASSERT):
-                        # For active files...
-			run_in_parallel(final_scan,
-					(i, scan_queue, intf),
-					my_task = "FINAL_SCAN")
-                        # and deleted files.
-                        run_in_parallel(final_scan,
-					(i, deleted_scan_queue, intf, YES),
-					my_task = "FINAL_SCAN")
+        done_exit_status = wait_for_parallel()
 
-	#If using volume_assert, we only want one call to final_scan():
-	if intf.with_final_scan and \
-	       (intf.use_volume_assert or USE_VOLUME_ASSERT):
-                # For active files...
-		run_in_parallel(final_scan,
-				(i, scan_queue, intf),
-				my_task = "FINAL_SCAN")
-                # and deleted files.
-                run_in_parallel(final_scan,
-				(i, deleted_scan_queue, intf, YES),
-				my_task = "FINAL_SCAN")
+        #If we are scanning too, start the scan in parallel.
+        if intf.with_final_scan:
+                if debug:
+                        log("no more to copy, terminating the scan queue")
+        
+                #Since we are done, flag the condition variable.
+                scan_queue.put(SENTINEL, block = True)
+                deleted_scan_queue.put(SENTINEL, block = True)
+            
+                #For each list of bfids start the scanning.
+
+                #First we need to sort the active destination locations.
+                dst_scans = []
+                job = scan_queue.get(block = True)
+                while job:
+                        dst_scans.append(job)
+                        job = scan_queue.get(block = True)
+                dst_scans.sort(key=lambda job: (job[3]['external_label'],
+                                                job[3]['location_cookie']))
+                #Second we need to sort the deleted destination locations.
+                deleted_dst_scans = []
+                job = deleted_scan_queue.get(block = True)
+                while job:
+                        deleted_dst_scans.append(job)
+                        job = deleted_scan_queue.get(block = True)
+                deleted_dst_scans.sort(key=lambda job: (job[3]['external_label'],
+                                                        job[3]['location_cookie']))
+
+            
+                if not (intf.use_volume_assert or USE_VOLUME_ASSERT):
+                        #Just put them into the round-robin order.
+                        use_jobs_lists = []
+                        use_deleted_jobs_lists = []
+                        i = 0
+                        while i < use_proc_limit:
+                                use_jobs_lists.append([])
+                                use_deleted_jobs_lists.append([])
+                                i = i + 1
+                                
+                        #First the active files in round-robin order.
+                        i = 0
+                        for job in dst_scans:
+                                use_jobs_lists[i].append(job)
+                                i = (i + 1) % use_proc_limit
+                        #Second the deleted files in round-robin order.
+                        i = 0
+                        for job in deleted_dst_scans:
+                                use_deleted_jobs_lists[i].append(job)
+                                i = (i + 1) % use_proc_limit
+                        
+                        #For each list of job tuples start the scans.
+                        for i in range(len(use_jobs_lists)):
+                                job_list = use_jobs_lists[i]
+                                deleted_job_list = use_deleted_jobs_lists[i]
+
+                                # For active files...
+                                run_in_parallel(final_scan,
+                                                (i, job_list, intf),
+                                                my_task = "FINAL_SCAN")
+                                # and deleted files.
+                                run_in_parallel(final_scan,
+                                             (i, deleted_job_list, intf, YES),
+                                                my_task = "FINAL_SCAN")
+
+	        #If using volume_assert, we only want one call to final_scan():
+                else:
+                    # For active files...
+                    run_in_parallel(final_scan,
+                                    (i, dst_scans, intf),
+                                    my_task = "FINAL_SCAN")
+                    # and deleted files.
+                    run_in_parallel(final_scan,
+                                    (i, deleted_dst_scans, intf, YES),
+                                    my_task = "FINAL_SCAN")
+
+        done_exit_status = done_exit_status + wait_for_parallel()
 
         #Before launching the next thread, lets cleanup the stack on
         # this side.
         del copy_queue
         del deleted_copy_queue
         del scan_queue
-        del deleted_scan_queue
-
-	done_exit_status = wait_for_parallel()
+        del deleted_scan_queue	
 
 	errors = done_exit_status + errors
 	return errors
@@ -7851,7 +8082,10 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     #Determine if the file has been copied to a new tape already.  Need to
     # worry if the file has been migrated to multiple copies.
     is_it_copied_list = is_copied(src_bfid, fcc, db, all_copies=True)
-    is_it_copied = is_it_copied_list[0]
+    if len(is_it_copied_list) > 1:
+        is_it_copied = is_it_copied_list[0]
+    else:
+        is_it_copied = None
     dst_bfid = is_it_copied #side effect of is_copied()
     if dst_bfid == None:
         check_src_bfid, check_dst_bfid = get_bfids(src_bfid, fcc, db)
@@ -8377,6 +8611,8 @@ class MigrateInterface(option.Interface):
                 self.scan = None
                 self.migration_only = None
                 self.multiple_copy_only = None
+                self.make_copies = None
+                self.library__ = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -8621,8 +8857,27 @@ def main(intf):
         csc = configuration_client.ConfigurationClient((config_host,
                                                         config_port))
         fcc = file_clerk_client.FileClient(csc)
+        vcc = volume_clerk_client.VolumeClerkClient(csc)
 
-        ret_val = make_failed_copies(fcc, db, intf)
+        ret_val = make_failed_copies(vcc, fcc, db, intf)
+
+        db.close()  #Avoid resource leaks.
+        return ret_val
+
+    #For duplicate only.
+    elif getattr(intf, "make_copies", None):
+
+        # get a db connection
+        db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+        # get its own file clerk client and volume clerk client
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        fcc = file_clerk_client.FileClient(csc)
+        vcc = volume_clerk_client.VolumeClerkClient(csc)
+
+        ret_val = make_copies(vcc, fcc, db, intf)
 
         db.close()  #Avoid resource leaks.
         return ret_val
