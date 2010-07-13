@@ -634,13 +634,13 @@ select /* It should be as simple as just using the media_type. However,
                                              'cloned', 'cloning')
             THEN volume.system_inhibit_1
             ELSE NULL
-       END as migration_state
+       END as migration_state,
        /* Report all the tapes that have files migrated from this tape. */
-       /*(select trim(' ' from rows2string(v3.label || ' '))
+       (select trim(' ' from rows2string(v3.label || ' '))
         from migration_history mh2
         left join volume v3 on mh2.dst_vol_id = v3.id
         where volume.id = mh2.src_vol_id
-          and v3.system_inhibit_0 != 'DELETED') as migrated_to*/
+          and v3.system_inhibit_0 != 'DELETED') as migrated_to
 from volume
 where ( /* We obviously need to include un-migrated tapes in the robot. */
        (volume.system_inhibit_1 not in ('migrated', 'duplicated', 'cloned')
@@ -732,6 +732,7 @@ where volume.system_inhibit_0 != 'DELETED'
      the file_family. */
   and (select count(src_vol_id)
        from migration_history
+       left join volume v3 on v3.id = src_vol_id
        where volume.id = dst_vol_id
          and src_vol_id is not NULL
          /* The src_vol_id and dst_vol_id columns in the migration_history
@@ -740,14 +741,20 @@ where volume.system_inhibit_0 != 'DELETED'
              multiple times.  These dummy IDs were all negative integers.
              We need to skip these. */
          and src_vol_id > 0
+         and v3.sum_wr_access - v3.sum_wr_err > 0  --skip blank volumes
+         /* Skip counting cloned tapes.  They have their own page. */
+         and v3.system_inhibit_1 not in ('cloning', 'cloned')
+         and v3.label is not NULL  --skip old volumes without a record
        limit 1) > 0
   /* If there is a missing migration_history entry, include the tape
      as work to be done. */
   and (file_family like '%-MIGRATION%' or
-       file_family like '%_copy_%' or
+       file_family like '%/_copy/_%' escape '/' or  --match literal underscores
        (select count(*)
         from migration_history
+        left join volume v3 on v3.id = src_vol_id
         where volume.id = dst_vol_id
+          and src_vol_id is not NULL
           and closed_time is NULL
           /* The src_vol_id and dst_vol_id columns in the migration_history
              table were added later on.  Some 9940A to 9940B migrations
@@ -755,7 +762,26 @@ where volume.system_inhibit_0 != 'DELETED'
              multiple times.  These dummy IDs were all negative integers.
              We need to skip these. */
           and src_vol_id > 0
-        limit 1) > 0
+          and v3.sum_wr_access - v3.sum_wr_err > 0  --skip blank volumes
+          /* Skip counting cloned tapes.  They have their own page. */
+          and v3.system_inhibit_1 not in ('cloning', 'cloned')
+          and v3.label is not NULL  --skip old volumes without a record
+         /* Make sure at least one file still exists between the source
+            and destination volume pair.  Some migrations are restored that
+            result in the destination files simply being deleted.  This
+            leaves a record in the migration_history table that is not
+            closed and will never be closed.  These records need to be
+            ignored. */
+         and (select count(*)
+              from migration m2
+              left join file f1 on f1.bfid = m2.src_bfid
+              left join file f2 on f2.bfid = m2.dst_bfid
+              left join volume v1 on v1.id = f1.volume
+              left join volume v2 on v2.id = f2.volume
+              where v2.id = volume.id
+                and v1.id = v3.id
+              limit 1) > 0
+          limit 1) > 0
       )
 group by media_type,capacity_bytes,label,system_inhibit_1,volume.id
 order by media_type,label;
