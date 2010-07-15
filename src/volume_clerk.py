@@ -107,9 +107,6 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         except:
             dbHome = os.environ['ENSTORE_DIR']
             jouHome = dbHome
-        db_host = dbInfo['db_host']
-        db_port = dbInfo['db_port']
-        db_user = dbInfo['dbuser']
 
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
         self.max_connections = max(dbInfo.get('max_connections',MAX_CONNECTIONS),
@@ -118,9 +115,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening volume database using edb.VolumeDB")
         try:
-            self.volumedb_dict = edb.VolumeDB(host=db_host,
-                                              port=db_port,
-                                              user=db_user,
+            # proper default values are supplied by edb.FileDB constructor
+            self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host',None),
+                                              port=dbInfo.get('db_port',None),
+                                              user=dbInfo.get('dbuser',None),
+                                              database=dbInfo.get('dbname',None),
                                               jou=jouHome,
                                               max_connections=self.max_connections)
             self.sgdb = esgdb.SGDb(self.volumedb_dict.db)

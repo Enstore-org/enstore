@@ -76,9 +76,11 @@ class Server(file_clerk.FileClerkInfoMethods,
 		# get database connection
 		dbInfo = self.csc.get("database")
 		try:
-			self.file = edb.FileDB(host=dbInfo['db_host'],
-					       port=dbInfo['db_port'],
-					       user=dbInfo['dbuser'],
+			# proper default values are supplied by edb.FileDB constructor
+			self.file = edb.FileDB(host=dbInfo.get('db_host',None),
+                                               port=dbInfo.get('db_port',None),
+                                               user=dbInfo.get('dbuser_reader',None),
+                                               database=dbInfo.get('dbname',None),
 					       auto_journal=0)
 		except:
 			exc_type, exc_value = sys.exc_info()[:2]
