@@ -3726,10 +3726,14 @@ def show_status_volumes(volume_list, db, intf):
                                              mc1.alt_bfid = mig1.dst_bfid) \
                      left join \
                      bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
-                                         mc1.bfid = bfs.bfid) \
+                                         mc1.bfid = bfs.bfid or \
+                                         /* We only want bfids1.bfid for the \
+                                            source if nothing migration has \
+                                            happened yet. */ \
+                                         bfids1.bfid = bfs.bfid) \
                      left join \
-                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
-                                         mc1.bfid = bfd.bfid) \
+                     bad_file as bfd on (mig1.dst_bfid = bfd.bfid or \
+                                         mc1.alt_bfid = bfd.bfid) \
                      \
                      union \
                      \
@@ -3769,8 +3773,8 @@ def show_status_volumes(volume_list, db, intf):
                      bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
                                          mc1.bfid = bfs.bfid) \
                      left join \
-                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
-                                         mc1.bfid = bfd.bfid) \
+                     bad_file as bfd on (mig1.dst_bfid = bfd.bfid or \
+                                         mc1.alt_bfid = bfd.bfid) \
                      \
                      union \
                      \
@@ -3808,8 +3812,8 @@ def show_status_volumes(volume_list, db, intf):
                      bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
                                          mc1.bfid = bfs.bfid) \
                      left join \
-                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
-                                         mc1.bfid = bfd.bfid) \
+                     bad_file as bfd on (mig1.dst_bfid = bfd.bfid or \
+                                         mc1.alt_bfid = bfd.bfid) \
                      where mig1.src_bfid is NULL \
                        and mig1.dst_bfid is NULL \
                      \
@@ -3850,8 +3854,8 @@ def show_status_volumes(volume_list, db, intf):
                      bad_file as bfs on (mig1.src_bfid = bfs.bfid or \
                                          mc1.bfid = bfs.bfid) \
                      left join \
-                     bad_file as bfd on (mig1.src_bfid = bfd.bfid or \
-                                         mc1.bfid = bfd.bfid) \
+                     bad_file as bfd on (mig1.dst_bfid = bfd.bfid or \
+                                         mc1.alt_bfid = bfd.bfid) \
                      where mig1.src_bfid is NULL \
                        and mig1.dst_bfid is NULL \
                      ) as blah \
@@ -6666,55 +6670,94 @@ def scan_file(MY_TASK, job, src_path, dst_path, intf, encp):
 # Note: Because is_multiple_copy is now a required argument for
 #       get_filenames(), it can now be used for duplication eliminating
 #       the need for a duplicate.get_filenames() version of this function.
-def get_filenames(MY_TASK, dst_bfid, pnfs_id, likely_path, deleted,
+def get_filenames(MY_TASK, job,
                   is_multiple_copy, fcc, db):
-        __pychecker__ = "unusednames=MY_TASK"
+    __pychecker__ = "unusednames=MY_TASK"
 
-        is_already_migrated = False  #In case the destination is also a source.
+    (src_file_record, src_volume_record, src_path,
+     dst_file_record, dst_volume_record, tmp_path, mig_path) = job
 
-        if deleted == YES:
-                use_path = "--override-deleted --get-bfid %s" \
-                           % (dst_bfid,)
-                pnfs_path = likely_path #Is anything else more correct?
+    src_bfid = src_file_record['bfid']  #shortcuts
+    dst_bfid = dst_file_record['bfid']
+    likely_path = dst_file_record['pnfs_name0']
+
+    is_already_migrated = False  #In case the destination is also a source.
+
+    if is_deleted_file_family(dst_volume_record['volume_family']):
+        use_deleted = YES
+    else:
+        use_deleted = dst_file_record['deleted']
+
+    if use_deleted == YES:
+        use_path = "--override-deleted --get-bfid %s" \
+                   % (dst_bfid,)
+        pnfs_path = likely_path #Is anything else more correct?
+    else:
+        if is_multiple_copy:
+            original_reply = fcc.find_the_original(dst_bfid)
+            if e_errors.is_ok(original_reply) \
+               and original_reply['original'] != None \
+               and original_reply['original'] != dst_bfid:
+                f0 = get_file_info(MY_TASK, original_reply['original'], fcc, db)
+
+                bfid1 = original_reply['original']
+                bfid2 = src_bfid
+
+                fr1 = f0
+                fr2 = src_file_record
+
+                pnfsid = f0['pnfsid']
+            else:
+                raise ValueError(
+                    "No original copy found for %s." % (dst_bfid,))
         else:
-                try:
-                        # get the real path
-                        pnfs_path = find_pnfs_file.find_pnfsid_path(
-                                pnfs_id, dst_bfid,
-                                likely_path = likely_path,
-                                path_type = find_pnfs_file.FS)
-                except (KeyboardInterrupt, SystemExit):
-                        raise sys.exc_info()[0], sys.exc_info()[1], \
-                              sys.exc_info()[2]
-                except (OSError, IOError), msg:
-                        dst_bfid2 = is_copied(dst_bfid, fcc, db)
-                        if msg.args[0] == errno.EEXIST and dst_bfid2:
-                                #We have determined that the destination
-                                # file has already become a source file
-                                # for a different migration.
-                                pnfs_path = likely_path
-                                is_already_migrated = True
-                        else:
-                                raise sys.exc_info()[0], sys.exc_info()[1], \
-                                      sys.exc_info()[2]
-                except:
-                        raise sys.exc_info()[0], sys.exc_info()[1], \
-                              sys.exc_info()[2]
+            bfid1 = dst_bfid
+            bfid2 = None
 
-                if type(pnfs_path) == type([]):
-                        pnfs_path = pnfs_path[0]
+            fr1 = dst_file_record
+            fr2 = None
+            
+            pnfsid = dst_file_record['pnfsid']
+        
+        try:
+            # get the real path
+            #pnfs_path = find_pnfs_file.find_pnfsid_path(
+            #    pnfs_id, dst_bfid,
+            #    likely_path = likely_path,
+            #    path_type = find_pnfs_file.FS)
+            pnfs_path = pnfs_find(bfid1, bfid2, pnfsid, fr1, fr2)
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], \
+                  sys.exc_info()[2]
+        except (OSError, IOError), msg:
+            dst_bfid2 = is_copied(dst_bfid, fcc, db)
+            if msg.args[0] == errno.EEXIST and dst_bfid2:
+                    #We have determined that the destination
+                    # file has already become a source file
+                    # for a different migration.
+                    pnfs_path = likely_path
+                    is_already_migrated = True
+            else:
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
+        except:
+            raise sys.exc_info()[0], sys.exc_info()[1], \
+                  sys.exc_info()[2]
 
-                #If the true target is a multiple copy, we need to make sure
-                # we read the correct file.
-                if is_already_migrated:
-                    use_path = "--skip-pnfs --get-bfid %s" % (dst_bfid,)
-                elif is_multiple_copy:
-                    use_path = "--get-bfid %s" % (dst_bfid,)
-                else:
-                    use_path = pnfs_path
-                    
+        if type(pnfs_path) == type([]):
+            pnfs_path = pnfs_path[0]
 
-        return (pnfs_path, use_path)
+        #If the true target is a multiple copy, we need to make sure
+        # we read the correct file.
+        if is_already_migrated:
+            use_path = "--skip-pnfs --get-bfid %s" % (dst_bfid,)
+        elif is_multiple_copy:
+            use_path = "--skip-pnfs --get-bfid %s" % (dst_bfid,)
+        else:
+            use_path = pnfs_path
+
+
+    return (pnfs_path, use_path)
 
 def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
 	try:
@@ -6779,17 +6822,9 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
     if not ct:
         #log(MY_TASK, "start checking %s %s"%(dst_bfid, src))
 
-        if is_deleted_file_family(dst_volume_record['volume_family']):
-            use_deleted = YES
-        else:
-            use_deleted = dst_file_record['deleted']
-
         try:
             (pnfs_path, use_path) = get_filenames(
-                MY_TASK, dst_bfid, dst_file_record['pnfsid'],
-                dst_file_record['pnfs_name0'],
-                use_deleted,
-                is_multiple_copy, fcc, db)
+                MY_TASK, job, is_multiple_copy, fcc, db)
         except (OSError, IOError), msg:
             if msg.args[0] == errno.EBADF and \
                      msg.args[1].find("conflicting layer") != -1:
@@ -8082,7 +8117,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     #Determine if the file has been copied to a new tape already.  Need to
     # worry if the file has been migrated to multiple copies.
     is_it_copied_list = is_copied(src_bfid, fcc, db, all_copies=True)
-    if len(is_it_copied_list) > 1:
+    if len(is_it_copied_list) > 0:
         is_it_copied = is_it_copied_list[0]
     else:
         is_it_copied = None
