@@ -647,6 +647,9 @@ where ( /* We obviously need to include un-migrated tapes in the robot. */
         and
         volume.library not like '%shelf%')
        or
+       /* Include tapes still in progress (even if removed from the robot. */
+       volume.system_inhibit_1 in ('migrating', 'duplicating')
+       or
         (( /* Include migrated tapes without any entries in the 
               migration_history table. */
           (select count(*)
