@@ -10138,6 +10138,8 @@ def create_read_request(request, file_number,
 
             if e.override_deleted and fc_reply['deleted'] != 'no':
                 iaccessname = sfsid  #Something, anything.
+            elif e.skip_pnfs:
+                iaccessname = sfsid  #Something, anything.
             else:
                 if not sfs:
                     #All the cases that get here are ones where we are not
