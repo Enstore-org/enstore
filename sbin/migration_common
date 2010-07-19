@@ -243,6 +243,8 @@ select /* It should be as simple as just using the media_type. However,
                                                              'duplicating',
                                                              'cloning')
                                 and library not like '%shelf%'
+                                /* Skip multiple coipes. */
+                                and file_family not like '%/_copy/_%' escape '/'  --match literal underscores
                            THEN label
                            ELSE NULL
                       END) AS remaining_to_start_migrating,
@@ -250,17 +252,27 @@ select /* It should be as simple as just using the media_type. However,
                                 and system_inhibit_1 not in ('migrated',
                                                              'duplicated',
                                                              'cloned')
-                                and library not like '%shelf%'
+                                and (library not like '%shelf%' or
+                                     system_inhibit_1 in ('migrating',
+                                                          'duplicating'))
+                                /* Skip multiple coipes. */
+                                and file_family not like '%/_copy/_%' escape '/'  --match literal underscores
                            THEN label
                            ELSE NULL
                       END) AS remaining_to_finish_migrating,
        count(distinct CASE WHEN volume.sum_wr_access - volume.sum_wr_err > 0 /*skip blanks*/
+                                /* Skip multiple coipes. */
+                                and file_family not like '%/_copy/_%' escape '/'  --match literal underscores
                                 and ((system_inhibit_1 not in ('migrated',
                                                               'duplicated',
                                                               'cloned',
                                                               'cloning')
-                                     and
+                                      and
                                       library not like '%shelf%')
+                                     or
+                                      system_inhibit_1 in ('migrating',
+                                                           'duplicating',
+                                                           'cloning')
                                      or
                                      ( /* At least one needs to be NULL for
                                         this to still be remaing to complete */
@@ -280,7 +292,9 @@ select /* It should be as simple as just using the media_type. However,
                                           /* Ingore recycled destination volumes. */
                                           and v2.system_inhibit_0 != 'DELETED') = 0
                                       )
-                                    ))
+                                      and volume.system_inhibit_1 in 
+                                           ('migrated', 'duplicated', 'cloned')
+                                     ))
                            THEN label
                            ELSE NULL
                       END) AS remaining_to_scan_and_close,
