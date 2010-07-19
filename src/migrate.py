@@ -6851,7 +6851,13 @@ def final_scan_file(MY_TASK, job, fcc, encp, intf, db):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            
+
+        #Make sure the destination volume is found as the volume mentioned
+        # in layer 4.
+        if not is_expected_volume(
+            MY_TASK, dst_volume_record['external_label'], pnfs_path, fcc, db):
+            #Error message reported from is_expected_volume().
+            return 1
 
         # make sure the path is NOT a migration path
         if pnfs_path == None or is_migration_path(pnfs_path):
@@ -7239,6 +7245,8 @@ def final_scan_volume(vol, intf):
             pass
         else:
             #Make sure we have the admin path.
+            pass
+            """
             try:
                 likely_path = find_pnfs_file.find_pnfsid_path(
                     src_file_record['pnfsid'], dst_bfid,
@@ -7275,6 +7283,7 @@ def final_scan_volume(vol, intf):
                 # is_expected_volume().
                 local_error = local_error + 1
                 continue
+            """
 
         #If we are using volume_assert, check what the assert returned.
         if intf.use_volume_assert or USE_VOLUME_ASSERT:
