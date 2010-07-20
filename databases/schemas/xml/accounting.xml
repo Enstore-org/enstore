@@ -313,6 +313,24 @@
         <index name="error_wrapper_idx" columns="wrapper"/>
     </indexes>
   </table>
+  <table name="drive_data">
+    <column name="date" type="timestamp" null="no"/>
+    <column name="drive_id" type="varchar" size="16" null="no"/>
+    <column name="drive_sn" type="varchar" size="16" null="no"/>
+    <column name="volume" type="varchar" size="16" null="no"/>
+    <column name="drive_rate" type="bigint" null="no"/>
+    <column name="rw" type="bpchar" null="no"/>
+    <column name="write_error_count" type="bigint" null="no" default="0"/>
+    <column name="read_error_count" type="bigint" null="no" default="0"/>
+    <column name="bfid" type="varchar" null="no"/>
+    <column name="file_size" type="bigint" null="no" default="0"/>
+    <indexes>
+        <index name="drive_data_date_idx" columns="date"/>
+	<index name="drive_data_drive_id_idx" columns="drive_id"/>
+	<index name="drive_data_volume_idx" columns="volume"/>
+	<index name="drive_data_bfid_idx" columns="bfid"/>
+    </indexes>
+  </table>
   <view name="encp_xfer_by_day_view">
     SELECT (sum(encp_xfer.size))::double precision AS date, encp_xfer.rw AS size, encp_xfer.mover AS rw, (substr((encp_xfer.date)::text, 0, 11))::timestamp without time zone AS mover FROM encp_xfer GROUP BY encp_xfer.rw, encp_xfer.mover, substr((encp_xfer.date)::text, 0, 11);
   </view>

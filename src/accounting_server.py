@@ -284,6 +284,20 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		# self.reply_to_caller({'status':(e_errors.OK, None)})
 		# sys.exit(0)
 
+	#log drive info (suspected drives)
+	def log_drive_info(self,ticket):
+		dict={}
+		for key in 'date','drive_id','drive_sn','volume', \
+		    'drive_rate', 'rw', 'write_error_count','read_error_count', \
+		    'bfid', 'file_size':
+			if ticket.has_key(key):
+				dict[key]=ticket.get(key,None)
+		try:
+			self.accDB.insert("drive_data",dict)
+		except Exception, detail:
+			Trace.alarm(e_errors.WARNING, "Failed to insert data into drive_info %s"%(str(detail),))
+
+
 	# log_start_mount(self, node, volume, type, logname, start)
 	def log_start_mount(self, ticket):
 		st = time.time()

@@ -40,7 +40,7 @@ class accClient(generic_client.GenericClient):
 		generic_client.GenericClient.__init__(
 			self, csc, MY_NAME, server_address = server_address,
 			flags = flags, logc = logc, alarmc = alarmc,
-			rcv_timeout = rcv_timeout, rcv_tries = rcv_tries, 
+			rcv_timeout = rcv_timeout, rcv_tries = rcv_tries,
 			server_name = MY_SERVER)
 		try:
 			self.uid = pwd.getpwuid(os.getuid())[0]
@@ -245,6 +245,17 @@ class accClient(generic_client.GenericClient):
 
 		self.send2(ticket)
 
+	def log_drive_info(self,ticket):
+		ticket['work']='log_drive_info'
+		if not ticket.has_key('date'):
+			ticket['date']=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+		for key in 'date','drive_id','drive_sn','volume', \
+			'drive_rate', 'rw', 'write_error_count','read_error_count', \
+			'bfid' :
+			if not ticket.has_key(key):
+				raise KeyError, "Required key \""+key+"\" is missing in input dictionary"
+		self.send2(ticket)
+
 
 if __name__ == '__main__':
 	intf = option.Interface()
@@ -255,3 +266,7 @@ if __name__ == '__main__':
 		pprint.pprint(ac.quit())
 	elif sys.argv[1] == 'hello2':
 		ac.hello2()
+	elif sys.argv[1] == 'drive_info':
+		ac.log_drive_info({'drive_id' : 'TEST', 'drive_sn' : 'TEST', 'volume' : 'XXXXXX', 'drive_rate' : 0.0 , 'rw' : 'w' , 'write_error_count' : 0, 'read_error_count' : 0 })
+
+
