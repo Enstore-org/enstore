@@ -1,0 +1,242 @@
+<html><body><pre>
+                      Enstore release notes, from ENSTORE_RPM_2_0_1_3 to ENSTORE_RPM_2_1_0_1
+                      Detailed cvs commit logs
+
+
+.
+========== rpm_version ====================================================================================
+
+Version 2.1.0 Release 1 
+
+========== enstore_plots ====================================================================================
+
+mount latencies were set to run once a day, fix that to run every hour 
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+./src
+========== atomic.py ====================================================================================
+
+1) To fix two --status bugs. 2) To give a better error message when a ghost file is found during migration. 3) To prevent the full path look up information was then being dropped without using it, since it was already migrated. 4) Catch errors updating migration_history. 
+
+========== charset.py ====================================================================================
+
+Fix issues with new style disk volumes and location cookies not being recognized correctly. (bugzilla #772, review board #153) 
+
+========== duplicate.py ====================================================================================
+
+The patch adds --make-copies to duplicate.py: 1) Add support for --make-copies in option.py. This includes fixing an arguement processing bug with a required arguement first appearing in the extra values section of the switch definition. 2) Added make_copies() in migrate.py based on make_failed_copies(). 3) Reworked migrate.migrate() when --with-final-scan is used to join all read and write threads, then sort all the destination files by destination location, then start the final_scan threads. The old way worked, but proved to be very inefficent with tape access. An unrelated item also fixed: CDMS122444004900000 on VOB738 had multiple migrations run simultaneously. One set completed successfully, while the other did not. The code that determines if a source file is all done returns True, because it found a set of successful destination files. The Total done check fails because it finds the unsuccessful set of destination files. This patch gives the user the error, while previously the users only got "failed from previous errors" without there being a previous error. For all: bugzilla #791, review board #166 
+
+Lets get the correct versions commited this time... 1) --restore switch now works for duplication 2) --status now has --migration-only and --multiple-copy-only modifying switches to show only a limited type(s) of status. 3) In addition to supplying a bfid or volume, the user can now give "<volume>:<location_cookie>" for migrating/duplicating, scanning, status reporting or restoring. Reporting --status on a per file basis is also new. Previously, it only worked on volumes. 4) Added two new functions: is_migration_history_done() and is_migration_history_closed(). These functions return True if all source and destination pairs have their entries in the migration_history table. The _done() function only makes sure that all the entries exist. The _closed() function additional makes sure all the "closed_time" fields are also filled in. (bugzilla #772, review board #153) 
+
+1) To fix two --status bugs. 2) To give a better error message when a ghost file is found during migration. 3) To prevent the full path look up information was then being dropped without using it, since it was already migrated. 4) Catch errors updating migration_history. 
+
+========== duplication_util.py ====================================================================================
+
+1) To fix two --status bugs. 2) To give a better error message when a ghost file is found during migration. 3) To prevent the full path look up information was then being dropped without using it, since it was already migrated. 4) Catch errors updating migration_history. 
+
+========== encp.py ====================================================================================
+
+The --skip-pnfs switch was not being honored when reading a file by BFID. (bugzilla #805, review board #171) 
+
+========== enstore_constants.py ====================================================================================
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+========== enstore_display.py ====================================================================================
+
+Corrected some comments from code review. (bugzilla #760, review board #143) 
+
+Added menu options to show waiting clients and to choose between the linear or circular layouts. (bugzilla #760, review board #143) 
+
+========== enstore_functions3.py ====================================================================================
+
+Fix issues with new style disk volumes and location cookies not being recognized correctly. (bugzilla #772, review board #153) 
+
+========== enstore_make_plot_page.py ====================================================================================
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+========== enstore_plots.py ====================================================================================
+
+removed classes that were used to generate mount latency plots Bugzilla : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=776 RB : http://uqbar/reviews/r/155/ 
+
+========== enstore_start.py ====================================================================================
+
+When there is some program running with server name argument, the server does not start with "enstore start .." command. Make changes in enstore_start.py to better parse the EPS output. (bz 788) 
+
+========== entv.py ====================================================================================
+
+Added menu options to show waiting clients and to choose between the linear or circular layouts. (bugzilla #760, review board #143) 
+
+========== file_clerk.py ====================================================================================
+
+pass database name to edb.FileDB and edb.VolumeDB constructors RB : http://uqbar/reviews/r/172 Bugzilla : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=800 
+
+========== info_server.py ====================================================================================
+
+pass database name to edb.FileDB and edb.VolumeDB constructors RB : http://uqbar/reviews/r/172 Bugzilla : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=800 
+
+========== inquisitor_plots.py ====================================================================================
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+========== library_manager.py ====================================================================================
+
+Bug fix: When preemptive (admin. priority) request gets sent to mover and mover returns dismount failure for the tape being preempted, the request does not get removed from volumes at movers list. This results in requests not being selected for a given volume family (write) or a give volume (read). (Bugzilla 761). 
+
+========== log_server.py ====================================================================================
+
+fix http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=773 "Enstore alarm log search seems broken" RB: http://uqbar/reviews/r/154/ 
+
+========== manage_queue.py ====================================================================================
+
+In SortedList class of manage_queue.py call get() inside of get_next() if it was never called. The problem was found when adding diagnostic messages to resolve library_manager hangings. (bz #785) 
+
+The Request_Queue.get() in manage_queue.py does not process the next request in tags if previous requests were dropped due to restriction on host selection. (bigzilla 769). This problem is caused by the bug in manager_queue.py the Request_Queue.get() does not process the next request in tags if previous requests were dropped due to restriction on host selection, e.i. Request_Queue.get(key, next=1, active_volumes=active_vols, disabled_hosts=disabled_hosts_list) -- returns None because all requests for a give key (volume family of external label) were for a host in the disabled_hosts_list Request_Queue.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) - returns None because next request from a given host was in the disabled_hosts_list Request_Queue.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) - returns None because Atomic_Request_Queue called by Request_Queue.get does not proceed with another tag. 
+
+========== media_changer.py ====================================================================================
+
+If media is not in home position do not retry to mount it and do not try to unmount it. (bugzilla 766) 
+
+========== migrate.py ====================================================================================
+
+final_scan_volume() is obtaining the current pnfs location for one test; and does so incorrectly. final_scan_file() is also obtaining this information, but does so correctly. The is_expected_volume() check is now moved to final_scan_file(). (bugzilla #816, review board #178) 
+
+1) The migrate --status output for a bad file that has not been involved in migration or multiple copies was being dropped. (bugzilla #798, review board #171) 2) There is a check to make sure that there is at least on destination copy before doing the restore. It should have been "> 0", but instead was "> 1". (bugzilla #799, review board #171) 3) Scanning a multiple copy made during migration by BFID was resulting in a traceback. (bugzilla #805, review board #171) 
+
+The patch adds --make-copies to duplicate.py: 1) Add support for --make-copies in option.py. This includes fixing an arguement processing bug with a required arguement first appearing in the extra values section of the switch definition. 2) Added make_copies() in migrate.py based on make_failed_copies(). 3) Reworked migrate.migrate() when --with-final-scan is used to join all read and write threads, then sort all the destination files by destination location, then start the final_scan threads. The old way worked, but proved to be very inefficent with tape access. An unrelated item also fixed: CDMS122444004900000 on VOB738 had multiple migrations run simultaneously. One set completed successfully, while the other did not. The code that determines if a source file is all done returns True, because it found a set of successful destination files. The Total done check fails because it finds the unsuccessful set of destination files. This patch gives the user the error, while previously the users only got "failed from previous errors" without there being a previous error. For all: bugzilla #791, review board #166 
+
+Fixed an issue with running --make-failed-copies for a deleted file on a machine without an admin PNFS path. (bugzilla #782, review board #158) 
+
+Adjust the checks in migrate_volume() to allow for a migration destination tape to be scanned after it has already been migrated to yet another tape. (bugzilla #779, review board #156) 
+
+Lets get the correct versions commited this time... 1) --restore switch now works for duplication 2) --status now has --migration-only and --multiple-copy-only modifying switches to show only a limited type(s) of status. 3) In addition to supplying a bfid or volume, the user can now give "<volume>:<location_cookie>" for migrating/duplicating, scanning, status reporting or restoring. Reporting --status on a per file basis is also new. Previously, it only worked on volumes. 4) Added two new functions: is_migration_history_done() and is_migration_history_closed(). These functions return True if all source and destination pairs have their entries in the migration_history table. The _done() function only makes sure that all the entries exist. The _closed() function additional makes sure all the "closed_time" fields are also filled in. (bugzilla #772, review board #153) 
+
+1) --restore switch now works for duplication 2) --status now has --migration-only and --multiple-copy-only modifying switches to show only a limited type(s) of status. 3) In addition to supplying a bfid or volume, the user can now give "<volume>:<location_cookie>" for migrating/duplicating, scanning, status reporting or restoring. Reporting --status on a per file basis is also new. Previously, it only worked on volumes. 4) Added two new functions: is_migration_history_done() and is_migration_history_closed(). These functions return True if all source and destination pairs have their entries in the migration_history table. The _done() function only makes sure that all the entries exist. The _closed() function additional makes sure all the "closed_time" fields are also filled in. (bugzilla #772, review board #153) 
+
+1) To fix two --status bugs. 2) To give a better error message when a ghost file is found during migration. 3) To prevent the full path look up information was then being dropped without using it, since it was already migrated. 4) Catch errors updating migration_history. 
+
+========== migration_summary_plotter_module.py ====================================================================================
+
+Corrected the migration accounting to handle: 1) Destination tapes that were determined to be bad during scanning. They had partial migration_history table records that were not properly being ignored. 2) Shelved-tapes with incomplete migration_history table records were getting included in the total tape count, but were not included in the remaining tape list. 
+
+========== mover.py ====================================================================================
+
+If dismount fails close net_driver (data connection). If there is a preemptive dismount and net_driver is not closed, the client (encp) port does not get disconnected. This resulted in 15 min timeout for encp retry. When fixed, encp retries immediately.(bz #767) 
+
+========== mover_summary_plotter_module.py ====================================================================================
+
+avoid histogram overflows, use solid lines to draw histograms 
+
+========== option.py ====================================================================================
+
+The patch adds --make-copies to duplicate.py: 1) Add support for --make-copies in option.py. This includes fixing an arguement processing bug with a required arguement first appearing in the extra values section of the switch definition. 2) Added make_copies() in migrate.py based on make_failed_copies(). 3) Reworked migrate.migrate() when --with-final-scan is used to join all read and write threads, then sort all the destination files by destination location, then start the final_scan threads. The old way worked, but proved to be very inefficent with tape access. An unrelated item also fixed: CDMS122444004900000 on VOB738 had multiple migrations run simultaneously. One set completed successfully, while the other did not. The code that determines if a source file is all done returns True, because it found a set of successful destination files. The Total done check fails because it finds the unsuccessful set of destination files. This patch gives the user the error, while previously the users only got "failed from previous errors" without there being a previous error. For all: bugzilla #791, review board #166 
+
+New switches for migration: --migration-only and --multiple-copy-only (bugzilla #772). 
+
+1) Added the "systems" drop down menu. This provides the found selection of Enstore systems to display. 2) Fixed the --generate-messages-file switch to output consistent information. 3) Handle adding new movers on the fly to the display. 4) Removed --movers-file switch. With #2 and #3 this is obsolete. 5) Have --messages-file use the time information to space the replayed display updates in real time. 
+
+Address printing help_strings with embedded newlines. (bugzilla bug #605, review board #48.) 
+
+Patch to keep the code from confusing arguments and switches with the same string values (without any leading - or --). (bugzilla bug #600, review board #46) Also, add the new fs.py switches for extended attributes. (--xattr, --xattrs, --xattrrm, --xattrchmod --xattrchown) 
+
+========== plotter_main.py ====================================================================================
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+========== plotter.py ====================================================================================
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+========== tapes_burn_rate_plotter_module.py ====================================================================================
+
+add slope in MB/s to burn rate plots 
+
+========== volume_clerk.py ====================================================================================
+
+pass database name to edb.FileDB and edb.VolumeDB constructors RB : http://uqbar/reviews/r/172 Bugzilla : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=800 
+
+./spec
+========== enstore.spec ====================================================================================
+
+Version 2.1.0 Release 1 
+
+using python with enabled ssl 
+
+========== python_enstore2.6.3.spec ====================================================================================
+
+added ssl support 
+
+./etc
+========== cdf.conf ====================================================================================
+
+set check_written_file to 600 on cdfenmvr19a,20a,21a -- tam 6/16/2010 
+
+assigned LTO4_19 to TST-LTO4 LM 
+
+assgned mover LTO3_21 to TST-LTO3 LM 
+
+configured CDF-LTO4G1T and assgned mover LTO4_26 to it 
+
+removed locks for all production libraries 
+
+paused all production libraries 
+
+May 18 upgrade configuration 
+
+========== config_params.html ====================================================================================
+
+Modified description of "use_threads" in library manager keys. 
+
+========== sam.conf ====================================================================================
+
+updated tape device name for LTO4_237 --TAM 6/25/2010 
+
+moving d0enmvr169a back into production library --TAM 6/24/2010 
+
+moving d0enmvr169a to D0-LTO4F1T for testing --TAM 6/24/2010 
+
+========== stk.conf ====================================================================================
+
+Temporarily re-added 9940.library_manager and added to 2 9940B movers to read 9940 A tapes for rerunning migration. 
+
+Enabled writes from cmsstor261-cmsstor294 at Bakken's request 
+
+Set storage_group_limits to 3 for cms in CD-LTO4F1 library. Per Stan/Gene as a contingency plan to allow cms to write LTO4 tapes at FCC in the event of an extended robot outage at GCC. 
+
+./sbin
+========== choose_ran_file ====================================================================================
+
+If the randomly chosen file is also the first or the last file, only try reading the file once. (bugzilla #414, review board #140) 
+
+========== migration_common ====================================================================================
+
+1) Skip counting multiple copy tapes as originals to be migrated. 2) Include all migrating/duplicating tapes for the remaining counts. Migrating tapes that were ejected from the robot were not being counted correctly. A similar patch was just added for the "Migration/Duplication Remaining" section. 3) Only include tapes with missing migration_history table information if the system_inhibit is migrated, dupcated or cloned. (bugzilla #814, review board #177) 
+
+1) Remove the "Destination tapes not yet finished." output. I can't make it accurate without using the migration table. If I use the migration table it won't complete in a reasonable amount of time. 2) Tapes that have as many write failures as write attempts are empty. If the difference between these values is greater than zero, we know there is something written on the tape. (All bugzilla #804, review board #173) 
+
+Include tapes in the 'migrating' and 'duplicating' states in the remaining output section, even if ejected from the robot. These volumes are still counted in the summary section, so now the remaining tape list and the summary counts can agree. (bugzilla #797, review board #170) 
+
+1) Blank source tapes, like PRL700, were keeping a destination tape from being closed. 2) Tapes like PSA429 that have a D0 assigned file family datalogger_mezsilo_copy1 were tripping up duplication matches for _copy_#, because the underscore has special meaing similar to how the % character does. Now that these file_families are not matching additional tapes are being kept off the remaining lists. 3) Destination tapes like PSA425 and PSA428 originally had files migrated to them from tapes like: PRL641, PRL644, PRL645, PRL646, PRL648 and PRL649. Then these migrations were restored, but PSA425 and PSA428 still contain destination files from other tapes. Ultimately, this left un-closed records in the migration_history table. These soure-to-destination volume pairs are now confirmed by verifying the existance of at least one corresponding record in the migration table. (All 3: Bugzilla #796, review board #169) 
+
+Ignore negative src_vol_id values in the migration_history table. (bugzilla #795, review board #168) 
+
+1) Added a migrated_to column for the list of source tapes remaining. 2) Added a remaining section for destination tapes waiting to be scanning, including the source tapes these files are from. (bugzilla #784, review board #159) 
+
+Corrected the migration accounting to handle: 1) Destination tapes that were determined to be bad during scanning. They had partial migration_history table records that were not properly being ignored. 2) Shelved-tapes with incomplete migration_history table records were getting included in the total tape count, but were not included in the remaining tape list. 
+
+Group volumes with the same media type, but different capacity bytes, together on one line in the summary output. (bugzilla #764, review board #145) 
+
+========== multiple_copy_summary ====================================================================================
+
+The multiple copy summary is currently including deleted files and files located on shelved tapes in the summary counts. This patch removes those files from the counts. (bugzilla #793, review board #167) 
+
+1) Added failures_made, failures_skipped and failure_remaining to the "Failed Multiple Copies per Day" section. 2) Modified the Skipped Files section description. 3) Removed the "remaining" column in the Skipped Files section. 4) Added a case field to "Failed Multiple Copies Skipped" section. The cases are failed and migrated. (bugzilla #762, review board #144) 
+
+./modules
+========== Setup ====================================================================================
+
+This is the first patch for doing historically PNFS operations, but instead in a regular file system (like ext2 or ext3). 
+
+</pre></body></html>
