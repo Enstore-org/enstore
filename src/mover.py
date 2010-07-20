@@ -25,6 +25,7 @@ import random
 import subprocess
 import copy
 import platform
+import types
 
 
 # enstore modules
@@ -1447,7 +1448,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.check_written_file_period = self.config.get('check_written_file', 0)
         self.files_written_cnt = 0
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
-        self.max_in_state_cnt = self.config.get('max_in_state_cnt', 2) 
+        self.max_in_state_cnt = self.config.get('max_in_state_cnt', 2)
+        drive_rate_threshold =  self.config.get("drive_rate_threshold", None)
+        if drive_rate_threshold:
+            exit_flag = False
+            if type(drive_rate_threshold) == types.TupleType and len(drive_rate_threshold) == 2:
+                try:
+                   self.drive_rate_threshold = (long(drive_rate_threshold[0]), long(drive_rate_threshold[1]))
+                except:
+                    exit_flag = True
+            else:
+                exit_flag = True
+            if exit_flag:
+                Trace.log(e_errors.ERROR, "Wrong format for drive_rate_threshold. Check configuration")
+                sys.exit(-1)
+                
         Trace.log(e_errors.INFO, "Starting in state %s"%(state_name(self.state),))
 
         self.device = self.config['device']
@@ -1775,6 +1790,37 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 	return res
  
+
+    # check drive rate and update suspect drive table
+    # if needed
+    def check_drive_rate(self, bfid, file_size, drive_rate, rw, read_err, write_err, drive_stats):
+        # bfid - bfid of transferred file
+        # file_size - size of last writtent or read file in bytes
+        # drive_rate - rate of tape drive in bytes/s.
+        # rw - read ('r') or write ('w')
+        # read_errors - tape drive read errors for this file
+        #               (we have seen non 0 read errors during write operation).
+        # write_errors - tape drive write errors for this file 
+        # drive_stats - information returned by drive.get_stats
+        
+        if hasattr(self, "drive_rate_threshold") and type(self.drive_rate_threshold) == types.TupleType:
+            if file_size > self.drive_rate_threshold[0]: # self.drive_rate_threshold[0] - cut off file size
+                if drive_rate < self.drive_rate_threshold[1]: # self.drive_rate_threshold[1] - cut off drive rate
+                    # put information into suspect drives table
+                    ticket = { "drive_id":self.logname,
+                               "drive_sn":drive_stats[self.ftt.SERIAL_NUM],
+                               "volume":self.current_volume,
+                               "drive_rate":drive_rate,
+                               "rw": rw,
+                               "write_error_count": read_err,
+                               "read_error_count": write_err,
+                               "file_size": file_size,
+                               "bfid": bfid,
+                               }
+                    self.asc.log_drive_info(ticket)
+                    Trace.alarm(e_errors.ERROR, "Slow drive rate detected. Drive %s rate %3.2f MB/s"%(self.logname, drive_rate/MB))
+                    
+            
     def check_written_file(self):
         rc = 0
         if self.just_mounted and self.check_first_written_enabled:
@@ -2317,6 +2363,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #raise self.ftt.FTTError(("partial stats", ftt2.FTT_EPARTIALSTAT,""))
                 stats = self.tape_driver.get_stats()
                 bloc_loc = long(stats[self.ftt.BLOC_LOC])
+                # get read and write error counts
+                read_errors_0 = long(stats[self.ftt.READ_ERRORS])
+                write_errors_0 = long(stats[self.ftt.WRITE_ERRORS])
             except (self.ftt.FTTError, TypeError), detail:
                 self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%
                                      (detail, bloc_loc), error_source=DRIVE)
@@ -2642,9 +2691,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.last_blocks_written = nblocks
                 new_bloc_loc = 0L
                 if self.driver_type == 'FTTDriver':
-
-
-
                     read_errors = -1
                     write_errors = -1
 
@@ -2662,6 +2708,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
                         return
 
+                    if read_errors > 0:
+                       read_errors = read_errors - read_errors_0 # number of read error per current file
+                    if write_errors > 0:
+                       write_errors = write_errors - write_errors_0 # number of read error per current file
 
                     Trace.log(e_errors.INFO, 'filemarks written. Tape %s absolute location in blocks %s'%(self.current_volume, new_bloc_loc,))
                     Trace.log(e_errors.INFO, "write_tape timing:pull %s write %s crc_check %s freespace %s block_write %s idle %s" %
@@ -2672,8 +2722,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                self.buffer.write_stats[4],
                                idle_time))
 
-                    if self.buffer.write_stats[4] > 0.:
-                        rates = self.bytes_written/self.buffer.write_stats[4]
+                    #if self.buffer.write_stats[4] > 0.:
+                    #    rates = self.bytes_written/self.buffer.write_stats[4]
+                    if self.buffer.write_stats[1] > 0.:
+                        rates = self.bytes_written/self.buffer.write_stats[1] # write rates are file_size / time_in_driver.write
                     else:
                         rates = 0.
                     Trace.log(e_errors.INFO, 'drive stats after write. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_write_tot %s tape_rate %s'%
@@ -2689,8 +2741,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                self.bytes_written,
                                self.buffer.write_stats[4],
                                rates))
+                   
                     
-
                     self.tape_driver.flush()
                     self.media_transfer_time = self.media_transfer_time + (time.time()-t1) # include filemarks into drive time
                     Trace.trace(31, "cur %s, initial %s, last %s, blocks %s, headers %s trailers %s"%(new_bloc_loc, self.initial_abslute_location, self.current_absolute_location,self.last_blocks_written, len(self.header_labels), len(self.eof_labels)))
@@ -2906,10 +2958,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.log_processes(logit=1)
                     return
 
-
+                read_errors_1 = read_errors # save read error count returned after write
+                write_errors_1 = write_errors # save read error count returned after write
                 read_errors = -1
                 write_errors = -1
-
                 try:
                     stats = self.tape_driver.get_stats()
                     block_n = stats[self.ftt.BLOCK_NUMBER]
@@ -2924,9 +2976,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
                     return
                 
+                if read_errors > 0:
+                    read_errors = read_errors - read_errors_1 # number of read error per current file
+                if write_errors > 0:
+                    write_errors = write_errors - write_errors_1 # number of read error per current file
 
-                if self.buffer.read_stats[4] > 0.:
-                    rates = bytes_read/self.buffer.read_stats[4]
+                #if self.buffer.read_stats[4] > 0.:
+                #    rates = bytes_read/self.buffer.read_stats[4]
+                if self.buffer.read_stats[1] > 0.:
+                    rates = self.bytes_written/self.buffer.read_stats[1] # read rates are file_size / time_in_driver.read
                 else:
                     rates = 0.
                 Trace.log(e_errors.INFO, 'drive stats after crc check. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_read_tot %s tape_rate %s'%
@@ -2946,6 +3004,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.update_after_writing():
                 self.files_written_cnt = self.files_written_cnt + 1
                 self.bytes_written_last = self.bytes_written
+                if self.driver_type == 'FTTDriver': 
+                    self.check_drive_rate(self.current_work_ticket['fc'].get('bfid',None),
+                                          self.bytes_written,
+                                          rates, 'w',
+                                          read_errors, write_errors, stats)
+                 
                 self.transfer_completed()
                 self.write_counter =  self.write_counter + 1 # successful write was done
                 self.write_in_progress = False
@@ -2957,6 +3021,20 @@ class Mover(dispatching_worker.DispatchingWorker,
     # read data from the tape
     def read_tape(self):
         self.read_tape_running = 1 # use this to synchronize read and network threads
+
+        if self.driver_type == 'FTTDriver':
+            try:
+                # to test the case uncomment 2 lines below
+                #import ftt2
+                #raise self.ftt.FTTError(("partial stats", ftt2.FTT_EPARTIALSTAT,""))
+                stats = self.tape_driver.get_stats()
+                # get read and write error counts
+                read_errors_0 = long(stats[self.ftt.READ_ERRORS])
+                write_errors_0 = long(stats[self.ftt.WRITE_ERRORS])
+            except (self.ftt.FTTError, TypeError), detail:
+                self.transfer_failed(e_errors.READ_ERROR, "error getting stats before read %s"%
+                                     (detail,), error_source=DRIVE)
+                return
 
         Trace.log(e_errors.INFO, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         if self.buffer.client_crc_on:
@@ -3233,9 +3311,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.INFO, "error getting stats after read %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
                 return
 
+            if read_errors > 0:
+                read_errors = read_errors - read_errors_0 # number of read error per current file
+            if write_errors > 0:
+                write_errors = write_errors - write_errors_0 # number of read error per current file
 
-            if self.buffer.read_stats[4] > 0.:
-                rates = self.bytes_read/self.buffer.read_stats[4]
+
+            #if self.buffer.read_stats[4] > 0.:
+            #    rates = self.bytes_read/self.buffer.read_stats[4]
+            if self.buffer.read_stats[1] > 0.:
+                rates = self.bytes_read/self.buffer.read_stats[1] # read rates are file_size / time_in_driver.read
             else:
                 rates = 0.
             Trace.log(e_errors.INFO, 'drive stats after read. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_read_tot %s tape_rate %s'%
@@ -3251,6 +3336,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                        self.bytes_read,
                        self.buffer.read_stats[4],
                        rates))
+            self.check_drive_rate(self.file_info.get('bfid',None),
+                                  self.bytes_read,
+                                  rates, 'r',
+                                  read_errors, write_errors, stats)
         
         if break_here and self.method == 'read_next':
             self.bytes_to_write = self.bytes_read # set correct size for bytes to write
