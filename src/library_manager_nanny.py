@@ -132,7 +132,6 @@ try:
                 result = int(res[0]) # stdout
             if not result:
                 continue  # library manager is not running, we do not care: why 
-
             # Number of LM ports
             # can be 1 or 3.
             # If it is 1 the library manager does not have
@@ -172,8 +171,7 @@ try:
             if not_responding_ports > 0:
                 record_event(lm['name'], "NOT_RUNNING")
                 # get current queue length
-                intf = library_manager_client.LibraryManagerClientInterface(user_mode=0)
-                lmc = library_manager_client.LibraryManagerClient((intf.config_host, intf.config_port), lm['name'])
+                lmc = library_manager_client.LibraryManagerClient(csc, lm['name'])
                 ql = lmc.get_pending_queue_length(timeout=5)
                 Trace.log(e_errors.INFO, "pending_queue_length returned %s"%(ql,))
                 
