@@ -214,7 +214,7 @@ try:
                 else: # weekdays between 8:00 and 17:00
                     Trace.alarm(e_errors.INFO, "Library manager %s does not get restarted during work hours"%(lm['name'], ))
                     enstore_mail.send_mail(MY_NAME, "Library manager %s is not responding on %s %s"%(lm['name'], host, port),
-                                           "Library manager %s is not responding"%(lm['name'],), "moibenko@fnal.gov")
+                                           "Library manager %s is not responding"%(lm['name'],), mail_recepient)
                     
 
 
