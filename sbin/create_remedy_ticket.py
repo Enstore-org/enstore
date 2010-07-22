@@ -41,7 +41,7 @@ class CreateEntry:
 			      Service_Type = 'Infrastructure Event',
 			       Impact_Type = '2-Significant/Large',
 			      Urgency_Type = '1-Critical',
-				   Summary = summary,
+                                 Summary = ciname + " : " + summary,
 		      Reported_Source_Type = 'Other',
 			    Assigned_Group = 'Storage Service',
 				    Action = 'CREATE',
