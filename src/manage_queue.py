@@ -312,7 +312,8 @@ class SortedList:
             #return None
         try:
             if self.current_index == self.start_index: # returned to the beginning index
-                Trace.trace(TR+33,"%s:::SortedList._get_next stop_rolling for %s"%(self.my_name,self.sorted_list,))
+                self.stop_rolling = 1
+                Trace.trace(TR+33,"%s:::SortedList._get_next stop_rolling %s for %s"%(self.stop_rolling, self.my_name,self.sorted_list,))
                 return None  # came back to where it started
         except AttributeError, detail: # how this happens
             self.start_index = self.current_index
