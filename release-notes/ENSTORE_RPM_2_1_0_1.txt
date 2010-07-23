@@ -14,7 +14,22 @@ mount latencies were set to run once a day, fix that to run every hour
 
 added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
 
+./release-notes
+========== ENSTORE_RPM_2_0_1_3.txt ====================================================================================
+./databases/schemas/xml
+========== accounting.xml ====================================================================================
+
+create new table "drive_data" and code that fills the data in this table. Needed for drive degradation studies. http://uqbar/reviews/r/179 http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=817 
+
 ./src
+========== accounting_client.py ====================================================================================
+
+create new table "drive_data" and code that fills the data in this table. Needed for drive degradation studies. http://uqbar/reviews/r/179 http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=817 
+
+========== accounting_server.py ====================================================================================
+
+create new table "drive_data" and code that fills the data in this table. Needed for drive degradation studies. http://uqbar/reviews/r/179 http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=817 
+
 ========== atomic.py ====================================================================================
 
 1) To fix two --status bugs. 2) To give a better error message when a ghost file is found during migration. 3) To prevent the full path look up information was then being dropped without using it, since it was already migrated. 4) Catch errors updating migration_history. 
@@ -91,6 +106,8 @@ fix http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=773 "Enstore alarm log sear
 
 ========== manage_queue.py ====================================================================================
 
+Bug fix: set stop_rolling 
+
 In SortedList class of manage_queue.py call get() inside of get_next() if it was never called. The problem was found when adding diagnostic messages to resolve library_manager hangings. (bz #785) 
 
 The Request_Queue.get() in manage_queue.py does not process the next request in tags if previous requests were dropped due to restriction on host selection. (bigzilla 769). This problem is caused by the bug in manager_queue.py the Request_Queue.get() does not process the next request in tags if previous requests were dropped due to restriction on host selection, e.i. Request_Queue.get(key, next=1, active_volumes=active_vols, disabled_hosts=disabled_hosts_list) -- returns None because all requests for a give key (volume family of external label) were for a host in the disabled_hosts_list Request_Queue.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) - returns None because next request from a given host was in the disabled_hosts_list Request_Queue.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) - returns None because Atomic_Request_Queue called by Request_Queue.get does not proceed with another tag. 
@@ -122,6 +139,8 @@ Lets get the correct versions commited this time... 1) --restore switch now work
 Corrected the migration accounting to handle: 1) Destination tapes that were determined to be bad during scanning. They had partial migration_history table records that were not properly being ignored. 2) Shelved-tapes with incomplete migration_history table records were getting included in the total tape count, but were not included in the remaining tape list. 
 
 ========== mover.py ====================================================================================
+
+1. The mover currently records error count since tape mount in per file transaction. It must record deltas - errors related to this file transfer. 2. Drive rates must be calculated as file_size/io_time 3. Mover checks the drive rates: file_size/block_rw_time and compares it with a specified threshold per file transfer. If drive rate is lower than the threshold mover makes a record in suspect drives table in accounting db and sends an alarm. (bz 391) 
 
 If dismount fails close net_driver (data connection). If there is a preemptive dismount and net_driver is not closed, the client (encp) port does not get disconnected. This resulted in 15 min timeout for encp retry. When fixed, encp retries immediately.(bz #767) 
 
@@ -191,6 +210,8 @@ Modified description of "use_threads" in library manager keys.
 
 ========== sam.conf ====================================================================================
 
+Commented out LTO4_52.mover, stkenmvr152a 
+
 updated tape device name for LTO4_237 --TAM 6/25/2010 
 
 moving d0enmvr169a back into production library --TAM 6/24/2010 
@@ -198,6 +219,8 @@ moving d0enmvr169a back into production library --TAM 6/24/2010
 moving d0enmvr169a to D0-LTO4F1T for testing --TAM 6/24/2010 
 
 ========== stk.conf ====================================================================================
+
+uncommented LTO4_52 to return it to STK Enstore production. 
 
 Temporarily re-added 9940.library_manager and added to 2 9940B movers to read 9940 A tapes for rerunning migration. 
 
@@ -209,6 +232,14 @@ Set storage_group_limits to 3 for cms in CD-LTO4F1 library. Per Stan/Gene as a c
 ========== choose_ran_file ====================================================================================
 
 If the randomly chosen file is also the first or the last file, only try reading the file once. (bugzilla #414, review board #140) 
+
+========== create_remedy_ticket.py ====================================================================================
+
+IMPROVEMENT: add "CI" name ("configuration item") to remedy ticket summary - John Hendry wants to see it in a page http://uqbar/reviews/r/181/ 
+
+========== install_enstore_rpm.sh ====================================================================================
+
+Default enstore rpm is set to 2.1.0-1 
 
 ========== migration_common ====================================================================================
 
