@@ -26,6 +26,7 @@ import socket
 import pwd
 import configuration_client
 import enstore_constants
+import enstore_functions2
 import enstore_files
 import e_errors
 import Trace
@@ -34,10 +35,10 @@ import Trace
 class WebServer:
     def __init__(self,timeout=1,retry=0):
         self.is_ok=True
-        intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
-        csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+        csc   = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
+                                                          enstore_functions2.default_port()))
         self.this_host_name=socket.gethostname()
-        self.system_name = csc.get_enstore_system(timeout,retry)        
+        self.system_name = csc.get_enstore_system(timeout,retry)
         self.server_dict={}
         self.domain_name=socket.gethostbyname(socket.gethostname())[0:7]
         if self.system_name:
@@ -45,7 +46,7 @@ class WebServer:
             config_dict = csc.dump(timeout, retry)
             self.config_dict = config_dict['dump']
         else:
-            try: 
+            try:
                 configfile = os.environ.get('ENSTORE_CONFIG_FILE')
                 print "Failed to connect to config server, using configuration file %s"%(configfile,)
                 try:
@@ -53,7 +54,7 @@ class WebServer:
                 except:
                     exc,msg=sys.exc_info()[:2]
                     print exc,msg
-                
+
                 code = string.join(f.readlines(),'')
                 configdict={}
                 exec(code)
@@ -71,7 +72,7 @@ class WebServer:
                 if not match:
                     self.system_name=self.this_host_name.split('.')[0]
                 self.web_server = self.config_dict.get(WEB_SERVER, {})
-               
+
             except:
                 print "Config file ",configfile," does not exist"
                 self.is_ok=False
@@ -79,7 +80,7 @@ class WebServer:
         self.inq_d = self.config_dict.get(enstore_constants.INQUISITOR, {})
         self.Root = self.server_dict.get(SERVER_ROOT,'/etc/httpd')
         self.config_file = "%s/conf/httpd.conf"%(self.Root)
-        print "CONF",self.config_file 
+        print "CONF",self.config_file
 
     def get_ok(self):
         return self.is_ok
@@ -118,22 +119,22 @@ class WebServer:
 
     def move_httpd_conf(self,src,dest):
         if os.access(src, os.F_OK):
-            try: 
+            try:
                 os.rename(src,dest)
             except:
                 print "Failed to move original httpd.conf file"
                 return 1
         return 0
-    
+
     def write_httpd_conf(self) :
-        print "Writing file ",self.config_file, " Root ",self.Root 
+        print "Writing file ",self.config_file, " Root ",self.Root
         rc=0
         if not self.is_ok :
             return 1
         if self.move_httpd_conf(self.config_file,"%s%s"%(self.config_file,SUFFIX)) :
             return 1
         f=open(self.config_file,"w")
-        try: 
+        try:
             for line in self.lines:
                 txt = line
                 if line.lstrip().find('#') != 0:
@@ -145,7 +146,7 @@ class WebServer:
                             if key == "CustomLog" :
                                 #
                                 # type of log files
-                                # 
+                                #
                                 for k in self.server_dict[key].keys():
                                     index=line.strip().find(k)
                                     if index!=-1:
@@ -334,7 +335,7 @@ def install():
         cgi_dir=cgi_dir+"/log"
         if not os.path.exists(cgi_dir):
             os.makedirs(cgi_dir)
-        
+
         pid_file = server.get_pid_file()
         if pid_file:
             if not os.path.exists(os.path.dirname(pid_file)):
@@ -381,7 +382,7 @@ def install():
         log_dir=server.config_dict.get('log_server', {})['log_file_path']
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        
+
         print "log directory ",log_dir
         log_dir_link=os.path.join(html_dir,"log")
         if not os.path.exists(log_dir_link):
@@ -399,7 +400,7 @@ def erase():
     server = WebServer()
     rc=0
     server.move_httpd_conf("%s%s"%(server.config_file,SUFFIX), server.config_file)
-        
+
 def usage(cmd):
     print "Usage: %s -i [--install] -e [erase] -h [--help]"%(cmd,)
 
@@ -427,13 +428,13 @@ if __name__ == "__main__":
             if install() :
                 print "Failed to install directories"
                 sys.exit(1)
-        
+
     except getopt.GetoptError:
         print "Failed to process arguments"
         usage(sys.argv[0])
         sys.exit(2)
 
-        
-        
 
-                                    
+
+
+
