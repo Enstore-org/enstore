@@ -8,6 +8,7 @@
 
 Version 2.1.0 Release 1 
 
+./crontabs
 ========== enstore_plots ====================================================================================
 
 mount latencies were set to run once a day, fix that to run every hour 
@@ -16,6 +17,7 @@ added module that plots mount/dismount latencies per robot per drive type RB htt
 
 ./release-notes
 ========== ENSTORE_RPM_2_0_1_3.txt ====================================================================================
+
 ./databases/schemas/xml
 ========== accounting.xml ====================================================================================
 
@@ -176,6 +178,17 @@ add slope in MB/s to burn rate plots
 
 pass database name to edb.FileDB and edb.VolumeDB constructors RB : http://uqbar/reviews/r/172 Bugzilla : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=800 
 
+========== web_server.py ====================================================================================
+
+get rid of interface usage (to play nice with option.py) http://uqbar/reviews/r/184/ 
+
+Always work with copy of the original httpd.conf 
+
+./doc/WWW
+========== index-bottom.html ====================================================================================
+
+get rid of obsolete media types in main hml ("Ingest rate") http://uqbar/reviews/r/182/ 
+
 ./spec
 ========== enstore.spec ====================================================================================
 
@@ -208,7 +221,13 @@ May 18 upgrade configuration
 
 Modified description of "use_threads" in library manager keys. 
 
+========== gccen.conf ====================================================================================
+
+Check in local changes Add pnfs_server 
+
 ========== sam.conf ====================================================================================
+
+put LTO4_52 back into D0Enstore 
 
 Commented out LTO4_52.mover, stkenmvr152a 
 
@@ -219,6 +238,8 @@ moving d0enmvr169a back into production library --TAM 6/24/2010
 moving d0enmvr169a to D0-LTO4F1T for testing --TAM 6/24/2010 
 
 ========== stk.conf ====================================================================================
+
+Removing stkenmvr152, LTO4_52 
 
 uncommented LTO4_52 to return it to STK Enstore production. 
 
@@ -240,6 +261,10 @@ IMPROVEMENT: add "CI" name ("configuration item") to remedy ticket summary - Joh
 ========== install_enstore_rpm.sh ====================================================================================
 
 Default enstore rpm is set to 2.1.0-1 
+
+========== make-enstore-html-rpm ====================================================================================
+
+check out enstore "production" release from cvs 
 
 ========== migration_common ====================================================================================
 
