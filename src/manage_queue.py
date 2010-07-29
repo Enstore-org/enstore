@@ -277,15 +277,15 @@ class SortedList:
         self.start_index = self.current_index
         
         self.lock.release()
-        Trace.trace(TR+23,"%s:::SortedList.get: at exit c_i %s s_i %s"%
-                    (self.my_name, self.current_index, self.start_index))
+        Trace.trace(TR+23,"%s:::SortedList.get: at exit c_i %s s_i %s len %s"%
+                    (self.my_name, self.current_index, self.start_index, len(self.sorted_list)))
 
         return ret
 
     # get next pending request
     def _get_next(self):
-        Trace.trace(TR+23, "%s:::SortedList._get_next stop_rolling %s current_index %s"%
-                    (self.my_name, self.stop_rolling,self.current_index))
+        Trace.trace(TR+23, "%s:::SortedList._get_next stop_rolling %s current_index %s start_index %s list len %s"%
+                    (self.my_name, self.stop_rolling,self.current_index, self.start_index, len(self.sorted_list)))
         if not self.sorted_list:
             self.start_index = self.current_index
             Trace.trace(TR+23,"%s:::SortedList._get_next: c_i %s s_i %s"%
@@ -298,7 +298,6 @@ class SortedList:
         self.current_index = self.current_index + 1
         if self.current_index >= len(self.sorted_list):
             self.current_index = 0
-        Trace.trace(TR+23,"%s:::SortedList._get_next:?????"%(self.my_name,))
         Trace.trace(TR+23,"%s:::SortedList._get_next: c_i %s s_i %s list_len %s"%
                     (self.my_name, self.current_index, self.start_index, len(self.sorted_list)))
         
@@ -331,6 +330,7 @@ class SortedList:
     # requests from which have been alredy rejected by discipline
     # in the current selection cycle
     def get_next(self, disabled_hosts=[]):
+        Trace.trace(TR+33,"%s SortedList.get_next: disabled hosts %s"%(self.my_name, disabled_hosts))
         if not hasattr(self,'start_index'): # get was not called in this selection cycle, call it
             Trace.trace(TR+33,"%s SortedList.get_next: will call get"%(self.my_name,))
             return self.get()
@@ -357,6 +357,11 @@ class SortedList:
             self.lock.acquire()
             try:
                 self.sorted_list.remove(record)
+                max_index = len(self.sorted_list) - 1
+                if self.current_index > max_index:
+                    self.current_index = max_index
+                if hasattr(self,'start_index') and self.start_index > max_index:
+                    self.start_index = max_index
                 if record.unique_id in self.ids: self.ids.remove(record.unique_id)
                 if record.ofn in self.of_names: self.of_names.remove(record.ofn)
                 if key and key in self.keys:
@@ -376,6 +381,7 @@ class SortedList:
         pri = record.pri
         self.rm(record, key)
         # find the next highest priority request
+        Trace.trace(TR+23,"SortedList.delete id %s highest pri id %s"%(record.unique_id, self.highest_pri_id)) 
         if record.unique_id == self.highest_pri_id:
             req = self.get(pri)
             if req:
@@ -800,8 +806,8 @@ class Atomic_Request_Queue:
     
     def get(self, key='',location='', next=0, active_volumes=[], disabled_hosts=[]):
         record = None
-        Trace.trace(TR+21,'Atomic_Request_Queue:get:key %s location %s next %s active %s'%
-                    (key, location, next, active_volumes))
+        Trace.trace(TR+21,'Atomic_Request_Queue:get:key %s location %s next %s active %s disabled_hosts %s'%
+                    (key, location, next, active_volumes, disabled_hosts))
         if key:
             # see if key points to write queue
             if key in self.ref.keys():
@@ -1531,7 +1537,7 @@ def unit_test():
  
 def unit_test_bz_769():
     # unit test for bugzilla ticket 769
-    # at least 2 tickets shoiuld be returned
+    # at least 2 tickets should be returned
     pending_work = Request_Queue()
 
     t1={}
@@ -1672,7 +1678,143 @@ def unit_test_bz_769():
             if rq:
                 print "NKRQ%s %s"%(cnt, rq)
                 print "NKTICKET", rq.ticket
-          
+
+def unit_test_bz_774():
+    # unit test for bugzilla ticket 774
+    # repeat the pattern leading to LM hang
+    # create 3 requests for vol1 and 1 request for vol3 (not actually needed).
+    # start selection cycle
+    # call get such that the last request for vol1 gets selected
+    # delete this tequest
+    # start new selection cycle
+    # call get without parameters
+    # cal get with next=1 and disabled hosts containing host submutted with requests
+    # Not patched code loops in SortedList.get_next()
+    # Patched code returns.
+    
+    pending_work = Request_Queue()
+
+    t1={}
+    t1["encp"]={}
+    t1['fc'] = {}
+    t1['vc'] = {}
+    t1["times"]={}
+    t1["unique_id"]=1
+    t1["encp"]["basepri"]=100
+    t1["encp"]["adminpri"]=-1
+    t1["encp"]["delpri"]=176
+    t1["encp"]["agetime"]=1
+    t1["times"]["t0"]=time.time()
+    t1['work'] = 'read_from_hsm'
+    t1['fc']['external_label'] = 'vol1'
+    t1['fc']['location_cookie'] = 5
+    t1['vc']['storage_group'] = 'D0'
+    t1['callback_addr'] = ('131.225.13.129', 7000)
+    print "PUT",t1['work'] 
+    res = pending_work.put(t1)
+    print "RESULT",res, t1['fc']['external_label']
+
+    t2={}
+    t2["encp"]={}
+    t2['fc'] = {}
+    t2['vc'] = {}
+    t2["times"]={}
+    t2["unique_id"]=2
+    t2["encp"]["basepri"]=100
+    t2["encp"]["adminpri"]=-1
+    t2["encp"]["delpri"]=176
+    t2["encp"]["agetime"]=1
+    t2["times"]["t0"]=time.time()
+    t2['work'] = 'read_from_hsm'
+    t2['fc']['external_label'] = 'vol1'
+    t2['fc']['location_cookie'] = 2
+    t2['vc']['storage_group'] = 'D0'
+    t2['callback_addr'] = ('131.225.13.129', 7000)
+    print "PUT",t2['work'] 
+    res = pending_work.put(t2)
+    print "RESULT",res, t2['fc']['external_label']
+
+    t12={}
+    t12["encp"]={}
+    t12['fc'] = {}
+    t12['vc'] = {}
+    t12["times"]={}
+    t12["unique_id"]=12
+    t12["encp"]["basepri"]=100
+    t12["encp"]["adminpri"]=-1
+    t12["encp"]["delpri"]=176
+    t12["encp"]["agetime"]=1
+    t12["times"]["t0"]=time.time()
+    t12['work'] = 'read_from_hsm'
+    t12['fc']['external_label'] = 'vol1'
+    t12['fc']['location_cookie'] = 12
+    t12['vc']['storage_group'] = 'D0'
+    t12['callback_addr'] = ('131.225.13.129', 7000)
+    print "PUT",t12['work'] 
+    res = pending_work.put(t12)
+    print "RESULT",res, t12['fc']['external_label']
+
+    t3={}
+    t3["encp"]={}
+    t3['fc'] = {}
+    t3['vc'] = {}
+    t3["times"]={}
+    t3["unique_id"]=3
+    t3["encp"]["basepri"]=150
+    t3["encp"]["adminpri"]=-1
+    t3["encp"]["delpri"]=176
+    t3["encp"]["agetime"]=1
+    t3["times"]["t0"]=time.time()
+    t3['work'] = 'read_from_hsm'
+    t3['fc']['external_label'] = 'vol3'
+    t3['fc']['location_cookie'] = 3
+    t3['vc']['storage_group'] = 'D0'
+    t3['callback_addr'] = ('131.225.13.129', 7000)
+    print "PUT",t3['work'] 
+    res = pending_work.put(t3)
+    print "RESULT",res, t3['fc']['external_label']
+    pending_work.wprint()
+    Trace.do_print(range(5, 500)) # uncomment this line for debugging
+    pending_work.start_cycle()
+    print "PR_GET"
+    rq = pending_work.get(key='vol1', location=6)
+    print "RQ1", rq
+    if rq:
+        print "TICKET", rq.ticket
+        print "HOST", rq.host
+        pending_work.delete(rq)
+    else:
+        print "NONE"
+        
+
+    print "START NEW CYCLE"
+    pending_work.start_cycle()
+        
+    rq = pending_work.get()
+    print "RQ11", rq
+    if rq:
+        print "TICKET", rq.ticket
+        print "HOST", rq.host
+    else:
+        print "NONE"
+        
+    rq = pending_work.get(next=1, disabled_hosts=['gccensrv1.fnal.gov'])
+    print "RQ12", rq
+    if rq:
+        print "TICKET", rq.ticket
+        print "HOST", rq.host
+    else:
+        print "NONE"
+        
+    rq = pending_work.get(next=1, disabled_hosts=['gccensrv1.fnal.gov'])
+    print "RQ22", rq
+    if rq:
+        print "TICKET", rq.ticket
+        print "HOST", rq.host
+    else:
+        print "NONE"
+        
+        
 def usage(prog_name):
     print "usage: %s arg"%(prog_name,)
     print "where arg is"
@@ -1687,6 +1829,9 @@ if __name__ == "__main__":
             os._exit(0)
         elif int(sys.argv[1]) == 1:
             unit_test_bz_769()
+            os._exit(0)
+        elif int(sys.argv[1]) == 2:
+            unit_test_bz_774()
             os._exit(0)
     usage(sys.argv[0])
     os._exit(1)
