@@ -816,6 +816,7 @@ class Interface:
             value_line_length = num_of_cols - max(len(last_line),
                                                   filler_length + 1)
             index = 0
+            new_index = 0
             while index < len(text_string):
                 #print "value_line_len:", value_line_length, "index:", index
                 #calculate how much of the line can be used up without
