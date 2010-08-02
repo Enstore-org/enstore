@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
 
 import os
 import sys
@@ -113,9 +118,12 @@ def enstore_state(status):
     # given the status accumulated from all of the servers, determine the state of enstore
     if status == enstore_constants.UP:
 	rtn = status
-    elif status & enstore_constants.DOWN:
+    elif status and (status & enstore_constants.DOWN):
+        # if status is None or empty then expression:
+        # status & enstore_constants.DOWN
+        # causes TypeError exception
 	rtn = enstore_constants.DOWN
-    elif status & enstore_constants.WARNING:
+    elif status and (status & enstore_constants.WARNING):
 	rtn = enstore_constants.WARNING
     else:
 	rtn = enstore_constants.SEEN_DOWN
@@ -417,19 +425,13 @@ class LibraryManager(EnstoreServer):
 	    EnstoreServer.is_alive(self)
 
     def get_enstore_state(self, state, reason):
-	# THIS IS A BLOODY HACK THAT SHOULD BE REMOVED ASAP
-	if self.name == "samm2.library_manager":
-	    if self.mover_status()[0] == LOW_CAPACITY:
-		return state | enstore_constants.WARNING
-	    else:
-		return EnstoreServer.get_enstore_state(self, state, reason)
-	# END OF BLOODY HACK
-
-	if self.mover_status()[0] == LOW_CAPACITY:
-	    reason.append("Insufficient Movers for %s"%(self.name,))
-	    return state | enstore_constants.DOWN
-	else:
-	    return EnstoreServer.get_enstore_state(self, state, reason)
+	if not self.offline_d.has_key(self.format_name):
+            # check mover status only in library manager is not scheduled down
+            if self.mover_status()[0] == LOW_CAPACITY:
+                reason.append("Insufficient Movers for %s"%(self.name,))
+                return state | enstore_constants.DOWN
+            else:
+                return EnstoreServer.get_enstore_state(self, state, reason)
 
 class MediaChanger(EnstoreServer):
 
@@ -538,8 +540,8 @@ def do_real_work():
 	    InfoServer(offline_d, override_d, seen_down_d, allowed_down_d),
 	    DrivestatServer(offline_d, override_d, seen_down_d, allowed_down_d),
                    ]
+    
     library_managers = get_library_managers(config_d_keys)
-
     meds = {}
     total_other_servers = []
     total_servers_names = []
@@ -576,7 +578,6 @@ def do_real_work():
         lmc.movers = mover_objects
 	lmc.num_movers = len(mover_objects)
         total_movers = total_movers + mover_objects
-            
     media_changers = sortit(meds)
 
     for med in media_changers:
@@ -593,7 +594,6 @@ def do_real_work():
     # we will get all of the info from the event relay.
     erc = event_relay_client.EventRelayClient()
     erc.start([event_relay_messages.ALIVE,])
-
     # event loop - wait for events
     start = time.time()
     did_not_append = 1
@@ -616,7 +616,6 @@ def do_real_work():
 		    total_servers_names.append(enstore_constants.UP_DOWN)
 		    did_not_append = 0
 		continue
-
 	msg = enstore_erc_functions.read_erc(erc)
 	if msg and msg.server in total_servers_names:
 	    total_servers_names.remove(msg.server)
