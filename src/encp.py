@@ -8066,7 +8066,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         # exceptional cases like duplication should do that.
         mul_copy = re.search("_copy_[0-9]*", work_ticket['vc']['file_family'])
         if mul_copy:
-            start_copy_number = int(mul_copy.group().replace("_copy_"))
+            start_copy_number = int(mul_copy.group().replace("_copy_", ""))
         else:
             start_copy_number = None
 
