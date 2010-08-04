@@ -79,13 +79,17 @@ select media_type, sum(migrating) as migrating, sum(migrated) as migrated,
        sum(remaining_to_start_migrating) as remaining_to_start_migrating,
        sum(remaining_to_finish_migrating) as remaining_to_finish_migrating,
        sum(remaining_to_scan_and_close) as remaining_to_scan_and_close,
-       sum(blank_volumes) as blank_volumes, sum(total) as total,
+       sum(blank_volumes) as blank_volumes,
+       sum(cloning_volumes) as cloning_volumes,
+       sum(multiple_copy_volumes) as multiple_copy_volumes,
+       sum(total) as total,
        round(((CASE WHEN sum(total) > 0
             THEN (sum(migrated_closed_not_shelved) + 
                   sum(migrated_closed_shelved) +
                   sum(duplicated_closed_not_shelved) + 
                   sum(duplicated_closed_shelved))
-                  / (sum(total) - sum(blank_volumes))
+                  / (sum(total) - sum(blank_volumes) - sum(cloning_volumes) -
+                     sum(multiple_copy_volumes))
             ELSE 0
        END) * 100), 2) as percentage_done
        -- The reason for this outer select is to combine all disk volumes
@@ -251,7 +255,8 @@ select /* It should be as simple as just using the media_type. However,
        count(distinct CASE WHEN volume.sum_wr_access - volume.sum_wr_err > 0 /*skip blanks*/
                                 and system_inhibit_1 not in ('migrated',
                                                              'duplicated',
-                                                             'cloned')
+                                                             'cloned',
+                                                             'cloning')
                                 and (library not like '%shelf%' or
                                      system_inhibit_1 in ('migrating',
                                                           'duplicating'))
@@ -271,8 +276,7 @@ select /* It should be as simple as just using the media_type. However,
                                       library not like '%shelf%')
                                      or
                                       system_inhibit_1 in ('migrating',
-                                                           'duplicating',
-                                                           'cloning')
+                                                           'duplicating')
                                      or
                                      ( /* At least one needs to be NULL for
                                         this to still be remaing to complete */
@@ -293,19 +297,33 @@ select /* It should be as simple as just using the media_type. However,
                                           and v2.system_inhibit_0 != 'DELETED') = 0
                                       )
                                       and volume.system_inhibit_1 in 
-                                           ('migrated', 'duplicated', 'cloned')
+                                           ('migrated', 'duplicated')
                                      ))
                            THEN label
                            ELSE NULL
                       END) AS remaining_to_scan_and_close,
-       count(distinct CASE WHEN (volume.sum_wr_access = 0
-                                 --Skip tapes where the first write failed.
-                                 or (volume.wrapper = 'none' 
-                                     and volume.sum_wr_access - volume.sum_wr_err = 0))
+       count(distinct CASE WHEN /* Skip tapes where the first write failed. */
+                            volume.sum_wr_access - volume.sum_wr_err = 0
                             and library not like '%shelf%'
                            THEN label
                            ELSE NULL
                       END) as blank_volumes,
+       count(distinct CASE WHEN system_inhibit_1 in ('cloned', 'cloning')
+                                and system_inhibit_0 != 'DELETED'
+                                and volume.sum_wr_access - volume.sum_wr_err > 0 /*skip blanks*/
+                                and library not like '%shelf%'
+                           THEN label
+                           ELSE NULL
+                      END) as cloning_volumes,
+       count(distinct CASE WHEN file_family like '%/_copy/_%' escape '/'  --match literal underscores
+                                and system_inhibit_1 not in ('cloned',
+                                                             'cloning')
+                                and system_inhibit_0 != 'DELETED'
+                                and volume.sum_wr_access - volume.sum_wr_err > 0 /*skip blanks*/
+                                and library not like '%shelf%'
+                           THEN label
+                           ELSE NULL
+                      END) as multiple_copy_volumes,
        count(distinct CASE WHEN library not like '%shelf%'
                              or system_inhibit_1 in ('migrated',
                                                      'migrating',

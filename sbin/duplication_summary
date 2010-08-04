@@ -48,7 +48,7 @@ echo                       >> $temp_file 2>&1
 echo "Creating Duplication Summary" `date`
 
 echo "In the following table:" >> $temp_file 2>&1
-echo "migration_closed_not_shelved + migration_closed_shelved + duplication_closed_not_shelved + duplication_closed_shelved + remaining_to_scan_and_close + blank_volumes = total" >> $temp_file 2>&1
+echo "migration_closed_not_shelved + migration_closed_shelved + duplication_closed_not_shelved + duplication_closed_shelved + remaining_to_scan_and_close + blank_volumes + cloning_volumes + multiple_copy_volumes = total" >> $temp_file 2>&1
 
 summary >> $temp_file 2>&1
 
