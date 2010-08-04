@@ -382,8 +382,20 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 #We also need to grab the pnfs id of the file that is there.
                 #  This way we can differentiate the cases were the file
                 # does not exist and those replaced.
-                s_list = [pnfs.get_enstore_pnfs_path(file_record['pnfs_name0']),
-                          pnfs.get_enstore_fs_path(file_record['pnfs_name0'])]
+                try:
+                    normal = pnfs.get_enstore_pnfs_path(file_record['pnfs_name0'])
+                except (OSError, IOError):
+                    normal = None
+                try:
+                    admin = pnfs.get_enstore_fs_path(file_record['pnfs_name0'])
+                except (OSError, IOError):
+                    admin = None
+                #Only put the mount point types that actually exist in the
+                # search list.
+                s_list = []
+                for path_value in [normal, admin]:
+                    if path_value:
+                        s_list.append(path_value)
                 for path in s_list:
                     try:
                         pnfs_pnfsid = pnfs.get_pnfsid(path)
