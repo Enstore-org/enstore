@@ -42,7 +42,6 @@ import enstore_saag
 import enstore_saag_network
 import ratekeeper_client
 import pnfs
-import namespace
 import enstore_start
 import enstore_stop
 import enstore_restart
@@ -60,8 +59,8 @@ except:
 # Yes, all those blasted backslashes are needed and I agree it is insane. We should
 # loop on rsh and dump rgang
 
-
 ## Some of the backslash-itis is cured by using Python raw strings.
+
 CMDa = "(F=~/\\\\\\`hostname\\\\\\`."
 CMDb = ";echo >>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\\\\$F 2>&1; setup enstore>>\\\\\\$F 2>&1;"
 CMDc = ";echo >>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\\\\$F 2>&1; setup enstore efb>>\\\\\\$F 2>&1;"
@@ -111,8 +110,6 @@ server_functions = {
                  enstore_saag_network.do_work, option.ADMIN],
     "pnfs" : [pnfs.PnfsInterface,
               pnfs.do_work, option.USER],
-    "sfs" : [namespace.NamespaceInterface,
-	     namespace.do_work, option.USER],
     "up_down" : [enstore_up_down.UpDownInterface,
                  enstore_up_down.do_work, option.ADMIN],
     "system" : [enstore_saag.SaagInterface,

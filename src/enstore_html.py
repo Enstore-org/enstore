@@ -199,6 +199,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
         self.nav_link = ""
         self.do_nav_table = 1
         sys.stdout.flush()
+        intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
         config_dict = configuration_client.get_config_dict(5, 2)
         
         if config_dict:

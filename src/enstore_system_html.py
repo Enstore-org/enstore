@@ -13,7 +13,6 @@ import os
 import string
 import socket
 import pg
-import sys
 
 # enstore modules
 import enstore_html
@@ -24,7 +23,6 @@ import web_server
 import configuration_client
 import Trace
 import option
-import generic_client
 
 TITLE="ENSTORE SYSTEM INFORMATION"
 LINKCOLOR="#0000EF" 
@@ -37,17 +35,6 @@ TITLESIZE="+5"
 TITLECOLOR="#770000"
 TABLECOLOR="#DFF0FF"
 HTMLFILE="enstore_system.html"
-
-class EnstoreSystemHtmlInterface(generic_client.GenericClientInterface):
-
-    def __init__(self, args=sys.argv, user_mode=1):
-	# fill in the defaults for the possible options
-	generic_client.GenericClientInterface.__init__(self, args=args,
-                                                       user_mode=user_mode)
-
-    def valid_dictionaries(self):
-        return (self.help_options,)
-    
 
 def add_row_to_table(table,link,name,explanation):
     tr=HTMLgen.TR()
@@ -258,6 +245,6 @@ def do_work(intf):
 
 if __name__ == "__main__":
 
-    intf_of_html = EnstoreSystemHtmlInterface(user_mode=0)
+    intf_of_html = option.Interface()
 
     do_work(intf_of_html)
