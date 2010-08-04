@@ -248,7 +248,7 @@ def _duplicate_metadata(MY_TASK, job, fcc, db):
     # get a duplication manager
     dm = duplication_util.DuplicationManager()
     rtn = None
-    if not dm.is_primary(src_bfid):
+    if not dm.is_primary_and_copy(src_bfid, dst_bfid):
         #If the file_copies_map table was not set by log_copied(), we
         # need to do so now.  This can happen if the duplication began
         # with duplicate.py less than 1.37 or log_copied() starting with
@@ -278,6 +278,7 @@ def duplicate_metadata(job, fcc, db):
     # file_copies_map has recorded the multiple_copy side of the duplication.
     if dst_file_record and \
            migrate.is_swapped(src_file_record['bfid'], fcc, db) and \
+           migrate.is_duplication(dst_file_record['bfid'], db) and \
            migrate.is_duplication(src_file_record['bfid'], db):
         migrate.ok_log(MY_TASK, "%s %s %s %s have already been duplicated" \
                % (src_file_record['bfid'], src_path,
@@ -321,10 +322,11 @@ def is_expected_volume(MY_TASK, vol, likely_path, fcc, db):
 		#Get the original and make sure the original volume
 		# is the same.  This is true for non-swapped duplicate
 		# files.
-		original_file_info = fcc.bfid_info(pf_bfid)
+		original_file_info = fcc.bfid_info(pf_bfid, 10, 10)
 		if not e_errors.is_ok(original_file_info):
 			message = "No file info for bfid %s." % (pf_bfid,)
 			migrate.error_log(MY_TASK, message)
+                        pf.show()
 			return False
 
 		#If the original volume and the volume we are scaning

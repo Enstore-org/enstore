@@ -285,6 +285,15 @@ class DuplicationManager:
 		if res:
 			return True
 		return False
+
+	#Verify that the primary and multiple copy pair match.
+	def is_primary_and_copy(self, primary_bfid, copy_bfid):
+		q = "select bfid,alt_bfid from file_copies_map where bfid = '%s' and alt_bfid = '%s';" % (primary_bfid, copy_bfid)
+		res = self.db.query(q).getresult()
+		if res:
+			return True
+		return False
+
 			
 # make_original_as_duplicate(vol) -- make all files on the original volume
 #	as a duplicate(copy) of the migrated files.
