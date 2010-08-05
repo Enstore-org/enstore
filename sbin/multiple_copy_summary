@@ -175,11 +175,22 @@ select active_file_copying.bfid,
                     and file.deleted = 'u') is not NULL
             then 'failed'
             when (select pnfs_id from file
-                 where file.bfid = active_file_copying.bfid) = ''
+                  where file.bfid = active_file_copying.bfid
+                  limit 1) = ''
             then 'failed'
             when (select dst_bfid from migration
-                  where migration.src_bfid = active_file_copying.bfid) is not NULL
+                  where migration.src_bfid = active_file_copying.bfid
+                  limit 1) is not NULL
             then 'migrated'
+            when (select system_inhibit_0 from volume,file
+                  where active_file_copying.bfid = file.bfid
+                    and file.volume = volume.id
+                  limit 1) = 'DELETED'
+            then 'volume deleted'
+            when (select fcm2.bfid from file_copies_map as fcm2
+                  where fcm2.alt_bfid = active_file_copying.bfid
+                  limit 1) is not NULL
+            then 'original migrated'
             else ' '
        end
 from active_file_copying
@@ -194,7 +205,7 @@ echo "Failed Multiple Copies Written Retro-actively per Day" >> $temp_file 2>&1
 echo "=====================================================" >> $temp_file 2>&1
 echo                                                         >> $temp_file 2>&1
 
-echo "Creating Failed Multiple Copies Written Retro-actively per Day" 'data'
+echo "Creating Failed Multiple Copies Written Retro-actively per Day" 'date'
 
 #This pulls the timestamp right out of the bfid.
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
