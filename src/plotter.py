@@ -24,7 +24,7 @@ import e_errors
 import Trace
 import configuration_client
 import socket
-import string
+import enstore_functions2
 
 MY_NAME = "Plotter"
 BURN_RATE = "burn-rate"
@@ -266,7 +266,6 @@ class PlotterInterface(generic_client.GenericClientInterface):
 	self.no_plot_html = None
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
-
     plotter_options = {
         option.ENCP:{option.HELP_STRING:"create the bytes transfered and " \
                      "transfer activity plots",
@@ -374,13 +373,8 @@ def do_work(intf):
 
     Trace.trace(enstore_constants.PLOTTING,
                 "plotter called with args %s"%(sys.argv,))
-
-    #
-    # a hack
-    #
-    # if not intf.total_bytes:
-    config_interface  = configuration_client.ConfigurationClientInterface(user_mode=0)
-    csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+    csc   =  configuration_client.ConfigurationClient((enstore_functions2.default_host(),
+                                                       enstore_functions2.default_port()))
     system_name = csc.get_enstore_system(timeout=1,retry=0)
     config_dict={}
 
