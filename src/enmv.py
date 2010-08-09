@@ -62,7 +62,7 @@ def same_cookie(c1, c2):
         #The location cookie is a disk cookie.
         return c1 == c2
 
-def move_file(input_filename, output_filename):
+def move_file(input_filename, output_filename, intf):
 
     #Check the input file.
 
@@ -293,6 +293,14 @@ def move_file(input_filename, output_filename):
         print_error(e_errors.OSERROR,
                     "Unable to set temporary permissions: %s" % str(msg))
         sys.exit(1)
+
+    #Obtain the file family from the directory tag, if the user wants
+    # to reset layer 4 file family with it.
+    if intf.match_directory_file_family:
+        new_dir_sfs = namespace.Tag(os.path.dirname(output_filename))
+        directory_file_family = new_dir_sfs.get_file_family()
+    else:
+        directory_file_family = None
                         
     try:
         #Attempt to rename the file.  This can work if the input and
@@ -354,7 +362,13 @@ def move_file(input_filename, output_filename):
     new_volume = sfs.volume
     new_location_cookie = sfs.location_cookie
     new_size = sfs.size
-    new_file_family = sfs.origff
+    if intf.match_directory_file_family:
+        new_file_family = directory_file_family #Changed.
+    elif intf.match_volume_file_family:
+        vf = volume_info['volume_family']
+        new_file_family = volume_family.extract_file_family(vf)  #Changed.
+    else:
+        new_file_family = sfs.origff
     new_filename = output_filename  #Changed.
     new_volume_filepath = sfs.mapfile
     new_sfs_id = new_sfs.get_id() #Changed.
@@ -521,6 +535,8 @@ def move_file(input_filename, output_filename):
 class EnmvInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
         self.verbose = 0           # higher the number the more is output
+        self.match_directory_file_family = 0  #modify layer 4 file family
+        self.match_volume_file_family = 0  #modify layer 4 file family
 
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -557,6 +573,18 @@ class EnmvInterface(option.Interface):
     parameters = ["<source file> <destination file>"]
 
     enmv_options = {
+        option.MATCH_DIRECTORY_FILE_FAMILY:{option.HELP_STRING:
+                                            "Set layer 4 file family to match"
+                                            " the directory file family.",
+                                            option.VALUE_USAGE:option.IGNORED,
+                                            option.VALUE_TYPE:option.INTEGER,
+                                            option.USER_LEVEL:option.USER,},
+        option.MATCH_VOLUME_FILE_FAMILY:{option.HELP_STRING:
+                                         "Set layer 4 file family to match"
+                                         " the volume file family.",
+                                         option.VALUE_USAGE:option.IGNORED,
+                                         option.VALUE_TYPE:option.INTEGER,
+                                         option.USER_LEVEL:option.USER,},
         option.VERBOSE:{option.HELP_STRING:"Print out information.",
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_TYPE:option.INTEGER,
@@ -587,7 +615,7 @@ def main(intf):
             sys.exit(1)
 
     for i in range(len(intf.input)):
-        move_file(intf.input[i], intf.output[i])
+        move_file(intf.input[i], intf.output[i], intf)
     
 
 def do_work(intf):

@@ -319,6 +319,8 @@ MAKE_HTML = "make-html"                      #up_down
 MAKE_COPIES = "make-copies"                  #duplicate
 MAKE_FAILED_COPIES = "make-failed-copies"    #duplicate
 MARK_BAD = "mark-bad"                        #file
+MATCH_DIRECTORY_FILE_FAMILY = "match-directory-file-family"  #enmv
+MATCH_VOLUME_FILE_FAMILY = "match-volume-file-family"        #enmv
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
 MAX_RETRY = "max-retry"                      #encp
 MAX_RESUBMIT = "max-resubmit"                #encp
@@ -540,6 +542,7 @@ valid_option_list = [
     LIST_SG_COUNT, LIST_SLOTS, LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MAKE_COPIES, MAKE_FAILED_COPIES, MARK_BAD,
+    MATCH_DIRECTORY_FILE_FAMILY, MATCH_VOLUME_FILE_FAMILY,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MESSAGES_FILE, MIGRATED, MIGRATED_FROM, MIGRATED_TO,
     MIGRATION_ONLY,
