@@ -2283,9 +2283,13 @@ def main(intf_of_scanfiles, file_object, file_list):
         pass
 
     
-def do_work(intf_of_scanfiles):
+def do_work(intf):
     global infc
     global lm
+    global intf_of_scanfiles
+
+    #Hack for check() to access intf_of_scanfiles.
+    intf_of_scanfiles = intf
 
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
