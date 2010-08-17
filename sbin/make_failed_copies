@@ -30,4 +30,4 @@ fi
 
 #  Run the duplication to make the lost multiple copies after the fact.
 
-$ENSTORE_DIR/src/duplicate.py --spool-dir $spool_dir --make-failed-copies
+$ENSTORE_DIR/src/duplicate.py --with-final-scan --spool-dir $spool_dir --make-failed-copies
