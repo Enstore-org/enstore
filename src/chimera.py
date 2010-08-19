@@ -22,15 +22,11 @@ import socket
 # enstore imports
 import Trace
 import e_errors
-#try:
-#    import Devcodes # this is a compiled enstore module
-#except ImportError:
-#    Trace.log(e_errors.INFO, "Devcodes unavailable")
 import option
 import enstore_constants
+import charset
 import hostaddr
 import enstore_functions2
-import charset
 import atomic
 import file_utils
 
@@ -232,7 +228,7 @@ def is_chimera_path(pathname, check_name_only = None):
     # not point to a pnfs directory.
     return False
 
-def is_normal_pnfs_path(pathname, check_name_only = None):
+def is_normal_chimera_path(pathname, check_name_only = None):
     rtn = is_chimera_path(pathname, check_name_only)
     if rtn:
         #Additional check to make sure that this is a normal path.  Remove
@@ -243,8 +239,10 @@ def is_normal_pnfs_path(pathname, check_name_only = None):
 
     return rtn
 
+#For compatibility with pnfs.py.
+is_normal_pnfs_path = is_normal_chimera_path
 
-def is_admin_pnfs_path(pathname, check_name_only = None):
+def is_admin_chimera_path(pathname, check_name_only = None):
     #print "INSIDE is_admin_pnfs_path"
     rtn = is_chimera_path(pathname, check_name_only)
     # No admin path for chimera
@@ -259,6 +257,9 @@ def is_admin_pnfs_path(pathname, check_name_only = None):
 
     return rtn
     """
+#For compatibility with pnfs.py.
+is_admin_pnfs_path = is_admin_chimera_path
+        
 def isdir(pathname):
     return os.path.isdir(pathname)
 
@@ -538,25 +539,30 @@ def get_layer_4(f, max_lines = None):
 
     return l4
 
-def get_pnfsid(f):
+def get_chimeraid(f):
     if is_access_name(f):
-        pnfsid = os.path.basename(f)[10:-1]
-        return pnfsid
+        chimeraid = os.path.basename(f)[10:-1]
+        return chimeraid
     
     #Get the id of the file or directory.
     try:
         fname = id_file(f)
         f = file_utils.open(fname)
-        pnfs_id = f.readline().strip()
+        chimera_id = f.readline().strip()
         f.close()
     except(OSError, IOError), detail:
-        pnfs_id = None
+        chimera_id = None
         if not detail.errno == errno.ENOENT or not os.path.ismount(f):
             message = "%s: %s" % (os.strerror(detail.errno),
                                   "unable to obtain pnfs id")
             raise OSError(detail.errno, message, fname)
 
-    return pnfs_id
+    return chimera_id
+
+#For backward compatibility with pnfs.py:
+get_pnfsid = get_chimeraid
+#For future compatibility with other storage file systems.
+get_id = get_chimeraid
 
 ###############################################################################
 
@@ -566,7 +572,8 @@ last_db_tried = ("", (-1, ""))
 
 #Get currently mounted pnfs mountpoints.
 def parse_mtab():
-    #print 'INSIDE parse_mtab'
+    global db_pnfsid_cache
+   
     #Different systems have different names for this file.
     # /etc/mtab: Linux, IRIX
     # /etc/mnttab: SunOS
@@ -587,7 +594,7 @@ def parse_mtab():
         mtab_data = []
 
     found_mountpoints = {}
-    index = 0
+    index = len(db_pnfsid_cache)  #Keep these unique.
     for line in mtab_data:
         #The 2nd and 3rd items in the list are important to us here.
         data = line[:-1].split()
@@ -608,23 +615,47 @@ def parse_mtab():
             db_fp.close()
         except IOError:
             continue
-        #To generate a serial index  used as akey in the return dictionary
-        db_data = "admin:0:r:enabled:/" + str(index)
-        index += 1
-        db_datas = db_data.split(":")
-        #db_datas[0] is the database name
-        #db_datas[1] is the database id
-        #db_datas[2] is the database (???)
-        #db_datas[3] is the database enabled or disabled status
-        #db_datas[4] is the database (???)
+        #Need to exclude pnfs mounts now.
+        try:
+            dataname = os.path.join(mp, ".(get)(database)")
+            db_fp = file_utils.open(dataname, "r")
+            db_fp.readline().strip()
+            db_fp.close()
+            #We have a pnfs filesystem.  Keep looking.
+            continue
+        except IOError:
+            #We have found a Chimera filesystem.
+            pass
 
-        #If the database's id is not in the cache, add it along with the
-        # mount point that goes with it.
-        db_pnfsid = int(db_datas[1])
-        #if db_data not in db_pnfsid_cache.keys():
-        #    db_pnfsid_cache[db_data] = (db_pnfsid, mp)
-        if db_data not in found_mountpoints.keys():
-            found_mountpoints[db_data] = (db_pnfsid, mp)
+        #Make up values for Chimera to return that look like PNFS
+        # .(get)(database) values.
+        mount_name = os.path.basename(mp)
+        if mount_name == "fs":
+           mount_name = "admin"
+        db_id = 0  #For Chimera this is always zero.  If this value is ever
+                   # allowed to change in the future, then Chimera needs to
+                   # support .(get)(database) files.
+        accessible = "enabled"  #enabled or disabled
+
+        for db_data in db_pnfsid_cache.keys():
+            db_data_split = db_data.split(":")
+            #db_data_split[0] is the database name
+            #db_data_split[1] is the database id, for Chimera always zero.
+            #db_data_split[2] is the database (???)
+            #db_data_split[3] is the database enabled or disabled status
+            #db_data_split[4] is the database file location on the server
+            if db_data_split[0] == mount_name:
+                #Put the made up values together.
+                new_db_data = "%s:%s:r:%s:%s" % (mount_name, db_id,
+                                                  accessible, db_data_split[4])
+                found_mountpoints[new_db_data] = (None, mp)  #(db_id, mp)
+                break
+        else:
+            #Put the made up values together.
+            new_db_data = "%s:%s:r:%s:/%s" % (mount_name, db_id, accessible,
+                                              str(index))
+            found_mountpoints[new_db_data] = (None, mp)  #(db_id, mp)
+            index += 1
 
     return found_mountpoints
 
@@ -710,7 +741,7 @@ def add_mtab(db_info, db_num, db_mp):
 ###############################################################################
 
 #Return a list of admin (/pnfs/fs like) mount points.
-def get_enstore_admin_mount_point(pnfsid = None):
+def get_enstore_admin_mount_point(chimeraid = None):
 
     list_of_admin_mountpoints = []
 
@@ -718,14 +749,20 @@ def get_enstore_admin_mount_point(pnfsid = None):
     mtab_results = parse_mtab()
     
     for db_num, mount_path in mtab_results.values():
-        if db_num == 0:  #Admin db has number 0.
-            if os.path.basename(mount_path) == "fs":
-                mount_path = os.path.join(mount_path, "usr")
+        #db_num is not relavent with Chimera.  It is retained for compatibilty
+        # with PNFS.
+        #mount_path contains a string representing the directory that
+        # a Chimera filesystem is mounted at.  Typically, this is something
+        # like /pnfs/fs or /pnfs/data1.
+        if mount_path[-8:] == "/pnfs/fs" or mount_path[-11:] == "/chimera/fs":
+            #At this point in the code, we only care about the mount points
+            # that resemble the admin PNFS mount points.  (/pnfs/fs)
+            mount_path = os.path.join(mount_path, "usr")
             
-            if pnfsid == None:
+            if chimeraid == None:
                 list_of_admin_mountpoints.append(mount_path)
             else:
-                access_path = access_file(mount_path, pnfsid)
+                access_path = access_file(mount_path, chimeraid)
                 try:
                     file_utils.get_stat(access_path)
                 except OSError, msg:
@@ -738,7 +775,7 @@ def get_enstore_admin_mount_point(pnfsid = None):
     return list_of_admin_mountpoints
 
 #Return a list of admin (/pnfs/fs like) mount points.
-def get_enstore_mount_point(pnfsid = None):
+def get_enstore_mount_point(chimeraid = None):
 
     list_of_admin_mountpoints = []
 
@@ -746,14 +783,12 @@ def get_enstore_mount_point(pnfsid = None):
     mtab_results = parse_mtab()
     
     for db_num, mount_path in mtab_results.values():
-        if db_num != 0:  #Admin db has number 0.
-            #if os.path.basename(mount_path) == "fs":
-            #    mount_path = os.path.join(mount_path, "usr")
-            
-            if pnfsid == None:
+        #if db_num != 0:  #Admin db has number 0.
+        if mount_path[-8:] != "/pnfs/fs" and mount_path[-11:] != "/chimera/fs":
+            if chimeraid == None:
                 list_of_admin_mountpoints.append(mount_path)
             else:
-                access_path = access_file(mount_path, pnfsid)
+                access_path = access_file(mount_path, chimeraid)
                 try:
                     file_utils.stat(access_path)
                 except OSError, msg:
@@ -836,9 +871,13 @@ def __get_special_path(filepath, replacement_path):
     #The file is not a pnfs file.
     raise OSError(errno.ENOENT, os.strerror(errno.ENOENT), filepath)
 
-def get_enstore_pnfs_path(filepath):
+def get_enstore_chimera_path(filepath):
     return __get_special_path(filepath, "/pnfs/")
 
+#For backward compatibility with pnfs.py:
+get_enstore_pnfs_path = get_enstore_chimera_path
+#For future compatibility with other storage file systems.
+get_enstore_path = get_enstore_chimera_path
 
 def get_enstore_fs_path(filepath):
     return __get_special_path(filepath, "/pnfs/fs/usr/")
@@ -1220,12 +1259,12 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError), msg:
            if getattr(msg, 'errno', msg.args[0]) == errno.ENOENT and \
                   file_utils.e_access(use_filepath, os.F_OK):
-              #The layer file does not exists, but we have confirmed that the
+              #The layer file does not exist, but we have confirmed that the
               # file really does exist.  Return an empty list instead of
               # re-raising the exception.
               l = []
            else:
-              raise sys.exc_info()
+              raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         
         return l
 
@@ -1379,8 +1418,6 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             raise ValueError("No valid pnfs id.")
 
-        #print "use_id:", use_id
-        #print "usd_dir:", use_dir
         try:
             search_path, target = self._get_mount_point2(use_id, use_dir,
                                                          ".(nameof)(%s)",
@@ -1961,14 +1998,19 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # get the database information
     def get_database(self, directory=None):
-        #return random data that is consistant with pnfs format
-        if directory != None:
-           val = (0, directory)
-           to_return = find_key(db_pnfsid_cache, val)
-           if to_return != None and len(to_return) > 0:
-               #return to_return[0]
-               return to_return
-        return "admin:0:r:enabled:/srv2/pnfs/db/admin" 
+
+        if directory:
+            dname = directory
+        else:
+            dname = self.dir
+       
+        #return made-up data that is consistant with pnfs format
+        val = (0, self.get_mount_point(dname))
+        for key, value in db_pnfsid_cache.items():
+            if value[1] == val[1]:
+                return key
+
+        return None
 
 
     ##########################################################################
@@ -2244,9 +2286,9 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 self.size = xinfo[2]
                 self.origff = xinfo[3]
                 self.origname = xinfo[4]
-                self.mapfile = xinfo[5]
-                self.pnfsid_file = xinfo[6]
-                self.pnfsid_map = xinfo[7]
+                self.mapfile = xinfo[5]      #Obsolete.
+                self.pnfsid_file = xinfo[6]  #Need to rename this.
+                self.pnfsid_map = xinfo[7]   #Obsolete.
                 self.bfid = xinfo[8]
                 self.origdrive = xinfo[9]
                 self.crc = xinfo[10]
@@ -3480,7 +3522,7 @@ class Tag:
                     print msg
                 return 1
 
-        filename = os.path.join(cwd, ".(tags)(all)")
+        filename = os.path.join(cwd, ".(tags)()")
 
         try:
             f = file_utils.open(filename, "r")

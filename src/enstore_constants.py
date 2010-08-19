@@ -395,3 +395,13 @@ FILE_DELETED_FLAGS = ["y", "n","u","yes","no", "unknown"]
 SAFETY_FACTOR=1.05 # used to estimate volume space left
 #MIN_LEFT=long(300*MB) # minimal size of free space allowed for volume
 MIN_LEFT=0L # for now, this is disabled.
+
+
+#Storage Filesystem class types.
+PNFS="PNFS"
+PNFS_AGENT="pnfs_agent"
+CHIMERA="Chimera"
+#find_pnfs_file requested filesystems constant type values.
+BOTH="BOTH"
+FS="FS"
+NONFS="NONFS"

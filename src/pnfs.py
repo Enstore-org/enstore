@@ -537,6 +537,9 @@ def get_pnfsid(f):
 
     return pnfs_id
 
+#For future compatibility with other storage file systems.
+get_id = get_pnfsid
+
 ###############################################################################
 
 #Global cache.
@@ -593,8 +596,7 @@ def parse_mtab():
         #If the database's id is not in the cache, add it along with the
         # mount point that goes with it.
         db_pnfsid = int(db_datas[1])
-        #if db_data not in db_pnfsid_cache.keys():
-        #    db_pnfsid_cache[db_data] = (db_pnfsid, mp)
+
         if db_data not in found_mountpoints.keys():
             found_mountpoints[db_data] = (db_pnfsid, mp)
 
@@ -636,9 +638,19 @@ def process_mtab():
                 use_path = os.path.join(mp, "usr")
                 for dname in os.listdir(use_path):
                     tmp_name = os.path.join(use_path, dname)
-                    if not os.path.isdir(tmp_name):
+                    try:
+                        #The "True" for the second arguement to for get_stat(),
+                        # to use os.lstat() instead of os.stat().  This allows
+                        # for symbolic links to be screened out with S_ISLNK.
+                        fstat = file_utils.wrapper(file_utils.get_stat,
+                                                   (tmp_name, True))
+                    except (OSError, IOError):
                         continue
-                    tmp_db_info = p.get_database(os.path.join(use_path, dname)).strip()
+                    if not stat.S_ISDIR(fstat[stat.ST_MODE]):
+                        continue
+                    if stat.S_ISLNK(fstat[stat.ST_MODE]):
+                        continue
+                    tmp_db_info = p.get_database(tmp_name).strip()
                     if tmp_db_info in db_pnfsid_cache.keys():
                         continue
 
@@ -827,6 +839,8 @@ def __get_special_path(filepath, replacement_path):
 def get_enstore_pnfs_path(filepath):
     return __get_special_path(filepath, "/pnfs/")
 
+#For future compatibility with other storage file systems.
+get_enstore_path = get_enstore_pnfs_path
 
 def get_enstore_fs_path(filepath):
     return __get_special_path(filepath, "/pnfs/fs/usr/")
@@ -2218,9 +2232,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 self.size = xinfo[2]
                 self.origff = xinfo[3]
                 self.origname = xinfo[4]
-                self.mapfile = xinfo[5]
-                self.pnfsid_file = xinfo[6]
-                self.pnfsid_map = xinfo[7]
+                self.mapfile = xinfo[5]      #Obsolete.
+                self.pnfsid_file = xinfo[6]  #Need to give generic name.
+                self.pnfsid_map = xinfo[7]   #Obsolete.
                 self.bfid = xinfo[8]
                 self.origdrive = xinfo[9]
                 self.crc = xinfo[10]

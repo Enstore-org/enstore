@@ -26,7 +26,6 @@ import Trace
 import e_errors
 # import cPickle
 import enstore_constants
-import find_pnfs_file
 
 # For layer_file()
 from pnfs import is_access_name
@@ -587,7 +586,7 @@ class PnfsAgentClient(generic_client.GenericClient,
     # find a file knowning pnfsid and bfid
     def p_find_pnfsid_path(self, pnfsid, bfid, file_record = None,
                            likely_path = None,
-                           path_type = find_pnfs_file.BOTH,
+                           path_type = enstore_constants.BOTH,
                            rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'find_pnfsid_path',
                   'pnfsid'        : pnfsid,
@@ -598,6 +597,8 @@ class PnfsAgentClient(generic_client.GenericClient,
                   }
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
+
+    
 
 ###############################################################################
 
@@ -858,7 +859,8 @@ class PnfsAgentClient(generic_client.GenericClient,
     get_parent = get_parent_id
 
     def find_pnfsid_path(self, pnfsid, bfid, file_record = None,
-                         likely_path = None, path_type = find_pnfs_file.BOTH,
+                         likely_path = None,
+                         path_type = enstore_constants.BOTH,
                          rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_find_pnfsid_path(
             pnfsid, bfid, file_record, likely_path, path_type,
@@ -866,6 +868,8 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['paths']
+
+    find_id_path = find_pnfsid_path
 
 
 class PnfsAgentClientInterface(generic_client.GenericClientInterface):

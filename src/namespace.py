@@ -11,6 +11,7 @@ import os
 import sys
 import string
 import types
+import errno
 
 # enstore modules
 import enstore_functions2
@@ -206,6 +207,65 @@ def is_storage_path(filename, check_name_only = None):
         rtn = is_storage_remote_path(pathname, check_name_only)
         
     return rtn
+
+def is_id(id):
+    if pnfs.is_pnfsid(id):
+        return True
+    elif chimera.is_chimeraid(id):
+        return True
+
+    return False
+
+##############################################################################
+
+#Return the directory name.  If a normal PNFS or Chimera path is given,
+# the directory is split off and returned.  If the file is a special
+# PNFS or Chimera .(access)() file, then special handling is done to
+# determine the .(accces)() name of the directory while trying to use
+# as few resources as possible.
+def get_directory_name(filepath):
+    if type(filepath) != types.StringType:
+        return None
+
+    #Determine if it is an ".(access)()" name.
+    if chimera.is_access_name(filepath) or pnfs.is_access_name(filepath):
+        #Since, we have the .(access)() name we need to split off the id.
+        dirname, filename = os.path.split(filepath)
+        pnfsid = filename[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+
+        #Create the filename to obtain the parent id.
+        parent_id_name = os.path.join(dirname, ".(parent)(%s)" % pnfsid)
+
+        #Read the parent id.  Try and avoid instantiating a StorageFS class
+        # for performance.
+        if pnfs_agent_client_requested:
+            pac = get_pac()
+            #get_parent_id() will raise an exception on error.
+            parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5, tries=6)
+        else:
+            try:
+                f = open(parent_id_name)
+                parent_id = f.readlines()[0].strip()
+                f.close()
+            except (OSError, IOError), msg:
+                #We only need to worry about pnfs_agent_client_allowed here,
+                # pnfs_agent_client_requested is addressed a few lines earlier.
+                if msg.args[0] == errno.ENOENT and \
+                       pnfs_agent_client_allowed:
+                    pac = get_pac()
+                    parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5,
+                                                  tries=6)
+                    if not parent_id: #Does this work to catch errors?
+                        raise OSError, msg
+                else:
+                    raise OSError, msg
+
+        #Build the .(access)() filename of the parent directory.
+        directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
+    else:
+        directory_name = os.path.dirname(filepath)
+   
+    return directory_name
     
 ##############################################################################
 

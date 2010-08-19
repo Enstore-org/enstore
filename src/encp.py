@@ -1221,12 +1221,10 @@ def get_original_request(request_list, index_of_copy):
     oui = request_list[index_of_copy].get('original_unique_id', None)
     if oui:  #oui == Original Unique Id
         for j in range(len(request_list)):
-            if request_list[j].get('completion_status', None) == SUCCESS:
-                
-                if oui == request_list[j].get('unique_id', None):
-                    return request_list[j]
-                elif oui in request_list[j].get('retried_unique_ids', []):
-                    return request_list[j]
+            if oui == request_list[j].get('unique_id', None):
+                return request_list[j]
+            elif oui in request_list[j].get('retried_unique_ids', []):
+                return request_list[j]
 
     return None
 
@@ -8932,6 +8930,13 @@ def prepare_write_to_hsm(tinfo, e):
                 request_list[i]['wrapper']['inode'] = long(pstat[stat.ST_INO])
             except OSError:
                 request_list[i]['wrapper']['inode'] = None
+
+            #Don't forget the pnfsid.  New disk movers depend on this value.
+            if e.put_cache:
+                request_list[i]['fc']['pnfsid'] = e.put_cache
+            else:
+                original_ticket = get_original_request(request_list, i)
+                request_list[i]['fc']['pnfsid'] = original_ticket['fc']['pnfsid']
                 
         else:
             #Create the zero length file entry and grab the inode.
@@ -9977,12 +9982,12 @@ def create_read_request(request, file_number,
                 sfs = namespace.StorageFS(pnfs_name0)
                 if e.intype == RHSMFILE:
                     #Using pnfs_agent.
-                    found_name = sfs.find_pnfsid_path(
+                    found_name = sfs.find_id_path(
                         sfsid, bfid, file_record = fc_reply,
                         likely_path = pnfs_name0)
                 else:
                     #Using local mounted storage file system.
-                    found_name = find_pnfs_file.find_pnfsid_path(
+                    found_name = find_pnfs_file.find_id_path(
                         sfsid, bfid, file_record = fc_reply,
                         likely_path = pnfs_name0)
 
