@@ -5323,16 +5323,30 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                     is_deleted_volume = False
 
                 if dst_volume_record and is_deleted_volume \
-                       and dst_file_record['deleted'] == YES:
-                    #When re-running migration, try and avoid looking for a file
-                    # in PNFS that was deleted the first time around.
+                   and dst_file_record['deleted'] == YES:
+                    #When re-running migration, try and avoid looking for a
+                    # file in PNFS that was deleted the first time around.
                     src_path = "deleted-%s-%s" % (src_bfid, tmp_path)
                 else:
-                    src_path = pnfs_find(use_bfid, alt_bfid,
-                                         src_file_record['pnfsid'],
-                                         file_record = use_file_record,
-                                         alt_file_record = use_alt_file_record,
-                                         intf = intf)
+                    try:
+                        src_path = pnfs_find(use_bfid, alt_bfid,
+                                             src_file_record['pnfsid'],
+                                             file_record = use_file_record,
+                                             alt_file_record = use_alt_file_record,
+                                             intf = intf)
+                    except:
+                        if src_file_record['deleted'] == YES and \
+                           str(sys.exc_info()[1]).find("replaced") != -1:
+                            #We can get here if:
+                            # 1) bfid1 migrated to bfid2
+                            # 2) bfid2 migrated to bfid3
+                            # 3) migration is rerun for bfid1
+                            #This happens because bfid3 is the primary file
+                            # in PNFS now.
+                            src_path = "deleted-%s-%s" % (src_bfid, tmp_path)
+                        else:
+                            raise sys.exc_info()[0], sys.exc_info()[1], \
+                                  sys.exc_info()[2]
 
                 #There is/was a bug in migrate that allowed for a destination
                 # file to be set deleted while the PNFS entry was perfectly
