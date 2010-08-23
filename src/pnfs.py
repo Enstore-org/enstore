@@ -160,7 +160,7 @@ def is_pnfs_path(pathname, check_name_only = None):
     if string.find(dirname,"/pnfs/") < 0:
         return False #If we get here it is not a pnfs directory.
 
-    #Search all directories in the path for the cursor wormwhole file. These
+    #Search all directories in the path for the database wormwhole file. These
     # extra steps are needed in case the user enters a name that does not
     # exist.
     search_dir = "/"
@@ -271,7 +271,6 @@ def strip_pnfs_mountpoint(pathname):
     return tmp3
 
 def get_directory_name(filepath):
-
     if type(filepath) != types.StringType:
         return None
 
@@ -283,9 +282,14 @@ def get_directory_name(filepath):
     if is_access_name(filepath):
         #Since, we have the .(access)() name we need to split off the id.
         dirname, filename = os.path.split(filepath)
+        if is_access_name(dirname):
+            dirname = get_directory_name(dirname)
+
+        #dirname, filename = get_dirname_filename(filepath)
         pnfsid = filename[10:-1]  #len(".(access)(") == 10 and len ")" == 1
         #We will need the pnfs database numbers.
         use_pnfsid_db=int(pnfsid[:4], 16)
+
 
         #If the mountpoint doesn't know about our database fail now.
         try:
@@ -307,12 +311,58 @@ def get_directory_name(filepath):
         parent_id = f.readlines()[0].strip()
         f.close()
 
-        #Build the .(access)() filename of the parent directory.
-        directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
+        if parent_id == "000000000000000000000000":
+            #We will see a PNFS ID of all zeros when trying to find the
+            # parent of the /pnfs/fs/usr directory.
+            directory_name = dirname
+        else:
+            nameof_parent_id = os.path.join(dirname,
+                                            ".(nameof)(%s)" % parent_id)
+            try:
+                f = file_utils.open(nameof_parent_id)
+                nameof_parent_name = f.readlines()[0].strip()
+                f.close()
+            except (OSError, IOError), msg:
+                if getattr(msg, "errno", msg.args[0]) == errno.ENOENT:
+                    #If the parent id does not exist, we know that the
+                    # target pnfs id is a tag or layer.
 
+                    #From the showid grab the base ID instead of the parent ID.
+                    showid_fname = os.path.join(dirname,
+                                                ".(showid)(%s)" % (parent_id,))
+                    f = file_utils.open(showid_fname)
+                    showid_value = f.readlines()
+                    f.close()
+
+                    #Extract the baseid wich is always on line 5, thus index 4,
+                    # and between characters 17 to the end, but skipping the
+                    # trailing newline.
+                    parent_id = showid_value[4][17:-1]
+
+                    #Reread the baseid 
+                    nameof_parent_id = os.path.join(dirname,
+                                            ".(nameof)(%s)" % parent_id)
+                    f = file_utils.open(nameof_parent_id)
+                    nameof_parent_name = f.readlines()[0].strip()
+                    f.close()
+                    
+            
+            parent_parent_id_name = os.path.join(dirname,
+                                                 ".(parent)(%s)" % parent_id)
+            f = file_utils.open(parent_parent_id_name)
+            parent_parent_id = f.readlines()[0].strip()
+            f.close()
+
+            #Build the .(access)() filename of the parent directory.
+            if parent_id == "000000000000000000000000":
+                directory_name = dirname
+            else:
+                directory_name = os.path.join(
+                    dirname, ".(access)(%s)" % parent_parent_id,
+                    nameof_parent_name)
     else:
         directory_name = os.path.dirname(filepath)
-   
+
     return directory_name
 
 ###############################################################################
@@ -933,7 +983,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
                 if not is_pnfs_path(pnfsFilename):
                     pnfsFilename = ""
-
+                    
         if pnfsFilename:
             (self.machine, self.filepath, self.dir, self.filename) = \
                            fullpath(pnfsFilename)
@@ -958,7 +1008,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     if msg.args[0] != errno.ENOTDIR:
                         #We have the pnfs id of a tag file.
                         self.dir = use_dir
-                
+
             self.pstatinfo()
 
         try:
@@ -1290,7 +1340,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         showid = showid[0]
         if not id:
             self.showid = showid
-        return id
+        return showid
 
     #A smaller faster version of get_nameof().
     def _get_nameof(self, id, directory):
@@ -1393,10 +1443,79 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             else:
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+        #At this point:
+        # 1) search_paths is a list of strings representing directory paths
+        #    for mount points.
+        # 2) targets represents a coresponding return result.  Both of the
+        #    following types described are returned as lists with a matching
+        #    index with search_paths.
+        #    a) For regular files and directories the return result is
+        #       the .(nameof)() response for the PNFS ID.
+        #    b) For tag files and layer files - which do have their own
+        #       PNFS IDs - these return values are the .(showid)() contents.
+        #
+        #       The first nine lines contain the same format for .(showid)()
+        #       output for all types of PNFS IDs.  The 9th line contains
+        #       the type of file record.  For thses special cases:
+        #          tag files = "Tag ( Inode )"
+        #          layer file = "Regular ( Data )"
+        #       and just for completeness
+        #          regular files = "Regular ( Inode )"
+        #          directories = "Directory ( Inode )"
+        
         rtn_filepaths = []
+        old_base_id = None
         for i in range(len(search_paths)):
-            rtn_filepaths.append(self.__get_path(use_id, search_paths[i],
-                                                 targets[i], shortcut))
+            if type(targets[i]) == types.ListType and \
+               len(targets[i]) >= 9 and \
+               type(targets[i][8]) == types.StringType and \
+               (targets[i][8].find("Tag ( Inode )") != -1 \
+                or targets[i][8].find("Regular ( Data )") != -1):
+                #
+                #This is a TAG or LAYER pnfsid.  Handle it.
+                #
+                base_id = targets[i][4][16:-1].strip()
+                tag_name =  targets[i][9][12:-1].strip()
+
+                if base_id == old_base_id:
+                    #Do not waste time in get_path() for a directory
+                    # we have already checked.
+                    continue
+
+                #Get the path of the directory for tags and the file for
+                # layers.
+                base_path = self.get_path(base_id, shortcut=shortcut)
+                #make the special path.
+                if targets[i][8].find("Tag ( Inode )") != -1:
+                    tag_name =  targets[i][9][12:-1].strip()
+                    special_name = os.path.join(base_path[0],
+                                                ".(tag)(%s)" % (tag_name,))
+                elif targets[i][8].find("Regular ( Data )") != -1:
+                    #Need the showid information for the file to determine
+                    # which layer this is.
+                    base_showid = self.get_showid(base_id,
+                                               os.path.dirname(base_path[0]))
+                    for line in base_showid:
+                        if line.find(use_id) != -1:
+                            layer_number = int(line[7])
+                            break
+                    else:
+                        #Dummy value.  This should never happen.
+                        layer_number = -1
+
+                    special_name = self.use_file(base_path[0],
+                                                 layer_number)
+                #Append the special name to the directory.
+                rtn_filepaths.append(special_name)
+
+                #Remember this id to use in the repeated directory check.
+                old_base_id = base_id
+            else:
+                #
+                #This is a REGULAR FILE or DIRECTORY pnfsid.
+                #
+                rtn_filepaths.append(self.__get_path(use_id, search_paths[i],
+                                                     targets[i], shortcut))
 
         if len(rtn_filepaths) == 1:
             return rtn_filepaths
@@ -1630,7 +1749,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             #    #If we found the non-admin path and are user root.
             #    pass
             elif msg.args[0] == errno.ENOTDIR:
-                #We can legitly get here if the pnfs id is for a tag file.
+                #We can legitly get here if the pnfs id is for a tag file
+                # or layer file.
                 sfn = os.path.join(directory,
                                    ".(showid)(%s)" % id)
                 f = file_utils.open(sfn, 'r')
@@ -1638,9 +1758,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 f.close()
 
                 for line in showid_value:
-                    if line.find("Tag ( Inode )") != -1:
+                    if line.find("Tag ( Inode )") != -1 \
+                           or line.find("Regular ( Data )") != -1:
                         #Finding the "Tag ( Inode )" string means we have
-                        # a pnfs id.
+                        # a pnfs id.  Finding the "Regular ( Inode )" string
+                        # means we have a pnfs id too.
                         
                         #Remember to truncate the original path to just the
                         # mount point.
@@ -1655,7 +1777,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                             search_path = os.path.join(search_path, "usr")
 
                         mp_match_list = [search_path]
-                        pnfs_value_match_list = showid_value
+                        pnfs_value_match_list = [showid_value]
 
                         #We need to return the match for the default
                         # directory (likely the CWD).
@@ -1778,7 +1900,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                 #found_fname = pfn
                                 found_db_info = db_db_info
                 except (OSError, IOError), msg:
-                    if msg.args[0] in [errno.EIO, errno.ENOENT]:
+                    if msg.args[0] in [errno.EIO, errno.ENOENT, errno.ENOTDIR]:
                         #This block of code is to report if an orphaned file
                         # was requested.  This will only apply to orphans
                         # with their 'parent' directory missing them.
@@ -1795,37 +1917,56 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                                          ".(showid)(%s)" % id)
                                 
                             parent_fp = file_utils.open(parent_fn, "r")
-                            parent_id = parent_fp.readlines()
+                            parent_id = parent_fp.readlines()[0].strip()
                             parent_fp.close()
 
                             if parent_id:
                                 #We can't close the book on this just yet.
-                                # If the pnfsid is a tag, then we need to
-                                # handle things special.
+                                # If the pnfsid is a tag or layer, then we
+                                # need to handle things special.
                                 showid_fp = file_utils.open(showid_fn, "r")
                                 showid_data = showid_fp.readlines()
                                 showid_fp.close()
                                 for line in showid_data:
-                                    if line.find("Tag ( Inode )") != -1:
+                                    if line.find("Tag ( Inode )") != -1 or \
+                                           line.find("Regular ( Data )") != -1:
                                         #If we get here, then we determined
-                                        # that the pnfs is a tag file pnfsid.
+                                        # that the pnfs id for is a tag or
+                                        # layer pnfsid.
 
                                         #First, construct the access name of
-                                        # the directory that this tag belongs
-                                        # to.
-                                        parent_id_clean = parent_id[0][:-1]
-                                        afn_dir = os.path.join(
-                                            use_mp,
-                                            ".(access)(%s)" % parent_id_clean)
-                                        
+                                        # the directory.
+                                        if line.find("Tag ( Inode )") != -1:
+                                            #Get the parent id of the parent
+                                            # id for tag files.
+                                            base_id = showid_data[4][17:-1]
+                                            afn_dir = os.path.join(
+                                                use_mp,
+                                                ".(access)(%s)" % base_id)
+                                        else:
+                                            #We will need to use the base
+                                            # id instead of the parent id to
+                                            # find the directory's PNFS ID
+                                            # for layer files.
+                                            parent2_fn = os.path.join(use_mp,
+                                                   ".(parent)(%s)" % (parent_id,))
+                                            parent2_fp = file_utils.open(parent2_fn, "r")
+                                            parent2_id = parent2_fp.readlines()[0].strip()
+                                            parent2_fp.close()
+                                            afn_dir = os.path.join(
+                                                use_mp,
+                                                ".(access)(%s)" % parent2_id)
+
                                         #
                                         # Set these three values to include
-                                        # the found item.
+                                        # the found item.  But only if not
+                                        # not already found.
                                         #
-                                        count = count + 1
-                                        mp_match_list.append(afn_dir)
-                                        pnfs_value_match_list.append(
-                                            showid_data)
+                                        if afn_dir not in mp_match_list:
+                                            count = count + 1
+                                            mp_match_list.append(afn_dir)
+                                            pnfs_value_match_list.append(
+                                                showid_data)
                                         
                                         if count == 1:
                                             #We just found the first one.
