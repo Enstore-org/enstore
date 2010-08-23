@@ -112,6 +112,32 @@ def e_access_cmp(file_stats, mode):
 
 #############################################################################
 
+#Get the mount point of the path.
+def get_mount_point(path):
+    
+    #Strip off one directory segment at a time.  We are looking for
+    # where pnfs stops.
+    current_path = path
+    old_path = current_path
+    old_stat = None
+    current_path = os.path.dirname(current_path)
+    while current_path:
+        fstat = wrapper(get_stat, (current_path,))
+        if old_stat and fstat[stat.ST_DEV] != old_stat[stat.ST_DEV]:
+            #We found the change in device IDs.
+            return old_path
+        if current_path == "/":
+            #We found the root path.  Keep from looping indefinately.
+            return current_path
+            
+        old_path = current_path
+        old_stat = fstat
+        current_path = os.path.dirname(current_path)
+
+    return None
+
+#############################################################################
+
 ## This section of code contains wrapper functions around os module functions
 ## in a thread safe manner with respect to seteuid().
 
