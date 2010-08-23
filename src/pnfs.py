@@ -323,7 +323,8 @@ def get_directory_name(filepath):
                 nameof_parent_name = f.readlines()[0].strip()
                 f.close()
             except (OSError, IOError), msg:
-                if getattr(msg, "errno", msg.args[0]) == errno.ENOENT:
+                if getattr(msg, "errno", msg.args[0]) in [errno.ENOENT,
+                                                          errno.ENOTDIR]:
                     #If the parent id does not exist, we know that the
                     # target pnfs id is a tag or layer.
 
@@ -345,6 +346,9 @@ def get_directory_name(filepath):
                     f = file_utils.open(nameof_parent_id)
                     nameof_parent_name = f.readlines()[0].strip()
                     f.close()
+                else:
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
                     
             
             parent_parent_id_name = os.path.join(dirname,
@@ -2001,10 +2005,16 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                             #We just found the first one.
                                             # Remember this to avoid catching
                                             # it again.
-                                            search_path = db_data[1]
-                                            found_db_num = db_data[0]
-                                            #found_fname = pfn
-                                            found_db_info = db_db_info
+                                            #
+                                            #If db_data is None, we found
+                                            # database that is connected to
+                                            # the target file but that the
+                                            # file's mount point is not
+                                            # mounted.
+                                            if db_data != None:
+                                                search_path = db_data[1]
+                                                found_db_num = db_data[0]
+                                                found_db_info = db_db_info
 
                                         break
 
