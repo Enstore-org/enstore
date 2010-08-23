@@ -22,6 +22,7 @@ import option
 import udp_client
 import enstore_constants
 import callback
+import hostaddr
 
 DEFAULT_TIMEOUT = 0
 DEFAULT_TRIES = 0
@@ -306,9 +307,16 @@ class GenericClient:
            ((long_reply == None and
              type(x) == types.DictType and x.get('long_reply', None)) \
             or (long_reply != None and long_reply)):
+
+            #If the address we are told to connect to is not in the valid
+            # list, give an error.
+            if not hostaddr.allow(x['callback_addr']):
+                x['status'] = "address %s not allowed" % (x['callback_addr'],)
+                return x
             
             try:
                 connect_socket = callback.connect_to_callback(x['callback_addr'])
+                x['status'] = (e_errors.OK, None)
             except (socket.error), msg:
                 message = "failed to establish control socket: %s" % (str(msg),)
                 x['status'] = (e_errors.NET_ERROR, message)
