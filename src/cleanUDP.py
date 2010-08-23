@@ -210,9 +210,18 @@ class cleanUDP :
 						  str(sys.exc_info()[1]))
 					self.logerror("sendto", n)
 				
-						  
-                return self.socket.sendto(data, address)
-                
+		try:
+			return self.socket.sendto(data, address)
+		except (socket.error), msg:
+			if msg.args[0] in [errno.EBADF, errno.EBADFD]:
+				raise socket.error, \
+				      (msg.args[0], "%s: %s" % (msg.args[1], self.socket.fileno())), \
+				      sys.exc_info()[2]
+			else:
+				raise socket.error, \
+				      (msg.args[0], "%s: %s" % (msg.args[1], address)), \
+				      sys.exc_info()[2]
+			
 
         def logerror(self, sendto_or_recvfrom, try_number) :
                 badsockerrno = self.socket.getsockopt(
