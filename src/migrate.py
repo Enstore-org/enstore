@@ -837,9 +837,9 @@ def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
     #This is a hack for running duplication on a machine without trusted
     # status.  We allow for all types of PNFS filesystems to be used.
     if intf and getattr(intf, "make_failed_copies", None):
-        use_path_type = find_pnfs_file.BOTH
+        use_path_type = enstore_constants.BOTH
     else:
-        use_path_type = find_pnfs_file.FS
+        use_path_type = enstore_constants.FS
 
     src = None
     try:
@@ -7435,7 +7435,7 @@ def final_scan_volume(vol, intf):
                 likely_path = find_pnfs_file.find_pnfsid_path(
                     src_file_record['pnfsid'], dst_bfid,
                     likely_path = dst_file_record['pnfs_name0'],
-                    path_type = find_pnfs_file.FS)
+                    path_type = enstore_constants.FS)
             except (OSError, IOError), msg:
                 if msg.args[0] == errno.EBADF and \
                      msg.args[1].find("conflicting layer") != -1:
@@ -8429,7 +8429,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
         try:
             src = find_pnfs_file.find_pnfsid_path(
                 search_pnfsid, search_bfid,
-                path_type = find_pnfs_file.FS)
+                path_type = enstore_constants.FS)
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], \
                   sys.exc_info()[2]
