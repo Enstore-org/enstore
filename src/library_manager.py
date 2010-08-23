@@ -3434,7 +3434,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                         vol_info.get('user_inhibit',['Unknown', 'Unknown']))
             if "Unknown" in mticket['volume_status'][0] or "Unknown" in mticket['volume_status'][1]:
                 # sometimes it happens: why?
-                Trace.trace(self.my_trace_level+1,"mover_idle:Unknown! %s"%(vol_info,))
+                Trace.trace(e_errors.ERROR,"mover_idle:Unknown! %s"%(vol_info,))
 
         Trace.trace(self.my_trace_level+1,"mover_idle: Mover Ticket %s" % (mticket,))
         self.volumes_at_movers.put(mticket)
@@ -3479,9 +3479,25 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if state == 'IDLE':
             # mover dismounted a volume on a request to mount another one
             self.volumes_at_movers.delete(mticket)
-        else: self.volumes_at_movers.put(mticket)
+        else:
+            if ("Unknown" in mticket['volume_status'][0] or "Unknown" in mticket['volume_status'][1]):
+                # Mover did not return a "good" status for this volume
+                # Try to get volume info.
+                # If it fails then log this and do not update at_movers list
+                volume_clerk_address = mticket.get("volume_clerk", None)
+                vol_info = self.inquire_vol(mticket['external_label'], volume_clerk_address)
+                if vol_info['status'][0] == e_errors.OK:
+                    mticket['volume_family'] = vol_info['volume_family']
+                    mticket['volume_status'] = (vol_info.get('system_inhibit',['none', 'none']),
+                                                vol_info.get('user_inhibit',['none', 'none']))
+
+                    Trace.trace(self.my_trace_level, "mover_busy: updated mover ticket: %s"%(mticket,))
+                    self.volumes_at_movers.put(mticket)
+                else:
+                   Trace.log(e_errors.ERROR, "mover_busy: can't update volume info, status:%s"%
+                               (vol_info['status'],))
         # do not reply to mover as it does not
-        # wait for reply for "mover_busy" work
+        # expect reply for "mover_busy" work
 
     # mover_bound_volume wrapper for threaded implementation
     def mover_bound_volume(self, mticket):
@@ -3520,6 +3536,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                       (mticket['external_label'],))
             self.reply_to_caller(nowork)
             return
+            
         last_work = mticket['operation']
         self.known_volumes = {}
         # Library manager may not be able to respond to a mover
@@ -3546,20 +3563,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     self.reply_to_caller(blank_reply)
                     return
 
-        if not mticket['volume_family']:
-            # mover restarted with bound volume and it has not
-            # all the volume info
-            # so go get it
+        if (not mticket['volume_family'] or  ("Unknown" in mticket['volume_status'][0] or "Unknown" in mticket['volume_status'][1])):
+            # Mover restarted with bound volume and it has not
+            # all the volume info (volume_family is None).
+            # Or mover did not return a "good" status for this volume
+            # Try to get volume info.
+            # If it fails then log this and send "nowork" to mover
+            
             if self.mover_type(mticket) == 'DiskMover':
                 mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
             else:
-                if mticket.has_key('volume_clerk'):
-                    if mticket['volume_clerk'] == None:
-                        # mover starting, no volume info
-                        self.reply_to_caller(nowork)
-                        return
-
-                vol_info = self.inquire_vol(mticket['external_label'], mticket['volume_clerk'])
+                volume_clerk_address = mticket.get("volume_clerk", None)
+                vol_info = self.inquire_vol(mticket['external_label'], volume_clerk_address)
                 if vol_info['status'][0] == e_errors.OK:
                     mticket['volume_family'] = vol_info['volume_family']
                     mticket['volume_status'] = (vol_info.get('system_inhibit',['none', 'none']),
@@ -3567,11 +3582,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
                     Trace.trace(self.my_trace_level, "mover_bound_volume: updated mover ticket: %s"%(mticket,))
                 else:
-                   Trace.log(e_errors.ERROR, "mover_bound_volume: can't update volume info, status:%s"%
+                   Trace.log(e_errors.ERROR, "mover_bound_volume: can not update volume info, status:%s"%
                                (vol_info['status'],))
                    self.reply_to_caller(nowork)
                    return
-
+                    
         #transfer_deficiency = mticket.get('transfer_deficiency', 1)
         sg = volume_family.extract_storage_group(mticket['volume_family'])
         self.postponed_requests.update(sg, 1)
@@ -3674,13 +3689,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 else:
                     vol_info = self.inquire_vol(mticket['external_label'], w['vc']['address'])
                     if vol_info['status'][0] != e_errors.OK:
-                       Trace.log(e_errors.ERROR, "mover_bound_volume 2: can't update volume info, status:%s"%
-                                   (vol_info['status'],))
+                        Trace.log(e_errors.ERROR, "mover_bound_volume 2: can not update volume info, status:%s"%
+                                  (vol_info['status'],))
                     mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                                                 vol_info.get('user_inhibit',['Unknown', 'Unknown']))
                     if "Unknown" in mticket['volume_status'][0] or "Unknown" in mticket['volume_status'][1]:
                         # sometimes it happens: why?
-                        Trace.trace(self.my_trace_level+1,"mover_idle:Unknown! %s"%(vol_info,))
+                        Trace.trace(e_errors.ERROR,"mover_bund_volume:Unknown! %s"%(vol_info,))
 
             # create new mover_info
             mticket['status'] = (e_errors.OK, None)
