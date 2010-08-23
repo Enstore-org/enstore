@@ -1,4 +1,7 @@
-#! /bin/bash
+#!/bin/bash --posix
+# Include --posix which looks to be necessary, on Linux anyway, to
+# not read in the .bashrc file again where the PNFS_DIR and LOCAL_DIR
+# variables are possibly set.
 
 # $Id$
 
@@ -18,13 +21,21 @@ print_help()
 }
 
 #LOCAL_DIR is set by the user in their environment.
-if [ ! -d "$LOCAL_DIR" ]; then
+if [ -z "$LOCAL_DIR" ]; then
     echo "\$LOCAL_DIR not set.  Stopping test." 1>&2
     exit 1
 fi
+if [ ! -d "$LOCAL_DIR" ]; then
+    echo "$LOCAL_DIR does not exist.  Stopping test." 1>&2
+    exit 1
+fi
 #PNFS_DIR is set by the user in their environment.
-if [ ! -d "$PNFS_DIR" ]; then
+if [ -z "$PNFS_DIR" ]; then
     echo "\$PNFS_DIR not set.  Stopping test." 1>&2
+    exit 1
+fi
+if [ ! -d "$PNFS_DIR" ]; then
+    echo "$PNFS_DIR does not exist.  Stopping test." 1>&2
     exit 1
 fi
 

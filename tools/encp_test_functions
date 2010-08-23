@@ -571,7 +571,7 @@ test_layer()
 	if [ -n "$REMOTE_ENCP" ]; then
             enstore pnfs_agent --layer 1 $file > /dev/null
         else
-	    enstore pnfs --layer $file 1 > /dev/null
+	    enstore sfs --layer $file 1 > /dev/null
 	fi
 	if [ $? -ne 0 ]; then
 	    echo $message "TEST FAILED ON LAYER"
@@ -581,7 +581,7 @@ test_layer()
 	if [ -n "$REMOTE_ENCP" ]; then
 	    result=`enstore pnfs_agent --layer 4 $file`
 	else
-	    result=`enstore pnfs --layer $file 4`
+	    result=`enstore sfs --layer $file 4`
 	fi
 	for line in result; do
 	    if [ $line = "unknown" ]; then
@@ -837,8 +837,8 @@ dcache_read_write_test()
 	pnfsid=`enstore pnfs_agent --id $pnfsname`
     else
         touch $pnfsname
-	enstore pnfs --size "${pnfsname}" "${size}"
-	pnfsid=`enstore pnfs --id $pnfsname`
+	enstore sfs --size "${pnfsname}" "${size}"
+	pnfsid=`enstore sfs --id $pnfsname`
     fi
 
     #Shorten some things for readability.
@@ -1200,7 +1200,7 @@ single_no_brand_read_test()
     filelist="$PNFS_INPUT_DIR/special_files/no_brand"
     if [ -z "$filelist" -o ! -f "$filelist" ]; then
 	echo "Input file not found.  Skipping test and continuing."
-    elif [ `enstore pnfs --bfid $filelist | tr -d '[0-9]\n' | wc -c` -gt 0 ]; then
+    elif [ `enstore sfs --bfid $filelist | tr -d '[0-9]\n' | wc -c` -gt 0 ]; then
 	#We should only get here if the bfid contains more than just
 	# digits (and a newline).
 	echo "$filelist bfid contains brand.  Skipping test and continuing."
@@ -1321,7 +1321,7 @@ multiple_copies_read_write_test()
 	basename=`basename $filename`
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
 	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
-	library=`cd ${PNFS_OUTPUT_DIR}; enstore pnfs --library`
+	library=`cd ${PNFS_OUTPUT_DIR}; enstore sfs --library`
 	encp="$encp_cmd --copies 1 --library $library,$library"
 	
 	#Write the original and one copy to tape.
@@ -1335,7 +1335,7 @@ multiple_copies_read_write_test()
 	rm -f $outname
 
 	#Now read back the copy via bfid.
-	bfid=`enstore pnfs --bfid $pnfsname`
+	bfid=`enstore sfs --bfid $pnfsname`
 	get_bfid="--get-bfid `enstore file --find-copies $bfid`"
 	transfer $encp_cmd '$get_bfid' '$outname' '$pnfsname $outname' "" "$section" READ
 
