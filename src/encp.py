@@ -1298,6 +1298,10 @@ def get_next_request(request_list):
                     # mover can mangle it.
                     request_list[i]['fc']['original_bfid'] = \
                                     orig_request['fc']['bfid']
+                    #Store the sfs id too.  This is needed for DiskMovers
+                    # that hash the file location based on this ID.
+                    request_list[i]['fc']['pnfsid'] = \
+                                    orig_request['fc']['pnfsid']
                 elif orig_request.get('completion_status', None) == FAILURE:
                     # We should skip copy transfers when the original failed.
                     continue
@@ -8257,6 +8261,11 @@ def create_write_request(work_ticket, file_number,
                         "wrapper"            : file_family_wrapper,
                         "storage_group"      : storage_group,}
         file_clerk = {'address' : fcc.server_address}
+        if e.put_cache:
+            #For non-dcache writes this information is inserted shortly
+            # after the output file is created.  In this case the file
+            # already exists, so we just include it here.
+            file_clerk['pnfsid'] = e.put_cache
 
         #Determine the max resend values for this transfer.
         csc = get_csc()
@@ -8937,7 +8946,6 @@ def prepare_write_to_hsm(tinfo, e):
             else:
                 original_ticket = get_original_request(request_list, i)
                 request_list[i]['fc']['pnfsid'] = original_ticket['fc']['pnfsid']
-                
         else:
             #Create the zero length file entry and grab the inode.
             try:
