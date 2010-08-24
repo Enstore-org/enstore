@@ -26,11 +26,12 @@ if [ ! -d "$inventory_dir" ]; then
     fi
 fi
 
-
 #Get our variables for VOLUMES filenames.
-outfile_volumes=$inventory_dir/VOLUMES
-outfile_volumes_temp=${outfile_volumes}.temp
-#rm -f $outfile_volumes
+fname=VOLUMES
+outfile_volumes=$inventory_dir/$fname
+outfile_volumes_temp=$inventory_dir/.$fname$$.temp
+trap "rm -f $outfile_volumes_temp; exit 1" HUP INT QUIT ABRT ALRM TERM
+
 
 #Output the data to the VOLUMES temp file.
 echo -e Volumes Report: `date` > $outfile_volumes_temp 2>&1
@@ -45,9 +46,10 @@ mv $outfile_volumes_temp $outfile_volumes
 
 
 #Get our variables for NOACCESS filenames.
-outfile_noaccess=$inventory_dir/NOACCESS
-outfile_noaccess_temp=${outfile_noaccess}.temp
-#rm -f $outfile_noaccess
+fname=NOACCESS
+outfile_noaccess=$inventory_dir/$fname
+outfile_noaccess_temp=$inventory_dir/.$fname$$.temp
+trap "rm -f $outfile_noaccess_temp; exit 1" HUP INT QUIT ABRT ALRM TERM
 
 #Output the data to the NOACCESS temp file.
 echo `date` > $outfile_noaccess_temp 2>&1

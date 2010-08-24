@@ -53,7 +53,8 @@ fi
 #Create the variables that point to the files to output to.
 fname=CMS_VOLUMES_WITH_ONLY_DELETED_FILES
 output_file=$inventory_dir/$fname
-temp_file=$output_file.temp
+temp_file=$inventory_dir/.$fname$$.temp
+trap "rm -f $temp_file; exit 1" HUP INT QUIT ABRT ALRM TERM
 
 #If we write to a temp file, and swap in it when we are done, there will
 # not be any time when the page is empty becuase the scipt is still writing
@@ -63,10 +64,6 @@ rm -f $temp_file
 #Make sure we know how up-to-date this is.
 echo -e Migration Report: `date` > $temp_file 2>&1
 echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
-
-#psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
-#select * from cms_volume_with_only_deleted_files order by label;
-#" >> $temp_file 2>&1
 
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "select * from cms_volume_with_only_deleted_files order by label" -o  $temp_file
 

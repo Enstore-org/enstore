@@ -18,13 +18,12 @@ inventory_dir=$html_dir/tape_inventory
 if [ ! -d "$inventory_dir" ]; then
     mkdir -p $inventory_dir
 fi
-output_file=$inventory_dir/CLEANING
-temp_file=$output_file.tmp
 
-#If we write to a temp file, and swap in it when we are done, there will
-# not any time when the page is empty becuase the scipt is still writing
-# the file.
-rm -f $temp_file
+#Get our variables for CLEANING filenames.
+fname=CLEANING
+output_file=$inventory_dir/$fname
+temp_file=$inventory_dir/.$fname$$.temp
+trap "rm -r $temp_file; exit 1" HUP INT QUIT ABRT ALRM TERM
 
 #Make sure we know how up-to-date this is.
 echo -e Cleaning Report: `date` >> $temp_file 2>&1
