@@ -111,10 +111,10 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         params_len = len(params)
         alarm_info=theAlarm.alarm_info
         #
-        # We expect to get in alarm_ifno a bunch of key,value pairs
+        # We expect to get in alarm_info a bunch of key,value pairs
         # like e.g.
         #   alarm_info['patterns']= { 'sg' : 'cms',
-        #                          'node' : 'fcdsgi2.fnal.gov' } 
+        #                           'node' : 'fcdsgi2.fnal.gov' } 
         #                      Dmitry Litvintsev (litvinse@fnal.gov)
         #       
         if isNew or (params_len > 1 and params[1] == "*"):
@@ -134,10 +134,9 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                     if (e_mail!=""):
                         enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", e_mail[0:-1])
                     else:
-                        Trace.log(e_errors.INFO,
-                                  "Fail to send mail alarm_ifo = %s, parameters=%s "%(repr(alarm_info),repr(params)),
-                                  Trace.MSG_ALARM)
+                        self.default_action(theAlarm, isNew)
                 except:
+                    self.default_action(theAlarm, isNew)
                     Trace.log(e_errors.INFO,
                               "Exception in send_mail_action alarm_info = %s, parameters=%s "%(repr(alarm_info),repr(params)),
                               Trace.MSG_ALARM)
