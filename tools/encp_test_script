@@ -72,7 +72,7 @@ debug=0
 while getopts dhe: option; do
     case "$option"
     in
-        e) encp_cmd=$OPTARG;;
+        e) encp_cmd=`which $OPTARG`;;  #Use which to force absolute path.
 	h) print_help; exit 0;;
 	d) debug=`expr $debug + 1`;;
     esac
