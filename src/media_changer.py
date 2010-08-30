@@ -3317,7 +3317,7 @@ class MTX_MediaLoader(MediaLoaderMethods):
     def load_unload_local(self, slot, drive, load_command):
         if load_command not in ("load", "unload"):
             return ('ERROR', e_errors.ERROR, [], "%s"%(load_command,), "Wrong command")
-        cmd = "%s mtx -f %s %s %d %d"% (self.sudo_cmd, load_command, self.device_name, slot + 1, drive)
+        cmd = "%s mtx -f %s %s %d %d"% (self.sudo_cmd, self.device_name, load_command, slot + 1, drive)
         Trace.log(e_errors.INFO, "Invoking the following command: %s"%(cmd,))
 	result = enstore_functions2.shell_command(cmd)
 	if result:
