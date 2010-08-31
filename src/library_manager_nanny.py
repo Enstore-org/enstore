@@ -180,7 +180,7 @@ try:
                 # Otherwise send e-mail to developer
                 t = time.localtime()
                 if (t[6] in (5,6) or # weekend
-                    (t[3] < 8 and t[3] > 17)): # weekday before 8:00am or after 5:00pm
+                    (t[3] < 8 or t[3] > 17)): # weekday before 8:00am or after 5:00pm
                     # restart LM
                     Trace.log(e_errors.INFO, "Will try to restart %s library manager"%(lm['name'], ))
                     command = 'enstore Estop %s "--just %s"'%(host.split('.')[0], lm['name'])
