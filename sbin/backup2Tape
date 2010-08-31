@@ -11,7 +11,7 @@ timeout='--timeout 10 --retries 3'
 # to be mounted.
 mover_timeout='--mover-timeout 1800'  #30 minutes (defualt is 15 minutes)
 
-if [ -n "${1:-}" ];then 
+if [ -n "${1:-}" ];then
   FULL=`echo $1 | tr a-z A-Z `
 else
   FULL="NO"
@@ -48,7 +48,7 @@ doit() { list "$1"
 
 #Tapes have to be declared to the volume server and in the correct storage
 # family
-saveit() { 
+saveit() {
            pnfsname=`echo $1 | tr '/' '-' | sed s/-//`
            ls -l $1
            doit "encp $mover_timeout --data $verbose $1 $pnfspath/$pnfsname"
@@ -171,7 +171,7 @@ done
 # of tape!
 find $PNFS $find_options -maxdepth 1 -type f  -print | sort -r | while read f; do
     echo $f | cut -f1 -d.
-  done | uniq | while read g; do 
+  done | uniq | while read g; do
     ls -lt ${g}.*.Z | head -n1 | awk '{print $NF}'
   done > $PNFS_FILES
 
@@ -245,7 +245,7 @@ find $ENSTORE -follow -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
 ENSTORELOG_FILES=$VAULT/enstorelog.files
 rm -f $ENSTORELOG_FILES
-find $ENSTORELOG -type f $find_options  -name "LOG*"  -exec ls -l {} \; | grep -v "$today" | awk '{print $NF }' > $ENSTORELOG_FILES
+find $ENSTORELOG -type f $find_options  -name "LOG*"  | grep -v "$today" > $ENSTORELOG_FILES
 lines=`wc -l $ENSTORELOG_FILES | awk '{print $1}'`
 list ""
 list "ENSTORE log backup: $lines files to backup to tape"
