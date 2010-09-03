@@ -4044,8 +4044,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         ##all groveling around in the ticket should be done here
         fc = ticket['fc']
         vc = ticket['vc']
-        self.vol_info.update(vc)
-        self.file_info.update(fc)
+        self.vol_info = vc
+        self.file_info = fc
         Trace.trace(24, "VOL_INFO %s"%(self.vol_info,))
         Trace.trace(24, "FILE_INFO %s"%(self.file_info,))
         self.volume_family=vc['volume_family']
