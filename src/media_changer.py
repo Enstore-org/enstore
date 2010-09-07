@@ -1244,7 +1244,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	ticket['slot_list'] = slot_list
 	return (e_errors.OK, 0, None)
 
-	#self.reply_to_caller(ticket)
 	#sys.exit(0)  #Remember we are the child here.
 
 
@@ -1836,7 +1835,9 @@ class STK_MediaLoader(MediaLoaderMethods):
 		      (E, command, status, response)
             Trace.log(e_errors.ERROR, message)
 	    ticket['status'] = ("ERROR", E, response, "", message)
-	    self.reply_to_caller(ticket)
+	    reply = copy.copy(ticket)
+	    self.reply_to_caller(reply)
+	    ticket['no_reply'] = 1 #Tell WorkDone() not to send the ticket again.
             return ticket['status']
 
         drive_list = []
@@ -1986,7 +1987,9 @@ class STK_MediaLoader(MediaLoaderMethods):
 		message = "Unable to obtain list of movers."
 		Trace.log(e_errors.ERROR, message)
 		ticket['status'] = (e_errors.NET_ERROR, E, "", "", message)
-		self.reply_to_caller(ticket)
+		reply = copy.copy(ticket)
+		self.reply_to_caller(reply)
+		ticket['no_reply'] = 1 #Tell WorkDone() not to send the ticket again.
 		return ticket['status']
 
 	#Build the list of ACSes that we have movers configured in.  ACSes
@@ -2010,7 +2013,9 @@ class STK_MediaLoader(MediaLoaderMethods):
 		      (E, command, status, response)
             Trace.log(e_errors.ERROR, message)
 	    ticket['status'] = ("ERROR", E, response, "", message)
-	    self.reply_to_caller(ticket)
+	    reply = copy.copy(ticket)
+	    self.reply_to_caller(reply)
+	    ticket['no_reply'] = 1 #Tell WorkDone() not to send the ticket again.
             return ticket['status']
 
         slot_list = []
