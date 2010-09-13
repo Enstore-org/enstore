@@ -3608,6 +3608,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     mover = mticket['mover']
                     if self.volumes_at_movers.at_movers[mover]['current_time'] ==  mticket['current_time']:
                         Trace.log(e_errors.INFO, "Duplicate MOVER_BOUND request will be ignored for %s"%(mover,))
+                        blank_reply = {'work': None, 'r_a': saved_reply_address}
+                        self.reply_to_caller(blank_reply)
                         return
                         #
                 Trace.trace(self.my_trace_level+1,"_mover_bound_volume: found backed up mover %s " % (mticket['mover'], ))
