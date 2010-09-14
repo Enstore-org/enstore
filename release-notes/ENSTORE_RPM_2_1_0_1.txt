@@ -8,7 +8,6 @@
 
 Version 2.1.0 Release 1 
 
-../bin/Linux
 ./crontabs
 ========== enstore_plots ====================================================================================
 
@@ -16,10 +15,6 @@ mount latencies were set to run once a day, fix that to run every hour
 
 added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
 
-../release-notes
-========== ENSTORE_RPM_2_0_1_3.txt ====================================================================================
-
-.
 ./external_distr
 ========== setup-enstore ====================================================================================
 
@@ -165,6 +160,8 @@ added module that plots mount/dismount latencies per robot per drive type RB htt
 
 ========== library_manager.py ====================================================================================
 
+Send a blank reply to mover when library manager thinks it is a duplicate request. If not sent the mover retries for 10 minutes the same request.(bz 878) 
+
 Sometimes mover request to library manager comes with "Unknown" in volume status fields: BUSY RQ {'status': ('ok', None), 'returned_work': None, 'library': 'CD-LTO4F1', 'move r_type': '', 'current_location': '0000_000000000_0000172', 'ip_map': '', 'operation': None, 'read_only': 0, 'current_time': 1282137872.1632309, 'error_source ': None, 'external_label': 'VP0388', 'state': 'SETUP', 'r_a': (('131.225.13.106', 60099), 891215L, '131.225.13.106-60099-1277858829.946311-6245'), 'library_l ist': [('CD-LTO4F1.library_manager', ('131.225.13.3', 7010))], 'current_priority': (1, -1), 'transfer_deficiency': 1, 'time_in_state': 0.015711784362792969, 'address': ('131.225.13.106', 7871), 'volume_family': 'backups.d0en_metadata_backups_copy_1.cern', 'work': 'mover_busy', 'mover': 'LTO4_111.mover', 'volume_s tatus': (['Unknown', 'Unknown'], ['Unknown', 'Unknown']), 'unique_id': 'd0ensrv3n.fnal.gov-1282137470-32461-1'} This may lead to assignment of additional volume for writes, while the current volume is not filled in. (bz 853). 
 
 Bug fix: When preemptive (admin. priority) request gets sent to mover and mover returns dismount failure for the tape being preempted, the request does not get removed from volumes at movers list. This results in requests not being selected for a given volume family (write) or a give volume (read). (Bugzilla 761). 
@@ -184,6 +181,10 @@ In SortedList class of manage_queue.py call get() inside of get_next() if it was
 The Request_Queue.get() in manage_queue.py does not process the next request in tags if previous requests were dropped due to restriction on host selection. (bigzilla 769). This problem is caused by the bug in manager_queue.py the Request_Queue.get() does not process the next request in tags if previous requests were dropped due to restriction on host selection, e.i. Request_Queue.get(key, next=1, active_volumes=active_vols, disabled_hosts=disabled_hosts_list) -- returns None because all requests for a give key (volume family of external label) were for a host in the disabled_hosts_list Request_Queue.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) - returns None because next request from a given host was in the disabled_hosts_list Request_Queue.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) - returns None because Atomic_Request_Queue called by Request_Queue.get does not proceed with another tag. 
 
 ========== media_changer.py ====================================================================================
+
+Fixed three occurances where and error causes a query request to remain in the queue because the r_a field no longer exists in the ticket. (bugzilla #737, review board #212) 
+
+In MTX_MediaLoader the remote command arguments had a wrong order.(bz 867) 
 
 If media is not in home position do not retry to mount it and do not try to unmount it. (bugzilla 766) 
 
@@ -216,6 +217,8 @@ Lets get the correct versions commited this time... 1) --restore switch now work
 Corrected the migration accounting to handle: 1) Destination tapes that were determined to be bad during scanning. They had partial migration_history table records that were not properly being ignored. 2) Shelved-tapes with incomplete migration_history table records were getting included in the total tape count, but were not included in the remaining tape list. 
 
 ========== mover.py ====================================================================================
+
+Bug: Code updates file clerk and volume clerk dictionaries in transfer setup. So if the preemting request comes some key:value pairs may not get updated, leaving them unchanged from the previous request. This change fixes this problem (bz 870). 
 
 1. The mover currently records error count since tape mount in per file transaction. It must record deltas - errors related to this file transfer. 2. Drive rates must be calculated as file_size/io_time 3. Mover checks the drive rates: file_size/block_rw_time and compares it with a specified threshold per file transfer. If drive rate is lower than the threshold mover makes a record in suspect drives table in accounting db and sends an alarm. (bz 391) 
 
@@ -303,6 +306,8 @@ Changed use of "enstore pnfs" to "enstore sfs" to support encp testing of Chimer
 ./doc/WWW
 ========== index-bottom.html ====================================================================================
 
+use correct syntax for comment in html document http://uqbar/reviews/r/214/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=865 
+
 get rid of obsolete media types in main hml ("Ingest rate") http://uqbar/reviews/r/182/ 
 
 ./spec
@@ -318,68 +323,20 @@ added ssl support
 
 ========== swig_enstore.spec ====================================================================================
 
-Replaced legacy statement 
+Replaced legacy statement
 
 ./etc
-========== cdf.conf ====================================================================================
-
-Commented out the 9940B movers, library manger and media changer as all cdfen 9940B tapes have been migrated to LTO4 media. 
-
-set check_written_file to 600 on cdfenmvr19a,20a,21a -- tam 6/16/2010 
-
-assigned LTO4_19 to TST-LTO4 LM 
-
-assgned mover LTO3_21 to TST-LTO3 LM 
-
-configured CDF-LTO4G1T and assgned mover LTO4_26 to it 
-
-removed locks for all production libraries 
-
-paused all production libraries 
-
-May 18 upgrade configuration 
-
 ========== config_params.html ====================================================================================
 
 Modified description of "use_threads" in library manager keys. 
 
-========== gccen.conf ====================================================================================
-
-Check in local changes Add pnfs_server 
-
-========== sam.conf ====================================================================================
-
-updated the LTO4 device file for d0enmvr238a 
-
-Commented out all 9310 silo related items as all 9940B tapes have completed migration to LTO4 media. Items include stk.media_changer, D0-9940B and TEST-9940B library managers, and all remaining 9940B movers, 9940B27,28,37-42. 
-
-put LTO4_52 back into D0Enstore 
-
-Commented out LTO4_52.mover, stkenmvr152a 
-
-updated tape device name for LTO4_237 --TAM 6/25/2010 
-
-moving d0enmvr169a back into production library --TAM 6/24/2010 
-
-moving d0enmvr169a to D0-LTO4F1T for testing --TAM 6/24/2010 
-
-========== stk.conf ====================================================================================
-
-Modified device file for LTO4_14 & LTO4_15 
-
-added enstore-auto to alarm_server send_mail list. 
-
-Removing stkenmvr152, LTO4_52 
-
-uncommented LTO4_52 to return it to STK Enstore production. 
-
-Temporarily re-added 9940.library_manager and added to 2 9940B movers to read 9940 A tapes for rerunning migration. 
-
-Enabled writes from cmsstor261-cmsstor294 at Bakken's request 
-
-Set storage_group_limits to 3 for cms in CD-LTO4F1 library. Per Stan/Gene as a contingency plan to allow cms to write LTO4 tapes at FCC in the event of an extended robot outage at GCC. 
-
 ./sbin
+========== backup2Tape ====================================================================================
+
+http://uqbar/reviews/r/217/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=864 
+
+remove execution of "ls -l" on find result b/c it may lead to filtering out of useful files that have "today"'s timestamp http://uqbar/reviews/r/217/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=864 
+
 ========== choose_ran_file ====================================================================================
 
 If the randomly chosen file is also the first or the last file, only try reading the file once. (bugzilla #414, review board #140) 
