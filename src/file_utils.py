@@ -143,59 +143,21 @@ def get_mount_point(path):
 
 #arg can be: filename, file descritor, file object, a stat object
 def get_stat(arg, use_lstat = False):
-    try:
-        if type(arg) == types.StringType:
-            if use_lstat:
-                f_stat = os.lstat(arg)
-            else:
-                f_stat = os.stat(arg)
-        elif type(arg) == types.IntType:
-            f_stat = os.fstat(arg)
-        elif type(arg) == types.FileType:
-            f_stat = os.fstat(arg.fileno())
-        elif type(arg) == types.TupleType or type(arg) == os.stat_result:
-            f_stat = arg
+    if type(arg) == types.StringType:
+        if use_lstat:
+            f_stat = wrapper(os.lstat, (arg,))
         else:
-            raise TypeError("Expected path, file descriptor or file object; "
-                            "not %s" % (type(arg),))
-    except OSError, msg:
-        #If we were denied access and our effective IDS were not root's,
-        # set the effective IDS to root so we can try again.
-        if msg.errno in [errno.EACCES, errno.EPERM] and \
-               os.getuid() == 0 and os.geteuid() != 0:
-            acquire_lock_euid_egid()
-            current_euid = os.geteuid()
-            current_egid = os.getegid()
-
-            try:
-                os.seteuid(0)
-                os.setegid(0)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                #Calling stat again won't get stuck in a loop since the
-                # effective IDS have been changed.
-                f_stat = get_stat(arg, use_lstat)
-            except OSError:  #Anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:  #Un-anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.setegid(current_egid)
-                os.seteuid(current_euid)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            release_lock_euid_egid()
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
+            f_stat = wrapper(os.stat, (arg,))
+    elif type(arg) == types.IntType:
+        f_stat = wrapper(os.fstat, (arg,))
+    elif type(arg) == types.FileType:
+        f_stat = wrapper(os.fstat, (arg.fileno(),))
+    elif type(arg) == types.TupleType or type(arg) == os.stat_result:
+        f_stat = arg
+    else:
+        raise TypeError("Expected path, file descriptor or file object; "
+                        "not %s" % (type(arg),))
+        
     return f_stat
 
 #Because open() is a builtin, pychecker gives a "(open) shadows builtin"
@@ -205,303 +167,43 @@ __pychecker__ = "no-shadowbuiltin"
 
 #Open the file fname.  Mode has same meaning as builtin open().
 def open(fname, mode = "r"):
-    try:
-        file_p = __builtins__['open'](fname, mode)
-    except (OSError, IOError), msg:
-        #If we were denied access and our effective IDS were not root's,
-        # set the effective IDS to root so we can try again.
-        if msg.errno in [errno.EACCES, errno.EPERM] and \
-               os.getuid() == 0 and os.geteuid() != 0:
-            acquire_lock_euid_egid()
-            current_euid = os.geteuid()
-            current_egid = os.getegid()
-
-            try:
-                os.seteuid(0)
-                os.setegid(0)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                file_p = __builtins__['open'](fname, mode)
-            except (OSError, IOError), msg:  #Anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:  #Un-anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.setegid(current_egid)
-                os.seteuid(current_euid)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            release_lock_euid_egid()
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
+    file_p = wrapper(__builtins__['open'], (fname, mode,))
     return file_p
-
+        
 #Open the file fname.  This is a wrapper for os.open() (atomic.open() is
 # another level of wrapper for os.open()).
 def open_fd(fname, flags, mode = 0777):
-    #Call atomic.open() if we expect to crate the file.  Use os.open() if
-    # the file should already exist.
-    try:
-        if flags & os.O_CREAT:
-            Trace.log(99, "%s %s %s" % (fname, flags, mode))
-            file_fd = atomic.open(fname, flags, mode)
-        else:
-            file_fd = os.open(fname, flags, mode)
-    except (OSError, IOError), msg:
-        Trace.log(99, str(msg))
-        #If we were denied access and our effective IDS were not root's,
-        # set the effective IDS to root so we can try again.
-        if msg.errno in [errno.EACCES, errno.EPERM] and \
-               os.getuid() == 0 and os.geteuid() != 0:
-            acquire_lock_euid_egid()
-            current_euid = os.geteuid()
-            current_egid = os.getegid()
-
-            try:
-                os.seteuid(0)
-                os.setegid(0)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                if flags & os.O_CREAT:
-                    file_fd = atomic.open(fname, flags, mode)
-                else:
-                    file_fd = os.open(fname, flags, mode)
-            except (OSError, IOError), msg:  #Anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:  #Un-anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.setegid(current_egid)
-                os.seteuid(current_euid)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            release_lock_euid_egid()
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
+    if flags & os.O_CREAT:
+        file_fd = wrapper(atomic.open, (fname, flags, mode,))
+    else:
+        file_fd = wrapper(os.open, (fname, flags, mode,))
     return file_fd
 
 #Obtain the contents of the specified directory.
 def listdir(dname):
-    try:
-        directory_listing = os.listdir(dname)
-    except (OSError, IOError), msg:
-        #If we were denied access and our effective IDS were not root's,
-        # set the effective IDS to root so we can try again.
-        if msg.errno in [errno.EACCES, errno.EPERM] and \
-               os.getuid() == 0 and os.geteuid() != 0:
-            acquire_lock_euid_egid()
-            current_euid = os.geteuid()
-            current_egid = os.getegid()
-
-            try:
-                os.seteuid(0)
-                os.setegid(0)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                directory_listing = os.listdir(dname)
-            except (OSError, IOError), msg:  #Anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:  #Un-anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.setegid(current_egid)
-                os.seteuid(current_euid)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            release_lock_euid_egid()
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
+    directory_listing = wrapper(os.listdir, (dname,))
     return directory_listing
-
 
 #Change the permissions of file fname.  Perms have same meaning as os.chmod().
 def chmod(fname, perms):
-    try:
-        os.chmod(fname, perms)
-    except (OSError, IOError), msg:
-        #If we were denied access and our effective IDS were not root's,
-        # set the effective IDS to root so we can try again.
-        if msg.errno in [errno.EACCES, errno.EPERM] and \
-               os.getuid() == 0 and os.geteuid() != 0:
-            acquire_lock_euid_egid()
-            current_euid = os.geteuid()
-            current_egid = os.getegid()
-
-            try:
-                os.seteuid(0)
-                os.setegid(0)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.chmod(fname, perms)
-            except (OSError, IOError), msg:  #Anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:  #Un-anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.setegid(current_egid)
-                os.seteuid(current_euid)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            release_lock_euid_egid()
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    dummy = wrapper(os.chmod, (fname, perms))
+    return dummy
 
 #Change the owner of file fname.  Perms have same meaning as os.chmod().
 def chown(fname, uid, gid):
-    try:
-        os.chown(fname, uid, gid)
-    except (OSError, IOError), msg:
-        #If we were denied access and our effective IDS were not root's,
-        # set the effective IDS to root so we can try again.
-        if msg.errno in [errno.EACCES, errno.EPERM] and \
-               os.getuid() == 0 and os.geteuid() != 0:
-            acquire_lock_euid_egid()
-            current_euid = os.geteuid()
-            current_egid = os.getegid()
-
-            try:
-                os.seteuid(0)
-                os.setegid(0)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.chown(fname, uid, gid)
-            except (OSError, IOError), msg:  #Anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:  #Un-anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.setegid(current_egid)
-                os.seteuid(current_euid)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            release_lock_euid_egid()
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    dummy = wrapper(os.chown, (fname, uid, gid))
+    return dummy
 
 #Update the times of file fname.  Access time and modification time are
 # the same as os.chown().
 def utime(fname, times):
-    try:
-        os.utime(fname, times)
-    except (OSError, IOError), msg:
-        #If we were denied access and our effective IDS were not root's,
-        # set the effective IDS to root so we can try again.
-        if msg.errno in [errno.EACCES, errno.EPERM] and \
-               os.getuid() == 0 and os.geteuid() != 0:
-            acquire_lock_euid_egid()
-            current_euid = os.geteuid()
-            current_egid = os.getegid()
-
-            try:
-                os.seteuid(0)
-                os.setegid(0)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.utime(fname, times)
-            except (OSError, IOError), msg:  #Anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:  #Un-anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.setegid(current_egid)
-                os.seteuid(current_euid)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            release_lock_euid_egid()
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    dummy = wrapper(os.utime, (fname, times))
+    return dummy
 
 #Remove the file fname from the filesystem.
 def remove(fname):
-    try:
-        os.remove(fname)
-    except (OSError, IOError), msg:
-        #If we were denied access and our effective IDS were not root's,
-        # set the effective IDS to root so we can try again.
-        if msg.errno in [errno.EACCES, errno.EPERM] and \
-               os.getuid() == 0 and os.geteuid() != 0:
-            acquire_lock_euid_egid()
-            current_euid = os.geteuid()
-            current_egid = os.getegid()
-
-            try:
-                os.seteuid(0)
-                os.setegid(0)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.remove(fname)
-            except (OSError, IOError), msg:  #Anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:  #Un-anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            try:
-                os.setegid(current_egid)
-                os.seteuid(current_euid)
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            release_lock_euid_egid()
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
+    dummy = wrapper(os.remove, (fname,))
+    return dummy
 
 #############################################################################
 
@@ -596,16 +298,44 @@ def wrapper(function,args=()):
             rtn = apply(function, args)
     except (OSError, IOError), msg:
         if msg.errno in [errno.EACCES, errno.EPERM] and \
-               os.getuid() == 0 and os.geteuid() != 0:
+               os.getuid() == 0:
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
+            
+            #We might need to go back to being root again.
             try:
-                os.seteuid(0)
-                os.setegid(0)
+                if current_euid != 0:
+                    os.seteuid(0)
+                if current_egid != 0:
+                    os.setegid(0)
             except:
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            #Match the ownership of the file.
+            try:
+                if function == os.stat:
+                   use_function = os.stat
+                elif function == os.fstat:
+                    use_function = os.fstat
+                elif function == os.lstat:
+                    use_function = os.lstat
+                else:
+                    #Are there situations that this is not correct?
+                    use_function = os.stat
+
+                fstat = use_function(args[0])
+
+                if fstat[stat.ST_GID] != 0:
+                    os.setegid(fstat[stat.ST_GID])
+                if fstat[stat.ST_UID] != 0:
+                    os.seteuid(fstat[stat.ST_UID])
+            except:
+                release_lock_euid_egid()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            #Perform the requested function.
             try:
                 if type(args) != types.TupleType:
                     rtn =  apply(function, (args,))
@@ -618,9 +348,19 @@ def wrapper(function,args=()):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+            
             try:
-                os.setegid(current_egid)
-                os.seteuid(current_euid)
+                #First, set things back to root.
+                if current_euid != os.geteuid() or \
+                       current_egid != os.getegid():
+                    os.seteuid(0)
+                    os.setegid(0)
+
+                #Second, set the effective IDs back to what they were.
+                if current_egid != os.getegid():
+                    os.setegid(current_egid)
+                if current_euid != os.geteuid():
+                    os.seteuid(current_euid)
             except:
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
