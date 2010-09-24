@@ -3496,6 +3496,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 else:
                    Trace.log(e_errors.ERROR, "mover_busy: can't update volume info, status:%s"%
                                (vol_info['status'],))
+            else:
+                Trace.trace(self.my_trace_level, "mover_busy: updated mover ticket: %s"%(mticket,))
+                self.volumes_at_movers.put(mticket)
+                
         # do not reply to mover as it does not
         # expect reply for "mover_busy" work
 
