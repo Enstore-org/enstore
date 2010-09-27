@@ -5,7 +5,7 @@
 # $Date$
 # $Id$
 #
-# PNFS agend client 
+# PNFS agend client
 # Author: Dmitry Litvintsev (litvinse@fnal.gov) 08/05
 #
 ###############################################################################
@@ -104,7 +104,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         else:
             directory = pn
             name = fn
-            
+
         return os.path.join(directory, ".(fset)(%s)(size)(%s)" % (name, size))
 
     # FIXME (Could replace with pnfs.Pnfs().nameof_file()?)
@@ -123,11 +123,11 @@ class PnfsAgentClient(generic_client.GenericClient,
         else:
             directory = pn
             name = fn
-            
+
         return os.path.join(directory, ".(const)(%s)" % (name,))
 
 ###############################################################################
- 
+
     def is_pnfs_path(self, filename, check_name_only = None,
                      rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = { 'work' : 'is_pnfs_path',
@@ -198,7 +198,7 @@ class PnfsAgentClient(generic_client.GenericClient,
     def get_file_stat(self, filename, rcv_timeout=RCV_TIMEOUT,
                       tries=RCV_TRIES):
         if ( self.r_ticket['filename'] != filename ) :
-            self.r_ticket['filename'] = filename 
+            self.r_ticket['filename'] = filename
             self.r_ticket = self.send(self.r_ticket, rcv_timeout=rcv_timeout,
                                       tries=tries)
             if self.r_ticket['status'][0] == e_errors.OK:
@@ -264,7 +264,7 @@ class PnfsAgentClient(generic_client.GenericClient,
                   }
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
-        
+
     def p_get_file_family(self, dirname,
                           rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_file_family',
@@ -418,7 +418,7 @@ class PnfsAgentClient(generic_client.GenericClient,
                          pnfsFilename, volume_filepath, id, volume_fileP,
                          bit_file_id, drive, crc, filepath,
                          rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
-        
+
         ticket = {'work'             : 'set_xreference',
                   'volume'           : volume,
                   'location_cookie'  : location_cookie,
@@ -445,7 +445,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         return ticket
 
 ###############################################################################
-    
+
     def readlayer(self, layer, fname, rcv_timeout=RCV_TIMEOUT,
                   tries=RCV_TRIES):
         ticket = {'work' : 'readlayer',
@@ -521,7 +521,7 @@ class PnfsAgentClient(generic_client.GenericClient,
                   }
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
-        
+
     # delete a pnfs file including its metadata
     def p_rm(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'rm',
@@ -529,7 +529,7 @@ class PnfsAgentClient(generic_client.GenericClient,
                   }
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
-        
+
     # delete a pnfs file (leaving the metadata do be put in the trashcan)
     def p_remove(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'remove',
@@ -598,7 +598,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
         return ticket
 
-    
+
 
 ###############################################################################
 
@@ -627,7 +627,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['library']
-        
+
     def set_library(self, library, dirname, rcv_timeout=RCV_TIMEOUT,
                               tries=RCV_TRIES):
         reply_ticket = self.p_set_library(library, dirname,
@@ -643,16 +643,19 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['file_family']
-        
-    def set_file_family(self, file_family, dirname, rcv_timeout=RCV_TIMEOUT,
-                              tries=RCV_TRIES):
-        reply_ticket = self.p_set_file_family_width(file_family, dirname,
-                                                    rcv_timeout=rcv_timeout,
-                                                    tries=tries)
+
+    def set_file_family(self,
+                        file_family, dirname,
+                        rcv_timeout=RCV_TIMEOUT,
+                        tries=RCV_TRIES):
+        reply_ticket = self.p_set_file_family(file_family,
+                                              dirname,
+                                              rcv_timeout=rcv_timeout,
+                                              tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return file_family #legacy
-        
+
     def get_file_family_width(self, dirname, rcv_timeout=RCV_TIMEOUT,
                               tries=RCV_TRIES):
         reply_ticket = self.p_get_file_family_width(dirname,
@@ -661,7 +664,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['file_family_width']
-        
+
     def set_file_family_width(self, file_family_width, dirname,
                               rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_set_file_family_width(file_family_width, dirname,
@@ -679,7 +682,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['file_family_wrapper']
-        
+
     def set_file_family_wrapper(self, file_family_wrapper, dirname,
                                 rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_set_file_family_wrapper(file_family_wrapper,
@@ -689,7 +692,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return file_family_wrapper #legacy
-        
+
     def get_storage_group(self, dirname, rcv_timeout=RCV_TIMEOUT,
                               tries=RCV_TRIES):
         reply_ticket = self.p_get_storage_group(dirname,
@@ -707,7 +710,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return storage_group #legacy
-        
+
     def chmod(self, mode, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         reply_ticket = self.p_chmod(mode, filename, rcv_timeout=rcv_timeout,
                                     tries=tries)
@@ -783,7 +786,7 @@ class PnfsAgentClient(generic_client.GenericClient,
                                             tries=tries)
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
-            
+
     def set_xreference(self, volume, location_cookie, size, file_family,
                        pnfsFilename, volume_filepath, id, volume_fileP,
                        bit_file_id, drive, crc, filepath,
@@ -817,7 +820,7 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not e_errors.is_ok(reply_ticket):
             self.raise_exception(reply_ticket)
         return reply_ticket['path']
-        
+
     def set_bit_file_id(self, bfid, fname, rcv_timeout=RCV_TIMEOUT,
                         tries=RCV_TRIES):
         reply_ticket = self.p_set_bit_file_id(bfid, fname,
@@ -1061,7 +1064,7 @@ def do_work(intf):
         pac.check_ticket(ticket)
     except (KeyboardInterrupt):
         sys.exit(1)
-         
+
 
 
 
