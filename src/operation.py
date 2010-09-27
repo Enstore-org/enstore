@@ -97,9 +97,8 @@ import os
 import pwd
 import stat
 import smtplib
-
 # enstore import
-import option
+import enstore_functions2
 import configuration_client
 import e_errors
 try:
@@ -258,8 +257,8 @@ def get_qualifier(lib_type):
 	else:
 		return ''
 
-intf = option.Interface()
-csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+csc = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
+						enstore_functions2.default_port()))
 enstoredb = csc.get('database')
 operation_db = csc.get('operation_db')
 
