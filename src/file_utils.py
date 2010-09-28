@@ -114,7 +114,7 @@ def e_access_cmp(file_stats, mode):
 
 #Get the mount point of the path.
 def get_mount_point(path):
-    
+
     #Strip off one directory segment at a time.  We are looking for
     # where pnfs stops.
     current_path = path
@@ -129,7 +129,7 @@ def get_mount_point(path):
         if current_path == "/":
             #We found the root path.  Keep from looping indefinately.
             return current_path
-            
+
         old_path = current_path
         old_stat = fstat
         current_path = os.path.dirname(current_path)
@@ -157,7 +157,7 @@ def get_stat(arg, use_lstat = False):
     else:
         raise TypeError("Expected path, file descriptor or file object; "
                         "not %s" % (type(arg),))
-        
+
     return f_stat
 
 #Because open() is a builtin, pychecker gives a "(open) shadows builtin"
@@ -169,7 +169,7 @@ __pychecker__ = "no-shadowbuiltin"
 def open(fname, mode = "r"):
     file_p = wrapper(__builtins__['open'], (fname, mode,))
     return file_p
-        
+
 #Open the file fname.  This is a wrapper for os.open() (atomic.open() is
 # another level of wrapper for os.open()).
 def open_fd(fname, flags, mode = 0777):
@@ -284,9 +284,19 @@ def rmdir(path):
     if (os.path.isdir(path)):
         for direntry in os.listdir(os.path.abspath(path)):
             rmdir(os.path.join(path,direntry))
-        os.rmdir(path)
+        try:
+            os.rmdir(path)
+        except OSError, msg:
+            #ignore already deleted directories
+            if msg.errno not in [errno.ENOENT]:
+                raise OSError, msg
     else:
-        os.unlink(path)
+        try:
+            os.unlink(path)
+        except OSError, msg:
+            #ignore already deleted files
+            if msg.errno not in [errno.ENOENT]:
+                raise OSError, msg
 #
 # wrapper to call os functions that takes care of euid/eid
 #
@@ -302,7 +312,7 @@ def wrapper(function,args=()):
             acquire_lock_euid_egid()
             current_euid = os.geteuid()
             current_egid = os.getegid()
-            
+
             #We might need to go back to being root again.
             try:
                 if current_euid != 0:
@@ -348,7 +358,7 @@ def wrapper(function,args=()):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            
+
             try:
                 #First, set things back to root.
                 if current_euid != os.geteuid() or \
