@@ -2845,6 +2845,54 @@ def migration_path(path, file_record, deleted = NO):
     if not admin_mount_point:
         admin_mount_point = DEFAULT_FS_PNFS_PATH
 
+    #Make the non-deleted migration path string.  Something that begins with
+    # /pnfs/fs/usr/Migration/.  We need to do this before worrying about
+    # deleted files, since already scanned files are normally marked deleted.
+    # A re-scan needs to handle the source file marked deleted from
+    # previous scan or not yet marked deleted, correctly.
+
+    #Try the old quick way first.
+    #  For paths like /pnfs/sam/dzero/... that have an extra non-PNFS
+    #  directory ("sam") in the path the returned value will look like
+    #  /pnfs/fs/usr/Migration/sam/dzero/.
+    stripped_name_1 = pnfs.strip_pnfs_mountpoint(path)
+    #Already had the migration path.
+    if stripped_name_1.startswith(MIGRATION_DB + "/"):
+        non_deleted_path = os.path.join(admin_mount_point, stripped_name_1)
+    else:
+        non_deleted_path = os.path.join(admin_mount_point,
+                                        MIGRATION_DB, stripped_name_1)
+    #We want to use the non-deleted path if it still exists.
+    if os.path.exists(non_deleted_path):
+        return non_deleted_path
+    
+    #This is slower, but will catch more cases.  Don't clobber
+    # non_deleted_path, it might be needed as the default return later on.
+    #The reason for doing this are pnfs paths, like /pnfs/sam/dzero/...
+    # having an extra non-PNFS directory ("sam") in the path, where the
+    # migration path might begin with /pnfs/fs/usr/Migration/dzero/
+    # or /pnfs/fs/usr/Migration/sam/dzero/ depending on the migration
+    # code version originally used to migrate the file.
+    try:
+        use_paths = pnfs.Pnfs().get_path(file_record['pnfsid'])
+        for use_path in use_paths:
+            stripped_name_2 = pnfs.strip_pnfs_mountpoint(use_path)
+            #Already had the migration path.
+            if stripped_name_2.startswith(MIGRATION_DB + "/"):
+                alt_non_deleted_path = os.path.join(admin_mount_point,
+                                                    stripped_name_2)
+            else:
+                alt_non_deleted_path = os.path.join(admin_mount_point,
+                                                    MIGRATION_DB,
+                                                    stripped_name_2)
+            #We want to use the non-deleted path if it still exists.
+            if os.path.exists(alt_non_deleted_path):
+                return alt_non_deleted_path
+
+    except (OSError, IOError):
+        pass
+
+
     #Handle a deleted file.
     if file_record.get('deleted', None) == YES or deleted == YES:
         old_path = os.path.join(admin_mount_point,
@@ -2866,15 +2914,8 @@ def migration_path(path, file_record, deleted = NO):
                             file_record['external_label'],
                             string.join([file_record['external_label'],
                                          file_record['location_cookie']], ":"))
-    
-    stripped_name = pnfs.strip_pnfs_mountpoint(path)
 
-    #Already had the migration path.
-    if stripped_name.startswith(MIGRATION_DB + "/"):
-        return os.path.join(admin_mount_point, stripped_name)
-
-    return os.path.join(admin_mount_point,
-                        MIGRATION_DB, stripped_name)
+    return non_deleted_path
 
 # temp_file(file_record) -- get a temporary destination file from file
 def temp_file(file_record):
@@ -3488,12 +3529,15 @@ def __query_file_status(bfid, db):
           * original copies. \
           */ \
          \
+         select * from ( \
          select bfids1.bfid as current_bfid, \
                 NULL as src_bfid, NULL as dst_bfid, \
                 NULL as copied, NULL as swapped, NULL as checked, \
                 NULL as closed, \
                 NULL as remark, \
                 case when mc1.bfid is not NULL and mig1.src_bfid is not NULL \
+                     then NULL \
+                     when mc1.bfid is not NULL \
                      then mc1.bfid \
                      else bfids1.bfid \
                 end as bfid, \
@@ -3521,6 +3565,8 @@ def __query_file_status(bfid, db):
          left join \
          bad_file as bfd on (mig1.dst_bfid = bfd.bfid or \
                              mc1.alt_bfid = bfd.bfid) \
+         ) as original_sub_query \
+         where bfid is not NULL \
          \
          union \
          \
@@ -3790,14 +3836,23 @@ def show_status_volumes(volume_list, db, intf):
                      /* \
                       * This third of four unioned selects pulls out just \
                       * original copies. \
+                      * \
+                      * The inner query can report multiple rows if a \
+                      * primary duplication destination file has a multiple \
+                      * copy.  The source multiple row is left after the \
+                      * outer query, the duplication destination copy \
+                      * is removed because its 'bfid' column is empty. \
                       */ \
                      \
+                     select * from ( \
                      select bfids1.bfid as current_bfid, location_cookie, \
                             NULL as src_bfid, NULL as dst_bfid, \
                             NULL as copied, NULL as swapped, NULL as checked, \
                             NULL as closed, \
                             NULL as remark, \
                             case when mc1.bfid is not NULL and mig1.src_bfid is not NULL \
+                                 then NULL \
+                                 when mc1.bfid is not NULL \
                                  then mc1.bfid \
                                  else bfids1.bfid \
                             end as bfid, \
@@ -3827,6 +3882,8 @@ def show_status_volumes(volume_list, db, intf):
                      left join \
                      bad_file as bfd on (mig1.dst_bfid = bfd.bfid or \
                                          mc1.alt_bfid = bfd.bfid) \
+                     ) as original_sub_query \
+                     where bfid is not NULL \
                      \
                      union \
                      \
@@ -4075,22 +4132,31 @@ def __show_status(MY_TASK, full_output_list, tape_list, fcc, vcc, db, intf,
         last_current_bfid = None
         last_current_bfid_count = 0
         for row in rows:
-            
-            if output_type[i] == DO_MC_SRC and \
-                   row['bfid'] != row['current_bfid']:
-                #print "skipped [1]:", row
-                continue
-            elif output_type[i] == DO_MC_DST and \
-                     row['alt_bfid'] != row['current_bfid']:
-                #print "skipped [2]:", row
-                continue
+
+            #print row['bfid'] != row['current_bfid']
+            #print row['src_bfid']
+            #print row['dst_bfid']
+            if output_type[i] == DO_MC_SRC:
+               if row['src_bfid'] or row['dst_bfid']:
+                   #print "skipped [MC_SRC]:", row
+                   continue
+               if row['bfid'] != row['current_bfid']:
+                   #print "skipped [MC_SRC]:", row
+                   continue
+            elif output_type[i] == DO_MC_DST:
+                if row['src_bfid'] or row['dst_bfid']:
+                    #print "skipped [MC_DST]:", row
+                    continue
+                if row['alt_bfid'] != row['current_bfid']:
+                    #print "skipped [MC_DST]:", row
+                    continue
             elif output_type[i] == DO_MIG_SRC and \
                      row['src_bfid'] != row['current_bfid']:
-                #print "skipped [3]:", row
+                #print "skipped [MIG_SRC]:", row
                 continue
             elif output_type[i] == DO_MIG_DST and \
                      row['dst_bfid'] != row['current_bfid']:
-                #print "skipped [4]:", row
+                #print "skipped [MIG_DST]:", row
                 continue
 
             ### I don't believe this loop is needed anymore...
