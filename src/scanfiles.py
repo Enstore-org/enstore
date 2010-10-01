@@ -1294,14 +1294,14 @@ def check_bit_file(bfid, bfid_info = None):
         #Obtain the current path.  There are many ways to try and find the
         # file.  The original pathname is a good start, but there are a
         # lot of things to try before resorting to get_path().
-        print "111111111", file_record
         sfs_path = find_pnfs_file.find_id_path(file_record['pnfsid'],
                                                bfid,
                                                file_record=file_record,
                                                use_info_server=True)
-        print "222222222"
     except (OSError, IOError), msg:
-        print "333333333", msg
+        #For easier investigations, lets include the paths.
+        sfs_path = getattr(msg, 'filename', "")
+        
         #The following list contains responses that we need to handle special.
         # These will accompany an errno of EEXIST.
         EXISTS_LIST = ["replaced with newer file",
@@ -1423,7 +1423,7 @@ def check_bit_file(bfid, bfid_info = None):
             info.append("deleted(no)")
         else:
             err.append(msg.args[1])
-        errors_and_warnings(prefix, err, warn, info)
+        errors_and_warnings(prefix + ' ' + sfs_path, err, warn, info)
         return
     except (ValueError,), msg:
         err.append(str(msg))
