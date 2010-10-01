@@ -432,6 +432,10 @@ class LibraryManager(EnstoreServer):
                 return state | enstore_constants.DOWN
             else:
                 return EnstoreServer.get_enstore_state(self, state, reason)
+        else:
+	    # this server is known down, so for the sake of enstore, we don't care
+	    # about its real state, say that it is up
+            return state
 
 class MediaChanger(EnstoreServer):
 
@@ -716,11 +720,10 @@ def do_real_work():
         # recent heartbeat
         if server.name in servers_to_mark_up:
             server.is_alive()
-	estate = server.get_enstore_state(estate, reason)
+        estate = server.get_enstore_state(estate, reason)
 	summary_d[server.format_name] = server.status
     else:
 	summary_d[enstore_constants.ENSTORE] = enstore_state(estate)
-
     # now check if there is an override set to make sure that enstore is marked down
     if enstore_constants.ENSTORE in override_d_keys:
 	summary_d[enstore_constants.ENSTORE] = enstore_functions2.override_to_status(\
