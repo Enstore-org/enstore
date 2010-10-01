@@ -95,11 +95,14 @@ do
 	volume_file=$output_dir/.volumes_${storage_group}
 	echo "$volumes" > $volume_file
 
+	#Include options for running the scan.
+        scan_options=--threaded
+
 	#Echo what we are doing.
 	echo "time enstore scan --vol for storage group $storage_group" | tee -a $scan_status_file
 	#Time the scan.  Send scan output to scan output file;
 	# send time output to the scan.status file.
-	(time echo "$volumes" | enstore scan --vol 1> $output_file) 2>&1 | tee -a $scan_status_file
+	(time echo "$volumes" | enstore scan $scan_options --vol 1> $output_file) 2>&1 | tee -a $scan_status_file
 	#Echo a blank line for readability.
 	echo | tee -a $scan_status_file
 

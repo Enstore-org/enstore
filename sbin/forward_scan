@@ -91,11 +91,14 @@ do
 		 done) & 
 	fi
 
+	#Include options for running the scan.
+	scan_options=--threaded
+
 	#Echo what we are doing.
 	echo "time enstore scan $start_point" | tee -a $scan_status_file
 	#Time the scan.  Send scan output to scan output file; 
 	# send time output to the scan.status file.
-	(time enstore scan $start_point 1> $output_file) 2>&1 | tee -a $scan_status_file
+	(time enstore scan $scan_options $start_point 1> $output_file) 2>&1 | tee -a $scan_status_file
 	#Echo a blank line for readability.
 	echo | tee -a $scan_status_file
 
