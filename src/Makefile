@@ -98,8 +98,7 @@ post_encp_cmd:
 # So far, make setuid installation manual
 #	chmod u+s $INSTALLDIR/enroute2
 
-	mkdir -m 755 $(ENCP_BIN_DIR)/volume_import/
-	chmod u+rwx $(ENCP_BIN_DIR)/volume_import/
+	mkdir -m 0775 $(ENCP_BIN_DIR)/volume_import/
 	$(CP) $(ENSTORE_DIR)/volume_import/enstore_tape  $(ENCP_BIN_DIR)/volume_import/
 	$(CP) $(ENSTORE_DIR)/volume_import/*.c           $(ENCP_BIN_DIR)/volume_import/
 	$(CP) $(ENSTORE_DIR)/volume_import/*.h           $(ENCP_BIN_DIR)/volume_import/
@@ -110,6 +109,8 @@ post_encp_cmd:
 	$(CP) $(ENSTORE_DIR)/ups/encp_mni_install.sh     $(ENCP_BIN_DIR)/encp_mni_install.sh
 	$(CP) $(ENSTORE_DIR)/ups/chooseConfig            $(ENCP_BIN_DIR)/chooseConfig
 	$(CP) $(ENSTORE_DIR)/src/e_errors.py             $(ENCP_BIN_DIR)/e_errors.py
+#Make all files and directories user and group readable and writable.
+	chmod -R ug+rw $(ENCP_BIN_DIR)/
 
 enstore_cmd:
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSTORE_USER_BIN_TEMP enstore_user.py
