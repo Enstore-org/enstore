@@ -204,6 +204,7 @@ st = 0
 
 #Cache the default configuration server client.
 __csc = None
+__cscs = {}
 
 #Trace.message level for generating a messages file for replaying later.
 MESSAGES_LEVEL = 10
@@ -624,22 +625,35 @@ def get_all_systems(csc=None):
     else:
         #Be patient with lost configuration_servers.
         use_csc = None
+        sleep_time = 1 #Seconds.
         while use_csc == None:
+            #The defaults are 3 seconds and 3 tries.
             use_csc = get_csc()
             if use_csc == None:
                 Trace.trace(0,
                             "Failed to find configuration server.  Retrying.")
-    config_servers = copy.copy(use_csc.get('known_config_servers', {}))
-    if config_servers['status'][0] == e_errors.OK:
-        del config_servers['status']
+                time.sleep(sleep_time)
+                sleep_time = sleep_time * 2
+                sleep_time = min(sleep_time, 60) #max sixty seconds
+    known_config_servers = copy.copy(use_csc.get('known_config_servers', {}))
+    if known_config_servers['status'][0] == e_errors.OK:
+        del known_config_servers['status']
     else:
         return None
+
+    #Create the configuration client objects.
+    config_servers = {}
+    for system_name, csc_addr in known_config_servers.items():
+        new_csc = configuration_client.ConfigurationClient(csc_addr)
+        config_servers[system_name] = new_csc
 
     #Special section for test systems that are not in their own
     # config file's 'known_config_servers' section.
     config_host = enstore_functions2.default_host()
-    for system_name, csc_addr in config_servers.items():
+    for system_name, csc_addr in known_config_servers.items():
         if config_host == csc_addr[0]:
+            break
+        elif csc and csc.server_address == csc_addr:
             break
     else:
         i = 0
@@ -647,81 +661,130 @@ def get_all_systems(csc=None):
             try:
                 ip = socket.gethostbyname(config_host)
                 addr_info = socket.gethostbyaddr(ip)
+                if addr_info[1] != []:
+                    short_name = addr_info[1][0]
+                else:
+                    short_name = addr_info[0].split(".")[0]
+
+                #Create the new configuration client object and put it in
+                # the list.
+                address = (ip, enstore_functions2.default_port())
+                new_csc = configuration_client.ConfigurationClient(address)
+                new_csc.new_config_obj.enable_caching()
+                config_servers[short_name] = new_csc
+               
                 break
             except socket.error:
-                time.sleep(1)
-                continue
+                if csc:
+                    break
+                else:
+                    time.sleep(1)
+                    i = i + 1
+                    continue
         else:
-            try:
-                sys.stderr.write("Unable to obtain ip information.  Aborting.\n")
-                sys.stderr.flush()
-            except IOError:
-                pass
-            sys.exit(1)
-        if addr_info[1] != []:
-            short_name = addr_info[1][0]
-        else:
-            short_name = addr_info[0].split(".")[0]
-        config_servers[short_name] = (ip,
-                                      enstore_functions2.default_port())
+            if not csc:
+                #If we were passed a csc, then we don't need to freak out
+                # that the default has failed.  We got far enough to decide
+                # on another configuration value.
+                try:
+                    sys.stderr.write("Unable to obtain ip information.  Aborting.\n")
+                    sys.stderr.flush()
+                except IOError:
+                    pass
+                sys.exit(1)
+
+    #Special section to add the a passed in csc to the config_servers list.
+    for system_name, current_csc in config_servers.items():
+        if csc.server_address == current_csc.server_address:
+            break
+    else:
+        config_servers[csc.server_address[0]] = csc
         
     return config_servers
 
 #Get the ConfigurationClient object for the default enstore system.
 def get_csc(system_name = None, timeout = 3, retry = 3):
+    #Normally, system name is an Enstore system name key from the
+    # known_config_servers section of the configuration file.  It also can
+    # be a hostname of the configuration server.
+    
     global __csc
+    global __cscs
 
     #If we have a configuration client cached, return that.
     if not system_name and __csc:
         return __csc
+    elif system_name in __cscs.keys():
+        return __cscs[system_name]
 
-    # get a configuration server
+    #Get the defaults from the environmental variables.
     default_config_host = enstore_functions2.default_host()
     default_config_port = enstore_functions2.default_port()
-    try:
-        csc = configuration_client.ConfigurationClient(
-            (default_config_host, default_config_port))
-    except (socket.error,), msg:
-        Trace.trace(0, "Error contacting configuration server: %s\n" %
-                    msg.args[1],
-                    out_fp=sys.stderr)
-        return None
+    #Specifiy the order of things to try.
+    try_system_name_order = [default_config_host,
+                             system_name]
 
-    #Enable cache of the configuration file information retreieved from
-    # the configuration server.
-    csc.new_config_obj.enable_caching()
+    for use_config_host in try_system_name_order:
 
-    rtn_ticket = csc.dump_and_save(timeout = timeout, retry = retry)
-    if not e_errors.is_ok(rtn_ticket):
-        Trace.trace(0, "Unable to contact configuration server: %s\n" %
-                    str(rtn_ticket['status']),
-                    out_fp=sys.stderr)
-        return None
-
-    #Cache the default configuration server.
-    __csc = csc
-
-    #Return the requested configuration client if requested.
-    if system_name:
-        config_servers = get_all_systems(csc)
-        for sys_name, csc_addr in config_servers.items():
-            if sys_name == system_name:
-                try:
-                    rtn_csc = configuration_client.ConfigurationClient(csc_addr)
-                except (socket.error,), msg:
-                    Trace.trace(0, "Error contacting configuration server: %s\n" %
-                                msg.args[1],
-                                out_fp=sys.stderr)
-                    return None
-                rtn_csc.new_config_obj.enable_caching()
-                return rtn_csc
-        else:
-            Trace.trace(0,
-                "Unable to find Enstore system for %s." % (system_name,),
+        # get a configuration server
+        try:
+            csc = configuration_client.ConfigurationClient(
+                (use_config_host, default_config_port))
+        except (socket.error,), msg:
+            Trace.trace(0, "Error contacting configuration server: %s\n" %
+                        msg.args[1],
                         out_fp=sys.stderr)
             return None
 
-    return __csc
+        #Enable cache of the configuration file information retreieved from
+        # the configuration server.
+        csc.new_config_obj.enable_caching()
+
+        #Cache the entire configuration.
+        rtn_ticket = csc.dump_and_save(timeout = timeout, retry = retry)
+
+        #Cache the default configuration server.
+        if e_errors.is_ok(rtn_ticket):
+            if system_name == use_config_host:
+                #Default configuratoin server is not responding, but we
+                # found the configuration server for the requested Enstore
+                # system.
+                __cscs[system_name] = csc
+                return __cscs[system_name]
+            elif system_name:
+                #We found the default configuration server, now find the
+                # requested configuration server.
+                config_servers = get_all_systems(csc)
+                for sys_name, current_csc in config_servers.items():
+                    #Lets save all known configuration servers.  There are not
+                    # that many and we may need to know this at some point
+                    # in the future.
+                    __cscs[sys_name] = current_csc
+                    
+                #Return the one we are looking for.
+                for sys_name, current_csc in config_servers.items():
+                    if sys_name == system_name:
+                        return current_csc
+                    elif current_csc.server_address[0] == system_name:
+                        return current_csc
+                else:
+                    message = "Unable to find Enstore system for %s in " \
+                              "configuration." % (system_name,)
+                    Trace.trace(0, message, out_fp=sys.stderr)
+                    return None
+            elif not system_name:
+                __csc = csc
+                return __csc
+
+            #The configuration server is down.
+    else:
+        #Totally unable to find a configuration server.
+        if system_name:
+            message = "Unable to find Enstore system for %s." % (system_name,)
+        else:
+            message = "Unable to find Enstore system."
+        Trace.trace(0, message, out_fp=sys.stderr)
+        return None
 
 #########################################################################
 # Most of the functions will be handled by the mover.
@@ -3069,7 +3132,8 @@ class Display(Tkinter.Canvas):
         
         #Try and only take a small time to do this.
         remember_number = number
-        wait_time = (MESSAGES_TIME * 0.001 / self.master.display_count + 1)
+        display_count = len(self.master.enstore_systems_enabled)
+        wait_time = (MESSAGES_TIME * 0.001 / display_count + 1)
 
         while (number > 0 and (time.time() - t0) < (wait_time)):
             
@@ -4085,10 +4149,6 @@ class Display(Tkinter.Canvas):
 
     #########################################################################
 
-    #overloaded
-    #def destroy(self):
-    #    Tkinter.Canvas.destroy(self)
-    
     def cleanup_display(self):
         global _font_cache
         global _image_cache
@@ -4187,13 +4247,6 @@ class Display(Tkinter.Canvas):
         # reinitializations this should not happen.
         if self.master.state() == "withdrawn":
             self.reposition_canvas(force = True)
-            #This tells the window to let the Canvas fill the entire window.
-            # When this is here, it is one factor to having the first drawing
-            # look correct (among other factors).
-            
-            #self.master.deiconify()
-            #self.master.lift()
-            #self.master.update()
         
         self.after_smooth_animation_id = self.after(ANIMATE_TIME,
                                                     self.smooth_animation)
@@ -4228,35 +4281,6 @@ class Display(Tkinter.Canvas):
                 traceback.print_exception(exc, msg, tb)
                 del tb  #Avoid resource leak.
             thread_lock.release()        
-
-    """
-    def mainloop(self, threshold = None):
-
-        self.startup()
-
-        #Since, the startup_lock is still held, we have nothing yet to do.
-        # This would be a good time to cleanup before things get hairy.
-        gc.collect()
-        del gc.garbage[:]
-
-        #Let the other startup threads go.
-        try:
-            release(startup_lock, "startup_lock")
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            #Will get here if run from enstore_display.py not entv.py.
-            pass
-
-        if threshold == None:
-            self.master.mainloop()
-        else:
-            #Threshold is the number of "MainWindows" allowed.  Should be
-            # an integer.
-            self.master.mainloop(threshold)
-
-        self.shutdown()
-    """
 
 #########################################################################
 
