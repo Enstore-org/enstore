@@ -1937,8 +1937,12 @@ class STK_MediaLoader(MediaLoaderMethods):
 	        #This is some other information.
 		continue
             Trace.trace(21, "line %s"%(line,))
-            # returned line of interest looks like:
-            # PSC573              home              0, 1, 7, 0, 0         STK2P
+            # The returned line of interest looks like:
+	    # For ACSLS version 7:
+	    # TST102      home              1, 4,31, 7, 1         LTO-800G
+	    #
+	    # For ACSLS version 8:
+	    # TST000              ejected           0,-1, 0, 0, 0         LTO-800G
             # get rid of extra whitespaces
             tline = ' '.join(line.translate(None, string.whitespace[:5]).split())
             # now it looks like:
@@ -2199,8 +2203,13 @@ class STK_MediaLoader(MediaLoaderMethods):
 		       or len(line) == 0:
 		    #This is some other information.
 		    continue
-                # the returned line of interest looks like:
-                #  CLN565                0, 1, 6, 0, 0  100        0              home       STK2W      
+                # The returned line of interest looks like:
+		# For ACSLS version 7:
+		#  CLN179        1, 5,12, 8, 1  50         0              home       LTO-CLNU
+		#
+		# For ACSLS version 8:
+		# CLN143                0, 1, 5, 6, 0  50         0              home       LTO-CLNU
+
 
                 # get rid of extra whitespaces
                 tline = ' '.join(line.translate(None, string.whitespace[:5]).split())
