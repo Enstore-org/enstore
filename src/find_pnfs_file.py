@@ -127,7 +127,6 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
     #Loop over all found mount points.
     search_list = pnfs.process_mtab() + chimera.process_mtab()
     for database_info, (db_num, mp) in search_list:
-        print "database_info, (db_num, mp):", database_info, (db_num, mp)
 
         #If the last db tried is still set to its initial value (-1), we need
         # to skip the the next.  The variable db_num will be None for Chimera.
@@ -170,11 +169,9 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
 
         #Check layer 1 to get the bfid.
         try:
-            print "afn:", afn
             layer1_bfid = pnfs.get_layer_1(afn)
         except (OSError, IOError):
             layer1_bfid = None
-        print "layer1_bfid:", layer1_bfid, "bfid:", bfid
         if layer1_bfid:
             #If we haven't needed the file_clerk_client/info_client yet,
             # get it now.
@@ -237,7 +234,6 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                     
                     #database_path = pnfs.database_file(db_a_dirpath)
                     #Get the database info for the filesystem.
-                    #print "CCCCCCCCCCCCCC", database_path
                     db_info = sfs.get_database(db_a_dirpath)
 
                     #Update the global cache information.
@@ -472,7 +468,6 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
         raise OSError(errno.ENOENT, os.strerror(errno.ENOENT),
                       enstoredb_path)
 
-    print "44444444444"
     #Since we know if we are using /pnfs/fs or not, we can maniplate the
     # original name to the correct pnfs base path.  This will speed things
     # up when scanning files written to /pnfs/xyz but only having /pnfs/fs
