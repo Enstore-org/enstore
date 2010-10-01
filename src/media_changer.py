@@ -1936,11 +1936,23 @@ class STK_MediaLoader(MediaLoaderMethods):
 		   or line.find("Identifier") >= 0 or len(line) == 0:
 	        #This is some other information.
 		continue
+            Trace.trace(21, "line %s"%(line,))
+            # returned line of interest looks like:
+            # PSC573              home              0, 1, 7, 0, 0         STK2P
+            # get rid of extra whitespaces
+            tline = ' '.join(line.translate(None, string.whitespace[:5]).split())
+            # now it looks like:
+            # PSC573 home 0, 1, 7, 0, 0 STK2P
+            # get rid of space before number in address
+            tline2 = tline.replace(", ", ",")
+            # now it looks like:
+            # PSC573 home 0,1,7,0,0 STK2P
 
-	    volume = line[1:13].strip()
-	    state = line[13:29].strip()
-	    location = line[31:45].strip()
-	    media_type = line[47:].strip()
+            s_line = tline2.split(' ')
+	    volume = s_line[0]
+	    state = s_line[1]
+	    location = s_line[2]
+	    media_type = s_line[3]
 
 	    volume_list.append({"volume" : volume,
 				"state" : state,
@@ -2187,13 +2199,26 @@ class STK_MediaLoader(MediaLoaderMethods):
 		       or len(line) == 0:
 		    #This is some other information.
 		    continue
+                # the returned line of interest looks like:
+                #  CLN565                0, 1, 6, 0, 0  100        0              home       STK2W      
 
-	        volume = line[1:13].strip()
-		location = line[13:29].strip()
-		max_usage = int(line[30:39].strip())
-		current_usage = int(line[41:55].strip())
-		status = line[56:66].strip()
-		media_type = line[67:].strip()
+                # get rid of extra whitespaces
+                tline = ' '.join(line.translate(None, string.whitespace[:5]).split())
+                # now it looks like:
+                # CLN565 0, 1, 6, 0, 0 100 0 home STK2W
+                # get rid of space before number in address
+                tline2 = tline.replace(", ", ",")
+                # now it looks like:
+                # CLN565 0,1,6,0,0 100 0 home STK2W
+
+                s_line = tline2.split(' ')
+                Trace.trace(21, "line %s"%(s_line,))
+	        volume = s_line[0]
+		location = s_line[1]
+		max_usage = int(s_line[2])
+		current_usage = int(s_line[3])
+		status = s_line[4]
+		media_type = s_line[5]
 
 		remaining_usage = max_usage - current_usage #AML2 compatibility
 		clean_list.append({"volume" : volume,
