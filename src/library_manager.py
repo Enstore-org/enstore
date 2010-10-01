@@ -3683,9 +3683,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # which may happen in case of high pri. work
             # update volumes_at_movers
             if w["vc"]["external_label"] != mticket['external_label']:
-                # update volumes_at_movers
+                # update mticket volume status 
                 # perhaps this is a hipri request forcing a tape replacement
-                self.volumes_at_movers.delete(mticket)
                 mticket['external_label'] = w["vc"]["external_label"]
                 # update volume status
                 # get it directly from volume clerk as mover
