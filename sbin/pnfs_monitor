@@ -228,31 +228,44 @@ get_L2_filesize()
     fi
 }
 
+#Return the path of the supplied pnfsid.
 get_filepath()
 {
-    which pathfinder > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
-	path=`pathfinder $pnfsid`
-	if [ $? -ne 0 ]; then
-	    path=""
+    db_name=$1
+    pnfsid=$2
+
+    #Loop over 
+    count=1
+    while [ $count -lt 3 ]; do
+        pathfinder_path=$pnfs/tools/pathfinder
+        if [ -x $pathfinder_path ]; then
+            path=`$pathfinder_path $pnfsid`
+            if [ $? -ne 0 ]; then
+                path=""
+            else
+                #Success.  Now munge the data a little.
+                path=`echo "$path" | tail -n 1 | sed 's/root/pnfs/'`
+
+		#Verify that path is valid.  Two conditions seem to be
+		# possible:
+		# 1) pathfinder drops a directory from the path it returns.
+                # 2) pathfinder reports "File not found" when it really
+                #    does exist.
+                #In either case, wait a moment and try again.
+		if [ -z "$path" -o \( -n $"path" -a ! -f "$path" \) ]; then
+		    sleep 3  #How long is best?
+		    echo "Retrying $pnfsid" > /dev/tty
+                    continue
+                fi
+		break
+            fi
 	else
-	    #Success.  Now munge the data a little.
-	    path=`echo "$path" | tail -n 1 | sed 's/root/pnfs/'`
-	fi
-    else
-	source /usr/etc/pnfsSetup
-	pathfinder_path=$pnfs/tools/pathfinder
-	if [ -x $pathfinder_path ]; then
-	    path=`$pathfinder_path $pnfsid`
-	    if [ $? -ne 0 ]; then
-		path=""
-	    else
-	        #Success.  Now munge the data a little.
-		path=`echo "$path" | tail -n 1 | sed 's/root/pnfs/'`
-	    fi
-	else
-	    path=""
-	fi
+            path=""
+        fi
+    done
+    #If we still haven't gotten a valid path, prepend it with question marks.
+    if [ -z "$path" -o \( -n "$path" -a ! -f "$path" \) ]; then
+	path="??? $path"
     fi
     echo $path
 }
@@ -364,7 +377,7 @@ check_pnfsids()
             header_outputed=1  #Don't output this again for this DB category.
 	fi
 
-	printf " %-26s | %24s | %6s | %6s | %6s | %s\n" "$timestamp" $pnfsid $L1_status $L2_status $L4_status $path >> $TEMP_OUTPUT_FILE
+	printf " %-26s | %24s | %6s | %6s | %6s | %s\n" "$timestamp" $pnfsid $L1_status $L2_status $L4_status "$path" >> $TEMP_OUTPUT_FILE
 
 	#Echo a space (echo inserts one between the quotes and $line), to
 	# the beginning to have the same file format as originally.  The
@@ -430,8 +443,13 @@ if [ $? -ne 0 -o -z "$www_alias" ]; then
 fi
 
 #Verify that we can find pnfs.
-if [ ! -f $PNFS_CONFIG_FILE ]; then
+if [ ! -r $PNFS_CONFIG_FILE ]; then
    echo "Unable to find $PNFS_CONFIG_FILE file." 1>&2
+   exit 1
+fi
+source $PNFS_CONFIG_FILE
+if [ $? -ne 0 ]; then
+   echo "Failed to source $PNFS_CONFIG_FILE." 1>&2
    exit 1
 fi
 trash_location=`egrep "^trash=" $PNFS_CONFIG_FILE | cut -f 2 -d "="`
@@ -469,7 +487,7 @@ if [ $? -ne 0 -o -z "$web_node" ]; then
 fi
 
 #Grab the postres username from the pnfs configurationn file.
-db_user=`egrep -o "user=[a-zA-Z0-9]*" /usr/etc/pnfsSetup | cut -f 2 -d "="`
+db_user=`egrep -o "user=[a-zA-Z0-9]*" "$PNFS_CONFIG_FILE" | cut -f 2 -d "="`
 if [ -z "$db_user" ]; then
    db_user=`postgres`
 fi
