@@ -10,7 +10,7 @@
 #   fix_tag_inheritance.sh cacheClass /pnfs/mist/mist2b/a/
 # or 
 # 2)
-#   find -P /pnfs/mist/mist2b/a/ -xdev -mount -mindepth 1 -type d > /tmp/test_tag_paths
+#   find /pnfs/mist/mist2b/a/ -xdev -mount -mindepth 1 -type d > /tmp/test_tag_paths
 #   echo -n "default" > /pnfs/mist/mist2b/a/.(tag)(cacheClass)
 #   cat /tmp/test_tag_paths | fix_tag_inheritance.sh cacheClass
 #where /pnfs/mist/mist2b/a/ is a sample starting directory.  For option #1,
@@ -111,10 +111,8 @@ find_tag_id()
   fi
 }
 
-#Check if the tag already exists; if not create it.
-# Echo the PNFS ID of the tag to stdout and return 0, if found.  Otherwise,
-# return 1.
-verify_or_create_tag()
+
+verify_tag()
 {
   first_tag_id=$1  #Return value from get_first_tag().
   tag_name=$2  #Tag name from the command line.
@@ -123,6 +121,19 @@ verify_or_create_tag()
   #Determine if the directory has a target tag.
   dir_tag_id=`find_tag_id "$first_tag_id" "$tag_name"`
   if [ $? -ne 0 ]; then
+    return 1
+  fi
+    
+  echo $dir_tag_id
+  return 0
+}
+
+create_tag()
+{
+    first_tag_id=$1  #Return value from get_first_tag().
+    tag_name=$2  #Tag name from the command line.
+    dir=$3  #Current directory being processed.
+
     # -n suppresses trailing newline
     echo -n "default" > "$dir/.(tag)($tag_name)"
     if [ $? -ne 0 ]; then
@@ -165,15 +176,38 @@ verify_or_create_tag()
     if [ $rc -ne 0 ]; then
         echo "Did not find $dir/.(tag)($tag_name) id." 1>&2
         return 1
+    fi
+
+    echo $dir_tag_id
+    return 0
+}
+
+#Check if the tag already exists; if not create it.
+# Echo the PNFS ID of the tag to stdout and return 0, if found.  Otherwise,
+# return 1.
+#WARNING: Do not use this function inside of make_or_repair_tag().
+verify_or_create_tag()
+{
+  first_tag_id=$1  #Return value from get_first_tag().
+  tag_name=$2  #Tag name from the command line.
+  dir=$3  #Current directory being processed.
+
+  dir_tag_id=`verify_tag $first_tag_id $tag_name "$dir"`
+  if [ $? -ne 0 ]; then
+    dir_tag_id=`create_tag $first_tag_id $tag_name "$dir"`
+    if [ $? -ne 0 ]; then
+        echo "Did not find $dir/.(tag)($tag_name) id." 1>&2
+        return 1
     else
-      echo "Made $dir_tag_id $tag_name tag in $dir directory." >> /dev/tty
+      echo $dir_tag_id
+      echo "Made $dir_tag_id $tag_name tag in $dir directory." >> $OUTPUT &
+      return 0
     fi
   else
-    echo "Found $dir_tag_id $tag_name tag in $dir directory." >> /dev/tty
+    echo $dir_tag_id
+    echo "Found $dir_tag_id $tag_name tag in $dir directory." >> $OUTPUT &
+    return 0
   fi
-
-  echo $dir_tag_id
-  return 0
 }
 
 #Check if the tag already exists; if not create it.  Then make the parent
@@ -185,24 +219,6 @@ make_or_repair_tag()
   dir=$2
 
   parent_dir=`dirname "$dir"`
-
-  first_tag_id=`get_first_tag "$dir"`
-  parent_first_tag_id=`get_first_tag "$parent_dir"`
-
-  #Check for the parent directory having a target tag first.  It should
-  # already exist.  If this fails there is likely some major issue.
-  parent_dir_tag_id=`find_tag_id "$parent_first_tag_id" "$tag_name"`
-  if [ $? -ne 0 ]; then
-    echo "Did not find parent $tag_name id: $parent_dir/.(tag)($tag_name)" 1>&2
-    return 1
-  fi
-
-  #Determine if the directory has a target tag.  If not, create it.
-  dir_tag_id=`verify_or_create_tag "$first_tag_id" "$tag_name" "$dir"`
-  if [ $? -ne 0 ]; then
-    #Error already echoed.
-    return 1
-  fi
 
   #Veify that we did not just cross into another PNFS database.
   dir_database=`cat "$dir/.(get)(database)"`
@@ -216,8 +232,31 @@ make_or_repair_tag()
     return 1
   fi
   if [ "$dir_database" != "$parent_dir_database" ]; then
-    echo "Found new mountpoint.  Not changing parent value." > /dev/tty
+    echo "Found new mountpoint $dir.  Not changing parent value." >> $OUTPUT &
+    $0 $tag_name "$dir" &
     return 0
+  fi
+
+  first_tag_id=`get_first_tag "$dir"`
+  parent_first_tag_id=`get_first_tag "$parent_dir"`
+
+  #Check for the parent directory having a target tag first.  It should
+  # already exist.  If this fails there is likely some major issue.
+  parent_dir_tag_id=`find_tag_id "$parent_first_tag_id" "$tag_name"`
+  if [ $? -ne 0 ]; then
+    echo "Did not find parent $tag_name id: $parent_dir/.(tag)($tag_name)" 1>&2
+    return 1
+  fi
+
+  #Determine if the directory has a target tag.  If not, create it.
+  # We don't use verify_or_create_tag() here to avoid its echos to $OUTPUT.
+  dir_tag_id=`verify_tag $first_tag_id $tag_name "$dir"`
+  if [ $? -ne 0 ]; then
+    dir_tag_id=`create_tag $first_tag_id $tag_name "$dir"`
+    if [ $? -ne 0 ]; then
+      echo "Did not find $dir/.(tag)($tag_name) id." 1>&2
+      return 1
+    fi
   fi
 
   tag_parent_id=`get_parent_id "$dir_tag_id" "$dir"`
@@ -232,7 +271,6 @@ make_or_repair_tag()
     if [ $debug -ne 0 ]; then
       echo $pnfs/tools/sclient chparent $shmkey $dir_tag_id $parent_dir_tag_id
     fi
-    echo "Setting $parent_dir_tag_id as parent of $dir_tag_id." > /dev/tty
 
     #This is the scary part where we change the parent id value.
     $pnfs/tools/sclient chparent "$shmkey" "$dir_tag_id" "$parent_dir_tag_id"
@@ -254,17 +292,97 @@ make_or_repair_tag()
         return 1
       fi
     fi
+
+    echo "Set $parent_dir_tag_id as parent of $dir_tag_id in $dir." >> $OUTPUT &
   elif [ "$tag_parent_id" != "$parent_dir_tag_id" ]; then
     echo "Found mismatched parent tag IDs for $dir_tag_id: $tag_parent_id != $parent_dir_tag_id" 1>&2
     return 1
   elif [ "$tag_parent_id" = "$parent_dir_tag_id" ]; then
-    echo "$parent_dir_tag_id already set as parent of $dir_tag_id." > /dev/tty
+    echo "Determined $parent_dir_tag_id already set as parent of $dir_tag_id in $dir." >> $OUTPUT &
   else
     echo "Unknown error.  Abborting" 1>&2
     return 1
   fi
   return 0
 }
+
+#Take a tag_name and directory and recursively search 
+fix_directory_tree()
+{
+  tag_name=$1  #the target tag name
+  if [ -z "$tag_name" ]; then
+    echo "No tag name specified." 1>&2
+    exit 1
+  fi
+
+  #Determine the source of the list of directories to check.
+  my_tty=`tty`
+  if [ $? -eq 0 -o -n "$2" ]; then
+    #Stdin is attached to a terminal.  (Or the user explicitly put a directory
+    # on the command line; it is possible for the first clause to be false
+    # and the second clause to be true for cron environments.)
+
+    dir=$2  #target directory
+    if [ -z "$dir" ]; then
+      print_help
+      exit 1
+    fi
+    if [ ! -d "$dir" ]; then
+       echo "Directory not found: $dir" 1>&2
+       exit 1
+    fi
+
+    #Look at the top directory supplied by the user.  If it has the requested
+    # tag, do nothing.  If not, create it.
+    top_tag_id=`get_first_tag "$dir"`
+    verify_or_create_tag $top_tag_id "$tag_name" "$dir" > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+      cat $OUTPUT  2> /dev/null  #send named pipe to terminal
+      echo "Abborting from failure: $dir" 1>&2
+      exit 1
+    fi
+    cat $OUTPUT  2> /dev/null  #send named pipe to terminal
+
+    temp_dir_file=/tmp/find_all_dirs_$$
+    mkfifo $temp_dir_file
+    trap "rm -f $temp_dir_file; " 0
+    #List all dirs underneath $dir.  This excludes $dir which has just been
+    # done. This find includes directories belonging to different PNFS
+    #databases, but not those sub-directories.
+    (find $dir -mindepth 1 -type d -print \( -exec diff -s "{}/.(get)(database)" "{}/../.(get)(database)" \; -o -prune \)  | egrep -v "are identical|differ" > "$temp_dir_file" ) 2> /dev/null &
+    trap "rm -f $OUTPUT $temp_dir_file" 0  #Make sure to cleanup after ourselves.
+  elif [ $? -eq 1 ]; then
+    #Stdin is most likely attached to a pipe.
+    #
+    #This method assumes that the "top" directory(ies) already have the
+    # tag value already set.
+  
+    temp_dir_file=""  # cat reads from stdin with ""
+  else
+    #Something really bad happened.
+    echo "Something really bad happened." 1>&2
+    exit 1
+  fi
+
+  #Loop over all sub-directories creating or repairing the target tags as
+  # necessary.
+  cat $temp_dir_file |
+  while read next_dir; do
+    make_or_repair_tag $tag_name $next_dir
+    if [ $? -ne 0 ]; then
+      echo "Abborting from failure: $next_dir" 1>&2
+      exit 1
+    fi
+    #We need to keep make_or_repair_tag() restircted to only one echo to
+    # $OUTPUT.  Making sure we cat $OUTPUT after every make_or_repair_tag()
+    # call ensures that we keep the pipe clear and avoid deadlocks.
+    cat "$OUTPUT"
+  done
+
+  rm -f "$temp_dir_file"
+  return 0
+}
+
 
 ##
 ## End of functions.
@@ -282,66 +400,27 @@ if [ ! -r /usr/etc/pnfsSetup ]; then
 fi
 source /usr/etc/pnfsSetup
 
-tag_name=$1  #the target tag name
-if [ -z "$tag_name" ]; then
-  echo "No tag name specified." 1>&2
+#Create the named pipe that we use to move output destined for standard out
+# from functions that also need to echo a value to the caller.
+OUTPUT=/tmp/fix_tag_inheritance$$
+mkfifo $OUTPUT
+if [ $? -ne 0 ]; then
+  echo "Failed to make named pipe: $OUTPUT" 1>&2
   exit 1
 fi
+trap "rm -f $OUTPUT" 0  #Make sure to cleanup after ourselves.
 
-#Determine the source of the list of directories to check.
-my_tty=`tty`
-if [ $? -eq 0 -o -n "$2" ]; then
-  #Stdin is attached to a terminal.  (Or the user explicitly put a directory
-  # on the command line; it is possible for the first clause to be false
-  # and the second clause to be true for cron environments.)
+fix_directory_tree "$1" "$2"
+rc=$?
 
-  dir=$2  #target directory
-  if [ -z "$dir" ]; then
-    print_help
-    exit 1
-  fi
-  if [ ! -d "$dir" ]; then
-     echo "Directory not found: $dir" 1>&2
-     exit 1
-  fi
+#Cleanup.
+rm -f "$OUTPUT" "$temp_dir_file"
 
-  #Look at the top directory supplied by the user.  If it has the requested
-  # tag, do nothing.  If not, create it.
-  top_tag_id=`get_first_tag "$dir"`
-  verify_or_create_tag $top_tag_id "$tag_name" "$dir" > /dev/null 2>&1
-  if [ $? -ne 0 ]; then
-    echo "Abborting from failure: $dir" 1>&2
-    exit 1
-  fi
-
-  temp_dir_file=/tmp/find_all_dirs_$$
-  trap "rm -f $temp_dir_file" 0
-  #List all dirs underneath $dir.  This excludes $dir which has just been done.
-  find -P $dir -xdev -mindepth 1 -type d > "$temp_dir_file"
-
-elif [ $? -eq 1 ]; then
-  #Stdin is most likely attached to a pipe.
-  #
-  #This method assumes that the "top" direcotry(ies) already have the
-  # tag value already set.
-  
-  temp_dir_file=""  # cat reads from stdin with ""
-else
-  #Something really bad happened.
-  echo "Something really bad happened." 1>&2
-  exit 1
-fi
-
-#Loop over all sub-directories creating or repairing the target tags as
-# necessary.
-cat $temp_dir_file |
-while read next_dir; do
-  make_or_repair_tag $tag_name $next_dir
-  if [ $? -ne 0 ]; then
-    echo "Abborting from failure: $next_dir" 1>&2
-    exit 1
-  fi
+#Find out if any child processes in sub-directory databases had an error.
+while [ `jobs | wc -l` -gt 0 ]; do
+  wait
+  rc=`expr $rc + $?`
 done
 
-#We have a successful update.
-exit 0
+#We have a successful update?
+exit $rc
