@@ -38,7 +38,8 @@ for item in $mount_points; do
        continue
     fi
 
-    timed_func cat "$item/.(get)(const)"  > /dev/null 2>&1
+    #Allow both PNFS and Chimera with .(tags)().
+    timed_func cat "$item/.(tags)()"  > /dev/null 2>&1
     rtn=$?
     if [ $rtn -ne 0 ]; then
        echo "$item not mounted on `hostname`." 1>&2
