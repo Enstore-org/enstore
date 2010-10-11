@@ -6,6 +6,8 @@
 for i in `ls -vI \*.\*`; do
   t0=`date +'%s'`
   echo "`date` Group $i" >> $output
+  echo "`date` Processing Group $i"
+
   # extract the volumes about to be ejected
   set `awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) print vols[v]}' $i | sort`
   case $action in
@@ -34,9 +36,19 @@ for i in `ls -vI \*.\*`; do
     xfer)
       echo "Now moving volumes to be ejected to xfer library... (to be reinserted into another active library later)"
       for vol; do
+	currInh=""
+	currCom=""
 	if enstore info --check $vol; then
 	  lib=`enstore info --vol $vol | awk -F\' '$2 == "library" {print $4}'`
 	  if ! echo $lib | grep "^shelf-" >/dev/null; then
+	    # Note if volume has any inhibits, report to stdout and log file
+	    currInh=$(enstore vol --gvol $vol|awk -F\' '$2 ~ /system_inhibit/ {print $4}') # system_inhibit_0
+	    case $currInh in
+	      NOACCESS|NOTALLOWED)
+		currCom=$(enstore vol --gvol $vol|awk -F\' '$2 ~ /comment/ {print $4}')
+		echo "WARNING: volume $vol system_inhibit_0 is $currInh with comment \"$currCom\"" | tee -a $output
+		;;
+	    esac
 	    enstore vol --new-library=xfer-$lib $vol
 	    enstore vol --not-allowed $vol
 	    enstore vol --set-comment "Transferring to another robot" $vol
@@ -58,11 +70,11 @@ for i in `ls -vI \*.\*`; do
   echo That cycle took $deltam minutes $deltas seconds.
   case `YesNo "Have $# tapes been ${action%e}ed from cap $ocap?"` in
     Yes)
-       echo "`date` ... success acknowledged"
+       echo "`date` ... Group $i success acknowledged"
        mv $i ${i}.done
        ;;
     No)
-       echo "`date` ... failure acknowledged"
+       echo "`date` ... Group $i failure acknowledged"
        mv $i ${i}.fail
        ;;
   esac
