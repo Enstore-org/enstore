@@ -47,12 +47,12 @@ class Attribute:
         self.delete_data_file=True
 
     #
-    # setters 
+    # setters
     #
 
     def set_delete_data_file(self,yes=True):
         self.delete_data_file=yes
-                
+
     def set_title(self,txt):
         self.title=txt
 
@@ -126,7 +126,7 @@ class Attribute:
 
     def get_line_width(self):
         return self.line_width
-    
+
 
     #
     # Statistis
@@ -181,7 +181,7 @@ class BasicHistogram(Attribute):
                   name,
                   title):
          Attribute.__init__(self, name, title)
-     
+
          self.entries=0
 
      def n_entries(self):
@@ -191,9 +191,9 @@ class BasicHistogram(Attribute):
          return self.entries
 
      def plot(self,command=""):
-         
+
          print "Plot function is not implemented by BasicHistogram"
-        
+
      def fill(self,command=""):
          print "Fill function is not implemented by BasicHistogram"
 
@@ -233,7 +233,7 @@ class Ntuple(BasicHistogram):
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
         long_string=long_string+" set pm3d; set palette; \n";
-        if (  self.time_axis ) : 
+        if (  self.time_axis ) :
             long_string=long_string+"set xlabel '%s'\n"%(self.xlabel)+ \
                          "set xdata time\n"+ \
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
@@ -272,7 +272,7 @@ class Ntuple(BasicHistogram):
     def __del__(self):
         if self.is_delete_data_file():
             self.remove(self.data_file_name)
-       
+
     def dump(self):
         print repr(self.__dict__)
 
@@ -307,14 +307,14 @@ class Plotter:
 
     def reshuffle(self):
         n = len(self.histogram_list)
-        i = 0 
+        i = 0
         j = n - 1 - i
         while ( i < j  ) :
             tmp = self.histogram_list[i]
             self.histogram_list[i]=self.histogram_list[j]
             self.histogram_list[j]=tmp
-            i = i + 1 
-            j = j - 1 
+            i = i + 1
+            j = j - 1
 
     def plot(self, directory="./"):
         #Get some filenames for the various files that get created.
@@ -338,19 +338,19 @@ class Plotter:
             long_string=long_string+"set yrange [ 0.99  : ]\n"
         if ( self.histogram_list[0].get_logx() ) :
             long_string=long_string+"set logscale x\n"
-        if (  self.histogram_list[0].get_time_axis()) : 
+        if (  self.histogram_list[0].get_time_axis()) :
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \""+self.histogram_list[0].time_axis_format+"\"\n"
 
-#            if ( isinstance(hist,histogram.Histogram1D)) : 
+#            if ( isinstance(hist,histogram.Histogram1D)) :
 
         for hist in self.histogram_list:
             pts_file_name=os.path.join(directory, hist.data_file_name)
             hist.save_data(pts_file_name)
             long_string=long_string+hist.get_text()
-            
+
         long_string=long_string+"plot "
         comma = False
 
@@ -382,27 +382,39 @@ class Plotter:
             if hist.is_delete_data_file():
                 self.remove(pts_file_name) # remove pts file
         self.remove(gnu_file_name)  # remove gnu file
-        
+
 class Histogram1D(BasicHistogram):
 
     def __init__(self, name, title, nbins, xlow, xhigh):
         BasicHistogram.__init__(self, name, title)
         self.nbins=int(nbins)
-        self.low=xlow
-        self.high=xhigh
+        self.low=xlow         # value of the lowest bin in x
+        self.high=xhigh       # value of the highest bin in x
         self.entries=0
         self.binarray = []
         self.sumarray = []
         self.underflow=0
         self.overflow=0
-        self.mean=0
-        self.mean_error=0
-        self.rms2=0
-        self.variance=0
-        self.variance_error=0
+        self.mean=0.
+        #
+        # reduced_mean and reduced_rms2 are used as intermediate
+        # quantities that are recalculated into real mean and rms2
+        # after each call of fill function. Reduced_mean and reduced_rms2
+        # are calculated by subtracting minimum displayed value, self.low,
+        # from each element x_i of input data sample/set, {x_i-self.low}, to avoid issues
+        # with large numbers that could lead to failure of standard
+        # formula variance = <x^2>-<x>^2 (resulting in negative and incorrect
+        # values of variance)
+        #
+        self.reduced_mean=0.
+        self.reduced_rms2=0.
+        self.mean_error=0.
+        self.rms2=0.
+        self.variance=0.
+        self.variance_error=0.
         self.bw=(self.high-self.low)/float(self.nbins)
-        self.maximum=0
-        self.minimum=0
+        self.maximum=0.
+        self.minimum=0.
         self.opt_stat=False
         self.profile=False
         self.marker_type="boxes"
@@ -454,7 +466,7 @@ class Histogram1D(BasicHistogram):
         for i in range(self.nbins):
             other.binarray.append(self.binarray[i])
             other.sumarray.append(self.sumarray[i])
-        
+
         #
         # atributes
         #
@@ -494,7 +506,7 @@ class Histogram1D(BasicHistogram):
                 if (  hist.binarray[i] > hist.maximum ) :
                     hist.maximum = hist.binarray[i]
                     if (  hist.binarray[i] < hist.minimum ) :
-                        hist.minimum  = hist.binarray[i] 
+                        hist.minimum  = hist.binarray[i]
             return hist
         else:
             low=0
@@ -526,7 +538,7 @@ class Histogram1D(BasicHistogram):
                 hist.mean_error=0.
                 hist.variance=0.
                 hist.variance_error=0.
-            
+
             for i in range(hist.n_bins()):
                 x    = hist.get_bin_center(i)
                 bin1 = self.find_bin(x)
@@ -546,7 +558,7 @@ class Histogram1D(BasicHistogram):
                 if (  hist.binarray[i] > hist.maximum ) :
                     hist.maximum = hist.binarray[i]
                     if (  hist.binarray[i] < hist.minimum ) :
-                        hist.minimum  = hist.binarray[i] 
+                        hist.minimum  = hist.binarray[i]
             return hist
 
 
@@ -575,7 +587,7 @@ class Histogram1D(BasicHistogram):
                 if (  hist.binarray[i] > hist.maximum ) :
                     hist.maximum = hist.binarray[i]
                     if (  hist.binarray[i] < hist.minimum ) :
-                        hist.minimum  = hist.binarray[i] 
+                        hist.minimum  = hist.binarray[i]
             return hist
         else:
             if ( math.fabs( self.bw - other.bw ) < 1.e-16 ) :
@@ -624,22 +636,22 @@ class Histogram1D(BasicHistogram):
                 if (  hist.binarray[i] > hist.maximum ) :
                     hist.maximum = hist.binarray[i]
                     if (  hist.binarray[i] < hist.minimum ) :
-                        hist.minimum  = hist.binarray[i] 
+                        hist.minimum  = hist.binarray[i]
             return hist
 
     #
-    # non trivial methods 
+    # non trivial methods
     #
 
     def reset(self) :
         self.entries=0
         self.underflow=0
         self.overflow=0
-        self.mean=0
-        self.mean_error=0
-        self.rms2=0
-        self.variance=0
-        self.variance_error=0
+        self.mean=0.
+        self.mean_error=0.
+        self.rms2=0.
+        self.variance=0.
+        self.variance_error=0.
         self.maximum=0
         self.minimum=0
         for unused in range(self.nbins):
@@ -693,15 +705,15 @@ class Histogram1D(BasicHistogram):
                     y = y  / self.sumarray[i]
             dy_dx = (  y - previous_bin  )
             if ( only_positive and dy_dx<0 ):
-                dy_dx=0
+                dy_dx=0.
             if ( previous_bin == 0 ):
-                dy_dx=0
+                dy_dx=0.
             h.binarray[i]=dy_dx
             previous_bin=y
-            
+
         return h
-            
-           
+
+
     def find_bin(self,x):
         if ( x < self.low ):
             self.underflow=self.underflow+1
@@ -716,6 +728,7 @@ class Histogram1D(BasicHistogram):
 
     def fill(self,x,w=1.):
         bin = self.find_bin(x)
+        x = x - self.low
         if bin != None :
             if ( self.profile ) :
                 summary=self.sumarray[bin]
@@ -723,12 +736,14 @@ class Histogram1D(BasicHistogram):
                 self.sumarray[bin]=summary
             count=self.binarray[bin]
             count=count+1.*w
-            self.binarray[bin]=count            
-            self.mean=(self.mean*float(self.entries)+x)/(self.entries+1.)
-            self.rms2=(self.rms2*float(self.entries)+x*x)/(self.entries+1.)
-            self.entries=self.entries+1
-            self.variance=self.rms2-self.mean*self.mean
+            self.binarray[bin]=count
+            self.reduced_mean=(self.reduced_mean*float(self.entries)+x)/(self.entries+1.)
+            self.reduced_rms2=(self.reduced_rms2*float(self.entries)+x*x)/(self.entries+1.)
+            self.variance=self.reduced_rms2-self.reduced_mean*self.reduced_mean
+            self.mean=self.reduced_mean+self.low
+            self.rms2=self.mean*self.mean+self.variance
             self.variance=math.sqrt(self.variance)
+            self.entries=self.entries+1
             self.mean_error=self.variance/math.sqrt(float(self.entries))
             self.variance_error=self.variance/math.sqrt(2.*float(self.entries))
             if ( count > self.maximum ) :
@@ -747,7 +762,7 @@ class Histogram1D(BasicHistogram):
 
     def axis_low(self):
         return self.low
-    
+
     def axis_high(self):
         return self.high
 
@@ -793,7 +808,7 @@ class Histogram1D(BasicHistogram):
         return self.line_color
 
     def get_line_width(self):
-        return self.line_width 
+        return self.line_width
 
     #
     # Statistis
@@ -891,7 +906,7 @@ class Histogram1D(BasicHistogram):
                      "set xlabel '%s'\n"%(self.xlabel)
         if ( self.get_opt_stat() ) :
             long_string=long_string+self.add_opt_stat()
-        if (  self.time_axis ) : 
+        if (  self.time_axis ) :
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
@@ -953,7 +968,7 @@ class Histogram1D(BasicHistogram):
                      "set xlabel '%s'\n"%(self.xlabel)
         if ( self.get_opt_stat() ) :
             long_string=long_string+self.add_opt_stat()
-        if (  self.time_axis ) : 
+        if (  self.time_axis ) :
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
@@ -976,17 +991,17 @@ class Histogram1D(BasicHistogram):
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                      +self.get_marker_type()+" lw "+str(self.get_line_width())+"  lt "+str(self.get_line_color())+"  "
         if (  self.time_axis ) :
-            if (reflect) : 
+            if (reflect) :
                 long_string=long_string+",  '"+pts_file_name1+"' using 1:(-$4) "
             else :
                 long_string=long_string+",  '"+pts_file_name1+"' using 1:4 "
-                
+
         else:
             if (reflect) :
                 long_string=long_string+",  '"+pts_file_name1+"' using 1:(-$3)"
             else :
                 long_string=long_string+",  '"+pts_file_name1+"' using 1:3 "
-               
+
         long_string=long_string+" t '"+h.get_marker_text()+"' with "\
                     +h.get_marker_type()+" lw "+str(h.get_line_width())+" lt "+str(h.get_line_color())+" \n "
         gnu_cmd.write(long_string)
@@ -1016,7 +1031,7 @@ class Histogram1D(BasicHistogram):
 
         #Polulate the data file that gnuplot will plot.
         self.save_data(pts_file_name)
-        
+
         #Create the file that contains the commands for gnuplot to run.
         gnu_cmd = open(gnu_file_name,'w')
         long_string="set output '" + ps_file_name + "'\n"+ \
@@ -1034,7 +1049,7 @@ class Histogram1D(BasicHistogram):
                          "\\nEntries : %d"%(self.entries)+\
                          "\\n Overflow : %d"%(self.overflow)+\
                          "\\n Underflow : %d"%(self.underflow)+"\"\n"
-        if (  self.time_axis ) : 
+        if (  self.time_axis ) :
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
@@ -1069,7 +1084,7 @@ class Histogram1D(BasicHistogram):
         #Cleanup the temporary files.
         self.remove(pts_file_name) # remove pts file
         self.remove(gnu_file_name)  # remove gnu file
-       
+
     def dump(self):
         print repr(self.__dict__)
 
@@ -1110,7 +1125,7 @@ class Histogram2D(Histogram1D):
         other.yhigh=self.yhigh
         other.nbins_y=self.nbins_y
         other.nbins_x=self.nbins_x
-        
+
 
         other.entries=self.entries
         other.binarray = []
@@ -1137,7 +1152,7 @@ class Histogram2D(Histogram1D):
         for i in range(self.nbins):
             other.binarray.append(self.binarray[i])
             other.sumarray.append(self.sumarray[i])
-        
+
         #
         # atributes
         #
@@ -1160,7 +1175,7 @@ class Histogram2D(Histogram1D):
             bin = bin-1
         return bin
 
-    
+
     def find_bin_y(self,y):
         if ( float(y) < self.ylow ):
             self.underflow=self.underflow+1
@@ -1198,7 +1213,7 @@ class Histogram2D(Histogram1D):
             x,y = self.get_bin_center(i)
             z = float(self.get_bin_content(i));
             dz = math.sqrt(self.get_bin_content(i))
-#            if ( self.entries > 0 ) : 
+#            if ( self.entries > 0 ) :
 #                z =  z / float(self.entries) * 100.
 #                dz = dz / float(self.entries) * 100.
             if ( self.time_axis ) :
@@ -1237,7 +1252,7 @@ class Histogram2D(Histogram1D):
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set zlabel '%s'\n"%(self.zlabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
-        if (  self.time_axis ) : 
+        if (  self.time_axis ) :
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
@@ -1290,7 +1305,7 @@ class Histogram2D(Histogram1D):
         jpg_file_name = os.path.join(directory, self.name + ".jpg")
         stamp_jpg_file_name = os.path.join(directory, self.name + "_stamp.jpg")
         gnu_file_name = "/tmp/%s_gnuplot.cmd" % (self.name)
-        
+
         #Polulate the data file that gnuplot will plot.
         self.save_data(pts_file_name)
 
@@ -1386,7 +1401,7 @@ if __name__ == "__main__":
     h1.set_marker_type("impulses")
     h1.set_opt_stat(True)
     h1.set_line_width(10)
-    t = time.ctime(time.time()) 
+    t = time.ctime(time.time())
     h1.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
     h1.add_text("set label \"Should %s, Done %s(%3.1f%%), Not Done %s.\" at graph .05,.90\n" % (100,100,0.7,100))
     derivative = h1.derivative()
@@ -1396,8 +1411,8 @@ if __name__ == "__main__":
     h1.plot()
 
     #
-    # this is how we plot two histograms together 
-    # 
+    # this is how we plot two histograms together
+    #
 
     h2.set_ylabel("Counts / %s"%(h2.get_bin_width(0)))
     h2.set_xlabel("x variable")
@@ -1407,7 +1422,7 @@ if __name__ == "__main__":
     h2.set_opt_stat(True)
     h2.set_line_width(10)
     h2.set_line_color(3)
-    t = time.ctime(time.time()) 
+    t = time.ctime(time.time())
     h2.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
     h2.add_text("set label \"Should %s, Done %s(%3.1f%%), Not Done %s.\" at graph .05,.90\n" % (100,100,0.7,100))
     h2.plot2(h1,True)
@@ -1436,7 +1451,7 @@ if __name__ == "__main__":
     ntuple1.set_marker_type("impulses")
     ntuple1.set_time_axis_format("%m-%d");
     ntuple1.set_ylabel("time")
-    ntuple1.set_xlabel("(hour:minute)") 
+    ntuple1.set_xlabel("(hour:minute)")
     ntuple1.set_time_axis()
 
     while ( h11.n_entries() < 10000 ) :
@@ -1444,8 +1459,9 @@ if __name__ == "__main__":
         h11.fill(x)
         y=random.gauss(2,0.5)
         ntuple1.get_data_file().write("%s %f\n"%(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(x)),y))
-        
+
     h11.set_time_axis(True)
+    h11.set_opt_stat()
     h11.plot()
     ntuple1.get_data_file().close();
     ntuple1.plot("1:3")
