@@ -4766,7 +4766,8 @@ def _make_copies(MY_TASK, volume, bfid_list, vcc, fcc, db, intf):
         return_exit_status = return_exit_status + exit_status
 
         if not exit_status:
-            for bfid in use_bfid_list:
+            for file_record in file_record_list:
+                bfid = file_record['bfid']  #shortcut
 
                 #Verify that an entry exists in the file_copies_map table.
                 q = "select * from file_copies_map " \
