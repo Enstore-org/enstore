@@ -57,7 +57,7 @@ get_pnfs_dbs()
     fi
 
 
-    $mdb status | sed '1,2d' | awk '{print $6}' | sed 's:.*/::' | egrep -v 'admin'
+    $mdb status | sed '1,2d' | awk '{print $NF}' | sed 's:.*/::'
 }
 
 parse_id()
@@ -493,7 +493,7 @@ if [ -z "$db_user" ]; then
 fi
 
 #
-# Loop over the all of the pnfs databases (excluding admin).
+# Loop over the all of the pnfs databases.
 #
 db_list=`get_pnfs_dbs | sort`
 for db_name in `echo $db_list`; do
