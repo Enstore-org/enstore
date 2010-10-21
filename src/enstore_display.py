@@ -176,6 +176,7 @@ STILL = 0
 CLIENT_COLOR = 1
 LIBRARY_COLOR = 2
 
+COUNTDOWN = 2
 WAITING = 1
 CONNECTED = 0
 
@@ -471,7 +472,7 @@ def invert_color(hexcolor):
 
 color_dict = {
     #client colors
-    'client_wait_color' :   rgbtohex(100, 100, 100),  # grey
+    'client_wait_color' :   rgbtohex(150, 150, 150),  # grey
     'client_active_color' : rgbtohex(0, 255, 0), # green
     'client_outline_color' : rgbtohex(0, 0, 0), # black
     'client_font_color' : rgbtohex(0, 0, 0), # black
@@ -1780,11 +1781,14 @@ class Mover:
 
     #########################################################################
 
-    def position_circular(self, N):
+    def position_circular(self, N, position=None):
         #N = number of movers
         
         #k is the sequence number of this mover in the display.
-        k = self.display.get_mover_index(self.name)
+        if not position:
+            k = self.display.get_mover_index(self.name)
+        else:
+            k = position[0] * MIPC + position[1]
 
         #mcc = Mover Column Count
         mcc = self.display.get_mover_column_count()
@@ -1802,7 +1806,6 @@ class Mover:
             k = 1
             angle = math.pi / 2
         else:
-            #angle = math.pi / (N-1)
             angle = (2 * math.pi) / N
         x =  x_ratio * math.sin(angle*k) + x_offset
         y =  .9 * math.cos(angle*k)
@@ -1816,11 +1819,13 @@ class Mover:
         
         return scaled_x, scaled_y
 
-    def position_linear(self, N):
+    def position_linear(self, N, position=None):
         __pychecker__ = "no-argsused"
         #N = number of movers
 
-        position = self.display.get_mover_position(self.name)
+        if not position:
+            #position is a two-tuple; the column number and the row number
+            position = self.display.get_mover_position(self.name)
         
         #k = self.index  # k = number of this mover
         mmpc = float(MMPC) #Maximum movers per column
@@ -1884,12 +1889,12 @@ class Mover:
 
         return int(x), int(y)
         
-    def position(self, N):
+    def position(self, N, position=None):
         layout = self.display.master.layout.get()
         if layout == CIRCULAR:
-            return self.position_circular(N)
+            return self.position_circular(N, position=position)
         elif layout == LINEAR:
-            return self.position_linear(N)
+            return self.position_linear(N, position=position)
         else:
             Trace.trace(1, "Unknown layout %s." % (layout,))
             sys.exit(1)
@@ -2070,7 +2075,7 @@ class Client:
 
         if waiting_state != self.waiting:
             self.waiting = waiting_state
-            if self.waiting == WAITING:
+            if self.waiting in [WAITING, COUNTDOWN]:
                 self.color = colors('client_wait_color')
             else:
                 self.color = colors('client_active_color')
@@ -2219,10 +2224,6 @@ class Connection:
         # has mover columns 1, 2 and 3.
         position = self.display.get_mover_position(self.mover.name)
 
-        if position == None:
-            print self.mover.name, ":", position, self.display.system_name
-            
-
         column = position[0]
         row = position[1]
 
@@ -2234,8 +2235,6 @@ class Connection:
         # past the first column.
         if column > 1:
             pos = self.display.get_mover_coordinates((column - 1, row))
-            if pos == None:
-                print self.mover.name, ":", position, self.display.system_name, pos
             mx = (pos[0] + self.mover.width + self.mover.x) / 2.0
             my = self.mover.y + self.mover.height/2.0 + 1
             self.path.extend([mx,my])
@@ -2602,7 +2601,9 @@ class Column:
         self.number = number
         self.type = type #MOVERS or CLIENTS
         self.item_positions = {}
-        self.column_limit = MIPC
+        self.column_limit = None  #MIPC
+        self.max_index = 0  #Max index this column has ever seen.  Only
+                            # valid for sequential (MOVERS) columns.
 
     def get_index(self, item_name):
         for index in self.item_positions.keys():
@@ -2615,15 +2616,23 @@ class Column:
         return self.item_positions.get(item_index, None)
 
     def get_max_limit(self):
+        if self.column_limit == None:
+            return MIPC
         return self.column_limit
 
     def set_max_limit(self, limit):
-        if type(limit) == types.IntType and limit > 0 and limit <= MMPC:
-            self.column_limit = limit
+        if type(limit) == types.IntType and limit > 0 and limit <= MIPC:
+            if self.column_limit == None:
+                self.column_limit = limit
+            elif self.column_limit < limit:
+                self.column_limit = limit
+
+    def get_max_index(self):
+        return self.max_index
             
     def add_item(self, item_name):
         
-        if len(self.item_positions.keys()) >= self.column_limit:
+        if len(self.item_positions.keys()) >= self.get_max_limit():
             #Column is full.
             return True
         
@@ -2646,10 +2655,11 @@ class Column:
             else:
                 i = 1 - i
 
-        if i < -10 or i > 10:
+        if i < -(MIPC / 2) or i > (MIPC / 2):
             return True
         
         self.item_positions[i] = item_name
+        
         return False
 
     def add_seq_item(self, item_name):
@@ -2658,10 +2668,13 @@ class Column:
         while self.item_positions.has_key(i):
             i = i + 1
 
-        if i > 20:
+        if i > MIPC:
             return True
 
         self.item_positions[i] = item_name
+        if i > self.max_index:
+            #If this is the highest index seen so far, up the max_index.
+            self.max_index = i
         return False
 
     def del_item(self, index_or_name):
@@ -2952,12 +2965,9 @@ class Display(Tkinter.Canvas):
             self.after_cancel(self.after_offline_reason_id)
 
         for mov in self.movers.values():
-            self.after_cancel(mov.timer_id)
+            if mov.timer_id:
+                self.after_cancel(mov.timer_id)
 
-        #if self.mover_display:
-        #    self.mover_display.destroy()
-        #    self.mover_display = None
-            
         self.master_geometry = self.master.geometry()
 
         self.cleanup_display()
@@ -3252,7 +3262,7 @@ class Display(Tkinter.Canvas):
                     #If the mover has active connections, don't remove it
                     # from the display.
                     continue
-                if client.waiting == 1:
+                if client.waiting == WAITING:
                     #If the mover has pending connections, don't remove it
                     # from the display.
                     #
@@ -3280,11 +3290,21 @@ class Display(Tkinter.Canvas):
                         del self.clients[client_name]
                     except KeyError:
                         pass
+                    old_number = self.get_client_column_count()
                     try:
                         # Mark this spot as unoccupied.
                         self.del_client_position(client_name)
                     except KeyError:
                         pass
+                    
+                    #If the number of columns has changed, redraw so that
+                    # everything gets located and sized correctly.
+                    new_number = self.get_client_column_count()
+                    if old_number != new_number:
+                        display_lock.acquire()
+                        self.reposition_canvas(force=1)
+                        display_lock.release()
+                    
                     Trace.trace(2, "Client %s has been deleted" \
                                 % (client_name,))
         except (KeyboardInterrupt, SystemExit):
@@ -3435,6 +3455,10 @@ class Display(Tkinter.Canvas):
                                                 row=row, column=column,
                                                 movers=N)
 
+        if N:
+            #If we have new movers, rearange the display.
+            self.reposition_canvas(force=1)
+
         Trace.trace(6, "Finishing create_movers()")
 
     def get_mover_color(self, library):
@@ -3485,13 +3509,25 @@ class Display(Tkinter.Canvas):
 
         #The variable search_order is a list of two-tuples, where each
         # two-tuple consits of the number in each column and the index number
-        # of that column.  The sort after the loop, first sorts by the number
-        # of clients in a column.  If there are ties, it sorts the lowest
-        # column number first.
+        # of that column.
         search_order = []
         for i in range(len(self.client_positions) + 1)[1:]:
             search_order.append((self.client_positions[i].count(), i))
-        search_order.sort() #sort into ascending order.
+        #The search order is column order, lowest to highest which is left
+        # to right on the screen.
+        #
+        #The sort after the loop, first sorts by the number of clients in a
+        # column.  If there are ties, it sorts the lowest column number first.
+        # We only do this sort as long as we have enough movers to still
+        # require the number of client columns current used.  The intent
+        # is to that if fewer clients are running at the present time, then
+        # fill the lower columns first so that the right most client column
+        # may be removed when it is empty.  (Add one to consider this client
+        # we are adding.)
+        if int(math.ceil((self.get_client_count() + 1) / float(MIPC))) >= \
+               self.get_client_column_count():
+            ##search_order.sort() #sort into ascending order.
+            pass
 
         for t in search_order:
             rtn = self.client_positions[t[1]].add_item(client_name)
@@ -3513,6 +3549,10 @@ class Display(Tkinter.Canvas):
         for i in range(len(self.client_positions) + 1)[1:]:
             self.client_positions[i].del_item(client_name)
 
+        #If the rightmost column is now empty, remove the column too.
+        if self.client_positions[self.get_client_column_count()].count() == 0:
+            del self.client_positions[self.get_client_column_count()]
+
     def get_client_position(self, client_name):
         for i in range(len(self.client_positions) + 1)[1:]:
             i2 = self.client_positions[i].get_index(client_name)
@@ -3526,7 +3566,7 @@ class Display(Tkinter.Canvas):
     
     def get_client_count(self, column = None):
         if column == None:
-            columns_search = range(len(self.mover_positions) + 1)[1:]
+            columns_search = range(len(self.client_positions) + 1)[1:]
         else:
             columns_search = [column]
         
@@ -3653,6 +3693,10 @@ class Display(Tkinter.Canvas):
         for i in range(1, columns + 1):
             if not self.mover_positions.has_key(i):
                 self.mover_positions[i] = Column(i, MOVERS)
+            #If the new limit is higher, the new max limit will be reset.
+            # Otherwise the exisiting limit will remain.  This is to keep
+            # the movers in there current locations if a library is
+            # deselected in the "library managers" menu.
             self.mover_positions[i].set_max_limit(limits[i])
 
     def get_mover_column_count(self):
@@ -3669,15 +3713,52 @@ class Display(Tkinter.Canvas):
         if type(position) != types.TupleType and len(position) != 2:
             return None
 
-        name = self.get_mover_name(position)
-
-        mover = self.movers.get(name)
-
-        try:
-            return mover.x, mover.y
-        except AttributeError:
-            return None
+        #We use the first mover in the list and use it to obtain the
+        # screen coordinates for the mover at the requested position.
+        first_mover = self.movers.keys()[0]
+        return self.movers[first_mover].position(len(self.movers),
+                                                 position=position)
         
+    #########################################################################
+
+    def toggle_library_managers_enabled(self):
+        for mover_name, mover in self.movers.items():
+            if type(mover.library) == types.ListType:
+                use_libraries = mover.library
+            else:
+                use_libraries = [mover.library]
+
+            for mover_library in use_libraries:
+                #Remove trailing ".library_manager".
+                use_mover_library = mover_library.split(".")[0]
+                tmp = self.master.enstore_library_managers_enabled.get(
+                    use_mover_library, None)
+                if tmp == None:
+                    continue
+                if bool(tmp.get()):
+                    #We found one of this mover's libries not on the
+                    # igore list.
+                    break
+            else:
+                #All the mover's libraries are on the ignore list.  Remove
+                # it from the display.
+
+                connection = self.connections.get(mover_name, None)
+                if connection:
+                    #If a connection currently exists, we need to remove
+                    # it from the display first.
+                    client_name = self.connections[mover_name].client.name
+                    command = ["disconnect", mover_name, client_name]
+                    self.disconnect_command(command)
+
+                #Now the actual removal of the mover from the display.
+                mover.undraw()
+                del self.movers[mover_name]
+                self.del_mover_position(mover_name)
+
+        #We need to see if there are new movers.
+        request_queue.put_queue("get_all_movers", self.system_name)
+
     #########################################################################
 
     def quit_command(self, command_list):
@@ -3694,32 +3775,47 @@ class Display(Tkinter.Canvas):
         title=string.replace (title, '\\n', '\n')
         self.title_animation = Title(title, self)
 
-    def csc_command(self, command_list):
-        return
-    """
-        try:
-            csc = configuration_client.ConfigurationClient((command_list[1],
-                                                         int(command_list[2])))
-            csc.dump_and_save()
-            csc.new_config_obj.enable_caching()
-            
-            #Before blindly setting the value.  Make sure that it is good.
-            rtn = csc.get_enstore_system(3, 5)
-            if rtn:
-                self.csc_dict[rtn] = csc
-            else:
-                #This is rather harsh, but hopefully will fix all 'major'
-                #  failures.  Wait 1 minutes before starting over.
-                time.sleep(60)
-                self.queue_command("reinit")
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            exc, msg, tb = sys.exc_info()
-            traceback.print_exception(exc, msg, tb)
-            del tb  #Avoid resource leak.
-    """
+    def menu_command(self, command_list):
+        menu_name = command_list[1]  #options, systems or library managers
+        
+        if menu_name == "library_managers":
 
+            acquire(clients_lock, "clients_lock")
+
+            try:
+                menu_item_name = command_list[2]  #new checkbox label
+                if bool(int(command_list[3])):  #default value
+                    on_off = Tkinter.TRUE
+                else:
+                    on_off = Tkinter.FALSE
+
+                #shortcut
+                LMs_on_off = self.master.enstore_library_managers_enabled
+
+                if not LMs_on_off.has_key(menu_item_name):
+                    #Add the library manager to the menu, but only if it is not
+                    # already there.
+
+                    LMs_on_off[menu_item_name] = Tkinter.BooleanVar()
+                    LMs_on_off[menu_item_name].set(on_off)
+
+                    self.master.enstore_library_managers_menu.add_checkbutton(
+                        label = menu_item_name,
+                        indicatoron = Tkinter.TRUE,
+                        onvalue = Tkinter.TRUE,
+                        offvalue = Tkinter.FALSE,
+                        variable = LMs_on_off[menu_item_name],
+                        command = self.toggle_library_managers_enabled,
+                        )
+            except (KeyboardInterrupt, SystemExit):
+                release(clients_lock, "clients_lock")
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except:
+                exc, msg, tb = sys.exc_info()
+                traceback.print_exception(exc, msg, tb)
+                del tb  #Avoid resource leak.
+        
+        release(clients_lock, "clients_lock")
     def client_command(self, command_list):
         ## Only draw waiting clients if the user really wants to see them all.
         if self.master.show_waiting_clients.get() == CONNECTED:
@@ -3740,7 +3836,7 @@ class Display(Tkinter.Canvas):
                 #If the number of client columns changed we need to reposition.
                 new_number = self.get_client_column_count()
                 if old_number != new_number:
-                    self.reposition_canvas()
+                    self.reposition_canvas(force=1)
 
                 client.update_state(WAITING) #change fill color if needed
                 client.draw()
@@ -3861,7 +3957,7 @@ class Display(Tkinter.Canvas):
         try:
             mover_name = command_list[1]
             client_name = normalize_name(command_list[2])
-            
+
             Trace.trace(2, "mover %s is disconnecting from %s" %
                         (mover_name, client_name))
 
@@ -3876,6 +3972,12 @@ class Display(Tkinter.Canvas):
                     del client.mover_names[mover.name]
                 except (AttributeError, KeyError), msg:
                     pass
+
+            ## Only change the active color to the WAITING/COUNTDOWN
+            ## color if the "Show Waiting Clients" option is checked.
+            if self.master.show_waiting_clients.get():
+                if len(client.mover_names) == 0:
+                    client.update_state(COUNTDOWN) #change fill color if needed
 
             if connection != None:
                 #Remove all references to the connection.
@@ -4041,7 +4143,8 @@ class Display(Tkinter.Canvas):
     comm_dict = {'quit' : {'function':quit_command, 'length':1},
                  'reinit': {'function':reinitialize, 'length':1},
                  'title' : {'function':title_command, 'length':1},
-                 'csc' : {'function':csc_command, 'length':2},
+                 'menu' : {'function':menu_command, 'length':4},
+                 #'csc' : {'function':csc_command, 'length':2},
                  'client' : {'function':client_command, 'length':2},
                  'connect' : {'function':connect_command, 'length':3,
                               'mover_check':1},

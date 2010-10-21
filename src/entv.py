@@ -108,22 +108,6 @@ def restart_entv():
     #traceback.print_stack()
     os.execv(sys.argv[0], sys.argv)
 
-def to_restart_entv_alarm_signal_handler(sig, frame):
-    __pychecker__ = "unusednames=frame"
-
-    if sig != signal.SIGALRM:
-        return
-
-    for display in displays:
-        time_passed = time.time() - display.last_message_processed
-        if time_passed > TEN_MINUTES:
-            message = "Seconds passed since last message: %s\n" \
-                      "Restarting entv." % (time_passed,)
-            Trace.trace(0, message, out_fp=sys.stderr)
-            restart_entv()
-            
-    signal.alarm(TEN_MINUTES)
-
 def alarm_signal_handler(sig, frame):
     __pychecker__ = "unusednames=frame"
 
@@ -133,22 +117,29 @@ def alarm_signal_handler(sig, frame):
     for display in displays:
         time_passed = time.time() - display.last_message_processed
         if time_passed > TEN_MINUTES:
-            try:
-                sys.stderr.write("Seconds passed since last message: %s\n" %
-                                 (time_passed),)
-                sys.stderr.flush()
-            except IOError:
-                pass
-            display.reinitialize()
+            message = "Seconds passed since last message: %.4f\n" \
+                      % (time_passed,)
+            Trace.trace(0, message, out_fp=sys.stderr)
+            if cleanup_objects():
+                message = "Restarting entv."
+                Trace.trace(0, message, out_fp=sys.stderr)
+
+                #Restarting the entire process will lead to the new window
+                # showing up un-iconized on the current desktop.
+                restart_entv()
+            else:
+                #Try and avoid restarting the entire process to avoid
+                # unexpected windowing behavior.
+                display.reinitialize()
             
     signal.alarm(TEN_MINUTES)
 
-def open_files(message):
-    print message,
-    os.system("ls -l /proc/`(EPS | grep \"entv\" | head -n 1 | cut -c8-15 | tr -d ' ')`/fd | wc -l")
+#def open_files(message):
+#    print message,
+#    os.system("ls -l /proc/`(EPS | grep \"entv\" | head -n 1 | cut -c8-15 | tr -d ' ')`/fd | wc -l")
 
-def endswith(s1,s2):
-    return s1[-len(s2):] == s2
+#def endswith(s1,s2):
+#    return s1[-len(s2):] == s2
 
 def print_object(item):
     if type(item) in [types.FrameType]:
@@ -542,19 +533,14 @@ def get_movers(system_name):
     
     return movers_config_info
 
-ignored_movers = {} #cache for ignore_mover_by_library
-allowed_movers = {}
 #Return True if the mover, which must have the form name.mover@system should
 # be dropped.  False otherwise.
 #
 # mover_name: String name of the mover: 9940B_1@gccen or 9940B_1.mover@gccen
 # intf: EntvInterface instance
 # mover_config:  Configuration for the "mover_name" mover.
-# library_configs:  Returned value from get_library_mangers().
-def ignore_mover_by_library(mover_name, intf, mover_config=None,
-                            library_configs=None):
-    global ignored_movers
-    global allowed_movers
+def ignore_mover_by_library(mover_name, intf, mover_config=None):
+    global displays
     
     if intf and intf.messages_file:
         #Let --generate-messages-file filter out the contents for us
@@ -565,13 +551,6 @@ def ignore_mover_by_library(mover_name, intf, mover_config=None,
     alt_mover_name, enstore_system = mover_name.split("@")
     short_mover_name = alt_mover_name.split(".")[0]
     full_mover_name = short_mover_name + ".mover"
-    full_entv_mover_name = "%s@%s" % (full_mover_name, enstore_system)
-
-    #If we have already cached this movers library information.
-    if full_entv_mover_name in ignored_movers.keys():
-        return True
-    if full_entv_mover_name in allowed_movers.keys():
-        return False
 
     #Get the mover's configuration information.
     if mover_config == None:
@@ -588,48 +567,13 @@ def ignore_mover_by_library(mover_name, intf, mover_config=None,
             return False
     else:
         mover_config_info = mover_config
-    #Get the libraries' configuration information.
-    if library_configs == None:
-        libraries_config_info = get_library_managers(enstore_system)
-    else:
-        libraries_config_info = library_configs
 
-    #Extract the library information.  There might be more than one, so
-    # lets put everything into a list.
-    if type(mover_config_info['library']) == types.ListType:
-        libraries = mover_config_info['library']
-    else:
-        libraries = [mover_config_info['library']]
-
-    #Pull out all the libraries in the configuration and put just the
-    # names in a list.
-    valid_libraries = []
-    for lib in libraries_config_info:
-        valid_libraries.append(lib['library_manager'])
-
-    #Split the comma seperated libraries to ignore.
-    skip_library_list = string.split(intf.dont_show, ",")
-
-    #Report True or False if the mover is to be igored or not.
-    for library in libraries:
-        use_library = library[:-16] #remove trailing ".library_manager"
-        if use_library not in valid_libraries:
-            # We found a library that is not in the configuration.
-            ignored_movers["%s@%s" % (full_mover_name, enstore_system)] = libraries
-            return True
-        if use_library not in skip_library_list:
-            # We found a library not in this movers list of libraries.
-            #
-            # We don't ingore a mover if only one library is ignored.  If
-            # a test library is ignored, we don't want to ignore any
-            # production movers that have the production and test libraries
-            # in their configuration.
-            allowed_movers["%s@%s" % (full_mover_name, enstore_system)] = libraries
-            return False
-
-    #cache the miss
-    ignored_movers["%s@%s" % (full_mover_name, enstore_system)] = libraries
-    return True
+    #Report True or False if the mover is to be ignored or not.
+    if len(displays):
+        is_lib_enabled = is_library_manager_enabled(
+            mover_config_info['library'], displays[0].master)
+        return not is_lib_enabled
+    return False
 
 #The parameters fullnames and with_system determine what strings are
 # appended to each mover name.  Assume short mover name test01.  This
@@ -648,20 +592,17 @@ def get_mover_list(system_name, intf, fullnames=None, with_system=None):
         mover_list = []
     else:
         mover_list = get_movers(system_name)
-        library_list = get_library_managers(system_name)
 
     allowed_mover_list = []
     for mover_dict in mover_list:
         #mover_dict['name'] is the fullname; mover_dict['mover'] would
         # contain the short mover name if we wanted it.
         short_name = mover_dict['mover']
-        #full_name = mover_dict['name']
         entv_full_mover_name = "%s@%s" % (mover_dict['name'], system_name)
 
         #Determine if it is allowed to be shone.
         if not ignore_mover_by_library(entv_full_mover_name, intf,
-                                       mover_config=mover_dict,
-                                       library_configs=library_list):
+                                       mover_config=mover_dict):
             #Return the format of the mover name with the requested format.
             use_mover_name = short_name
             if fullnames:
@@ -1051,17 +992,24 @@ def send_sched_request(csc, send_request_dict, u, count = 0):
 
 #Send any status requests to the movers or the inquisitor.  This only
 # sends these requests, it does not wait for responses here.
-def send_all_status_requests(csc, send_request_dict, enstore_system, u):
+def send_all_status_requests(csc, send_request_dict, system_name, u,
+                             display, intf):
     mover_name = True
     name_sent_list = []  #use this to avoid sending duplicates.
     while mover_name:
-        mover_name = enstore_display.request_queue.get_queue(enstore_system)
+        mover_name = enstore_display.request_queue.get_queue(system_name)
         if mover_name in name_sent_list:
             continue  #Already covered this time around.
         if mover_name != None:
             name_sent_list.append(mover_name)
             
-        if mover_name == 'inquisitor':
+        if mover_name == "get_all_movers":
+            #This is not a server, but we need to process it anyway.
+
+            #Determine the list of movers, tell the main thread about them
+            # and send the movers status requests.
+            setup_movers(system_name, send_request_dict, csc, u, display, intf)
+        elif mover_name == 'inquisitor':
             send_sched_request(csc, send_request_dict, u)
         elif mover_name:
             send_mover_request(csc, send_request_dict, mover_name, u)
@@ -1085,31 +1033,83 @@ def drop_stale_status_requests(send_request_dict, u):
             #If there hasn't been a response resend the request.
             u.repeat_deferred(tx_id)
 
+#Obtain the information for putting the movers onto the display and then
+# put the movers on the display.
+def setup_movers(system_name, send_request_dict, csc, u, display, intf):
+    #system_name: Name of the current enstore system as shown in the
+    #             systems menu.
+    #send_request_dict: Dictionary that holds the requests sent using the
+    #                   generic upd client (u).
+    #csc: The configuration server client object for 'system_name'.
+    #u: Generic upd client object.
+    #display: One enstore_display.Display() object.
+    #intf: An EntvInterface object.
+    
+    #Get the list of library managers.
+    try:
+        library_managers = csc.get_library_managers2(3, 3)
+    except:
+        library_managers = []
+    #Split the comma seperated libraries to ignore.
+    skip_library_list = string.split(intf.dont_show, ",")
+    #Set the values to set the menu.
+    library_defaults = {}
+    for library_manager in library_managers:
+        if library_manager['library_manager'] in skip_library_list:
+            library_defaults[library_manager['library_manager']] = 0
+        else:
+            library_defaults[library_manager['library_manager']] = 1
+    #Now add the library_managers to the drop down menu.
+    add_library_managers_to_menu(library_defaults, display)
+
+    put_func = enstore_display.message_queue.put_queue #Shortcut.
+
+    #Inform the display the names of all the movers.
+    mover_list = get_mover_list(system_name, intf, with_system=1)
+    mover_list = ["movers"] + mover_list
+    movers_command = string.join(mover_list, " ")
+    put_func(movers_command, system_name)
+
+    #If we want a clean commands file, we need to set the inital movers
+    # state to idle.
+    if intf and intf.generate_messages_file:
+        for mover in mover_list:
+            idle_command = string.join(["state", mover, "IDLE"], " ")
+            put_func(idle_command, system_name)
+
+    #Get the list of movers that we need to send status requests to.
+    movers = get_mover_list(system_name, intf, fullnames=1)
+    #Queue status request for the mover.
+    for mover_name in movers:
+        send_mover_request(csc, send_request_dict, mover_name, u)
+
+    return movers  #Used in handle_messages().
+
 #handle_messages() reads event relay messages from the specified event
 # relay.  It is called within a new thread (one for each event relay).
 #
 #intf is an instance of the EntvInterface class.
 def handle_messages(system_name, intf):
-    #Use this like a lamda function inside handle_messages().
+    #Use these like a lamda function inside handle_messages().
+    def get_display(system_name):
+        global displays
+
+        for display in displays:
+            if display.system_name == system_name:
+                return display
+
+        return None  #Should never happen.
     def should_stop(system_name):
         global stop_now
-        global displays
 
         if stop_now:
             return True
-        for display in displays:
-            if display.system_name == system_name:
-                if display.stopped:
-                    #Found display, but it is supposed to be stopped.
-                    return True
-                else:
-                    return False
-        else:
-            #Did not find this enstore system in the list, return True
-            # to trigger thread exit.
+        display = get_display(system_name)
+        if display and display.stopped:
+            #Found display, but it is supposed to be stopped.
             return True
-
-        return False  #Should never get here.
+        
+        return False
     #### End of should_stop().
 
     threading.currentThread().setName("MESSAGES-%s" % (system_name,))
@@ -1229,27 +1229,11 @@ def handle_messages(system_name, intf):
                 Trace.trace(0, "Could not contact event relay.",
                             out_fp=sys.stderr)
 
-            put_func = enstore_display.message_queue.put_queue #Shortcut.
+            #Determine the list of movers, tell the main thread about them
+            # and send the movers status requests.
+            movers = setup_movers(system_name, send_request_dict, csc, u,
+                                  get_display(system_name), intf)
 
-            #Inform the display the names of all the movers.
-            mover_list = get_mover_list(system_name, intf, with_system=1)
-            mover_list = ["movers"] + mover_list
-            movers_command = string.join(mover_list, " ")
-            put_func(movers_command, system_name)
-            
-            #If we want a clean commands file, we need to set the inital movers
-            # state to idle.
-            if intf and intf.generate_messages_file:
-                for mover in mover_list:
-                    idle_command = string.join(["state", mover, "IDLE"], " ")
-                    put_func(idle_command, system_name)
-            
-            #Get the list of movers that we need to send status requests to.
-            movers = get_mover_list(system_name, intf, fullnames=1)
-            #Queue status request for the mover.
-            for mover_name in movers:
-                send_mover_request(csc, send_request_dict, mover_name, u)
-                
         #If the client fails to initialize then wait a minute and start over.
         # The largest known error to occur is that socket.socket() fails
         # to return a file descriptor because to many files are open.
@@ -1317,7 +1301,8 @@ def handle_messages(system_name, intf):
         else:
             #Send any status requests to the movers or the inquisitor.  This
             # only sends these requests, it does not wait for responses here.
-            send_all_status_requests(csc, send_request_dict, system_name, u)
+            send_all_status_requests(csc, send_request_dict, system_name, u,
+                                     get_display(system_name), intf)
 
             #Test whether there is a command or status response ready to read,
             # timeout in 5 seconds.
@@ -1656,6 +1641,8 @@ def create_menubar(menu_defaults, system_defaults, master, intf):
     master.entv_option_menu = Tkinter.Menu(tearoff = 0)
     #List of Enstore systems.
     master.enstore_systems_menu = Tkinter.Menu(tearoff = 0)
+    #List of library managers.
+    master.enstore_library_managers_menu = Tkinter.Menu(tearoff = 0)
 
     #Create the animate check button and set animate accordingly.
     master.entv_do_animation = Tkinter.BooleanVar()
@@ -1745,7 +1732,9 @@ def create_menubar(menu_defaults, system_defaults, master, intf):
             variable = master.enstore_systems_enabled[system_name],
             command = toggle_systems_enabled,
             )
-        
+
+    master.enstore_library_managers_enabled = {}
+
     #Added the menus to there respective parent widgets.
     master.entv_menubar.add_cascade(label = "options",
                                     menu = master.entv_option_menu)
@@ -1759,7 +1748,18 @@ def create_menubar(menu_defaults, system_defaults, master, intf):
         # not limit any functionality under those situations.
         master.entv_menubar.add_cascade(label = "systems",
                                         menu = master.enstore_systems_menu)
+    master.entv_menubar.add_cascade(label = "library managers",
+                                 menu = master.enstore_library_managers_menu)
     master.config(menu = master.entv_menubar)
+
+def add_library_managers_to_menu(library_manager_defaults, display):
+    for lm, on_off in library_manager_defaults.items():
+        #command = string.join(("menu", "library_managers", lm, str(on_off)), " ")
+        #enstore_display.message_queue.put_queue(command, system_name)
+
+        command_list = ["menu", "library_managers", lm, str(on_off)]
+
+        display.menu_command(command_list)
 
 def is_system_enabled(system_name, master):
     ese = getattr(master, "enstore_systems_enabled", {})
@@ -1785,6 +1785,31 @@ def systems_enabled_statistics(master):
 def configurated_systems(master):
     ese = getattr(master, "enstore_systems_enabled", {})
     return ese.keys()
+
+#Take either a single library manager name or a list of them and return
+# true if at least one of them is enabled.
+def is_library_manager_enabled(library, master):
+    elme = getattr(master, "enstore_library_managers_enabled", {})
+
+    if type(library) == types.ListType:
+        use_libraries = library
+    else:
+        use_libraries = [library]
+
+    for use_library in use_libraries:
+        try:
+            tmp = elme.get(use_library.split(".")[0], None)
+            if tmp == None:
+                continue
+            if bool(tmp.get()):
+                #If one of the libraries in the list is enabled, return true.
+                return True
+        except RuntimeError:
+            #This happens if the widow has been destroyed and a messages
+            # thread called this function.
+            return False
+        
+    return False
 
 def toggle_animation():
     global displays
@@ -2029,7 +2054,6 @@ def main(intf):
                 system_defaults[config_hostname] = 1  #Enable this system.
             else:
                 system_defaults[config_hostname] = 0  #Disable this system.
-        
     create_menubar(menu_defaults, system_defaults, master, intf)
 
     #Variables that control the stopping or starting of entv.
@@ -2052,7 +2076,7 @@ def main(intf):
         # and restart the entv process.  It has been observed that
         # enstore_display.get_font() can hang, because of the
         # tkFont.Font.metrics() call; there probably are others.
-        signal.signal(signal.SIGALRM, to_restart_entv_alarm_signal_handler)
+        signal.signal(signal.SIGALRM, alarm_signal_handler)
         signal.alarm(TEN_MINUTES) #Start the alarm clock.
 
         #Obtain the list of display panels.  There will be one for each
@@ -2126,7 +2150,7 @@ def main(intf):
         gc.collect()
         del gc.garbage[:]
 
-        signal.signal(signal.SIGALRM, to_restart_entv_alarm_signal_handler)
+        signal.signal(signal.SIGALRM, alarm_signal_handler)
         signal.alarm(TEN_MINUTES) #Start the alarm clock.
 
         Trace.trace(1, "starting mainloop")
