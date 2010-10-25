@@ -10,9 +10,9 @@ def random_loop(n,input_list,done_list):
     if n<=0 : return
     print_message("Doing %d"%(n,))
     n = n - 1
-    number_of_files=len(input_list)
     counter=0
     while len(input_list)>0:
+        number_of_files=len(input_list)
         file_position=random.randint(0,number_of_files-1)
         file_name=input_list.pop(file_position)
         done_list.append(file_name)
@@ -25,7 +25,7 @@ def random_loop(n,input_list,done_list):
             os.system("touch %s"%(STOP_FILE))
             return rc
         counter = counter + 1
-        if counter % 10 :
+        if counter % 100 :
             print_message("Completed %4.2f%%"%(float(counter)/float(number_of_files)*100.))
     random_loop(n,done_list,input_list)
 
