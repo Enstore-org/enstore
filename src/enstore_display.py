@@ -1788,7 +1788,8 @@ class Mover:
         if not position:
             k = self.display.get_mover_index(self.name)
         else:
-            k = position[0] * MIPC + position[1]
+            #position is a two-tuple; the column number and the row number
+            k = (position[0] * MIPC) + position[1]
 
         #mcc = Mover Column Count
         mcc = self.display.get_mover_column_count()
@@ -2622,9 +2623,7 @@ class Column:
 
     def set_max_limit(self, limit):
         if type(limit) == types.IntType and limit > 0 and limit <= MIPC:
-            if self.column_limit == None:
-                self.column_limit = limit
-            elif self.column_limit < limit:
+            if self.column_limit == None or self.column_limit < limit:
                 self.column_limit = limit
 
     def get_max_index(self):
@@ -3815,7 +3814,7 @@ class Display(Tkinter.Canvas):
                 traceback.print_exception(exc, msg, tb)
                 del tb  #Avoid resource leak.
         
-        release(clients_lock, "clients_lock")
+            release(clients_lock, "clients_lock")
     def client_command(self, command_list):
         ## Only draw waiting clients if the user really wants to see them all.
         if self.master.show_waiting_clients.get() == CONNECTED:

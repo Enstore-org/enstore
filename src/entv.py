@@ -128,8 +128,8 @@ def alarm_signal_handler(sig, frame):
                 # showing up un-iconized on the current desktop.
                 restart_entv()
             else:
-                #Try and avoid restarting the entire process to avoid
-                # unexpected windowing behavior.
+                #Try to avoid restarting the entire process, since restarting
+                # gives unexpected windowing behavior.
                 display.reinitialize()
             
     signal.alarm(TEN_MINUTES)
