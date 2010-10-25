@@ -124,6 +124,8 @@ class RawUDP:
             self.arrived.wait()
             self.arrived.clear()
         if self.queue_size_p.value > 0:
+            ret = None
+            request_id = None
             self._lock.acquire()
             try:
                 ret = self.buffer.pop(0)

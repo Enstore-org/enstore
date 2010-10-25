@@ -239,6 +239,8 @@ class RawUDP:
             self.arrived.clear()
         if self.queue_size > 0:
             t0 = time.time()
+            ret = None
+            request_id = None
             self._lock.acquire()
             #self.arrived.clear()
             try:
