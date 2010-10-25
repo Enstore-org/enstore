@@ -5,7 +5,7 @@ import pg
 import random
 import os
 
-Q="select f.pnfs_path  from file f, volume v where f.volume=v.id and v.library='%s' and v.file_family='%s' and f.deleted='n' and v.system_inhibit_1='full' order by v.label, f.location_cookie"
+Q="select f.pnfs_path  from file f, volume v where f.volume=v.id and v.library='%s' and v.file_family='%s' and f.deleted='n' and v.system_inhibit_1='full' order by v.label, f.location_cookie limit 1"
 def random_loop(n,input_list,done_list):
     if n<=0 : return
     print_message("Doing %d"%(n,))
@@ -25,13 +25,13 @@ def random_loop(n,input_list,done_list):
             os.system("touch %s"%(STOP_FILE))
             return rc
         counter = counter + 1
-        if counter % 10 : 
+        if counter % 10 :
             print_message("Completed %4.2f%%"%(float(counter)/float(number_of_files)*100.))
     random_loop(n,done_list,input_list)
 
 def read(i,job_config):
     #
-    # create list of files 
+    # create list of files
     #
     enstoredb = job_config.get("database")
     db = pg.DB(host  = enstoredb.get('db_host', "localhost"),
@@ -48,7 +48,7 @@ def read(i,job_config):
     for row in res.getresult():
         file_list.append(row[0])
     db.close()
-    random_loop(3,file_list,done_files)
+    random_loop(200,file_list,done_files)
     return 0
 
 if __name__ == "__main__":
