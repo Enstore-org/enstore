@@ -1655,10 +1655,12 @@ class LibraryManagerMethods:
 
 
             if wr_en >= permitted:
-                if self.process_for_bound_vol:
-                    # check if there is a volume are in bound state for other volumes
+                if self.process_for_bound_vol and self.process_for_bound_vol in vol_veto_list:
+                    # check if there are volumes in bound state
                     # in veto list and if yes (they are not active),
                     # allow this request go to avoid dismount of the current volume
+                    # do not check if volume bound for the current request does not
+                    # belong to volume family of selected request
                     for vol in vol_veto_list:
                         if vol != self.process_for_bound_vol:
                             volume_state = self.volumes_at_movers.get_vol_state(vol)
@@ -3390,10 +3392,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.pending_work.delete(rq)
         w['times']['lm_dequeued'] = time.time()
         # set the correct volume family for write request
-        if w['work'] == 'write_to_hsm' and w['vc']['file_family'] == 'ephemeral':
-            w['vc']['volume_family'] = volume_family.make_volume_family(w['vc']['storage_group'],
-                                                    w['fc']['external_label'],
-                                                    w['vc']['wrapper'])
+        if w['work'] == 'write_to_hsm':
+            initial_file_family = w['vc']['file_family'] # to deal with ephemeral FF
+            # update volume info
+            vol_info = self.inquire_vol(w["fc"]["external_label"], w['vc']['address'])
+            if vol_info['status'][0] == e_errors.OK:
+                w['vc'].update(vol_info)
+            if initial_file_family == 'ephemeral':
+                # set the correct volume family for write reques
+                w['vc']['volume_family'] = volume_family.make_volume_family(w['vc']['storage_group'],
+                                                                            w['fc']['external_label'],
+                                                                            w['vc']['wrapper'])
         w['vc']['file_family'] = volume_family.extract_file_family(w['vc']['volume_family'])
 
         w['mover'] = mticket['mover']
@@ -3664,7 +3673,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.trace(self.my_trace_level+1, "_mover_bound_volume: HAVE_BOUND: DELETED")
             w['times']['lm_dequeued'] = time.time()
             w['mover'] = mticket['mover']
-
+            if w['work'] == 'write_to_hsm':
+                # update volume info
+                vol_info = self.inquire_vol(w["fc"]["external_label"], w['vc']['address'])
+                if vol_info['status'][0] == e_errors.OK:
+                    w['vc'].update(vol_info)
+                
 	    log_add_to_wam_queue(w['vc'])
             #self.work_at_movers.append(w)
             Trace.trace(self.my_trace_level+1, "mover_bound_volume: appending to work_at_movers %s"%(w,))
