@@ -21,7 +21,6 @@ def full_pass(i, job_config):
                                                                               job_config.get('hostname')))
         return 1
     volume=res.getresult()[0][0]
-    volume='TEST54'
     number_of_full_passes = job_config.get("number_of_full_passes")
     for i in range(number_of_full_passes):
         print_message("Starting pass %d of %d"%(i,number_of_full_passes,))
