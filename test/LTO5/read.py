@@ -4,8 +4,11 @@ from utils import *
 import pg
 import random
 import os
+import string
 
-Q="select f.pnfs_path  from file f, volume v where f.volume=v.id and v.library='%s' and v.file_family='%s' and f.deleted='n' and v.system_inhibit_1='full' order by v.label, f.location_cookie limit 1"
+Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.file_family in ('%s') and v.system_inhibit_1='full' and v.label not in ('%s') order by v.label) and f.deleted='n' order by f.location_cookie"
+Q1="select v.label from volume v where v.system_inhibit_1='full' and v.file_family='%s' order by v.label limit 1"
+
 def random_loop(n,input_list,done_list):
     if n<=0 : return
     print_message("Doing %d"%(n,))
@@ -38,7 +41,19 @@ def read(i,job_config):
                dbname= enstoredb.get('dbname', "enstoredb"),
                port  = enstoredb.get('db_port', 5432),
                user  = enstoredb.get('dbuser_reader', "enstore_reader"))
-    res=db.query(Q%(job_config.get('library'),job_config.get('hostname')))
+    #
+    # volumes to exclude 
+    #
+    exclude_volumes=[]
+    for mover in job_config['mount_movers']:
+        q=Q1%(mover,)
+        for row in db.query(q).getresult() :
+            exclude_volumes.append(row[0])
+    file_families = {}
+    for i in job_config['mount_movers'] + job_config['read_movers']:
+        file_families[i] = 0
+    q=Q%(string.join(file_families.keys(),"','"),string.join(exclude_volumes,"','"),)
+    res=db.query(q) 
     if res.ntuples() == 0 :
         print_error("library %s, file_family %s, There are no files to read"%(job_config.get('library'),
                                                                               job_config.get('hostname')))
@@ -48,7 +63,7 @@ def read(i,job_config):
     for row in res.getresult():
         file_list.append(row[0])
     db.close()
-    random_loop(200,file_list,done_files)
+    random_loop(job_config.get('number_of_read_passes'),file_list,done_files)
     return 0
 
 if __name__ == "__main__":
