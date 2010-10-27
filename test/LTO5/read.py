@@ -19,7 +19,7 @@ def random_loop(n,input_list,done_list):
         file_position=random.randint(0,number_of_files-1)
         file_name=input_list.pop(file_position)
         done_list.append(file_name)
-        output="dummy"
+        output=file_name.split("/")[-1]
         if os.path.exists(output):
             os.unlink(output)
         cmd="encp %s %s"%(file_name,output,)
@@ -42,7 +42,7 @@ def read(i,job_config):
                port  = enstoredb.get('db_port', 5432),
                user  = enstoredb.get('dbuser_reader', "enstore_reader"))
     #
-    # volumes to exclude 
+    # volumes to exclude
     #
     exclude_volumes=[]
     for mover in job_config['mount_movers']:
@@ -53,7 +53,7 @@ def read(i,job_config):
     for i in job_config['mount_movers'] + job_config['read_movers']:
         file_families[i] = 0
     q=Q%(string.join(file_families.keys(),"','"),string.join(exclude_volumes,"','"),)
-    res=db.query(q) 
+    res=db.query(q)
     if res.ntuples() == 0 :
         print_error("library %s, file_family %s, There are no files to read"%(job_config.get('library'),
                                                                               job_config.get('hostname')))
