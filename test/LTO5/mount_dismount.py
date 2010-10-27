@@ -23,6 +23,7 @@ def mount_dismount(i, job_config):
                                                                               job_config.get('hostname')))
         return 1
     volume=res.getresult()[0][0]
+    db.close()
     number_of_mounts_dismounts = job_config.get("number_of_mounts")
     mc_device = job_config.get('mover').get('mc_device')
     media_changer = job_config.get('mover').get('media_changer')
