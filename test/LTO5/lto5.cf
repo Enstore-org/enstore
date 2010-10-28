@@ -1,6 +1,6 @@
 [io]
 #pnfs_path=/pnfs/data2/test/litvinse/NULL
-pnfs_path=/pnfs/data/LTO5/fuji
+pnfs_path=/pnfs/data/test/LTO5/fuji
 
 
 [full_pass_test]
