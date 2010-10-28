@@ -2,7 +2,7 @@
 
 import time
 import sys
-import os 
+import os
 import threading
 import subprocess
 import socket
@@ -64,7 +64,7 @@ def set_tags(dirname,
     p.set_file_family(file_family, dirname)
     p.set_file_family_width(file_family_width, dirname)
 
-def execute(l, func, i, job_config):    
+def execute(l, func, i, job_config):
     try:
         func(i,job_config)
     finally:
@@ -72,8 +72,12 @@ def execute(l, func, i, job_config):
         l.notifyAll()
         l.release()
 
-def main(func,number_of_threads): 
-    job_config = {} 
+def do_proceed() :
+    return not os.path.exists(STOP_FILE)
+
+
+def main(func,number_of_threads):
+    job_config = {}
     cp = ConfigParser.ConfigParser()
     cp.read('lto5.cf')
     path=cp.get('io','pnfs_path','/pnfs/data1/test/litvinse/NULL')
@@ -83,12 +87,12 @@ def main(func,number_of_threads):
     job_config['number_of_mounts']      = int(cp.get('mount_dismount_test','number_of_mounts',8000))
     job_config['read_movers']           = cp.get('random_read_test','read_movers').split(',')
     job_config['mount_movers']          = cp.get('mount_dismount_test','mount_movers').split(',')
-    
+
     hostname=socket.gethostname().split('.')[0]
     csc   = configuration_client.ConfigurationClient((enstore_functions2.default_host(),
                                                       enstore_functions2.default_port()))
     #
-    # find library running on this host 
+    # find library running on this host
     #
     lms=csc.get_library_managers()
     library=None
@@ -106,21 +110,19 @@ def main(func,number_of_threads):
 
     if os.path.exists(STOP_FILE):
         os.unlink(STOP_FILE)
-        
+
     job_config['library']=library
     job_config['hostname']=hostname
     job_config['database'] =csc.get("database", {})
 
     #
-    # find mover running on this host 
+    # find mover running on this host
     #
     mover_list=csc.get_movers(library_manager.get('name'))
     if len(mover_list) == 0 :
         print_error("No movers associated with %s"%(library_manager.get('name')))
         sys.exit(1)
-
     mover = None
-    hostname='gccenmvr1a'
     for m in mover_list:
         m_host = socket.gethostbyaddr(m.get('address')[0])[0].split('.')[0]
         if m_host == hostname :
@@ -130,7 +132,7 @@ def main(func,number_of_threads):
          print_error("No movers associated with %s on this host %s"%(library_manager.get('name'),hostname))
          sys.exit(1)
     #
-    # get info about the mover 
+    # get info about the mover
     #
     mover_info = csc.get(mover)
 
@@ -140,7 +142,7 @@ def main(func,number_of_threads):
 
     lock=threading.Condition(threading.Lock())
     returns={}
-    
+
     for num in range(number_of_threads):
         t=threading.Thread(target=execute, args=(lock, func,num, job_config),
                            name="Thread-%d"%(num,), kwargs={})
@@ -151,6 +153,6 @@ def main(func,number_of_threads):
         lock.wait(60)
         if  threading.activeCount() <= 1 : break
         lock.release()
-    
+
     sys.exit(0)
-    
+

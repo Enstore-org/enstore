@@ -9,7 +9,7 @@ def write(i,job_config):
         if rc:
             return rc
     pnfs_path=job_config.get('pnfs_path')
-    hostname=job_config.get('hostname') 
+    hostname=job_config.get('hostname')
     destination=os.path.join(pnfs_path,hostname,"%d"%(i,))
     if not os.path.exists(destination):
         os.makedirs(destination)

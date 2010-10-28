@@ -24,6 +24,7 @@ def full_pass(i, job_config):
     db.close()
     number_of_full_passes = job_config.get("number_of_full_passes")
     for i in range(number_of_full_passes):
+        if os.path.exists(STOP_FILE): break
         print_message("Starting pass %d of %d"%(i,number_of_full_passes,))
         intf = volume_assert.VolumeAssertInterface(user_mode=0)
         intf._mode = "admin"
@@ -32,6 +33,8 @@ def full_pass(i, job_config):
         rc=volume_assert.do_work(intf)
         if rc:
             print_error("volume assert of %s failed, pass %d of %d"%(volume,i,number_of_full_passes))
+            return 1
+    return 0
 
 if __name__ == "__main__":
     main(full_pass,number_of_threads=1)

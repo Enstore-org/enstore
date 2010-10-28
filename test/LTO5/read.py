@@ -15,6 +15,8 @@ def random_loop(n,input_list,done_list):
     n = n - 1
     counter=0
     while len(input_list)>0:
+        if os.path.exists(STOP_FILE):
+            return 0
         number_of_files=len(input_list)
         file_position=random.randint(0,number_of_files-1)
         file_name=input_list.pop(file_position)
@@ -63,8 +65,8 @@ def read(i,job_config):
     for row in res.getresult():
         file_list.append(row[0])
     db.close()
-    random_loop(job_config.get('number_of_read_passes'),file_list,done_files)
-    return 0
+    rc=random_loop(job_config.get('number_of_read_passes'),file_list,done_files)
+    return rc
 
 if __name__ == "__main__":
     main(read,number_of_threads=1)

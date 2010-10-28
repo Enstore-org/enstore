@@ -36,6 +36,7 @@ def mount_dismount(i, job_config):
 
 
     for i in range(number_of_mounts_dismounts):
+        if os.path.exists(STOP_FILE): break
         print_message("Starting mount %d of %d"%(i,number_of_mounts_dismounts,))
 
         ticket = mcc.loadvol(vol_ticket, mc_device, mc_device)
@@ -48,7 +49,7 @@ def mount_dismount(i, job_config):
         if ticket['status'][0] != e_errors.OK:
             print_error("Failed to dismount tape %s, %d of %d %s"%(volume,i,number_of_mounts_dismounts,str(ticket['status'])))
             return 1
-
+    return 0
 
 if __name__ == "__main__":
     main(mount_dismount,number_of_threads=1)
