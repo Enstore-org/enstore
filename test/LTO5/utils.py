@@ -49,6 +49,10 @@ def execute_command(cmd):
             print_error("Retrying in 10 seconds");
             time.sleep(10)
             rc=0
+        elif errors.find("File exists: Layer 1 and layer 4 are already set") != -1 :
+            print_error("Retrying in 10 seconds");
+            time.sleep(10)
+            rc=0
     return rc
 
 def create_source(name):
