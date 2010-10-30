@@ -24,6 +24,7 @@ def random_loop(n,input_list,done_list):
         output=file_name.split("/")[-1]
         if os.path.exists(output):
             os.unlink(output)
+        output="/dev/null"
         cmd="encp %s %s"%(file_name,output,)
         rc=execute_command(cmd)
         if rc:
