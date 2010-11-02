@@ -5,14 +5,20 @@ import pg
 import random
 import os
 import string
+import time
 
-Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.file_family in ('%s') and v.system_inhibit_1='full' and v.label not in ('%s') order by v.label) and f.deleted='n' order by f.location_cookie"
-Q1="select v.label from volume v where v.system_inhibit_1='full' and v.file_family='%s' order by v.label limit 1"
+#Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.file_family in ('%s') and v.system_inhibit_1='full' and v.label not in ('%s') order by v.label) and f.deleted='n' order by f.location_cookie"
+#Q1="select v.label from volume v where v.system_inhibit_1='full' and v.file_family='%s' order by v.label limit 1"
+
+Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.library='%s' and v.file_family='%s' order by v.label limit 1) and f.deleted='n' order by f.location_cookie"
+
+t0=time.time()
 
 def random_loop(n,input_list,done_list):
     if n<=0 : return
     print_message("Doing %d"%(n,))
-    n = n - 1
+    delta = int((time.time()-t0)/3600./24.)
+    n = n - delta
     counter=0
     while len(input_list)>0:
         if os.path.exists(STOP_FILE):
@@ -44,29 +50,19 @@ def read(i,job_config):
                dbname= enstoredb.get('dbname', "enstoredb"),
                port  = enstoredb.get('db_port', 5432),
                user  = enstoredb.get('dbuser_reader', "enstore_reader"))
-    #
-    # volumes to exclude
-    #
-    exclude_volumes=[]
-    for mover in job_config['mount_movers']:
-        q=Q1%(mover,)
-        for row in db.query(q).getresult() :
-            exclude_volumes.append(row[0])
-    file_families = {}
-    for i in job_config['mount_movers'] + job_config['read_movers']:
-        file_families[i] = 0
-    q=Q%(string.join(file_families.keys(),"','"),string.join(exclude_volumes,"','"),)
-    res=db.query(q)
+
+    res=db.query(Q%(job_config.get('library'),job_config.get('hostname')))
     if res.ntuples() == 0 :
         print_error("library %s, file_family %s, There are no files to read"%(job_config.get('library'),
                                                                               job_config.get('hostname')))
+        db.close()
         return 1
-    file_list = []
+    file_list =  []
     done_files = []
     for row in res.getresult():
         file_list.append(row[0])
     db.close()
-    rc=random_loop(job_config.get('number_of_read_passes'),file_list,done_files)
+    rc=random_loop(job_config.get('number_of_days'),file_list,done_files)
     return rc
 
 if __name__ == "__main__":

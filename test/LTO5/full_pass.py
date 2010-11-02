@@ -19,6 +19,7 @@ def full_pass(i, job_config):
     if res.ntuples() == 0 :
         print_error("library %s, file_family %s, There are no files to read"%(job_config.get('library'),
                                                                               job_config.get('hostname')))
+        db.close()
         return 1
     volumes=[]
     for row in res.getresult():
