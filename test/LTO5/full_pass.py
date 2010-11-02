@@ -28,7 +28,7 @@ def full_pass(i, job_config):
     for i in range(number_of_full_passes):
         for volume in volumes:
             if os.path.exists(STOP_FILE): return 0
-            print_message("Starting pass %d of %d"%(i,number_of_full_passes,))
+            print_message("Starting pass %d of %d on volume %s"%(i,number_of_full_passes,volume))
             intf = volume_assert.VolumeAssertInterface(user_mode=0)
             intf._mode = "admin"
             intf.volume=volume
