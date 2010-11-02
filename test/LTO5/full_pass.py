@@ -7,7 +7,7 @@ import os
 import volume_assert
 import delete_at_exit
 
-Q="select v.label from volume v where v.library='%s' and v.file_family='%s' order by v.label limit 1"
+Q="select v.label from volume v where v.library='%s' and v.file_family='%s' order by v.label"
 
 def full_pass(i, job_config):
     enstoredb = job_config.get("database")
@@ -20,20 +20,23 @@ def full_pass(i, job_config):
         print_error("library %s, file_family %s, There are no files to read"%(job_config.get('library'),
                                                                               job_config.get('hostname')))
         return 1
-    volume=res.getresult()[0][0]
+    volumes=[]
+    for row in res.getresult():
+        volumes.append(row[0])
     db.close()
     number_of_full_passes = job_config.get("number_of_full_passes")
     for i in range(number_of_full_passes):
-        if os.path.exists(STOP_FILE): break
-        print_message("Starting pass %d of %d"%(i,number_of_full_passes,))
-        intf = volume_assert.VolumeAssertInterface(user_mode=0)
-        intf._mode = "admin"
-        intf.volume=volume
-        intf.crc_check=True
-        rc=volume_assert.do_work(intf)
-        if rc:
-            print_error("volume assert of %s failed, pass %d of %d"%(volume,i,number_of_full_passes))
-            return 1
+        for volume in volumes:
+            if os.path.exists(STOP_FILE): return 0
+            print_message("Starting pass %d of %d"%(i,number_of_full_passes,))
+            intf = volume_assert.VolumeAssertInterface(user_mode=0)
+            intf._mode = "admin"
+            intf.volume=volume
+            intf.crc_check=True
+            rc=volume_assert.do_work(intf)
+            if rc:
+                print_error("volume assert of %s failed, pass %d of %d"%(volume,i,number_of_full_passes))
+                return 1
     return 0
 
 if __name__ == "__main__":
