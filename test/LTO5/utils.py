@@ -87,7 +87,7 @@ def main(func,number_of_threads):
     path=cp.get('io','pnfs_path','/pnfs/data1/test/litvinse/NULL')
     job_config['pnfs_path']             = path
     job_config['number_of_full_passes'] = int(cp.get('full_pass_test','number_of_full_passes',10))
-    job_config['number_of_read_passes'] = int(cp.get('random_read_test','number_of_read_passes',4))
+    job_config['number_of_days'] = int(cp.get('random_read_test','number_of_days',20))
     job_config['number_of_mounts']      = int(cp.get('mount_dismount_test','number_of_mounts',8000))
     job_config['read_movers']           = cp.get('random_read_test','read_movers').split(',')
     job_config['mount_movers']          = cp.get('mount_dismount_test','mount_movers').split(',')
