@@ -39,6 +39,7 @@ def random_loop(n,input_list,done_list):
         counter = counter + 1
         if counter % 100 :
             print_message("Completed %4.2f%%"%(float(counter)/float(number_of_files)*100.))
+    time.sleep(120)
     random_loop(n,done_list,input_list)
 
 def read(i,job_config):
