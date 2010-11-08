@@ -48,6 +48,40 @@ tmp_dir=/tmp
 #Make sure to set a timeout.
 timeout="--retries 3 --timeout 30"
 
+#First obtain the directory to write the copy output log information.
+if [ $copyit -eq 1 ]; then
+  ran_log_dir=`enstore conf $timeout --show crons copy_ran_file_log_dir`
+  if [ $? -ne 0 ]; then
+    echo Error getting copy_ran_file log directory from configuration. 1>&2
+    exit 1
+  elif [ -z "$ran_log_dir" ]; then
+    echo No copy_ran_file log directory in configuration. 1>&2
+    exit 1
+  fi
+  if [ ! -d "$ran_log_dir" ]; then
+    mkdir -p "$ran_log_dir"
+    if [ $? -ne 0 ]; then
+      echo Log directory $ran_log_dir not found. 1>&2
+      exit 1
+    fi
+  fi
+  LOGNAME="$ran_log_dir/copy_ran_file"
+  if [ ! -f "$LOGNAME" ]; then
+    touch "$LOGNAME"
+    if [ $? -ne 0 ]; then
+        #Use touch's error message.
+        exit 1
+    fi
+  fi
+  if [ `id -u` -eq 0 ]; then
+    #Make enstore the owner, but don't make it fatal.
+    chown enstore "$ran_log_dir"
+    chgrp enstore "$ran_log_dir"
+    chown enstore "$LOGNAME"
+    chgrp enstore "$LOGNAME"
+  fi
+fi
+
 #Obtain a list of test libraries to ignore.  (ttl = Test Library List)
 ## Get the information from the configuration.
 
@@ -89,6 +123,21 @@ if [ $? -gt 0 ]; then
 fi
 vll=`echo "$vll_raw" | sed '1d' | awk '{print $1}' | tr "." " " | awk '{print $1}' | sed -e "s/$/'/" -e "s/^/'/" | tr "\n" "," | sed "s/,$//"`
 
+VOLS_DEFINED=$tmp_dir/V_D_$$
+trap 'echo Cleaning up temporary files. 1>&2;
+      if [ -n "${VOLS_DEFINED:-}" -a -w "${VOLS_DEFINED:-}" ]; then
+        rm -f "$VOLS_DEFINED";
+      fi;
+      if [ -n "${TAPE_FILE_LIST_FORMATED:-}" -a -w "${TAPE_FILE_LIST_FORMATED:-}" ]; then
+        rm -f "$TAPE_FILE_LIST_FORMATED";
+      fi;
+      if [ -n "${TAPE_FILE_LIST:-}" -a -w "${TAPE_FILE_LIST:-}" ]; then
+        rm -f "$TAPE_FILE_LIST";
+      fi;
+      if [ -n "${BAD_FILE_LIST:-}" -a -w "${BAD_FILE_LIST:-}" ]; then
+        rm -f "$BAD_FILE_LIST";
+      fi;
+      exit 1;' HUP INT QUIT ABRT ALRM TERM PIPE
 
 #Get the list of suitable tapes for testing.
 ###8-16-2007: The 'or' of the system_inhibit_1 values to readonly and full
@@ -111,17 +160,17 @@ from volume where
     system_inhibit_1 not in ('migrated', 'migrating', 'duplicated',
                              'duplicating', 'cloned', 'cloning')
 order by label;" \
-    | sed '1,2d' > $tmp_dir/V_D
+    | sed '1,2d' > "$VOLS_DEFINED"
 
-N=`wc /$tmp_dir/V_D| awk '{print $1}'`
+N=`wc "$VOLS_DEFINED" | awk '{print $1}'`
 
 if [ $verbose -eq 1 ]; then
     echo "Found $N suitable tapes."
-    cat /$tmp_dir/V_D
+    cat "$VOLS_DEFINED"
 fi
    
 if [ $N -eq 0 ]; then
-   rm /$tmp_dir/V_D
+   rm -f "$VOLS_DEFINED"
    exit 1
 fi
 
@@ -133,14 +182,14 @@ while [ $done -gt 0 ]; do
 
   cd $here
   loops=`expr $loops + 1`
-  if [ $loops -ge 1000 ]; then echo "TOO MANY LOOPS = $loops, EXIT"; 
-    rm -f $tmp_dir/V_D;
-    exit 1; 
+  if [ $loops -ge 1000 ]; then
+    echo "TOO MANY LOOPS = $loops, EXIT"
+    exit 1
   fi
 
   # choose a random volume from the list
   ran=`python -c "import random;print random.randint(1,"$N")"`
-  tape=`head -n $ran /$tmp_dir/V_D|tail -n 1| awk '{print $1}'`
+  tape=`head -n $ran "$VOLS_DEFINED" | tail -n 1| awk '{print $1}'`
 
   # Get up to date information on the tape to make sure we have a chance 
   # to read a file.
@@ -150,6 +199,7 @@ while [ $done -gt 0 ]; do
   tinfo=`enstore info $timeout --vol $tape`
   if [ $? -ne 0 ]; then
     echo "Unable to obtain $tape information." 1>&2
+    
     exit 1
   fi  
   if [ $verbose -eq 1 ]; then
@@ -175,6 +225,13 @@ while [ $done -gt 0 ]; do
     #Skip blank volumes.
     continue
   fi
+  #If the library is not available, pick another one.  Start by pulling
+  # out the library name from the volume record.
+  volume_family=`echo "$tinfo" | grep volume_family | awk '{print $2}' | tr -d "',"`
+  if [ $volume_family = "none.none.none" ]; then
+    #Skip blank volumes.
+    continue
+  fi
   #Get the current state of the library.
   raw_lm_status=`enstore library --status $library`
   if [ $? -ne 0 ]; then
@@ -190,27 +247,42 @@ while [ $done -gt 0 ]; do
   fi
 
   #Get a list of all files on the tape.
-  enstore info $timeout --list $tape > $tmp_dir/$tape.raw
+  TAPE_FILE_LIST="$tmp_dir/${tape}_$$"
+  enstore info $timeout --list $tape | sed '1,2d' > "$TAPE_FILE_LIST"
   if [ $? -ne 0 ]; then
     echo "Unable to obtain $tape content information." 1>&2
     exit 1
   fi
-  cat $tmp_dir/$tape.raw | sed '1,2d' > $tmp_dir/$tape
-  rm $tmp_dir/$tape.raw
+  #Truncate the formated tape list information.
+  TAPE_FILE_LIST_FORMATED="$tmp_dir/${tape}_$$_"
+  if [ -f "$TAPE_FILE_LIST_FORMATED" -a ! -w "$TAPE_FILE_LIST_FORMATED" ]; then
+    #Another copy_ran_file is running.
+    echo "Skipping already chosen $tape." 1>&2
+    rm -f "$TAPE_FILE_LIST" "$TAPE_FILE_LIST_FORMATED"
+    continue
+  fi
+  > "$TAPE_FILE_LIST_FORMATED"  #Truncate the file.
+  if [ $? -ne 0 ]; then
+    echo "Unable to modify temporary file $TAPE_FILE_LIST_FORMATED." 1>&2
+    rm -f "$TAPE_FILE_LIST" "$TAPE_FILE_LIST_FORMATED"
+    continue
+  fi
 
   # make sure this volume is still on the readable list.
-  if [ `egrep -c 'DELETED|NOACCESS|NOTALLOWED' /$tmp_dir/$tape` -ne 0 ]; then 
-	echo `date` REJECTED $tape is DELETED/NOACCESS/NOTALLOED
-	rm -f $tmp_dir/$tape
-	continue
+  match_count=`egrep -c 'DELETED|NOACCESS|NOTALLOWED' "$TAPE_FILE_LIST"`
+  if [ $match_count -ne 0 ]; then 
+    echo `date` REJECTED $tape is DELETED/NOACCESS/NOTALLOED 1>&2
+    rm -f "$TAPE_FILE_LIST" "$TAPE_FILE_LIST_FORMATED"
+    continue
   fi
 
   # get list of known bad file bfid's.
-  enstore file --show-bad | grep $tape | cut -f 2 -d " " > $tmp_dir/bad_list
+  BAD_FILE_LIST="$tmp_dir/bad_list_$$"
+  enstore file --show-bad | grep $tape | cut -f 2 -d " " > "$BAD_FILE_LIST"
   #Turn this into an egrep compatible filter string.  (be sure to remember
   # to remove the first " | " from the string.
-  bad_filter=`for item in $(cat $tmp_dir/bad_list); do echo -n " |" $item; done | cut -c 2-`
-  rm $tmp_dir/bad_list
+  bad_filter=`for item in $(cat $BAD_FILE_LIST); do echo -n " |" $item; done | cut -c 2-`
+  rm -f "$BAD_FILE_LIST"
 
   # Get rid of volume information - we already processed that and don't 
   # need it anymore. Get rid of all files the user already deleted. 
@@ -218,54 +290,22 @@ while [ $done -gt 0 ]; do
   # start over with a new tape.  Ignore hidden files and sort the filelist 
   # according to location on the tape.  Also, skip known bad files.
   if [ -n "$bad_filter" ]; then
-    grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep active | egrep -v "$bad_filter" | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
+    grep /pnfs "$TAPE_FILE_LIST" | egrep -v 'deleted|  yes /' | grep active | egrep -v "$bad_filter" | grep -v '\/\.' | sort -k4 > "$TAPE_FILE_LIST_FORMATED"
   else
-      grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep active | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
+      grep /pnfs "$TAPE_FILE_LIST" | egrep -v 'deleted|  yes /' | grep active | grep -v '\/\.' | sort -k4 > "$TAPE_FILE_LIST_FORMATED"
   fi
-  rm -f $tmp_dir/$tape
-  NF=`wc $tmp_dir/${tape}_| awk '{print $1}'`
+  rm -f "$TAPE_FILE_LIST"
+  NF=`wc "$TAPE_FILE_LIST_FORMATED" | awk '{print $1}'`
   if [ $NF -gt 0 ]; then 
     if [ $verbose -eq 1 ]; then echo `date`: $NF SUITABLE FILES on $tape; fi
   else
     if [ $verbose -eq 1 ]; then echo `date`: NO SUITABLE FILES on $tape; fi
-    rm -f $tmp_dir/${tape}_
+    rm -f "$TAPE_FILE_LIST_FORMATED"
     continue
   fi
 
-  # Choose a random file and  1st and last non-deleted files on the 
-  # random volume
-  ran=`python -c "import random;print random.randint(1,"$NF")"`
-  file_r=`head -n $ran $tmp_dir/${tape}_ | tail -n 1 | awk '{print $NF,$1,$3,$4,$2}'`
-  file_f=`head -n 1 $tmp_dir/${tape}_ | awk '{print $NF,$1,$3,$4,$2}'`
-  file_l=`tail -n 1 $tmp_dir/${tape}_ | awk '{print $NF,$1,$3,$4,$2}'`
-  rm -f $tmp_dir/${tape}_
-
-  #We are going to need these...
-  ran_bfid=`echo $file_r | awk '{print $5}'`
-  first_bfid=`echo $file_f | awk '{print $5}'`
-  last_bfid=`echo $file_l |awk '{print $5}'`
-   
-  #...and these...
-  raw_ran_pnfsid=`enstore info $timeout --bfid $ran_bfid`
-  if [ $? -ne 0 ]; then
-    echo "Unable to get file information for $ran_bfid" 1>&2
-    exit 1
-  fi
-  ran_pnfsid=`echo "$raw_ran_pnfsid" | grep pnfsid | cut -c 13-36`
-  raw_first_pnfsid=`enstore info $timeout --bfid $first_bfid`
-  if [ $? -ne 0 ]; then
-    echo "Unable to get file information for $first_bfid" 1>&2
-    exit 1
-  fi
-  first_pnfsid=`echo "$raw_first_pnfsid" | grep pnfsid | cut -c 13-36`
-  raw_last_pnfsid=`enstore info $timeout --bfid $last_bfid`
-  if [ $? -ne 0 ]; then
-    echo "Unable to get file information for $last_bfid" 1>&2
-    exit 1
-  fi
-  last_pnfsid=`echo "$raw_last_pnfsid" | grep pnfsid | cut -c 13-36`
-
-  #...with help from this function...
+  # Use this function to verify that the bfid in layer 1 matches the
+  # expected value from the Enstore DB.
   check_files()
   {
      #This function takes the second argument through the last argument and
@@ -285,54 +325,130 @@ while [ $done -gt 0 ]; do
     return 1
   }
 
-  #...to get these.
-  ran_file=`enstore pnfs --path $ran_pnfsid 2> /dev/null`
-  ran_file=`check_files $ran_bfid "$ran_file"`
-  rc_r=$?
-  first_file=`enstore pnfs --path $first_pnfsid 2> /dev/null`
-  first_file=`check_files $first_bfid "$first_file"`
-  rc_f=$?
-  last_file=`enstore pnfs --path $last_pnfsid 2> /dev/null`
-  last_file=`check_files $last_bfid "$last_file"`
-  rc_l=$?
-
-  if [ $rc_r -ne 0 -o $rc_f -ne 0 -o $rc_l -ne 0 ]; then
-    #One likely reason that this step would fail, is that we have a pnfsid
-    # that exists in two different PNFSes.  (i.e. stkensrv1 and cmspnfs1)
-    #Another is that we don't have sufficient permissions to access the
-    # file in PNFS.
-    if [ $verbose -eq 1 ]; then
-       echo "Failed finding suitable files."
+  #Knowing the bfid; get and confirm the correct path in PNFS.
+  get_file_path()
+  {
+    bfid=$1  #The starting point.
+ 
+    # Use the bfid to get the pnfsid from Enstore DB.
+    raw_pnfsid=`enstore info $timeout --bfid $bfid`
+    if [ $? -ne 0 ]; then
+      echo "Unable to get file information for $bfid" 1>&2
+      return 1
     fi
-    #These are useful for debugging.
-    #  echo $rc_r $ran_bfid $ran_pnfsid $ran_file 
-    #  echo $rc_f $first_bfid $first_pnfsid $first_file
-    #  echo $rc_l $last_bfid $last_pnfsid $last_file
-    continue
-  fi
+    pnfsid=`echo "$raw_pnfsid" | grep pnfsid | cut -c 13-36`
+    
+    # Use the pnfsid to get the current path in PNFS.
+    file=`enstore pnfs --path $pnfsid 2> /dev/null`
+    if [ $? -ne 0 ]; then
+      echo "Unable to get path for $pnfsid" 1>&2
+      return 1
+    fi
+    
+    # Use the path to confirm the layer 1 bfid matches.
+    file=`check_files $bfid "$file"`
+    if [ $? -ne 0 ]; then
+      echo "Did not find matching bfid $bfid for path $file" 1>&2
+      return 1
+    fi
+
+    echo $file
+    return 0
+  }
+
+    #Grab the first file on the tape.
+  case $WHICH_FILE in
+    onlyfirst|onlyfirstlast|alsofirst|alsofirstlast)
+       # Grab the first file on the random volume.
+       file_f=`head -n 1 "${TAPE_FILE_LIST_FORMATED}" | awk '{print $NF,$1,$3,$4,$2}'`
+       # Get the first file's bfid.
+       first_bfid=`echo $file_f | awk '{print $5}'`
+       # Get that file's path.
+       first_file=`get_file_path $first_bfid`
+       if [ $? -ne 0 ]; then
+         echo "Found active file $first_bfid on $tape inaccessable in PNFS" 1>&2
+	 rm -f "$TAPE_FILE_LIST_FORMATED"
+         exit 1
+       fi
+       ;;
+  esac
+      
+  #Pick a random file on the tape.
+  case $WHICH_FILE in
+    onlyran|alsofirst|alsolast|alsofirstlast|*)
+       # Choose a random file on the random volume.
+       ran=`python -c "import random;print random.randint(1,"$NF")"`
+       file_r=`head -n $ran "${TAPE_FILE_LIST_FORMATED}" | tail -n 1 | awk '{print $NF,$1,$3,$4,$2}'`
+       # Get that file's bfid.
+       ran_bfid=`echo $file_r | awk '{print $5}'`
+       # Get that file's path.
+       ran_file=`get_file_path $ran_bfid`
+       if [ $? -ne 0 ]; then
+         echo "Found active file $ran_bfid on $tape inaccessable in PNFS" 1>&2
+	 rm -f "$TAPE_FILE_LIST_FORMATED"
+         exit 1
+       fi
+       ;;
+  esac   
+
+  #Grab the last file on the tape.
+  case $WHICH_FILE in
+    onlylast|onlyfirstlast|alsolast|alsofirstlast)
+       # Grab the first file on the random volume.
+       file_l=`tail -n 1 "${TAPE_FILE_LIST_FORMATED}" | awk '{print $NF,$1,$3,$4,$2}'`
+       # Get the last file's bfid.
+       last_bfid=`echo $file_l | awk '{print $5}'`
+       # Get that file's path.
+       last_file=`get_file_path $last_bfid`
+       if [ $? -ne 0 ]; then
+         echo "Found active file $last_bfid on $tape inaccessable in PNFS" 1>&2
+	 rm -f "$TAPE_FILE_LIST_FORMATED"
+         exit 1
+       fi
+       ;;
+  esac
+
+  rm -f "$TAPE_FILE_LIST_FORMATED"
 
   # Make a list of what the user wants.  Valid values are:
   #  "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" 
   #  or "onlyfirstlast" or "alsofirstlast" or "onlyran"
   case $WHICH_FILE in
-    onlyran)       thefiles=$ran_file; thebfids=$ran_bfid;;
-    onlyfirst)     thefiles=$first_file; thebfids=$first_bfid;;
-    onlylast)      thefiles=$last_file; thebfids=$last_bfid;;
-    onlyfirstlast) thefiles="$first_file $last_file"; thebfids="$first_bfid $last_bfid";;
-    alsofirst)     thefiles="$ran_file $first_file"; thebfids="$ran_bfid $first_bfid";;
-    alsolast)      thefiles="$ran_file $last_file"; thebfids="$ran_bfid $last_bfid";;
-    alsofirstlast) thefiles="$ran_file $first_file $last_file"; thebfids="$ran_bfid $first_bfid $last_bfid";;
-    *)             thefiles=$ran_file; thebfids=$ran_bfid;;
+    onlyran)       thefiles=$ran_file
+                   thebfids=$ran_bfid
+                   ;;
+    onlyfirst)     thefiles=$first_file
+                   thebfids=$first_bfid
+                   ;;
+    onlylast)      thefiles=$last_file
+                   thebfids=$last_bfid
+                   ;;
+    onlyfirstlast) thefiles="$first_file $last_file"
+                   thebfids="$first_bfid $last_bfid"
+                   ;;
+    alsofirst)     thefiles="$ran_file $first_file"
+                   thebfids="$ran_bfid $first_bfid"
+                   ;;
+    alsolast)      thefiles="$ran_file $last_file"
+                   thebfids="$ran_bfid $last_bfid"
+                   ;;
+    alsofirstlast) thefiles="$ran_file $first_file $last_file"
+                   thebfids="$ran_bfid $first_bfid $last_bfid"
+                   ;;
+    *)             thefiles=$ran_file
+                   thebfids=$ran_bfid
+                   ;;
   esac
 
   #Make the list of bfids unique.  This avoids repeat reads if the first
   # and/or last file happen to be the randomly chosen file.
   thebfids=`echo "$thebfids" | tr " " "\n" | uniq`
+  thefiles=`echo "$thefiles" | tr " " "\n" | uniq`
 
   # ok, just tell the user the name of the file and do another if needed
   # or copy the file to /dev/null if user requested this
   if [ $copyit -eq 0 ]; then
-    echo $thefiles
+    echo "$thefiles"
   else
     echo
     echo Random volume = $tape 
@@ -344,7 +460,7 @@ while [ $done -gt 0 ]; do
     #Obtain the library that this tape belongs too.
     raw_library=`enstore info $timeout --vol $tape`
     if [ $? -ne 0 ]; then
-        echo "Unable to obtain information about $tape." 1>&1
+        echo "Unable to obtain information about $tape." 1>&2
         exit 1
     fi
     library=`echo "$raw_library" | grep library | cut -d' ' -f3`
@@ -448,13 +564,7 @@ while [ $done -gt 0 ]; do
 	exit 0
     fi
 
-    #for f in $thefiles; do
-    #  cmd="encp --verbose 10 --bypass-filesystem-max-filesize-check --max-resubmit 7 --delayed-dismount 1 $override_ro $f /dev/null"
-    #  echo $cmd
-    #  eval $cmd
-    #  rc=$?
-    #  RC=`expr $RC + $rc`
-    #done
+    #Try and read the sample files.
     for b in $thebfids; do
       cmd="encp --verbose 10 --bypass-filesystem-max-filesize-check --max-resubmit 7 --delayed-dismount 1 $override_ro --get-bfid $b /dev/null"
       echo $cmd
@@ -462,13 +572,23 @@ while [ $done -gt 0 ]; do
       rc=$?
       RC=`expr $RC + $rc`
     done
+
+    #Log the volume and file(s) tested.
+    if [ -w "$LOGNAME" ]; then
+      echo `date +"%Y-%m-%d %H:%M:%S"` $tape $library $volume_family $thebfids >> "$LOGNAME"
+    else
+      echo "No write permission to append to copy log file $LOGNAME." 1>&2
+    fi
   fi
   done=`expr $done - 1`
 done
 
-rm -f $tmp_dir/V_D
+# Cleanup after ourselves.
+rm -f "$VOLS_DEFINED"
+trap "" HUP INT QUIT ABRT ALRM TERM PIPE
 cd $here
 
+#Give final message, only if requested.
 if [ $verbose -eq 1 -a $copyit -eq 1 ]; then
   echo "The combined exit code for all encps executed is $RC."
 elif [ $verbose -eq 1 ]; then
