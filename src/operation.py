@@ -1598,7 +1598,7 @@ def execute(args):
 				get_write_permit_script_path(lt))
 			print cc
 			os.system(cc)
-			ticket = make_help_desk_ticket(total, cluster, script_host, 'protect', lt)
+			ticket = make_help_desk_ticket(total, cluster, script_host, 'permit', lt)
 			print "ticket =", ticket
 			res2 = start_next_task(job_name, ticket)
 			res2.append(show_current_task(job_name))
