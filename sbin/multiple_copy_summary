@@ -121,17 +121,46 @@ select /* It should be as simple as just using the media_type. However,
        END as media_type,
        storage_group,
        file_family,
-       count(file.bfid) as original_files,
-       count(file_copies_map.alt_bfid) as duplicate_files,
-       count(file.bfid) - count(file_copies_map.alt_bfid) as non_duplicated_files
-from file
-left join file_copies_map on file_copies_map.bfid = file.bfid
-left join volume on file.volume = volume.id
-where volume.file_family not like '%/_copy/__' escape '/'
-  and file.deleted = 'n'  --active orginal/primary files only
-  and volume.library not like '%shelf%'  --only for tapes in the robot
+       sum(original_files) as original_files,
+       sum(duplicate_files) as duplicate_files,
+       sum(non_duplicated_files) as non_duplicated_files
+/* 
+   Only grab the columns needed.
+ */
+from (select id, media_type, storage_group, file_family, capacity_bytes
+      from volume
+      where volume.system_inhibit_0 != 'DELETED'
+        and volume.library not like '%shelf%'  --only for tapes in the robot
+        and volume.file_family not like '%/_copy/__' escape '/'
+     ) as volume_info
+join (select volume.id,
+             count(file_info.bfid) as original_files,
+             count(fcm.alt_bfid) as duplicate_files,
+             count(file_info.bfid) - count(fcm.alt_bfid) as non_duplicated_files
+      from volume
+      inner join (select bfid, volume
+                  from file
+                  where file.deleted = 'n'
+                 ) as file_info on file_info.volume = volume.id
+      left join (select file_copies_map.*
+                 from file_copies_map
+                 left join migration on (migration.src_bfid = file_copies_map.bfid or
+                                         migration.src_bfid = file_copies_map.alt_bfid)
+                 where (src_bfid is NULL or
+                        migration.src_bfid = file_copies_map.bfid)
+                ) as fcm on fcm.bfid = file_info.bfid
+      /* Limit per volume file counts to just the same volume conditions
+         as in the volume_info sub-select. */
+      where volume.system_inhibit_0 != 'DELETED'
+        and volume.library not like '%shelf%'  --only for tapes in the robot
+        and volume.file_family not like '%/_copy/__' escape '/'
+      group by volume.id
+     ) as file_counts on file_counts.id = volume_info.id
+/* 
+   Other restrictions.
+ */
 group by media_type,storage_group,file_family,capacity_bytes
-having count(file_copies_map.alt_bfid) > 0
+having sum(duplicate_files) > 0
 order by media_type,storage_group,file_family;
 " >> $temp_file 2>&1
 
