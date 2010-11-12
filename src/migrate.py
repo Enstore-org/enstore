@@ -2862,8 +2862,11 @@ def migration_path(path, file_record, deleted = NO):
     else:
         non_deleted_path = os.path.join(admin_mount_point,
                                         MIGRATION_DB, stripped_name_1)
-    #We want to use the non-deleted path if it still exists.
-    if os.path.exists(non_deleted_path):
+
+    #We want to use the non-deleted path if it still exists or we know that
+    # the original path still exists.
+    if pnfs.is_admin_pnfs_path(path) or \
+           file_utils.e_access(non_deleted_path, os.F_OK):
         return non_deleted_path
     
     #This is slower, but will catch more cases.  Don't clobber
@@ -2888,10 +2891,8 @@ def migration_path(path, file_record, deleted = NO):
             #We want to use the non-deleted path if it still exists.
             if os.path.exists(alt_non_deleted_path):
                 return alt_non_deleted_path
-
     except (OSError, IOError):
         pass
-
 
     #Handle a deleted file.
     if file_record.get('deleted', None) == YES or deleted == YES:
@@ -3125,7 +3126,7 @@ class MigrateQueue:
 
         #Set a flag indicating that we have read the last item.
         if job == SENTINEL:
-            if 1: #self.debug:
+            if self.debug:
                 log("received SENTINEL")
             #Acquire the lock to access a self data member.
             self.lock.acquire()
@@ -3686,7 +3687,8 @@ def show_status_files(bfid_list, db, intf):
         
 #Output to standard out the migration status information on a per-volume basis.
 def show_status_volumes(volume_list, db, intf):
-    #bfid_list - A string, or list thereof, of the source or destination bfid.
+    #volume_list - A string, or list thereof, of the source or destination
+    #            volumes.
     #db - A pg.DB() instantiated object.
     #intf - A MigrateInterface() instantiated object.
     
@@ -5190,6 +5192,9 @@ def read_files(MY_TASK, read_jobs, encp, intf):
 def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
     MY_TASK = "COPYING_TO_DISK"
 
+    if debug:
+        time_to_copy_file = time.time()
+
     #If "get" is being used instead of encp, the file_record variable will
     # be a list.
     if type(file_record) == types.ListType:
@@ -5219,6 +5224,9 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
         if debug:
             log(MY_TASK, "source file_record", `src_file_record`)
 
+        if debug:
+            time_to_get_volume_info = time.time()
+
         #get volume info
         if type(volume_record) == types.DictType:
             src_volume_record = volume_record
@@ -5240,6 +5248,14 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                 # Can't migrate an empty/failed file.
                 error_log(MY_TASK, "can not copy failed file %s" % (src_bfid,))
 		return
+
+        if debug:
+            message = "Time to get volume info: %.4f sec." % \
+                      (time.time() - time_to_get_volume_info,)
+            log(MY_TASK, message)
+
+        if debug:
+            time_to_get_duplicate_info = time.time()
 
         #We need to verify that we are doing the correct thing if only
         # given a bfid as input.
@@ -5369,9 +5385,24 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                             "with multiple copies %s" \
                             % (src_bfid, dup_files))
 
+            if debug:
+                message = "Time to get duplicate info: %.4f sec." % \
+                          (time.time() - time_to_get_duplicate_info,)
+                log(MY_TASK, message)
+
+            if debug:
+                time_to_get_temp_file = time.time()
+
             #Define the directory for the temporary file on disk.
             tmp_path = temp_file(src_file_record)
 
+            if debug:
+                message = "Time to get temp file: %.4f sec." % \
+                          (time.time() - time_to_get_temp_file,)
+                log(MY_TASK, message)
+
+            if debug:
+                time_to_get_src_path = time.time()
             
             #Handle finding the name differently for migration and duplication.
             use_bfid, alt_bfid, use_file_record, use_alt_file_record = \
@@ -5501,8 +5532,16 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                     raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             if debug:
-                    log(MY_TASK, "src_path:", src_path)
-                    log(MY_TASK, "tmp_path:", tmp_path)
+                message = "Time to get source path: %.4f sec." % \
+                          (time.time() - time_to_get_src_path,)
+                log(MY_TASK, message)
+
+            if debug:
+                log(MY_TASK, "src_path:", src_path)
+                log(MY_TASK, "tmp_path:", tmp_path)
+
+            if debug:
+                time_to_check_temp_path = time.time()
 
             if dst_bfid == None:
                 try:
@@ -5556,20 +5595,42 @@ def copy_file(file_record, volume_record, encp, intf, vcc, fcc, db):
                                         tmp_path,
                                         None,  #migration path
                                         ))
+                
+            if debug:
+                message = "Time to check temp path: %.4f sec." % \
+                          (time.time() - time_to_check_temp_path,)
+                log(MY_TASK, message)
+
+    if debug:
+        time_to_read_file = time.time()
 
     if len(read_jobs) == 0:
         res = 0  #all files copied already
     elif len(read_jobs) == 1:
         res = read_file(MY_TASK, read_jobs[0], encp, intf)
+
+        if debug:
+            message = "Time to read_file: %.4f sec." % \
+                      (time.time() - time_to_read_file,)
+            log(MY_TASK, message)
     else:  #len(read_jobs) > 1
         #Use "get" to read the files.
         res = read_files(MY_TASK, read_jobs, encp, intf)
-        
+
+        if debug:
+            message = "Time to read_files: %.4f sec." % \
+                      (time.time() - time_to_read_file,)
+            log(MY_TASK, message)
     if res:
         # An error occured.  Don't pass along to the write thread.
         return
 
     pass_along_jobs = pass_along_jobs + read_jobs
+
+    if debug:
+        message = "Time to copy file: %.4f sec." % \
+                  (time.time() - time_to_copy_file,)
+        log(MY_TASK, message)
 
     return pass_along_jobs
 
@@ -6409,6 +6470,8 @@ def write_file(MY_TASK,
 def write_new_file(job, encp, vcc, fcc, intf, db):
     MY_TASK = "COPYING_TO_TAPE"
 
+    time_to_write_new_file = time.time()
+
     #Get information about the files to copy and swap.
     (src_file_record, src_volume_record, src_path,
      dst_file_record, dst_volume_record, tmp_path, mig_path) = job
@@ -6567,6 +6630,10 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
         if rtn_code:
             return
 
+    if debug:
+        message = "Time to write new file: %.4f sec." % \
+                  (time.time() - time_to_write_new_file,)
+        log(MY_TASK, message)
 
     # Get bfid (and layer 4) of copied file.  We need these values
     # regardless if the file was already copied, or it was
@@ -6604,6 +6671,8 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
 
         #Need to get this list for re-runs of the migration.
         mc_dst_bfids = get_multiple_copy_bfids(dst_bfid, db)
+
+    time_to_swap_metadata = time.time()
 
     keep_file = False
     mc_jobs = []  #Job tuples of multiple copies may go into this list.
@@ -6739,6 +6808,11 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
                            % (tmp_path, os.geteuid(), os.getegid(),
                               str(msg)))
                 pass
+
+    if debug:
+        message = "Time to swap metadata: %.4f sec." % \
+                  (time.time() - time_to_swap_metadata,)
+        log(MY_TASK, message)
 
     #If we had an error while swapping, don't return the dst_bfid.
     if keep_file:
@@ -8099,14 +8173,20 @@ def set_src_volume_migrated(MY_TASK, vol, vcc, db):
 ##########################################################################
 
 #Can be used for threads too.  It simply sends the value in write_value
-# which should be a SENTINEL value to the queue.
+# which should be a SENTINEL value to the queue or queues.
 def handle_process_exception(queue, write_value):
 
-    try:
-        queue.put(write_value)
-    except (OSError, IOError), msg:
-        sys.stderr.write("Error sending abort sentinel to queue: %s\n" \
-                         % (str(msg),))
+    if type(queue) == types.ListType:
+        queue_list = queue
+    else:
+        queue_list = [queue]
+
+    for current_queue in queue_list:
+        try:
+            current_queue.put(write_value)
+        except (OSError, IOError), msg:
+            sys.stderr.write("Error sending abort sentinel to queue: %s\n" \
+                             % (str(msg),))
 
 ##########################################################################
 
@@ -8919,6 +8999,7 @@ class MigrateInterface(option.Interface):
                 self.multiple_copy_only = None
                 self.make_copies = None
                 self.library__ = None
+                self.infile = None
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -8927,13 +9008,14 @@ class MigrateInterface(option.Interface):
 
 	#  define our specific parameters
 	parameters = [
-		"[bfid1 [bfid2 [bfid3 ...]]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [media_type [library [storage_group [file_family [wrapper]]]]]",
-		"--restore [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]]",
-		"--scan [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]]",
-		"--migrated-from <vol1 [vol2 [vol3 ...]]>",
-		"--migrated-to <vol1 [vol2 [vol3 ...]]>",
-		"--status <vol1 [vol2 [vol3 ...]]>",
-		"--show <media_type> ...",
+		"[bfid1 [bfid2 [bfid3 ...]]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
+                "[media_type [library [storage_group [file_family [wrapper]]]]]",
+		"--restore [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
+		"--scan [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
+		"--migrated-from <vol1 [vol2 [vol3 ...]]>",  #volumes only
+		"--migrated-to <vol1 [vol2 [vol3 ...]]>",  #volumes only
+		"--status [bfid1 [bfid2 [bfid3 ...]]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
+		"--show <media_type> [library [storage_group [file_family [wrapper]]]]]",
 		]
 	
 	migrate_options = {
@@ -8960,6 +9042,13 @@ class MigrateInterface(option.Interface):
 			      option.VALUE_USAGE:option.IGNORED,
 			      option.VALUE_TYPE:option.INTEGER,
 			      option.USER_LEVEL:option.HIDDEN},
+                option.INFILE:{option.HELP_STRING:
+			       "Read target list of bfids, volumes, "
+                               "volume:location_cookie pairs or paths "
+                               "from file.  Types can be intermixed.",
+			      option.VALUE_USAGE:option.REQUIRED,
+			      option.VALUE_TYPE:option.STRING,
+			      option.USER_LEVEL:option.USER},
 		option.LIBRARY:{option.HELP_STRING:
 				"Specify an alternative library to override "
 				"the pnfs library tag.",
@@ -9107,6 +9196,71 @@ class MigrateInterface(option.Interface):
 		}
 
 
+#Appened to bfid_list or volume_list the files to be migrated/scanned.
+def get_targets(bfid_list_queue, volume_list_queue, isc, intf):
+    #bfid_list_queue - empty bfids Queue to be filled by input from user.
+    #volume_list_queue - empty volumes Queue to be filled by input from user.
+    #isc - Info Server Client object
+    #intf - MigrateInterface object
+    
+    if intf.infile:
+        in_file = open(intf.infile, "r")
+        list_of_targets = iter(in_file)
+    else:
+        list_of_targets = intf.args
+    
+    for target in list_of_targets:
+        #If reading from file, remove trailing newline.
+        target = target.strip()
+
+        #Determine if the target is:
+        #1) bfid          WAMS118340671500000
+        #2) volume
+        #   null or tape  VO0001
+        #   disk          rain:zee.zaa_copy_1.null:1265730478610
+        #3) volume:location
+        #   null or tape  NULL09:0000_000000000_0000001
+        #   old disk      rain:zee.zaa_copy_1.null:1265730478610:/data/rain//pnfs/mist/test_files/Makefile2:1192477203
+        #   new disk      rain:zee.zaa_copy_1.null:1265730478610:/scratch/000/100/000/000/000/000/0AF/0001000000000000000AF418
+        #4) path          /pnfs/xyz/abc
+        #                 /pnfs/fs/usr/xyz/abc
+
+        if enstore_functions3.is_bfid(target):
+            bfid_list_queue.put(target, block=True)
+        elif enstore_functions3.is_volume(target):
+            volume_list_queue.put(target, block=True)
+        elif is_media_type(target) and target == intf.args[0]:
+            break
+        elif is_volume_and_location_cookie(target):
+            volume, location_cookie = \
+                    exctract_volume_and_location_cookie(target)
+
+            file_record = isc.find_file_by_location(volume,
+                                                    location_cookie)
+            if not e_errors.is_ok(file_record):
+                error_log("%s: %s" % (file_record['status'][0],
+                                      file_record['status'][1]))
+                continue
+            bfid_list_queue.put(file_record['bfid'], block=True)
+        else:
+            try:
+                f = pnfs.File(target)
+                if f.bfid:
+                    bfid_list_queue.put(f.bfid, block=True)
+                else:
+                    raise ValueError(target)
+            except (SystemExit, KeyboardInterrupt):
+                raise sys.exc_info()[0], \
+                      sys.exc_info()[1], \
+                      sys.exc_info()[2]
+            except:
+                error_log("can not find bfid of",
+                          target)
+
+    #Tell the main thread to stop waiting for items.
+    bfid_list_queue.put(SENTINEL, block=True)
+    volume_list_queue.put(SENTINEL, block=True)
+
 def main(intf):
     init(intf)
 
@@ -9202,80 +9356,57 @@ def main(intf):
                                                         config_port))
         #Someday this probably could be done by the migration clerk.
         isc = info_client.infoClient(csc)
-        
-        bfid_list = []
-        volume_list = []
-        for target in intf.args:
-            #Determine if the target is:
-            #1) bfid          WAMS118340671500000
-            #2) volume
-            #   null or tape  VO0001
-            #   disk          rain:zee.zaa_copy_1.null:1265730478610
-            #3) volume:location
-            #   null or tape  NULL09:0000_000000000_0000001
-            #   old disk      rain:zee.zaa_copy_1.null:1265730478610:/data/rain//pnfs/mist/test_files/Makefile2:1192477203
-            #   new disk      rain:zee.zaa_copy_1.null:1265730478610:/scratch/000/100/000/000/000/000/0AF/0001000000000000000AF418
-            #4) path          /pnfs/xyz/abc
-            #                 /pnfs/fs/usr/xyz/abc
 
-            if enstore_functions3.is_bfid(target):
-                bfid_list.append(target)
-            elif enstore_functions3.is_volume(target):
-                volume_list.append(target)
-            elif is_media_type(target) and target == intf.args[0]:
-                break
-            elif is_volume_and_location_cookie(target):
-                volume, location_cookie = \
-                        exctract_volume_and_location_cookie(target)
-                
-                file_record = isc.find_file_by_location(volume,
-                                                        location_cookie)
-                if not e_errors.is_ok(file_record):
-                    error_log("%s: %s" % (file_record['status'][0],
-                                          file_record['status'][1]))
-                    continue
-                bfid_list.append(file_record['bfid'])
-            else:
-                try:
-                    f = pnfs.File(target)
-                    if f.bfid:
-                        bfid_list.append(f.bfid)
-                    else:
-                        raise ValueError(target)
-                except (SystemExit, KeyboardInterrupt):
-                    raise sys.exc_info()[0], \
-                          sys.exc_info()[1], \
-                          sys.exc_info()[2]
-                except:
-                    # abort on error
-                    error_log("can not find bfid of",
-                              target)
-                    #return 1
+        bfid_list_queue = MigrateQueue(512)
+        volume_list_queue = MigrateQueue(512)
+
+        #Run the input reading in a different thread.  If the input list
+        # has 10s of thousands of files or more we don't want to wait for
+        # the last one to be read into memory before target processing
+        # has begun.
+        run_in_thread(get_targets, (bfid_list_queue, volume_list_queue,
+                                    isc, intf),
+                      my_task="GET_INPUT_TARGETS",
+                      on_exception = (handle_process_exception,
+                                      (bfid_list_queue, volume_list_queue),
+                                      SENTINEL))
 
         if intf.status:
             # get a db connection
             db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
-            for bfid in bfid_list:
+            bfid = bfid_list_queue.get(block=True)
+            while bfid:
                 rtn = rtn + show_status_files(bfid, db, intf)
-            for volume in volume_list:
+                bfid = bfid_list_queue.get(block=True)
+            volume = volume_list_queue.get(block=True)
+            while volume:
                 rtn = rtn + show_status_volumes(volume, db, intf)
+                volume = volume_list_queue.get(block=True)
 
             db.close()  #Avoid resource leaks.
             return rtn
         elif intf.restore:
-            if bfid_list:
-                restore_files(bfid_list, intf)
-            for volume in volume_list:
+            bfid = bfid_list_queue.get(block=True)
+            while bfid:
+                restore_files(bfid, intf)
+                bfid = bfid_list_queue.get(block=True)
+            volume = volume_list_queue.get(block=True)
+            while volume:
                 restore_volume(volume, intf)
+                volume = volume_list_queue.get(block=True)
 
             return errors
 
         elif intf.scan:
-            if bfid_list:
-                rtn = rtn + final_scan_files(bfid_list, intf)
-            for volume in volume_list:
+            bfid = bfid_list_queue.get(block=True)
+            while bfid:
+                rtn = rtn + final_scan_files([bfid], intf)
+                bfid = bfid_list_queue.get(block=True)
+            volume = volume_list_queue.get(block=True)
+            while volume:
                 rtn = rtn + final_scan_volume(volume, intf)
+                volume = volume_list_queue.get(block=True)
 
             """
             The scan_remaining_volumes() function does not exist yet.
@@ -9296,12 +9427,24 @@ def main(intf):
             return rtn
 
         else:  #migration
-            if bfid_list:
-                rtn = rtn + migrate_files(bfid_list, intf)
-            for volume in volume_list:
+            bfid = bfid_list_queue.get(block=True)
+            if bfid:
+                have_bfid = True
+            else:
+                have_bfid = False
+            while bfid:
+                rtn = rtn + migrate_files([bfid], intf)
+                bfid = bfid_list_queue.get(block=True)
+            volume = volume_list_queue.get(block=True)
+            if volume:
+                have_volume = True
+            else:
+                have_volume = False
+            while volume:
                 rtn = rtn + migrate_volume(volume, intf)
+                volume = volume_list_queue.get(block=True)
 
-            if not bfid_list and not volume_list and intf.args:
+            if not have_bfid and not have_volume and intf.args:
                 # get a db connection
                 db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
                 # get its own file clerk client and volume clerk client
