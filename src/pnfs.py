@@ -1740,7 +1740,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             if found_db_num == 0:
                 search_path = os.path.join(search_path, "usr")
 
-            mp_match_list = [search_path]
+            mount_point_match_list = [search_path]
             pnfs_value_match_list = [pnfs_value]
         except (OSError, IOError), msg:
             if is_nameof_name(pfn) and msg.args[0] == errno.EIO and \
@@ -1780,12 +1780,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         if found_db_num == 0:
                             search_path = os.path.join(search_path, "usr")
 
-                        mp_match_list = [search_path]
+                        mount_point_match_list = [search_path]
                         pnfs_value_match_list = [showid_value]
 
                         #We need to return the match for the default
                         # directory (likely the CWD).
-                        return mp_match_list, pnfs_value_match_list
+                        return mount_point_match_list, pnfs_value_match_list
             elif msg.args[0] != errno.ENOENT:
                 raise OSError(msg.args[0],
                               "%s: %s" % (os.strerror(msg.args[0]), pfn))
@@ -1811,34 +1811,37 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             
             count = 0
             found_db_num = None
-            #found_fname = None
             found_db_info = None
-            mp_match_list = []
+            mount_point_match_list = []
             pnfs_value_match_list = []
             search_list = process_mtab()
             #Search all of the pnfs mountpoints that are mounted.
-            for db_info, (db_num, mp) in search_list:
+            for db_info, (db_num, mount_point) in search_list:
                 
                 #If the mountpoint doesn't know about our database fail now.
                 try:
-                    cur_db_info = N(db_num, mp).get_databaseN(use_pnfsid_db)
+                    current_db_info = N(db_num, mount_point).get_databaseN(use_pnfsid_db)
                 except (OSError, IOError):
+                    continue
+
+                if current_db_info == found_db_info:
                     continue
 
                 #If this is a top level PNFS db, we can jump to
                 # the correct info.
-                for search_db_info, (search_db_num, search_mp) in search_list:
-                    if cur_db_info == search_db_info:
-                        use_mp = search_mp
+                for search_db_info, (search_db_num, search_mount_point) in search_list:
+                    if current_db_info == search_db_info:
+                        use_mount_point = search_mount_point
                         break
                 else:
-                    use_mp = mp
+                    use_mount_point = mount_point
 
-                #Check if the current mp knows about our specific pnfsid.
-                if os.path.basename(use_mp) == "fs":
-                    pfn = os.path.join(use_mp, "usr", use_pnfsname)
+                #Check if the current mount point knows about our
+                # specific pnfsid.
+                if os.path.basename(use_mount_point) == "fs":
+                    pfn = os.path.join(use_mount_point, "usr", use_pnfsname)
                 else:
-                    pfn = os.path.join(use_mp, use_pnfsname)
+                    pfn = os.path.join(use_mount_point, use_pnfsname)
                 try:
                     f = file_utils.open(pfn, 'r')
                     pnfs_value = f.readline()
@@ -1893,7 +1896,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                             # Set these three values to include the found item.
                             #
                             count = count + 1
-                            mp_match_list.append(db_data[1])
+                            mount_point_match_list.append(db_data[1])
                             pnfs_value_match_list.append(pnfs_value)
 
                             if count == 1:
@@ -1901,23 +1904,22 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                 # to avoid catching it again.
                                 search_path = db_data[1]
                                 found_db_num = db_data[0]
-                                #found_fname = pfn
-                                found_db_info = db_db_info
+                                found_db_info = current_db_info
                 except (OSError, IOError), msg:
                     if msg.args[0] in [errno.EIO, errno.ENOENT, errno.ENOTDIR]:
                         #This block of code is to report if an orphaned file
                         # was requested.  This will only apply to orphans
                         # with their 'parent' directory missing them.
                         try:
-                            if os.path.basename(use_mp) == "fs":
-                                parent_fn = os.path.join(use_mp, "usr",
+                            if os.path.basename(use_mount_point) == "fs":
+                                parent_fn = os.path.join(use_mount_point, "usr",
                                                    ".(parent)(%s)" % id)
-                                showid_fn = os.path.join(use_mp, "usr",
+                                showid_fn = os.path.join(use_mount_point, "usr",
                                                    ".(showid)(%s)" % id)
                             else:
-                                parent_fn = os.path.join(use_mp,
+                                parent_fn = os.path.join(use_mount_point,
                                                          ".(parent)(%s)" % id)
-                                showid_fn = os.path.join(use_mp,
+                                showid_fn = os.path.join(use_mount_point,
                                                          ".(showid)(%s)" % id)
                                 
                             parent_fp = file_utils.open(parent_fn, "r")
@@ -1945,20 +1947,20 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                             # id for tag files.
                                             base_id = showid_data[4][17:-1]
                                             afn_dir = os.path.join(
-                                                use_mp,
+                                                use_mount_point,
                                                 ".(access)(%s)" % base_id)
                                         else:
                                             #We will need to use the base
                                             # id instead of the parent id to
                                             # find the directory's PNFS ID
                                             # for layer files.
-                                            parent2_fn = os.path.join(use_mp,
+                                            parent2_fn = os.path.join(use_mount_point,
                                                    ".(parent)(%s)" % (parent_id,))
                                             parent2_fp = file_utils.open(parent2_fn, "r")
                                             parent2_id = parent2_fp.readlines()[0].strip()
                                             parent2_fp.close()
                                             afn_dir = os.path.join(
-                                                use_mp,
+                                                use_mount_point,
                                                 ".(access)(%s)" % parent2_id)
 
                                         #
@@ -1966,9 +1968,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                         # the found item.  But only if not
                                         # not already found.
                                         #
-                                        if afn_dir not in mp_match_list:
+                                        if afn_dir not in mount_point_match_list:
                                             count = count + 1
-                                            mp_match_list.append(afn_dir)
+                                            mount_point_match_list.append(afn_dir)
                                             pnfs_value_match_list.append(
                                                 showid_data)
                                         
@@ -2014,7 +2016,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                             if db_data != None:
                                                 search_path = db_data[1]
                                                 found_db_num = db_data[0]
-                                                found_db_info = db_db_info
+                                                found_db_info = current_db_info
 
                                         break
 
@@ -2040,13 +2042,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 raise OSError(errno.ENODEV,
                               "%s: %s" % (os.strerror(errno.ENODEV),
                                           "Too many matching mount points",),
-                              mp_match_list)
+                              mount_point_match_list)
 
         #The pnfs_value is put into a list becuase originally this
         # function used readlines().  However, for performance reasons,
         # readline() is a better choice.  Returning a list is just a
         # historical note from having used readlines() previously.
-        return mp_match_list, pnfs_value_match_list
+        return mount_point_match_list, pnfs_value_match_list
 
     ##########################################################################
 
