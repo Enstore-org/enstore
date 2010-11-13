@@ -8,7 +8,8 @@ import volume_assert
 import delete_at_exit
 import time
 
-Q="select v.label from volume v where v.library='%s' and v.file_family='%s' order by v.label"
+#Q="select v.label from volume v where v.library='%s' and v.file_family='%s' order by v.label"
+Q="select v.label from volume v where v.library='%s' order by v.label"
 
 def full_pass(i, job_config):
     enstoredb = job_config.get("database")
@@ -16,7 +17,8 @@ def full_pass(i, job_config):
                dbname= enstoredb.get('dbname', "enstoredb"),
                port  = enstoredb.get('db_port', 5432),
                user  = enstoredb.get('dbuser_reader', "enstore_reader"))
-    res=db.query(Q%(job_config.get('library'),job_config.get('hostname')))
+    #res=db.query(Q%(job_config.get('library'),job_config.get('hostname')))
+    res=db.query(Q%(job_config.get('library'),))
     if res.ntuples() == 0 :
         print_error("library %s, file_family %s, There are no files to read"%(job_config.get('library'),
                                                                               job_config.get('hostname')))
@@ -31,7 +33,7 @@ def full_pass(i, job_config):
     for i in range(number_of_full_passes):
         for volume in volumes:
             if os.path.exists(STOP_FILE): return 0
-            print_message("Starting pass %d of %d on volume %s"%(i,number_of_full_passes,volume))
+            print_message("Starting pass %d of %d on volume %s"%(i+1,number_of_full_passes,volume))
             intf = volume_assert.VolumeAssertInterface(user_mode=0)
             intf._mode = "admin"
             intf.volume=volume
@@ -40,7 +42,7 @@ def full_pass(i, job_config):
             if rc:
                 print_error("volume assert of %s failed, pass %d of %d"%(volume,i,number_of_full_passes))
                 return 1
-        print_message("Completed full pass %d of %d on %d volumes, sleeping %d seconds"%(i,number_of_full_passes,len(volumes),time_to_sleep_between_passes,))
+        print_message("Completed full pass %d of %d on %d volumes, sleeping %d seconds"%(i+1,number_of_full_passes,len(volumes),time_to_sleep_between_passes,))
         time.sleep(time_to_sleep_between_passes)
     return 0
 
