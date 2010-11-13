@@ -41,7 +41,7 @@ def random_loop(n,input_list,done_list):
             return rc
         counter = counter + 1
         if not counter % 100 :
-            print_message("Completed 100 transfers (%4.2f%%)"%(float(counter)/float(input_list_length)*100.))
+            print_message("Completed %d transfers (%4.2f%%)"%(counter, float(counter)/float(input_list_length)*100.))
     time.sleep(120)
     random_loop(n,done_list,input_list)
 
