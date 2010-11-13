@@ -36,6 +36,7 @@ def mount_dismount(i, job_config):
     vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
     vol_ticket = vcc.inquire_vol(volume)
 
+    print_message("Starting mount/dismount tape test for volume %s "%(volume,))
 
     for i in range(number_of_mounts_dismounts):
         if os.path.exists(STOP_FILE): break
