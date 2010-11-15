@@ -42,7 +42,7 @@ def random_loop(n,input_list,done_list):
         counter = counter + 1
         if not counter % 100 :
             print_message("Completed %d transfers (%4.2f%%)"%(counter, float(counter)/float(input_list_length)*100.))
-        print_message("Completed full pass on the tape %d transfers (100%%), took %d seconds"%(input_list_length,int(time.time()-start)))
+    print_message("Completed full pass on the tape %d transfers (100%%), took %d seconds"%(input_list_length,int(time.time()-start)))
     time.sleep(120)
     random_loop(n,done_list,input_list)
 
