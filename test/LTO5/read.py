@@ -19,7 +19,7 @@ t0=time.time()
 def random_loop(n,input_list,done_list):
     delta = int((time.time()-t0)/3600./24.)
     print_message("Doing %d"%(delta,))
-    if delta > n : return
+    if delta >= n : return
     counter=0
     input_list_length=len(input_list)
     start=time.time()
