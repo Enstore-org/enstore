@@ -25,6 +25,12 @@ def print_wrapper(func):
     finally:
         print_lock.release()
 
+def check_stop_file():
+    if os.path.exists(STOP_FILE):
+        print_message("Found %s file, Stopping ..."%(STOP_FILE,))
+        return True
+    return False
+
 def log(text):
     sys.stdout.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : " +threading.current_thread().getName()+" : " +text+"\n")
     sys.stdout.flush()
