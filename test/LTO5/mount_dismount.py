@@ -44,15 +44,19 @@ def mount_dismount(i, job_config):
         print_message("Starting mount %d of %d"%(i,number_of_mounts_dismounts,))
         ticket = mcc.loadvol(vol_ticket, mc_device, mc_device)
         while ticket['status'][0] in [e_errors.MC_QUEUE_FULL]:
+            if check_stop_file():
+                return 0
             print_error("Failed to mount tape %s, %d of %d %s"%(volume,i,number_of_mounts_dismounts,str(ticket['status'])))
             print_error("Retrying in 30 seconds ....")
             time.sleep(30)
             ticket = mcc.loadvol(vol_ticket, mc_device, mc_device)
-            if check_stop_file():
-                return 0
         if ticket['status'][0] != e_errors.OK and ticket['status'][0] not in [e_errors.MC_QUEUE_FULL ]:
             print_error("Failed to mount tape %s, %d of %d %s"%(volume,i,number_of_mounts_dismounts,str(ticket['status'])))
             return 1
+        #
+        # update mount count as media_changer does not do it for us
+        #
+        vcc.update_counts(volume,mounts=1)
         print_message("Starting dismount %d of %d"%(i,number_of_mounts_dismounts,))
         ticket = mcc.unloadvol(vol_ticket, mc_device, mc_device)
         while ticket['status'][0] in [e_errors.MC_QUEUE_FULL]:
