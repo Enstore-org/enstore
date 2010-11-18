@@ -117,7 +117,6 @@ class SortedList:
         self.sorted_list = mpq.MPQ(comparison_function)
         self.last_aging_time = 0
         self.aging_quantum = aging_quantum
-        self.highest_pri = 0
         self.ids = []
         self.of_names = []
         self.keys = []
@@ -128,9 +127,10 @@ class SortedList:
         self.last_deleted = None # to be used for read requests
         self.delpri = DELTA_PRI # delta priority is common for all requests in the list 
         self.agetime = AGE_TIME #age time is common for all requests in the list
-        self.cummulative_delta_pri = 0 # cummulative delta priority
+        self.cumulative_delta_pri = 0 # cumulative delta priority
         self.highest_pri = 0 # highest priorioty in the list
         self.highest_pri_id = None # highest priorioty id
+        self.updated = False # flags that self.highest_pri has changed, to use in tags list
         self.queued = time.time()
         self.lock = threading.Lock() # to synchronize changes in the list
         
@@ -154,11 +154,14 @@ class SortedList:
         if not self.update_flag: return  # no need to update by_location list
         time_now = time.time()
         #Trace.trace(TR+23, "now %s self.last_aging_time %s self.aging_quantum %s"%(time_now,self.last_aging_time, self.aging_quantum))
+        self.updated = False
         if ((time_now - self.last_aging_time >= self.aging_quantum) or
             now):
             if self.agetime > 0:
                 deltas = int((time_now - self.queued)/60/self.agetime)
-                self.cummulative_delta_pri = self.delpri*deltas
+                self.cumulative_delta_pri = self.delpri*deltas
+                self.highest_pri = self.highest_pri + self.delpri
+                self.updated = True
             self.last_aging_time = time_now
             
 
@@ -196,10 +199,12 @@ class SortedList:
             self.lock.acquire()
             try:
                 self.sorted_list.insort(request)
+                self.updated = False
                 # change the highest priority request in the list
                 if request.pri > self.highest_pri:
                   self.highest_pri = request.pri
                   self.highest_pri_id = request.unique_id
+                  self.updated = True
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
@@ -219,7 +224,6 @@ class SortedList:
             if (r and r.ticket.has_key('routing_callback_addr') and
                 request.ticket.has_key('routing_callback_addr')):
                 r.ticket['routing_callback_addr'] = request.ticket['routing_callback_addr']
-
         return res, stat
 
     # get a record from the list
@@ -271,7 +275,7 @@ class SortedList:
         else:
             ret = None
         if ret:
-            ret.ticket['encp']['curpri'] = ret.ticket['encp']['basepri'] + self.cummulative_delta_pri
+            ret.ticket['encp']['curpri'] = ret.ticket['encp']['basepri'] + self.cumulative_delta_pri
 
         self.lock.acquire()
         self.start_index = self.current_index
@@ -322,7 +326,7 @@ class SortedList:
                     (self.my_name, old_current_index,self.current_index,
                      self.start_index, self.sorted_list[self.current_index]))  
         rq = self.sorted_list[self.current_index]
-        rq.ticket['encp']['curpri'] = rq.ticket['encp']['basepri'] + self.cummulative_delta_pri
+        rq.ticket['encp']['curpri'] = rq.ticket['encp']['basepri'] + self.cumulative_delta_pri
 
         return rq
 
@@ -660,7 +664,25 @@ class Queue:
             record = None
         return record
 
-
+    # update priority of requests in the queue
+    # returns the list if requests with updated priority
+    def update_priority(self):
+        updated_requests = {}
+        for key in self.queue.keys():
+            Trace.trace(TR+23, 'Queue.update_priority: updating %s'% (key,))
+            self.queue[key]['by_priority'].update()
+            if self.queue[key]['by_priority'].updated:
+                Trace.trace(TR+23, 'Queue.update_priority: updated %s'% (key,))
+                self.queue[key]['by_priority'].updated = False
+                # priority was updated
+                # get the request
+                request, status = self.queue[key]['by_priority'].find(self.queue[key]['by_priority'].highest_pri_id)
+                if request:
+                    request.ticket['encp']['curpri'] = request.ticket['encp']['basepri'] + self.queue[key]['by_priority'].cumulative_delta_pri
+                    request.pri = request.ticket['encp']['curpri']
+                    updated_requests[key] = request
+        return updated_requests
+                
 class Atomic_Request_Queue:
     # this class is for either regular or for admin queue
     def __init__(self, aging_quantum=60, name='None'):
@@ -682,8 +704,9 @@ class Atomic_Request_Queue:
         Trace.trace(TR+23," Atomic_Request_Queue:update:key: %s"%(key,))
         Trace.trace(TR+23," Atomic_Request_Queue:update:tags.keys: %s"%(self.tags.keys,))
         Trace.trace(TR+23," Atomic_Request_Queue:update:refs.keys: %s"%(self.ref.keys(),))
+        updated_rq = None
         if self.ref.has_key(key):
-            # see if priority of current requst is higher than
+            # see if priority of current request is higher than
             # request in the queue and if yes remove it
             Trace.trace(TR+23," Atomic_Request_Queue:update:tags1: %s"%(request,))
             if request.pri > self.ref[key].pri:
@@ -691,12 +714,43 @@ class Atomic_Request_Queue:
                 self.tags.put(request, key)
                 del(self.ref[key])
                 self.ref[key] = request
+                updated_rq = request
         else:
             # check if corresponding key is already in the tags
             if not key in self.tags.keys:
                 self.tags.put(request, key)
                 self.ref[key] = request
+                updated_rq = request
+        #
+        # now update all tags and refs if needed
+        #
+        # get requests with updated priority
+        updated_write_requests = self.write_queue.update_priority()
+        updated_read_requests = self.read_queue.update_priority()
+
+        # merge them into one dictionary
+        updated_requests = updated_write_requests
+        updated_requests.update(updated_read_requests)
         
+        tags_toreplace = []
+        Trace.trace(TR+23," Atomic_Request_Queue:updated_requests:%s"%(updated_requests,))
+        if updated_requests:
+            for key in self.tags.keys:
+                Trace.trace(TR+23,"key %s"% (key,))
+                if key in (updated_requests.keys()):
+                    tags_toreplace.append((key, updated_requests[key]))
+
+            Trace.trace(TR+23," Atomic_Request_Queue:update:tags to replace: %s"%(tags_toreplace,))
+            for key, request in tags_toreplace:
+                Trace.trace(TR+23," Atomic_Request_Queue:update:replacing0 : %s(%s) %s(%s)"%(request, request.pri, updated_rq, updated_rq.pri))
+                if request.unique_id != updated_rq.unique_id: # do not update request which has been just updated 
+                    Trace.trace(TR+23," Atomic_Request_Queue:update:replacing: %s(%s) with %s(%s)"%
+                            (self.ref[key], self.ref[key].pri, request, request.pri))
+                    self.tags.rm(self.ref[key], key)
+                    self.tags.put(request, key)
+                    del(self.ref[key])
+                    self.ref[key] = request
+            
     # see how many different keys has tags list
     # needed for fair share distribution
     def get_tags(self):
@@ -880,6 +934,8 @@ class Atomic_Request_Queue:
                         break
             else:
                 record = rq
+        if record:
+            record.ticket['encp']['curpri'] = record.pri
         Trace.trace(TR+21,"Atomic_Request_Queue: get returning %s" % (record,))
         return record
 
@@ -1199,7 +1255,6 @@ class Request_Queue:
                 Trace.trace(TR+22, "get_admin_request: delete %s in %s"%(record.ticket['fc']['external_label'], record))
                 del(record.ticket['fc']['external_label'])
             self.processed_requests.append(record)
-
         return record
 
     def get_queue(self):
@@ -1815,12 +1870,212 @@ def unit_test_bz_774():
         print "NONE"
         
         
+def unit_test_bz_924():
+    # Unit test for priority update.
+    # Check that priority gets updated correctly
+    # and requests get picked according to updated priority.
+    # For test results eead the 'comment' values of tickets
+    # and check the order.
+    # The requests in this test are as
+    # request   volume priority
+    # 1         vol1       1
+    # 2         vol2       2
+    # 3         vol2       2
+    # 4         vol2       2
+    # 5         vol2       2
+    # 6         vol1       2
+    # requests 1 and get into the queue
+    # without any delay
+    # Then after 62 secongs get is issued which should pull the request 2 (priority 2).
+    # When this request is deleted the queue gets updated raising
+    # priority of request 1 to 2.
+    # Then request 3 gets into the queue.
+    # Then after 62 secondg get is issued which should pull request 1 it has now prority 2,
+    # same as priority of request 3, but request 1 is older.
+    # And so on.
+    
+    global AGE_TIME
+    AGE_TIME= 1 # 1 minute
+    pending_work = Request_Queue()
+    waiting_time = 62 # 62 seconds is enough for request priority to grow
+    
+    #Trace.do_print(423) # uncomment this line for debugging
+
+    t1={}
+    t1["encp"]={}
+    t1['fc'] = {}
+    t1['vc'] = {}
+    t1["times"]={}
+    t1["unique_id"]=1
+    t1["encp"]["basepri"]=1
+    t1['encp']['adminpri'] = -1
+    t1["times"]["t0"]=time.time()
+    t1['work'] = 'read_from_hsm'
+    t1['fc']['external_label'] = 'vol1'
+    t1['fc']['location_cookie'] = 5
+    t1['vc']['storage_group'] = 'D0'
+    t1['callback_addr'] = ('131.225.13.129', 7000)
+    t1['comment'] = "Come out order 2"
+    print "PUT",t1 
+    res = pending_work.put(t1)
+    #print "RESULT",res, t1['fc']['external_label']
+
+    t2={}
+    t2["encp"]={}
+    t2['fc'] = {}
+    t2['vc'] = {}
+    t2["times"]={}
+    t2["unique_id"]=2
+    t2["encp"]["basepri"]=2
+    t2['encp']['adminpri'] = -1
+    t2["times"]["t0"]=time.time()
+    t2['work'] = 'read_from_hsm'
+    t2['fc']['external_label'] = 'vol2'
+    t2['fc']['location_cookie'] = 2
+    t2['vc']['storage_group'] = 'D0'
+    t2['callback_addr'] = ('131.225.13.129', 7000)
+    t2['comment'] = "Come out order 1"
+    print "PUT",t2 
+    res = pending_work.put(t2)
+    #print "RESULT",res, t2['fc']['external_label']
+
+    print "Waiting %s s"%(waiting_time,)
+    time.sleep(waiting_time)
+    #pending_work.wprint()
+    pending_work.start_cycle()
+    
+    rq = pending_work.get()
+    pending_work.delete(rq)
+    print "RQ1", rq.ticket
+    
+    t2={}
+    t2["encp"]={}
+    t2['fc'] = {}
+    t2['vc'] = {}
+    t2["times"]={}
+    t2["unique_id"]=3
+    t2["encp"]["basepri"]=2
+    t2['encp']['adminpri'] = -1
+    t2["times"]["t0"]=time.time()
+    t2['work'] = 'read_from_hsm'
+    t2['fc']['external_label'] = 'vol2'
+    t2['fc']['location_cookie'] = 2
+    t2['vc']['storage_group'] = 'D0'
+    t2['callback_addr'] = ('131.225.13.129', 7000)
+    t2['comment'] = "Come out order 3"
+    print "PUT",t2 
+    res = pending_work.put(t2)
+    #print "RESULT",res, t2['fc']['external_label']
+
+    print "Waiting %s s"%(waiting_time,)
+    time.sleep(waiting_time)
+    #pending_work.wprint()
+    pending_work.start_cycle()
+    
+    rq = pending_work.get()
+    pending_work.delete(rq)
+    print "RQ2", rq.ticket
+
+    t2={}
+    t2["encp"]={}
+    t2['fc'] = {}
+    t2['vc'] = {}
+    t2["times"]={}
+    t2["unique_id"]=4
+    t2["encp"]["basepri"]=2
+    t2['encp']['adminpri'] = -1
+    t2["times"]["t0"]=time.time()
+    t2['work'] = 'read_from_hsm'
+    t2['fc']['external_label'] = 'vol2'
+    t2['fc']['location_cookie'] = 2
+    t2['vc']['storage_group'] = 'D0'
+    t2['callback_addr'] = ('131.225.13.129', 7000)
+    t2['comment'] = "Come out order 4"
+    print "PUT",t2 
+    res = pending_work.put(t2)
+    #print "RESULT",res, t2['fc']['external_label']
+
+    print "Waiting %s s"%(waiting_time,)
+    time.sleep(waiting_time)
+    #pending_work.wprint()
+    pending_work.start_cycle()
+    
+    rq = pending_work.get()
+    pending_work.delete(rq)
+    print "RQ3", rq.ticket
+
+    t2={}
+    t2["encp"]={}
+    t2['fc'] = {}
+    t2['vc'] = {}
+    t2["times"]={}
+    t2["unique_id"]=5
+    t2["encp"]["basepri"]=2
+    t2['encp']['adminpri'] = -1
+    t2["times"]["t0"]=time.time()
+    t2['work'] = 'read_from_hsm'
+    t2['fc']['external_label'] = 'vol2'
+    t2['fc']['location_cookie'] = 2
+    t2['vc']['storage_group'] = 'D0'
+    t2['callback_addr'] = ('131.225.13.129', 7000)
+    t2['comment'] = "Come out order 5"
+    print "PUT",t2 
+    res = pending_work.put(t2)
+    #print "RESULT",res, t2['fc']['external_label']
+
+    print "Waiting %s s"%(waiting_time,)
+    time.sleep(waiting_time)
+    #pending_work.wprint()
+    pending_work.start_cycle()
+    
+    rq = pending_work.get()
+    pending_work.delete(rq)
+    print "RQ4", rq.ticket
+
+    t1={}
+    t1["encp"]={}
+    t1['fc'] = {}
+    t1['vc'] = {}
+    t1["times"]={}
+    t1["unique_id"]=6
+    t1["encp"]["basepri"]=2
+    t1['encp']['adminpri'] = -1
+    t1["times"]["t0"]=time.time()
+    t1['work'] = 'read_from_hsm'
+    t1['fc']['external_label'] = 'vol1'
+    t1['fc']['location_cookie'] = 5
+    t1['vc']['storage_group'] = 'D0'
+    t1['callback_addr'] = ('131.225.13.129', 7000)
+    t1['comment'] = "Come out order 6"
+    print "PUT",t1 
+    res = pending_work.put(t1)
+    #print "RESULT",res, t1['fc']['external_label']
+
+    print "Waiting %s s"%(waiting_time,)
+    time.sleep(waiting_time)
+    #pending_work.wprint()
+    pending_work.start_cycle()
+    
+    rq = pending_work.get()
+    pending_work.delete(rq)
+    print "RQ5", rq.ticket
+
+    #pending_work.wprint()
+    rq = pending_work.get()
+    pending_work.delete(rq)
+    print "RQ6", rq.ticket
+    
+    
+
+
 def usage(prog_name):
     print "usage: %s arg"%(prog_name,)
     print "where arg is"
     print "0 - main unit test"
     print "1 - unit test for bugzilla ticket 769 (http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=769)"
-
+    print "2 - unit test for bugzilla ticket 774 (http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=774)"
+    print "3 - unit test for update priority:  bugzilla ticket 924 (http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=924)"
+    
 if __name__ == "__main__":
     import os
     if len(sys.argv) == 2:
@@ -1833,6 +2088,10 @@ if __name__ == "__main__":
         elif int(sys.argv[1]) == 2:
             unit_test_bz_774()
             os._exit(0)
+        elif int(sys.argv[1]) == 3:
+            unit_test_bz_924()
+            os._exit(0)
+            
     usage(sys.argv[0])
     os._exit(1)
     
