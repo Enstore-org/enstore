@@ -88,7 +88,7 @@ def this_host():
                 continue
             try:
                 rc = socket.gethostbyaddr(ip)
-            except (socket.error, socket.herror, socket.gaierror):
+            except (socket.error, socket.herror, socket.gaierror), msg:
                 try:
                     message = "unable to obtain hostname information: %s\n" \
                               % (str(msg),)
