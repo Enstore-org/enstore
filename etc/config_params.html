@@ -94,13 +94,21 @@ corresponding server when generating the SAAG page, and will not use
 </th>
 </tr>
 
-<tr><td><a NAME="allow">lock</a></td><td>allow host access on a per storage group. 
+<tr><td><a NAME="allow">allow</a></td><td>allow host access on a per storage group. 
 	      </td>
 	      <td>Optional</td><td>None</td>
 </tr><tr><td><a NAME="lock">lock</a></td><td>if specified LM will start in
 	      this state. 
-	      Allowed values:locked, unlocked, ignore, pause, nowrite,
-	      noread</td>
+	      Allowed values:<br>lock - reject encp requests, give
+	      out works in the pending queue to movers<br>
+	      unlocked<br>
+	      ignore - do not put encp requests into pending queue,
+	      but return ok to encp<br> 
+	      pause - same as ignore, but also do not give out works
+	      in the pending<br>
+	      moverlock - reject mover requests<br>
+	      nowrite - locked for write requests<br>
+	      noread - locked for read requests</td>
 	      <td>Optional</td><td>unlocked</td>
 </tr>
 <!--<tr><td><a NAME="max_encp_retries">max_encp_retries</a></td><td>maximal number of encp retries for a given LM</td></tr>-->
@@ -935,7 +943,7 @@ Uses only general keys (along with database keys which are the same
 <p>  
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Thu Jun 24 15:45:04 CDT 2010
+Last modified: Thu Sep 23 10:19:35 CDT 2010
 <!-- hhmts end -->
   </body>
 </html>
