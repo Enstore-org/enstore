@@ -3715,6 +3715,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.lm_address = ticket['lm']['address']
             except KeyError:
                 self.lm_address = ('none',0)
+        ##NB: encp v2_5 supplies this information for writes but not reads. Somebody fix this!
+        try:
+            client_hostname = ticket['wrapper']['machine'][1]
+        except KeyError:
+            client_hostname = ''
+        self.client_hostname = client_hostname
+        
         Trace.trace(10, "setup transfer1 %s"%(ticket,))
         self.tr_failed = 0
         self.current_library = ticket['vc'].get('library', None)
@@ -4159,14 +4166,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_failed(e_errors.BAD_FILE_SIZE, "bad file size is %s"%(self.bytes_to_transfer,), error_source=USER, dismount_allowed=0)
             
             return
-        ##NB: encp v2_5 supplies this information for writes but not reads. Somebody fix this!
-        try:
-            client_hostname = self.current_work_ticket['wrapper']['machine'][1]
-        except KeyError:
-            client_hostname = ''
-        self.client_hostname = client_hostname
-        if client_hostname:
-            client_filename = client_hostname + ":" + client_filename
+
+        if self.client_hostname:
+            client_filename = self.client_hostname + ":" + client_filename
         if self.wrapper:
             self.current_work_ticket['mover']['compression'] = self.compression
             if self.mode != ASSERT:
@@ -5034,6 +5036,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             ticket = self.current_work_ticket
             data_ip=self.config.get("data_ip",None)
+            Trace.trace(10, "data ip %s"%(data_ip,))
             if (not self.method) or self.method and self.method != 'read_next':
                 host, port, self.listen_socket = callback.get_callback(ip=data_ip)
                 self.host = host
@@ -5296,12 +5299,23 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # results in connection reset if file is trasferred on the same machine
                     # where mover runs.
                     # this is why we bind to device only if network interfaces are different
-                    data_interface=hostaddr.interface_name(data_ip)
-                    host_interface=hostaddr.interface_name(self.host)
+
+                    host_addr = self.control_socket.getsockname()[0]
+                    client_host_addr = hostaddr.name_to_address(self.client_hostname)
+                    data_interface = hostaddr.interface_name(data_ip)
+                    #host_interface = hostaddr.interface_name(host_addr)
                     
-                    # bind to device only if data interface card and host interface card are different
+                    Trace.trace(10, "client_host_addr %s host_addr %s data_ip %s"%
+                                (client_host_addr, host_addr, data_ip))
+                    # Bind to device only if client and server are not on the same host
                     # otherwise the connection on the same host is refused
-                    if data_interface and (data_interface != host_interface):
+
+                    if ((client_host_addr == host_addr) or # client comes from the same host
+                        (client_host_addr == data_ip)): # client comes on data ip of the same host
+                        Trace.trace(10, "pass")
+                        pass
+                    else:
+                        Trace.trace(10, "bind client socket to %s"%(data_interface,))
                         status=socket_ext.bindtodev(self.client_socket.fileno(),data_interface)
                         if status:
                             Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(data_interface,os.strerror(status)))
@@ -6740,6 +6754,13 @@ class DiskMover(Mover):
             self.lm_address = ticket['lm']['address']
         except KeyError:
             self.lm_address = ('none',0)
+
+        ##NB: encp v2_5 supplies this information for writes but not reads. Somebody fix this!
+        try:
+            client_hostname = ticket['wrapper']['machine'][1]
+        except KeyError:
+            client_hostname = ''
+        self.client_hostname = client_hostname
         Trace.trace(10, "setup transfer1 %s"%(ticket,))
         self.tr_failed = 0
         self.current_library = ticket['vc'].get('library', None)
@@ -6880,14 +6901,8 @@ class DiskMover(Mover):
         self.expected_transfer_time = self.bytes_to_write*1.0 / self.max_rate
         self.real_transfer_time  = 0.
 
-        ##NB: encp v2_5 supplies this information for writes but not reads. Somebody fix this!
-        try:
-            client_hostname = self.current_work_ticket['wrapper']['machine'][1]
-        except KeyError:
-            client_hostname = ''
-        self.client_hostname = client_hostname
-        if client_hostname:
-            client_filename = client_hostname + ":" + client_filename
+        if self.client_hostname:
+            client_filename = self.client_hostname + ":" + client_filename
                                 
         if self.mode == READ:
             self.file = fc['location_cookie']
