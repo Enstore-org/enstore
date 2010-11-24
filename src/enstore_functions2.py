@@ -854,3 +854,33 @@ def is_migration_related_file_family(ff):
 
     return is_duplication_file_family(ff)
 
+###########################################################################
+### Function, convert_version(), and helper functions to convert an encp
+### version string into compoenent parts for >, < and == comparision.
+###########################################################################
+
+#  This one splits a string using spaces and punctuation as seperators.
+re_split_components = re.compile("[a-zA-Z0-9]+")
+#   This one splits groups of letters and numbers.
+re_split_version = re.compile("[a-zA-Z]+|[0-9]+")
+
+#If the value is all digits, convert the string to an int.
+#Don't consider list types internally.
+def __int_convert(value):
+    if value.isdigit():
+        return int(value)  #Convert strings of only digits.
+    else:
+        return value  #Leave everything else alone.
+
+#Return the version broken up into groups of letters and numbers.
+# "v3_10_1a" becomes [['v', 3], [10], [1, 'a']]
+# The python <, > and = operators can be used to compare two return values.
+def convert_version(version):
+    #Use regular experssion to break the version string into its
+    # component parts, then seperate each component part into letter and
+    # number parts.  Digits are converted to integers for correct
+    # comparisions; use the fact that there are only two levels deep
+    # possible after the second regular expression return to skip uncecessary
+    # checks.
+    return [map(__int_convert, item) for item in map(re_split_version.findall,
+                                                     re_split_components.findall(version))]

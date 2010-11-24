@@ -71,34 +71,6 @@ DEBUG_LOG=9 # make entries in DEBUGLOG file at this level
 #                       240 internal loops
 # Library manager 11 - 99
 
-
-
-def convert_version(version):
-    if not version:
-        return version
-    v1 = version.replace('-','_')
-    v2 = v1.replace('_','.')
-    s= v2.split('.')
-    ipart = 0.
-    fract = 0.
-
-    for ch in s[0]:
-        if ch.isdigit():
-            ipart = ipart * 10. +(ord(ch)-ord('0'))*1.
-    l = len(s[1])-1
-    for i in range(0, len(s[1])):
-        if s[1][i].isalpha():
-            if l > 0: l = l-1
-    for i in range(0, len(s[1])):
-        if s[1][l].isdigit():
-            fract = fract + (ord(s[1][l])-ord('0'))*0.1**(l+1)
-            l = l-1
-            if l < 0:
-                break
-    return ipart+fract
-
-
-
 def get_storage_group(dict):
     sg = dict.get('storage_group', None)
     if not sg:
@@ -1268,19 +1240,22 @@ class LibraryManagerMethods:
 
 
     def restrict_version_access(self, storage_group, legal_version, ticket):
+        rc = False
         Trace.trace(self.trace_level+3, "restrict_version_access %s %s %s"%(storage_group,
                                                             legal_version,
                                                             ticket))
         if storage_group == ticket['vc']['storage_group']:
+            c_legal_version = enstore_functions2.convert_version(legal_version)
             if ticket.has_key('version'):
                 version=ticket['version'].split()[0]
+                c_version = enstore_functions2.convert_version(version)
             else:
-                version = ''
-            if legal_version > version:
+                c_version = (0, "")
+            if c_legal_version > c_version:
+                rc = True # restrict access
                 ticket['status'] = (e_errors.VERSION_MISMATCH,
                                     "encp version too old: %s. Must be not older than %s"%(version, legal_version,))
-                return 1
-        return 0
+        return rc
 
 
     ## check if there are any additional restrictions
@@ -2577,8 +2552,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         sg_limits = None
         if self.keys.has_key('storage_group_limits'):
             sg_limits = self.keys['storage_group_limits']
-        v = self.keys.get('legal_encp_version','')
-        self.legal_encp_version = (v, convert_version(v))
+        self.legal_encp_version = self.keys.get('legal_encp_version','')
         self.suspect_vol_expiration_to = self.keys.get('suspect_volume_expiration_time',None)
         self.share_movers = self.keys.get('share_movers', None) # for the federation to fair share
                                                                 # movers across multiple library managers
@@ -2801,16 +2775,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 error_detected = True
 
         if not error_detected:
-            if ticket.has_key('version'):
-                version=ticket['version'].split()[0]
-            else:
-                version = ''
-            if self.legal_encp_version[0]:
-                if self.legal_encp_version[0] > version:
-                    ticket['status'] = (e_errors.VERSION_MISMATCH,
-                                        "encp version too old: %s. Must be not older than %s"%
-                                        (version, self.legal_encp_version[0],))
-                    error_detected = True
+            error_detected = self.restrict_version_access(ticket['vc']['storage_group'], self.legal_encp_version, ticket)
 
         if not error_detected:
             # check if request is alredy in the queue
@@ -3678,7 +3643,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 vol_info = self.inquire_vol(w["fc"]["external_label"], w['vc']['address'])
                 if vol_info['status'][0] == e_errors.OK:
                     w['vc'].update(vol_info)
-                
 	    log_add_to_wam_queue(w['vc'])
             #self.work_at_movers.append(w)
             Trace.trace(self.my_trace_level+1, "mover_bound_volume: appending to work_at_movers %s"%(w,))
