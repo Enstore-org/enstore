@@ -248,3 +248,23 @@ def extract_file_number(location_cookie):
         
     return None
 
+
+# convert file id (pnfs id)
+# to local data file path
+def file_id2path(root, file_id):
+    # based on Alex suggestion
+    # for even distrbution of files in directories
+    # example:
+    #root = "/data_files"
+    #file_id = "00001E9281CFB7054652B62737ED1ED3B3F6"
+    #return value:
+    # "/data_files/3816/3387/00001E9281CFB7054652B62737ED1ED3B3F6"
+
+    file_id_hex = int("0x"+file_id, 16)
+    first = "%s"%((file_id_hex & 0xFFF) ^ ( (file_id_hex >> 24) & 0xFFF),)
+    second = "%s"%((file_id_hex>>12) & 0xFFF,)
+    path = os.path.join(root, first, second, file_id) 
+    
+    return path
+
+

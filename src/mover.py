@@ -38,6 +38,7 @@ import monitored_server
 import inquisitor_client
 #import enstore_functions
 import enstore_functions2
+import enstore_functions3
 import enstore_constants
 import option
 import dispatching_worker
@@ -6362,24 +6363,6 @@ class MoverInterface(generic_server.GenericServerInterface):
         else:
             self.name = self.args[0]
 
-# convert file id (pnfs id)
-# to local data file path
-def file_id2path(root, file_id):
-    # based on Alex suggestion
-    # for even distrbution of files in directories
-    # example:
-    #root = "/data_files"
-    #file_id = "00001E9281CFB7054652B62737ED1ED3B3F6"
-    #return value:
-    # "/data_files/3816/3387/00001E9281CFB7054652B62737ED1ED3B3F6"
-
-    file_id_hex = int("0x"+file_id, 16)
-    first = "%s"%((file_id_hex & 0xFFF) ^ ( (file_id_hex >> 24) & 0xFFF),)
-    second = "%s"%((file_id_hex>>12) & 0xFFF,)
-    path = os.path.join(root, first, second, file_id) 
-    
-    return path
-
 class DiskMover(Mover):
 
     def device_dump_S(self, ticket):
@@ -6938,7 +6921,7 @@ class DiskMover(Mover):
             work_file = self.file
         elif self.mode == WRITE:
             if fc.has_key('pnfsid'):
-                self.file = file_id2path(self.device, fc['pnfsid'])
+                self.file = enstore_functions3.file_id2path(self.device, fc['pnfsid'])
                 work_file = self.tmp_file 
                 # create directory for file
                 dir_name = os.path.dirname(self.file)
