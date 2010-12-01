@@ -1326,8 +1326,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.force_clean = 0
         # check if device exists
         if not os.path.exists(self.config['device']):
-            Trace.alarm(e_errors.ALARM, "Cannot start. Device %s does not exist"%(self.config['device'],))
-            sys.exit(-1)
+            if isinstance(self, DiskMover):
+                # try to create disk data directory
+                try:
+                    os.makedirs(self.config['device'], 0755)
+                except OSError, detail:
+                    if detail[0] != errno.EEXIST:
+                        raise OSError(detail)
+            else:
+                Trace.alarm(e_errors.ALARM, "Cannot start. Device %s does not exist"%(self.config['device'],))
+                sys.exit(-1)
 
         #################################
         ### Mover type dependent settings
@@ -1343,6 +1351,28 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.max_rate = self.config.get('max_rate', 100*MB) #XXX
             self.ip_map = self.config.get('ip_map','cluster_fs')
             # for cluster fs all files are available for any disk mover
+            # Temporay file for write operations.
+            # The data is written into this file.
+            # After write completes this file is moved into real destination file.
+            # If write does not complete due to mover crash or
+            # Other unexpected halt this file does not get removed
+            # Indicating a problem with file transfer.
+            tmp_dir = self.config.get("tmp_dir", "%s/tmp"%(self.config['device'],))
+            self.tmp_file = os.path.join(tmp_dir, self.name)
+            try:
+                os.makedirs(tmp_dir, 0755)
+            except OSError, detail:
+                if detail[0] != errno.EEXIST:
+                    Trace.alarm(e_errors.ALARM, "Cannot start. OSError %s"%(str(detail),))
+                    sys.exit(-1)
+            # check if tmp file exists on start
+            try:
+                f = open(self.tmp_file, 'r')
+            
+            except IOError, detail:
+                if detail[0] != errno.ENOENT:
+                    Trace.alarm(e_errors.ALARM, "Cannot start. OSError %s"%(str(detail),))
+                    sys.exit(-1)
         else:
             self.do_eject = 1
             self.do_cleaning = 1
@@ -6331,27 +6361,24 @@ class MoverInterface(generic_server.GenericServerInterface):
             os._exit(1)
         else:
             self.name = self.args[0]
+
 # convert file id (pnfs id)
 # to local data file path
 def file_id2path(root, file_id):
+    # based on Alex suggestion
+    # for even distrbution of files in directories
     # example:
     #root = "/data_files"
     #file_id = "00001E9281CFB7054652B62737ED1ED3B3F6"
     #return value:
-    # "/data_files/A/000/01E/928/1CF/B70/546/52B/627/37E/D1E/D3B/00001E9281CFB7054652B62737ED1ED3B3F6"
+    # "/data_files/3816/3387/00001E9281CFB7054652B62737ED1ED3B3F6"
 
-    path = [root]
-    d = "/"
-    i = 0
-    nl = 3
-    j = i + nl
-    while j <= len(file_id) - nl:
-        path.append(file_id[i:j])
-        i = i + nl
-        j = j + nl
-    path.append(file_id)
+    file_id_hex = int("0x"+file_id, 16)
+    first = "%s"%((file_id_hex & 0xFFF) ^ ( (file_id_hex >> 24) & 0xFFF),)
+    second = "%s"%((file_id_hex>>12) & 0xFFF,)
+    path = os.path.join(root, first, second, file_id) 
     
-    return d.join(path)
+    return path
 
 class DiskMover(Mover):
 
@@ -6908,9 +6935,19 @@ class DiskMover(Mover):
             self.file = fc['location_cookie']
             self.files = (pnfs_filename, client_filename)
             self.buffer.header_size = None
+            work_file = self.file
         elif self.mode == WRITE:
             if fc.has_key('pnfsid'):
                 self.file = file_id2path(self.device, fc['pnfsid'])
+                work_file = self.tmp_file 
+                # create directory for file
+                dir_name = os.path.dirname(self.file)
+                if not os.path.exists(dir_name):
+                    try:
+                        os.makedirs(dir_name, 0755)
+                    except Exception, detail:
+                        if detail[0] != errno.EEXIST:
+                            self.transfer_failed(e_errors.OSERROR, str(detail), error_source=DRIVE)
                 self.files = (client_filename, pnfs_filename)
             else:
                 self.transfer_failed(e_errors.MALFORMED, 'expected Key "pnfsid". Current dictionary %s'%(fc,), error_source=USER)
@@ -6927,7 +6964,7 @@ class DiskMover(Mover):
             self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
 
         Trace.trace(29,"FILE NAME %s"%(self.file,))
-        self.position_media(self.file)
+        self.position_media(work_file)
         
     def position_media(self, filename):
         x = filename # to trick pychecker
@@ -6935,15 +6972,15 @@ class DiskMover(Mover):
         err = None
         Trace.trace(10, "position media")
         try:
-            have_tape = self.tape_driver.open(self.file, self.mode, retry_count=30)
-        except OSError, err:
-            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
+            have_tape = self.tape_driver.open(filename, self.mode, retry_count=30)
+        except Exception, err:
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=DRIVE)
             self.idle()
             return
         if have_tape == 1:
             err = None
         else:
-            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=DRIVE)
             self.idle()
             return
 
@@ -6965,11 +7002,10 @@ class DiskMover(Mover):
 
         self.log_state()
         self.tape_driver.close()
-        if self.mode == WRITE:
-            try:
-                os.unlink(self.file)
-            except:
-                pass
+        try:
+            os.unlink(self.tmp_file)
+        except:
+            pass
         if self.tr_failed:
             return          ## this function has been alredy called in the other thread
         self.tr_failed = 1
@@ -7052,6 +7088,17 @@ class DiskMover(Mover):
         self.transfers_completed = self.transfers_completed + 1
         self.net_driver.close()
         self.tape_driver.close()
+        if self.mode == WRITE:
+            # move temporary file to destination files
+            try:
+                os.rename(self.tmp_file, self.file)
+            except Exception, detail:
+                Trace.alarm(e_errors.ALARM, "error saving file %s to %s. Detail %s"%
+                            (self.tmp_file, self.file, str(detail)))
+                self.transfer_failed(e_errors.OSERROR, 'transfer failure: %s' % (str(detail),), error_source=DRIVE)
+                self.idle()
+            
+ 
         now = time.time()
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
