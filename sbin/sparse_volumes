@@ -29,7 +29,7 @@ output_file=$inventory_dir/$fname.html
 temp_file=$temp_dir/$fname$$.temp
 
 #Remove the temporary file on failure.
-trap "rm -f $temp_file; exit 1" 0
+trap "rm -f $temp_file; exit 1" HUP INT QUIT ABRT ALRM TERM
 
 #If we write to a temp file, and swap in it when we are done, there will
 # not be any time when the page is empty because the scipt is still writing
