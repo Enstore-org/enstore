@@ -5462,8 +5462,9 @@ def __submit_request_recv(response_ticket, ticket = {}):
                           + str(response_ticket['status']), out_fp=sys.stderr)
         else:
             Trace.log(e_errors.ERROR,
-                      "Ticket receive failed for %s - retrying" % infilepath)
-            Trace.message(ERROR_LEVEL, "Submission to LM failed: - retrying" \
+                      "Ticket receive failed for %s - retrying: %s" %
+                      (infilepath, response_ticket['status']))
+            Trace.message(ERROR_LEVEL, "Submission to LM failed - retrying:" \
                           + str(response_ticket['status']), out_fp=sys.stderr)
 
         #If the ticket was malformed, then we want to see what was sent
