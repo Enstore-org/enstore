@@ -224,6 +224,8 @@ class SortedList:
             if (r and r.ticket.has_key('routing_callback_addr') and
                 request.ticket.has_key('routing_callback_addr')):
                 r.ticket['routing_callback_addr'] = request.ticket['routing_callback_addr']
+        Trace.trace(TR+23,"SortedList.put: returning res %s stat %s"%
+                    (res, stat))
         return res, stat
 
     # get a record from the list
@@ -394,7 +396,6 @@ class SortedList:
              
         # update priority
         self.update()
-
 
     # change priority
     def change_pri(self, record, pri):
@@ -721,6 +722,9 @@ class Atomic_Request_Queue:
                 self.tags.put(request, key)
                 self.ref[key] = request
                 updated_rq = request
+        if not updated_rq:
+            # nothing to update
+            return
         #
         # now update all tags and refs if needed
         #
@@ -798,7 +802,6 @@ class Atomic_Request_Queue:
         #if hp_rq and rq != hp_rq:
         self.update(rq,key)
         rc = rq, e_errors.OK
-        #else: rc = None, e_errors.UNKNOWN
         return rc
     
 
@@ -1067,6 +1070,9 @@ class Request_Queue:
         try:
             rq, stat = queue.put(basepri, ticket)
         except:
+            exc, detail, tb = sys.exc_info()
+            Trace.handle_error(exc, detail, tb)
+            del(tb)
             rq = None
             stat = None
         #self._lock.release()
