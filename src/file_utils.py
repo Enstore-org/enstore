@@ -17,7 +17,9 @@ import stat
 import threading
 import types
 import errno
+import time
 
+# enstore imports
 import Trace
 import atomic
 
@@ -297,15 +299,45 @@ def rmdir(path):
             #ignore already deleted files
             if msg.errno not in [errno.ENOENT]:
                 raise OSError, msg
+
+#Helper function for wrapper() to retry ESTALE errors.
+RETRY_COUNT = 4
+def __wrapper(function, args=()):
+    #import threading, Trace
+    #Trace.message(0, "INSIDE _wrapper() %s %s %s %s %s %s" % (function.__name__, args, os.geteuid(), os.getegid(), threading.currentThread().getName(), time.ctime()))
+    count = 0
+    while count < RETRY_COUNT:
+        try:
+            rtn = function(*args)
+        except (OSError, IOError), msg:
+            if msg.errno in [errno.ESTALE]:
+                count = count + 1
+                if count < RETRY_COUNT:
+                    print "COUNT:", count
+                    time.sleep(1)
+                    continue
+                else:
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        return rtn
+
+    raise OSError(errno.EIO, "Unknown error")
+            
 #
 # wrapper to call os functions that takes care of euid/eid
 #
-def wrapper(function,args=()):
+def wrapper(function, args=()):
+        
+    if type(args) != types.TupleType:
+        use_args = (args,)
+    else:
+        use_args = args
+
     try:
-        if type(args) != types.TupleType:
-            rtn = apply(function, (args,))
-        else:
-            rtn = apply(function, args)
+        rtn = __wrapper(function, use_args)
     except (OSError, IOError), msg:
         if msg.errno in [errno.EACCES, errno.EPERM] and \
                os.getuid() == 0:
@@ -313,7 +345,8 @@ def wrapper(function,args=()):
             current_euid = os.geteuid()
             current_egid = os.getegid()
 
-            #We might need to go back to being root again.
+            #We might need to go back to being root again to access
+            # the target file or directory.
             try:
                 if current_euid != 0:
                     os.seteuid(0)
@@ -323,40 +356,66 @@ def wrapper(function,args=()):
                 release_lock_euid_egid()
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-            #Match the ownership of the file.
+            #The next thing to try is doing it again while being root.
             try:
-                if function == os.stat:
-                   use_function = os.stat
-                elif function == os.fstat:
-                    use_function = os.fstat
-                elif function == os.lstat:
-                    use_function = os.lstat
+                #rtn = function(*use_args)
+                rtn = __wrapper(function, use_args)
+            except (OSError, IOError), msg2:  #Anticipated errors.
+                if msg2.errno in [errno.EACCES, errno.EPERM] and \
+                       len(args) > 0:
+                    #Root does not have modify permissions for
+                    # non-trused PNFS file systems or for NFS/Chimera
+                    # without the no_root_squash mount option.  Match
+                    # the ownership of the file for one last thing
+                    # to try.
+                    try:
+                        if function == os.stat:
+                           use_function = os.stat
+                        elif function == os.fstat:
+                            use_function = os.fstat
+                        elif function == os.lstat:
+                            use_function = os.lstat
+                        elif len(args) and type(args[0]) == types.IntType:
+                            use_function = os.fstat
+                        else:
+                            #Are there situations that this is not correct?
+                            use_function = os.stat
+
+                        fstat = use_function(args[0])
+
+                        if fstat[stat.ST_GID] != 0:
+                            os.setegid(fstat[stat.ST_GID])
+                        if fstat[stat.ST_UID] != 0:
+                            os.seteuid(fstat[stat.ST_UID])
+                    except:
+                        release_lock_euid_egid()
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+
+                    #Perform the requested function, this time as the
+                    # correct UID and GID.  This can still fail with
+                    # permission errors if the owner does not have
+                    # execute and read permissions for all directories
+                    # in the path.
+                    try:
+                        #rtn = function(*use_args)
+                        rtn = __wrapper(function, use_args)
+                    except (OSError, IOError):  #Anticipated errors.
+                        release_lock_euid_egid()
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+                    except:  #Un-anticipated errors.
+                        release_lock_euid_egid()
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
                 else:
-                    #Are there situations that this is not correct?
-                    use_function = os.stat
-
-                fstat = use_function(args[0])
-
-                if fstat[stat.ST_GID] != 0:
-                    os.setegid(fstat[stat.ST_GID])
-                if fstat[stat.ST_UID] != 0:
-                    os.seteuid(fstat[stat.ST_UID])
-            except:
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            #Perform the requested function.
-            try:
-                if type(args) != types.TupleType:
-                    rtn =  apply(function, (args,))
-                else:
-                    rtn = apply(function, args)
-            except (OSError, IOError), msg:  #Anticipated errors.
-                release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+                    release_lock_euid_egid()
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
             except:  #Un-anticipated errors.
                 release_lock_euid_egid()
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+                raise sys.exc_info()[0], sys.exc_info()[1], \
+                      sys.exc_info()[2]
 
 
             try:
@@ -376,8 +435,8 @@ def wrapper(function,args=()):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             release_lock_euid_egid()
+            return rtn
         else:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     return rtn
-

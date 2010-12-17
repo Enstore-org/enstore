@@ -20,6 +20,9 @@ import copy
 import gc
 import signal
 import re
+import profile
+import pstats
+
 
 # enstore modules
 import info_client
@@ -1301,6 +1304,8 @@ def check_bit_file(bfid, bfid_info = None):
     except (OSError, IOError), msg:
         #For easier investigations, lets include the paths.
         sfs_path = getattr(msg, 'filename', "")
+        if sfs_path == None:
+            sfs_path = ""
         
         #The following list contains responses that we need to handle special.
         # These will accompany an errno of EEXIST.
@@ -1344,7 +1349,7 @@ def check_bit_file(bfid, bfid_info = None):
                 # does this check need to be furthur modified???
                 warn.append("migrated copy not marked deleted")
             else:
-                err.append("migration(%s)" % (msg.args[1],))
+                err.append("migration(%s)1" % (msg.args[1],))
         elif is_migrated_copy and file_record['deleted'] == "yes":
             pass #Normal situation after scan, not an error.
         elif is_migrated_copy and file_record['deleted'] == "unknown":
@@ -1380,11 +1385,11 @@ def check_bit_file(bfid, bfid_info = None):
                             # an error.
                             pass
                         else:
-                            err.append("migration(%s)" % (msg.args[1],))
+                            err.append("migration(%s)2" % (msg.args[1],))
                     else:
-                        err.append("migration(%s)" % (msg.args[1],))
+                        err.append("migration(%s)3" % (msg.args[1],))
             else:
-                err.append("migration(%s)" % (msg.args[1],))
+                err.append("migration(%s)4" % (msg.args[1],))
         elif is_migrated_to_copy and file_record['deleted'] == "yes":
             if msg.args[0] == errno.ENOENT:
                 #The file is marked deleted and not found in the storage
@@ -1401,7 +1406,7 @@ def check_bit_file(bfid, bfid_info = None):
                 # in its place.
                 pass #Normal situation
             else:
-                err.append("migration(%s)" % (msg.args[1]))
+                err.append("migration(%s)5" % (msg.args[1]))
         elif is_migrated_to_copy and file_record['deleted'] == "unknown":
             #Should never get here!
             err.append("failed (unknown) file found as migration destination")
@@ -1423,6 +1428,7 @@ def check_bit_file(bfid, bfid_info = None):
             info.append("deleted(no)")
         else:
             err.append(msg.args[1])
+
         errors_and_warnings(prefix + ' ' + sfs_path, err, warn, info)
         return
     except (ValueError,), msg:
@@ -2074,7 +2080,7 @@ class ScanfilesInterface(option.Interface):
         return (self.help_options, self.scanfile_options)
     
     #  define our specific parameters
-    parameters = ["[target_path [target_path_2 ...]]"] 
+    parameters = ["[target_path [target_path_2 ...]] | [bfid [bfid2 ...]]"] 
 
     scanfile_options = {
         #--bfid is considered obsolete
@@ -2103,7 +2109,7 @@ class ScanfilesInterface(option.Interface):
                          option.DEFAULT_NAME:"threaded",
                          option.DEFAULT_VALUE:1,
                          option.USER_LEVEL:option.USER,},
-        #--bfid is considered obsolete
+        #--vol is considered obsolete
         option.VOL:{option.HELP_STRING:"treat input as volumes",
                          option.VALUE_USAGE:option.IGNORED,
                          option.DEFAULT_VALUE:option.DEFAULT,
@@ -2214,18 +2220,19 @@ def do_work(intf):
     flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
     infc = info_client.infoClient(csc, flags = flags)
 
-    if intf_of_scanfiles.profile:
-        import profile
-        import pstats
-        profile.run("main(intf_of_scanfiles, file_object, file_list)", "/tmp/scanfiles_profile")
-        p = pstats.Stats("/tmp/scanfiles_profile")
-        p.sort_stats('cumulative').print_stats(100)
-    else:
-        main(intf_of_scanfiles, file_object, file_list)
+    main(intf_of_scanfiles, file_object, file_list)
 
 
 if __name__ == '__main__':
 
     intf_of_scanfiles = ScanfilesInterface(sys.argv, 0) # zero means admin
 
-    do_work(intf_of_scanfiles)
+    if intf_of_scanfiles.profile:
+        import profile
+        import pstats
+        profile.run("do_work(intf_of_scanfiles)",
+                    "/tmp/scanfiles_profile")
+        p = pstats.Stats("/tmp/scanfiles_profile")
+        p.sort_stats('cumulative').print_stats(100)
+    else:
+        do_work(intf_of_scanfiles)

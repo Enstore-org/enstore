@@ -18,6 +18,7 @@ import time
 import re
 import types
 import socket
+import threading
 
 # enstore imports
 import Trace
@@ -573,13 +574,18 @@ get_id = get_chimeraid
 
 ###############################################################################
 
+EMPTY_MOUNT_POINT = ("", (-1, ""))
+
 #Global cache.
-db_pnfsid_cache = {}
-last_db_tried = ("", (-1, ""))
+mount_points_cache = {}
+# Make copy, don't share reference.
+last_db_tried = EMPTY_MOUNT_POINT[:]
+# Lock globals.
+chimera_global_lock = threading.Lock()
 
 #Get currently mounted pnfs mountpoints.
 def parse_mtab():
-    global db_pnfsid_cache
+    global mount_points_cache
    
     #Different systems have different names for this file.
     # /etc/mtab: Linux, IRIX
@@ -601,7 +607,7 @@ def parse_mtab():
         mtab_data = []
 
     found_mountpoints = {}
-    index = len(db_pnfsid_cache)  #Keep these unique.
+    index = len(mount_points_cache)  #Keep these unique.
     for line in mtab_data:
         #The 2nd and 3rd items in the list are important to us here.
         data = line[:-1].split()
@@ -644,7 +650,7 @@ def parse_mtab():
                    # support .(get)(database) files.
         accessible = "enabled"  #enabled or disabled
 
-        for db_data in db_pnfsid_cache.keys():
+        for db_data in mount_points_cache.keys():
             db_data_split = db_data.split(":")
             #db_data_split[0] is the database name
             #db_data_split[1] is the database id, for Chimera always zero.
@@ -663,6 +669,10 @@ def parse_mtab():
                                               str(index))
             found_mountpoints[new_db_data] = (None, mp)  #(db_id, mp)
             index += 1
+
+    if not found_mountpoints:
+        add_mtab(EMPTY_MOUNT_POINT[0], EMPTY_MOUNT_POINT[1][0],
+                 EMPTY_MOUNT_POINT[1][1])
 
     return found_mountpoints
 
@@ -688,12 +698,17 @@ def get_last_db():
     global last_db_tried
     return last_db_tried
 
-def process_mtab():
-    global db_pnfsid_cache
+def _process_mtab():
+    pass
 
-    if not db_pnfsid_cache:
-        #Sets global db_pnfsid_cache.
-        db_pnfsid_cache = parse_mtab()
+def process_mtab():
+    global mount_points_cache
+
+    if not mount_points_cache:
+        #Sets global mount_points_cache.
+        mount_points_cache = parse_mtab()
+
+        #_process_mtab()  #Currently a no-op for Chimera.
 
     return [last_db_tried] + sort_mtab()
 
@@ -725,25 +740,55 @@ def __db_cmp(x, y):
     return 0
 
 def sort_mtab():
-    global db_pnfsid_cache
+    global mount_points_cache
 
-    search_list = db_pnfsid_cache.items()
-    #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
-    # the list and it will be sorted to the end of the list.
-    search_list.sort(lambda x, y: __db_cmp(x, y))
+    chimera_global_lock.acquire()
 
-    #import pprint
-    #pprint.pprint(search_list)
-    #sys.exit(1)
+    try:
+        search_list = mount_points_cache.items()
+        #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
+        # the list and it will be sorted to the end of the list.
+        search_list.sort(lambda x, y: __db_cmp(x, y))
+    except:
+        chimera_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+    chimera_global_lock.release()
     return search_list
 
 def add_mtab(db_info, db_num, db_mp):
-    global db_pnfsid_cache
+    global mount_points_cache
 
-    if db_info not in db_pnfsid_cache.keys():
-        db_pnfsid_cache[db_info] = (db_num, db_mp)
-        sort_mtab()
+    chimera_global_lock.acquire()
+
+    try:
+       if db_info not in mount_points_cache.keys():
+          mount_points_cache[db_info] = (db_num, db_mp)
+    except:
+        chimera_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    chimera_global_lock.release()
+
+#Return the mount points as a dictionary keyed by .(get)(database) values,
+# or just a single element if mount_point_key is set.
+def get_cache_by_db_info(db_info_key = None, default = None):
+    global mount_points_cache  #dictionary
+
+    chimera_global_lock.acquire()
+
+    try:
+        if db_info_key == None:
+            # Return copy for thread safety.
+            return_value = mount_points_cache[:]
+        else:
+            return_value = mount_points_cache.get(db_info_key, default)
+    except:
+        chimera_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    chimera_global_lock.release()
+    return return_value
 
 ###############################################################################
 
@@ -753,9 +798,11 @@ def get_enstore_admin_mount_point(chimeraid = None):
     list_of_admin_mountpoints = []
 
     #Get the list of pnfs mountpoints currently mounted.
-    mtab_results = parse_mtab()
+    mtab_results = process_mtab()
     
-    for db_num, mount_path in mtab_results.values():
+    for unused, (db_num, mount_path) in mtab_results:
+        if db_num == -1:
+            continue
         #db_num is not relavent with Chimera.  It is retained for compatibilty
         # with PNFS.
         #mount_path contains a string representing the directory that
@@ -787,9 +834,11 @@ def get_enstore_mount_point(chimeraid = None):
     list_of_admin_mountpoints = []
 
     #Get the list of pnfs mountpoints currently mounted.
-    mtab_results = parse_mtab()
+    mtab_results = process_mtab()
     
-    for db_num, mount_path in mtab_results.values():
+    for unused, (db_num, mount_path) in mtab_results:
+        if db_num == -1:
+            continue
         #if db_num != 0:  #Admin db has number 0.
         if mount_path[-8:] != "/pnfs/fs" and mount_path[-11:] != "/chimera/fs":
             if chimeraid == None:
@@ -1798,10 +1847,13 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     target_db_area = get_directory_name(db_dir)
                     #db_db_info = self.get_database(target_db_area)
                     # This is a hack for chimera
-                    # Instead of passing target_db_area which can be /pnfs we are passing db_dir which can be /pnfs/sekhri to get_database
-                    # The get_database will return the correct key. All this is perhaps not needed
+                    # Instead of passing target_db_area which can be /pnfs we
+                    # are passing db_dir which can be /pnfs/sekhri to
+                    # get_database().  The get_database will return the
+                    # correct key.
                     db_db_info = self.get_database(db_dir)
-                    db_data = db_pnfsid_cache.get(db_db_info, None)
+ #                   db_data = mount_points_cache.get(db_db_info, None)
+                    db_data = get_cache_by_db_info(db_db_info, None)
                     #Determine if we found the admin database (db_data[0] == 0)
                     # and we weren't explicitly looking for it
                     if db_data == None or \
@@ -1816,7 +1868,8 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         # for.
                         #print "db_dir:", db_dir
                         db_db_info = self.get_database(db_dir)
-                        db_data = db_pnfsid_cache.get(db_db_info, None)
+#                        db_data = mount_points_cache.get(db_db_info, None)
+                        db_data = get_cache_by_db_info(db_db_info, None)
                     if db_data != None:
                         if found_db_info != db_db_info:
                             #
@@ -1908,9 +1961,11 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                               get_directory_name(db_dir)
                                             db_db_info = \
                                               self.get_database(target_db_area)
-                                            db_data = \
-                                              db_pnfsid_cache.get(db_db_info,
-                                                                  None)
+#                                            db_data = \
+#                                              mount_points_cache.get(db_db_info,
+#                                                                  None)
+                                            db_data = get_cache_by_db_info(
+                                               db_db_info, None)
 
 
                                             #We just found the first one.
@@ -2013,7 +2068,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
        
         #return made-up data that is consistant with pnfs format
         val = (0, self.get_mount_point(dname))
-        for key, value in db_pnfsid_cache.items():
+        for key, value in get_cache_by_db_info().items():
             if value[1] == val[1]:
                 return key
 
@@ -2088,33 +2143,25 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             f.close()
         except (OSError, IOError), msg:
             if msg.args[0] == errno.ENAMETOOLONG:
-                Trace.log(e_errors.ERROR, "fset[1]")
                 #If the .(fset) filename is too long for PNFS, then we need
                 # to make a shorter temproary link to it and try it again.
 
-                #First, using .(access)() paths access the directory for
-                # the file stored in use_filepath.
-                try_dir = self.get_pnfs_db_directory(use_filepath)
-                try_dir_pnfsid = self.get_id(os.path.dirname(use_filepath))
-                try_dir = self.access_file(try_dir, try_dir_pnfsid)
-
-                Trace.log(e_errors.ERROR, "fset[2]")
-                #Second, create the .(access)() path to the inode record
-                # for the filename stored in use_filepath.
-                try_pnfsid = self.get_id(use_filepath)
-                try_path = self.access_file(try_dir, try_pnfsid)
-
-                Trace.log(e_errors.ERROR, "fset[3]")
-                #Third, create a new link name using the .(access)()
+                #The fset_file() function gives us the correct directory
+                # to use, regardles of a normal filename or .(access)()
+                # filename. 
+                try_dir = os.path.dirname(fname)
+                #Determine the original path of the file with the new
                 # directory path.
+                try_path = os.path.join(try_dir,
+                                        os.path.basename(use_filepath))
+
+                #Next create the temporary short name.
                 short_tmp_name = ".%s_%s" % (os.uname()[1], os.getpid())
                 link_name = os.path.join(try_dir, short_tmp_name)
 
-                Trace.log(e_errors.ERROR, "fset[4]")
                 #Get the existing link count.
                 link_count = file_utils.get_stat(try_path)[stat.ST_NLINK]
 
-                Trace.log(e_errors.ERROR, "fset[5]")
                 #Make the temporary link using the sorter name.
                 try:
                     os.link(try_path, link_name)
@@ -2129,7 +2176,6 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         raise sys.exc_info()[0], sys.exc_info()[1], \
                               sys.exc_info()[2]
 
-                Trace.log(e_errors.ERROR, "fset[6]")
                 #Set the new file size.
                 try:
                     fname = self.fset_file(link_name, size)
@@ -2139,15 +2185,11 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     os.unlink(link_name)
                     raise sys.exc_info()[0], sys.exc_info()[1], \
                           sys.exc_info()[2]
-                Trace.log(e_errors.ERROR, "fset[7]")
                 #Cleanup the temporary link.
                 os.unlink(link_name)
 
-                Trace.log(e_errors.ERROR, "fset[8]")
             else:
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            Trace.log(e_errors.ERROR, "fset[9]")
 
         #Update the times.
         if filepath:

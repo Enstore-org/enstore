@@ -18,6 +18,7 @@ import time
 import re
 import types
 import socket
+import threading
 
 # enstore imports
 import Trace
@@ -107,6 +108,14 @@ def is_access_name(filepath):
     #Determine if it is an ".(access)()" name.
     access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)")
     if re.search(access_match, os.path.basename(filepath)):
+        return True
+
+    return False
+
+def is_access_path(filepath):
+    #Determine if it is an ".(access)()" name.
+    access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)")
+    if re.search(access_match, filepath):
         return True
 
     return False
@@ -319,8 +328,31 @@ def get_directory_name(filepath):
             nameof_parent_id = os.path.join(dirname,
                                             ".(nameof)(%s)" % parent_id)
             try:
-                f = file_utils.open(nameof_parent_id)
-                nameof_parent_name = f.readlines()[0].strip()
+                #Take the situation where a file is owned by (UID 2384,
+                # GID 2657) and the directory it is in is owned by
+                # (UID 6469, GID 5468).  Either set of non-super user IDs
+                # can open the nameof_parent_id file, but neither set can
+                # read the nameof_parent_id file.  Only user root can read
+                # it successfully.
+
+                #If the real UID is not root, then the set_uid_egid()
+                # call is a no-op and the readline() will fail as described
+                # above.
+                file_utils.set_euid_egid(0, 0)
+                try:
+                    f = file_utils.open(nameof_parent_id)
+                except (OSError, IOError), msg:
+                    file_utils.end_euid_egid()
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+                try:
+                    nameof_parent_name = f.readline().strip()
+                except (OSError, IOError), msg:
+                    file_utils.end_euid_egid()
+                    f.close()
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+                file_utils.end_euid_egid()
                 f.close()
             except (OSError, IOError), msg:
                 if getattr(msg, "errno", msg.args[0]) in [errno.ENOENT,
@@ -371,24 +403,30 @@ def get_directory_name(filepath):
 
 ###############################################################################
 
+# get the database information
+# Sample answer:  admin:0:r:enabled:/diskb/pnfs/db/admin
 def get_database(f):
-    #err = []
-    #warn = []
-    #info = []
-    
+    global database_cache
+
     db_a_dirpath = get_directory_name(f)
     database_path = database_file(db_a_dirpath)
 
-    try:
-        database = get_layer(database_path)[0].strip()
-    except (OSError, IOError):
-        database = None
-        #if detail.errno in [errno.EACCES, errno.EPERM]:
-        #    err.append('no read permissions for .(get)(database)')
-        #elif detail.args[0] in [errno.ENOENT, errno.ENOTDIR]:
-        #    pass
-        #else:
-        #    err.append('corrupted .(get)(database) metadata')
+    if database_path in database_cache.keys():
+        database = database_cache[database_path]
+    else:
+        try:
+            #Get the .(get)(database) information despite the reuse of the
+            # get_layer() funciton.
+            database = get_layer(database_path)[0].strip()
+
+            if not is_access_path(database_path):
+                #Don't cache indirect .(access)() path directories.
+
+                #Update the database cache.
+                db_num = int(database.split(":")[1])
+                add_mtab(database, db_num, db_a_dirpath)
+        except (OSError, IOError):
+            database = None
 
     return database
 
@@ -596,9 +634,16 @@ get_id = get_pnfsid
 
 ###############################################################################
 
+EMPTY_MOUNT_POINT = ("", (-1, ""))
+
 #Global cache.
-db_pnfsid_cache = {}
-last_db_tried = ("", (-1, ""))
+# Shared with Pnfs.get_database() and pnfs.get_database().
+mount_points_cache = {}
+database_cache = {}
+# Make copy, don't share reference.
+last_db_tried = EMPTY_MOUNT_POINT[:]
+# Lock globals.
+pnfs_global_lock = threading.Lock()
 
 #Get currently mounted pnfs mountpoints.
 def parse_mtab():
@@ -654,6 +699,10 @@ def parse_mtab():
         if db_data not in found_mountpoints.keys():
             found_mountpoints[db_data] = (db_pnfsid, mp)
 
+    if not found_mountpoints:
+        add_mtab(EMPTY_MOUNT_POINT[0], EMPTY_MOUNT_POINT[1][0],
+                 EMPTY_MOUNT_POINT[1][1])
+
     return found_mountpoints
 
 
@@ -678,14 +727,22 @@ def get_last_db():
     global last_db_tried
     return last_db_tried
 
-def process_mtab():
-    global db_pnfsid_cache
-    
-    if not db_pnfsid_cache:
-        #Sets global db_pnfsid_cache.
-        db_pnfsid_cache = parse_mtab()
+def _process_mtab():
+    global mount_points_cache
+    global database_cache
 
-        for database_info, (db_num, mp) in db_pnfsid_cache.items():
+    pnfs_global_lock.acquire()
+    #Grab copies for this thread in case another makes changes.
+    try:
+        mount_points_cache_copy = mount_points_cache.items()
+        mount_points_cache_keys = mount_points_cache.keys()
+    except:
+        pnfs_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    pnfs_global_lock.release()
+    
+    try:
+        for database_info, (db_num, mp) in mount_points_cache_copy:
             if db_num == 0 or os.path.basename(mp) == "fs":
                 #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
                 p = Pnfs()
@@ -704,12 +761,28 @@ def process_mtab():
                         continue
                     if stat.S_ISLNK(fstat[stat.ST_MODE]):
                         continue
+                    # We can't acquire the pnfs_global_lock, because this
+                    # get_database() calls add_mtab() that grabs the lock too.
                     tmp_db_info = p.get_database(tmp_name).strip()
-                    if tmp_db_info in db_pnfsid_cache.keys():
+                    if tmp_db_info in mount_points_cache_keys:
                         continue
 
+                    #We don't need to worry about modifying the sequence
+                    # we are looping over, since we are looping over a copy.
                     tmp_db = int(tmp_db_info.split(":")[1])
-                    db_pnfsid_cache[tmp_db_info] = (tmp_db, tmp_name)
+                    add_mtab(tmp_db_info, tmp_db, tmp_name)
+    except:
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+def process_mtab():
+    global mount_points_cache
+
+    if not mount_points_cache:
+        #Sets global mount_points_cache.
+        mount_points_cache = parse_mtab()
+
+        #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
+        _process_mtab()
 
     return [last_db_tried] + sort_mtab()
 
@@ -740,26 +813,111 @@ def __db_cmp(x, y):
 
     return 0
 
+#Sort the list of mount points in search order.
 def sort_mtab():
-    global db_pnfsid_cache
+    global mount_points_cache
 
-    search_list = db_pnfsid_cache.items()
-    #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
-    # the list and it will be sorted to the end of the list.
-    search_list.sort(lambda x, y: __db_cmp(x, y))
+    pnfs_global_lock.acquire()
 
-    #import pprint
-    #pprint.pprint(search_list)
-    #sys.exit(1)
+    try:
+        search_list = mount_points_cache.items()  #Return a copy of info.
+        #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
+        # the list and it will be sorted to the end of the list.
+        search_list.sort(lambda x, y: __db_cmp(x, y))
+    except:
+        pnfs_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+    pnfs_global_lock.release()
     return search_list
 
+#Add the database information provided to their respective caches.
 def add_mtab(db_info, db_num, db_mp):
-    global db_pnfsid_cache
+    global mount_points_cache  #dictionary
+    global database_cache   #dictionary
 
-    if db_info not in db_pnfsid_cache.keys():
-        db_pnfsid_cache[db_info] = (db_num, db_mp)
-        sort_mtab()
+    #Grab copies for this thread in case another makes changes.
+    pnfs_global_lock.acquire()
+    try:
+        mount_points_cache_keys = mount_points_cache.keys()
+        database_cache_keys = database_cache.keys()
+    except:
+        pnfs_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    pnfs_global_lock.release()
+    
+    try:
+        if db_info not in mount_points_cache_keys or \
+           db_mp not in database_cache_keys:
+            if db_mp.endswith("/pnfs/fs"):
+                use_db_mp = db_mp + "/usr"
+                parent_db_info = db_info
+            elif db_mp.endswith("/pnfs/fs/"):
+                use_db_mp = db_mp + "/usr/"
+                parent_db_info = db_info
+            else:
+                use_db_mp = db_mp
+                # We can't acquire the pnfs_global_lock, because this
+                # get_database() calls add_mtab() that grabs the lock too.
+                parent_db_info = get_database(use_db_mp)
+
+            # Rule out that parent_db_info is None and we actually have the
+            # starting point of a new database
+            if (parent_db_info and parent_db_info == db_info) and \
+                   use_db_mp == db_mp:  #eliminate /pnfs/fs/usr cases
+                return
+
+            #We don't need to worry about modifying the sequence
+            # we are looping over, since we are looping over a copy.
+            pnfs_global_lock.acquire()
+            try:
+                mount_points_cache[db_info] = (db_num, db_mp)
+                database_cache[db_mp] = db_info
+            except:
+                pnfs_global_lock.release()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            pnfs_global_lock.release()
+    except:
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+#Return the mount points as a dictionary keyed by .(get)(database) values,
+# or just a single element if mount_point_key is set.
+def get_cache_by_db_info(db_info_key = None, default = None):
+    global mount_points_cache  #dictionary
+
+    pnfs_global_lock.acquire()
+
+    try:
+        if db_info_key == None:
+            # Return copy for thread safety.
+            return_value = mount_points_cache[:]
+        else:
+            return_value = mount_points_cache.get(db_info_key, default)
+    except:
+        pnfs_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    pnfs_global_lock.release()
+    return return_value
+
+#Return the .(get)(database) values as keyed by mount point.
+def get_cache_by_mount_point(mount_point_key = None, default = None):
+    global database_cache  #dictionary
+
+    pnfs_global_lock.acquire()
+
+    try:
+        if mount_point_key == None:
+            # Return copy for thread safety.
+            return_value = database_cache.copy()
+        else:
+            return_value = database_cache.get(mount_point_key, default)
+    except:
+        pnfs_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    pnfs_global_lock.release()
+    return return_value
 
 ###############################################################################
 
@@ -769,9 +927,11 @@ def get_enstore_admin_mount_point(pnfsid = None):
     list_of_admin_mountpoints = []
 
     #Get the list of pnfs mountpoints currently mounted.
-    mtab_results = parse_mtab()
+    mtab_results = process_mtab()
     
-    for db_num, mount_path in mtab_results.values():
+    for unused, (db_num, mount_path) in mtab_results:
+        if db_num == -1:
+            continue
         if db_num == 0:  #Admin db has number 0.
             if os.path.basename(mount_path) == "fs":
                 mount_path = os.path.join(mount_path, "usr")
@@ -791,21 +951,20 @@ def get_enstore_admin_mount_point(pnfsid = None):
                         
     return list_of_admin_mountpoints
 
-#Return a list of admin (/pnfs/fs like) mount points.
+#Return a list of non-admin (not /pnfs/fs like) mount points.
 def get_enstore_mount_point(pnfsid = None):
 
-    list_of_admin_mountpoints = []
+    list_of_mountpoints = []
 
     #Get the list of pnfs mountpoints currently mounted.
-    mtab_results = parse_mtab()
+    mtab_results = process_mtab()
     
-    for db_num, mount_path in mtab_results.values():
+    for unused, (db_num, mount_path) in mtab_results:
+        if db_num == -1:
+            continue
         if db_num != 0:  #Admin db has number 0.
-            #if os.path.basename(mount_path) == "fs":
-            #    mount_path = os.path.join(mount_path, "usr")
-            
             if pnfsid == None:
-                list_of_admin_mountpoints.append(mount_path)
+                list_of_mountpoints.append(mount_path)
             else:
                 access_path = access_file(mount_path, pnfsid)
                 try:
@@ -814,10 +973,10 @@ def get_enstore_mount_point(pnfsid = None):
                     if msg.errno in [errno.ENOENT]:
                         continue
                     else:
-                        list_of_admin_mountpoints.append(mount_path)
+                        list_of_mountpoints.append(mount_path)
 
                         
-    return list_of_admin_mountpoints
+    return list_of_mountpoints
 
 ###############################################################################
 
@@ -1875,7 +2034,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     # locations like /pnfs/sdss.
                     target_db_area = get_directory_name(db_dir)
                     db_db_info = self.get_database(target_db_area)
-                    db_data = db_pnfsid_cache.get(db_db_info, None)
+#                    db_data = mount_points_cache.get(db_db_info, None)
+                    db_data = get_cache_by_db_info(db_db_info, None)
                     #Determine if we found the admin database (db_data[0] == 0)
                     # and we weren't explicitly looking for it
                     if db_data == None or \
@@ -1889,7 +2049,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         # (aka /pnfs/fs/usr) as the database we are looking
                         # for.
                         db_db_info = self.get_database(db_dir)
-                        db_data = db_pnfsid_cache.get(db_db_info, None)
+#                        db_data = mount_points_cache.get(db_db_info, None)
+                        db_data = get_cache_by_db_info(db_db_info, None)
                     if db_data != None:
                         if found_db_info != db_db_info:
                             #
@@ -1999,9 +2160,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                               get_directory_name(db_dir)
                                             db_db_info = \
                                               self.get_database(target_db_area)
-                                            db_data = \
-                                              db_pnfsid_cache.get(db_db_info,
-                                                                  None)
+#                                            db_data = \
+#                                              mount_points_cache.get(
+#                                                db_db_info, None)
+                                            db_data = get_cache_by_db_info(
+                                                db_db_info, None)
                                             
                                             
                                             #We just found the first one.
@@ -2101,18 +2264,32 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         return position
 
     # get the database information
+    # Sample answer:  admin:0:r:enabled:/diskb/pnfs/db/admin
     def get_database(self, directory=None):
+        global database_cache
 
         if directory:
-            fname = os.path.join(directory, ".(get)(database)")
+            use_directory = directory
         else:
-            fname = os.path.join(self.dir, ".(get)(database)")
+            use_directory = self.dir
 
-        f=file_utils.open(fname,'r')
-        database = f.readlines()
-        f.close()
-        
-        database = string.replace(database[0], "\n", "")
+        fname = os.path.join(use_directory, ".(get)(database)")
+
+        if fname in database_cache.keys():
+            database = database_cache[fname]
+        else:
+            f=file_utils.open(fname,'r')
+            database = f.readlines()
+            f.close()
+            
+            database = string.replace(database[0], "\n", "")
+
+            #Update the database cache.
+            if not is_access_path(directory) and \
+                   directory not in database_cache.keys():
+                #database_cache[directory] = database
+                db_num = int(database.split(":")[1])
+                add_mtab(database, db_num, directory)
 
         if not directory:
             self.database = database
@@ -2186,23 +2363,19 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             f.close()    
         except (OSError, IOError), msg:
             if msg.args[0] == errno.ENAMETOOLONG:
-                Trace.log(e_errors.ERROR, "fset[1]")
                 #If the .(fset) filename is too long for PNFS, then we need
                 # to make a shorter temproary link to it and try it again.
+
+                #The fset_file() function gives us the correct directory
+                # to use, regardles of a normal filename or .(access)()
+                # filename. 
+                try_dir = os.path.dirname(fname)
+                #Determine the original path of the file with the new
+                # directory.
+                try_path = os.path.join(try_dir,
+                                        os.path.basename(use_filepath))
                 
-                #First, using .(access)() paths access the directory for
-                # the file stored in use_filepath.
-                try_dir = self.get_pnfs_db_directory(use_filepath)
-                try_dir_pnfsid = self.get_id(os.path.dirname(use_filepath))
-                try_dir = self.access_file(try_dir, try_dir_pnfsid)
-
-                #Second, create the .(access)() path to the inode record
-                # for the filename stored in use_filepath.
-                try_pnfsid = self.get_id(use_filepath)
-                try_path = self.access_file(try_dir, try_pnfsid)
-
-                #Third, create a new link name using the .(access)()
-                # directory path.
+                #Next create the temporary short name.
                 short_tmp_name = ".%s_%s" % (os.uname()[1], os.getpid())
                 link_name = os.path.join(try_dir, short_tmp_name)
 
@@ -4074,22 +4247,25 @@ class N:
             fname = os.path.join(self.dir,".(get)(counters)(%s)"%(dbnum,))
         else:
             fname = os.path.join(self.dir,".(get)(counters)(%s)"%(self.dbnum,))
-        f=file_utils.open(fname,'r')
+        f = file_utils.open(fname, 'r')
         self.countersN = f.readlines()
         f.close()
         return self.countersN
 
     # get the database information
+    # Sample answer:  admin:0:r:enabled:/diskb/pnfs/db/admin
     def get_databaseN(self, dbnum=None):
         if dbnum != None:
             fname = os.path.join(self.dir,".(get)(database)(%s)"%(dbnum,))
         else:
             fname = os.path.join(self.dir,".(get)(database)(%s)"%(self.dbnum,))
-        f=file_utils.open(fname,'r')
-        self.databaseN = f.readlines()
+
+        f = file_utils.open(fname, 'r')
+        self.databaseN = f.readlines()  #Content limited to one line.
         f.close()
-        if len(self.databaseN) > 0 :
-           self.databaseN = string.replace(self.databaseN[0], "\n", "")
+        if len(self.databaseN) > 0:
+            self.databaseN = string.replace(self.databaseN[0], "\n", "")
+
         return self.databaseN
 
     def pdatabaseN(self, intf):
