@@ -570,11 +570,12 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 *         different drives has different length of a Product Revision Number
 *         for STK T9940A/B it takes bytes 32-39
 */
-                if ((d->prod_id[1] == '9') && (d->prod_id[3] == '4')) {
-                    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+40);
-                 } else {
-                    set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
-                   }
+	    if (((d->prod_id[1] == '9') && (d->prod_id[3] == '4'))|
+		(strncmp(d->prod_id, "T10000C", 7) == 0)) {
+		set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+40);
+	    } else {
+		set_stat(b,FTT_FIRMWARE,   (char *)buf+32, (char *)buf+36);
+	    }
 
 	    /*
 	     * look up based on ANSI version *and* product id, so
@@ -599,6 +600,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    failures++;
 	} else {
 	    if (stat_ops & FTT_DO_EXBRS) {
+		/* exabyte drive */
 		set_stat(b,FTT_BOT,         ftt_itoa((long)bit(0,buf[19])), 0);
 		set_stat(b,FTT_TNP,	    ftt_itoa((long)bit(1,buf[19])), 0);
 		set_stat(b,FTT_PF,          ftt_itoa((long)bit(7,buf[19])), 0);
@@ -633,15 +635,18 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		}
             }
 	    if (stat_ops & FTT_DO_05RS) {
+		/* exabyte 8505 and some other */
 		set_stat(b,FTT_TRACK_RETRY, ftt_itoa((long)buf[26]), 0);
 		set_stat(b,FTT_UNDERRUN,    ftt_itoa((long)buf[11]), 0);
 	    }
 	    if (stat_ops & FTT_DO_DLTRS) {
+		/* DLT */
 		set_stat(b,FTT_MOTION_HOURS,ftt_itoa((long)pack(0,0,buf[19],buf[20])),0);
 		set_stat(b,FTT_POWER_HOURS, ftt_itoa((long)pack(buf[21],buf[22],buf[23],buf[24])),0);
                 set_stat(b,FTT_REMAIN_TAPE, ftt_dtoa((double)pack(buf[25],buf[26],buf[27],buf[28])*4),0);  
 	    }
 	    if (stat_ops & FTT_DO_AITRS) {
+		/* AIT */
 		remain_tape=(double)pack(buf[22],buf[23],buf[24],buf[25]);
 		set_stat(b,FTT_REMAIN_TAPE,ftt_dtoa(remain_tape),0);
 		set_stat(b,FTT_CLEANING_BIT,ftt_itoa((long)bit(3,buf[26])), 0);
@@ -681,6 +686,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	} else {
 
 	    hwdens = buf[4];
+	    DEBUG2(stderr, "density code %d\n", hwdens); 
 	    set_stat(b,FTT_DENSITY,  ftt_itoa((long)hwdens), 0);
 	    set_stat(b,FTT_WRITE_PROT,  ftt_itoa((long)bit(7,buf[2])),0);
 	    set_stat(b,FTT_MEDIA_TYPE,  ftt_itoa((long)buf[1]), 0);
@@ -832,9 +838,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
             long umbytesr, cmbytesr;
 
 	    do_page = buf2[4+i];
+	    DEBUG2(stderr, "Page %d\n", do_page);
             switch( do_page ) {
 	       	case 0x02:
 		case 0x03:
+		case 0x0c:
 		case 0x2e:
 		case 0x30:
 	       	case 0x31: 
@@ -858,6 +866,57 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		        case 0x03:
 			    (void)decrypt_ls(b,buf,3,FTT_READ_ERRORS,1.0);
 			    (void)decrypt_ls(b,buf,5,FTT_READ_COUNT,1024.0);
+			    break;
+
+			case 0x0c:
+			    /* T10000C Access Device Page */
+			    if (strncmp(d->prod_id,"T10000", 6) == 0) {
+			      (void)decrypt_ls(b,buf,0x8000,FTT_REMAIN_TAPE,0.25);
+			      (void)decrypt_ls(b,buf,0x03,FTT_UNC_READ,1.0);
+			      (void)decrypt_ls(b,buf,0x00,FTT_UNC_WRITE,1.0);
+			      (void)decrypt_ls(b,buf,0x02,FTT_CMP_READ,1.0);
+			      (void)decrypt_ls(b,buf,0x01,FTT_CMP_WRITE,1.0);
+			      (void)decrypt_ls(b,buf,0x100,FTT_CLEANING_BIT,1.0);
+			      /* get capacity */
+			      /* depending on product las letter the data length is dfferent*/
+			      /* see SCSI reference */
+			      int data_length, dens_offset;
+			      if (d->prod_id[6] == 'A') {
+				  /* T10000A */
+				  data_length = 0x36 + 2;
+				  dens_offset = 16;
+			      }
+			      else if (d->prod_id[6] == 'B') {
+				  /* T10000B */
+				  data_length = 0x6a + 2;
+				  dens_offset = 77;
+			      }
+			      else if (d->prod_id[6] == 'C') {
+				  /* T10000C */
+				  data_length = 0x9e + 2;
+				  dens_offset = 120;
+			      }
+			      else {
+				  /* leave as for T10000C so far */
+				  data_length = 0x9e + 2;
+				  dens_offset = 120;
+			      }
+			      
+			      static unsigned char report_dens[]= {0x44, 0x00, 0x00, 0x00, 0x00, 
+								   0x00, 0x00, 0, 0xff, 0};
+			      res = ftt_do_scsi_command(d,"Report Density Support", report_dens, 10, 
+							buf, data_length, 10, 0);
+			      if(res < 0) {
+				failures++;
+				DEBUG2(stderr, "Report Density Support returned %d\n", res);
+			      }
+			      else {
+				blocks=(double)pack(buf[dens_offset],buf[dens_offset+1],buf[dens_offset+2],buf[dens_offset+3]);
+				blocks = blocks*1000000/1024;
+				set_stat(b,FTT_BLOCK_TOTAL,ftt_dtoa(blocks),0);
+			      }
+
+                            }
 			    break;
 
 			case 0x2e:
