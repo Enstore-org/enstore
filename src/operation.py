@@ -180,7 +180,7 @@ def library_type(cluster, lib):
 			return '9310'
 		if lib == 'CD-LTO3' or lib == 'CD-LTO4G1':
 			return '8500G1'
-		if lib == 'CD-LTO4GS':
+		if lib == 'CD-LTO3GS' or lib == 'CD-LTO4GS':
 			return '8500GS'
 		if lib == 'CD-LTO4F1':
 			return '8500F1'
