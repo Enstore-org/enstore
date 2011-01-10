@@ -1336,7 +1336,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                     user_inhibit_1 = 'none' and \
                     write_protected = 'n' \
                     %s\
-                order by declared,label limit 1;"%(mover_ip_map, library,
+                order by declared,label limit 10"%(mover_ip_map, library,
                     storage_group, file_family, wrapper, vito_q)
         else: # normal case
             q = "select * from volume \
@@ -1351,7 +1351,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                     user_inhibit_1 = 'none' and \
                     write_protected = 'n' \
                     %s\
-                order by declared, label limit 1;"%(library, storage_group,
+                order by declared, label limit 10"%(library, storage_group,
                     file_family, wrapper, vito_q)
         Trace.trace(20, "start query: %s"%(q))
         try:
