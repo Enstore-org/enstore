@@ -451,10 +451,10 @@ while [ $done -gt 0 ]; do
     echo "$thefiles"
   else
     echo
-    echo Random volume = $tape 
-    echo Random file = $file_r
-    echo First  file = $file_f
-    echo Last   file = $file_l
+    echo "Random volume = $tape" 
+    echo "Random file = ${file_r-:}"
+    echo "First  file = ${file_f-:}"
+    echo "Last   file = ${file_l-:}"
     echo 
 
     #Obtain the library that this tape belongs too.
