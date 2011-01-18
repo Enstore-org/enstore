@@ -20,8 +20,6 @@ import copy
 import gc
 import signal
 import re
-import profile
-import pstats
 
 
 # enstore modules
@@ -1193,6 +1191,7 @@ def check_bit_file(bfid, bfid_info = None):
         is_multiple_copy = True
     else:
         is_multiple_copy = False
+        original_file_record = None
     ### This first method will be faster, but relies on an updated
     ### info_server.py.
     """
@@ -1292,14 +1291,31 @@ def check_bit_file(bfid, bfid_info = None):
         errors_and_warnings(prefix, err, warn, info)
         return
 
+    if is_multiple_copy:
+        #We know this is a multiple copy, the storage file should point to
+        # the orginal copy.  So lets use the original copies information
+        # to find the path.
+        original_file_record, (err1, warn1, info1) = get_filedb_info(original_bfid)
+        if err1 or warn1:
+            errors_and_warnings(prefix, err + err1, warn + warn1, info + info1)
+            return
+
+        use_bfid = original_bfid
+        use_file_record = original_file_record
+        use_pnfsid = original_file_record['pnfsid']
+    else:
+        use_bfid = bfid
+        use_file_record = file_record
+        use_pnfsid = file_record['pnfsid']
+
     #Loop over all found mount points.
     try:
         #Obtain the current path.  There are many ways to try and find the
         # file.  The original pathname is a good start, but there are a
         # lot of things to try before resorting to get_path().
-        sfs_path = find_pnfs_file.find_id_path(file_record['pnfsid'],
-                                               bfid,
-                                               file_record=file_record,
+        sfs_path = find_pnfs_file.find_id_path(use_pnfsid,
+                                               use_bfid,
+                                               file_record=use_file_record,
                                                use_info_server=True)
     except (OSError, IOError), msg:
         #For easier investigations, lets include the paths.
@@ -1317,9 +1333,12 @@ def check_bit_file(bfid, bfid_info = None):
         ### Note: msg.args[0] will be returned as ENOENT if a file is found
         ### to match the sfsid, but not the bfid.
         
-        if msg.errno == errno.ENOENT and file_record['deleted'] in ['yes',
-                                                                    'unknown']:
+        if (msg.errno == errno.ENOENT or \
+            (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST)) and \
+            (file_record['deleted'] in ["yes", "unknown"] or is_multiple_copy):
             # There is no error here.  Everything agrees the file is gone.
+            # For multiple_copy files that should not have a record found
+            # in the SFS, we don't want to flag an error either.
             pass
 
         ### Test for mulitple_copies/duplicates before plain migration.  This
@@ -1327,13 +1346,9 @@ def check_bit_file(bfid, bfid_info = None):
         ### is_migrated_to_copy values too.
 
         elif is_multiple_copy:
-            if msg.errno in [errno.ENOENT] or \
-              (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST):
-                pass #No error here.  Just easier to write this if.
-            else:
-                #The multiple copy should not be findable, but in this
-                # situation it was.
-                err.append("multiple copy(%s)" % (msg.args[1],))
+            #The multiple copy should not be findable, but in this
+            # situation it was.
+            err.append("multiple copy(%s)" % (msg.args[1],))
         elif is_primary_copy:
             #The primary copy should match the file, but in this situation
             # it did not.
@@ -1349,7 +1364,7 @@ def check_bit_file(bfid, bfid_info = None):
                 # does this check need to be furthur modified???
                 warn.append("migrated copy not marked deleted")
             else:
-                err.append("migration(%s)1" % (msg.args[1],))
+                err.append("migration(%s)" % (msg.args[1],))
         elif is_migrated_copy and file_record['deleted'] == "yes":
             pass #Normal situation after scan, not an error.
         elif is_migrated_copy and file_record['deleted'] == "unknown":
@@ -1385,11 +1400,11 @@ def check_bit_file(bfid, bfid_info = None):
                             # an error.
                             pass
                         else:
-                            err.append("migration(%s)2" % (msg.args[1],))
+                            err.append("migration(%s)" % (msg.args[1],))
                     else:
-                        err.append("migration(%s)3" % (msg.args[1],))
+                        err.append("migration(%s)" % (msg.args[1],))
             else:
-                err.append("migration(%s)4" % (msg.args[1],))
+                err.append("migration(%s)" % (msg.args[1],))
         elif is_migrated_to_copy and file_record['deleted'] == "yes":
             if msg.args[0] == errno.ENOENT:
                 #The file is marked deleted and not found in the storage
@@ -1406,7 +1421,7 @@ def check_bit_file(bfid, bfid_info = None):
                 # in its place.
                 pass #Normal situation
             else:
-                err.append("migration(%s)5" % (msg.args[1]))
+                err.append("migration(%s)" % (msg.args[1]))
         elif is_migrated_to_copy and file_record['deleted'] == "unknown":
             #Should never get here!
             err.append("failed (unknown) file found as migration destination")
@@ -1428,9 +1443,6 @@ def check_bit_file(bfid, bfid_info = None):
             info.append("deleted(no)")
         else:
             err.append(msg.args[1])
-
-        errors_and_warnings(prefix + ' ' + sfs_path, err, warn, info)
-        return
     except (ValueError,), msg:
         err.append(str(msg))
         errors_and_warnings(prefix, err, warn, info)
@@ -1899,12 +1911,16 @@ def check_file(f, file_info):
                            and filedb['drive'] != 'unknown:unknown':
                         err.append('drive(%s, %s)' % (layer4['drive'],
                                                   filedb['drive']))
+            elif not layer4.has_key('drive'):
+                warn.append("missing layer 4 drive")  #not fatal
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted drive')
 
     # CRC
     try:
-        if layer4.get('crc', "") != "": # some do not have this field
+        if layer4.get('crc', "") == "":  # some do not have this field
+            warn.append("missing layer 4 crc")  #not fatal
+        else:
             if long(layer4['crc']) != long(filedb['complete_crc']):
                 # Report if Enstore DB and the Enstore CRC in the storage
                 # file system layer 4 are not the same.
@@ -1934,16 +1950,18 @@ def check_file(f, file_info):
     try:
         layer4_name = get_enstore_pnfs_path(layer4.get('original_name', "NO-LAYER4_NAME"))
         current_name = get_enstore_pnfs_path(f)
-        filedb_name = get_enstore_pnfs_path(filedb.get('pnfs_name0', "NO-FILEDB-NAME"))
-        if layer4['original_name'] != filedb['pnfs_name0']: #layer4 vs filedb
-            if is_multiple_copy and layer4_name == filedb_name:
-                #If the corrected paths match, then there really isn't
-                # any problem.
-                pass
-            else:
-                #print layer 4, current name, file database.  ERROR
-                err.append("filename(%s, %s, %s)" %
-                           (layer4['original_name'], f, filedb['pnfs_name0']))
+        #filedb_name = get_enstore_pnfs_path(filedb.get('pnfs_name0', "NO-FILEDB-NAME"))
+        #For original copies, if the layer 4 and file DB original paths do
+        # not match, give an error.
+        #
+        #Multiple copies can not be subject to this test.  A moved/renamed
+        # original copy will modify the layer 4 value for the multiple copy,
+        # too.
+        if not is_multiple_copy and \
+           layer4['original_name'] != filedb['pnfs_name0']: #layer4 vs filedb
+            #print layer 4, current name, file database.  ERROR
+            err.append("filename(%s, %s, %s)" %
+                       (layer4['original_name'], f, filedb['pnfs_name0']))
         elif is_access_name(f):
             #Skip the renamed and moved tests if the filename of
             # the type ".(access)()".
