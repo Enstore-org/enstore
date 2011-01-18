@@ -3804,7 +3804,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # update suspected volume list if error source is ROBOT or TAPE
         error_source = mticket.get('error_source', 'none')
         vol_status = mticket.get('volume_status', 'none')
-        if error_source in ("ROBOT", "TAPE"):
+        if ((error_source in ("ROBOT", "TAPE")) or
+            mticket['status'][0] == e_errors.POSITIONING_ERROR): # bugzilla 947
+            # Put volume into suspect volume list if there is
+            # a positioning error. This error category is "DRIVE" in error_source, but for
+            # older mover.py versions it was not set.
+            # This is why e_errors.POSITIONING_ERROR match in status is used.
+            # If volume is not put into suspect volume list
+            # may cause lots of drives set offline by one defective tape.
             if vol_status and vol_status[0][0] == 'none':
                 vol = self.update_suspect_vol_list(mticket['external_label'],
                                                    mticket['mover'])
