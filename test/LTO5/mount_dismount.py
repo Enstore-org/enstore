@@ -92,9 +92,9 @@ def mount_dismount(i, job_config):
         # read random file
         #
         if len(file_list) == 0 :
-            file_list=done_list[:]
-            del done_list[:]
-        encp_random_file(file_list,done_list)
+            file_list=done_files[:]
+            del done_files[:]
+        encp_random_file(file_list,done_files)
         print_message("Starting dismount %d of %d"%(i,number_of_mounts_dismounts,))
         ticket = mcc.unloadvol(vol_ticket, mc_device, mc_device)
         while ticket['status'][0] in [e_errors.MC_QUEUE_FULL]:
