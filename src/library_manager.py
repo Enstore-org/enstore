@@ -990,19 +990,19 @@ class LibraryManagerMethods:
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(volume_family_name)
         # look in the list of work_at_movers
         for w in self.work_at_movers.list:
-            Trace.trace(self.trace_level+1, 'busy_volumes: w %s %s'%(w["vc"], w["fc"]))
+            Trace.trace(self.trace_level+1, 'busy_volumes: %s %s'%(w["vc"], w["fc"]))
             if w["vc"]["volume_family"] == volume_family_name:
                 if w["fc"]["external_label"] in vol_veto_list:
                     continue       # already processed
                 else:
                     vol_veto_list.append(w["fc"]["external_label"])
                     permissions = w["vc"].get("system_inhibit", None)
-                    Trace.trace(self.trace_level+1, 'busy_volumes: permissionss %s'%(permissions,))
+                    Trace.trace(self.trace_level+1, 'busy_volumes: permissions %s'%(permissions,))
 
                     if permissions:
-                        if permissions[0][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+                        if permissions[0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
                             continue
-                        if permissions[0][1] == 'none':
+                        if permissions[1] == 'none':
                             wr_en = wr_en + 1
 
         return vol_veto_list, wr_en
