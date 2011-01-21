@@ -91,6 +91,7 @@ def main(func,number_of_threads):
     cp = ConfigParser.ConfigParser()
     cp.read('lto5.cf')
     path=cp.get('io','pnfs_path','/pnfs/data1/test/litvinse/NULL')
+    job_config['storage_group']         = int(cp.get('general','storage_group','none'))
     job_config['pnfs_path']             = path
     job_config['number_of_full_passes'] = int(cp.get('full_pass_test','number_of_full_passes',10))
     job_config['number_of_days'] = int(cp.get('random_read_test','number_of_days',20))

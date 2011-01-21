@@ -1,11 +1,11 @@
-[io]
-#pnfs_path=/pnfs/data2/test/litvinse/NULL
-pnfs_path=/pnfs/data/test/LTO5/fuji
+[general]
+storage_group=MAXELL
 
+[io]
+pnfs_path=/pnfs/data/test/LTO5/maxell
 
 [full_pass_test]
-#number_of_full_passes=223
-number_of_full_passes=3
+number_of_full_passes=260
 
 [random_read_test]
 number_of_days=20

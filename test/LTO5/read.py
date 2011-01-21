@@ -12,7 +12,7 @@ import time
 
 #Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.library='%s' and v.file_family='%s' order by v.label limit 1) and f.deleted='n' order by f.location_cookie"
 
-Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.library='%s' order by v.label limit 1) and f.deleted='n' order by f.location_cookie"
+Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.library='%s' and v.storage_group='%s' order by v.label limit 1) and f.deleted='n' order by f.location_cookie"
 
 t0=time.time()
 
@@ -57,10 +57,11 @@ def read(i,job_config):
                user  = enstoredb.get('dbuser_reader', "enstore_reader"))
 
     #res=db.query(Q%(job_config.get('library'),job_config.get('hostname')))
-    res=db.query(Q%(job_config.get('library'),))
+    res=db.query(Q%(job_config.get('library'),job_config.get('storage_group')))
     if res.ntuples() == 0 :
-        print_error("library %s, file_family %s, There are no files to read"%(job_config.get('library'),
-                                                                              job_config.get('hostname')))
+        print_error("library %s, file_family %s, storage_group %s. There are no files to read"%(job_config.get('library'),
+                                                                              job_config.get('hostname'),
+                                                                              job_config.get('storage_group')))
         db.close()
         return 1
     file_list =  []

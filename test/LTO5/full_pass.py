@@ -9,7 +9,7 @@ import delete_at_exit
 import time
 
 #Q="select v.label from volume v where v.library='%s' and v.file_family='%s' order by v.label"
-Q="select v.label from volume v where v.library='%s' order by v.label"
+Q="select v.label from volume v where v.library='%s' and v.storage_group='%s' order by v.label"
 
 def full_pass(i, job_config):
     enstoredb = job_config.get("database")
@@ -18,10 +18,11 @@ def full_pass(i, job_config):
                port  = enstoredb.get('db_port', 5432),
                user  = enstoredb.get('dbuser_reader', "enstore_reader"))
     #res=db.query(Q%(job_config.get('library'),job_config.get('hostname')))
-    res=db.query(Q%(job_config.get('library'),))
+    res=db.query(Q%(job_config.get('library'),job_config.get('storage_group')))
     if res.ntuples() == 0 :
-        print_error("library %s, file_family %s, There are no files to read"%(job_config.get('library'),
-                                                                              job_config.get('hostname')))
+        print_error("library %s, file_family %s, storage_group %s. There are no files to read"%(job_config.get('library'),
+                                                                                                job_config.get('hostname'),
+                                                                                                job_config.get('storage_group')))
         db.close()
         return 1
     volumes=[]
