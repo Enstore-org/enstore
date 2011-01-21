@@ -811,6 +811,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.will_mount = None # this is to indicate that the new volume will be mounted and the current dismounted (HIPR)
         self.last_absolute_location = 0L
         self.write_in_progress = False # set this to True before tape write, if write comletes successfuly it will be set to False
+        self.read_crc_control = 0 # used to set client_crc for READ and ASSERT
+        # 1: calculate CRC when reading from tape to memory
+        # 0: calculate CRC when reading memory
+
         self.assert_ok = threading.Event() # for synchronization in ASSERT mode
 
 
@@ -1449,6 +1453,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.files_written_cnt = 0
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
         self.max_in_state_cnt = self.config.get('max_in_state_cnt', 2)
+        crc_control = self.config.get("read_crc_control", None)
+        if crc_control and crc_control in (0,1):
+                self.read_crc_control = crc_control
+        else if crc_control != None:
+            Trace.log(e_errors.ERROR, "Ignoring invalid 'read_crc_control' value of %s found in configuration. Allowed values are 0 or 1. Using default value of 0 ('calculate CRC when reading from memory')."%(crc_control,))
         drive_rate_threshold =  self.config.get("drive_rate_threshold", None)
         if drive_rate_threshold:
             exit_flag = False
@@ -2232,6 +2241,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def reset(self, sanity_cookie, client_crc_on):
+        Trace.trace(22, "reset: client_crc_on %s"%(client_crc_on,))
         self.current_work_ticket = None
         self.init_data_buffer()
         self.buffer.reset(sanity_cookie, client_crc_on)
@@ -2855,7 +2865,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 saved_wrapper = self.buffer.wrapper
                 saved_sanity_bytes = self.buffer.sanity_bytes
                 saved_complete_crc = self.buffer.complete_crc
-                self.buffer.reset((self.buffer.sanity_bytes, self.buffer.sanity_crc), client_crc_on=1)
+                self.buffer.reset((self.buffer.sanity_bytes,
+                                   self.buffer.sanity_crc),
+                                  client_crc_on=1) # always calculate crc before writing to tape
                 self.buffer.set_wrapper(saved_wrapper)
                 Trace.trace(22, "starting check after write, bytes_to_read=%s" % (bytes_to_read,))
                 driver = self.tape_driver
@@ -4058,21 +4070,22 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.volume_family=vc['volume_family']
         delay = 0
         sanity_cookie = ticket['fc'].get('sanity_cookie', None)
-        
-        if ticket.has_key('client_crc'):
-            client_crc_on = ticket['client_crc']
-        elif self.config['driver'] == "NullDriver":
-            client_crc_on = 0
+        # explicitely set client crc
+        if self.setup_mode == READ or self.setup_mode == ASSERT:
+            client_crc_on = self.read_crc_control
         else:
-            client_crc_on = 1 # assume that client does CRC
+            client_crc_on = 1 # write
+        if self.config['driver'] == "NullDriver":
+            client_crc_on = 0
+    
+        # ignore client_crc,
+        # the default setting for write: check crc before writing to tape in tape thread
+        # the default setting for read, assert: check crc before writing to network in net thread
 
-        # if client_crc is ON:
-        #    write requests -- calculate CRC when writing from memory to tape
-        #    read requetsts -- calculate CRC when reading from tape to memory
-        # if client_crc is OFF:
-        #    write requests -- calculate CRC when writing to memory
-        #    read requetsts -- calculate CRC when reading memory
+        #if ticket.has_key('client_crc'):
+        #    client_crc_on = ticket['client_crc']
 
+        Trace.trace(22, "crc_control %s"%(self.read_crc_control,))
         self.reset(sanity_cookie, client_crc_on)
         # restore self.current_work_ticket after it gets cleaned in the reset()
         self.current_work_ticket = ticket
