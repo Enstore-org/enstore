@@ -1456,7 +1456,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         crc_control = self.config.get("read_crc_control", None)
         if crc_control and crc_control in (0,1):
                 self.read_crc_control = crc_control
-        else if crc_control != None:
+        elif crc_control != None:
             Trace.log(e_errors.ERROR, "Ignoring invalid 'read_crc_control' value of %s found in configuration. Allowed values are 0 or 1. Using default value of 0 ('calculate CRC when reading from memory')."%(crc_control,))
         drive_rate_threshold =  self.config.get("drive_rate_threshold", None)
         if drive_rate_threshold:
