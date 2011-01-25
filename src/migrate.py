@@ -220,12 +220,6 @@ UNKNOWN = "unknown"
 
 ###############################################################################
 
-#Define the lock so that the output is not split on each line of log output.
-try:
-    io_lock = multiprocessing.Lock()
-except NameError:
-    io_lock = threading.Lock()
-
 #Make this global so we can kill processes if necessary.
 pid_list = []
 #Make this global so we can join threads if necessary.
@@ -1021,19 +1015,9 @@ def run_in_process(function, arg_list, my_task = "RUN_IN_PROCESS",
 				pass
 
 		#Try and force pending output to go where it needs to go.
-		try:
-			sys.stdout.flush()
-			sys.stderr.flush()
-		except IOError:
-			pass
-
-		io_lock.acquire()
-		try:
-			log_f.flush()
-			os.fsync(log_f.fileno())
-		except (IOError, OSError):
-			pass
-		io_lock.release()
+                Trace.flush_and_sync(sys.stdout)
+                Trace.flush_and_sync(sys.stderr)
+                Trace.flush_and_sync(log_f)
 
 		os._exit(res) #child exit
 			
@@ -1089,19 +1073,9 @@ def __run_in_thread(function, on_exception, arg_list):
                 Trace.log(e_errors.ERROR, message)
 
         #Try and force pending output to go where it needs to go.
-        try:
-            sys.stdout.flush()
-            sys.stderr.flush()
-        except IOError:
-            pass
-
-        io_lock.acquire()
-        try:
-            log_f.flush()
-            os.fsync(log_f.fileno())
-        except (IOError, OSError):
-            pass
-        io_lock.release()
+        Trace.flush_and_sync(sys.stdout)
+        Trace.flush_and_sync(sys.stderr)
+        Trace.flush_and_sync(log_f)
 
         try:
             #Make an attempt to tell the entire process to stop.
@@ -1296,72 +1270,60 @@ def is_library(library):
 	return 0
 ###############################################################################
 
-# open_log(*args) -- log message without final line-feed
+#Use the Trace.py module for the underlying logging.  This way Trace output
+# from other modules will not clobber output from migration.
+
+# open_log(*args) -- log message without final newline
 def open_log(*args):
-    t = time.time()
-    ctime = time.ctime(t)
+    global log_f
+    
+    ctime = time.ctime()
     thread_name = threading.currentThread().getName()
-    print ctime, thread_name,
-    for i in args:
-        print i,
-    if log_f:
-        log_f.write(ctime+" "+thread_name+" ")
-        for i in args:
-            log_f.write(str(i)+" ")
-        log_f.flush()
-		
-# error_log(s) -- handling error message
+
+    if len(args) == 1 and type(args[0]) == types.TupleType:
+        log_components = (ctime, thread_name) + args[0]
+    else:
+        log_components = (ctime, thread_name) + args
+    message = string.join(map(str, log_components), " ")
+
+    #This function starts a line of logging output, but does not necessarily
+    # finish it.  We set append_newline to false, but this can be overridden
+    # if the caller explicitly puts a newline at the end of the list of
+    # things to log.
+    Trace.message(0, message, append_newline=False)
+    Trace.message(0, message, append_newline=False, out_fp=log_f)
+
+# error_log(s) -- handling appending error message
 def error_log(*args):
     global errors
 
     errors = errors + 1
-    io_lock.acquire()
-    open_log(*args)
-    print '... ERROR'
-    if log_f:
-        log_f.write('... ERROR\n')
-        log_f.flush()
-    io_lock.release()
-    #os.abort() #For debugging.
 
+    log_components = args + ("... ERROR\n",)
+    open_log(log_components)
+
+# warning_log(s) -- handling appending warning message
 def warning_log(*args):
-    io_lock.acquire()
-    open_log(*args)
-    print '... WARNING'
-    if log_f:
-        log_f.write('... WARNING\n')
-        log_f.flush()
-    io_lock.release()
+    log_components = args + ("... WARNING\n",)
+    open_log(log_components)
 
+# ok_log(s) -- handling appending ok message
 def ok_log(*args):
-    io_lock.acquire()
-    open_log(*args)
-    print '... OK'
-    if log_f:
-        log_f.write('... OK\n')
-        log_f.flush()
-    io_lock.release()
+    log_components = args + ("... OK\n",)
+    open_log(log_components)
 
 # log(*args) -- log message
 def log(*args):
-    io_lock.acquire()
-    open_log(*args)
-    print
-    if log_f:
-        log_f.write('\n')
-        log_f.flush()
-    io_lock.release()
+    log_components = args + ("\n",)
+    open_log(log_components)
 
-# close_log(*args) -- close open log
+# close_log(*args) -- close open line of log ouput with final newline
 def close_log(*args):
-    if log_f:
-        for i in args:
-            log_f.write(i+' ')
-        log_f.write("\n")
-        log_f.flush()
-    for i in args:
-        print i,
-    print
+    global log_f
+    
+    message = string.join(map(str, args), " ")
+    Trace.message(0, message)
+    Trace.message(0, message, out_fp=log_f)
 
 ###############################################################################
 ###############################################################################
@@ -9504,6 +9466,7 @@ def do_work(intf):
 if __name__ == '__main__':
 
 	Trace.init(MIGRATION_NAME)
+        Trace.do_message(0)
 
         delete_at_exit.setup_signal_handling()
 
