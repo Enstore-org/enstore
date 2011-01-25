@@ -161,18 +161,28 @@ verify_tag()
   dir_tag_id=`find_tag_id "$first_tag_id" "$tag_name" "$dir"`
   if [ $? -ne 0 ]; then
     return 1
-  fi
+  else
+    echo $dir_tag_id
     
-  if [ -n "$set_owner" -a -n "$dir_tag_id" ]; then
-    #Set the default owner of the tag.
-    correct_tag_owner $tag_name "$tag_owner" "$tag_group" "$dir"
+    cat "$dir/.(tag)($tag_name)" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-      #Use correct_tag_owner()'s error output.
+      #Indict an error.  By doing this after echoing the directory tag id,
+      # we can indicate to the caller that the tag exists, but that it is
+      # in need of repair.
       return 1
+    fi
+
+    
+    if [ -n "$set_owner" ]; then
+      #Set the default owner of the tag.
+      correct_tag_owner $tag_name "$tag_owner" "$tag_group" "$dir"
+      if [ $? -ne 0 ]; then
+        #Use correct_tag_owner()'s error output.
+        return 1
+      fi
     fi
   fi
 
-  echo $dir_tag_id
   return 0
 }
 
@@ -244,6 +254,151 @@ create_tag()
     return 0
 }
 
+#Set the 
+repair_tag()
+{
+  tag_name=$1           #Tag name from the command line.
+  dir_tag_id=$2         #Current tags ID.
+  dir=$3                #Current directory.
+
+  #Obtain the PNFS id of the parent tag.
+  tag_parent_id=`get_parent_id "$dir_tag_id" "$dir"`
+  if [ $? -ne 0 ]; then
+    ## A serious error occured.
+    message="Can not find parent of $dir_tag_id."
+    write_error $message
+    return 1
+  fi
+
+  #Determine the tag parent directories tag ID.
+  parent_dir=`dirname "$dir"`
+  parent_first_tag_id=`get_first_tag "$parent_dir"`
+  parent_dir_tag_id=`find_tag_id "$parent_first_tag_id" "$tag_name" "$dir"`
+  if [ $? -ne 0 ]; then
+    message="Did not find parent $tag_name id: $parent_dir/.(tag)($tag_name)"
+    write_error $message
+    return 1
+  fi
+
+  if [ "$tag_parent_id" = "$parent_dir_tag_id" -o \
+       "$tag_parent_id" = "000000000000000000000000" ]; then
+    #
+    # Newly created tags need to execute the first part.
+    #
+
+    if [ "$tag_parent_id" = "000000000000000000000000" ]; then
+      ## We need to update the parent id of the tag.
+      
+      parent_dir=`dirname "$dir"`
+      parent_first_tag_id=`get_first_tag "$parent_dir"`
+      #Check for the parent directory having a target tag first.  It should
+      # already exist.  If this fails there is likely some major issue.
+      parent_dir_tag_id=`find_tag_id "$parent_first_tag_id" "$tag_name" "$dir"`
+      if [ $? -ne 0 ]; then
+        message="Did not find parent $tag_name id: $parent_dir/.(tag)($tag_name)"
+        write_error $message
+        return 1
+      fi
+
+      #Give debugging output if needed.
+      if [ $debug -ne 0 ]; then
+        echo $pnfs/tools/sclient chparent $shmkey $dir_tag_id $parent_dir_tag_id
+      fi
+
+      #This is the scary part where we change the parent id value.
+      count=1
+      rc=-1
+      while [ $rc -ne 0 -a $count -lt $LOOPS ]; do
+        $pnfs/tools/sclient chparent "$shmkey" "$dir_tag_id" "$parent_dir_tag_id"
+        rc=$?
+        if [ $rc -ne 0 ]; then
+          #Need to wait for PNFS and the local file cache to give the new
+          # correct value.
+          message="Retry count at $count"
+          write_error $message
+          count=`expr $count + 1`
+          sleep 1
+        fi
+      done
+      if [ $rc -ne 0 ]; then
+          message="'$pnfs/tools/sclient chparent $shmkey $dir_tag_id $parent_dir_tag_id' failed"
+         write_error $message
+	 return 1
+      fi
+    fi
+
+    #
+    # Newly created tags and existing tags need to execute the second part.
+    # This part verifies that the tag is valid.  If it is not, then it
+    # is repaired.
+    #
+
+    #This is another scary part where we turn the pseudo primary tag back into
+    # an inherited tag.
+    count=1
+    rc=-1
+    while [ $rc -ne 0 -a $count -lt $LOOPS ]; do
+      rm "$dir/.(tag)($tag_name)" 2> /dev/null
+      rc=$?
+      if [ $rc -ne 0 ]; then
+        #If the tag is already an inherited tag we will get a error that we can
+        # ignore.  We test for this by seeing if we can read the tag back
+        # without error.
+	cat "$dir/.(tag)($tag_name)" > /dev/null 2>&1
+	if [ $? -ne 0 ]; then
+	  grep "$tag_name" "$dir/.(tags)()" > /dev/null 2>&1
+          if [ $? -ne 0 ]; then
+	    message="Can not find $dir/.(tag)($tag_name)"
+	    write_error $message
+	    return 1
+	  else
+            #The "0 0 10" are magic values from the PNFS developers.
+	    $pnfs/tools/sclient writedata "$shmkey" "$dir_tag_id" 0 0 10
+            if [ $? -ne 0 ]; then
+              mesage="Can not repair $dir/.(tag)($tag_name)"
+	      write_error $message
+	      return 1
+            fi
+	    #Deleting the tag again should restore inheritance.
+            #
+            #Need to wait for PNFS and the local file cache to give the new
+            # correct value.
+            message="Retry count at $count"
+	    write_error $message
+            count=`expr $count + 1`
+            sleep 1
+          fi
+        else
+          #We cat-ed the tag file.  It already is inherited.
+          rc=0
+	fi
+      fi
+    done
+    if [ $rc -ne 0 ]; then
+      message="Did not repair $dir/.(tag)($tag_name)"
+      write_error $message
+      return 1
+    fi
+
+    if [ "$tag_parent_id" = "$parent_dir_tag_id" ]; then
+      echo "Determined $parent_dir_tag_id already set as parent of $dir_tag_id in $dir."
+    else
+      echo "Set $parent_dir_tag_id as parent of $dir_tag_id in $dir."
+    fi
+  elif [ "$tag_parent_id" != "$parent_dir_tag_id" ]; then
+    message="Found mismatched parent tag IDs for $dir_tag_id: $tag_parent_id != $parent_dir_tag_id"
+    write_error $message
+    return 1
+  
+  else
+    message="Aborting from unknown error."
+    write_error $message
+    return 1
+  fi
+    
+  return 0
+}
+
 #Check if the tag already exists; if not create it.
 # Echo the PNFS ID of the tag to stdout and return 0, if found.  Otherwise,
 # return 1.
@@ -258,18 +413,25 @@ verify_or_create_tag()
 
   dir_tag_id=`verify_tag $first_tag_id $tag_name "$tag_owner" "$tag_group" "$dir"`
   if [ $? -ne 0 ]; then
-    dir_tag_id=`create_tag $first_tag_id $tag_name "$tag_owner" "$tag_group" "$dir"`
-    if [ $? -ne 0 ]; then
+    if [ -n "$dir_tag_id" ]; then
+      #The tag exists, but is in need of repair.
+      repair_tag $tag_name $dir_tag_id "$dir"
+      return $?
+    else
+      #The tag needs to be created.
+      dir_tag_id=`create_tag $first_tag_id $tag_name "$tag_owner" "$tag_group" "$dir"`
+      if [ $? -ne 0 ]; then
         message="Did not find $dir/.(tag)($tag_name) id."
 	write_error $message
         return 1
-    else
-      echo $dir_tag_id
-      echo "Made $dir_tag_id $tag_name tag in $dir directory."
-      return 0
+      else
+        #echo $dir_tag_id
+        echo "Made $dir_tag_id $tag_name tag in $dir directory."
+        return 0
+      fi
     fi
   else
-    echo $dir_tag_id
+    #echo $dir_tag_id
     echo "Found $dir_tag_id $tag_name tag in $dir directory."
     return 0
   fi
@@ -331,6 +493,8 @@ correct_tag_owner()
   return 0
 }
 
+
+
 #Check if the tag already exists; if not create it.  Then make the parent
 # directory's tag of the same name the parent of this directory's tag.
 # Return 0 on success, 1 on failure.
@@ -367,123 +531,25 @@ make_or_repair_tag()
   fi
 
   first_tag_id=`get_first_tag "$dir"`
-  parent_first_tag_id=`get_first_tag "$parent_dir"`
-
-  #Check for the parent directory having a target tag first.  It should
-  # already exist.  If this fails there is likely some major issue.
-  parent_dir_tag_id=`find_tag_id "$parent_first_tag_id" "$tag_name" "$dir"`
-  if [ $? -ne 0 ]; then
-    message="Did not find parent $tag_name id: $parent_dir/.(tag)($tag_name)"
-    write_error $message
-    return 1
-  fi
-
   #Determine if the directory has a target tag.  If not, create it.
   dir_tag_id=`verify_tag $first_tag_id $tag_name "$tag_owner" "$tag_group" "$dir"`
   if [ $? -ne 0 ]; then
-    dir_tag_id=`create_tag $first_tag_id $tag_name "$tag_owner" "$tag_group" "$dir"`
-    if [ $? -ne 0 ]; then
-      message="Did not find $dir/.(tag)($tag_name) id."
-      write_error $message
-      return 1
+    if [ -z "$dir_tag_id" ]; then
+      dir_tag_id=`create_tag $first_tag_id $tag_name "$tag_owner" "$tag_group" "$dir"`
+      if [ $? -ne 0 ]; then
+        message="Did not find $dir/.(tag)($tag_name) id."
+        write_error $message
+        return 1
+      fi
     fi
   fi
-
-  tag_parent_id=`get_parent_id "$dir_tag_id" "$dir"`
+  #Check if the tag is valid.  If not, repair it.
+  repair_tag $tag_name $dir_tag_id "$dir"
   if [ $? -ne 0 ]; then
-    ## A serious error occured.
-    message="Can not find parent of $dir_tag_id."
-    write_error $message
-    return 1
-  elif [ "$tag_parent_id" = "000000000000000000000000" ]; then
-    ## We need to update the parent id of the tag.
-    
-    #Give debugging output if needed.
-    if [ $debug -ne 0 ]; then
-      echo $pnfs/tools/sclient chparent $shmkey $dir_tag_id $parent_dir_tag_id
-    fi
-
-    #This is the scary part where we change the parent id value.
-    count=1
-    rc=-1
-    while [ $rc -ne 0 -a $count -lt $LOOPS ]; do
-      $pnfs/tools/sclient chparent "$shmkey" "$dir_tag_id" "$parent_dir_tag_id"
-      rc=$?
-      if [ $rc -ne 0 ]; then
-        #Need to wait for PNFS and the local file cache to give the new
-        # correct value.
-        message="Retry count at $count"
-	write_error $message
-        count=`expr $count + 1`
-        sleep 1
-      fi
-    done
-    if [ $rc -ne 0 ]; then
-        message="'$pnfs/tools/sclient chparent $shmkey $dir_tag_id $parent_dir_tag_id' failed"
-	write_error $message
-    fi
-
-    #This is another scary part where we turn the pseudo primary tag back into
-    # an inherited tag.
-    count=1
-    rc=-1
-    while [ $rc -ne 0 -a $count -lt $LOOPS ]; do
-      rm "$dir/.(tag)($tag_name)" 2> /dev/null
-      rc=$?
-      if [ $rc -ne 0 ]; then
-        #If the tag is already an inherited tag we will get a error that we can
-        # ignore.  We test for this by seeing if we can read the tag back
-        # without error.
-	cat "$dir/.(tag)($tag_name)" > /dev/null 2>&1
-	if [ $? -ne 0 ]; then
-	  grep "$tag_name" "$dir/.(tags)()" > /dev/null 2>&1
-          if [ $? -ne 0 ]; then
-	    message="Can not find $dir/.(tag)($tag_name)"
-	    write_error $message
-	    return 1
-	  else
-            #The "0 0 10" are magic values from the PNFS developers.
-	    $pnfs/tools/sclient writedata "$shmkey" "$dir_tag_id" 0 0 10
-            if [ $? -ne 0 ]; then
-              mesage="Can not repair $dir/.(tag)($tag_name)"
-	      write_error $message
-	      return 1
-            fi
-	    #Deleting the tag again should restore inheritance.
-            #
-            #Need to wait for PNFS and the local file cache to give the new
-            # correct value.
-            message="Retry count at $count"
-	    write_error $message
-            count=`expr $count + 1`
-            sleep 1
-          fi
-        else
-          #We cat-ed the tag file.  It already is inherited.
-          rc=0
-	fi
-      fi
-    done
-    if [ $rc -ne 0 ]; then
-      message="Did not repair $dir/.(tag)($tag_name)"
-      write_error $message
-      return 1
-    fi
-
-
-    echo "Set $parent_dir_tag_id as parent of $dir_tag_id in $dir."
-  elif [ "$tag_parent_id" != "$parent_dir_tag_id" ]; then
-    message="Found mismatched parent tag IDs for $dir_tag_id: $tag_parent_id != $parent_dir_tag_id"
-    write_error $message
-    return 1
-  elif [ "$tag_parent_id" = "$parent_dir_tag_id" ]; then
-    echo "Determined $parent_dir_tag_id already set as parent of $dir_tag_id in $dir."
-  else
-    message="Aborting from unknown error."
+    message="Did not find $dir/.(tag)($tag_name) id."
     write_error $message
     return 1
   fi
-
 
   return 0
 }
@@ -522,7 +588,7 @@ fix_directory_tree()
     #Look at the top directory supplied by the user.  If it has the requested
     # tag, do nothing.  If not, create it.
     top_tag_id=`get_first_tag "$dir"`
-    verify_or_create_tag $top_tag_id "$tag_name" "$tag_owner" "$tag_group" "$dir" > /dev/null 2>&1
+    verify_or_create_tag $top_tag_id "$tag_name" "$tag_owner" "$tag_group" "$dir"
     if [ $? -ne 0 ]; then
       message="Aborting from failure [2]: $dir"
       write_error $message
