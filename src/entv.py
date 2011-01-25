@@ -255,7 +255,7 @@ def get_entvrc_file():
 def get_entvrc(csc=None):
 
     library_colors = {}
-    client_colors = {}
+    client_colors = []
     system_info = {}
 
     try:
@@ -300,9 +300,15 @@ def get_entvrc(csc=None):
                 continue
 
             #If the line gives fill color for clients based on their nodename.
+            # The client_colors variable needs to be a list to ensure that
+            # the correct color is applied when multiple rules match a
+            # hostname.  For example, the host cmsstor12 could match
+            # the regular experession cmsstor12 or cmsstor[1-9]* which is
+            # not helpful.  The .entvrc file writer needs to put the
+            # more specific regular experession before the general one.
             if words[0] == "client_color":
                 try:
-                    client_colors[words[1]] = words[2]
+                    client_colors.append((words[1], words[2]))
                 except (IndexError, KeyError, AttributeError, ValueError,
                         TypeError):
                     pass
@@ -2058,7 +2064,6 @@ def main(intf):
 
     #Variables that control the stopping or starting of entv.
     continue_working = 1
-    restart_entv = False
     while continue_working:
 
         #We need to update the title if the user selected or deselected

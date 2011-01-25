@@ -2712,7 +2712,7 @@ class Display(Tkinter.Canvas):
 
         self.system_name = system_name
         self.library_colors = entvrc_info.get('library_colors', {})
-        self.client_colors = entvrc_info.get('client_colors', {})
+        self.client_colors = entvrc_info.get('client_colors', [])
 
         #Only call Tkinter.Canvas.__init__() on the first time through.
         if not reinited:
@@ -3486,16 +3486,27 @@ class Display(Tkinter.Canvas):
         return self.library_colors[library]
 
     def get_client_color(self, client):
-        for item in self.client_colors.items():
+        for host_match, color in self.client_colors:
+            #Add implicit begining of line (^) and end of line ($) characters
+            # to the match pattern.  If the .entvrc file has a client_color
+            # line for cmsstor12 and cmsstor121, we want the correct color
+            # for cmsstor121, not the cmsstor12 color.
+            use_host_match = host_match
+            if host_match[0] != "^":
+                use_host_match = "^" + use_host_match
+            if use_host_match[-1] != "$":
+                use_host_match = use_host_match + "$"
+
+            #Check to see if we have a regular expresion match.
             try:
-                if re.compile(item[0]).search(client):
-                    return item[1]
+                if re.compile(use_host_match).search(client):
+                    return color
             except AttributeError:
                 pass
-                
-        self.client_colors[client] = colors('client_outline_color')
 
-        return self.client_colors[client]
+        self.client_colors.append((client, colors('client_outline_color')))
+
+        return self.client_colors[-1][1]  #Return the default color.
 
     #########################################################################
 
