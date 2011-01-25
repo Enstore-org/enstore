@@ -366,7 +366,7 @@ while [ $done -gt 0 ]; do
        # Get that file's path.
        first_file=`get_file_path $first_bfid`
        if [ $? -ne 0 ]; then
-         echo "Found active file $first_bfid on $tape inaccessable in PNFS" 1>&2
+         echo "Found active file $first_bfid on $tape inaccessible in PNFS" 1>&2
 	 rm -f "$TAPE_FILE_LIST_FORMATED"
          exit 1
        fi
@@ -384,7 +384,7 @@ while [ $done -gt 0 ]; do
        # Get that file's path.
        ran_file=`get_file_path $ran_bfid`
        if [ $? -ne 0 ]; then
-         echo "Found active file $ran_bfid on $tape inaccessable in PNFS" 1>&2
+         echo "Found active file $ran_bfid on $tape inaccessible in PNFS" 1>&2
 	 rm -f "$TAPE_FILE_LIST_FORMATED"
          exit 1
        fi
@@ -401,7 +401,7 @@ while [ $done -gt 0 ]; do
        # Get that file's path.
        last_file=`get_file_path $last_bfid`
        if [ $? -ne 0 ]; then
-         echo "Found active file $last_bfid on $tape inaccessable in PNFS" 1>&2
+         echo "Found active file $last_bfid on $tape inaccessible in PNFS" 1>&2
 	 rm -f "$TAPE_FILE_LIST_FORMATED"
          exit 1
        fi
