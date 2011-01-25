@@ -119,19 +119,29 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
             else:
                 if enstoredb_path.find("/pnfs/fs/usr/") == -1:
                     new_path = enstoredb_path.replace("/pnfs/", "/pnfs/fs/usr/", 1)
-                    path_list.append(new_path)
+                    if new_path not in path_list:
+                        path_list.append(new_path)
                 else:
                     new_path = enstoredb_path.replace("/pnfs/fs/usr/", "/pnfs/", 1)
-                    path_list.append(new_path)
+                    if new_path not in path_list:
+                        path_list.append(new_path)
                     
             #If the paths begins with something like
             # /pnfs/fnal.gov/usr/... we need to convert and check for
             # this too.  This is most likely necessary when the scan
             # is run on an offline copy that did not have the
             # fnal.gov symbolic link to fs made.
-            if path_type in [enstore_constants.FS, enstore_constants.BOTH]:
-                domain_name = hostaddr.getdomainname()
-                if domain_name:
+            domain_name = hostaddr.getdomainname()
+            if domain_name:
+                #Non-admin (/pnfs/xyz) path handling.
+                if path_type in [enstore_constants.NONFS,
+                                 enstore_constants.BOTH]:
+                    new_path = enstoredb_path.replace(
+                        "/pnfs/%s/usr/" % (domain_name,), "/pnfs/", 1)
+                    if new_path not in path_list:
+                        path_list.append(new_path)
+                #Admin (/pnfs/fs/usr/xyz) path handling.
+                if path_type in [enstore_constants.FS, enstore_constants.BOTH]:
                     new_path = enstoredb_path.replace(
                         "/pnfs/%s/usr/" % (domain_name,), "/pnfs/fs/usr/", 1)
                     if new_path not in path_list:
@@ -144,7 +154,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
             except (OSError, IOError):
                 layer1_bfid = None
             if layer1_bfid == bfid:
-                return try_path
+                return try_path  #We found the currently mounted path!
 
     #Loop over all found mount points.
     search_list_lock.acquire()
