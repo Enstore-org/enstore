@@ -890,7 +890,7 @@ def get_cache_by_db_info(db_info_key = None, default = None):
     try:
         if db_info_key == None:
             # Return copy for thread safety.
-            return_value = mount_points_cache[:]
+            return_value = mount_points_cache.copy()
         else:
             return_value = mount_points_cache.get(db_info_key, default)
     except:
