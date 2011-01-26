@@ -1840,9 +1840,23 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         return None
 
     #Get the mountpoint for the pnfs id.
-    # As a side effect also get the first
-    # 'id' is the pnfs id
-    
+    # As a side effect also get the value of the pnfsname file.
+    #
+    # 'id' is the PNFS ID.
+    # 'directory' is a default directory to try.
+    # 'pnfsname' if specified, is a string consisting of a special PNFS file
+    #            with %s as a place holder for the ID to be inserted.
+    #            ".(showid)(%s)" would be an example.
+    #            The default is ".(access)(%s)".
+    # 'return_all' is boolean flag to alter the behavior if multiple
+    #              PNFS servers are found to have the same ID.
+    #              If false, the default, raise an OSError(errno.ENODEV)
+    #              exception.  If true, return all matches.
+    #
+    #The return value is a two-tuple of lists (even if return_all is false).
+    #  The first list is the list of mount points.  The second list is
+    #  value of the pnfsname used.  The indexes for these lists are
+    #  corresponding.
     def _get_mount_point2(self, id, directory, pnfsname=None,
                           return_all = False):
         if id != None:
@@ -2028,14 +2042,42 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     # the same machine.  The current one knows about the
                     # db we are looking for, now just need to find the
                     # correctly matching mount point.
-                    db_dir = self.get_pnfs_db_directory(afn_dir)
-                    #The target_db_area step is necessary for databases like
-                    # /pnfs/sdss/db2.  The if below handles things for
-                    # locations like /pnfs/sdss.
-                    target_db_area = get_directory_name(db_dir)
-                    db_db_info = self.get_database(target_db_area)
-#                    db_data = mount_points_cache.get(db_db_info, None)
-                    db_data = get_cache_by_db_info(db_db_info, None)
+                    temp_db_dir = afn_dir
+                    db_dir = afn_dir
+                    db_data = None
+                    db_db_info = None
+                    try:
+                        #We need to loop until we find the mount point for
+                        # the requested PNFS database.  This can happen 
+                        # for directories like:
+                        #   /pnfs/fs/usr/cms/WAX/11/store/user/gcerizza/
+                        # where cms, 11 and user are all separate databases.
+                        while db_data == None:
+                            #Get a directory pointing to the next highest
+                            # PNFS database directory.  If the current mount
+                            # point being checked is not the one we are 
+                            # looking for a IOError of ENOENT is raised,
+                            # thus breaking out of the loop.
+                            temp_db_dir = self.get_pnfs_db_directory(temp_db_dir)
+                            #Determine if we found the mount point for
+                            # the PNFS database we are looking for.  If this
+                            # is the wrong mount point, db_data will be set
+                            # to None.
+                            db_dir = temp_db_dir
+                            db_db_info = self.get_database(temp_db_dir)
+                            db_data = get_cache_by_db_info(db_db_info, None)
+
+                            if db_data == None:
+                                #We have not yet found a directory that
+                                # has .(get)(database) information that
+                                # matches any of the cached mount points.
+                                # We found a directory belonging to a sub-
+                                # database.  Get the parent directory so
+                                # we can start from there on the next loop.
+                                temp_db_dir = get_directory_name(temp_db_dir)
+                    except:
+                        pass
+
                     #Determine if we found the admin database (db_data[0] == 0)
                     # and we weren't explicitly looking for it
                     if db_data == None or \
@@ -2049,7 +2091,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         # (aka /pnfs/fs/usr) as the database we are looking
                         # for.
                         db_db_info = self.get_database(db_dir)
-#                        db_data = mount_points_cache.get(db_db_info, None)
                         db_data = get_cache_by_db_info(db_db_info, None)
                     if db_data != None:
                         if found_db_info != db_db_info:
@@ -2160,9 +2201,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                               get_directory_name(db_dir)
                                             db_db_info = \
                                               self.get_database(target_db_area)
-#                                            db_data = \
-#                                              mount_points_cache.get(
-#                                                db_db_info, None)
                                             db_data = get_cache_by_db_info(
                                                 db_db_info, None)
                                             
