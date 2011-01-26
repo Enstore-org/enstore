@@ -990,19 +990,19 @@ class LibraryManagerMethods:
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(volume_family_name)
         # look in the list of work_at_movers
         for w in self.work_at_movers.list:
-            Trace.trace(self.trace_level+1, 'busy_volumes: w %s %s'%(w["vc"], w["fc"]))
+            Trace.trace(self.trace_level+1, 'busy_volumes: %s %s'%(w["vc"], w["fc"]))
             if w["vc"]["volume_family"] == volume_family_name:
                 if w["fc"]["external_label"] in vol_veto_list:
                     continue       # already processed
                 else:
                     vol_veto_list.append(w["fc"]["external_label"])
                     permissions = w["vc"].get("system_inhibit", None)
-                    Trace.trace(self.trace_level+1, 'busy_volumes: permissionss %s'%(permissions,))
+                    Trace.trace(self.trace_level+1, 'busy_volumes: permissions %s'%(permissions,))
 
                     if permissions:
-                        if permissions[0][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+                        if permissions[0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
                             continue
-                        if permissions[0][1] == 'none':
+                        if permissions[1] == 'none':
                             wr_en = wr_en + 1
 
         return vol_veto_list, wr_en
@@ -1709,7 +1709,17 @@ class LibraryManagerMethods:
                                 return rq, key_to_check # this request might go to the mover
 
         else:
+            # disk mover
             vol_veto_list = []
+            sg = volume_family.extract_storage_group(vol_family)
+            ff =  volume_family.extract_file_family(vol_family)
+            vol_family = volume_family.make_volume_family(sg,
+                                                          ff,
+                                                          "null")  # disk files can only have "null" wrappers
+            rq.ticket["vc"]["volume_family"] = vol_family
+            
+            
+            
 
         Trace.trace(self.trace_level+4,"process_write_request: request next write volume for %s" % (vol_family,))
 
@@ -3346,6 +3356,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # ok, we have some work - try to bind the volume
         w = rq.ticket
+        if self.mover_type(mticket) == 'DiskMover':
+            # volume clerk may not return external_label in vc ticket
+            # for write requests
+            if not w["vc"].has_key("external_label"):
+                w["vc"]["external_label"] = None
+                w["vc"]["wrapper"] = "null"
+        
         # reply now to avoid deadlocks
         _format = "%s work on vol=%s mover=%s requester:%s"
         Trace.log(e_errors.INFO, _format%\
@@ -3617,6 +3634,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(self.my_trace_level+1, "_mover_bound_volume: next_work_this_volume returned: %s %s"%(rq,status))
         if status[0] == e_errors.OK:
             w = rq.ticket
+            if self.mover_type(mticket) == 'DiskMover':
+                # volume clerk may not return external_label in vc ticket
+                # for write requests
+                if not w["vc"].has_key("external_label"):
+                    w["vc"]["external_label"] = None
+                    w["vc"]["wrapper"] = "null"
 
             _format = "%s next work on vol=%s mover=%s requester:%s"
             try:
@@ -3804,7 +3827,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # update suspected volume list if error source is ROBOT or TAPE
         error_source = mticket.get('error_source', 'none')
         vol_status = mticket.get('volume_status', 'none')
-        if error_source in ("ROBOT", "TAPE"):
+        if ((error_source in ("ROBOT", "TAPE")) or
+            mticket['status'][0] == e_errors.POSITIONING_ERROR): # bugzilla 947
+            # Put volume into suspect volume list if there is
+            # a positioning error. This error category is "DRIVE" in error_source, but for
+            # older mover.py versions it was not set.
+            # This is why e_errors.POSITIONING_ERROR match in status is used.
+            # If volume is not put into suspect volume list
+            # may cause lots of drives set offline by one defective tape.
             if vol_status and vol_status[0][0] == 'none':
                 vol = self.update_suspect_vol_list(mticket['external_label'],
                                                    mticket['mover'])
