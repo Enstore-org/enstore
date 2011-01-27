@@ -1581,6 +1581,14 @@ class LibraryManagerMethods:
         if self.process_for_bound_vol and (rq.ticket["fc"]["external_label"] == self.process_for_bound_vol):
             # do not continue scan if we have a bound volume.
             self.continue_scan = 0
+        # is this mover, volume in suspect mover list?
+        suspect_v,suspect_mv = self.is_mover_suspect(requestor['mover'], rq.ticket["fc"]["external_label"])
+        if suspect_mv:
+            Trace.log(e_errors.INFO,"mover %s is suspect for %s cannot assign a read work"%
+                      (requestor['mover'], rq.ticket["fc"]["external_label"]))
+            rq = None
+        
+        Trace.trace(self.trace_level+4, "process_read_request: returning %s %s"%(rq, key_to_check))
         return rq, key_to_check
 
     def process_write_request(self, request, requestor, last_work=None, would_preempt=False):
@@ -1891,6 +1899,15 @@ class LibraryManagerMethods:
             Trace.trace(self.trace_level+10,"next_work_any_volume: get from postponed %s"%(rq,))
             if rq:
                 self.postponed_rq = 1 # request comes from postponed requests list
+                # check postponed request
+                if rq.work == "read_from_hsm":
+                    rq, key = self.process_read_request(rq, requestor)
+                    Trace.trace(self.trace_level+10,"next_work_any_volume: process_read_request for postponed returned %s %s" %
+                                (rq, key))
+                elif rq.work == "write_to_hsm":
+                    rq, key = self.process_write_request(rq, requestor)
+                    Trace.trace(self.trace_level+10,"next_work_any_volume: process_write_request for postponed returned %s %s" %
+                                (rq, key))
             else:
                 if saved_rq:
                     rq = saved_rq
@@ -2423,22 +2440,30 @@ class LibraryManagerMethods:
                               (vol['external_label'],))
                     self.suspect_volumes.remove(vol)
 
+        Trace.trace(self.trace_level+11, "is_volume_suspect: external label %s suspect_volumes.list: %s"%(external_label,self.suspect_volumes.list)) 
         for vol in self.suspect_volumes.list:
             if external_label == vol['external_label']:
+                Trace.trace(self.trace_level+11, "is_volume_suspect: returning %s"%(vol, ))
                 return vol
+        Trace.trace(self.trace_level+11, "is_volume_suspect: returning None")
         return None
 
     # check if mover is in the suspect volume list
     # return tuple (suspect_volume, suspect_mover)
     def is_mover_suspect(self, mover, external_label):
+        Trace.trace(self.trace_level+11, "is_mover_suspect: %s %s"%(mover, external_label))
         vol = self.is_volume_suspect(external_label)
         if vol:
             for mov in vol['movers']:
                 if mover == mov:
                     break
-            else: return vol,None
+            else:
+                Trace.trace(self.trace_level+11, "is_mover_suspect: returning %s, None"%(vol,))
+                return vol,None
+            Trace.trace(self.trace_level+11, "is_mover_suspect: returning %s %s"%(vol, mov))
             return vol,mov
         else:
+            Trace.trace(self.trace_level+11, "is_mover_suspect: returning None, None")
             return None,None
 
     # update suspect volumer list
