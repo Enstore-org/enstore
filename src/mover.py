@@ -38,6 +38,7 @@ import monitored_server
 import inquisitor_client
 #import enstore_functions
 import enstore_functions2
+import enstore_functions3
 import enstore_constants
 import option
 import dispatching_worker
@@ -1146,7 +1147,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             pass
 
 
-    def set_volume_noaccess(self, volume):
+    def set_volume_noaccess(self, volume, reason=None):
+        Trace.alarm(e_errors.ALARM, "marking %s NOACCESS. Mover: %s. Reason: %s"%(volume,  self.shortname, reason))
         ret = self.vcc.set_system_noaccess(volume)
         if ret['status'][0] != e_errors.OK:
             Trace.alarm(e_errors.ALARM, "Serious problem can not set volume %s to NOACCESS. Reason %s. Will offline the mover with tape in it"%
@@ -1455,7 +1457,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_in_state_cnt = self.config.get('max_in_state_cnt', 2)
         crc_control = self.config.get("read_crc_control", None)
         if crc_control and crc_control in (0,1):
-                self.read_crc_control = crc_control
+            self.read_crc_control = crc_control
         elif crc_control != None:
             Trace.log(e_errors.ERROR, "Ignoring invalid 'read_crc_control' value of %s found in configuration. Allowed values are 0 or 1. Using default value of 0 ('calculate CRC when reading from memory')."%(crc_control,))
         drive_rate_threshold =  self.config.get("drive_rate_threshold", None)
@@ -2027,8 +2029,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         msg = "mover is stuck in %s. Client host %s" % (self.return_state(),self.current_work_ticket['wrapper']['machine'][1])
                         Trace.alarm(e_errors.ERROR, msg)
                         if self.state == SEEK:
-                            Trace.log(e_errors.ERROR, "marking %s noaccess" % (self.current_volume,))
-                            self.set_volume_noaccess(self.current_volume)
+                            self.set_volume_noaccess(self.current_volume, "Mover stuck. Seelog for details")
                         self.transfer_failed(e_errors.MOVER_STUCK, msg, error_source=TAPE, dismount_allowed=0)
                         self.offline()
                         return
@@ -2392,7 +2393,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # tape is at BOT
                     # something wrong with positioning.
                     self.transfer_failed(e_errors.WRITE_ERROR, "Tape %s at BOT, can not write"%(self.current_volume,), error_source=TAPE)
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Tape is at BOT, can not write")
                     return    
             else:
                 Trace.trace(31, "cur %s, initial %s, last %s"%(bloc_loc, self.initial_abslute_location, self.last_absolute_location))
@@ -2407,7 +2408,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                           bloc_loc,
                                           self.last_blocks_written),error_source=TAPE)
 
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Wrong position. See log for details")
                     return
 
                 self.current_absolute_location = bloc_loc
@@ -2450,7 +2451,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # also set volume to NOACCESS, so far
                 # no alarm is needed here because it is send by volume clerk
                 # when it sets a volume to NOACCESS
-                self.set_volume_noaccess(self.current_volume)
+                self.set_volume_noaccess(self.current_volume, "Write Error. See log for details")
                 # log all running proceses
                 self.log_processes(logit=1)
                 # trick ftt_close, so that it does not attempt to write FM
@@ -2585,7 +2586,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # also set volume to NOACCESS, so far
                 # no alarm is needed here because it is send by volume clerk
                 # when it sets a volume to NOACCESS
-                self.set_volume_noaccess(self.current_volume)
+                self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
                 # log all running proceses
                 self.log_processes(logit=1)
                 
@@ -2684,7 +2685,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         # also set volume to NOACCESS, so far
                         # no alarm is needed here because it is send by volume clerk
                         # when it sets a volume to NOACCESS
-                        self.set_volume_noaccess(self.current_volume)
+                        self.set_volume_noaccess(self.current_volume, "Short write. See log for details")
                         # log all running proceses
                         self.log_processes(logit=1)
                         return
@@ -2776,7 +2777,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                      new_bloc_loc, self.last_blocks_written+1,
                                      len(self.header_labels),
                                      len(self.eof_labels)))
-                        self.set_volume_noaccess(self.current_volume)
+                        self.set_volume_noaccess(self.current_volume, "Wrong position. See log for details")
                         self.offline()
                         return
                     self.last_absolute_location = new_bloc_loc
@@ -2791,7 +2792,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # also set volume to NOACCESS, so far
                 # no alarm is needed here because it is send by volume clerk
                 # when it sets a volume to NOACCESS
-                self.set_volume_noaccess(self.current_volume)
+                self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
                 # log all running proceses
                 self.log_processes(logit=1)
                 return
@@ -2813,7 +2814,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # also set volume to NOACCESS, so far
                     # no alarm is needed here because it is send by volume clerk
                     # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
                     # log all running proceses
                     self.log_processes(logit=1)
 
@@ -2851,7 +2852,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # also set volume to NOACCESS, so far
                     # no alarm is needed here because it is send by volume clerk
                     # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
                     # log all running proceses
                     self.log_processes(logit=1)
                     return
@@ -2936,7 +2937,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # also set volume to NOACCESS, so far
                     # no alarm is needed here because it is send by volume clerk
                     # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
                     # log all running proceses
                     self.log_processes(logit=1)
                     return
@@ -2965,7 +2966,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # also set volume to NOACCESS, so far
                     # no alarm is needed here because it is send by volume clerk
                     # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
                     # log all running proceses
                     self.log_processes(logit=1)
                     return
@@ -3426,7 +3427,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                            self.vol_info['eod_cookie'])
                         if ret['status'][0] != e_errors.OK:
                             self.read_tape_running = 0
-                            self.set_volume_noaccess(self.current_volume)
+                            self.set_volume_noaccess(self.current_volume, "Failed to update volume information. See log for details")
                             Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
                                         (self.current_volume, self.vol_info['eod_cookie']))
                             self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
@@ -3787,7 +3788,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # also set volume to NOACCESS, so far
                     # no alarm is needed here because it is send by volume clerk
                     # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
                     # log all running proceses
                     self.log_processes(logit=1)
                     self.unlock_state()
@@ -3810,7 +3811,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # also set volume to NOACCESS, so far
                     # no alarm is needed here because it is send by volume clerk
                     # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
                     # log all running proceses
                     self.log_processes(logit=1)
 
@@ -4323,7 +4324,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, "verify label returns %s" % (status,))
                 if status[0] == e_errors.OK:  #There is a label present!
                         msg = "volume %s already labeled %s" % (volume_label,status[1])
-                        self.set_volume_noaccess(volume_label)
+                        self.set_volume_noaccess(volume_label, "Volume is already labeled")
                         Trace.alarm(e_errors.ERROR, msg)
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, msg, error_source=TAPE)
@@ -4341,7 +4342,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             write_prot = string.atoi(write_prot)
                         if write_prot:
                             #self.vcc.set_system_noaccess(volume_label)
-                            self.set_volume_noaccess(volume_label)
+                            self.set_volume_noaccess(volume_label, "Attempt to label write protected tape")
                             Trace.alarm(e_errors.ERROR, "attempt to label write protected tape")
                             self.transfer_failed(e_errors.WRITE_ERROR,
                                                  "attempt to label write protected tape",
@@ -4384,7 +4385,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                    self.vol_info['remaining_bytes'],
                                                    self.vol_info['eod_cookie'])
                 if ret['status'][0] != e_errors.OK:
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Failed to update volume information. See log for details")
                     Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
                                 (self.current_volume, self.vol_info['eod_cookie']))
                     self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
@@ -4467,7 +4468,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # also set volume to NOACCESS, so far
                     # no alarm is needed here because it is send by volume clerk
                     # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
                     # log all running proceses
                     self.log_processes(logit=1)
 
@@ -4476,7 +4477,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
             elif msg.find("FTT_EUNRECOVERED") != -1:
                 Trace.alarm(e_errors.ERROR, "encountered FTT_EUNRECOVERED error. Going OFFLINE. Please check the tape drive")
-                self.set_volume_noaccess(volume_label) 
+                self.set_volume_noaccess(volume_label, "encountered FTT_EUNRECOVERED error. See log for details") 
                     
                 self.offline() # stop here for investigation
                 return
@@ -4539,7 +4540,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         ret = self.vcc.set_remaining_bytes(self.current_volume, 0, eod, None)
                         if ret['status'][0] != e_errors.OK or ret['eod_cookie'] != eod:
                             Trace.alarm(e_errors.ERROR, "set_remaining_bytes failed", ret)
-                            self.set_volume_noaccess(self.current_volume)
+                            self.set_volume_noaccess(self.current_volume, "Failed to update volume information. See log for details")
                             Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
                                         (self.current_volume, self.vol_info['eod_cookie']))
 
@@ -4673,11 +4674,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                    e_errors.READ_VOL1_READ_ERR,
                    e_errors.WRITE_VOL1_READ_ERR,
                    e_errors.MOVER_STUCK))):
-            self.set_volume_noaccess(volume_label) 
+            self.set_volume_noaccess(volume_label, "Error: %s"%(exc,))
         if ftt_eio and self.mode != WRITE:
             # if it was WRITE then the tape was set to readonly, which is enough
             # action for tape
-            self.set_volume_noaccess(volume_label) 
+            self.set_volume_noaccess(volume_label, "FTT_EIO error. See log for details") 
         if dism_allowed:
             if exc == e_errors.MEMORY_ERROR:
                 Trace.log(e_errors.ERROR, "Memory error, restarting mover")
@@ -4816,7 +4817,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 needs_cleaning = self.tape_driver.get_cleaning_bit()
             except self.ftt.FTTError, detail:
                 Trace.alarm(e_errors.ALARM,"Possible Drive problem %s %s"%(self.ftt.FTTError, detail))
-                self.set_volume_noaccess(self.current_volume)
+                self.set_volume_noaccess(self.current_volume, "Possible drive problem. See log for details")
                 self.offline()
                 return 1
                 
@@ -4892,7 +4893,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             (self.current_volume, detail))
                 # no alarm is needed here because it is send by volume clerk
                 # when it sets a volume to NOACCESS
-                self.set_volume_noaccess(self.current_volume)
+                self.set_volume_noaccess(self.current_volume, "ftt error on %s after write. See log for details")
                 # log all running proceses
                 self.log_processes(logit=1)
                 self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
@@ -4978,7 +4979,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # keep trying
                     Trace.alarm(e_errors.ERROR,"Volume Clerk timeout on the final stage of file writing to %s"%(self.current_volume))
                 else:
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Failed to update volume information. See log for details")
                     Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
                                 (self.current_volume, self.vol_info['eod_cookie']))
                     self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
@@ -5584,7 +5585,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         # also set volume to NOACCESS, so far
                         # no alarm is needed here because it is send by volume clerk
                         # when it sets a volume to NOACCESS
-                        self.set_volume_noaccess(self.current_volume)
+                        self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
                         # log all running proceses
                         self.log_processes(logit=1)
                         
@@ -5598,7 +5599,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             # also set volume to NOACCESS, so far
                             # no alarm is needed here because it is send by volume clerk
                             # when it sets a volume to NOACCESS
-                            self.set_volume_noaccess(self.current_volume)
+                            self.set_volume_noaccess(self.current_volume, "Error writing file mark. See log for details")
                             # log all running proceses
                             self.log_processes(logit=1)
 
@@ -5640,7 +5641,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.current_volume:
                     try:
                         #self.vcc.set_system_noaccess(self.current_volume)
-                        self.set_volume_noaccess(self.current_volume)
+                        self.set_volume_noaccess(self.current_volume, "Eject error. See log for details")
                     except:
                         exc, msg, tb = sys.exc_info()
                         broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)                
@@ -5772,7 +5773,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if self.current_volume:
                 try:
-                    self.set_volume_noaccess(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume, "Dismount error. See log for details")
                 except:
                     exc, msg, tb = sys.exc_info()
                     broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)
@@ -5984,7 +5985,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.net_driver.close()
                 if status[1] == e_errors.MC_VOLNOTFOUND:
                     try:
-                        self.set_volume_noaccess(volume_label)
+                        self.set_volume_noaccess(volume_label, "Volume not found. See log for details")
                     except:
                         exc, msg = sys.exc_info()[:2]
                         Trace.alarm(e_errors.WARNING, "set_system_noaccess failed: %s %s" %(exc, msg))
@@ -6001,8 +6002,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:    
                 broken = "mount %s failed: %s" % (volume_label, status)
             try:
-                #self.vcc.set_system_noaccess(volume_label)
-                self.set_volume_noaccess(volume_label)
+                self.set_volume_noaccess(volume_label, "Mount error. See log for details")
             except:
                 exc, msg, tb = sys.exc_info()
                 broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)
@@ -6344,27 +6344,6 @@ class MoverInterface(generic_server.GenericServerInterface):
             os._exit(1)
         else:
             self.name = self.args[0]
-# convert file id (pnfs id)
-# to local data file path
-def file_id2path(root, file_id):
-    # example:
-    #root = "/data_files"
-    #file_id = "00001E9281CFB7054652B62737ED1ED3B3F6"
-    #return value:
-    # "/data_files/A/000/01E/928/1CF/B70/546/52B/627/37E/D1E/D3B/00001E9281CFB7054652B62737ED1ED3B3F6"
-
-    path = [root]
-    d = "/"
-    i = 0
-    nl = 3
-    j = i + nl
-    while j <= len(file_id) - nl:
-        path.append(file_id[i:j])
-        i = i + nl
-        j = j + nl
-    path.append(file_id)
-    
-    return d.join(path)
 
 class DiskMover(Mover):
 
@@ -6923,7 +6902,7 @@ class DiskMover(Mover):
             self.buffer.header_size = None
         elif self.mode == WRITE:
             if fc.has_key('pnfsid'):
-                self.file = file_id2path(self.device, fc['pnfsid'])
+                self.file = enstore_functions3.file_id2path(self.device, fc['pnfsid'])
                 self.files = (client_filename, pnfs_filename)
             else:
                 self.transfer_failed(e_errors.MALFORMED, 'expected Key "pnfsid". Current dictionary %s'%(fc,), error_source=USER)
@@ -7169,9 +7148,8 @@ class DiskMover(Mover):
                                              remaining,
                                              loc_to_cookie(self.current_location+1), bfid)
         if reply['status'][0] != e_errors.OK:
-            self.set_volume_noaccess(self.current_volume)
-            Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
-                        (self.current_volume, self.vol_info['eod_cookie']))
+            self.set_volume_noaccess(self.current_volume, "Failed to update volume information on %s, EOD %s. May cause a data loss. See log for details"%
+                                     (self.current_volume, self.vol_info['eod_cookie']))
             self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
             return 0
         self.vol_info.update(reply)
