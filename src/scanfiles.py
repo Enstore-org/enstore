@@ -1332,7 +1332,7 @@ def check_bit_file(bfid, bfid_info = None):
         
         ### Note: msg.args[0] will be returned as ENOENT if a file is found
         ### to match the sfsid, but not the bfid.
-        
+
         if (msg.errno == errno.ENOENT or \
             (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST)) and \
             (file_record['deleted'] in ["yes", "unknown"] or is_multiple_copy):
@@ -1363,6 +1363,12 @@ def check_bit_file(bfid, bfid_info = None):
                 # If the destination has been scanned and we still get here,
                 # does this check need to be furthur modified???
                 warn.append("migrated copy not marked deleted")
+            elif sfs_path and not namespace.is_id(sfs_path) \
+                     and not (is_multiple_copy or is_primary_copy):
+                #Catch the case where the migration source file is the active
+                # file in the storage file system instead of the new copy.
+                err.append("migration source copy is active in the SFS (%s)" \
+                           % (sfs_path,))
             else:
                 err.append("migration(%s)" % (msg.args[1],))
         elif is_migrated_copy and file_record['deleted'] == "yes":
@@ -1443,16 +1449,12 @@ def check_bit_file(bfid, bfid_info = None):
             info.append("deleted(no)")
         else:
             err.append(msg.args[1])
+
+        if err or warn:
+            errors_and_warnings(prefix, err, warn, info)
+            return
     except (ValueError,), msg:
         err.append(str(msg))
-        errors_and_warnings(prefix, err, warn, info)
-        return
-
-    #Catch the case where the migration source file is the active file
-    # in the storage file system instead of the new copy.
-    if is_migrated_copy and sfs_path \
-             and not (is_multiple_copy or is_primary_copy):
-        err.append("migration source copy is active in the storage file system")
         errors_and_warnings(prefix, err, warn, info)
         return
 
@@ -1477,7 +1479,7 @@ def check_bit_file(bfid, bfid_info = None):
         errors_and_warnings(prefix, err, warn, info)
         return
 
-    #If we are a supper user, reset the effective uid and gid.
+    #If we are a super user, reset the effective uid and gid.
     file_utils.acquire_lock_euid_egid()
     try:
         file_utils.set_euid_egid(f_stats[stat.ST_UID], f_stats[stat.ST_GID])
