@@ -1602,7 +1602,7 @@ class LibraryManagerMethods:
             self.continue_scan = 1
             if self.process_for_bound_vol and (key_to_check != self.process_for_bound_vol):
                 Trace.trace(self.trace_level+4, "process_write_request: got here")
-                return rq, key_to_check
+                #return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
         if rq.adminpri > -1:
             if vol_family in self.processed_admin_requests:
