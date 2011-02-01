@@ -20,7 +20,7 @@ fi
 echo "release dir ${release_dir}"
 place="ftp://ssasrv1.fnal.gov/en/${release_dir}"
 force=""
-rpm_name="enstore-2.1.0-3"
+rpm_name="enstore-2.1.2-0"
 
 usage() {
 echo "$0 [-c config_server] [-n rpm-name] [-hqx] [force] [server] [fnal] [url]"
