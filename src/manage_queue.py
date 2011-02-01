@@ -358,12 +358,16 @@ class SortedList:
     
     # remove a request from the list (no updates)
     def rm(self,record,key=''):
-        Trace.trace(TR+23,"SortedList.rm: %s %s"%(record.pri, record.ticket))
+        Trace.trace(TR+23,"%s:SortedList.rm: %s %s"%(self.my_name, record.pri, record.ticket))
         if record in self.sorted_list:
             self.lock.acquire()
             try:
                 self.sorted_list.remove(record)
                 max_index = len(self.sorted_list) - 1
+                if max_index < 0:
+                    # max index can nont be negative
+                    max_index = 0
+                Trace.trace(TR+23,"%s:SortedList.rm: max_index %s"%(self.my_name, max_index,))
                 if self.current_index > max_index:
                     self.current_index = max_index
                 if hasattr(self,'start_index') and self.start_index > max_index:
@@ -387,7 +391,7 @@ class SortedList:
         pri = record.pri
         self.rm(record, key)
         # find the next highest priority request
-        Trace.trace(TR+23,"SortedList.delete id %s highest pri id %s"%(record.unique_id, self.highest_pri_id)) 
+        Trace.trace(TR+23,"%s:SortedList.delete id %s highest pri id %s"%(self.my_name, record.unique_id, self.highest_pri_id))
         if record.unique_id == self.highest_pri_id:
             req = self.get(pri)
             if req:
@@ -476,9 +480,8 @@ class Queue:
         if not self.queue.get(key,''):
             # create opt entry in the list. For writes it is Volume Family
             # for reads - volume label. Create by_priority entry as well
-            self.queue[key] = {'opt':SortedList(compare_value, 0,self.aging_quantum, key), # no updates
-                              'by_priority':SortedList(compare_priority, 1, self.aging_quantum, key)
-                              #'by_priority':SortedList(compare_priority, 1, self.aging_quantum, key)
+            self.queue[key] = {'opt':SortedList(compare_value, 0,self.aging_quantum, "opt:%s:"%(key,)), # no updates
+                               'by_priority':SortedList(compare_priority, 1, self.aging_quantum, "by_priority:%s:"%(key,))
                               }
                 
         # put request into both queues
@@ -1033,6 +1036,8 @@ class Request_Queue:
         self.process_admin_queue = 1
         # list of requests, processed in this cycle
         self.processed_requests = []
+        self.admin_rq_returned = False # initialize this flag in the beginning of each selection cycle
+        
         
     # see how many different keys has tags list
     # needed for fair share distribution
@@ -1218,7 +1223,7 @@ class Request_Queue:
                     # self.admin_rq_returned is used to
                     # keep the information about what queue
                     # is selected
-                    self.admin_rq_returned = 1
+                    self.admin_rq_returned = True
                     if not (rq in self.processed_requests):
                         # allow to remove rq.ticket['fc']['external_label'] only if
                         # request has not yet been processed in this cycle
@@ -1238,7 +1243,7 @@ class Request_Queue:
             
         # key is not specified, get the highest priority from
         # the tags queue
-        if next and self.admin_rq_returned == 0:
+        if next and not self.admin_rq_returned:
             Trace.trace(TR+21, "GET_NEXT_2")
             record = self.regular_queue.get(key, location, next=1,
                                             active_volumes=active_volumes,disabled_hosts = disabled_hosts)
@@ -1246,7 +1251,7 @@ class Request_Queue:
             Trace.trace(TR+21, "GET_2")
             record = self.regular_queue.get(key, location, active_volumes=active_volumes)
 
-        self.admin_rq_returned = 0
+        self.admin_rq_returned = False
         Trace.trace(TR+22, "admin_queue=0 time %s"%(time.time()-t,))
         
         if record and not (record in self.processed_requests):
@@ -1896,7 +1901,7 @@ def unit_test_bz_924():
     # When this request is deleted the queue gets updated raising
     # priority of request 1 to 2.
     # Then request 3 gets into the queue.
-    # Then after 62 secondg get is issued which should pull request 1 it has now prority 2,
+    # Then after 62 secondg get is issued which should pull request 1 it has now priority 2,
     # same as priority of request 3, but request 1 is older.
     # And so on.
     
@@ -2074,6 +2079,96 @@ def unit_test_bz_924():
     
 
 
+
+
+
+def unit_test_bz_975():
+    # Unit test for indefinite request selection loop
+    # 1. Put request t1 for "vol1" into queue.
+    # 2. Get request t1 and deletes it thus setting self.current_index and
+    #    self.start_index to -1
+    # 3. Put request t22 for "vol2" and request t3 for "vol1" into queue.
+    # 4. Gets request from the queue with active_volumes = ["vol1", "vol2"]
+    # This creates indefinite loop for old code
+
+    Trace.do_print(range(5, 500)) # uncomment this line for debugging
+    pending_work = Request_Queue()    
+    t1={}
+    t1["encp"]={}
+    t1['fc'] = {}
+    t1['vc'] = {}
+    t1["times"]={}
+    t1["unique_id"]=1
+    t1["encp"]["basepri"]=1
+    t1['encp']['adminpri'] = -1
+    t1["times"]["t0"]=time.time()
+    t1['work'] = 'read_from_hsm'
+    t1['fc']['external_label'] = 'vol1'
+    t1['fc']['location_cookie'] = 5
+    t1['vc']['storage_group'] = 'D0'
+    t1['callback_addr'] = ('131.225.13.129', 7000)
+    t1['comment'] = "Come out order 2"
+    res = pending_work.put(t1)
+    t2={}
+    t2["encp"]={}
+    t2['fc'] = {}
+    t2['vc'] = {}
+    t2["times"]={}
+    t2["unique_id"]=2
+    t2["encp"]["basepri"]=1
+    t2['encp']['adminpri'] = -1
+    t2["times"]["t0"]=time.time()
+    t2['work'] = 'read_from_hsm'
+    t2['fc']['external_label'] = 'vol2'
+    t2['fc']['location_cookie'] = 5
+    t2['vc']['storage_group'] = 'D0'
+    t2['callback_addr'] = ('131.225.13.129', 7000)
+    t2['comment'] = "Come out order 2"
+
+    t3={}
+    t3["encp"]={}
+    t3['fc'] = {}
+    t3['vc'] = {}
+    t3["times"]={}
+    t3["unique_id"]=3
+    t3["encp"]["basepri"]=2
+    t3['encp']['adminpri'] = -1
+    t3["times"]["t0"]=time.time()
+    t3['work'] = 'read_from_hsm'
+    t3['fc']['external_label'] = 'vol1'
+    t3['fc']['location_cookie'] = 7
+    t3['vc']['storage_group'] = 'D0'
+    t3['callback_addr'] = ('131.225.13.129', 7000)
+    t3['comment'] = "Come out order 2"
+
+    pending_work.start_cycle()
+
+    rq = pending_work.get(key="K1", next=1, active_volumes=['vv3', 'vv4'])
+    rq = pending_work.get(next=1, active_volumes=['vv3', 'vv4'])
+    print "RQ", rq
+    if rq:
+        print "Ticket", rq.ticket
+        pending_work.delete(rq)
+
+    """
+    print "and once more"
+    pending_work.start_cycle()
+    rq = pending_work.get_admin_request(key=None)
+    print "RQ", rq
+    if rq:
+        print "Ticket", rq.ticket
+    
+    """
+    print "Once more"
+    res = pending_work.put(t2)
+    res = pending_work.put(t3)
+    pending_work.start_cycle()
+    
+    rq = pending_work.get(key="K1", next=1, active_volumes=['vol1','vol2'])
+    rq = pending_work.get(next=1, active_volumes=['vol1','vol2'])
+    print "TEST FINISHED"
+    
+
 def usage(prog_name):
     print "usage: %s arg"%(prog_name,)
     print "where arg is"
@@ -2081,6 +2176,7 @@ def usage(prog_name):
     print "1 - unit test for bugzilla ticket 769 (http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=769)"
     print "2 - unit test for bugzilla ticket 774 (http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=774)"
     print "3 - unit test for update priority:  bugzilla ticket 924 (http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=924)"
+    print "3 - unit test for indefinite loop in Atomic_Request_Queue.get:  bugzilla ticket 975 (http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=975)"
     
 if __name__ == "__main__":
     import os
@@ -2097,6 +2193,10 @@ if __name__ == "__main__":
         elif int(sys.argv[1]) == 3:
             unit_test_bz_924()
             os._exit(0)
+        elif int(sys.argv[1]) == 4:
+            unit_test_bz_975()
+            os._exit(0)
+            
             
     usage(sys.argv[0])
     os._exit(1)
