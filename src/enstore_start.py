@@ -593,6 +593,7 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
         "ratekeeper",
         "library",
         "media",
+        "migrator",
         "mover",
         "monitor_server",
         "pnfs_agent",
@@ -655,7 +656,7 @@ def do_work(intf):
         print "Unable to determine database directory."
         sys.exit(1)
 
-    #The movers need to run as root, check for sudo.
+    #The movers and migrators need to run as root, check for sudo.
     if os.system("sudo -V > /dev/null 2> /dev/null"): #if true sudo not found.
         sudo = str("")
     else:
@@ -757,7 +758,15 @@ def do_work(intf):
                          "%s $ENSTORE_DIR/sbin/mover %s" %
                          (sudo, mover_name))
     """
-        
+    #Migrators
+    migrators = csc.get_migrators(None)
+    for migrator in migrators:
+        if intf.should_start(enstore_constants.MIGRATOR) or \
+           intf.should_start(migrator):
+            check_server(csc, migrator, intf,
+                         "%s $ENSTORE_DIR/sbin/migrator %s" %
+                         (sudo, migrator,))
+    
     sys.exit(0)
 
 if __name__ == '__main__':

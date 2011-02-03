@@ -339,6 +339,7 @@ NO_PENDING = "No pending work"
 NEVER_ALIVE = -1
 
 LIBRARY_MANAGER = "library_manager"
+MIGRATOR = "migrator"
 MOVER = "mover"
 VC = "vc"
 NOMOVER = "nomover"

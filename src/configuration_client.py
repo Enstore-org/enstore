@@ -373,6 +373,26 @@ class ConfigurationClient(generic_client.GenericClient):
 
         return mover_list
 
+    # get list of the migrators with full config info
+    def get_migrators2(self, timeout=0, retry=0):
+        migrator_list = []
+        
+        conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
+        if e_errors.is_ok(conf_dict):
+            for key, value in conf_dict.items():
+                if key[-9:] == ".migrator":
+                    value['name'] = key
+                    migrator_list.append(value)
+        return migrator_list
+
+    # get list of the migrators
+    def get_migrators(self, timeout=0, retry=0):
+        migrator_list = []
+        migrator_list1 = self.get_migrators2(timeout, retry)
+        for migrator in migrator_list1:
+           migrator_list.append(migrator['name'])
+        return migrator_list
+
     # get media changer associated with a library manager
     def get_media_changer(self, library_manager, timeout=0, retry=0):
         request = {'work' : 'get_media_changer' ,
