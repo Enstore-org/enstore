@@ -43,27 +43,28 @@ while read line; do
     tl_name=`echo $mc | tr "." " " | cut -f 1 -d " " | tr '[a-z]' '[A-Z]'`
     #Create the variables that point to the files to output to.
     fname=${tl_name}-VOLUMES
+    old_output_file=$inventory_dir/$fname
     output_file=$inventory_dir/$fname.html
     temp_file=$inventory_dir/.$fname$$.temp
-    trap "rm -f $temp_file; exit 1" HUP INT QUIT ABRT ALRM TERM
+    temp_file_html=$inventory_dir/.$fname$$.temp.html
+    trap "rm -f $temp_file $temp_file_html; exit 1" HUP INT QUIT ABRT ALRM TERM
     
-    echo Starting to making output file for $tl_name.
+    echo Starting to making output file for $tl_name.  `date`
 
     #Make sure we know how up-to-date this is.
-    echo -e $tl_name Volume List Report: `date` >> $temp_file 2>&1
-    echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
+    echo -e $tl_name Volume List Report: `date` > "$temp_file" 2>&1
+    echo -e Brought to You by: `basename $0` "\n" >> "$temp_file" 2>&1
     #Get the volumes!
-    enstore media $timeout --list-volumes $mc >> $temp_file 2>&1
-    echo -e "\n" >> $temp_file 2>&1
+    enstore media $timeout --list-volumes $mc >> "$temp_file" 2>&1
+    echo -e "\n" >> "$temp_file" 2>&1
     #Give and end time so we know how long it took.
-    echo -e $fname Report Completed: `date` "\n" >> $temp_file 2>&1
+    echo -e $fname Report Completed: `date` "\n" >> "$temp_file" 2>&1
 
-    echo Done making output file for $tl_name.
+    echo Done making output file for $tl_name.  `date`
 
-    #For backward compatiblity make an html file too.
-    echo Starting to making html file for $tl_name.
-    rm -f $output_file.html
-    cat << EOF >> $output_file
+    #For backward compatiblity make an html file.
+    echo Starting to make html file for $tl_name.  `date`
+    cat << EOF > "$temp_file_html"
 <html> <head> <title>$tl_name Volume Status Page</title> </head>
 <body>
 <body bgcolor="#ffffff" text=#000000">
@@ -71,16 +72,25 @@ while read line; do
 <pre>
 EOF
 
-    cat $temp_file >> $output_file
+    cat "$temp_file" >> "$temp_file_html"
 
-    cat << EOF >> $output_file
+    cat << EOF >> "$temp_file_html"
 </pre>
 </body>
 EOF
+
+    #Move the temporary file into place.
+    mv "$temp_file_html" "$output_file"
+
     #End of making the html file.
-    echo Done making html file for $tl_name.
+    echo Done making html file for $tl_name.  `date`
 
     #Remove the temp file.
-    rm -f $temp_file
+    rm -f "$temp_file" "$temp_file_html"
+    #At one time there used to be a text file and an html file.  The admins
+    #complained that there were two files on the inventory summary.  So,
+    #now we have just the html file.  If the old text output file is still
+    #there delete it.
+    rm -f "$old_output_file"
 
 done
