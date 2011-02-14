@@ -14,6 +14,7 @@
 import types
 import re
 import sys
+import os
 import string
 
 # enstore modules
@@ -247,4 +248,30 @@ def extract_file_number(location_cookie):
             return None
         
     return None
+
+
+# generate file path from string of hexadecimal characters representing file ID
+def file_id2path(root, file_id):
+    # based on Alex suggestion
+    # for even distrbution of files in directories
+    # The file_id is presented by a string of hexadecimal characters
+    # example:
+    # 1. chimera ID
+    # root = "/data_files"
+    # file_id = "00001E9281CFB7054652B62737ED1ED3B3F6"
+    # return value:
+    # "/data_files/ee8/d3b/00001E9281CFB7054652B62737ED1ED3B3F6"
+    # 2. pnfs ID
+    # root = "/data_files"
+    # file_id = "00020000000000001141B638"
+    # return value:
+    # " /data_files/629/41b/00020000000000001141B638"
+
+    file_id_hex = int("0x"+file_id, 16)
+    first = "%03x"%((file_id_hex & 0xFFF) ^ ( (file_id_hex >> 24) & 0xFFF),)
+    second = "%03x"%((file_id_hex>>12) & 0xFFF,)
+    path = os.path.join(root, first, second, file_id) 
+    
+    return path
+
 
