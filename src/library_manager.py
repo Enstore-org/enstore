@@ -1408,7 +1408,6 @@ class LibraryManagerMethods:
         self.write_volumes = []
         self.write_vf_list = {}
         self.tmp_rq = None   # need this to temporarily store selected request
-        self.processed_admin_requests = []
         # initialize postponed requests list
         if self.postponed_requests.list_expired():
             Trace.trace(self.trace_level, "postponed list expired")
@@ -1507,13 +1506,6 @@ class LibraryManagerMethods:
 
         mover = requestor.get('mover', None)
         label = rq.ticket["fc"]["external_label"]
-        if rq.adminpri > -1: # admin priority
-            if label in self.processed_admin_requests: # request with this external label was alredy processed
-                Trace.trace(self.trace_level+4,"process_read_request: return here")
-                self.continue_scan = 1
-                return None,key_to_check
-            else:
-               self.processed_admin_requests.append(label)
 
         if self.is_vol_busy(rq.ticket["fc"]["external_label"], mover) and self.mover_type(requestor) != 'DiskMover':
             rq.ticket["reject_reason"] = ("VOL_BUSY",rq.ticket["fc"]["external_label"])
@@ -1604,13 +1596,6 @@ class LibraryManagerMethods:
                 Trace.trace(self.trace_level+4, "process_write_request: got here")
                 #return rq, key_to_check
         vol_family = rq.ticket["vc"]["volume_family"]
-        if rq.adminpri > -1:
-            if vol_family in self.processed_admin_requests:
-                Trace.trace(self.trace_level+4,"process_write_request:return here")
-                self.continue_scan = 1
-                return None,key_to_check
-            else:
-               self.processed_admin_requests.append(vol_family)
         if self.mover_type(requestor) != 'DiskMover':
             if not self.write_vf_list.has_key(vol_family):
                 vol_veto_list, wr_en = self.busy_volumes(vol_family)
