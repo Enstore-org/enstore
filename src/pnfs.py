@@ -397,7 +397,7 @@ def get_directory_name(filepath):
                     dirname, ".(access)(%s)" % parent_parent_id,
                     nameof_parent_name)
     else:
-        directory_name = os.path.dirname(filepath)
+        directory_name = os.path.dirname(enstore_functions2.expand_path(filepath))
 
     return directory_name
 
