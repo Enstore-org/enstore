@@ -125,6 +125,7 @@ def main(func,number_of_threads):
     job_config['library']=library
     job_config['hostname']=hostname
     job_config['database'] =csc.get("database", {})
+    job_config['csc']=csc
 
     #
     # find mover running on this host
@@ -137,7 +138,7 @@ def main(func,number_of_threads):
     for m in mover_list:
         m_host = socket.gethostbyaddr(m.get('address')[0])[0].split('.')[0]
         if m_host == hostname :
-            mover = m.get('mover')
+            mover = m
             break
     if not mover :
          print_error("No movers associated with %s on this host %s"%(library_manager.get('name'),hostname))
@@ -145,7 +146,8 @@ def main(func,number_of_threads):
     #
     # get info about the mover
     #
-    mover_info = csc.get(mover)
+    mover_info = csc.get(mover.get('mover'))
+    mover_info.update(mover)
 
     job_config['mover']=mover_info
 

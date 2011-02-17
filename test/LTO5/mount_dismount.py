@@ -12,6 +12,8 @@ import volume_assert
 import media_changer_client
 import volume_clerk_client
 import e_errors
+import mover_client
+import enstore_constants
 
 #Q="select v.label from volume v where v.library='%s' and v.file_family='%s' order by v.label limit 1"
 Q="select v.label from volume v where v.library='%s' and v.storage_group='%s' order by v.label limit 1"
@@ -65,6 +67,11 @@ def mount_dismount(i, job_config):
     mcc = media_changer_client.MediaChangerClient((enstore_functions2.default_host(),
                                                    enstore_functions2.default_port()),
                                                   media_changer)
+    mover_name = job_config.get('mover').get('mover')
+    moverClient               = mover_client.MoverClient(job_config.get('csc'),
+                                                         mover_name,
+                                                         enstore_constants.NO_LOG | enstore_constants.NO_ALARM,
+                                                         3, 2)
 
     vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
     vol_ticket = vcc.inquire_vol(volume)
@@ -75,40 +82,54 @@ def mount_dismount(i, job_config):
         if check_stop_file():
             return 0
         print_message("Starting mount %d of %d"%(i,number_of_mounts_dismounts,))
-        ticket = mcc.loadvol(vol_ticket, mc_device, mc_device)
-        while ticket['status'][0] in [e_errors.MC_QUEUE_FULL]:
-            if check_stop_file():
-                return 0
-            print_error("Failed to mount tape %s, %d of %d %s"%(volume,i,number_of_mounts_dismounts,str(ticket['status'])))
-            print_error("Retrying in 30 seconds ....")
-            time.sleep(30)
-            ticket = mcc.loadvol(vol_ticket, mc_device, mc_device)
-        if ticket['status'][0] != e_errors.OK and ticket['status'][0] not in [e_errors.MC_QUEUE_FULL ]:
-            print_error("Failed to mount tape %s, %d of %d %s"%(volume,i,number_of_mounts_dismounts,str(ticket['status'])))
-            return 1
-        #
-        # update mount count as media_changer does not do it for us
-        #
-        vcc.update_counts(volume,mounts=1)
-        #
-        # read random file
-        #
+
         if len(file_list) == 0 :
             file_list=done_files[:]
             del done_files[:]
-        encp_random_file(file_list,done_files)
+
+        rc=encp_random_file(file_list,done_files)
+
+        if rc:
+            return 1
         print_message("Starting dismount %d of %d"%(i,number_of_mounts_dismounts,))
-        ticket = mcc.unloadvol(vol_ticket, mc_device, mc_device)
-        while ticket['status'][0] in [e_errors.MC_QUEUE_FULL]:
-            print_error("Failed to dismount tape %s, %d of %d %s"%(volume,i,number_of_mounts_dismounts,str(ticket['status'])))
-            print_error("Retrying in 30 seconds ....")
-            time.sleep(30)
-            ticket = mcc.unloadvol(vol_ticket, mc_device, mc_device)
+
+        mover_state = ""
+        status = moverClient.status(3, 2)
+        if e_errors.is_ok(status['status'][0]):
+            mover_state = status['state']
+        else:
+            print_error("Failed to get mover status %s "%(status,))
+            return 1
+
+        max_tries  = 20
+        tries = 0
+
+        while mover_state != 'IDLE' and tries < max_tries :
             if check_stop_file():
                 return 0
-        if ticket['status'][0] != e_errors.OK and ticket['status'][0] not in [e_errors.MC_QUEUE_FULL ]:
-            print_error("Failed to dismount tape %s, %d of %d %s"%(volume,i,number_of_mounts_dismounts,str(ticket['status'])))
-            return 1
+            tries += 1
+            print_message("Mover is in state '%s'. Sleeping 40 seconds before querying its status again"%(mover_state,))
+            time.sleep(40)
+            status = moverClient.status(3, 2)
+            if e_errors.is_ok(status['status'][0]):
+                mover_state = status['state']
+            else:
+                print_error("Failed to get mover status %s "%(status,))
+                return 1
+
+        if mover_state != 'IDLE' :
+            ticket = mcc.unloadvol(vol_ticket, mc_device, mc_device)
+            while ticket['status'][0] in [e_errors.MC_QUEUE_FULL]:
+                print_error("Failed to dismount tape %s, %d of %d %s"%(volume,i,number_of_mounts_dismounts,str(ticket['status'])))
+                print_error("Retrying in 30 seconds ....")
+                time.sleep(30)
+                ticket = mcc.unloadvol(vol_ticket, mc_device, mc_device)
+                if check_stop_file():
+                    return 0
+                if ticket['status'][0] != e_errors.OK and ticket['status'][0] not in [e_errors.MC_QUEUE_FULL ]:
+                    print_error("Failed to dismount tape %s, %d of %d %s"%(volume,i,number_of_mounts_dismounts,str(ticket['status'])))
+                    return 1
+
     return 0
 
 if __name__ == "__main__":
