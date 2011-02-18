@@ -19,13 +19,13 @@ import e_errors
 import configuration_client
 
 # enstore cache imports
-#import lmd
+import lmd
 #import cache.messaging.messages
 
 MY_NAME = "lmd"
 MY_FULL_NAME = "Location Manager Dispatcher server"
 
-debug = False
+debug = True
 timing = False
 
 class LMDs(object):
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     try:
         # get LMD instance
-        lmd = LMDs(conf_srv)
+        lmds = LMDs(conf_srv)
     except:
         exit(1)
 
@@ -113,17 +113,17 @@ if __name__ == "__main__":
     while True:
         try:
             Trace.log(e_errors.INFO, "%s (re)starting" % MY_FULL_NAME )
-            lmd.start()
+            lmds.start()
             if debug: print "DEBUG lmd_srv started [main]"            
             # stop LDM server if there was keyboard interrupt (TODO: shutdown message)
-            while not lmd.lmd_srv.finished :
+            while not lmds.lmd_srv.finished :
                 try:
                     time.sleep(10)
                 except KeyboardInterrupt:
                     Trace.log(e_errors.INFO, "%s Keyboard interrupt" % MY_FULL_NAME )
                 finally:
                     Trace.log(e_errors.INFO, "%s stopping" % MY_FULL_NAME )
-                    lmd.lmd_srv.stop()
+                    lmds.lmd_srv.stop()
                     if debug: print "DEBUG lmd_srv stopped" 
                     break
             
@@ -132,5 +132,5 @@ if __name__ == "__main__":
         except:
             continue
         finally:
-            del lmd
+            del lmds
             Trace.trace(e_errors.ERROR, ("%s finished") % MY_FULL_NAME)
