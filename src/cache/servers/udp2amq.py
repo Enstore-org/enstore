@@ -21,16 +21,16 @@ from multiprocessing import Process
 
 # qpid / amqp
 from qpid.messaging import Message 
-from qpid.messaging import ReceiverError
+from qpid.messaging import ReceiverError, SendError
 import Queue
 
 # enstore imports
 from udp_server import UDPServer
 
 # enstore cache imports
-from client import EnQpidClient
+from cache.messaging.client import EnQpidClient
 
-debug = True
+debug = False
 timing = False
 
 class UDP2amq(UDPServer):
