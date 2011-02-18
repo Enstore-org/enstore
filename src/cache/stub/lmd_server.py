@@ -101,16 +101,18 @@ if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME))
     logc = log_client.LoggerClient(conf_srv, MY_NAME)
 
-    try:
-        # get LMD instance
-        lmds = LMDs(conf_srv)
-    except:
-        exit(1)
-
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
 
     if debug: print "DEBUG lmd_srv ready" 
-    while True:
+    while True: # run forever
+        try:
+            # get LMD instance
+            lmds = LMDs(conf_srv)
+        except:
+            Trace.log(e_errors.INFO, "%s can't create LDMs instance, will retry " % MY_FULL_NAME )
+            time.sleep(10)
+            continue
+
         try:
             Trace.log(e_errors.INFO, "%s (re)starting" % MY_FULL_NAME )
             lmds.start()
@@ -121,16 +123,15 @@ if __name__ == "__main__":
                     time.sleep(10)
                 except KeyboardInterrupt:
                     Trace.log(e_errors.INFO, "%s Keyboard interrupt" % MY_FULL_NAME )
-                finally:
-                    Trace.log(e_errors.INFO, "%s stopping" % MY_FULL_NAME )
-                    lmds.lmd_srv.stop()
-                    if debug: print "DEBUG lmd_srv stopped" 
                     break
-            
+
         except SystemExit, exit_code:
             sys.exit(exit_code)
         except:
             continue
         finally:
+            Trace.log(e_errors.INFO, "%s stopping" % MY_FULL_NAME )
+            lmds.lmd_srv.stop()
+            if debug: print "DEBUG lmd_srv stopped" 
             del lmds
             Trace.trace(e_errors.ERROR, ("%s finished") % MY_FULL_NAME)
