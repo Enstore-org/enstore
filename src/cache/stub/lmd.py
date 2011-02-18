@@ -28,7 +28,7 @@ import enstore_constants
 #from cache.messaging.client import EnQpidClient
 import cache.messaging.client as cmc
 
-debug = True
+debug = False
 
 class LMD():
     '''

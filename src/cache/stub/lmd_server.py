@@ -25,7 +25,7 @@ import configuration_client
 MY_NAME = "lmd"
 MY_FULL_NAME = "Location Manager Dispatcher server"
 
-debug = True
+debug = False
 timing = False
 
 class LMDs(object):
