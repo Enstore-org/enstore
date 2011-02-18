@@ -19,7 +19,8 @@ import e_errors
 import configuration_client
 
 # enstore cache imports
-import cache.servers
+#import cache.servers
+import udp2amq
 
 MY_NAME = "udp2amq_proxy"
 MY_FULL_NAME = "UDP to AQMQP message proxy server"
@@ -77,7 +78,8 @@ class U2As(object):
             print "DEBUG u2a creating u2a_srv" 
         #Open connection to qpid broker
         Trace.log(e_errors.INFO, "create udp server instance, qpid client instance")
-        self.u2a_srv = cache.servers.udp2amq.UDP2amq(udp_srv, use_raw=1, amq_broker=brk, target_addr=target)
+#        self.u2a_srv = cache.servers.udp2amq.UDP2amq(udp_srv, use_raw=1, amq_broker=brk, target_addr=target)
+        self.u2a_srv = udp2amq.UDP2amq(udp_srv, use_raw=1, amq_broker=brk, target_addr=target)
 
         if debug:
             print "DEBUG u2a created" 
