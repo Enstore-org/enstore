@@ -89,7 +89,7 @@ class LMD():
                 
         if type(ticket) != types.DictType:
             if debug: print "DEBUG lmd serve_qpid()  - ticket is not dictionary type, ticket %s." % (ticket)
-            result['status'] = (e_errors.WRONG_FORMAT, 'LMD: ticket not dictionary type')
+            result['status'] = (e_errors.LMD_WRONG_TICKET_FORMAT, 'LMD: ticket is not dictionary type')
             return result
 
         try:
@@ -108,7 +108,7 @@ class LMD():
             storage_group = vc['storage_group']
         except:
             if debug: print "DEBUG lmd serve_qpid() - encp ticket bad format, ticket %s." % (ticket)            
-            result['status'] = (e_errors.LMD_WRONG_TKT_FORMAT,"LMD: can't get required fields, %s" % d)
+            result['status'] = (e_errors.LMD_WRONG_TICKET_FORMAT,"LMD: can't get required fields, %s" % d)
             return result
         #
         # Policy example. 
@@ -133,9 +133,9 @@ class LMD():
             if debug: print "DEBUG lmd serve_qpid() - exception %s %s" % (exc, msg)
             if debug: print "DEBUG lmd serve_qpid() - newlib %s" % (newlib)
             if debug: print "DEBUG lmd serve_qpid() - result['vc']['library'] %s" % (result['vc']['library'])            
-            result['status'] = (e_errors.WRONG_FORMAT,"LMD: can't set library")
+            result['status'] = (e_errors.LMD_WRONG_TICKET_FORMAT,"LMD: can't set library")
 
-        result['status'] = ('ok', None)    
+        result['status'] = (e_errors.OK, None)    
         return result
 
 ##############################################################################
