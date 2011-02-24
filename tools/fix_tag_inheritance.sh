@@ -337,6 +337,7 @@ repair_tag()
     # an inherited tag.
     count=1
     rc=-1
+    reset_inheritance=no  #Used to give distinctive messages.
     while [ $rc -ne 0 -a $count -lt $LOOPS ]; do
       rm "$dir/.(tag)($tag_name)" 2> /dev/null
       rc=$?
@@ -372,6 +373,11 @@ repair_tag()
           #We cat-ed the tag file.  It already is inherited.
           rc=0
 	fi
+      else
+	#We just fixed the inheritance for a locally set tag.
+	if [ $count = 1 ]; then
+	  reset_inheritance=yes
+	fi
       fi
     done
     if [ $rc -ne 0 ]; then
@@ -381,7 +387,11 @@ repair_tag()
     fi
 
     if [ "$tag_parent_id" = "$parent_dir_tag_id" ]; then
-      echo "Determined $parent_dir_tag_id already set as parent of $dir_tag_id in $dir."
+      if [ "$reset_inheritance" = "yes" ]; then
+        echo "Reset $dir_tag_id to inherit from $parent_dir_tag_id in $dir."
+      else
+        echo "Determined $parent_dir_tag_id already set as parent of $dir_tag_id in $dir."
+      fi
     else
       echo "Set $parent_dir_tag_id as parent of $dir_tag_id in $dir."
     fi
@@ -425,7 +435,7 @@ verify_or_create_tag()
 	write_error $message
         return 1
       else
-        #echo $dir_tag_id
+	#echo $dir_tag_id
         echo "Made $dir_tag_id $tag_name tag in $dir directory."
         return 0
       fi
