@@ -86,7 +86,7 @@ check_installdir() {
 #  INSTALLDIR=${INSTALLDIR}/${REV}
 #fi
     if [ -n $product -a -n $rev ]; then
-	base_filename=`basename installdir`
+	base_filename=`basename $installdir`
 	if [ $base_filename = $rev ]; then
 	    #echo $installdir
 	    INSTALLDIR=$installdir
@@ -226,18 +226,22 @@ case ${FLAVOR} in
 	SunOS+5.8)
 		;;
 	Linux+2.4)
-		if [ `ups flavor -4` == "Linux+2.4-2.3.2" ]; then
+		if [ "`ups flavor -4`" = "Linux+2.4-2.3.2" ]; then
 			# Take care of Linux 9.0 and LTS.
 			FLAVOR=`$UPS_DIR/bin/ups flavor -4`
                 fi
 		;;
 	Linux+2.6)
-		if [ `ups flavor -4` == "Linux+2.6-2.5" ]; then
+		if [ "`ups flavor -4`" = "Linux+2.6-2.5" ]; then
 			#Take care of SLF5.
 			FLAVOR=`$UPS_DIR/bin/ups flavor -4`
 		fi
 		;;
 	Linux64bit+2.6)
+		if [ "`ups flavor -4`" = "Linux+2.6-2.5" ]; then
+			# Take care of SLF5.
+			FLAVOR=`$UPS_DIR/bin/ups flavor -4`
+		fi
 		;;
         *)
                 FLAVOR=`$UPS_DIR/bin/ups flavor -2`
@@ -562,14 +566,11 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
 		cp     $ENSTORE_DIR/volume_import/*.c           $INSTALLDIR/volume_import/
 		cp     $ENSTORE_DIR/volume_import/*.h           $INSTALLDIR/volume_import/
 		copyit $ENSTORE_DIR/volume_import/Makefile      $INSTALLDIR/volume_import/
-#               copyit $ENSTORE_DIR/bin/pnfs                    $INSTALLDIR/pnfs
-#               copyit $ENSTORE_DIR/bin/pnfs_common             $INSTALLDIR/pnfs_common
                 copyit $ENSTORE_DIR/sbin/EPS                    $INSTALLDIR/EPS
                 copyit $ENSTORE_DIR/ups/encp.table              $INSTALLDIR/encp.table
                 copyit $ENSTORE_DIR/ups/encp_mni_install.sh     $INSTALLDIR/encp_mni_install.sh
                 copyit $ENSTORE_DIR/ups/chooseConfig            $INSTALLDIR/chooseConfig
 		copyit $ENSTORE_DIR/src/e_errors.py             $INSTALLDIR/e_errors.py
-		#copyit $ENSTORE_DIR/sbin/ecrc             $INSTALLDIR/ecrc
                 manifest=$INSTALLDIR/.encpCut.manifest
 
               elif [ $product = "enstore" ]; then
@@ -624,12 +625,13 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
              rm -f $filelist
              set | grep _DIR= | egrep -v "export|EMACS|ISPELL"| sort >>$manifest
 
-             find $INSTALLDIR -type d | xargs chmod 555
-             check_status $? "find $INSTALLDIR -type d | xargs chmod 555"
-             find $INSTALLDIR -type f | xargs chmod -w
-             check_status $? "find . -type f | xargs chmod -w"
-             chmod 555 $INSTALLDIR
-             check_status $? "chmod 555 $INSTALLDIR"
+             #Make the directories group writeable.  This allows UPS to
+             # be able to remove the directory(ies).
+             find $INSTALLDIR -type d | xargs chmod 775
+             check_status $? "find $INSTALLDIR -type d | xargs chmod 775"
+             #Remove any write permissions for files.
+             find $INSTALLDIR -type f | xargs chmod a-w
+             check_status $? "find $INSTALLDIR -type f | xargs chmod a-w"
 
              #if [ $puntUPS -eq 1 ]; then
              #   rm -f $HOME/${product}_$REV.tar
