@@ -13,26 +13,24 @@ import uuid
 
 # enstore imports
 import e_errors
-from cache.messaging.messages import MSG_TYPES as mt
+# from cache.messaging.messages import MSG_TYPES as mt
 
-#import cache.messaging.messages as mt
-
-class EnqMessage():
+class EnqMessage(qpid.messaging.Message):
     """ Base class for enstore cache messages
     """
-    def __init__(self, type = None, content = None, subject = None ):
+    def __init__(self, type = None, *args, **kwargs):
 
         if type is None :
             raise e_errors.EnstoreError(None, "message type undefined", e_errors.WRONGPARAMETER)
 
-        self.msg = qpid.messaging.Message(content=content)
+        qpid.messaging.Message.__init__(self, *args, **kwargs) 
 
-        self.msg.id = 0                 # @todo
-        self.msg.reply_to = None        # @todo
-        self.msg.correlation_id = uuid.uuid4() # make a random UUID @todo for now
-        self.msg.subject = subject
+#        self.id = 0                 # @todo
+#        self.reply_to = None        # @todo
 
-        self.msg.properties = {}
-        self.msg.properties["type"] = type
-        self.msg.properties["version"] = (0,1) # message version: (major,minor) 
+        if self.correlation_id is None:
+            self.correlation_id = uuid.uuid4() # make a random UUID @todo for now
+
+        self.properties["type"] = type
+        self.properties["version"] = (0,1) # message version: (major,minor) 
 

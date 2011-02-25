@@ -30,17 +30,6 @@ class EnQpidClient:
         if debug: print "DEBUG EnQpidClient URL init: %s %s " % (self.br_host, self.br_port)    
         self.myaddr = myaddr    # my address to be used in reply receiver
         self.target = target    # destination address to be used in sender
-
-    #
-    #
-    def add_sender(self, name, address):
-        self.name = name
-        self.address = address
-
-    def add_receiver(self, name, address):
-        self.name = name
-        self.address = address
-
     
     def configure(self):
         # override this method to talk to configuration server if needed to get broker url, etc.
@@ -70,18 +59,20 @@ class EnQpidClient:
         
         self.rcv = self.ssn.receiver(self.myaddr) # receiver "rcv" receives messages sent to us at myaddr
         
-    def receiver(self,addr):
+    def receiver(self,addr,name):
         """
         create additional receiver to read "addr" queue
         """
-        return self.ssn.receiver(addr)
+        self.r[name] = (addr,self.ssn.receiver(addr)) 
+        return self.r[name]
 
 
-    def sender(self, addr):
+    def sender(self, addr,name):
         """
         create additional sender for target addr'
         """
-        return self.ssn.sender(addr)
+        self.s[name] = (addr,self.ssn.sender(addr)) 
+        return self.s[name]
 
     def stop(self):
         # @todo: We do not acknowledge whatever is left in the queue - it is not processed.
@@ -96,5 +87,12 @@ class EnQpidClient:
         try:
             self.snd.send(msg, *args, **kwargs )
         except:
-            pass    
+            pass  
+          
+    def fetch(self, *args, **kwargs ):
+        try:
+            msg = self.rcv.fetch(*args, **kwargs )
+        except:
+            pass  
+        return msg
     

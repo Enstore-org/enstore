@@ -6,9 +6,6 @@
 #
 ###############################################################################
 
-# qpid / amqp
-import qpid.messaging
-
 # enstore imports
 import e_errors
 from cache.messaging.messages import MSG_TYPES as mt
@@ -18,73 +15,113 @@ from cache.messaging.enq_message import EnqMessage
 # Migration Worker Commands
 #===============================
 class MWCommand(EnqMessage):
-    """ Message: Migration Dispatcher generic Command
+    """ Message: Base class for Migration Worker Commands
     """
     def __init__(self, type=None, content = None ):
         if [type, content].count(None) != 0:
             raise e_errors.EnstoreError(None, "type or file list is undefined", e_errors.WRONGPARAMETER)
-        super(EnqMessage,self).__init__(type=type, content=content)
+        EnqMessage.__init__(self, type=type, content=content)
 
 class MWCPurge(MWCommand):
-    """ Message: Migration Dispatcher Purge Command
+    """ Message: Migration Worker Purge Command
     """
     def __init__(self, file_list = None ):
-        super(MWCommand,self).__init__(type=mt.MWC_PURGE, content=file_list)
+        MWCommand.__init__(self,type=mt.MWC_PURGE, content=file_list)
 
 class MWCArchive(MWCommand):
-    """ Message: Migration Dispatcher Archive Command
+    """ Message: Migration Worker Archive Command
     """
     def __init__(self, file_list = None ):
-        super(MWCommand,self).__init__(type=mt.MWC_ARCHIVE, content=file_list)
+        MWCommand.__init__(self,type=mt.MWC_ARCHIVE, content=file_list)
 
 class MWCStage(MWCommand):
-    """ Message: Migration Dispatcher Stage Command
+    """ Message: Migration Worker Stage Command
     """
     def __init__(self, file_list = None ):
-        super(MWCommand,self).__init__(type=mt.MWC_STAGE, content=file_list)
+        MWCommand.__init__(self,type=mt.MWC_STAGE, content=file_list)
 
-class MWStatus(MWCommand):
-    """ Message: Migration Dispatcher Status Command
+class MWCStatus(MWCommand):
+    """ Message: Migration Worker Status Command
     """
+    # Hmm, request_id supposed to be correlation_id of message we are trying to track ...
     def __init__(self, request_id = None ):
         if request_id is None :
             raise e_errors.EnstoreError(None, "request_id undefined", e_errors.WRONGPARAMETER)
-
-        super(MWCommand,self).__init__(type=mt.MWC_STATUS, content=request_id)
+        
+        MWCommand.__init__(self,type=mt.MWC_STATUS, content={"request_id":request_id})
 
 #=======================================
-# Reply to Migration Worker Commands
+# Reply on Migration Worker Command
 #=======================================
 class MWReply(EnqMessage):
-    """ Message: Generic Reply sent by Migration Worker in reply to command
+    """ Message: Base class for replies sent by Migration Worker
     """
     def __init__(self, type=None, orig_msg = None, content = None ):
         if [type, orig_msg, content].count(None) != 0:
             raise e_errors.EnstoreError(None, "type, original message or content is undefined", e_errors.WRONGPARAMETER)
-       
-        super(EnqMessage,self).__init__(type=type, content=content)
-        self.msg.correlation_id = orig_msg.correlation_id # reset correlation id
+
+        EnqMessage.__init__(self, type=type, content=content)       
+        # @todo: fix, set correlation_id in args to constructor
+        if orig_msg.correlation_id is not None:
+            self.correlation_id = orig_msg.correlation_id # reset correlation id
 
 class MWRArchived(MWReply):
     """ Message: Reply to Migration Worker Archive Command
     """
-    def __init__(self, content = None ):
-        super(MWReply,self).__init__(type=mt.MWR_ARCHIVED, content=content)
+    def __init__(self, orig_msg = None, content = None ):
+        MWReply.__init__(self, type=mt.MDR_ARCHIVED, orig_msg = orig_msg, content=content)
 
 class MWRPurged(MWReply):
     """ Message: Reply to Migration Worker Purge Command
     """
-    def __init__(self, content = None ):
-        super(MWReply,self).__init__(type=mt.MWR_PURGED, content=content)
+    def __init__(self, orig_msg = None, content = None ):
+        MWReply.__init__(self, type=mt.MWR_PURGED, orig_msg = orig_msg, content=content)
 
 class MWRStaged(MWReply):
     """ Message: Reply to Migration Worker Stage Command
     """
-    def __init__(self, content = None ):
-        super(MWReply,self).__init__(type=mt.MWR_STAGED, content=content)
-        
+    def __init__(self, orig_msg = None, content = None ):
+        MWReply.__init__(self, type=mt.MWR_STAGED, orig_msg = orig_msg, content=content)
+
+# @todo Hmm, correlation id is for the correlation id for command message;
+# we need to put the correlation of the first id into the reply.
+# @todo specify format of content
+
 class MWRStatus(MWReply):
     """ Message: Reply to Migration Worker Status Command
     """
-    def __init__(self, content = None ):
-        super(MWReply,self).__init__(type=mt.MWR_STATUS, content=content)
+    def __init__(self, orig_msg = None, content = None ):
+        MWReply.__init__(self, type=mt.MWR_STATUS, orig_msg = orig_msg, content=content)
+
+if __name__ == "__main__":
+    l = ["a","b"]
+    
+    # Commands:
+    ma = MWCArchive( l )
+    print "MWCArchive: %s" % (ma,)
+    
+    mp = MWCPurge( l )
+    print "MWCPurge: %s" % (mp,)
+
+    ms = MWCStage( l )
+    print "MDCStage: %s" % (ms,)
+    
+    mstat = MWCStatus(request_id = 777 )
+    print "MDStatus: %s" % (mstat,)
+    
+    # Replies
+    # reply to original message 'ma' with list 'l'
+    ra1 = MWRArchived(ma,l)
+    print "MWRArchived: %s" % (ra1,)
+    
+    ra2= MWRArchived(orig_msg=ma,content=l)
+    print "MWRArchived: %s" % (ra2,)
+    
+    rp = MWRPurged(orig_msg=mp, content=l)
+    print "MWRPurged: %s" % (rp,)
+    
+    rs = MWRStaged(orig_msg=ms, content=l)
+    print "MWRStaged: %s" % (rs,)
+    
+    rstat = MWRStatus(orig_msg=ms, content={"status":(e_errors.OK,None)})
+    print "MWRStatus: %s" % (rstat,)
