@@ -31,11 +31,11 @@ def random_loop(n,input_list,done_list):
         file_name=input_list.pop(file_position)
         done_list.append(file_name)
         output=file_name.split("/")[-1]
-        if os.path.exists(output):
-            os.unlink(output)
-        output="/dev/null"
+        #output="/dev/null"
         cmd="encp %s %s"%(file_name,output,)
         rc=execute_command(cmd)
+        if os.path.exists(output):
+            os.unlink(output)
         if rc:
             os.system("touch %s"%(STOP_FILE))
             return rc
