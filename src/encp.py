@@ -109,6 +109,7 @@ import udp_client
 import file_utils
 import cleanUDP
 import namespace
+import library_manager_director_client
 
 ### The following constants:
 ###     USE_NEW_EVENT_LOOP
@@ -2197,8 +2198,8 @@ def get_lmc(library, use_lmc_cache = True):
             return __lmc
 
     csc = get_csc()
-    
-    #Determine which IP and port to use.  By default it will use the standard
+
+     #Determine which IP and port to use.  By default it will use the standard
     # 'port' value from the configuration file.  However, if the configuration
     # key 'encp_port' exists then this port will be used.
     library_dict = csc.get(lib, 3, 3)
@@ -5246,6 +5247,21 @@ def submit_one_request_send(ticket, encp_intf):
         Trace.log(e_errors.ERROR,
                   "Failed to determine the type of transfer: %s" % str(msg))
 
+    Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET:")
+    Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
+
+    csc = get_csc()
+    lmd = library_manager_director_client.LibraryManagerDirectorClient(csc)
+    ticket = lmd.get_library_manager(ticket)
+
+    Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET:")
+    Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
+
+    if not e_errors.is_ok(ticket):
+        ticket['status'] = (e_errors.USERERROR,
+              "Unable to access library manager director: %s" % (ticket['status'],))
+        return ticket, None, None
+
     #Send work ticket to LM.  As long as a single encp process is restricted
     # to working with one enstore system, not passing get_csc() the ticket
     # as parameter will not cause a problem.
@@ -5485,7 +5501,7 @@ def submit_one_request(ticket, encp_intf):
     #return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf), lmc
     rticket, transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
     if not e_errors.is_ok(rticket):
-        return ticket, lmc
+        return combine_dict(rticket, ticket), lmc
     response_ticket, transaction_id = submit_one_request_recv(
         transaction_id, ticket, lmc, encp_intf)
     return response_ticket, lmc
