@@ -1638,26 +1638,39 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 #This is a TAG or LAYER pnfsid.  Handle it.
                 #
                 base_id = targets[i][4][16:-1].strip()
-                tag_name =  targets[i][9][12:-1].strip()
 
                 if base_id == old_base_id:
                     #Do not waste time in get_path() for a directory
                     # we have already checked.
                     continue
 
-                #Get the path of the directory for tags and the file for
-                # layers.
-                base_path = self.get_path(base_id, shortcut=shortcut)
+                #The __get_path() function, by default returns the directory.
+                #
+                # For tags, we want the directory.
+                #
+                # For layers, if we wanted the filename included in the
+                # returned value, we would need to pass the basename instead
+                # of the empty string for the third arguemnt.  However,
+                # the get_showid() function wants the directory, so we
+                # mimic getting the directory here, just like for tags, and
+                # handle inserting the basename part of the filename below.
+                base_path = self.__get_path(base_id, search_paths[i],
+                                            "", shortcut)
+                if base_path[0] != "/":
+                    #This PNFS server knows about the PNFS ID, but it does
+                    # not belong to a database for the current mount point.
+                    continue
+                
                 #make the special path.
                 if targets[i][8].find("Tag ( Inode )") != -1:
                     tag_name =  targets[i][9][12:-1].strip()
-                    special_name = os.path.join(base_path[0],
+                    special_name = os.path.join(base_path,
                                                 ".(tag)(%s)" % (tag_name,))
                 elif targets[i][8].find("Regular ( Data )") != -1:
                     #Need the showid information for the file to determine
                     # which layer this is.
-                    base_showid = self.get_showid(base_id,
-                                               os.path.dirname(base_path[0]))
+                    nameof = self.get_nameof(base_id, base_path)
+                    base_showid = self.get_showid(base_id, base_path)
                     for line in base_showid:
                         if line.find(use_id) != -1:
                             layer_number = int(line[7])
@@ -1666,8 +1679,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         #Dummy value.  This should never happen.
                         layer_number = -1
 
-                    special_name = self.use_file(base_path[0],
-                                                 layer_number)
+                    special_name = os.path.join(base_path, nameof)
+                    special_name = self.use_file(special_name, layer_number)
                 #Append the special name to the directory.
                 rtn_filepaths.append(special_name)
 
@@ -1751,6 +1764,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 # you would get
                 #   flake/encp_test/100KB_002
                 pass
+
+        #If we have an absolute path, lets it clean up.  Relative paths can
+        # happen on nodes that have one mount point, like /pnfs/eagle mounted,
+        # for a file belonging to a different database, like sdss_apo4, in
+        # that PNFS server.
+        if filepath[0] == "/":
+            filepath = enstore_functions2.expand_path(filepath)
+            filepath = os.path.realpath(filepath)
 
         if not id:
             self.path = filepath
@@ -2172,7 +2193,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                         #
                                         if afn_dir not in mount_point_match_list:
                                             count = count + 1
-                                            mount_point_match_list.append(afn_dir)
+                                            mount_point_match_list.append(use_mount_point)
                                             pnfs_value_match_list.append(
                                                 showid_data)
                                         
