@@ -55,15 +55,16 @@ class LibraryManagerDirectorClientInterface(generic_client.GenericClientInterfac
                                                        user_mode=user_mode)
 
     def valid_dictionaries(self):
-        return ({},)
+        return (self.help_options,)
 
-    parameters = ["LMD"]
+    parameters = ["<LibraryManager>.library_manager"]
         
     def parse_options(self):
+        print "PARSE"
         generic_client.GenericClientInterface.parse_options(self)
 
         if (getattr(self, "help", 0) or getattr(self, "usage", 0)):
-                pass
+            self.print_help()
         elif len(self.argv) <= 1: #if only "enstore library" is specified.
             self.print_help()
         elif len(self.args) < 1: #if a valid switch doesn't have the LM.
