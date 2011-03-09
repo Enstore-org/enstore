@@ -569,11 +569,11 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['status'] = (e_errors.OSERROR, str(msg))
             self.reply_to_caller(ticket)
             print "No FN", ticket
+            return
         except KeyError, msg:
-            ticket['status'] = (KeyError, str(msg))
+            ticket['status'] = (e_errors.KEYERROR, str(msg))
             self.reply_to_caller(ticket)
             print "No FN", ticket
-            
             return
                 
         layer = ticket['layer']
@@ -962,7 +962,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
                 ticket['pnfsid'], ticket['bfid'],
                 ticket.get('file_record', None),
                 ticket.get('likely_path', None),
-                ticket.get('path_type', find_pnfs_file.BOTH))
+                ticket.get('path_type', enstore_constants.BOTH))
 
             #Stuff the filenames to be sent back.
             ticket['paths'] = paths
