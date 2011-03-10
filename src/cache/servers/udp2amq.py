@@ -252,7 +252,7 @@ class UDP2amq(UDPServer):
         
 if __name__ == "__main__":    
     # instantiate UDP2amq server
-    u2a_srv = UDP2amq(('gccensrv4.fnal.gov', 7700), use_raw=1, amq_broker=("gccensrv4.fnal.gov",5672), target_addr="udp_relay_test")
+    u2a_srv = UDP2amq(('dmsen06.fnal.gov', 7700), use_raw=1, amq_broker=("dmsen06.fnal.gov",5672), target_addr="udp_relay_test")
     
     if u2a_srv.use_raw:
         u2a_srv.set_out_file()
