@@ -98,7 +98,7 @@ class LMD():
             file_size = ticket['fc']['size'] 
             d = 'work'
             work = ticket['work']
-
+            d = 'vc'
             vc = ticket['vc']
             d = 'vc.library'
             library = vc['library']
@@ -123,9 +123,15 @@ class LMD():
                         newlib = 'LM_CACHE'
                     elif library == 'CD-LTO4G1T' : 
                         newlib = 'LM_CACHE'
+                    elif library == 'diskSF' :
+                        newlib = 'LM_CACHE'
                 elif storage_group == 'minos' :
                     newlib = 'LM_CACHE'           
-                         
+
+            if work == 'read_from_hsm' :
+                if library == 'diskSF' :
+                    newlib = 'LM_CACHE'
+
             if newlib != None :
                 result['vc']['library'] = newlib
         except:
@@ -203,7 +209,7 @@ if __name__ == "__main__":
     # test unit
     # instantiate LMD server
     queue_in = "udp_relay_test"
-    queue_out = "udp2amq_131.225.13.187_7700" # set it once for all messages
+    queue_out = "udp2amq_131.225.13.37_7700" # set it once for all messages
 
     lmd = LMD(myaddr=queue_in, target=queue_out)
     lmd.start()
