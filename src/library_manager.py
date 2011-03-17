@@ -1802,7 +1802,7 @@ class LibraryManagerMethods:
         else: self.tmp_rq = rq
         if self.sg_exceeded and self.process_for_bound_vol:
             rq = None
-            self.contunue_scan = 0
+            self.continue_scan = 0
             key_to_check = None
         Trace.trace(self.trace_level+4, "process_write_request: returning %s %s"%(rq, key_to_check))
 
@@ -2235,6 +2235,7 @@ class LibraryManagerMethods:
         if not rq:
             # no request matching to all criterias
             # use a temporarily stored request
+            Trace.trace(self.trace_level+10, "next_work_this_volume: use tmp_rq %s"%(self.tmp_rq,))
             rq = self.tmp_rq
         if rq:
             Trace.trace(self.trace_level+10, "next_work_this_volume: HIPRI processing result %s" % (rq.ticket,))
@@ -2349,7 +2350,7 @@ class LibraryManagerMethods:
                         break
                     elif rq.work == 'write_to_hsm':
                         rq, key = self.process_write_request(rq, requestor, last_work=last_work)
-                        Trace.trace(self.trace_level+10, "next_work_this_volume:process_write_request returned %s %s "%(rq, key))
+                        Trace.trace(self.trace_level+10, "next_work_this_volume:process_write_request returned %s continue_scan %s "%((rq, key), self.continue_scan))
                         if self.continue_scan:
                             if rq:
                                 if checked_request and checked_request.unique_id == rq.unique_id:
@@ -4290,7 +4291,7 @@ def do_work():
     lm.handle_generic_commands(intf)
 
     Trace.init(lm.log_name, lm.keys.get('include_thread_name', 'yes'))
-    #lm._do_print({'levels':range(5, 400)}) # manage_queue
+    #lm._do_print({'levels':range(5, 400)}) # no manage_queue
     #lm._do_print({'levels':range(5, 500)}) # manage_queue
 
     while True:
