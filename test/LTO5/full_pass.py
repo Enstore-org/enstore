@@ -9,7 +9,7 @@ import delete_at_exit
 import time
 
 #Q="select v.label from volume v where v.library='%s' and v.file_family='%s' order by v.label"
-Q="select v.label from volume v where v.library='%s' and v.storage_group='%s' order by v.label"
+Q="select v.label from volume v where v.library='%s' and v.storage_group='%s' and system_inhibit_0 != 'none' and order by v.label limit 1"
 
 def full_pass(i, job_config):
     enstoredb = job_config.get("database")
