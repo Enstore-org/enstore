@@ -98,11 +98,9 @@ def _get_proto(ticket, vc_keys=None, fc_keys=None):
         'file': {}
     }
     
-    if vc_keys is not None or fc_keys is not None:
-        proto['enstore'] = {}
-    
     if vc_keys is not None:
         vc_t = ticket['vc']
+        proto['enstore'] = {}
         proto['enstore']['vc'] = {}
         dest= proto['enstore']['vc']
         for k in vc_keys:    
@@ -110,10 +108,12 @@ def _get_proto(ticket, vc_keys=None, fc_keys=None):
 
     fc_t = ticket['fc']
     proto['file']['name'] = fc_t['pnfs_name0']
-    proto['file']['id'] = fc_t['pnfsid']
+    proto['file']['id']   = fc_t['pnfsid']
     proto['file']['size'] = fc_t['size']    
     
     if fc_keys is not None:
+        if 'enstore' not in proto:
+            proto['enstore'] = {}
         # copy directly to 'enstore' part of the ticket, flattening nested 'fc' dictionary
         for k in fc_keys:     
             proto['enstore'][k] = fc_t[k]
