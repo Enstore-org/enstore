@@ -12,7 +12,7 @@ import time
 
 #Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.library='%s' and v.file_family='%s' order by v.label limit 1) and f.deleted='n' order by f.location_cookie"
 
-Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.library='%s' and v.storage_group='%s' order by v.label limit 1) and f.deleted='n' order by f.location_cookie"
+Q="select f.pnfs_path  from file f where f.volume in (select id from volume v where v.library='%s' and v.storage_group='%s' and v.system_inhibit_0='none' order by v.label limit 1000000) and f.deleted='n' order by f.location_cookie"
 
 t0=time.time()
 
