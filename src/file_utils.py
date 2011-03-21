@@ -313,7 +313,7 @@ def __wrapper(function, args=()):
             if msg.errno in [errno.ESTALE]:
                 count = count + 1
                 if count < RETRY_COUNT:
-                    print "COUNT:", count
+                    #print "COUNT:", count
                     time.sleep(1)
                     continue
                 else:
