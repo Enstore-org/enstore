@@ -1,3 +1,0 @@
-#30 0 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p vacuumDST -l db_vacuum.py drivestat > /dev/null 2> /dev/null
-#30 0 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p vacuumDST -l vacuumdb -p 8802 -d drivestat -v -z > /dev/null 2> /dev/null
-
