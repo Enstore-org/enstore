@@ -19,6 +19,11 @@ and volume would not be reported in RECYCLABLE_VOLUMES
 http://uqbar/reviews/r/305/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=752 
 
 ./src
+========== backup.py ====================================================================================
+
+modify search pattern to include all files in source directory (instead of just *tar files). 
+This led to failure to pickup "enstore.dmp" file and subsequent failure of checkdb.py script
+
 ========== chimera.py ====================================================================================
 
 Make the "enstore pnfs --id" and "enstore sfs --id" commands work with enstore executable built for dCache use. 
@@ -48,6 +53,10 @@ a special color, then that rule would need to go before the more general rule of
 2) Add implicit beginning of line (^) and end of line ($) regular expression characters 
 to turn cmsstor12 into ^cmsstor12$ for matching. This has the effect of preventing nodes 
 like cmsstor121 from inadvertently matching cmsstor12. (bugzilla #961, review board #280) 
+
+========== file_utils.py ====================================================================================
+
+Commented out a debugging print statement.  (review board #313)
 
 ========== find_pnfs_file.py ====================================================================================
 
@@ -157,6 +166,12 @@ The "enstore pnfs --path" fails to give the path of a file if the file is locate
 At one point in pnfs.py and chimera.py it tries to make a copy of an object. 
 This object is a dictionary, but the copy is attempted as if it is a list. T
 he dictionary copy() method is now used. (bugzilla #956, review board #276) 
+
+========== ratekeeper.py ===================================================================================
+
+add handling of non-postgresql exceptions in update_slots function
+http://uqbar/reviews/r/306/
+http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=997
 
 ========== scanfiles.py ====================================================================================
 
