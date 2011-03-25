@@ -1,0 +1,189 @@
+<html><body><pre>
+                      ENCP release notes, from ENSTORE_RPM_1_0_1_11 to ENSTORE_RPM_1_0_1_10
+
+Encp changes:
+=============
+
+
+Misc.:
+======
+
+
+                      Detailed cvs commit logs
+
+
+========== manage_queue.py ====================================================================================
+
+1. Addes sg to class Request 2. Added get_sg method 
+
+fixed a typo in sg processing 
+
+added trace 
+
+========== inquisitor_plots.py ====================================================================================
+
+use get instead of indexing 
+
+fix typo caught by bless.py 
+
+========== Trace.py ====================================================================================
+
+added optional thread name to the output of trace 
+
+add fractions of the second to do-print 
+
+========== manage_queue.py ====================================================================================
+
+1. Addes sg to class Request 2. Added get_sg method 
+
+fixed a typo in sg processing 
+
+added trace 
+
+========== e_errors.py ====================================================================================
+
+added definitions for library manager states 
+
+Sometimes Memory Error occurs when reading data from network (memory leak). This was incorrectly interpreted as ENCP_GONE. Now if this occurs mover will dismount a tape and restart itself 
+
+========== mover.py ====================================================================================
+
+if ... statement was in the wron place, which made it not work for null mover type 
+
+1. dump_vars was modified. The output file path now begins with $ENSTORE_OUT. Default path did not change. The output file name has changed to mover_dump-<PID>. The diagnostic now contains the content of /proc/<PID>/status Memory debug flag was added. To enable it define 'memory_debug':1 in the library manager configuration. 2. For a single fm mode compare the self.last_absolute_location to the current absolute location reported by drive before writing as second file mark. If they are not the same error out and put volume to NOACCESS or readonly. 
+
+
+
+1. For cern wrapper write 1 fm, write tail, write 2 fms, backspace 1. 2. Single fm option is modoified to write additional fm before unmounting the tape or when switching to read 
+
+Fixed a bug. Was state.name - correct state_name 
+
+========== discipline.py ====================================================================================
+
+make pychecker happy 
+
+make it more thread safe 
+
+reload allowed to write discipline and priority when a new config file is loaded 
+
+========== library_manager.py ====================================================================================
+
+1. If request for a certaiin storage group is in the list of postponed requests skip all requsts for this storage group in the fair_share method. 2. Do not use fair share for bound volume let requsts for this volume proceed even if they exceed fair share. The cost of mounting/dismounting becomes very high in the loaded system, so it is better to finish all requests for a bound volume, rather remount volumes due to fair share restrictions. Fair share will work only for idle requests. This change improves queue processing eliminating a loop through request queue and drastically improving performance. 3. Do not apply discipline to requests for bound volumes. - Another performance impovement. 
+
+to save changes done for CD-LTO3 on stkensrv3 
+
+mdified fair share in process_write_request 
+
+bug fixed 
+
+1. Donot apply discipline to in next_work_this_volume 2. Changed process_write_request. Check this for HIPRI requests!!!!!! 
+
+1. Use state definitios from e_errors 2. If there is only one storage group, return immediately from fairshare 3. Modified processing of restricted host access 4. Better structure of next_work_any_volume 5. Better structure of next_work_this_volume 
+
+enhanced request processing for disk movers 
+
+remove the mover from works_at_movers when removing from volumes_at_movers 
+
+========== udp_server.py ====================================================================================
+
+Added the function get_server_address(). 
+
+make it more thread safe 
+
+Typos fixed from previous commit. 
+
+========== tab_flipping_nanny.py ====================================================================================
+
+--auto also take library into consideration 
+
+add -a; --auto awitch that would figure out default output ifile from configuration 
+
+========== e_errors.py ====================================================================================
+
+added definitions for library manager states 
+
+Sometimes Memory Error occurs when reading data from network (memory leak). This was incorrectly interpreted as ENCP_GONE. Now if this occurs mover will dismount a tape and restart itself 
+
+========== encp.py ====================================================================================
+
+Minor code cleanup between encp.py and get. Some get specific things were removed from encp.py (and moved to get.py). 
+
+Just some code cleanup. Nothing functional changed. 
+
+1) Use enstore_functions3 module functions instead of local ones. 2) Modified verify_read_request_consistancy() to include checking the CRC and size in layer 2 *before* doing the transfer. Previously, it was only checked *after* the transfer which wasted resources if there was a mismatch. 
+
+Added more debug logging for each seperate CRC comparison/check. Previously, only one was done that included all the various CRC checks. 
+
+========== scanfiles.py ====================================================================================
+
+Corrected the crc checks of layer 2. 
+
+Added a comparision check of the CRC and length values in layer 2 with the values stored in the Enstore DB. 
+
+========== mover.py ====================================================================================
+
+if ... statement was in the wron place, which made it not work for null mover type 
+
+1. dump_vars was modified. The output file path now begins with $ENSTORE_OUT. Default path did not change. The output file name has changed to mover_dump-<PID>. The diagnostic now contains the content of /proc/<PID>/status Memory debug flag was added. To enable it define 'memory_debug':1 in the library manager configuration. 2. For a single fm mode compare the self.last_absolute_location to the current absolute location reported by drive before writing as second file mark. If they are not the same error out and put volume to NOACCESS or readonly. 
+
+
+
+1. For cern wrapper write 1 fm, write tail, write 2 fms, backspace 1. 2. Single fm option is modoified to write additional fm before unmounting the tape or when switching to read 
+
+Fixed a bug. Was state.name - correct state_name 
+
+========== discipline.py ====================================================================================
+
+make pychecker happy 
+
+make it more thread safe 
+
+reload allowed to write discipline and priority when a new config file is loaded 
+
+========== enstore_show_inv_summary_cgi.py ====================================================================================
+
+change MIGRATION_SUMMARY to MIGRATION_SUMMARY.html 
+
+add migration_summary 
+
+change 'unknown' cluster to the node name 
+
+========== library_manager.py ====================================================================================
+
+1. If request for a certaiin storage group is in the list of postponed requests skip all requsts for this storage group in the fair_share method. 2. Do not use fair share for bound volume let requsts for this volume proceed even if they exceed fair share. The cost of mounting/dismounting becomes very high in the loaded system, so it is better to finish all requests for a bound volume, rather remount volumes due to fair share restrictions. Fair share will work only for idle requests. This change improves queue processing eliminating a loop through request queue and drastically improving performance. 3. Do not apply discipline to requests for bound volumes. - Another performance impovement. 
+
+to save changes done for CD-LTO3 on stkensrv3 
+
+mdified fair share in process_write_request 
+
+bug fixed 
+
+1. Donot apply discipline to in next_work_this_volume 2. Changed process_write_request. Check this for HIPRI requests!!!!!! 
+
+1. Use state definitios from e_errors 2. If there is only one storage group, return immediately from fairshare 3. Modified processing of restricted host access 4. Better structure of next_work_any_volume 5. Better structure of next_work_this_volume 
+
+enhanced request processing for disk movers 
+
+remove the mover from works_at_movers when removing from volumes_at_movers 
+
+========== ecron_util.py ====================================================================================
+
+implementing the concept of 'obselete' 
+
+fix a typo 
+
+fix a typo 
+
+make start time configurable 
+
+take out debugging code 
+
+========== udp_server.py ====================================================================================
+
+Added the function get_server_address(). 
+
+make it more thread safe 
+
+Typos fixed from previous commit. 
+
+</pre></body></html>

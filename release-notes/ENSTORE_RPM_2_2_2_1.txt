@@ -1,7 +1,9 @@
 <html><body><pre>
-                      Enstore release notes, from ENSTORE_RPM_2_1_1_1 to ENSTORE_RPM_2_1_2_1
+                      Enstore release notes, from ENSTORE_RPM_2_1_1_1 to ENSTORE_RPM_2_2_2_1
                       Detailed cvs commit logs
 
+The only difference between ENSTORE_RPM_2_2_2_1 and ENSTORE_RPM_2_1_2_1 is that
+ENSTORE_RPM_2_2_2_1 ncludes ftt for T10KC
 
 .
 ========== rpm_version ====================================================================================
