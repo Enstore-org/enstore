@@ -14,6 +14,7 @@
 import types
 import re
 import sys
+import os
 import string
 
 # enstore modules
