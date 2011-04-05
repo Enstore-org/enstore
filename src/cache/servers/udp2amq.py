@@ -33,6 +33,28 @@ from cache.messaging.client import EnQpidClient
 debug = False
 timing = False
 
+def normalize_ticket(obj):
+    """Normalize content of enstore ticket received from qpid by convering unicode to ascii and lists to tuples
+    """
+    if type(obj) in [str, int, long, bool, float]:
+        return obj
+
+    elif type(obj) == unicode:
+        return obj.encode()
+
+    elif type(obj) is dict:
+        d = {}
+        for k,v in obj.iteritems():
+            # print "DEBUG k,v %s,%s" % (k,v)
+            d[normalize_ticket(k)] = normalize_ticket(v)
+        return d
+    
+    elif type(obj) in [list, tuple]:
+        return tuple(map(normalize_ticket,obj))
+
+    return obj
+
+
 class UDP2amq(UDPServer):
     '''
     classdocs
@@ -189,7 +211,10 @@ class UDP2amq(UDPServer):
                 if debug: print "DEBUG UDP2amq serve_qpid()  - got qpid reply=%s" %(reply,)
      
                 # relay ticket to UDP
-                ticket = reply.content
+                #-x ticket = reply.content
+                
+                # convert lists to tuples to make getsockaddrarg() happy, replace unicode by ascii str
+                ticket = normalize_ticket(reply.content)
                 
                 if timing:
                     t0 = None
@@ -206,18 +231,25 @@ class UDP2amq(UDPServer):
                 try:
                     if debug: print "DEBUG UDP2amq serve_qpid()  - received reply, ticket %s." % (ticket)
 
-                    if type(ticket) == types.DictType and ticket.get("r_a", None):
-                        # workaround the issue:
-                        #   amqp transfers tuple as a list
-                        #   error "AF_INET address must be tuple, not list " in PyTuple_Check, in getsockaddrarg()
-                        ticket['r_a'][0]=tuple(ticket['r_a'][0])
-                        # this also is converted to list, but there is no complaint so far - uncomment if needed
-                        #- ticket["r_a"] = tuple(ticket['r_a'])               
+#Obsolete, replace by code block below
+#                    if type(ticket) == types.DictType and ticket.get("r_a", None):
+#                        # workaround the issue:
+#                        #   amqp transfers tuple as a list
+#                        #   error "AF_INET address must be tuple, not list " in PyTuple_Check, in getsockaddrarg()
+#                        ticket['r_a'][0]=tuple(ticket['r_a'][0])
+#                        # this also is converted to list, but there is no complaint so far - uncomment if needed
+#                        #- ticket["r_a"] = tuple(ticket['r_a'])               
+#                        self.reply_to_caller(ticket)
+#                    elif type(ticket) == types.DictType and ticket.get("ra", None):
+#                        # ditto : convert reply address to tuple, see above
+#                        ticket['r_a'][0]=tuple(ticket['r_a'][0])
+#                        self.reply_with_address(ticket)
+#->                    
+                    if type(ticket) == types.DictType and ticket.get("r_a", None):          
                         self.reply_to_caller(ticket)
                     elif type(ticket) == types.DictType and ticket.get("ra", None):
-                        # ditto : convert reply address to tuple, see above
-                        ticket['r_a'][0]=tuple(ticket['r_a'][0])
                         self.reply_with_address(ticket)
+#<-
                     else:
                         if debug: print "DEBUG UDP2amq serve_qpid()  - no reply address in reply, ticket %s." % (ticket)
                         continue
