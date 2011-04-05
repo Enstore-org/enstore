@@ -30,7 +30,7 @@ from udp_server import UDPServer
 # enstore cache imports
 from cache.messaging.client import EnQpidClient
 
-debug = False
+debug = True
 timing = False
 
 def normalize_ticket(obj):
