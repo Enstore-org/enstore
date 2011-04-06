@@ -36,7 +36,7 @@ timing = False
 def normalize_ticket(obj):
     """Normalize content of enstore ticket received from qpid by convering unicode to ascii and lists to tuples
     """
-    if type(obj) in [str, int, long, bool, float]:
+    if type(obj) in [types.NoneType, str, int, long, bool, float]:
         return obj
 
     elif type(obj) == unicode:
