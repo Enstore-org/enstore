@@ -28,8 +28,10 @@ class EnqMessage(qpid.messaging.Message):
 #        self.id = 0                 # @todo
 #        self.reply_to = None        # @todo
 
-        if self.correlation_id is None:
-            self.correlation_id = uuid.uuid4() # make a random UUID @todo for now
+        # @todo : when self.correlation_id is set, send() fails (both for uuid() and 0)
+#        if self.correlation_id is None:
+#            # self.correlation_id = uuid.uuid4() # make a random UUID @todo for now
+#            self.correlation_id = 0 # @todo
 
         self.properties["type"] = type
         self.properties["version"] = (0,1) # message version: (major,minor) 
