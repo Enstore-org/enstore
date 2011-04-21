@@ -2136,6 +2136,8 @@ class STK_MediaLoader(MediaLoaderMethods):
 		        #Other lines of text may be interspersed with what
 			# we are looking for.  Ignore them.
 			pass
+            else:
+                inaccessible = 0
 
 	    #Obtain specific inaccessable/disabled cell/slot count.
 	    command2 = "display cell %s,*,*,* -status reserved -c" % lsm
@@ -2158,6 +2160,8 @@ class STK_MediaLoader(MediaLoaderMethods):
 		        #Other lines of text may be interspersed with what
 			# we are looking for.  Ignore them.
 			pass
+            else:
+                reserved = 0
 
 	    #Sum these two values for the disabled count.
 	    slot_list[-1]['disabled'] = reserved + inaccessible
