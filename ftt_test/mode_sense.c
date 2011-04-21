@@ -12,9 +12,8 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <scsi/sg.h>
-
-#include "sg_include.h"
-
+#include <scsi/scsi.h>
+ 
 #define MODE_SENSE_REPLY_LEN 0x1e + 4
 #define MODE_SENSE_CMD_CODE 0x1a
 #define MODE_SENSE_CMD_LEN 6
