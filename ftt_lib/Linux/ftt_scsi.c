@@ -25,7 +25,7 @@ static char rcsid[] = "@(#)$Id$";
 #include "ftt_private.h"
 #include <assert.h>		/* assert */
 
-extern char ftt_acSensebuf[18];
+extern char ftt_acSensebuf[32]; /* new sense buffers are bigger */
 
 /*+ ftt_scsi_open
  *\subnam
@@ -141,7 +141,14 @@ ftt_scsi_command(
         }
 
           /* fill the sg_header */
+
 	sg_hd->reply_len = sizeof(buffer)-SCSI_OFF;
+	
+	if (writeflag) {
+	  sg_hd->reply_len = 32;
+	}
+	
+
 	sg_hd->twelve_byte = (nCmd==12);
 
           /* copy the cmd to buffer following sg_head */        
@@ -149,17 +156,21 @@ ftt_scsi_command(
 
           /* if we have data for the command, stuff it after the command */
 	memcpy(buffer+SCSI_OFF, pcCmd, nCmd );
+	
 	if (writeflag) {
 	    assert((SCSI_OFF+nCmd+nRdWr) <= sizeof(buffer));
 	    memcpy(buffer+SCSI_OFF+nCmd, pcRdWr, nRdWr);
 	    len += nRdWr;
 	}
+	
           /* finally, write the buffer */
 	res = write(n, buffer, len);
         DEBUG2(stderr,"write() returned %d\n", res);
 	if (res < 0) {
 	    scsistat = 255;
 	} else {
+	  DEBUG2(stderr,"sense buffer\n");
+	  DEBUGDUMP2(sg_hd->sense_buffer, 32);
           /* and if it is successful, read the result */
 	        sg_hd->sense_buffer[0] = 0;
 		res = read(n, buffer, sizeof(buffer));
