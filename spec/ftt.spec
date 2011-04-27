@@ -1,7 +1,7 @@
 Summary: fermi tape tool 
 Name: ftt
-Version: 2.26
-Release: 4
+Version: 2.27
+Release: 2
 License: GPL
 Group: Applications/File
 #URL: 
@@ -54,6 +54,11 @@ rm -rf $RPM_BUILD_ROOT/*
 #/$RPM_BUILD_ROOT/%prefix/%{name}-%{version}/debugfiles.list
 
 %changelog
+* Wed Apr 26 2011 <moibenko@fnal.gov> -
+- New version. Fixed bug in ftt_lib/Linux/ftt_scsi.c
+- Added ftt_test/mode_select.c as an example of mode sense and mode select commands
+* Mon Dec 27 2010 <moibenko@fnal.gov> -
+- New version. Added T10K tape drive
 * Wed Sep 17 2008 <moibenko@fnal.gov> -
 - Release 3 Added dignostic messages for detecting compression
 * Wed Feb 21 2007  <moibenko@fnal.gov> - 
