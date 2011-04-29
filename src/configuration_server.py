@@ -397,7 +397,8 @@ class ConfigurationDict:
             try:
                 domains = self.get_dict_entry('domains')
             except:
-                domains = None # Some error.
+                #domains = None # Some error.
+                domains = {}
                 
             if type(domains) == types.DictType:
                 #Add an empty list where we expect it if there isn't one.
@@ -478,6 +479,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         domains = self._get_domains()
         if domains == None:
             domains = {}
+        domains = domains.get('domains', {})
         hostaddr.update_domains(domains)
 
     # Overridden dispatching_worker function.  This allows us to control
@@ -749,9 +751,21 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
                             }
         }
 
+# Call this function to enable trace output at start.
+# This is useful for debugging when traces can not be
+# enabled otherwise
+# I know this is not an elegant way.
+# 
+def enable_trace_at_start(levels):
+    # levels - list of levels to enable
+    for level in levels:
+        Trace.print_levels[level]=1
 
+    
 if __name__ == "__main__":
     Trace.init(MY_NAME)
+    # uncomment the line below to enable trace output at start
+    #enable_trace_at_start(range(1,100))
 
     # get the interface
     intf = ConfigurationServerInterface()
