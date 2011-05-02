@@ -28,7 +28,7 @@ import enstore_constants
 #from cache.messaging.client import EnQpidClient
 import cache.messaging.client as cmc
 
-debug = False
+debug = True
 
 class LMD():
     '''
@@ -95,7 +95,7 @@ class LMD():
         try:
             # file_size_vc = ticket['file_size'] # which one?
             d = 'fc.size'
-            file_size = ticket['fc']['size'] 
+            file_size = ticket['wrapper'].get('size_bytes',0L) 
             d = 'work'
             work = ticket['work']
             d = 'vc'
@@ -107,7 +107,11 @@ class LMD():
             d = 'vc.storage_group'
             storage_group = vc['storage_group']
         except:
-            if debug: print "DEBUG lmd serve_qpid() - encp ticket bad format, ticket %s." % (ticket)            
+            if debug:
+                print "DEBUG lmd serve_qpid() - encp ticket bad format, ticket %s." % (ticket)
+                print "DEBUG lmd serve_qpid() d %s %s"%(type(d), d)
+            
+            
             result['status'] = (e_errors.LMD_WRONG_TICKET_FORMAT,"LMD: can't get required fields, %s" % d)
             return result
         #
@@ -120,17 +124,16 @@ class LMD():
             if work == 'write_to_hsm' :
                 if file_size < 300*MB :
                     if library == 'CD-LTO4F1T' :
-                        newlib = 'LM_CACHE'
-                    elif library == 'CD-LTO4G1T' : 
-                        newlib = 'LM_CACHE'
-                    elif library == 'diskSF' :
-                        newlib = 'LM_CACHE'
+                        newlib = 'diskSF'
+                    elif library == 'LTO3' : 
+                        newlib = 'diskSF'
+
                 elif storage_group == 'minos' :
-                    newlib = 'LM_CACHE'           
+                    newlib = 'diskSF'           
 
             if work == 'read_from_hsm' :
-                if library == 'diskSF' :
-                    newlib = 'LM_CACHE'
+                if library == 'LTO3' :
+                    newlib = 'diskSF'
 
             if newlib != None :
                 result['vc']['library'] = newlib
