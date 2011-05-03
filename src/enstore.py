@@ -49,6 +49,7 @@ import enstore_restart
 import backup
 import pnfs_agent_client
 import scanfiles
+import udp_proxy_client
 try:
 	import quota
 except:
@@ -95,6 +96,8 @@ server_functions = {
               file_clerk_client.do_work, option.USER],
     "pnfs_agent" : [pnfs_agent_client.PnfsAgentClientInterface,
 		    pnfs_agent_client.do_work, option.ADMIN],
+    "udp_proxy" : [udp_proxy_client.ProxyClientInterface,
+		    udp_proxy_client.do_work, option.ADMIN],
     "inquisitor" : [inquisitor_client.InquisitorClientInterface,
                     inquisitor_client.do_work, option.ADMIN],
     "library" : [library_manager_client.LibraryManagerClientInterface,
