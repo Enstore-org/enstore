@@ -32,6 +32,10 @@ class LibraryManagerDirectorClient(generic_client.GenericClient) :
         # name - name of the Library Manager Director in configuration dictionary 
         self.name = server_name  
         self.library_manager = self.name
+        self.conf = csc.get(server_name)
+        if server_address == None:
+            server_address = (self.conf['hostip'], self.conf['udp_port'])
+
         self.log_name = "C_"+string.upper(string.replace(server_name,
                                                          ".LMD",
                                                          MY_NAME))
@@ -124,12 +128,13 @@ def unit_test(intf):
             print "LMD name:", lmdname
             lmdc = LibraryManagerDirectorClient(csc, lmdname)
         else:
-            print "No LMD is defined for %s"%(lmname,)
+            print "No LMD is defined for %s"%(lmdname,)
             sys.exit(1)
     else:
         print "%s is not in configuration"%(lmname,)
         sys.exit(1)
 
+    print "CLIENT ADDRESS",lmdc.server_address  
     t = lmdc.get_library_manager(ticket)
 
     print t
