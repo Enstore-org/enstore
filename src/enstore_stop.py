@@ -584,6 +584,14 @@ def do_work(intf):
            intf.should_stop(library_manager):
             check_server(csc, library_manager)
 
+    # udp to amq proxy servers
+    proxy_servers = find_servers_by_type(csc, enstore_constants.UDP_PROXY_SERVER)
+    for proxy_server in proxy_servers:
+        print "PS",proxy_server 
+        if intf.should_stop(enstore_constants.UDP_PROXY_SERVER) or \
+           intf.should_stop(proxy_server):
+            check_server(csc, proxy_server)
+
     #Added by Dmitry, stopping pnfs_agent
     agents = find_servers_by_type(csc, enstore_constants.PNFS_AGENT)
     for agent in agents:
