@@ -294,6 +294,10 @@ class MonitoredMediaChanger(MonitoredServer):
 
     pass
 
+class MonitoredUDPProxyServer(MonitoredServer):
+
+    pass
+
 class MonitoredLibraryManager(MonitoredServer):
 
     STATUS_FIELDS = {enstore_constants.STATE : enstore_constants.UNKNOWN_S,
