@@ -5247,20 +5247,29 @@ def submit_one_request_send(ticket, encp_intf):
         Trace.log(e_errors.ERROR,
                   "Failed to determine the type of transfer: %s" % str(msg))
 
-    Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET:")
-    Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
-
+    #Get the answer from the library manager director.
+    orig_library = ticket['vc']['library'] + ".library_manager"
     csc = get_csc()
-    lmd = library_manager_director_client.LibraryManagerDirectorClient(csc)
-    ticket = lmd.get_library_manager(ticket)
+    lm_config = csc.get(orig_library, 3, 3)
+    pprint.pprint(lm_config)
+    if e_errors.is_ok(lm_config):
+       lmd_name = lm_config.get('use_LMD', None)
+       if lmd_name: 
+           lmd = library_manager_director_client.LibraryManagerDirectorClient(
+              csc, lmd_name)
+           Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET:")
+           Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
 
-    Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET:")
-    Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
+           ticket = lmd.get_library_manager(ticket)
 
-    if not e_errors.is_ok(ticket):
-        ticket['status'] = (e_errors.USERERROR,
-              "Unable to access library manager director: %s" % (ticket['status'],))
-        return ticket, None, None
+           Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET:")
+           Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
+
+           if not e_errors.is_ok(ticket):
+               ticket['status'] = (e_errors.USERERROR,
+                   "Unable to access library manager director: %s" % \
+                   (ticket['status'],))
+               return ticket, None, None
 
     #Send work ticket to LM.  As long as a single encp process is restricted
     # to working with one enstore system, not passing get_csc() the ticket
