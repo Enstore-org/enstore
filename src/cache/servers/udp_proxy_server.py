@@ -21,6 +21,9 @@ import e_errors
 import configuration_client
 import generic_server
 import dispatching_worker
+import monitored_server
+import event_relay_messages
+import event_relay_client
 import option
 # enstore cache imports
 #import cache.servers
@@ -44,8 +47,11 @@ class U2As(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 					      function = self.handle_er_msg)
 
         # get my configuration
-        self.conf = self.csc.get(name) 
+        self.conf = self.csc.get(name)
         Trace.trace(10, "proxy_server, conf=%s" % (self.conf,))
+        self.alive_interval = monitored_server.get_alive_interval(self.csc,
+                                                                  name,
+                                                                  self.conf)
         
         if not e_errors.is_ok(self.conf):
             e_message = "Unable to acquire configuration info for %s: %s: %s" % \
@@ -89,6 +95,15 @@ class U2As(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
         self.u2a_srv = udp2amq.UDP2amq(udp_srv, use_raw=1, amq_broker=brk, target_addr=target)
 
         Trace.trace(10, "proxy_server,u2a created")
+        # setup the communications with the event relay task
+        self.resubscribe_rate = 300
+        self.erc = event_relay_client.EventRelayClient(self, function = self.handle_er_msg)
+        Trace.erc = self.erc # without this Trace.notify takes 500 times longer
+        self.erc.start([event_relay_messages.NEWCONFIGFILE],
+                       self.resubscribe_rate)
+
+        # start our heartbeat to the event relay process
+	self.erc.start_heartbeat(name, self.alive_interval)
         
     def start(self):
         # if UDP server is in raw mode :
