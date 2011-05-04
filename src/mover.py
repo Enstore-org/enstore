@@ -61,6 +61,8 @@ import drivestat_client
 import Trace
 import generic_driver
 import event_relay_messages
+import scsi_mode_select
+
 
 """
 Mover:
@@ -1512,6 +1514,27 @@ class Mover(dispatching_worker.DispatchingWorker,
                     print "Can not start: %s"%(detail,)
                     sys.exit(-1)
 
+                if self.config['product_id'] == "T10000C":
+                    # for T10000C set Allow Maximum Capacity (AMC)
+                    disable_AMC = self.config.get('disable_AMC', False)
+                    if not disable_AMC:
+                        # enable AMC
+                        try:
+                            enabled = scsi_mode_select.t10000c_amc(self.tape_driver,  1)
+                        except Exception, detail:
+                            Trace.alarm(e_errors.ERROR, 'Failed to set  "Allow Maximum Capacity": %s'%(str(detail),))
+                            sys.exit(-1)
+                        if not enabled:
+                            Trace.alarm(e_errors.ERROR, '"Allow Maximum Capacity" was not set')
+                            sys.exit(-1)
+                        # if AMC is set do not use remaining bytes information from tape drive
+                        self.rem_stats = 0
+                    # set initial compression
+                    rc = scsi_mode_select.t10000_set_compression(self.tape_driver, compression = self.compression)
+                    if not rc:
+                        Trace.alarm(e_errors.ERROR, "Compression setting failed")
+                        sys.exit(-1)
+                    
                 if have_tape == 1:
                     self.init_stat(self.logname)
                     status = self.tape_driver.verify_label(None)
@@ -2360,6 +2383,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         Trace.trace(8, "bytes_to_transfer=%s" % (self.bytes_to_transfer,))
         driver = self.tape_driver
+        if self.config['product_id'] == "T10000C" and self.compression:
+            # special code for setting compression for T10000C tape drives
+            rc = scsi_mode_select.t10000_set_compression(driver, compression = True)
+            if not rc:
+                Trace.log(e_errors.ERROR, "Compression setting failed")
         count = 0
         defer_write = 1
         failed = 0
@@ -2757,6 +2785,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.tape_driver.flush()
                     self.media_transfer_time = self.media_transfer_time + (time.time()-t1) # include filemarks into drive time
                     Trace.trace(31, "cur %s, initial %s, last %s, blocks %s, headers %s trailers %s"%(new_bloc_loc, self.initial_abslute_location, self.current_absolute_location,self.last_blocks_written, len(self.header_labels), len(self.eof_labels)))
+
                 if self.header_labels and self.eof_labels:
                     extra = 4
                 else:
@@ -7355,9 +7384,10 @@ if __name__ == '__main__':
     mover = constructor((intf.config_host, intf.config_port), intf.name)
 
     mover.handle_generic_commands(intf)
+    #mover._do_print({'levels':range(5, 100)})
+
     mover.start()
     mover.starting = 0
-    #mover._do_print({'levels':[5,20, 98]})
     while 1:
         try:
             mover.serve_forever()
