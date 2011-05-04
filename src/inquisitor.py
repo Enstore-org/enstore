@@ -473,6 +473,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 self.server_d[key] = monitored_server.MonitoredMediaChanger(cdict,
                                                                             key)
                 self.er_lock.release()
+        elif enstore_functions2.is_udp_proxy_server(key):
+            cdict = config_d[key]
+            if self.ok_to_monitor(cdict):
+                self.er_lock.acquire()
+                self.server_d[key] = monitored_server.MonitoredUDPProxyServer(cdict,
+                                                                              key)
+                self.er_lock.release()
         elif enstore_functions2.is_library_manager(key):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
@@ -1137,6 +1144,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         else:
             now = aTime
         server = self.server_d.get(name, None)
+        print "server_is_alive", name
         if server:
             self.serverfile.output_alive(server.host, ALIVE, now, name)
             self.new_server_status = 1

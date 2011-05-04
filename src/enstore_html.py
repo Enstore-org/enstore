@@ -1427,6 +1427,17 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		    # this is a media changer. output its alive info
 		    table.append(self.server_row(server))
 
+    # output all of the udp proxy server rows 
+    def udp_proxy_server_rows(self, table, skeys):
+	# now output the media changer information
+	for server in skeys:
+	    if enstore_functions2.is_udp_proxy_server(server):
+		if self.not_being_monitored(server):
+		    self.unmonitored_servers.append(self.server_row(server))
+		else:
+		    # this is a media changer. output its alive info
+		    table.append(self.server_row(server))
+
     # output the row that lists the total transfers (current and pending) row
     def xfer_row(self, lm):
 	tr = HTMLgen.TR()
@@ -1696,6 +1707,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	self.unmonitored_servers = []
 	self.generic_server_rows(table)
 	self.media_changer_rows(table, skeys)
+	self.udp_proxy_server_rows(table, skeys)
 	self.library_manager_rows(table, skeys)
 	self.mover_rows(table, skeys)
 	self.unmonitored_server_rows(table)

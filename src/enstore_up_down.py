@@ -92,6 +92,13 @@ def get_library_managers(config_d_keys):
 	    lms.append(key)
     return lms
 
+def get_udp_proxy_servers(config_d_keys):
+    ups = []
+    for key in config_d_keys:
+	if enstore_functions2.is_udp_proxy_server(key):
+	    ups.append(key)
+    return ups
+
 def get_allowed_down_index(server, allowed_down, index):
     if allowed_down.has_key(server):
 	rtn = allowed_down[server][index]
@@ -476,6 +483,17 @@ class Mover(EnstoreServer):
 	    EnstoreServer.is_alive(self)
 	    self.in_bad_state = 0
 
+class UDPProxyServer(EnstoreServer):
+
+    def __init__(self, name, offline_d, override_d, seen_down_d, allowed_down_d):
+	EnstoreServer.__init__(self, name, name, offline_d, override_d, seen_down_d, allowed_down_d,
+			       enstore_constants.DOWN)
+	self.reason_down = "%s down"%(name,)
+	self.postfix = enstore_constants.UDP_PROXY_SERVER
+
+
+
+
 class UpDownInterface(generic_client.GenericClientInterface):
  
     def __init__(self, args=sys.argv, user_mode=1):
@@ -546,6 +564,7 @@ def do_real_work():
                    ]
     
     library_managers = get_library_managers(config_d_keys)
+    upd_proxy_servers = get_udp_proxy_servers(config_d_keys)
     meds = {}
     total_other_servers = []
     total_servers_names = []
@@ -564,6 +583,8 @@ def do_real_work():
 	    total_lms.append(lmc) 
 	    if no_override(lmc, override_d_keys):
 		total_servers_names.append(lmc.name)
+            else:
+                "override", lmc.name
 
 	# no duplicates in dict
 	meds[get_media_changer(cdict, config_d, config_d_keys, lm)] = 1 
@@ -583,7 +604,6 @@ def do_real_work():
 	lmc.num_movers = len(mover_objects)
         total_movers = total_movers + mover_objects
     media_changers = sortit(meds)
-
     for med in media_changers:
 	if med:
 	    mc = MediaChanger(med, offline_d, override_d, seen_down_d, allowed_down_d)
@@ -592,6 +612,15 @@ def do_real_work():
 		# do not monitor the server if it has an override value
 		if no_override(mc, override_d_keys):
 		    total_servers_names.append(mc.name)
+
+    for udp_px_s in upd_proxy_servers:
+        upc = UDPProxyServer(udp_px_s, offline_d, override_d, seen_down_d, 
+			     allowed_down_d)
+	if upc.noupdown == False:
+	    total_other_servers.append(upc) 
+	    if no_override(upc, override_d_keys):
+		total_servers_names.append(upc.name)
+        
 
     total_servers = total_other_servers + total_movers + total_lms
 

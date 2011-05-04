@@ -350,6 +350,10 @@ def is_this(server, suffix):
 def is_library_manager(server):
     return is_this(server, enstore_constants.LIBRARY_MANAGER)
 
+# return true if the passed server name ends in "udp_proxy_server"
+def is_udp_proxy_server(server):
+    return is_this(server, enstore_constants.UDP_PROXY_SERVER)
+
 # return true if the passed server name ends in "mover"
 def is_mover(server):
     return is_this(server, enstore_constants.MOVER)
