@@ -44,7 +44,7 @@ class LMD():
               
         self.myaddr = myaddr
         self.target = target
-        self.qpid_client = cmc.EnQpidClient(amq_broker, self.myaddr, target=target)
+        self.qpid_client = cmc.EnQpidClient(amq_broker, self.myaddr, self.target)
         self.auto_ack = auto_ack 
 
     def _fetch_enstore_ticket(self):
@@ -136,6 +136,8 @@ class LMD():
                     newlib = 'diskSF'
 
             if newlib != None :
+                # store original VC library in reply
+                result['original_library'] = result['vc']['library']
                 result['vc']['library'] = newlib
         except:
             exc, msg, tb = sys.exc_info()
