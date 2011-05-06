@@ -6,7 +6,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 2.2.2
-Release: 1
+Release: 2
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -195,6 +195,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Fri May 06 2011  <moibenko@fnal.gov> -
+- new release 2.2.2-2
 * Tue Feb 15 2011  <moibenko@fnal.gov> -
 - new release 2.1.2-1
 * Tue Feb 01 2011  <moibenko@fnal.gov> -
