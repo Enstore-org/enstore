@@ -40,40 +40,163 @@ fi
 
 #############################################################################
 
+#Return true (zero) if the requested directory is a PNFS directory.
+is_pnfs()
+{
+    if [ -n "$REMOTE_ENCP" ]; then
+	enstore pnfs_agent --exists "$1"
+    else
+	#It would be simple if frozen versions of the enstore command
+	# had the command
+	#enstore sfs --database "$1"
+	# Since they all don't we need to do this the hard way.
+	cat "$1/.(tags)()" > /dev/null 2>&1
+    fi
+    return $?
+}
+
+#Make a non-PNFS or PNFS file.
+make_file()
+{
+    is_pnfs `dirname "$1"`
+    if [ $? -eq 0 ]; then
+	make_pnfs_file "$1"
+    else
+	touch "$1"
+    fi
+    return $?
+}
+
+#Make a regular PNFS file.
+make_pnfs_file()
+{
+    if [ -n "$REMOTE_ENCP" ]; then
+        enstore pnfs_agent --touch "$1"
+    else
+        touch "$1"
+    fi
+    return $?
+}
+
 #Handle making files in PNFS through mountpoint or pnfs_agent.
 make_pnfs_dir()
 {
     if [ -n "$REMOTE_ENCP" ]; then
-        enstore pnfs_agent --mkdirs $1
+        enstore pnfs_agent --mkdirs "$1"
     else
-        mkdir -p $1
+        mkdir -p "$1"
     fi
+    return $?
 }
-#Handle removing a directory.
+
+#Handle removing a PNFS or non-PNFS file.
+rm_file()
+{
+    is_pnfs `dirname "$1"`
+    if [ $? -eq 0 ]; then
+	rm_pnfs_file "$1"
+    else
+	rm -f "$1"
+    fi
+    return $?
+}
+
+#Handle removing a pnfs file.
 rm_pnfs_file()
 {
     if [ -n "$REMOTE_ENCP" ]; then
-        enstore pnfs_agent --remove $1
+        enstore pnfs_agent --remove "$1"
     else
-        rm -f $1
+        rm -f "$1"
     fi
+    return $?
 }
+
 #Handle cleanup of files (both normal and in pnfs).
 cleanup_files()
 {
+    #The list of files is called with '$cleanup' so we need to perform
+    # the substitution here with eval.  $cleanup changes during the tests,
+    # evaluting it here guarantees we have the latest list.
     for file in `eval echo $*`; do
         if [ "$file" = "/dev/null" ]; then
             continue
         fi
 
-	if [ -f $file ]; then
-	    rm -f $file
-        else
-	    if [ $? -ne 0 ]; then
-                rm_pnfs_file $file
-            fi
-        fi
+	#Automatically, remove lock files.
+	if [ `basename "$file" | cut -c 1-6` = ".lock." ]; then
+	    #Handle the case where the lock file is one of the target files.
+	    # This will happen for tests that only read files from a volume.
+	    lock_file=$file
+	    file=
+	else
+	    lock_file=`get_lock_file_name "$file"`
+	fi
+
+	#First, the normal file.
+	if [ -f "$file" -o -n "$REMOTE_ENCP" ]; then
+	    if [ $debug -gt 0 ]; then
+		echo "REMOVING FILE $file"
+	    fi
+	    rm_file "$file"
+	fi
+
+	#Next, the lock file.
+	if [ -f "$lock_file" -o -n "$REMOTE_ENCP" ]; then
+	    if [ $debug -gt 0 ]; then
+		echo "REMOVING LOCK FILE $lock_file"
+	    fi
+	    rm_file "$lock_file"
+	fi
     done
+}
+
+#Return zero if the file exists, and one otherwise.
+does_file_exist()
+{
+    if [ -n "$REMOTE_ENCP" ]; then
+        enstore pnfs_agent --exists "$1"
+    else
+        test -f "$1"
+    fi
+    return $?
+}
+
+#Return zero if the file is old, and one otherwise.
+is_file_old()
+{
+    if [ -n "$REMOTE_ENCP" ]; then
+	rc=1  #Say it is recent.  Might need to fix this sometime.
+    else
+	#We consider a file old after a day (-mtime +1).  Either another
+	# test is hung while holding the lock file or another test
+	# was killed and the locks not cleaned up.  Either way return
+	# true (0) so we can move on.
+	line_count=`find "$1" -mtime +1 2> /dev/null | wc -l`
+	if [ $line_count -gt 0 ]; then
+	    rc=0
+	else
+	    rc=1
+	fi
+    fi
+    return $rc
+}
+
+get_lock_file_name()
+{
+    rc=0
+    for pathname in "$@"; do
+	if [ -n "$pathname" ]; then
+	    dname=`dirname $pathname`
+	    fname=`basename $pathname`
+	    lock_file="$dname/.lock.$fname"
+	    echo $lock_file
+	    rc=`expr $rc + 0`
+	else
+	    rc=`expr $rc + 1`
+	fi
+    done
+    return $rc
 }
 
 #############################################################################
@@ -209,6 +332,22 @@ is_user2_encp()
 #############################################################################
 
 username=`id -u -n`
+hostname=`uname -n`
+
+#This function preserves the value of $? after it is called.
+ending_message()
+{
+    rc=$?
+    if [ -n "$1" ]; then
+	rc="$1"
+    fi
+    if [ $rc -ne 0 ]; then
+	echo "See $ENCP_OUTPUT for full error."
+    else
+	echo "There were no errors.  See $ENCP_OUTPUT for more info."
+    fi
+    return $rc
+}
 
 #Include the username so multiple users' can run their own regression tests
 # on the same node at the same time.
@@ -232,15 +371,59 @@ ENSYNC_INPUT_DIR=$LOCAL_INPUT_DIR/ensync_test
 ENSYNC_OUTPUT_DIR=$PNFS_DIR/NULL/ensync_test
 
 ENCP_OUTPUT=/tmp/encp_test_output_for_${username}
+output_lock_file=`get_lock_file_name $ENCP_OUTPUT`
+output_lock_file_temp=${output_lock_file}_tmp$$
+
+touch ${output_lock_file_temp}
+ln ${output_lock_file_temp} ${output_lock_file} 2> /dev/null
+rc=$?
+rm -f ${output_lock_file_temp}  #Cleanup.
+if [ $rc -eq 0 ]; then
+    #We have the lock file.
+    trap "all_done;" HUP INT QUIT ABRT ALRM TERM
+    trap "all_done;" EXIT
+    
+    #We have the common name of the output file since only this copy of
+    # the script is running.
+    all_done()
+    {
+	rc=$?
+	if [ -n "$1" ]; then
+	    rc=$1  #Force error condition.
+	fi
+	ending_message $rc
+	rm -f "${output_lock_file}"  
+	trap "" HUP INT QUIT ABRT ALRM TERM  #clear the trap
+	trap "" EXIT
+	exit $rc
+    }
+else
+    #Another test script is running.  Use a different file.
+    ENCP_OUTPUT=${ENCP_OUTPUT}_${hostname}_$$
+
+    #We have a private version of the output file.
+    all_done()
+    {
+	rc=$?
+	if [ -n "$1" ]; then
+	    rc=$1
+	fi
+	ending_message $rc
+	exit $rc
+    }
+fi
+if [ $debug -gt 1 ]; then
+    echo ENCP_OUTPUT $ENCP_OUTPUT
+fi
 rm -f $ENCP_OUTPUT
 if [ $? -ne 0 ]; then
     #Use rm error message.
-    exit 1
+    all_done 1
 fi
 touch $ENCP_OUTPUT
 if [ $? -ne 0 ]; then
     #Use touch error message.
-    exit 1
+    all_done 1
 fi
 
 encp_create_tests
@@ -253,15 +436,15 @@ for dir_to_check in "$LOCAL_INPUT_DIR" "$LOCAL_OUTPUT_DIR" \
                     "$PNFS_INPUT_DIR" "$PNFS_OUTPUT_DIR" "$PNFS_OUTPUT_DIR"; do
     if [ ! -x "$dir_to_check" ]; then
         echo "No execute permissions for directory: $dir_to_check" 1>&2
-	exit 1
+	all_done 1
     fi
     if [ ! -r "$dir_to_check" ]; then
 	echo "No read permissions for directory: $dir_to_check" 1>&2
-	exit 1
+	all_done 1
     fi
     if [ ! -w "$dir_to_check" ]; then
 	echo "No write permissions for directory: $dir_to_check" 1>&2
-	exit 1
+	all_done 1
     fi
 done
 
@@ -289,11 +472,12 @@ get_file_list()
 {
 #$1 = directory of file to choose from
 
-    #Restrict this to files less than 100MB in size.  Only consider files
-    # in this directory first; go recurisive if the first list is empty.
-    filenames=`find $1 -maxdepth 1 -size -104857600c -type f`
+    #Restrict this to files less than 100MB in size and non-hidden files.
+    # Only consider files in this directory first; go recurisive if the
+    # first list is empty.
+    filenames=`find $1 -maxdepth 1 -size -104857600c -type f 2> /dev/null`
     if [ -z "$filenames" ]; then
-	filenames=`find $1 -size -104857600c -type f`
+	filenames=`find $1 -size -104857600c -type f ! -name ".*" 2> /dev/null`
     fi
 
     echo "$filenames"
@@ -303,15 +487,15 @@ get_pnfs_file_list()
 {
 #$1 = directory of file to choose from
 
-    #Restrict this to files less than 100MB in size.  Only consider files
-    # in this directory first; go recurisive if the first list is empty.
+    #Restrict this to files less than 100MB in size and non-hidden files.
+    # Only consider files in this directory first; go recurisive if the
+    # first list is empty.
     if [ -n "$REMOTE_ENCP" ]; then
-	#filenames=`enstore pnfs_agent --just-files --list-dir $1 | sed "s:^:$1/:"`
 	filenames=`enstore pnfs_agent --just-files --list-dir $1`
     else
-        filenames=`find $1 -maxdepth 1 -size -104857600c -type f`
+        filenames=`find $1 -maxdepth 1 -size -104857600c -type f ! -name ".*" 2> /dev/null`
 	if [ -z "$filenames" ]; then
-	    filenames=`find $1 -size -104857600c -type f`
+	    filenames=`find $1 -size -104857600c -type f ! -name ".*" 2> /dev/null`
 	fi
     fi
 
@@ -340,12 +524,17 @@ get_volume_from_filename()
 }
 
 
-pick_random_files()
+#Make sure any debuging echos do not go to standard out.  This function returns
+# volume labels that way any random output will give errors.
+#
+#It is possible that this function returns less than the requested number
+# of volume labels depending on availability.
+pick_random_volumes()
 {
-    number=$1  #First argument is number of files. Rest of arguments are files.
+    number=$1  #First argument is number of volumes. Rest of arguments are volumes.
     shift
     rnd=`expr $RANDOM + 1`
-    #Between 9 and number of files, pick the lesser.
+    #Between 9 and number of volumes, pick the lesser.
     if [ 9 -lt $# ]; then
 	i=9
     else
@@ -355,11 +544,99 @@ pick_random_files()
     rand=`expr $rand + 1`
     i=1
     while [ $i -le $number ]; do
-	#eval echo \$$i
         eval echo \$$rand
 	shift
 	i=`expr $i + 1`
     done
+}
+
+
+#Make sure any debuging echos do not go to standard out.  This function returns
+# filenames that way any random output will give errors.
+#
+#It is possible that this function returns less than the requested number
+# of files when multiple test are running at once to avoid deadlocks.
+pick_random_files()
+{
+    number=$1  #First argument is number of files. Rest of arguments are files.
+    shift
+
+    if [ $# -eq 0 ]; then
+	echo "No files available for selection." 1>&2
+	return 0
+    fi
+
+    rnd=`expr $RANDOM + 1`
+    rand=`expr $rnd % $#`
+    rand=`expr $rand + 1`
+    current=$rand  #Seed the current position with the random number.
+    i=0  #Number of files choosen for locking.
+
+    #This outer loop is to make sure that as long as one file is locked when
+    # more than one file needs to be picked, that we can return the shorter
+    # list.  If we haven't gotten at least one file already then we keep
+    # looping.
+    while [ $i -eq 0 ]; do
+      loop_count=0  #Number of passes over the list of files.
+      while [ $i -lt $number -a $loop_count -lt 3 ]; do
+
+	if [ $current -eq 0 ]; then
+	    #Skip the executable in $0.
+            loop_count=`expr $loop_count + 1`
+	    current=1
+	    sleep 1 #Give other encps a chance.
+	fi
+
+	filename=$(eval echo \$\{"${current}"\})
+	dname=`dirname $filename`
+	fname=`basename $filename`
+	if [ `echo "$fname" | cut -c 1` = "." ]; then
+	    #We found a hidden file.  Skip it.
+	    current=`echo \( $current + 1 \) % $# | bc`
+	    continue
+	fi
+	lock_file="$dname/.lock.$fname"
+	lock_file_temp="$dname/.lock.temp$$.$fname"
+	make_file $lock_file_temp  1>&2 #touch $lock_file_temp
+	
+	#Determine if the file exists.
+	ln "$lock_file_temp" "$lock_file" 2> /dev/null
+	rc=$?
+	rm -f "$lock_file_temp"  #Cleanup.
+	if [ $rc -eq 0 ]; then
+	    #The lock file does not exist.
+	    current=`echo \( $current + 1 \) % $# | bc`
+	    i=`expr $i + 1`  #Up to number of files found.
+	    echo "$filename"
+
+	    if [ $debug -gt 0 ]; then
+		echo "MAKING LOCK FILE $lock_file" 1>&2
+	    fi
+	    make_file "$lock_file"   #touch $lock_file_temp
+	else
+	    #Determine if the file is new and should be skipped.  Or old
+	    # and should be removed.
+	    is_file_old "$lock_file"
+	    if [ $? -eq 0 ]; then
+		if [ $debug -gt 0 ]; then
+		    echo "Found old lock file.  Removing.  $lock_file" 1>&2
+		fi
+		rm -f "lock_file"
+		current=`echo \( $current + 1 \) % $# | bc`
+		i=`expr $i + 1`  #Up to number of files found.
+		echo "$filename"
+	    else
+		#This test file is in use, get another one.
+                if [ $debug -gt 0 ]; then
+		    echo "Found recent lock file.  Skipping.  $lock_file" 1>&2
+                fi
+		current=`echo \( $current + 1 \) % $# | bc`
+		sleep 1  #Give other encps a moment to complete.
+	    fi
+	fi
+      done
+    done
+    return $i
 }
 
 #First argument is the directory to place before every other argument.
@@ -381,7 +658,7 @@ absfile()
 #transfer file
 transfer()
 {
-    encp_command=$1  #`eval echo $1`
+    encp_command=`eval echo $1`
     infile=`eval echo $2`
     outfile=`eval echo $3`
     cleanup=`eval echo $4`
@@ -394,33 +671,36 @@ transfer()
         expected_exit_status=`eval echo $8`
     fi
 
+    > $ENCP_OUTPUT    #truncate output file
+
     if [ $debug -gt 2 ]; then
-        echo ENCP $encp_command
-        echo INPUT $infile
-        echo OUTPUT $outfile
-        echo INCLEANUP $cleanup
-        echo OPTIONS $options
-        echo MESSAGE $message
-        echo DIRECTION $direction
-        echo EXPECTED_EXIT_STATUS $expected_exit_status
+        echo ENCP $encp_command | tee -a $ENCP_OUTPUT 2>&1
+        echo INPUT $infile | tee -a $ENCP_OUTPUT 2>&1
+        echo OUTPUT $outfile | tee -a $ENCP_OUTPUT 2>&1
+        echo INCLEANUP $cleanup | tee -a $ENCP_OUTPUT 2>&1
+        echo OPTIONS $options | tee -a $ENCP_OUTPUT 2>&1
+        echo MESSAGE $message | tee -a $ENCP_OUTPUT 2>&1
+        echo DIRECTION $direction | tee -a $ENCP_OUTPUT 2>&1
+        echo EXPECTED_EXIT_STATUS $expected_exit_status | tee -a $ENCP_OUTPUT 2>&1
+        echo CWD `pwd` | tee -a $ENCP_OUTPUT 2>&1
     fi
 
     if [ $debug -gt 0 ]; then
         #Output the command line that will be executed.
-	echo "$encp_command $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT" | tee $ENCP_OUTPUT 2>&1
+	echo "$encp_command $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT" | tee -a $ENCP_OUTPUT 2>&1
 
 	#Output the type of encp that we are runnig.
 	is_admin_encp
 	if [ $? -eq 1 ]; then
-            echo "type is admin encp version" | tee $ENCP_OUTPUT 2>&1
+            echo "type is admin encp version" | tee -a $ENCP_OUTPUT 2>&1
         fi
 	is_user2_encp
 	if [ $? -eq 1 ]; then
-            echo "type is dcache encp version" | tee $ENCP_OUTPUT 2>&1
+            echo "type is dcache encp version" | tee -a $ENCP_OUTPUT 2>&1
         fi
 	is_user_encp
 	if [ $? -eq 1 ]; then
-            echo "type is user encp version" | tee $ENCP_OUTPUT 2>&1
+            echo "type is user encp version" | tee -a $ENCP_OUTPUT 2>&1
         fi
     fi
     eval $encp_command $verbose $options $infile $outfile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
@@ -430,7 +710,7 @@ transfer()
 	echo "$message TEST FAILED WITH $rtn ON $direction"
 	cat $ENCP_OUTPUT
 	cleanup_files "$cleanup"
-	exit 1
+	all_done 1
     else
         echo "$message TEST SUCCEEDED WITH $rtn ON $direction"
 	if [ $debug -gt 1 ]; then
@@ -473,7 +753,7 @@ volume_assert()
 		rm -f $file
 	    fi
 	done
-	exit 1
+	all_done 1
     else
         echo "$message TEST SUCCEEDED WITH $rtn"
 	if [ $debug -gt 1 ]; then
@@ -517,7 +797,7 @@ ensync_transfer()
 		rm -f $file
 	    fi
 	done
-	exit 1
+	all_done 1
     else
         echo "$message TEST SUCCEEDED WITH $rtn"
 	if [ $debug -gt 1 ]; then
@@ -547,16 +827,29 @@ test_diff()
 	ofile=`echo $outfiles | cut -d" " -f$i`
 	i=`expr $i + 1`
 
-	#echo diff --brief $ifile $ofile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
-	diff --brief $ifile $ofile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
+	diff_output=`diff --brief $ifile $ofile 2>&1`
 
 	rtn=$?
 	if [ "$rtn" -gt 0 ]; then
+	    #The files are not the same.  This might be correct if we used
+	    # a null mover.
+
+	    o_ls_size=`ls -l "$ofile" | awk '{print $5}'`
+	    i_ls_size=`ls -l "$ifile" | awk '{print $5}'`
+	    if [ $i_ls_size -eq $o_ls_size ]; then
+		non_null_word_count=`cat "$ofile" | tr -d "\000" | wc -c`
+		if [ $non_null_word_count -eq 0 ]; then
+		    #We have a NULL file.  Let's assume this is from a
+		    # null mover.
+		    return 0
+		fi
+	    fi
+
 	    echo $message "TEST FAILED ON DIFF"
-	    diff $ifile $ofile >> $ENCP_OUTPUT 2>> $ENCP_OUTPUT
+	    echo "$diff_output"
 	    cat $ENCP_OUTPUT
-	    rm -f $cleanupfiles
-	    exit 1
+	    cleanup_files '$cleanupfiles'
+	    all_done 1
 	fi
     done
 }
@@ -576,7 +869,7 @@ test_layer()
 	if [ $? -ne 0 ]; then
 	    echo $message "TEST FAILED ON LAYER"
 	    echo No bfid value: $result: $file
-	    exit 1
+	    all_done 1
 	fi
 	if [ -n "$REMOTE_ENCP" ]; then
 	    result=`enstore pnfs_agent --layer 4 $file`
@@ -588,7 +881,7 @@ test_layer()
 		echo $message "TEST FAILED ON LAYER"
 		echo Layer 4 contains unknown value: $file
 		echo $result
-		exit 1
+		all_done 1
 	    fi
 	done
     done
@@ -619,7 +912,7 @@ permissions_test()
 	    echo $message "TEST FAILED ON PERMISSIONS"
 	    echo $result1 != $result2
 	    rm -f $cleanupfiles
-	    exit 1
+	    all_sone 1
 	fi
     done
 }
@@ -648,7 +941,7 @@ size_test()
 	    echo $message "TEST FAILED ON SIZE"
 	    echo $result1 != $result2
 	    rm -f $cleanupfiles || setuid rm -f $cleanupfiles
-            exit 1
+	    all_done 1
 	fi
     done
 }
@@ -672,7 +965,7 @@ data_access_layer_test()
 	grep INFILE "$ENCP_OUTPUT"
 	echo Expected: "$infiles"
 	rm -f $cleanupfiles || setuid rm -f $cleanupfiles
-	exit 1
+	all_done 1
     fi
 
     #If the OUTFILE data access output line does not specify the filename,
@@ -683,7 +976,7 @@ data_access_layer_test()
 	grep OUTFILE "$ENCP_OUTPUT"
 	echo Expected: "$outfiles"
 	rm -f $cleanupfiles || setuid rm -f $cleanupfiles
-	exit 1
+	all_done 1
     fi
 
     #If the VOLUME data access output line does not specify the volume,
@@ -694,7 +987,7 @@ data_access_layer_test()
 	grep LABEL "$ENCP_OUTPUT"
 	echo Expected: "$volume"
 	rm -f $cleanupfiles || setuid rm -f $cleanupfiles
-	exit 1
+	all_done 1
     fi
 
     #If the LOCATION data access output line does not specify the position,
@@ -705,7 +998,7 @@ data_access_layer_test()
 	grep LOCATION "$ENCP_OUTPUT"
 	echo Expected: non-empty string
 	rm -f $cleanupfiles || setuid rm -f $cleanupfiles
-	exit 1
+	all_done 1
     fi
 }
 
@@ -719,7 +1012,7 @@ enstore_check_test()
     if [ $? -ne 0 ]; then
 	echo $message "TEST FAILED ON ENSTORE CHECK"
 	rm -f $cleanupfiles
-	exit 1
+	all_done 1
     fi
 }
 
@@ -740,8 +1033,11 @@ single_read_test()
 	#Specify file paths.
 	filename=`pick_random_files 1 $filelist`
 	outname=/dev/null
+	cleanup="$outname `get_lock_file_name $filename`"
 
-	transfer $encp_cmd '$filename' '$outname' '$outname' "" "$section" READ
+	transfer $encp_cmd '$filename' '$outname' '$cleanup' "" "$section" READ
+
+	cleanup_files '$cleanup'
     fi
 }
 
@@ -757,21 +1053,23 @@ single_read_write_test()
     filename=`pick_random_files 1 $filelist`
     basename=`basename $filename`
     pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
-    outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+    cleanup="$pnfsname `get_lock_file_name $filename`"
 
-    transfer $encp_cmd '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer $encp_cmd '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
 
-    transfer $encp_cmd '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    #Add the second direction.
+    outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+    cleanup="$cleanup $outname"
 
-    test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
-    permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
-    size_test '$filename' '$outname' '$pnfsname $outname' "$section"
+    transfer $encp_cmd '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
-    #rm -f $outname
-    #rm_pnfs_file $pnfsname
-    cleanup_files '"$outname" "$pnfsname"'
+    test_diff '$filename' '$outname' '$cleanup' "$section"
+    permissions_test '$filename' '$outname' '$cleanup' "$section"
+    size_test '$filename' '$outname' '$cleanup' "$section"
+
+    cleanup_files '$cleanup'
 }
 
 
@@ -786,21 +1084,23 @@ multiple_read_write_test()
     filelist=`get_file_list "$LOCAL_INPUT_DIR"`
     filenames=`pick_random_files 3 $filelist`
     pnfsnames=`absfile $PNFS_OUTPUT_DIR $filenames`
-    outnames=`absfile $LOCAL_OUTPUT_DIR $filenames`
+    cleanup="$pnfsnames `get_lock_file_name $filenames`"
 
-    transfer $encp_cmd '$filenames' '$PNFS_OUTPUT_DIR' '$pnfsnames' "" "$section" WRITE
+    transfer $encp_cmd '$filenames' '$PNFS_OUTPUT_DIR' '$cleanup' "" "$section" WRITE
 
     test_layer '$pnfsnames' "$section"
+    
+    #Add the second direction.
+    outnames=`absfile $LOCAL_OUTPUT_DIR $filenames`
+    cleanup="$cleanup $outnames"
 
-    transfer $encp_cmd '$pnfsnames' '$LOCAL_OUTPUT_DIR' '$pnfsnames $outnames' "" "$section" READ
+    transfer $encp_cmd '$pnfsnames' '$LOCAL_OUTPUT_DIR' '$cleanup' "" "$section" READ
 
-    test_diff '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
-    permissions_test '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
-    size_test '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
+    test_diff '$filenames' '$outnames' '$cleanup' "$section"
+    permissions_test '$filenames' '$outnames' '$cleanup' "$section"
+    size_test '$filenames' '$outnames' '$cleanup' "$section"
 
-    #rm -f $outnames
-    #rm_pnfs_file $pnfsnames
-    cleanup_files '"$outnames" "$pnfsnames"'
+    cleanup_files '$cleanup'
 }
 
 
@@ -826,8 +1126,8 @@ dcache_read_write_test()
     fi
     filename=`pick_random_files 1 $filelist`
     basename=`basename $filename`
-    outname=`absfile $LOCAL_OUTPUT_DIR $basename`
     pnfsname=`absfile $PNFS_OUTPUT_DIR $basename`
+    cleanup="$pnfsname `get_lock_file_name $filename`"
 
     #Create the output file, set the size and get the pnfs id.
     size=`ls -l $filename | sed 's/ \{1,30\}/ /g' | cut -f 5 "-d "`
@@ -847,31 +1147,33 @@ dcache_read_write_test()
     get_id="--get-cache $pnfsid"
 
     #Do the write transfer and test for correctness.
-    transfer $encp_cmd '$put_id' '$filename' '$pnfsname' '$mount' "$section" WRITE
+    transfer $encp_cmd '$put_id' '$filename' '$cleanup' '$mount' "$section" WRITE
     
     test_layer '$pnfsname' "$section"
 
-    #Do the read transfer and test for correctness.
-    transfer $encp_cmd '$get_id' '$outname' '$pnfsname $outname' '$mount' "$section" READ
+    #Add the second direction.
+    outname=`absfile $LOCAL_OUTPUT_DIR $basename`
+    cleanup="$cleanup $outname"
 
-    test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
-    permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
-    size_test '$filename' '$outname' '$pnfsnames $outname' "$section"
+    #Do the read transfer and test for correctness.
+    transfer $encp_cmd '$get_id' '$outname' '$cleanup' '$mount' "$section" READ
+
+    test_diff '$filename' '$outname' '$cleanup' "$section"
+    permissions_test '$filename' '$outname' '$cleanup' "$section"
+    size_test '$filename' '$outname' '$cleanup' "$section"
 
     rm -f $outname
 
     #Do the read transfer and test with short cutting of extrapolating
     # the full file path enabled.
     get_id="--shortcut --get-cache $pnfsid"
-    transfer $encp_cmd '$get_id' '$outname' '$pnfsname $outname' '$mount' "$section" READ
+    transfer $encp_cmd '$get_id' '$outname' '$cleanup' '$mount' "$section" READ
 
-    test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
-    permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
-    size_test '$filename' '$outname' '$pnfsnames $outname' "$section"
-
-    #rm -f $outname
-    #rm_pnfs_file $pnfsname
-    cleanup_files '"$outname" "$pnfsname"'
+    test_diff '$filename' '$outname' '$cleanup' "$section"
+    permissions_test '$filename' '$outname' '$cleanup' "$section"
+    size_test '$filename' '$outname' '$cleanup' "$section"
+     
+    cleanup_files '$cleanup'
 }
 
 non_conf_read_write_test()
@@ -885,25 +1187,27 @@ non_conf_read_write_test()
     filelist=`get_file_list "$LOCAL_INPUT_DIR"`
     filename=`pick_random_files 1 $filelist`
     basename=`basename $filename`
-    outname=`absfile $LOCAL_OUTPUT_DIR $filename`
     pnfsname=`absfile $PNFS_OUTPUT_DIR $filename`
+    cleanup="$pnfsname `get_lock_file_name $filename`"
 
     #Override enstore.conf
     export ENSTORE_CONF=NULL #This is a string "NULL", not ((void*)NULL) in C.
 
-    transfer $encp_cmd '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer $encp_cmd '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
     
     test_layer '$pnfsname' "$section"
 
-    transfer $encp_cmd '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    #Add the second direction.
+    outname=`absfile $LOCAL_OUTPUT_DIR $filename`
+    cleanup="$cleanup $outname"
 
-    test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
-    permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
-    size_test '$filename' '$outname' '$pnfsnames $outname' "$section"
+    transfer $encp_cmd '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
-    #rm -f $outname
-    #rm_pnfs_file $pnfsname
-    cleanup_files '"$outname" "$pnfsname"'
+    test_diff '$filename' '$outname' '$cleanup' "$section"
+    permissions_test '$filename' '$outname' '$cleanup' "$section"
+    size_test '$filename' '$outname' '$cleanup' "$section"
+
+    cleanup_files '$cleanup'
 }
 
 setuid_read_write_test()
@@ -929,10 +1233,10 @@ setuid_read_write_test()
     RANDOM=`date +s`
     filename=`pick_random_files 1 $filelist2`
     basename=`basename $filename`
-    outname=`absfile $LOCAL_OUTPUT_DIR $filename`
     pnfsname=`absfile $PNFS_OUTPUT_DIR $filename`
+    cleanup="$pnfsname `get_lock_file_name $filename`"
     
-    transfer "setuid $encp_cmd" '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer "setuid $encp_cmd" '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 
     #Test if an error occured or if an error is what we expect.
     setuid test_layer '$pnfsname' "$section"
@@ -952,17 +1256,17 @@ setuid_read_write_test()
 	fi
     fi
 
-    transfer "setuid $encp_cmd" '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    #Add the second direction.
+    outname=`absfile $LOCAL_OUTPUT_DIR $filename`
+    cleanup="$cleanup $outname"
 
-    test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
-    permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
-    size_test '$filename' '$outname' '$pnfsnames $outname' "$section"
+    transfer "setuid $encp_cmd" '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
-    setuid rm -f $outname
-    setuid rm_pnfs_file $pnfsname
-    #setroot rm -f $outname
-    #setroot rm_pnfs_file $pnfsname
-    setuid cleanup_files '"$outname" "$pnfsname"' 
+    test_diff '$filename' '$outname' '$cleanup' "$section"
+    permissions_test '$filename' '$outname' '$cleanup' "$section"
+    size_test '$filename' '$outname' '$cleanup' "$section"
+
+    setuid cleanup_files '$cleanup' 
 }
 
 single_threaded_read_write_test()
@@ -977,22 +1281,24 @@ single_threaded_read_write_test()
     filename=`pick_random_files 1 $filelist`
     basename=`basename $filename`
     pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
-    outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+    cleanup="$pnfsname `get_lock_file_name $filename`"
     encp="$encp_cmd --threaded"
 
-    transfer "$encp" '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer "$encp" '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
 
-    transfer "$encp" '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    #Add the second direction.
+    outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+    cleanup="$cleanup $outname"
 
-    test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
-    permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
-    size_test '$filename' '$outname' '$pnfsname $outname' "$section"
+    transfer "$encp" '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
-    #rm -f $outname
-    #rm_pnfs_file $pnfsname
-    cleanup_files '"$outname" "$pnfsname"'
+    test_diff '$filename' '$outname' '$cleanup' "$section"
+    permissions_test '$filename' '$outname' '$cleanup' "$section"
+    size_test '$filename' '$outname' '$cleanup' "$section"
+
+    cleanup_files '$cleanup'
 }
 
 multiple_threaded_read_write_test()
@@ -1006,22 +1312,24 @@ multiple_threaded_read_write_test()
     filelist=`get_file_list "$LOCAL_INPUT_DIR"`
     filenames=`pick_random_files 3 $filelist`
     pnfsnames=`absfile $PNFS_OUTPUT_DIR $filenames`
-    outnames=`absfile $LOCAL_OUTPUT_DIR $filenames`
+    cleanup="$pnfsnames `get_lock_file_name $filenames`"
     encp="$encp_cmd --threaded"
 
-    transfer "$encp" '$filenames' '$PNFS_OUTPUT_DIR' '$pnfsnames' "" "$section" WRITE
+    transfer "$encp" '$filenames' '$PNFS_OUTPUT_DIR' '$cleanup' "" "$section" WRITE
 
     test_layer '$pnfsnames' "$section"
 
-    transfer "$encp" '$pnfsnames' '$LOCAL_OUTPUT_DIR' '$pnfsnames $outnames' "" "$section" READ
+    #Add the second direction.
+    outnames=`absfile $LOCAL_OUTPUT_DIR $filenames`
+    cleanup="$cleanup $outnames"
+    
+    transfer "$encp" '$pnfsnames' '$LOCAL_OUTPUT_DIR' '$cleanup' "" "$section" READ
 
-    test_diff '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
-    permissions_test '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
-    size_test '$filenames' '$outnames' '$pnfsnames $outnames' "$section"
+    test_diff '$filenames' '$outnames' '$cleanup' "$section"
+    permissions_test '$filenames' '$outnames' '$cleanup' "$section"
+    size_test '$filenames' '$outnames' '$cleanup' "$section"
 
-    #rm -f $outnames
-    #rm_pnfs_file $pnfsnames
-    cleanup_files '"$outnames" "$pnfsnames"'
+    cleanup_files '$cleanup'
 }
 
 single_ecrc_read_write_test()
@@ -1036,22 +1344,24 @@ single_ecrc_read_write_test()
     filename=`pick_random_files 1 $filelist`
     basename=`basename $filename`
     pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
-    outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+    cleanup="$pnfsname `get_lock_file_name $filename`"
     encp="$encp_cmd --ecrc"
 
-    transfer "$encp" '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer "$encp" '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
 
-    transfer "$encp" '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    #Add the second direction.
+    outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+    cleanup="$cleanup $outname"
 
-    test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
-    permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
-    size_test '$filename' '$outname' '$pnfsname $outname' "$section"
+    transfer "$encp" '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
-    #rm -f $outname
-    #rm_pnfs_file $pnfsname
-    cleanup_files '"$outname" "$pnfsname"'
+    test_diff '$filename' '$outname' '$cleanup' "$section"
+    permissions_test '$filename' '$outname' '$cleanup' "$section"
+    size_test '$filename' '$outname' '$cleanup' "$section"
+
+    cleanup_files '$cleanup'
 }
 
 
@@ -1139,25 +1449,26 @@ single_relative_path_read_write_test()
 	filelist=`get_file_list "$LOCAL_INPUT_DIR"`
 	filename=`pick_random_files 1 $filelist`
 	basename=`basename $filename`
-        #pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
 	pnfsname=`echo $basename`
-	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$pnfsname `get_lock_file_name $filename`"
 
 	cd ${PNFS_OUTPUT_DIR}/
 
-	transfer $encp_cmd '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+	transfer $encp_cmd '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 	
 	test_layer '$pnfsname' "$section"
 	
-	transfer $encp_cmd '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+        #Add the second direction.
+	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$cleanup $outname"
 
-	test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
-	permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
-	size_test '$filename' '$outname' '$pnfsname $outname' "$section"
+	transfer $encp_cmd '$pnfsname' '$outname' '$cleanup' "" "$section" READ
+
+	test_diff '$filename' '$outname' '$cleanup' "$section"
+	permissions_test '$filename' '$outname' '$cleanup' "$section"
+	size_test '$filename' '$outname' '$cleanup' "$section"
 	
-        #rm -f $outname
-        #rm_pnfs_file $pnfsname
-	cleanup_files '"$outname" "$pnfsname"'
+	cleanup_files '$cleanup'
 	
 	cd $cwd
     fi
@@ -1179,13 +1490,14 @@ single_local_pnfs_path_read_test()
 	basename=`basename $filename`
 	outdir=$LOCAL_OUTPUT_DIR/pnfs/
 	outname=${outdir}/${basename}
+	cleanup="$outname `get_lock_file_name $filename`"
 
 	#If this does not exist, create it.
 	mkdir -p $outdir
 	
-	transfer $encp_cmd '$filename' '$outname' '$outname' "" "$section" READ
+	transfer $encp_cmd '$filename' '$outname' '$cleanup' "" "$section" READ
 
-	rm -f $outname
+	cleanup_files '$cleanup'
     fi
 }
 
@@ -1206,9 +1518,16 @@ single_no_brand_read_test()
 	echo "$filelist bfid contains brand.  Skipping test and continuing."
     else
 	filename=`pick_random_files 1 $filelist`
+	if [ -z "$filename" ]; then
+	    echo "Input file not available.  Skipping test and continuing."
+	    return
+	fi
 	outname=/dev/null
+	cleanup="$outname `get_lock_file_name $filename`"
 
-	transfer $encp_cmd '$filename' '$outname' '$outname' "" "$section" READ
+	transfer $encp_cmd '$filename' '$outname' '$cleanup' "" "$section" READ
+
+	cleanup_files '$cleanup'
     fi
 }
 
@@ -1233,8 +1552,8 @@ volume_read_test()
     if [ -z "$volumes" ]; then
 	echo "No suitable volumes found.  Skipping test and continuing."
     else
-	#Usurp the pick_random_files function for choosing one volume.
-	volume=`pick_random_files 1 $volumes`
+	#Pick a random volume.
+	volume=`pick_random_volumes 1 $volumes`
 
 	outname=/dev/null
 
@@ -1257,10 +1576,13 @@ single_fs_path_read_test()
 	filename=`pick_random_files 1 $filelist`
 	#Turn this path into the dcache prefered /pnfs/fs/usr/... path.
 	# Encp should be able to determine the /pnfs/... path.
-	filename=`echo $filename | cut -c1-6`fs/usr`echo $filename | cut -c6-`
+	encp_filename=`echo $filename | cut -c1-6`fs/usr`echo $filename | cut -c6-`
 	outname=/dev/null
+	cleanup="$outname `get_lock_file_name $filename`"
 
-	transfer $encp_cmd '$filename' '$outname' '$outname' "" "$section" READ
+	transfer $encp_cmd '$encp_filename' '$outname' '$cleanup' "" "$section" READ
+
+	cleanup_files '$cleanup'
     fi
 }
 
@@ -1276,26 +1598,26 @@ data_access_layer_read_write_test()
     filename=`pick_random_files 1 $filelist`
     basename=`basename $filename`
     pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
-    outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+    cleanup="$pnfsname `get_lock_file_name $filename`"
     encp="$encp_cmd --data-access-layer"
 
-    transfer '$encp' '$filename' '$pnfsname' '$pnfsname' "" "$section" WRITE
+    transfer '$encp' '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 
     test_layer '$pnfsname' "$section"
-    data_access_layer_test '$filename' '$pnfsname' '$pnfsname $outname' "$section"
+    data_access_layer_test '$filename' '$pnfsname' '$cleanup' "$section"
     
-    transfer '$encp' '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+    #Add the second direction.
+    outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+    cleanup="$cleanup $outname"
 
-    data_access_layer_test '$pnfsname' '$outname' '$pnfsname $outname' "$section"
-    test_diff '$filename' '$outname' '$pnfsname $outname' "$section"
-    permissions_test '$filename' '$outname' '$pnfsname $outname' "$section"
-    size_test '$filename' '$outname' '$pnfsname $outname' "$section"
+    transfer '$encp' '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
-    #rm -f $outname
-    #rm_pnfs_file $pnfsname
-    cleanup_files '"$outname" "$pnfsname"'
+    data_access_layer_test '$pnfsname' '$outname' '$cleanup' "$section"
+    test_diff '$filename' '$outname' '$cleanup' "$section"
+    permissions_test '$filename' '$outname' '$cleanup' "$section"
+    size_test '$filename' '$outname' '$cleanup' "$section"
 
-    cd $cwd
+    cleanup_files '$cleanup'
 }
 
 multiple_copies_read_write_test()
@@ -1320,33 +1642,35 @@ multiple_copies_read_write_test()
 	filename=`pick_random_files 1 $filelist`
 	basename=`basename $filename`
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
-	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$pnfsname `get_lock_file_name $filename`"
 	library=`cd ${PNFS_OUTPUT_DIR}; enstore sfs --library`
 	encp="$encp_cmd --copies 1 --library $library,$library"
 	
 	#Write the original and one copy to tape.
-	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE
+	transfer '$encp' '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 	test_layer '$pnfsname' "$section"
-	enstore_check_test '$pnfsname' '$pnfsname' "$section"
-    		
+	enstore_check_test '$pnfsname' '$cleanup' "$section"
+
+	#Add the second direction.
+	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`	
+	cleanup="$cleanup $outname"
+
 	#Do the read transfer and test for correctness of the original.
-	transfer $encp_cmd '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+	transfer $encp_cmd '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
 	rm -f $outname
 
 	#Now read back the copy via bfid.
 	bfid=`enstore sfs --bfid $pnfsname`
 	get_bfid="--get-bfid `enstore file --find-copies $bfid`"
-	transfer $encp_cmd '$get_bfid' '$outname' '$pnfsname $outname' "" "$section" READ
+	transfer $encp_cmd '$get_bfid' '$outname' '$cleanup' "" "$section" READ
 
 	rm -f $outname
 
 	#Now read back the copy via copy number.
-	transfer "$encp_cmd --copy 1" '$pnfsname' '$outname' '$pnfsname $outname' "" "$section" READ
+	transfer "$encp_cmd --copy 1" '$pnfsname' '$outname' '$cleanup' "" "$section" READ
 
-	#rm -f $outname
-	#rm_pnfs_file $pnfsname
-        cleanup_files '"$outname" "$pnfsname"'
+        cleanup_files '$cleanup'
     fi
 }
 
@@ -1394,19 +1718,23 @@ pnfs_agent_read_write_test()
 	filename=`pick_random_files 1 $filelist`
 	basename=`basename $filename`
 	pnfsname=`echo ${PNFS_AGENT_OUTPUT_DIR}/$basename`
-	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$pnfsname `get_lock_file_name $filename`"
 	encp="$encp_cmd"
 	
-	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE
+	transfer "$encp" '$filename' '$pnfsname' '$cleanup' "" "$section" WRITE
 
 	### These two tests need to be made pnfs_agent aware.
 	test_layer '$pnfsname' "$section"
-	enstore_check_test '$pnfsname' '$pnfsname' "$section"
+	enstore_check_test '$pnfsname' '$cleanup' "$section"
 
-	transfer "$encp" "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
+	#Add the second direction.
+	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$cleanup $outname"
+
+	transfer "$encp" '$pnfsname' '$outname' '$cleanup' "" "$section" READ
     fi
     
-    cleanup_files '"$outname" "$pnfsname"'
+    cleanup_files '$cleanup'
     if [ $clear_remote_encp -eq 1 ]; then
         unset REMOTE_ENCP
     fi
@@ -1427,33 +1755,39 @@ pipe_write_test()
 	filename=`pick_random_files 1 $filelist`
 	basename=`basename $filename`
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
-	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$pnfsname `get_lock_file_name $filename`"
 	encp="echo tttt | $encp_cmd"
 	
 	#First test that encp ingnores the standard in pipe when simulating
 	# a cron environment.
-	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE
+	transfer "$encp" "$filename" "$pnfsname" "$cleanup" "" "$section" WRITE
 
 	test_layer "$pnfsname" "$section"
-	enstore_check_test '$pnfsname' '$pnfsname' "$section"
-	
-	transfer "$encp_cmd" "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
+	enstore_check_test '$pnfsname' '$cleanup' "$section"
 
-	rm -f $outname
-	rm -f $pnfsname
+	#Add the second direction.
+	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$cleanup $outname"
+
+	transfer "$encp_cmd" "$pnfsname" '$outname' '$cleanup' "" "$section" READ
+
+	cleanup_files '$cleanup'
+	cleanup="$pnfsname `get_lock_file_name $filename`"
 
 	#Second test that encp reads from standard in when there is not
 	# an input file on the command line and standard in is a pipe.
-	transfer "$encp" "" "$pnfsname" "$pnfsname" "" "$section" WRITE
+	transfer "$encp" "" "$pnfsname" "$cleanup" "" "$section" WRITE
 
 	test_layer '$pnfsname' "$section"
-	enstore_check_test '$pnfsname' '$pnfsname' "$section"
+	enstore_check_test '$pnfsname' '$cleanup' "$section"
 	
-	transfer "$encp_cmd" "$pnfsname" '$outname' '$pnfsname $outname' "" "$section" READ
+	#Add the second direction.
+	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$cleanup $outname"
 
-	#rm -f $outname
-	#rm_pnfs_file $pnfsname
-        cleanup_files '"$outname" "$pnfsname"'
+	transfer "$encp_cmd" "$pnfsname" '$outname' '$cleanup' "" "$section" READ
+
+        cleanup_files '$cleanup'
     fi
 }
 
@@ -1467,9 +1801,12 @@ source_file_does_not_exist_write_test()
     #Make up a bogus source file.
     filename=/tmp/i_dont_exist/i_dont_exist
     pnfsname=${PNFS_OUTPUT_DIR}/i_dont_exist
+    cleanup="$pnfsname `get_lock_file_name $filename`"
 
     #Test if encp returns an error.
-    transfer "$encp_cmd" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1
+    transfer "$encp_cmd" "$filename" "$pnfsname" "$cleanup" "" "$section" WRITE 1
+    
+    cleanup_files '$cleanup'
 }
 
 library_does_not_exist_write_test()
@@ -1494,11 +1831,13 @@ library_does_not_exist_write_test()
 	filename=`pick_random_files 1 $filelist`
 	basename=`basename $filename`
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
-	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$pnfsname `get_lock_file_name $filename`"
 	encp="$encp_cmd --library this_library_does_not_exist"
 	
 	#See if the transfer fails.
-	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1
+	transfer "$encp" "$filename" "$pnfsname" "$cleanup" "" "$section" WRITE 1
+
+	cleanup_files '$cleanup'
     fi
 }
 
@@ -1524,10 +1863,12 @@ too_many_resubmits_write_test()
 	filename=`pick_random_files 1 $filelist`
 	basename=`basename $filename`
 	pnfsname=`echo ${PNFS_OUTPUT_DIR}/$basename`
-	outname=`echo ${LOCAL_OUTPUT_DIR}/$basename`
+	cleanup="$pnfsname `get_lock_file_name $filename`"
 	encp="$encp_cmd --resubmit-timeout 0 --max-resubmit 0"
 	
 	#See if the transfer fails.
-	transfer "$encp" "$filename" "$pnfsname" "$pnfsname" "" "$section" WRITE 1
+	transfer "$encp" "$filename" "$pnfsname" "$cleanup" "" "$section" WRITE 1
+
+	cleanup_files '$cleanup'
     fi
 }
