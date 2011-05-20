@@ -30,7 +30,7 @@ timing = False
 
 class LMDs(object):
     """
-    Configurable Location Manager Dispatcher server
+    Configurable Library Manager Dispatcher server
 
     """
 
