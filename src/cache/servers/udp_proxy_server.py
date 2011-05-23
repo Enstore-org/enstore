@@ -194,7 +194,7 @@ def do_work():
     # get an interface
     intf = U2AsInterface()
 
-    # get a library manager
+    # create a udp_proxy instance
     u2a = U2As(intf.name, (intf.config_host, intf.config_port))
     u2a.handle_generic_commands(intf)
 
