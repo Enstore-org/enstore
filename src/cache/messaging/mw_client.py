@@ -62,8 +62,13 @@ class MWReply(EnqMessage):
 
         EnqMessage.__init__(self, type=type, content=content)       
         # @todo: fix, set correlation_id in args to constructor
-        if orig_msg.correlation_id is not None:
+        try:   
             self.correlation_id = orig_msg.correlation_id # reset correlation id
+        except:
+            pass
+        #print "DEBUG " + orig_msg
+        #print "DEBUG corr Id orig  %s" % (orig_msg.correlation_id,)
+        #print "DEBUG corr Id reply %s" % (self.correlation_id,)
 
 class MWRArchived(MWReply):
     """ Message: Reply to Migration Worker Archive Command
@@ -94,7 +99,8 @@ class MWRStatus(MWReply):
         MWReply.__init__(self, type=mt.MWR_STATUS, orig_msg = orig_msg, content=content)
 
 if __name__ == "__main__":
-    l = ["a","b"]
+    l = ["a","b","c","d"]
+    l2= ["x","y"]
     
     # Commands:
     ma = MWCArchive( l )
@@ -114,13 +120,13 @@ if __name__ == "__main__":
     ra1 = MWRArchived(ma,l)
     print "MWRArchived: %s" % (ra1,)
     
-    ra2= MWRArchived(orig_msg=ma,content=l)
+    ra2= MWRArchived(orig_msg=ma,content=l2)
     print "MWRArchived: %s" % (ra2,)
     
-    rp = MWRPurged(orig_msg=mp, content=l)
+    rp = MWRPurged(orig_msg=mp, content=l2)
     print "MWRPurged: %s" % (rp,)
     
-    rs = MWRStaged(orig_msg=ms, content=l)
+    rs = MWRStaged(orig_msg=ms, content=l2)
     print "MWRStaged: %s" % (rs,)
     
     rstat = MWRStatus(orig_msg=ms, content={"status":(e_errors.OK,None)})
