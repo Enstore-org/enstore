@@ -79,13 +79,13 @@ class MigrationWorker():
             amq_broker = (cfb['host'],cfb['port'])
             queue_in   = cfs['queue_in']
             queue_work = cfs['queue_work']
-            queue_out  = cfs['queue_out']
+            queue_reply  = cfs['queue_reply']
         except:
             self.trace.exception("got exception when extracting configuration form dictionary")
             # @todo - configuraion error, raise exception
 
         self.trace.debug("create clients")
-        self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=queue_in, target=queue_out)
+        self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=queue_work, target=queue_reply)
         
         # start it here
         self.start()
@@ -266,13 +266,13 @@ if __name__ == "__main__":
                             "port":5672},
                     },
             "server":{
-                      "queue_work" : "mw",           # all workers get job from common Migration Worker queue
+                      "queue_work" : "migrator",           # all workers get job from common Migration Worker queue
                        # queue name for messages sent directly to this worker, like MDW_STATUS
                        #    worker automatically create queue if it does not exist and deletes on exit
                       "queue_in" : "mw_123; {create: receiver, delete: receiver}",
 
 #                      "queue_out" : "md",            # MW reply to Migration Dispatcher queue
-                      "queue_out" : "md_replies",            # MW reply to Migration Dispatcher queue
+                      "queue_reply" : "md_replies",            # MW reply to Migration Dispatcher queue
                       }
             }
 
