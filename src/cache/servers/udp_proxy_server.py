@@ -79,10 +79,9 @@ class U2As(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
         Trace.trace(10, "proxy_server, extract conf")
         try:
-            brk = self.amqp_broker_conf['host_port']
+            brk = self.amqp_broker_conf['host'], self.amqp_broker_conf['port']
             udp_srv = (self.conf['host'], self.conf['udp_port'])
             target = self.conf['target_addr']
-            print "TARGET", target
         except Exception, detail:
             Trace.trace(10, "proxy_server, got exception %s"%(detail,))
 
@@ -90,7 +89,6 @@ class U2As(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
         #Open connection to qpid broker
         Trace.log(e_errors.INFO, "create udp server instance, qpid client instance")
         # self.u2a_srv = cache.servers.udp2amq.UDP2amq(udp_srv, use_raw=1, amq_broker=brk, target_addr=target)
-        print "SRV", udp_srv, brk, target
         
         self.u2a_srv = udp2amq.UDP2amq(udp_srv, use_raw=1, amq_broker=brk, target_addr=target)
 
