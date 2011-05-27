@@ -277,7 +277,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
         
         listen_sock.listen(1)
 
-        #wait for a responce
+        #wait for a response
         r, unused, unused = select.select([listen_sock], [], [listen_sock],
                                           self.timeout)
         if not r :
