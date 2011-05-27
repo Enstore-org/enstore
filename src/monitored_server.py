@@ -5,6 +5,7 @@ import string
 
 import enstore_constants
 import enstore_functions
+import migrator_client
 import mover_client
 import library_manager_client
 import e_errors
@@ -266,6 +267,25 @@ class MonitoredRatekeeper(MonitoredServer):
     def __init__(self, config):
 	MonitoredServer.__init__(self, config, enstore_constants.RATEKEEPER)
 
+
+class MonitoredMigrator(MonitoredServer):
+
+    STATUS_FIELDS = {enstore_constants.STATE : enstore_constants.UNKNOWN_S,
+		     enstore_constants.TRANSFERS_COMPLETED : DASH,
+		     enstore_constants.TRANSFERS_FAILED : DASH,
+		     enstore_constants.BYTES_READ : "-1",
+		     enstore_constants.BYTES_WRITTEN : "-1",
+		     enstore_constants.FILES : ("", ""),
+		     enstore_constants.MODE : "",
+		     enstore_constants.BYTES_TO_TRANSFER : "-1",
+		     enstore_constants.CURRENT_LOCATION : "0",
+		     enstore_constants.STATUS : ()}
+
+    def __init__(self, config, name, csc):
+	MonitoredServer.__init__(self, config, name, DEFAULT_MOVER_HUNG_INTERVAL)
+	self.csc = csc
+	self.client = migrator_client.MigratorClient(self.csc, self.name)
+	self.status_keys = self.STATUS_FIELDS.keys()
 
 class MonitoredMover(MonitoredServer):
 

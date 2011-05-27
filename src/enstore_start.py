@@ -453,7 +453,6 @@ def check_server(csc, name, intf, cmd):
     if not is_on_host(info.get('host', None)) and \
        not is_on_host(info.get('hostip', None)):
         return
-
     if intf.nocheck:
         rtn = {'status':("nocheck","nocheck")}
     else:
@@ -508,7 +507,7 @@ def check_server(csc, name, intf, cmd):
                 else:
                     rtn = {'status':("e_errors.SERVERDIED","not running")}
 
-    #Process responce.
+    #Process response.
     if not e_errors.is_ok(rtn):
         print "Starting %s: %s:%s" % (name, info['hostip'], info['port'])
 
@@ -768,8 +767,10 @@ def do_work(intf):
                          (sudo, mover_name))
     """
     # Migrators
-    migrators = csc.get_migrators2(None, conf_dict=config_dict)
+    migrators = csc.get_migrators()
     for migrator in migrators:
+        print intf.should_start(enstore_constants.MIGRATOR)
+        print intf.should_start(migrator)
         if intf.should_start(enstore_constants.MIGRATOR) or \
            intf.should_start(migrator):
             check_server(csc, migrator, intf,

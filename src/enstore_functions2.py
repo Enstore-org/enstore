@@ -244,6 +244,9 @@ def print_list(aList, sep=" "):
 def get_mover_status_filename():
     return "enstore_movers.html"
 
+def get_migrator_status_filename():
+    return "enstore_migrators.html"
+
 def override_to_status(override):
     # translate the override value to a real status
     if type(override) == types.ListType:
@@ -357,6 +360,10 @@ def is_udp_proxy_server(server):
 # return true if the passed server name ends in "mover"
 def is_mover(server):
     return is_this(server, enstore_constants.MOVER)
+
+# return true if the passed server name ends in "migrator"
+def is_migrator(server):
+    return is_this(server, enstore_constants.MIGRATOR)
 
 # return true if the passed server name ends in "media_changer"
 def is_media_changer(server):

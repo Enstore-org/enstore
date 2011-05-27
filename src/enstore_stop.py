@@ -272,7 +272,7 @@ def stop_server(gc, servername):
         return 0
 
 def stop_server_from_pid_file(servername):
-    #If there is no responce from the server, determine if it is hung.
+    #If there is no response from the server, determine if it is hung.
     try:
         fp = open(get_temp_file(servername), "r")
         data = fp.readlines()
@@ -569,6 +569,13 @@ def do_work(intf):
         if intf.should_stop(enstore_constants.MOVER) or \
            intf.should_stop(mover):
             check_server(csc, mover)
+
+    #Migrators.
+    migrators = find_servers_by_type(csc, enstore_constants.MIGRATOR)
+    for migrator in migrators:
+        if intf.should_stop(enstore_constants.MIGRATOR) or \
+           intf.should_stop(migrator):
+            check_server(csc, migrator)
 
     #Media changers.
     media_changers = find_servers_by_type(csc, enstore_constants.MEDIA_CHANGER)

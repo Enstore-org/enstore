@@ -99,6 +99,13 @@ def get_udp_proxy_servers(config_d_keys):
 	    ups.append(key)
     return ups
 
+def get_migrators(config_d_keys):
+    ups = []
+    for key in config_d_keys:
+	if enstore_functions2.is_migrator(key):
+	    ups.append(key)
+    return ups
+
 def get_allowed_down_index(server, allowed_down, index):
     if allowed_down.has_key(server):
 	rtn = allowed_down[server][index]
@@ -491,6 +498,14 @@ class UDPProxyServer(EnstoreServer):
 	self.reason_down = "%s down"%(name,)
 	self.postfix = enstore_constants.UDP_PROXY_SERVER
 
+class Migrator(EnstoreServer):
+
+    def __init__(self, name, offline_d, override_d, seen_down_d, allowed_down_d):
+	EnstoreServer.__init__(self, name, name, offline_d, override_d, seen_down_d, allowed_down_d,
+			       enstore_constants.DOWN)
+	self.reason_down = "%s down"%(name,)
+	self.postfix = enstore_constants.MIGRATOR
+
 
 
 
@@ -565,6 +580,7 @@ def do_real_work():
     
     library_managers = get_library_managers(config_d_keys)
     upd_proxy_servers = get_udp_proxy_servers(config_d_keys)
+    migrators = get_migrators(config_d_keys)
     meds = {}
     total_other_servers = []
     total_servers_names = []
@@ -620,6 +636,14 @@ def do_real_work():
 	    total_other_servers.append(upc) 
 	    if no_override(upc, override_d_keys):
 		total_servers_names.append(upc.name)
+        
+    for migrator in migrators:
+        mgc = Migrator(migrator, offline_d, override_d, seen_down_d, 
+                       allowed_down_d)
+	if mgc.noupdown == False:
+	    total_other_servers.append(mgc) 
+	    if no_override(mgc, override_d_keys):
+		total_servers_names.append(mgc.name)
         
 
     total_servers = total_other_servers + total_movers + total_lms

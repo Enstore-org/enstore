@@ -466,6 +466,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 self.server_d[key] = monitored_server.MonitoredMover(cdict, key,
 								     self.csc)
                 self.er_lock.release()
+        elif enstore_functions2.is_migrator(key):
+            cdict = config_d[key]
+            if self.ok_to_monitor(cdict):
+                self.er_lock.acquire()
+                self.server_d[key] = monitored_server.MonitoredMigrator(cdict, key,
+                                                                        self.csc)
+                self.er_lock.release()
         elif enstore_functions2.is_media_changer(key):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
@@ -2164,7 +2171,6 @@ if __name__ == "__main__":
 
     # get interface
     intf = InquisitorInterface()
-
     # get the inquisitor
     inq = Inquisitor((intf.config_host, intf.config_port),
                      intf.html_file, intf.update_interval,

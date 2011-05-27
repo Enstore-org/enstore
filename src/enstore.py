@@ -32,6 +32,7 @@ import library_manager_client
 import log_client
 import event_relay_client
 import media_changer_client
+import migrator_client
 import mover_client
 import monitor_client
 import option
@@ -106,6 +107,8 @@ server_functions = {
              log_client.do_work, option.ADMIN],
     "media" : [media_changer_client.MediaChangerClientInterface,
                media_changer_client.do_work, option.ADMIN],
+    "migrator" : [migrator_client.MigratorClientInterface,
+		  migrator_client.do_work, option.ADMIN],
     "monitor" : [monitor_client.MonitorServerClientInterface,
                  monitor_client.do_work, option.USER],
     "mover" : [mover_client.MoverClientInterface,
