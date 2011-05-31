@@ -86,7 +86,11 @@ def timestamp2time(s):
 			Trace.log( e_errors.ERROR,'wrong time format: '+s);
 			tt=list(time.localtime(s))
 			tt[-1] = -1
-		return time.mktime(tuple(tt))
+                try:
+                    rc = time.mktime(tuple(tt))
+                except OverflowError:
+                    rc = -1
+		return rc
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 def time2timestamp(t):
