@@ -87,8 +87,9 @@ class MigrationWorker():
         self.trace.debug("create clients")
         self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=queue_work, target=queue_reply)
         self.trace.debug("qpid_client: %s", dir(self.qpid_client))
+        self.trace.debug("reading commands from %s, replying to %s", queue_work, queue_reply )
         # start it here
-        self.start()
+        #self.start()
         #XXX self.qpid_client.add_receiver("work",queue_work)
         
         ### self.pool = Pool(processes=MAX_PROCESSES) # pool of worker processes
@@ -110,6 +111,7 @@ class MigrationWorker():
         except:
             exc, emsg = sys.exc_info()[:2]
             self.trace.debug("_ack_message(): Can not send auto acknowledge for the message. Exception e=%s msg=%s", str(exc), str(emsg))    
+            self.trace.exception("_ack_message(): stack dump follows")
             pass
 
     def _send_reply(self,m):
@@ -284,7 +286,7 @@ if __name__ == "__main__":
         # instantiate MigrationWorker server
         mw = MigrationWorker(name,conf)
         # it starts in constructor
-        #mw.start()
+        mw.start()
     except:
         l_trace.debug("Can't instantiate MigrationWorker, exiting")
         sys.exit(1)
