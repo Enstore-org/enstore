@@ -742,7 +742,12 @@ class Histogram1D(BasicHistogram):
             self.variance=self.reduced_rms2-self.reduced_mean*self.reduced_mean
             self.mean=self.reduced_mean+self.low
             self.rms2=self.mean*self.mean+self.variance
-            self.variance=math.sqrt(self.variance)
+            try:
+                self.variance=math.sqrt(self.variance)
+            except ValueError, msg:
+                print msg, x, self.entries, self.variance, self.rms2, self.mean
+                self.variance=math.sqrt(math.fabs(self.variance))
+                pass
             self.entries=self.entries+1
             self.mean_error=self.variance/math.sqrt(float(self.entries))
             self.variance_error=self.variance/math.sqrt(2.*float(self.entries))
