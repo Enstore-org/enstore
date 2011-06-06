@@ -87,7 +87,7 @@ class MigrationWorker():
         self.trace.debug("create clients")
         self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=queue_work, target=queue_reply)
         self.trace.debug("qpid_client: %s", dir(self.qpid_client))
-        self.trace.debug("reading commands from %s, replying to %s", queue_work, queue_reply )
+        self.trace.debug("reading commands from '%s', replying to '%s'", queue_work, queue_reply )
         # start it here
         #self.start()
         #XXX self.qpid_client.add_receiver("work",queue_work)
