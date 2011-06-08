@@ -365,7 +365,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
     vq_file.write("Date this listing was generated: %s\n\n" % \
                   time.asctime(time.localtime(time.time())))
 
-    fields = ("    ", "Library", "Storage Group", "Reqested",
+    fields = ("    ", "Library", "Storage Group", "Requested",
               "Authorized", "Quota", "Allocated",
               "Blank", "Used", "Deleted", "Space Used",
               "Active", "Deleted", "Unknown",
