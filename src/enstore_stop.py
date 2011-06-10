@@ -594,7 +594,6 @@ def do_work(intf):
     # udp to amq proxy servers
     proxy_servers = find_servers_by_type(csc, enstore_constants.UDP_PROXY_SERVER)
     for proxy_server in proxy_servers:
-        print "PS",proxy_server 
         if intf.should_stop(enstore_constants.UDP_PROXY_SERVER) or \
            intf.should_stop(proxy_server):
             check_server(csc, proxy_server)
