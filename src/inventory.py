@@ -1129,12 +1129,16 @@ def inventory(output_dir, cache_dir):
                     if f['deleted'] == 'yes':
                         deleted = deleted + 1
                         deleted_size = deleted_size + f['size']
-                    else:
+                    elif f['deleted'] == 'no':
                         active = active + 1
                         active_size = active_size + f['size']
+                    else:
+                        unknown = unknown + 1
+                        unknown_size = unknown_size + f['size']
                 else:
                     unknown = unknown + 1
                     unknown_size = unknown_size + f['size']
+
 
                 # write out file information
                 os.write(fd_output, "%10s %15s %15s %22s %7s %s\n" % \
