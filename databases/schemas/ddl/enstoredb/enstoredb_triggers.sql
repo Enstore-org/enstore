@@ -17,3 +17,13 @@ CREATE TRIGGER update_volume_counters
     FOR EACH ROW
     EXECUTE PROCEDURE update_volume_file_counters();
 
+CREATE TRIGGER populate_file_table
+    BEFORE INSERT OR UPDATE ON file
+    FOR EACH ROW
+    EXECUTE PROCEDURE populate_file_table();
+
+CREATE TRIGGER populate_files_in_transition_table
+    AFTER INSERT OR UPDATE ON file
+    FOR EACH ROW
+    EXECUTE PROCEDURE populate_files_in_transition_table();
+

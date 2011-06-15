@@ -31,6 +31,7 @@ import hostaddr
 import event_relay_messages
 import enstore_functions3
 import udp_server
+import file_cache_status
 
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
 MAX_CONNECTION_FAILURE = 5
@@ -1284,18 +1285,53 @@ class FileClerkMethods(FileClerkInfoMethods):
         if gid != None:
             record["gid"] = gid
         record["deleted"] = "no"
+	record["cache_status"] = file_cache_status.CacheStatus.CACHED
 
         # take care of the copy count
         original = self._find_original(bfid)
         if original:
             self.made_copy(original)
+	    
+	# record our changes
+	self.filedb_dict[bfid] = record
+	ticket["status"] = (e_errors.OK, None)
+	self.reply_to_caller(ticket)
+	Trace.trace(12,'set_pnfsid %s'%(ticket,))
+	return
 
-        # record our changes
-        self.filedb_dict[bfid] = record
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        Trace.trace(12,'set_pnfsid %s'%(ticket,))
-        return
+    def open_bitfile(self, ticket):
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+    
+	    if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
+		    ticket["status"] = (e_errors.OK, None)
+		    self.reply_to_caller(ticket)
+		    return
+	    record["cache_status"] = file_cache_status.CacheStatus.STAGING
+	    self.filedb_dict[bfid] = record
+	    ticket["status"] = (e_errors.OK, None)
+	    ticket["fc"] = record
+	    self.reply_to_caller(ticket)
+	    return
+
+    def set_cache_status(self,ticket):
+	    bfid, record = self.extract_bfid_from_ticket(ticket.get('fc', {}))
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+	    cache_status   = self.extract_value_from_ticket("cache_status", ticket.get('fc', {}))
+	    archive_status = self.extract_value_from_ticket("archive_status", ticket.get('fc', {}))
+	    if not cache_status and not archive_status :
+		    ticket["status"] = (e_errors.OK, None)
+		    self.reply_to_caller(ticket)
+		    return
+	    elif cache_status :
+		    record["cache_status"]=cache_status
+	    elif archive_status:
+		    record["archive_status"]=archive_status
+	    self.filedb_dict[bfid] = record
+	    ticket["status"] = (e_errors.OK, None)
+	    return
 
     #### DONE
     def set_crcs(self, ticket):

@@ -174,16 +174,16 @@ ALTER FUNCTION public.bytes_recycled_last_7days() OWNER TO enstore;
 
 CREATE OR REPLACE FUNCTION get_media_type(character varying, bigint) RETURNS character varying
     AS $_$
-DECLARE 
+DECLARE
 MT VARCHAR;
 BEGIN
-         IF  $1 = '3480' and $2 = 107374182400 THEN 
+         IF  $1 = '3480' and $2 = 107374182400 THEN
          MT = 'LTO1';
-         ELSEIF  $1 = '3480' and $2 = 214748364800 THEN 
+         ELSEIF  $1 = '3480' and $2 = 214748364800 THEN
          MT = 'LTO2';
          ELSEIF  $1 = '3480' and $2 < 100 THEN
          MT = NULL;
-         ELSE 
+         ELSE
          MT=$1;
  END IF;
  return MT;
@@ -427,47 +427,47 @@ delta bigint;
 BEGIN
 IF(TG_OP='INSERT') THEN
 	IF(NEW.deleted='u') THEN
-		update volume set unknown_files=unknown_files+1, unknown_bytes=unknown_bytes+NEW.size where volume.id=NEW.volume;
-	ELSEIF (NEW.deleted='y') THEN 
-		update volume set deleted_files=deleted_files+1, deleted_bytes=deleted_bytes+NEW.size where volume.id=NEW.volume;
-	ELSEIF (NEW.deleted='n') THEN 
-		update volume set active_files=active_files+1, active_bytes=active_bytes+NEW.size  where volume.id=NEW.volume;
+		update volume set unknown_files=unknown_files+1, unknown_bytes=unknown_bytes+NEW.size,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
+	ELSEIF (NEW.deleted='y') THEN
+		update volume set deleted_files=deleted_files+1, deleted_bytes=deleted_bytes+NEW.size,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
+	ELSEIF (NEW.deleted='n') THEN
+		update volume set active_files=active_files+1, active_bytes=active_bytes+NEW.size,modification_time=LOCALTIMESTAMP(0)  where volume.id=NEW.volume;
 	END IF;
 ELSEIF (TG_OP='UPDATE') THEN
 	delta := NEW.size-OLD.size;
 	IF(NEW.deleted<>OLD.deleted) THEN
 		IF(OLD.deleted='y') THEN
-			update volume set deleted_files=deleted_files-1, deleted_bytes=deleted_bytes-OLD.size where volume.id=NEW.volume;
-		ELSEIF (OLD.deleted='n') THEN 
-			update volume set active_files= active_files-1, active_bytes=active_bytes-OLD.size  where volume.id=NEW.volume;
-		ELSEIF (OLD.deleted='u') THEN 
-			update volume set unknown_files= unknown_files-1, unknown_bytes=unknown_bytes-OLD.size where volume.id=NEW.volume;	
+			update volume set deleted_files=deleted_files-1, deleted_bytes=deleted_bytes-OLD.size,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
+		ELSEIF (OLD.deleted='n') THEN
+			update volume set active_files= active_files-1, active_bytes=active_bytes-OLD.size,modification_time=LOCALTIMESTAMP(0)  where volume.id=NEW.volume;
+		ELSEIF (OLD.deleted='u') THEN
+			update volume set unknown_files= unknown_files-1, unknown_bytes=unknown_bytes-OLD.size,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
 		END IF;
 		IF(NEW.deleted='u') THEN
-			update volume set unknown_files= unknown_files+1, unknown_bytes=unknown_bytes+OLD.size+delta where volume.id=NEW.volume;
-		ELSEIF (NEW.deleted='y') THEN 
-			update volume set deleted_files= deleted_files+1, deleted_bytes=deleted_bytes+OLD.size+delta where volume.id=NEW.volume;
-		ELSEIF (NEW.deleted='n') THEN 
-			update volume set active_files= active_files+1, active_bytes=active_bytes+OLD.size+delta where volume.id=NEW.volume;
+			update volume set unknown_files= unknown_files+1, unknown_bytes=unknown_bytes+OLD.size+delta,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
+		ELSEIF (NEW.deleted='y') THEN
+			update volume set deleted_files= deleted_files+1, deleted_bytes=deleted_bytes+OLD.size+delta,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
+		ELSEIF (NEW.deleted='n') THEN
+			update volume set active_files= active_files+1, active_bytes=active_bytes+OLD.size+delta,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
 		END IF;
-	ELSEIF (OLD.size<>NEW.size) THEN 
+	ELSEIF (OLD.size<>NEW.size) THEN
 		IF(OLD.deleted='y') THEN
-			update volume set deleted_bytes=deleted_bytes+delta where volume.id=NEW.volume;
-		ELSEIF (OLD.deleted='n') THEN 
-			update volume set active_bytes=active_bytes+delta  where volume.id=NEW.volume;
-		ELSEIF (OLD.deleted='u') THEN 
-			update volume set unknown_bytes=unknown_bytes+delta where volume.id=NEW.volume;	
-		END IF;		
+			update volume set deleted_bytes=deleted_bytes+delta,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
+		ELSEIF (OLD.deleted='n') THEN
+			update volume set active_bytes=active_bytes+delta,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
+		ELSEIF (OLD.deleted='u') THEN
+			update volume set unknown_bytes=unknown_bytes+delta,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
+		END IF;
 	END IF;
 ELSEIF (TG_OP='DELETE') THEN
 	IF(OLD.deleted='y') THEN
-		update volume set  deleted_files=deleted_files-1, deleted_bytes=deleted_bytes-OLD.size  where volume.id=OLD.volume;
-	ELSEIF (OLD.deleted='n') THEN 
-		update volume set active_files= active_files-1, active_bytes=active_bytes-OLD.size where volume.id=OLD.volume;
-	ELSEIF (OLD.deleted='u') THEN 
-		update volume set unknown_files= unknown_files-1, unknown_bytes=unknown_bytes-OLD.size where volume.id=OLD.volume;	
+		update volume set  deleted_files=deleted_files-1, deleted_bytes=deleted_bytes-OLD.size,modification_time=LOCALTIMESTAMP(0)  where volume.id=OLD.volume;
+	ELSEIF (OLD.deleted='n') THEN
+		update volume set active_files= active_files-1, active_bytes=active_bytes-OLD.size,modification_time=LOCALTIMESTAMP(0) where volume.id=OLD.volume;
+	ELSEIF (OLD.deleted='u') THEN
+		update volume set unknown_files= unknown_files-1, unknown_bytes=unknown_bytes-OLD.size,modification_time=LOCALTIMESTAMP(0) where volume.id=OLD.volume;
 	END IF;
-	RETURN OLD;	
+	RETURN OLD;
 END IF;
 RETURN NEW;
 END;
@@ -476,6 +476,57 @@ $$
 
 
 ALTER FUNCTION public.update_volume_file_counters() OWNER TO enstore;
+
+--
+-- Name: populate file, files_in_transition; Type: FUNCTION; Schema: public; Owner: enstore
+--
+
+CREATE OR REPLACE FUNCTION populate_file_table() RETURNS "trigger"
+    AS $$
+BEGIN
+IF(TG_OP='INSERT') THEN
+        NEW.cache_status='CREATED';
+	NEW.cache_mod_time=LOCALTIMESTAMP(0);
+ELSEIF (TG_OP='UPDATE') THEN
+        IF (OLD.cache_status<>NEW.cache_status) THEN
+		NEW.cache_mod_time=LOCALTIMESTAMP(0);
+	END IF;
+END IF;
+RETURN NEW;
+END;
+$$
+    LANGUAGE plpgsql;
+
+
+ALTER FUNCTION public.populate_file_table() OWNER TO enstore;
+
+CREATE OR REPLACE FUNCTION populate_files_in_transition_table() RETURNS "trigger"
+    AS $$
+BEGIN
+IF(TG_OP='INSERT') THEN
+	BEGIN
+		INSERT INTO files_in_transition values (NEW.bfid);
+	END;
+ELSEIF (TG_OP='UPDATE') THEN
+	IF (OLD.bfid<>NEW.bfid) THEN
+		BEGIN
+			UPDATE files_in_transition set bfid=NEW.bfid where bfid=OLD.bfid;
+		END;
+	END IF;
+	IF (NEW.cache_status = 'CACHED') THEN
+		BEGIN
+			DELETE FROM files_in_transition WHERE bfid=NEW.bfid;
+		END;
+	END IF;
+
+END IF;
+RETURN NEW;
+END;
+$$
+    LANGUAGE plpgsql;
+
+
+ALTER FUNCTION public.populate_files_in_transition_table() OWNER TO enstore;
 
 --
 -- Name: write_protect_status(character varying); Type: FUNCTION; Schema: public; Owner: enstore

@@ -86,7 +86,11 @@ def timestamp2time(s):
 			Trace.log( e_errors.ERROR,'wrong time format: '+s);
 			tt=list(time.localtime(s))
 			tt[-1] = -1
-		return time.mktime(tuple(tt))
+                try:
+                    rc = time.mktime(tuple(tt))
+                except OverflowError:
+                    rc = -1
+		return rc
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 def time2timestamp(t):
@@ -125,16 +129,7 @@ def str_value(v):
 
 # from a dictionary, get field name and values
 def get_fields_and_values(s):
-	keys = s.keys()
-	fields = ""
-	values = ""
-	for i in keys[:-1]:
-		fields = fields+i+', '
-		values = values+str_value(s[i])+', '
-	fields = fields+keys[-1]
-	values = values+str_value(s[keys[-1]])
-	return fields, values
-
+    return string.join(s.keys(),","),string.join(map(str_value,s.values()),",")
 
 # This is the base DbTable class
 #
@@ -365,7 +360,7 @@ class DbTable:
 		res = self.query_dictresult(self.retrieve_query%(key))
 		if len(res) == 0:	# insert
 			cmd = self.insert_query%get_fields_and_values(v1)
-			# print cmd
+			print cmd
 			self.insert(cmd)
 		else:			# update
 			d = diff_fields_and_values(res[0], v1)
@@ -474,11 +469,8 @@ class FileDB(DbTable):
                                  max_connections = max_connections)
 
 		self.retrieve_query = "\
-        		select \
-                		bfid, crc, deleted, drive, \
-				volume.label, location_cookie, pnfs_path, \
-                		pnfs_id, sanity_size, sanity_crc, size, \
-				uid, gid, update \
+        		select file.*, volume.label, volume.file_family, \
+                                volume.storage_group, volume.library \
         		from file, volume \
         		where \
                 		file.volume = volume.id and \
@@ -499,7 +491,7 @@ class FileDB(DbTable):
 		if s['deleted'] == 'y':
 			deleted = 'yes'
 		elif s['deleted'] == 'n':
-			deleted = 'no'
+ 			deleted = 'no'
 		else:
 			deleted = 'unknown'
 
@@ -542,7 +534,12 @@ class FileDB(DbTable):
 				record['update'] = (s['update']).isoformat(' ')
 			else:
 				record['update'] = s['update']
-
+                for key in ['package_id','cache_status','archive_status',\
+                            'cache_mod_time','archive_mod_time',\
+                            'active_package_files_count','package_files_count',\
+                            'storage_group','file_family','library']:
+                    if s.has_key(key):
+                        record[key] = s[key]
 		return record
 
 	def import_format(self, s):
@@ -598,6 +595,11 @@ class FileDB(DbTable):
 			record["uid"] = s["uid"]
 		if s.has_key("gid"):
 			record["gid"] = s["gid"]
+                for key in ['package_id','cache_status','archive_status'\
+                            'cache_mod_time','archive_mod_time',\
+                            'active_package_files_count','package_files_count']:
+                    if s.has_key(key):
+                        record[key] = s[key]
 		return record
 
 class VolumeDB(DbTable):

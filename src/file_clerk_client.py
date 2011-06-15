@@ -97,6 +97,15 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             ticket = self.set_pnfsid(ticket)
         return ticket
 
+    def set_cache_status(self, ticket):
+        ticket['work'] = "set_cache_status"
+        r = self.send(ticket)
+        return r
+
+    def open_bitfile(self, bfid):
+        r = self.send({"work" : "open_bitfile", "bfid" : bfid})
+        return r
+
     def new_bit_file(self, ticket):
         ticket['work'] = "new_bit_file"
         r = self.send(ticket)
