@@ -127,8 +127,8 @@ def modify_pg_hba_file(filename,dbname,dbuser,dbuser_reader):
     cmd="/sbin/ifconfig | grep \"inet addr:\" | grep -v 127.0.0.1 | awk \'{print $2}\' | cut -d\":\" -f 2"
     fp=open(filename,"a")
     for ip in os.popen(cmd).readlines():
-        fp.write("host %s %s %s/24 trust \n"%(dbname,dbuser,ip.strip())
-        fp.write("host %s %s %s/24 trust \n"%(dbname,dbuser_reader,ip.strip())
+        fp.write("host %s %s %s/24 trust \n"%(dbname,dbuser,ip.strip()))
+        fp.write("host %s %s %s/24 trust \n"%(dbname,dbuser_reader,ip.strip()))
     fp.close()
 
 def start_database(dbarea,dbport):
