@@ -1,4 +1,4 @@
-#!/bin/bash --posix
+#! /bin/sh --posix
 # Include --posix which looks to be necessary, on Linux anyway, to
 # not read in the .bashrc file again where the PNFS_DIR and LOCAL_DIR
 # variables are possibly set.
@@ -12,13 +12,149 @@
 # 
 # Requires $LOCAL_DIR and $PNFS_DIR to be set.
 
+#To add a new test:
+# 1) Add the name to the end of the list_of_tests variable in encp_test_script.
+# 2) Add a function at the end of the encp_test_functions file with that
+#    name.  This function needs to run the test.  See existing tests for
+#    examples.
+
+#Define the list of tests.
+list_of_encp_tests="single_read_test
+                    single_read_write_test
+                    dcache_read_write_test
+                    dcache_shortcut_read_write_test
+                    dcache_override_path_read_write_test
+                    enstore_conf_read_write_test
+                    single_threaded_read_write_test
+                    multiple_threaded_read_write_test
+                    single_ecrc_read_write_test
+                    single_relative_path_read_write_test
+                    single_local_pnfs_path_read_test
+                    single_no_brand_read_test
+                    volume_read_test
+                    single_fs_path_read_test
+                    data_access_layer_read_write_test
+                    multiple_copies_read_write_test
+                    pnfs_agent_read_write_test
+                    setuid_read_write_test
+                    pipe_write_test
+                    source_file_does_not_exist_write_test
+                    library_does_not_exist_write_test
+                    too_many_resubmits_write_test
+"
+
+list_of_other_tests="single_assert_test
+                     ensync_test
+                     get_put_test
+                     get_volume_test
+                     enmv_test
+"
+
+##
+## Start of functions.
+##
+
 print_help()
 {
-    echo "USAGE: `basename $0` [-h | -d | -e <encp_path>] [<test_name1> [test_name2] ...]"
+    echo "USAGE: `basename $0` [ options ] [<test_name1> [test_name2] ...]"
     echo "    -h               Print this help."
     echo "    -e <encp_path>   Specifiy the encp to use for the tests."
-    echo "    -d               Increase the debugging output."
+    echo "    -d               Increase the debugging output with each -d."
+    echo "    -t               Truncate output log file after each test. (default)"
+    echo "    -a               Keep appending output to log file after each test."
+    echo "    -n <num>         Number of passes of test(s) to run. (default 1)"
+    echo "    -s <num>         Simultaneous tests to run per pass. (default 1)"
+    echo "    -c               Cleanup leftover files from previous tests."
+    echo "    -q               Set debug level to 0."
+    echo 
+    echo "List of Encp Tests:"
+    echo 
+    for name in `echo "$list_of_encp_tests"`; do
+        echo $name
+    done
+    echo
+    echo "List of Other Tests:"
+    echo
+    for name in `echo "$list_of_other_tests"`; do
+        echo $name
+    done
 }
+
+is_integer_argument()
+{
+    [ `echo "$1" | sed 's/^[-+0-9][0-9]*//' | wc -c` -eq 1 ]
+    if [ $? -ne 0 ]; then
+        #We were not passed a number
+        echo "Number expected, not $1." 1>&2
+        exit 2
+    elif [ $number -lt 0 ]; then
+        echo "Negative numbers, like $1, are not allowed." 1>&2
+        exit 2
+    fi
+}
+
+run_tests()
+{
+    setup_log_file
+
+    #Run the tests.
+    for test_name in `echo "$list_of_encp_tests" "$list_of_other_tests"`; do
+	if [ $(eval echo \$$test_name) = yes ]; then
+            #If -t in effect, truncate the log file.  If it does not exist,
+	    # create it.
+	    truncate_encp_output  
+
+	    #
+	    #Execute the test.
+	    #
+	    eval $test_name
+	fi
+    done
+
+    #Only used for successful tests here, but print the success message to
+    # the user.  Error cases exit, which cause all_done to be called from
+    # a trap.  Either way the successful or error exist status is still
+    # collected by the collect_children function.
+    all_done
+}
+
+# Run a pass worth of tests.  Saving forked child PIDs in $saved_pids.
+run_test_pass()
+{
+   #Run the number of simultaneous tests requested at one time for each pass.
+   j=1
+   saved_pids=
+   while [ $j -le $simultaneous ]; do
+       j=$((j + 1))
+
+       #Fork off a new shell to run this pass of the test.
+       run_tests &
+       saved_pids=`echo -e "${saved_pids}\n$!"`
+   done
+   collect_children  #Uses $saved_pids.
+   return $?
+}
+
+# Get the exit status of the sub-shell processes saved in $saved_pids
+# started by run_test_pass.
+collect_children()
+{
+    exit_status=0
+
+    for pid in `jobs -p`; do
+        wait $pid
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            #There were no errors.
+            exit_status=$rc
+        fi
+    done
+    return $exit_status
+}
+
+##
+## End of functions.
+##
 
 #LOCAL_DIR is set by the user in their environment.
 if [ -z "$LOCAL_DIR" ]; then
@@ -59,22 +195,38 @@ if [ $? -eq 0 ]; then
     unalias ls 2> /dev/null   #We want the default ls behavior.
 fi
 
-source encp_test_functions
-
 #These variables are possibily overridden with command line arguments.
-encp_command=`which encp`
-debug=0
+encp_cmd=${encp_cmd:-`which encp`}
+debug=${debug:-1}
+truncate_output=${truncate_output:-yes}
+number=${number:-1}
+simultaneous=${simultaneous:-1}
+cleanup=${cleanup:-no}
 
 #Parse any command line arguments.
 #
 # encp_cmd and debug are used in encp_test_functions function transfer().
 # 
-while getopts dhe: option; do
+while getopts dhe:atn:s:cq option; do
     case "$option"
     in
-        e) encp_cmd=`which $OPTARG`;;  #Use which to force absolute path.
+        e) if [ -x "$OPTARG" ]; then
+	       encp_cmd=`which $OPTARG`  #Use which to force absolute path.
+           elif [ -f "$OPTARG" ]; then
+               echo "No execute permssions for $OPTARG." 2>&1
+	       exit 1
+           else
+               echo "Valid encp not given.  ($OPTARG)" 2>&1
+	       exit 1
+           fi;;
 	h) print_help; exit 0;;
-	d) debug=`expr $debug + 1`;;
+	d) debug=`expr $debug + 1`;;  #The more -d's, the more output.
+        t) truncate_output=yes;; #Truncate after each test.  (default)
+        a) truncate_output=no;; #Keep appending output from each test.
+        n) number=$OPTARG;;  #Number of passes to run.
+        s) simultaneous=$OPTARG;;  #Number of tests in each pass.
+        c) cleanup=yes;;  #Remove any other output from pervious other tests.
+        q) debug=0;;  #Silence the debug output.
     esac
 done
 
@@ -82,298 +234,101 @@ done
 # all arguments on the command line.
 shift `expr $OPTIND - 1`
 
+#Make sure number is really a number or unlimited.  The unlimited value came
+# from the ulimit command.  Exit on error.
+if [ $number != unlimited ]; then
+    is_integer_argument $number
+fi
+#Verify this is a number.  Exit on error.
+is_integer_argument $simultaneous
+
 #If the number of arguments, $#, is zero run all the tests.
 if [ $# -eq 0 ]; then
-    single_read_test=`expr 1`
-    single_read_write_test=`expr 1`
-    multiple_read_write_test=`expr 1`
-    dcache_read_write_test=`expr 1`
-    non_conf_read_write_test=`expr 1`
-    setuid_read_write_test=`expr 1`
-    single_threaded_read_write_test=`expr 1`
-    multiple_threaded_read_write_test=`expr 1`
-    single_ecrc_read_write_test=`expr 1`
-    single_assert_test=`expr 1`
-    ensync_test=`expr 1`
-    single_relative_path_read_write_test=`expr 1`
-    single_local_pnfs_path_read_test=`expr 1`
-    single_no_brand_read_test=`expr 1`
-    volume_read_test=`expr 1`
-    single_fs_path_read_test=`expr 1`
-    data_access_layer_read_write_test=`expr 1`
-    multiple_copies_read_write_test=`expr 1`
-    pnfs_agent_read_write_test=`expr 1`
-    pipe_write_test=`expr 1`
-    source_file_does_not_exist_write_test=`expr 1`
-    library_does_not_exist_write_test=`expr 1`
-    too_many_resubmits_write_test=`expr 1`
+    default=yes  #Run all tests.
 else
-    single_read_test=`expr 0`
-    single_read_write_test=`expr 0`
-    multiple_read_write_test=`expr 0`
-    dcache_read_write_test=`expr 0`
-    non_conf_read_write_test=`expr 0`
-    setuid_read_write_test=`expr 0`
-    single_threaded_read_write_test=`expr 0`
-    multiple_threaded_read_write_test=`expr 0`
-    single_ecrc_read_write_test=`expr 0`
-    single_assert_test=`expr 0`
-    ensync_test=`expr 0`
-    single_relative_path_read_write_test=`expr 0`
-    single_local_pnfs_path_read_test=`expr 0`
-    single_no_brand_read_test=`expr 0`
-    volume_read_test=`expr 0`
-    single_fs_path_read_test=`expr 0`
-    data_access_layer_read_write_test=`expr 0`
-    multiple_copies_read_write_test=`expr 0`
-    pnfs_agent_read_write_test=`expr 0`
-    pipe_write_test=`expr 0`
-    source_file_does_not_exist_write_test=`expr 0`
-    library_does_not_exist_write_test=`expr 0`
-    too_many_resubmits_write_test=`expr 0`
+    default=no  #Run the selected test(s)
+fi
 
-    for switch in $*; do
-	if [ "single_read_test" = $switch ]; then
-	    single_read_test=`expr 1`
-	fi
-	if [ "single_read_write_test" = $switch ]; then
-	    single_read_write_test=`expr 1`
-	fi
-	if [ "multiple_read_write_test" = $switch ]; then
-	    multiple_read_write_test=`expr 1`
-	fi
-	if [ "dcache_read_write_test" = $switch ]; then
-	    dcache_read_write_test=`expr 1`
-	fi
-	if [ "non_conf_read_write_test" = $switch ]; then
-	    non_conf_read_write_test=`expr 1`
-	fi
-	if [ "setuid_read_write_test" = $switch ]; then
-	    setuid_read_write_test=`expr 1`
-	fi
-	if [ "single_threaded_read_write_test" = $switch ]; then
-	    single_threaded_read_write_test=`expr 1`
-	fi
-	if [ "multiple_threaded_read_write_test" = $switch ]; then
-	    multiple_threaded_read_write_test=`expr 1`
-	fi
-	if [ "single_ecrc_read_write_test" = $switch ]; then
-	    single_ecrc_read_write_test=`expr 1`
-	fi
-	if [ "single_assert_test" = $switch ]; then
-	    single_assert_test=`expr 1`
-	fi
-	if [ "ensync_test" = $switch ]; then
-	    ensync_test=`expr 1`
-	fi
-	if [ "single_relative_path_read_write_test" = $switch ]; then
-	    single_relative_path_read_write_test=`expr 1`
-	fi
-	if [ "single_local_pnfs_path_read_test" = $switch ]; then
-	    single_local_pnfs_path_read_test=`expr 1`
-	fi
-	if [ "single_no_brand_read_test" = $switch ]; then
-	    single_no_brand_read_test=`expr 1`
-	fi
-	if [ "volume_read_test" = $switch ]; then
-	    volume_read_test=`expr 1`
-	fi
-	if [ "single_fs_path_read_test" = $switch ]; then
-	    single_fs_path_read_test=`expr 1`
-	fi
-	if [ "data_access_layer_read_write_test" = $switch ]; then
-	    data_access_layer_read_write_test=`expr 1`
-	fi
-	if [ "multiple_copies_read_write_test" = $switch ]; then
-	    multiple_copies_read_write_test=`expr 1`
-	fi
-	if [ "pnfs_agent_read_write_test" = $switch ]; then
-	    pnfs_agent_read_write_test=`expr 1`
-	fi
-	if [ "pipe_write_test" = $switch ]; then
-	    pipe_write_test=`expr 1`
-	fi
-	if [ "source_file_does_not_exist_write_test" = $switch ]; then
-	    source_file_does_not_exist_write_test=`expr 1`
-	fi
-	if [ "library_does_not_exist_write_test" = $switch ]; then
-	    library_does_not_exist_write_test=`expr 1`
-	fi
-	if [ "too_many_resubmits_write_test" = $switch ]; then
-	    too_many_resubmits_write_test=`expr 1`
-	fi
+#Set the defaults for each test.
+for test_name in `echo "$list_of_encp_tests" "$list_of_other_tests"`; do
+    export $test_name=$default
+done
+#Set the user picked tests.
+if [ $# -ne 0 ]; then
+    for argument in $*; do
+        #Make sure the tests are defined.
+        for test_name in `echo "$list_of_encp_tests" "$list_of_other_tests"`; do
+            if [ $argument = $test_name ]; then
+                export $test_name=yes
+            fi
+        done
     done
 fi
 
-###
-### SINGLE READ TEST
-###
-if [ $single_read_test -eq 1 ]; then
-    single_read_test
+#Get the functions to run in the following tests.
+source encp_test_functions
+
+#For simplicity, the user only needs to supply the location of the encp
+# executable (or python file).  We can find the other commands, if available.
+# The variables $enstore_cmd, $ensync_cmd, etc. are set.
+find_command enstore
+find_command ensync
+find_command volume_assert
+find_command get
+find_command put
+find_command enmv
+
+is_admin_encp
+if [ $? -eq 1 ]; then
+    PNFS_HOSTNAME=`enstore conf --retries 3 --timeout 3 --show pnfs_agent | grep hostip | cut -f 4 -d "'"`
+
+    if [ -z "$PNFS_HOSTNAME" ]; then
+        echo "Unable to obtain pnfs_agent information from configuration server." 2>&1
+        exit 1
+    fi
 fi
 
-###
-### SINGLE READ & WRITE TEST
-###
-if [ $single_read_write_test -eq 1 ]; then
-    single_read_write_test
+#Create the test area directories.
+setup_test_paths
+#Create the local test files or determine that they already exist.
+encp_create_tests
+#Copy the local test files to PNFS for the read-only tests.
+copy_test_files
+if [ $cleanup = yes ]; then
+    cleanup_encp_output  #Delete all existing encp output log files.
+    cleanup_test_paths  #Delete test output files from previously killed tests.
 fi
 
-###
-### MULITPLE READ & WRITE TEST
-###
-if [ $multiple_read_write_test -eq 1 ]; then
-    multiple_read_write_test
+#Run the number of tests requested.  It would be nice to combine the two
+# while statements, but "test expr1 -o expr2" is always executing expr2
+# even when it doesn't need to.
+loops=1
+exit_status=0
+if [ $number = "unlimited" ]; then
+    while [ $exit_status -eq 0 ]; do
+        if [ $debug -eq $DEBUG_SUMMARY ]; then
+            echo "Starting test pass $loops."
+        fi
+	
+	loops=$((loops + 1))
+	
+	run_test_pass
+	exit_status=$?
+    done
+else
+    while [ $loops -le $number -a $exit_status -eq 0 ]; do
+        loop_message="Starting test pass $loops."
+        if [ $debug -ge $DEBUG_SUMMARY ]; then
+            echo $loop_message
+        elif [ $debug -ge $DEBUG_EXECUTIVE_SUMMARY -a $number -gt 1 ]; then
+            echo $loop_message
+        fi
+   
+	loops=$((loops + 1))
+	
+	run_test_pass
+	exit_status=$?
+    done
 fi
 
-###
-### DCACHE READ & WRITE TEST
-###
-if [ $dcache_read_write_test -eq 1 ]; then
-    dcache_read_write_test
-fi
-
-
-###
-### NON-CONF READ & WRITE TEST
-###
-if [ $non_conf_read_write_test -eq 1 ]; then
-    non_conf_read_write_test
-fi
-
-
-###
-### SETUID READ & WRITE TEST
-###
-#if [ $setuid_read_write_test -eq 1 ]; then
-#    setuid_read_write_test
-#fi
-
-
-###
-### SINGLE THREADED READ & WRITE TEST
-###
-if [ $single_threaded_read_write_test -eq 1 ]; then
-    single_threaded_read_write_test
-fi
-
-
-###
-### MULITPLE THREDED READ & WRITE TEST
-###
-if [ $multiple_threaded_read_write_test -eq 1 ]; then
-    multiple_threaded_read_write_test
-fi
-
-
-###
-### SINGLE ECRC READ & WRITE TEST
-###
-if [ $single_ecrc_read_write_test -eq 1 ]; then
-    single_ecrc_read_write_test
-fi
-
-
-###
-### SINGLE ASSERT TEST
-###
-if [ $single_assert_test -eq 1 ]; then
-    single_assert_test
-fi
-
-
-###
-### ENSYNC TEST
-###
-if [ $ensync_test -eq 1 ]; then
-    ensync_test
-fi
-
-###
-### SINGLE RELATIVE PATH READ WRITE TEST
-###
-if [ $single_relative_path_read_write_test -eq 1 ]; then
-    single_relative_path_read_write_test
-fi
-
-###
-### SINGLE LOCAL PNFS PATH READ WRITE TEST
-###
-if [ $single_local_pnfs_path_read_test -eq 1 ]; then
-    single_local_pnfs_path_read_test
-fi
-
-###
-### SINGLE NO BRAND READ TEST
-###
-if [ $single_no_brand_read_test -eq 1 ]; then
-    single_no_brand_read_test
-fi
-
-###
-### VOLUME READ TEST
-###
-if [ $volume_read_test -eq 1 ]; then
-    volume_read_test
-fi
-
-###
-### SINGLE FS PATH READ TEST
-###
-if [ $single_fs_path_read_test -eq 1 ]; then
-    single_fs_path_read_test
-fi
-
-###
-### DATA ACCESS LAYER READ WRITE TEST
-###
-if [ $data_access_layer_read_write_test -eq 1 ]; then
-    data_access_layer_read_write_test
-fi
-
-###
-### MULTIPLE COPES READ WRITE TEST
-###
-if [ $multiple_copies_read_write_test -eq 1 ]; then
-    multiple_copies_read_write_test
-fi
-
-###
-### PNFS AGENT READ WRITE TEST
-###
-if [ $pnfs_agent_read_write_test -eq 1 ]; then
-    pnfs_agent_read_write_test
-fi
-
-###
-### PIPE WRITE TEST
-###
-if [ $pipe_write_test -eq 1 ]; then
-    #pipe_write_test
-    # Skip the pipe write test until the library manager supports it.
-    echo "Skipping Pipe Write Test"
-fi
-
-###
-### SOURCE FILE DOES NOT EXIST WRITE TEST
-###
-if [ $source_file_does_not_exist_write_test -eq 1 ]; then
-    source_file_does_not_exist_write_test
-fi
-
-###
-### LIBRARY DOES NOT EXIST WRITE TEST
-###
-if [ $library_does_not_exist_write_test -eq 1 ]; then
-    library_does_not_exist_write_test
-fi
-
-###
-### TOO MANY RESUBMITS READ TEST
-###
-if [ $too_many_resubmits_write_test -eq 1 ]; then
-    too_many_resubmits_write_test
-fi
-
-
-all_done
+exit $exit_status
