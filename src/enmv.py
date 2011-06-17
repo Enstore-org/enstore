@@ -24,9 +24,9 @@ import configuration_client
 import file_clerk_client
 import volume_clerk_client
 import volume_family
-import atomic
 import charset
 import Trace
+import file_utils
 
 description = "enmv stands for ENstore MV.  It is a PNFS/Chimera and Enstore" \
               " aware tool for moving\nfiles around in PNFS/Chimera.  enmv" \
@@ -103,7 +103,6 @@ def move_file(input_filename, output_filename, intf):
 
     #Obtain layer 1 and layer 4 information.
     try:
-        #p = pnfs.Pnfs(input_filename)
         sfs = namespace.StorageFS(input_filename)
     except (IOError, OSError), msg:
         print_error(e_errors.USERERROR,
@@ -120,6 +119,12 @@ def move_file(input_filename, output_filename, intf):
     except (IOError, OSError), msg:
         print_error(e_errors.USERERROR,
                     "Unable to read layer 4: %s" % str(msg))
+        sys.exit(1)
+    try:
+        sfs.get_stat()
+    except:
+        print_error(e_errors.USERERROR,
+                    "Unable to stat: %s" % str(msg))
         sys.exit(1)
 
     #Consistancy check that the bfids in layers 1 and 4 match.
@@ -155,9 +160,6 @@ def move_file(input_filename, output_filename, intf):
     if not e_errors.is_ok(file_info):
         print_error(file_info['status'][0], file_info['status'][1])
         sys.exit(1)
-    #Extract this for readability.
-    db_volume_family = volume_info['volume_family']
-
 
     #Check for inconsistancies.
     if sfs.volume != file_info['external_label']:
@@ -271,7 +273,7 @@ def move_file(input_filename, output_filename, intf):
         elif os.geteuid() == sfs.pstat[stat.ST_UID]:
              if not (sfs.pstat[stat.ST_MODE] & stat.S_IRUSR) or \
                   not (sfs.pstat[stat.ST_MODE] & stat.S_IWUSR):
-                 os.chmod(output_filename,
+                 file_utils.chmod(output_filename,
                           sfs.pstat[stat.ST_MODE] | stat.S_IRUSR | stat.S_IWUSR)
         elif os.getegid() == sfs.pstat[stat.ST_GID] \
              and (sfs.pstat[stat.ST_MODE] & stat.S_IRGRP) and \
@@ -305,7 +307,7 @@ def move_file(input_filename, output_filename, intf):
     try:
         #Attempt to rename the file.  This can work if the input and
         # output targets are under the same mount point.
-        os.rename(input_filename, output_filename)
+        file_utils.wrapper(os.rename, (input_filename, output_filename))
 
         #Set the following for "success."
         out_fd = None
@@ -326,8 +328,8 @@ def move_file(input_filename, output_filename, intf):
                 delete_at_exit.register(output_filename)
                 #Create for reading and writing.  The default open mode
                 # is sufficent for making metadata changes.
-                out_fd = atomic.open(output_filename,
-                                     os.O_RDWR | os.O_CREAT | os.O_EXCL)
+                out_fd = file_utils.open_fd(output_filename,
+                                            os.O_RDWR | os.O_CREAT | os.O_EXCL)
             except OSError, msg2:
                 print_error(e_errors.OSERROR,
                             "Unable to create file %s: %s" %
@@ -335,8 +337,8 @@ def move_file(input_filename, output_filename, intf):
                 sys.exit(1)
             try:
                 #Remeber the original mode so the new file can be set to it.
-                in_fd = os.open(input_filename, os.O_RDWR)
-                mode = os.fstat(in_fd)[stat.ST_MODE]
+                in_fd = file_utils.open_fd(input_filename, os.O_RDWR)
+                mode = file_utils.get_stat(in_fd)[stat.ST_MODE]
             except OSError, msg2:
                 print_error(e_errors.OSERROR,
                             "Unable to access file %s: %s" %
@@ -448,14 +450,14 @@ def move_file(input_filename, output_filename, intf):
             sys.exit(1)
 
         try:
-            os.chmod(output_filename, mode)
+            file_utils.chmod(output_filename, mode)
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File permissions update failed: %s" % str(msg))
             sys.exit(1)
 
         try:
-            os.utime(output_filename,
+            file_utils.utime(output_filename,
                      (sfs.pstat[stat.ST_ATIME], sfs.pstat[stat.ST_MTIME]))
         except OSError, msg:
             print_error(e_errors.OSERROR,
@@ -464,7 +466,7 @@ def move_file(input_filename, output_filename, intf):
             sys.exit(1)
             
         try:
-            os.chown(output_filename,
+            file_utils.chown(output_filename,
                      sfs.pstat[stat.ST_UID], sfs.pstat[stat.ST_GID])
         except OSError, msg:
             print_error(e_errors.OSERROR,
@@ -476,8 +478,9 @@ def move_file(input_filename, output_filename, intf):
         # They would have been modified if the original file was read-only.
         
         try:
-            if os.stat(output_filename)[stat.ST_MODE] != sfs.pstat[stat.ST_MODE]:
-                os.chmod(output_filename, sfs.pstat[stat.ST_MODE])
+            if file_utils.get_stat(output_filename)[stat.ST_MODE] \
+                   != sfs.pstat[stat.ST_MODE]:
+                file_utils.chmod(output_filename, sfs.pstat[stat.ST_MODE])
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File permissions update failed: %s" % str(msg))
