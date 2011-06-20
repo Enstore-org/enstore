@@ -32,12 +32,16 @@ import event_relay_messages
 import enstore_functions3
 import udp_server
 import file_cache_status
+import cache.messaging.client2 as qpid_client
+import cache.messaging.pe_client as pe_client
 
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
 MAX_CONNECTION_FAILURE = 5
 
 MAX_THREADS = 50
 MAX_CONNECTIONS=20
+
+AMQP_BROKER = "amqp_broker"
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
@@ -81,6 +85,12 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         self.max_connections = dbInfo.get('max_connections',MAX_CONNECTIONS)
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
 
+	self.amqp_broker_dict = self.csc.get(AMQP_BROKER)
+	self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
+							self.amqp_broker_dict['port']),
+						       "file_clerk",
+						       "policy_engine")
+	self.en_qpid_client.start()
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
         try:
@@ -1295,7 +1305,32 @@ class FileClerkMethods(FileClerkInfoMethods):
 	# record our changes
 	self.filedb_dict[bfid] = record
 	ticket["status"] = (e_errors.OK, None)
+	#
+	# send event to PE
+	#
+	event = pe_client.EvtCacheWritten( {
+		'vc' : { 'library' : record['library'],
+			 'storage_group' : record['storage_group'],	
+			 'file_family' : record['file_family'],	
+			 'wrapper' : record['wrapper'],
+			 'external_label' : record['external_label'],
+			 'volume_family' : "1",
+			 },
+		'fc' : { 'bfid' : record['bfid'],
+			 'location_cookie' : record['location_cookie'],
+			 'pnfs_name0' : record['pnfs_name0'],
+			 'pnfsid' : record['pnfsid'],
+			 'szie' : record['size'],
+			 'deleted' : record['deleted']
+			 }})
+	try:
+		self.en_qpid_client.send(event)
+	except:
+		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+
 	self.reply_to_caller(ticket)
+
+	
 	Trace.trace(12,'set_pnfsid %s'%(ticket,))
 	return
 
@@ -1310,7 +1345,26 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    return
 	    record["cache_status"] = file_cache_status.CacheStatus.STAGING
 	    self.filedb_dict[bfid] = record
+	    event = pe_client.EvtCacheMissed({
+		    'vc' : { 'library' : record['library'],
+			     'storage_group' : record['storage_group'],	
+			     'file_family' : record['file_family'],	
+			     'wrapper' : record['wrapper'],
+			     'external_label' : record['external_label'],
+			     'volume_family' : "1",
+			     },
+		    'fc' : { 'bfid' : record['bfid'],
+			     'location_cookie' : record['location_cookie'],
+			     'pnfs_name0' : record['pnfs_name0'],
+			     'pnfsid' : record['pnfsid'],
+			 'szie' : record['size'],
+			     'deleted' : record['deleted']
+			     }})
 	    ticket["status"] = (e_errors.OK, None)
+	    try:
+		    self.en_qpid_client.send(event)
+	    except:
+		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 	    ticket["fc"] = record
 	    self.reply_to_caller(ticket)
 	    return

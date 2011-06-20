@@ -360,7 +360,6 @@ class DbTable:
 		res = self.query_dictresult(self.retrieve_query%(key))
 		if len(res) == 0:	# insert
 			cmd = self.insert_query%get_fields_and_values(v1)
-			print cmd
 			self.insert(cmd)
 		else:			# update
 			d = diff_fields_and_values(res[0], v1)
@@ -470,7 +469,8 @@ class FileDB(DbTable):
 
 		self.retrieve_query = "\
         		select file.*, volume.label, volume.file_family, \
-                                volume.storage_group, volume.library \
+                                volume.storage_group, volume.library, \
+                                volume.wrapper \
         		from file, volume \
         		where \
                 		file.volume = volume.id and \
@@ -537,7 +537,7 @@ class FileDB(DbTable):
                 for key in ['package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count',\
-                            'storage_group','file_family','library']:
+                            'storage_group','file_family','library','wrapper']:
                     if s.has_key(key):
                         record[key] = s[key]
 		return record
