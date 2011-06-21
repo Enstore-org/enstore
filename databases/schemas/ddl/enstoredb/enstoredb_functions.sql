@@ -491,6 +491,9 @@ ELSEIF (TG_OP='UPDATE') THEN
         IF (OLD.cache_status<>NEW.cache_status) THEN
 		NEW.cache_mod_time=LOCALTIMESTAMP(0);
 	END IF;
+        IF (OLD.archive_status<>NEW.archive_status) THEN
+		NEW.archive_mod_time=LOCALTIMESTAMP(0);
+	END IF;
 END IF;
 RETURN NEW;
 END;
