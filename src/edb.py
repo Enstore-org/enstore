@@ -128,17 +128,18 @@ def str_value(v):
 		return "'" + str(v) + "'"
 
 # from a dictionary, get field name and values
+# From a dictionary, s, return two strings to be injected
+# as part of SQL insert statement
+# First part is a comma separated list of dictionary keys.
+# The second part is a comma seperated list of the values.
 def get_fields_and_values(s):
-	keys = s.keys()
-	fields = ""
-	values = ""
-	for i in keys[:-1]:
-		fields = fields+i+', '
-		values = values+str_value(s[i])+', '
-	fields = fields+keys[-1]
-	values = values+str_value(s[keys[-1]])
-	return fields, values
+    fields = string.join(s.keys(), ",")
+    values = string.join(map(str_value, s.values()), ",")
+    return fields, values
 
+
+def get_fields_and_values(s):
+        return string.join(s.keys(),","),string.join(map(str_value,s.values()),",")
 
 # This is the base DbTable class
 #
