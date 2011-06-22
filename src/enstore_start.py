@@ -769,8 +769,6 @@ def do_work(intf):
     # Migrators
     migrators = csc.get_migrators()
     for migrator in migrators:
-        print intf.should_start(enstore_constants.MIGRATOR)
-        print intf.should_start(migrator)
         if intf.should_start(enstore_constants.MIGRATOR) or \
            intf.should_start(migrator):
             check_server(csc, migrator, intf,
