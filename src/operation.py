@@ -178,7 +178,7 @@ def library_type(cluster, lib):
 	elif cluster == 'STK':
 		if lib == 'CD-9940B' or lib == '9940':
 			return '9310'
-		if lib == 'CD-LTO3' or lib == 'CD-LTO4G1':
+		if lib == 'CD-LTO3' or lib == 'CD-LTO4G1' or lib == 'CD-10KCG1':
 			return '8500G1'
 		if lib == 'CD-LTO3GS' or lib == 'CD-LTO4GS':
 			return '8500GS'
@@ -194,8 +194,10 @@ def library_type(cluster, lib):
 		if lib == 'CDF-LTO4F1':
 			return '8500F1'
 	elif cluster == 'GCC':
-		if lib == 'LTO3' or lib == 'LTO4':
+		if lib == 'LTO3' or lib == 'LTO4' or lib == '10KCG1':
 			return '8500G1'
+		if lib == 'LTO4F1':
+			return '8500F1'
 	else:
 		return None
 
