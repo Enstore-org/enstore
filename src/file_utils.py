@@ -18,10 +18,22 @@ import threading
 import types
 import errno
 import time
+try:
+    import multiprocessing
+except ImportError, msg:
+    #sys.stderr.write("Failed to import multiprocessing: %s\n" % (str(msg),))
+    pass
+try:
+    #To fully enable this, sem_lock must also be changed later in this file.
+    pass #import posix_ipc
+except ImportError, msg:
+    #sys.stderr.write("Failed to import posix_ipc: %s\n" % (str(msg),))
+    pass
 
 # enstore imports
 import Trace
 import atomic
+import e_errors
 
 ## mode is one of os.F_OK, os.W_OK, os.R_OK or os.X_OK.
 ## file_stats is the return from os.stat()
@@ -29,11 +41,11 @@ import atomic
 #The os.access() and the access(2) C library routine use the real id when
 # testing for access.  This function does the same thing but for the
 # effective ID.
-def e_access(path, mode):
+def e_access(path, mode, unstable_filesystem=False):
 
     #Test for existance.
     try:
-        file_stats = get_stat(path)
+        file_stats = get_stat(path, unstable_filesystem=unstable_filesystem)
     except OSError:
         return 0
 
@@ -144,12 +156,14 @@ def get_mount_point(path):
 ## in a thread safe manner with respect to seteuid().
 
 #arg can be: filename, file descritor, file object, a stat object
-def get_stat(arg, use_lstat = False):
+def get_stat(arg, use_lstat = False, unstable_filesystem=False):
     if type(arg) == types.StringType:
         if use_lstat:
-            f_stat = wrapper(os.lstat, (arg,))
+            f_stat = wrapper(os.lstat, (arg,),
+                             unstable_filesystem)
         else:
-            f_stat = wrapper(os.stat, (arg,))
+            f_stat = wrapper(os.stat, (arg,),
+                             unstable_filesystem)
     elif type(arg) == types.IntType:
         f_stat = wrapper(os.fstat, (arg,))
     elif type(arg) == types.FileType:
@@ -168,44 +182,60 @@ def get_stat(arg, use_lstat = False):
 __pychecker__ = "no-shadowbuiltin"
 
 #Open the file fname.  Mode has same meaning as builtin open().
-def open(fname, mode = "r"):
-    file_p = wrapper(__builtins__['open'], (fname, mode,))
+def open(fname, mode = "r", unstable_filesystem=False):
+    file_p = wrapper(__builtins__['open'], (fname, mode,),
+                     unstable_filesystem=unstable_filesystem)
     return file_p
 
 #Open the file fname.  This is a wrapper for os.open() (atomic.open() is
 # another level of wrapper for os.open()).
-def open_fd(fname, flags, mode = 0777):
+def open_fd(fname, flags, mode = 0777, unstable_filesystem=False):
     if flags & os.O_CREAT:
-        file_fd = wrapper(atomic.open, (fname, flags, mode,))
+        file_fd = wrapper(atomic.open, (fname, flags, mode,),
+                          unstable_filesystem=unstable_filesystem)
     else:
-        file_fd = wrapper(os.open, (fname, flags, mode,))
+        file_fd = wrapper(os.open, (fname, flags, mode,),
+                          unstable_filesystem=unstable_filesystem)
     return file_fd
 
 #Obtain the contents of the specified directory.
-def listdir(dname):
-    directory_listing = wrapper(os.listdir, (dname,))
+def listdir(dname, unstable_filesystem=False):
+    directory_listing = wrapper(os.listdir, (dname,),
+                                unstable_filesystem=unstable_filesystem)
     return directory_listing
 
 #Change the permissions of file fname.  Perms have same meaning as os.chmod().
-def chmod(fname, perms):
-    dummy = wrapper(os.chmod, (fname, perms))
+def chmod(fname, perms, unstable_filesystem=False):
+    dummy = wrapper(os.chmod, (fname, perms),
+                    unstable_filesystem=unstable_filesystem)
     return dummy
 
 #Change the owner of file fname.  Perms have same meaning as os.chmod().
-def chown(fname, uid, gid):
-    dummy = wrapper(os.chown, (fname, uid, gid))
+def chown(fname, uid, gid, unstable_filesystem=False):
+    dummy = wrapper(os.chown, (fname, uid, gid),
+                    unstable_filesystem=unstable_filesystem)
     return dummy
 
 #Update the times of file fname.  Access time and modification time are
 # the same as os.chown().
-def utime(fname, times):
-    dummy = wrapper(os.utime, (fname, times))
+def utime(fname, times, unstable_filesystem=False):
+    dummy = wrapper(os.utime, (fname, times),
+                    unstable_filesystem=unstable_filesystem)
     return dummy
 
 #Remove the file fname from the filesystem.
-def remove(fname):
-    dummy = wrapper(os.remove, (fname,))
+def remove(fname, unstable_filesystem=False):
+    dummy = wrapper(os.remove, (fname,),
+                    unstable_filesystem=unstable_filesystem)
     return dummy
+
+#############################################################################
+
+def readline(fp, unstable_filesystem=False):
+    return __readline(fp, "readline", unstable_filesystem=unstable_filesystem)
+
+def readlines(fp, unstable_filesystem=False):
+    return __readline(fp, "readlines", unstable_filesystem=unstable_filesystem)
 
 #############################################################################
 
@@ -300,36 +330,266 @@ def rmdir(path):
             if msg.errno not in [errno.ENOENT]:
                 raise OSError, msg
 
-#Helper function for wrapper() to retry ESTALE errors.
+#############################################################################
+
+#Used by _wrapper() and __readline().  Only log for clients and server that
+# are set up to log to the log_server.  The default sends log output to
+# stderr, which is not useful for most "enstore pnfs" and "enstore sfs"
+# commands.
+import re
+access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)")
+def __log_file_access(func_name, args):
+    
+    if Trace.log_func != Trace.default_log_func:
+        message = "Starting call %s() for file: %s" % (func_name, str(args))
+        Trace.log(9, message)  # 9 = TIME_LEVEL for encp.
+
+#Used by _wrapper() and __readline().  Only log for clients and server that
+# are set up to log to the log_server.  The default sends log output to
+# stderr, which is not useful for most "enstore pnfs" and "enstore sfs"
+# commands.
+def __log_duration(t0, t1, func_name, args):
+    if Trace.log_func != Trace.default_log_func:
+        now = time.time()
+        duration = now - t0
+        if duration > 1.0:
+            Trace.log_stack_trace(severity=98)
+        wait_duration = t1 - t0
+        call_duration = now - t1
+        message = "Time to call %s() for file %s: %f seconds (waited %f seconds)" \
+                  % (func_name, str(args), call_duration, wait_duration)
+        Trace.log(9, message)  # 9 = TIME_LEVEL for encp.
+    
+#############################################################################
+            
+#Hard coded retry count for handling transient file system errors.
 RETRY_COUNT = 4
-def __wrapper(function, args=()):
-    #import threading, Trace
-    #Trace.message(0, "INSIDE _wrapper() %s %s %s %s %s %s" % (function.__name__, args, os.geteuid(), os.getegid(), threading.currentThread().getName(), time.ctime()))
-    count = 0
-    while count < RETRY_COUNT:
+
+#For PNFS, these errno values have been identfied as possible
+# incorrect answers.  If we wait a moment and try again, the
+# issue sometimes goes away.
+#
+#Historically all systems using PNFS intermitently returned ENOENT
+# falsely when a timeout occured and the file really did exist.  This
+# also, happens a lot if PNFS is automounted. One node, flxi04,
+# appears to be throwing EIO instead for these cases.
+#
+#Once, an open file gets ESTALE it should remain unusable until
+# the filesystem is remounted.  However, PNFS is able to give this
+# error and a few moments later everything is fine if asked again.
+UNSTABLE_RETRY_LIST = [errno.EBUSY, errno.ELOOP,
+                       errno.ESTALE,
+                       errno.ENOENT, errno.EIO,
+                       ]
+STABLE_RETRY_LIST = [errno.EBUSY, errno.ELOOP]
+
+#Initial value to use with the semaphore to limit the number of simultaneous
+# unstable file system accesses.
+try:
+    CPU_COUNT = multiprocessing.cpu_count()
+except NameError:
+    CPU_COUNT = 1
+
+#In __wrapper() and __readline(), for unstable filesystems (aka PNFS)
+# only allow a small number of simultaneous file system xaccesses.
+try:
+    #posix_ipc is an extension module.  If available, use it.
+    #sem_lock = posix_ipc.Semaphore("/encp", posix_ipc.O_CREAT, 0777, CPU_COUNT)
+    sem_lock = None
+except NameError:
+    try:
+        #If posix_ipc is not available, just use the useless one from
+        # the multiprocessing module.  Frozen executables with the python
+        # 2.6 version don't succeed in including the _multiprocessing
+        # helper module.
+        sem_lock = multiprocessing.BoundedSemaphore(CPU_COUNT)
+    except NameError:
+        #Frozen python programs don't find _multiprocessing.so (except
+        # on the build machine).  So, fail over to the even more useless
+        # semaphore from the threading module.
+        #
+        #Useless might be a bit harsh, this will still have an effect
+        # on migration since it is multithreaded.
+        sem_lock = threading.BoundedSemaphore(CPU_COUNT)
+
+#Useful for debugging.
+if sem_lock:
+    sys.stderr.write("type(sem_lock): %s with count: %s\n" % (type(sem_lock),
+                                                              CPU_COUNT))
+
+#Helper function for readline() and readlines() to retry transient errors.
+#
+#The fp parameter is a file object from a builtin open() call.
+#The unstable_filesystem parameter should be set true by calls from pnfs.py.
+# This is to allow for automatic retry of known suspect errors.
+def __readline(fp, func="readline", unstable_filesystem=False):
+    if func not in ["readline", "readlines"]:
+        raise TypeError("expected readline or readlines")
+
+    __log_file_access(func, fp.name)
+
+    t0 = time.time()
+
+    if unstable_filesystem and sem_lock:
+        sem_lock.acquire()
+        t1 = time.time()
+    else:
+        t1 = t0
+
+    try:
         try:
-            rtn = function(*args)
-        except (OSError, IOError), msg:
-            if msg.errno in [errno.ESTALE]:
-                count = count + 1
-                if count < RETRY_COUNT:
-                    #print "COUNT:", count
-                    time.sleep(1)
-                    continue
+            file_content = getattr(fp, func)()
+        finally:
+            #Cleanup resources.
+            if unstable_filesystem and sem_lock:
+                #We need to release this lock, since __wrapper() will wait
+                # until it can grab it.
+                sem_lock.release()
+    except (OSError, IOError), msg:
+        try:
+            if unstable_filesystem:
+                retry_list = UNSTABLE_RETRY_LIST
+            else:
+                retry_list = STABLE_RETRY_LIST
+
+            if msg.args[0] in retry_list:
+                #
+                # Most .()() special PNFS files can be read once.  Seeking
+                # back to the beginning and reading again will give an ESTALE
+                # error.  Rarely, these files get into this state without
+                # reading them first.  For these special files, we perform
+                # the following trickery.
+                #
+                i=0
+                file_content = None
+                while i < RETRY_COUNT and file_content == None:
+                    i = i + 1  #don't hang forever
+
+                    #Get another file object.  We need to sure to handle
+                    # EUID/EGID values correctly, so use wrapper() and not
+                    # __wrapper().
+                    try:
+                        fp1 = wrapper(__builtins__['open'], (fp.name, fp.mode))
+                    except (OSError, IOError), msg2:
+                        if msg2.args[0] in retry_list:
+                            time.sleep(i)
+                            continue
+                        else:
+                            raise sys.exc_info()[0], sys.exc_info()[1], \
+                                  sys.exc_info()[2]
+
+                    if unstable_filesystem and sem_lock:
+                        sem_lock.acquire()
+
+                    #Get the file's contents.
+                    try:
+                        try:
+                            file_content = getattr(fp1, func)()
+                        finally:
+                            #Cleanup resources.
+                            fp1.close()
+                            if unstable_filesystem and sem_lock:
+                                sem_lock.release()
+                    except (OSError, IOError), msg2:
+                        if msg2.args[0] in retry_list:
+                            time.sleep(i)
+                            continue
+                        else:
+                            raise sys.exc_info()[0], sys.exc_info()[1], \
+                                  sys.exc_info()[2]
+
+                    #We got the file, now stop looping.
+                    break
                 else:
+                    if Trace.log_func != Trace.default_log_func:
+                        message = "looped in __readline to many times: %s" \
+                                  % (sys.exc_info()[1],)
+                        Trace.log(e_errors.INFO, message)
+
                     raise sys.exc_info()[0], sys.exc_info()[1], \
                           sys.exc_info()[2]
             else:
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+                raise sys.exc_info()[0], sys.exc_info()[1], \
+                      sys.exc_info()[2]
+        except:
+            # For these exceptions, sem_lock should already be released.
+            __log_duration(t0, t1, func, fp.name)
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        __log_duration(t0, t1, func, fp.name)
+        raise sys.exc_info()[0], sys.exc_info()[1], \
+              sys.exc_info()[2]
 
-        return rtn
+    __log_duration(t0, t1, func, fp.name)
+    return file_content
 
-    raise OSError(errno.EIO, "Unknown error")
-            
+#Helper function for wrapper() to retry transient errors.
+#
+# The unstable_filesystem parameter should be set true by calls from pnfs.py.
+# This is to allow for automatic retry of known suspect errors.
+def __wrapper(function, args=(), unstable_filesystem=None):
+
+    if function.__module__:
+        log_func_name = "%s.%s" % (function.__module__, function.__name__)
+    else:
+        log_func_name = "%s" % (function.__name__,)
+    __log_file_access(log_func_name, args)
+
+    t0 = time.time()
+
+    if unstable_filesystem and sem_lock:
+        sem_lock.acquire()
+        t1 = time.time()
+    else:
+        t1 = t0
+
+    try:
+        if unstable_filesystem:
+            retry_list = UNSTABLE_RETRY_LIST
+        else:
+            retry_list = STABLE_RETRY_LIST
+
+        count = 0
+        while count < RETRY_COUNT:
+            try:
+                rtn = function(*args)
+            except (OSError, IOError), msg:
+                count = count + 1
+                if msg.errno in retry_list:
+                    if count < RETRY_COUNT:
+                        #print "COUNT:", count
+                        if msg.errno not in [errno.ENOENT, errno.EIO]:
+                            time.sleep(count)
+                        else:
+                            #We don't want to take very long for open()
+                            # when we get ENOENT.
+                            time.sleep(1)
+                        continue
+                    else:
+                        raise sys.exc_info()[0], sys.exc_info()[1], \
+                              sys.exc_info()[2]
+                else:
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
+
+            __log_duration(t0, t1, log_func_name, args)
+            if unstable_filesystem and sem_lock:
+                sem_lock.release()
+            return rtn
+
+        raise OSError(errno.EIO, "Unknown error")
+    except:
+        __log_duration(t0, t1, log_func_name, args)
+        if unstable_filesystem and sem_lock:
+            sem_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    
 #
 # wrapper to call os functions that takes care of euid/eid
 #
-def wrapper(function, args=()):
+# The unstable_filesystem parameter should be set true by calls from pnfs.py.
+# This is to allow for automatic retry of known suspect errors.
+def wrapper(function, args=(), unstable_filesystem=None):
         
     if type(args) != types.TupleType:
         use_args = (args,)
@@ -337,7 +597,8 @@ def wrapper(function, args=()):
         use_args = args
 
     try:
-        rtn = __wrapper(function, use_args)
+        rtn = __wrapper(function, use_args,
+                       unstable_filesystem=unstable_filesystem)
     except (OSError, IOError), msg:
         if msg.errno in [errno.EACCES, errno.EPERM] and \
                os.getuid() == 0:
@@ -438,5 +699,10 @@ def wrapper(function, args=()):
             return rtn
         else:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        if Trace.log_func != Trace.default_log_func:
+            #Only send this to the log file, not to standard out/err.
+            Trace.log_stack_trace()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
     return rtn

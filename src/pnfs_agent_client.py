@@ -26,6 +26,7 @@ import Trace
 import e_errors
 # import cPickle
 import enstore_constants
+import errno
 
 # For layer_file()
 from pnfs import is_access_name
@@ -227,6 +228,12 @@ class PnfsAgentClient(generic_client.GenericClient,
         elif ticket['status'][0] == e_errors.OSERROR:
             raise OSError, (ticket.get('errno', e_errors.UNKNOWN),
                             ticket['status'][1])
+        elif e_errors.is_timedout(ticket):
+            raise OSError, (errno.ETIMEDOUT, "pnfs_agent")
+        else:
+            raise e_errors.EnstoreError(None, ticket['status'][0],
+                                        ticket['status'][1])
+
 
     def get_stat(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_stat',
@@ -244,6 +251,11 @@ class PnfsAgentClient(generic_client.GenericClient,
         elif ticket['status'][0] == e_errors.OSERROR:
             raise OSError, (ticket.get('errno', e_errors.UNKNOWN),
                             ticket['status'][1])
+        elif e_errors.is_timedout(ticket):
+            raise OSError, (errno.ETIMEDOUT, "pnfs_agent")
+        else:
+            raise e_errors.EnstoreError(None, ticket['status'][0],
+                                        ticket['status'][1])
 
 ###############################################################################
 

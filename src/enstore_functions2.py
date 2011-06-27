@@ -26,6 +26,7 @@ import subprocess
 # enstore imports
 ### enstore_constants should be the only enstore import in this module!
 import enstore_constants
+import Interfaces
 
 
 ###########################################################################
@@ -643,13 +644,34 @@ def expand_path(filename):
     #Expand the path to the complete absolute path.
     filepath = os.path.expandvars(filename)
     filepath = os.path.expanduser(filepath)
-    filepath = os.path.abspath(filepath)
+    if filepath[0] != "/":
+        # It would be nice to just do the following:
+        #   fullfilepath = os.path.abspath(filepath)
+        # But it has been found that when the current workng directory
+        # is in PNFS, that on rare occasions a different path is returned
+        # from os.getcwd().  Specifically, paths with .(access)() as
+        # path components replace their normal directory name.
+        #
+        # It is possible to cd to one of these .(access)() paths.  So, we
+        # need to accept them if this is true and stop after a while.
+        #
+        # This has only started to be seen on SLF5.
+        basedir = os.getcwd()
+        i = 0
+        while basedir.find(".(access)") != -1 and i < 3:
+            i = i + 1
+            time.sleep(1)
+            basedir = os.getcwd()
+        fullfilepath = os.path.join(basedir, filepath)
+    else:
+        fullfilepath = filepath
 
+    
     #If the target was a directory, handle it slightly differently.
     #if filename[-1] == "/":
-    #    filepath = filepath + "/"
+    #    fullfilepath = fullfilepath + "/"
 
-    return filepath
+    return fullfilepath
 
 # generate the full path name to the file
 def fullpath(filename):
@@ -781,10 +803,54 @@ def fullpath2(filename, no_split = None):
 ##
 ###########################################################################
 
-def this_host():
-    rtn = socket.gethostbyname_ex(socket.getfqdn())
+#global cache to avoid looking up the same ip address over and over for the
+# machine it is running on when starting or stoping multiple Enstore servers.
+# See function this_host().  Starting a servers worth of Enstore server
+# processes shouldn't take that long; not long enough to need to worry
+# about the hostname and ip address list changing.
+host_names_and_ips = None
 
-    return [rtn[0]] + rtn[1] + rtn[2]
+#Return all IP address and hostnames for this node/host/machine.
+def this_host():
+    global host_names_and_ips  #global cache variable
+    
+    if host_names_and_ips == None:
+        try:
+            rtn = socket.gethostbyname_ex(socket.getfqdn())
+        except (socket.error, socket.herror, socket.gaierror), msg:
+            try:
+                message = "unable to obtain hostname information: %s\n" \
+                          % (str(msg),)
+                sys.stderr.write(message)
+                sys.stderr.flush()
+            except IOError:
+                pass
+            sys.exit(1)
+        rtn_formated = [rtn[0]] + rtn[1] + rtn[2]
+
+        interfaces_list = Interfaces.interfacesGet()
+        for interface in interfaces_list.keys():
+            ip = interfaces_list[interface]['ip']
+            if ip == "127.0.0.1":
+                continue
+            try:
+                rc = socket.gethostbyaddr(ip)
+            except (socket.error, socket.herror, socket.gaierror), msg:
+                try:
+                    message = "unable to obtain hostname information: %s\n" \
+                              % (str(msg),)
+                    sys.stderr.write(message)
+                    sys.stderr.flush()
+                except IOError:
+                    pass
+                sys.exit(1)
+            rc_formated = [rc[0]] + rc[1] + rc[2]
+
+            rtn_formated = rtn_formated + rc_formated
+
+        host_names_and_ips = rtn_formated
+
+    return host_names_and_ips
 
 def is_on_host(host):
     if host in this_host():
