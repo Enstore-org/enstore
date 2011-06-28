@@ -5215,7 +5215,6 @@ def close_descriptors(*fds):
 ############################################################################
 
 def submit_one_request_send(ticket, encp_intf):
-
     submit_one_request_send_start_time = time.time()
 
     #Before resending, there are some fields that the library
@@ -5252,7 +5251,7 @@ def submit_one_request_send(ticket, encp_intf):
     csc = get_csc()
     lm_config = csc.get(orig_library, 3, 3)
     pprint.pprint(lm_config)
-    if e_errors.is_ok(lm_config):
+    if e_errors.is_ok(lm_config) and encp_intf.disable_redirection == 0:
        lmd_name = lm_config.get('use_LMD', None)
        if lmd_name: 
            lmd = library_manager_director_client.LibraryManagerDirectorClient(
@@ -11386,12 +11385,14 @@ class EncpInterface(option.Interface):
                not (hasattr(self, 'put') or hasattr(self, 'get')):
             self.parameters = self.admin_parameters
 
+        # Enable redirection of encp to another library manager
+        self.disable_redirection = 0
+
         # parse the options
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
         # This is accessed globally...
         pnfs_is_automounted = self.pnfs_is_automounted
-
 
     def __str__(self):
         str_rep = ""
@@ -11481,6 +11482,12 @@ class EncpInterface(option.Interface):
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_TYPE:option.INTEGER,
                        option.USER_LEVEL:option.USER,},
+        option.DISABLE_REDIRECTION:{option.HELP_STRING:
+                          "Disable redirection of request to another library."
+                          " Do not use Library Manager Director" ,        
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.DEFAULT_VALUE:1,
+                          option.USER_LEVEL:option.ADMIN,},
         option.DIRECT_IO:{option.HELP_STRING:
                           "Use direct i/o for disk access on supporting "
                           "filesystems.",
