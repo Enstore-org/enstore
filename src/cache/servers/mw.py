@@ -49,7 +49,7 @@ class MigrationWorker():
     '''
 
 #    def __init__(self, amq_broker=("localhost",5672), myaddr="mw", target="pe", auto_ack=True ):
-    def __init__(self,name,conf):
+    def __init__(self, name, conf):
         '''
         @type name: str
         @param name: name - migration worker name
@@ -58,13 +58,13 @@ class MigrationWorker():
         
         conf["server"] - configuration of this server
         conf["amqp"] - configuration of amqp, such as qpid broker, else
+        conf["file_clerk"]
         '''
         self.shutdown = False
         self.finished = False
         self.auto_ack = True  # auto ack incoming messages
         
         self.work_dict = {}
-        
         self.log = logging.getLogger('log.encache.%s' % name)
         self.trace = logging.getLogger('trace.encache.%s' % name)
 
@@ -94,6 +94,15 @@ class MigrationWorker():
         
         ### self.pool = Pool(processes=MAX_PROCESSES) # pool of worker processes
 
+    def set_handler(self, message_type, handler_method):
+        self.trace.debug("set_handler %s"%(handler_method,))
+        self.trace.debug("set_handler handlers before %s"%(self.handlers,))
+        if message_type in self.handlers.keys():
+            self.handlers[message_type] = handler_method
+        else:
+            raise e_errors.EnstoreError(None, "Worker is not defined", e_errors.WRONGPARAMETER)
+        self.trace.debug("set_handler handlesrs after %s"%(self.handlers,))
+        
     def _fetch_message(self):
         try:
             return self.qpid_client.rcv_default.fetch()
@@ -165,8 +174,12 @@ class MigrationWorker():
         t.start()
         self.trace.debug("processing thread started %s,args=%s",t,kw)
 
-    def handler_archive(self,m):
-        self.trace.debug("process %s message %s",mt.MWC_ARCHIVE,m)
+    #def handler_archive(self, m):
+    def handler_archive(m):
+        self.trace.debug("handler_archive:message %s %s", m, self.work_dict)
+        self.trace.debug("handler_archive: content %s", m.content)
+        
+        
 
     def handler_stage(self,m):
         self.trace.debug("process %s message %s",mt.MWC_STAGE,m)
@@ -201,9 +214,11 @@ class MigrationWorker():
             return None
         
         try:
-            ret = h(self,m)
+            #ret = h(self,m)
+            ret = h(m)
         except Exception,e:
             self.trace.exception("handle message - exception %s",e)
+            return None
         return ret
         
     def serve_qpid(self):
@@ -244,7 +259,8 @@ class MigrationWorker():
             self.qpid_client.stop()
 
     def start(self):
-        # start server in separate thread 
+        # start server in separate thread
+        self.trace.debug("STARTED")
         self.srv_thread = threading.Thread(target=self.serve_qpid) 
         self.srv_thread.start()                
 
@@ -260,7 +276,8 @@ if __name__ == "__main__":
     # Test Unit
     import cache.en_logging.config_test_unit
     
-    cache.en_logging.config_test_unit.set_logging_console()
+    #cache.en_logging.config_test_unit.set_logging_console()
+    cache.en_logging.config_test_unit.set_logging_enstore(name="MW_UNIT_TEST")
     
     name = "mw_123"
     conf = {"amqp": {

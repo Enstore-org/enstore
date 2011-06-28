@@ -1,51 +1,39 @@
 #!/usr/bin/env python
 
-###############################################################################
+##############################################################################
 #
 # $Id$
-# Migrates files between cache and tape
 #
-###############################################################################
-# system imports
+##############################################################################
+
+# system import
 import sys
 import os
-import os.path
 import time
-import errno
-import string
-import socket
-import select
 import threading
+import types
+import logging
+import unicodedata
 
 # enstore imports
-import hostaddr
-import callback
-import dispatching_worker
-import generic_server
-import edb
-import Trace
 import e_errors
 import configuration_client
-import volume_family
-import esgdb
-import enstore_constants
-import monitored_server
-import inquisitor_client
-import cPickle
-import event_relay_messages
-import udp_common
-import enstore_functions2
-import enstore_functions3
-
-
+import event_relay_client
+import info_client
 import file_clerk_client
+import event_relay_messages
+import generic_server
+import dispatching_worker
+import monitored_server
+import option
+import Trace
+import enstore_functions3
 import encp_wrapper
-import cache.messaging.client
 
-MY_NAME = "Migrator"
-
-# internal request status
-PACKING, ARCHIVING, STAGING, UNPACKING = ["PACKING", "ARCHIVING", "STAGING", "UNPACKING"]
+# enstore cache imports
+#import cache.stub.mw as mw
+import mw
+from cache.messaging.messages import MSG_TYPES as mt
 
 # find a common prefix of 2 strings
 # presenting file paths (beginning with 1st position) 
@@ -86,86 +74,138 @@ def find_common_dir(paths):
         print "COMD", common_path
     return common_path
 
-class Migrator(dispatching_worker.DispatchingWorker,
-               #generic_server.GenericServer,
-               MigratorMethods):
-    
-    def load_configurtation(self):
+class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServer, mw.MigrationWorker):
+    """
+    Configurable Migrator
+    """
+
+
+    def load_configuration(self):
         self.my_conf = self.csc.get(self.name)
         #file_clerk_conf = self.csc.get('file_clerk')
         self.data_area = self.my_conf['data_area'] # area on disk where original files are stored
         self.archive_area = self.my_conf['archive_area'] # area on disk where archvived files are temporarily stored
         self.stage_area = self.my_conf['stage_area']  # area on disk where staged files are temporarily stored
-        self.queue_name = self.my_conf['queue_in'] # amq queue name
-        self.reply_queue_name = self.my_conf['queue_out'] # amq queue name for replies
-        self.broker = self.my_conf['amqp_broker'] # amq message broker
-        self.max_workers = self.my_conf.get('max_workers',1) # maximal number of worker processes
+
+        self.my_dispatcher = self.csc.get(self.my_conf['migration_dispatcher']) # migration dispatcher configuration
+        self.my_broker = self.csc.get("amqp_broker") # amqp broker configuration
         
-    def __init__(self, migrator, csc):
-        self.name = migrator
-        self.csc = csc # configuration server client
-        self.load_configuration()
-        self.request_list = None # request list
-        #self.aggregated_file = None is this needed?? AM!!
-        self.fcc = file_clerk_client.FileClient(self.csc, bfid=0) # file clerk client
+        # configuration dictionary required by MigrationWorker
+        self.migration_worker_configuration = {}
+        self.migration_worker_configuration['server'] = self.my_dispatcher
+        self.migration_worker_configuration['server']['queue_in'] = self.name.split('.')[0] # migrator input control queue
+        # get amqp broker configuration - common for all servers
+        # @todo - change name in configuration file to make it more generic, "amqp"
+        self.migration_worker_configuration['amqp'] = {}
+        self.migration_worker_configuration['amqp']['broker'] = self.csc.get("amqp_broker")
+        if_conf = self.csc.get("info_server")
+        fc_conf = self.csc.get("file_clerk")
+        self.info_client = info_client.infoClient(self.csc,
+                                                  server_address=(if_conf['host'],
+                                                                  if_conf['port']))
+        self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
+                                                server_address=(fc_conf['host'],
+                                                                fc_conf['port']))
 
-        generic_server.GenericServer.__init__(self, self.csc, migrator,
+    def  __init__(self, name, cs):
+        """
+        Creates Migrator. Constructor gets configuration from enstore Configuration Server
+        
+        """
+        # Obtain information from the configuration server cs.
+        self.csc = cs
+
+        generic_server.GenericServer.__init__(self, self.csc, name,
 					      function = self.handle_er_msg)
+
+
+        Trace.init(self.log_name, 'yes')
+
+        try:
+            self.load_configuration()
+        except:
+            Trace.handle_error()
+            sys.exit(-1)
+
+        self.alive_interval = monitored_server.get_alive_interval(self.csc,
+                                                                  name,
+                                                                  self.my_conf)
         dispatching_worker.DispatchingWorker.__init__(self, (self.my_conf['hostip'],
-                                                             self.my_conf['port']))
-        self.qpid_client = cache.messaging.client.EnQpidClient(self.broker, self.queue_name, self.reply_queue_name)
-        self.manager = multiprocessing.Manager()
-        self.lock = self.manager.Lock()
-        self.requests = self.manager.dict() # shared between processes request dictionary
-        self.active_workers = self.manager.Value("i", 0) # number of active worker processes
+                                                             self.my_conf['port']),
+                                                      use_raw=0)
+        
+        Trace.log(e_errors.INFO, "create %s server instance, qpid client instance %s"%
+                  (self.name,
+                   self.migration_worker_configuration['amqp']))
 
-        self.request = None # this is a request copy for individual process
- 
+        mw.MigrationWorker.__init__(self, name, self.migration_worker_configuration)
+        #self.srv = mw.MigrationWorker(self.name, self.migration_worker_configuration)
+        #self.srv.set_handler(mt.MWC_ARCHIVE, self.handle_write_to_tape)
+        self.set_handler(mt.MWC_ARCHIVE, self.handle_write_to_tape)
+        Trace.log(e_errors.INFO, "Migrator %s instance created"%(self.name,))
 
+        self.resubscribe_rate = 300
+        self.erc = event_relay_client.EventRelayClient(self, function = self.handle_er_msg)
+        Trace.erc = self.erc # without this Trace.notify takes 500 times longer
+        self.erc.start([event_relay_messages.NEWCONFIGFILE],
+                       self.resubscribe_rate)
 
-    # increment active_workers
-    def inc_workers(self):
-        self.lock.acquire()
-        if self.active_workers.value < self.max_workers:
-            self.active_workers.value = self.active_workers + 1
-        self.lock.release()
+        # start our heartbeat to the event relay process
+        self.erc.start_heartbeat(name, self.alive_interval)
 
-    # decrement active_workers
-    def dec_workers(self):
-        self.lock.acquire()
-        if self.active_workers.value > 0
-            self.active_workers.value = self.active_workers - 1
-        self.lock.release()
+        
+        # get amqp broker configuration - common for all servers
+    """
+    def start(self):
+        if not self.srv:
+            return
+        
+        try:
+            self.srv.start()
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            self.log.critical("%s %s IS QPID BROKER RUNNING?",str(exc_type),str(exc_value))
+            self.log.error("CAN NOT ESTABLISH CONNECTION TO QPID BROKER ... QUIT!")
+            sys.exit(1)
+        
+        #self.trace.debug("server started in start()")
     
-    # send status of completed work to
-    # migration dispatcher
-    def work_done(self, status):
-        # amq_name - name of amq queue
-        pass
+    def stop(self):
+        self.srv.stop()
+        #self.trace.debug("server stopped in stop()")
+
+    """
 
     # pack files into a single aggregated file
     # if there are multiple files in request list
     # 
-    def pack_files(self):
-        if not self.request:
+    def pack_files(self, request_list):
+        if not request_list:
             return None
         cache_file_list = []
         ns_file_list = []
+        bfids = []
         # create list of files to pack
-        for component in self.request:
+        for component in request_list:
             cache_file_path = enstore_functions3.file_id2path(self.data_area,
-                                                              component[1]) # pnfsId
+                                                              component['nsid']) # pnfsId
+            ### Before packaging file we need to make sure that the packaged file
+            ### containing these files is not already written.
+            ### This can be done by checking duplicate files map.
+            ### Implementation must be HERE!!!!
+            
+            bfids.append(component['bfid'])
             # Check if such file exists in cache.
             # This should be already checked anyway.
             if os.path.exists(cache_file_path):
-                cache_file_list.append(cache_file_path)
-                ns_file_list.append(component[2]) # file path in name space
+                cache_file_list.append((cache_file_path, component['path']))
+                ns_file_list.append(component['path']) # file path in name space
             else:
                 Trace.log(e_errors.ERROR, "File aggregation failed. File %s does not exist in cache"%(cache_file_path))
                 return None
         if len(cache_file_path) == 1: # single file
             src = cache_file_path
-            dst = self.self.request[0][2] # complete file path in name space
+            dst = self.request_list[0][ 'path'] # complete file path in name space
         else: # multiple files
             # Create a special file containing the names
             # of file as known in the namespace.
@@ -177,53 +217,97 @@ class Migrator(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.ERROR, "File aggregation failed. Can not find common destination directory")
                 return None
 
-            special_file = open(os.path.join(archive_dir, README.1st). 'w')
-            special_file.write("List of cached files and original names\n")
-
-            for f, c_f in ns_file_list, cache_file_list:
-                special_file.write("%s %s\n"%(f, c_f))
-
-            # Create tar file
+            # Create tar file name
             t = time.time()
             t_int = long(t)
             fraction = int(t-t_int)*1000 # this gradation allows 1000 distinct file names 
-            src_fn = ".package-%s.%sZ"%(time.strftime("%Y-%m-%dT%H:%M:%S", t_int),fraction)
-            src = os.path.join(self.archive_area, src_fn)
-            os.chdir(self.archive_area)
-            os.system("tar -czf %s.tgz %s"%(src_fn, README.1st))
+            src_fn = ".package-%s.%sZ"%(time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(t_int)),fraction)
+
+            # Create archive directory
+            archive_dir = os.path.join(self.archive_area, src_fn)
+            
+            src_path = "%s.tar"%(os.path.join(archive_dir, src_fn),)
+            special_file_name = "README.1st"
+ 
+            if not os.path.exists(archive_dir):
+                os.makedirs(archive_dir)
+                
+            os.chdir(archive_dir)
+            special_file_name = "README.1st"
+            special_file = open(special_file_name, 'w')
+            special_file.write("List of cached files and original names\n")
+
+            for f, c_f in cache_file_list:
+                special_file.write("%s %s\n"%(f, c_f))
+            
+            special_file.close()
+
+            # Create tar file
+            #os.system("tar --force-local -czf %s.tgz %s"%(src_fn, special_file_name))
+            os.system("tar --force-local -cf %s %s"%(src_path, special_file_name))
 
             # Append cached files to archive
-            for f in cache_file_list:
-                rtn = os.system("tar -Prf %s.tgz %s"%(src_fn, f))
+            for f, junk in cache_file_list:
+                Trace.trace(10, "pack_files: add %s to %s"%(f, src_path))
+                rtn = os.system("tar --force-local -rPf %s.tar %s"%(src_path, f))
                 print "RTN", rtn
 
-        return src, dst
+        # Qpid converts strings to unicode.
+        # Encp does not like this.
+        # Convert unicode to ASCII strings.
+        if type(src_path) == types.UnicodeType:
+            src_path = unicodedata.normalize("NFKD", src_path).encode("ascii", "ignore")
+        if type(dst) == types.UnicodeType:
+            dst = unicodedata.normalize("NFKD", dst).encode("ascii", "ignore")
+        dst_path = "%s.tar"%(os.path.join(dst, src_fn))
+            
+        return src_path, dst_path, bfids
 
     # write aggregated file to tape
-    def write_to_tape(self):
-        if self.request:
-            if len(self.request) > 1: # multiple files need an aggregation
-                src_file_path, dst_file_path = self.pack_files(self.request)
-                if not (src_file_path and dst_file_path):
-                    # aggregation failed
-                    self.work_done("Failed: no files to write to tape") # replace with status AM!!
-                    return
-            else:
-                # find destination file path in name space
-                src_file_path = enstore_functions3.file_id2path(self.data_area,
-                                                                self.request[0][1]) # pnfsId
-                dst_file_path = self.self.request[0][2]
+    def write_to_tape(self, request_list):
+        Trace.trace(10, "write_to_tape: request %s"%(request_list,))
+        #sys.exit(0)
+        if request_list:
+            src_file_path, dst_file_path, bfid_list = self.pack_files(request_list)
+            if not (src_file_path and dst_file_path):
+                # aggregation failed
+                raise e_errors.EnstoreError(None, "Write to tape failed: no files to write", e_errors.NO_FILES)
         else:
-            self.work_done("Failed: no files to write to tape") # replace with status AM!!
-            return
+            raise e_errors.EnstoreError(None, "Write to tape failed: no files to write", e_errors.NO_FILES)
+
+        Trace.trace(10, "write_to_tape: will write %s into %s"%(src_file_path, dst_file_path,))
+        #return
+        print "DST", type(dst_file_path)
         encp = encp_wrapper.Encp()
-        args = ["encp", src_file_path, dst_file_path]
-        try:
-            rc = encp.encp(args)
-        except:
-            rc = 1
-            self.work_done("Failed: encp write to tape failed") # replace with status AM!!
+        args = ["encp", "--disable-redirection", src_file_path,dst_file_path]  
+        cmd = "encp %s %s"%(src_file_path, dst_file_path)
+        rc = encp.encp(args)
+        Trace.trace(10, "write_to_tape: encp returned %s"%(rc,))
+
+        if rc != 0:
+            raise e_errors.EnstoreError(None, "encp write to tape failed", rc)
+
+        # register file in file db
         
+        res = self.info_client.find_file_by_path(dst_file_path)
+        Trace.trace(10, "write_to_tape: find file %s returned %s"%(dst_file_path, res))
+        
+        if e_errors.is_ok(res['status']):
+            dst_bfid = res['bfid']
+            #res = self.fcc.register_copies(bfid_list, dst_bfid)
+        if not e_errors.is_ok(res['status']):
+            raise e_errors.EnstoreError(None, "Write to tape failed: %s"%(res['status'][1],), res['status'][0])
+
+        # The file from cache was successfully written to tape.
+        # Remove temporary archie directory
+        os.remove(os.path.dirname(src_file_path))
+        
+    def handle_write_to_tape(self, message):
+        Trace.trace(10, "handle_write_to_tape received: %s"%(message))
+        self.work_dict[message.correlation_id] = message
+        self.write_to_tape(message.content)
+        
+
     # read aggregated file from tape
     def read_from_tape(self):
         encp = encp_wrapper.Encp()
@@ -233,68 +317,7 @@ class Migrator(dispatching_worker.DispatchingWorker,
     def unpack_files(self):
         pass
         
-
-    # get requests from migration dispatcher
-    # this runs in a separate thread
-    def get_requests(self):
-        self.qpid_client.start()
-        while self.run:
-            if self.active_workers >= self.max_workers:
-                # do nothiing
-                time.sleep(1)
-                continue
-            msg = self.qpid_client.rcv.fetch()
-            if msg:
-                self.request = msg.content
-                # request structure:
-                # {"list_id": id,   # - unique list id
-                #  "operation": op, # - archive, stage, purge
-                #  "list" :[[bfid1, # - bit file id
-                #   pnfsId1,        # - name space file id
-                #   path1,          # - complete file path in name space
-                #     [lm1,         # - list if libaries from pnfs tag
-                #     lmA]],
-                #   [bfidN,          # - bit file id
-                #   pnfsIdN,        # - name space file id
-                #   pathN,          # - complete file path
-                #     [lm1,         # - list if libraries from pnfs tag
-                #     lmB]]
-                # ]}  
-                
-                self.request['correlation_id'] =  msg.correlation_id
-                self.lock.acqure()
-                try:
-                    self.requests[request['list_id']] = self.request
-                except Exception
-
-                # start worker
-                proc = multiprocessing.Process(target=self.process_request)
-                try:
-                    proc.start()
-                    self.inc_workers()
-                except: # make this better AM!
-                    exc, detail, tb = sys.exc_info()
-                    print detail
-
-                ssn.acknowledge(sync=False) # investigate how this works AM!
-
-    # process request
-    # this runs in a separate thread (process)
-    def process_request(self):
-        if self.request['operation'] == 'archive':
-            self.write_to_tape()
-        elif self.request['operation'] == 'stage':
-            self.read_from_tape()
-        else:
-           self.work_done("Failed: only archive and stage operations are permitted") # replace with status AM!!
-        del(self.requests[self.request['list_id']])
-        self.dec_workers()
-            
-
-
-
 class MigratorInterface(generic_server.GenericServerInterface):
-
     def __init__(self):
         # fill in the defaults for possible options
         generic_server.GenericServerInterface.__init__(self)
@@ -307,9 +330,9 @@ class MigratorInterface(generic_server.GenericServerInterface):
         return generic_server.GenericServerInterface.valid_dictionaries(self) \
                + (self.migrator_options,)
 
-    paramaters = ["migrator_name"]
+    parameters = ["migrator"]
 
-    # parse the options like normal but make sure we have a migrator
+    # parse the options like normal but make sure we have a library manager
     def parse_options(self):
         option.Interface.parse_options(self)
         # bomb out if we don't have a library manager
@@ -319,7 +342,46 @@ class MigratorInterface(generic_server.GenericServerInterface):
             sys.exit(1)
         else:
             self.name = self.args[0]
+    
+def do_work():
+    # get an interface
+    intf = MigratorInterface()
 
+    import cache.en_logging.config_test_unit
+    
+    cache.en_logging.config_test_unit.set_logging_console()
 
-if __name__=="__main__":
-    migrator = Migrator("M1.migrator")
+    # create a udp_proxy instance
+    migrator = Migrator(intf.name, (intf.config_host, intf.config_port))
+    migrator.handle_generic_commands(intf)
+
+    #Trace.init(migrator.log_name, 'yes')
+    migrator._do_print({'levels':range(5, 400)}) # no manage_queue
+    migrator.start()
+ 
+    while True:
+        t_n = 'migrator'
+        if thread_is_running(t_n):
+            pass
+        else:
+            Trace.log(e_errors.INFO, "migrator %s (re)starting %s"%(intf.name, t_n))
+            #lm.run_in_thread(t_n, lm.mover_requests.serve_forever)
+            dispatching_worker.run_in_thread(t_n, migrator.serve_forever)
+
+        time.sleep(10)
+        
+
+    Trace.alarm(e_errors.ALARM,"migrator %s finished (impossible)"%(intf.name,))
+# check if named thread is running
+def thread_is_running(thread_name):
+    threads = threading.enumerate()
+    for thread in threads:
+        if ((thread.getName() == thread_name) and thread.isAlive()):
+            Trace.trace(10, "running")
+            return True
+    else:
+        Trace.trace(10, "not running")
+        return False
+
+if __name__ == "__main__":
+    do_work()
