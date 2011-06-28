@@ -36,7 +36,7 @@ class FileList:
         
     def append(self, item):
         if isinstance(item, FileListItem):
-           self.file_list.append(item.d)
+            self.file_list.append(item.d)
         else:
             raise e_errors.EnstoreError(None, "item must be FileListItem", e_errors.WRONGPARAMETER)
 
