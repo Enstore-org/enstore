@@ -1717,9 +1717,6 @@ class LibraryManagerMethods:
                                                           ff,
                                                           "null")  # disk files can only have "null" wrappers
             rq.ticket["vc"]["volume_family"] = vol_family
-            
-            
-            
 
         Trace.trace(self.trace_level+4,"process_write_request: request next write volume for %s" % (vol_family,))
 
@@ -3361,7 +3358,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # for write requests
             if not w["vc"].has_key("external_label"):
                 w["vc"]["external_label"] = None
-                w["vc"]["wrapper"] = "null"
+                #w["vc"]["wrapper"] = "null"
         
         # reply now to avoid deadlocks
         _format = "%s work on vol=%s mover=%s requester:%s"
@@ -3639,7 +3636,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # for write requests
                 if not w["vc"].has_key("external_label"):
                     w["vc"]["external_label"] = None
-                    w["vc"]["wrapper"] = "null"
+                    #w["vc"]["wrapper"] = "null"
 
             _format = "%s next work on vol=%s mover=%s requester:%s"
             try:
