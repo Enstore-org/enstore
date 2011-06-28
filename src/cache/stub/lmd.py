@@ -44,6 +44,7 @@ class LMD():
               
         self.myaddr = myaddr
         self.target = target
+        if debug: print "DEBUG lmd _init myaddr %s target %s"%(self.myaddr, self.target)
         self.qpid_client = cmc.EnQpidClient(amq_broker, self.myaddr, self.target)
         self.auto_ack = auto_ack 
 
@@ -127,6 +128,8 @@ class LMD():
                         newlib = 'diskSF'
                     elif library == 'LTO3' : 
                         newlib = 'diskSF'
+                    elif library == 'LTO5' : 
+                        newlib = 'diskSF'
 
                 elif storage_group == 'minos' :
                     newlib = 'diskSF'           
@@ -139,6 +142,7 @@ class LMD():
                 # store original VC library in reply
                 result['original_library'] = result['vc']['library']
                 result['vc']['library'] = newlib
+                result['vc']['wrapper'] = "null" # if file gets writtent to disk, its wrapper must be null
         except:
             exc, msg, tb = sys.exc_info()
             if debug: print "DEBUG lmd serve_qpid() - exception %s %s" % (exc, msg)
@@ -214,7 +218,8 @@ if __name__ == "__main__":
     # test unit
     # instantiate LMD server
     queue_in = "udp_relay_test"
-    queue_out = "udp2amq_131.225.13.37_7700" # set it once for all messages
+    #queue_out = "udp2amq_131.225.13.37_7700" # set it once for all messages
+    queue_out = "udp2amq_131.225.13.37_7710" # set it once for all messages
 
     lmd = LMD(myaddr=queue_in, target=queue_out)
     lmd.start()
