@@ -1,2 +1,0 @@
-#Needs to run on the web server.
-10 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch $ENSTORE_DIR/src/tab_flipping_nanny.py -a > /dev/null 2> /dev/null

@@ -1,1 +1,0 @@
-\echo 'No grants in operation database'
