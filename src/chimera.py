@@ -18,6 +18,7 @@ import time
 import re
 import types
 import socket
+import threading
 
 # enstore imports
 import Trace
@@ -95,8 +96,10 @@ def parent_file(f, pnfsid = None):
     else:
         fname = id_file(f)
         f = file_utils.open(fname)
-        pnfsid = f.readline()
-        f.close()
+        try:
+           pnfsid = file_utils.readline(f)
+        finally:
+           f.close()
         return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
 
 def access_file(dn, pnfsid):
@@ -330,29 +333,8 @@ def get_directory_name(filepath):
         #Since, we have the .(access)() name we need to split off the id.
         dirname, filename = os.path.split(filepath)
         pnfsid = filename[10:-1]  #len(".(access)(") == 10 and len ")" == 1
-        #We will need the pnfs database numbers.
-        """
-        use_pnfsid_db=int(pnfsid[:4], 16)
-
-        #If the mountpoint doesn't know about our database fail now.
-        try:
-            N(use_pnfsid_db, dirname).get_databaseN(use_pnfsid_db)
-        except (OSError, IOError), msg:
-            if msg.args[0] == errno.ENOENT:
-                raise OSError(errno.ENOENT,
-                              "No such database: (%s, %s)" % (use_pnfsid_db,
-                                                              dirname))
-            else:
-                raise OSError(msg.args[0],
-                              "Error accessing database: (%s, %s): %s" % \
-                              (use_pnfsid_db, dirname, str(msg)))
-        """
-        #Create the filename to obtain the parent id.
-        parent_id_name = os.path.join(dirname, ".(parent)(%s)" % pnfsid)
-        #Read the parent id.
-        f = file_utils.open(parent_id_name)
-        parent_id = f.readlines()[0].strip()
-        f.close()
+        #Get the parent ID.
+        parent_id = get_parent_id(dirname, pnfsid)
 
         #Build the .(access)() filename of the parent directory.
         directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
@@ -375,15 +357,17 @@ def get_layer(layer_filename, max_lines = None):
         # get info from layer
         try:
             fl = file_utils.open(layer_filename)
-            if max_lines:
-                layer_info = []
-                i = 0
-                while i < max_lines:
-                    layer_info.append(fl.readline())
-                    i = i + 1
-            else:
-                layer_info = fl.readlines()
-            fl.close()
+            try:
+               if max_lines:
+                   layer_info = []
+                   i = 0
+                   while i < max_lines:
+                       layer_info.append(file_utils.readline(fl))
+                       i = i + 1
+               else:
+                   layer_info = file_utils.readlines(fl)
+            finally:
+               fl.close()
             break
         except (OSError, IOError), detail:
             #Increment the retry count before it is needed to determine if
@@ -555,8 +539,10 @@ def get_chimeraid(f):
     try:
         fname = id_file(f)
         f = file_utils.open(fname)
-        chimera_id = f.readline().strip()
-        f.close()
+        try:
+           chimera_id = file_utils.readline(f).strip()
+        finally:
+           f.close()
     except(OSError, IOError), detail:
         chimera_id = None
         if not detail.errno == errno.ENOENT or not os.path.ismount(f):
@@ -571,15 +557,33 @@ get_pnfsid = get_chimeraid
 #For future compatibility with other storage file systems.
 get_id = get_chimeraid
 
+#Get the parent ID of the pnfs_id requested.
+def get_parent_id(directory, pnfs_id):
+    #Create the filename to obtain the parent id.
+    parent_id_name = os.path.join(directory, ".(parent)(%s)" % pnfs_id)
+    #Read the parent id.
+    f = file_utils.open(parent_id_name, unstable_filesystem=True)
+    try:
+       parent_id = file_utils.readline(f, unstable_filesystem=True).strip()
+    finally:
+       f.close()
+
+    return parent_id
+
 ###############################################################################
 
+EMPTY_MOUNT_POINT = ("", (-1, ""))
+
 #Global cache.
-db_pnfsid_cache = {}
-last_db_tried = ("", (-1, ""))
+mount_points_cache = {}
+# Make copy, don't share reference.
+last_db_tried = EMPTY_MOUNT_POINT[:]
+# Lock globals.
+chimera_global_lock = threading.Lock()
 
 #Get currently mounted pnfs mountpoints.
 def parse_mtab():
-    global db_pnfsid_cache
+    global mount_points_cache
    
     #Different systems have different names for this file.
     # /etc/mtab: Linux, IRIX
@@ -588,8 +592,10 @@ def parse_mtab():
     for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
         try:
             fp = file_utils.open(mtab_file, "r")
-            mtab_data = fp.readlines()
-            fp.close()
+            try:
+               mtab_data = fp.readlines()
+            finally:
+               fp.close()
             break
         except OSError, msg:
             if msg.args[0] in [errno.ENOENT]:
@@ -601,7 +607,7 @@ def parse_mtab():
         mtab_data = []
 
     found_mountpoints = {}
-    index = len(db_pnfsid_cache)  #Keep these unique.
+    index = len(mount_points_cache)  #Keep these unique.
     for line in mtab_data:
         #The 2nd and 3rd items in the list are important to us here.
         data = line[:-1].split()
@@ -618,16 +624,20 @@ def parse_mtab():
         try:
             dataname = os.path.join(mp, ".(tags)()")
             db_fp = file_utils.open(dataname, "r")
-            db_fp.readline().strip()
-            db_fp.close()
+            try:
+               file_utils.readline(db_fp).strip()
+            finally:
+               db_fp.close()
         except IOError:
             continue
         #Need to exclude pnfs mounts now.
         try:
             dataname = os.path.join(mp, ".(get)(database)")
             db_fp = file_utils.open(dataname, "r")
-            db_fp.readline().strip()
-            db_fp.close()
+            try:
+               file_utils.readline(db_fp).strip()
+            finally:
+               db_fp.close()
             #We have a pnfs filesystem.  Keep looking.
             continue
         except IOError:
@@ -644,7 +654,7 @@ def parse_mtab():
                    # support .(get)(database) files.
         accessible = "enabled"  #enabled or disabled
 
-        for db_data in db_pnfsid_cache.keys():
+        for db_data in mount_points_cache.keys():
             db_data_split = db_data.split(":")
             #db_data_split[0] is the database name
             #db_data_split[1] is the database id, for Chimera always zero.
@@ -663,6 +673,10 @@ def parse_mtab():
                                               str(index))
             found_mountpoints[new_db_data] = (None, mp)  #(db_id, mp)
             index += 1
+
+    if not found_mountpoints:
+        add_mtab(EMPTY_MOUNT_POINT[0], EMPTY_MOUNT_POINT[1][0],
+                 EMPTY_MOUNT_POINT[1][1])
 
     return found_mountpoints
 
@@ -688,12 +702,17 @@ def get_last_db():
     global last_db_tried
     return last_db_tried
 
-def process_mtab():
-    global db_pnfsid_cache
+def _process_mtab():
+    pass
 
-    if not db_pnfsid_cache:
-        #Sets global db_pnfsid_cache.
-        db_pnfsid_cache = parse_mtab()
+def process_mtab():
+    global mount_points_cache
+
+    if not mount_points_cache:
+        #Sets global mount_points_cache.
+        mount_points_cache = parse_mtab()
+
+        #_process_mtab()  #Currently a no-op for Chimera.
 
     return [last_db_tried] + sort_mtab()
 
@@ -725,25 +744,55 @@ def __db_cmp(x, y):
     return 0
 
 def sort_mtab():
-    global db_pnfsid_cache
+    global mount_points_cache
 
-    search_list = db_pnfsid_cache.items()
-    #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
-    # the list and it will be sorted to the end of the list.
-    search_list.sort(lambda x, y: __db_cmp(x, y))
+    chimera_global_lock.acquire()
 
-    #import pprint
-    #pprint.pprint(search_list)
-    #sys.exit(1)
+    try:
+        search_list = mount_points_cache.items()
+        #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
+        # the list and it will be sorted to the end of the list.
+        search_list.sort(lambda x, y: __db_cmp(x, y))
+    except:
+        chimera_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+    chimera_global_lock.release()
     return search_list
 
 def add_mtab(db_info, db_num, db_mp):
-    global db_pnfsid_cache
+    global mount_points_cache
 
-    if db_info not in db_pnfsid_cache.keys():
-        db_pnfsid_cache[db_info] = (db_num, db_mp)
-        sort_mtab()
+    chimera_global_lock.acquire()
+
+    try:
+       if db_info not in mount_points_cache.keys():
+          mount_points_cache[db_info] = (db_num, db_mp)
+    except:
+        chimera_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    chimera_global_lock.release()
+
+#Return the mount points as a dictionary keyed by .(get)(database) values,
+# or just a single element if mount_point_key is set.
+def get_cache_by_db_info(db_info_key = None, default = None):
+    global mount_points_cache  #dictionary
+
+    chimera_global_lock.acquire()
+
+    try:
+        if db_info_key == None:
+            # Return copy for thread safety.
+            return_value = mount_points_cache.copy()
+        else:
+            return_value = mount_points_cache.get(db_info_key, default)
+    except:
+        chimera_global_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    chimera_global_lock.release()
+    return return_value
 
 ###############################################################################
 
@@ -753,9 +802,11 @@ def get_enstore_admin_mount_point(chimeraid = None):
     list_of_admin_mountpoints = []
 
     #Get the list of pnfs mountpoints currently mounted.
-    mtab_results = parse_mtab()
+    mtab_results = process_mtab()
     
-    for db_num, mount_path in mtab_results.values():
+    for unused, (db_num, mount_path) in mtab_results:
+        if db_num == -1:
+            continue
         #db_num is not relavent with Chimera.  It is retained for compatibilty
         # with PNFS.
         #mount_path contains a string representing the directory that
@@ -787,9 +838,11 @@ def get_enstore_mount_point(chimeraid = None):
     list_of_admin_mountpoints = []
 
     #Get the list of pnfs mountpoints currently mounted.
-    mtab_results = parse_mtab()
+    mtab_results = process_mtab()
     
-    for db_num, mount_path in mtab_results.values():
+    for unused, (db_num, mount_path) in mtab_results:
+        if db_num == -1:
+            continue
         #if db_num != 0:  #Admin db has number 0.
         if mount_path[-8:] != "/pnfs/fs" and mount_path[-11:] != "/chimera/fs":
             if chimeraid == None:
@@ -1002,7 +1055,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         #We have the pnfs id of a tag file.
                         self.dir = use_dir
 
-            self.pstatinfo()
+            #self.pstatinfo()  #Comment out for performance.
 
         try:
             self.pnfsFilename = self.filepath
@@ -1049,8 +1102,10 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = self.id_file(f)
             f = file_utils.open(fname)
-            pnfsid = f.readline()
-            f.close()
+            try:
+               pnfsid = file_utils.readline(f)
+            finally:
+               f.close()
             return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
 
     def access_file(self, pn, pnfsid):
@@ -1261,8 +1316,10 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         try:
            f = file_utils.open(fname,'r')
-           l = f.readlines()
-           f.close()
+           try:
+              l = file_utils.readlines(f)
+           finally:
+              f.close()
         except (OSError, IOError), msg:
            if getattr(msg, 'errno', msg.args[0]) == errno.ENOENT and \
                   file_utils.e_access(use_filepath, os.F_OK):
@@ -1287,9 +1344,11 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         fname = self.const_file(use_filepath)
 
-        f=file_utils.open(fname,'r')
-        const = f.readlines()
-        f.close()
+        f = file_utils.open(fname,'r')
+        try:
+           const = file_utils.readlines(f)
+        finally:
+           f.close()
 
         if not filepath:
             self.const = const
@@ -1309,10 +1368,12 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = os.path.join(directory, ".(id)(%s)" % (name,))
 
             f = file_utils.open(fname, 'r')
-            pnfs_id = f.readlines()
-            f.close()
+            try:
+               pnfs_id = file_utils.readline(f)
+            finally:
+               f.close()
 
-            pnfs_id = string.replace(pnfs_id[0], '\n', '')
+            pnfs_id = string.replace(pnfs_id, '\n', '')
 
         if not filepath:
             self.id = pnfs_id
@@ -1344,8 +1405,10 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         fname = self.nameof_file(directory, id)
 
         f = file_utils.open(fname,'r')
-        nameof = f.readline()
-        f.close()
+        try:
+           nameof = file_utils.readline(f)
+        finally:
+           f.close()
 
         return nameof.replace("\n", "")
 
@@ -1376,8 +1439,10 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         fname = self.parent_file(directory, id)
 
         f = file_utils.open(fname,'r')
-        parent = f.readline()
-        f.close()
+        try:
+           parent = file_utils.readline(f)
+        finally:
+           f.close()
 
         return parent.replace("\n", "")
 
@@ -1628,35 +1693,22 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #Try the initial directory.
         pfn = os.path.join(directory, use_pnfsname)
         try:
-            #If the mountpoint doesn't know about our database fail now.
-            """
-            try:
-                N(use_pnfsid_db, directory).get_databaseN(use_pnfsid_db)
-            except (OSError, IOError), msg:
-                if msg.args[0] == errno.ENOTDIR:
-                    #This can/will happen if the pnfsid is for a tag file.
-                    # The parent of a tag is not a directory, but is
-                    # another tag, hence ENOTDIR.
-                    raise OSError(errno.ENOTDIR, "Force PNFS search")
-                else:
-                    raise OSError(errno.ENOENT, "Force PNFS search")
-            """
+
             #
             # Get the requested information from PNFS.
             #
             f = file_utils.open(pfn, 'r')
-            if pfn.find("showid") > -1:
-                pnfs_value = f.readlines()
-            else:
-                pnfs_value = f.readline()
-            f.close()
-
+            try:
+               if pfn.find("showid") > -1:
+                  pnfs_value = file_utils.readlines(f)
+               else:
+                  pnfs_value = file_utils.readline(f)
+            finally:
+               f.close()
 
             #Remember to truncate the original path to just the mount
             # point.
             search_path = self.get_mount_point(directory)
-                    #found_db_num = int(self.get_database(search_path).split(":")[1],
-            #                   16)
 
             #Small hack for the admin path.
             ## Hope that get_mount_point() always returns "/pnfs/fs"
@@ -1667,7 +1719,6 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
             mp_match_list = [search_path]
             pnfs_value_match_list = [pnfs_value]
-            #print "mp_match_list:", mp_match_list
         except (OSError, IOError), msg:
             if is_nameof_name(pfn) and msg.args[0] == errno.EIO and \
                os.geteuid() != 0:
@@ -1683,8 +1734,10 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 sfn = os.path.join(directory,
                                    ".(showid)(%s)" % id)
                 f = file_utils.open(sfn, 'r')
-                showid_value = f.readlines()
-                f.close()
+                try:
+                   showid_value = file_utils.readlines(f)
+                finally:
+                   f.close()
 
                 for line in showid_value:
                     if line.find("Tag ( Inode )") != -1:
@@ -1720,8 +1773,10 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 try:
                     parent_fn = os.path.join(directory, ".(parent)(%s)" % id)
                     parent_fp = file_utils.open(parent_fn, "r")
-                    parent_id = parent_fp.readlines()
-                    parent_fp.close()
+                    try:
+                       parent_id = file_utils.readlines(parent_fp)
+                    finally:
+                       parent_fp.close()
                     if parent_id:
                         #orphaned file
                         raise OSError(errno.EBADFD,
@@ -1765,8 +1820,10 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     pfn = os.path.join(use_mp, use_pnfsname)
                 try:
                     f = file_utils.open(pfn, 'r')
-                    pnfs_value = f.readline()
-                    f.close()
+                    try:
+                       pnfs_value = file_utils.readline(f)
+                    finally:
+                       f.close()
 
                     #Get the directory of the current file.
                     afn = self.convert_to_access(pfn)
@@ -1798,10 +1855,13 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     target_db_area = get_directory_name(db_dir)
                     #db_db_info = self.get_database(target_db_area)
                     # This is a hack for chimera
-                    # Instead of passing target_db_area which can be /pnfs we are passing db_dir which can be /pnfs/sekhri to get_database
-                    # The get_database will return the correct key. All this is perhaps not needed
+                    # Instead of passing target_db_area which can be /pnfs we
+                    # are passing db_dir which can be /pnfs/sekhri to
+                    # get_database().  The get_database will return the
+                    # correct key.
                     db_db_info = self.get_database(db_dir)
-                    db_data = db_pnfsid_cache.get(db_db_info, None)
+ #                   db_data = mount_points_cache.get(db_db_info, None)
+                    db_data = get_cache_by_db_info(db_db_info, None)
                     #Determine if we found the admin database (db_data[0] == 0)
                     # and we weren't explicitly looking for it
                     if db_data == None or \
@@ -1816,7 +1876,8 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         # for.
                         #print "db_dir:", db_dir
                         db_db_info = self.get_database(db_dir)
-                        db_data = db_pnfsid_cache.get(db_db_info, None)
+#                        db_data = mount_points_cache.get(db_db_info, None)
+                        db_data = get_cache_by_db_info(db_db_info, None)
                     if db_data != None:
                         if found_db_info != db_db_info:
                             #
@@ -1851,16 +1912,20 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                                          ".(showid)(%s)" % id)
 
                             parent_fp = file_utils.open(parent_fn, "r")
-                            parent_id = parent_fp.readlines()
-                            parent_fp.close()
+                            try:
+                               parent_id = file_utils.readline(parent_fp).strip()
+                            finally:
+                               parent_fp.close()
 
                             if parent_id:
                                 #We can't close the book on this just yet.
                                 # If the pnfsid is a tag, then we need to
                                 # handle things special.
                                 showid_fp = file_utils.open(showid_fn, "r")
-                                showid_data = showid_fp.readlines()
-                                showid_fp.close()
+                                try:
+                                   showid_data = file_utils.readlines(showid_fp)
+                                finally:
+                                   showid_fp.close()
                                 for line in showid_data:
                                     if line.find("Tag ( Inode )") != -1:
                                         #If we get here, then we determined
@@ -1869,10 +1934,9 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                         #First, construct the access name of
                                         # the directory that this tag belongs
                                         # to.
-                                        parent_id_clean = parent_id[0][:-1]
                                         afn_dir = os.path.join(
                                             use_mp,
-                                            ".(access)(%s)" % parent_id_clean)
+                                            ".(access)(%s)" % parent_id)
 
                                         #
                                         # Set these three values to include
@@ -1908,9 +1972,11 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                               get_directory_name(db_dir)
                                             db_db_info = \
                                               self.get_database(target_db_area)
-                                            db_data = \
-                                              db_pnfsid_cache.get(db_db_info,
-                                                                  None)
+#                                            db_data = \
+#                                              mount_points_cache.get(db_db_info,
+#                                                                  None)
+                                            db_data = get_cache_by_db_info(
+                                               db_db_info, None)
 
 
                                             #We just found the first one.
@@ -1964,8 +2030,10 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = os.path.join(self.dir, ".(get)(cursor)")
 
         f = file_utils.open(fname,'r')
-        cursor = f.readlines()
-        f.close()
+        try:
+           cursor = file_utils.readlines(f)
+        finally:
+           f.close()
 
         if not directory:
             self.cursor = cursor
@@ -1979,9 +2047,11 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(get)(counters)")
 
-        f=file_utils.open(fname,'r')
-        counters = f.readlines()
-        f.close()
+        f = file_utils.open(fname,'r')
+        try:
+           counters = file_utils.readlines(f)
+        finally:
+           f.close()
 
         if not directory:
             self.counters = counters
@@ -1995,9 +2065,11 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(get)(postion)")
 
-        f=file_utils.open(fname,'r')
-        position = f.readlines()
-        f.close()
+        f = file_utils.open(fname,'r')
+        try:
+           position = file_utils.readlines(f)
+        finally:
+           f.close()
 
         if not directory:
             self.position = position
@@ -2013,7 +2085,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
        
         #return made-up data that is consistant with pnfs format
         val = (0, self.get_mount_point(dname))
-        for key, value in db_pnfsid_cache.items():
+        for key, value in get_cache_by_db_info().items():
             if value[1] == val[1]:
                 return key
 
@@ -2088,33 +2160,25 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             f.close()
         except (OSError, IOError), msg:
             if msg.args[0] == errno.ENAMETOOLONG:
-                Trace.log(e_errors.ERROR, "fset[1]")
                 #If the .(fset) filename is too long for PNFS, then we need
                 # to make a shorter temproary link to it and try it again.
 
-                #First, using .(access)() paths access the directory for
-                # the file stored in use_filepath.
-                try_dir = self.get_pnfs_db_directory(use_filepath)
-                try_dir_pnfsid = self.get_id(os.path.dirname(use_filepath))
-                try_dir = self.access_file(try_dir, try_dir_pnfsid)
-
-                Trace.log(e_errors.ERROR, "fset[2]")
-                #Second, create the .(access)() path to the inode record
-                # for the filename stored in use_filepath.
-                try_pnfsid = self.get_id(use_filepath)
-                try_path = self.access_file(try_dir, try_pnfsid)
-
-                Trace.log(e_errors.ERROR, "fset[3]")
-                #Third, create a new link name using the .(access)()
+                #The fset_file() function gives us the correct directory
+                # to use, regardles of a normal filename or .(access)()
+                # filename. 
+                try_dir = os.path.dirname(fname)
+                #Determine the original path of the file with the new
                 # directory path.
+                try_path = os.path.join(try_dir,
+                                        os.path.basename(use_filepath))
+
+                #Next create the temporary short name.
                 short_tmp_name = ".%s_%s" % (os.uname()[1], os.getpid())
                 link_name = os.path.join(try_dir, short_tmp_name)
 
-                Trace.log(e_errors.ERROR, "fset[4]")
                 #Get the existing link count.
                 link_count = file_utils.get_stat(try_path)[stat.ST_NLINK]
 
-                Trace.log(e_errors.ERROR, "fset[5]")
                 #Make the temporary link using the sorter name.
                 try:
                     os.link(try_path, link_name)
@@ -2129,7 +2193,6 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         raise sys.exc_info()[0], sys.exc_info()[1], \
                               sys.exc_info()[2]
 
-                Trace.log(e_errors.ERROR, "fset[6]")
                 #Set the new file size.
                 try:
                     fname = self.fset_file(link_name, size)
@@ -2139,15 +2202,11 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     os.unlink(link_name)
                     raise sys.exc_info()[0], sys.exc_info()[1], \
                           sys.exc_info()[2]
-                Trace.log(e_errors.ERROR, "fset[7]")
                 #Cleanup the temporary link.
                 os.unlink(link_name)
 
-                Trace.log(e_errors.ERROR, "fset[8]")
             else:
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            Trace.log(e_errors.ERROR, "fset[9]")
 
         #Update the times.
         if filepath:
@@ -2641,13 +2700,14 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def pcp(self, intf):
         try:
             f = file_utils.open(intf.unixfile, 'r')
-
-            data = f.readlines()
+            try:
+               data = file_utils.readlines(f)
+            finally:
+               f.close()
+               
             file_data_as_string = ""
             for line in data:
                 file_data_as_string = file_data_as_string + line
-
-            f.close()
 
             self.writelayer(intf.named_layer, file_data_as_string)
 
@@ -3209,7 +3269,7 @@ class PnfsInterface(option.Interface):
                    option.VALUE_USAGE:option.REQUIRED,
                    option.VALUE_LABEL:"filename",
                    option.FORCE_SET_DEFAULT:option.FORCE,
-                   option.USER_LEVEL:option.ADMIN,
+                   option.USER_LEVEL:option.USER2,
               },
         option.IO:{option.HELP_STRING:"sets io mode (can't clear it easily)",
                    option.DEFAULT_VALUE:option.DEFAULT,
@@ -3497,8 +3557,10 @@ class Tag:
 
         try:
             f = file_utils.open(fname,'r')
-            t = f.readlines()
-            f.close()
+            try:
+               t = file_utils.readlines(f)
+            finally:
+               f.close()
         except (OSError, IOError):
             exc, msg = sys.exc_info()[:2]
             if msg.args[0] == errno.ENOTDIR:
@@ -3544,8 +3606,10 @@ class Tag:
 
         try:
             f = file_utils.open(filename, "r")
-            data = f.readlines()
-            f.close()
+            try:
+               data = file_utils.readlines(f)
+            finally:
+               f.close()
         except IOError, detail:
             print detail
             return 1
@@ -3968,11 +4032,12 @@ class Tag:
 
     def penstore_state(self):  #, intf):
         fname = os.path.join(self.dir, ".(config)(flags)/disabled")
-        print fname
         if os.access(fname, os.F_OK):# | os.R_OK):
             f=file_utils.open(fname,'r')
-            self.enstore_state = f.readlines()
-            f.close()
+            try:
+               self.enstore_state = file_utils.readlines(f)
+            finally:
+               f.close()
             print "Enstore disabled:", self.enstore_state[0],
         else:
             print "Enstore enabled"
@@ -3981,8 +4046,10 @@ class Tag:
         fname = "%s/.(config)(flags)/.(id)(pnfs_state)" % self.dir
         if os.access(fname, os.F_OK | os.R_OK):
             f=file_utils.open(fname,'r')
-            self.pnfs_state = f.readlines()
-            f.close()
+            try:
+               self.pnfs_state = file_utils.readlines(f)
+            finally:
+               f.close()
             print "Pnfs:", self.pnfs_state[0],
         else:
             print "Pnfs: unknown"
@@ -4008,8 +4075,10 @@ class N:
         else:
             fname = os.path.join(self.dir,".(get)(counters)(%s)"%(self.dbnum,))
         f=file_utils.open(fname,'r')
-        self.countersN = f.readlines()
-        f.close()
+        try:
+           self.countersN = file_utils.readlines(f)
+        finally:
+           f.close()
         return self.countersN
 
     # get the database information
@@ -4147,8 +4216,11 @@ class File:
 			# does it exist?
                         try:
 				f = file_utils.open(self.layer_file(4))
-				finfo = map(string.strip, f.readlines())
-				f.close()
+                                try:
+                                   finfo = map(string.strip,
+                                               file_utils.readlines(f))
+                                finally:
+                                   f.close()
 				if len(finfo) == 11:
 					self.volume,\
 					self.location_cookie,\
@@ -4247,15 +4319,19 @@ class File:
 	# get_pnfs_id() -- get pnfs id from pnfs id file
 	def get_pnfs_id(self):
 		f = file_utils.open(self.id_file())
-                self.r_pnfs_id = f.readline()[:-1]  #.strip()
-		f.close()
+                try:
+                   self.r_pnfs_id = f.readline()[:-1]  #.strip()
+                finally:
+                   f.close()
 		return self.r_pnfs_id
 
         # get_parent_id() -- get parent pnfs id from pnfs id file
         def get_parent_id(self):
                 f = file_utils.open(self.parent_file())
-                self.parent_id = f.readline()[:-1]  #.strip()
-                f.close()
+                try:
+                   self.parent_id = f.readline()[:-1]  #.strip()
+                finally:
+                   f.close()
                 return self.parent_id
 
 	def show(self):
@@ -4410,8 +4486,9 @@ class File:
 
 ##############################################################################
 def do_work(intf):
-
     rtn = 0
+
+    Trace.init("CHIMERA_CLIENT")
 
     try:
         if intf.file:
