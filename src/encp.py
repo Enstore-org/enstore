@@ -215,6 +215,7 @@ import udp_client
 import file_utils
 import cleanUDP
 import namespace
+import library_manager_director_client
 
 ### The following constants:
 ###     USE_NEW_EVENT_LOOP
@@ -2309,8 +2310,8 @@ def get_lmc(library, use_lmc_cache = True):
             return __lmc
 
     csc = get_csc()
-    
-    #Determine which IP and port to use.  By default it will use the standard
+
+     #Determine which IP and port to use.  By default it will use the standard
     # 'port' value from the configuration file.  However, if the configuration
     # key 'encp_port' exists then this port will be used.
     library_dict = csc.get(lib, 3, 3)
@@ -5388,7 +5389,6 @@ def close_descriptors(*fds):
 ############################################################################
 
 def submit_one_request_send(ticket, encp_intf):
-
     submit_one_request_send_start_time = time.time()
 
     #Before resending, there are some fields that the library
@@ -5419,6 +5419,30 @@ def submit_one_request_send(ticket, encp_intf):
         filename = "unknown filename"
         Trace.log(e_errors.ERROR,
                   "Failed to determine the type of transfer: %s" % str(msg))
+
+    #Get the answer from the library manager director.
+    orig_library = ticket['vc']['library'] + ".library_manager"
+    csc = get_csc()
+    lm_config = csc.get(orig_library, 3, 3)
+    pprint.pprint(lm_config)
+    if e_errors.is_ok(lm_config) and encp_intf.disable_redirection == 0:
+       lmd_name = lm_config.get('use_LMD', None)
+       if lmd_name: 
+           lmd = library_manager_director_client.LibraryManagerDirectorClient(
+              csc, lmd_name)
+           Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET:")
+           Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
+
+           ticket = lmd.get_library_manager(ticket)
+
+           Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET:")
+           Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
+
+           if not e_errors.is_ok(ticket):
+               ticket['status'] = (e_errors.USERERROR,
+                   "Unable to access library manager director: %s" % \
+                   (ticket['status'],))
+               return ticket, None, None
 
     #Send work ticket to LM.  As long as a single encp process is restricted
     # to working with one enstore system, not passing get_csc() the ticket
@@ -5660,7 +5684,7 @@ def submit_one_request(ticket, encp_intf):
     #return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf), lmc
     rticket, transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
     if not e_errors.is_ok(rticket):
-        return ticket, lmc
+        return combine_dict(rticket, ticket), lmc
     response_ticket, transaction_id = submit_one_request_recv(
         transaction_id, ticket, lmc, encp_intf)
     return response_ticket, lmc
@@ -11603,12 +11627,14 @@ class EncpInterface(option.Interface):
                not (hasattr(self, 'put') or hasattr(self, 'get')):
             self.parameters = self.admin_parameters
 
+        # Enable redirection of encp to another library manager
+        self.disable_redirection = 0
+
         # parse the options
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
         # This is accessed globally...
         pnfs_is_automounted = self.pnfs_is_automounted
-
 
     def __str__(self):
         str_rep = ""
@@ -11699,6 +11725,12 @@ class EncpInterface(option.Interface):
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_TYPE:option.INTEGER,
                        option.USER_LEVEL:option.USER,},
+        option.DISABLE_REDIRECTION:{option.HELP_STRING:
+                          "Disable redirection of request to another library."
+                          " Do not use Library Manager Director" ,        
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.DEFAULT_VALUE:1,
+                          option.USER_LEVEL:option.ADMIN,},
         option.DIRECT_IO:{option.HELP_STRING:
                           "Use direct i/o for disk access on supporting "
                           "filesystems.",
