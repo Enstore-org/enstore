@@ -46,6 +46,112 @@
 #                               for some errors.)
 ############################################################################
 
+"""
+There are two main ways through the code.  They start with calls to
+read_from_hsm() or write_to_hsm().  Use of encp in migration starts at
+do_work() instead of start().
+
+The functions marked with a one (1) indicate only one can be executed.
+The functions marked with a capital ell (L) indicate they are called in a loop.
+The functions listed with and asterisk (*) are optional.
+The functions listed with a plus sign (+) are started in a new thread.
+
+start()
+  |
+  v
+do_work()
+  |
+  v
+main() -> 1 read_from_hsm()
+       |    |
+       |    -> prepare_read_from_hsm()
+       |    |  |
+       |    |  -> create_read_requests() -> L create_read_request()
+       |    |  |
+       |    |  -> verify_read_request_consistancy() -> L inputfile_check()
+       |    |                                       -> L inputfile_check_pnfs()
+       |    |                                       -> L outputfile_check()
+       |    -> submit_read_requests()
+       |    |
+       |    -> L wait_for_message() -> mover_handshake()
+       |    |
+       |    -> L read_hsm_file()
+       |    |    |
+       |    |    -> open_local_file()
+       |    |    |
+       |    |    -> stall_read_transfer()
+       |    |    |
+       |    |    -> transfer_file()
+       |    |    |
+       |    |    -> read_post_transfer_update()
+       |    |    |  |
+       |    |    |  -> verify_file_size()
+       |    |    |  |
+       |    |    |  -> check_crc()
+       |    |    |  |
+       |    |    |  -> update_modification_time()
+       |    |    |  |
+       |    |    |  -> set_outfile_permissions()
+       |    |    |  |
+       |    |    |  -> update_last_access_time()
+       |    |    |
+       |    |    -> calculate_rate()
+       |    |
+       |    -> L finish_request()
+       |    |
+       |    -> calculate_final_statistics()
+       |
+       -> 1 write_from_hsm()
+            |
+            -> prepare_write_from_hsm()
+            |  |
+            |  -> create_write_requests() -> L create_write_request()
+            |  |
+            |  -> verify_write_request_consistancy() -> L inputfile_check()
+            |                                        -> L outputfile_check()
+            -> submit_write_requests()
+            |
+            -> L wait_for_message() -> mover_handshake()
+            |
+            -> L write_hsm_file()
+            |     |
+            |     -> open_local_file()
+            |     |
+            |     -> stall_write_transfer()
+            |     |
+            |     -> transfer_file()
+            |     |
+            |     -> write_post_transfer_update()
+            |     |  |
+            |     |  -> check_crc()
+            |     |  |
+            |     |  -> update_modification_time()
+            |     |  |
+            |     |  -> set_sfs_settings()
+            |     |  |
+            |     |  -> set_outfile_permissions()
+            |     |  |
+            |     |  -> update_last_access_time()
+            |     |
+            |     -> calculate_rate()
+            |
+            -> L finish_request()
+            |
+            -> calculate_final_statistics()
+"""
+
+"""
+TO DO:
+1) Use the Fs class from src/fs.py for the local files.
+   a) Simplify the paramaterization to handle either (Fs, StorageFS) or
+      (StorageFS, Fs) for reads and writes, respectively.
+   b) Stop passing local paths around as strings.
+   c) Stop passing PNFS/Chimera paths as sometimes strings and sometimes
+      as StorageFS objects.
+2) Don't assume StorageFS objects are PNFS, Chimera or pnfs_agent.
+   Consider lustre as an example.
+"""
+
 # system imports
 import sys
 import os
@@ -109,7 +215,6 @@ import udp_client
 import file_utils
 import cleanUDP
 import namespace
-import library_manager_director_client
 
 ### The following constants:
 ###     USE_NEW_EVENT_LOOP
@@ -357,7 +462,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_10  CVS $Revision$ "
+    version_string = "v3_10c CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -381,7 +486,7 @@ def collect_garbage():
         Trace.message(DONE_LEVEL,
                       "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
 
-    message = "Time to collect garbage: %s sec." % \
+    message = "[1] Time to collect garbage: %s sec." % \
               (time.time() - collect_garbage_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -537,8 +642,8 @@ def is_layer_access_name(filepath):
 
 def is_access_name(filepath):
     #Determine if it is an ".(access)()" name.
-    access_match = re.compile("/\.\(access\)\([0-9A-Fa-f]+\)")
-    if re.search(access_match, filepath):
+    access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)")
+    if re.search(access_match, os.path.basename(filepath)):
         return True
 
     return False
@@ -567,8 +672,9 @@ def get_directory_name(filepath):
             parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5, tries=6)
         else:
             try:
-                f = open(parent_id_name)
-                parent_id = f.readlines()[0].strip()
+                f = file_utils.open(parent_id_name, unstable_filesystem=True)
+                parent_id = file_utils.readline(f,
+                                           unstable_filesystem=True).strip()
                 f.close()
             except (OSError, IOError), msg:
                 #We only need to worry about pnfs_agent_client_allowed here,
@@ -581,7 +687,8 @@ def get_directory_name(filepath):
                     if not parent_id: #Does this work to catch errors?
                         raise OSError, msg
                 else:
-                    raise OSError, msg
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
 
         #Build the .(access)() filename of the parent directory.
         directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
@@ -671,7 +778,8 @@ def get_enstore_pnfs_path(filepath):
     elif dirname[:6] == "/pnfs/":
         return filename
     else:
-        raise EncpError(None, "Unable to return enstore pnfs pathname.",
+        raise EncpError(None,
+                   "Unable to return enstore pnfs pathname: %s" % (filepath,),
                         e_errors.WRONGPARAMETER)
 
 def get_enstore_fs_path(filepath):
@@ -699,7 +807,8 @@ def get_enstore_fs_path(filepath):
     elif dirname[:6] == "/pnfs/":
         return os.path.join("/pnfs/fs/usr/", filename[6:])
     else:
-        raise EncpError(None, "Unable to return enstore pnfs admin pathname.",
+        raise EncpError(None,
+              "Unable to return enstore pnfs admin pathname: %s" % (filepath,),
                         e_errors.WRONGPARAMETER)
 
 def get_enstore_canonical_path(filepath):
@@ -733,7 +842,7 @@ def get_enstore_canonical_path(filepath):
         return os.path.join(canonical_pathbase, filename[6:])
     else:
         raise EncpError(None,
-                        "Unable to return enstore pnfs canonical pathname.",
+          "Unable to return enstore pnfs canonical pathname: %s" % (filepath,),
                         e_errors.WRONGPARAMETER)
     
 def _get_stat(pathname, func=file_utils.get_stat):
@@ -752,9 +861,9 @@ def _get_stat(pathname, func=file_utils.get_stat):
                 time.sleep(1)
                 continue
             else:
-                raise msg
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-    raise msg
+    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
 def get_stat(filename):
     global pnfs_is_automounted
@@ -1113,11 +1222,12 @@ def update_modification_time(output_path, time_now = None):
     try:
         #Update the last modified time; set last access time to existing value.
         file_utils.utime(output_path,
-                 (file_utils.get_stat(output_path)[stat.ST_ATIME], time_now))
+                 (file_utils.get_stat(output_path)[stat.ST_ATIME], time_now),
+                         unstable_filesystem=True)
     except OSError:
         return #This one will fail if the output file is /dev/null.
 
-    message = "Time to update modification time: %s sec." % \
+    message = "[1] Time to update modification time: %s sec." % \
               (time.time() - update_modification_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -1132,11 +1242,12 @@ def update_last_access_time(input_path, time_now = None):
     try:
         #Update the last access time; set last modified time to existing value.
         file_utils.utime(input_path,
-                 (time_now, file_utils.get_stat(input_path)[stat.ST_MTIME]))
+                 (time_now, file_utils.get_stat(input_path)[stat.ST_MTIME]),
+                         unstable_filesystem=True)
     except OSError:
         return
 
-    message = "Time to update last_access_time: %s sec." % \
+    message = "[1] Time to update last_access_time: %s sec." % \
               (time.time() - update_last_access_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -2198,8 +2309,8 @@ def get_lmc(library, use_lmc_cache = True):
             return __lmc
 
     csc = get_csc()
-
-     #Determine which IP and port to use.  By default it will use the standard
+    
+    #Determine which IP and port to use.  By default it will use the standard
     # 'port' value from the configuration file.  However, if the configuration
     # key 'encp_port' exists then this port will be used.
     library_dict = csc.get(lib, 3, 3)
@@ -2830,7 +2941,7 @@ def get_callback_addresses(encp_intf):
         udp_serv = None
         udp_callback_addr = None
 
-    message = "Time to get callback addresses: %s sec." % \
+    message = "[1] Time to get callback addresses: %s sec." % \
               (time.time() - get_callback_addresses_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -2922,6 +3033,8 @@ def filename_check(filename):
 #Make sure that the filesystem can handle the filesize.
 def filesystem_check(work_ticket):
 
+    verify_file_system_consistancy_start_time = time.time()
+    
     #Get the target from the ticket.
     target_file = work_ticket['outfile']
     if target_file in ["/dev/null", "/dev/zero",
@@ -2979,8 +3092,15 @@ def filesystem_check(work_ticket):
                         % (size, filesystem_max),
                         e_errors.USERERROR, work_ticket)
 
+    message = "[2] Time to verify file system consistancy: %s sec." % \
+              (time.time() - verify_file_system_consistancy_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
 #Make sure that the wrapper can handle the filesize.
 def wrappersize_check(work_ticket):
+
+    verify_wrapper_size_consistancy_start_time = time.time()
 
     #Get the wrapper from the ticket.
     vc_ticket = work_ticket.get('vc', {})
@@ -3004,10 +3124,17 @@ def wrappersize_check(work_ticket):
                         "Filesize (%s) larger than wrapper (%s) allows (%s)." \
                         % (size, wrapper, wrapper_max),
                         e_errors.USERERROR, work_ticket)
+
+    message = "[2] Time to verify wrapper size consistancy: %s sec." % \
+              (time.time() - verify_wrapper_size_consistancy_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
     
 #Make sure that the library can handle the filesize.
 #def librarysize_check(target_filepath, inputfile):
 def librarysize_check(work_ticket):
+
+    verify_library_size_consistancy_start_time = time.time()
 
     #Get the library from the ticket.
     vc_ticket = work_ticket.get('vc', {})
@@ -3042,9 +3169,17 @@ def librarysize_check(work_ticket):
                         % (size, library, library_max),
                         e_errors.USERERROR, work_ticket)
 
+    message = "[2] Time to verify library size consistancy: %s sec." % \
+              (time.time() - verify_library_size_consistancy_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
 #Make sure that the tags contain sane values for writes.  Raises and exception
 # on error.
 def tag_check(work_ticket):
+
+    verify_tags_consistancy_start_time = time.time()
+    
     #Consistancy check for valid pnfs tag values.  These values are
     # placed inside the 'vc' sub-ticket.
     tags = ["file_family", "wrapper", "file_family_width",
@@ -3081,6 +3216,11 @@ def tag_check(work_ticket):
              % ("file_family_width",)
         raise EncpError(None, str(msg), e_errors.USERERROR)
 
+    message = "[2] Time to verify tags consistancy: %s sec." % \
+              (time.time() - verify_tags_consistancy_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
 #Prevent null mover requests from proceeding without NULL in the directory
 # path.
 def null_mover_check(work_ticket, e):
@@ -3093,12 +3233,17 @@ def null_mover_check(work_ticket, e):
     # library, but we'll assume that the configuration is corrent for the
     # first one in the list.
     if len(mover_list) > 0 and mover_list[0]['driver'] == "NullDriver":
-        if work_ticket['wrapper']['pnfsFilename'].find("/NULL") == -1:
-            raise EncpError(None, "NULL not in PNFS path", e_errors.USERERROR)
+        pnfsFilename = work_ticket['wrapper']['pnfsFilename']
+        if pnfsFilename.find("/NULL") == -1:
+            message = "NULL not in PNFS path: %s" % \
+               (work_ticket['wrapper']['pnfsFilename'],)
+            raise EncpError(None, message, e_errors.USERERROR)
         
 
 # check the input file list for consistency
 def inputfile_check(work_list, e):
+
+    verify_input_file_consistancy_start_time = time.time()
 
     inputlist = []
     
@@ -3190,9 +3335,17 @@ def inputfile_check(work_list, e):
         except (OSError, IOError):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
+    message = "[2] Time to verify input file metadata (local): %s sec." % \
+              (time.time() - verify_input_file_consistancy_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
     return
 
 def inputfile_check_pnfs(request_list, bfid_brand, e):
+
+    verify_input_file_consistancy_start_time = time.time()
+    
     # create internal list of requests even if just 1 request passed in
     if type(request_list) != types.ListType:
         request_list = [request_list]
@@ -3532,12 +3685,21 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
                 filesystem_check(request)
 
             #If using null movers, make sure of a few things.
-            null_mover_check(request, e)
+            try:
+                null_mover_check(request, e)
+            except:
+                Trace.handle_error(severity=99)
+                raise
 
         except EncpError:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (OSError, IOError):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    message = "[2] Time to verify input file metadata (pnfs): %s sec." % \
+              (time.time() - verify_input_file_consistancy_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     return
     
@@ -3545,6 +3707,9 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
 # check the output file list for consistency
 # generate names based on input list if required
 def outputfile_check(work_list, e):
+
+    verify_output_file_consistancy_start_time = time.time()
+    
     dcache = e.put_cache #being lazy
 
     outputlist = []
@@ -3570,11 +3735,8 @@ def outputfile_check(work_list, e):
         work_list = [work_list]
 
     # Make sure we can open the files. If we can't, we bomb out to user
-    for i in range(len(work_list)): 
-            #Get the correct type of pnfs interface to use.
-            sfs = namespace.StorageFS(work_list[i]['outfile'])
-
-
+    for i in range(len(work_list)):
+            
             work_ticket = work_list[i]
 
             #shortcuts.
@@ -3587,6 +3749,9 @@ def outputfile_check(work_list, e):
             if outputfile_use in ["/dev/null", "/dev/zero",
                                   "/dev/random", "/dev/urandom"]:
                 continue
+
+            #Get the correct type of pnfs interface to use.
+            sfs = namespace.StorageFS(outputfile_use)
 
             #check to make sure that the filename string doesn't have any
             # wackiness to it.
@@ -3605,6 +3770,7 @@ def outputfile_check(work_list, e):
 
             #Test case when used by a user and the file does not exist (as is
             # should be).
+
             #if not access_check(outputlist[i], os.F_OK) and not dcache:
             if not fstatinfo and not dcache:
                 directory = get_directory_name(outputfile_use)
@@ -3613,7 +3779,7 @@ def outputfile_check(work_list, e):
                     dstatinfo = get_stat(directory)
                 except (OSError, IOError):
                     dstatinfo = None
-                
+
                 #Check for existance and write permissions to the directory.
                 #if not access_check(directory, os.F_OK):
                 if not dstatinfo:
@@ -3677,16 +3843,16 @@ def outputfile_check(work_list, e):
                 # the same file to Enstore.  The filesize being zero trick
                 # doesn't work with dcache, since the dcache sets the filesize.
                 try:
-                    #These to test read access.  They also allow us to
+                    #These two test read access.  They also allow us to
                     # determine if there is already a file written to enstore
                     # with this same filename.
                     #For chimera if the layer is not present it raises no
                     # such file or directory error.  We need to ignore it
-                    # stat on the file returns success
+                    # if stat() on the file returns success
                     get_stat(outputfile_use)
                     layer1 = ''
                     layer4 = ''
-                    try :
+                    try:
                         layer1 = sfs.readlayer(1, outputfile_use)
                     except:
                         # If we reach here it means layer 0 is present, but
@@ -3839,6 +4005,11 @@ def outputfile_check(work_list, e):
             except ValueError:
                 pass  #There is no error.
 
+    message = "[2] Time to verify output file metadata: %s sec." % \
+              (time.time() - verify_output_file_consistancy_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+
 #def file_check(e):
 #    # check the output pnfs files(s) names
 #    # bomb out if they exist already
@@ -3899,8 +4070,10 @@ def create_zero_length_pnfs_files(filenames, e = None):
             while local_errno == -1 or local_errno == errno.EAGAIN:
                 try:
                     #raises OSError on error.
-                    fd = file_utils.open_fd(fname, os.O_CREAT|os.O_EXCL|os.O_RDWR,
-                                       mode = 0666)
+                    fd = file_utils.open_fd(fname,
+                                            os.O_CREAT|os.O_EXCL|os.O_RDWR,
+                                            mode = 0666,
+                                            unstable_filesystem=True)
 
                     if type(f) == types.DictType:
                         #The inode is used later on to determine if
@@ -4219,7 +4392,7 @@ def open_udp_server(udp_serv, unique_id_list, encp_intf):
 
     udp_serv.reply_to_caller(udp_ticket)
 
-    message = "Time to open udp socket: %s sec." % \
+    message = "[1] Time to open udp socket: %s sec." % \
               (time.time() - time_to_open_udp_server,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -4304,7 +4477,7 @@ def open_routing_socket(mover_ip, encp_intf):
 	    # to bind to in order for the antispoofing problem to be avoided.
 	    return ip
 
-    message = "Time to open routing socket: %s sec." % \
+    message = "[1] Time to open routing socket: %s sec." % \
               (time.time() - time_to_open_routing_socket,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -4332,7 +4505,7 @@ def open_control_socket(listen_socket, mover_timeout):
         read_fds, unused, unused = select.select([listen_socket], [], [],
                                                  wait_left_time)
 
-        message = "Time to select control socket: %s sec." % \
+        message = "[1] Time to select control socket: %s sec." % \
                   (time.time() - time_to_select_control_socket,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -4347,7 +4520,7 @@ def open_control_socket(listen_socket, mover_timeout):
 
         control_socket, address = listen_socket.accept()
 
-        message = "Time to accept control socket: %s sec." % \
+        message = "[1] Time to accept control socket: %s sec." % \
                   (time.time() - time_to_accept_control_socket,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -4382,7 +4555,7 @@ def open_control_socket(listen_socket, mover_timeout):
             except IOError:
                 pass
 
-        message = "Time to setsockopt control socket: %s sec." % \
+        message = "[1] Time to setsockopt control socket: %s sec." % \
                   (time.time() - time_to_setsockopt_control_socket,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -4414,7 +4587,7 @@ def open_control_socket(listen_socket, mover_timeout):
             wait_left_time = max(wait_left_time, 0)
             continue
 
-        message = "Time to read control socket: %s sec." % \
+        message = "[1] Time to read control socket: %s sec." % \
                   (time.time() - time_to_read_control_socket,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -4438,7 +4611,7 @@ def open_control_socket(listen_socket, mover_timeout):
     Trace.message(INFO_LEVEL, message)
     Trace.log(e_errors.INFO, message)
 
-    message = "Time to open control socket: %s sec." % \
+    message = "[1] Time to open control socket: %s sec." % \
               (time.time() - time_to_open_control_socket,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -4599,7 +4772,7 @@ def open_data_socket(mover_addr, interface_ip = None):
         except IOError:
             pass
 
-    message = "Time to open data socket: %s sec." % \
+    message = "[1] Time to open data socket: %s sec." % \
               (time.time() - time_to_open_data_socket,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -5082,7 +5255,7 @@ def receive_final_dialog(control_socket):
     except e_errors.TCP_EXCEPTION:
         done_ticket = {'status' : (e_errors.NET_ERROR, e_errors.TCP_EXCEPTION)}
 
-    message = "Time to receive final dialog: %s sec." % \
+    message = "[1] Time to receive final dialog: %s sec." % \
               (time.time() - receive_final_dialog_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -5119,7 +5292,7 @@ def receive_final_dialog_2(udp_serv, e):
     Trace.message(TICKET_LEVEL, pprint.pformat(mover_udp_done_ticket))
     Trace.log(e_errors.INFO, "Received final dialog (2).")
 
-    message = "Time to receive final dialog (2): %s sec." % \
+    message = "[1] Time to receive final dialog (2): %s sec." % \
                   (time.time() - final_dialog_2_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -5215,6 +5388,7 @@ def close_descriptors(*fds):
 ############################################################################
 
 def submit_one_request_send(ticket, encp_intf):
+
     submit_one_request_send_start_time = time.time()
 
     #Before resending, there are some fields that the library
@@ -5245,30 +5419,6 @@ def submit_one_request_send(ticket, encp_intf):
         filename = "unknown filename"
         Trace.log(e_errors.ERROR,
                   "Failed to determine the type of transfer: %s" % str(msg))
-
-    #Get the answer from the library manager director.
-    orig_library = ticket['vc']['library'] + ".library_manager"
-    csc = get_csc()
-    lm_config = csc.get(orig_library, 3, 3)
-    pprint.pprint(lm_config)
-    if e_errors.is_ok(lm_config) and encp_intf.disable_redirection == 0:
-       lmd_name = lm_config.get('use_LMD', None)
-       if lmd_name: 
-           lmd = library_manager_director_client.LibraryManagerDirectorClient(
-              csc, lmd_name)
-           Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET:")
-           Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
-
-           ticket = lmd.get_library_manager(ticket)
-
-           Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET:")
-           Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
-
-           if not e_errors.is_ok(ticket):
-               ticket['status'] = (e_errors.USERERROR,
-                   "Unable to access library manager director: %s" % \
-                   (ticket['status'],))
-               return ticket, None, None
 
     #Send work ticket to LM.  As long as a single encp process is restricted
     # to working with one enstore system, not passing get_csc() the ticket
@@ -5360,7 +5510,7 @@ def submit_one_request_send(ticket, encp_intf):
         # what is actually raised.
         pass
 
-    message = "Time to submit one request: %s sec." % \
+    message = "[1] Time to submit one request: %s sec." % \
               (time.time() - submit_one_request_send_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -5402,7 +5552,7 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
                 Trace.log(e_errors.ERROR, "about to hang in submit_all_request_recv: %s" % (response_ticket,))
             #raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-    message = "Time to receive one request: %s sec." % \
+    message = "[1] Time to receive one request: %s sec." % \
               (time.time() - submit_all_request_recv_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -5441,7 +5591,7 @@ def submit_one_request_recv(transaction_id, work_ticket, lmc, encp_intf):
 
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-    message = "Time to receive first request: %s sec." % \
+    message = "[1] Time to receive first request: %s sec." % \
               (time.time() - submit_one_request_recv_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -5486,8 +5636,9 @@ def __submit_request_recv(response_ticket, ticket = {}):
                           + str(response_ticket['status']), out_fp=sys.stderr)
         else:
             Trace.log(e_errors.ERROR,
-                      "Ticket receive failed for %s - retrying" % infilepath)
-            Trace.message(ERROR_LEVEL, "Submission to LM failed: - retrying" \
+                      "Ticket receive failed for %s - retrying: %s" %
+                      (infilepath, response_ticket['status']))
+            Trace.message(ERROR_LEVEL, "Submission to LM failed - retrying:" \
                           + str(response_ticket['status']), out_fp=sys.stderr)
 
         #If the ticket was malformed, then we want to see what was sent
@@ -5509,7 +5660,7 @@ def submit_one_request(ticket, encp_intf):
     #return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf), lmc
     rticket, transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
     if not e_errors.is_ok(rticket):
-        return combine_dict(rticket, ticket), lmc
+        return ticket, lmc
     response_ticket, transaction_id = submit_one_request_recv(
         transaction_id, ticket, lmc, encp_intf)
     return response_ticket, lmc
@@ -5565,7 +5716,7 @@ def adjust_resubmit_request(ticket, encp_intf):
     except KeyError:
         pass
 
-    message = "Time to update request for resubmission: %s sec." % \
+    message = "[1] Time to update request for resubmission: %s sec." % \
               (time.time() - resubmission_update_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -5666,7 +5817,7 @@ def open_local_file(work_ticket, tinfo, e):
                    time.time() - tinfo['encp_start_time']))
         
     #Record this.
-    message = "Time to open local file: %s sec." % \
+    message = "[1] Time to open local file: %s sec." % \
               (time.time() - open_local_file_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -5830,7 +5981,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
                    time.time() - transfer_start_time))
 
         # Print an additional timming value.
-        message = "Time to transfer file: %s sec." % \
+        message = "[1] Time to transfer file: %s sec." % \
                   (transfer_stop_time - transfer_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -5924,7 +6075,7 @@ def check_crc(done_ticket, encp_intf, fd=None):
         if not e_errors.is_ok(done_ticket):
             return
     
-    message = "Time to check CRC: %s sec." % \
+    message = "[1] Time to check CRC: %s sec." % \
               (time.time() - check_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -5975,7 +6126,7 @@ def compare_crc(done_ticket, encp_crc_1_seeded):
 		  (mover_crc, encp_crc_1_seeded, encp_crc)
 	    done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
 	    return
-    message = "Time to compare CRC: %s sec." % \
+    message = "[1] Time to compare CRC: %s sec." % \
 	      (time.time() - compare_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -6010,7 +6161,7 @@ def check_crc_readback(done_ticket, fd):
 		  (mover_crc, readback_crc_1_seeded, readback_crc)
 	    done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
 	    return
-    message = "Time to check readback CRC: %s sec." % \
+    message = "[1] Time to check readback CRC: %s sec." % \
 	      (time.time() - readback_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -6054,7 +6205,7 @@ def check_crc_layer2(done_ticket, encp_crc_1_seeded):
 	done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
 	return
 
-    message = "Time to check dCache CRC: %s sec." % \
+    message = "[1] Time to check dCache CRC: %s sec." % \
 	      (time.time() - layer2_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -6207,7 +6358,7 @@ def verify_file_size(ticket, encp_intf = None):
     except: #Un-anticipated errors.
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         
-    message = "Time to verify file size: %s sec." % \
+    message = "[1] Time to verify file size: %s sec." % \
               (time.time() - verify_file_size_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -6260,7 +6411,7 @@ def verify_inode(ticket):
                                 "Pnfs inode changed during transfer.")
             return
 
-    message = "Time to verify inode: %s sec." % \
+    message = "[1] Time to verify inode: %s sec." % \
               (time.time() - verify_inode_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -6283,16 +6434,27 @@ def set_outfile_permissions(ticket, encp_intf):
                                      "/dev/random", "/dev/urandom"]:
             try:
                 if is_write(ticket):
-                    sfs = namespace.StorageFS(ticket['outfile'])
+#                    sfs = namespace.StorageFS(ticket['outfile'])
                     in_stat_info = file_utils.get_stat(ticket['infile'])
                 else:
-                    sfs = namespace.StorageFS(ticket['infile'])
-                    in_stat_info = sfs.get_stat(ticket['infile'])
-            except OSError, msg:
-                Trace.log(e_errors.INFO, "stat %s failed: %s" % \
-                          (ticket['infilepath'], msg))
-                ticket['status'] = (e_errors.USERERROR,
-                                    "Unable to stat() file: %s" % (str(msg),))
+                    Trace.log(e_errors.INFO, "infile: %s infilepath: %s" % \
+                              (ticket['infile'], ticket['infilepath']))
+                    try:
+                        in_sfs = namespace.StorageFS(ticket['infile'])
+                    except (OSError, IOError), msg2:
+                        Trace.handle_error(severity=99)
+                        message = "StorageFS failed: %s" % (str(msg2),)
+                        Trace.log(e_errors.INFO, message)
+                        ticket['status'] = (e_errors.OSERROR, message)
+                        return
+                    in_stat_info = in_sfs.get_stat(ticket['infile'])
+            except (OSError, IOError), msg:
+                Trace.handle_error(severity=99)
+                Trace.log(e_errors.INFO, "stat failed: %s: %s" % \
+                          (str(msg), ticket['infile']))
+                message = "Unable to stat() file: %s: %s" % \
+                          (str(msg), ticket['infilepath'])
+                ticket['status'] = (e_errors.USERERROR, message)
                 return
 
             try:
@@ -6306,7 +6468,7 @@ def set_outfile_permissions(ticket, encp_intf):
                     file_utils.chmod(ticket['outfile'], perms)
 
                 ticket['status'] = (e_errors.OK, None)
-            except OSError, msg:
+            except (OSError, IOError), msg:
                 Trace.log(e_errors.INFO, "chmod %s failed: %s" % \
                           (ticket['outfile'], msg))
                 ticket['status'] = (e_errors.USERERROR,
@@ -6321,12 +6483,12 @@ def set_outfile_permissions(ticket, encp_intf):
                     
                     #handle remote file case
                     if is_write(ticket):
-                        sfs = namespace.StorageFS(ticket['outfile'])
+#                        sfs = namespace.StorageFS(ticket['outfile'])
                         sfs.chown(uid, gid, ticket['outfile'])
                     else:
                         file_utils.chown(ticket['outfile'], uid, gid)
                     ticket['status'] = (e_errors.OK, None)
-                except OSError, msg:
+                except (OSError, IOError), msg:
                     message = "chown(%s, %s, %s) failed: (uid %s, gid %s, " \
                               "euid %s, egid %s): %s" % \
                               (ticket['outfile'], uid, gid, os.getuid(),
@@ -6335,7 +6497,7 @@ def set_outfile_permissions(ticket, encp_intf):
                     Trace.log(e_errors.INFO, message)
                     ticket['status'] = (e_errors.USERERROR, message)
 
-        message = "Time to set_outfile_permissions: %s sec." % \
+        message = "[1] Time to set_outfile_permissions: %s sec." % \
                       (time.time() - set_outfile_permissions_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -6526,7 +6688,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         except EncpError, msg:
             vc_status = (getattr(msg, 'type', e_errors.UNKNOWN), str(msg))
 
-        message = "Time to check external label: %s sec." % \
+        message = "[1] Time to check external label: %s sec." % \
               (time.time() - check_external_label_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -6584,7 +6746,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                     Trace.log(e_errors.WARNING,
                               "Control socket status: %s" % (socket_status,))
 
-        message = "Time to check control socket: %s sec." % \
+        message = "[1] Time to check control socket: %s sec." % \
               (time.time() - check_control_socket_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -6601,7 +6763,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             socket_dict = {'status':socket_status}
             request_dictionary = combine_dict(socket_dict, request_dictionary)
 
-        message = "Time to check listen socket: %s sec." % \
+        message = "[1] Time to check listen socket: %s sec." % \
               (time.time() - check_listen_socket_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -6662,7 +6824,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 lf_status = (e_errors.OSERROR,
                              "Noticed error checking local file:" + str(msg))
 
-        message = "Time to check local filename: %s sec." % \
+        message = "[1] Time to check local filename: %s sec." % \
               (time.time() - check_local_filename_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -6709,7 +6871,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         Trace.log(e_errors.INFO,
                   "pf_status = %s  skip_layer_cleanup = %s" %
                   (pf_status, skip_layer_cleanup))
-        message = "Time to check pnfs filename: %s sec." % \
+        message = "[1] Time to check pnfs filename: %s sec." % \
                   (time.time() - check_pnfs_filename_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -7461,7 +7623,7 @@ def calculate_rate(done_ticket, tinfo):
                           library,
                           )
 
-    message = "Time to calculate and record rate: %s sec." % \
+    message = "[1] Time to calculate and record rate: %s sec." % \
               (time.time() - calculate_rate_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -7574,7 +7736,7 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     done_ticket['exit_status'] = exit_status
     done_ticket['status'] = (e_errors.OK, msg)
 
-    message = "Time to calculate final statistics: %s sec." % \
+    message = "[1] Time to calculate final statistics: %s sec." % \
               (time.time() - calculate_final_statistics_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -7604,14 +7766,17 @@ def verify_write_request_consistancy(request_list, e):
             try:
                 inputfile_check(request, e)
             except IOError, msg:
+                Trace.handle_error(severity=99)
                 raise EncpError(msg.args, str(msg), e_errors.IOERROR,
                                 {'infilepath' : request['infilepath'],
                                  'outfilepath' : request['outfilepath']})
             except OSError, msg:
+                Trace.handle_error(severity=99)
                 raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                 {'infilepath' : request['infilepath'],
                                  'outfilepath' : request['outfilepath']})
             except (socket.error, select.error), msg:
+                Trace.handle_error(severity=99)
                 #On 11-12-2009, tracebacks were found from migration encps that
                 # started failing because there were too many open files while
                 # trying to instantiate client classes.  The socket.error
@@ -7628,14 +7793,17 @@ def verify_write_request_consistancy(request_list, e):
                     #outputfile_check(request['infile'], request['outfile'], e)
                     outputfile_check(request, e)
                 except IOError, msg:
+                    Trace.handle_error(severity=99)
                     raise EncpError(msg.args, str(msg), e_errors.IOERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
                 except OSError, msg:
+                    Trace.handle_error(severity=99)
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
                 except (socket.error, select.error), msg:
+                    Trace.handle_error(severity=99)
                     #On 11-12-2009, tracebacks were found from migration encps
                     # that started failing because there were too many open
                     # files while trying to instantiate client classes.  The
@@ -7651,14 +7819,17 @@ def verify_write_request_consistancy(request_list, e):
                 try:
                     unused = get_stat(request['outfile'])
                 except IOError, msg:
+                    Trace.handle_error(severity=99)
                     raise EncpError(msg.args, str(msg), e_errors.IOERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
                 except OSError, msg:
+                    Trace.handle_error(severity=99)
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
                 except (socket.error, select.error), msg:
+                    Trace.handle_error(severity=99)
                     #On 11-12-2009, tracebacks were found from migration encps
                     # that started failing because there were too many open
                     # files while trying to instantiate client classes.  The
@@ -7690,9 +7861,13 @@ def verify_write_request_consistancy(request_list, e):
         librarysize_check(request)
         wrappersize_check(request)
         #If using null movers, make sure of a few things.
-        null_mover_check(request, e)
+        try:
+            null_mover_check(request, e)
+        except:
+            Trace.handle_error(severity=99)
+            raise
 
-    message = "Time to verify write request consistancy: %s sec." % \
+    message = "[1] Time to verify write request consistancy: %s sec." % \
               (time.time() - verify_write_request_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -7700,6 +7875,8 @@ def verify_write_request_consistancy(request_list, e):
 ############################################################################
 
 def set_sfs_settings(ticket, intf_encp):
+
+    set_metadata_start_time = time.time()  #Start time of all set operations.
 
     # create a new pnfs object pointing to current output file
     Trace.message(INFO_LEVEL,
@@ -7749,20 +7926,20 @@ def set_sfs_settings(ticket, intf_encp):
                 #Get the exception.
                 exc, msg = sys.exc_info()[:2]
                 ticket['status'] = (e_errors.USERERROR,
-                                    "PNFS file %s has been removed." %
+                                    "SFS file %s has been removed." %
                                     ticket['wrapper']['pnfsFilename'])
                 #Log the problem.
                 Trace.log(e_errors.ERROR,
-                          "Trouble with pnfs: %s %s %s." %
+                          "Trouble with sfs: %s %s %s." %
                           (str(ticket['status']), str(exc), str(msg)))
                 return
         else:
             ticket['status'] = (e_errors.USERERROR,
-                                "PNFS file %s has been removed." %
+                                "SFS file %s has been removed." %
                                 ticket['wrapper']['pnfsFilename'])
             #Log the problem.
             Trace.log(e_errors.ERROR,
-                      "Trouble with pnfs: %s %s." % ticket['status'])
+                      "Trouble with sfs: %s" % (ticket['status'],))
             return
     else:
         #Check to make sure that the inodes are still the same.
@@ -7787,11 +7964,11 @@ def set_sfs_settings(ticket, intf_encp):
                 ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
             #Log the problem.
             Trace.log(e_errors.INFO,
-                      "Trouble with pnfs (Pnfs): %s %s %s." %
+                      "Trouble with sfs (StorageFS): %s %s %s." %
                       (ticket['status'][0], str(exc), str(msg)))
             return
 
-    message = "Time to veify pnfs file location: %s sec." % \
+    message = "[2] Time to veify pnfs file location: %s sec." % \
               (time.time() - location_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -7824,7 +8001,7 @@ def set_sfs_settings(ticket, intf_encp):
                       (ticket['status'][0], str(exc), str(msg)))
             return
 
-        message = "Time to set pnfs layer 1: %s sec." % \
+        message = "[2] Time to set pnfs layer 1: %s sec." % \
                   (time.time() - layer1_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -7904,7 +8081,7 @@ def set_sfs_settings(ticket, intf_encp):
                       (ticket['status'][0], str(exc), str(msg)))
             return
 
-        message = "Time to set pnfs layer 4: %s sec." % \
+        message = "[2] Time to set pnfs layer 4: %s sec." % \
                   (time.time() - layer4_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
@@ -7948,7 +8125,7 @@ def set_sfs_settings(ticket, intf_encp):
         ticket['status'] = (str(exc), str(msg))
         return
 
-    message = "Time to set file database: %s sec." % \
+    message = "[2] Time to set file database: %s sec." % \
               (time.time() - filedb_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -7988,14 +8165,19 @@ def set_sfs_settings(ticket, intf_encp):
             ticket['status'] = (str(exc), str(msg))
             return
 
-        message = "Time to set filesize: %s sec." % \
+        message = "[2] Time to set filesize: %s sec." % \
                   (time.time() - filesize_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
 
-    #This functions write errors/warnings to the log file and put an
+    #This function writes errors/warnings to the log file and put an
     # error status in the ticket.
     verify_file_size(ticket) #Verify size is the same.
+
+    message = "[1] Time to set metadata: %s sec." % \
+              (time.time() - set_metadata_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 #Functions for writes.
@@ -8009,9 +8191,6 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
     #Initialize these, so that they can be set only once.
     use_copies = 0
-    #vcc = fcc = None
-    #file_family = file_family_width = file_family_wrapper = None
-    #library = storage_group = None
 
     # create internal list of input unix files even if just 1 file passed in
     if type(e.input) == types.ListType:
@@ -8029,11 +8208,19 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         output_file = e.put_cache
     else:
         output_file = e.output[0]
-    if e.outtype == RHSMFILE:
-        t = sfs = namespace.StorageFS(output_file, use_pnfs_agent = True)
+    if e.shortcut and e.override_path:
+        use_mount_point = os.path.dirname(e.override_path)
     else:
-        sfs = namespace.StorageFS(output_file, use_pnfs_agent = False)
-        t = namespace.Tag(output_file)  #get_directory_name(ofullname))
+        use_mount_point = e.pnfs_mount_point
+    if e.outtype == RHSMFILE:
+        t = sfs = namespace.StorageFS(output_file, use_pnfs_agent = True,
+                                      mount_point = use_mount_point,
+                                      shortcut = e.shortcut)
+    else:
+        sfs = namespace.StorageFS(output_file, use_pnfs_agent = False,
+                                  mount_point = use_mount_point,
+                                  shortcut = e.shortcut)
+        t = namespace.Tag(output_file)
 
     # check the input unix file. if files don't exists, we bomb out to the user
     tags = None
@@ -8057,6 +8244,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (OSError, IOError), msg:
+            Trace.handle_error(severity=99)
             if isinstance(msg, OSError):
                 e_type = e_errors.OSERROR
             else:
@@ -8066,7 +8254,8 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 use_error_filename = msg.filename
             else:
                 use_error_filename = use_infile
-            raise EncpError(msg.args[0], use_error_filename,
+            raise EncpError(msg.args[0], "%s: %s" % (str(msg),
+                                                     use_error_filename),
                             e_type, {'infilepath' : use_infile})
 
         if work_ticket == None:
@@ -8149,7 +8338,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         ## the number of copies we are going to make.
         work_ticket['fc']['copies'] = use_copies
 
-    message = "Time to create write requests: %s sec." % \
+    message = "[1] Time to create write requests: %s sec." % \
               (time.time() - create_write_requests_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -8181,23 +8370,23 @@ def create_write_request(work_ticket, file_number,
                               {'onfilepath' : ofullname_list})
 
             #Determine the access path name.
-            oaccessname = namespace.StorageFS(ofullname).access_file(
-                get_directory_name(ofullname),
-                e.put_cache)
+            #oaccessname = namespace.StorageFS(ofullname).access_file(
+            oaccessname = sfs.access_file(get_directory_name(ofullname),
+                                          e.put_cache)
 
             unused, ifullname, unused, unused = fullpath(e.input[0])
-            istatinfo = os.stat(ifullname)
+            istatinfo = file_utils.get_stat(ifullname)
         else: #The output file was given as a normal filename.
             #ifullname, ofullname = get_ninfo(e.input[i], e.output[0], e)
             
             try:
-                istatinfo = os.stat(work_ticket['infile'])
+                istatinfo = file_utils.get_stat(work_ticket['infile'])
                 ifullname = work_ticket['infile']
             except (KeyboardInterrupt, SystemExit):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except (OSError, IOError):
                 ifullname = get_ininfo(work_ticket['infile'])
-                istatinfo = os.stat(ifullname)
+                istatinfo = file_utils.get_stat(ifullname)
 
             #inputfile_check(ifullname, e)
             
@@ -8352,6 +8541,8 @@ def create_write_request(work_ticket, file_number,
         # "NULL" appear in the pnfs pathname, which conflicts with
         # the task of --shortcut.  So, we need to breakdown and do
         # this full name lookup.
+        Trace.log(99, "shortcut: %s  override_path: %s  wrapper: %s" % \
+                  (e.shortcut, e.override_path, volume_clerk['wrapper']))
         if e.shortcut and not e.override_path and \
                volume_clerk['wrapper'] == "null":
             
@@ -8360,7 +8551,7 @@ def create_write_request(work_ticket, file_number,
             if not csc.have_complete_config:
                 csc.save_and_dump()
 
-            # Now we need check all null movers.
+            # Now we need to check all null movers.
             for dictkey, value in csc.saved_dict.items():
                 if dictkey[-len(".mover"):] == ".mover" \
                    and type(value) == types.DictType \
@@ -8503,7 +8694,7 @@ def submit_write_request(work_ticket, encp_intf):
                    ticket.get('file_size', -1),
                    elapsed_string()))
 
-    message = "Time to submit %d write request: %s sec." % \
+    message = "[1] Time to submit %d write request: %s sec." % \
               (1, time.time() - submit_write_request_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -8604,7 +8795,7 @@ def stall_write_transfer(data_path_socket, control_socket, e):
     else:
         status_ticket = {'status' : (e_errors.OK, None)}
 
-    message = "Time to stall %d write transfer: %s sec." % \
+    message = "[1] Time to stall %d write transfer: %s sec." % \
               (1, time.time() - stall_write_transfer_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -8821,6 +9012,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         except (SystemExit, KeyboardInterrupt):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
+            Trace.handle_error()
             done_ticket['status'] = (e_errors.UNKNOWN, sys.exc_info()[1])
 
         result_dict = handle_retries([work_ticket], work_ticket,
@@ -8877,6 +9069,7 @@ def prepare_write_to_hsm(tinfo, e):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, AttributeError, ValueError, EncpError,
             socket.error, select.error), msg:
+        Trace.handle_error(severity=99)
         if isinstance(msg, EncpError):
             e_ticket = msg.ticket
             if e_ticket.get('status', None) == None:
@@ -9341,14 +9534,17 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 try:
                     inputfile_check(request, e)
                 except IOError, msg:
+                    Trace.handle_error(severity=99)
                     raise EncpError(msg.args, str(msg), e_errors.IOERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
                 except OSError, msg:
+                    Trace.handle_error(severity=99)
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
                 except (socket.error, select.error), msg:
+                    Trace.handle_error(severity=99)
                     #On 11-12-2009, tracebacks were found from migration encps
                     # that started failing because there were too many open
                     # files while trying to instantiate client classes.  The
@@ -9360,14 +9556,17 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 try:
                     inputfile_check_pnfs(request, bfid_brand, e)
                 except IOError, msg:
+                    Trace.handle_error(severity=99)
                     raise EncpError(msg.args, str(msg), e_errors.IOERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
                 except OSError, msg:
+                    Trace.handle_error(severity=99)
                     raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                     {'infilepath' : request['infilepath'],
                                      'outfilepath' : request['outfilepath']})
                 except (socket.error, select.error), msg:
+                    Trace.handle_error(severity=99)
                     #On 11-12-2009, tracebacks were found from migration encps
                     # that started failing because there were too many open
                     # files while trying to instantiate client classes.  The
@@ -9384,14 +9583,17 @@ def verify_read_request_consistancy(requests_per_vol, e):
                         #                 request['outfile'], e)
                         outputfile_check(request, e)
                     except IOError, msg:
+                        Trace.handle_error(severity=99)
                         raise EncpError(msg.args, str(msg), e_errors.IOERROR,
                                         {'infilepath' : request['infilepath'],
                                          'outfilepath' : request['outfilepath']})
                     except OSError, msg:
+                        Trace.handle_error(severity=99)
                         raise EncpError(msg.args, str(msg), e_errors.OSERROR,
                                         {'infilepath' : request['infilepath'],
                                          'outfilepath' : request['outfilepath']})
                     except (socket.error, select.error), msg:
+                        Trace.handle_error(severity=99)
                         #On 11-12-2009, tracebacks were found from migration
                         # encps that started failing because there were too
                         # many open files while trying to instantiate client
@@ -9509,7 +9711,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     except IOError:
                         pass
 
-    message = "Time to verify read request consistancy: %s sec." % \
+    message = "[1] Time to verify read request consistancy: %s sec." % \
               (time.time() - verify_read_request_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -9898,6 +10100,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (OSError, IOError), msg:
+            Trace.handle_error(severity=99)
             if isinstance(msg, OSError):
                 e_type = e_errors.OSERROR
             else:
@@ -9919,7 +10122,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         sys.stdout.flush()
         sys.stderr.flush()
 
-    message = "Time to create read requests: %s sec." % \
+    message = "[1] Time to create read requests: %s sec." % \
               (time.time() - create_read_requests_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -10181,8 +10384,9 @@ def create_read_request(request, file_number,
                 if not sfs:
                     #All the cases that get here are ones where we are not
                     # supposed to worry, much, about what is in the storage
-                    # file system.
-                    sfs = namespace.StorageFS(sfsid)
+                    # file system.  (--shortcut without --override-path)
+                    sfs = namespace.StorageFS(sfsid, shortcut=e.shortcut,
+                                              mount_point=e.pnfs_mount_point)
                 #Determine the access path name.
                 iaccessname = sfs.access_file(use_dir, sfsid)
 
@@ -10231,7 +10435,11 @@ def create_read_request(request, file_number,
                 # --shortcut is used, the filename name will be recored as
                 # a /.(access)(<PNFS/Chimera_id>) style filename.
                 ifullname = e.override_path
-                sfs = None
+
+                #We still need to get a StorageFS object.
+                use_mount_point = os.path.dirname(e.override_path)
+                sfs = namespace.StorageFS(e.get_cache,
+                                          mount_point=use_mount_point)
             else:
                 sfs = namespace.StorageFS(e.get_cache,
                                    mount_point=e.pnfs_mount_point,
@@ -10246,11 +10454,6 @@ def create_read_request(request, file_number,
                                     e_errors.PNFS_ERROR,
                                     {'infilepath' : ifullname_list})
 
-            if not sfs:
-                #All the cases that get here are ones where we are not
-                # supposed to worry, much, about what is in the storage
-                # file system.
-                sfs = namespace.StorageFS(e.get_cache)
             #Determine the access path name.
             iaccessname = sfs.access_file(get_directory_name(ifullname),
                                           e.get_cache)
@@ -10261,6 +10464,20 @@ def create_read_request(request, file_number,
             bfid = sfs.get_bit_file_id(iaccessname)
 
             vc_reply, fc_reply = get_clerks_info(bfid, e)
+
+            if (not e.shortcut or not e.override_path) and \
+                   vc_reply['media_type'] == "null":
+                #We need to get the full path anyway to keep the mover from
+                # failing the transfer because NULL is not in the path.
+                ifullname_list = sfs.get_path(e.get_cache, e.pnfs_mount_point,
+                                              shortcut = False)
+                if len(ifullname_list) == 1:
+                    ifullname = ifullname_list[0]
+                else:
+                    raise EncpError(errno.ENOENT,
+                                    "Unable to find correct PNFS file.",
+                                    e_errors.PNFS_ERROR,
+                                    {'infilepath' : ifullname_list})
 
             if e.output[0] in ["/dev/null", "/dev/zero",
                                "/dev/random", "/dev/urandom"]:
@@ -10333,9 +10550,8 @@ def create_read_request(request, file_number,
 
             
             #Determine the access path name.
-            iaccessname = namespace.StorageFS(ifullname).access_file(
-                get_directory_name(ifullname),
-                fc_reply['pnfsid'])
+            use_dir = get_directory_name(ifullname)
+            iaccessname = sfs.access_file(use_dir, fc_reply['pnfsid'])
 
             read_work = 'read_from_hsm'
 
@@ -10493,7 +10709,7 @@ def submit_read_requests(requests, encp_intf):
     Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % submitted)
     Trace.message(TRANSFER_LEVEL, "Files queued." + elapsed_string())
 
-    message = "Time to submit %d read requests: %s sec." % \
+    message = "[1] Time to submit %d read requests: %s sec." % \
               (submitted, time.time() - submit_read_requests_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -10581,7 +10797,7 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
     else:
         status_ticket = {'status' : (e_errors.OK, None)}
 
-    message = "Time to stall %d read transfer: %s sec." % \
+    message = "[1] Time to stall %d read transfer: %s sec." % \
               (1, time.time() - stall_read_transfer_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -10753,7 +10969,6 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
                                      #udp_serv = route_server,
                                      control_socket = control_socket,
                                      external_label = external_label)
-
         if not e_errors.is_ok(result_dict):
             #close_descriptors(control_socket, data_path_socket, out_fd)
             close_descriptors(out_fd)
@@ -10797,6 +11012,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     except (SystemExit, KeyboardInterrupt):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
+        Trace.handle_error(severity=99)
         done_ticket['status'] = (e_errors.UNKNOWN, sys.exc_info()[1])
 
     result_dict = handle_retries(request_list, request_ticket,
@@ -10841,7 +11057,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     Trace.message(TICKET_LEVEL, "DONE TICKET (read_hsm_file)")
     Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
 
-    message = "Time to read hsm file: %s sec." % \
+    message = "[1] Time to read hsm file: %s sec." % \
               (time.time() - read_hsm_file_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
@@ -10863,6 +11079,7 @@ def prepare_read_from_hsm(tinfo, e):
     except (SystemExit, KeyboardInterrupt):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
+        Trace.handle_error(severity=99)
         if isinstance(msg, EncpError):
             e_ticket = msg.ticket
             e_ticket['status'] = (msg.type, str(msg))
@@ -10977,7 +11194,8 @@ def prepare_read_from_hsm(tinfo, e):
                         #Only try this when the real user is root.  
                         file_utils.chown(requests_per_vol[vol][i]['outfile'],
                                          in_file_stats[stat.ST_UID],
-                                         in_file_stats[stat.ST_GID])
+                                         in_file_stats[stat.ST_GID],
+                                         unstable_filesystem=True)
             except (OSError, IOError, EncpError), msg:
                 #if not should_skip_deleted:
                 #    file_utils.end_euid_egid() #Release the lock.
@@ -11385,20 +11603,19 @@ class EncpInterface(option.Interface):
                not (hasattr(self, 'put') or hasattr(self, 'get')):
             self.parameters = self.admin_parameters
 
-        # Enable redirection of encp to another library manager
-        self.disable_redirection = 0
-
         # parse the options
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
         # This is accessed globally...
         pnfs_is_automounted = self.pnfs_is_automounted
 
+
     def __str__(self):
         str_rep = ""
 
         #Sort the list into alphabetical order.
         the_list = self.encp_options.items()
+        the_list = the_list + [('input', {}), ('output', {}),]
         the_list.sort()
         
         for name, info in the_list:
@@ -11482,12 +11699,6 @@ class EncpInterface(option.Interface):
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_TYPE:option.INTEGER,
                        option.USER_LEVEL:option.USER,},
-        option.DISABLE_REDIRECTION:{option.HELP_STRING:
-                          "Disable redirection of request to another library."
-                          " Do not use Library Manager Director" ,        
-                          option.DEFAULT_TYPE:option.INTEGER,
-                          option.DEFAULT_VALUE:1,
-                          option.USER_LEVEL:option.ADMIN,},
         option.DIRECT_IO:{option.HELP_STRING:
                           "Use direct i/o for disk access on supporting "
                           "filesystems.",
@@ -11852,8 +12063,8 @@ class EncpInterface(option.Interface):
                                                        no_split = True)
                 #Pnfs Agent.
                 pac = get_pac()
-                if pac.is_pnfs_path(fullname, check_name_only = 1) and \
-                       pac.isdir(fullname):
+                result = pac.is_pnfs_path(fullname, check_name_only = 1)
+                if result and pac.isdir(fullname):
                     dirname = fullname
                     basename = ""
                 else:
@@ -11866,13 +12077,8 @@ class EncpInterface(option.Interface):
             #Store the name into this list.
             self.args[i] = fullname
 
-            #if ( os.path.exists(dirname) ) :
-            #    e.append(1)
-            #else:
-            #    e.append(0)
-
-            #We need to make sure that all the files are to/from the same place.
-            # Store it here for processing later.
+            #We need to make sure that all the files are to/from the same
+            # place.  Store it here for processing later.
             m.append((host, port))
             
             #If the file is a pnfs file, store a 1 in the list, if not store
@@ -11890,17 +12096,16 @@ class EncpInterface(option.Interface):
             #    in the absolute filename.
 
             if namespace.pnfs_agent_client_requested:
-                try:
-                    #Pnfs Agent.
-                    pac = get_pac()
-                    result = pac.is_pnfs_path(fullname,
-                                              check_name_only = 1)
-                except EncpError, msg:
-                    result = 0
+                #try:
+                #    #Pnfs Agent.
+                #    pac = get_pac()
+                #    result = pac.is_pnfs_path(fullname,
+                #                              check_name_only = 1)
+                #except EncpError, msg:
+                #    result = 0
 
                 if result:
                     e.append(0)
-                    #p.append(result)
                     p.append(2)
                     continue
                 else:
@@ -11977,7 +12182,6 @@ class EncpInterface(option.Interface):
 
                 if result:
                     e.append(0)
-                    #p.append(result)
                     p.append(2)
                     continue
 
@@ -12253,7 +12457,7 @@ def log_encp_start(tinfo, intf):
                    "FF Wrapper: %s  FF Width: %s" % \
                    (library, storage_group,
                     file_family,file_family_wrapper, file_family_width)
-    cwd_line = "Current working directory: %s:%s" % (hostname, cwd)
+    cwd_line = "Current working directory: %s:%s" % (hostname, cwd)    
 
     #Print this information to make debugging easier.
     Trace.message(DONE_LEVEL, start_line)
@@ -12278,7 +12482,7 @@ def log_encp_start(tinfo, intf):
         Trace.log(e_errors.INFO, "%s  %s, %s  %s  %s" %
                   (version_line, os_line, id_line, cwd_line, command_line))
 
-    message = "Time to log encp start: %s sec." % \
+    message = "[1] Time to log encp start: %s sec." % \
               (time.time() - log_encp_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
