@@ -15,6 +15,7 @@ import sys
 import copy
 import os
 import string
+import threading
 
 import pnfs
 import chimera
@@ -25,12 +26,16 @@ import configuration_client
 import enstore_constants
 import e_errors
 import file_utils
+import hostaddr
 #info_client or file_clerk_client is imported in get_clerk_client().
 
 #######################################################################
 
 #If true, use the info_server.  If false, use the file_clerk.
 USE_INFO_SERVER_DEFAULT = False
+
+search_list = None
+search_list_lock = threading.Lock()
 
 #sfs_id is a string representing the uninque internal ID for the storage
 #   filesystem.  Current supported storage filesystem types are:
@@ -44,7 +49,8 @@ USE_INFO_SERVER_DEFAULT = False
 def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                  path_type = enstore_constants.BOTH,
                  use_info_server=USE_INFO_SERVER_DEFAULT):
-
+    global search_list
+    
     if not namespace.is_id(sfs_id):
         raise ValueError("Expected storage filesystem id not: %s" % (sfs_id,))
     if not enstore_functions3.is_bfid(bfid):
@@ -96,24 +102,50 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
         # at /etc/mtab.  This makes this largely a fast call compared to
         # those that query a storage filesystem.
         if path_type == enstore_constants.FS:
-            mount_paths = pnfs.get_enstore_admin_mount_point() + \
-                          chimera.get_enstore_admin_mount_point()
+            mount_paths = namespace.get_enstore_admin_mount_point()
+            
         elif path_type == enstore_constants.NONFS:
-            mount_paths = pnfs.get_enstore_mount_point() + \
-                          chimera.get_enstore_mount_point()
+            mount_paths = namespace.get_enstore_mount_point()
         else:  #both
-            mount_paths = pnfs.get_enstore_mount_point() + \
-                          chimera.get_enstore_mount_point() + \
-                          pnfs.get_enstore_admin_mount_point() + \
-                          chimera.get_enstore_admin_mount_point()
+            mount_paths = namespace.get_enstore_mount_point() + \
+                          namespace.get_enstore_admin_mount_point()
             
         for mount_path in mount_paths:
             if enstoredb_path.startswith(mount_path):
                 #Need to add one to the length of mount_path to skip
                 # passed the leading "/".
-                new_path = os.path.join(mount_path,
-                                        enstoredb_path[len(mount_path)+1:])
+                new_path = enstoredb_path
                 path_list.append(new_path)
+            else:
+                if enstoredb_path.find("/pnfs/fs/usr/") == -1:
+                    new_path = enstoredb_path.replace("/pnfs/", "/pnfs/fs/usr/", 1)
+                    if new_path not in path_list:
+                        path_list.append(new_path)
+                else:
+                    new_path = enstoredb_path.replace("/pnfs/fs/usr/", "/pnfs/", 1)
+                    if new_path not in path_list:
+                        path_list.append(new_path)
+                    
+            #If the paths begins with something like
+            # /pnfs/fnal.gov/usr/... we need to convert and check for
+            # this too.  This is most likely necessary when the scan
+            # is run on an offline copy that did not have the
+            # fnal.gov symbolic link to fs made.
+            domain_name = hostaddr.getdomainname()
+            if domain_name:
+                #Non-admin (/pnfs/xyz) path handling.
+                if path_type in [enstore_constants.NONFS,
+                                 enstore_constants.BOTH]:
+                    new_path = enstoredb_path.replace(
+                        "/pnfs/%s/usr/" % (domain_name,), "/pnfs/", 1)
+                    if new_path not in path_list:
+                        path_list.append(new_path)
+                #Admin (/pnfs/fs/usr/xyz) path handling.
+                if path_type in [enstore_constants.FS, enstore_constants.BOTH]:
+                    new_path = enstoredb_path.replace(
+                        "/pnfs/%s/usr/" % (domain_name,), "/pnfs/fs/usr/", 1)
+                    if new_path not in path_list:
+                        path_list.append(new_path)
 
     if path_list:
         for try_path in path_list:
@@ -122,11 +154,19 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
             except (OSError, IOError):
                 layer1_bfid = None
             if layer1_bfid == bfid:
-                return try_path
+                return try_path  #We found the currently mounted path!
 
     #Loop over all found mount points.
-    search_list = pnfs.process_mtab() + chimera.process_mtab()
-    for database_info, (db_num, mp) in search_list:
+    search_list_lock.acquire()
+    try:
+        if search_list == None:
+            search_list = namespace.process_mtab()
+    except:
+        search_list_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    search_list_copy = search_list[:]
+    search_list_lock.release()
+    for database_info, (db_num, mp) in search_list_copy:
 
         #If the last db tried is still set to its initial value (-1), we need
         # to skip the the next.  The variable db_num will be None for Chimera.
@@ -243,7 +283,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                         # doesn't match the one that returned a positive hit.
                         # So, we first check if a known PNFS database is
                         # a match...
-                        for item in search_list:
+                        for item in search_list_copy:
                             if item[0] == db_info:
                                 sfs_path = pnfs.access_file(item[1][1],
                                                              enstoredb_sfs_id)
@@ -303,7 +343,6 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                                                   sfs_id_mp)
                             else:
                                 pnfs.set_last_db(("", (-1, "")))
-
                     else:
                         pnfs.set_last_db((db_info, (pnfsid_db, mp)))
                         #We found the file, set the pnfs path.
@@ -526,7 +565,10 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
     use_name = os.path.abspath(use_name)
     use_mp = os.path.abspath(use_mp)
 
-    sfs = namespace.StorageFS(use_name)
+    #Use the sfs_id to initialize the StorageFS class.  This prevents an
+    # ENOENT error from being raised if the 'use_name' path guess does
+    # not exist.  Files moved between directories need this.
+    sfs = namespace.StorageFS(sfs_id)
     try:
         cur_sfs_id = sfs.get_id(use_name)
     except (OSError, IOError), msg:
@@ -625,6 +667,7 @@ find_chimeraid_path = find_id_path
 def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                      path_type = enstore_constants.BOTH,
                      use_info_server=USE_INFO_SERVER_DEFAULT):
+    global search_list
 
     if not pnfs.is_pnfsid(pnfsid):
         raise ValueError("Expected pnfsid not: %s" % (pnfsid,))
@@ -688,9 +731,28 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
             if enstoredb_path.startswith(mount_path):
                 #Need to add one to the length of mount_path to skip
                 # passed the leading "/".
-                new_path = os.path.join(mount_path,
-                                        enstoredb_path[len(mount_path)+1:])
+                new_path = enstoredb_path
                 path_list.append(new_path)
+            else:
+                if enstoredb_path.find("/pnfs/fs/usr/") == -1:
+                    new_path = enstoredb_path.replace("/pnfs/", "/pnfs/fs/usr/", 1)
+                    path_list.append(new_path)
+                else:
+                    new_path = enstoredb_path.replace("/pnfs/fs/usr/", "/pnfs/", 1)
+                    path_list.append(new_path)
+                    
+            #If the paths begins with something like
+            # /pnfs/fnal.gov/usr/... we need to convert and check for
+            # this too.  This is most likely necessary when the scan
+            # is run on an offline copy that did not have the
+            # fnal.gov symbolic link to fs made.
+            if path_type in [enstore_constants.FS, enstore_constants.BOTH]:
+                domain_name = hostaddr.getdomainname()
+                if domain_name:
+                    new_path = enstoredb_path.replace(
+                        "/pnfs/%s/usr/" % (domain_name,), "/pnfs/fs/usr/", 1)
+                    if new_path not in path_list:
+                        path_list.append(new_path)
 
     if path_list:
         for try_path in path_list:
@@ -702,8 +764,16 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                 return try_path
 
     #Loop over all found mount points.
-    search_list = pnfs.process_mtab()
-    for database_info, (db_num, mp)  in search_list:
+    search_list_lock.acquire()
+    try:
+        if search_list == None:
+            search_list = pnfs.process_mtab()
+    except:
+        search_list_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    search_list_copy = search_list[:]
+    search_list_lock.release()
+    for database_info, (db_num, mp) in search_list_copy:
 
         #If last_db_tried is still set to its initial value, we need to
         # skip the the next.
@@ -821,7 +891,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                         # doesn't match the one that returned a positive hit.
                         # So, we first check if a known PNFS database is
                         # a match...
-                        for item in search_list:
+                        for item in search_list_copy:
                             if item[0] == db_info:
                                 pnfs_path = pnfs.access_file(item[1][1],
                                                              enstoredb_pnfsid)
