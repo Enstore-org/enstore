@@ -595,7 +595,7 @@ class FileDB(DbTable):
 			record["uid"] = s["uid"]
 		if s.has_key("gid"):
 			record["gid"] = s["gid"]
-                for key in ['package_id','cache_status','archive_status'\
+                for key in ['package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count']:
                     if s.has_key(key):
