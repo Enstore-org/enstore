@@ -343,6 +343,7 @@ NEVER_ALIVE = -1
 LIBRARY_MANAGER = "library_manager"
 MIGRATOR = "migrator"
 MOVER = "mover"
+DISK_MOVER = "DiskMover"
 VC = "vc"
 NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"

@@ -1353,7 +1353,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             default_media_type = "disk"
             self.default_block_size = 131072
             self.tape_driver = disk_driver.DiskDriver()
-            self.mover_type = self.config.get('type','DiskMover')
+            self.mover_type = self.config.get('type', enstore_constants.DISK_MOVER)
             self.max_rate = self.config.get('max_rate', 100*MB) #XXX
             self.ip_map = self.config.get('ip_map','cluster_fs')
             # for cluster fs all files are available for any disk mover
@@ -3423,6 +3423,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.file_info['pnfs_name0'] = None # it may later come in get ticket
                         self.file_info['gid'] = self.gid
                         self.file_info['uid'] = self.uid
+                        fc_ticket['mover_type'] = self.mover_type        
                         
                         
                         ret = self.fcc.create_bit_file(self.file_info)
@@ -4980,7 +4981,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.ERROR,'file clerk error: missing original bfid for copy')
                 return 0
             fc_ticket['original_bfid'] = original_bfid
-                
+        
+        fc_ticket['mover_type'] = self.mover_type        
         Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
             
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
@@ -7173,6 +7175,7 @@ class DiskMover(Mover):
             return 0
 
         #Request the new bit file.
+        fc_ticket['mover_type'] = self.mover_type        
         Trace.log(e_errors.INFO, "new bitfile request %s" % (fc_ticket,))
 
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
