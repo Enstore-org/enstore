@@ -494,6 +494,17 @@ ELSEIF (TG_OP='UPDATE') THEN
         IF (OLD.archive_status<>NEW.archive_status) THEN
 		NEW.archive_mod_time=LOCALTIMESTAMP(0);
 	END IF;
+	IF (NEW.deleted<>OLD.deleted) THEN
+	   IF (OLD.deleted='n') THEN
+	   	   IF (NEW.deleted='y' OR NEW.deleted='u') THEN
+	      	      update file set active_package_files_count=active_package_files_count-1 where bfid=OLD.package_id;
+	   	   END IF;
+           ELSE
+	   	   IF (NEW.deleted='n') THEN
+	      	      update file set active_package_files_count=active_package_files_count+1 where bfid=OLD.package_id;
+	   	   END IF;
+	   END IF;
+	END IF;
 END IF;
 RETURN NEW;
 END;
