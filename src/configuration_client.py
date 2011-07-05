@@ -233,7 +233,7 @@ class ConfigurationClient(generic_client.GenericClient):
             return done_ticket #Avoid duplicate "convert to external format"
         if not e_errors.is_ok(done_ticket):
             return done_ticket
-
+	hostaddr.update_domains(done_ticket.get("domains", {}))
         return done_ticket
 
 
