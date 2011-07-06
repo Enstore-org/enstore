@@ -34,13 +34,13 @@ class Encp:
 
 		#Grab logname to reset it after encp is done.
 		logname=Trace.get_logname()
-		
+
 		try:
 			intf = my_interface(argv, 0)
 			intf.migration_or_duplication = 1 #Set true for performance.
 			if self.tid:
 				intf.include_thread_name = self.tid
-			
+
 			res = self.my_encp.do_work(intf, main=my_encp.main)
 			if res == None:
 				#return -10
@@ -76,7 +76,7 @@ class Encp:
 			sys.stderr.write("%s\n" % self.err_msg)
 			res = 1
 		file_utils.release_lock_euid_egid()
-		
+
 		Trace.set_logname(logname) #Reset the log file name.
 		self.exit_status = res #Return value if used in a thread.
 		return res  #Return value if used directly.
@@ -100,14 +100,14 @@ class Encp:
 	def put(self, argv):
 		return self.__encp(argv, self.my_put,
 				   self.my_put.PutInterface, exe="put")
-		
+
 
 if __name__ == '__main__':
 	test_encp = Encp()
 	for i in sys.argv[1:]:
 		print "copying", i, "...",
 		cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(i)
-		res = test_encp.encp(cmd)
+		res = test_encp.encp(cmd.split())
 		if res:
 			print "FAILED"
 		else:
