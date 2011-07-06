@@ -136,7 +136,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         try:
             value = ticket[key]
         except KeyError, detail:
-            message =  "%s: key %s is missing" % (MY_NAME, detail,)
+            message =  "%s: key %s is missing" % (MY_NAME, detail)
             ticket["status"] = (e_errors.KEYERROR, message)
             Trace.log(e_errors.ERROR, message)
             self.reply_to_caller(ticket)
@@ -1370,11 +1370,11 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    return
 
     def set_cache_status(self,ticket):
-	    bfid, record = self.extract_bfid_from_ticket(ticket.get('fc', {}))
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
-	    cache_status   = self.extract_value_from_ticket("cache_status", ticket.get('fc', {}))
-	    archive_status = self.extract_value_from_ticket("archive_status", ticket.get('fc', {}))
+	    cache_status   = self.extract_value_from_ticket("cache_status", ticket)
+	    archive_status = self.extract_value_from_ticket("archive_status", ticket)
 	    if not cache_status and not archive_status :
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
@@ -1385,6 +1385,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    record["archive_status"]=archive_status
 	    self.filedb_dict[bfid] = record
 	    ticket["status"] = (e_errors.OK, None)
+	    self.reply_to_caller(ticket)
 	    return
 
     #### DONE
