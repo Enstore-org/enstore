@@ -5081,7 +5081,16 @@ class Mover(dispatching_worker.DispatchingWorker,
             data_ip=self.config.get("data_ip",None)
             Trace.trace(10, "data ip %s"%(data_ip,))
             if (not self.method) or self.method and self.method != 'read_next':
-                host, port, self.listen_socket = callback.get_callback(ip=data_ip)
+                try:
+                    host, port, self.listen_socket = callback.get_callback(ip=data_ip)
+                except Exception, detail:
+                    exc, msg, tb = sys.exc_info()
+                    Trace.log(e_errors.ERROR, "connect_client: Connection to data ip failed:  %s %s %s"%
+                      (exc, msg, traceback.format_tb(tb)))
+                    Trace.alarm(e_errors.ERROR, "Connection to data ip failed: %s"%(detail,))
+                    self.dismount_volume(after_function=self.offline)
+                    return
+                    
                 self.host = host
             #self.listen_socket.listen(1)
             #if self.method and self.method == 'read_tape_start':
@@ -5533,6 +5542,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 0
     
     def dismount_volume(self, after_function=None):
+        if self.current_volume == None: # no volume - no need to dismount
+            if after_function:
+                after_function()
+            return
         Trace.trace(10, "state %s"%(state_name(self.state),))
         will_mount = self.will_mount
         self.will_mount = None
