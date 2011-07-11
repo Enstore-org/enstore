@@ -3652,13 +3652,23 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(22,"write_client: calculated CRC %s File DB CRC %s"%
                             (self.buffer.complete_crc, self.file_info['complete_crc']))
                 if self.buffer.complete_crc != self.file_info['complete_crc']:
-                    Trace.alarm(e_errors.ERROR, "CRC error in write client",
-                                {'outfile':self.current_work_ticket['outfile'],
-                                 'infile':self.current_work_ticket['infile'],
-                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                 'external_label':self.current_work_ticket['vc']['external_label']})
-                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
-                    return
+                    # try 1 based crc
+                    Trace.trace(22,"write_client: trying crc 1 seeded")
+                    crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.buffer.complete_crc,
+                                                                           self.file_info['size'])
+                    
+                    Trace.trace(22,"write_client: calculated CRC (1 seeded) %s File DB CRC %s"%
+                                (crc_1_seeded, self.file_info['complete_crc']))
+                    if crc_1_seeded == self.file_info['complete_crc']:
+                        self.buffer.complete_crc = crc_1_seeded
+                    else:
+                        Trace.alarm(e_errors.ERROR, "CRC error in write client",
+                                    {'outfile':self.current_work_ticket['outfile'],
+                                     'infile':self.current_work_ticket['infile'],
+                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                     'external_label':self.current_work_ticket['vc']['external_label']})
+                        self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+                        return
             self.bytes_written_last = self.bytes_written                
         if self.read_tape_running != 0:
             # this is for the cases when transfer has completed
