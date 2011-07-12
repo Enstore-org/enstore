@@ -1301,7 +1301,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         original = self._find_original(bfid)
         if original:
             self.made_copy(original)
-	    
+
 	# record our changes
 	self.filedb_dict[bfid] = record
 	ticket["status"] = (e_errors.OK, None)
@@ -1310,8 +1310,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 	#
 	event = pe_client.EvtCacheWritten( {
 		'vc' : { 'library' : record['library'],
-			 'storage_group' : record['storage_group'],	
-			 'file_family' : record['file_family'],	
+			 'storage_group' : record['storage_group'],
+			 'file_family' : record['file_family'],
 			 'wrapper' : record['wrapper'],
 			 'external_label' : record['external_label'],
 			 'volume_family' : "1",
@@ -1330,7 +1330,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
 	self.reply_to_caller(ticket)
 
-	
+
 	Trace.trace(12,'set_pnfsid %s'%(ticket,))
 	return
 
@@ -1338,7 +1338,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    bfid, record = self.extract_bfid_from_ticket(ticket)
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
-    
+
 	    if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
@@ -1347,8 +1347,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    self.filedb_dict[bfid] = record
 	    event = pe_client.EvtCacheMissed({
 		    'vc' : { 'library' : record['library'],
-			     'storage_group' : record['storage_group'],	
-			     'file_family' : record['file_family'],	
+			     'storage_group' : record['storage_group'],
+			     'file_family' : record['file_family'],
 			     'wrapper' : record['wrapper'],
 			     'external_label' : record['external_label'],
 			     'volume_family' : "1",
@@ -1379,10 +1379,11 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
 		    return
-	    elif cache_status :
-		    record["cache_status"]=cache_status
-	    elif archive_status:
-		    record["archive_status"]=archive_status
+	    else:
+		    if cache_status :
+			    record["cache_status"]=cache_status
+		    if archive_status:
+			    record["archive_status"]=archive_status
 	    self.filedb_dict[bfid] = record
 	    ticket["status"] = (e_errors.OK, None)
 	    self.reply_to_caller(ticket)
