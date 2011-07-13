@@ -104,9 +104,13 @@ class MigrationWorker():
         self.trace.debug("set_handler handlesrs after %s"%(self.handlers,))
         
     def _fetch_message(self):
+        self.trace.debug("fetch_message")
         try:
-            return self.qpid_client.rcv_default.fetch()
+            rc = self.qpid_client.rcv_default.fetch()
+            self.trace.debug("fetch_message: returning %s"%(rc,))
+            return rc
         except Queue.Empty:
+            self.trace.debug("fetch_message: queue empty")
             return None
         except qpid.messaging.MessagingError, e:
             self.log.error("fetch_message() exception %s", e)
@@ -196,6 +200,7 @@ class MigrationWorker():
     }
     
     def handle_message(self,m):
+        self.trace.debug("handle message called %s %s", m.correlation_id, m.redelivered)
         # @todo : check "type" present and is string or unicode
         cmd_type = m.properties["type"]
         
@@ -211,14 +216,21 @@ class MigrationWorker():
         
         # @todo check if message is on heap for processing
         if redelivered :
-            return None
+            if self.work_dict.has_key(correlation_id):
+                return False
         
         try:
             #ret = h(self,m)
+            self.trace.debug("handle message - calling%s", h)
             ret = h(m)
         except Exception,e:
             self.trace.exception("handle message - exception %s",e)
-            return None
+            # Message processing has failed.
+            # Allow to re-process it
+            del(self.work_dict[correlation_id])
+            ret = False
+        
+        self.trace.debug("handle message - returning %s",ret)
         return ret
         
     def serve_qpid(self):
@@ -244,7 +256,8 @@ class MigrationWorker():
 
                 do_ack = False
                 try:
-                    do_ack = self.handle_message(message) is None
+                    rc = self.handle_message(message)
+                    do_ack = rc
                     self.trace.debug("message processed correlation_id=%s, do_ack=%s", message.correlation_id, do_ack )   
                 except Exception,e:
                     # @todo - print exception type cleanly

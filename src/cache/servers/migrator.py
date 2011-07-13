@@ -27,8 +27,10 @@ import dispatching_worker
 import monitored_server
 import option
 import Trace
+import enstore_functions2
 import enstore_functions3
 import encp_wrapper
+import file_cache_status
 
 # enstore cache imports
 #import cache.stub.mw as mw
@@ -142,6 +144,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         #self.srv = mw.MigrationWorker(self.name, self.migration_worker_configuration)
         #self.srv.set_handler(mt.MWC_ARCHIVE, self.handle_write_to_tape)
         self.set_handler(mt.MWC_ARCHIVE, self.handle_write_to_tape)
+        self.set_handler(mt.MWC_PURGE, self.handle_purge)
+        self.set_handler(mt.MWC_STAGE, self.handle_stage_from_tape)
         Trace.log(e_errors.INFO, "Migrator %s instance created"%(self.name,))
 
         self.resubscribe_rate = 300
@@ -154,28 +158,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.erc.start_heartbeat(name, self.alive_interval)
 
         
-        # get amqp broker configuration - common for all servers
-    """
-    def start(self):
-        if not self.srv:
-            return
-        
-        try:
-            self.srv.start()
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            self.log.critical("%s %s IS QPID BROKER RUNNING?",str(exc_type),str(exc_value))
-            self.log.error("CAN NOT ESTABLISH CONNECTION TO QPID BROKER ... QUIT!")
-            sys.exit(1)
-        
-        #self.trace.debug("server started in start()")
-    
-    def stop(self):
-        self.srv.stop()
-        #self.trace.debug("server stopped in stop()")
-
-    """
-
     # pack files into a single aggregated file
     # if there are multiple files in request list
     # 
@@ -194,6 +176,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             ### This can be done by checking duplicate files map.
             ### Implementation must be HERE!!!!
             
+            if type(component['bfid']) == types.UnicodeType:
+                component['bfid'] = unicodedata.normalize("NFKD", component['bfid']).encode("ascii", "ignore")
             bfids.append(component['bfid'])
             # Check if such file exists in cache.
             # This should be already checked anyway.
@@ -249,7 +233,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # Append cached files to archive
             for f, junk in cache_file_list:
                 Trace.trace(10, "pack_files: add %s to %s"%(f, src_path))
-                rtn = os.system("tar --force-local -rPf %s.tar %s"%(src_path, f))
+                rtn = os.system("tar --force-local -rPf %s %s"%(src_path, f))
                 print "RTN", rtn
 
         # Qpid converts strings to unicode.
@@ -279,7 +263,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         #return
         print "DST", type(dst_file_path)
         encp = encp_wrapper.Encp()
-        args = ["encp", "--disable-redirection", src_file_path,dst_file_path]  
+        args = ["encp", "--disable-redirection", src_file_path, dst_file_path]  
         cmd = "encp %s %s"%(src_file_path, dst_file_path)
         rc = encp.encp(args)
         Trace.trace(10, "write_to_tape: encp returned %s"%(rc,))
@@ -294,29 +278,273 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         
         if e_errors.is_ok(res['status']):
             dst_bfid = res['bfid']
-            #res = self.fcc.register_copies(bfid_list, dst_bfid)
-        if not e_errors.is_ok(res['status']):
+            #res = self.fcc.register_copies(bfid_list, dst_bfid) 
+            # This is a temporary implementtaion of register_copies
+            #########
+            package_files_count = len(bfid_list)
+            rec = self.fcc.bfid_info(res['bfid'])
+            rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVED
+            rec['package_id'] = dst_bfid
+            rec['package_files_count'] = package_files_count
+            rec['archive_mod_time'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+            rec['active_package_files_count'] = package_files_count
+            Trace.trace(10, "write_to_tape: sending main file modify record %s"%(rec,))
+            rc = self.fcc.modify(rec)
+            
+            bfid_list.append(res['bfid'])
+            for bfid in bfid_list:
+                del(rec) # to avoid interference
+                # read record
+                rec = self.fcc.bfid_info(bfid)
+                rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVED
+                rec['package_id'] = dst_bfid
+                rec['package_files_count'] = package_files_count
+                rec['active_package_files_count'] = package_files_count
+                rec['archive_mod_time'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+                Trace.trace(10, "write_to_tape: sending modify record %s"%(rec,))
+                rc = self.fcc.modify(rec)
+            #########
+                                                 
+        else:
             raise e_errors.EnstoreError(None, "Write to tape failed: %s"%(res['status'][1],), res['status'][0])
 
         # The file from cache was successfully written to tape.
-        # Remove temporary archie directory
-        os.remove(os.path.dirname(src_file_path))
+        # Remove temporary file
+        Trace.trace(10, "write_to_tape: removing temporary file %s"%(src_file_path,))
         
-    def handle_write_to_tape(self, message):
-        Trace.trace(10, "handle_write_to_tape received: %s"%(message))
-        self.work_dict[message.correlation_id] = message
-        self.write_to_tape(message.content)
+        os.remove(src_file_path)
+        # Remove temporary archive directory
+        try:
+            os.removedirs(os.path.dirname(src_file_path))
+        except OSError, detail:
+            Trace.log(e_errors.ERROR, "write_to_tape: error removind directory: %s"%(detail,))
+            pass
         
+            
+        return True # completed successfully, the request will be acknowledged
+
+    # purge files from disk
+    def purge_files(self, request_list):
+        thread = threading.current_thread()
+        th_name = thread.getName()
+
+        print "purge_files called. Thread %s"%(th_name,)
+        
+        for component in request_list:
+            bfid = component['bfid']
+            # Convert unicode to ASCII strings.
+            if type(bfid) == types.UnicodeType:
+                bfid = unicodedata.normalize("NFKD", bfid).encode("ascii", "ignore")
+            rec = self.fcc.bfid_info(bfid)
+            Trace.trace(10, "purge_files: rec %s"%(rec,))
+            if (rec['status'][0] == e_errors.OK and
+                (rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
+                ((rec['cache_status'] != file_cache_status.CacheStatus.STAGING) and   # why would we purge the file which is being staged?
+                 (rec['cache_status'] != file_cache_status.CacheStatus.PURGING) and   # file is being pugred
+                 (rec['cache_status'] != file_cache_status.CacheStatus.PURGED))):    # file is pugred
+                rec['cache_status'] = file_cache_status.CacheStatus.PURGING
+                Trace.trace(10, "purge_files: purging %s"%(rec,))
+                
+                rc = self.fcc.set_cache_status(rec)
+                Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
+                try:
+                    Trace.trace(10, "purge_files: removing %s"%(rec['location_cookie'],))
+                    os.remove(rec['location_cookie'])
+                    try:
+                        os.removedirs(os.path.dirname(rec['location_cookie']))
+                    except OsError, detail:
+                        Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
+                        Trace.trace(10, "purge_files: error removind directory: %s"%(detail,))
+                        pass
+                    except Exception, detail:
+                        Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
+                        pass
+                    rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                    rc = self.fcc.set_cache_status(rec)
+                    Trace.trace(10, "purge_files: set_cache_status 2 returned %s"%(rc,))
+                
+                    Trace.log(e_errors.INFO, "purge_files: purged %s"%(rec['location_cookie'],))
+                except Exception, detail:
+                    Trace.trace(10, "purge_files: can not remove %s: %s"%(rec['location_cookie'], detail))
+                    Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(rec['location_cookie'], detail))
+        return True # completed successfully, the request will be acknowledged
 
     # read aggregated file from tape
-    def read_from_tape(self):
-        encp = encp_wrapper.Encp()
-        pass
+    def read_from_tape(self, request_list):
+        # the request list must:
+        # 1. Have a single component OR if NOT
+        # 2. Have the same package bfid
+        
+        thread = threading.current_thread()
+        th_name = thread.getName()
+
+        print "stage_files called. Thread %s"%(th_name,)
+         
+        files_to_stage = []
+        package_bfid = None
+        for component in request_list:
+            bfid = component['bfid']
+            # Convert unicode to ASCII strings.
+            if type(bfid) == types.UnicodeType:
+                bfid = unicodedata.normalize("NFKD", bfid).encode("ascii", "ignore")
+            rec = self.fcc.bfid_info(bfid)
+            Trace.trace(10, "read_from_tape: rec %s"%(rec,))
+            if (rec['status'][0] == e_errors.OK and
+                (rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED)): # file is on tape and it can be staged
+                # check the state of each file
+                if rec['cache_status'] == file_cache_status.CacheStatus.CACHED:
+                    # File is in cache and available immediately.
+                    # How could it get into a stage list anyway?
+                    continue
+                if rec['cache_status'] == file_cache_status.CacheStatus.STAGING:
+                    # File is being staged
+                    # Log this for the further investigation in
+                    # case the file was not staged.
+                    Trace.log(e_errors.INFO, "File is being staged %s %s"%(rec['bfid'], rec['pnfs_name0']))
+                    continue
+                else:
+                    if package_bfid == None:
+                       package_bfid = rec['package_id']
+                    if package_bfid != rec['package_id']:
+                        Trace.log(e_errors.ERROR,
+                                  "File does not belong to the same package and will not be staged %s %s"%
+                                  (rec['bfid'], rec['pnfs_name0']))
+                    else:
+                        files_to_stage.append(rec)
+        Trace.trace(10, "read_from_tape:  files to stage %s %s"%(len(files_to_stage), files_to_stage))
+        if len(files_to_stage) != 0:
+            for rec in files_to_stage:
+                # This is a temporary implementtaion of register_copies
+                #########
+                rec['cache_status'] = file_cache_status.CacheStatus.STAGING
+                rc = self.fcc.set_cache_status(rec)
+                Trace.trace(10, "read_from_tape: set_cache_status 1 returned %s"%(rc,))
+                
+                if not e_errors.is_ok(rc['status']):
+                    raise e_errors.EnstoreError(None, "encp read from tape failed", rc)
+                    
+                ## actually all files belonging to the same package should change their state to caching
+                ## Dmitry said that he would implement this in the DB
+                ############################
+
+            # create a temporary directory for staging a package
+            # use package name for this
+            
+            rec = self.fcc.bfid_info(package_bfid)
+            stage_fname = os.path.basename(rec['pnfs_name0'])
+            # file name looks like:
+            # /pnfs/fs/usr/data/moibenko/d2/LTO3/.package-2011-07-01T09:41:46.0Z.tar
+            stage_dirname = "".join((".",stage_fname.split(".")[1]))
+            stage_dir_path = os.path.join(self.stage_area, stage_dirname)
+            try:
+                os.makedirs(stage_dir_path)
+            except:
+                pass
+            stage_file_path = os.path.join(stage_dir_path, stage_fname)
+            
+            # now stage the package file
+            encp = encp_wrapper.Encp()
+            args = ["encp", "--disable-redirection", "--get-bfid", package_bfid, stage_file_path]  
+            Trace.trace(10, "read_from_tape: sending %s"%(args,))
+            encp = encp_wrapper.Encp()
+
+            rc = encp.encp(args)
+            Trace.trace(10, "read_from_tape: encp returned %s"%(rc,))
+            if rc != 0:
+                # cleanup dirctories
+                try:
+                    os.removeedirs(stage_dir_path)
+                except:
+                    pass
+
+                # change cache_status back
+                for rec in files_to_stage:
+                   rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                   rc = self.fcc.set_cache_status(rec)
+                return False
+
+            # unpack files
+            os.chdir(stage_dir_path)
+            os.system("tar --force-local -xf %s"%(stage_fname,))
+
+            # move files to their original location
+            for rec in files_to_stage:
+                dst = rec['location_cookie']
+                src = dst.lstrip("/")
+                Trace.trace(10, "read_from_tape: renaming %s to %s"%(src, dst))
+                # create a destination directory
+                try:
+                    os.makedirs(os.path.dirname(dst))
+                except Exception, detail:
+                    Trace.trace(10, "read_from_tape: exception %s creating destination directory %s"%(os.path.dirname(detail, dst)))
+                
+                os.rename(src, dst)
+                rec['cache_status'] = file_cache_status.CacheStatus.CACHED
+                rc = self.fcc.set_cache_status(rec)
+                Trace.trace(10, "read_from_tape: set_cache_status 2 returned %s"%(rc,))
+                if not e_errors.is_ok(rc['status']):
+                    raise e_errors.EnstoreError(None, "encp read from tape failed", rc)
+
+            # remove the rest (README.1st)
+            Trace.trace(10, "read_from_tape: current dir %s"%(os.getcwd(),))
+            rc = enstore_functions2.shell_command("rm -rf *")
+            rc = enstore_functions2.shell_command("rm -rf .*")
+            # the following files are created
+            # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(1)(.package-2011-07-12T11:03:51.0Z.tar)
+            # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(2)(.package-2011-07-12T11:03:51.0Z.tar)
+            # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(3)(.package-2011-07-12T11:03:51.0Z.tar)
+            # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(4)(.package-2011-07-12T11:03:51.0Z.tar)
+            
+
+            #remove the temporary directory
+            os.removedirs(stage_dir_path)
+
+        return True
 
     # unpack aggregated file
     def unpack_files(self):
         pass
+
+    def handle_write_to_tape(self, message):
+        Trace.trace(10, "handle_write_to_tape received: %s"%(message))
+        if self.work_dict.has_key(message.correlation_id):
+            # the work on this request is in progress
+            return False
+        self.work_dict[message.correlation_id] = message
+        if self.write_to_tape(message.content):
+            # work has completed successfully
+            del(self.work_dict[message.correlation_id])
+            return True
+        else:
+            return False
+
+    def handle_purge(self, message):
+        Trace.trace(10, "handle_purge received: %s"%(message))
+        if self.work_dict.has_key(message.correlation_id):
+            # the work on this request is in progress
+            return False
+        self.work_dict[message.correlation_id] = message
+        if self.purge_files(message.content):
+            # work has completed successfully
+            del(self.work_dict[message.correlation_id])
+            return True
+        else:
+            return False
+            
         
+    def handle_stage_from_tape(self, message):
+        Trace.trace(10, "handle_stage_from_tape received: %s"%(message))
+        if self.work_dict.has_key(message.correlation_id):
+            # the work on this request is in progress
+            return False
+        self.work_dict[message.correlation_id] = message
+        if self.read_from_tape(message.content):
+            # work has completed successfully
+            del(self.work_dict[message.correlation_id])
+            return True
+        else:
+            return False
+            
 class MigratorInterface(generic_server.GenericServerInterface):
     def __init__(self):
         # fill in the defaults for possible options
