@@ -148,12 +148,13 @@ URL: https://plone4.fnal.gov/P0/Enstore_and_Dcache/developers/enstore-developers
 Bugzilla ticket: http://www-enstore.fnal.gov/Bugzilla/show_bug.cgi?id=981 
 Reveiw board: http://uqbar.fnal.gov/reviews/r/324/diff/#index_header 
 
-./xml2ddl
-./xml2ddl/www
-./xml2ddl/xml2ddl
-./xml2ddl/doc
-./xml2ddl/scripts
-./xml2ddl/xml2ddl.egg-info
+==========  pnfs_db_restore.py ====================================================================================
+
+http://uqbar/reviews/r/345
+http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=1037
+
+get rid of ups/upd dependency and improve program flow abit.
+
 ./tools
 ========== encp_create_tests ====================================================================================
 
