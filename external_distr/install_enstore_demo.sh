@@ -121,7 +121,9 @@ fi
 #    exit 1
 #fi
 
-
+# make directories for disk movers
+mkdir -p /srv2/data/d1
+mkdir -p /srv2/data/d2
 
 #start enstore
 echo "Starting enstore"
@@ -160,7 +162,7 @@ Reads:
 encp --verbose 4 /pnfs/fs/usr/data1/disk/some_file .
 encp --verbose 4 /pnfs/fs/usr/data1/NULL/some_file /dev/null
 "
-"Now I will try to start entv and make enstore transfers"
+echo "Now I will try to start entv and make enstore transfers"
 cd 
 if [ ! -f ".entvrc" ];then
     echo "$ENSTORE_CONFIG_HOST 471x549+0+0          #ffcc66    animate" > .entvrc
