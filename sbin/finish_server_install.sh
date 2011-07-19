@@ -82,7 +82,7 @@ then
 	if [ -x /etc/rc.d/init.d/postgresql ]; then /etc/rc.d/init.d/postgresql stop; fi
 	#/etc/rc.d/init.d/postgresql stop
     fi
-    rpm -U ${lforce} ${place}/${processor}/pnfs-postgresql-3.1.18-1.x86_64.rpm
+    rpm -U ${lforce} ${place}/${processor}/pnfs-postgresql-*
     # complete after install pnfs configuration
     # copy setup
 
