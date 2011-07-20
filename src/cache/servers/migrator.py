@@ -256,6 +256,20 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "write_to_tape: request %s"%(request_list,))
         #sys.exit(0)
         if request_list:
+            # check if files can be written to tape
+            write_enabled_counter = 0
+            for component in request_list:
+                bfid = component['bfid']
+                # Convert unicode to ASCII strings.
+                if type(bfid) == types.UnicodeType:
+                    bfid = unicodedata.normalize("NFKD", bfid).encode("ascii", "ignore")
+                rec = self.fcc.bfid_info(bfid)
+                if (rec['status'][0] == e_errors.OK and
+                    (rec['archive_status'] not in (file_cache_status.ArchiveStatus.ARCHIVED, file_cache_status.ArchiveStatus.ARCHIVED, None))):
+                    write_enabled_counter = write_enabled_counter + 1
+            if write_enabled_counter != len(request_list):
+                Trace.log(e_errors.ERROR, "No files will be archived, because some of them or all are already archived or being archived")
+                return True   
             src_file_path, dst_file_path, bfid_list = self.pack_files(request_list)
             if not (src_file_path and dst_file_path):
                 # aggregation failed
@@ -263,6 +277,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         else:
             raise e_errors.EnstoreError(None, "Write to tape failed: no files to write", e_errors.NO_FILES)
 
+        # Change archive_status
+        for bfid in bfid_list:
+            rec = self.fcc.bfid_info(bfid)
+            Trace.trace(10, "purge_files: rec %s"%(rec,))
+            if rec['status'][0] == e_errors.OK:
+                rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVING
+                rc = self.fcc.set_cache_status(rec)                
         Trace.trace(10, "write_to_tape: will write %s into %s"%(src_file_path, dst_file_path,))
         #return
         print "DST", type(dst_file_path)
@@ -273,6 +294,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "write_to_tape: encp returned %s"%(rc,))
 
         if rc != 0:
+            # Change archive_status
+            for bfid in bfid_list:
+                rec = self.fcc.bfid_info(bfid)
+                Trace.trace(10, "purge_files: rec %s"%(rec,))
+                if rec['status'][0] == e_errors.OK:
+                    rec['archive_status'] = None
+                    rc = self.fcc.set_cache_status(rec)            
             raise e_errors.EnstoreError(None, "encp write to tape failed", rc)
 
         # register file in file db
@@ -286,7 +314,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # This is a temporary implementtaion of register_copies
             #########
             package_files_count = len(bfid_list)
-            rec = self.fcc.bfid_info(res['bfid'])
+            rec = self.fcc.bfid_info(dst_bfid)
             rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVED
             rec['package_id'] = dst_bfid
             rec['package_files_count'] = package_files_count
@@ -579,7 +607,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     def handle_status(self, message):
         Trace.trace(10, "handle_status received: %s"%(message))
         self.work_dict[message.correlation_id] = message
-        status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message, content={"mirator_status": self.status, "name": self.name})
+        status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message, content={"migrator_status": self.status, "name": self.name})
         self.trace.debug("WORKER status reply=%s", status_message)
         try:
             self._send_reply(status_message)
