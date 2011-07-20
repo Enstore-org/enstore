@@ -63,6 +63,7 @@ class MigrationWorker():
         self.shutdown = False
         self.finished = False
         self.auto_ack = True  # auto ack incoming messages
+        self.command_receiver_started = False # start flag for qpid_command receiver
         
         self.work_dict = {}
         self.log = logging.getLogger('log.encache.%s' % name)
@@ -77,7 +78,7 @@ class MigrationWorker():
             cfb = conf['amqp']['broker']
             cfs = conf['server']
             amq_broker = (cfb['host'],cfb['port'])
-            queue_in   = cfs['queue_in']
+            self.queue_in   = cfs['queue_in']
             queue_work = cfs['queue_work']
             queue_reply  = cfs['queue_reply']
         except:
@@ -103,10 +104,11 @@ class MigrationWorker():
             raise e_errors.EnstoreError(None, "Worker is not defined", e_errors.WRONGPARAMETER)
         self.trace.debug("set_handler handlesrs after %s"%(self.handlers,))
         
-    def _fetch_message(self):
+    def _fetch_message(self, receiver):
         self.trace.debug("fetch_message")
         try:
-            rc = self.qpid_client.rcv_default.fetch()
+            #rc = self.qpid_client.rcv_default.fetch()
+            rc = receiver.fetch()
             self.trace.debug("fetch_message: returning %s"%(rc,))
             return rc
         except Queue.Empty:
@@ -197,13 +199,17 @@ class MigrationWorker():
     handlers = {mt.MWC_PURGE : handler_purge,
                 mt.MWC_ARCHIVE : handler_archive,
                 mt.MWC_STAGE : handler_stage,
+                mt.MWC_STATUS : handler_status,
     }
     
     def handle_message(self,m):
         self.trace.debug("handle message called %s %s", m.correlation_id, m.redelivered)
+        # ack message here
+        # retries are hadled at the higher level
+        # of piers transaction
+        self._ack_message(m)        
         # @todo : check "type" present and is string or unicode
         cmd_type = m.properties["type"]
-        
         try:
             h = self.handlers[cmd_type]
         except KeyError:
@@ -233,15 +239,14 @@ class MigrationWorker():
         self.trace.debug("handle message - returning %s",ret)
         return ret
         
-    def serve_qpid(self):
+    def serve_qpid(self, receiver):
         """
         read qpid messages from queue
         """
-        self.qpid_client.start() 
         try:
             while not self.shutdown:
                 # Fetch message from qpid queue
-                message =  self._fetch_message()
+                message =  self._fetch_message(receiver)
                 if not message:
                     continue
                 self.trace.debug("got qpid message=%s", message)
@@ -257,7 +262,10 @@ class MigrationWorker():
                 do_ack = False
                 try:
                     rc = self.handle_message(message)
-                    do_ack = rc
+                    # do_ack = rc # according to suggested protocol
+                    # message gets acked before starting handler
+                    # to avoid unnecessary repeats
+                    # due to timeout expiration
                     self.trace.debug("message processed correlation_id=%s, do_ack=%s", message.correlation_id, do_ack )   
                 except Exception,e:
                     # @todo - print exception type cleanly
@@ -272,18 +280,26 @@ class MigrationWorker():
             self.qpid_client.stop()
 
     def start(self):
-        # start server in separate thread
-        self.trace.debug("STARTED")
-        self.srv_thread = threading.Thread(target=self.serve_qpid) 
-        self.srv_thread.start()                
+        self.qpid_client.start()
+        # add receiver for Migration Dispatcher commands
+        self.qpid_command_receiver = self.qpid_client.add_receiver("mw_qpid_interface", self.queue_in)
+        
+        # start servers in separate threads
+        self.srv_thread = threading.Thread(target=self.serve_qpid,  name="Request Server", args=[self.qpid_client.rcv_default]) 
+        self.srv_thread.start()
 
+        self.cmd_srv_thread = threading.Thread(target=self.serve_qpid,  name="MD Commmand Server", args=[self.qpid_command_receiver]) 
+        self.cmd_srv_thread.start()
+
+        
     def stop(self):
         # tell serving thread to stop and wait until it finish    
         self.shutdown = True
         
         self.qpid_client.stop()
         self.srv_thread.join()
-        
+        self.cmd_srv_thread.join()
+       
 if __name__ == "__main__":    
 
     # Test Unit
