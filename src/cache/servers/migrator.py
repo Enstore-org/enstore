@@ -144,12 +144,24 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                    self.migration_worker_configuration['amqp']))
 
         mw.MigrationWorker.__init__(self, name, self.migration_worker_configuration)
-        #self.srv = mw.MigrationWorker(self.name, self.migration_worker_configuration)
-        #self.srv.set_handler(mt.MWC_ARCHIVE, self.handle_write_to_tape)
+
+        """
+        Leave these here so far, as there may be an argument for have a separate handler for eact type of the message
+
         self.set_handler(mt.MWC_ARCHIVE, self.handle_write_to_tape)
         self.set_handler(mt.MWC_PURGE, self.handle_purge)
         self.set_handler(mt.MWC_STAGE, self.handle_stage_from_tape)
         self.set_handler(mt.MWC_STATUS, self.handle_status)
+        """
+        
+        # we want all message types processed by one handler
+        self.handlers = {}
+        for request_type in (mt.MWC_PURGE,
+                             mt.MWC_ARCHIVE,
+                             mt.MWC_STAGE,
+                             mt.MWC_STATUS):
+            self.handlers[request_type] = self.handle_request
+        
         Trace.log(e_errors.INFO, "Migrator %s instance created"%(self.name,))
 
         self.resubscribe_rate = 300
@@ -531,8 +543,70 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     def migrator_status(self):
         return self.status
     
-        
-    def handle_write_to_tape(self, message):
+
+
+    workers = {mt.MWC_ARCHIVE: write_to_tape,
+               mt.MWC_PURGE:   purge_files,
+               mt.MWC_STAGE:   read_from_tape,
+               }
+
+    # handle all types of requests
+    def handle_request(self, message):
+        Trace.trace(10, "handle_request received: %s"%(message))
+        if self.work_dict.has_key(message.correlation_id):
+            # the work on this request is in progress
+            return False
+        self.work_dict[message.correlation_id] = message
+        # prepare work:
+        request_type = message.properties["type"]
+        if request_type in (mt.MWC_ARCHIVE, mt.MWC_PURGE, mt.MWC_STAGE):
+            if request_type == mt.MWC_ARCHIVE:
+                self.status = file_cache_status.ArchiveStatus.ARCHIVING
+            elif request_type == mt.MWC_PURGE:
+                self.status = file_cache_status.CacheStatus.PURGING
+            elif request_type ==mt.MWC_STAGE:
+                self.status = file_cache_status.CacheStatus.STAGING
+            confirmation_message = cache.messaging.mw_client.MWRConfirmation(orig_msg=message,
+                                                                             content=message.content,
+                                                                             reply_to=self.queue_in_name)
+            # reply now to report name of the queue for inquiry commands
+            # such as MWC_STATUS
+            try:
+                self._send_reply(confirmation_message)
+            except Exception, e:
+                self.trace.exception("sending reply, exception %s", e)
+                return False
+            # run worker
+            if self.workers[request_type](self, message.content):
+                # work has completed successfully
+                del(self.work_dict[message.correlation_id])
+                if request_type == mt.MWC_ARCHIVE:
+                    self.status = file_cache_status.ArchiveStatus.ARCHIVED
+                elif request_type == mt.MWC_PURGE:
+                    self.status = file_cache_status.CacheStatus.PURGED
+                elif request_type ==mt.MWC_STAGE:
+                    self.status = file_cache_status.CacheStatus.CACHED
+                return True
+            else:
+                return False
+            
+        elif request_type in (mt.MWC_STATUS): # there could more reuquest of such nature in the future
+            content = {"migrator_status": self.status, "name": self.name} # this may need more details
+            status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
+                                                                 content= content)
+            try:
+                self._send_reply(status_message)
+            except Exception, e:
+                self.trace.exception("sending reply, exception %s", e)
+                return False
+            # work has completed successfully
+            del(self.work_dict[message.correlation_id])
+            return True
+        return True
+
+    """
+    Leave these here so far, as there may be an argument for have a separate handler for eact type of the message
+     def handle_write_to_tape(self, message):
         Trace.trace(10, "handle_write_to_tape received: %s"%(message))
         if self.work_dict.has_key(message.correlation_id):
             # the work on this request is in progress
@@ -621,6 +695,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             return True
         else:
             return False
+    """
         
 class MigratorInterface(generic_server.GenericServerInterface):
     def __init__(self):
