@@ -5424,8 +5424,7 @@ def submit_one_request_send(ticket, encp_intf):
     orig_library = ticket['vc']['library'] + ".library_manager"
     csc = get_csc()
     lm_config = csc.get(orig_library, 3, 3)
-    pprint.pprint(lm_config)
-    if e_errors.is_ok(lm_config) and encp_intf.disable_redirection == 0:
+    if e_errors.is_ok(lm_config) and encp_intf.disable_redirection == 0 and ticket['work'] == "write_to_hsm":
        lmd_name = lm_config.get('use_LMD', None)
        if lmd_name: 
            lmd = library_manager_director_client.LibraryManagerDirectorClient(
