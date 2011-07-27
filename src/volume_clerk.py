@@ -1704,6 +1704,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             record['sum_wr_err'] = 0
             record['sum_rd_err'] = 0
             record['non_del_files'] = 0
+            record['comment']=""
             # reseting volume family
             sg = string.split(record['volume_family'], '.')[0]
             if clear_sg:
