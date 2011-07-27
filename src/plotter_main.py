@@ -29,6 +29,7 @@ import migration_summary_plotter_module
 import bytes_per_day_plotter_module
 import mover_summary_plotter_module
 import mount_latency_plotter_module
+import mounts_per_robot_plotter_module
 
 def usage(cmd):
     print "Usage: %s [options] "%(cmd,)
@@ -45,16 +46,17 @@ def usage(cmd):
     print "\t -i [--migration-summary] : plot migration progress"
     print "\t -b [--bytes-per-day]   : plot bytes transfered per day"
     print "\t -M [--mover-summary]   : plot mover summary"
+    print "\t -L [--library-mounts]   : plot tape library mounts"
     print "\t -l [--latencies]       : plot latencies plot"
     print "\t -h [--help]        : show this message"
 
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfeqtibMl"
+        short_args = "hmrudspfeqtibMlL"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
                      "slots", "pnfs-bakup", "file-family-analysis",
                      "quotas", "tapes-burn-rate", "migration-summary",
-                     "bytes-per-day", "mover-summary","latencies"]
+                     "bytes-per-day", "mover-summary","latencies","library-mounts"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError, msg:
         print msg
@@ -126,6 +128,10 @@ if __name__ == "__main__":
         # latencies
         if o in ("-l","--latencies"):
             aModule = mount_latency_plotter_module.MountLatencyPlotterModule("latencies")
+            f.add(aModule)
+        # library mounts
+        if o in ("-L","--library-mounts"):
+            aModule = mounts_per_robot_plotter_module.MountsPerRobotPlotterModule("library-mounts")
             f.add(aModule)
 
     f.do_work()
