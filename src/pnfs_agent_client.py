@@ -16,6 +16,7 @@ import pprint
 import stat
 import os
 import socket
+import string
 
 # enstore imports
 import option
@@ -28,8 +29,8 @@ import e_errors
 import enstore_constants
 import errno
 
-# For layer_file()
-from pnfs import is_access_name
+# For layer_file() and is_pnfs_path
+from pnfs import is_access_name, get_dirname_filename
 
 MY_NAME = enstore_constants.PNFS_AGENT_CLIENT  #"PNFS_A_CLIENT"
 MY_SERVER = enstore_constants.PNFS_AGENT     #"pnfs_agent"
@@ -129,10 +130,26 @@ class PnfsAgentClient(generic_client.GenericClient,
 
 ###############################################################################
 
-    def is_pnfs_path(self, filename, check_name_only = None,
+    def is_pnfs_path(self, pathname, check_name_only = None,
                      rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        ####################
+        # Do the first part of check locally as done in
+        # pnfs.py
+        # This allows to send requests to pnfs agent only when needed,
+        # thus reducing the traffic between pnfs agent client and pnfs agent
+        
+        if not pathname:  #Handle None and empty string.
+            return False
+
+        dirname, filename = get_dirname_filename(pathname)
+
+        #Determine if the target file or directory is in the pnfs namespace.
+        if string.find(dirname,"/pnfs/") < 0:
+            return False #If we get here it is not a pnfs directory.
+        ####################
+        
         ticket = { 'work' : 'is_pnfs_path',
-                   'fname' : filename,
+                   'fname' : pathname,
                    'check_name_only' : check_name_only
                    }
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
