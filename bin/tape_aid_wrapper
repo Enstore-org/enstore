@@ -127,15 +127,15 @@ case ${gang}@${location} in
      case ${gang} in
        cdfen)
 	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
-	  ocap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
+	  ocap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
 	  ;;
        d0en)
-	  icap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
-	  ocap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
+	  icap="1,9,0"       # acs 1, lsm 5, (rail 2), cap A
+	  ocap="1,9,0"       # acs 1, lsm 9, (rail 2), cap A
 	  ;;
        stken)
 	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
-	  ocap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
+	  ocap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
 	  ;;
        *) exit 1
 	  ;;
