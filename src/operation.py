@@ -1133,7 +1133,7 @@ def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' and \
 			not label in (%s) \
-			order by label "%(lbs, exclusion)
+			order by si_time_1 asc"%(lbs, exclusion)
 	else:
 		q = "select label from volume where \
 			%s and \
@@ -1145,7 +1145,7 @@ def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' \
-			order by label "%(lbs)
+			order by si_time_1 asc "%(lbs)
 	if limit:
 		q = q + ' limit %d;'%(limit)
 	else:
@@ -1229,7 +1229,7 @@ def recommend_write_permit_job(library=DEFAULT_LIBRARIES, limit=None):
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not label in (%s) \
-			order by label "%(lbs, exclusion)
+			order by label"%(lbs, exclusion)
 	else:
 		q = "select label from volume where \
 			%s and \
