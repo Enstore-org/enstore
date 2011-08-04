@@ -48,7 +48,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
         # pts files written out in the fill() function.
         self.PLOT_dict = {}
         #
-        # This dictionay stores slopes in MB/s 
+        # This dictionay stores slopes in MB/s
         #
         self.slopes    = {}
 
@@ -205,7 +205,7 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             plot_fp.write('set label "slope %5.1f MB/s " at graph .05,.55\n' % (self.slopes[key],))
         except KeyError, msg:
             pass
-        
+
 
         ## The first plot is the summation of bytes written over the last 4
         ## months.  The second plot is the daily bytes written.  The third
@@ -430,9 +430,13 @@ class TapesBurnRatePlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 sql_cmd = "select first_access,system_inhibit_1 from volume where label = '%s'"\
                           % (volume,)
             except KeyError:
-                lm, sg = tapes[volume + ".deleted"]
-                sql_cmd = "select first_access,system_inhibit_1 from volume where label = '%s'"\
-                          % (volume + ".deleted",)
+                try:
+                    lm, sg = tapes[volume + ".deleted"]
+                    sql_cmd = "select first_access,system_inhibit_1 from volume where label = '%s'"\
+                              % (volume + ".deleted",)
+                except KeyError:
+                    sys.stderr.write("No such volume in enstoredb %s(.deleted) \n" % (volume,))
+                    continue
             #Get the date.
             date = timestamp.split(" ")[0]
 
