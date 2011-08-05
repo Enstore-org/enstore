@@ -56,19 +56,19 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
         media_capacity = getattr(enstore_constants,
                                  "CAP_%s" % (media_type,),
                                  None)
-        
+
         if media_capacity:
             #Cache this value for next time, but only for libraries we
             # care about.
             self.library_capacity[media_type] = (media_capacity, media_type)
 
         return media_capacity, media_type
-        
+
 
     #######################################################################
     # The following functions must be defined by all plotting modules.
     #######################################################################
-    
+
     def book(self, frame):
 
         #Get cron directory information.
@@ -91,7 +91,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             os.makedirs(self.web_dir)
 
     def fill(self, frame):
-        
+
         #  here we create data points
 
         #Get cron directory information.
@@ -126,7 +126,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
         # from all of them.
         for name, values in config_servers_dict.items():
             csc = configuration_client.ConfigurationClient(values)
-            
+
             ###
             ### Get information from the Enstore Database.
             ###
@@ -156,7 +156,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             for row in edb_res:
                 #row[0] is a distinct media_type
                 fname = os.path.join(self.temp_dir, "ALL_%s.pts" % (row[0],))
-                self.MT_dict[row[0]] = open(fname, "w")            
+                self.MT_dict[row[0]] = open(fname, "w")
 
             #Get the library and storage group for each volume.
             sql_cmd = "select label,media_type from volume; "
@@ -170,7 +170,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             ###
             ### Get current tape information for all tapes currently in use.
             ###
-            
+
             #Get them for each media type.
             sql_cmd = "select v1.media_type, " \
                       "count(v2.media_type) as blank," \
@@ -221,7 +221,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                       " date(CURRENT_TIMESTAMP - interval '4 months')" \
                       " and date(CURRENT_TIMESTAMP + interval '34 days') " \
                       "and mb_user_write != 0;"
-            
+
             try:
                 #Get the values from the DB.
                 drs_res = db.query(sql_cmd).getresult()
@@ -233,7 +233,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                 sys.stderr.write(message)
                 continue
 
-                
+
             ##Since the two tables are in seperate databases, we need to join
             ## them here.  This is done while summing the bytes written into
             ## day increments.
@@ -253,9 +253,13 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                     sql_cmd = "select first_access,system_inhibit_1 from volume where label = '%s'"\
                           % (volume,)
                 except KeyError:
-                    media_type = tapes[volume + ".deleted"]
-                    sql_cmd = "select first_access,system_inhibit_1 from volume where label = '%s'"\
-                          % (volume + ".deleted",)
+                    try:
+                        media_type = tapes[volume + ".deleted"]
+                        sql_cmd = "select first_access,system_inhibit_1 from volume where label = '%s'"\
+                                  % (volume + ".deleted",)
+                    except KeyError:
+                        sys.stderr.write("No such volume in enstoredb %s(.deleted) \n" % (volume,))
+                        continue
                 #Get the date.
                 date = timestamp.split(" ")[0]
 
@@ -360,7 +364,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             #key should just be the media type here.
 
             pts_file = self.MT_dict[key]
-            
+
 
             try:
                 use_bytes_summary = bytes_summary[key]
@@ -399,7 +403,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                 sum_write = sum_write + stats['mb_write']
 
                 date_timestamp = time.mktime(time.strptime(date, "%Y-%m-%d"))
-            
+
                 #Convert from MB to GB.
                 current_gb = stats['mb_write'] / 1024.0
                 total_gb = sum_write / 1024.0
@@ -427,7 +431,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
                     #Write out the information to the correct data file.
                     line2 = "%s %s %s %s\n" % (
                         date, "skip", "skip", total_gb)
-                    pts_file.write(line2)##    
+                    pts_file.write(line2)##
 
                 pts_file.write(line)
 
@@ -436,7 +440,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             if not is_month_ago_plotted:
                 is_month_ago_plotted = True
                 month_ago_total_gb = total_gb
-                    
+
                 #Write out the information to the correct data file.
                 line2 = "%s %s %s %s\n" % (
                     month_ago_date, "skip", "skip", total_gb)
