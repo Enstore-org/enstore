@@ -65,7 +65,7 @@ class MWReply(EnqMessage):
                                         e_errors.WRONGPARAMETER)
 
         # excuse message types where content is not required
-        if type is not mt.MWR_CONFIRM and content is None:
+        if type is not mt.MWR_CONFIRMATION and content is None:
             raise e_errors.EnstoreError(None, "missing 'content' argument to MWReply() constructor", 
                                         e_errors.WRONGPARAMETER)
 
@@ -107,11 +107,11 @@ class MWRStatus(MWReply):
     def __init__(self, orig_msg = None, content = None ):
         MWReply.__init__(self, type=mt.MWR_STATUS, orig_msg = orig_msg, content=content)
 
-class MWRConfirm(MWReply):
+class MWRConfirmation(MWReply):
     """ Message: Reply to Migration Worker Status Command
     """
     def __init__(self, orig_msg = None):
-        MWReply.__init__(self, type=mt.MWR_CONFIRM, orig_msg = orig_msg, content=None)
+        MWReply.__init__(self, type=mt.MWR_CONFIRMATION, orig_msg = orig_msg, content=None)
 
 if __name__ == "__main__":
     l = ["a","b","c","d"]
@@ -145,8 +145,8 @@ if __name__ == "__main__":
     rs = MWRStaged(orig_msg=ms, content=l2)
     print "MWRStaged: %s" % (rs,)
     
-    rc = MWRConfirm(orig_msg=ms)
-    print "MWRConfirm: %s" % (rc,)
+    rc = MWRConfirmation(orig_msg=ms)
+    print "MWRConfirmation: %s" % (rc,)
     
     rstat = MWRStatus(orig_msg=mstat, content={"status":(e_errors.OK,None)})
     print "MWRStatus: %s" % (rstat,)
