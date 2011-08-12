@@ -41,6 +41,7 @@ class MSG_TYPES():
     CREATED = "CREATED"  # [file replica] created [in cache, creat().] Follows file creation in NS, followed by replica is 'written'
     UNPACKED = "UNPACKED"
     
+    CONFIRM = "CONFIRM"
     
     # Operation and reply
     STATUS = "STATUS"
@@ -65,6 +66,7 @@ class MSG_TYPES():
     MDR_PURGED     =  MD_REPLY + PURGED
     MDR_ARCHIVED   =  MD_REPLY + ARCHIVED
     MDR_STAGED     =  MD_REPLY + STAGED
+    MWD_CONFIRM    =  MD_REPLY + CONFIRM
     
     # Commands processed by Migrator (Worker)
     MWC_PURGE      =  MW_COMMAND + PURGE    # Purge cache entry
@@ -76,3 +78,4 @@ class MSG_TYPES():
     MWR_ARCHIVED   =  MW_REPLY + ARCHIVED
     MWR_STAGED     =  MW_REPLY + STAGED
     MWR_STATUS     =  MW_REPLY + STATUS # Message reporting progress of work in reply to command MWC_STATUS
+    MWR_CONFIRM    =  MW_REPLY + CONFIRM

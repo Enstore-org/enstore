@@ -46,7 +46,7 @@ class MWCStatus(MWCommand):
     # Hmm, request_id supposed to be correlation_id of message we are trying to track ...
     def __init__(self, request_id = None ):
         if request_id is None :
-            raise e_errors.EnstoreError(None, "request_id undefined", e_errors.WRONGPARAMETER)
+            raise e_errors.EnstoreError(None, "missing 'request_id' argument to MWCStatus() constructor", e_errors.WRONGPARAMETER)
         
         MWCommand.__init__(self,type=mt.MWC_STATUS, content={"request_id":request_id})
 
@@ -57,8 +57,17 @@ class MWReply(EnqMessage):
     """ Message: Base class for replies sent by Migration Worker
     """
     def __init__(self, type=None, orig_msg = None, content = None ):
-        if [type, orig_msg, content].count(None) != 0:
-            raise e_errors.EnstoreError(None, "type, original message or content is undefined", e_errors.WRONGPARAMETER)
+#        print "DEBUG %s" % (orig_msg,)
+#        print "DEBUG %s" % (content,)
+                
+        if [type, orig_msg].count(None) != 0:
+            raise e_errors.EnstoreError(None, "missing 'type' or 'orig_msg' argument to MWReply() constructor", 
+                                        e_errors.WRONGPARAMETER)
+
+        # excuse message types where content is not required
+        if type is not mt.MWR_CONFIRM and content is None:
+            raise e_errors.EnstoreError(None, "missing 'content' argument to MWReply() constructor", 
+                                        e_errors.WRONGPARAMETER)
 
         EnqMessage.__init__(self, type=type, content=content)       
         # @todo: fix, set correlation_id in args to constructor
@@ -66,7 +75,7 @@ class MWReply(EnqMessage):
             self.correlation_id = orig_msg.correlation_id # reset correlation id
         except:
             pass
-        #print "DEBUG " + orig_msg
+
         #print "DEBUG corr Id orig  %s" % (orig_msg.correlation_id,)
         #print "DEBUG corr Id reply %s" % (self.correlation_id,)
 
@@ -98,6 +107,12 @@ class MWRStatus(MWReply):
     def __init__(self, orig_msg = None, content = None ):
         MWReply.__init__(self, type=mt.MWR_STATUS, orig_msg = orig_msg, content=content)
 
+class MWRConfirm(MWReply):
+    """ Message: Reply to Migration Worker Status Command
+    """
+    def __init__(self, orig_msg = None):
+        MWReply.__init__(self, type=mt.MWR_CONFIRM, orig_msg = orig_msg, content=None)
+
 if __name__ == "__main__":
     l = ["a","b","c","d"]
     l2= ["x","y"]
@@ -124,10 +139,14 @@ if __name__ == "__main__":
     print "MWRArchived: %s" % (ra2,)
     
     rp = MWRPurged(orig_msg=mp, content=l2)
+    #rp2 = MWRPurged(orig_msg=mp) #ERROR
     print "MWRPurged: %s" % (rp,)
     
     rs = MWRStaged(orig_msg=ms, content=l2)
     print "MWRStaged: %s" % (rs,)
     
-    rstat = MWRStatus(orig_msg=ms, content={"status":(e_errors.OK,None)})
+    rc = MWRConfirm(orig_msg=ms)
+    print "MWRConfirm: %s" % (rc,)
+    
+    rstat = MWRStatus(orig_msg=mstat, content={"status":(e_errors.OK,None)})
     print "MWRStatus: %s" % (rstat,)
