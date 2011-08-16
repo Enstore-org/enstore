@@ -33,5 +33,6 @@ class EnqMessage(qpid.messaging.Message):
             self.correlation_id = str(uuid.uuid4()) # make a random UUID
 
         self.properties["type"] = type
- #@todo       self.properties["version"] = (0,1) # message version: (major,minor) 
+        self.properties["en_type"] = type
+#@todo       self.properties["version"] = (0,1) # message version: (major,minor) 
 

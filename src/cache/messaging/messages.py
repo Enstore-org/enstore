@@ -78,4 +78,4 @@ class MSG_TYPES():
     MWR_ARCHIVED   =  MW_REPLY + ARCHIVED
     MWR_STAGED     =  MW_REPLY + STAGED
     MWR_STATUS     =  MW_REPLY + STATUS # Message reporting progress of work in reply to command MWC_STATUS
-    MWR_CONFIRMATION =  MW_REPLY + CONFIRMATION
+    MWR_CONFIRMATION =  MW_REPLY + CONFIRMATION # Confirm receipt of work request and send back reply_to

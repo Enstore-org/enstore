@@ -56,7 +56,8 @@ class MWCStatus(MWCommand):
 class MWReply(EnqMessage):
     """ Message: Base class for replies sent by Migration Worker
     """
-    def __init__(self, type=None, orig_msg = None, content = None ):
+#    def __init__(self, type=None, orig_msg = None, content = None, **kwargs ):
+    def __init__(self, type=None, orig_msg = None, **kwargs ):
 #        print "DEBUG %s" % (orig_msg,)
 #        print "DEBUG %s" % (content,)
                 
@@ -64,12 +65,18 @@ class MWReply(EnqMessage):
             raise e_errors.EnstoreError(None, "missing 'type' or 'orig_msg' argument to MWReply() constructor", 
                                         e_errors.WRONGPARAMETER)
 
-        # excuse message types where content is not required
-        if type is not mt.MWR_CONFIRMATION and content is None:
+        #if not kwargs.has_key("content") and type is not mt.MWR_CONFIRMATION : # logical equivalent
+        if not (kwargs.has_key("content") or type is mt.MWR_CONFIRMATION) :
             raise e_errors.EnstoreError(None, "missing 'content' argument to MWReply() constructor", 
                                         e_errors.WRONGPARAMETER)
+        
+#        # excuse message types where content is not required
+#        if type is not mt.MWR_CONFIRMATION and content is None:
+#            raise e_errors.EnstoreError(None, "missing 'content' argument to MWReply() constructor", 
+#                                        e_errors.WRONGPARAMETER)
 
-        EnqMessage.__init__(self, type=type, content=content)       
+        EnqMessage.__init__(self, type=type, **kwargs)       
+#        EnqMessage.__init__(self, type=type, content=content, **kwargs)  
         # @todo: fix, set correlation_id in args to constructor
         try:   
             self.correlation_id = orig_msg.correlation_id # reset correlation id
@@ -108,10 +115,10 @@ class MWRStatus(MWReply):
         MWReply.__init__(self, type=mt.MWR_STATUS, orig_msg = orig_msg, content=content)
 
 class MWRConfirmation(MWReply):
-    """ Message: Reply to Migration Worker Status Command
+    """ Message: Reply to Confirm receipt of request
     """
-    def __init__(self, orig_msg = None):
-        MWReply.__init__(self, type=mt.MWR_CONFIRMATION, orig_msg = orig_msg, content=None)
+    def __init__(self, orig_msg = None, **kwargs):
+        MWReply.__init__(self, type=mt.MWR_CONFIRMATION, orig_msg = orig_msg, **kwargs)
 
 if __name__ == "__main__":
     l = ["a","b","c","d"]
@@ -147,6 +154,10 @@ if __name__ == "__main__":
     
     rc = MWRConfirmation(orig_msg=ms)
     print "MWRConfirmation: %s" % (rc,)
+    
+    rconf = MWRConfirmation(orig_msg=ms, content={"status":(e_errors.OK,"work received")}, reply_to="myaddr")
+    print "MWRConfirmation: %s" % (rconf,)
+    print "dir", dir(rconf)
     
     rstat = MWRStatus(orig_msg=mstat, content={"status":(e_errors.OK,None)})
     print "MWRStatus: %s" % (rstat,)
