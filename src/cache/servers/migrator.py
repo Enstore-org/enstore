@@ -478,7 +478,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             
             # now stage the package file
             encp = encp_wrapper.Encp()
-            args = ["encp", "--disable-redirection", "--get-bfid", package_bfid, stage_file_path]  
+            args = ["encp", "--skip-pnfs", "--get-bfid", package_bfid, stage_file_path]  
             Trace.trace(10, "read_from_tape: sending %s"%(args,))
             encp = encp_wrapper.Encp()
 
@@ -499,7 +499,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             # unpack files
             os.chdir(stage_dir_path)
-            os.system("tar --force-local -xf %s"%(stage_fname,))
+            if len(files_to_stage) > 1:
+                # untar packagd files
+                # if package contains more than one file
+                os.system("tar --force-local -xf %s"%(stage_fname,))
 
             # move files to their original location
             for rec in files_to_stage:
@@ -558,7 +561,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             return False
         self.work_dict[message.correlation_id] = message
         # prepare work:
-        request_type = message.properties["type"]
+        request_type = message.properties["en_type"]
         if request_type in (mt.MWC_ARCHIVE, mt.MWC_PURGE, mt.MWC_STAGE):
             if request_type == mt.MWC_ARCHIVE:
                 self.status = file_cache_status.ArchiveStatus.ARCHIVING
