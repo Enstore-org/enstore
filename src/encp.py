@@ -6317,20 +6317,25 @@ def verify_file_size(ticket, encp_intf = None):
             pnfs_filesize = ticket['file_size']
             pnfs_real_size = pnfs_filesize
         else:
-            #We need to obtain the size in PNFS.
-            sfs = namespace.StorageFS(pnfs_filename)
-            pnfs_stat = sfs.get_stat(pnfs_filename)
-            pnfs_filesize = pnfs_stat[stat.ST_SIZE]
-            pnfs_inode = pnfs_stat[stat.ST_INO]
-
-            if pnfs_filesize == 1 and ticket['file_size'] > 1:
-                #For files larger than 2GB, we need to look at the size in
-                # layer 4.  PNFS can't handle filesizes larger than that, so
-                # as a workaround encp sets large files to have a PNFS size
-                # of 1 and puts the real size in layer 4.
-                pnfs_real_size = sfs.get_file_size(pnfs_filename)
+            # this needs a better solution
+            # if --get-bfid and --skip-pnfs we DO not USE any sfs information!!
+            if encp_intf.get_bfid and encp_intf.skip_pnfs:
+                pnfs_real_size = ticket['file_size']
             else:
-                pnfs_real_size = pnfs_filesize
+                #We need to obtain the size in PNFS.
+                sfs = namespace.StorageFS(pnfs_filename)
+                pnfs_stat = sfs.get_stat(pnfs_filename)
+                pnfs_filesize = pnfs_stat[stat.ST_SIZE]
+                pnfs_inode = pnfs_stat[stat.ST_INO]
+
+                if pnfs_filesize == 1 and ticket['file_size'] > 1:
+                    #For files larger than 2GB, we need to look at the size in
+                    # layer 4.  PNFS can't handle filesizes larger than that, so
+                    # as a workaround encp sets large files to have a PNFS size
+                    # of 1 and puts the real size in layer 4.
+                    pnfs_real_size = sfs.get_file_size(pnfs_filename)
+                else:
+                    pnfs_real_size = pnfs_filesize
     except (TypeError), detail:
         ticket['status'] = (e_errors.OK, "No files sizes to verify.")
         return
@@ -6459,18 +6464,32 @@ def set_outfile_permissions(ticket, encp_intf):
                 if is_write(ticket):
 #                    sfs = namespace.StorageFS(ticket['outfile'])
                     in_stat_info = file_utils.get_stat(ticket['infile'])
+                    perms = in_stat_info[stat.ST_MODE]
                 else:
                     Trace.log(e_errors.INFO, "infile: %s infilepath: %s" % \
                               (ticket['infile'], ticket['infilepath']))
-                    try:
-                        in_sfs = namespace.StorageFS(ticket['infile'])
-                    except (OSError, IOError), msg2:
-                        Trace.handle_error(severity=99)
-                        message = "StorageFS failed: %s" % (str(msg2),)
-                        Trace.log(e_errors.INFO, message)
-                        ticket['status'] = (e_errors.OSERROR, message)
-                        return
-                    in_stat_info = in_sfs.get_stat(ticket['infile'])
+                    # this needs a better solution
+                    # if --get-bfid and --skip-pnfs is specified do not use
+                    # a convoluted get_stat
+                    if encp_intf.get_bfid and encp_intf.skip_pnfs:
+                        uid = ticket['fc']['uid']
+                        gid = ticket['fc']['gid']
+                        perms = ticket['wrapper']['mode']
+                    else:
+                    
+                        try:
+                            in_sfs = namespace.StorageFS(ticket['infile'])
+                        except (OSError, IOError), msg2:
+                            Trace.handle_error(severity=99)
+                            message = "StorageFS failed: %s" % (str(msg2),)
+                            Trace.log(e_errors.INFO, message)
+                            ticket['status'] = (e_errors.OSERROR, message)
+                            return
+                        in_stat_info = in_sfs.get_stat(ticket['infile'])
+                        uid = in_stat_info[stat.ST_UID]
+                        gid = in_stat_info[stat.ST_GID]
+                        perms = in_stat_info[stat.ST_MODE]
+
             except (OSError, IOError), msg:
                 Trace.handle_error(severity=99)
                 Trace.log(e_errors.INFO, "stat failed: %s: %s" % \
@@ -6481,8 +6500,6 @@ def set_outfile_permissions(ticket, encp_intf):
                 return
 
             try:
-                perms = in_stat_info[stat.ST_MODE]
-
                 #handle remote file case
                 if is_write(ticket):
                     sfs = namespace.StorageFS(ticket['outfile'])
@@ -6501,8 +6518,6 @@ def set_outfile_permissions(ticket, encp_intf):
             if (os.getuid() == 0 or os.getgid() == 0) and \
                    e_errors.is_ok(ticket) and not encp_intf.put_cache:
                 try:
-                    uid = in_stat_info[stat.ST_UID]
-                    gid = in_stat_info[stat.ST_GID]
                     
                     #handle remote file case
                     if is_write(ticket):
@@ -10149,7 +10164,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
               (time.time() - create_read_requests_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-
     return requests_per_vol
 
 
@@ -11099,6 +11113,7 @@ def prepare_read_from_hsm(tinfo, e):
     try:
         requests_per_vol = create_read_requests(callback_addr,
                                                 udp_callback_addr, tinfo, e)
+        
     except (SystemExit, KeyboardInterrupt):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
@@ -11211,13 +11226,23 @@ def prepare_read_from_hsm(tinfo, e):
                     # to that of the owner of the original file.
                     
                     ### Note to self: work on removing this stat().
-                    in_file_stats = get_stat(requests_per_vol[vol][i]['infile'])
-
+                    # this needs a better solution
+                    # if --get-bfid and --skip-pnfs is specified do not use
+                    # a convoluted get_stat
+                    if e.get_bfid and e.skip_pnfs:
+                       uid = requests_per_vol[vol][i]['fc']['uid']
+                       gid = requests_per_vol[vol][i]['fc']['gid']
+                    else:
+                        in_file_stats = get_stat(requests_per_vol[vol][i]['infile'])
+                        uid = in_file_stats[stat.ST_UID]
+                        gid = in_file_stats[stat.ST_GID]
                     if os.getuid() == 0:
                         #Only try this when the real user is root.  
                         file_utils.chown(requests_per_vol[vol][i]['outfile'],
-                                         in_file_stats[stat.ST_UID],
-                                         in_file_stats[stat.ST_GID],
+                                         #in_file_stats[stat.ST_UID],
+                                         #in_file_stats[stat.ST_GID],
+                                         uid,
+                                         gid,
                                          unstable_filesystem=True)
             except (OSError, IOError, EncpError), msg:
                 #if not should_skip_deleted:
