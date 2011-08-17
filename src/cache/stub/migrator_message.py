@@ -125,7 +125,7 @@ class MigrationClient():
 
     def handle_message(self,m):
         # @todo : check "type" present and is string or unicode
-        msg_type = m.properties["type"]
+        msg_type = m.properties["en_type"]
         
         self.trace.debug("handle message %s type %s", m, msg_type)
         # can use these to exclude redelivered messages

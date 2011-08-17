@@ -209,7 +209,7 @@ class MigrationWorker():
         # of piers transaction
         self._ack_message(m)        
         # @todo : check "type" present and is string or unicode
-        cmd_type = m.properties["type"]
+        cmd_type = m.properties["en_type"]
         try:
             h = self.handlers[cmd_type]
         except KeyError:
