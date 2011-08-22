@@ -228,7 +228,7 @@ if __name__ == "__main__" :
             backup_file=os.path.basename(backup_file)
         print_message("Got backup file "+backup_file)
         # drop database
-        print_message("About to drop database %s running on host %s port %d"%(dbname,dbhost,dbport,))
+        print_message("About to drop database %s running on localhost port %d"%(dbname,dbport,))
         print_message("Sleep 10 seconds")
         time.sleep(10)
         print_message("Dropping")
