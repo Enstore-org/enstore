@@ -710,10 +710,10 @@ class PostponedRequests:
 
 # The following class is inteded fo File Aggregation Feature.
 # It temporary holds read requests that can not be put into a common request queue because
-# one the files in the package is being procecces by the mover (staged) which will cuase
-# all files belonging to the same package staged. After this is done all delayed requests
+# one the files in the package is being procecces by the mover (staged) which will cause
+# all files belonging to the same package staged. After this is done all requests on-hold
 # can be released: moved into a general queue.
-class DelayedCacheREquests:
+class CacheREquestsOnHold:
     def __init__(self):
         self.requests = {}
 
@@ -733,10 +733,10 @@ class DelayedCacheREquests:
     # @param request
     # @return request or None
     def put(self, request):
-        package_id = check_request(self, request)
+        package_id = self.check_request(request)
         if package_id:
-            # see if request should go into delayed request list
-            if request['cache_status']  == "STAGED" or request['cache_status']  == "PURGED": # no need to put into delayed
+            # see if request should go into list requests on-hold
+            if request['fc']['cache_status']  == "STAGED" or request['fc']['cache_status']  == "PURGED": # no need to put into requests on-hold
                 return None
             else:
                 if not self.requests.has_key(package_id):
@@ -805,7 +805,7 @@ class LibraryManagerMethods:
         self.init_suspect_volumes()
         self.pending_work = manage_queue.Request_Queue() # all incoming copy requests are stored in this queue
         self.idle_movers = [] # list of known idle movers
-        self.delayed_cache_requests = DelayedCacheREquests() # delayed read cache request go here
+        self.cache_requests_on_hold = CacheREquestsOnHold() # read cache request on-hold go here
         self.trace_level = 200
 
 
@@ -2877,11 +2877,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # Move requests from depayed requests into main request queue.
     # This method is needed only for disk movers in File Aggregation Project
-    def move_from_delayed_into_queue(request):
+    def move_from_on_hold_into_queue(self, request):
         package_id = w['fc'].get('package_id', None)
-        if package_id and self.delayed_cache_requests.has_key(package_id):
+        if package_id and self.cache_requests_on_hold.has_key(package_id):
             while True:
-                rq = self.delayed_cache_requests['package_id'].get()
+                rq = self.cache_requests_on_hold['package_id'].get()
                 if rq:
                     # put it into the pending wirk queue
                     rq1, status = self.pending_work.put(ticket)
@@ -3211,10 +3211,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
 	    log_add_to_pending_queue(ticket['vc'])
 
-            # check request and put it into delayed_cache_requests for disk cache request
-            rq = self.delayed_cache_requests.put(ticket)
+            # check request and put it into cache_requests_on_hold for disk cache request
+            rq = self.cache_requests_on_hold.put(ticket)
 
-            # if ticket did not go into delayed_cache_requests
+            # if ticket did not go into cache_requests_on_hold
             # put ticket into request queue rigth away
             if not rq:
                 rq, status = self.pending_work.put(ticket)
@@ -3364,8 +3364,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
             if self.mover_type(mticket) == 'DiskMover':
                 # check if there are any requests related to just completed request in
-                # delayed request queue and if yes move them into main request queue
-                move_from_delayed_into_queue(w)
+                # cache_requests_on_hold request queue and if yes move them into main request queue
+                self.move_from_on_hold_into_queue(w)
 
             self.work_at_movers.remove(wt)
             _format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
@@ -3695,8 +3695,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
             if self.mover_type(mticket) == 'DiskMover':
                 # check if there are any requests related to just completed request in
-                # delayed request queue and if yes move them into main request queue
-                move_from_delayed_into_queue(w)
+                # cache_requests_on_hold request queue and if yes move them into main request queue
+                self.move_from_on_hold_into_queue(w)
 
         # put volume information
         # if this mover is already in volumes_at_movers
@@ -3979,7 +3979,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rticket["at movers"] = self.work_at_movers.list
             adm_queue, write_queue, read_queue = self.pending_work.get_queue()
             rticket["pending_work"] = adm_queue + write_queue + read_queue
-            rticket["delayed_cache_requests"] = self.delayed_cache_requests.requests
+            rticket["cache_requests_on_hold"] = self.cache_requests_on_hold.requests
             callback.write_tcp_obj_new(data_socket,rticket)
             data_socket.close()
             callback.write_tcp_obj_new(control_socket,ticket)
@@ -4036,7 +4036,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rticket["pending_works"] = {'admin_queue': adm_queue,
                                         'write_queue': write_queue,
                                         'read_queue':  read_queue,
-                                        'delayed_cache_requests':self.delayed_cache_requests.requests
+                                        'cache_requests_on_hold':self.cache_requests_on_hold.requests
                                         }
             callback.write_tcp_obj_new(data_socket,rticket)
             data_socket.close()

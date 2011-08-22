@@ -158,7 +158,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
         else: lmname = lm
         pending_read_cnt = 0
         pending_write_cnt = 0
-        delayed_request_cnt = 0
+        requests_on_hold_cnt = 0
         active_read_cnt = 0
         active_write_cnt = 0
         keys = self.csc.get_keys()
@@ -173,7 +173,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                pend_writes = []
                pend_reads = []
                # dalayed cache requests
-               delayed_requests = lst.get("delayed_cache_requests", None)
+               requests_on_hold = lst.get("cache_requests_on_hold", None)
                for work in pw_list:
                    if work["work"] == "read_from_hsm":
                        pending_read_cnt = pending_read_cnt + 1
@@ -240,18 +240,18 @@ class LibraryManagerClient(generic_client.GenericClient) :
                            f1 = fn
                            f2 = pnfsfn
                        print "%s %s %s %s %s M %s %s" % (host,self.name, user,f1,f2, mover, vol)
-               if delayed_requests:
+               if requests_on_hold:
                    print "Delayed cache requests"
-                   for rq in delayed_requests.keys():
+                   for rq in requests_on_hold.keys():
                        print rq
-                       __print_pending_read_requests(delayed_requests[rq])
-                       delayed_request_cnt = delayed_request_cnt + len(delayed_requests[rq]) 
+                       __print_pending_read_requests(requests_on_hold[rq])
+                       requests_on_hold_cnt = requests_on_hold_cnt + len(requests_on_hold[rq]) 
 
         print "Pending read requests: ", pending_read_cnt
         print "Pending write requests: ", pending_write_cnt
         print "Active read requests: ", active_read_cnt
         print "Active write requests: ", active_write_cnt
-        print "Delayed cache requests: ", delayed_request_cnt
+        print "Cache requests on-hold: ", requests_on_hold_cnt
                            
         return {"status" :(e_errors.OK, None)}
 
