@@ -708,7 +708,57 @@ class PostponedRequests:
                 self.sg_list[sg] = self.sg_list[sg]+1
             Trace.trace(self.trace_level, "postponed update %s %s %s"%(sg, deficiency, self.sg_list[sg]))
 
+# The following class is inteded fo File Aggregation Feature.
+# It temporary holds read requests that can not be put into a common request queue because
+# one the files in the package is being procecces by the mover (staged) which will cuase
+# all files belonging to the same package staged. After this is done all delayed requests
+# can be released: moved into a general queue.
+class DelayedCacheREquests:
+    def __init__(self):
+        self.requests = {}
 
+    # check if incoming request is for a file written throgh cache
+    # @param request
+    # @return package id or None
+    def check_request(self, request):
+        rc = None
+        # reqd request for a cached file must have:
+        # rq['fc']['cache_status']
+        # rq['fc']['package_id']
+        if request.has_key("fc") and request['fc'].has_key("package_id") and request['fc'].has_key("cache_status"):
+            rc = request['fc']['package_id']
+        return rc
+        
+    # put request into deleayed request dictionary
+    # @param request
+    # @return request or None
+    def put(self, request):
+        package_id = check_request(self, request)
+        if package_id:
+            # see if request should go into delayed request list
+            if request['cache_status']  == "STAGED" or request['cache_status']  == "PURGED": # no need to put into delayed
+                return None
+            else:
+                if not self.requests.has_key(package_id):
+                    # create dictionary entry, which value is a list of requests
+                    self.requests[package_id] = []
+                if not request in self.requests[package_id]:
+                    self.requests[package_id].append(request)
+                return request
+        else:
+            return None 
+
+    # get request from deleayed request dictionary
+    # @param package id
+    # @return request or None
+    def get(self,package_id):
+        if self.requests.has_key(package_id):
+            if len(self.requests[package_id]) > 0:
+                rc = self.requests[package_id].pop() # pull and delete item
+            else:
+                del( self.requests[package_id])
+                rc = None
+        
 class LibraryManagerMethods:
 
     def init_suspect_volumes(self):
@@ -755,6 +805,7 @@ class LibraryManagerMethods:
         self.init_suspect_volumes()
         self.pending_work = manage_queue.Request_Queue() # all incoming copy requests are stored in this queue
         self.idle_movers = [] # list of known idle movers
+        self.delayed_cache_requests = DelayedCacheREquests() # delayed read cache request go here
         self.trace_level = 200
 
 
@@ -2824,6 +2875,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket = None
         return ticket
 
+    # Move requests from depayed requests into main request queue.
+    # This method is needed only for disk movers in File Aggregation Project
+    def move_from_delayed_into_queue(request):
+        package_id = w['fc'].get('package_id', None)
+        if package_id and self.delayed_cache_requests.has_key(package_id):
+            while True:
+                rq = self.delayed_cache_requests['package_id'].get()
+                if rq:
+                    # put it into the pending wirk queue
+                    rq1, status = self.pending_work.put(ticket)
+                else:
+                    break
+        
     ########################################
     # data transfer requests
     ########################################
@@ -3146,9 +3210,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # set up priorities
             ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
 	    log_add_to_pending_queue(ticket['vc'])
-            # put ticket into request queue
-            rq, status = self.pending_work.put(ticket)
-            ticket['status'] = (status, None)
+
+            # check request and put it into delayed_cache_requests for disk cache request
+            rq = self.delayed_cache_requests.put(ticket)
+
+            # if ticket did not go into delayed_cache_requests
+            # put ticket into request queue rigth away
+            if not rq:
+                rq, status = self.pending_work.put(ticket)
+                ticket['status'] = (status, None)
+            else:
+                status == e_errors.OK
         # it has been observerd that in multithreaded environment
         # ticket["r_a"] somehow gets modified
         # so to be safe restore  ticket["r_a"] just before sending
@@ -3289,6 +3361,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 Trace.trace(self.my_trace_level+1,"mover_idle: mover_rq_unique_id %s work_at_mover_unique_id %s"%(mover_rq_unique_id, work_at_mover_unique_id))
                 self.reply_to_caller(nowork) # AM!!!!!
                 return
+
+            if self.mover_type(mticket) == 'DiskMover':
+                # check if there are any requests related to just completed request in
+                # delayed request queue and if yes move them into main request queue
+                move_from_delayed_into_queue(w)
+
             self.work_at_movers.remove(wt)
             _format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
             Trace.log(e_errors.INFO, _format%(wt,mticket))
@@ -3615,6 +3693,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 w['vc']['volume_family'] = mticket['volume_family']
             self.work_at_movers.remove(w)
 
+            if self.mover_type(mticket) == 'DiskMover':
+                # check if there are any requests related to just completed request in
+                # delayed request queue and if yes move them into main request queue
+                move_from_delayed_into_queue(w)
+
         # put volume information
         # if this mover is already in volumes_at_movers
         # it will not get updated
@@ -3896,6 +3979,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             rticket["at movers"] = self.work_at_movers.list
             adm_queue, write_queue, read_queue = self.pending_work.get_queue()
             rticket["pending_work"] = adm_queue + write_queue + read_queue
+            rticket["delayed_cache_requests"] = self.delayed_cache_requests.requests
             callback.write_tcp_obj_new(data_socket,rticket)
             data_socket.close()
             callback.write_tcp_obj_new(control_socket,ticket)
@@ -3951,7 +4035,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             adm_queue, write_queue, read_queue = self.pending_work.get_queue()
             rticket["pending_works"] = {'admin_queue': adm_queue,
                                         'write_queue': write_queue,
-                                        'read_queue':  read_queue
+                                        'read_queue':  read_queue,
+                                        'delayed_cache_requests':self.delayed_cache_requests.requests
                                         }
             callback.write_tcp_obj_new(data_socket,rticket)
             data_socket.close()
