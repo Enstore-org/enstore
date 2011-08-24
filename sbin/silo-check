@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # $Id$
 
@@ -8,8 +8,7 @@
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-node=`hostname -s`
-gang=`gang`
+gang=$(gang)
 
 # Make sure to set a timeout.
 timeout='--timeout 10 --retries 3'
@@ -37,334 +36,174 @@ if [ -L $output_file ]; then
 fi
 
 # obtain list of valid libraries
-enstore conf $timeout --show | sed -n "s/.*'\([a-zA-Z0-9][-a-zA-Z0-9_]*\)\.library_manager'.*/\1/ p" | sort -u >/tmp/valid-library
+libs=( $(enstore conf --list-lib|awk 'NR > 1 {print substr($1,1,match($1,/\./) -1)}'|sort -u) )
 
 # This is for easier redirection of all the stdout output.
 (
 
-# Make sure we know how up-to-date this is.
-echo -e Volume Cross Check Report: `date`
-echo -e Brought to You by: `basename $0` "\n"
+    # Make sure we know how up-to-date this is.
+    echo -e Volume Cross Check Report: `date`
+    echo -e Brought to You by: `basename $0` "\n"
 
-if [ $gang = "stken" ]; then
+    ##
+    # All tapes are in SL8500 robots
+    # It does not matter which LSMs the bots place the tapes within a specific robot
+    #
+    # ACSLS
+    # host     SL8500s ACS LSMs  Instances                 InventoryFiles
+    # ==========================================================================
+    # fntt-gcc  1,2,4   0  0-11  stken, gccen              SL8500G1-VOLUMES.html
+    # fntt2     3,5     1  0-7   cdfen, d0en, gccen, stken SL8500F1-VOLUMES.html
+    # fntt      6       2  0-3   cdfen, d0en, dmsen, stken SL8500GS-VOLUMES.html
+    #
+    # Cleaning tapes are CLN -- not sure if we need to track these?
+    ##
 
-# stken 9310 silos are acs 0 & lsm 0,1
-# stken 8500 rails are acs 0 & lsm 0-7
+    ##
+    # Specific tape labels and list of robots for each instance
+    #
+    # Each of the labels will match starting with the given strings.
+    # Each of the robots will list as the applicable robots for the instance.
+    ##
+    case $gang in
+    aggren)
+	labels="MAX07"
+	robots="GS"
+	;;
+    stken)
+	labels="FUJ,MAX0[^7],V,TEST29,TST07[4-9],TST098,TST189,TST19[01],TTC02[35678],TTC071"
+	robots="F1,G1,GS"
+	;;
+    cdfen)
+	labels="I,TST098,TST10[012],TST19[4-9]"
+	robots="F1,GS"
+	;;
+    d0en)
+	labels="P,TST099,TST19[23]"
+	robots="F1,GS"
+	;;
+    dmsen)
+	labels="FUJ,MAX,TST,TTC"
+	robots="GS"
+	;;
+    gccen)
+	labels="T,V"
+	robots="F1,G1"
+	;;
+    *)
+	echo "silo-check: error: cannot process instance $gang" >&2
+	exit 1
+    esac
 
-# for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
-#   vol   home		acs, lsm, panel, row, col	type
-#   vol   in drive	acs, lsm, panel, drive		type
-#   vol   in transit	acs, lsm, panel, row, col	type
-#   vol   in transit	acs, lsm, panel, drive		type
-# where type is one of STK2P, STK2W
-#
-# for "display" (ACSLS 7), each line in the silo inventory has ten fields:
-#   Vol_id  Acs  Lsm  Panel  Row  Column  Pool   Status    Media     Type
-# where
-#   Status is one of dismount, eject, enter, mount, home, in_drive, move, missing, absent, ejected
-#   Media is one of STK2P, STK2W
-#   Type is one of data, clean
-#
-# each line in the tower inventory is in this format:
-#   volser xxnnnn media DECDLT attrib {Empty|Ejected|Mounted|Occupied}
-#
-# all lines of enstore inventory have ten fields, in this format:
-#   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
-# where each inhibit takes two fields (including parentheses)
-#
-# there should be no deleted volumes in VOLUMES_DEFINED
+    ##
+    # How the different formats appear for various ACSLS query/display commands and enstore inventory
+    # 
+    # for "query drive" (ACSLS 8), each line in the silo inventory is in one of four formats:
+    #   vol   home		acs, lsm, panel, row, col	type
+    #   vol   in drive	acs, lsm, panel, drive		type
+    #   vol   in transit	acs, lsm, panel, row, col	type
+    #   vol   in transit	acs, lsm, panel, drive		type
+    # where type is one of LTO-400G, LTO-800G, LTO-1.5T, LTO-CLNU, T10000CC, T10000T2
+    #
+    # for "display" (ACSLS 8), each line in the silo inventory has ten fields:
+    #   Vol_id  Acs  Lsm  Panel  Row  Column  Pool   Status    Media     Type
+    # where
+    #   Status is one of dismount, eject, enter, mount, home, in_drive, move, missing, absent, ejected
+    #   Media is one of LTO-400G, LTO-800G, LTO-1.5T, T10000T2
+    #   Type is one of data, clean
+    #
+    # all lines of enstore inventory have ten fields, in this format:
+    #   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
+    # where each inhibit takes two fields (including parentheses)
+    #
+    # there should be no deleted volumes in VOLUMES_DEFINED
+    ##
 
-egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
-  sed -e 's/, /,/g' -e 's/in /in_/' |\
-  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
-  sort >/tmp/silo-volumes
-egrep -v "^$|^<|(TEST|(TST|P[RS][A-Z]|IA[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500[FG]1-VOLUMES.html |\
-  sed -e 's/, /,/g' -e 's/in /in_/' |\
-  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
-  sort >/tmp/rail-volumes
-egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|DECDLT) attrib (Empty|Occupied)" $inventory_dir/AML2-VOLUMES.html |\
-  awk '{print $2}' |\
-  sort >/tmp/tower-volumes
-awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
-  sort >/tmp/vols-defined
+    ##
+    # Begin processing
+    ##
 
-# tapes in the PowderHorn 9310, but not in enstore
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the PowderHorn 9310 (acs 0, lsm 0 and 1) that are not fully declared to enstore"
-comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
-fgrep -f /tmp/silo-not-enstore $inventory_dir/STK-VOLUMES.html
+    # List volumes in the current instance (gang) in all SL8500 robots
+    awk -v volStr="(^${labels//,/|^})" '
+        $0 ~ /^$/ {next}
+        $0 ~ /^</ {next}
+        NF == 4 && $1 ~ volStr && $0 !~ /ejected/ {print $1}' $inventory_dir/SL8500*-VOLUMES.html |sort > /tmp/rail-volumes
 
-# tapes in the StreamLine 8500, but not in enstore
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 7) that are not fully declared to enstore"
-comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
-fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500[FG]1-VOLUMES.html
+    # List volumes defined in enstore for the current instance (gang)
+    awk 'NR > 3 && NF == 10 && $7 !~ /(null|disk|shelf)/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
+	sort >/tmp/vols-defined
 
-# tapes in the SDSS AML/2 tower, but not in enstore
-# stken has only DLTs in the AML/2
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the SDSS AML/2 tower that are not fully declared to enstore"
-comm -23 /tmp/tower-volumes /tmp/vols-defined >/tmp/tower-not-enstore
-fgrep -f /tmp/tower-not-enstore $inventory_dir/AML2-VOLUMES.html
+    # tapes in any SL8500, but not in enstore
+    echo
+    echo "--------------------------------------------------------------------------------------------------------------------"
+    echo "$gang Tapes (${labels//,/*|}*) in any SL8500 ($robots) that are not fully declared to enstore"
+    comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
+    fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500*-VOLUMES.html
 
-#echo
-#echo "--------------------------------------------------------------------------------------------------------------------"
-#echo "Tapes not in any category"
-#egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html | grep -v "        0, [01],"
+    ### Following old code not sure what to do with at present,iperf -s was commented out in original script
+    #echo
+    #echo "--------------------------------------------------------------------------------------------------------------------"
+    #echo "Tapes not in any category"
+    #egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html | grep -v "        0, [01],"
 
-# tapes in enstore, but not in the robots
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in the SL8500, the Public or CMS silo, or the SDSS tower"
-sort -mu /tmp/{silo,rail,tower}-volumes >/tmp/robot-volumes
-comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
-fgrep -f /tmp/enstore-not-robot $inventory_dir/VOLUMES_DEFINED
+    # tapes in enstore, but not in the robots
+    echo
+    echo "--------------------------------------------------------------------------------------------------------------------"
+    echo "Tapes declared to enstore that are not in the SL8500s ($robots)"
+    sort -mu /tmp/rail-volumes >/tmp/robot-volumes
+    comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
+    fgrep -f /tmp/enstore-not-robot $inventory_dir/VOLUMES_DEFINED
 
-# tapes apparently in more than one robot, whether in enstore or not, ie, duplicate names
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes that are apparently in more than one robot"
-sort -m /tmp/{silo,rail,tower}-volumes | uniq -d | while read vol; do
-  grep -h $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500[FG]1,STK,AML2}-VOLUMES.html}
-done
+    ### Have not verified the following really works
+    # tapes apparently in more than one robot, whether in enstore or not, ie, duplicate names
+    echo
+    echo "--------------------------------------------------------------------------------------------------------------------"
+    echo "Tapes that are apparently in more than one robot"
+    sort -m /tmp/rail-volumes | uniq -d | while read vol; do
+	grep -h $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500F1,SL8500G1,SL8500GS}-VOLUMES.html}
+    done
 
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in NOACCESS or NOTALLOWED state"
-awk 'NR>3 && NF==10 && $3!~/none/ && $4!~/migrated/' $inventory_dir/VOLUMES_DEFINED
+    ### Do we want to continue to exclude migrated tapes?
+    echo
+    echo "--------------------------------------------------------------------------------------------------------------------"
+    echo "Tapes in NOACCESS or NOTALLOWED state (except those 'migrated')"
+    awk 'NR > 3 && NF == 10 && $3 !~ /none/ && $4 !~ /migrated/' $inventory_dir/VOLUMES_DEFINED
 
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in invalid library"
-libs=`tr '\n' ' ' </tmp/valid-library`
-echo "Valid libraries are: $libs"
-awk -v Libs="$libs" 'BEGIN {$0=Libs; for (i=1; i<=NF; i++) libs[$i]=i}
-		     NR>3 && NF==10 && $NF!~/^test\.[[:print:]]*\.[[:print:]]*/ &&
-		     $7!~/null|disk|shelf/ && !($7 in libs)' $inventory_dir/VOLUMES_DEFINED
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
+    ### Verified the following works -- after rewrote it
+    # This will catch any tapes in a library that is not configured
+    echo
+    echo "--------------------------------------------------------------------------------------------------------------------"
+    echo "Tapes in invalid library"
+    echo "Valid libraries are: ${libs[@]}"
 
+    awk '
+        BEGIN {
+            ##
+            # build array of valid library names
+            ##
+            cmd = "enstore conf --list-lib"
+            while ((cmd|getline) > 0) {
+                if ($1 ~ /\./) {
+                    libs[substr($1,1,match($1,/\./) -1)] = 1
+                }
+	    }
+            #for( x in libs) {
+            #   print x
+            #}
+        }
+        NR > 3 && NF == 10 && $NF !~ /^test\./ &&
+            $7 !~ /(null|disk|shelf)/ && !($7 in libs) {
+             print
+        }
+        ' $inventory_dir/VOLUMES_DEFINED
+    echo
+    echo "--------------------------------------------------------------------------------------------------------------------"
 
-elif [ $gang = "d0en" ]; then
+    ##
+    # End
+    ##
 
-# d0en 9310 silos are acs 1 & lsm 0,1
-# d0en 8500 rails are acs 0 & lsm 4-7, acs 1 & lsm 0-3
-
-# for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
-#   vol   home		acs, lsm, panel, row, col	type
-#   vol   in drive	acs, lsm, panel, drive		type
-#   vol   in transit	acs, lsm, panel, row, col	type
-#   vol   in transit	acs, lsm, panel, drive		type
-# where type is one of STK2P, STK2W
-#
-# for "display" (ACSLS 7), each line in the silo inventory has ten fields:
-#   Vol_id  Acs  Lsm  Panel  Row  Column  Pool   Status    Media     Type
-# where
-#   Status is one of dismount, eject, enter, mount, home, in drive,
-#		     move, missing, absent, ejected, in transit
-#   Media is one of STK2P, STK2W
-#   Type is one of data, clean
-#
-# each line in the tower inventory is in this format:
-#   volser xxxnnn[L1] media 3480 attrib {Empty|Ejected|Mounted|Occupied}
-#
-# inventory listed by the stk media changer has 4 columns,
-# after squeezing out the blanks in the comma-separated location:
-#   volume type state location
-# where
-#   type is one of STK2P, STK2W
-#   state is one of dismount, eject, enter, mount, home, in drive,
-#		    move, missing, absent, ejected, in transit
-#
-# inventory listed by the sl8500 media changer has 4 columns,
-# after squeezing out the blanks in the comma-separated location:
-#   volume type state location
-# where
-#   type is one of LTO-CLNU, LTO-400G, LTO-800G 
-#   state is one of dismount, eject, enter, mount, home, in drive,
-#		    move, missing, absent, ejected, in transit
-#
-# inventory listed by the aml2 media changer has 4 columns:
-#   volume type state location
-# where
-#   type is one of 3480, DECDLT
-#   state is one of O,M,E
-#   location is empty
-#
-# all lines of enstore inventory have ten fields, in this format:
-#   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
-# where each inhibit takes two fields (including parentheses)
-#
-# there should be no deleted volumes in VOLUMES_DEFINED
-
-egrep -v "^$|^<|(DG |IA[0-9A-Z])[0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
-  sed -e 's/, /,/g' -e 's/in /in_/' |\
-  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^1,[-0-9,]+$/) {print $1}' |\
-  sort >/tmp/silo-volumes
-egrep -hv "^$|^<|(TEST|(TST|(VO|IA)[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500[FG]1-VOLUMES.html |\
-  sed -e 's/, /,/g' -e 's/in /in_/' |\
-  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^[01],[-0-9,]+$/) {print $1}' |\
-  sort >/tmp/rail-volumes
-egrep -v "^$|^<" $inventory_dir/AML2-VOLUMES.html |\
-  awk 'NF==3 && $2=="3480" && $3~/[OME]/ {print $1} \
-       NF==6 && $1=="volser" {print $2}' |\
-  sort >/tmp/tower-volumes
-awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
-  sort >/tmp/vols-defined
-
-# tapes in the PowderHorn 9310, but not in enstore
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the PowderHorn 9310 (acs 1, lsm 0 and 1) that are not fully declared to enstore"
-comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
-fgrep -f /tmp/silo-not-enstore $inventory_dir/STK-VOLUMES.html
-
-# tapes in a StreamLine 8500, but not in enstore
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in a StreamLine 8500 (acs 0, lsm 4 to 7 or acs 1, lsm 0 to 3) that are not fully declared to enstore"
-comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
-fgrep -hf /tmp/rail-not-enstore $inventory_dir/SL8500[FG]1-VOLUMES.html
-
-# tapes in a D0 AML/2 tower, but not in enstore
-# d0en has only LTOs in the AML/2
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in a D0 AML/2 tower that are not fully declared to enstore"
-comm -23 /tmp/tower-volumes /tmp/vols-defined >/tmp/tower-not-enstore
-fgrep -f /tmp/tower-not-enstore $inventory_dir/AML2-VOLUMES.html
-
-#echo
-#echo "--------------------------------------------------------------------------------------------------------------------"
-#echo "Tapes not in any category"
-#egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html | grep -v "        1, [01],"
-
-# tapes in enstore, but not in the robots
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in a SL8500, a D0 silo, or a D0 tower"
-sort -mu /tmp/{silo,rail,tower}-volumes >/tmp/robot-volumes
-comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
-fgrep -f /tmp/enstore-not-robot $inventory_dir/VOLUMES_DEFINED
-
-# tapes apparently in more than one robot, whether in enstore or not, ie, duplicate names
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes that are apparently in more than one robot"
-sort -m /tmp/{silo,rail,tower}-volumes | uniq -d | while read vol; do
-  grep -h $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500[FG]1,STK,AML2}-VOLUMES.html}
-done
-
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in NOACCESS or NOTALLOWED state"
-awk 'NR>3 && NF==10 && $3!~/none/ && $4!~/migrated/' $inventory_dir/VOLUMES_DEFINED
-
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in invalid library"
-libs=`tr '\n' ' ' </tmp/valid-library`
-echo "Valid libraries are: $libs"
-awk -v Libs="$libs" 'BEGIN {$0=Libs; for (i=1; i<=NF; i++) libs[$i]=i}
-		     NR>3 && NF==10 && $NF!~/^test\.[[:print:]]*\.[[:print:]]*/ &&
-		     $7!~/null|disk|shelf/ && !($7 in libs)' $inventory_dir/VOLUMES_DEFINED
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-
-
-elif [ $gang = "cdfen" ]; then
-
-# cdfen 9310 silos are acs 0 & lsm 0,1
-# cdfen 8500 rails are acs 0 & lsm 0-7
-
-# for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
-#   vol   home		acs, lsm, panel, row, col	type
-#   vol   in drive	acs, lsm, panel, drive		type
-#   vol   in transit	acs, lsm, panel, row, col	type
-#   vol   in transit	acs, lsm, panel, drive		type
-# where type is one of STK2P, STK2W
-#
-# for "display" (ACSLS 7), each line in the silo inventory has ten fields:
-#   Vol_id  Acs  Lsm  Panel  Row  Column  Pool   Status    Media     Type
-# where
-#   Status is one of dismount, eject, enter, mount, home, in_drive, move, missing, absent, ejected
-#   Media is one of STK2P, STK2W
-#   Type is one of data, clean
-#
-# all lines of enstore inventory have ten fields, in this format:
-#   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
-# where each inhibit takes two fields (including parentheses)
-#
-# there should be no deleted volumes in VOLUMES_DEFINED
-
-egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
-  sed -e 's/, /,/g' -e 's/in /in_/' |\
-  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
-  sort >/tmp/silo-volumes
-egrep -v "^$|^<|(TEST|(TST|P[RS][A-Z]|VO[0-9A-Z])[0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
-  sed -e 's/, /,/g' -e 's/in /in_/' |\
-  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/ && $1!~/^SL8500$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
-  sort >/tmp/rail-volumes
-awk 'NR>3 && NF==10 && $7!~/null|disk|shelf|-D0/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
-  sort >/tmp/vols-defined
-
-# tapes in the PowderHorn 9310, but not in enstore
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the PowderHorn 9310 (acs 0, lsm 0 and 1) that are not fully declared to enstore"
-comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
-fgrep -f /tmp/silo-not-enstore $inventory_dir/STK-VOLUMES.html
-
-# tapes in the StreamLine 8500, but not in enstore
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 7) that are not fully declared to enstore"
-comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
-fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500-VOLUMES.html
-
-#echo
-#echo "--------------------------------------------------------------------------------------------------------------------"
-#echo "Tapes not in any category"
-#egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html | grep -v "        0, [01],"
-
-# tapes in enstore, but not in the robots
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in the SL8500 or a CDF silo"
-sort -mu /tmp/{silo,rail}-volumes >/tmp/robot-volumes
-comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
-fgrep -f /tmp/enstore-not-robot $inventory_dir/VOLUMES_DEFINED
-
-# tapes apparently in more than one robot, whether in enstore or not, ie, duplicate names
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes that are apparently in more than one robot"
-sort -m /tmp/{silo,rail}-volumes | uniq -d | while read vol; do
-  grep -h $vol $inventory_dir/{VOLUMES_DEFINED,{SL8500,STK}-VOLUMES.html}
-done
-
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in NOACCESS or NOTALLOWED state"
-awk 'NR>3 && NF==10 && $3!~/none/ && $4!~/migrated/' $inventory_dir/VOLUMES_DEFINED
-
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in invalid library"
-libs=`tr '\n' ' ' </tmp/valid-library`
-echo "Valid libraries are: $libs"
-awk -v Libs="$libs" 'BEGIN {$0=Libs; for (i=1; i<=NF; i++) libs[$i]=i}
-		     NR>3 && NF==10 && $NF!~/^test\.[[:print:]]*\.[[:print:]]*/ &&
-		     $7!~/null|disk|shelf/ && !($7 in libs)' $inventory_dir/VOLUMES_DEFINED
-echo
-echo "--------------------------------------------------------------------------------------------------------------------"
-
-fi
-
-date
+    date
 
 ) | tee $temp_file 2>&1
 
