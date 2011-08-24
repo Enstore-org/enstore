@@ -6,6 +6,7 @@ class CacheStatus:
     PURGED="PURGED"
     STAGING="STAGING"
     CACHED="CACHED"
+    STAGING_REQUESTED="STAGING_REQUESTED"
 
 class ArchiveStatus:
     ARCHIVING="ARCHIVING"
