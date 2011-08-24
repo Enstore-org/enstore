@@ -61,6 +61,7 @@ import drivestat_client
 import Trace
 import generic_driver
 import event_relay_messages
+import file_cache_status
 
 """
 Mover:
@@ -6965,11 +6966,36 @@ class DiskMover(Mover):
         Trace.trace(29,"FILE NAME %s"%(self.file,))
         self.position_media(work_file)
         
+
+    # stage file into cache
+    def stage_file(self):
+        if self.file_info['cache_status'] != file_cache_status.CacheStatus.CACHED:
+            #rc = self.fcc.open_bitfile(self.file_info['bfid']) # uncomment when fixed
+            #Trace.log(e_errors.INFO, "stage_file: open_bitfile returned %s"%(rc,))
+            # now wait until this file is staged
+            # this is a trivial way
+            # make it better
+            while True:
+                info = self.fcc.bfid_info(self.file_info['bfid'])
+                if info['cache_status'] == file_cache_status.CacheStatus.CACHED:
+                    break
+                else:
+                    time.sleep(2)
+                    # Staging a file may take a very long time.
+                    # Reset self.state_change_time
+                    # to avoid "mover stuck in state condition"
+                    self.state_change_time = self.time_in_state
+                
+
     def position_media(self, filename):
         x = filename # to trick pychecker
         have_tape = 0
         err = None
         Trace.trace(10, "position media")
+        # Check if file exists.
+        # If this is a cache file it might have been purged
+        if not os.path.exists(filename):
+            self.stage_file()
         try:
             have_tape = self.tape_driver.open(filename, self.mode, retry_count=30)
         except Exception, err:
@@ -6986,7 +7012,7 @@ class DiskMover(Mover):
         self.start_transfer()
         return 1
             
-    def transfer_failed(self, exc=None, msg=None, error_source=None):
+    def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=0):
         Trace.trace(25, "TR FAILED")
         self.timer('transfer_time')
         ticket = self.current_work_ticket
