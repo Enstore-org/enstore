@@ -51,6 +51,7 @@ import udp_server
 import cleanUDP
 import udp_common
 import checksum
+import file_cache_status
 
 KB=enstore_constants.KB
 MB=enstore_constants.MB
@@ -736,13 +737,17 @@ class CacheREquestsOnHold:
         package_id = self.check_request(request)
         if package_id:
             # see if request should go into list requests on-hold
-            if request['fc']['cache_status']  == "STAGED" or request['fc']['cache_status']  == "PURGED": # no need to put into requests on-hold
+            if (request['fc']['cache_status']  == file_cache_status.CacheStatus.CACHED or
+                request['fc']['cache_status']  == file_cache_status.CacheStatus.PURGED): # no need to put into requests on-hold
                 return None
             else:
                 if not self.requests.has_key(package_id):
                     # create dictionary entry, which value is a list of requests
                     self.requests[package_id] = []
-                if not request in self.requests[package_id]:
+                for rq in self.requests[package_id]:
+                    if request['unique_id'] == rq['unique_id']:
+                        break # request is already in the list, no need to enter it.
+                else:
                     self.requests[package_id].append(request)
                 return request
         else:
@@ -752,12 +757,13 @@ class CacheREquestsOnHold:
     # @param package id
     # @return request or None
     def get(self,package_id):
+        request = None
         if self.requests.has_key(package_id):
             if len(self.requests[package_id]) > 0:
-                rc = self.requests[package_id].pop() # pull and delete item
+                request = self.requests[package_id].pop() # pull and delete item
             else:
                 del( self.requests[package_id])
-                rc = None
+        return request
         
 class LibraryManagerMethods:
 
@@ -2878,13 +2884,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # Move requests from depayed requests into main request queue.
     # This method is needed only for disk movers in File Aggregation Project
     def move_from_on_hold_into_queue(self, request):
-        package_id = w['fc'].get('package_id', None)
-        if package_id and self.cache_requests_on_hold.has_key(package_id):
+        package_id = request['fc'].get('package_id', None)
+        if package_id and self.cache_requests_on_hold.requests.has_key(package_id):
             while True:
-                rq = self.cache_requests_on_hold['package_id'].get()
+                rq = self.cache_requests_on_hold.get(package_id)
                 if rq:
                     # put it into the pending wirk queue
-                    rq1, status = self.pending_work.put(ticket)
+                    rq1, status = self.pending_work.put(rq)
                 else:
                     break
         
@@ -3213,14 +3219,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
             # check request and put it into cache_requests_on_hold for disk cache request
             rq = self.cache_requests_on_hold.put(ticket)
+            status = e_errors.OK
 
             # if ticket did not go into cache_requests_on_hold
             # put ticket into request queue rigth away
             if not rq:
                 rq, status = self.pending_work.put(ticket)
-                ticket['status'] = (status, None)
-            else:
-                status == e_errors.OK
+            ticket['status'] = (status, None)
+
         # it has been observerd that in multithreaded environment
         # ticket["r_a"] somehow gets modified
         # so to be safe restore  ticket["r_a"] just before sending
@@ -3365,7 +3371,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if self.mover_type(mticket) == 'DiskMover':
                 # check if there are any requests related to just completed request in
                 # cache_requests_on_hold request queue and if yes move them into main request queue
-                self.move_from_on_hold_into_queue(w)
+                self.move_from_on_hold_into_queue(wt)
 
             self.work_at_movers.remove(wt)
             _format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
