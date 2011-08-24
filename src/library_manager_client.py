@@ -132,13 +132,13 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return {"status" :(e_errors.OK, None)}
 
     # helper method to print pending read requests
-    def __print_pending_read_requests(self, requests):
+    def __print_pending_read_requests(self, requests, node=None):
        for work in requests:
            host = work["wrapper"]["machine"][1]
            user = work["wrapper"]["uname"]
            pnfsfn = work["wrapper"]["pnfsFilename"]
            fn = work["wrapper"]["fullname"]
-           at_top = work["at_the_top"]
+           at_top = work.get("at_the_top", 0)
            reject_reason = ("","")
            vol_msg = ''
            if work.has_key('reject_reason'):
@@ -183,7 +183,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
                        pend_writes.append(work)
                if pending_read_cnt:
                    print "Pending read requests"
-                   __print_pending_read_requests(pend_reads)
+                   self.__print_pending_read_requests(pend_reads, node)
 
                if pending_write_cnt:
                    print "Pending write requests"
@@ -241,10 +241,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
                            f2 = pnfsfn
                        print "%s %s %s %s %s M %s %s" % (host,self.name, user,f1,f2, mover, vol)
                if requests_on_hold:
-                   print "Delayed cache requests"
+                   print "Cache requests on-hold"
                    for rq in requests_on_hold.keys():
                        print rq
-                       __print_pending_read_requests(requests_on_hold[rq])
+                       self.__print_pending_read_requests(requests_on_hold[rq])
                        requests_on_hold_cnt = requests_on_hold_cnt + len(requests_on_hold[rq]) 
 
         print "Pending read requests: ", pending_read_cnt
