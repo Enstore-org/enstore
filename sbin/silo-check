@@ -95,6 +95,14 @@ libs=( $(enstore conf --list-lib|awk 'NR > 1 {print substr($1,1,match($1,/\./) -
 	exit 1
     esac
 
+    echo -e "Contingent on data produced by:\n\trobot_inventory:"
+    ls -l $inventory_dir/SL8500*-VOLUMES.html
+
+    echo -e "\tinventory:"
+    ls -l $inventory_dir/VOLUMES_DEFINED
+    echo
+
+
     ##
     # How the different formats appear for various ACSLS query/display commands and enstore inventory
     # 
