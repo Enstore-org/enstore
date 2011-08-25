@@ -1407,6 +1407,65 @@ class LibraryManagerMethods:
     # Request processing methods
     ############################################
 
+    # Check if request os for a packaged file
+    # @param - request
+    # @return - package_id or None
+    def is_packaged(self, request):
+        package_id = request['fc'].get("package_id", None)
+        if package_id and package_id == request['fc']['bfid']: # file is a package itself
+            package_id = None
+        return package_id
+
+    # Wrapper method for manage_queue.Request_Queue.get
+    # This method applies only for packaged disk files.
+    # It checks if request pulled from request queue
+    # has a package id identical with package id of
+    # any active request and, if yes, skips it to allow
+    # completion of staging the package.
+    # This allows to avoid submission of more than one
+    # requests belonging to the same package to movers
+    # until all files in the package are staged.
+    # @params - first: method for exracting request from the queue
+    # others: same as for manage_queue.Request_Queue.get
+    # @return same as manage_queue.Request_Queue.get
+    def __get_request(self, method, *args, **kwargs):
+        request = method(*args, **kwargs)
+        Trace.trace(self.trace_level+3, "__get_request: method %s args %s kwargs %s request %s"%(method.__name__, args, kwargs, request,))
+        if request and request.ticket['work'] != "read_from_hsm":
+            # only read_from_hsm requests need further processing
+            return request
+        while request:
+            Trace.trace(self.trace_level+3, "__get_request: %s"%(request,))
+            # check if file is part of a package
+            package_id = self.is_packaged(request.ticket)
+            if package_id:
+                # Find the any file in the work at movers.
+                # If it is found this means that at least the
+                # package is being staged
+                for w in self.work_at_movers.list:
+                    # Check if this is a disk file:
+                    if w['mover_type'] != 'DiskMover':
+                        # not a disk file: continue search
+                        continue
+                    wam_package_id = w['fc'].get("package_id", None)
+                    if wam_package_id == package_id:
+                        # The package is being processed by mover.
+                        # Check the cache status
+                        if request.ticket['fc']['cache_status']  == file_cache_status.CacheStatus.CACHED:
+                            # the request can be sent to the mover
+                            # return here
+                            Trace.trace(self.trace_level+3, "__get_request: returning %s"%(request,))
+                            return request
+                        else:
+                            # get next request
+                            kwargs['next'] = 1
+                            request = method(*args, **kwargs)
+                else:
+                    break
+            else:
+                break
+        Trace.trace(self.trace_level+3, "__get_request: returning1 %s"%(request,))
+        return request
 
     # allow HIPR request to be sent to the current mover
     # this method is used with Admin Priority requests
@@ -1890,7 +1949,8 @@ class LibraryManagerMethods:
         active_vols = self.volumes_at_movers.active_volumes()
 
         # look in pending work queue for reading or writing work
-        rq=self.pending_work.get(active_volumes=active_vols)
+        #rq=self.pending_work.get(active_volumes=active_vols)
+        rq=self.__get_request(self.pending_work.get, active_volumes=active_vols)
         while rq:
             rej_reason = None
 
@@ -1912,13 +1972,15 @@ class LibraryManagerMethods:
 
                 if self.continue_scan:
                     if key:
-                        rq = self.pending_work.get(key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+                        #rq = self.pending_work.get(key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+                        rq = self.__get_request(self.pending_work.get, key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
                         # if there are no more requests for a given volume
                         # rq will be None, but we do not want to stop here
                         if rq:
                             # continue check with current volume
                             continue
-                    rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
+                    #rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
+                    rq = self.__get_request(self.pending_work.get, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
                     Trace.trace(self.trace_level+41,"next_work_any_volume: new rq %s" % (rq,))
 
                     continue
@@ -1928,13 +1990,15 @@ class LibraryManagerMethods:
                 Trace.trace(self.trace_level+10,"next_work_any_volume: process_write_request returned %s %s %s" % (rq, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
-                        rq = self.pending_work.get(key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+                        #rq = self.pending_work.get(key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+                        rq = self.__get_request(self.pending_work.get, key, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
                         # if there are no more requests for a given volume family
                         # rq will be None, but we do not want to stop here
                         if rq:
                             # continue check with current volume
                             continue
-                    rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
+                    #rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
+                    rq = self.__get_request(self.pending_work.get, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) # get next request
                     Trace.trace(self.trace_level+41,"next_work_any_volume: new rq %s" % (rq,))
                     continue
                 break
@@ -1945,7 +2009,8 @@ class LibraryManagerMethods:
                           "next_work_any_volume assertion error in next_work_any_volume %s"%(rq.ticket,))
                 raise AssertionError
             Trace.trace(self.trace_level+41,"next_work_any_volume: continue")
-            rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+            #rq = self.pending_work.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
+            rq = self.__get_request(self.pending_work.get, next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts)
 
         if not rq or (rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == 'PURSUING'):
             saved_rq = rq
@@ -2188,9 +2253,11 @@ class LibraryManagerMethods:
         # op was read, we look at admin reads first
         # (via "key_for_admin_priority") and writes
         # second. vice versa for last op write
-        rq = self.pending_work.get_admin_request(key=key_for_admin_priority)
+        #rq = self.pending_work.get_admin_request(key=key_for_admin_priority)
+        rq = self.__get_request(self.pending_work.get_admin_request, key=key_for_admin_priority)
         if not rq:
-            rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority)
+            #rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority)
+            rq = self.__get_request(self.pending_work.get_admin_request, key=alt_key_for_admin_priority)
         checked_request = None
         would_preempt = False # no preemption of low pri requests by default
         while rq:
@@ -2207,7 +2274,8 @@ class LibraryManagerMethods:
                     # completed request had a regular proirity
                     # but the mounted tape can not be preempted by HIPRI request
                     # because there are idle movers tah could pick up HIPRI request
-                    rq = self.pending_work.get_admin_request(next=1,
+                    #rq = self.pending_work.get_admin_request(next=1,
+                    rq = self.__get_request(self.pending_work.get_admin_request, next=1,
                                                              disabled_hosts=self.disabled_hosts) # get next request
                     continue
                 if rq and rq.work == "write_to_hsm":
@@ -2245,7 +2313,8 @@ class LibraryManagerMethods:
                                     Trace.trace(self.trace_level+42, 'next_work_this_volume: will wait with this request to go to %s %s'%
                                                 (mover['mover'], mover['external_label']))
 
-                                    rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts) # get next request
+                                    #rq = self.pending_work.get_admin_request(next=1, disabled_hosts=self.disabled_hosts) # get next request
+                                    rq = self.__get_request(self.pending_work.get_admin_request, next=1, disabled_hosts=self.disabled_hosts) # get next request
                                     continue
 
             Trace.trace(self.trace_level+10, "next_work_this_volume: next admin rq %s"%(rq,))
@@ -2262,14 +2331,16 @@ class LibraryManagerMethods:
                         if rq.ticket['fc']['external_label'] == external_label:
                             checked_request = rq
                             break
-                    rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
-                                                             next=1,
-                                                             disabled_hosts=self.disabled_hosts) # get next request
+                    #rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
+                    rq = self.__get_request(self.pending_work.get_admin_request, key=key_for_admin_priority,
+                                            next=1,
+                                            disabled_hosts=self.disabled_hosts) # get next request
                     if not rq:
                         # try alternative key
-                        rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
-                                                                 next=1,
-                                                                 disabled_hosts=self.disabled_hosts)
+                        #rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
+                        rq = self.__get_request(self.pending_work.get_admin_request, key=alt_key_for_admin_priority,
+                                                next=1,
+                                                disabled_hosts=self.disabled_hosts)
                     Trace.trace(self.trace_level+10, "next_work_this_volume: continue with %s"%(rq,))
                     continue
                 break
@@ -2281,14 +2352,16 @@ class LibraryManagerMethods:
                         if rq and status[0] == e_errors.OK:
                             checked_request = rq
                             break
-                    rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
-                                                             next=1,
-                                                             disabled_hosts=self.disabled_hosts) # get next request
+                    #rq = self.pending_work.get_admin_request(key=key_for_admin_priority,
+                    rq = self.__get_request(self.pending_work.get_admin_request, key=key_for_admin_priority,
+                                            next=1,
+                                            disabled_hosts=self.disabled_hosts) # get next request
                     if not rq:
                         # try alternative key
-                        rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
-                                                                 next=1,
-                                                                 disabled_hosts=self.disabled_hosts)
+                        #rq = self.pending_work.get_admin_request(key=alt_key_for_admin_priority,
+                        rq = self.__get_request(self.pending_work.get_admin_request, key=alt_key_for_admin_priority,
+                                                next=1,
+                                                disabled_hosts=self.disabled_hosts)
                     Trace.trace(self.trace_level+10, "next_work_this_volume: continue with %s"%(rq,))
                     continue
                 break
@@ -2349,11 +2422,13 @@ class LibraryManagerMethods:
                 # see if there is another work for this volume family
                 # disable retrival of HiPri requests as they were
                 # already treated above
-                rq = self.pending_work.get(vol_family, use_admin_queue=0)
+                #rq = self.pending_work.get(vol_family, use_admin_queue=0)
+                rq = self.__get_request(self.pending_work.get, vol_family, use_admin_queue=0)
                 Trace.trace(self.trace_level+10, "next_work_this_volume: use volume family %s rq %s"%
                             (vol_family, rq))
                 if not rq:
-                    rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
+                    #rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
+                    rq = self.__get_request(self.pending_work.get, external_label, current_location, use_admin_queue=0)
                     Trace.trace(self.trace_level+10, "next_work_this_volume: use label %s rq %s"%
                                 (external_label, rq))
 
@@ -2361,11 +2436,13 @@ class LibraryManagerMethods:
                 # see if there is another work for this volume
                 # disable retrival of HiPri requests as they were
                 # already treated above
-                rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
+                #rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
+                rq = self.__get_request(self.pending_work.get, external_label, current_location, use_admin_queue=0)
                 Trace.trace(self.trace_level+10, "next_work_this_volume: use label %s rq %s"%
                             (external_label, rq))
                 if not rq:
-                    rq = self.pending_work.get(vol_family, use_admin_queue=0)
+                    #rq = self.pending_work.get(vol_family, use_admin_queue=0)
+                    rq = self.__get_request(self.pending_work.get, vol_family, use_admin_queue=0)
                     Trace.trace(self.trace_level+10, "next_work_this_volume: use volume family %s rq %s"%
                                 (vol_family, rq))
 
@@ -2400,13 +2477,16 @@ class LibraryManagerMethods:
                                 break
                             if last_work == "READ":
                                 # volume is readonly: get only read requests
-                                rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                #rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                rq = self.__get_request(self.pending_work.get, external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
                                 if not rq:
                                     # see if there is a write work for the current volume
                                     # volume family
-                                    rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
+                                    #rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
+                                    rq = self.__get_request(self.pending_work.get, vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
                             else:
-                                rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                #rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                rq = self.__get_request(self.pending_work.get, vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
                             continue
                         break
                     elif rq.work == 'write_to_hsm':
@@ -2425,13 +2505,16 @@ class LibraryManagerMethods:
                                     break
                             Trace.trace(self.trace_level+10, "next_work_this_volume: current_volume_info %s"%(self.current_volume_info,))
                             if last_work == "WRITE":
-                                rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                #rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                rq = self.__get_request(self.pending_work.get, vol_family,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
                                 if not rq:
                                     # see if there is a read work for the current volume
                                     # volume family
-                                    rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                    #rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                    rq = self.__get_request(self.pending_work.get, external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
                             else:
-                                rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                #rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
+                                rq =  self.__get_request(self.pending_work.get, external_label,  next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts) # get next request
 
                             continue
                         break
@@ -2458,7 +2541,8 @@ class LibraryManagerMethods:
                         return rq, status
                     if not rq: break
                     Trace.trace(self.trace_level+10, "next_work_this_volume: got here")
-                    rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
+                    #rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
+                    rq = self.__get_request(self.pending_work.get, vol_family, next=1, use_admin_queue=0, disabled_hosts=self.disabled_hosts)
             # return read work
             if rq:
                 Trace.trace(self.trace_level+10, "next_work_this_volume: s4 rq %s" % (rq.ticket,))
@@ -3469,6 +3553,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w['vc']['file_family'] = volume_family.extract_file_family(w['vc']['volume_family'])
 
         w['mover'] = mticket['mover']
+        w['mover_type'] = self.mover_type(mticket) # this is needed for packaged files processing
+        if w['mover_type'] == "DiskMover" and w['work'] == 'read_from_hsm':
+            fcc = file_clerk_client.FileClient(self.csc)
+            rc = fcc.open_bitfile(w['fc']['bfid'])
+            # open_bitfile tells file clerk to initiate disk cache file staging if it is not in the cache.
+            # The mover to which this work (w) is submitted waits until file is chached
+            # and transfers file to the client.
+            if rc['status'][0] == e_errors.OK:
+                w['fc'].update(rc)
+            else:
+                Trace.log(e_errors.INFO, "open_bitfile returned %s"%(rc,))
+                
+
         Trace.trace(self.my_trace_level, "mover_idle: File Family = %s" % (w['vc']['file_family']))
 
 	log_add_to_wam_queue(w['vc'])
@@ -3747,6 +3844,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.trace(self.my_trace_level+1, "_mover_bound_volume: HAVE_BOUND: DELETED")
             w['times']['lm_dequeued'] = time.time()
             w['mover'] = mticket['mover']
+            w['mover_type'] = self.mover_type(mticket) # this is needed for packaged files processing
+            if w['mover_type'] == "DiskMover" and w['work'] == 'read_from_hsm':
+                fcc = file_clerk_client.FileClient(self.csc)
+                rc = fcc.open_bitfile(w['fc']['bfid'])
+                # open_bitfile tells file clerk to initiate disk cache file staging if it is not in the cache.
+                # The mover to which this work (w) is submitted waits until file is chached
+                # and transfers file to the client.
+                if rc['status'][0] == e_errors.OK:
+                    w['fc'].update(rc)
+                else:
+                    Trace.log(e_errors.INFO, "open_bitfile returned %s"%(rc,))
+
             if w['work'] == 'write_to_hsm':
                 # update volume info
                 vol_info = self.inquire_vol(w["fc"]["external_label"], w['vc']['address'])
