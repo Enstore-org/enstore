@@ -131,34 +131,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
 
         return {"status" :(e_errors.OK, None)}
 
-    # helper method to print pending read requests
-    def __print_pending_read_requests(self, requests, node=None):
-       for work in requests:
-           host = work["wrapper"]["machine"][1]
-           user = work["wrapper"]["uname"]
-           pnfsfn = work["wrapper"]["pnfsFilename"]
-           fn = work["wrapper"]["fullname"]
-           at_top = work.get("at_the_top", 0)
-           reject_reason = ("","")
-           vol_msg = ''
-           if work.has_key('reject_reason'):
-               reject_reason = work['reject_reason']
-           else:
-               vol = ''
-               if work['fc'].has_key('external_label'):
-                   vol = work['vc']['external_label']
-               if vol:
-                   vol_msg='VOL %s' % (vol,)
-           if (host == node) or (not node):
-               print "%s %s %s %s %s P %d %s %s %s"% \
-                     (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg)
-        
     def get_queue(self, node=None, lm=None):
         if not lm: lmname = "library_manager"
         else: lmname = lm
         pending_read_cnt = 0
         pending_write_cnt = 0
-        requests_on_hold_cnt = 0
         active_read_cnt = 0
         active_write_cnt = 0
         keys = self.csc.get_keys()
@@ -172,8 +149,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
                at_list = lst["at movers"]
                pend_writes = []
                pend_reads = []
-               # dalayed cache requests
-               requests_on_hold = lst.get("cache_requests_on_hold", None)
                for work in pw_list:
                    if work["work"] == "read_from_hsm":
                        pending_read_cnt = pending_read_cnt + 1
@@ -183,8 +158,24 @@ class LibraryManagerClient(generic_client.GenericClient) :
                        pend_writes.append(work)
                if pending_read_cnt:
                    print "Pending read requests"
-                   self.__print_pending_read_requests(pend_reads, node)
-
+                   for work in pend_reads:
+                       host = work["wrapper"]["machine"][1]
+                       user = work["wrapper"]["uname"]
+                       pnfsfn = work["wrapper"]["pnfsFilename"]
+                       fn = work["wrapper"]["fullname"]
+                       at_top = work["at_the_top"]
+                       reject_reason = ("","")
+                       vol_msg = ''
+                       if work.has_key('reject_reason'):
+                           reject_reason = work['reject_reason']
+                       else:
+                           vol = ''
+                           if work['fc'].has_key('external_label'):
+                               vol = work['vc']['external_label']
+                           if vol:
+                               vol_msg='VOL %s' % (vol,)
+                       if (host == node) or (not node):
+                           print "%s %s %s %s %s P %d %s %s %s" % (host,self.name,user,pnfsfn,fn, at_top, reject_reason[0], reject_reason[1], vol_msg)
                if pending_write_cnt:
                    print "Pending write requests"
                    for work in pend_writes:
@@ -240,18 +231,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
                            f1 = fn
                            f2 = pnfsfn
                        print "%s %s %s %s %s M %s %s" % (host,self.name, user,f1,f2, mover, vol)
-               if requests_on_hold:
-                   print "Cache requests on-hold"
-                   for rq in requests_on_hold.keys():
-                       print rq
-                       self.__print_pending_read_requests(requests_on_hold[rq])
-                       requests_on_hold_cnt = requests_on_hold_cnt + len(requests_on_hold[rq]) 
 
         print "Pending read requests: ", pending_read_cnt
         print "Pending write requests: ", pending_write_cnt
         print "Active read requests: ", active_read_cnt
         print "Active write requests: ", active_write_cnt
-        print "Cache requests on-hold: ", requests_on_hold_cnt
                            
         return {"status" :(e_errors.OK, None)}
 
