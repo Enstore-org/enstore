@@ -1,0 +1,65 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# use $HOME because tilde does not work on sgis
+node=`uname -n`
+#OUT=${HOME:-~}/${node}.qpid_server.output
+
+# only resetup everything if not currently set up
+if [ "${ENSTORE_DIR:-}" = "" -o "${QPID_DIR:-}" = "" -o "${HOSTNAME:-}" ];
+then
+   . /usr/local/etc/setups.sh
+   setup enstore
+fi
+
+EXE=$QPID_DIR/sbin/qpidd
+SEC=$ENSTORE_DIR/pki
+RUN_DIR=/var/run/qpidd
+LOG_DIR=/var/log/qpidd
+LOG=$LOG_DIR/qpidd.log
+
+SEC_OPTS="
+ --ssl-cert-password-file $SEC/sec/pw \
+ --ssl-cert-name ${HOSTNAME} \
+"
+#2 --ssl-require-client-authentication \
+#2 --ssl-cert-db   $SEC/server_db \
+#2 --ssl-use-export-polic \
+
+OPTS="\
+ --default-queue-limit 0 \
+ --tcp-nodelay \
+"
+# --trace \
+
+#debug echo OPTS=$OPTS
+#debug echo SEC_OPTS=$SEC_OPTS
+
+mkdir -p $RUN_DIR
+mkdir -p $LOG_DIR
+
+command=${1:-restart}
+
+case $command in
+
+stop)
+	CMD="$EXE -q --log-to-file $LOG --pid-dir $RUN_DIR"
+	echo $CMD
+	$CMD
+	;;
+start)
+	CMD="$EXE -d --log-to-file $LOG --pid-dir $RUN_DIR --data-dir $RUN_DIR $OPTS"      ####  $SEC_OPTS  ####
+        echo $CMD
+        $CMD
+	;;
+restart)
+	$0 stop
+	$0 start
+	;;
+*)
+	echo "Error: Invalid option $command"
+	echo "USAGE: $0 [stop|start|restart]"
+	exit 1
+	;;
+esac
