@@ -14,11 +14,11 @@ then
 fi
 
 EXE=$QPID_DIR/sbin/qpidd
-SEC=$ENSTORE_DIR/pki
 RUN_DIR=/var/run/qpidd
 LOG_DIR=/var/log/qpidd
-LOG=$LOG_DIR/qpidd.log
 
+#unused now
+SEC=$ENSTORE_DIR/pki
 SEC_OPTS="
  --ssl-cert-password-file $SEC/sec/pw \
  --ssl-cert-name ${HOSTNAME} \
@@ -27,13 +27,6 @@ SEC_OPTS="
 #2 --ssl-cert-db   $SEC/server_db \
 #2 --ssl-use-export-polic \
 
-OPTS="\
- --default-queue-limit 0 \
- --tcp-nodelay \
-"
-# --trace \
-
-#debug echo OPTS=$OPTS
 #debug echo SEC_OPTS=$SEC_OPTS
 
 mkdir -p $RUN_DIR
@@ -41,15 +34,18 @@ mkdir -p $LOG_DIR
 
 command=${1:-restart}
 
+# startup options are set in qpidd.conf
+# use "qpidd --help" to see file location
+
 case $command in
 
 stop)
-	CMD="$EXE -q --log-to-file $LOG --pid-dir $RUN_DIR"
+	CMD="$EXE -q"
 	echo $CMD
 	$CMD
 	;;
 start)
-	CMD="$EXE -d --log-to-file $LOG --pid-dir $RUN_DIR --data-dir $RUN_DIR $OPTS"      ####  $SEC_OPTS  ####
+	CMD="$EXE -d" ####  $SEC_OPTS  ####
         echo $CMD
         $CMD
 	;;
