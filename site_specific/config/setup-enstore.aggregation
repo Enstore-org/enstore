@@ -32,12 +32,13 @@ pathmunge () {
          fi
 }
 
+# for reference: path old way
 #PATH=$SWIG_DIR:$PATH
 #PATH=$QPID_DIR/bin:$PATH
 #PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$ENSTORE_DIR/tools:$PATH
 
 pathmunge $SWIG_DIR
-pathmunge $QPID_DIR
+pathmunge $QPID_DIR/bin
 pathmunge $ENSTORE_DIR/tools
 pathmunge $ENSTORE_DIR/bin
 pathmunge $ENSTORE_DIR/sbin
