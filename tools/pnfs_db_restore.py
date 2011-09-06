@@ -22,9 +22,9 @@ import e_errors
 import file_utils
 
 sys2host={'cms':  ('cmspnfs1', 'psql-data'),
-          'eag':  ('eagpnfs1','psql-data'),
-          'sdss': ('?????', '?????'),
           'd0en': ('d0ensrv1n', 'psql-data'),
+          'stken': ('stkensrv1n', 'psql-data'),
+          'cdfen': ('cdfensrv1n', 'psql-data'),
           }
 
 PSQL_COMMAND = "psql -U enstore postgres -c 'select datname from pg_database' 2> /dev/null"
@@ -137,7 +137,7 @@ class PnfsDbRestore:
             pnfs_server_dict=config_server_client.get('pnfs_server')
             if pnfs_server_dict["status"][0] == e_errors.KEYERROR:
                 self.pnfs_host = sys2host[name][0]
-            elif  pnfs_server_dict["status"] ==e_errors.OK:
+            elif  pnfs_server_dict["status"][0] ==e_errors.OK:
                 self.pnfs_host=config_server_client.get('pnfs_server').get('host')
             else:
                 print "Failed to communicate with config server ",pnfs_server_dict["status"]
