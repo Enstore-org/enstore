@@ -1,12 +1,18 @@
 #!/bin/bash
 
 . /usr/local/etc/setups.sh
-setup remedy_soap
 
-if [ $? -ne 0 ];
+setup servicenow_soap 2>/dev/null 
+
+if [ "${SETUP_SERVICENOW_SOAP:-}" = "" ];
 then
-    echo "Failed to setup remedy_soap " >&2
-    exit 1
+    echo "Failed to setup servicenow_soap " >&2
+    setup remedy_soap 2>/dev/null 
+    if  [ "${SETUP_REMEDY_SOAP:-}" = "" ];
+    then 
+	echo "Failed to setup remedy_soap " >&2
+	exit 1
+    fi
 fi
 
 export PYTHONPATH=$SETUPS_DIR:$PYTHONPATH
