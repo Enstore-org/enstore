@@ -83,6 +83,51 @@ find_command()
     fi
 }
 
+#Either correct or append ENSTORE_CONFIG_[HOST|PORT] in the enstore.conf file.
+correct_config_file()
+{
+    line_name=$1  #The string ENSTORE_CONFIG_HOST or ENSTORE_CONFIG_PORT.
+    config_file_name=$2  #/tmp/enstore.conf
+
+    #Get the value of the variable name stored in $line_name.
+    value=$(eval echo \$$(echo $line_name))
+
+    if [ -z "$value" ]; then
+	grep ${line_name}= "$config_file_name" > /dev/null
+	if [ $? -eq 0 ]; then
+	    #The test copy of the enstore.conf file has this line already
+	    # set and no environmental variable to override it was found.
+	    return 0
+	else
+	    #The line was not in the enstore.conf config file already.
+	    return 1
+        fi
+    fi
+
+    #Make a temporary copy.
+    tmp_config_file_name=${config_file_name}.tmp
+
+    grep ${line_name}= "$config_file_name" > /dev/null
+    if [ $? -eq 0 ]; then
+	#We found an alrady present line; replace it.
+	sed "s/$line_name=.*/$line_name=$value/" "$config_file_name" > "$tmp_config_file_name"
+	if [ $? -ne 0 ]; then
+            return 1
+	fi
+	mv $tmp_config_file_name $config_file_name
+	if [ $? -ne 0 ]; then
+            return 1
+	fi
+    else
+	#No line found, add one at the end.
+	env | grep $line_name >> "$config_file_name"
+	if [ $? -ne 0 ]; then
+            return 1
+	fi
+    fi
+
+    return 0  #Success
+}
 #############################################################################
 
 #Return true (zero) if the requested directory is a PNFS directory.
@@ -435,6 +480,38 @@ has_scanfiles_command()
     return 0
 }
 
+has_pnfs_agent_command()
+{
+    help=`$enstore_cmd --help`
+
+    echo "$help" | awk '{print $1}' | grep 'pnfs_agent' > /dev/null
+    #If a match was found it has the command.
+    if [ $? -eq 0 ]; then
+	return 1
+    fi
+
+    #Return zero if the command is not available.
+    return 0
+}
+
+has_mount_point_switch()
+{
+    if [ -n "$REMOTE_ENCP" ]; then
+        #Current "enstore pnfs_agent --mount-point" is not defined.
+	return 0
+    else
+	help=`$enstore_cmd sfs --help`
+    fi
+
+    echo "$help" | awk '{print $1}' | grep '\-\-mount-point' > /dev/null
+    #If a match was found it has the command.
+    if [ $? -eq 0 ]; then
+	return 1
+    fi
+
+    #Return zero if the command is not available.
+    return 0
+}
 
 has_library_switch()
 {
@@ -1162,7 +1239,9 @@ scan_test()
     message=`eval echo $2`
 
     results=0
+echo "$pnfsfiles" > /dev/tty
     for scan_filename in `echo "$pnfsfiles"`; do
+echo "$enstore_cmd scan $scan_filename | grep ' ... OK'" > /dev/tty
         scan_output=${scan_output}`$enstore_cmd scan $scan_filename | grep ' ... OK'`
         results=$((results + $?))
     done
@@ -1423,15 +1502,35 @@ multiple_read_write_test()
 dcache_read_write_test()
 {
     section="DCACHE READ AND WRITE"
-    #Use single quotes so that we can expand $PNFS_DIR after we know it.
-    __dcache_read_write_test '--pnfs-mount "$PNFS_DIR"'
+
+    has_mount_point_switch
+    if [ $? -eq 0 ]; then
+	print_test_name $section
+        echo "The 'enstore [sfs|pnfs_agent] --mount-point' command is not available.  Skipping test and continuing." 1>&2
+	return
+    fi
+
+    pnfs_mount_point=`enstore sfs --mount-point $PNFS_DIR`
+
+    #Otherwise run the test.
+    __dcache_read_write_test '--pnfs-mount "$pnfs_mount_point"'
 }
 
 dcache_shortcut_read_write_test()
 {
     section="DCACHE SHORTCUT READ AND WRITE"
-    #Use single quotes so that we can expand $PNFS_DIR after we know it.
-    __dcache_read_write_test '--shortcut --pnfs-mount "$PNFS_DIR"'
+
+    has_mount_point_switch
+    if [ $? -eq 0 ]; then
+	print_test_name $section
+        echo "The 'enstore [sfs|pnfs_agent] --mount-point' command is not available.  Skipping test and continuing." 1>&2
+	return
+    fi
+
+    pnfs_mount_point=`enstore sfs --mount-point $PNFS_DIR`
+
+    #Otherwise run the test.
+    __dcache_read_write_test '--shortcut --pnfs-mount "$pnfs_mount_point"'
 }
 
 dcache_override_path_read_write_test()
@@ -1441,10 +1540,26 @@ dcache_override_path_read_write_test()
     __dcache_read_write_test '--shortcut --override-path "$pnfsname"'
 }
 
+dcache_dirpath_read_write_test()
+{
+    section="DCACHE DIRNAME READ AND WRITE"
+    #Use single quotes so that we can expand $PNFS_DIR after we know it.
+    __dcache_read_write_test '--pnfs-mount "$PNFS_DIR"'
+}
+
+dcache_dirpath_shortcut_read_write_test()
+{
+    section="DCACHE DIRNAME SHORTCUT READ AND WRITE"
+    #Use single quotes so that we can expand $PNFS_DIR after we know it.
+    __dcache_read_write_test '--shortcut --pnfs-mount "$PNFS_DIR"'
+}
+
 enstore_conf_read_write_test()
 {
     section="ENSTORE.CONF READ AND WRITE"
 
+    #Once the first test sets the contents of this file, any additional tests
+    # should just use it.
     temp_config_file=/tmp/enstore.conf
 
     if [ ! -f "$temp_config_file" ]; then
@@ -1459,15 +1574,15 @@ enstore_conf_read_write_test()
             env | grep ENSTORE_CONFIG_PORT >> "$temp_config_file"
         fi
     fi
-    #Since we use env to remove these from the environment, we need to make
-    # sure they are in the tempory config file.
-    grep ENSTORE_CONFIG_HOST "$temp_config_file" > /dev/null 2>&1
+
+    #It is possible that the user has modified the environmental variables
+    # from what is in the normal enstore.conf file.  Correct the temp copy.
+    correct_config_file ENSTORE_CONFIG_HOST "$temp_config_file" && \
+    correct_config_file ENSTORE_CONFIG_PORT "$temp_config_file"
     if [ $? -ne 0 ]; then
-        env | grep ENSTORE_CONFIG_HOST >> "$temp_config_file"
-    fi
-    grep ENSTORE_CONFIG_PORT "$temp_config_file" > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        env | grep ENSTORE_CONFIG_PORT >> "$temp_config_file"
+	print_test_name $section
+	echo "Failed to set $temp_config_file.  Skipping test and continuing." 1>&2
+	return
     fi
 
     #Override environment for this test.
@@ -1976,7 +2091,7 @@ single_assert_test()
             ees=0  #Tape volumes are assertable.
         fi
 
-	transfer '$assert' '--volume $volume' '' '' '' "SINGLE ASSERT" READ $ees
+	transfer '$volume_assert_cmd' '--volume $volume' '' '' '' "SINGLE ASSERT" READ $ees
     fi
 }
 

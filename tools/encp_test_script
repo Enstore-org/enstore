@@ -24,6 +24,8 @@ list_of_encp_tests="single_read_test
                     dcache_read_write_test
                     dcache_shortcut_read_write_test
                     dcache_override_path_read_write_test
+                    dcache_dirpath_read_write_test
+                    dcache_dirpath_shortcut_read_write_test
                     enstore_conf_read_write_test
                     single_threaded_read_write_test
                     multiple_threaded_read_write_test
