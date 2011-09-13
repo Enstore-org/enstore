@@ -1319,11 +1319,11 @@ def make_cap(l, library_type='9310', cap_n = 0):
 		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
 	elif library_type == '8500F1':
 		if cluster == "D0":
-			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,5,0 "
+			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,9,0 "
 		elif cluster == "STK":
-			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,1,0 "
+			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,5,0 "
 		elif cluster == "CDF":
-			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,1,0 "
+			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,5,0 "
 		else:
 			return None
 		for i in l:
