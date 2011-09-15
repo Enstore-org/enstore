@@ -1613,9 +1613,16 @@ class LibraryManagerMethods:
                 # mounted volume
                 permitted = permitted + (not would_preempt)
                 if self.process_for_bound_vol in vol_veto_list:
-                    # permit one more write request to avoid
-                    # tape dismount
-                    permitted = permitted+1
+                    # check if request can go to this volume
+                    ret = self.is_vol_available(rq.work,
+                                            self.process_for_bound_vol,
+                                             rq.ticket['vc']['volume_family'],
+                                             rq.ticket['wrapper'].get('size_bytes', 0L),
+                                             rq.ticket['vc']['address'])
+                    if ret['status'][0] == e_errors.OK:
+                        # permit one more write request to avoid
+                        # tape dismount
+                        permitted = permitted+1
 
             Trace.trace(self.trace_level+4,
                         "process_write_request: self.process_for_bound_vol %s permitted %s"%
