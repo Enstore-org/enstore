@@ -6,7 +6,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 2.2.2
-Release: 3
+Release: 4
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
