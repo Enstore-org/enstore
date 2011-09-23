@@ -29,6 +29,19 @@ sys2host={'cms':  ('cmspnfs1', 'psql-data'),
 
 PSQL_COMMAND = "psql -U enstore postgres -c 'select datname from pg_database' 2> /dev/null"
 
+def copy(source,destination):
+    try:
+        s = open(source,"r")
+        d = open(destination,"w")
+        for l in s:
+            d.write(l)
+        return 0
+    except Exception, msg:
+        sys.stderr.write("Got exception %s copying %s to %s"%(str(msg),source,destination,))
+        sys.stderr.flush()
+        return 1
+
+
 class PnfsSetup:
     # find uncommented lines that look like
     # " var = /value "
@@ -106,7 +119,7 @@ class PnfsDbRestore:
 
     def __init__(self):
         self.config   = configuration_client.get_config_dict()
-        self.systems  = self.config.get('known_config_servers')
+        self.systems  = self.config.get('known_config_servers',{})
         self.pnfs_host = None
 
     def get_configuration_client(self):
@@ -150,8 +163,23 @@ class PnfsDbRestore:
 	# write modified configuration file in place (/usr/etc/pnfsSetup)
 	#
 	pnfsSetup.write()
-	for cmd in ["/sbin/service pnfs_wrapper stop",\
-		    "umount -f /pnfs/fs", \
+        #
+        # copy pnfs_wrapper and postgres_check in place
+        #
+        pnfs_wrapper   = os.path.join(os.getenv("ENSTORE_DIR"),"tools/pnfs_wrapper")
+        pnfs_wrapper_destination = "/etc/init.d/pnfs_wrapper"
+        if not os.path.exists(pnfs_wrapper_destination):
+            rc=copy(pnfs_wrapper,pnfs_wrapper_destination)
+            if rc != 0 :
+                sys.exit(1)
+        postgres_check = os.path.join(os.getenv("ENSTORE_DIR"),"tools/postgres_check")
+        postgres_check_destination = "%s/tools/postgres_check"%(pnfsSetup["pnfs"])
+        if not os.path.exists(postgres_check_destination):
+            rc=copy(postgres_check,postgres_check_destination)
+            if rc != 0 :
+                sys.exit(1)
+        for cmd in ["/sbin/service pnfs_wrapper stop",\
+                    "umount -f /pnfs/fs", \
                     "/sbin/service postgresql stop"]:
             print "Executing command ",cmd
             rc=os.system(cmd)
@@ -166,7 +194,6 @@ class PnfsDbRestore:
             parent = pnfs_db
             for i in range(2):
                 parent = os.path.dirname(parent)
-            print "PARENT ",parent, pnfs_db
             os.rename(parent,"%s-%s.%d"%(parent,
                                          time.strftime("%b-%d-%Y",time.localtime()),
                                          os.getpid()))
