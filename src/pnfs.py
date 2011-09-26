@@ -3632,7 +3632,7 @@ class PnfsInterface(option.Interface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_LABEL:"filename",
                             option.FORCE_SET_DEFAULT:option.FORCE,
-                            option.USER_LEVEL:option.ADMIN,
+                            option.USER_LEVEL:option.USER2,
                             },
         option.NAMEOF:{option.HELP_STRING:"prints the filename of the pnfs id"\
                        " (CWD must be under /pnfs)",
