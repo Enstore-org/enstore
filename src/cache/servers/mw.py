@@ -181,11 +181,9 @@ class MigrationWorker():
         self.trace.debug("processing thread started %s,args=%s",t,kw)
 
     #def handler_archive(self, m):
-    def handler_archive(m):
+    def handler_archive(self,m):
         self.trace.debug("handler_archive:message %s %s", m, self.work_dict)
-        self.trace.debug("handler_archive: content %s", m.content)
-        
-        
+        self.trace.debug("handler_archive: content %s", m.content)  
 
     def handler_stage(self,m):
         self.trace.debug("process %s message %s",mt.MWC_STAGE,m)
