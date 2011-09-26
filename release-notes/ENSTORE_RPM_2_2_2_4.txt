@@ -123,7 +123,18 @@ will continue to give the full directory portion of the path
 
 ========== pnfs_db_restore.py ====================================================================================
 
-fix a vexing typo in error check. http://uqbar.fnal.gov/reviews/r/358 
+fix a vexing typo in error check. http://uqbar.fnal.gov/reviews/r/358
+add pnfs_wrapper, postgres_check to CVS, modify pnfs_db_restore to put them in place
+http://uqbar/reviews/r/362/
+========== pnfs_wrapper ====================================================================================
+
+add pnfs_wrapper, postgres_check to CVS, modify pnfs_db_restore to put them in place
+http://uqbar/reviews/r/362/
+========== postgres_check ====================================================================================
+
+add pnfs_wrapper, postgres_check to CVS, modify pnfs_db_restore to put them in place
+http://uqbar/reviews/r/362/
+
 
 ./spec
 ========== enstore.spec ====================================================================================
