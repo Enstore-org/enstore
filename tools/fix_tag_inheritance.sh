@@ -254,89 +254,52 @@ create_tag()
     return 0
 }
 
-#Set the 
-repair_tag()
+#Called from repair_tag() to repair the parent_id of a tag.
+repair_tag_parent_id()
 {
-  tag_name=$1           #Tag name from the command line.
-  dir_tag_id=$2         #Current tags ID.
-  dir=$3                #Current directory.
+    dir_tag_id=$1
+    parent_dir_tag_id=$2
 
-  #Obtain the PNFS id of the parent tag.
-  tag_parent_id=`get_parent_id "$dir_tag_id" "$dir"`
-  if [ $? -ne 0 ]; then
-    ## A serious error occured.
-    message="Can not find parent of $dir_tag_id."
-    write_error $message
-    return 1
-  fi
-
-  #Determine the tag parent directories tag ID.
-  parent_dir=`dirname "$dir"`
-  parent_first_tag_id=`get_first_tag "$parent_dir"`
-  parent_dir_tag_id=`find_tag_id "$parent_first_tag_id" "$tag_name" "$dir"`
-  if [ $? -ne 0 ]; then
-    message="Did not find parent $tag_name id: $parent_dir/.(tag)($tag_name)"
-    write_error $message
-    return 1
-  fi
-
-  if [ "$tag_parent_id" = "$parent_dir_tag_id" -o \
-       "$tag_parent_id" = "000000000000000000000000" ]; then
-    #
-    # Newly created tags need to execute the first part.
-    #
-
-    if [ "$tag_parent_id" = "000000000000000000000000" ]; then
-      ## We need to update the parent id of the tag.
-      
-      parent_dir=`dirname "$dir"`
-      parent_first_tag_id=`get_first_tag "$parent_dir"`
-      #Check for the parent directory having a target tag first.  It should
-      # already exist.  If this fails there is likely some major issue.
-      parent_dir_tag_id=`find_tag_id "$parent_first_tag_id" "$tag_name" "$dir"`
-      if [ $? -ne 0 ]; then
-        message="Did not find parent $tag_name id: $parent_dir/.(tag)($tag_name)"
-        write_error $message
-        return 1
-      fi
-
-      #Give debugging output if needed.
-      if [ $debug -ne 0 ]; then
-        echo $pnfs/tools/sclient chparent $shmkey $dir_tag_id $parent_dir_tag_id
-      fi
-
-      #This is the scary part where we change the parent id value.
-      count=1
-      rc=-1
-      while [ $rc -ne 0 -a $count -lt $LOOPS ]; do
-        $pnfs/tools/sclient chparent "$shmkey" "$dir_tag_id" "$parent_dir_tag_id"
-        rc=$?
-        if [ $rc -ne 0 ]; then
-          #Need to wait for PNFS and the local file cache to give the new
-          # correct value.
-          message="Retry count at $count"
-          write_error $message
-          count=`expr $count + 1`
-          sleep 1
-        fi
-      done
-      if [ $rc -ne 0 ]; then
-          message="'$pnfs/tools/sclient chparent $shmkey $dir_tag_id $parent_dir_tag_id' failed"
-         write_error $message
-	 return 1
-      fi
+    #Give debugging output if needed.
+    if [ $debug -ne 0 ]; then
+      echo $pnfs/tools/sclient chparent $shmkey $dir_tag_id $parent_dir_tag_id
     fi
 
-    #
-    # Newly created tags and existing tags need to execute the second part.
-    # This part verifies that the tag is valid.  If it is not, then it
-    # is repaired.
-    #
+    #This is the scary part where we change the parent id value.
+    count=1
+    rc=-1
+    while [ $rc -ne 0 -a $count -lt $LOOPS ]; do
+      $pnfs/tools/sclient chparent "$shmkey" "$dir_tag_id" "$parent_dir_tag_id"
+      rc=$?
+      if [ $rc -ne 0 ]; then
+        #Need to wait for PNFS and the local file cache to give the new
+        # correct value.
+        message="Retry count at $count"
+        write_error $message
+        count=`expr $count + 1`
+        sleep 1
+      fi
+    done
+    if [ $rc -ne 0 ]; then
+        message="'$pnfs/tools/sclient chparent $shmkey $dir_tag_id $parent_dir_tag_id' failed"
+       write_error $message
+       return 1
+    fi
+
+    return $rc
+}
+
+#Called from repair_tag() to repair the inheritance of a tag.
+repair_inheritance()
+{
+    tag_name=$1           #Tag name from the command line.
+    dir_tag_id=$2         #Current tag's ID.
+    dir=$3                #Current directory.
 
     #This is another scary part where we turn the pseudo primary tag back into
     # an inherited tag.
     count=1
-    rc=-1
+    rc=255
     reset_inheritance=no  #Used to give distinctive messages.
     while [ $rc -ne 0 -a $count -lt $LOOPS ]; do
       rm "$dir/.(tag)($tag_name)" 2> /dev/null
@@ -385,28 +348,135 @@ repair_tag()
       write_error $message
       return 1
     fi
+    
+    return $rc
+}
 
-    if [ "$tag_parent_id" = "$parent_dir_tag_id" ]; then
-      if [ "$reset_inheritance" = "yes" ]; then
-        echo "Reset $dir_tag_id to inherit from $parent_dir_tag_id in $dir."
-      else
-        echo "Determined $parent_dir_tag_id already set as parent of $dir_tag_id in $dir."
-      fi
-    else
-      echo "Set $parent_dir_tag_id as parent of $dir_tag_id in $dir."
-    fi
-  elif [ "$tag_parent_id" != "$parent_dir_tag_id" ]; then
-    message="Found mismatched parent tag IDs for $dir_tag_id: $tag_parent_id != $parent_dir_tag_id"
-    write_error $message
-    return 1
-  
-  else
-    message="Aborting from unknown error."
+#(Re)Set the parent id, revalidate the tag or both.
+repair_tag()
+{
+  tag_name=$1           #Tag name from the command line.
+  dir_tag_id=$2         #Current tag's ID.
+  dir=$3                #Current directory.
+
+  #Obtain the PNFS id of the parent tag.
+  tag_parent_id=`get_parent_id "$dir_tag_id" "$dir"`
+  if [ $? -ne 0 ]; then
+    ## A serious error occured.
+    message="Can not find parent of $dir_tag_id."
     write_error $message
     return 1
   fi
+
+  #Determine the tag parent directories tag ID.
+  parent_dir=`dirname "$dir"`
+  parent_first_tag_id=`get_first_tag "$parent_dir"`
+  #Check for the parent directory having a target tag first.  It should
+  # already exist.  If this fails there is likely some major issue.
+  parent_dir_tag_id=`find_tag_id "$parent_first_tag_id" "$tag_name" "$dir"`
+  if [ $? -ne 0 ]; then
+    message="Did not find parent $tag_name id: $parent_dir/.(tag)($tag_name)"
+    write_error $message
+    return 1
+  fi
+
+  if [ "$tag_parent_id" = "$parent_dir_tag_id" -o \
+       "$tag_parent_id" = "000000000000000000000000" ]; then
+    #
+    # Newly created tags need to execute the first part.
+    #
+    if [ "$tag_parent_id" = "000000000000000000000000" ]; then
+	repair_tag_parent_id $dir_tag_id $parent_dir_tag_id
+        rc=$?
+        if [ $rc -ne 0 ]; then
+	    # The repair_tag_parent_id function gives its own error messages.
+            return $rc
+        fi
+    fi
+
+    #
+    # Newly created tags and existing tags need to execute the second part.
+    # This part verifies that the tag is valid.  If it is not, then it
+    # is repaired.
+    #
     
-  return 0
+    #NOTE: The cat of this showid is for the CURRENT tag ID.
+    state=`cat "$dir/.(showid)($dir_tag_id)" | grep Flags | awk '{print $3}'`
+    case "$state"
+    in
+        inherited)
+	    #It should be safe to call repair_inheritance for all files. 
+	    # However, the rm of the tag can leave the Linux client side
+	    # cache in the wrong state, with subsequent calls returning
+	    # ENOENT.  So, we check first and avoid problems.
+	    echo "Determined $parent_dir_tag_id already set as parent of $dir_tag_id in $dir."
+	    rc=0
+	    ;;
+	invalid | "")
+	    repair_inheritance $tag_name $dir_tag_id $dir
+	    if [ $? -eq 0 ]; then
+		if [ "$tag_parent_id" = "000000000000000000000000" ]; then
+		    echo "Set $parent_dir_tag_id as parent of $dir_tag_id in $dir."
+		else
+		    echo "Reset $dir_tag_id to inherit from $parent_dir_tag_id in $dir."
+		fi
+		rc=0
+	    else
+		#Repair_inheritance reports its own errors.
+		rc=1
+            fi
+	    ;;
+        *)
+	    message="Unrecognized tag state ($state).  Aborting."
+	    write_error $message
+	    rc=1
+	    ;;
+    esac
+
+  #If the parent tag values do not match, we need to do something else.
+  elif [ "$tag_parent_id" != "$parent_dir_tag_id" ]; then
+
+    #NOTE: This showid cat is for the PARRENT tag of the current tag ID.
+    cat "$dir/.(showid)($tag_parent_id)" > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        #At this point we know that the parent_id value recovered from the
+	# current tag id does exist.  Leave it to the user to know if we
+	# should report it or correct it.
+        if [ -z "$fix_mismatched_tags" ]; then
+	    #If -f was not specified, only give a warning that a discrepancy
+	    # was found.
+	    message="Found mismatched parent tag IDs for $dir_tag_id: $tag_parent_id != $parent_dir_tag_id for $dir"
+	    write_error $message
+	    return 0
+        else
+            #Since -f was specified, repair the parent id of the tag.
+            repair_tag_parent_id $dir_tag_id $parent_dir_tag_id
+	    rc=$?
+	    if [ $rc -ne 0 ]; then
+		#The function repair_tag_parent_id reports is own errors.
+		return $rc
+            else
+                echo "Reset $dir_tag_id to inherit from $parent_dir_tag_id in $dir."
+	    fi
+        fi
+    else
+	#The parent ID (in $tag_parent_id) does not exist.  These should be
+	# fixed automatically.
+	repair_tag_parent_id $dir_tag_id $parent_dir_tag_id
+	rc=$?
+        if [ $rc -ne 0 ]; then
+	    #The function repair_tag_parent_id reports is own errors.
+            return $rc
+	else
+            echo "Reset $dir_tag_id to inherit from $parent_dir_tag_id in $dir."
+        fi
+    fi
+  else
+    message="Aborting from unknown error."
+    write_error $message
+    rc=1
+  fi  
+  return $rc
 }
 
 #Check if the tag already exists; if not create it.
@@ -777,10 +847,12 @@ LOOPS=4
 
 #Determine if -s was included on the command line.
 set_owner=""
-while getopts sh name
+fix_mismatched_tags=""
+while getopts sfh name
 do
     case $name in
     s)   set_owner="-s";;
+    f)   fix_mismatched_tags="fix;";;
     h)   print_help
          exit 0;;
     ?)   print_help
