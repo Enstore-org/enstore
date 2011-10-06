@@ -6970,11 +6970,7 @@ class DiskMover(Mover):
     # stage file into cache
     def stage_file(self):
         if self.file_info['cache_status'] != file_cache_status.CacheStatus.CACHED:
-            #rc = self.fcc.open_bitfile(self.file_info['bfid']) # uncomment when fixed
-            #Trace.log(e_errors.INFO, "stage_file: open_bitfile returned %s"%(rc,))
-            # now wait until this file is staged
-            # this is a trivial way
-            # make it better
+            # make this better!
             while True:
                 info = self.fcc.bfid_info(self.file_info['bfid'])
                 if info['cache_status'] == file_cache_status.CacheStatus.CACHED:
