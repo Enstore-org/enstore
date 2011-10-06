@@ -5424,7 +5424,8 @@ def submit_one_request_send(ticket, encp_intf):
     orig_library = ticket['vc']['library'] + ".library_manager"
     csc = get_csc()
     lm_config = csc.get(orig_library, 3, 3)
-    if e_errors.is_ok(lm_config) and encp_intf.disable_redirection == 0 and ticket['work'] == "write_to_hsm":
+    #if e_errors.is_ok(lm_config) and encp_intf.disable_redirection == 0 and ticket['work'] == "write_to_hsm":
+    if e_errors.is_ok(lm_config) and encp_intf.enable_redirection == 1 and ticket['work'] == "write_to_hsm":
        lmd_name = lm_config.get('use_LMD', None)
        if lmd_name: 
            lmd = library_manager_director_client.LibraryManagerDirectorClient(
@@ -11651,8 +11652,8 @@ class EncpInterface(option.Interface):
                not (hasattr(self, 'put') or hasattr(self, 'get')):
             self.parameters = self.admin_parameters
 
-        # Enable redirection of encp to another library manager
-        self.disable_redirection = 0
+        # Disable redirection of encp to another library manager
+        self.enable_redirection = 0
 
         # parse the options
         option.Interface.__init__(self, args=args, user_mode=user_mode)
@@ -11749,12 +11750,18 @@ class EncpInterface(option.Interface):
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_TYPE:option.INTEGER,
                        option.USER_LEVEL:option.USER,},
-        option.DISABLE_REDIRECTION:{option.HELP_STRING:
-                          "Disable redirection of request to another library."
-                          " Do not use Library Manager Director" ,        
+        #option.DISABLE_REDIRECTION:{option.HELP_STRING:
+        #                  "Disable redirection of request to another library."
+        #                  " Do not use Library Manager Director" ,        
+        #                  option.DEFAULT_TYPE:option.INTEGER,
+        #                  option.DEFAULT_VALUE:1,
+        #                  option.USER_LEVEL:option.ADMIN,},
+        option.ENABLE_REDIRECTION:{option.HELP_STRING:
+                          "Enable redirection of request to another library."
+                          " Use Library Manager Director" ,        
                           option.DEFAULT_TYPE:option.INTEGER,
                           option.DEFAULT_VALUE:1,
-                          option.USER_LEVEL:option.ADMIN,},
+                          option.USER_LEVEL:option.USER,},
         option.DIRECT_IO:{option.HELP_STRING:
                           "Use direct i/o for disk access on supporting "
                           "filesystems.",
