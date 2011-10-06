@@ -209,7 +209,8 @@ DESTINATION_ONLY = "destination-only"        #migrate
 DESTROY = "destroy"                          #volume
 DIRECT_IO = "direct-io"                      #encp
 DISABLE = "disable"                          #quota
-DISABLE_REDIRECTION="disable-redirection"    # encp 
+#DISABLE_REDIRECTION="disable-redirection"   # encp # per discussion with Gene default is disable-redirection
+# this option is replaced with enable-redirection to use Library Manager Director
 DISMOUNT = "dismount"                        #media
 DISPLAY = "display"                          #entv
 DO_ALARM = "do-alarm"
@@ -229,6 +230,7 @@ ECHO = "echo"                                #pnfs
 ECRC = "ecrc"                                #encp
 EJECT = "eject"                              #media
 ENABLE = "enable"                            #quota
+ENABLE_REDIRECTION="enable-redirection"      # encp # per discussion with Gene tis replaces disable-redirection
 ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
 EPHEMERAL = "ephemeral"                      #encp
@@ -513,11 +515,11 @@ valid_option_list = [
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME, DEBUG,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
     DESCRIPTION, DESTINATION_ONLY, DESTROY,
-    DIRECT_IO, DISABLE, DISABLE_REDIRECTION, DISMOUNT, DISPLAY,
+    DIRECT_IO, DISABLE, DISMOUNT, DISPLAY,
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DONT_SHOW,
     DOWN, DUMP, DUPLICATE, DUPLICATED, DURATION,
-    ECHO, ECRC, EJECT, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
+    ECHO, ECRC, EJECT, ENABLE, ENABLE_REDIRECTION, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
     EXISTS, EXPORT, EXTERNAL_TRANSITIONS,
     FILE, FILE_FALLBACK,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
