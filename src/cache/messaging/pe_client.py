@@ -109,7 +109,7 @@ def _get_proto(ticket, vc_keys=None, fc_keys=None):
     fc_t = ticket['fc']
     proto['file']['name'] = fc_t['pnfs_name0']
     proto['file']['id']   = fc_t['pnfsid']
-    proto['file']['size'] = fc_t['size']    
+    proto['file']['size'] = fc_t['size']
     
     if fc_keys is not None:
         if 'enstore' not in proto:
@@ -145,6 +145,7 @@ def evt_cache_written_t(fc_ticket):
 
     ev = _get_proto(fc_ticket, vc_keys = vc_keys ) 
     ev['cache']['en'] = _set_cache_en(fc_ticket)
+    ev['file']['crc_adler32'] = fc_ticket['fc']['complete_crc']
        
     return EvtCacheWritten(ev)
 
@@ -156,6 +157,7 @@ def evt_cache_miss_t(fc_ticket):
     fc_keys = ['bfid','location_cookie', 'deleted' ]    
         
     ev = _get_proto(fc_ticket, vc_keys = vc_keys, fc_keys = fc_keys )
+    ev['file']['crc_adler32'] = fc_ticket['fc']['complete_crc']
     return EvtCacheMissed(ev)
 
 def evt_cache_purged_t(ticket):
@@ -215,6 +217,7 @@ if __name__ == "__main__":
            'pnfs_name0': '/pnfs/fs/usr/data/moibenko/d1/mover.py',
            'pnfsid': '0001000000000000000011F8',
            'size': 1234567890L,
+           'complete_crc': 3020422051L, # only in evt_cache_written_t, evt_cache_missed_t
            'deleted': 'no', 
            }
 
