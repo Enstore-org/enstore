@@ -31,12 +31,14 @@ class MWCPurge(MWCommand):
 class MWCArchive(MWCommand):
     """ Message: Migration Worker Archive Command
     """
+    # TODO: assert file list items are type of FileListItemWithCRC
     def __init__(self, file_list = None ):
         MWCommand.__init__(self,type=mt.MWC_ARCHIVE, content=file_list)
 
 class MWCStage(MWCommand):
     """ Message: Migration Worker Stage Command
     """
+    # TODO: assert file list items are type of FileListItemWithCRC
     def __init__(self, file_list = None ):
         MWCommand.__init__(self,type=mt.MWC_STAGE, content=file_list)
 
