@@ -145,7 +145,7 @@ def evt_cache_written_t(fc_ticket):
 
     ev = _get_proto(fc_ticket, vc_keys = vc_keys ) 
     ev['cache']['en'] = _set_cache_en(fc_ticket)
-    ev['file']['crc_adler32'] = fc_ticket['fc']['complete_crc']
+    ev['file']['complete_crc'] = fc_ticket['fc']['complete_crc']
        
     return EvtCacheWritten(ev)
 
@@ -157,7 +157,7 @@ def evt_cache_miss_t(fc_ticket):
     fc_keys = ['bfid','location_cookie', 'deleted' ]    
         
     ev = _get_proto(fc_ticket, vc_keys = vc_keys, fc_keys = fc_keys )
-    ev['file']['crc_adler32'] = fc_ticket['fc']['complete_crc']
+    ev['file']['complete_crc'] = fc_ticket['fc']['complete_crc']
     return EvtCacheMissed(ev)
 
 def evt_cache_purged_t(ticket):
