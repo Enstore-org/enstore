@@ -66,7 +66,7 @@ class MSG_TYPES():
     MDR_PURGED     =  MD_REPLY + PURGED
     MDR_ARCHIVED   =  MD_REPLY + ARCHIVED
     MDR_STAGED     =  MD_REPLY + STAGED
-    MWD_CONFIRMATION =  MD_REPLY + CONFIRMATION
+    MDR_CONFIRMATION =  MD_REPLY + CONFIRMATION
     
     # Commands processed by Migrator (Worker)
     MWC_PURGE      =  MW_COMMAND + PURGE    # Purge cache entry
