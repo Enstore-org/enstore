@@ -92,7 +92,7 @@ class MWRArchived(MWReply):
     """ Message: Reply to Migration Worker Archive Command
     """
     def __init__(self, orig_msg = None, content = None ):
-        MWReply.__init__(self, type=mt.MDR_ARCHIVED, orig_msg = orig_msg, content=content)
+        MWReply.__init__(self, type=mt.MWR_ARCHIVED, orig_msg = orig_msg, content=content)
 
 class MWRPurged(MWReply):
     """ Message: Reply to Migration Worker Purge Command
