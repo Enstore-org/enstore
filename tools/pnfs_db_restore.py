@@ -222,6 +222,14 @@ class PnfsDbRestore:
         print 'Extracting %s with: %s'% (os.path.basename(backup_file), cmd)
         os.system(cmd)
 
+        # fill in the database location in sysconfig file
+
+        psql_data=pnfsSetup[PnfsSetup.DATABASE_POSTGRES]
+        f=open("/etc/sysconfig/pgsql/postgresql","w")
+        f.write("PGDATA=%s\n"%(psql_data))
+        f.close()
+
+
         # create recovery.conf
         rdir = '%s:%s.xlogs'% (pnfsSetup.remote_backup_host,
 			       os.path.dirname(backup_file))
