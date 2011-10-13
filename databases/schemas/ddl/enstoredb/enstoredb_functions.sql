@@ -497,11 +497,21 @@ ELSEIF (TG_OP='UPDATE') THEN
 	IF (NEW.deleted<>OLD.deleted) THEN
 	   IF (OLD.deleted='n') THEN
 	   	   IF (NEW.deleted='y' OR NEW.deleted='u') THEN
-	      	      update file set active_package_files_count=active_package_files_count-1 where bfid=OLD.package_id;
+		      ---
+		      --- Updating package counters
+		      ---
+		      BEGIN
+	      	      	    update file set active_package_files_count=active_package_files_count-1 where bfid=OLD.package_id;
+		      END;
 	   	   END IF;
            ELSE
 	   	   IF (NEW.deleted='n') THEN
-	      	      update file set active_package_files_count=active_package_files_count+1 where bfid=OLD.package_id;
+		      ---
+		      --- Updating package counters
+		      ---
+		      BEGIN
+		      	    update file set active_package_files_count=active_package_files_count+1 where bfid=OLD.package_id;
+		      END;
 	   	   END IF;
 	   END IF;
 	END IF;
@@ -527,7 +537,7 @@ ELSEIF (TG_OP='UPDATE') THEN
 			UPDATE files_in_transition set bfid=NEW.bfid where bfid=OLD.bfid;
 		END;
 	END IF;
-	IF (NEW.cache_status = 'CACHED') THEN
+	IF (NEW.archive_status = 'ARCHIVED') THEN
 		BEGIN
 			DELETE FROM files_in_transition WHERE bfid=NEW.bfid;
 		END;
