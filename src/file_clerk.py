@@ -13,6 +13,7 @@ import time
 import string
 import socket
 import select
+import types
 
 import threading
 
@@ -86,6 +87,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
 
 	self.amqp_broker_dict = self.csc.get(AMQP_BROKER)
+	print "Broker",self.amqp_broker_dict 
 	self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
 							self.amqp_broker_dict['port']),
 						       "file_clerk",
@@ -1338,7 +1340,6 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    bfid, record = self.extract_bfid_from_ticket(ticket)
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
-
 	    if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
@@ -1367,6 +1368,102 @@ class FileClerkMethods(FileClerkInfoMethods):
 		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 	    ticket["fc"] = record
 	    self.reply_to_caller(ticket)
+	    return
+
+    def open_bitfile_for_package(self, ticket):
+	    #
+	    # this function changes the status of package file and 
+	    # we rely on DB trigger to change the status of all files in the package
+	    #
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+
+	    if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
+		    ticket["status"] = (e_errors.OK, None)
+		    self.reply_to_caller(ticket)
+		    return
+	    #
+	    # check that this is indeed the package file. Package file
+	    #
+	    if bfid != record['package_id'] or \
+	       type(record['package_id']) == types.NoneType :
+		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+		    self.reply_to_caller(ticket)
+		    return
+	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED;
+	    self.filedb_dict[bfid] = record	
+	    #
+	    # retrieve the children
+	    # 
+	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(record["package_id"],)
+	    res = self.filedb_dict.query_getresult(q)
+	    file_records = []
+	    file_records.append(record)
+	    for i in res:
+		    child_record = self.filedb_dict[i[0]]
+		    child_record["cache_status"] =  file_cache_status.CacheStatus.CACHED
+		    self.filedb_dict[i[0]] = child_record
+		    file_records.append(self.filedb_dict[i[0]])
+	    event = pe_client.EvtCacheMissed({
+		    'vc' : { 'library' : record['library'],
+			     'storage_group' : record['storage_group'],
+			     'file_family' : record['file_family'],
+			     'wrapper' : record['wrapper'],
+			     'external_label' : record['external_label'],
+			     'volume_family' : "1",
+			     },
+		    'fc' : { 'bfid' : record['bfid'],
+			     'location_cookie' : record['location_cookie'],
+			     'pnfs_name0' : record['pnfs_name0'],
+			     'pnfsid' : record['pnfsid'],
+			     'size' : record['size'],
+			     'deleted' : record['deleted']
+			     }})
+	    ticket["status"] = (e_errors.OK, None)
+	    try:
+		    self.en_qpid_client.send(event)
+	    except:
+		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	    ticket["fc"] = record
+	    self.reply_to_caller(ticket)
+	    return
+
+    def get_children(self, ticket):
+	    #
+	    # this function changes the status of package file and 
+	    # we rely on DB trigger to change the status of all files in the package
+	    #
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
+	    Trace.log(e_errors.INFO," WE ARE in get_children %s %s",bfid, record)
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+	    #
+	    # check that this is indeed the package file. Package file
+	    #
+	    if bfid != record['package_id'] or \
+	       type(record['package_id']) == types.NoneType :
+		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+		    self.reply_to_caller(ticket)
+		    return
+	    #
+	    # retrieve the children
+	    # 
+	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
+	    res = self.filedb_dict.query_getresult(q)
+	    file_records = []
+	    for i in res:
+		    child_record = self.filedb_dict[i[0]]
+		    child_record["cache_status"] =  file_cache_status.CacheStatus.CACHED
+		    self.filedb_dict[i[0]] = child_record
+		    file_records.append(self.filedb_dict[i[0]])
+	    ticket["status"] = (e_errors.OK, None)
+	    ticket["children"] = file_records
+	    try:
+		    self.send_reply_with_long_answer(ticket)
+	    except (socket.error, select.error), msg:
+		    Trace.log(e_errors.INFO, "get_children: %s" % (str(msg),))
+		    return
 	    return
 
     def set_cache_status(self,ticket):

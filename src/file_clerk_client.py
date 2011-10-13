@@ -693,6 +693,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.list =None 
         self.bfid = 0
         self.bfids = None
+        self.children = None
         self.backup = 0
         self.deleted = 0
 	self.restore = ""
@@ -757,6 +758,11 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_LABEL:"bfid",
                       option.USER_LEVEL:option.HIDDEN},
         option.FIND_ALL_COPIES:{option.HELP_STRING:"find all copies of this file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"bfid",
+                     option.USER_LEVEL:option.ADMIN},
+        option.GET_CHILDREN:{option.HELP_STRING:"find all children of the package file",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"bfid",
@@ -962,6 +968,10 @@ def do_work(intf):
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['active_list']:
                 print i
+    elif intf.children:
+        ticket  = fcc.get_children(intf.children)
+        for i in ticket["children"]:
+            pprint.pprint(i)
     elif intf.bfids:
         if intf.force:
             ticket  = fcc.get_bfids(intf.bfids)

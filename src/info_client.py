@@ -213,6 +213,15 @@ class fileInfoMethods(generic_client.GenericClient):
 
         return done_ticket
 
+    def get_children(self, bfid):
+        ticket = {"work"          : "get_children",
+                  "bfid"          : bfid}
+        done_ticket = self.send(ticket, long_reply = 1)
+
+        if not e_errors.is_ok(done_ticket):
+            return done_ticket
+        return done_ticket
+
     ### For backward compatiblility with old servers.  (2-19-2009)
     def get_bfids_old(self, external_label):
         host, port, listen_socket = callback.get_callback()
