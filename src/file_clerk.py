@@ -43,6 +43,7 @@ MAX_THREADS = 50
 MAX_CONNECTIONS=20
 
 AMQP_BROKER = "amqp_broker"
+FILES_IN_TRANSITION_CHECK_INTERVAL = 60 
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
@@ -1958,12 +1959,23 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
         # connection is broken.
         self.set_error_handler(self.file_error_handler)
         self.connection_failure = 0
-
+	self.file_check_thread = threading.Thread(target=self.check_files_in_transition)
+	self.file_check_thread.start()
         # setup the communications with the event relay task
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(enstore_constants.FILE_CLERK,
                                  self.alive_interval)
+
+    def check_files_in_transition(self) :
+	    q="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_mod_time <  CURRENT_DATE - interval '1 day' "
+	    while True:
+		    res = self.filedb_dict.query_getresult(q)
+		    message = ""
+		    for row in res :
+			    message += "%s "%(row[0])
+		    Trace.alarm(e_errors.WARNING, "Files stuck in files_in_transiton table", message )
+		    time.sleep(3600)
 
 
     def file_error_handler(self, exc, msg, tb):
