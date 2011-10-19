@@ -10,8 +10,8 @@ urgency=3 - Medium
 
 [HelpDesk]
 #submitUrl=https://demofermi.service-now.com/incident.do?WSDL
-#submitUrl=https://fermi.service-now.com/incident.do?WSDL
-submitUrl=https://fermidev.service-now.com/incident.do?WSDL
+submitUrl=https://fermi.service-now.com/incident.do?WSDL
+#submitUrl=https://fermidev.service-now.com/incident.do?WSDL
 generalUrl=%{submitUrl}s
 #acct=cd-srv-bridge
 #passwd=run4Cover2
