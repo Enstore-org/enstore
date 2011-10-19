@@ -17,4 +17,4 @@ generalUrl=%{submitUrl}s
 #passwd=run4Cover2
 acct=cd-srv-dms-enstore
 passwd=7L;8Qgc;nu8e
-sudsDump = True
+sudsDump = False
