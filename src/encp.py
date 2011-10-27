@@ -8142,6 +8142,7 @@ def set_sfs_settings(ticket, intf_encp):
         fc_ticket["fc"]['gid'] = ticket['wrapper']['gid']
         fc_ticket["fc"]['library'] = ticket['vc'].get('library', None)
         fc_ticket["fc"]['original_library'] = ticket.get('original_library', None)
+        fc_ticket["fc"]['file_family_width'] = ticket['vc'].get('file_family_width', 1)
         
 
         #As long as encp is restricted to working with one enstore system
