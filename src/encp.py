@@ -8140,7 +8140,7 @@ def set_sfs_settings(ticket, intf_encp):
         fc_ticket["fc"]["drive"] = drive
         fc_ticket["fc"]['uid'] = ticket['wrapper']['uid']
         fc_ticket["fc"]['gid'] = ticket['wrapper']['gid']
-        fc_ticket["fc"]['library'] = ticket.get('library', None)
+        fc_ticket["fc"]['library'] = ticket['vc'].get('library', None)
         fc_ticket["fc"]['original_library'] = ticket.get('original_library', None)
         
 
