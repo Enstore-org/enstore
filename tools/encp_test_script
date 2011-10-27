@@ -177,19 +177,6 @@ if [ ! -d "$PNFS_DIR" ]; then
     exit 1
 fi
 
-#Note: REMOTE_ENCP is an environmental variable that tells encp to use
-# pnfs_agent instead of PNFS directly.  We check for the same variable here to
-# handle running these tests through the pnfs agent too.
-
-if [ -n "$REMOTE_ENCP" ]; then
-    enstore pnfs_agent --timeout 10 --retries 3 --alive
-    if [ $? -ne 0 ]; then
-        echo 'pnfs_agent is not running and $REMOTE_ENCP is set.' \
-             'Stopping test.' 1>&2
-        exit 1
-    fi
-fi
-
 verbose="--verbose 9"
 
 alias ls > /dev/null 2>&1
@@ -259,11 +246,15 @@ done
 if [ $# -ne 0 ]; then
     for argument in $*; do
         #Make sure the tests are defined.
-        for test_name in `echo "$list_of_encp_tests" "$list_of_other_tests"`; do
-            if [ $argument = $test_name ]; then
-                export $test_name=yes
-            fi
-        done
+	echo "$list_of_encp_tests" "$list_of_other_tests" | \
+	    grep -E "^ *$argument *$" > /dev/null 2>&1
+
+	if [ $? -ne 0 ]; then
+	    echo No such test: $argument
+	    exit 1
+	else
+	    export $argument=yes
+	fi
     done
 fi
 
@@ -280,13 +271,19 @@ find_command get
 find_command put
 find_command enmv
 
-is_admin_encp
-if [ $? -eq 1 ]; then
-    PNFS_HOSTNAME=`enstore conf --retries 3 --timeout 3 --show pnfs_agent | grep hostip | cut -f 4 -d "'"`
+#Hack to catch enstore errors universally in the tests.
+try_enstore_cmd="try_enstore $enstore_cmd"
+enstore_cmd="run_enstore $enstore_cmd"
 
-    if [ -z "$PNFS_HOSTNAME" ]; then
-        echo "Unable to obtain pnfs_agent information from configuration server." 2>&1
-        exit 1
+#Note: REMOTE_ENCP is an environmental variable that tells encp to use
+# pnfs_agent instead of PNFS directly.  We check for the same variable
+# here to handle running these tests through the pnfs agent too.
+if [ -n "$REMOTE_ENCP" ]; then
+    $enstore_cmd pnfs_agent --timeout 10 --retries 3 --alive
+    if [ $? -ne 0 ]; then
+	echo 'pnfs_agent is not running and $REMOTE_ENCP is set.' \
+	    'Stopping test.' 1>&2
+	exit 1
     fi
 fi
 
@@ -312,10 +309,14 @@ if [ $number = "unlimited" ]; then
             echo "Starting test pass $loops."
         fi
 	
-	loops=$((loops + 1))
-	
 	run_test_pass
 	exit_status=$?
+
+	if [ $debug -eq $DEBUG_SUMMARY ]; then
+            echo "Completed test pass $loops.  (RC=$exit_status)"
+        fi
+
+	loops=$((loops + 1))	
     done
 else
     while [ $loops -le $number -a $exit_status -eq 0 ]; do
@@ -326,10 +327,17 @@ else
             echo $loop_message
         fi
    
-	loops=$((loops + 1))
-	
 	run_test_pass
 	exit_status=$?
+
+	loop_message="Completed test pass $loops.  (RC=$exit_status)"
+        if [ $debug -ge $DEBUG_SUMMARY ]; then
+            echo $loop_message
+        elif [ $debug -ge $DEBUG_EXECUTIVE_SUMMARY -a $number -gt 1 ]; then
+            echo $loop_message
+        fi
+
+	loops=$((loops + 1))
     done
 fi
 
