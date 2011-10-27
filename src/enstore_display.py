@@ -37,7 +37,7 @@ import e_errors
 ENSTORE_DIR = os.environ.get("ENSTORE_DIR", None)
 ENTV_DIR = os.environ.get("ENTV_DIR", None)
 PYTHONLIB = os.environ.get("PYTHONLIB", None)
-IMAGE_DIR = None
+#IMAGE_DIR = None
 _TKINTER_SO = None
 
 def set_tcltk_library(tcltk_dir):
@@ -70,12 +70,13 @@ def set_tcltk_library(tcltk_dir):
         #Modify the search path for the _tkinter.so library.
         sys.path.insert(0, _TKINTER_SO)
 
+"""
 #Determine the expected location of the local copy of Tcl/Tk.
 try:
     #Determine the expected location of the local copy of Tcl/Tk.
     if ENSTORE_DIR:
         TCLTK_DIR = os.path.join(ENSTORE_DIR, 'etc', 'TclTk')
-        IMAGE_DIR = os.path.join(ENSTORE_DIR, 'etc', 'Images')
+        #IMAGE_DIR = os.path.join(ENSTORE_DIR, 'etc', 'Images')
 
         #Specify this python location first.  The local location should
         # be found first and this is used only as a last resort.
@@ -88,12 +89,14 @@ try:
 
     elif ENTV_DIR:
         TCLTK_DIR = ENTV_DIR
-        IMAGE_DIR = os.path.join(ENTV_DIR, 'Images')
+        #IMAGE_DIR = os.path.join(ENTV_DIR, 'Images')
 
         set_tcltk_library(TCLTK_DIR)
 except Tkinter.TclError:
     pass
+"""
 
+"""
 #Make sure the environment has at least one copy of TCL/TK.
 if not os.environ.get("TCL_LIBRARY", None):
     try:
@@ -114,13 +117,21 @@ if not IMAGE_DIR:
     except IOError:
         pass
     sys.exit(1)
+"""
 
 #print "_tkinter.so =", _TKINTER_SO
-#print "TCL_LIBRARY =", os.environ["TCL_LIBRARY"]
-#print "TK_LIBRARY =", os.environ["TK_LIBRARY"]
+#print "TCL_LIBRARY =", os.environ.get('TCL_LIBRARY', "")
+#print "TK_LIBRARY =", os.environ.get('TK_LIBRARY', "")
 
-import Tkinter
-import tkFont  #Starts a thread not reported by threading.enumerate().
+try:
+    import Tkinter
+    import tkFont  #Starts a thread not reported by threading.enumerate().
+except ImportError:
+    try:
+        sys.stderr.write("%s\n" % (str(sys.exc_info()[1]),))
+    except IOError:
+        pass
+    sys.exit(1)
 
 #########################################################################
 
@@ -223,6 +234,24 @@ class Queue:
         # of the queue.
         self.get_time = time.time()
         self.put_time = time.time()
+
+    def get_queue_keys(self):
+        self.lock.acquire()
+
+        try:
+            key_list = self.queue.keys()
+        except KeyError:
+            key_list = []
+        except (KeyboardInterrupt, SystemExit):
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            self.lock.release()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        self.lock.release()
+
+        return key_list
 
     def len_queue(self, tid=None):
         self.lock.acquire()
@@ -332,10 +361,61 @@ class Queue:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         self.put_time = time.time()  #Update the time this was done.
-
+        
         self.lock.release()
 
+    #Wait for an inserted queue item, at the beginning of the queue, to be
+    # processed before continueing.  Do not call this function from the
+    # window's mainloop thread.
+    def wait_for_queue_item(self, queue_item, tid=None):
+        now=time.time()
+        put_time = None
+        while time.time() < now + 10:  #Give it 10 seconds.
+             self.lock.acquire()
 
+             #Get this value while we have the lock on the first pass.
+             if put_time == None:
+                 put_time = self.put_time
+
+             try:
+                 temp = self.queue[tid][0]
+             except (KeyError, IndexError):
+                 #The queue is now empty.
+
+                 if self.get_time > put_time:
+                     #If we get here, we know the display thread has started
+                     # processing at least one additional queued item.
+                     self.lock.release()
+                     return
+                 else:
+                     #Insert a dummy message to make sure that we are done
+                     # processing the update we care about.
+                     self.queue[tid].insert(0, {'item' : "", 'tid' : tid})
+
+             except (KeyboardInterrupt, SystemExit):
+                 self.lock.release()
+                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+             except:
+                 self.lock.release()
+                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+             #Grab a copy of this before releasing the lock.
+             get_time = self.get_time
+
+             self.lock.release()
+             if temp['item'] == queue_item:
+                 #The item is still in the queue.
+                 time.sleep(.1)
+                 continue
+             elif get_time <= put_time:
+                 #If we get here, we know the inserted item has been
+                 # pulled from the queue, but it is not done processing.
+                 time.sleep(.1)
+                 continue
+             else:
+                 #The item is done getting processed, this thread can continue.
+                 return
+        
     def get_queue(self, tid=None):
         self.lock.acquire()
 
@@ -531,11 +611,12 @@ def normalize_name(hostname):
         hostname = hostname[:-9]
     return hostname
 
+"""
 _image_cache = {} #key is filename, value is (modtime, img)
 
 def find_image(name):
-    """Look in IMAGE_DIR for a file of the given name.  Cache already loaded image,
-    but check modification time for file changes"""
+    #Look in IMAGE_DIR for a file of the given name.  Cache already loaded
+    # image, but check modification time for file changes
     img_mtime, img = _image_cache.get(name, (0, None))
     filename = os.path.join(IMAGE_DIR, name)
     if img: #already cached, is it still valid?
@@ -557,7 +638,7 @@ def find_image(name):
         except OSError:
             img = None
     return img
-    
+"""
 
 class XY:
     def __init__(self, x, y):
@@ -3478,6 +3559,9 @@ class Display(Tkinter.Canvas):
             library = library[:-16]
 
         #If this mover's library is already remembered.
+        library_color = self.library_colors.get(library, None)
+        print "library_color:", library_color, "library:", library
+        pprint.pprint(self.library_colors)
         if self.library_colors.get(library, None):
             return self.library_colors[library]
 
@@ -3820,12 +3904,29 @@ class Display(Tkinter.Canvas):
             except (KeyboardInterrupt, SystemExit):
                 release(clients_lock, "clients_lock")
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            except Tkinter.TclError, msg:
+                #Trap this error for giving the user a better error message.
+                if str(msg) in ["out of stack space (infinite loop?)",
+                                'expected boolean value but got "??"']:
+                    try:
+                        message = "Tcl/Tk libraries were not compiled with threading enabled.\n"
+                        sys.stderr.write(message)
+                    except:
+                        pass
+                    traceback.print_exception(sys.exc_info()[0], msg,
+                                              sys.exc_info()[2])
+                    os.abort()  #Not much else to do.
+                else:
+                    exc, msg, tb = sys.exc_info()
+                    traceback.print_exception(exc, msg, tb)
+                    del tb  #Avoid resource leak.
             except:
                 exc, msg, tb = sys.exc_info()
                 traceback.print_exception(exc, msg, tb)
                 del tb  #Avoid resource leak.
         
             release(clients_lock, "clients_lock")
+
     def client_command(self, command_list):
         ## Only draw waiting clients if the user really wants to see them all.
         if self.master.show_waiting_clients.get() == CONNECTED:
@@ -4197,7 +4298,7 @@ class Display(Tkinter.Canvas):
             return ""
 
         if len(words) < self.comm_dict[words[0]]['length']:
-            Trace.trace(1, "Insufficent length for %s command." % (words[0],))
+            Trace.trace(1, "Insufficent length for %s command: %s" % (words[0], string.join(words, "")))
             return ""
 
         if self.comm_dict[words[0]].get('mover_check', None) and \
@@ -4264,7 +4365,7 @@ class Display(Tkinter.Canvas):
 
     def cleanup_display(self):
         global _font_cache
-        global _image_cache
+        #global _image_cache
         global message_queue, request_queue
 
         self._join_thread(waitall = True)
@@ -4326,18 +4427,18 @@ class Display(Tkinter.Canvas):
                 traceback.print_exception(exc, msg, tb)
                 del tb  #Avoid resource leak.
 
-        for key in _image_cache.keys():
-            try:
-                del _image_cache[key]
-            except (KeyboardInterrupt, SystemExit):
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:
-                exc, msg, tb = sys.exc_info()
-                traceback.print_exception(exc, msg, tb)
-                del tb  #Avoid resource leak.
+        #for key in _image_cache.keys():
+        #    try:
+        #        del _image_cache[key]
+        #    except (KeyboardInterrupt, SystemExit):
+        #        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        #    except:
+        #        exc, msg, tb = sys.exc_info()
+        #        traceback.print_exception(exc, msg, tb)
+        #        del tb  #Avoid resource leak.
 
         _font_cache = {}
-        _image_cache = {}
+        #_image_cache = {}
 
     #overloaded 
     def update(self):
