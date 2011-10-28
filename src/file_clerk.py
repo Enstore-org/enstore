@@ -43,7 +43,7 @@ MAX_THREADS = 50
 MAX_CONNECTIONS=20
 
 AMQP_BROKER = "amqp_broker"
-FILES_IN_TRANSITION_CHECK_INTERVAL = 60 
+FILES_IN_TRANSITION_CHECK_INTERVAL = 60
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
@@ -88,7 +88,6 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
 
 	self.amqp_broker_dict = self.csc.get(AMQP_BROKER)
-	print "Broker",self.amqp_broker_dict 
 	self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
 							self.amqp_broker_dict['port']),
 						       "file_clerk",
@@ -1311,21 +1310,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 	#
 	# send event to PE
 	#
-	event = pe_client.EvtCacheWritten( {
-		'vc' : { 'library' : record['library'],
-			 'storage_group' : record['storage_group'],
-			 'file_family' : record['file_family'],
-			 'wrapper' : record['wrapper'],
-			 'external_label' : record['external_label'],
-			 'volume_family' : "1",
-			 },
-		'fc' : { 'bfid' : record['bfid'],
-			 'location_cookie' : record['location_cookie'],
-			 'pnfs_name0' : record['pnfs_name0'],
-			 'pnfsid' : record['pnfsid'],
-			 'szie' : record['size'],
-			 'deleted' : record['deleted']
-			 }})
+	event = pe_client.evt_cache_written_fc(ticket,record)
 	try:
 		self.en_qpid_client.send(event)
 	except:
@@ -1333,11 +1318,13 @@ class FileClerkMethods(FileClerkInfoMethods):
 
 	self.reply_to_caller(ticket)
 
-
 	Trace.trace(12,'set_pnfsid %s'%(ticket,))
 	return
 
     def open_bitfile(self, ticket):
+	    #
+	    # ticket contains only bfid
+	    #
 	    bfid, record = self.extract_bfid_from_ticket(ticket)
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
@@ -1346,22 +1333,11 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    self.reply_to_caller(ticket)
 		    return
 	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED;
+	    #
+	    # record change in DB
+	    #
 	    self.filedb_dict[bfid] = record
-	    event = pe_client.EvtCacheMissed({
-		    'vc' : { 'library' : record['library'],
-			     'storage_group' : record['storage_group'],
-			     'file_family' : record['file_family'],
-			     'wrapper' : record['wrapper'],
-			     'external_label' : record['external_label'],
-			     'volume_family' : "1",
-			     },
-		    'fc' : { 'bfid' : record['bfid'],
-			     'location_cookie' : record['location_cookie'],
-			     'pnfs_name0' : record['pnfs_name0'],
-			     'pnfsid' : record['pnfsid'],
-			     'size' : record['size'],
-			     'deleted' : record['deleted']
-			     }})
+	    event = pe_client.evt_cache_miss_fc(ticket,record)
 	    ticket["status"] = (e_errors.OK, None)
 	    try:
 		    self.en_qpid_client.send(event)
@@ -1373,7 +1349,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 
     def open_bitfile_for_package(self, ticket):
 	    #
-	    # this function changes the status of package file and 
+	    # this function changes the status of package file and
 	    # we rely on DB trigger to change the status of all files in the package
 	    #
 	    bfid, record = self.extract_bfid_from_ticket(ticket)
@@ -1389,51 +1365,39 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    #
 	    if bfid != record['package_id'] or \
 	       type(record['package_id']) == types.NoneType :
-		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+		    ticket["status"] = (e_errors.ERROR, "This is not a package file")
 		    self.reply_to_caller(ticket)
 		    return
-	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED;
-	    self.filedb_dict[bfid] = record	
+	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED
+	    self.filedb_dict[bfid] = record
 	    #
 	    # retrieve the children
-	    # 
+	    #
 	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(record["package_id"],)
 	    res = self.filedb_dict.query_getresult(q)
-	    file_records = []
-	    file_records.append(record)
+	    now = time.time()
 	    for i in res:
 		    child_record = self.filedb_dict[i[0]]
-		    child_record["cache_status"] =  file_cache_status.CacheStatus.CACHED
+		    if child_record["cache_status"] != file_cache_status.CacheStatus.CACHED:
+			    child_record["cache_status"] =  file_cache_status.CacheStatus.STAGING_REQUESTED
+		    else:
+			    child_record["cache_mod_time"] = time2timestamp(now)
+		    #
+		    # record change in db
+		    #
 		    self.filedb_dict[i[0]] = child_record
-		    file_records.append(self.filedb_dict[i[0]])
-	    event = pe_client.EvtCacheMissed({
-		    'vc' : { 'library' : record['library'],
-			     'storage_group' : record['storage_group'],
-			     'file_family' : record['file_family'],
-			     'wrapper' : record['wrapper'],
-			     'external_label' : record['external_label'],
-			     'volume_family' : "1",
-			     },
-		    'fc' : { 'bfid' : record['bfid'],
-			     'location_cookie' : record['location_cookie'],
-			     'pnfs_name0' : record['pnfs_name0'],
-			     'pnfsid' : record['pnfsid'],
-			     'size' : record['size'],
-			     'deleted' : record['deleted']
-			     }})
 	    ticket["status"] = (e_errors.OK, None)
+	    ticket["fc"] = record
+	    event = pe_client.evt_cache_miss_fc(ticket,record)
 	    try:
 		    self.en_qpid_client.send(event)
 	    except:
 		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
-	    ticket["fc"] = record
 	    self.reply_to_caller(ticket)
-	    return
 
     def get_children(self, ticket):
 	    #
-	    # this function changes the status of package file and 
-	    # we rely on DB trigger to change the status of all files in the package
+	    # this function return files that belong to package back to caller
 	    #
 	    bfid, record = self.extract_bfid_from_ticket(ticket)
 	    Trace.log(e_errors.INFO," WE ARE in get_children %s %s",bfid, record)
@@ -1449,14 +1413,12 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    return
 	    #
 	    # retrieve the children
-	    # 
+	    #
 	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
 	    res = self.filedb_dict.query_getresult(q)
 	    file_records = []
 	    for i in res:
 		    child_record = self.filedb_dict[i[0]]
-		    child_record["cache_status"] =  file_cache_status.CacheStatus.CACHED
-		    self.filedb_dict[i[0]] = child_record
 		    file_records.append(self.filedb_dict[i[0]])
 	    ticket["status"] = (e_errors.OK, None)
 	    ticket["children"] = file_records
@@ -1464,7 +1426,47 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    self.send_reply_with_long_answer(ticket)
 	    except (socket.error, select.error), msg:
 		    Trace.log(e_errors.INFO, "get_children: %s" % (str(msg),))
+
+    def set_children(self, ticket):
+	    #
+	    # this function operates on package file and modifies
+	    # their fields in db
+	    #
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
+	    Trace.log(e_errors.INFO," WE ARE in set_children %s %s",bfid, record)
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+	    #
+	    # check that this is indeed the package file. Package file
+	    #
+	    if bfid != record['package_id'] or \
+	       type(record['package_id']) == types.NoneType :
+		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+		    self.reply_to_caller(ticket)
 		    return
+	    #
+	    # modify values for package file
+	    #
+	    for k in ticket.keys():
+		    if k != 'bfid' and record.has_key(k):
+			    record[k] = ticket[k]
+	    #
+	    # retrieve the children
+	    #
+	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
+	    res = self.filedb_dict.query_getresult(q)
+	    file_records = []
+	    for i in res:
+		    child_record = self.filedb_dict[i[0]]
+		    #
+		    # modify values for files in package
+		    #
+		    for k in ticket.keys():
+			    if k != 'bfid' and record.has_key(k):
+				    child_record[k] = ticket[k]
+
+	    ticket["status"] = (e_errors.OK, None)
+	    self.reply_to_caller(ticket)
 	    return
 
     def set_cache_status(self,ticket):
