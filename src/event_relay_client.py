@@ -189,6 +189,10 @@ class EventRelayClient:
             self.do_select_fd = 1
         self.setup(sock)
 
+    # return fileno for socket.select() processing.
+    def fileno(self):
+        return self.sock.fileno()
+
     # set value to not register interval functions with dispatching worker
     def no_interval(self):
         self.do_interval = 0
