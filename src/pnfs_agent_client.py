@@ -17,6 +17,8 @@ import stat
 import os
 import socket
 import string
+import errno
+# import cPickle
 
 # enstore imports
 import option
@@ -25,12 +27,11 @@ import backup_client
 #import udp_client
 import Trace
 import e_errors
-# import cPickle
 import enstore_constants
-import errno
+import enstore_functions2
 
 # For layer_file() and is_pnfs_path
-from pnfs import is_access_name, get_dirname_filename
+from pnfs import is_access_name
 
 MY_NAME = enstore_constants.PNFS_AGENT_CLIENT  #"PNFS_A_CLIENT"
 MY_SERVER = enstore_constants.PNFS_AGENT     #"pnfs_agent"
@@ -141,10 +142,10 @@ class PnfsAgentClient(generic_client.GenericClient,
         if not pathname:  #Handle None and empty string.
             return False
 
-        dirname, filename = get_dirname_filename(pathname)
+        full_pathname = enstore_functions2.fullpath(pathname)[1]
 
         #Determine if the target file or directory is in the pnfs namespace.
-        if string.find(dirname,"/pnfs/") < 0:
+        if string.find(full_pathname, "/pnfs/") < 0:
             return False #If we get here it is not a pnfs directory.
         ####################
         

@@ -59,6 +59,11 @@ class StorageFS(pnfs.Pnfs, chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient)
                 pnfs_agent_client.PnfsAgentClient.__init__(self, csc)
                 self.__class__ = pnfs_agent_client.PnfsAgentClient
             elif pnfsFilename:
+                #For the checks of a PNFS/Chimera ID we need to use
+                # pnfsFilename.  For those needing paths, we need to get the
+                # absolute path if it is a relative path.
+                use_pnfsFilename = enstore_functions2.fullpath(pnfsFilename)[1]
+
                 #First, check for FS specific ID strings instead of a
                 # "filename" passed into the constructor.
                 if chimera.is_chimeraid(pnfsFilename):
@@ -79,12 +84,12 @@ class StorageFS(pnfs.Pnfs, chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient)
 
 
                 #Second, check for FS specific paths.
-                elif chimera.is_chimera_path(pnfsFilename, check_name_only = 1):
+                elif chimera.is_chimera_path(use_pnfsFilename, check_name_only = 1):
                     self.use_pnfs_agent = 0
                     self.__class__ = chimera.ChimeraFS
                     chimera.ChimeraFS.__init__(self, pnfsFilename,
                                                mount_point, shortcut)
-                elif pnfs.is_pnfs_path(pnfsFilename, check_name_only = 1):
+                elif pnfs.is_pnfs_path(use_pnfsFilename, check_name_only = 1):
                     self.use_pnfs_agent = 0
                     self.__class__ = pnfs.Pnfs
                     pnfs.Pnfs.__init__(self, pnfsFilename, mount_point,
@@ -97,7 +102,7 @@ class StorageFS(pnfs.Pnfs, chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient)
 
                 #Third, optionally try the pnfs_agent.
                 elif (allow_pnfs_agent or pnfs_agent_client_allowed) \
-                         and is_storage_path(pnfsFilename):
+                         and is_storage_path(use_pnfsFilename):
                     self.use_pnfs_agent = 1
                     config_host = enstore_functions2.default_host()
                     config_port = enstore_functions2.default_port()
@@ -134,6 +139,11 @@ class Tag(pnfs.Tag, chimera.Tag, pnfs_agent_client.PnfsAgentClient):
                 self.__class__ = pnfs_agent_client.PnfsAgentClient
                 pnfs_agent_client.PnfsAgentClient.__init__(self, csc)
             elif directory:
+                #For the checks of a PNFS/Chimera ID we need to use
+                # directory.  For those needing paths, we need to get the
+                # absolute path if it is a relative path.
+                use_directory = enstore_functions2.fullpath(directory)[1]
+                
                 #First, check for FS specific ID strings instead of a
                 # "filename" # passed into the constructor.
                 if chimera.is_chimeraid(directory):
@@ -150,22 +160,22 @@ class Tag(pnfs.Tag, chimera.Tag, pnfs_agent_client.PnfsAgentClient):
                 #    lustre.Tag.__init__(self, directory)
 
                 #Second, check for FS specific paths.
-                elif chimera.is_chimera_path(directory, check_name_only = 1):
+                elif chimera.is_chimera_path(use_directory, check_name_only = 1):
                     self.use_pnfs_agent = 0
                     self.__class__ = chimera.Tag
                     chimera.Tag.__init__(self, directory)
-                elif pnfs.is_pnfs_path(directory, check_name_only = 1):
+                elif pnfs.is_pnfs_path(use_directory, check_name_only = 1):
                     self.use_pnfs_agent = 0
                     self.__class__ = pnfs.Tag
                     pnfs.Tag.__init__(self, directory)
-                #elif luster.is_luster_path(directory, check_name_only = 1):
+                #elif luster.is_luster_path(use_directory, check_name_only = 1):
                 #    self.use_pnfs_agent = 0
                 #    self.__class__ = lustre.Tag
                 #    lustre.Tag.__init__(self, directory)
 
                 #Third, optionally try the pnfs_agent.
                 elif (allow_pnfs_agent or pnfs_agent_client_allowed) \
-                         and is_storage_path(directory):
+                         and is_storage_path(use_directory):
                     self.use_pnfs_agent = 1
                     config_host = enstore_functions2.default_host()
                     config_port = enstore_functions2.default_port()
@@ -285,6 +295,11 @@ def get_directory_name(filepath):
    
     return directory_name
 
+# Keys for global cache.
+DB_NUMBER = pnfs.DB_NUMBER
+DB_INFO = pnfs.DB_INFO
+DB_MOUNT_POINTS = pnfs.DB_MOUNT_POINTS
+
 EMPTY_MOUNT_POINT = pnfs.EMPTY_MOUNT_POINT  #Same for Chimera.
 
 def parse_mtab():
@@ -376,15 +391,15 @@ def parse_mtab():
     # database number and mount point.  [For Chimera the .(get)(database)
     # values are faked to be unique and the database number is None.]
     found_mountpoints = pnfs.mount_points_cache.copy()
-    if not found_mountpoints:
-        pnfs.add_mtab(EMPTY_MOUNT_POINT[0], EMPTY_MOUNT_POINT[1][0],
-                      EMPTY_MOUNT_POINT[1][1])
+    #if not found_mountpoints:
+    #    pnfs.add_mtab(EMPTY_MOUNT_POINT[0], EMPTY_MOUNT_POINT[1][0],
+    #                  EMPTY_MOUNT_POINT[1][1])
     temp_cache = chimera.mount_points_cache.copy()
     for db_key, db_value in temp_cache.items():
         found_mountpoints[db_key] = db_value
-    if not temp_cache:
-        chimera.add_mtab(EMPTY_MOUNT_POINT[0], EMPTY_MOUNT_POINT[1][0],
-                         EMPTY_MOUNT_POINT[1][1])
+    #if not temp_cache:
+    #    chimera.add_mtab(EMPTY_MOUNT_POINT[0], EMPTY_MOUNT_POINT[1][0],
+    #                     EMPTY_MOUNT_POINT[1][1])
     
     return found_mountpoints
 
@@ -1049,13 +1064,15 @@ def do_work(intf):
             p=None
             if intf.dir:
                 t=Tag(intf.dir)
+            elif intf.directory:
+                t=Tag(intf.directory)
             else:
                 t=Tag(os.getcwd())
             n=None
     except OSError, msg:
         print str(msg)
         return 1
-        
+
     for arg in intf.option_list:
         if string.replace(arg, "_", "-") in intf.options.keys():
             arg = string.replace(arg, "-", "_")

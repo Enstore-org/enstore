@@ -35,6 +35,11 @@ thread_specific_data = threading.local()
 #global locks for the thread_specific_data
 deletion_list_lock = threading.Lock()
 
+#boolean to catch a signal handler called while running another signal handler.
+signal_in_progress = False
+#lock to protect kill_in_progress
+sip_lock = threading.Lock()
+
 #Build thread specific data.  get_deletion_lists() should only be called
 # from functions that have acquired the deletion_list_lock lock.
 def get_deletion_lists():
@@ -42,6 +47,7 @@ def get_deletion_lists():
     
     if not hasattr(thread_specific_data, "bfids"):
         thread_specific_data.bfids = []
+    if not hasattr(thread_specific_data, "files"):
         thread_specific_data.files = []
 
     return thread_specific_data
@@ -50,7 +56,7 @@ def get_deletion_lists():
 # acquired the deletion_list_lock lock.
 def clear_deletion_lists():
     global thread_specific_data
-    
+
     thread_specific_data.bfids = []
     thread_specific_data.files = []
 
@@ -154,6 +160,21 @@ def delete():
 
             
 def signal_handler(sig, frame):
+    global signal_in_progress
+
+    if signal_in_progress:
+        try:
+            sys.stderr.write("Ignoring signal %s, previous signal handler " \
+                             "still running.\n" % (sig,))
+            sys.stderr.flush()
+        except IOError:
+            pass
+        #Go back to the first signal handler.
+        return
+
+    #Try and solve the problem where a second signal can be received while
+    # the signal handler from the first signal is still running.
+    signal_in_progress = True
 
     try:
         if sig not in [signal.SIGTERM, signal.SIGINT, signal.SIGQUIT]:
@@ -174,9 +195,13 @@ def signal_handler(sig, frame):
     except IOError:
         pass
 
-    Trace.log(e_errors.ERROR, "Caught signal %s, exiting.\n" % (sig,))
+    try:
+        Trace.log(e_errors.ERROR, "Caught signal %s, exiting.\n" % (sig,))
+    except (OSError, IOError):
+        pass
 
-    quit(1)
+    #A lot of utilities return different values when a signal terminates them.
+    quit(128 + sig)
 
 def setup_signal_handling():
 

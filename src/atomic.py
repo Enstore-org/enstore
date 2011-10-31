@@ -174,6 +174,24 @@ def _open2(pathname, flags, mode=0666):
                 os.close(fd_tmp)
                 os.unlink(tmpname)
                 raise sys.exc_info()
+        #EBUSY is prevalent for Chimera when doing atomic.open().  This
+        # was not observed for PNFS.
+        elif getattr(detail, "errno", detail.args[0]) == errno.EBUSY:
+            for i in range(5):
+                try:
+                    os.link(tmpname, pathname)
+                    ok = True
+                except OSError, detail2:
+                    #Another EBUSY error, wait and try again.
+                    if getattr(detail2, "errno", detail2.args[0]) == errno.EBUSY:
+                        time.sleep(1)
+                    else:
+                        #Some real error occured.
+                        rtn_errno = getattr(detail2, "errno", detail2.args[0])
+                        message = str(detail2)
+                        use_filename = pathname
+                        unlink_filename = tmpname
+                        break
         else:
             #For all other errors.
             os.close(fd_tmp)
