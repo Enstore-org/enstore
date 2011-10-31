@@ -43,6 +43,7 @@ list_of_encp_tests="single_read_test
                     source_file_does_not_exist_write_test
                     library_does_not_exist_write_test
                     too_many_resubmits_write_test
+                    skip_sfs_read_test
 "
 
 list_of_other_tests="single_assert_test
@@ -68,6 +69,8 @@ print_help()
     echo "    -s <num>         Simultaneous tests to run per pass. (default 1)"
     echo "    -c               Cleanup leftover files from previous tests."
     echo "    -q               Set debug level to 0."
+    echo "    -l <dir>         The local directory to use; or use \$LOCAL_DIR."
+    echo "    -p <dir>         The storage directory to use; or use \$PNFS_DIR."
     echo 
     echo "List of Encp Tests:"
     echo 
@@ -158,25 +161,6 @@ collect_children()
 ## End of functions.
 ##
 
-#LOCAL_DIR is set by the user in their environment.
-if [ -z "$LOCAL_DIR" ]; then
-    echo "\$LOCAL_DIR not set.  Stopping test." 1>&2
-    exit 1
-fi
-if [ ! -d "$LOCAL_DIR" ]; then
-    echo "$LOCAL_DIR does not exist.  Stopping test." 1>&2
-    exit 1
-fi
-#PNFS_DIR is set by the user in their environment.
-if [ -z "$PNFS_DIR" ]; then
-    echo "\$PNFS_DIR not set.  Stopping test." 1>&2
-    exit 1
-fi
-if [ ! -d "$PNFS_DIR" ]; then
-    echo "$PNFS_DIR does not exist.  Stopping test." 1>&2
-    exit 1
-fi
-
 verbose="--verbose 9"
 
 alias ls > /dev/null 2>&1
@@ -196,7 +180,7 @@ cleanup=${cleanup:-no}
 #
 # encp_cmd and debug are used in encp_test_functions function transfer().
 # 
-while getopts dhe:atn:s:cq option; do
+while getopts dhe:atn:s:cql:p: option; do
     case "$option"
     in
         e) if [ -x "$OPTARG" ]; then
@@ -216,6 +200,8 @@ while getopts dhe:atn:s:cq option; do
         s) simultaneous=$OPTARG;;  #Number of tests in each pass.
         c) cleanup=yes;;  #Remove any other output from pervious other tests.
         q) debug=0;;  #Silence the debug output.
+	l) export LOCAL_DIR=$OPTARG;; #Set this from command line.
+	p) export PNFS_DIR=$OPTARG;;  #Set this from command line.
     esac
 done
 
@@ -242,6 +228,22 @@ fi
 for test_name in `echo "$list_of_encp_tests" "$list_of_other_tests"`; do
     export $test_name=$default
 done
+###########################################################################
+# Some tests are disabled or defaulted to off even if all tests should run.
+###########################################################################
+#Setuid tests are a security threat, since a setuid program is required
+# to drive the test.
+setuid_read_write_test=no
+#The pipe_write feature has not been supported in encp.
+pipe_write_test=no
+#Set the skip-pnfs test off by default.  This test needs all PNFS/Chimera
+# mount points unmounted.
+skip_sfs_read_test=no
+#The get & put tests do not work, since get and put don't work correctly.
+#Luckily they are not used in production.
+get_volume_test=no
+get_put_test=no
+###########################################################################
 #Set the user picked tests.
 if [ $# -ne 0 ]; then
     for argument in $*; do
@@ -256,6 +258,29 @@ if [ $# -ne 0 ]; then
 	    export $argument=yes
 	fi
     done
+fi
+
+#LOCAL_DIR is set by the user in their environment or they used -l.
+if [ -z "$LOCAL_DIR" ]; then
+    echo "\$LOCAL_DIR not set.  Stopping test." 1>&2
+    exit 1
+fi    
+if [ ! -d "$LOCAL_DIR" ]; then
+    echo "$LOCAL_DIR does not exist.  Stopping test." 1>&2
+    exit 1
+fi
+#PNFS_DIR is set by the user in their environment or they used -p.
+if [ $skip_sfs_read_test = yes ]; then
+    if [ -d "$PNFS_DIR" ]; then
+	echo "skip_sfs_read_test enabled and $PNFS_DIR exists.  Stopping test." 1>&2
+	exit 1
+    fi
+elif [ -z "$PNFS_DIR" ]; then
+    echo "\$PNFS_DIR not set.  Stopping test." 1>&2
+    exit 1
+elif [ ! -d "$PNFS_DIR" ]; then
+    echo "$PNFS_DIR does not exist.  Stopping test." 1>&2
+    exit 1
 fi
 
 #Get the functions to run in the following tests.
@@ -288,14 +313,25 @@ if [ -n "$REMOTE_ENCP" ]; then
 fi
 
 #Create the test area directories.
-setup_test_paths
+setup_local_test_paths
 #Create the local test files or determine that they already exist.
 encp_create_tests
-#Copy the local test files to PNFS for the read-only tests.
-copy_test_files
+#We don't want to make test files if testing --skip-pnfs.
+if [ $skip_sfs_read_test = no ]; then
+    #Create the test area directories.
+    setup_storage_test_paths
+    #Copy the local test files to PNFS for the read-only tests.
+    copy_test_files
+    if [ $cleanup = yes ]; then
+        #Delete test output files from previously killed tests.
+	cleanup_storage_test_paths
+    fi
+fi
 if [ $cleanup = yes ]; then
-    cleanup_encp_output  #Delete all existing encp output log files.
-    cleanup_test_paths  #Delete test output files from previously killed tests.
+    #Delete all existing encp output log files.
+    cleanup_encp_output
+    #Delete test output files from previously killed tests.
+    cleanup_local_test_paths
 fi
 
 #Run the number of tests requested.  It would be nice to combine the two

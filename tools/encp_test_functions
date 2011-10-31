@@ -14,30 +14,6 @@
 encp_cmd=${encp_cmd:-`which encp`}
 debug=${debug:-1}
 
-#LOCAL_DIR is set by the user in their environment.
-if [ ! -d "$LOCAL_DIR" ]; then
-    echo "\$LOCAL_DIR not set.  Stopping test." 1>&2
-    exit 1
-fi
-#PNFS_DIR is set by the user in their environment.
-if [ ! -d "$PNFS_DIR" ]; then
-    echo "\$PNFS_DIR not set.  Stopping test." 1>&2
-    exit 1
-fi
-
-#Note: REMOTE_ENCP is an environmental variable that tells encp to use
-# pnfs_agent instead of PNFS directly.  We check for the same variable here to
-# handle running these tests through the pnfs agent too.
-
-if [ -n "$REMOTE_ENCP" ]; then
-    $enstore_cmd pnfs_agent --timeout 10 --retries 3 --alive
-    if [ $? -ne 0 ]; then
-        echo 'pnfs_agent is not running and $REMOTE_ENCP is set.' \
-             'Stopping test.' 1>&2
-        exit 1
-    fi
-fi
-
 username=$(id -u -n)
 hostname=$(uname -n)
 
@@ -1017,28 +993,41 @@ is_user2_encp()
 
 #############################################################################
 
-setup_test_paths()
+setup_local_test_paths()
 {
     #Include the username so multiple users' can run their own regression tests
     # on the same node at the same time.
-    LOCAL_INPUT_DIR=$LOCAL_DIR/test_files_for_${username}
-    LOCAL_OUTPUT_DIR=$LOCAL_DIR/encp_test_for_${username}
-    PNFS_INPUT_DIR=$PNFS_DIR/test_files_for_${username}
-    PNFS_OUTPUT_DIR=$PNFS_DIR/encp_test_for_${username}
-    PNFS_AGENT_OUTPUT_DIR=$PNFS_OUTPUT_DIR
+    LOCAL_INPUT_DIR="$LOCAL_DIR/test_files_for_${username}"
+    LOCAL_OUTPUT_DIR="$LOCAL_DIR/encp_test_for_${username}"
+    ENSYNC_INPUT_DIR="$LOCAL_INPUT_DIR/ensync_test"
     
-    ENSYNC_INPUT_DIR=$LOCAL_INPUT_DIR/ensync_test
-    ENSYNC_OUTPUT_DIR=$PNFS_OUTPUT_DIR/ensync_test
+    mkdir -p "$LOCAL_INPUT_DIR"
+    mkdir -p "$LOCAL_OUTPUT_DIR"
+    mkdir -p "$ENSYNC_INPUT_DIR"
 
-    mkdir -p $LOCAL_OUTPUT_DIR
-    mkdir -p $ENSYNC_INPUT_DIR
-    make_pnfs_dir $PNFS_INPUT_DIR
-    make_pnfs_dir $PNFS_OUTPUT_DIR
-    make_pnfs_dir $ENSYNC_OUTPUT_DIR
+    verify_permissions "$LOCAL_INPUT_DIR" "$LOCAL_OUTPUT_DIR" "$ENSYNC_INPUT_DIR"
+}
 
+setup_storage_test_paths()
+{
+    #Include the username so multiple users' can run their own regression tests
+    # on the same node at the same time.
+    PNFS_INPUT_DIR="$PNFS_DIR/test_files_for_${username}"
+    PNFS_OUTPUT_DIR="$PNFS_DIR/encp_test_for_${username}"
+    PNFS_AGENT_OUTPUT_DIR="$PNFS_OUTPUT_DIR"
+    ENSYNC_OUTPUT_DIR="$PNFS_OUTPUT_DIR/ensync_test"
+
+    make_pnfs_dir "$PNFS_INPUT_DIR"
+    make_pnfs_dir "$PNFS_OUTPUT_DIR"
+    make_pnfs_dir "$ENSYNC_OUTPUT_DIR"
+    
+    verify_permissions "$PNFS_INPUT_DIR" "$PNFS_OUTPUT_DIR" "$ENSYNC_OUTPUT_DIR"
+}
+
+verify_permissions()
+{
     #Make sure we have correct permissions for these directories.
-    for dir_to_check in "$LOCAL_INPUT_DIR" "$LOCAL_OUTPUT_DIR" \
-	"$PNFS_INPUT_DIR" "$PNFS_OUTPUT_DIR" "$PNFS_OUTPUT_DIR"; do
+    for dir_to_check in "$@"; do
         if [ ! -x "$dir_to_check" ]; then
 	    echo "No execute permissions for directory: $dir_to_check" 1>&2
 	    all_done 1
@@ -1055,9 +1044,41 @@ setup_test_paths()
 }
 
 #Find and cleanup leftover files from previous abnormally terminated tests.
-cleanup_test_paths()
+cleanup_local_test_paths()
 {
-    write_cleanup "Starting cleanup of old test files."
+    write_cleanup "Starting cleanup of old local test files."
+
+    #Cleanup failed output files in local test directory.
+    filelist=$(find "$LOCAL_OUTPUT_DIR" -maxdepth 1 -type f 2> /dev/null)
+    #Cleanup failed output files in local test directory for
+    # single_local_pnfs_path_read_test.
+    filelist2=$(find "$LOCAL_OUTPUT_DIR/pnfs" -maxdepth 1 -type f 2> /dev/null)
+    echo "$filelist" "$filelist2" |
+    while read line; do
+	if [ -z "$line" ]; then
+            continue
+        fi
+	rm_regular_file "$line"
+    done
+
+    
+    #Cleanup the local .lock. files still lying around.
+    filelist=$(find "$LOCAL_INPUT_DIR" -maxdepth 1 -type f -name '.lock.*' 2> /dev/null)
+    echo "$filelist" |
+    while read line; do
+	if [ -z "$line" ]; then
+	    continue
+	fi
+	rm_regular_file "$line"
+    done
+
+    write_cleanup "Finished cleanup of old local test files."
+}
+
+#Find and cleanup leftover files from previous abnormally terminated tests.
+cleanup_storage_test_paths()
+{
+    write_cleanup "Starting cleanup of old storage test files."
 
     #Cleanup failed output files in test PNFS directory.
     if [ -n "$REMOTE_ENCP" ]; then
@@ -1079,29 +1100,7 @@ cleanup_test_paths()
 	rm_pnfs_file "$line"  #Use function for pnfs_agent cases.
     done
 
-    #Cleanup failed output files in local test directory.
-    filelist=$(find "$LOCAL_OUTPUT_DIR" -maxdepth 1 -type f 2> /dev/null)
-    #Cleanup failed output files in local test directory for
-    # single_local_pnfs_path_read_test.
-    filelist2=$(find "$LOCAL_OUTPUT_DIR/pnfs" -maxdepth 1 -type f 2> /dev/null)
-    echo "$filelist" "$filelist2" |
-    while read line; do
-	if [ -z "$line" ]; then
-            continue
-        fi
-	rm_regular_file "$line"
-    done
-
-    #Cleanup the local .lock. files still lying around.
-    filelist=$(find "$LOCAL_INPUT_DIR" -maxdepth 1 -type f -name '.lock.*' 2> /dev/null)
-    echo "$filelist" |
-    while read line; do
-	if [ -z "$line" ]; then
-	    continue
-	fi
-	rm_regular_file "$line"
-    done
-
+    
     #Cleanup the PNFS/Chimera .lock. files still lying around.
     if [ -n "$REMOTE_ENCP" ]; then
 	
@@ -1123,7 +1122,7 @@ cleanup_test_paths()
 	rm_pnfs_file "$line"  #Use function for pnfs_agent cases.
     done
 
-    write_cleanup "Finished cleanup of old test files."
+    write_cleanup "Finished cleanup of old storage test files."
 }
 
 #Use encp to copy any local test files into the PNFS directory where these
@@ -1243,6 +1242,8 @@ pick_random_volumes()
     done
 }
 
+#Make an alias, since these functions would be the same.
+alias pick_random_bfids=pick_random_volumes
 
 #Make sure any debuging echos do not go to standard out.  This function returns
 # filenames that way any random output will give errors.
@@ -1904,7 +1905,6 @@ __dcache_read_write_test()
 	    exit 1
 	fi
     fi
-    stat "${pnfsname}"
 
     #Shorten some things for readability.
     options=`eval echo "$@"`
@@ -1942,9 +1942,9 @@ __dcache_read_write_test()
         test_diff '$filename' '$outname' '$cleanup' "$section"
         permissions_test '$filename' '$outname' '$cleanup' "$section"
         size_test '$filename' '$outname' '$cleanup' "$section"
-     fi
+    fi
      
-     cleanup_files '$cleanup'
+    cleanup_files '$cleanup'
 }
 
 __volume_read_test()
@@ -2575,6 +2575,53 @@ too_many_resubmits_write_test()
 
     #This test is expected to fail.
     __write_test "$encp_cmd" 1 "--resubmit-timeout 0 --max-resubmit 0" 1
+}
+
+#This test requires zero PNFS/Chimera mount points to be available.  It is
+# also the only test that does not require $PNFS_DIR or -p to be used.
+skip_sfs_read_test()
+{
+    section="SKIP SFS READ"
+    print_test_name $section
+
+    #Verify that no PNFS or Chimera mount points are available.
+    sfs_mounts=$(mount | grep -E "pnfs|chimera" | awk '{print $3}')
+    if [ -n "$sfs_mounts" ]; then
+	#Since this test needs to be enabled by the user, give error.
+	echo "Storage filesystem mounts exist.  Aborting." 1>&2
+	echo $sfs_mounts 1>&2
+	exit 1
+    fi
+    
+    #Snag a volume_read_test volume.
+    tmp_volumes=$($enstore_cmd info --query "select label from volume where file_family = 'volume_read_test' and label not like '%.deleted' ;")
+    volumes=$(echo "$tmp_volumes" | sed '1,2d') #Remove the header.
+    if [ -z "$volumes" ]; then
+	echo "No suitable volumes found.  Skipping test and continuing." 1>&2
+    else
+	#Pick a random volume.
+	volume=$(pick_random_volumes 1 $volumes)
+	#Get the list of active bfids.
+	bfid_list=$($enstore_cmd info --list $volume)	
+	active_bfids=$(echo "$bfid_list" | grep active | awk '{print $2}')
+	if [ -z "$active_bfids" ]; then
+            echo "No suitable bfids found on $volume.  Skipping test and continuing." 1>&2
+	    return
+	fi
+	#Pick a random active bfid.
+	bfid=$(pick_random_bfids 1 $active_bfids)
+
+	outname=/dev/null
+	cleanup="$outname"
+
+	#Do the read transfer and test by BFID.
+	get_bfid="--get-bfid $bfid --skip-pnfs"
+	transfer $encp_cmd '$get_bfid' '$outname' '$cleanup' '$options' "$section" READ
+    
+    fi
+
+    cleanup_files '$cleanup'
+    
 }
 
 ##############################################################################
