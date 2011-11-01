@@ -5317,7 +5317,7 @@ def wait_for_final_dialog(control_socket, udp_serv, e):
     if not e_errors.is_ok(mover_udp_done_ticket):
         Trace.log(e_errors.ERROR, "MOVER_UDP_DONE_TICKET")
         Trace.log(e_errors.ERROR, str(mover_udp_done_ticket))
-
+    
     return mover_done_ticket
         
 ############################################################################
@@ -6320,7 +6320,7 @@ def verify_file_size(ticket, encp_intf = None):
         else:
             # this needs a better solution
             # if --get-bfid and --skip-pnfs we DO not USE any sfs information!!
-            if encp_intf.get_bfid and encp_intf.skip_pnfs:
+            if encp_intf and encp_intf.get_bfid and encp_intf.skip_pnfs:
                 pnfs_real_size = ticket['file_size']
             else:
                 #We need to obtain the size in PNFS.
