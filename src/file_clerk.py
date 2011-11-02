@@ -1470,21 +1470,29 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    return
 
     def set_cache_status(self,ticket):
-	    bfid, record = self.extract_bfid_from_ticket(ticket)
-	    if not bfid:
-		    return #extract_bfid_from_ticket handles its own errors.
+	    bfids = self.extract_value_from_ticket("bfid",ticket)
+	    if not bfids:
+		    ticket["status"] = (e_errors.ERROR,"Failed to extract list of bfids from ticket %s"%(str(ticket)))
+		    self.reply_to_caller(ticket)
+		    return
 	    cache_status   = self.extract_value_from_ticket("cache_status", ticket)
 	    archive_status = self.extract_value_from_ticket("archive_status", ticket)
 	    if not cache_status and not archive_status :
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
 		    return
-	    else:
+	    for bfid in bfids:
+		    record = self.filedb_dict[bfid]
+		    if not record:
+			    continue
 		    if cache_status :
 			    record["cache_status"]=cache_status
 		    if archive_status:
 			    record["archive_status"]=archive_status
-	    self.filedb_dict[bfid] = record
+		    #
+		    # record changes in db
+		    #
+		    self.filedb_dict[bfid] = record
 	    ticket["status"] = (e_errors.OK, None)
 	    self.reply_to_caller(ticket)
 	    return

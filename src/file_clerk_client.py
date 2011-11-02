@@ -12,6 +12,7 @@ import errno
 import sys
 import socket
 import os
+import types
 
 # enstore imports
 import generic_client
@@ -97,8 +98,18 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             ticket = self.set_pnfsid(ticket)
         return ticket
 
-    def set_cache_status(self, ticket):
-        ticket['work'] = "set_cache_status"
+    def set_cache_status(self, bfids, cache_status=None, archive_status=None):
+        ticket={}
+        ticket["bfid"]=[]
+        if type(bfids) == types.ListType:
+            ticket["bfid"] = bfids[:]
+        elif type(bfids) ==  types.StringType:
+            ticket["bfid"].append(bfids)
+        else:
+            raise TypeError,"Expect String or List argument for bfid, not %s"%(type(bfids))
+        ticket["archive_status"]=archive_status
+        ticket["cache_status"]=cache_status
+        ticket["work"] = "set_cache_status"
         r = self.send(ticket)
         return r
 
