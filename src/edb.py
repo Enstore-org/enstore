@@ -534,12 +534,10 @@ class FileDB(DbTable):
 				record['update'] = (s['update']).isoformat(' ')
 			else:
 				record['update'] = s['update']
-                for key in ['package_id','cache_status','archive_status',\
+                for key in ('package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count',\
-                            'storage_group','file_family','library','wrapper', \
-                            'active_files','deleted_files','unknown_files', \
-                            'active_bytes','deleted_bytes','unknown_bytes']:
+                            'storage_group','file_family','library','wrapper'):
                     if s.has_key(key):
                         record[key] = s[key]
 		return record
@@ -597,12 +595,10 @@ class FileDB(DbTable):
 			record["uid"] = s["uid"]
 		if s.has_key("gid"):
 			record["gid"] = s["gid"]
-                for key in ['package_id','cache_status','archive_status',\
+                for key in ('package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count', \
-                            'storage_group','file_family','library','wrapper', \
-                            'active_files','deleted_files','unknown_files', \
-                            'active_bytes','deleted_bytes','unknown_bytes']:
+                            'storage_group','file_family','library','wrapper'):
                     if s.has_key(key):
                         record[key] = s[key]
 		return record
@@ -651,7 +647,13 @@ class VolumeDB(DbTable):
 				wrapper, \
 				comment, \
 				write_protected, \
-				modification_time \
+				modification_time, \
+                                active_files, \
+                                deleted_files, \
+                                unknown_files, \
+                                active_bytes, \
+                                deleted_bytes, \
+                                unknown_bytes, \
         		from volume \
 			where \
 				label = '%s';"
@@ -699,6 +701,12 @@ class VolumeDB(DbTable):
 			data['modification_time'] = time2timestamp(s['modification_time'])
 		else:
 			data['modification_time']=-1
+
+                for key in ('active_files','deleted_files','unknown_files', \
+                            'active_bytes','deleted_bytes','unknown_bytes'):
+                    if s.has_key(key):
+                        data[key] = s[key]
+
 		return data;
 
 	def export_format(self, s):
@@ -736,6 +744,10 @@ class VolumeDB(DbTable):
 			data['modification_time'] = timestamp2time(s['modification_time'])
 		else:
 			data['modification_time']=-1
+                for key in ('active_files','deleted_files','unknown_files', \
+                            'active_bytes','deleted_bytes','unknown_bytes'):
+                    if s.has_key(key):
+                        data[key] = s[key]
 		return data;
 
 if __name__ == '__main__':
