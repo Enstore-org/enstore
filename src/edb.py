@@ -653,7 +653,7 @@ class VolumeDB(DbTable):
                                 unknown_files, \
                                 active_bytes, \
                                 deleted_bytes, \
-                                unknown_bytes, \
+                                unknown_bytes \
         		from volume \
 			where \
 				label = '%s';"
