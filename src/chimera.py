@@ -171,12 +171,22 @@ def is_chimera_path(pathname, check_name_only = None):
     if not pathname:  #Handle None and empty string.
         return False
 
+    #Try and find a matching mount point.
     for cached_item in process_mtab():
         mount_point = cached_item[DB_MOUNT_POINTS][0]
         if mount_point and pathname.startswith(mount_point):
             break
     else:
-        return False
+        #Next try and find it after removing symbolic links.  We want to
+        # avoid this is possible for performance.
+        use_pathname = file_utils.wrapper(os.path.realpath, (pathname,),
+                                          unstable_filesystem=True)
+        for cached_item in process_mtab():
+            mount_point = cached_item[DB_MOUNT_POINTS][0]
+            if mount_point and use_pathname.startswith(mount_point):
+                break
+        else:
+            return False
 
     #If the pathname existance test should be skipped, return true at
     # this time.
@@ -3594,7 +3604,7 @@ class Tag:
                     # so that copies can be enabled.
                     self.set_library(intf.library)
                 else:
-                    msg_str = INVALID_CHARACTERS % ("library",)
+                    msg_str = self.INVALID_CHARACTERS % ("library",)
                     sys.stderr.write("%s\n" % (msg_str,))
                     return 1
             return 0
