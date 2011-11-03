@@ -5428,8 +5428,7 @@ def submit_one_request_send(ticket, encp_intf):
     if e_errors.is_ok(lm_config) and encp_intf.enable_redirection == 1 and ticket['work'] == "write_to_hsm":
        lmd_name = lm_config.get('use_LMD', None)
        if lmd_name: 
-           lmd = library_manager_director_client.LibraryManagerDirectorClient(
-              csc, lmd_name)
+           lmd = library_manager_director_client.LibraryManagerDirectorClient(csc, lmd_name)
            Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET:")
            Trace.message(TICKET_1_LEVEL, pprint.pformat(ticket))
 
