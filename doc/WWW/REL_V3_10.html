@@ -1,0 +1,644 @@
+
+Encp changes:
+=============
+
+Chimera support for encp is added.
+
+Fixed encp to work with new style DiskMovers that hash using the PNFS/Chimera
+ID of the file.
+
+The v3_10a version addresses a problem introduced in v3_10 regarding 
+unnecessary PNFS accesses to address dual PNFS and Chimera support.  The
+high load put upon PNFS was manifesting itself as a high rate of ESTALE
+errors.
+
+The v3_10b and v3_10c version attempted to address an intermitent problem
+where the Linux kernel would hang.  These versions did not solve the problem.
+A v3_10d version now fully addresses this.  The short description is that
+backdoor files into PNFS could be constructed and used by Enstore with a
+pattern that does not resemble a tree, but instead a graph.  The Linux
+kernel assumes a file system can only be a tree.  The code that created
+theses paths has been modified.
+
+Misc.:
+======
+
+Chimera support for enmv is added.
+
+Added the --match-directory-file-family and --match-volume-file-family switches
+for enmv.  These modifiy the layer 4 file_family value to match the
+.(tag)(file_family) file or the Enstore DB record, respectively.
+
+PNFS and Chimera are supported with the "enstore sfs" commands.  The
+"enstore pnfs" commands are retained for backward compatibility.  The
+'sfs' stands for Storage File System.
+
+
+                      Detailed cvs commit logs
+
+
+========== duplicate.py ====================================================================================
+
+Detect when a previous make-failed-copies attempt failed and reuse the destination copy. (bugzilla #835, review board #191) 
+
+The patch adds --make-copies to duplicate.py: 1) Add support for --make-copies in option.py. This includes fixing an arguement processing bug with a required arguement first appearing in the extra values section of the switch definition. 2) Added make_copies() in migrate.py based on make_failed_copies(). 3) Reworked migrate.migrate() when --with-final-scan is used to join all read and write threads, then sort all the destination files by destination location, then start the final_scan threads. The old way worked, but proved to be very inefficent with tape access. An unrelated item also fixed: CDMS122444004900000 on VOB738 had multiple migrations run simultaneously. One set completed successfully, while the other did not. The code that determines if a source file is all done returns True, because it found a set of successful destination files. The Total done check fails because it finds the unsuccessful set of destination files. This patch gives the user the error, while previously the users only got "failed from previous errors" without there being a previous error. For all: bugzilla #791, review board #166 
+
+Lets get the correct versions commited this time... 1) --restore switch now works for duplication 2) --status now has --migration-only and --multiple-copy-only modifying switches to show only a limited type(s) of status. 3) In addition to supplying a bfid or volume, the user can now give "<volume>:<location_cookie>" for migrating/duplicating, scanning, status reporting or restoring. Reporting --status on a per file basis is also new. Previously, it only worked on volumes. 4) Added two new functions: is_migration_history_done() and is_migration_history_closed(). These functions return True if all source and destination pairs have their entries in the migration_history table. The _done() function only makes sure that all the entries exist. The _closed() function additional makes sure all the "closed_time" fields are also filled in. (bugzilla #772, review board #153) 
+
+1) To fix two --status bugs. 2) To give a better error message when a ghost file is found during migration. 3) To prevent the full path look up information was then being dropped without using it, since it was already migrated. 4) Catch errors updating migration_history. 
+
+Fix duplication to handle deleted files. (bugzilla 715, review board 123) 
+
+Fixed compatibility issue between migrate.py and duplicate.py for get_filenames() and duplicate_metadata()/swap_metadata(). (bugzilla #638, review board #72). 
+
+========== enstore_functions3.py ====================================================================================
+
+Fix issues with new style disk volumes and location cookies not being recognized correctly. (bugzilla #772, review board #153) 
+
+New format for enstore disk volume name is: hostname:SG.FF.WRAPPER:YYYY-mm-ddTHH:MM:SSZ (bz 607) 
+
+Modifed the import of is_chimeraid() from chimera.py to not fail if chimera module can not be found. (The rest of the chimera patch is not ready for production yet). (bugzilla bug #606, review board #50) 
+
+Chimera integration changes 
+
+========== duplication_util.py ====================================================================================
+
+Detect when a previous make-failed-copies attempt failed and reuse the destination copy. (bugzilla #835, review board #191) 
+
+1) To fix two --status bugs. 2) To give a better error message when a ghost file is found during migration. 3) To prevent the full path look up information was then being dropped without using it, since it was already migrated. 4) Catch errors updating migration_history. 
+
+Fix duplication to handle deleted files. (bugzilla 715, review board 123) 
+
+========== dispatching_worker.py ====================================================================================
+
+ADDED FEATURE: furnish dispatching_worker.thread_wrapper with printing of function execition time http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=661 http://uqbar/reviews/r/85/ 
+
+pass ticket to restricted_access http://uqbar/reviews/r/36 http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=586 
+
+modify restricted_access to accept reply_address as argument 
+
+========== drivestat2.py ====================================================================================
+
+extract and pass database user parameter to drivestat database (it was overlooked in previous attempt to address this issue) Bugzilla: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=676 RB: http://uqbar/reviews/r/104 
+
+========== inventory.py ====================================================================================
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+========== enstore_up_down.py ====================================================================================
+
+Do not set red ball for insufficient movers when library manager is scheduled down. 
+
+========== file_utils.py ====================================================================================
+
+Added new function get_mount_point() that returns the mount point of the supplied path. (bugzilla #858, review board #206) 
+
+Fixed wrapper() to return the return value from the executed function. (bugzilla bug #599, review board #45) 
+
+========== pnfs.py ====================================================================================
+
+Additional patch for bugzilla #856 and review board #204. The addressed use case prevents a traceback when obtaining the path of a PNFS ID that belongs to a tag or layer file. 
+
+Added feature for tag and layer PNFS IDs to work with --showid and --path. (bugzilla #856, review board #204) 
+
+These patches are all related to modifying find_pnfs_file.py to support Chimera instead of just PNFS. Also, modify encp to use the new functionality. (Bugzilla #839, review board #196) 
+
+This is Vijay's delete_at_exit Chimera integration patch. (review board #105) 
+
+These are additional patches for Chimera integration into encp. The namespace.StorageFS class now uses the __class__ member variable to better become one of the chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient or pnfs.Pnfs class. (bugzilla #649) 
+
+Chimera integration changes 
+
+========== operation.py ====================================================================================
+
+Modified make_cap(list) to differentiate between the 3 instances for the output CAP for the 8500F1 library. All d0en drives are now only in SL8500-51 which is ACSLS LSMs 1,4-7, while all cdfen and stken drives and tapes are now only in SL8500-3 which is ACSLS LSMs 1,0-3. Now ejecting these tapes only from their respective CAPS. Changes reviewed by Stan Naymola Apr 15 2010. 
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+added product categorization tiers for tab flipping 
+
+protect import remedy_interface in try : except block (http://uqbar/reviews/r/41, http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=594) 
+
+http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=576 RB http://uqbar/reviews/r/27/ assign flip tab remedy ticket to the correct service group 
+
+introduced interface to new remedy API. Use this interface instead of system call in operation.py and create shell wrapper around tab_flipping_nanny.py Bugzilla #567 RB: http://uqbar/reviews/r/18 
+
+========== generic_client.py ====================================================================================
+
+If the callback address is not in the allowed list, don't let the client connect back over TCP. (bugzilla #859, review board #207) 
+
+Patched defect where the short answer in send() receives an error. It used to try the long answer, if allowed; now it skips the long answer on these errors. (bugzilla bug #598, review board #44) 
+
+========== enstore_html.py ====================================================================================
+
+Avoiding improper use of Interface class. (bugzilla #830) 
+
+========== web_server.py ====================================================================================
+
+get rid of interface usage (to play nice with option.py) http://uqbar/reviews/r/184/ 
+
+Always work with copy of the original httpd.conf 
+
+========== inquisitor_plots.py ====================================================================================
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+========== option.py ====================================================================================
+
+Added the --match-directory-file-family and --match-volume-file-family switches for enmv. (bugzilla #838, review board #195) 
+
+1) Deep in option.py processing, the list of arguements not consumed by a switch needs to be updated. There were some cases were this was happening incorrectly. This was resulting in a confusing warning message to the user. 2) Some arguements were not in alphabetical order. (bugzilla #836, review board #193) 
+
+Avoid possibily reference to undefined variable, new_index. (bugzilla #829, review board #186). 
+
+The patch adds --make-copies to duplicate.py: 1) Add support for --make-copies in option.py. This includes fixing an arguement processing bug with a required arguement first appearing in the extra values section of the switch definition. 2) Added make_copies() in migrate.py based on make_failed_copies(). 3) Reworked migrate.migrate() when --with-final-scan is used to join all read and write threads, then sort all the destination files by destination location, then start the final_scan threads. The old way worked, but proved to be very inefficent with tape access. An unrelated item also fixed: CDMS122444004900000 on VOB738 had multiple migrations run simultaneously. One set completed successfully, while the other did not. The code that determines if a source file is all done returns True, because it found a set of successful destination files. The Total done check fails because it finds the unsuccessful set of destination files. This patch gives the user the error, while previously the users only got "failed from previous errors" without there being a previous error. For all: bugzilla #791, review board #166 
+
+New switches for migration: --migration-only and --multiple-copy-only (bugzilla #772). 
+
+1) Added the "systems" drop down menu. This provides the found selection of Enstore systems to display. 2) Fixed the --generate-messages-file switch to output consistent information. 3) Handle adding new movers on the fly to the display. 4) Removed --movers-file switch. With #2 and #3 this is obsolete. 5) Have --messages-file use the time information to space the replayed display updates in real time. 
+
+Address printing help_strings with embedded newlines. (bugzilla bug #605, review board #48.) 
+
+Patch to keep the code from confusing arguments and switches with the same string values (without any leading - or --). (bugzilla bug #600, review board #46) Also, add the new fs.py switches for extended attributes. (--xattr, --xattrs, --xattrrm, --xattrchmod --xattrchown) 
+
+========== plotter_main.py ====================================================================================
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+========== pnfs_backup_plotter_module.py ====================================================================================
+
+Don't throw a traceback if there exists a start time but not (yet) a finish time. (Bugzilla #722, RB #128) 
+
+The interval value can optionally display "N days HH:MM:SS" or "1 day HH:MM:SS" instead of just "HH:MM:SS". Handle the formats. (bugzilla #697, review board 115) 
+
+========== enstore_status.py ====================================================================================
+
+modified to take into account a new format of log message. 
+
+========== file_clerk_client.py ====================================================================================
+
+Modify "enstore file ---restore --force" to become the existing users owner for file manipulations. (bugzilla #724, review board 130) 
+
+========== manage_queue.py ====================================================================================
+
+In SortedList.rm() set current_index and start_index to the (length of list) - 1 if the last element of list is deleted. Before start_index could become bigger than the biggest index for the list causing resinchronization and indefinine loop in get_next (bz 774) 
+
+Bug fix: set stop_rolling 
+
+In SortedList class of manage_queue.py call get() inside of get_next() if it was never called. The problem was found when adding diagnostic messages to resolve library_manager hangings. (bz #785) 
+
+The Request_Queue.get() in manage_queue.py does not process the next request in tags if previous requests were dropped due to restriction on host selection. (bigzilla 769). This problem is caused by the bug in manager_queue.py the Request_Queue.get() does not process the next request in tags if previous requests were dropped due to restriction on host selection, e.i. Request_Queue.get(key, next=1, active_volumes=active_vols, disabled_hosts=disabled_hosts_list) -- returns None because all requests for a give key (volume family of external label) were for a host in the disabled_hosts_list Request_Queue.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) - returns None because next request from a given host was in the disabled_hosts_list Request_Queue.get(next=1, active_volumes=active_vols, disabled_hosts=self.disabled_hosts) - returns None because Atomic_Request_Queue called by Request_Queue.get does not proceed with another tag. 
+
+Removing ticket['fc']['external_label'] in manage_queue.py for write requests in the middle of the request selection cycle may cause KeyError exception when request gets pulled from postponed requests queue, because requests in manage_queue.py queue and postponed requests queue are the same references. To fix this allow to remove ticket['fc']['external_label'] from write request only if the request has not yet been processed in the request selection cycle. Note that request selection cycle begins every time when either IDLE or HAVE_BOUND Librray Manager request comes from a mover. (Bugzilla 712) 
+
+Clean external_label entry in write request. This entry is a result of the volume assignement in some previous request processing cycle, when volume was assigned, but later request was not selected (usually for fair share reason). 
+
+One more line needed the same change 
+
+Corrected calculation of curpri. 
+
+fixed bugs, changed test() return value 
+
+This is a first version of modified manage_queue.py to be used with a new implementation of scaled library_manager.py. It is not backward compatible with library_manager.py 1.667 and older. 
+
+========== log_server.py ====================================================================================
+
+fix http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=773 "Enstore alarm log search seems broken" RB: http://uqbar/reviews/r/154/ 
+
+========== enstore_plotter_framework.py ====================================================================================
+
+get rid of using interface so enstore_plotter_framework can work with option parser http://uqbar/reviews/r/152/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=771 
+
+========== cleanUDP.py ====================================================================================
+
+Give better error messages from sendto() for EBADF and EBADFD. (bugzilla #859, review board #207) 
+
+========== enstore_system_html.py ====================================================================================
+
+Avoiding improper use of Interface class. (bugzilla #830) 
+
+========== quota.py ====================================================================================
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+========== migration_summary_plotter_module.py ====================================================================================
+
+Corrected the migration accounting to handle: 1) Destination tapes that were determined to be bad during scanning. They had partial migration_history table records that were not properly being ignored. 2) Shelved-tapes with incomplete migration_history table records were getting included in the total tape count, but were not included in the remaining tape list. 
+
+========== library_manager.py ====================================================================================
+
+Sometimes mover request to library manager comes with "Unknown" in volume status fields: BUSY RQ {'status': ('ok', None), 'returned_work': None, 'library': 'CD-LTO4F1', 'move r_type': '', 'current_location': '0000_000000000_0000172', 'ip_map': '', 'operation': None, 'read_only': 0, 'current_time': 1282137872.1632309, 'error_source ': None, 'external_label': 'VP0388', 'state': 'SETUP', 'r_a': (('131.225.13.106', 60099), 891215L, '131.225.13.106-60099-1277858829.946311-6245'), 'library_l ist': [('CD-LTO4F1.library_manager', ('131.225.13.3', 7010))], 'current_priority': (1, -1), 'transfer_deficiency': 1, 'time_in_state': 0.015711784362792969, 'address': ('131.225.13.106', 7871), 'volume_family': 'backups.d0en_metadata_backups_copy_1.cern', 'work': 'mover_busy', 'mover': 'LTO4_111.mover', 'volume_s tatus': (['Unknown', 'Unknown'], ['Unknown', 'Unknown']), 'unique_id': 'd0ensrv3n.fnal.gov-1282137470-32461-1'} This may lead to assignment of additional volume for writes, while the current volume is not filled in. (bz 853). 
+
+Bug fix: When preemptive (admin. priority) request gets sent to mover and mover returns dismount failure for the tape being preempted, the request does not get removed from volumes at movers list. This results in requests not being selected for a given volume family (write) or a give volume (read). (Bugzilla 761). 
+
+after conversation with Mike and Gene removed check for NOSPACE status from line 2049 
+
+check return status of is_vol_available call for NOSPACE http://uqbar/reviews/r/114/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=698 
+
+Code review changes. 
+
+library manager incorrectly handled admin priority read and write requests which resulted in: volume dismounts numerous times during scan. If in the request queue there are read and write requests with administrative priority with the same volume family then: If completed request was READ then in some cases there is an attempt to select write request for the bound volume if this volume can not be written it results in skippng this volume and its consequent dismount even if there are pending read requests. (bz #674) 
+
+Library Manager contacted volume clerk for information which is already in the read request ticket when adding request to the queue. Remove this call and get information directly from the ticket. Also few Traces added for better debugging. There also were some KeyErrors that need a better handling and debugging to better identify their causes. 
+
+trace added 
+
+allow_hipri was returning rq as None in case when a previous non hipri request was READ. It was not expected by the calling method. Now allow_hipri never return None as rq. 
+
+For mover_idle and mover_bound_volume requests set mover state to SETUP when sending work to mover. 
+
+Changes per Dmitry's comments for bugzilla 513 
+
+In case of duplicate mover_idle or mover_bound_volume requests send a blank reply to avoid possible mover hangs du to the lost library manager reply to the previous mover request. 
+
+Moved verify_data_transfer_request() in write_to_hsm() to correct place 
+
+replaced ALARM with INFO severety level (bugzilla 512) 
+
+Improved processing of write requests. If there are active volumes for a given file family and their number exceeds file family width try to write to all of them to fill unfilled volumes and avoid excessive mounts/dismounts (bugzilla tickets: 513,514,515) 
+
+Improved scalability. Individual ports for movers, encp clients, and other clients. Each port is served by separate thread. 
+
+========== accounting.py ====================================================================================
+
+BUG FIX: fix exception in accounting server RB: http://uqbar/reviews/r/65/ Bugzilla: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=637 
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+========== atomic.py ====================================================================================
+
+1) To fix two --status bugs. 2) To give a better error message when a ghost file is found during migration. 3) To prevent the full path look up information was then being dropped without using it, since it was already migrated. 4) Catch errors updating migration_history. 
+
+========== enstore_constants.py ====================================================================================
+
+These patches are all related to modifying find_pnfs_file.py to support Chimera instead of just PNFS. Also, modify encp to use the new functionality. (Bugzilla #839, review board #196) 
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+Added CAPACITY_PREFIX and RATE_PREFIX for bugzilla #700 (RB #116). 
+
+========== ejournal.py ====================================================================================
+
+1) fix "Id" keyword (it was mistyped as "I") 2) remove duplicated code as per RB : http://uqbar/reviews/r/38/ 
+
+added Id keyword per code review discussion RB : http://uqbar/reviews/r/38/ Bugzilla: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=587 
+
+implementation of multithreaded file and volume clerk that use psycopg2 via edb 
+
+========== enstore_alarm_search_cgi.py ====================================================================================
+
+correct HTML output (per incident (INC000000021389) 
+
+========== delete_at_exit.py ====================================================================================
+
+This is Vijay's delete_at_exit Chimera integration patch. (review board #105) 
+
+Use python's default handling of SIGPIPE. We really want python to raise an IOError instead of calling the signal handler to exit the program. (bugzilla #741, review board #137) 
+
+========== encp.py ====================================================================================
+
+Encp now sends PNFS or Chimera ID for multiple copy and --put-cache cases. This is necessary to make new DiskMovers happy. (bugzilla #860, review board #208) 
+
+These patches are all related to modifying find_pnfs_file.py to support Chimera instead of just PNFS. Also, modify encp to use the new functionality. (Bugzilla #839, review board #196) 
+
+Fixed a string 'replace("_copy_")' to be 'replace("_copy_", "")'. (bugzilla #835, review board #191) 
+
+The --skip-pnfs switch was not being honored when reading a file by BFID. (bugzilla #805, review board #171) 
+
+These are additional patches for Chimera integration into encp. The namespace.StorageFS class now uses the __class__ member variable to better become one of the chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient or pnfs.Pnfs class. (bugzilla #649) 
+
+Chimera integration changes 
+
+========== tapes_burn_rate_plotter_module.py ====================================================================================
+
+add slope in MB/s to burn rate plots 
+
+========== accounting_client.py ====================================================================================
+
+create new table "drive_data" and code that fills the data in this table. Needed for drive degradation studies. http://uqbar/reviews/r/179 http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=817 
+
+========== enstore_start.py ====================================================================================
+
+When there is some program running with server name argument, the server does not start with "enstore start .." command. Make changes in enstore_start.py to better parse the EPS output. (bz 788) 
+
+========== enstore_plots.py ====================================================================================
+
+removed classes that were used to generate mount latency plots Bugzilla : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=776 RB : http://uqbar/reviews/r/155/ 
+
+========== mover_summary_plotter_module.py ====================================================================================
+
+avoid histogram overflows, use solid lines to draw histograms 
+
+========== enstore_log_file_search_cgi.py ====================================================================================
+
+correct HTML output (per incident (INC000000021389) 
+
+========== en_eval.py ====================================================================================
+
+1) Added the "systems" drop down menu. This provides the found selection of Enstore systems to display. 2) Fixed the --generate-messages-file switch to output consistent information. 3) Handle adding new movers on the fly to the display. 4) Removed --movers-file switch. With #2 and #3 this is obsolete. 5) Have --messages-file use the time information to space the replayed display updates in real time. (bugizlla #702, review board #117) 
+
+========== enmv.py ====================================================================================
+
+Added the --match-directory-file-family and --match-volume-file-family switches for enmv. (bugzilla #838, review board #195) 
+
+Put Chimera support into enmv. (bugzilla #740, review board #133) 
+
+Allow files on tapes that have had their file_families modified to be movable. This allows tapes squeezed together via migration, from tapes with multiple file families, to still be enmv-ed. (bugzilla #739, review board #132) 
+
+========== weekly_summary_report.py ====================================================================================
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+========== scanfiles.py ====================================================================================
+
+Added support for scanning Chimera filesystems instead of just PNFS. (Bugzilla #840, review board #197) 
+
+Fixed issue with check() needing the Interface object to be available globally. (bugzilla #850, review board #202) 
+
+Patched to better handle reporting if an unknown file is involved in migration. This should never be able to happen. (Bugzilla #723, Reviewboard #129) 
+
+Divide up the scanning of a volume across multiple threads. (Bug #572) 
+
+========== accounting_server.py ====================================================================================
+
+create new table "drive_data" and code that fills the data in this table. Needed for drive degradation studies. http://uqbar/reviews/r/179 http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=817 
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+========== file_clerk.py ====================================================================================
+
+pass database name to edb.FileDB and edb.VolumeDB constructors RB : http://uqbar/reviews/r/172 Bugzilla : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=800 
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+1) multi threaded info server and file server w/ thread safe DB API 2) proper handling of exceptions DB transactions in edb Bugzilla #579 http://uqbar/reviews/r/28 
+
+bug fix: remove line that contained undefined variable Bugzilla : #575 RB : http://uqbar/reviews/r/25 
+
+implementation of multithreaded file and volume clerk that use psycopg2 via edb 
+
+========== esgdb.py ====================================================================================
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+========== udp_server.py ====================================================================================
+
+Add log messages to reply_with_list for a case when deepcopy fails. 
+
+========== edb.py ====================================================================================
+
+convert specialized dictionary returned by psycopg2 into ordinary dictionary on the fly. Fixes ticket: INC000000029450 http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=667 http://uqbar/reviews/r/88 
+
+BUG FIX (URGENT): replace utctimetuple() with timetuple() when handling datetime.datetime. http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=655 http://uqbar/reviews/r/83/ 
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+1) multi threaded info server and file server w/ thread safe DB API 2) proper handling of exceptions DB transactions in edb Bugzilla #579 http://uqbar/reviews/r/28 
+
+added standard header 
+
+implementation of multithreaded file and volume clerk that use psycopg2 via edb 
+
+conform to code standards 
+
+adhere to code standards 
+
+file_clerk: 1) in __tape_list use connection pool 2) spawn tape_list3 in separate thread 3) add two new parameters - max number of threads and maximum number of open database connections (which is passed to edb) edb: 1) add new data member connection pool (from DBUtils) 2) add new parameter - maximum open connection allowed in the pool 
+
+========== entv.py ====================================================================================
+
+Added menu options to show waiting clients and to choose between the linear or circular layouts. (bugzilla #760, review board #143) 
+
+1) Added the "systems" drop down menu. This provides the found selection of Enstore systems to display. 2) Fixed the --generate-messages-file switch to output consistent information. 3) Handle adding new movers on the fly to the display. 4) Removed --movers-file switch. With #2 and #3 this is obsolete. 5) Have --messages-file use the time information to space the replayed display updates in real time. (bugizlla #702, review board #117) 
+
+1) Added the "systems" drop down menu. This provides the found selection of Enstore systems to display. 2) Fixed the --generate-messages-file switch to output consistent information. 3) Handle adding new movers on the fly to the display. 4) Removed --movers-file switch. With #2 and #3 this is obsolete. 5) Have --messages-file use the time information to space the replayed display updates in real time. 
+
+Prevent entv from crashing if a mover is still in the configuration, that no longer exists. (bugzilla #691) 
+
+Sasha reported a case where a mover in error state was not being displayed correctly. Bugzilla bug #560 comment #2. 
+
+In total_memory(), the second sysconf() call should have been to get the size of a page in memory, instead of getting the number of pages in memory. 
+
+If the main thread is hung, restart the entire process. 
+
+Cleanup some error messages. 
+
+Minimize sending show() queries to the inquisitor. 
+
+========== migrate.py ====================================================================================
+
+The BOTH, FS and NONFS contants were moved from find_pnfsid_file.py to enstore_constants.py. This patch reflects that change. (bugzilla #857, review board #205) 
+
+Handle re-migrating a file that has been replaced. This is most likely, from bfid1 -> bfid2 -> bfid3; then re-running the migration for bfid1. (bugzilla #845, review board #200) 
+
+Detect when a previous make-failed-copies attempt failed and reuse the destination copy. (bugzilla #835, review board #191) 
+
+final_scan_volume() is obtaining the current pnfs location for one test; and does so incorrectly. final_scan_file() is also obtaining this information, but does so correctly. The is_expected_volume() check is now moved to final_scan_file(). (bugzilla #816, review board #178) 
+
+1) The migrate --status output for a bad file that has not been involved in migration or multiple copies was being dropped. (bugzilla #798, review board #171) 2) There is a check to make sure that there is at least on destination copy before doing the restore. It should have been "> 0", but instead was "> 1". (bugzilla #799, review board #171) 3) Scanning a multiple copy made during migration by BFID was resulting in a traceback. (bugzilla #805, review board #171) 
+
+The patch adds --make-copies to duplicate.py: 1) Add support for --make-copies in option.py. This includes fixing an arguement processing bug with a required arguement first appearing in the extra values section of the switch definition. 2) Added make_copies() in migrate.py based on make_failed_copies(). 3) Reworked migrate.migrate() when --with-final-scan is used to join all read and write threads, then sort all the destination files by destination location, then start the final_scan threads. The old way worked, but proved to be very inefficent with tape access. An unrelated item also fixed: CDMS122444004900000 on VOB738 had multiple migrations run simultaneously. One set completed successfully, while the other did not. The code that determines if a source file is all done returns True, because it found a set of successful destination files. The Total done check fails because it finds the unsuccessful set of destination files. This patch gives the user the error, while previously the users only got "failed from previous errors" without there being a previous error. For all: bugzilla #791, review board #166 
+
+Fixed an issue with running --make-failed-copies for a deleted file on a machine without an admin PNFS path. (bugzilla #782, review board #158) 
+
+Adjust the checks in migrate_volume() to allow for a migration destination tape to be scanned after it has already been migrated to yet another tape. (bugzilla #779, review board #156) 
+
+Lets get the correct versions commited this time... 1) --restore switch now works for duplication 2) --status now has --migration-only and --multiple-copy-only modifying switches to show only a limited type(s) of status. 3) In addition to supplying a bfid or volume, the user can now give "<volume>:<location_cookie>" for migrating/duplicating, scanning, status reporting or restoring. Reporting --status on a per file basis is also new. Previously, it only worked on volumes. 4) Added two new functions: is_migration_history_done() and is_migration_history_closed(). These functions return True if all source and destination pairs have their entries in the migration_history table. The _done() function only makes sure that all the entries exist. The _closed() function additional makes sure all the "closed_time" fields are also filled in. (bugzilla #772, review board #153) 
+
+1) --restore switch now works for duplication 2) --status now has --migration-only and --multiple-copy-only modifying switches to show only a limited type(s) of status. 3) In addition to supplying a bfid or volume, the user can now give "<volume>:<location_cookie>" for migrating/duplicating, scanning, status reporting or restoring. Reporting --status on a per file basis is also new. Previously, it only worked on volumes. 4) Added two new functions: is_migration_history_done() and is_migration_history_closed(). These functions return True if all source and destination pairs have their entries in the migration_history table. The _done() function only makes sure that all the entries exist. The _closed() function additional makes sure all the "closed_time" fields are also filled in. (bugzilla #772, review board #153) 
+
+1) To fix two --status bugs. 2) To give a better error message when a ghost file is found during migration. 3) To prevent the full path look up information was then being dropped without using it, since it was already migrated. 4) Catch errors updating migration_history. 
+
+Fixed issue involving migration deleted files after patches for bugzilla #700 (1.216) and #715 (1.217). ENOENT is accurate for deleted files, but not correct for them either. This is for bugzilla #757, review board #139. 
+
+Set debugging flag to false after last patch was commited. 
+
+Fix duplication to handle deleted files. (bugzilla 715, review board 123) 
+
+New migration input mode and limit re-reads of restarted migrations. (bugzilla 700, review board 116) 
+
+Fixed is_duplicated() to have a flag that includes or excludes multiple copy files from consideration. (bugzilla 695, review board 113) 
+
+Improve --restore to handle files migrated from two migrations running simultaneously. (bugzilla #686, review board #109) 
+
+1) migrate.migrate_files() takes a list of bfids, not a list of file_records. 2) Handle files in active_file_copying table that have already been migrated. 3) Handle files in active_file_copying table that have had their original copies migrated. 4) Handle files in active_file_copying table that have an unknown deleted status. (bugzilla #639, review board #73) 
+
+Fixed --status output to handle showing multiple copy files, not just those from migration, duplication or cloning. (bugzilla #605, review board #48) Have the migration code add migration table information retroactively for files migrated to multiple copies. Also, show the multiple copies with a 1 in the S --status output column. (bugzilla #406, review board #48) 
+
+Address the queue size for migration. (bugzilla bug #571, review board #47) 
+
+Added feature that migrate.py --status can now output information on multiple copies not produced using duplication. (bugzilla bug #605, review board #48) Also, modified the --status help string to include information on the S, D and B fields. 
+
+========== encp_wrapper.py ====================================================================================
+
+Make the logname and threadname values in Trace.py threadsafe. Migration is known to have an issue, so encp_wrapper and volume_assert_wrapper also are modified. (bugzilla bug #533) 
+
+========== volume_assert_wrapper.py ====================================================================================
+
+Make the logname and threadname values in Trace.py threadsafe. Migration is known to have an issue, so encp_wrapper and volume_assert_wrapper also are modified. (bugzilla bug #533) 
+
+========== udp_client.py ====================================================================================
+
+1) Added the "systems" drop down menu. This provides the found selection of Enstore systems to display. 2) Fixed the --generate-messages-file switch to output consistent information. 3) Handle adding new movers on the fly to the display. 4) Removed --movers-file switch. With #2 and #3 this is obsolete. 5) Have --messages-file use the time information to space the replayed display updates in real time. (bugizlla #702, review board #117) 
+
+========== charset.py ====================================================================================
+
+Fix issues with new style disk volumes and location cookies not being recognized correctly. (bugzilla #772, review board #153) 
+
+========== enstore_display.py ====================================================================================
+
+Corrected some comments from code review. (bugzilla #760, review board #143) 
+
+Added menu options to show waiting clients and to choose between the linear or circular layouts. (bugzilla #760, review board #143) 
+
+1) Added the "systems" drop down menu. This provides the found selection of Enstore systems to display. 2) Fixed the --generate-messages-file switch to output consistent information. 3) Handle adding new movers on the fly to the display. 4) Removed --movers-file switch. With #2 and #3 this is obsolete. 5) Have --messages-file use the time information to space the replayed display updates in real time. (bugizlla #702, review board #117) 
+
+1) Added the "systems" drop down menu. This provides the found selection of Enstore systems to display. 2) Fixed the --generate-messages-file switch to output consistent information. 3) Handle adding new movers on the fly to the display. 4) Removed --movers-file switch. With #2 and #3 this is obsolete. 5) Have --messages-file use the time information to space the replayed display updates in real time. 
+
+Patched division-by-zero traceback when get_mover_list() returns an empty list. (bug #569) 
+
+Modified some numeric literals to be constants after reviewboard comments (see also bugzilla bug #560). 
+
+If the main thread is hung, restart the entire process. 
+
+Minimize sending show() queries to the inquisitor. 
+
+========== enstore_make_plot_page.py ====================================================================================
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+========== library_manager_client.py ====================================================================================
+
+Added reset_pending_queue_counters() method and --reset-queue-counters option to reset pending queue of data transfer requests counters: number of accepted requests resets to the number of requests in the queue, number of deleted requests resets to 0 
+
+========== volume_clerk.py ====================================================================================
+
+pass database name to edb.FileDB and edb.VolumeDB constructors RB : http://uqbar/reviews/r/172 Bugzilla : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=800 
+
+thread safety : make sure that esgdb.SGDb that holds pg connection to database is accesset sequentially by multiple threads. Otherwise volume_clerk suffers instability and reports corrupted results form sg_count table http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=682 http://uqbar/reviews/r/107 
+
+pass max_connections parameter to VolumeDB. Sat max_connections to max_threads+1 http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=660 http://uqbar.fnal.gov/reviews/r/84 
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+fix enstore volume --history command introduction of to_char(time, ...) broke the client. modified SQL statement to provide the key name the client expects RB: http://uqbar/reviews/r/58/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=622 
+
+pass ticket to restricted_access http://uqbar/reviews/r/36 http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=586 
+
+it was noticed that sorting on same values could be unpredictable. Added label to the order clause to avoid that. 
+
+proper syntax 
+
+modify restricted_access to accept reply_address as argument 
+
+implementation of multithreaded file and volume clerk that use psycopg2 via edb 
+
+========== generic_server.py ====================================================================================
+
+Improve the error reporting of serve_forever_error(). (bugizlla #678, review board #141). 
+
+========== plotter.py ====================================================================================
+
+BUG FIX: fix make_sg_plot after changes to option.py plotter.py fails. This patch fixes the problem. http://uqbar/reviews/r/194/ 
+
+added module that plots mount/dismount latencies per robot per drive type RB http://uqbar/reviews/r/147/ Bugzilla http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=765 
+
+========== mover.py ====================================================================================
+
+1. The mover currently records error count since tape mount in per file transaction. It must record deltas - errors related to this file transfer. 2. Drive rates must be calculated as file_size/io_time 3. Mover checks the drive rates: file_size/block_rw_time and compares it with a specified threshold per file transfer. If drive rate is lower than the threshold mover makes a record in suspect drives table in accounting db and sends an alarm. (bz 391) 
+
+If dismount fails close net_driver (data connection). If there is a preemptive dismount and net_driver is not closed, the client (encp) port does not get disconnected. This resulted in 15 min timeout for encp retry. When fixed, encp retries immediately.(bz #767) 
+
+Set volume to NOACCESS if e_errors.MC_VOLNOTFOUND is returned by media changer.(bz 641) 
+
+Legacy enstore disk file read was broken when the new local name convention was introduced, which resulted in inability to read old enstore disk files. 
+
+Bugzilla ticket 591 1. Code cleanup. 2. Moving common for tape and disk mover parts into one place. 3. Changed volume name in DiskMover 4. Convert pnfs id into local file name for DiskMover 
+
+Code review for bz 552 changes. 
+
+use sysconf to get total RAM size 
+
+fixed formula for MAX_BUFFER it must be: MAX_BUFFER = long(mem_total)*KB - GB, because mem_total is in KB 
+
+fixed typo 
+
+fixed typo 
+
+Per bugzilla 552 code review changes. 
+
+run set_max_buffer() in a proper place 
+
+fixed set_max_buffer() 
+
+1. Set MAX_BUFFER depending on the python binary type: 32, or 64 bit. 2. Use enatore_funstions2.shell_command 
+
+========== find_pnfs_file.py ====================================================================================
+
+These patches are all related to modifying find_pnfs_file.py to support Chimera instead of just PNFS. Also, modify encp to use the new functionality. (Bugzilla #839, review board #196) 
+
+Call pnfs.get_enstore_pnfs_path() and pnfs.get_enstore_fs_path() in seperate try...except blocks. If the admin path is not mounted, that shouldn't prevent the non-admin path from being used. (bugzilla #835, reviewboard #191) 
+
+========== enstore_pg.py ====================================================================================
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+========== Trace.py ====================================================================================
+
+Fixed issue with --do-print messages not including the Thread name. (bugzilla bug #616, review board #24) 
+
+Log the correct threadname for servers that care. (bugzilla 595) 
+
+Make the logname and threadname values in Trace.py threadsafe. Migration is known to have an issue, so encp_wrapper and volume_assert_wrapper also are modified. (bugzilla bug #533) 
+
+========== pnfs_agent_client.py ====================================================================================
+
+These patches are all related to modifying find_pnfs_file.py to support Chimera instead of just PNFS. Also, modify encp to use the new functionality. (Bugzilla #839, review board #196) 
+
+These are additional patches for Chimera integration into encp. The namespace.StorageFS class now uses the __class__ member variable to better become one of the chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient or pnfs.Pnfs class. (bugzilla #649) 
+
+Chimera integration changes 
+
+Add missing chown() wrapper functions. 
+
+========== alarm_server.py ====================================================================================
+
+alarm server creates alarm entry if no match in mail action is found http://uqbar/reviews/r/211/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=863 
+
+========== discipline.py ====================================================================================
+
+Changes driven by pychecker. 
+
+Codew review recommended changes (bugzilla ticket 388) 1. self.dict -> self.discipline_dict 2. in match_found added commenst describing default return values 3. replaced string.atoi(..) with int(...) 4. More readable ticket in unit test 
+
+Discipline, modified for better library manager performance. This discipline requires a new format in configuration, it is not backward compatible with old discipline. 
+
+corrected configuration example 
+
+========== drivestat_server.py ====================================================================================
+
+extract and pass database user parameter to drivestat database (it was overlooked in previous attempt to address this issue) Bugzilla: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=676 RB: http://uqbar/reviews/r/104 
+
+========== media_changer.py ====================================================================================
+
+If media is not in home position do not retry to mount it and do not try to unmount it. (bugzilla 766) 
+
+1) There were some inconsistent uses of msg versus message that was found to lead to uninitialized variables. 2) When removing a request from the list of active work items, make sure there is an 'r_a' field. Log the error if it is not there. (bugzilla #737, reviewboard #134) 
+
+Changed STK media changer to send e_errors.MC_VOLNOTFOUND when "Unreadable label" is returned by ACSSA. (bz 641) 
+
+========== info_server.py ====================================================================================
+
+pass database name to edb.FileDB and edb.VolumeDB constructors RB : http://uqbar/reviews/r/172 Bugzilla : http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=800 
+
+fix typo that was causing : enstore info --file ..." command to fail Bugzilla: http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=747 RB: http://uqbar/reviews/r/138/ Reemedy: INC000000037413 
+
+always specify username to database access API http://uqbar/reviews/r/63/ http://www-ccf.fnal.gov/Bugzilla/show_bug.cgi?id=630 
+
+1) multi threaded info server and file server w/ thread safe DB API 2) proper handling of exceptions DB transactions in edb Bugzilla #579 http://uqbar/reviews/r/28 
+
+========== chooseConfig ====================================================================================
+
+removed Chih from gccen mail 
+
+</pre></body></html>
