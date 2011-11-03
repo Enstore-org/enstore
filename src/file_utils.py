@@ -599,9 +599,9 @@ def __wrapper(function, args=(), unstable_filesystem=None):
                 count = count + 1
                 if msg.errno in retry_list:
                     if count < RETRY_COUNT:
-                        sys.stderr.write(
-                            "COUNT: %s  FUNCTION: %s  ARGS: %s  errno: %s [%s]\n" % \
-                            (count, log_func_name, args, msg.errno, os.strerror(msg.errno)))
+                        #sys.stderr.write(
+                        #    "COUNT: %s  FUNCTION: %s  ARGS: %s  errno: %s [%s]\n" % \
+                        #    (count, log_func_name, args, msg.errno, os.strerror(msg.errno)))
                         if msg.errno not in [errno.ENOENT, errno.EIO]:
                             time.sleep(count)
                         else:
@@ -667,7 +667,6 @@ def wrapper(function, args=(), unstable_filesystem=None):
 
             #The next thing to try is doing it again while being root.
             try:
-                #rtn = function(*use_args)
                 rtn = __wrapper(function, use_args)
             except (OSError, IOError), msg2:  #Anticipated errors.
                 if msg2.errno in [errno.EACCES, errno.EPERM] and \
