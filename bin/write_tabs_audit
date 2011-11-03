@@ -1,8 +1,0 @@
-#! /bin/sh
-set -u  # force better programming and ability to use check for not set
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-
-. /usr/local/etc/setups.sh
-setup enstore
-$ENSTORE_DIR/bin/make_flip_list2
-$ENSTORE_DIR/bin/check_write_prot

@@ -1,6 +1,0 @@
-#!/bin/sh
-
-lastNhours=`date --date "48 hours ago" +"%Y-%m-%d:%H"`
-now=`date +"%Y-%m-%d:%H:%M:%S"`
-python ${ENSTORE_DIR}/src/plotter.py --sg --start_time $lastNhours
-#cp $od/enplot_sg.ps $log_d/enplot_sg-$now.ps
