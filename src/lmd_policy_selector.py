@@ -39,7 +39,6 @@ class Selector:
     # @return - (e_errors_OK, None) or (e_errors.ERROR, "description)
     def read_config(self):
         Trace.log(e_errors.INFO, "(Re)loading LMD Policy")
-        self.policydict = {}
         f = open(self.policy_file,'r')
         code = string.join(f.readlines(),'')
 
@@ -48,8 +47,12 @@ class Selector:
         del policydict 
         policydict = {}
 
+        # do not use try: except here, the exception will be processed in
+        # the caller
         exec(code)
         # ok, we read entire file - now set it to real dictionary
+        if  hasattr(self, "policydict"):
+            del(self.policydict)
         self.policydict = policydict
 
         # tickets to lmd_policy engine come via qpid
@@ -57,6 +60,8 @@ class Selector:
     
     def __init__(self, policy_file):
         self.policy_file = policy_file
+        # do not process exception here
+        # it will be processed by the caller
         self.read_config()
         
 
