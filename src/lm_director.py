@@ -89,7 +89,6 @@ class LMD(dispatching_worker.DispatchingWorker,
         self.resubscribe_rate = 300
 
 	self.erc = event_relay_client.EventRelayClient(self)
-        print "NAME", self.name
 	self.erc.start_heartbeat(self.name,  self.alive_interval)
 
     ##############################################
@@ -101,10 +100,9 @@ class LMD(dispatching_worker.DispatchingWorker,
         try:
             self.policy_selector.read_config()
             ticket['status'] = (e_errors.OK, None)
-            self.send_reply_with_long_answer(reply)
         except Exception, detail:
             ticket['status'] = (e_errors.ERROR, "Error loading policy for LMD: %s"%(detail,))
-            self.reply_to_caller(ticket)
+        self.reply_to_caller(ticket)
             
 
     # send current policy to client
