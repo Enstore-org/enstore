@@ -1358,7 +1358,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.max_rate = self.config.get('max_rate', 100*MB) #XXX
             self.ip_map = self.config.get('ip_map','cluster_fs')
             # for cluster fs all files are available for any disk mover
-            # Temporay file for write operations.
+            # Temporary file for write operations.
             # The data is written into this file.
             # After write completes this file is moved into real destination file.
             # If write does not complete due to mover crash or
@@ -6988,10 +6988,11 @@ class DiskMover(Mover):
         have_tape = 0
         err = None
         Trace.trace(10, "position media")
-        # Check if file exists.
-        # If this is a cache file it might have been purged
-        if not os.path.exists(filename):
-            self.stage_file()
+        if self.current_work_ticket['work'] == "read_from_hsm":
+            # Check if file exists.
+            # If this is a cache file it might have been purged
+            if not os.path.exists(filename):
+                self.stage_file()
         try:
             have_tape = self.tape_driver.open(filename, self.mode, retry_count=30)
         except Exception, err:
