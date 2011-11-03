@@ -179,12 +179,22 @@ def is_pnfs_path(pathname, check_name_only = None):
     if not pathname:  #Handle None and empty string.
         return False
 
+    #Try and find a matching mount point.
     for cached_item in process_mtab():
         mount_point = cached_item[DB_MOUNT_POINTS][0]
         if mount_point and pathname.startswith(mount_point):
             break
     else:
-        return False
+        #Next try and find it after removing symbolic links.  We want to
+        # avoid this is possible for performance.
+        use_pathname = file_utils.wrapper(os.path.realpath, (pathname,),
+                                          unstable_filesystem=True)
+        for cached_item in process_mtab():
+            mount_point = cached_item[DB_MOUNT_POINTS][0]
+            if mount_point and use_pathname.startswith(mount_point):
+                break
+        else:
+            return False
 
     #If the pathname existance test should be skipped, return true at
     # this time.
@@ -2268,7 +2278,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         for use_search_path in (fname, os.path.dirname(fname)):
             current_id = base_id
             while current_id != "000000000000000000000000":
-                current_id_db_num = int(current_id[:4])
+                current_id_db_num = int(current_id[:4], 16)
                 
                 try:
                     n = N(current_id_db_num, use_search_path)
