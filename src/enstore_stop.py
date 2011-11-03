@@ -622,16 +622,19 @@ def do_work(intf):
     #     database deamons
 
     #Stop the servers.
+    
     for server in [ enstore_constants.ACCOUNTING_SERVER,
                     enstore_constants.DRIVESTAT_SERVER,
                     enstore_constants.ALARM_SERVER,
+                    enstore_constants.LM_DIRECTOR,
                     enstore_constants.INFO_SERVER,
                     enstore_constants.FILE_CLERK,
                     enstore_constants.VOLUME_CLERK,
                     enstore_constants.INQUISITOR,
                     enstore_constants.RATEKEEPER,
                     enstore_constants.MONITOR_SERVER,
-                    enstore_constants.LOG_SERVER,]:
+                    enstore_constants.LOG_SERVER]:
+
         if intf.should_stop(server):
             check_server(csc, server)
 

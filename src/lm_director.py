@@ -28,6 +28,7 @@ import enstore_constants
 import generic_server
 import dispatching_worker
 import event_relay_client
+import monitored_server
 import Trace
 import string
 import lmd_policy_selector
@@ -53,6 +54,7 @@ class LMD(dispatching_worker.DispatchingWorker,
                                               function = self.handle_er_msg)
         self.shutdown = False
         self.finished = False
+        Trace.init(self.log_name, "yes")
 
         # get all necessary information from configuration
         self.lmd_config = self.csc.get(MY_NAME)
@@ -76,13 +78,19 @@ class LMD(dispatching_worker.DispatchingWorker,
         self.qpid_client = cmc.EnQpidClient((broker_config['host'], broker_config['port']), queue_in, queue_out)
         self.auto_ack = auto_ack 
 
+        self.alive_interval = monitored_server.get_alive_interval(self.csc,
+                                                                  MY_NAME,
+                                                                  self.lmd_config)
+        print "alive interval", self.alive_interval
+
 
         dispatching_worker.DispatchingWorker.__init__(self, (self.lmd_config['hostip'],
 	                                              self.lmd_config['port']))
+        self.resubscribe_rate = 300
 
 	self.erc = event_relay_client.EventRelayClient(self)
-	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER, 
-				 enstore_constants.CONFIG_SERVER_ALIVE_INTERVAL)
+        print "NAME", self.name
+	self.erc.start_heartbeat(self.name,  self.alive_interval)
 
     ##############################################
     #### Configuration related methods
@@ -163,14 +171,12 @@ class LMD(dispatching_worker.DispatchingWorker,
         """
         read qpid messages from queue
         """
-        print "SERVE_QPID"
         try:
             self.qpid_client.start()
         except Exception, detail:
             Trace.log(e_errors.ERROR, "Can not start qpid server: %s"%(detail,))
             sys.exit(1)
         
-        print "SERVE_QPID1"
         try:
             while not self.shutdown:
                 # Fetch message from qpid queue
@@ -238,7 +244,6 @@ class LMDInterface(generic_server.GenericServerInterface):
     pass
 
 if __name__ == "__main__":    
-    Trace.init(string.upper(MY_NAME))
     # get the interface
     intf = LMDInterface()
     lmd = LMD((intf.config_host, intf.config_port))

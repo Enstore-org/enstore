@@ -381,6 +381,15 @@ class VolumeClerk(EnstoreServer):
 			       enstore_constants.DOWN)
 	self.reason_down = "volume_clerk down"
 
+class LMD(EnstoreServer): # library manager director
+
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
+	EnstoreServer.__init__(self, enstore_constants.LM_DIRECTOR,
+                               enstore_constants.LMD,
+			       offline_d, override_d, seen_down_d, allowed_down_d,
+			       enstore_constants.DOWN)
+	self.reason_down = "volume_clerk down"
+
 class LibraryManager(EnstoreServer):
 
     # states of a library manager meaning 'alive but not available for work'
@@ -571,11 +580,12 @@ def do_real_work():
     alarm = AlarmServer(offline_d, override_d, seen_down_d, allowed_down_d)
     inquisitor = Inquisitor(offline_d, override_d, seen_down_d, allowed_down_d)
     server_list = [cs, log, alarm, inquisitor,	    
-	    FileClerk(offline_d, override_d, seen_down_d, allowed_down_d),
-	    VolumeClerk(offline_d, override_d, seen_down_d, allowed_down_d),
-	    AccountingServer(offline_d, override_d, seen_down_d, allowed_down_d),
-	    InfoServer(offline_d, override_d, seen_down_d, allowed_down_d),
-	    DrivestatServer(offline_d, override_d, seen_down_d, allowed_down_d),
+                   FileClerk(offline_d, override_d, seen_down_d, allowed_down_d),
+                   VolumeClerk(offline_d, override_d, seen_down_d, allowed_down_d),
+                   AccountingServer(offline_d, override_d, seen_down_d, allowed_down_d),
+                   InfoServer(offline_d, override_d, seen_down_d, allowed_down_d),
+                   DrivestatServer(offline_d, override_d, seen_down_d, allowed_down_d),
+                   LMD(offline_d, override_d, seen_down_d, allowed_down_d),
                    ]
     
     library_managers = get_library_managers(config_d_keys)

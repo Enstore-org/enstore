@@ -267,6 +267,12 @@ class MonitoredRatekeeper(MonitoredServer):
     def __init__(self, config):
 	MonitoredServer.__init__(self, config, enstore_constants.RATEKEEPER)
 
+# Monitored Library Manager Director
+class MonitoredLMD(MonitoredServer):
+
+    def __init__(self, config):
+	MonitoredServer.__init__(self, config, enstore_constants.LM_DIRECTOR)
+
 
 class MonitoredMigrator(MonitoredServer):
 

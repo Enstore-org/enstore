@@ -9,11 +9,13 @@
 # system imports
 import sys
 import string
+import copy
 
 #enstore imports
 import generic_client
 import configuration_client
 import enstore_functions2
+import e_errors
 
 MY_NAME = ".LMDC"
 RCV_TIMEOUT = 20
@@ -51,7 +53,19 @@ class LibraryManagerDirectorClient(generic_client.GenericClient) :
         self.send_tries = rcv_tries
 
     def get_library_manager(self, ticket) :
-        return self.send(ticket)
+        if ticket['work'] != "write_to_hsm":
+           ticket['status'] = (e_errors.OK, None)
+           return ticket
+        # save original work
+        saved_work  = ticket['work']
+        # The new work is "get_library_manager".
+        # This is needed because request can be sent
+        # using udp_proxy server or directly to lm_director,
+        # depending on the configuration.
+        ticket['work'] = 'get_library_manager'
+        ticket = self.send(ticket)
+        ticket['work'] = saved_work
+        return ticket
 
 class LibraryManagerDirectorClientInterface(generic_client.GenericClientInterface) :
     def __init__(self, args=sys.argv, user_mode=1) :
@@ -64,7 +78,6 @@ class LibraryManagerDirectorClientInterface(generic_client.GenericClientInterfac
     parameters = ["<LibraryManager>.library_manager"]
         
     def parse_options(self):
-        print "PARSE"
         generic_client.GenericClientInterface.parse_options(self)
 
         if (getattr(self, "help", 0) or getattr(self, "usage", 0)):

@@ -2048,6 +2048,11 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.drivestat_server = monitored_server.MonitoredDrivestatServer(cdict)
 	self.servers_by_name[enstore_constants.DRIVESTAT_SERVER] = self.drivestat_server
 
+        # Library Manager Director
+        cdict = self.config_d.get(enstore_constants.LM_DIRECTOR, {})
+        self.lm_director = monitored_server.MonitoredLMD(cdict)
+	self.servers_by_name[enstore_constants.LM_DIRECTOR] = self.lm_director
+
         for server_key in self.server_d.keys():
             server = self.server_d[server_key]
             server.hung_interval = self.inquisitor.get_hung_interval(server.name)

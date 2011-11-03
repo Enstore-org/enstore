@@ -595,6 +595,7 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
         "migrator",
         "mover",
         "udp_proxy_server",
+        "lm_director",
         "monitor_server",
         "pnfs_agent",
         ]
@@ -681,7 +682,8 @@ def do_work(intf):
                     enstore_constants.INFO_SERVER,
                     enstore_constants.INQUISITOR,
                     enstore_constants.RATEKEEPER,
-                    enstore_constants.MONITOR_SERVER]:
+                    enstore_constants.MONITOR_SERVER,
+                    enstore_constants.LM_DIRECTOR]:
         if intf.should_start(server):
             check_server(csc, server, intf,
                          "$ENSTORE_DIR/sbin/%s" % (server,))
