@@ -85,7 +85,9 @@ class UDP2amq(UDPServer):
         
         # @todo shall not be here, sender shall know about target. For now set "to=" in message manually
         self.target_addr = target_addr
-        self.qpid_client = EnQpidClient(amq_broker, self.myaddr, target=target_addr)
+        myaddr = "%s; {create: always}"%(self.myaddr,)
+        t_a = "%s; {create: always}"%(target_addr,)
+        self.qpid_client = EnQpidClient(amq_broker, self.myaddr, target=t_a)
 
         self.auto_ack = auto_ack 
 
