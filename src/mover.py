@@ -7182,7 +7182,7 @@ class DiskMover(Mover):
                              self.current_volume,
                              r2,
                              eod_cookie = '0000_000000000_0000001',
-                             wrapper = 'null',
+                             wrapper = self.vol_info['wrapper'], # actually disk file will have no wrapper
                              blocksize = self.buffer.blocksize)
             Trace.log(e_errors.INFO,"Add volume returned %s"%(r,))
             if r['status'][0] != e_errors.OK:
