@@ -65,7 +65,7 @@ def submit_ticket(**kwargs):
         notes  = kwargs.get('Notes',None)
         
         submitter = SubmitTicket( 
-            Last_Name      = config_parser.get('create_entry','user_last','cd-srv-dms-enstore'),
+            Last_Name      = config_parser.get('create_entry','user_last','Dms-enstore'),
             First_Name     = config_parser.get('create_entry','user_first','System'),
             Service_Type         = kwargs.get('Service_Type','Storage'),
             impact               = kwargs.get('Impact_Type','3-Moderate/Limited'),
