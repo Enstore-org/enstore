@@ -6,8 +6,7 @@
 #
 ###############################################################################
 
-# qpid / amqp
-#import qpid.messaging
+import os.path
 
 # enstore imports
 import e_errors
@@ -86,11 +85,11 @@ def _get_proto(ticket, vc_keys=None, fc_keys=None):
     proto = {
         'cache': {                   # -- File Cache specific fields
             'arch': {                       # archive (tape backend)
-                'id':     'TODO__CACHE_ARCH_ID', #   reserved. @todo: set archive name, e.g. 'cdfen'
+                'id':     None,             #   reserved. @todo: set archive name, e.g. 'cdfen'
                 'type':   'enstore'         #   archive type
                 },
             'ns' : {                        # user namespace (frontend)
-                'id':     'TODO__NS_ID',      #   reserved. @todo: set namespace identification, e.g. "cdf"
+                'id':     None,             #   reserved. @todo: set namespace identification, e.g. "cdf"
                 'type':   'pnfs',           #   user namespace description
                 'mnt':    '/pnfs/fnal.gov'  #   mount point in global namespace
                 }
@@ -123,15 +122,27 @@ def _get_proto(ticket, vc_keys=None, fc_keys=None):
 def _set_cache_en(t):
     """ Fill in dict['cache']['en'] part of message dictionary using enstore ticket
     """
-    # input: enstore ticket
-    # @todo: set meaningful values in ['cache']['en'], set some stub for now
     en = {}
-    en['node'] = 'node01'
-    en['mount'] = '/mnt/cache'
-    en['path'] = '000/001/002/003/004/005' # path in cache, here mangled pnfsid
-    en['name'] = '0FFF0000123456789ABCDEF0' # file name in cache, here it is same as pnfsid
-    en['id'] =   '0FFF0000123456789ABCDEF0'
-    en['fsfn'] = '%s:%s/%s/%s' %(en['node'],en['mount'],en['path'],en['name'])
+    drive = t["fc"].get("drive",None)
+    location_cookie = t["fc"].get("location_cookie",None)
+    id = t["fc"].get("pnfsid",None)
+
+    if drive is not None:
+        (node,mount,ignore) = drive.split(":")
+    else:
+        node,mount = ("none",None)
+    if location_cookie is not None:
+        (path,name)  = os.path.split(location_cookie)
+
+    fsfn="%s:%s"%(node, location_cookie)
+    
+    en['node']  = node
+    en['mount'] = mount
+    en['path']  = path
+    en['name']  = name
+    en['id']    = id
+    en['fsfn']  = fsfn
+    
     return en
 
 #======================================================================
@@ -145,8 +156,7 @@ def evt_cache_written_fc(encp_ticket,fc_record):
     for key in ("original_library","library","file_family_width"):
         fc_ticket["vc"][key]=encp_ticket["fc"].get(key,None)
 
-    for key in ("file_family","external_label","storage_group",\
-                "wrapper"):
+    for key in ("file_family","external_label","storage_group","wrapper"):
         fc_ticket["vc"][key]=fc_record.get(key,None)
 
     fc_ticket["vc"]["volume_family"]=fc_record.get("storage_group","none")+"."+\
@@ -237,7 +247,7 @@ if __name__ == "__main__":
     ecs = EvtCacheStaged(t)
     print "EvtCacheStaged: %s" % (ecs,)
 
-#
+#---
     vct = {
            'library':'TEST_library',
            'storage_group':'TEST_storage_group',
@@ -262,7 +272,34 @@ if __name__ == "__main__":
          'vc': vct,
          'fc': fct
          }
+#---
+#  as of 11/04/2011 :
 
+    encp_tk = {'status': ('ok', None), 
+          'r_a': (('131.225.13.37', 42424), 1L, '131.225.13.37-42424-1320439860.181562-31985-47728652978352'), 
+          'work': 'set_pnfsid', 
+          'fc': {'size': 5189L, 'pnfsvid': '', 'pnfsid': '0001000000000000000031F0', 
+                 'pnfs_name0': '/pnfs/fs/usr/data/moibenko/d2/LTO3/LTO3GS/d5.py', 'address': ('131.225.13.32', 7501), 
+                 'external_label': 'common:ANM.FF1.cpio_odc:2011-11-04T15:51:08Z', 
+                 'drive': 'dmsen06:/data/cache:0', 'library': 'diskSF', 'gid': 6209, 'pnfs_mapname': '', 
+                 'complete_crc': 2338790700L, 'original_library': 'LTO3GS', 'mover_type': 'DiskMover', 
+                 'file_family_width': 20, 'bfid': 'GCMS132043986900000', 'uid': 5744, 'sanity_cookie': (5189L, 2338790700L), 
+                 'location_cookie': '/data/cache/496/3/0001000000000000000031F0'}}
+
+    fc_record = {'storage_group': 'ANM', 'pnfsvid': '', 'uid': 5744, 
+                 'pnfs_name0': '/pnfs/fs/usr/data/moibenko/d2/LTO3/LTO3GS/d5.py', 
+                 'deleted': 'no', 'archive_status': None, 
+                 'cache_mod_time': '2011-11-04 15:51:09', 'update': '2011-11-04 15:51:09.086832', 
+                 'library': 'diskSF', 'package_id': None, 'file_family': 'FF1', 
+                 'location_cookie': '/data/cache/496/3/0001000000000000000031F0', 'complete_crc': 2338790700L, 
+                 'bfid': 'GCMS132043986900000', 
+                 'sanity_cookie': (5189L, 2338790700L), 'size': 5189L, 
+                 'external_label': 'common:ANM.FF1.cpio_odc:2011-11-04T15:51:08Z', 
+                 'drive': 'dmsen06:/data/cache:0', 'wrapper': 'null', 'package_files_count': 0, 
+                 'active_package_files_count': -1, 'gid': 6209, 
+                 'pnfsid': '0001000000000000000031F0', 'archive_mod_time': None, 
+                 'cache_status': 'CACHED'}
+#---
     ew = evt_cache_written_t(tmin)
     print "evt_cache_written_t(): %s" % (ew,)
 
@@ -274,3 +311,6 @@ if __name__ == "__main__":
 
     es = evt_cache_staged_t(tmin)
     print "evt_cache_staged_t(): %s" % (es,)
+#---    
+    ew_fc = evt_cache_written_fc(encp_tk,fc_record)
+    print "evt_cache_written_fc(): %s" % (ew_fc,)
