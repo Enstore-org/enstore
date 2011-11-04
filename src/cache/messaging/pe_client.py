@@ -142,12 +142,16 @@ def _set_cache_en(t):
 def evt_cache_written_fc(encp_ticket,fc_record):
     fc_ticket={}
     fc_ticket["vc"] = {}
-    for key in ("original_library","library","storage_group",
-                "wrapper","file_family_width"):
+    for key in ("original_library","library","file_family_width"):
         fc_ticket["vc"][key]=encp_ticket["fc"].get(key,None)
 
-    for key in ("file_family","external_label","volume_family"):
+    for key in ("file_family","external_label","storage_group",\
+                "wrapper"):
         fc_ticket["vc"][key]=fc_record.get(key,None)
+
+    fc_ticket["vc"]["volume_family"]=fc_record.get("storage_group","none")+"."+\
+                                      fc_record.get("file_family","none")+"."+\
+                                      fc_record.get("wrapper","none")
 
     fc_ticket["fc"]=fc_record.copy()
     return evt_cache_written_t(fc_ticket)
