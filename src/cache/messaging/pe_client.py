@@ -149,7 +149,7 @@ def evt_cache_written_fc(encp_ticket,fc_record):
     for key in ("file_family","external_label","volume_family"):
         fc_ticket["vc"][key]=fc_record.get(key,None)
 
-    fc_ticket["fc"]=record.copy()
+    fc_ticket["fc"]=fc_record.copy()
     return evt_cache_written_t(fc_ticket)
 
 def evt_cache_written_t(fc_ticket):
@@ -178,7 +178,7 @@ def evt_cache_miss_fc(encp_ticket,fc_record):
     #
     fc_ticket["vc"]["original_library"]=None
     fc_ticket["file_family_width"]=1
-    fc_ticket["fc"]=record.copy()
+    fc_ticket["fc"]=fc_record.copy()
     return evt_cache_miss_t(fc_ticket)
 
 def evt_cache_miss_t(fc_ticket):
