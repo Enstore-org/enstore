@@ -340,7 +340,7 @@ def rmdir(path):
 import re
 access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)")
 def __log_file_access(func_name, args):
-    
+
     if Trace.log_func != Trace.default_log_func:
         message = "Starting call %s() for file: %s" % (func_name, str(args))
         Trace.log(9, message)  # 9 = TIME_LEVEL for encp.
@@ -393,12 +393,9 @@ def __log_access_mount(func_name, args):
                     mount_point = line.split(" ")[1]
                 except IndexError:
                     mount_point = line  #Can this happen?
-                message = "Found access mount %s doing: %s(%s)" % \
-                          (mount_point, func_name, args)
-                Trace.log(e_errors.INFO, message)
-                
+
 #############################################################################
-            
+
 #Hard coded retry count for handling transient file system errors.
 RETRY_COUNT = 4
 
@@ -576,7 +573,7 @@ def __wrapper(function, args=(), unstable_filesystem=None):
         log_func_name = "%s" % (function.__name__,)
     __log_file_access(log_func_name, args)
     __log_accces_path(log_func_name, args)
-    
+
     t0 = time.time()
 
     if unstable_filesystem and sem_lock:
@@ -631,14 +628,14 @@ def __wrapper(function, args=(), unstable_filesystem=None):
         if unstable_filesystem and sem_lock:
             sem_lock.release()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    
+
 #
 # wrapper to call os functions that takes care of euid/eid
 #
 # The unstable_filesystem parameter should be set true by calls from pnfs.py.
 # This is to allow for automatic retry of known suspect errors.
 def wrapper(function, args=(), unstable_filesystem=None):
-        
+
     if type(args) != types.TupleType:
         use_args = (args,)
     else:
