@@ -197,7 +197,7 @@ def evt_cache_miss_fc(encp_ticket,fc_record):
     # this info is not present
     #
     fc_ticket["vc"]["original_library"]=None
-    fc_ticket["file_family_width"]=1
+    fc_ticket["vc"]["file_family_width"]=1
     fc_ticket["fc"]=fc_record.copy()
     return evt_cache_miss_t(fc_ticket)
 
@@ -321,5 +321,5 @@ if __name__ == "__main__":
     ew_fc = evt_cache_written_fc(encp_tk,fc_record)
     print "evt_cache_written_fc(): %s" % (ew_fc,)
 
-#    em_fc = evt_cache_miss_fc(encp_tk,fc_record)
-#    print "evt_cache_miss_fc(): %s" % (em_fc,)
+    em_fc = evt_cache_miss_fc(encp_tk,fc_record)
+    print "evt_cache_miss_fc(): %s" % (em_fc,)
