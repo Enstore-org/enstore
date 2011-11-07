@@ -176,8 +176,9 @@ def evt_cache_written_t(fc_ticket):
     """ create event EvtCacheWritten from File Clerk ticket fc_ticket
     """
     vc_keys = ['library','storage_group', 'file_family','file_family_width',"wrapper" ]
+    fc_keys = ['bfid','location_cookie', 'deleted' ]
 
-    ev = _get_proto(fc_ticket, vc_keys = vc_keys )
+    ev = _get_proto(fc_ticket, vc_keys = vc_keys, fc_keys = fc_keys )
     ev['cache']['en'] = _set_cache_en(fc_ticket)
     ev['file']['complete_crc'] = fc_ticket['fc']['complete_crc']
 
