@@ -542,6 +542,17 @@ ELSEIF (TG_OP='UPDATE') THEN
 			DELETE FROM files_in_transition WHERE bfid=NEW.bfid;
 		END;
 	END IF;
+	IF (OLD.cache_status<>NEW.cache_status) THEN
+	   IF (NEW.cache_status = 'CACHED') THEN
+	      	BEGIN
+			INSERT INTO cached_files values (NEW.bfid);
+		END;
+	   ELSE
+             BEGIN
+	            DELETE FROM cached_files WHERE bfid=NEW.bfid;
+	     END;
+	   END IF;
+        END IF;
 
 END IF;
 RETURN NEW;
