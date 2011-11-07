@@ -537,7 +537,7 @@ class FileDB(DbTable):
                 for key in ('package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count',\
-                            'storage_group','file_family','library','wrapper'):
+                            'storage_group','file_family','library','wrapper','cache_location'):
                     if s.has_key(key):
                         record[key] = s[key]
 		return record
@@ -598,7 +598,7 @@ class FileDB(DbTable):
                 for key in ('package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count', \
-                            'storage_group','file_family','library','wrapper'):
+                            'storage_group','file_family','library','wrapper','cache_location'):
                     if s.has_key(key):
                         record[key] = s[key]
 		return record

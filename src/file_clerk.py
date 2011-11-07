@@ -1298,6 +1298,7 @@ class FileClerkMethods(FileClerkInfoMethods):
             record["gid"] = gid
         record["deleted"] = "no"
 	record["cache_status"] = file_cache_status.CacheStatus.CACHED
+	record["cache_location"] = record.get("location_cookie",None)
 
         # take care of the copy count
         original = self._find_original(bfid)
@@ -1474,9 +1475,10 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    if not bfids:
 		    ticket["status"] = (e_errors.ERROR,"Failed to extract list of bfids from ticket %s"%(str(ticket)))
 		    self.reply_to_caller(ticket)
-		    return
+		    resetturn
 	    cache_status   = self.extract_value_from_ticket("cache_status", ticket)
 	    archive_status = self.extract_value_from_ticket("archive_status", ticket)
+	    cache_location = self.extract_value_from_ticket("cache_location", ticket)
 	    if not cache_status and not archive_status :
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
@@ -1485,6 +1487,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    record = self.filedb_dict[bfid]
 		    if not record:
 			    continue
+		    if cache_location:
+			    record["cache_location"]=cache_location
 		    if cache_status :
 			    record["cache_status"]=cache_status
 		    if archive_status:

@@ -98,7 +98,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             ticket = self.set_pnfsid(ticket)
         return ticket
 
-    def set_cache_status(self, bfids, cache_status=None, archive_status=None):
+    def set_cache_status(self, bfids, cache_status=None, archive_status=None, cache_location=None):
         ticket={}
         ticket["bfid"]=[]
         if type(bfids) == types.ListType:
@@ -107,8 +107,12 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             ticket["bfid"].append(bfids)
         else:
             raise TypeError,"Expect String or List argument for bfid, not %s"%(type(bfids))
-        ticket["archive_status"]=archive_status
-        ticket["cache_status"]=cache_status
+        if archive_status:
+            ticket["archive_status"]=archive_status
+        if cache_status:
+            ticket["cache_status"]=cache_status
+        if cache_location:
+            ticket["cache_location"] = cache_location
         ticket["work"] = "set_cache_status"
         r = self.send(ticket)
         return r
