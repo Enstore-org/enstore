@@ -151,9 +151,13 @@ def _set_cache_en(t):
 
 
 def evt_cache_written_fc(encp_ticket,fc_record):
+    """ create event EvtCacheWritten from encp_ticket received by File Clerk ticket and FC DB record
+    """
+    # TODO this need to be streamlined to avoid double copy
+    
     fc_ticket={}
     fc_ticket["vc"] = {}
-    for key in ("original_library","library","file_family_width"):
+    for key in ("original_library","file_family_width"):
         fc_ticket["vc"][key]=encp_ticket["fc"].get(key,None)
 
     for key in ("file_family","external_label","storage_group","wrapper"):
@@ -164,12 +168,14 @@ def evt_cache_written_fc(encp_ticket,fc_record):
                                       fc_record.get("wrapper","none")
 
     fc_ticket["fc"]=fc_record.copy()
+ 
+    fc_ticket["vc"]["library"] = encp_ticket["fc"].get("original_library",None)
     return evt_cache_written_t(fc_ticket)
 
 def evt_cache_written_t(fc_ticket):
     """ create event EvtCacheWritten from File Clerk ticket fc_ticket
     """
-    vc_keys = ['library','storage_group', 'file_family','file_family_width' ]
+    vc_keys = ['library','storage_group', 'file_family','file_family_width',"wrapper" ]
 
     ev = _get_proto(fc_ticket, vc_keys = vc_keys )
     ev['cache']['en'] = _set_cache_en(fc_ticket)
@@ -314,3 +320,6 @@ if __name__ == "__main__":
 #---    
     ew_fc = evt_cache_written_fc(encp_tk,fc_record)
     print "evt_cache_written_fc(): %s" % (ew_fc,)
+
+#    em_fc = evt_cache_miss_fc(encp_tk,fc_record)
+#    print "evt_cache_miss_fc(): %s" % (em_fc,)
