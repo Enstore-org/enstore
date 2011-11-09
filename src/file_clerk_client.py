@@ -107,7 +107,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         ticket["bfids"]=[]
         if type(arguments) == types.ListType:
             ticket["bfids"] = arguments[:]
-        elif type(bfids) ==  types.DictType:
+        elif type(arguments) ==  types.DictType:
             ticket["bfids"].append(arguments)
         else:
             raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(arguments))
