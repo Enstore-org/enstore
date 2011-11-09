@@ -98,22 +98,19 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             ticket = self.set_pnfsid(ticket)
         return ticket
 
-    def set_cache_status(self, bfids, cache_status=None, archive_status=None, cache_location=None):
+    def set_cache_status(self, arguments) :
+        #
+        # arguments look like a dictionary or a list of
+        # dictionaries with keys
+        # "bfid", "cache_status","archive_status","cache_location"
         ticket={}
-        ticket["bfid"]=[]
-        if type(bfids) == types.ListType:
-            ticket["bfid"] = bfids[:]
-        elif type(bfids) ==  types.StringType:
-            ticket["bfid"].append(bfids)
+        ticket["bfids"]=[]
+        if type(arguments) == types.ListType:
+            ticket["bfids"] = arguments[:]
+        elif type(bfids) ==  types.DictType:
+            ticket["bfids"].append(arguments)
         else:
-            raise TypeError,"Expect String or List argument for bfid, not %s"%(type(bfids))
-        if archive_status:
-            ticket["archive_status"]=archive_status
-        if cache_status:
-            ticket["cache_status"]=cache_status
-        if cache_location:
-            ticket["cache_location"] = cache_location
-        ticket["work"] = "set_cache_status"
+            raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(arguments))
         r = self.send(ticket)
         return r
 

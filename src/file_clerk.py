@@ -1471,35 +1471,42 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    return
 
     def set_cache_status(self,ticket):
-	    bfids = self.extract_value_from_ticket("bfid",ticket)
-	    if not bfids:
+	    list_of_arguments = ticket.get("bfids",None)
+	    if not list_of_arguments:
 		    ticket["status"] = (e_errors.ERROR,"Failed to extract list of bfids from ticket %s"%(str(ticket)))
 		    self.reply_to_caller(ticket)
-		    resetturn
-	    cache_status   = self.extract_value_from_ticket("cache_status", ticket)
-	    archive_status = self.extract_value_from_ticket("archive_status", ticket)
-	    cache_location = self.extract_value_from_ticket("cache_location", ticket)
-	    if not cache_status and not archive_status :
-		    ticket["status"] = (e_errors.OK, None)
-		    self.reply_to_caller(ticket)
 		    return
-	    for bfid in bfids:
+	    for item in list_of_arguments:
+		    bfid = item.get("bfid",None)
+		    if not bfid:
+			    continue
+		    cache_status   = item.get("cache_status",None)
+		    archive_status = item.get("archive_status",None)
+		    cache_location = item.get("cache_location",None)
 		    record = self.filedb_dict[bfid]
 		    if not record:
 			    continue
 		    if cache_location:
+			    if cache_location == "null" :
+				    cache_location = None
 			    record["cache_location"]=cache_location
 		    if cache_status :
+			    if cache_status == "null":
+				    cache_status = None
 			    record["cache_status"]=cache_status
 		    if archive_status:
+			    if archive_status == "null":
+				    archive_status=None
 			    record["archive_status"]=archive_status
 		    #
 		    # record changes in db
 		    #
 		    self.filedb_dict[bfid] = record
 	    ticket["status"] = (e_errors.OK, None)
-	    self.reply_to_caller(ticket)
-	    return
+	    try:
+		    self.send_reply_with_long_answer(ticket)
+	    except (socket.error, select.error), msg:
+		    Trace.log(e_errors.INFO, "set_cache_status: %s" % (str(msg),))
 
     #### DONE
     def set_crcs(self, ticket):
