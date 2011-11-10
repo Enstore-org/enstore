@@ -111,7 +111,8 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             ticket["bfids"].append(arguments)
         else:
             raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(arguments))
-        r = self.send(ticket)
+        ticket["work"] = "set_cache_status"
+        r = self.send(ticket, long_reply = 1)
         return r
 
     def open_bitfile(self, bfid):
