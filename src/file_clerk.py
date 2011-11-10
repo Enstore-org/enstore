@@ -1297,7 +1297,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         if gid != None:
             record["gid"] = gid
         record["deleted"] = "no"
-	if ticket.get("mover_type",None) == "DiskMover":
+	if ticket["fc"].get("mover_type",None) == "DiskMover":
 		record["cache_status"] = file_cache_status.CacheStatus.CACHED
 		record["cache_location"] = record.get("location_cookie",None)
 
@@ -1312,7 +1312,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 	#
 	# send event to PE
 	#
-	if ticket.get("mover_type",None) == "DiskMover":
+	if ticket["fc"].get("mover_type",None) == "DiskMover":
 		event = pe_client.evt_cache_written_fc(ticket,record)
 		try:
 			self.en_qpid_client.send(event)
