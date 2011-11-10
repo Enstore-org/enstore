@@ -17,40 +17,40 @@ from cache.messaging.enq_message import EnqMessage
 class MWCommand(EnqMessage):
     """ Message: Base class for Migration Worker Commands
     """
-    def __init__(self, type=None, content = None ):
+    def __init__(self, type=None, content = None, **kwargs):
         if [type, content].count(None) != 0:
             raise e_errors.EnstoreError(None, "type or file list is undefined", e_errors.WRONGPARAMETER)
-        EnqMessage.__init__(self, type=type, content=content)
+        EnqMessage.__init__(self, type=type, content=content, **kwargs)
 
 class MWCPurge(MWCommand):
     """ Message: Migration Worker Purge Command
     """
-    def __init__(self, file_list = None ):
-        MWCommand.__init__(self,type=mt.MWC_PURGE, content=file_list)
+    def __init__(self, file_list = None, **kwargs):
+        MWCommand.__init__(self,type=mt.MWC_PURGE, content=file_list, **kwargs)
 
 class MWCArchive(MWCommand):
     """ Message: Migration Worker Archive Command
     """
     # TODO: assert file list items are type of FileListItemWithCRC
-    def __init__(self, file_list = None ):
-        MWCommand.__init__(self,type=mt.MWC_ARCHIVE, content=file_list)
+    def __init__(self, file_list = None, **kwargs):
+        MWCommand.__init__(self,type=mt.MWC_ARCHIVE, content=file_list, **kwargs)
 
 class MWCStage(MWCommand):
     """ Message: Migration Worker Stage Command
     """
     # TODO: assert file list items are type of FileListItemWithCRC
-    def __init__(self, file_list = None ):
-        MWCommand.__init__(self,type=mt.MWC_STAGE, content=file_list)
+    def __init__(self, file_list = None, **kwargs):
+        MWCommand.__init__(self,type=mt.MWC_STAGE, content=file_list, **kwargs)
 
 class MWCStatus(MWCommand):
     """ Message: Migration Worker Status Command
     """
     # Hmm, request_id supposed to be correlation_id of message we are trying to track ...
-    def __init__(self, request_id = None ):
+    def __init__(self, request_id = None, **kwargs):
         if request_id is None :
             raise e_errors.EnstoreError(None, "missing 'request_id' argument to MWCStatus() constructor", e_errors.WRONGPARAMETER)
         
-        MWCommand.__init__(self,type=mt.MWC_STATUS, content={"request_id":request_id})
+        MWCommand.__init__(self,type=mt.MWC_STATUS, content={"request_id":request_id}, **kwargs)
 
 #=======================================
 # Reply on Migration Worker Command
@@ -163,3 +163,6 @@ if __name__ == "__main__":
     
     rstat = MWRStatus(orig_msg=mstat, content={"status":(e_errors.OK,None)})
     print "MWRStatus: %s" % (rstat,)
+
+    ra2= MWCArchive(l, correlation_id=123245)
+    print "MWRArchived: %s" % (ra2,)
