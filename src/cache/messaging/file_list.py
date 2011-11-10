@@ -71,7 +71,7 @@ class FileList:
         self.full = False
         self.state = None
         
-    def _append(self, item, data_size):
+    def _append(self, item, data_size=0L):
         self.state = FILLING
         if not item.d in self.file_list:
             self.file_list.append(item.d)
@@ -87,7 +87,7 @@ class FileList:
            self.full = True
         return self.full
 
-    def append(self, item, data_size):
+    def append(self, item, data_size=0L):
         if isinstance(item, FileListItem):
             self._append(item, data_size)
         else:
@@ -105,7 +105,7 @@ class FileListWithCRC(FileList):
     
     This is a wrapper class which checks if the appending item has a correct format.
     """
-    def append(self, item, data_size):
+    def append(self, item, data_size=0L):
         if isinstance(item, FileListItemWithCRC):
             self._append(item, data_size)
         else:

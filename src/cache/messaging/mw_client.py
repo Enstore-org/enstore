@@ -169,7 +169,6 @@ if __name__ == "__main__":
     
     rconf = MWRConfirmation(orig_msg=ms, content={"status":(e_errors.OK,"work received")}, reply_to="myaddr")
     print "MWRConfirmation: %s" % (rconf,)
-    print "dir", dir(rconf)
     
     rstat = MWRStatus(orig_msg=mstat, content={"status":(e_errors.OK,None)})
     print "MWRStatus: %s" % (rstat,)
