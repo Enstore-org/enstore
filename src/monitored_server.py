@@ -274,6 +274,13 @@ class MonitoredLMD(MonitoredServer):
 	MonitoredServer.__init__(self, config, enstore_constants.LM_DIRECTOR)
 
 
+# Monitored Policy Engine Server and Migration Dispatcher
+class MonitoredDispatcher(MonitoredServer):
+
+    def __init__(self, config):
+	MonitoredServer.__init__(self, config, enstore_constants.DISPATCHER)
+
+
 class MonitoredMigrator(MonitoredServer):
 
     STATUS_FIELDS = {enstore_constants.STATE : enstore_constants.UNKNOWN_S,

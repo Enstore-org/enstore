@@ -2053,6 +2053,11 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.lm_director = monitored_server.MonitoredLMD(cdict)
 	self.servers_by_name[enstore_constants.LM_DIRECTOR] = self.lm_director
 
+        # Policy Engine Server and Migration Dispatcher
+        cdict = self.config_d.get(enstore_constants.DISPATCHER, {})
+        self.dispatcher = monitored_server.MonitoredDispatcher(cdict)
+	self.servers_by_name[enstore_constants.DISPATCHER] = self.dispatcher
+
         for server_key in self.server_d.keys():
             server = self.server_d[server_key]
             server.hung_interval = self.inquisitor.get_hung_interval(server.name)

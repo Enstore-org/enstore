@@ -627,6 +627,7 @@ def do_work(intf):
                     enstore_constants.DRIVESTAT_SERVER,
                     enstore_constants.ALARM_SERVER,
                     enstore_constants.LM_DIRECTOR,
+                    enstore_constants.DISPATCHER,
                     enstore_constants.INFO_SERVER,
                     enstore_constants.FILE_CLERK,
                     enstore_constants.VOLUME_CLERK,

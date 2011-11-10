@@ -146,6 +146,7 @@ EV_RLY = "Event Relay"
 UP_DOWN = "up_down"
 RATE = "Ratekeeper"
 LMD = "Library Manager Director"
+DISPR = "PE Server & Migr. Dispatcher"
 
 # server names used in config file
 ###Note: enstore start/stop assumes that the spelling here matches that of
@@ -166,6 +167,7 @@ WWW_SERVER = "www_server"
 RATEKEEPER = "ratekeeper"
 MONITOR_SERVER = "monitor_server"
 LM_DIRECTOR = "lm_director"
+DISPATCHER = "dispatcher" # Policy Engine server and Migration Dispatcher
 
 SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
                 DRVS: DRIVESTAT_SERVER,
@@ -180,6 +182,7 @@ SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
 		EV_RLY : EVENT_RELAY,
 		RATE : RATEKEEPER,
                 LMD: LM_DIRECTOR,
+                DISPR: DISPATCHER,
                 }
 
 #The client names.
@@ -353,11 +356,12 @@ NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
 UDP_PROXY_SERVER="udp_proxy_server"
 LM_DIRECTOR_CLIENT = "lm_director_client"
+DISPATCHER_CLIENT = "dispatcher_client" 
 
 GENERIC_SERVERS = [ ACCOUNTING_SERVER, ALARM_SERVER, CONFIGURATION_SERVER,
                     DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INFO_SERVER,
                     INQUISITOR, LOG_SERVER, PNFS_AGENT, RATEKEEPER,
-                    VOLUME_CLERK, LM_DIRECTOR ]
+                    VOLUME_CLERK, LM_DIRECTOR, DISPATCHER ]
 
 # Trace.trace output levels used by the inquisitor
 INQFILEDBG = 6

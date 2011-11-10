@@ -52,6 +52,8 @@ import pnfs_agent_client
 import scanfiles
 import udp_proxy_client
 import lm_director_client
+import dispatcher_client
+
 try:
 	import quota
 except:
@@ -100,6 +102,8 @@ server_functions = {
 		    pnfs_agent_client.do_work, option.ADMIN],
     "lmdirector" : [lm_director_client.LMDClientInterface,
 		    lm_director_client.do_work, option.ADMIN],
+    "dispatcher" : [dispatcher_client.DispatcherClientInterface,
+		    dispatcher_client.do_work, option.ADMIN],
     "udp_proxy" : [udp_proxy_client.ProxyClientInterface,
 		    udp_proxy_client.do_work, option.ADMIN],
     "inquisitor" : [inquisitor_client.InquisitorClientInterface,

@@ -388,7 +388,16 @@ class LMD(EnstoreServer): # library manager director
                                enstore_constants.LMD,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN)
-	self.reason_down = "volume_clerk down"
+	self.reason_down = "lm_directir down"
+
+class Dispatcher(EnstoreServer): # library manager director
+
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
+	EnstoreServer.__init__(self, enstore_constants.DISPATCHER,
+                               enstore_constants.DISPR,
+			       offline_d, override_d, seen_down_d, allowed_down_d,
+			       enstore_constants.DOWN)
+	self.reason_down = "dispatcher down"
 
 class LibraryManager(EnstoreServer):
 
@@ -586,6 +595,7 @@ def do_real_work():
                    InfoServer(offline_d, override_d, seen_down_d, allowed_down_d),
                    DrivestatServer(offline_d, override_d, seen_down_d, allowed_down_d),
                    LMD(offline_d, override_d, seen_down_d, allowed_down_d),
+                   Dispatcher(offline_d, override_d, seen_down_d, allowed_down_d),
                    ]
     
     library_managers = get_library_managers(config_d_keys)

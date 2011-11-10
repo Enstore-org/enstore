@@ -17,6 +17,7 @@ import types
 # enstore imports
 import e_errors
 import Trace
+import dict_u2a
 
 # Style of policy entry
 # Dictinary of rules and resulting library managers
@@ -74,6 +75,7 @@ class Selector:
         try:
             pattern = "^%s" % (policy[key])
             item='%s'%(ticket.get(key, 'Unknown'),)
+            Trace.trace(10, "pattern %s item %s"%(pattern, item))
             return re.search(pattern, item)
         except Exception, detail :
             Trace.log(e_errors.ERROR,"parse errorr: %s"%(detail,))
@@ -88,7 +90,6 @@ class Selector:
             for key in flat_ticket['wrapper'].keys():
                  flat_ticket[key] = flat_ticket['wrapper'][key]
             del(flat_ticket['wrapper'])
-        rticket = {}
         for key in flat_ticket.keys():
             if type(flat_ticket[key]) is type({}):
                 for k in flat_ticket[key].keys():
@@ -96,19 +97,11 @@ class Selector:
                     else: flat_ticket[k] = flat_ticket[key][k]
                 del(flat_ticket[key])
 
-        # tickets to lmd_policy engine come via qpid
+        # tickets to lmd_policy engine may come via qpid
         # so, all strings are in UTF-8
         # convert them into regular strings
-
-        for key in flat_ticket.keys():
-            k = key
-            if type(key) == types.UnicodeType:
-                k = key.encode("utf-8")
-            v = flat_ticket[k]
-            if type(flat_ticket[k]) == types.UnicodeType:
-                v = flat_ticket[k].encode("utf-8")
-            rticket[k] = v
-        return rticket
+        flat_ticket = dict_u2a.convert_dict_u2a(flat_ticket)
+        return flat_ticket
 
     # @param - ticket to match
     # @return - (True/False, Library/None)
@@ -147,6 +140,49 @@ class Selector:
                         match = (True, self.policydict[library_manager][rule]['resulting_library'])
                         return match
         return match
+
+    # @param - ticket to match
+    # @return - (True/False, Library/None)
+    def match_found_pe(self, ticket):
+        # returns a tuple:
+        # True if match was found, False - if not
+        # a string uniquly identifying policy 
+        # Minimal allowed file size
+        
+        # default match settings
+        match = False, None, 0
+        failed = False
+
+        if not self.policydict:  # no policy configuration info
+            return match
+
+        # make a "flat" copy of ticket
+        flat_ticket = self.make_flat_ticket(ticket)
+        Trace.trace(10, "FLAT TICKET:%s"%(flat_ticket,))
+        library = flat_ticket['library']
+        library_manager = library + ".library_manager"
+        if self.policydict.has_key(library_manager):
+            rules = self.policydict[library_manager].keys() # these are policy numbers
+            for rule in rules:
+                policy_string = "%s."%(library,)
+                # start matching
+                policy_keys = self.policydict[library_manager][rule]['rule'] # these are plicy numbers
+                rule_dict = self.policydict[library_manager][rule]['rule']
+                nkeys = len(policy_keys)
+                nmatches = 0
+                Trace.trace(10, "POLICY KEYS %s"%(policy_keys,)) 
+                for policy in policy_keys:
+                    if not self.ticket_match(flat_ticket, rule_dict, policy): break
+                    policy_string = policy_string+"%s."%(rule_dict[policy],)
+                    nmatches = nmatches + 1
+                if nmatches == nkeys:
+                    # match found
+                    # check the file size:
+                    if ticket['file_size'] < self.policydict[library_manager][rule]['minimal_file_size']:
+                        match = (True, policy_string, self.policydict[library_manager][rule]['minimal_file_size'])
+                        return match
+        return match
+
 
 if __name__ == "__main__":
     import socket
