@@ -6,6 +6,7 @@
 #
 ###############################################################################
 import types
+import time
 
 # enstore imports
 import e_errors
@@ -41,26 +42,62 @@ class FileListItemWithCRC:
                   "complete_crc" : crc,
                   }
 
+#file list states
+FILLING = "FILLING" # when file list is be ing filled
+FILLED = "FILLED"   # file is is ready to get sent to migrator
+ACTIVE = "ACTIVE"   # when file list has been send to migrator queue
 class FileList:
     """
     File List.
     
     This is a wrapper class which checks if the appending item has a correct format.
     """
-    def __init__(self):
+    def __init__(self,
+                 id = None,
+                 list_type = None,
+                 list_name = "",
+                 minimal_data_size = 1000000,
+                 maximal_file_count = 100,
+                 max_time_in_list = 300): # 5 minutes
+        self.list_type = list_type
+        self.list_id = id # unique list id
+        self.list_name = list_name
         self.file_list = []
+        self.creation_time = time.time()
+        self.minimal_data_size = minimal_data_size
+        self.maximal_file_count = maximal_file_count
+        self.max_time_in_list = max_time_in_list
+        self.data_size = 0L
+        self.full = False
+        self.state = None
         
-    def append(self, item):
-        if isinstance(item, FileListItem):
+    def _append(self, item, data_size):
+        self.state = FILLING
+        if not item.d in self.file_list:
             self.file_list.append(item.d)
+            self.data_size = self.data_size + data_size
+                                  
+            if (self.data_size > self.minimal_data_size or
+                len(self.file_list) > self.maximal_file_count or
+                (time.time() - self.creation_time) > self.max_time_in_list):
+                self.full = True
+
+    def list_expired(self):
+        if (time.time() - self.creation_time) > self.max_time_in_list:
+           self.full = True
+        return self.full
+
+    def append(self, item, data_size):
+        if isinstance(item, FileListItem):
+            self._append(item, data_size)
         else:
             raise e_errors.EnstoreError(None, "item must be FileListItem", e_errors.WRONGPARAMETER)
 
     def remove(self, item):
         self.file_list.remove(item.d)
         
-    def __str__(self):
-        return "%s" % (self.file_list)
+    def __repr__(self):
+        return "id=%s name=%s type=%s content %s" % (self.list_id, self.list_name, self.list_type, self.file_list)
 
 class FileListWithCRC(FileList):
     """
@@ -68,9 +105,9 @@ class FileListWithCRC(FileList):
     
     This is a wrapper class which checks if the appending item has a correct format.
     """
-    def append(self, item):
+    def append(self, item, data_size):
         if isinstance(item, FileListItemWithCRC):
-            self.file_list.append(item.d)
+            self._append(item, data_size)
         else:
             raise e_errors.EnstoreError(None, "item must be FileListItemWithCRC", e_errors.WRONGPARAMETER)
 
