@@ -81,8 +81,6 @@ class LMD(dispatching_worker.DispatchingWorker,
         self.alive_interval = monitored_server.get_alive_interval(self.csc,
                                                                   MY_NAME,
                                                                   self.lmd_config)
-        print "alive interval", self.alive_interval
-
 
         dispatching_worker.DispatchingWorker.__init__(self, (self.lmd_config['hostip'],
 	                                              self.lmd_config['port']))
@@ -253,11 +251,11 @@ if __name__ == "__main__":
 
     while 1:
         try:
-            Trace.log(e_errors.INFO, "Library Manager Diriector (re)starting")
+            Trace.log(e_errors.INFO, "Library Manager Director (re)starting")
             lmd.serve_forever()
         except SystemExit, exit_code:
             lmd.stop_qpid_server()
-            Trace.log(e_errors.INFO, "Library Manager Diriector Exiting %s"%(exit_code,))
+            Trace.log(e_errors.INFO, "Library Manager Director Exiting %s"%(exit_code,))
             
-    Trace.trace(e_errors.ERROR,"Library Manager Diriector finished (impossible)")
+    Trace.trace(e_errors.ERROR,"Library Manager Director finished (impossible)")
 
