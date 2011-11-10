@@ -26,21 +26,24 @@ class MWCPurge(MWCommand):
     """ Message: Migration Worker Purge Command
     """
     def __init__(self, file_list = None, **kwargs):
-        MWCommand.__init__(self,type=mt.MWC_PURGE, content=file_list, **kwargs)
+        c = {"file_list":file_list}
+        MWCommand.__init__(self,type=mt.MWC_PURGE, content=c, **kwargs)
 
 class MWCArchive(MWCommand):
     """ Message: Migration Worker Archive Command
     """
     # TODO: assert file list items are type of FileListItemWithCRC
     def __init__(self, file_list = None, **kwargs):
-        MWCommand.__init__(self,type=mt.MWC_ARCHIVE, content=file_list, **kwargs)
+        c = {"file_list":file_list}
+        MWCommand.__init__(self,type=mt.MWC_ARCHIVE, content=c, **kwargs)
 
 class MWCStage(MWCommand):
     """ Message: Migration Worker Stage Command
     """
     # TODO: assert file list items are type of FileListItemWithCRC
     def __init__(self, file_list = None, **kwargs):
-        MWCommand.__init__(self,type=mt.MWC_STAGE, content=file_list, **kwargs)
+        c = {"file_list":file_list}
+        MWCommand.__init__(self,type=mt.MWC_STAGE, content=c, **kwargs)
 
 class MWCStatus(MWCommand):
     """ Message: Migration Worker Status Command
@@ -49,8 +52,8 @@ class MWCStatus(MWCommand):
     def __init__(self, request_id = None, **kwargs):
         if request_id is None :
             raise e_errors.EnstoreError(None, "missing 'request_id' argument to MWCStatus() constructor", e_errors.WRONGPARAMETER)
-        
-        MWCommand.__init__(self,type=mt.MWC_STATUS, content={"request_id":request_id}, **kwargs)
+        c = {"request_id":request_id}
+        MWCommand.__init__(self,type=mt.MWC_STATUS, content=c, **kwargs)
 
 #=======================================
 # Reply on Migration Worker Command
@@ -91,20 +94,23 @@ class MWReply(EnqMessage):
 class MWRArchived(MWReply):
     """ Message: Reply to Migration Worker Archive Command
     """
-    def __init__(self, orig_msg = None, content = None ):
-        MWReply.__init__(self, type=mt.MWR_ARCHIVED, orig_msg = orig_msg, content=content)
+    def __init__(self, orig_msg = None, file_list = None ):
+        c = {"file_list":file_list}
+        MWReply.__init__(self, type=mt.MWR_ARCHIVED, orig_msg = orig_msg, content=c)
 
 class MWRPurged(MWReply):
     """ Message: Reply to Migration Worker Purge Command
     """
-    def __init__(self, orig_msg = None, content = None ):
-        MWReply.__init__(self, type=mt.MWR_PURGED, orig_msg = orig_msg, content=content)
+    def __init__(self, orig_msg = None, file_list = None ):
+        c = {"file_list":file_list}
+        MWReply.__init__(self, type=mt.MWR_PURGED, orig_msg = orig_msg, content=c)
 
 class MWRStaged(MWReply):
     """ Message: Reply to Migration Worker Stage Command
     """
-    def __init__(self, orig_msg = None, content = None ):
-        MWReply.__init__(self, type=mt.MWR_STAGED, orig_msg = orig_msg, content=content)
+    def __init__(self, orig_msg = None, file_list = None ):
+        c = {"file_list":file_list}
+        MWReply.__init__(self, type=mt.MWR_STAGED, orig_msg = orig_msg, content=c)
 
 # @todo Hmm, correlation id is for the correlation id for command message;
 # we need to put the correlation of the first id into the reply.
@@ -112,12 +118,16 @@ class MWRStaged(MWReply):
 
 class MWRStatus(MWReply):
     """ Message: Reply to Migration Worker Status Command
+    
+        @param content: must be dictionary type
     """
     def __init__(self, orig_msg = None, content = None ):
         MWReply.__init__(self, type=mt.MWR_STATUS, orig_msg = orig_msg, content=content)
 
 class MWRConfirmation(MWReply):
     """ Message: Reply to Confirm receipt of request
+    
+        @param kwargs: if content is present, it must be a dictionary
     """
     def __init__(self, orig_msg = None, **kwargs):
         MWReply.__init__(self, type=mt.MWR_CONFIRMATION, orig_msg = orig_msg, **kwargs)
@@ -144,14 +154,14 @@ if __name__ == "__main__":
     ra1 = MWRArchived(ma,l)
     print "MWRArchived: %s" % (ra1,)
     
-    ra2= MWRArchived(orig_msg=ma,content=l2)
+    ra2= MWRArchived(orig_msg=ma,file_list=l2)
     print "MWRArchived: %s" % (ra2,)
     
-    rp = MWRPurged(orig_msg=mp, content=l2)
+    rp = MWRPurged(orig_msg=mp, file_list=l2)
     #rp2 = MWRPurged(orig_msg=mp) #ERROR
     print "MWRPurged: %s" % (rp,)
     
-    rs = MWRStaged(orig_msg=ms, content=l2)
+    rs = MWRStaged(orig_msg=ms, file_list=l2)
     print "MWRStaged: %s" % (rs,)
     
     rc = MWRConfirmation(orig_msg=ms)
