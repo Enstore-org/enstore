@@ -1297,8 +1297,9 @@ class FileClerkMethods(FileClerkInfoMethods):
         if gid != None:
             record["gid"] = gid
         record["deleted"] = "no"
-	record["cache_status"] = file_cache_status.CacheStatus.CACHED
-	record["cache_location"] = record.get("location_cookie",None)
+	if ticket.get("mover_type",None) == "DiskMover":
+		record["cache_status"] = file_cache_status.CacheStatus.CACHED
+		record["cache_location"] = record.get("location_cookie",None)
 
         # take care of the copy count
         original = self._find_original(bfid)
@@ -1311,11 +1312,12 @@ class FileClerkMethods(FileClerkInfoMethods):
 	#
 	# send event to PE
 	#
-	event = pe_client.evt_cache_written_fc(ticket,record)
-	try:
-		self.en_qpid_client.send(event)
-	except:
-		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	if ticket.get("mover_type",None) == "DiskMover":
+		event = pe_client.evt_cache_written_fc(ticket,record)
+		try:
+			self.en_qpid_client.send(event)
+		except:
+			ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 
 	self.reply_to_caller(ticket)
 
