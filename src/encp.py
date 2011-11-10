@@ -6518,6 +6518,8 @@ def set_outfile_permissions(ticket, encp_intf):
             if (os.getuid() == 0 or os.getgid() == 0) and \
                    e_errors.is_ok(ticket) and not encp_intf.put_cache:
                 try:
+                    uid = in_stat_info[stat.ST_UID]
+                    gid = in_stat_info[stat.ST_GID]
                     
                     #handle remote file case
                     if is_write(ticket):
