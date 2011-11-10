@@ -1127,6 +1127,11 @@ class FileClerkMethods(FileClerkInfoMethods):
                 return
 
         record["bfid"] = bfid
+	now = time.time()
+	if ticket["fc"].get("mover_type",None) == "DiskMover":
+		record["cache_status"] = file_cache_status.CacheStatus.CREATED
+		record["cache_mod_time"] = time2timestamp(now)
+
         # record it to the database
         self.filedb_dict[bfid] = record
 

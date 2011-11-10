@@ -484,10 +484,10 @@ ALTER FUNCTION public.update_volume_file_counters() OWNER TO enstore;
 CREATE OR REPLACE FUNCTION populate_file_table() RETURNS "trigger"
     AS $$
 BEGIN
-IF(TG_OP='INSERT') THEN
-        NEW.cache_status='CREATED';
-	NEW.cache_mod_time=LOCALTIMESTAMP(0);
-ELSEIF (TG_OP='UPDATE') THEN
+--      IF(TG_OP='INSERT') THEN
+        -- NEW.cache_status='CREATED';
+	-- NEW.cache_mod_time=LOCALTIMESTAMP(0);
+IF (TG_OP='UPDATE') THEN
         IF (OLD.cache_status<>NEW.cache_status) THEN
 		NEW.cache_mod_time=LOCALTIMESTAMP(0);
 	END IF;
