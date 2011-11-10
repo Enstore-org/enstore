@@ -43,7 +43,7 @@ MAX_PROCESSES=5 # @todo configurable
 # @todo define it here for now. move to common file
 
 
-class MigrationWorker():
+class MigrationWorker(object):
     '''
     Migration Worker core functionality implementation
     '''

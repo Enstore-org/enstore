@@ -12,15 +12,15 @@ import os
 import time
 import threading
 import types
+import copy
 import logging
-import unicodedata
 
 # enstore imports
 import e_errors
 import configuration_client
 import event_relay_client
-import info_client
 import file_clerk_client
+import info_client
 import event_relay_messages
 import generic_server
 import dispatching_worker
@@ -88,7 +88,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         #file_clerk_conf = self.csc.get('file_clerk')
         self.data_area = self.my_conf['data_area'] # area on disk where original files are stored
         self.archive_area = self.my_conf['archive_area'] # area on disk where archvived files are temporarily stored
-        self.stage_area = self.my_conf['stage_area']  # area on disk where staged files are temporarily stored
+        self.stage_area = self.my_conf.get('stage_area','data_area')   # area on disk where staged files are stored
+        self.stage_area = self.my_conf['tmp_stage_area']  # area on disk where staged files are temporarily stored
 
         self.my_dispatcher = self.csc.get(self.my_conf['migration_dispatcher']) # migration dispatcher configuration
         self.my_broker = self.csc.get("amqp_broker") # amqp broker configuration
@@ -103,14 +104,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.migration_worker_configuration['amqp'] = {}
         self.migration_worker_configuration['amqp']['broker'] = self.csc.get("amqp_broker")
         self.status = None # internal status of migrator to report to Migration Dispatcher
-        if_conf = self.csc.get("info_server")
         fc_conf = self.csc.get("file_clerk")
-        self.info_client = info_client.infoClient(self.csc,
-                                                  server_address=(if_conf['host'],
-                                                                  if_conf['port']))
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=(fc_conf['host'],
                                                                 fc_conf['port']))
+        ic_conf = self.csc.get("info_server")
+        self.infoc = info_client.infoClient(self.csc, 
+                                            server_address=(ic_conf['host'],
+                                                            ic_conf['port']))
 
     def  __init__(self, name, cs):
         """
@@ -173,11 +174,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(name, self.alive_interval)
 
-        
     # pack files into a single aggregated file
     # if there are multiple files in request list
     # 
     def pack_files(self, request_list):
+        Trace.trace(10, "pack_files: request_list %s"%(request_list,))
         if not request_list:
             return None
         cache_file_list = []
@@ -193,12 +194,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             ### Implementation must be HERE!!!!
             
             if type(component['bfid']) == types.UnicodeType:
-                component['bfid'] = unicodedata.normalize("NFKD", component['bfid']).encode("ascii", "ignore")
+                component['bfid'] = component['bfid'].encode("utf-8")
             bfids.append(component['bfid'])
             # Check if such file exists in cache.
             # This should be already checked anyway.
             if os.path.exists(cache_file_path):
-                cache_file_list.append((cache_file_path, component['path']))
+                cache_file_list.append((cache_file_path, component['path'], component['complete_crc']))
                 ns_file_list.append(component['path']) # file path in name space
             else:
                 Trace.log(e_errors.ERROR, "File aggregation failed. File %s does not exist in cache"%(cache_file_path))
@@ -237,8 +238,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             special_file = open(special_file_name, 'w')
             special_file.write("List of cached files and original names\n")
 
-            for f, c_f in cache_file_list:
-                special_file.write("%s %s\n"%(f, c_f))
+            Trace.trace(10, "pack_files: cache_file_list: %s"%(cache_file_list,))
+            for f, c_f, crc in cache_file_list:
+                special_file.write("%s %s %s\n"%(f, c_f, crc))
             
             special_file.close()
 
@@ -247,7 +249,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             os.system("tar --force-local -cf %s %s"%(src_path, special_file_name))
 
             # Append cached files to archive
-            for f, junk in cache_file_list:
+            for f, junk, junk in cache_file_list:
                 Trace.trace(10, "pack_files: add %s to %s"%(f, src_path))
                 rtn = os.system("tar --force-local -rPf %s %s"%(src_path, f))
                 print "RTN", rtn
@@ -256,16 +258,20 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # Encp does not like this.
         # Convert unicode to ASCII strings.
         if type(src_path) == types.UnicodeType:
-            src_path = unicodedata.normalize("NFKD", src_path).encode("ascii", "ignore")
+            src_path = src_path.encode("utf-8")
         if type(dst) == types.UnicodeType:
-            dst = unicodedata.normalize("NFKD", dst).encode("ascii", "ignore")
+            dst = dst.encode("utf-8")
         dst_path = "%s.tar"%(os.path.join(dst, src_fn))
             
         return src_path, dst_path, bfids
 
     # write aggregated file to tape
-    def write_to_tape(self, request_list):
-        Trace.trace(10, "write_to_tape: request %s"%(request_list,))
+    def write_to_tape(self, request):
+        # save request
+        rq = copy.copy(request)
+        Trace.trace(10, "write_to_tape: request %s"%(rq.content,))
+        # save correlation_id
+        request_list = rq.content['file_list']
         #sys.exit(0)
         if request_list:
             # check if files can be written to tape
@@ -274,10 +280,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 bfid = component['bfid']
                 # Convert unicode to ASCII strings.
                 if type(bfid) == types.UnicodeType:
-                    bfid = unicodedata.normalize("NFKD", bfid).encode("ascii", "ignore")
+                    bfid = bfid.encode("utf-8")
                 rec = self.fcc.bfid_info(bfid)
                 if (rec['status'][0] == e_errors.OK and
-                    (rec['archive_status'] not in (file_cache_status.ArchiveStatus.ARCHIVED, file_cache_status.ArchiveStatus.ARCHIVED, None))):
+                    (rec['archive_status'] not in (file_cache_status.ArchiveStatus.ARCHIVED, file_cache_status.ArchiveStatus.ARCHIVING))):
                     write_enabled_counter = write_enabled_counter + 1
             if write_enabled_counter != len(request_list):
                 Trace.log(e_errors.ERROR, "No files will be archived, because some of them or all are already archived or being archived")
@@ -291,51 +297,44 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         # Change archive_status
         for bfid in bfid_list:
-            rec = self.fcc.bfid_info(bfid)
-            Trace.trace(10, "purge_files: rec %s"%(rec,))
-            if rec['status'][0] == e_errors.OK:
-                rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVING
-                rc = self.fcc.set_cache_status(rec)                
+            # fill the argumet list for
+            # set_cache_status method
+            set_cache_params = []
+            set_cache_params.append({'bfid': bfid,
+                                     'cache_status':None,# we are not changing this
+                                     'archive_status': file_cache_status.ArchiveStatus.ARCHIVING,
+                                     'cache_location': None})       # we are not changing this
+        rc = self.fcc.set_cache_status(set_cache_params)
         Trace.trace(10, "write_to_tape: will write %s into %s"%(src_file_path, dst_file_path,))
         #return
-        print "DST", type(dst_file_path)
         encp = encp_wrapper.Encp()
-        args = ["encp", "--disable-redirection", src_file_path, dst_file_path]  
+        args = ["encp", src_file_path, dst_file_path]  
         cmd = "encp %s %s"%(src_file_path, dst_file_path)
         rc = encp.encp(args)
         Trace.trace(10, "write_to_tape: encp returned %s"%(rc,))
 
+        # encp finished
         if rc != 0:
+            set_cache_params = []
             # Change archive_status
             for bfid in bfid_list:
-                rec = self.fcc.bfid_info(bfid)
-                Trace.trace(10, "purge_files: rec %s"%(rec,))
-                if rec['status'][0] == e_errors.OK:
-                    rec['archive_status'] = None
-                    rc = self.fcc.set_cache_status(rec)            
+                set_cache_params.append({'bfid': bfid,
+                                         'cache_status':None,# we are not changing this
+                                         'archive_status': "null",
+                                         'cache_location': None})       # we are not changing this
+                        
+            rc = self.fcc.set_cache_status(set_cache_params)
             raise e_errors.EnstoreError(None, "encp write to tape failed", rc)
-
-        # register file in file db
         
-        res = self.info_client.find_file_by_path(dst_file_path)
+        # register archive file in file db
+        res = self.infoc.find_file_by_path(dst_file_path)
         Trace.trace(10, "write_to_tape: find file %s returned %s"%(dst_file_path, res))
         
         if e_errors.is_ok(res['status']):
             dst_bfid = res['bfid']
-            #res = self.fcc.register_copies(bfid_list, dst_bfid) 
-            # This is a temporary implementtaion of register_copies
-            #########
+            update_time = time.localtime(time.time())
             package_files_count = len(bfid_list)
-            rec = self.fcc.bfid_info(dst_bfid)
-            rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVED
-            rec['package_id'] = dst_bfid
-            rec['package_files_count'] = package_files_count
-            rec['archive_mod_time'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-            rec['active_package_files_count'] = package_files_count
-            Trace.trace(10, "write_to_tape: sending main file modify record %s"%(rec,))
-            rc = self.fcc.modify(rec)
-            
-            bfid_list.append(res['bfid'])
+            bfid_list.append(dst_bfid)
             for bfid in bfid_list:
                 del(rec) # to avoid interference
                 # read record
@@ -344,7 +343,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 rec['package_id'] = dst_bfid
                 rec['package_files_count'] = package_files_count
                 rec['active_package_files_count'] = package_files_count
-                rec['archive_mod_time'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+                rec['archive_mod_time'] = time.strftime("%Y-%m-%d %H:%M:%S", update_time)
                 Trace.trace(10, "write_to_tape: sending modify record %s"%(rec,))
                 rc = self.fcc.modify(rec)
             #########
@@ -357,6 +356,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "write_to_tape: removing temporary file %s"%(src_file_path,))
         
         os.remove(src_file_path)
+
+        # remove README.1st
+        os.remove(os.path.join(os.path.dirname(src_file_path), "README.1st")) 
         # Remove temporary archive directory
         try:
             os.removedirs(os.path.dirname(src_file_path))
@@ -365,20 +367,32 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             pass
         
             
+        status_message = cache.messaging.mw_client.MWRArchived(orig_msg=rq)
+        try:
+            self._send_reply(status_message)
+        except Exception, e:
+            self.trace.exception("sending reply, exception %s", e)
+            return False
+        
         return True # completed successfully, the request will be acknowledged
 
     # purge files from disk
-    def purge_files(self, request_list):
+    def purge_files(self, request):
+        # save request
+        rq = copy.copy(request)
+        Trace.trace(10, "purge_files: request %s"%(rq.content,))
+        request_list = rq.content['file_list']
         for component in request_list:
             bfid = component['bfid']
             # Convert unicode to ASCII strings.
             if type(bfid) == types.UnicodeType:
-                bfid = unicodedata.normalize("NFKD", bfid).encode("ascii", "ignore")
+                bfid = bfid.encode("utf-8")
             rec = self.fcc.bfid_info(bfid)
             Trace.trace(10, "purge_files: rec %s"%(rec,))
             if (rec['status'][0] == e_errors.OK and
                 (rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
                 ((rec['cache_status'] != file_cache_status.CacheStatus.STAGING) and   # why would we purge the file which is being staged?
+                 (rec['cache_status'] != file_cache_status.CacheStatus.STAGING_REQUESTED) and   # why would we purge the file which is being staged?
                  (rec['cache_status'] != file_cache_status.CacheStatus.PURGING) and   # file is being pugred
                  (rec['cache_status'] != file_cache_status.CacheStatus.PURGED))):    # file is pugred
                 rec['cache_status'] = file_cache_status.CacheStatus.PURGING
@@ -406,21 +420,48 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 except Exception, detail:
                     Trace.trace(10, "purge_files: can not remove %s: %s"%(rec['location_cookie'], detail))
                     Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(rec['location_cookie'], detail))
+
+        status_message = cache.messaging.mw_client.MWRPurged(orig_msg=rq)
+        try:
+            self._send_reply(status_message)
+        except Exception, e:
+            self.trace.exception("sending reply, exception %s", e)
+            return False
+        
         return True # completed successfully, the request will be acknowledged
 
     # read aggregated file from tape
     def read_from_tape(self, request_list):
+        # save request
+        rq = copy.copy(request)
+        Trace.trace(10, "read_from_tape: request %s"%(rq.content,))
+        request_list = rq.content['file_list']
         # the request list must:
         # 1. Have a single component OR if NOT
         # 2. Have the same package bfid
 
         files_to_stage = []
+        if len(request_list) == 1:
+            # check if the package staging is requested
+            bfid = request_list[0]['bfid']
+            if type(bfid) == types.UnicodeType:
+                bfid = bfid.encode("utf-8")
+            rec = self.fcc.bfid_info(bfid)
+            Trace.trace(10, "read_from_tape: rec %s"%(rec,))
+            if rec['status'][0] == e_errors.OK and rec['package_id'] == bfid:
+               # request to stage a package
+               # get all information about children
+               package_bfid, bfid_data = self.fcc.get_children({'bfid': rec['package_id']})
+                
+            
+            
+            
         package_bfid = None
         for component in request_list:
             bfid = component['bfid']
             # Convert unicode to ASCII strings.
             if type(bfid) == types.UnicodeType:
-                bfid = unicodedata.normalize("NFKD", bfid).encode("ascii", "ignore")
+                bfid = bfid.encode("utf-8")
             rec = self.fcc.bfid_info(bfid)
             Trace.trace(10, "read_from_tape: rec %s"%(rec,))
             if (rec['status'][0] == e_errors.OK and
@@ -535,6 +576,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             #remove the temporary directory
             os.removedirs(stage_dir_path)
+        status_message = cache.messaging.mw_client.MWRStaged(orig_msg=rq)
+        try:
+            self._send_reply(status_message)
+        except Exception, e:
+            self.trace.exception("sending reply, exception %s", e)
+            return False
 
         return True
 
@@ -571,16 +618,18 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 self.status = file_cache_status.CacheStatus.STAGING
             confirmation_message = cache.messaging.mw_client.MWRConfirmation(orig_msg=message,
                                                                              content=message.content,
-                                                                             reply_to=self.queue_in_name)
+                                                                             reply_to=self.queue_in_name,
+                                                                             correlation_id=message.correlation_id)
             # reply now to report name of the queue for inquiry commands
             # such as MWC_STATUS
             try:
+                Trace.trace(10, "Sending confirmation")
                 self._send_reply(confirmation_message)
             except Exception, e:
                 self.trace.exception("sending reply, exception %s", e)
                 return False
             # run worker
-            if self.workers[request_type](self, message.content):
+            if self.workers[request_type](self, message):
                 # work has completed successfully
                 del(self.work_dict[message.correlation_id])
                 if request_type == mt.MWC_ARCHIVE:
@@ -589,6 +638,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     self.status = file_cache_status.CacheStatus.PURGED
                 elif request_type ==mt.MWC_STAGE:
                     self.status = file_cache_status.CacheStatus.CACHED
+                    
                 return True
             else:
                 return False
@@ -598,6 +648,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
                                                                  content= content)
             try:
+                Trace.trace(10, "Sending status %s"%(status_message,))
                 self._send_reply(status_message)
             except Exception, e:
                 self.trace.exception("sending reply, exception %s", e)
@@ -734,12 +785,12 @@ def do_work():
     
     cache.en_logging.config_test_unit.set_logging_console()
 
-    # create a udp_proxy instance
+    # create  Migrator instance
     migrator = Migrator(intf.name, (intf.config_host, intf.config_port))
     migrator.handle_generic_commands(intf)
 
     #Trace.init(migrator.log_name, 'yes')
-    migrator._do_print({'levels':range(5, 400)}) # no manage_queue
+    migrator._do_print({'levels':range(5, 400)})
     migrator.start()
  
     while True:
