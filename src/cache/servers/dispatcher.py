@@ -116,8 +116,31 @@ class Dispatcher(mw.MigrationWorker,
 
 	self.erc = event_relay_client.EventRelayClient(self)
 	self.erc.start_heartbeat(self.name,  self.alive_interval)
+   
+   ##############################################
+   #### Configuration related methods
+   ##############################################
+   # reload policy when this method is called
+   # by the request from the client
+   def reload_policy(self, ticket):
+      try:
+         self.policy_selector.read_config()
+         ticket['status'] = (e_errors.OK, None)
+      except Exception, detail:
+         ticket['status'] = (e_errors.ERROR, "Error loading policy for LMD: %s"%(detail,))
+         self.reply_to_caller(ticket)
+         
 
-
+   # send current policy to client
+   def show_policy(self, ticket):
+      try:
+         ticket['dump'] = self.policy_selector.policydict
+         ticket['status'] = (e_errors.OK, None)
+         self.send_reply_with_long_answer(ticket)
+      except Exception, detail:
+         ticket['status'] = (e_errors.ERROR, "Error %s"%(detail,))
+         self.reply_to_caller(ticket)
+         
    # move list from a list pool to migration pool
    # @param - from - pool
    # @param - item_to_move 
@@ -143,7 +166,7 @@ class Dispatcher(mw.MigrationWorker,
                    self.cache_staged_pool):
          Trace.trace(10, "check_pools %s"%(pool,))
          for key in pool.keys():
-             if pool[key].list_expired:
+             if pool[key].list_expired():
                # List time expired,
                # pass this list to Migration Dispatcher
                Trace.trace(10, "check pools passing to migration dispatcher %s" % (key,))
@@ -183,8 +206,6 @@ class Dispatcher(mw.MigrationWorker,
        for k, v in message.content['vc'].items():
           message.content[k] = v
        del(message.content['vc'])
-       policy_string = self.policy_selector.match_found_pe(message.content)
-       Trace.trace(10, "handle_cache_missed: POLICY:%s"%(policy_string,))
        
        pass
 
@@ -209,35 +230,37 @@ class Dispatcher(mw.MigrationWorker,
        new_content['enstore']['file_size'] = new_content['enstore']['size']
 
        Trace.trace(10, "handle_cache_written new content: %s"%(new_content,))
-       rc, policy_string, min_package_size = self.policy_selector.match_found_pe(new_content['enstore'])
-       if rc:
+       policy = self.policy_selector.match_found_pe(new_content['enstore'])
+       if policy:
           # check if the file list exists
-          if not policy_string in self.cache_written_pool.keys():
+          Trace.trace(10, "handle_cache_written pool: %s"%(self.cache_written_pool.keys(),))
+          Trace.trace(10, "handle_cache_written policy: %s"%(policy,))
+          if not policy['policy'] in self.cache_written_pool.keys():
              # Create list
              f_list = file_list.FileListWithCRC(id = message.correlation_id,
                                                 list_type = message.properties["en_type"],
-                                                list_name = policy_string,
-                                                minimal_data_size = min_package_size,
-                                                maximal_file_count = 100,
-                                                max_time_in_list = 30)
-             self.cache_written_pool[policy_string] = f_list
+                                                list_name = policy['policy'],
+                                                minimal_data_size = policy['minimal_file_size'],
+                                                maximal_file_count = policy['min_files_in_pack'],
+                                                max_time_in_list = policy['max_waiting_time'])
+             self.cache_written_pool[policy['policy']] = f_list
           list_element = file_list.FileListItemWithCRC(bfid = new_content['enstore']['bfid'],
                                                        nsid = new_content['enstore']['id'],
                                                        path = new_content['enstore']['name'],
                                                        libraries = [new_content['enstore']['vc']['library']],
                                                        crc = new_content['enstore']['complete_crc'])
           
-          self.cache_written_pool[policy_string].append(list_element, new_content['enstore']['file_size'])
-          if self.cache_written_pool[policy_string].full:
+          self.cache_written_pool[policy['policy']].append(list_element, new_content['enstore']['file_size'])
+          if self.cache_written_pool[policy['policy']].full:
              # pass this list to Migration Dispatcher
              Trace.trace(10, "handle_cache_written passing to migration dispatcher")
-             self.move_to_migration_pool(self.cache_written_pool, policy_string)
+             self.move_to_migration_pool(self.cache_written_pool, policy['policy'])
              md.start_migration()
              
        else:
           Trace.alarm(e_errors.ALARM, "Potential data loss. No policy for %s"%(new_content,))
           
-       Trace.trace(10, "handle_cache_written: POLICY:%s"%(policy_string,))
+       Trace.trace(10, "handle_cache_written: POLICY:%s"%(policy['policy'],))
        
        
        pass
