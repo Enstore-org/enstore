@@ -27,12 +27,19 @@ import dict_u2a
 #                                          'wrapper':'cpio_odc'
 #                                     }
 #                            'minimal_file_size': 2000000000L
-#                                          }
+#                            'min_files_in_pack': 100, 
+#                            'max_waiting_time': 300,
 #                            'resulting_library': 'new_library'
 #                            }
 #                        2: .....
 #
-#                         }   
+#                         }
+# 'minimal_file_size' - if file is less this file will be aggregated
+# 'min_files_in_pack' - minimal number of file in package,
+#                       if total size of files to be aggregated is less than minimal_file_size
+#                       and number of foles >= min_files_in_pack then files will get packaged
+# 'max_waiting_time' - if time of cellection of files for a package exceeds this value (sec),
+#                      the files will get packaged
                             
 class Selector:
 
@@ -144,13 +151,15 @@ class Selector:
     # @param - ticket to match
     # @return - (True/False, Library/None)
     def match_found_pe(self, ticket):
-        # returns a tuple:
-        # True if match was found, False - if not
-        # a string uniquly identifying policy 
-        # Minimal allowed file size
-        
+        # returns a dictionary:
+        # {'policy': policy_string, # a string uniquly identifying policy
+        #  'minimal_file_size' # see description in the begging of code
+        #  'min_files_in_pack' # see description in the begging of code
+        #  'max_waiting_time'  # see description in the begging of code
+        #  }
+        # or {} if no matching policy was found
         # default match settings
-        match = False, None, 0
+        match = {}
         failed = False
 
         if not self.policydict:  # no policy configuration info
@@ -179,7 +188,10 @@ class Selector:
                     # match found
                     # check the file size:
                     if ticket['file_size'] < self.policydict[library_manager][rule]['minimal_file_size']:
-                        match = (True, policy_string, self.policydict[library_manager][rule]['minimal_file_size'])
+                        match['policy'] = policy_string
+                        match['minimal_file_size'] = self.policydict[library_manager][rule]['minimal_file_size']
+                        match['min_files_in_pack'] = self.policydict[library_manager][rule]['min_files_in_pack']
+                        match['max_waiting_time'] = self.policydict[library_manager][rule]['max_waiting_time']
                         return match
         return match
 
