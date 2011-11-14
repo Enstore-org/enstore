@@ -175,7 +175,8 @@ def evt_cache_written_fc(encp_ticket,fc_record):
 def evt_cache_written_t(fc_ticket):
     """ create event EvtCacheWritten from File Clerk ticket fc_ticket
     """
-    vc_keys = ['library','storage_group', 'file_family','file_family_width',"wrapper" ]
+    vc_keys = ['library','storage_group', 'file_family','file_family_width',"wrapper",
+               "volume_family" ]
     fc_keys = ['bfid','location_cookie', 'deleted' ]
 
     ev = _get_proto(fc_ticket, vc_keys = vc_keys, fc_keys = fc_keys )
@@ -190,9 +191,8 @@ def evt_cache_miss_fc(encp_ticket,fc_record):
     #
     fc_ticket={}
     fc_ticket["vc"] = {}
-    for key in ("library","storage_group",
-                "file_family","wrapper","external_label",
-                "volume_family"):
+    for key in ("library","storage_group","file_family","wrapper",
+                "external_label","volume_family"):
         fc_ticket["vc"][key]=fc_record.get(key,None)
     #
     # this info is not present
