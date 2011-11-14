@@ -32,7 +32,10 @@ class EnqMessage(qpid.messaging.Message):
         if self.correlation_id is None:
             self.correlation_id = str(uuid.uuid4()) # make a random UUID
 
-        self.properties["version"] = (0,1) # message version: (major,minor)
+#     enstore message protocol version: 
+#       major is placed into properties (messaging protocol compatibility)
+#       minor is not in the header (all messages with the same major a compatible)
+        self.properties["version"] = 1         
         if kwargs.has_key("reply_to"):
             self.reply_to = kwargs['reply_to']
         self.properties["en_type"] = type
