@@ -6464,17 +6464,31 @@ def set_outfile_permissions(ticket, encp_intf):
                 if is_write(ticket):
 #                    sfs = namespace.StorageFS(ticket['outfile'])
                     in_stat_info = file_utils.get_stat(ticket['infile'])
-                    perms = in_stat_info[stat.ST_MODE]
                 else:
-                    Trace.log(e_errors.INFO, "infile: %s infilepath: %s" % \
-                              (ticket['infile'], ticket['infilepath']))
-                    # this needs a better solution
-                    # if --get-bfid and --skip-pnfs is specified do not use
-                    # a convoluted get_stat
-                    if encp_intf.get_bfid and encp_intf.skip_pnfs:
-                        uid = ticket['fc']['uid']
-                        gid = ticket['fc']['gid']
-                        perms = ticket['wrapper']['mode']
+                    if (encp_intf.get_bfid or encp_intf.get_bfids) and \
+                       encp_intf.skip_pnfs:
+                        #Note, most of these values are made up, but using
+                        # them for consistancy is good for error checking.
+                        dev = ticket['wrapper']['major'] << 8 + \
+                              ticket['wrapper']['minor']
+                        
+                        
+                        update_t = ticket['fc']['update'].split(".")
+                        #fake_time = time.mktime(time.strptime(
+                        #    ticket['fc']['update'], "%Y-%m-%d %H:%M:%S"))
+                        fake_time = time.mktime(time.strptime(
+                            update_t[0], "%Y-%m-%d %H:%M:%S"))
+                        in_stat_info = (ticket['wrapper']['mode'],
+                                        ticket['wrapper']['inode'],
+                                        dev,  #Reconstructed.
+                                        1,  #number of links
+                                        ticket['wrapper']['uid'],
+                                        ticket['wrapper']['gid'],
+                                        ticket['file_size'],
+                                        fake_time,  #atime
+                                        fake_time,  #mtime
+                                        fake_time,  #ctime
+                                        )
                     else:
                     
                         try:
@@ -6486,9 +6500,6 @@ def set_outfile_permissions(ticket, encp_intf):
                             ticket['status'] = (e_errors.OSERROR, message)
                             return
                         in_stat_info = in_sfs.get_stat(ticket['infile'])
-                        uid = in_stat_info[stat.ST_UID]
-                        gid = in_stat_info[stat.ST_GID]
-                        perms = in_stat_info[stat.ST_MODE]
 
             except (OSError, IOError), msg:
                 Trace.handle_error(severity=99)
@@ -6500,6 +6511,7 @@ def set_outfile_permissions(ticket, encp_intf):
                 return
 
             try:
+                perms = in_stat_info[stat.ST_MODE]
                 #handle remote file case
                 if is_write(ticket):
                     sfs = namespace.StorageFS(ticket['outfile'])
