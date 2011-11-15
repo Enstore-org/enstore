@@ -1461,9 +1461,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if type(lib_list) != type([]):
             lib_list = [lib_list]
         for lib in lib_list:
-            print "LIB", lib
             lib_config = self.csc.get(lib)
-            print "L_CONF",lib_config 
             if lib_config.has_key('mover_port'):
                 port = lib_config['mover_port']
             else:
@@ -6842,6 +6840,7 @@ class DiskMover(Mover):
         ##all groveling around in the ticket should be done here
         fc = ticket['fc']
         vc = ticket['vc']
+        
         self.file_info.update(fc)
         self.vol_info.update(vc)
         self.volume_family=vc['volume_family']
@@ -6932,7 +6931,7 @@ class DiskMover(Mover):
             client_filename = self.client_hostname + ":" + client_filename
                                 
         if self.mode == READ:
-            self.file = fc['location_cookie']
+            self.file = fc['cache_location']
             self.files = (pnfs_filename, client_filename)
             self.buffer.header_size = None
             work_file = self.file
