@@ -10,6 +10,7 @@
 import sys
 import threading
 import time
+import types
 
 # enstore imports
 import enstore_constants
@@ -24,6 +25,7 @@ import monitored_server
 import option
 import Trace
 import en_eval
+import purge_files
 import lmd_policy_selector
 import dict_u2a
 import migration_dispatcher
@@ -60,8 +62,10 @@ class Dispatcher(mw.MigrationWorker,
         self.queue_in_name = self.name.split('.')[0]
         self.dispatcher_configuration['server']['queue_in'] = "%s; {create: receiver, delete: receiver}"%(self.queue_in_name,) # dispatcher input control queue
 
-
-        print "MY_CONF", self.my_conf 
+        fc_conf = self.csc.get("file_clerk")
+        self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
+                                                server_address=(fc_conf['host'],
+                                                                fc_conf['port']))
 
         self.policy_file = self.my_conf['policy_file']
         try:
@@ -73,24 +77,27 @@ class Dispatcher(mw.MigrationWorker,
         # get amqp broker configuration - common for all servers
         self.dispatcher_configuration['amqp'] = {}
         self.dispatcher_configuration['amqp']['broker'] = self.csc.get("amqp_broker")
+
+        self.max_time_in_cache = self.my_conf.get("max_time_in_cache", 3600)
+        self.file_purger = purge_files.FilePurger(self.csc, self.max_time_in_cache)
         
         # create pools for lists
         self.file_deleted_pool = {}
         self.cache_missed_pool = {}
-        self.cache_purged_pool = {}
+        self.cache_purge_pool = {}
         self.cache_written_pool = {}
         self.cache_staged_pool = {}
 
         # create migration pool
         self.migrartion_pool = {}
 
-        # reate Migration Dispatcher
+        # create Migration Dispatcher
         self.md = migration_dispatcher.MigrationDispatcher("M_D",
-                                                      self.dispatcher_configuration['amqp']['broker'],
-                                                      self.my_conf['migrator_work'],
-                                                      self.my_conf['migrator_reply'],
-                                                      self._lock,
-                                                      self.migrartion_pool)
+                                                           self.dispatcher_configuration['amqp']['broker'],
+                                                           self.my_conf['migrator_work'],
+                                                           self.my_conf['migrator_reply'],
+                                                           self._lock,
+                                                           self.migrartion_pool)
 
         # set event handlers
         self.handlers = {mt.FILE_DELETED:  self.handle_file_deleted,
@@ -158,10 +165,16 @@ class Dispatcher(mw.MigrationWorker,
    # if needed
    # run this periodically
    def check_pools(self):
+      Trace.trace(10, "CHECK POOLS")
       kick_migration = False
+      # special case for purging cache
+      files_to_purge = self.file_purger.files_to_purge()
+      print "FILES_TO_PURGE", files_to_purge
+      if files_to_purge:
+         self.cache_purge_pool[files_to_purge.list_id] = files_to_purge
       for pool in (self.file_deleted_pool,
                    self.cache_missed_pool,
-                   self.cache_purged_pool,
+                   self.cache_purge_pool,
                    self.cache_written_pool,
                    self.cache_staged_pool):
          Trace.trace(10, "check_pools %s"%(pool,))
@@ -200,14 +213,32 @@ class Dispatcher(mw.MigrationWorker,
        Trace.trace(10, "handle_cache_missed received: %s"%(message))
        Trace.trace(10, "handle_cache_missed content: %s"%(message.content))
        Trace.trace(10, "handle_cache_missed correlation_id: %s"%(message.correlation_id))
-       # pull out content of 'vc' subdictionary into dictionary
-       # we need to do this because message format does not comply with
-       # policy format
-       for k, v in message.content['vc'].items():
-          message.content[k] = v
-       del(message.content['vc'])
+       l_name = message.content['file']['name']
+       f_list = file_list.FileListWithCRC(id = message.correlation_id,
+                                                list_type = message.properties["en_type"],
+                                                list_name = l_name)
        
-       pass
+       self.cache_missed_pool[l_name] = f_list
+       list_element = file_list.FileListItemWithCRC(bfid = message.content['enstore']['bfid'],
+                                                    nsid = message.content['file']['id'],
+                                                    path = message.content['file']['name'],
+                                                    libraries = [message.content['enstore']['vc']['library']],
+                                                    crc =  message.content['file']['complete_crc'])
+
+       self.cache_missed_pool[l_name].append(list_element)
+       # if this is a package trigger sending the list
+       # to the migrator right away
+       bfid = message.content['enstore']['bfid']
+       if type(bfid) == types.UnicodeType:
+          bfid = bfid.encode("utf-8")
+
+       Trace.trace(10, "handle_cache_missed getting bfid info for %s"%(bfid,))
+       rec = self.fcc.bfid_info(bfid)
+       if rec ['status'][0] == e_errors.OK and message.content['enstore']['bfid'] == rec['package_id']:
+          self.cache_missed_pool[l_name].full = True
+          self.move_to_migration_pool(self.cache_missed_pool, message.content[l_name])
+       return True
+
 
    def handle_cache_purged(self, message):
        Trace.trace(10, "handle_cache_purged received: %s"%(message))
@@ -261,6 +292,7 @@ class Dispatcher(mw.MigrationWorker,
           Trace.alarm(e_errors.ALARM, "Potential data loss. No policy for %s"%(new_content,))
           
        Trace.trace(10, "handle_cache_written: POLICY:%s"%(policy['policy'],))
+       return True
        
        
        pass

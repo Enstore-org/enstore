@@ -80,22 +80,24 @@ class MigrationDispatcher():
         self.start()
 
     def _fetch_message(self):
-        try:
-            return self.qpid_client.rcv_default.fetch()
-        except Queue.Empty:
-            return None
-        except qpid.messaging.MessagingError, e:
-            self.log.error("fetch_message() exception %s", e)
-            return None
+       print "MD: FETCH"
+       try:
+          return self.qpid_client.rcv_default.fetch()
+       except Queue.Empty:
+          return None
+       except qpid.messaging.MessagingError, e:
+          self.log.error("fetch_message() exception %s", e)
+          return None
 
     def _ack_message(self, msg):
-        try:
-            self.trace.debug("_ack_message(): sending acknowledge")
-            self.qpid_client.ssn.acknowledge(msg)         
-        except:
-            exc, emsg = sys.exc_info()[:2]
-            self.trace.debug("_ack_message(): Can not send auto acknowledge for the message. Exception e=%s msg=%s", str(exc), str(emsg))    
-            pass
+       print "MD: ACK"
+       try:
+          self.trace.debug("_ack_message(): sending acknowledge")
+          self.qpid_client.ssn.acknowledge(msg)         
+       except:
+          exc, emsg = sys.exc_info()[:2]
+          self.trace.debug("_ack_message(): Can not send auto acknowledge for the message. Exception e=%s msg=%s", str(exc), str(emsg))    
+          pass
 
     def _send_message(self,m):
         self.qpid_client.snd_default.send(m)
@@ -130,7 +132,8 @@ class MigrationDispatcher():
         
         # @todo check if message is on heap for processing
         if redelivered :
-            return None
+            #return None
+            pass
         if msg_type == mt.MWR_CONFIRMATION:
             print "mt.MWRConfirmation"
             print "MESSAGE", m
@@ -138,9 +141,19 @@ class MigrationDispatcher():
             if not self.migration_pool[m.correlation_id].status_requestor:
                 self.migration_pool[m.correlation_id].status_requestor = self.qpid_client.add_sender("mw_qpid_interface", m.reply_to)
         if msg_type == mt.MWR_ARCHIVED:
-            Trace.trace(10, "handle_message:MWR_ARCHIVED. Before %s"%(self.migration_pool,)) 
-            del(self.migration_pool[m.correlation_id])
+            Trace.trace(10, "handle_message:MWR_ARCHIVED. Before %s"%(self.migration_pool,))
+            if self.migration_pool.has_key(m.correlation_id):
+               del(self.migration_pool[m.correlation_id])
             Trace.trace(10, "handle_message:MWR_ARCHIVED. After %s"%(self.migration_pool,)) 
+        if msg_type == mt.MWR_PURGED:
+            Trace.trace(10, "handle_message:MWR_PURGED. Before %s"%(self.migration_pool,)) 
+            del(self.migration_pool[m.correlation_id])
+            Trace.trace(10, "handle_message:MWR_PURGED. After %s"%(self.migration_pool,)) 
+
+        if msg_type == mt.MWR_STAGED:
+            Trace.trace(10, "handle_message:MWR_STAGED. Before %s"%(self.migration_pool,)) 
+            del(self.migration_pool[m.correlation_id])
+            Trace.trace(10, "handle_message:MWR_STAGED. After %s"%(self.migration_pool,)) 
             
         if msg_type == mt.MWR_STATUS:
             #print "STATUS", m.content['migrator_status']
@@ -149,7 +162,6 @@ class MigrationDispatcher():
             if  m.content['migrator_status'] == self.expected_status_reply:
                 print "STOPPING LOOP"
                 self.stop_status_loop = True
-                
                 
         return True
         
@@ -171,10 +183,12 @@ class MigrationDispatcher():
 
                 # debug HACK to use spout messages
                 try:
-                    message.correlation_id = message.properties["spout-id"]
-                    self.trace.info("correlation_id is not set, setting it to spout-id %s", message.correlation_id ) 
+                   self.trace.debug("got qpid message=%s", message)
+                   message.correlation_id = message.properties["spout-id"]
+                   self.trace.info("correlation_id is not set, setting it to spout-id %s", message.correlation_id ) 
                 except:
-                    pass
+                   self.trace.info("exception setting it to spout-id %s", message.correlation_id ) 
+                   pass
                 #end DEBUG hack
 
                 do_ack = False
@@ -221,10 +235,10 @@ class MigrationDispatcher():
                    print "TYPE %s id %s"%(type(item.id),item.id) 
                    command = mw_client.MWCArchive(item.list_object.file_list, correlation_id = item.id)
                    item.expected_reply =  file_cache_status.ArchiveStatus.ARCHIVED
-                elif item.list_type == mt.CACHE_MISSED:
+                elif item.list_object.list_type == mt.CACHE_MISSED:
                    command = mw_client.MWCStage(item.list_object.file_list, correlation_id = item.id)
                    item.expected_reply = file_cache_status.CacheStatus.CACHED 
-                elif item.list_type == mt.CACHE_PURGED:
+                elif item.list_object.list_type == mt.MDC_PURGE:
                    command = mw_client.MWCPurge(item.list_object.file_list, correlation_id = item.id)
                    item.expected_reply = file_cache_status.CacheStatus.PURGED
                 try:

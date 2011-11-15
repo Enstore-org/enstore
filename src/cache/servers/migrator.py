@@ -88,8 +88,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         #file_clerk_conf = self.csc.get('file_clerk')
         self.data_area = self.my_conf['data_area'] # area on disk where original files are stored
         self.archive_area = self.my_conf['archive_area'] # area on disk where archvived files are temporarily stored
-        self.stage_area = self.my_conf.get('stage_area','data_area')   # area on disk where staged files are stored
-        self.stage_area = self.my_conf['tmp_stage_area']  # area on disk where staged files are temporarily stored
+        self.stage_area = self.my_conf.get('stage_area','')   # area on disk where staged files are stored
+        self.tmp_stage_area = self.my_conf['tmp_stage_area']  # area on disk where staged files are temporarily stored
 
         self.my_dispatcher = self.csc.get(self.my_conf['migration_dispatcher']) # migration dispatcher configuration
         self.my_broker = self.csc.get("amqp_broker") # amqp broker configuration
@@ -112,6 +112,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.infoc = info_client.infoClient(self.csc, 
                                             server_address=(ic_conf['host'],
                                                             ic_conf['port']))
+        Trace.trace(10, "d_a %s a_a %s s_a %s t_s_a %s"%(self.data_area,
+                                                         self.archive_area,
+                                                         self.stage_area,
+                                                         self.tmp_stage_area))
 
     def  __init__(self, name, cs):
         """
@@ -126,7 +130,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
 
         Trace.init(self.log_name, 'yes')
-
+        self._do_print({'levels':range(5, 400)})
         try:
             self.load_configuration()
         except:
@@ -382,13 +386,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         rq = copy.copy(request)
         Trace.trace(10, "purge_files: request %s"%(rq.content,))
         request_list = rq.content['file_list']
+        set_cache_params = []
         for component in request_list:
             bfid = component['bfid']
             # Convert unicode to ASCII strings.
             if type(bfid) == types.UnicodeType:
                 bfid = bfid.encode("utf-8")
+
             rec = self.fcc.bfid_info(bfid)
-            Trace.trace(10, "purge_files: rec %s"%(rec,))
             if (rec['status'][0] == e_errors.OK and
                 (rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
                 ((rec['cache_status'] != file_cache_status.CacheStatus.STAGING) and   # why would we purge the file which is being staged?
@@ -397,29 +402,32 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                  (rec['cache_status'] != file_cache_status.CacheStatus.PURGED))):    # file is pugred
                 rec['cache_status'] = file_cache_status.CacheStatus.PURGING
                 Trace.trace(10, "purge_files: purging %s"%(rec,))
+                set_cache_params.append({'bfid': bfid,
+                                         'cache_status': file_cache_status.CacheStatus.PURGING,
+                                         'archive_status': None,        # we are not changing this
+                                         'cache_location': rec['cache_location']})       # we are not changing this
                 
-                rc = self.fcc.set_cache_status(rec)
-                Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
+        rc = self.fcc.set_cache_status(set_cache_params)
+        Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
+        for item in set_cache_params:
+            try:
+                Trace.trace(10, "purge_files: removing %s"%(item['cache_location'],))
+                os.remove(item['cache_location'])
                 try:
-                    Trace.trace(10, "purge_files: removing %s"%(rec['location_cookie'],))
-                    os.remove(rec['location_cookie'])
-                    try:
-                        os.removedirs(os.path.dirname(rec['location_cookie']))
-                    except OsError, detail:
-                        Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
-                        Trace.trace(10, "purge_files: error removind directory: %s"%(detail,))
-                        pass
-                    except Exception, detail:
-                        Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
-                        pass
-                    rec['cache_status'] = file_cache_status.CacheStatus.PURGED
-                    rc = self.fcc.set_cache_status(rec)
-                    Trace.trace(10, "purge_files: set_cache_status 2 returned %s"%(rc,))
-                
-                    Trace.log(e_errors.INFO, "purge_files: purged %s"%(rec['location_cookie'],))
+                    os.removedirs(os.path.dirname(item['cache_location']))
+                except OsError, detail:
+                    Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
+                    Trace.trace(10, "purge_files: error removind directory: %s"%(detail,))
+                    pass
                 except Exception, detail:
-                    Trace.trace(10, "purge_files: can not remove %s: %s"%(rec['location_cookie'], detail))
-                    Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(rec['location_cookie'], detail))
+                    Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
+                    pass
+                item['cache_status'] = file_cache_status.CacheStatus.PURGED
+                Trace.log(e_errors.INFO, "purge_files: purged %s"%(item['cache_location'],))
+            except Exception, detail:
+                Trace.trace(10, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+                Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+        rc = self.fcc.set_cache_status(set_cache_params)
 
         status_message = cache.messaging.mw_client.MWRPurged(orig_msg=rq)
         try:
@@ -431,7 +439,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         return True # completed successfully, the request will be acknowledged
 
     # read aggregated file from tape
-    def read_from_tape(self, request_list):
+    def read_from_tape(self, request):
         # save request
         rq = copy.copy(request)
         Trace.trace(10, "read_from_tape: request %s"%(rq.content,))
@@ -440,6 +448,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # 1. Have a single component OR if NOT
         # 2. Have the same package bfid
 
+        bfid_info = []
         files_to_stage = []
         if len(request_list) == 1:
             # check if the package staging is requested
@@ -448,120 +457,175 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 bfid = bfid.encode("utf-8")
             rec = self.fcc.bfid_info(bfid)
             Trace.trace(10, "read_from_tape: rec %s"%(rec,))
-            if rec['status'][0] == e_errors.OK and rec['package_id'] == bfid:
-               # request to stage a package
-               # get all information about children
-               package_bfid, bfid_data = self.fcc.get_children({'bfid': rec['package_id']})
-                
-            
-            
-            
-        package_bfid = None
-        for component in request_list:
-            bfid = component['bfid']
-            # Convert unicode to ASCII strings.
-            if type(bfid) == types.UnicodeType:
-                bfid = bfid.encode("utf-8")
-            rec = self.fcc.bfid_info(bfid)
-            Trace.trace(10, "read_from_tape: rec %s"%(rec,))
-            if (rec['status'][0] == e_errors.OK and
-                (rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED)): # file is on tape and it can be staged
-                # check the state of each file
-                if rec['cache_status'] == file_cache_status.CacheStatus.CACHED:
-                    # File is in cache and available immediately.
-                    # How could it get into a stage list anyway?
-                    continue
-                if rec['cache_status'] == file_cache_status.CacheStatus.STAGING:
-                    # File is being staged
-                    # Log this for the further investigation in
-                    # case the file was not staged.
-                    Trace.log(e_errors.INFO, "File is being staged %s %s"%(rec['bfid'], rec['pnfs_name0']))
-                    continue
-                else:
-                    if package_bfid == None:
-                       package_bfid = rec['package_id']
-                    if package_bfid != rec['package_id']:
+
+            if rec['status'][0] == e_errors.OK:
+                package_id = rec.get('package_id', None)
+                if package_id == bfid:
+                    # request to stage a package
+                    # get all information about children
+                    rc = self.fcc.get_children(package_id)
+                    Trace.trace(10, "read_from_tape, bfid_data %s"%(rc,))
+                    if rc ['status'][0] != e_errors.OK:
+                        Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
+                        return True # return True so that the message is confirmed
+                    else:
+                       bfid_info = rc['children'] 
+                else: # single file
+                    bfid_info.append(rec)
+                package_name = rec['pnfs_name0']
+
+            else:
+                Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rec ['status']))
+                return True # return True so that the message is confirmed
+        else:
+            package_id = None
+            for component in request_list:
+                bfid = component['bfid']
+                # Convert unicode to ASCII strings.
+                if type(bfid) == types.UnicodeType:
+                    bfid = bfid.encode("utf-8")
+
+                rec = self.fcc.bfid_info(bfid)
+                if rec['status'][0] == e_errors.OK:
+                    if not package_id:
+                        # read the package id if the First file
+                        package_id = rec.get('package_id', None)
+                        if package_id:
+                            package_info = self.fcc.bfid_info(package_id)
+                            package_name = package_info['pnfs_name0']
+                    if package_id != rec.get('package_id', None):
                         Trace.log(e_errors.ERROR,
                                   "File does not belong to the same package and will not be staged %s %s"%
                                   (rec['bfid'], rec['pnfs_name0']))
                     else:
-                        files_to_stage.append(rec)
+                        bfid_info.append(rec)
+
+        package_name = self.fcc.bfid_info(bfid) 
+        set_cache_params = [] # this list is needed to send set_cache_status command to file clerk
+
+        # Internal list of bfid data is built
+        # Create a list of files to get staged
+        for  component in bfid_info:
+            bfid = component['bfid']
+            Trace.trace(10, "read_from_tape: rec %s"%(component,))
+            if component['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED:  # file is on tape and it can be staged
+                # check the state of each file
+                if component['cache_status'] == file_cache_status.CacheStatus.CACHED:
+                    # File is in cache and available immediately.
+                    # How could it get into a stage list anyway?
+                    continue
+                elif component['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED:
+                    # file clerk sets this when opens a file
+                    if component['bfid'] != package_id: # we stage files in the package, not the package itself
+                        files_to_stage.append(component)
+                        set_cache_params.append({'bfid': bfid,
+                                                 'cache_status':file_cache_status.CacheStatus.STAGING,
+                                                 'archive_status': None,        # we are not changing this
+                                                 'cache_location': None})       # we are not changing this yet
+                if component['cache_status'] == file_cache_status.CacheStatus.STAGING:
+                    # File is being staged
+                    # Log this for the further investigation in
+                    # case the file was not staged.
+                    Trace.log(e_errors.INFO, "File is being staged %s %s"%(component['bfid'], component['pnfs_name0']))
+                    continue
+                else:
+                    continue
+                    
         Trace.trace(10, "read_from_tape:  files to stage %s %s"%(len(files_to_stage), files_to_stage))
         if len(files_to_stage) != 0:
-            for rec in files_to_stage:
-                # This is a temporary implementtaion of register_copies
-                #########
-                rec['cache_status'] = file_cache_status.CacheStatus.STAGING
-                rc = self.fcc.set_cache_status(rec)
-                Trace.trace(10, "read_from_tape: set_cache_status 1 returned %s"%(rc,))
-                
-                if not e_errors.is_ok(rc['status']):
-                    raise e_errors.EnstoreError(None, "encp read from tape failed", rc)
-                    
-                ## actually all files belonging to the same package should change their state to caching
-                ## Dmitry said that he would implement this in the DB
-                ############################
-
-            # create a temporary directory for staging a package
-            # use package name for this
+            rc = self.fcc.set_cache_status(set_cache_params)
+            Trace.trace(10, "read_from_tape: will stage %s"%(set_cache_params,))
+            if rc['status'][0] != e_errors.OK:
+                Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
+                return True # return True so that the message is confirmed
             
-            rec = self.fcc.bfid_info(package_bfid)
-            stage_fname = os.path.basename(rec['pnfs_name0'])
-            # file name looks like:
-            # /pnfs/fs/usr/data/moibenko/d2/LTO3/.package-2011-07-01T09:41:46.0Z.tar
-            stage_dirname = "".join((".",stage_fname.split(".")[1]))
-            stage_dir_path = os.path.join(self.stage_area, stage_dirname)
-            try:
-                os.makedirs(stage_dir_path)
-            except:
-                pass
-            stage_file_path = os.path.join(stage_dir_path, stage_fname)
+            for rec in files_to_stage:
+                # create a temporary directory for staging a package
+                # use package name for this
+                stage_fname = os.path.basename(package_name['pnfs_name0'])
+                # file name looks like:
+                # /pnfs/fs/usr/data/moibenko/d2/LTO3/.package-2011-07-01T09:41:46.0Z.tar
+                tmp_stage_dirname = "".join((".",stage_fname.split(".")[1]))
+                tmp_stage_dir_path = os.path.join(self.tmp_stage_area, tmp_stage_dirname)
+                if not os.path.exists(tmp_stage_dir_path):
+                    try:
+                        os.makedirs(tmp_stage_dir_path)
+                    except:
+                        pass
+                tmp_stage_file_path = os.path.join(tmp_stage_dir_path, stage_fname)
             
             # now stage the package file
-            encp = encp_wrapper.Encp()
-            args = ["encp", "--skip-pnfs", "--get-bfid", package_bfid, stage_file_path]  
-            Trace.trace(10, "read_from_tape: sending %s"%(args,))
-            encp = encp_wrapper.Encp()
+            if not os.path.exists(tmp_stage_file_path):
+                # stage file from tape if it does not exist
+                encp = encp_wrapper.Encp()
+                args = ["encp", "--skip-pnfs", "--get-bfid", package_id, tmp_stage_file_path]  
+                Trace.trace(10, "read_from_tape: sending %s"%(args,))
+                encp = encp_wrapper.Encp()
 
-            rc = encp.encp(args)
-            Trace.trace(10, "read_from_tape: encp returned %s"%(rc,))
-            if rc != 0:
-                # cleanup dirctories
-                try:
-                    os.removeedirs(stage_dir_path)
-                except:
-                    pass
+                rc = encp.encp(args)
+                Trace.trace(10, "read_from_tape: encp returned %s"%(rc,))
+                if rc != 0:
+                    # cleanup dirctories
+                    try:
+                        os.removeedirs(tmp_stage_dir_path)
+                    except:
+                        pass
 
-                # change cache_status back
-                for rec in files_to_stage:
-                   rec['cache_status'] = file_cache_status.CacheStatus.PURGED
-                   rc = self.fcc.set_cache_status(rec)
-                return False
+                    # change cache_status back
+                    for rec in set_cache_params:
+                        rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                    rc = self.fcc.set_cache_status(set_cache_params)
+                    return False
 
             # unpack files
-            os.chdir(stage_dir_path)
+            os.chdir(tmp_stage_dir_path)
             if len(files_to_stage) > 1:
                 # untar packagd files
                 # if package contains more than one file
                 os.system("tar --force-local -xf %s"%(stage_fname,))
 
+            # clear set_cache_params
+            set_cache_params = []
+            
             # move files to their original location
             for rec in files_to_stage:
-                dst = rec['location_cookie']
-                src = dst.lstrip("/")
+                src = rec.get('location_cookie', None)
+
+                if not self.stage_area:
+                    # file gets staged into the path
+                    # defined by location_cookie
+                    dst = src
+                src = src.lstrip("/")
+                if self.stage_area:
+                    # file gets staged into the path
+                    # defined by location_cookie
+                    # prepended by stage_area
+                    dst = os.path.join(self.stage_area, src)
+                Trace.trace(10, "read_from_tape: src %s s_a %s dst %s"%(src,self.stage_area, dst)) 
+                Trace.trace(10, "read_from_tape: d_a %s a_a %s s_a %s t_s_a %s"%(self.data_area,
+                                                                                 self.archive_area,
+                                                                                 self.stage_area,
+                                                                                 self.tmp_stage_area))
                 Trace.trace(10, "read_from_tape: renaming %s to %s"%(src, dst))
                 # create a destination directory
-                try:
-                    os.makedirs(os.path.dirname(dst))
-                except Exception, detail:
-                    Trace.trace(10, "read_from_tape: exception %s creating destination directory %s"%(os.path.dirname(detail, dst)))
+                if not os.path.exists(os.path.dirname(dst)):
+                    try:
+                        Trace.trace(10, "read_from_tape creating detination directory %s for %s"%(os.path.dirname(dst), dst))
+                        os.makedirs(os.path.dirname(dst))
+                    except Exception, detail:
+                        Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, detail))
+                        return False
                 
                 os.rename(src, dst)
-                rec['cache_status'] = file_cache_status.CacheStatus.CACHED
-                rc = self.fcc.set_cache_status(rec)
-                Trace.trace(10, "read_from_tape: set_cache_status 2 returned %s"%(rc,))
-                if not e_errors.is_ok(rc['status']):
-                    raise e_errors.EnstoreError(None, "encp read from tape failed", rc)
+                set_cache_params.append({'bfid': rec['bfid'],
+                                         'cache_status':file_cache_status.CacheStatus.CACHED,
+                                             'archive_status': None,        # we are not changing this
+                                             'cache_location': dst})
+            
+            rc = self.fcc.set_cache_status(set_cache_params)
+            if rc['status'][0] != e_errors.OK:
+                Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rec ['status']))
+                return True # return True so that the message is confirmed
 
             # remove the rest (README.1st)
             Trace.trace(10, "read_from_tape: current dir %s"%(os.getcwd(),))
@@ -575,7 +639,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             
 
             #remove the temporary directory
-            os.removedirs(stage_dir_path)
+            os.removedirs(tmp_stage_dir_path)
         status_message = cache.messaging.mw_client.MWRStaged(orig_msg=rq)
         try:
             self._send_reply(status_message)
@@ -790,7 +854,7 @@ def do_work():
     migrator.handle_generic_commands(intf)
 
     #Trace.init(migrator.log_name, 'yes')
-    migrator._do_print({'levels':range(5, 400)})
+
     migrator.start()
  
     while True:
