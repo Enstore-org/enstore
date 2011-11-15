@@ -1354,6 +1354,7 @@ class LibraryManagerMethods:
     # @param - request
     # @return - package_id or None
     def is_packaged(self, request):
+        Trace.trace(self.trace_level+3, "is_packaged fc: %s"%(request['fc'],))
         package_id = request['fc'].get("package_id", None)
         if package_id and package_id == request['fc']['bfid']: # file is a package itself
             package_id = None
@@ -1383,15 +1384,18 @@ class LibraryManagerMethods:
             # only read_from_hsm requests need further processing
             return request
         while request:
+            rq_id = request.unique_id
             Trace.trace(self.trace_level+3, "_get_request: %s"%(request,))
             # check if file is part of a package
             package_id = self.is_packaged(request.ticket)
+            Trace.trace(self.trace_level+3, "_get_request: package_id %s"%(package_id,))
             if package_id:
                 # Find the any file in the work at movers.
                 # If it is found this means that at least the
                 # package is being staged
                 for w in self.work_at_movers.list:
                     # Check if this is a disk file:
+                    Trace.trace(self.trace_level+3, "_get_request: w %s"%(w,))
                     if w['mover_type'] != 'DiskMover':
                         # not a disk file: continue search
                         continue
@@ -1399,6 +1403,7 @@ class LibraryManagerMethods:
                     if wam_package_id == package_id:
                         # The package is being processed by mover.
                         # Check the cache status
+                        Trace.trace(self.trace_level+3, "_get_request: found package in wam")
                         if request.ticket['fc']['cache_status']  == file_cache_status.CacheStatus.CACHED:
                             # the request can be sent to the mover
                             # return here
@@ -1408,6 +1413,12 @@ class LibraryManagerMethods:
                             # get next request
                             kwargs['next'] = 1
                             request = method(*args, **kwargs)
+                            Trace.trace(self.trace_level+3, "_get_request: next_rq %s"%(request,))
+                            if request and request.unique_id == rq_id:
+                                # if it is the same request
+                                # break, we have no more requests to process
+                                request = None
+                                break
                 else:
                     break
             else:
@@ -3488,11 +3499,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 rc = fcc.open_bitfile_for_package(bfid_to_open)
 
             if rc['status'][0] == e_errors.OK:
-                w['fc'].update(rc)
+                # update file info
+                rc = fcc.bfid_info(w['fc']['bfid'])
+                if rc['status'][0] == e_errors.OK:
+                    w['fc'].update(rc)
+                else:
+                    Trace.log(e_errors.ERROR, "bfid_info %s"%(rc,))
+                    self.reply_to_caller(nowork)
+                    return
             else:
-                Trace.log(e_errors.INFO, "open_bitfile returned %s"%(rc,))
+                Trace.log(e_errors.ERROR, "open_bitfile returned %s"%(rc,))
+                self.reply_to_caller(nowork)
+                return
                 
-
         Trace.trace(self.my_trace_level, "mover_idle: File Family = %s" % (w['vc']['file_family']))
 
 	log_add_to_wam_queue(w['vc'])
@@ -3783,9 +3802,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     rc = fcc.open_bitfile_for_package(bfid_to_open)
 
                 if rc['status'][0] == e_errors.OK:
-                    w['fc'].update(rc)
+                    # update file info
+                    rc = fcc.bfid_info(w['fc']['bfid'])
+                    if rc['status'][0] == e_errors.OK:
+                        w['fc'].update(rc)
+                    else:
+                        Trace.log(e_errors.ERROR, "open_bitfile returned %s"%(rc,))
+                        self.reply_to_caller(nowork)
+                        return
                 else:
-                    Trace.log(e_errors.INFO, "open_bitfile returned %s"%(rc,))
+                    Trace.log(e_errors.ERROR, "open_bitfile returned %s"%(rc,))
+                    self.reply_to_caller(nowork)
+                    return
 
             if w['work'] == 'write_to_hsm':
                 # update volume info
