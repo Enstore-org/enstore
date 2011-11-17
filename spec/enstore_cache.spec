@@ -7,7 +7,7 @@ Summary: Enstore: Mass Storage System
 Name: enstore_cache
 # version number is based on the enstore rpm version taken as base version
 Version: 2.1.0
-Release: 1
+Release: 3
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -145,7 +145,8 @@ echo '                        	FTT_DIR	KRBTKFILE"' >> /etc/sudoers.e
 echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
 echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
 echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
-echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL, NOPASSWD:MOVER" >> /etc/sudoers.e
+echo "Cmnd_Alias      MIGRATOR = /opt/enstore/sbin/migrator" >> /etc/sudoers.e
+echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL, NOPASSWD:MOVER, NOPASSWD:MIGRATOR" >> /etc/sudoers.e
 rm -f /etc/sudoers
 cp /etc/sudoers.e /etc/sudoers
 chmod 440 /etc/sudoers
@@ -167,6 +168,8 @@ $ENSTORE_DIR/external_distr/update_sym_links.sh
 cp -f $ENSTORE_DIR/cumin/cumin.conf /etc
 chmod 400 /etc/cumin.conf
 cp -f $ENSTORE_DIR/sbin/qpid_broker /etc/rc.d/init.d
+cp -f $ENSTORE_DIR/site_specific/config/qpidd.conf $ENSTORE_DIR/qpid/etc
+cp -f $ENSTORE_DIR/site_specific/config/enstore.acl $ENSTORE_DIR/qpid/etc
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
 rm /tmp/enstore-setup
@@ -191,6 +194,9 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Thu Nov 17 2011  <moibenko@fnal.gov> -
+- rebuild afte addin pycairo needed by cumin
+- added migrator to sudoers
 * Wed Nov 16 2011  <moibenko@fnal.gov> -
 - created from enstore.spec
 * Wed Nov 24 2010  <moibenko@fnal.gov> -
