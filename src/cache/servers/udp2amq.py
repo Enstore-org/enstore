@@ -87,7 +87,7 @@ class UDP2amq(UDPServer):
         self.target_addr = target_addr
         myaddr = "%s; {create: always}"%(self.myaddr,)
         t_a = "%s; {create: always}"%(target_addr,)
-        self.qpid_client = EnQpidClient(amq_broker, self.myaddr, target=t_a)
+        self.qpid_client = EnQpidClient(amq_broker, myaddr, target=t_a)
 
         self.auto_ack = auto_ack 
 
