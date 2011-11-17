@@ -388,7 +388,7 @@ class LMD(EnstoreServer): # library manager director
                                enstore_constants.LMD,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
 			       enstore_constants.DOWN)
-	self.reason_down = "lm_directir down"
+	self.reason_down = "lm_director down"
 
 class Dispatcher(EnstoreServer): # library manager director
 
