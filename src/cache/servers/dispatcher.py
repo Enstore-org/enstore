@@ -61,6 +61,14 @@ class Dispatcher(mw.MigrationWorker,
         self.dispatcher_configuration['server'] = self.my_conf
         self.queue_in_name = self.name.split('.')[0]
         self.dispatcher_configuration['server']['queue_in'] = "%s; {create: receiver, delete: receiver}"%(self.queue_in_name,) # dispatcher input control queue
+        # queue_work is Policy Engine Server incoming queue (events from file_clerk for instance)
+        # queue_reply is Policy Engine Server outcoming queue (to file_clerk for instance, but I do not know why it is needed
+        # create this queues if they do not exist
+        self.dispatcher_configuration['server']['queue_work'] ="%s; {create: always}"%\
+                                                                (self.dispatcher_configuration['server']['queue_work'],)
+        self.dispatcher_configuration['server']['queue_reply'] = "%s; {create: always}"%\
+                                                       (self.dispatcher_configuration['server']['queue_reply'],)
+
 
         fc_conf = self.csc.get("file_clerk")
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
@@ -77,7 +85,7 @@ class Dispatcher(mw.MigrationWorker,
         # get amqp broker configuration - common for all servers
         self.dispatcher_configuration['amqp'] = {}
         self.dispatcher_configuration['amqp']['broker'] = self.csc.get("amqp_broker")
-
+        
         self.max_time_in_cache = self.my_conf.get("max_time_in_cache", 3600)
         self.file_purger = purge_files.FilePurger(self.csc, self.max_time_in_cache)
         

@@ -74,7 +74,9 @@ class MigrationDispatcher():
 
         amq_broker = (broker['host'], broker['port'])
         self.trace.debug("create clients")
-        self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=queue_reply, target=queue_work)
+        q_w = "%s; {create: always}"%(queue_work,)
+        q_r = "%s; {create: always}"%(queue_reply,)
+        self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=q_r, target=q_w)
 
         # start it here
         self.start()
