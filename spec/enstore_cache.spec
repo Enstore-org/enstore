@@ -145,7 +145,7 @@ echo '                        	FTT_DIR	KRBTKFILE"' >> /etc/sudoers.e
 echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
 echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
 echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
-echo "Cmnd_Alias      MIGRATOR = /opt/enstore/sbin/migrator" >> /etc/sudoers.e
+echo "Cmnd_Alias      MIGRATOR = ${ENSTORE_DIR}/sbin/migrator" >> /etc/sudoers.e
 echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL, NOPASSWD:MOVER, NOPASSWD:MIGRATOR" >> /etc/sudoers.e
 rm -f /etc/sudoers
 cp /etc/sudoers.e /etc/sudoers
