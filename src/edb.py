@@ -159,7 +159,8 @@ class DbTable:
                      jouHome ='.',
                      auto_journal=0,
                      rdb=None,
-                     max_connections=20):
+                     max_connections=20,
+                     max_idle=5):
 
 		self.host = host
 		self.port = port
@@ -199,6 +200,7 @@ class DbTable:
                                                 user=self.user)
 		self.pool =  PooledDB(psycopg2,
 				      maxconnections=max_connections,
+                                      maxcached=max_idle,
 				      blocking=True,
 				      host=self.host,
 				      port=self.port,
@@ -464,7 +466,8 @@ class FileDB(DbTable):
                      database=default_database,
                      rdb=None,
                      auto_journal=1,
-                     max_connections=20):
+                     max_connections=20,
+                     max_idle=5):
 
 		DbTable.__init__(self,
                                  host=host,
@@ -476,7 +479,8 @@ class FileDB(DbTable):
                                  pkey='bfid',
                                  auto_journal=auto_journal,
                                  rdb = rdb,
-                                 max_connections = max_connections)
+                                 max_connections = max_connections,
+                                 max_idle=max_idle)
 
 		self.retrieve_query = "\
         		select \
@@ -614,7 +618,8 @@ class VolumeDB(DbTable):
                      database=default_database,
                      rdb=None,
                      auto_journal=1,
-                     max_connections=20):
+                     max_connections=20,
+                     max_idle=5):
 
 		DbTable.__init__(self,
                                  host,
@@ -626,7 +631,8 @@ class VolumeDB(DbTable):
                                  pkey='label',
                                  auto_journal=auto_journal,
                                  rdb = rdb,
-                                 max_connections=max_connections)
+                                 max_connections=max_connections,
+                                 max_idle=5)
 
 		self.retrieve_query = "\
         		select \
@@ -649,7 +655,13 @@ class VolumeDB(DbTable):
 				wrapper, \
 				comment, \
 				write_protected, \
-				modification_time \
+				modification_time, \
+                                active_files, \
+                                deleted_files, \
+                                unknown_files, \
+                                active_bytes, \
+                                deleted_bytes, \
+                                unknown_bytes \
         		from volume \
 			where \
 				label = '%s';"
@@ -697,6 +709,9 @@ class VolumeDB(DbTable):
 			data['modification_time'] = time2timestamp(s['modification_time'])
 		else:
 			data['modification_time']=-1
+                for k in ("active_files","deleted_files","unknown_files",\
+                          "active_bytes","deleted_bytes","unknown_bytes"):
+                    data[k]=s.get(k,-1)
 		return data;
 
 	def export_format(self, s):
@@ -734,6 +749,9 @@ class VolumeDB(DbTable):
 			data['modification_time'] = timestamp2time(s['modification_time'])
 		else:
 			data['modification_time']=-1
+                for k in ("active_files","deleted_files","unknown_files",\
+                          "active_bytes","deleted_bytes","unknown_bytes"):
+                    data[k]=s.get(k,-1)
 		return data;
 
 if __name__ == '__main__':
