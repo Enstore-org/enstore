@@ -82,8 +82,6 @@ def do_work(intf):
     lmd_client = LMDClient((intf.config_host, intf.config_port))
     Trace.init(lmd_client.get_name(MY_NAME))
     reply = lmd_client.handle_generic_commands(MY_SERVER, intf)
-    #for level in range(5,100):
-    #    Trace.print_levels[level]=1
 
     if intf.alive:
         if reply['status'] == (e_errors.OK, None):
