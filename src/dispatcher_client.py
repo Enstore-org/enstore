@@ -38,6 +38,16 @@ class DispatcherClient(generic_client.GenericClient):
         self.timeout = rcv_timeout
         self.tries = rcv_tries
 
+    def reload_policy(self):
+        r = self.send({'work': 'reload_policy'})
+        return r
+
+    def show_policy(self):
+        r = self.send({'work': 'show_policy'})
+        return r
+
+
+
 class DispatcherClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
         # fill in the defaults for the possible options
@@ -54,14 +64,26 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
                                                        user_mode=user_mode)
 
     def valid_dictionaries(self):
-        return (self.help_options, self.alive_options, self.trace_options)
+        return (self.help_options, self.alive_options, self.trace_options,
+                self.policy_options)
+
+    policy_options = {
+        option.LOAD:{option.HELP_STRING:"load a new policy file",
+                     option.DEFAULT_TYPE:option.INTEGER,
+		     option.USER_LEVEL:option.ADMIN
+                     },
+        option.SHOW:{option.HELP_STRING:"print the current policy in python format",
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.USER_LEVEL:option.ADMIN,
+                     }
+        }
+
+
 
 def do_work(intf):
     dispatcher_client = DispatcherClient((intf.config_host, intf.config_port))
     Trace.init(dispatcher_client.get_name(MY_NAME))
     reply = dispatcher_client.handle_generic_commands(MY_SERVER, intf)
-    #for level in range(5,100):
-    #    Trace.print_levels[level]=1
 
     if intf.alive:
         if reply['status'] == (e_errors.OK, None):
@@ -69,6 +91,23 @@ def do_work(intf):
     if reply:
         pass
 
+    elif intf.load:
+        reply = dispatcher_client.reload_policy()
+        if reply.has_key('status'):
+            if reply['status'][0] == e_errors.OK:
+                print "Policy reloaded"
+            else:
+                print "Error reloading policy: %s"%(reply['status'],)
+        else:
+            print "Error reloading policy: %s"%(reply,)
+    elif intf.show:
+        import pprint
+        reply = dispatcher_client.show_policy()
+        if reply.has_key('status') and reply['status'][0] == e_errors.OK:
+            # correct reply must contain 'dump' key by design
+            pprint.pprint(reply['dump'])
+        else:
+            pprint.pprint(reply)
     else:
 	intf.print_help()
     
