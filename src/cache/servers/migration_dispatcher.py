@@ -114,13 +114,13 @@ class MigrationDispatcher():
             for key in self.migration_pool.keys():
                 if self.migration_pool[key].status_requestor:
                     # If status requestor exist
-                    # dispatcher had alrteady recived confirmation from
+                    # dispatcher had already received confirmation from
                     # migrator.
                     # Send status request to it
                     status_cmd = cache.messaging.mw_client.MWCStatus(request_id=0, correlation_id=key)
                     Trace.trace(10, "send_status_request sending %s"%(status_cmd,))
                     self.migration_pool[key].status_requestor.send(status_cmd)
-            time.sleep(2)
+            time.sleep(10)
 
 
     def handle_message(self,m):
@@ -137,9 +137,9 @@ class MigrationDispatcher():
             #return None
             pass
         if msg_type == mt.MWR_CONFIRMATION:
-            print "mt.MWRConfirmation"
-            print "MESSAGE", m
-            # add sender
+            # Received the confirmation form migrator
+            # create sender on the queue declared in m.reply_to.
+            # Correlation id is proagated for all mesaages related to the same request
             if not self.migration_pool[m.correlation_id].status_requestor:
                 self.migration_pool[m.correlation_id].status_requestor = self.qpid_client.add_sender("mw_qpid_interface", m.reply_to)
         if msg_type == mt.MWR_ARCHIVED:
@@ -158,12 +158,30 @@ class MigrationDispatcher():
             Trace.trace(10, "handle_message:MWR_STAGED. After %s"%(self.migration_pool,)) 
             
         if msg_type == mt.MWR_STATUS:
-            #print "STATUS", m.content['migrator_status']
-            print "STATUS", m.content, m.correlation_id
-            print "MPOOL", self.migration_pool
-            if  m.content['migrator_status'] == self.expected_status_reply:
-                print "STOPPING LOOP"
-                self.stop_status_loop = True
+            # This message type can be received only as a result
+            # status request sent from this migration dispatcher,
+            # which means that the addressed migrator is doing work
+            # for migration dispatcher
+            
+            Trace.trace(10, "handle_message: MWR_STATUS recieved %s %s"%(m.content, m.correlation_id))
+            Trace.trace(10, "handle_message: MPOOL %s"%(self.migration_pool,))
+            if  m.content['migrator_status'] == None:
+                # Migrator restarted, but before restart it was doing
+                # some work which could have failed.
+                # in this case the request needs to be re-sent
+                Trace.trace(10, "handle_message: Migrator replied with status None")
+                Trace.trace(10, "handle_message: reposting request")
+                self.migrate_list(self.migration_pool[m.correlation_id])
+            else:
+                if  m.content['migrator_status'] == self.migration_pool[m.correlation_id].expected_reply:
+                    # expected reply is announced in the corresponding
+                    # migration pool entry
+                    # keyed by the correlation id
+                    # all messages for a given action have the same correlation id.
+                    Trace.trace(10, "handle_message: received expected status reply")
+                else:
+                    Trace.trace(10, "handle_message: received %s expected %s"%(m.content['migrator_status'],
+                                                                               self.migration_pool[m.correlation_id].expected_reply))
                 
         return True
         
@@ -224,33 +242,35 @@ class MigrationDispatcher():
         self.srv_thread.join()
         self.status_thread.join()
 
+
+    def migrate_list(self, migration_list):
+        if migration_list.state != file_list.ACTIVE:
+            # send list to migration dispatcher queue
+            if migration_list.list_object.list_type == mt.CACHE_WRITTEN:
+               command = mw_client.MWCArchive(migration_list.list_object.file_list, correlation_id = migration_list.id)
+               migration_list.expected_reply =  file_cache_status.ArchiveStatus.ARCHIVED
+            elif migration_list.list_object.list_type == mt.CACHE_MISSED:
+               command = mw_client.MWCStage(migration_list.list_object.file_list, correlation_id = migration_list.id)
+               migration_list.expected_reply = file_cache_status.CacheStatus.CACHED 
+            elif migration_list.list_object.list_type == mt.MDC_PURGE:
+               command = mw_client.MWCPurge(migration_list.list_object.file_list, correlation_id = migration_list.id)
+               migration_list.expected_reply = file_cache_status.CacheStatus.PURGED
+            try:
+                # send command to migrator queue
+                # and set corresponding list state to ACTIVE
+                # for monitoring of execution 
+                self._send_message(command)
+                migration_list.state = file_list.ACTIVE
+            except:
+                Trace.handle_error()
+        
     def start_migration(self):
         print "STARTED MIGR_DISP"
         print "MIGR_DISP"
         for key in self.migration_pool.keys():
             print "KEY IN MIG", key, self.migration_pool[key]
             item = self.migration_pool[key]
-
-            if item.state != file_list.ACTIVE:
-                # send list to migration dispatcher queue
-                if item.list_object.list_type == mt.CACHE_WRITTEN:
-                   print "TYPE %s id %s"%(type(item.id),item.id) 
-                   command = mw_client.MWCArchive(item.list_object.file_list, correlation_id = item.id)
-                   item.expected_reply =  file_cache_status.ArchiveStatus.ARCHIVED
-                elif item.list_object.list_type == mt.CACHE_MISSED:
-                   command = mw_client.MWCStage(item.list_object.file_list, correlation_id = item.id)
-                   item.expected_reply = file_cache_status.CacheStatus.CACHED 
-                elif item.list_object.list_type == mt.MDC_PURGE:
-                   command = mw_client.MWCPurge(item.list_object.file_list, correlation_id = item.id)
-                   item.expected_reply = file_cache_status.CacheStatus.PURGED
-                try:
-                    # send command to migrator queue
-                    # and set corresponding list state to ACTIVE
-                    # for monitoring of execution 
-                    self._send_message(command)
-                    item.state = file_list.ACTIVE
-                except:
-                    Trace.handle_error()
+            self.migrate_list(item)
 
 if __name__ == "__main__":
     migrator = sys.argv[1]
