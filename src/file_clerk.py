@@ -1996,7 +1996,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
                                  self.alive_interval)
 
     def check_files_in_transition(self) :
-	    q="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_mod_time <  CURRENT_DATE - interval '1 day' "
+	    q="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
 	    while True:
 		    res = self.filedb_dict.query_getresult(q)
 		    message = ""
