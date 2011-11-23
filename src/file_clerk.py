@@ -2002,7 +2002,8 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 		    message = ""
 		    for row in res :
 			    message += "%s "%(row[0])
-		    Trace.alarm(e_errors.WARNING, "Files stuck in files_in_transiton table", message )
+		    if res.ntuples():
+			    Trace.alarm(e_errors.WARNING, "Files stuck in files_in_transiton table", message )
 		    time.sleep(3600)
 
 
