@@ -6968,18 +6968,34 @@ class DiskMover(Mover):
 
     # stage file into cache
     def stage_file(self):
-        if self.file_info['cache_status'] != file_cache_status.CacheStatus.CACHED:
+        cache_status = self.file_info['cache_status']
+        if cache_status != file_cache_status.CacheStatus.CACHED:
+            Trace.log(e_errors.INFO, "staging status at the start %s"%(cache_status,))
             # make this better!
-            while True:
+            # When file gets staged its cache_status must chahge as
+            # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
+            while not hasattr(self,'too_long_in_state_sent'):
                 info = self.fcc.bfid_info(self.file_info['bfid'])
+                Trace.log(e_errors.INFO, "staging status %s cache_status %s"%(info['cache_status'], cache_status))
                 if info['cache_status'] == file_cache_status.CacheStatus.CACHED:
                     break
                 else:
+                    if (info['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED and
+                        cache_status != file_cache_status.CacheStatus.STAGING_REQUESTED):
+                        cache_status = info['cache_status'] # File Clerk requested staging
+                    elif (info['cache_status'] == file_cache_status.CacheStatus.STAGING and
+                        cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED):
+                        cache_status == info['cache_status'] # Mirator started staging
+                    elif (info['cache_status'] == file_cache_status.CacheStatus.PURGED and
+                          ((cache_status ==  file_cache_status.CacheStatus.STAGING or
+                            cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED))):
+                        Trace.log(e_errors.ERROR, "File staging has failed for %s %s "%(info['bfid'], info['pnfs_name0']))
+                        break
                     time.sleep(2)
                     # Staging a file may take a very long time.
                     # Reset self.state_change_time
                     # to avoid "mover stuck in state condition"
-                    self.state_change_time = self.time_in_state
+                    self.state_change_time = time.time()
                 
 
     def position_media(self, filename):
