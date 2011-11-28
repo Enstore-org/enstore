@@ -204,8 +204,9 @@ class MigrationDispatcher():
                 # debug HACK to use spout messages
                 try:
                    self.trace.debug("got qpid message=%s", message)
-                   message.correlation_id = message.properties["spout-id"]
-                   self.trace.info("correlation_id is not set, setting it to spout-id %s", message.correlation_id ) 
+                   if message.properties.has_key("spout-id"):
+                       message.correlation_id = message.properties["spout-id"]
+                       self.trace.info("correlation_id is not set, setting it to spout-id %s", message.correlation_id ) 
                 except:
                    self.trace.info("exception setting it to spout-id %s", message.correlation_id ) 
                    pass
