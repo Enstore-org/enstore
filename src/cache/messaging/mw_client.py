@@ -144,10 +144,10 @@ if __name__ == "__main__":
     print "MWCPurge: %s" % (mp,)
 
     ms = MWCStage( l )
-    print "MDCStage: %s" % (ms,)
+    print "MWCStage: %s" % (ms,)
     
     mstat = MWCStatus(request_id = 777 )
-    print "MDStatus: %s" % (mstat,)
+    print "MWStatus: %s" % (mstat,)
     
     # Replies
     # reply to original message 'ma' with list 'l'
