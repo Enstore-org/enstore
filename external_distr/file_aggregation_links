@@ -3,3 +3,4 @@
 cache/servers/udp_proxy_server
 cache/servers/migrator
 lm_director
+cache/servers/dispatcher
