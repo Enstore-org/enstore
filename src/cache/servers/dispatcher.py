@@ -244,7 +244,8 @@ class Dispatcher(mw.MigrationWorker,
        rec = self.fcc.bfid_info(bfid)
        if rec ['status'][0] == e_errors.OK and message.content['enstore']['bfid'] == rec['package_id']:
           self.cache_missed_pool[l_name].full = True
-          self.move_to_migration_pool(self.cache_missed_pool, message.content[l_name])
+          self.move_to_migration_pool(self.cache_missed_pool, l_name)
+          self.md.start_migration()
        return True
 
 
@@ -294,7 +295,7 @@ class Dispatcher(mw.MigrationWorker,
              # pass this list to Migration Dispatcher
              Trace.trace(10, "handle_cache_written passing to migration dispatcher")
              self.move_to_migration_pool(self.cache_written_pool, policy['policy'])
-             md.start_migration()
+             self.md.start_migration()
              
        else:
           Trace.alarm(e_errors.ALARM, "Potential data loss. No policy for %s"%(new_content,))
