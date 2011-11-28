@@ -8,8 +8,8 @@ import logging
 import string
 
 # enstore imports
-#import Trace
-#import log_client
+import Trace
+import log_client
 
 def set_logging_console(name=None,full_name=None):
     # configure two logging channeles to report to console. One logging channel is Trace, the other is Log
@@ -34,11 +34,31 @@ def set_logging_console(name=None,full_name=None):
 
     return (l_log, l_trace)
 
-#def set_logging_enstore(name=None,conf_srv=None,full_name=None):
-#    # initialize enstore Trace if it is used for logging 
-#    # 
-#    Trace.init(string.upper(name))
-#    if conf_srv :
-#        logc = log_client.LoggerClient(conf_srv, name)
-#    
-#    # not complete
+import cache.en_logging.handlers
+
+def set_logging_enstore(name=None,conf_srv=None,full_name=None):
+    # initialize enstore Trace if it is used for logging 
+    # 
+
+    # not used:
+    if conf_srv :
+        logc = log_client.LoggerClient(conf_srv, name)
+    
+    fmt = logging.Formatter("%(levelname)s chan=%(name)s module=%(module)s file=%(filename)s %(lineno)d %(message)s")
+    fmt_en = logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
+    
+    # Log settings
+    lh = cache.en_logging.handlers.EnLogHandler(name)
+    lh.setFormatter(fmt)
+
+    l_log = logging.getLogger('log.encache')
+    l_log.addHandler(lh)
+    l_log.setLevel(logging.DEBUG)
+    
+    # Trace settings
+    th = cache.en_logging.handlers.EnTraceHandler(name)
+    th.setFormatter(fmt)
+    
+    l_trace = logging.getLogger('trace.encache')    
+    l_trace.addHandler(th)
+    l_trace.setLevel(logging.DEBUG)
