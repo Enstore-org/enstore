@@ -216,7 +216,7 @@ class MigrationWorker():
                     continue
                 self.trace.debug("got qpid message=%s", message)
 
-                # debug HACK to use spout messages
+                # debug HACK to use spout messages. @todo - check if original correlation ID is set; disable in production
                 try:
                     message.correlation_id = message.properties["spout-id"]
                     self.trace.info("correlation_id is not set, setting it to spout-id %s", message.correlation_id ) 
