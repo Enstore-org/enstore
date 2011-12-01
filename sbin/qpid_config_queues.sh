@@ -1,4 +1,11 @@
 # !/bin/bash
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 echo "add exchange direct enstore.fcache"
 qpid-config add exchange direct enstore.fcache # --durable
 
