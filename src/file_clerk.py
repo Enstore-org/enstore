@@ -1408,7 +1408,6 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    # this function return files that belong to package back to caller
 	    #
 	    bfid, record = self.extract_bfid_from_ticket(ticket)
-	    Trace.log(e_errors.INFO," WE ARE in get_children %s %s",bfid, record)
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
 	    #
@@ -1441,7 +1440,6 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    # their fields in db
 	    #
 	    bfid, record = self.extract_bfid_from_ticket(ticket)
-	    Trace.log(e_errors.INFO," WE ARE in set_children %s %s",bfid, record)
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
 	    #
