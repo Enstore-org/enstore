@@ -143,7 +143,7 @@ class Dispatcher(mw.MigrationWorker,
          ticket['status'] = (e_errors.OK, None)
       except Exception, detail:
          ticket['status'] = (e_errors.ERROR, "Error loading policy for LMD: %s"%(detail,))
-         self.reply_to_caller(ticket)
+      self.reply_to_caller(ticket)
          
 
    # send current policy to client
