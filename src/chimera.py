@@ -738,9 +738,10 @@ def process_mtab():
     if not mount_points_cache:
         #Sets global mount_points_cache.
         (mount_points_cache, database_info_cache) = parse_mtab()
-        #_process_mtab()  #Currently a no-op for Chimera.
-    return [last_db_tried] + sort_mtab()
 
+        #_process_mtab()  #Currently a no-op for Chimera.
+
+    return [last_db_tried] + sort_mtab()
 
 def __db_cmp(x, y):
     is_x_fs_usr = x[DB_MOUNT_POINTS][0].find("/fs/usr/") > 0
@@ -771,6 +772,7 @@ def __db_cmp(x, y):
 
 def sort_mtab():
     global mount_points_cache
+
     chimera_global_lock.acquire()
 
     try:
@@ -828,9 +830,11 @@ def get_cache_by_db_info(db_info_key = None, default = None):
 
     chimera_global_lock.release()
     return return_value
+
 #Return the .(get)(database) values as keyed by mount point.
 def get_cache_by_mount_point(mount_point_key = None, default = None):
     global database_info_cache  #dictionary
+
     chimera_global_lock.acquire()
 
     try:
