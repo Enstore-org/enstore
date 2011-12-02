@@ -28,7 +28,9 @@ import Queue
 from udp_server import UDPServer
 
 # enstore cache imports
-from cache.messaging.client import EnQpidClient
+#from cache.messaging.client import EnQpidClient
+# refactoring: use frosen version of the file before it tested to work with next version
+from cache.messaging.client_1_1_2_3 import EnQpidClient
 
 debug = True
 timing = False

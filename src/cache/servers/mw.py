@@ -30,7 +30,6 @@ import enstore_constants
 
 # enstore cache imports
 import cache.errors
-#from cache.messaging.client import EnQpidClient
 import cache.messaging.client2 as cmc
 import cache.messaging.mw_client
 import cache.messaging.pe_client
