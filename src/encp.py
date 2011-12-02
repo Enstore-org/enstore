@@ -53,7 +53,7 @@ do_work() instead of start().
 
 The functions marked with a one (1) indicate only one can be executed.
 The functions marked with a capital ell (L) indicate they are called in a loop.
-The functions listed with and asterisk (*) are optional.
+The functions listed with an asterisk (*) are optional.
 The functions listed with a plus sign (+) are started in a new thread.
 
 start()
@@ -463,7 +463,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_10c CVS $Revision$ "
+    version_string = "v3_10d CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -654,7 +654,7 @@ def get_directory_name(filepath):
         return None
 
     #If we already have a directory...
-    #if os.path.isdir(filepath):
+    #if file_utils.wrapper(os.path.isdir, (filepath,)):
     #    return filepath
 
     #Determine if it is an ".(access)()" name.
@@ -2311,7 +2311,7 @@ def get_lmc(library, use_lmc_cache = True):
 
     csc = get_csc()
 
-     #Determine which IP and port to use.  By default it will use the standard
+    #Determine which IP and port to use.  By default it will use the standard
     # 'port' value from the configuration file.  However, if the configuration
     # key 'encp_port' exists then this port will be used.
     library_dict = csc.get(lib, 3, 3)
@@ -2530,6 +2530,46 @@ def clients(intf):
 
 ############################################################################
 ############################################################################
+
+#Return True if the media we are going to use is null media for null movers.
+# False otherwise.
+def is_null_media_type(volume_clerk_ticket):
+    if volume_clerk_ticket['wrapper'] == "null":
+
+        #Grab current configuration information.
+        csc = get_csc()
+        if not csc.have_complete_config:
+            csc.save_and_dump()
+
+        # Now we need to check all null movers.
+        for dictkey, value in csc.saved_dict.items():
+            if dictkey[-len(".mover"):] == ".mover" \
+               and type(value) == types.DictType \
+               and value.get('driver', None) == "NullDriver":
+
+                if type(value['library']) == types.ListType:
+                    library_list = value['library']
+                else:
+                    library_list = [value['library']]
+
+                for lib in library_list:
+                    if volume_clerk_ticket['library'] == lib.split(".")[0]:
+                        #If we find a null mover with a library that
+                        # matches that of the library we are using; we
+                        # know the following is true (this is a recap):
+                        # 1) --shortcut was used.
+                        # 2) --override-path was not used.
+                        # 3) The library we are using uses null movers.
+                        #
+                        return True
+                       
+                else:
+                    continue
+
+                break  #stop processing the outter loop.
+
+    return False
+    
             
 def max_attempts(csc, library, encp_intf):
 
@@ -3907,17 +3947,51 @@ def outputfile_check(work_list, e):
                             l4_line1 = layer4[0]
                         except IndexError:
                             l4_line1 = None
-                        if enstore_functions3.is_bfid(l1_bfid) or \
-                               enstore_functions3.is_bfid(l4_bfid):
-                            #The layers are already set.
-                            raise EncpError(errno.EEXIST,
-                                       "Layer 1 and layer 4 are already set.",
+                        l1_is_bfid = enstore_functions3.is_bfid(l1_bfid)
+                        l4_is_bfid = enstore_functions3.is_bfid(l4_bfid)
+                        #Log this for debugging, because users don't care.
+                        if layer1:
+                            Trace.log(99, "Detected layer 1: %s" % (layer1,))
+                        if layer4:
+                            Trace.log(99, "Detected layer 4: %s" % (layer4,))
+                        #No, give the user with a correct error message
+                        # without confusing them with to many details.
+                        if l1_is_bfid or l4_is_bfid:
+                            if l1_is_bfid and l4_is_bfid:
+                                message = "Layer 1 and layer 4 are already set: %s" \
+                                          % (outputfile_print,),
+                            elif l1_is_bfid:
+                                message = "Layer 1 is already set: %s" \
+                                          % (outputfile_print,)
+                            elif l4_is_bfid:
+                                message = "Layer 4 is already set: %s" \
+                                          % (outputfile_print,)
+                            else:
+                                #Impossible to get here, but handle it anyway.
+                                message = "Layer 1 or layer 4 are already set: %s" \
+                                          % (outputfile_print,),
+                            #The layer 4 is already set.
+                            raise EncpError(errno.EEXIST, message, 
                                             e_errors.PNFS_ERROR,
                                             {'outfilepath' : outputfile_print})
+                        
                         elif l1_bfid or l4_line1:
+                            if l1_bfid and l4_line1:
+                                message = "Layer 1 and layer 4 are corrupted: %s" \
+                                          % (outputfile_print,)
+                            elif l1_bfid:
+                                message = "Layer 1 is corrupted: %s" \
+                                          % (outputfile_print,)
+                            elif l4_line1:
+                                message = "Layer 4 is corrupted: %s" \
+                                          % (outputfile_print,)
+                            else:
+                                #Impossible to get here, but handle it anyway.
+                                message = "Layer 1 or layer 4 are corrupted: %s" \
+                                          % (outputfile_print,)
+                                
                             #The layers are corrupted.
-                            raise EncpError(errno.EEXIST,
-                                       "Layer 1 and layer 4 are corrupted.",
+                            raise EncpError(errno.EEXIST, message,
                                             e_errors.PNFS_ERROR,
                                             {'outfilepath' : outputfile_print})
                         else:
@@ -3942,6 +4016,19 @@ def outputfile_check(work_list, e):
                     #    list for pnfs (EPERM)
                     # 4) user root is modifying something outside of the
                     #    /pnfs/fs/usr/xyz/ filesystem (EPERM).
+                    y = "%s(1)" % (outputfile_use,)
+                    print "y:", y
+                    try:
+                        fp=open(y, "w")
+                        fp.write("")
+                        fp.close()
+                    except:
+                        print "OPEN failed", sys.exc_info()[1]
+                    try:
+                        #print os.stat(outputfile_use)
+                        os.system("stat '%s'" % (y,))
+                    except:
+                        print "STAT failed"
                     try:
 
                         sfs.writelayer(1, "", outputfile_use)
@@ -3983,8 +4070,6 @@ def outputfile_check(work_list, e):
                     raise EncpError(error,
                         "Unable to verify output file: %s" % (msg.filename),
                         enstore_error)
-                except EncpError, msg:
-                    raise msg
 
             else:
                 raise EncpError(None,
@@ -4097,6 +4182,8 @@ def create_zero_length_pnfs_files(filenames, e = None):
                     os.close(fd)
                     local_errno = 0
                 except (OSError, IOError), msg:
+                    #TO DO
+                    Trace.handle_error()
                     if msg.args[0] == errno.EAGAIN:
                         #If we got here then we just created a 'ghost' file
                         # with the temporary lock filename.  Lets wait
@@ -4324,10 +4411,10 @@ def get_oninfo(inputfile, outputfile, e):
     if (len(e.input) > 1):
         munge_name = True
     elif (len(e.input) == 1 and e.outtype == HSMFILE and \
-          os.path.isdir(ofullname)):
+          file_utils.wrapper(os.path.isdir, (ofullname,))):
         munge_name = True
     elif (len(e.input) == 1 and e.outtype == UNIXFILE and \
-          os.path.isdir(ofullname)):
+          file_utils.wrapper(os.path.isdir, (ofullname,))):
         munge_name = True
     elif (len(e.input) == 1 and e.outtype == RHSMFILE and \
           get_pac().isdir(ofullname)):
@@ -6316,6 +6403,11 @@ def verify_file_size(ticket, encp_intf = None):
             # the database has on file.
             pnfs_filesize = ticket['file_size']
             pnfs_real_size = pnfs_filesize
+        elif encp_intf and (encp_intf.get_bfid or encp_intf.get_bfids) \
+                 and encp_intf.skip_pnfs:
+            #Don't access PNFS/Chimera if told to ignore it.
+            pnfs_filesize = ticket['file_size']
+            pnfs_real_size = pnfs_filesize
         else:
             # this needs a better solution
             # if --get-bfid and --skip-pnfs we DO not USE any sfs information!!
@@ -6462,7 +6554,6 @@ def set_outfile_permissions(ticket, encp_intf):
                                      "/dev/random", "/dev/urandom"]:
             try:
                 if is_write(ticket):
-#                    sfs = namespace.StorageFS(ticket['outfile'])
                     in_stat_info = file_utils.get_stat(ticket['infile'])
                 else:
                     if (encp_intf.get_bfid or encp_intf.get_bfids) and \
@@ -6471,26 +6562,20 @@ def set_outfile_permissions(ticket, encp_intf):
                         # them for consistancy is good for error checking.
                         dev = ticket['wrapper']['major'] << 8 + \
                               ticket['wrapper']['minor']
-                        
-                        
-                        update_t = ticket['fc']['update'].split(".")
-                        #fake_time = time.mktime(time.strptime(
-                        #    ticket['fc']['update'], "%Y-%m-%d %H:%M:%S"))
                         fake_time = time.mktime(time.strptime(
-                            update_t[0], "%Y-%m-%d %H:%M:%S"))
+                            ticket['fc']['update'], "%Y-%m-%d %H:%M:%S"))
                         in_stat_info = (ticket['wrapper']['mode'],
                                         ticket['wrapper']['inode'],
                                         dev,  #Reconstructed.
                                         1,  #number of links
                                         ticket['wrapper']['uid'],
                                         ticket['wrapper']['gid'],
-                                        ticket['file_size'],
+                                        ticket['filesize'],
                                         fake_time,  #atime
                                         fake_time,  #mtime
                                         fake_time,  #ctime
                                         )
                     else:
-                    
                         try:
                             in_sfs = namespace.StorageFS(ticket['infile'])
                         except (OSError, IOError), msg2:
@@ -6500,7 +6585,6 @@ def set_outfile_permissions(ticket, encp_intf):
                             ticket['status'] = (e_errors.OSERROR, message)
                             return
                         in_stat_info = in_sfs.get_stat(ticket['infile'])
-
             except (OSError, IOError), msg:
                 Trace.handle_error(severity=99)
                 Trace.log(e_errors.INFO, "stat failed: %s: %s" % \
@@ -7842,7 +7926,6 @@ def verify_write_request_consistancy(request_list, e):
             if not request['wrapper']['inode']:
                 try:
                     #Only test this before the output file is created.
-                    #outputfile_check(request['infile'], request['outfile'], e)
                     outputfile_check(request, e)
                 except IOError, msg:
                     Trace.handle_error(severity=99)
@@ -8217,6 +8300,7 @@ def set_sfs_settings(ticket, intf_encp):
             ticket['status'] = (e_errors.OSERROR, str(msg))
             return
         except:
+            Trace.handle_error()
             exc, msg = sys.exc_info()[:2]
             ticket['status'] = (str(exc), str(msg))
             return
@@ -8599,47 +8683,16 @@ def create_write_request(work_ticket, file_number,
         # this full name lookup.
         Trace.log(99, "shortcut: %s  override_path: %s  wrapper: %s" % \
                   (e.shortcut, e.override_path, volume_clerk['wrapper']))
-        if e.shortcut and not e.override_path and \
-               volume_clerk['wrapper'] == "null":
-            
-            #Grab current configuration information.
-            csc = get_csc()
-            if not csc.have_complete_config:
-                csc.save_and_dump()
-
-            # Now we need to check all null movers.
-            for dictkey, value in csc.saved_dict.items():
-                if dictkey[-len(".mover"):] == ".mover" \
-                   and type(value) == types.DictType \
-                   and value.get('driver', None) == "NullDriver":
-                    
-                    if type(value['library']) == types.ListType:
-                        library_list = value['library']
-                    else:
-                        library_list = [value['library']]
-
-                    for lib in library_list:
-                        if volume_clerk['library'] == lib.split(".")[0]:
-                            #If we find a null mover with a library that
-                            # matches that of the library we are using; we
-                            # know the following is true (this is a recap):
-                            # 1) --shortcut was used.
-                            # 2) --override-path was not used.
-                            # 3) The library we are using uses null movers.
-                            #
-                            #To avoid an error with the mover, perform a full
-                            # pnfs pathname lookup.
-                            ofullname_list = sfs.get_path(e.put_cache,
-                                                        e.pnfs_mount_point,
-                                                        shortcut=False)
-                            ofullname = ofullname_list[0]
-                            wrapper['pnfsFilename'] = ofullname
-                            break
-
-                    else:
-                        continue
-
-                    break  #stop processing the outter loop.
+        if e.shortcut and not e.override_path:
+            if is_null_media_type(volume_clerk):
+                #To avoid an error with the mover, perform a full
+                # pnfs pathname lookup.
+                ofullname_list = sfs.get_path(e.put_cache,
+                                              e.pnfs_mount_point,
+                                              shortcut=False)
+                ofullname = ofullname_list[0]
+                wrapper['pnfsFilename'] = ofullname
+        
 
         #We need to stop writing /pnfs/fs/usr/Migration/ paths in the wrappers
         # for every migrated to tape.  Correct the
@@ -8866,55 +8919,17 @@ def write_post_transfer_update(done_ticket, e):
     check_crc(done_ticket, e) #Check the CRC.
 
     #Verify that the file transfered in tacted.
-    """
-    result_dict = handle_retries([work_ticket], work_ticket,
-                                 done_ticket, e)
-
-    if e_errors.is_retriable(result_dict['status'][0]):
-        continue
-    elif e_errors.is_non_retriable(result_dict['status'][0]):
-        return combine_dict(result_dict, work_ticket)
-    """
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
-    #Update the last access and modification times respecively.
-    #update_times(done_ticket['infile'], done_ticket['outfile'])
+    #Update the modification time.
     update_modification_time(done_ticket['outfile'])
-
-    """
-    #Verify that setting times has been done successfully.
-    #
-    #Also verify, before calling set_sfs_settings(), that another
-    # encp has not yet set layer 1 or 4 (very small chance of race
-    # condition that another encp would set them between this check
-    # and them being set).
-    result_dict = handle_retries([work_ticket], work_ticket,
-                                 done_ticket, e,
-                                 pnfs_filename = done_ticket['outfile'])
-
-    if e_errors.is_retriable(result_dict['status'][0]):
-        continue
-    elif e_errors.is_non_retriable(result_dict['status'][0]):
-        return combine_dict(result_dict, work_ticket)
-    """
 
     #We know the file has hit some sort of media. When this occurs
     # create a file in the storage namespace with information about transfer.
     set_sfs_settings(done_ticket, e)
 
     #Verify that the pnfs info was set correctly.
-    """
-    result_dict = handle_retries([work_ticket], work_ticket,
-                                 done_ticket, e)
-
-    if e_errors.is_retriable(result_dict['status'][0]):
-        clear_layers_1_and_4(done_ticket) #Reset this.
-        continue
-    elif e_errors.is_non_retriable(result_dict['status'][0]):
-        clear_layers_1_and_4(done_ticket) #Reset this.
-        return combine_dict(result_dict, work_ticket)
-    """
     if not e_errors.is_ok(done_ticket):
         clear_layers_1_and_4(done_ticket) #Reset this.
         return done_ticket
@@ -9231,7 +9246,7 @@ def prepare_write_to_hsm(tinfo, e):
                                    (e_errors.FILESYSTEM_CORRUPT, str(msg))
                 else:
                     request_list[i]['status'] = \
-                                   (e_errors.OSERROR, msg.strerror)
+                                   (e_errors.OSERROR, str(msg))
                 return request_list[i], listen_socket, udp_serv, request_list
             except: #Un-anticipated errors.
                 raise sys.exc_info()[0], sys.exc_info()[1],  sys.exc_info()[2]
@@ -9559,25 +9574,6 @@ def verify_read_request_consistancy(requests_per_vol, e):
         request_list = requests_per_vol[vol]
         
         for request in request_list:
-
-            """
-            #If the file was requested by BFID, then check if it is an
-            # original or copy.
-            is_copy = False
-            if e.get_bfid:
-                fcc = get_fcc()
-                #Reminder: request['fc']['bfid'] would contains the copy bfid
-                # if this is a copy, request['bfid'] always contain
-                # the original bfid requested (which maybe original or copy).
-                fcc_response = fcc.find_original(request['fc']['bfid'],
-                                                 timeout=5, retry=2)
-                if e_errors.is_ok(fcc_response):
-                    if fcc_response['original'] != None:
-                        is_copy = True
-            #If copy N was specifically requested, then this is a copy.
-            elif e.copy:
-                is_copy = True
-            """
 
             if request['infile'] not in ["/dev/zero",
                                          "/dev/random", "/dev/urandom"]:
@@ -9976,7 +9972,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
         elif e.output[0] not in ["/dev/null", "/dev/zero",
                                  "/dev/random", "/dev/urandom"] \
-                                 and not os.path.isdir(e.output[0]):
+                                 and not file_utils.wrapper(os.path.isdir,
+                                                            (e.output[0],)):
             rest = {'volume':e.volume}
             raise EncpError(errno.ENOTDIR, e.output[0],
                             e_errors.USERERROR, rest)                          
@@ -10150,7 +10147,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             use_infile = request['infile']  #used for error reporting
 
         try:
-            #Moved this inside the loop to pass inthe filename to Pnfs
+            #Moved this inside the loop to pass in the filename to Pnfs/Chimera
             request = create_read_request(request, i, callback_addr,
                                           udp_callback_addr, tinfo, e)
         except (KeyboardInterrupt, SystemExit):
@@ -10162,11 +10159,11 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             else:
                 e_type = e_errors.IOERROR
 
-            raise EncpError(msg.args[0], use_infile, e_type,
-                            {'infilepath' : use_infile})
+            raise EncpError(msg.args[0], use_infile, e_type, request)
         
         if request == None:
-            #This is a rare possibility.
+            #This is a rare possibility.  Can occur when --volume and
+            # --skip-deleted-files are both used.
             continue
 
         label = request['volume']
@@ -10690,6 +10687,26 @@ def create_read_request(request, file_number,
         #encp_dict = csc.get('encp', 5, 5)
         #crc_seed = encp_dict.get('crc_seed', 1)
 
+        #We cannot use --shortcut when using NULL movers and tapes.
+        # The mover insists that "NULL" appear in the pnfs pathname,
+        # which conflicts with the task of --shortcut.  So, we need to
+        # breakdown and do this full name lookup.
+        if e.shortcut:
+            if is_null_media_type(vc_reply):
+                if e.get_cache:
+                    use_id = e.get_cache
+                else:
+                    use_id = fc_reply['pnfsid']
+
+                #To avoid an error with the mover, perform a full
+                # pnfs pathname lookup.
+                ifullname_list = sfs.get_path(use_id,
+                                              e.pnfs_mount_point,
+                                              shortcut=False)
+
+                ifullname = ifullname_list[0]
+                wrapper['pnfsFilename'] = ifullname
+
         #request = {}
         request['bfid'] = bfid
         request['callback_addr'] = callback_addr
@@ -10869,34 +10886,16 @@ def read_post_transfer_update(done_ticket, out_fd, e):
         Trace.handle_error(severity=99)
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
  
-    """
-    result_dict = handle_retries(request_list, request_ticket,
-                                 done_ticket, e)
-
-    if not e_errors.is_ok(result_dict):
-        #Close these before they are forgotten.
-        close_descriptors(out_fd)
-        return combine_dict(result_dict, request_ticket)
-    """
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
     #Check the CRC.
     check_crc(done_ticket, e, out_fd)
 
-    """
-    result_dict = handle_retries(request_list, request_ticket,
-                                 done_ticket, e)
-
-    if not e_errors.is_ok(result_dict):
-        #Close these before they are sforgotten.
-        close_descriptors(out_fd)
-        return combine_dict(result_dict, request_ticket)
-    """
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
-    #Update the last access and modification times respecively.
+    #Update the modification time.
     update_modification_time(done_ticket['outfile'])
 
     #If this is a read of a deleted file, leave the outfile permissions
@@ -10910,21 +10909,6 @@ def read_post_transfer_update(done_ticket, out_fd, e):
             # error without retrying and that the output file should be left
             # alone.
             done_ticket['skip_retry'] = 1
-
-    """
-    ###What kind of check should be done here?
-    #This error should result in the file being left where it is, but it
-    # is still considered a failed transfer (aka. exit code = 1 and
-    # data access layer is still printed).
-    if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
-        print_data_access_layer_format(done_ticket['infile'],
-                                       done_ticket['outfile'],
-                                       done_ticket['file_size'],
-                                       done_ticket)
-        #We want to set this here, just in case the error isn't technically
-        # non-retriable.
-        done_ticket['completion_status'] = FAILURE
-    """
 
     #Update the source files times.
     if done_ticket['fc']['deleted'] == "no":
@@ -11257,10 +11241,8 @@ def prepare_read_from_hsm(tinfo, e):
                     if os.getuid() == 0:
                         #Only try this when the real user is root.  
                         file_utils.chown(requests_per_vol[vol][i]['outfile'],
-                                         #in_file_stats[stat.ST_UID],
-                                         #in_file_stats[stat.ST_GID],
-                                         uid,
-                                         gid,
+                                         in_file_stats[stat.ST_UID],
+                                         in_file_stats[stat.ST_GID],
                                          unstable_filesystem=True)
             except (OSError, IOError, EncpError), msg:
                 #if not should_skip_deleted:
@@ -11683,7 +11665,9 @@ class EncpInterface(option.Interface):
 
         #Sort the list into alphabetical order.
         the_list = self.encp_options.items()
-        the_list = the_list + [('input', {}), ('output', {}),]
+        the_list = the_list + [('input', {}), ('output', {}),
+                               ('intype', {}), ('outtype', {}),
+                               ]
         the_list.sort()
         
         for name, info in the_list:
@@ -12054,7 +12038,8 @@ class EncpInterface(option.Interface):
                              "positive integer or None.")
 
         if self.copies != None and self.copies < 0:
-            self.print_usage("Argument for --copy must be a non-negative integer.")
+            self.print_usage("Argument for --copy must be a "
+                             "non-negative integer.")
 
         # bomb out if we don't have an input/output if a special command
         # line was given.  (--volume, --get-cache, --put-cache, --bfid)
@@ -12065,29 +12050,20 @@ class EncpInterface(option.Interface):
             sys.exit(1)
 
         if self.volume:
-            self.input = self.argv[:-1]  #None   #[self.args[0]]
-            self.output = self.argv[-1]  #[self.args[self.arglen-1]]
-            #self.intype = "hsmfile"   #"hsmfile"
-            #self.outtype = "unixfile"
-            #return #Don't continue.
+            self.input = self.argv[:-1]
+            self.output = self.argv[-1]
 
         if self.get_bfid:
-            self.input = None #[self.args[0]]
-            self.output = self.argv[-1] #[self.args[self.arglen-1]]
-            #self.intype = "hsmfile"  #What should this bee?
-            #self.outtype = "unixfile"
-            #return #Don't continue.
+            self.input = None
+            self.output = self.argv[-1]
 
         if self.get_bfids:
             self.input = self.args[:-1]
-            self.output = self.argv[-1]  #[self.args[self.arglen-1]]
+            self.output = self.argv[-1]
         
         if self.get_cache:
-            self.input = None  #[self.args[0]]
-            self.output = self.argv[-1]  #[self.args[self.arglen-1]]
-            #self.intype = "hsmfile"   #What should this bee?
-            #self.outtype = "unixfile"
-            #return #Don't continue.
+            self.input = None
+            self.output = self.argv[-1]
 
         self.outtype = UNIXFILE
         if self.volume or self.get_bfid or self.get_bfids or self.get_cache:
@@ -12100,8 +12076,8 @@ class EncpInterface(option.Interface):
             return
         
         if self.put_cache:
-            self.input = self.argv[-1]  #[self.args[0]]
-            self.output = None  #[self.args[self.arglen-1]]
+            self.input = self.argv[-1]
+            self.output = None
             self.intype = UNIXFILE
             if namespace.pnfs_agent_client_requested:
                 self.outtype = RHSMFILE
@@ -12150,7 +12126,6 @@ class EncpInterface(option.Interface):
                 else:
                     dirname, basename = os.path.split(fullname)
             else:
-                #machine, fullname, unused, unused = fullpath(self.args[i])
                 protocol, host, port, fullname, dirname, basename = \
                           enstore_functions2.fullpath2(self.args[i])
 
@@ -12203,7 +12178,7 @@ class EncpInterface(option.Interface):
                                                          check_name_only = 1)
             except EncpError:
                 result = 0
-                
+
             if result:
                 e.append(1)
                 p.append(result)
@@ -12447,7 +12422,7 @@ def log_encp_start(tinfo, intf):
             elif not intf.output:
                 t = None
                 shortcut_dname = None
-            elif os.path.isdir(intf.output[0]):
+            elif file_utils.wrapper(os.path.isdir, (intf.output[0],)):
                 t = namespace.Tag(intf.output[0])
                 shortcut_dname = intf.output[0]
             else:
