@@ -15,6 +15,7 @@ DEFAULT_ALIVE_INTERVAL = 30
 NO_HEARTBEAT = -1
 DEFAULT_HUNG_INTERVAL = 90
 DEFAULT_MOVER_HUNG_INTERVAL = 600
+DEFAULT_MIGRATOR_HUNG_INTERVAL = 600
 NO_TIMEOUT = 0
 HUNG = 1
 TIMEDOUT = 2
@@ -295,7 +296,7 @@ class MonitoredMigrator(MonitoredServer):
 		     enstore_constants.STATUS : ()}
 
     def __init__(self, config, name, csc):
-	MonitoredServer.__init__(self, config, name, DEFAULT_MOVER_HUNG_INTERVAL)
+	MonitoredServer.__init__(self, config, name, DEFAULT_MIGRATOR_HUNG_INTERVAL)
 	self.csc = csc
 	self.client = migrator_client.MigratorClient(self.csc, self.name)
 	self.status_keys = self.STATUS_FIELDS.keys()

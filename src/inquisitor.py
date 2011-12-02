@@ -470,8 +470,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
                 self.er_lock.acquire()
-                self.server_d[key] = monitored_server.MonitoredMigrator(cdict, key,
+                try:
+                    self.server_d[key] = monitored_server.MonitoredMigrator(cdict, key,
                                                                         self.csc)
+                except:
+                    pass
                 self.er_lock.release()
         elif enstore_functions2.is_media_changer(key):
             cdict = config_d[key]
@@ -484,8 +487,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
                 self.er_lock.acquire()
-                self.server_d[key] = monitored_server.MonitoredUDPProxyServer(cdict,
-                                                                              key)
+                try:
+                    self.server_d[key] = monitored_server.MonitoredUDPProxyServer(cdict,
+                                                                                  key)
+                except:
+                    pass
                 self.er_lock.release()
         elif enstore_functions2.is_library_manager(key):
             cdict = config_d[key]
@@ -1151,7 +1157,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         else:
             now = aTime
         server = self.server_d.get(name, None)
-        print "server_is_alive", name
         if server:
             self.serverfile.output_alive(server.host, ALIVE, now, name)
             self.new_server_status = 1

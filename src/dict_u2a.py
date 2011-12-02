@@ -12,12 +12,34 @@
 # system imports
 import types
 
+def convert_tuple(tpl):
+    # do not check type of the argument here
+    ntpl = []
+    for i in tpl:
+        if type(i) == types.UnicodeType:
+           ntpl.append(i.encode("utf-8"))
+        elif type(i) == types.TupleType or type(i) == types.ListType:
+            nt = convert_tuple(i)
+            ntpl.append(nt)
+        else:
+            ntpl.append(i)
+    if type(tpl) == types.TupleType:
+        rc = tuple(ntpl)
+    else:
+        # assume the argument was a list
+        rc = ntpl
+    return rc
+            
 def convert_kv(key, value):
     if type(key) == types.UnicodeType:
         key = key.encode("utf-8")
     if type(value) == types.UnicodeType:
-        value = value.encode("utf-8")
-    return key, value
+        new_value = value.encode("utf-8")
+    elif type(value) == types.TupleType or type(value) == types.ListType:
+        new_value = convert_tuple(value)
+    else:
+       new_value = value 
+    return key, new_value
 
 def convert_dict_u2a(d):
     nd={}
@@ -63,7 +85,7 @@ if __name__ == "__main__":
                    'volume_family': 'D0.alex.cpio_odc', 'address': ('131.225.84.122', 7502), 'file_family': 'alex',
                    'sum_wr_access': 2, 'library': 'mam', 'sum_wr_err': 1, 'non_del_files': 1, 'blocksize': 131072,
                    'eod_cookie': '0000_000000000_0000002', 'storage_group': 'D0', 'status': ('ok', None)},
-            'status': ('ok', None)
+            'status': (u'ok', None)
             }
     print "Before conversion", ticket
     

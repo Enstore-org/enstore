@@ -771,7 +771,7 @@ def do_work(intf):
                          (sudo, mover_name))
     """
     # Migrators
-    migrators = csc.get_migrators()
+    migrators = csc.get_migrators(conf_dict=config_dict)
     for migrator in migrators:
         if intf.should_start(enstore_constants.MIGRATOR) or \
            intf.should_start(migrator):

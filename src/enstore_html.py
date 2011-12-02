@@ -657,23 +657,23 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
 			       system_tag=system_tag)
 	self.title = "Migrators Page"
 	self.source_server = THE_INQUISITOR
-	self.script_title_gif = "mv.gif"
+	self.script_title_gif = "migrator.gif"
 	self.description = ""
 
     # add the volume information if it exists
-    def add_bytes_volume_info(self, moverd, tr, mvkey):
+    def add_bytes_volume_info(self, migratord, tr, mgkey):
         pass
 
     # add the eod/location cookie information if it exists
-    def add_bytes_eod_info(self, moverd, tr, mvkey):
+    def add_bytes_eod_info(self, migratord, tr, mgkey):
         pass
     # add input and output files 
-    def add_files(self, moverd, table):
+    def add_files(self, migratord, table):
         pass
 
     # add the migrator information
     def migrator_row(self, migrator, table):
-	# we may not have any other info on this mover as the inq may not be
+	# we may not have any other info on this migrator as the inq may not be
 	# watching it.
 	md = self.data_dict.get(migrator, {})
 	if md:
@@ -683,8 +683,8 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
 	       md[enstore_constants.STATE]:
 		# get the first word of the mover state, we will use this to
 		# tell if this is a bad state or not
-		words = string.split(moverd[enstore_constants.STATE])
-		if words[0] in BAD_MOVER_STATES:
+		words = string.split(md[enstore_constants.STATE])
+		if words[0] in BAD_MIGRATOR_STATES:
 		    table.append(self.alive_row(migrator, 
 					     md[enstore_constants.STATUS], 
 						FUSCHIA))
@@ -696,12 +696,12 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
                                                 "Completed%sTransfers"%(NBSP,),
 						color=BRICKRED, 
 						html_escape='OFF')))
-		tr.append(HTMLgen.TD(moverd[enstore_constants.COMPLETED], 
+		tr.append(HTMLgen.TD(md[enstore_constants.COMPLETED], 
 				     align="LEFT"))
 		tr.append(HTMLgen.TD(HTMLgen.Font("Failed%sTransfers"%(NBSP,),
 						  color=BRICKRED, 
 						  html_escape='OFF')))
-		tr.append(HTMLgen.TD(moverd[enstore_constants.FAILED], 
+		tr.append(HTMLgen.TD(md[enstore_constants.FAILED], 
 				     align="LEFT"))
 		m_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
 					     align="LEFT", bgcolor=YELLOW, 
@@ -726,8 +726,8 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
 		    self.add_bytes_eod_info(md, tr, 
 					    enstore_constants.LAST_WRITE)
 		    m_table.append(tr)
-		    self.add_files(moverd, mv_table)
-		elif moverd.has_key(enstore_constants.CUR_READ):
+		    self.add_files(md, m_table)
+		elif md.has_key(enstore_constants.CUR_READ):
 		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
                                                "Current%sRead%s(bytes)"%(NBSP,
 									 NBSP),
@@ -748,7 +748,7 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
 		    m_table.append(tr)
 		    self.add_files(md, m_table)
 		tr = HTMLgen.TR(empty_data())
-		tr.append(HTMLgen.TD(mv_table, colspan=5, width="100%"))
+		tr.append(HTMLgen.TD(m_table, colspan=5, width="100%"))
 		table.append(tr)
 	    else:
 		# all we have is the alive information
@@ -767,7 +767,7 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
         for server in skeys:
             # look for migrators
             if enstore_functions2.is_migrator(server):
-                # this is a mover. output its info
+                # this is a migrator. Output its info
                 self.migrator_row(server, table)
 	return table
 
@@ -1576,13 +1576,13 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
     # output all of the udp proxy server rows 
     def udp_proxy_server_rows(self, table, skeys):
-	# now output the media changer information
+	# now output the udp proxy serverr information
 	for server in skeys:
 	    if enstore_functions2.is_udp_proxy_server(server):
 		if self.not_being_monitored(server):
 		    self.unmonitored_servers.append(self.server_row(server))
 		else:
-		    # this is a media changer. output its alive info
+		    # this is a udp proxy server. Output its alive info
 		    table.append(self.server_row(server))
 
     # output the row that lists the total transfers (current and pending) row
@@ -1839,7 +1839,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		    table.append(self.mover_row(server))
 
     def migrator_row(self, server):
-	# this is a mover. output its info
+	# this is a migrator. output its info
 	m_d = self.data_dict.get(server, {})
 	name = self.server_url(server, enstore_functions2.get_migrator_status_filename(),
 			       server)
@@ -1851,9 +1851,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    if string.find(m_d[enstore_constants.STATUS][0], NBSP) == -1 and \
 	       m_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
 		m_d[enstore_constants.STATUS][0] = \
-			      "%s%s:%s%s"%(mover_d[enstore_constants.STATUS][0], 
+			      "%s%s:%s%s"%(m_d[enstore_constants.STATUS][0], 
 					   NBSP, NBSP, 
-					   mover_d[enstore_constants.STATE])
+					   m_d[enstore_constants.STATE])
 	    # get the first word of the migrator state, we will use this
 	    # to tell if this is a bad state or not
 	    words = string.split(m_d[enstore_constants.STATE])
@@ -2909,6 +2909,8 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    mv_keys = self.add_data(mv, mv_keys, tr, out_dict, offline_dict)
 	    mv_keys = self.add_data(mv, mv_keys, tr, out_dict, offline_dict)
 	    entable.append(tr)
+            
+       # now add the migrator information 
 	tr = HTMLgen.TR(empty_header())
 	tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U("Migrators"), size="+1", 
 					  color=BRICKRED), align="RIGHT", colspan=2))

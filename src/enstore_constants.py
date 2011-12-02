@@ -146,7 +146,7 @@ EV_RLY = "Event Relay"
 UP_DOWN = "up_down"
 RATE = "Ratekeeper"
 LMD = "Library Manager Director"
-DISPR = "PE Server & Migr. Dispatcher"
+DISPR = "PE Server and Migr. Dispatcher"
 
 # server names used in config file
 ###Note: enstore start/stop assumes that the spelling here matches that of

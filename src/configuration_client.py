@@ -391,9 +391,9 @@ class ConfigurationClient(generic_client.GenericClient):
         return migrator_list
 
     # get list of the migrators
-    def get_migrators(self, timeout=0, retry=0):
+    def get_migrators(self, timeout=0, retry=0, conf_dict=None):
         migrator_list = []
-        migrator_list1 = self.get_migrators2(timeout, retry)
+        migrator_list1 = self.get_migrators2(timeout, retry, conf_dict)
         for migrator in migrator_list1:
            migrator_list.append(migrator['name'])
         return migrator_list

@@ -619,8 +619,6 @@ def do_real_work():
 	    total_lms.append(lmc) 
 	    if no_override(lmc, override_d_keys):
 		total_servers_names.append(lmc.name)
-            else:
-                "override", lmc.name
 
 	# no duplicates in dict
 	meds[get_media_changer(cdict, config_d, config_d_keys, lm)] = 1 
