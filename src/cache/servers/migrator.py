@@ -13,6 +13,7 @@ import time
 import threading
 import types
 import copy
+import errno
 import logging
 
 # enstore imports
@@ -178,6 +179,36 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(name, self.alive_interval)
 
+    # file clerk set_cache_status currently can not send long messages
+    # this is a temporary solution
+    def set_cache_status(self, set_cache_params):
+        Trace.trace(10, "set_cache_status: cache_params %s"%(len(set_cache_params),))
+        # create a local copy of set_cache_params,
+        # because the array will be modified by pop()
+        local_set_cache_params = copy.copy(set_cache_params)
+        list_of_set_cache_params = []
+        tmp_list = []
+        while len(local_set_cache_params) > 0:
+            param = local_set_cache_params.pop()
+            if len(str(tmp_list)) + len(str(param)) < 15000: # the maximal message size is 16384
+                tmp_list.append(param)
+            else:
+               list_of_set_cache_params.append(tmp_list)
+               tmp_list = []
+               tmp_list.append(param)
+        if not list_of_set_cache_params:
+            # tmp_list size did not exceed 15000
+            list_of_set_cache_params.append(tmp_list)
+        Trace.trace(10, "set_cache_status: params %s"%(list_of_set_cache_params,))
+               
+        # now send all these parameters
+        for param_list in list_of_set_cache_params:
+            Trace.trace(10, "set_cache_status: sending set_cache_status %s"%(param_list,))
+            
+            rc = self.fcc.set_cache_status(param_list)
+            Trace.trace(10, "set_cache_status: set_cache_status 1 returned %s"%(rc,))
+        return rc
+
     # pack files into a single aggregated file
     # if there are multiple files in request list
     # 
@@ -286,8 +317,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 if type(bfid) == types.UnicodeType:
                     bfid = bfid.encode("utf-8")
                 rec = self.fcc.bfid_info(bfid)
+
                 if (rec['status'][0] == e_errors.OK and
-                    (rec['archive_status'] not in (file_cache_status.ArchiveStatus.ARCHIVED, file_cache_status.ArchiveStatus.ARCHIVING))):
+                    (rec['archive_status'] not in
+                     (file_cache_status.ArchiveStatus.ARCHIVED, file_cache_status.ArchiveStatus.ARCHIVING)) and
+                    (rec['deleted'] == "no")): # file can be already deleted by the archiving time
                     write_enabled_counter = write_enabled_counter + 1
             if write_enabled_counter != len(request_list):
                 Trace.log(e_errors.ERROR, "No files will be archived, because some of them or all are already archived or being archived")
@@ -308,7 +342,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                      'cache_status':None,# we are not changing this
                                      'archive_status': file_cache_status.ArchiveStatus.ARCHIVING,
                                      'cache_location': None})       # we are not changing this
-        rc = self.fcc.set_cache_status(set_cache_params)
+        rc = self.set_cache_status(set_cache_params)
         Trace.trace(10, "write_to_tape: will write %s into %s"%(src_file_path, dst_file_path,))
         #return
         encp = encp_wrapper.Encp()
@@ -407,27 +441,40 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                          'archive_status': None,        # we are not changing this
                                          'cache_location': rec['cache_location']})       # we are not changing this
                 
-        rc = self.fcc.set_cache_status(set_cache_params)
+
+
+        rc = self.set_cache_status(set_cache_params)
         Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
+               
         for item in set_cache_params:
             try:
                 Trace.trace(10, "purge_files: removing %s"%(item['cache_location'],))
                 os.remove(item['cache_location'])
-                try:
-                    os.removedirs(os.path.dirname(item['cache_location']))
-                except OsError, detail:
-                    Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
-                    Trace.trace(10, "purge_files: error removind directory: %s"%(detail,))
-                    pass
-                except Exception, detail:
-                    Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
-                    pass
-                item['cache_status'] = file_cache_status.CacheStatus.PURGED
-                Trace.log(e_errors.INFO, "purge_files: purged %s"%(item['cache_location'],))
+            except OSError, detail:
+                if detail.args[0] != errno.ENOENT:
+                    Trace.trace(10, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
+                    Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
             except Exception, detail:
                 Trace.trace(10, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
                 Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
-        rc = self.fcc.set_cache_status(set_cache_params)
+                
+            try:
+                os.removedirs(os.path.dirname(item['cache_location']))
+                item['cache_status'] = file_cache_status.CacheStatus.PURGED
+                Trace.log(e_errors.INFO, "purge_files: purged %s"%(item['cache_location'],))
+            except OSError, detail:
+                if detail.args[0] != errno.ENOENT:
+                    Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
+                    Trace.trace(10, "purge_files: error removind directory: %s"%(detail,))
+                else:
+                    item['cache_status'] = file_cache_status.CacheStatus.PURGED
+                    Trace.log(e_errors.INFO, "purge_files: purged %s"%(item['cache_location'],))
+                    
+            except Exception, detail:
+                Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
+
+        rc = self.set_cache_status(set_cache_params)
+        Trace.trace(10, "purge_files: set_cache_status 2 returned %s"%(rc,))
 
         status_message = cache.messaging.mw_client.MWRPurged(orig_msg=rq)
         try:
