@@ -3492,6 +3492,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # If file is a part of a package open the corresponding package istead of opening a requested file.
             # This guaraties that the files in the package will be opened syncronously.
             bfid_to_open = self.is_packaged(w) # package id
+            Trace.trace(self.my_trace_level+1, "_mover_idle: bfid_to_open %s"%(bfid_to_open,))
+
             if not bfid_to_open:
                 bfid_to_open = w['fc']['bfid']
                 rc = fcc.open_bitfile(bfid_to_open)
@@ -3795,6 +3797,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 # If file is a part of a package open the corresponding package istead of opening a requested file.
                 # This guaraties that the files in the package will be opened syncronously.
                 bfid_to_open = self.is_packaged(w) # package id
+                Trace.trace(self.my_trace_level+1, "_mover_bound_volume: bfid_to_open %s"%(bfid_to_open,))
+                
                 if not bfid_to_open:
                     bfid_to_open = w['fc']['bfid']
                     rc = fcc.open_bitfile(bfid_to_open)
