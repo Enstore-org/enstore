@@ -27,7 +27,8 @@ import Trace
 # enstore cache imports
 import file_cache_status
 import cache.errors
-import cache.messaging.client2 as cmc
+#import cache.messaging.client2 as cmc
+import cache.messaging.client as cmc
 import cache.messaging.mw_client
 import cache.messaging.pe_client
 import cache.messaging.file_list as file_list
