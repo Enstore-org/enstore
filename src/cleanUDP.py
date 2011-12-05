@@ -40,6 +40,14 @@ import e_errors
 if os.uname()[0] == "Linux":
 	socket.SO_NO_CHECK = 11
 
+# The following are from linux/in.h
+ 
+IP_MTU_DISCOVER = 10       # MTU discover code
+#IP_MTU_DISCOVER values 
+IP_PMTUDISC_DONT = 0       # Never send DF frames
+IP_PMTUDISC_WANT = 1       # Use per route hints (default)
+IP_PMTUDISC_DO   = 2       # Always DF  
+IP_PMTUDISC_PROBE= 3       # Ignore dst pmtu
 
 def Select (R, W, X, timeout) :
 
@@ -117,6 +125,22 @@ class cleanUDP :
 						"UDP checksum not enabled.\n")
 			except socket.error:
 				pass
+			# Allow UDP packet fragmentation.
+			# It is disallowed by default.
+			# If it is disallowed then the following problem occurs.
+			# If UDP packet size is less than MTU on a sender node
+			# and bigger than MTU on receiver node the packet gets
+			# delivered without fragmentation and rejected
+			# on receiver node because it can not treat frames bigger than MTU
+			try:
+				self.socket.setsockopt(socket.SOL_IP, IP_MTU_DISCOVER, IP_PMTUDISC_DONT)
+				rc = self.socket.getsockopt(socket.SOL_IP, IP_MTU_DISCOVER)
+				if rc != IP_PMTUDISC_DONT:
+					sys.stderr.write(
+						"IP_MTU_DISCOVER is set to %s"%(rc,))
+			except socket.error:
+				pass
+			
 		
                 return
 

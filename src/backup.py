@@ -37,7 +37,7 @@ def get_size(dbHome,dbFile):
             w=string.split(l)
             nkeys=w[0]
             break
-            
+
     size = os.stat(os.path.join(dbHome,dbFile))[stat.ST_SIZE]
     return (nkeys, size)
 
@@ -62,7 +62,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 
 	if os.system("gzip -f *.tar"):	# failed?
             os.system("compress *.tar")
-        tarfiles=glob.glob("*.tar*")
+        tarfiles=glob.glob("*")
         for file in tarfiles:
             cmd = "cp %s %s"%(file, os.path.join(dir_bck, file))
             os.system(cmd)
@@ -138,7 +138,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         if os.system(cmd):
             Trace.log(e_errors.ERROR, "Failed: "+cmd)
             sys.exit(1)
-        
+
         p = string.split(vjbk, '.')
         p[0] = p[0]+time_stamp
         fp = string.join(p, '.')
@@ -146,7 +146,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         if os.system(cmd):
             Trace.log(e_errors.ERROR, "Failed: "+cmd)
             sys.exit(1)
-            
+
         now=time.gmtime(time.time())
         day=now[7]
         hour=now[3]
@@ -264,5 +264,5 @@ def do_work(intf):
 
 if __name__=="__main__":
     intf = BackupInterface(user_mode=0)
-    
+
     sys.exit(do_work(intf))

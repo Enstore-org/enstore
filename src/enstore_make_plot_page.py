@@ -387,6 +387,8 @@ def do_work2(intf):
          "Mover Plots"),
         (enstore_constants.MOUNT_LATENCY_SUMMARY_PLOTS_SUBDIR,
          "Mount Latency plots"),
+        (enstore_constants.MOUNTS_PER_ROBOT_PLOTS_SUBDIR,
+         "Mounts/day per tape library"),
         ]
 
     use_subdir_list = []

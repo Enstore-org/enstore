@@ -24,8 +24,28 @@ remedy_server="csdserver"
 . /usr/local/etc/setups.sh
 
 rc=1
-setup remedy_soap
-if [ "$?" = "0" ];
+
+setup servicenow_soap 2>/dev/null
+if [ "${SETUP_SERVICENOW_SOAP:-}" != "" ];
+then
+    export PYTHONPATH=$SETUPS_DIR:$PYTHONPATH
+    CI=`echo $1 | awk '{ printf toupper($1) }'`
+    $ENSTORE_DIR/sbin/create_remedy_ticket.py "${CI}" "$2" "$3" "$4" 2>/dev/null
+    rc=$?
+    if [ "${rc}" != "0" ];
+    then
+	echo "enstore alarm --raise --root_error 'servicenow_soap api call failed' --severity E"|at now+1min
+	unsetup servicenow_soap 2>/dev/null
+    else
+	exit 0
+    fi
+else
+    echo "enstore alarm --raise --root_error 'servicenow_soap product missing or not current' --severity E"|at now+1min
+fi
+
+
+setup remedy_soap 2>/dev/null
+if [ "${SETUP_REMEDY_SOAP:-}" != "" ];
 then
     export PYTHONPATH=$SETUPS_DIR:$PYTHONPATH
     CI=`echo $1 | awk '{ printf toupper($1) }'`
@@ -41,31 +61,4 @@ else
     echo "enstore alarm --raise --root_error 'remedy_soap product missing or not current' --severity E"|at now+1min
 fi
 
-#
-# try old api as well. Let's generate two pages....
-#
-
-setup remedy_api
-if [ "$?" = "1" ];
-then
-	# no product found
-	setup enstore
-	echo "enstore alarm --raise --root_error 'remedy_api product missing or not current' --severity E"|at now+1min
-else
-	# make sure we have enough inputs, either 4 or 10
-	# the inputs are -
-	# create_entry  <remedy_server> <system_name> <condition> <short_msg> <long_msg> [submitter user password category type item]
-	#
-	# if the last parameters are defaulted, then NGOP defaults are used.
-	#
-	if [ "$#" = "4" ];
-	then
-		$REMEDY_API_DIR/bin/create_entry $remedy_server $1 $2 $3 $4
-	elif [ "$#" = "10" ];
-	then
-		$REMEDY_API_DIR/bin/create_entry $remedy_server "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10"
-	else
-		setup enstore
-		enstore alarm --raise --root_error "generate_ticket invalid parameters" --message "expected 4 or 10 parameters and found $#" --severity E&
-	fi
-fi
+exit 0

@@ -19,20 +19,32 @@ fi
 # constants
 krbdir="/usr/krb5/bin"
 defaultDomain=".fnal.gov"
+RSYNC="/usr/bin/rsync"
 
-set +u
-if [ -n "$ENSCP" ];then
-    /usr/bin/rsync --rsh=$ENSCP "$@"
-    exit $?
+if [ ! -x ${RSYNC} ]; then 
+    echo "no rsync found" 
+    exit 1
 fi
-set -u
+
+do_rsync() {
+    if [ "${ENSSH:-x}" != "x" ]; then
+	${RSYNC} --rsh=${ENSSH} "$@"
+    else
+	if [ -d $krbdir ]; then
+	    ${RSYNC} --rsh=${krbdir}/rsh "$@"
+	else
+	    ${RSYNC} "$@"
+	fi
+    fi
+    rc=$?
+    return $rc
+}
 
 # if we are a kerberized system, we need to do some pre rcp stuff
 # for the root user. if not, just do a normal rcp
 
 if [ -d $krbdir ]; then
    # we are kerberized
-
    # get some values
    user=`whoami`
    host=`uname -n`
@@ -44,28 +56,26 @@ if [ -d $krbdir ]; then
       thisHost=${host}${defaultDomain};
    fi
 
+
+   OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
    if [ "$user" = "root" ]; then
       # the user is root
-      OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
       KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
       ${krbdir}/kinit -k host/${thisHost}
-      /usr/bin/rsync --rsh=${krbdir}/rsh "$@"
+      do_rsync "$@"
       rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
-
    elif [ "$user" = "enstore" ]; then
       # the user is enstore
-      OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
       KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
       ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
-      /usr/bin/rsync --rsh=${krbdir}/rsh "$@"
+      do_rsync "$@"
       rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
-
    else
       # this is someone else, see if we have a ticket before doing anything
       OLDKRB5CCNAME=""
@@ -77,16 +87,14 @@ if [ -d $krbdir ]; then
         KRB5CCNAME=/tmp/krb5cc_myjob_$$;export KRB5CCNAME
         ${krbdir}/kcron 2> /dev/null
       fi
-      /usr/bin/rsync --rsh=${krbdir}/rsh "$@"
+      do_rsync "$@"
       rc=$?
       # only destroy the ticket if we obtained one using kcron
       if [ "$OLDKRB5CCNAME" != "" ]; then ${krbdir}/kdestroy; fi;
    fi
-
 else
    # we are not kerberized
-    rsync "$@"
-    rc=$?
+   rc=do_rsync "$@"
 fi
 
 if [ $debug -eq 1 ]; then set +xv; fi

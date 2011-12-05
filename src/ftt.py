@@ -175,6 +175,42 @@ class FTT:
         return check(_ftt.ftt_list_supported(self.d, file))
     def status(self, timeout=60):
         return _ftt.ftt_status(self.d, timeout)
+    # interface to do_scsi_command
+    # use this for scsi commands which transfer to device
+    def do_write_scsi_command(self, OpName, CmdBuff, CmdBufSize, RdWrBuf, RdWrBuffSize, Delay):
+        # OpName - arbitrary name of operation (example: "mode sense, page 0x1e"
+        # CmdBuff - command list according to scsi command description
+        # CmdBufSize - size (length) of CmdBuff
+        # RdWrBuf - Data read write list
+        # RdWrBuffSize - size (length) of RdWrBuf
+        # Delay - scsi command timeout in seconds
+        # returns result of scsi command
+        return check(_ftt.ftt_do_scsi_command(self.d,
+                                              OpName,
+                                              CmdBuff,
+                                              CmdBufSize,
+                                              RdWrBuf,
+                                              RdWrBuffSize,
+                                              Delay,
+                                              1)
+                     )
+    # interface to do_scsi_command
+    # use this for scsi commands which transfer from device
+    def do_read_scsi_command(self, OpName, CmdBuff, CmdBufSize, RdWrBuffSize, Delay):
+        # OpName - arbitrary name of operation (example: "mode sense, page 0x1e"
+        # CmdBuff - command list according to scsi command description
+        # CmdBufSize - size (length) of CmdBuff
+        # RdWrBuf - Data read write list
+        # RdWrBuffSize - size (length) of RdWrBuf
+        # Delay - scsi command timeout in seconds
+        # returns data as list of numbers
+        return check(_ftt.do_read_scsi_command(self.d,
+                                               OpName,
+                                               CmdBuff,
+                                               CmdBufSize,
+                                               RdWrBuffSize,
+                                               Delay))
+
     def get_position(self):
         try:
             status, file_position, block_position = _ftt.ftt_get_position(self.d)

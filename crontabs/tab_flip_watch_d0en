@@ -1,4 +1,3 @@
 #Needs to run on the web server.
 30 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500F1 $ENSTORE_DIR/sbin/tab_flipping_nanny -l D0-LTO4F1 -a > /dev/null 2> /dev/null
-# need to wait until tab flipping code updated for GS libraries
-#35 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500GS $ENSTORE_DIR/sbin/tab_flipping_nanny -l D0-LTO4GS -a > /dev/null 2> /dev/null
+35 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500GS $ENSTORE_DIR/sbin/tab_flipping_nanny -l D0-LTO4GS -a > /dev/null 2> /dev/null

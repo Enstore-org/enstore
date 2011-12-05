@@ -107,6 +107,7 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
     }
 }
 
+
 %{
 /* Include in the generated wrapper file */
 typedef char * cptr;
@@ -143,12 +144,70 @@ typedef char * cptr;
     }
 }
 
-%typedef char * cptr;
 
+%typedef char * cptr;
 %typemap(python, in) cptr{
         $target= PyString_AsString($source);
 }
+%typedef char * byteptr; // to map python list < - > array of bytes for do_scsi_command
+
+%typemap(python, in) byteptr{
+  if (PyString_Check($source)) {
+    // no type mapping if string
+    $target= PyString_AsString($source);
+  }
+
+  else if (PyList_Check($source)) {
+    int size = PyList_Size($source);
+    int i = 0;
+    char item;
+
+    $target = (char *) malloc((size+1)*sizeof(char));
+    for (i = 0; i < size; i++) {
+      PyObject *o = PyList_GetItem($source,i);
+      if (PyInt_Check(o)) {
+	item = (char)PyInt_AsLong(PyList_GetItem($source,i)); 
+	$target[i] = item;
+	}
+      else {
+	PyErr_SetString(PyExc_TypeError,"list must contain integers");
+	free($target);
+	return NULL;
+      }
+    }
+  } else {
+    PyErr_SetString(PyExc_TypeError,"not a list");
+    return NULL;
+  }
+}
+
+
+// Wrapper around ftt_do_scsi_command to solve the problem with
+// read/write buffer
+%inline %{
+PyObject * do_read_scsi_command(ftt_descriptor d, const char *cmd_name, const byteptr cmd_ptr, int cmd_len, int buf_len, int to) 
+{
+    int i, res;
+    PyObject * out_list;
+    char * scsi_buf = (char *) malloc(buf_len * sizeof(char));
+    long item;
+
+    res = ftt_do_scsi_command(d, cmd_name, cmd_ptr, cmd_len, scsi_buf, buf_len, to, 0);
+    out_list = PyList_New(buf_len);
+    for (i = 0; i < buf_len; i++) {
+	item = (long)scsi_buf[i];
+	PyList_SetItem(out_list, i, PyInt_FromLong(item));
+    }
+	
+    free(scsi_buf);   	
+    return out_list;
+    
+}
+
+%}
 #endif
+
+
 
 /* ftt_defines.h
 **
@@ -424,6 +483,7 @@ int		ftt_get_partitions(ftt_descriptor,ftt_partbuf);
 int		ftt_write_partitions(ftt_descriptor,ftt_partbuf);
 int		ftt_skip_part(ftt_descriptor,int);
 
+int             ftt_do_scsi_command(ftt_descriptor, const cptr,  const byteptr, int, byteptr, int, int, int);
 
 extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 

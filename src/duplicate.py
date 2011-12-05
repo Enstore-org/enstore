@@ -21,6 +21,7 @@ import sys
 import os
 import string
 import re
+import errno
 
 # enstore imports
 import volume_clerk_client
@@ -30,6 +31,7 @@ import duplication_util
 import e_errors
 import Trace
 import option
+import delete_at_exit
 
 # modifying migrate module
 migrate.MIGRATION_FILE_FAMILY_KEY = "_copy_%s" #Not equals to (==) safe.
@@ -76,6 +78,15 @@ DuplicateInterface.migrate_options[option.MAKE_COPIES] = {
      option.VALUE_USAGE:option.OPTIONAL,},
     ]}
 
+#Avoid duplicate code testing for possible okay error messages.
+def handle_string_return_code(rtn_str,txt): 
+    if rtn_str and rtn_str.find(txt) != -1:
+        return None  #Error returned, but for this case pretend it's okay.
+    elif rtn_str:
+        return rtn_str  #Error.
+
+    return ""  #Success.
+
 # search_order()
 #Return in the following order:
 #  1) first bfid to check
@@ -85,8 +96,9 @@ DuplicateInterface.migrate_options[option.MAKE_COPIES] = {
 #This is necessary to optimize the search order for both migration and
 # duplication.  It orders the bfids to determine which is the active one
 # in PNFS.
-def search_order(src_bfid, src_file_record, dst_bfid, dst_file_record,
-                 is_it_copied, is_it_swapped, fcc, db):
+def search_order_duplication(src_bfid, src_file_record, dst_bfid,
+                             dst_file_record,
+                             is_it_copied, is_it_swapped, fcc, db):
     #src_bfid:  The bfid of the source file.
     #src_file_record:  The file record of the source file.
     #dst_bfid:  The bfid of the destination file (or None if not known).
@@ -113,18 +125,8 @@ def search_order(src_bfid, src_file_record, dst_bfid, dst_file_record,
 
     return src_bfid, dst_bfid, src_file_record, dst_file_record
     
-
-#Avoid duplicate code testing for possible okay error messages.
-def handle_string_return_code(rtn_str,txt) : 
-    if rtn_str and rtn_str.find(txt) != -1:
-        return None  #Error returned, but for this case pretend it's okay.
-    elif rtn_str:
-        return rtn_str  #Error.
-
-    return ""  #Success.
-
 # migration_file_family(ff) -- making up a file family for migration
-def migration_file_family(bfid, ff, fcc, intf, deleted = migrate.NO):
+def migration_file_family_duplication(bfid, ff, fcc, intf, deleted=migrate.NO):
     reply_ticket = fcc.find_all_copies(bfid)
     if e_errors.is_ok(reply_ticket):
         count = len(reply_ticket['copies'])
@@ -142,12 +144,12 @@ def migration_file_family(bfid, ff, fcc, intf, deleted = migrate.NO):
 
 # normal_file_family(ff) -- making up a normal file family from a
 #				migration file family
-def normal_file_family(ff):
+def normal_file_family_duplication(ff):
 	return re.sub("_copy_[0-9]*", "", ff, 1)
 
 #Return True if the file_family has the pattern of a migration/duplication
 # file.  False otherwise.
-def is_migration_file_family(ff):
+def is_migration_file_family_duplication(ff):
     if re.search("_copy_[0-9]*", ff) == None:
         return False
 
@@ -192,6 +194,18 @@ def log_uncopied_duplication(src_bfid, dst_bfid, fcc, db):
         return 1  #Error
     else:
         return 0  #Success.
+
+#When duplicating to multiple copies, we need to make sure we pick the
+# first original, not the altimate original.
+def find_original_duplication(bfid, fcc):
+    original_reply = fcc.find_original(bfid)
+    f0 = {}
+    if e_errors.is_ok(original_reply) \
+           and original_reply['original'] != None \
+           and original_reply['original'] != bfid:
+        f0 = fcc.bfid_info(original_reply['original'])
+
+    return f0
 
 # This is to change the behavior of migrate.swap_metadata.
 # duplicate_metadata(job, fcc, db) -- duplicate metadata for src and dst
@@ -300,13 +314,19 @@ def duplicate_metadata(job, fcc, db):
 
     return res
 
-#This is a no-op for duplication.
-def cleanup_after_scan(MY_TASK, mig_path, src_bfid, fcc, db):
-	pass
+#This function shall be called for original destination copies.
+#  This excludes multiple copies made during migration and multiple copies
+#  of multiple copies.
+#This shall, also, be called if --make-copies or --make-failed-copies was
+# specified.
+def cleanup_after_scan_duplication(MY_TASK, mig_path, src_bfid, fcc, db):
+    #src_bfid, fcc and db are migrate.py specific.
+    __pychecker__ = "unusednames=src_bfid,fcc,db"
+    return migrate.cleanup_after_scan_common(MY_TASK, mig_path)
 
 
 #Note: db used only for migrate.py version of this function.
-def is_expected_volume(MY_TASK, vol, likely_path, fcc, db):
+def is_expected_volume_duplication(MY_TASK, vol, likely_path, fcc, db):
 	__pychecker__ = "unusednames=db"
 
 	#Confirm that the destination volume matches the volume that
@@ -343,30 +363,41 @@ def is_expected_volume(MY_TASK, vol, likely_path, fcc, db):
 
 
 #Duplication doesn't do cloning.
-def setup_cloning():
+def setup_cloning_duplication():
 	pass
 
 ##
 ## Override migration functions with those for duplication.
 ##
-migrate.is_expected_volume = is_expected_volume
-migrate.cleanup_after_scan = cleanup_after_scan
+migrate.is_expected_volume = is_expected_volume_duplication
+migrate.cleanup_after_scan = cleanup_after_scan_duplication
+migrate.find_original = find_original_duplication
 migrate.swap_metadata = duplicate_metadata
 migrate.is_expected_restore_type = migrate.is_duplication
-migrate.setup_cloning = setup_cloning
-migrate.migration_file_family = migration_file_family
-migrate.normal_file_family = normal_file_family
-migrate.is_migration_file_family = is_migration_file_family
+migrate.setup_cloning = setup_cloning_duplication
+migrate.migration_file_family = migration_file_family_duplication
+migrate.normal_file_family = normal_file_family_duplication
+migrate.is_migration_file_family = is_migration_file_family_duplication
 migrate.log_copied = log_copied_duplication
 migrate.log_uncopied = log_uncopied_duplication
-migrate.search_order = search_order
+migrate.search_order = search_order_duplication
 
 if __name__ == '__main__':
 
-	Trace.init(migrate.MIGRATION_NAME)
+    	Trace.init(migrate.MIGRATION_NAME)
+        Trace.do_message(0)
+
+        delete_at_exit.setup_signal_handling()
 
 	intf_of_migrate = migrate.MigrateInterface(sys.argv, 0) # zero means admin
 
-	migrate.do_work(intf_of_migrate)
-	
-
+	try:
+		migrate.do_work(intf_of_migrate)
+	except (OSError, IOError), msg:
+		if msg.errno == errno.EPIPE:
+			#User piped the output to another process, but
+			# didn't read all the data from the migrate process.
+			pass  
+		else:
+			raise sys.exc_info()[0], sys.exc_info()[1], \
+			      sys.exc_info()[2]

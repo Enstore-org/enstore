@@ -125,7 +125,6 @@ class GenericClient:
         self.name = name    # Abbreviated client instance name
                             # try to make it capital letters
                             # not more than 8 characters long.
-        
 	if not flags & enstore_constants.NO_UDP and not self.__dict__.get('u', 0):
 	    self.u = udp_client.UDPClient()
 
@@ -308,11 +307,18 @@ class GenericClient:
              type(x) == types.DictType and x.get('long_reply', None)) \
             or (long_reply != None and long_reply)):
 
-            #If the address we are told to connect to is not in the valid
-            # list, give an error.
-            if not hostaddr.allow(x['callback_addr']):
-                x['status'] = "address %s not allowed" % (x['callback_addr'],)
-                return x
+            if (hasattr(self, "server_address") and 
+                (x['callback_addr'][0] == socket.gethostbyname(self.server_address[0]))):
+                # If this client instance has attribute 'server_addr'
+                # and callback came from this address
+                # there is no need to check if access from this server is allowed
+                pass
+            else:
+                #If the address we are told to connect to is not in the valid
+                # list, give an error.
+                if not hostaddr.allow(x['callback_addr']):
+                    x['status'] = "address %s not allowed" % (x['callback_addr'],)
+                    return x
             
             try:
                 connect_socket = callback.connect_to_callback(x['callback_addr'])

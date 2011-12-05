@@ -186,6 +186,7 @@ known_domains = { 'invalid_domains' : {},
 #Note: The configuration_server is different from the other servers.
 # It needs to call this function directly.
 def update_domains(csc_or_dict):
+    Trace.trace(19, "update_domains parameter: %s" % (csc_or_dict,))
     global known_domains
 
     #Determine the source.  The dict argument type is necessary for the

@@ -96,27 +96,21 @@ until [ -n "${location:-}" ]; do
   case $gang in
     d0en)
       echo " 1) GCC  if you are in GCC"
-      echo " 2) FCCM if you are on the mezzanine in FCC"
-      echo " 3) FCC2 if you are on the 2nd floor in FCC"
-      echo " 4) Quit if you are somewhere else"
-      locations="GCC FCCM FCC2"
-      mezz_acs=1
+      echo " 2) FCC2 if you are on the 2nd floor in FCC"
+      echo " 3) Quit if you are somewhere else"
+      locations="GCC FCC2"
       ;;
     stken)
       echo " 1) GCC  if you are in GCC"
-      echo " 2) FCCM if you are on the mezzanine in FCC"
-      echo " 3) FCC2 if you are on the 2nd floor in FCC"
-      echo " 4) Quit if you are somewhere else"
-      locations="GCC FCCM FCC2"
-      mezz_acs=0
+      echo " 2) FCC2 if you are on the 2nd floor in FCC"
+      echo " 3) Quit if you are somewhere else"
+      locations="GCC FCC2"
       ;;
     cdfen)
       echo " 1) GCC  if you are in GCC"
-      echo " 2) FCCM if you are on the mezzanine in FCC"  # CDF-9940B-D0 library is in d0en silo
-      echo " 3) FCC2 if you are on the 2nd floor"
-      echo " 4) Quit if you are somewhere else"
-      locations="GCC FCCM FCC2"
-      mezz_acs=1                # Same as d0en
+      echo " 2) FCC2 if you are on the 2nd floor"
+      echo " 3) Quit if you are somewhere else"
+      locations="GCC FCC2"
       ;;
   esac
   echo
@@ -125,42 +119,39 @@ until [ -n "${location:-}" ]; do
   [ $EOF -gt 0 ] && exit
 done
 
-# flag for cdfen 9940B tapes in d0en silo
-CDFinD0=0
-
-# some locations unambiguously define a library
 case ${gang}@${location} in
-  *en@GCC)
-     robot="8500G1"
-     icap="0,9,0"	# library 2, lsm 9, rail 2, cap A
-     ocap="0,5,0"	# library 3, lsm 5, rail 2, cap A
-     sun="fntt-gcc"
-     ;;
-
-  d0en@FCCM|stken@FCCM)
-     robot="9310"
-     icap="$mezz_acs,1,0"
-     ocap="$mezz_acs,0,0"
-     sun=fntt
-     ;;
-
-  cdfen@FCCM)    # CDF-9940B-D0 -- CDF overflow into D0en silo, but in cdfen enstore instance
-     robot="9310"
-     icap="$mezz_acs,1,0"
-     ocap="$mezz_acs,0,0"
+  *en@FCC2)  # some locations unambiguously define a library
+     robot=8500F1
      sun=fntt2
-     CDFinD0=1
+     # keep d0en tapes in SL8500-5 and cdfen and stken in SL8500-3
+     case ${gang} in
+       cdfen)
+	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
+	  ocap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
+	  ;;
+       d0en)
+	  icap="1,9,0"       # acs 1, lsm 5, (rail 2), cap A
+	  ocap="1,9,0"       # acs 1, lsm 9, (rail 2), cap A
+	  ;;
+       stken)
+	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
+	  ocap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
+	  ;;
+       *) exit 1
+	  ;;
+     esac
      ;;
 
-  *en@FCC2)		# disambiguate the libraries on FCC2
+  *en@GCC)		# disambiguate the libraries at GCC
      until [ -n "${lib:-}" ]; do
        echo
        echo "Which library are you working with ?  Choose"
        case $gang in
 	 cdfen|d0en|stken)
-	   echo " 1) 8500 if you are working with the SL8500"
-	   echo " 2) Quit if you are doing something else"
-	   libs="8500"
+	   echo " 1) G1 if you are working with the SL8500s in front"
+	   echo " 2) GS if you are working with the SL8500-6 in the rear"
+	   echo " 3) Quit if you are doing something else"
+	   libs="G1 GS"
 	   ;;
        esac
        echo
@@ -168,26 +159,18 @@ case ${gang}@${location} in
        select lib in $libs Quit; do EOF=0; break; done
        [ $EOF -gt 0 ] && exit
      done
-
-     # keep d0en tapes in SL8500-5 and cdfen and stken in SL8500-3
-     case ${gang}@${location}.${lib} in
-       cdfen@FCC2.8500)
-	  robot="8500F1"
-	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
-	  ocap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
-	  sun="fntt2"
+     case ${lib} in
+       G1)
+	  robot="8500G1"
+	  icap="0,9,0"       # acs 0, lsm 9, (rail 2), cap A
+	  ocap="0,5,0"       # acs 0, lsm 5, (rail 2), cap A
+	  sun="fntt-gcc"
 	  ;;
-       d0en@FCC2.8500)
-	  robot="8500F1"
-	  icap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
-	  ocap="1,5,0"       # acs 1, lsm 5, (rail 2), cap A
-	  sun="fntt2"
-	  ;;
-       stken@FCC2.8500)
-	  robot="8500F1"
-	  icap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
-	  ocap="1,1,0"       # acs 1, lsm 1, (rail 2), cap A
-	  sun="fntt2"
+       GS)
+	  robot="8500GS"
+	  icap="2,1,0"       # acs 2, lsm 1, (rail 2), cap A
+	  ocap="2,1,0"       # acs 2, lsm 1, (rail 2), cap A
+	  sun="fntt"
 	  ;;
        *) exit 1
 	  ;;
@@ -227,13 +210,7 @@ case $script in
      action=${1:-"shelve"}
      case $action in
        shelve)
-	 # Keep cdfen tapes in d0en silo in separate work directory
-	 if [ $CDFinD0 -eq 1 ]
-	 then
-	     work=$HOME/isa-tools/${robot}_CDFinD0_shelf_volumes_work
-	 else
-	     work=$HOME/isa-tools/${robot}_shelf_volumes_work
-	 fi
+	  work=$HOME/isa-tools/${robot}_shelf_volumes_work
 	  ;;
        reload)
 	  work=$HOME/isa-tools/${robot}_refit_barcode_work

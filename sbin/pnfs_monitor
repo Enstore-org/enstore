@@ -252,7 +252,7 @@ get_filepath()
                 # 2) pathfinder reports "File not found" when it really
                 #    does exist.
                 #In either case, wait a moment and try again.
-		if [ -z "$path" -o \( -n $"path" -a ! -f "$path" \) ]; then
+		if [ -z "$path" -o ! -f "$path" ]; then
 		    sleep 3  #How long is best?
 		    echo "Retrying $pnfsid" > /dev/tty
                     continue
@@ -261,7 +261,9 @@ get_filepath()
             fi
 	else
             path=""
+            break
         fi
+        count=$((count+1))
     done
     #If we still haven't gotten a valid path, prepend it with question marks.
     if [ -z "$path" -o \( -n "$path" -a ! -f "$path" \) ]; then

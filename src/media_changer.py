@@ -1930,39 +1930,46 @@ class STK_MediaLoader(MediaLoaderMethods):
 	err = 0
 	volume_list = []
 	while line:
-	    line = lv_proc.stdout.readline()
+	    try:
+	        line = lv_proc.stdout.readline()
 
-	    if line.find("ACSSA") >= 0 or line.find("Volume Status") >= 0 \
-		   or line.find("Identifier") >= 0 or len(line) == 0:
-	        #This is some other information.
+		if line.find("ACSSA") >= 0 or line.find("Volume Status") >= 0 \
+		       or line.find("Identifier") >= 0 or len(line) == 0:
+		    #This is some other information.
+		    continue
+	        Trace.trace(21, "line %s"%(line,))
+		# The returned line of interest looks like:
+		# For ACSLS version 7:
+		# TST102      ejected              1,-1,31, 7, 1         LTO-800G
+		#
+		# For ACSLS version 8:
+		# PSC573              home              0, 1, 7, 0, 0         STK2P
+		# get rid of extra whitespaces
+		tline = ' '.join(line.translate(None, string.whitespace[:5]).split())
+		# now it looks like:
+		# PSC573 home 0, 1, 7, 0, 0 STK2P
+		# get rid of space before number in address
+		tline2 = tline.replace(", ", ",")
+		# now it looks like:
+		# PSC573 home 0,1,7,0,0 STK2P
+
+		s_line = tline2.split(' ')
+		volume = s_line[0]
+		state = s_line[1]
+		location = s_line[2]
+		media_type = s_line[3]
+
+		volume_list.append({"volume" : volume,
+				    "state" : state,
+				    "location" : location,
+				    "type" : media_type,
+				    })
+	    except:
+	        Trace.log(e_errors.ERROR,
+			  "Skipping line while processing volumes list: %s" \
+			  % (line,))
 		continue
-            Trace.trace(21, "line %s"%(line,))
-            # The returned line of interest looks like:
-	    # For ACSLS version 7:
-	    # TST102      ejected              1,-1,31, 7, 1         LTO-800G
-	    #
-	    # For ACSLS version 8:
-	    # PSC573              home              0, 1, 7, 0, 0         STK2P
-            # get rid of extra whitespaces
-            tline = ' '.join(line.translate(None, string.whitespace[:5]).split())
-            # now it looks like:
-            # PSC573 home 0, 1, 7, 0, 0 STK2P
-            # get rid of space before number in address
-            tline2 = tline.replace(", ", ",")
-            # now it looks like:
-            # PSC573 home 0,1,7,0,0 STK2P
-
-            s_line = tline2.split(' ')
-	    volume = s_line[0]
-	    state = s_line[1]
-	    location = s_line[2]
-	    media_type = s_line[3]
-
-	    volume_list.append({"volume" : volume,
-				"state" : state,
-				"location" : location,
-				"type" : media_type,
-				})
+		
 	#Put the list of volumes into the reply ticket.
 	reply['volume_list'] = volume_list
 	reply['status'] = (e_errors.OK, 0, None)
@@ -2129,6 +2136,8 @@ class STK_MediaLoader(MediaLoaderMethods):
 		        #Other lines of text may be interspersed with what
 			# we are looking for.  Ignore them.
 			pass
+            else:
+                inaccessible = 0
 
 	    #Obtain specific inaccessable/disabled cell/slot count.
 	    command2 = "display cell %s,*,*,* -status reserved -c" % lsm
@@ -2151,6 +2160,8 @@ class STK_MediaLoader(MediaLoaderMethods):
 		        #Other lines of text may be interspersed with what
 			# we are looking for.  Ignore them.
 			pass
+            else:
+                reserved = 0
 
 	    #Sum these two values for the disabled count.
 	    slot_list[-1]['disabled'] = reserved + inaccessible

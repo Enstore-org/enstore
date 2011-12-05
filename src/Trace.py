@@ -136,19 +136,39 @@ def init(name, include_thread_name=''):
 
     log_thread(include_thread_name)
 
+###############################################################################
+
 #message is a string to send to stdout or stderr.
-#out_fp is sys.stdout or sys.stderr.
-def write_trace_message(message, out_fp):
-    #print_lock.acquire()
+#out_fp is sys.stdout, sys.stderr or file pointer
+def write_trace_message(message, out_fp, append_newline=True):
+    print_lock.acquire()
     try:
-        out_fp.write("%s\n" % (message,))
+        if append_newline:
+            out_fp.write("%s\n" % (message,))
+        else:
+            out_fp.write("%s" % (message,))
         out_fp.flush()
     except (KeyboardInterrupt, SystemExit):
-        #print_lock.release()
+        print_lock.release()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         pass
-    #print_lock.release()
+    print_lock.release()
+
+#out_fp is sys.stdout, sys.stderr or file pointer
+def flush_and_sync(out_fp):
+    print_lock.acquire()
+    try:
+        out_fp.flush()
+        if out_fp not in [sys.stdout, sys.stderr]:
+            #standard out and error don't fsysnc().
+            os.fsync(out_fp.fileno())
+    except (KeyboardInterrupt, SystemExit):
+        print_lock.release()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    except:
+        pass
+    print_lock.release()
     
 ###############################################################################
 
@@ -329,7 +349,8 @@ def alarm(severity, root_error, rest={},
 #Send the message to the standard out (the default) or standard error.
 #  dolog: If true, consider sending the message to the log server too.
 #  doalarm: If true, consider sending the message to the alarm server too.
-def trace(severity, message, dolog=1, doalarm=1, out_fp=sys.stdout):
+def trace(severity, message, dolog=1, doalarm=1, out_fp=sys.stdout,
+          append_newline=True):
     
     ## There is no need to waste time on creating a message, if it will not
     ## be sent.  Truncate all messages sent over the network, but not the
@@ -341,10 +362,10 @@ def trace(severity, message, dolog=1, doalarm=1, out_fp=sys.stdout):
         if not print_levels.has_key(severity):
             return
     if print_levels.has_key(severity):
-        if out_fp not in [sys.stderr, sys.stdout]:
-            write_trace_message("Neither stdout or stderr given.\n",
-                                sys.stderr)
-            return
+        #if out_fp not in [sys.stderr, sys.stdout]:
+        #    write_trace_message("Neither stdout or stderr given.\n",
+        #                        sys.stderr)
+        #    return
         
         try:
             #Format the trace text to include the standard information.
@@ -358,7 +379,7 @@ def trace(severity, message, dolog=1, doalarm=1, out_fp=sys.stdout):
             return
 
         #Send the trace string to standard out or standard error.
-        write_trace_message(new_msg, out_fp)
+        write_trace_message(new_msg, out_fp, append_newline=append_newline)
 
         """
         #print_lock.acquire()
@@ -381,14 +402,14 @@ def trace(severity, message, dolog=1, doalarm=1, out_fp=sys.stdout):
         alarm(severity, msg_truncated, doprint=0)
 
 #Send the message to the standard out (the default) or standard error.
-def message(severity, message, out_fp=sys.stdout):
+def message(severity, message, out_fp=sys.stdout, append_newline=True):
     new_msg = trunc(message)
     if message_levels.has_key(severity):
-        if out_fp not in [sys.stderr, sys.stdout]:
-            write_trace_message("Neither stdout or stderr given.\n",
-                                sys.stderr)
-            return
-        write_trace_message(new_msg, out_fp)
+        #if out_fp not in [sys.stderr, sys.stdout]:
+        #    write_trace_message("Neither stdout or stderr given.\n",
+        #                        sys.stderr)
+        #    return
+        write_trace_message(new_msg, out_fp, append_newline=append_newline)
 
 ###############################################################################
 

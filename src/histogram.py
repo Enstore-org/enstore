@@ -742,7 +742,12 @@ class Histogram1D(BasicHistogram):
             self.variance=self.reduced_rms2-self.reduced_mean*self.reduced_mean
             self.mean=self.reduced_mean+self.low
             self.rms2=self.mean*self.mean+self.variance
-            self.variance=math.sqrt(self.variance)
+            try:
+                self.variance=math.sqrt(self.variance)
+            except ValueError, msg:
+                print msg, x, self.entries, self.variance, self.rms2, self.mean
+                self.variance=math.sqrt(math.fabs(self.variance))
+                pass
             self.entries=self.entries+1
             self.mean_error=self.variance/math.sqrt(float(self.entries))
             self.variance_error=self.variance/math.sqrt(2.*float(self.entries))
@@ -899,7 +904,6 @@ class Histogram1D(BasicHistogram):
         long_string="set output '" + ps_file_name + "'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                     "set xrange [ : ]\n"+ \
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
                      "set ylabel '%s'\n"%(self.ylabel)+ \
@@ -910,6 +914,11 @@ class Histogram1D(BasicHistogram):
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
+                         "set xrange [ \""+\
+                         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_low_edge(0))) + \
+                         "\":\""+ \
+                         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(self.get_bin_high_edge(self.n_bins()-1))) + \
+                         "\"]\n"+ \
                          "set format x \""+self.time_axis_format+"\"\n"
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
@@ -924,7 +933,12 @@ class Histogram1D(BasicHistogram):
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
-            long_string=long_string+self.get_text()
+            long_string=long_string+self.get_text() +\
+                         "set xrange ["+\
+                         str(self.get_bin_low_edge(0)) + \
+                         ":"+ \
+                         str(self.get_bin_high_edge(self.n_bins()-1)) + \
+                         "]\n"
             long_string=long_string+"plot '"+pts_file_name+"' using 1:3 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                     +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
