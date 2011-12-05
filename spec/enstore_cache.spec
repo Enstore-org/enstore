@@ -6,8 +6,8 @@
 Summary: Enstore: Mass Storage System
 Name: enstore_cache
 # version number is based on the enstore rpm version taken as base version
-Version: 2.1.0
-Release: 4
+Version: 2.2.5
+Release: 1
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -194,6 +194,9 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Mon Dec 05 2011  <moibenko@fnal.gov> -
+- Merged with production tag,
+- which makes the rpm version go beyond 2.2.4
 * Mon Nov 28 2011  <moibenko@fnal.gov> -
 - fixed migrator path in sudoers
 * Thu Nov 17 2011  <moibenko@fnal.gov> -
