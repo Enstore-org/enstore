@@ -16,6 +16,9 @@ import pprint
 import stat
 import os
 import socket
+import string
+import errno
+# import cPickle
 
 # enstore imports
 import option
@@ -24,10 +27,10 @@ import backup_client
 #import udp_client
 import Trace
 import e_errors
-# import cPickle
 import enstore_constants
+import enstore_functions2
 
-# For layer_file()
+# For layer_file() and is_pnfs_path
 from pnfs import is_access_name
 
 MY_NAME = enstore_constants.PNFS_AGENT_CLIENT  #"PNFS_A_CLIENT"
@@ -128,10 +131,26 @@ class PnfsAgentClient(generic_client.GenericClient,
 
 ###############################################################################
 
-    def is_pnfs_path(self, filename, check_name_only = None,
+    def is_pnfs_path(self, pathname, check_name_only = None,
                      rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        ####################
+        # Do the first part of check locally as done in
+        # pnfs.py
+        # This allows to send requests to pnfs agent only when needed,
+        # thus reducing the traffic between pnfs agent client and pnfs agent
+        
+        if not pathname:  #Handle None and empty string.
+            return False
+
+        full_pathname = enstore_functions2.fullpath(pathname)[1]
+
+        #Determine if the target file or directory is in the pnfs namespace.
+        if string.find(full_pathname, "/pnfs/") < 0:
+            return False #If we get here it is not a pnfs directory.
+        ####################
+        
         ticket = { 'work' : 'is_pnfs_path',
-                   'fname' : filename,
+                   'fname' : pathname,
                    'check_name_only' : check_name_only
                    }
         ticket = self.send(ticket, rcv_timeout=rcv_timeout, tries=tries)
@@ -227,6 +246,12 @@ class PnfsAgentClient(generic_client.GenericClient,
         elif ticket['status'][0] == e_errors.OSERROR:
             raise OSError, (ticket.get('errno', e_errors.UNKNOWN),
                             ticket['status'][1])
+        elif e_errors.is_timedout(ticket):
+            raise OSError, (errno.ETIMEDOUT, "pnfs_agent")
+        else:
+            raise e_errors.EnstoreError(None, ticket['status'][0],
+                                        ticket['status'][1])
+
 
     def get_stat(self, filename, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
         ticket = {'work'          : 'get_stat',
@@ -244,6 +269,11 @@ class PnfsAgentClient(generic_client.GenericClient,
         elif ticket['status'][0] == e_errors.OSERROR:
             raise OSError, (ticket.get('errno', e_errors.UNKNOWN),
                             ticket['status'][1])
+        elif e_errors.is_timedout(ticket):
+            raise OSError, (errno.ETIMEDOUT, "pnfs_agent")
+        else:
+            raise e_errors.EnstoreError(None, ticket['status'][0],
+                                        ticket['status'][1])
 
 ###############################################################################
 
