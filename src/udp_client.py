@@ -102,6 +102,8 @@ class UDPClient:
         return "%s-%d-%f-%d-%d" % (host, port, time.time(), pid, abs(tid))
 
 
+    def fileno(self):
+        return self.get_tsd().socket.fileno()
 
     def protocolize( self, text ):
         tsd = self.get_tsd()
@@ -159,7 +161,7 @@ class UDPClient:
         #If the ip to send from is localhost there is something wrong.
         if tsd.host == "127.0.0.1":
             return {'status':(e_errors.NET_ERROR,
-                    "Default ip address is localhost.")}
+                              "Default ip address is localhost.")}
 
         #set up the static route before sending.
 	# outgoing interface_ip is tsg.host and destination is dst[0].
