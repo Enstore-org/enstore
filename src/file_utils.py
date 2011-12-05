@@ -18,6 +18,7 @@ import threading
 import types
 import errno
 import time
+import traceback
 try:
     import multiprocessing
 except ImportError, msg:
@@ -339,7 +340,7 @@ def rmdir(path):
 import re
 access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)")
 def __log_file_access(func_name, args):
-    
+
     if Trace.log_func != Trace.default_log_func:
         message = "Starting call %s() for file: %s" % (func_name, str(args))
         Trace.log(9, message)  # 9 = TIME_LEVEL for encp.
@@ -348,7 +349,7 @@ def __log_file_access(func_name, args):
 # are set up to log to the log_server.  The default sends log output to
 # stderr, which is not useful for most "enstore pnfs" and "enstore sfs"
 # commands.
-def __log_duration(t0, t1, func_name, args):
+def __log_duration(t0, t1, func_name, args, status_message=None):
     if Trace.log_func != Trace.default_log_func:
         now = time.time()
         duration = now - t0
@@ -358,10 +359,43 @@ def __log_duration(t0, t1, func_name, args):
         call_duration = now - t1
         message = "Time to call %s() for file %s: %f seconds (waited %f seconds)" \
                   % (func_name, str(args), call_duration, wait_duration)
+        if status_message:
+            #Hack in an optional string to indicate succeed or failure.
+            message = "%s [%s]" % (message, str(status_message))
         Trace.log(9, message)  # 9 = TIME_LEVEL for encp.
-    
+
+        __log_access_mount(func_name, args)
+
+#
+def __log_accces_path(func_name, args):
+    if Trace.log_func != Trace.default_log_func:
+        if type(args[0]) == types.StringType and args[0].find(".(access)(") != -1:
+            #Log information about troublesome .(access)() paths.  If a lot of
+            # these occur, then the kernel might hang.
+            severity = 99
+            message = "Performing %s on file %s at %s." % \
+                      (func_name, args[0], time.ctime())
+            Trace.log(severity, message)
+            Trace.log_stack_trace()
+
+#
+def __log_access_mount(func_name, args):
+    if os.uname()[0] == "Linux":
+        fp = __builtins__['open']("/proc/mounts", "r")
+        try:
+            data = fp.readlines()
+        finally:
+            fp.close()
+
+        for line in data:
+            if line.find(".(access)(") != -1:
+                try:
+                    mount_point = line.split(" ")[1]
+                except IndexError:
+                    mount_point = line  #Can this happen?
+
 #############################################################################
-            
+
 #Hard coded retry count for handling transient file system errors.
 RETRY_COUNT = 4
 
@@ -377,6 +411,8 @@ RETRY_COUNT = 4
 #Once, an open file gets ESTALE it should remain unusable until
 # the filesystem is remounted.  However, PNFS is able to give this
 # error and a few moments later everything is fine if asked again.
+#
+#EBUSY has been observed for both PNFS and Chimera.
 UNSTABLE_RETRY_LIST = [errno.EBUSY, errno.ELOOP,
                        errno.ESTALE,
                        errno.ENOENT, errno.EIO,
@@ -513,10 +549,12 @@ def __readline(fp, func="readline", unstable_filesystem=False):
                       sys.exc_info()[2]
         except:
             # For these exceptions, sem_lock should already be released.
-            __log_duration(t0, t1, func, fp.name)
+            s_m = "%s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
+            __log_duration(t0, t1, func, fp.name, status_message=s_m)
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
-        __log_duration(t0, t1, func, fp.name)
+        s_m = "%s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
+        __log_duration(t0, t1, func, fp.name, status_message=s_m)
         raise sys.exc_info()[0], sys.exc_info()[1], \
               sys.exc_info()[2]
 
@@ -534,6 +572,7 @@ def __wrapper(function, args=(), unstable_filesystem=None):
     else:
         log_func_name = "%s" % (function.__name__,)
     __log_file_access(log_func_name, args)
+    __log_accces_path(log_func_name, args)
 
     t0 = time.time()
 
@@ -557,7 +596,9 @@ def __wrapper(function, args=(), unstable_filesystem=None):
                 count = count + 1
                 if msg.errno in retry_list:
                     if count < RETRY_COUNT:
-                        #print "COUNT:", count
+                        #sys.stderr.write(
+                        #    "COUNT: %s  FUNCTION: %s  ARGS: %s  errno: %s [%s]\n" % \
+                        #    (count, log_func_name, args, msg.errno, os.strerror(msg.errno)))
                         if msg.errno not in [errno.ENOENT, errno.EIO]:
                             time.sleep(count)
                         else:
@@ -577,20 +618,24 @@ def __wrapper(function, args=(), unstable_filesystem=None):
                 sem_lock.release()
             return rtn
 
-        raise OSError(errno.EIO, "Unknown error")
+        exception_object = OSError(errno.EIO, "Unknown error")
+        s_m = str(exeption_object)
+        __log_duration(t0, t1, log_func_name, args, status_message=s_m)
+        raise exception_object
     except:
-        __log_duration(t0, t1, log_func_name, args)
+        s_m = "%s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
+        __log_duration(t0, t1, log_func_name, args, status_message=s_m)
         if unstable_filesystem and sem_lock:
             sem_lock.release()
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    
+
 #
 # wrapper to call os functions that takes care of euid/eid
 #
 # The unstable_filesystem parameter should be set true by calls from pnfs.py.
 # This is to allow for automatic retry of known suspect errors.
 def wrapper(function, args=(), unstable_filesystem=None):
-        
+
     if type(args) != types.TupleType:
         use_args = (args,)
     else:
@@ -619,7 +664,6 @@ def wrapper(function, args=(), unstable_filesystem=None):
 
             #The next thing to try is doing it again while being root.
             try:
-                #rtn = function(*use_args)
                 rtn = __wrapper(function, use_args)
             except (OSError, IOError), msg2:  #Anticipated errors.
                 if msg2.errno in [errno.EACCES, errno.EPERM] and \
