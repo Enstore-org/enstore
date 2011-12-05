@@ -12,6 +12,7 @@ import string
 import time
 import errno
 import socket
+import re
 #import select
 import pprint
 
@@ -35,7 +36,7 @@ MY_SERVER = enstore_constants.VOLUME_CLERK       #"volume_clerk"
 RCV_TIMEOUT = 10
 RCV_TRIES = 5
 
-# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
+# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
 def timestamp2time(s):
 	if s == '1969-12-31 17:59:59':
 		return -1
@@ -59,14 +60,20 @@ def capacity_str(x,mode="GB"):
         if x <= 1024:
             break
         x=x/1024
-    if neg:    ## if x was negative coming in, restore the - sign  
+    if neg:    ## if x was negative coming in, restore the - sign
         x = -x
     return "%6.2f%s"%(x,suffix)
-    
 
-KB=1024
-MB=KB*KB
-GB=MB*KB
+
+KiB=1<<10
+MiB=1<<20
+GiB=1<<30
+TiB=1<<40
+
+KB=1000
+MB=1000000
+GB=1000000000
+TB=1000000000000
 
 def show_volume_header():
     print "%-16s %9s   %-41s   %-16s %-36s %-12s"%(
@@ -95,23 +102,36 @@ def show_volume(v):
     else:
         print
 
+re_split_string = re.compile("[a-zA-Z]+|[0-9]+")
+
+mult_d = {'l':1, 'b':1, 'm':MB, 'k':KB, 'g':GB, 't':TB}
+mult_b = {'m':MiB,'k':KiB, 'g':GiB, 't':TiB}
+
 def my_atol(s):
-    s_orig = s
-    mult = 1
-    if not s:
-        raise ValueError, s_orig
-    e = string.lower(s[-1])
-    if e=='b':
-        s = s[:-1]
-        if not s:
+	s_orig = s
+	if not s:
+		raise ValueError, s_orig
+	array = re_split_string.findall(s.lower())
+	length = len(array)
+	if length<1 or length>2:
+		raise ValueError, s_orig
+	if length == 1 :
+		return long(float(array[0]))
+	value = array[0]
+	unit  = array[1]
+	mult  = 1
+	if unit in ["kib", "mib", "gib", "tib"]:
+		mult=mult_b[unit[0]]
+	elif unit in ["l","b","k","m","g","t","lb","kb","mb","gb","tb"]:
+		try:
+			mult=mult_d[unit[0]]
+		except:
+			raise ValueError, s_orig
+        else:
             raise ValueError, s_orig
-        e = string.lower(s[-1])
-    if e in 'lkmg':
-        s = s[:-1]
-        mult = {'l':1, 'm':MB, 'k':KB, 'g':GB}[e]
-    x = float(s)*mult
-    return(long(x))
-            
+	x = float(value)*mult
+        return(long(x))
+
 # to sum up an object -- as an integrity assurance
 #
 # currently it only deal with numerical, string, list and dictionary
@@ -214,7 +234,7 @@ def extract_volume(v):    # v is a string
             'library': library,
             'volume_family': volume_family,
             'comment': comment}
-		
+
 class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericClient,
                         backup_client.BackupClient):
 
@@ -407,7 +427,7 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
                   'external_label' : external_label }
         return self.send(ticket,timeout,retry)
 
-    # mark volume as not allowed 
+    # mark volume as not allowed
     def set_system_notallowed(self, external_label, timeout=60, retry=10):
         ticket= { 'work'           : 'set_system_notallowed',
                   'external_label' : external_label }
@@ -519,8 +539,8 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
                    'external_label'      : external_label
                    }
         return self.send(ticket,timeout,retry)
-        
-        
+
+
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
                            volume_family, vol_veto_list,first_found, mover={}, exact_match=0, timeout=300, retry=1):
@@ -541,7 +561,7 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
         Trace.trace(22, "next_write_volume:sending")
         r=self.send(ticket,timeout,retry)
         Trace.trace(22, "next_write_volume:rc=%s"%(r,))
-        
+
 
         #return self.send(ticket,timeout,retry)
         return r
@@ -569,7 +589,7 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
                   'old' : old,
                   'new' : new }
         return self.send(ticket,timeout,retry)
-        
+
     def delete_volume(self, vol, check_state=None, timeout=60, retry=10):
         ticket = {'work': 'delete_volume',
                   'external_label': vol}
@@ -653,7 +673,7 @@ class VolumeClerkClient(info_client.volumeInfoMethods, #generic_client.GenericCl
         if r.has_key('work'):
             del r['work']
         return r
-        
+
     def set_migration_history_closed(self, src_vol, dst_vol,
 				     timeout = 0, retry = 0):
         r = self.send({'work' : "set_migration_history_closed",
@@ -728,7 +748,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.write_protect_status = None
         self.keep_declaration_time = False
 	self.force = False #use real clerks (True); use info server (False)
-        
+
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -1099,11 +1119,11 @@ def do_work(intf):
         not_cond = None
         if nargs:
             if nargs == 3:
-                key = intf.args[0]     
+                key = intf.args[0]
                 in_state=intf.args[1]
                 not_cond = intf.args[2]
             elif nargs == 2:
-                key = intf.args[0]     
+                key = intf.args[0]
                 in_state=intf.args[1]
             elif nargs == 1:
                 key = None
@@ -1492,7 +1512,7 @@ def do_work(intf):
         ticket = vcc.add(intf.library,
                          intf.file_family,
                          intf.storage_group,
-                         intf.media_type,     
+                         intf.media_type,
                          intf.add,                  # name of this volume
                          capacity,
                          wrapper=intf.wrapper,
@@ -1510,7 +1530,7 @@ def do_work(intf):
         d['external_label']=intf.modify # name of this volume
         ticket = vcc.modify(d)
 
-        
+
     elif intf.new_library:
         if len(intf.args):
             ticket = vcc.new_library(intf.args[0],         # volume name
