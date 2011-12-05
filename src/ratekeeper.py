@@ -69,12 +69,12 @@ def next_minute(t=None):
             ##I'm not going to worry about end-of-month.  Sue me!
     t = time.mktime((Y, M, D, h, m, 0, wd, jd, dst))
     return t
-        
+
 class Ratekeeper(dispatching_worker.DispatchingWorker,
                  generic_server.GenericServer):
-    
+
     interval = 15
-    resubscribe_interval = 10*60 
+    resubscribe_interval = 10*60
     def __init__(self, csc):
         generic_server.GenericServer.__init__(self, csc, MY_NAME,
                                               #function = self.handle_er_msg
@@ -96,17 +96,17 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         self.vcc =  volume_clerk_client.VolumeClerkClient(self.csc,
                                                           rcv_timeout=5,
                                                           rcv_tries=2)
-        
+
         #Get the configuration from the configuration server.
         ratekeep = self.csc.get(enstore_constants.RATEKEEPER,
                                 timeout=15, retry=3)
-        
+
         ratekeeper_dir  = ratekeep.get('dir', None)
         ratekeeper_host = ratekeep.get('hostip',ratekeep.get('host','MISSING'))
         ratekeeper_port = ratekeep.get('port','MISSING')
         #ratekeeper_nodes = ratekeep.get('nodes','MISSING') #Command line info.
         ratekeeper_addr = (ratekeeper_host, ratekeeper_port)
-        
+
         #if ratekeeper_dir  == 'MISSING' or not ratekeeper_dir:
         #    print "Error: Missing ratekeeper configdict directory.",
         #    print "  (ratekeeper_dir)"
@@ -146,7 +146,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         # must be removed from the list.
         self.remove_select_fd(self.erc.sock)
 
-        
+
         self.add_interval_func(self.DRVBusy_interval_func, DRVBUSY_INTERVAL,
                                one_shot=0, align_interval = True)
         self.add_interval_func(self.slots_interval_func, SLOTS_INTERVAL,
@@ -154,10 +154,10 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
         self.set_error_handler(self.ratekeeper_error_handler)
 
-        
+
     def reinit(self):
         Trace.log(e_errors.INFO, "(Re)initializing server")
-        
+
         rate_lock.acquire()
 
         # stop the communications with the event relay task
@@ -165,7 +165,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
         #Close the connections with the database.
         self.close()
-        
+
         ###We shouldn't need to stop the rk_main thread here.  It will
         ### pick up any relavent configuration changes every 15 seconds.
 
@@ -240,7 +240,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 message = "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!"
                 Trace.log(e_errors.ERROR, message)
                 sys.exit(1)
-        
+
     # These need confirmation
     def quit(self, ticket):
         #Collect children.
@@ -255,7 +255,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         acc_db_lock.release()
         #
         dispatching_worker.DispatchingWorker.quit(self, ticket)
-    
+
     def subscribe(self):
         self.erc.subscribe()
 
@@ -287,11 +287,11 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 rcv_timeout = 3, rcv_tries = 3
                 )
 
-            
+
             if self.fork(THREE_MINUTES_TTL):
                 #Parent
                 continue
-            
+
             #child
             self.update_slots(mcc)
             os._exit(0)
@@ -324,7 +324,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 if conf_mc == mcc.server_name:
                     if config_dict[conf_key].has_key("mc_device"):
                         valid_drives.append(config_dict[conf_key]['mc_device'])
-                    
+
 
         for drive in drives_list:
             if drive['name'] not in valid_drives:
@@ -332,7 +332,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 # skip its count.  It probably belongs to another instance
                 # of Enstore.
                 continue
-			
+
             try:
                 total_count[drive['type']] = \
                                            total_count[drive['type']] + 1
@@ -340,7 +340,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 total_count[drive['type']] = 1
                 #If the total did not have this type yet, then just the
                 #busy counts cant have it yet.
-                
+
             if drive['volume']:
                 v_info=self.vcc.inquire_vol(drive['volume'])
                 sg=None
@@ -404,7 +404,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                                                None)
         if tape_library == None:
             return
-        
+
         slots_dict = mcc.list_slots(10, 18)
         if e_errors.is_ok(slots_dict):
             slots_list = slots_dict['slot_list']
@@ -433,7 +433,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 acc_db.query(q)
 
             acc_db.close()
-        except (pg.ProgrammingError, pg.InternalError):
+        except (pg.ProgrammingError, pg.InternalError,KeyError, TypeError):
             exc, msg, tb = sys.exc_info()
             try:
                 sys.stderr.write("%s: Can not update DB: (%s, %s)\n" %
@@ -471,7 +471,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
     def count_bytes(self, words, bytes_read_dict, bytes_written_dict, group):
         mover = words[1]
         mover = string.upper(mover)
-        
+
 
         #Get the number of bytes moved (words[2]) and total bytes ([3]).
         num = long(words[2])  #NB -bytes = read;  +bytes=write
@@ -524,7 +524,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         rate_lock.acquire()
         self.start_next_minute()
         rate_lock.release()
-        
+
         N = 1L
         bytes_read_dict = {} # = 0L
         bytes_written_dict = {} #0L
@@ -539,7 +539,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 self.subscribe()
                 self.subscribe_time = now
             rate_lock.release()
-                
+
             end_time = self.start_time + N * self.interval
             remaining = end_time - now
             if remaining <= 0:
@@ -602,7 +602,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 for key in bytes_read_dict.keys():
                     bytes_read_dict[key] = 0L
                     bytes_written_dict[key] = 0L
-                
+
                 N = N + 1
                 end_time = self.start_time + N * self.interval
                 remaining = end_time - now
@@ -655,8 +655,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             else:
                 self.count_bytes(words, bytes_read_dict,
                                  bytes_written_dict,"REAL")
-            
-                
+
+
 class RatekeeperInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
@@ -671,7 +671,7 @@ if __name__ == "__main__":
     intf = RatekeeperInterface()
 
     rk = Ratekeeper((intf.config_host, intf.config_port))
-    
+
     reply = rk.handle_generic_commands(intf)
 
     rk_main_thread = threading.Thread(target=rk.main)
