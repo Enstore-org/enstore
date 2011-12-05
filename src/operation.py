@@ -169,15 +169,19 @@ def library_type(cluster, lib):
 			return '9310'
 		if lib == 'samlto2' or lib == 'samlto':
 			return 'aml2'
-		if lib == 'D0-LTO4G1':
-			return '8500G1'
 		if lib == 'D0-LTO4F1':
 			return '8500F1'
+		if lib == 'D0-LTO4G1':
+			return '8500G1'
+		if lib == 'D0-LTO4GS':
+			return '8500GS'
 	elif cluster == 'STK':
 		if lib == 'CD-9940B' or lib == '9940':
 			return '9310'
-		if lib == 'CD-LTO3' or lib == 'CD-LTO4G1':
+		if lib == 'CD-LTO3' or lib == 'CD-LTO4G1' or lib == 'CD-10KCG1':
 			return '8500G1'
+		if lib == 'CD-LTO3GS' or lib == 'CD-LTO4GS':
+			return '8500GS'
 		if lib == 'CD-LTO4F1':
 			return '8500F1'
 	elif cluster == 'CDF':
@@ -185,11 +189,15 @@ def library_type(cluster, lib):
 			return '9310'
 		if lib == 'CDF-LTO3' or lib == 'CDF-LTO4G1':
 			return '8500G1'
+		if lib == 'CDF-LTO4GS':
+			return '8500GS'
 		if lib == 'CDF-LTO4F1':
 			return '8500F1'
 	elif cluster == 'GCC':
-		if lib == 'LTO3' or lib == 'LTO4':
+		if lib == 'LTO3' or lib == 'LTO4' or lib == '10KCG1':
 			return '8500G1'
+		if lib == 'LTO4F1':
+			return '8500F1'
 	else:
 		return None
 
@@ -221,14 +229,14 @@ def get_script_host(cluster):
 
 # get_write_protect_script_path(library_type) -- determine script path
 def get_write_protect_script_path(lib_type):
-	if lib_type in ['9310', 'aml2', '8500G1', '8500F1']:
+	if lib_type in ['9310', 'aml2', '8500G1', '8500GS', '8500F1']:
 		return  '/home/enstore/isa-tools/' + lib_type + '_write_protect_work'
 	else:
 		return '/tmp'
 
 # get_write_permit_script_path(library_type) -- determine script path
 def get_write_permit_script_path(lib_type):
-	if lib_type in ['9310', 'aml2', '8500G1', '8500F1']:
+	if lib_type in ['9310', 'aml2', '8500G1', '8500GS', '8500F1']:
 		return  '/home/enstore/isa-tools/' + lib_type + '_write_permit_work'
 	else:
 		return '/tmp'
@@ -250,6 +258,8 @@ def get_default_library(cluster):
 def get_qualifier(lib_type):
 	if lib_type == 'aml2':
 		return 'a'
+	elif lib_type == '8500GS':
+		return 'r'
 	elif lib_type == '8500G1':
 		return 's'
 	elif lib_type == '8500F1':
@@ -331,9 +341,11 @@ def get_unfinished_job(cluster=None):
 def decode_job(job):
 	if job[:3] == 'STK' or job[:3] == "CDF":
 		cluster = job[:3]
-		if job[3] in ['a', 's', 't']:
+		if job[3] in ['a', 'r', 's', 't']:
 			if job[3] == 'a':
 				lt = 'aml2'
+			elif job[3] == 'r':
+				lt = '8500GS'
 			elif job[3] == 's':
 				lt = '8500G1'
 			elif job[3] == 't':
@@ -350,9 +362,11 @@ def decode_job(job):
 			job_range = range(int(t[0]), int(t[1])+1)
 	elif job[:2] == 'D0':
 		cluster = job[:2]
-		if job[2] in ['a', 's', 't']:
+		if job[2] in ['a', 'r', 's', 't']:
 			if job[2] == 'a':
 				lt = 'aml2'
+			elif job[2] == 'r':
+				lt = '8500GS'
 			elif job[2] == 's':
 				lt = '8500G1'
 			elif job[2] == 't':
@@ -1076,6 +1090,8 @@ def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
 
 	if lt == 'aml2':
 		op = 'aWP'
+	elif lt == '8500GS':
+		op = 'rWP'
 	elif lt == '8500G1':
 		op = 'sWP'
 	elif lt == '8500F1':
@@ -1117,7 +1133,7 @@ def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' and \
 			not label in (%s) \
-			order by label "%(lbs, exclusion)
+			order by si_time_1 asc"%(lbs, exclusion)
 	else:
 		q = "select label from volume where \
 			%s and \
@@ -1129,7 +1145,7 @@ def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' \
-			order by label "%(lbs)
+			order by si_time_1 asc "%(lbs)
 	if limit:
 		q = q + ' limit %d;'%(limit)
 	else:
@@ -1170,6 +1186,8 @@ def recommend_write_permit_job(library=DEFAULT_LIBRARIES, limit=None):
 
 	if lt == 'aml2':
 		op = 'aWE'
+	elif lt == '8500GS':
+		op = 'rWE'
 	elif lt == '8500G1':
 		op = 'sWE'
 	elif lt == '8500F1':
@@ -1211,7 +1229,7 @@ def recommend_write_permit_job(library=DEFAULT_LIBRARIES, limit=None):
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not label in (%s) \
-			order by label "%(lbs, exclusion)
+			order by label"%(lbs, exclusion)
 	else:
 		q = "select label from volume where \
 			%s and \
@@ -1289,6 +1307,11 @@ def make_cap(l, library_type='9310', cap_n = 0):
 				count = 0
 		if count != 0:
 			cap_script = cap_script + door
+	elif library_type == '8500GS':
+		cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 2,1,0 "
+		for i in l:
+			cap_script = cap_script + ' ' + i
+		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
 	elif library_type == '8500G1':
 		cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,5,0 "
 		for i in l:
@@ -1296,11 +1319,11 @@ def make_cap(l, library_type='9310', cap_n = 0):
 		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
 	elif library_type == '8500F1':
 		if cluster == "D0":
-			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,5,0 "
+			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,9,0 "
 		elif cluster == "STK":
-			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,1,0 "
+			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,5,0 "
 		elif cluster == "CDF":
-			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,1,0 "
+			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,5,0 "
 		else:
 			return None
 		for i in l:
@@ -1333,13 +1356,13 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 
 	short_message = "write %s %d tapes (flip tabs) in %s %s tape library"%(job, n, cluster.lower()+'en', library_type.upper())
 	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore %s tape library.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster, library_type.upper())
+
 	return remedy_interface.submit_ticket(
 		Service_Type='User Service Request',
 		Impact_Type='3-Moderate/Limited',
 		Urgency_Type='3-Medium',
 		Summary=short_message,
 		Notes=long_message,
-		Reported_Source_Type = 'Other',
 		Action = 'CREATE',
 		Status_Type = 'Assigned',
 		CiName = system_name.upper().split('.')[0],
@@ -1347,7 +1370,6 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 		Product_Categorization_Tier_1='Facility Support Services',
 		Product_Categorization_Tier_2='Tape Handling',
 		)
-# get_last_job_time(cluster, job_type)
 
 def get_last_job_time(cluster, job_type):
 	q = "select max(start) from job, job_definition \
