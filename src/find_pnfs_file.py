@@ -166,7 +166,10 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     search_list_copy = search_list[:]
     search_list_lock.release()
-    for database_info, (db_num, mp) in search_list_copy:
+    for search_item in search_list_copy:
+        database_info = search_item[namespace.DB_INFO]
+        db_num = search_item[namespace.DB_NUMBER]
+        mp = search_item[namespace.DB_MOUNT_POINTS][0]
 
         #If the last db tried is still set to its initial value (-1), we need
         # to skip the the next.  The variable db_num will be None for Chimera.
@@ -193,7 +196,7 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
         # we hang querying a non-existant database.  If the pnfsid_db
         # matches the last one we tried we skip this test as it has
         # already been done.
-        if pnfs.get_last_db()[0] != pnfsid_db:
+        if pnfs.get_last_db()[namespace.DB_INFO] != pnfsid_db:
             try:
                 pnfs.N(pnfsid_db, mp).get_databaseN()
             except IOError:
@@ -284,15 +287,17 @@ def find_id_path(sfs_id, bfid, file_record = None, likely_path = None,
                         # So, we first check if a known PNFS database is
                         # a match...
                         for item in search_list_copy:
-                            if item[0] == db_info:
-                                sfs_path = pnfs.access_file(item[1][1],
+                            if item[namespace.DB_INFO] == db_info:
+                                mount_points = item[namespace.DB_MOUNT_POINTS]
+                                for mount_point in mount_points:
+                                    sfs_path = pnfs.access_file(mount_point,
                                                              enstoredb_sfs_id)
-                                layer1_bfid = sfs.get_bit_file_id(sfs_path)
-                                if layer1_bfid and \
-                                       layer1_bfid == file_record['bfid']:
-                                    pnfs.set_last_db(copy.copy(item))
-                                    sfs_id_mp = item[1][1]
-                                    break
+                                    layer1_bfid = sfs.get_bit_file_id(sfs_path)
+                                    if layer1_bfid and \
+                                           layer1_bfid == file_record['bfid']:
+                                        pnfs.set_last_db(copy.copy(item))
+                                        sfs_id_mp = mount_point
+                                        break
                         else:
                             #...if it is not a match then we have a database
                             # not in our current cached list.  So we need
@@ -773,7 +778,10 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     search_list_copy = search_list[:]
     search_list_lock.release()
-    for database_info, (db_num, mp) in search_list_copy:
+    for search_item in search_list_copy:
+        database_info = search_item[pnfs.DB_INFO]
+        db_num = search_item[pnfs.DB_NUMBER]
+        mp = search_item[pnfs.DB_MOUNT_POINTS][0]
 
         #If last_db_tried is still set to its initial value, we need to
         # skip the the next.
@@ -803,7 +811,7 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
         # we hang querying a non-existent database.  If the pnfsid_db
         # matches the last one we tried we skip this test as it has
         # already been done.
-        if pnfs.get_last_db()[0] != pnfsid_db:
+        if pnfs.get_last_db()[pnfs.DB_INFO] != pnfsid_db:
             try:
                 pnfs.N(pnfsid_db, mp).get_databaseN()
             except IOError:
@@ -892,16 +900,17 @@ def find_pnfsid_path(pnfsid, bfid, file_record = None, likely_path = None,
                         # So, we first check if a known PNFS database is
                         # a match...
                         for item in search_list_copy:
-                            if item[0] == db_info:
-                                pnfs_path = pnfs.access_file(item[1][1],
+                            if item[pnfs.DB_INFO] == db_info:
+                                mount_points = item[pnfs.DB_MOUNT_POINTS]
+                                for mount_point in mount_points:
+                                    pnfs_path = pnfs.access_file(mount_point,
                                                              enstoredb_pnfsid)
-                                layer1_bfid = pnfs.get_layer_1(pnfs_path)
-                                if layer1_bfid and \
-                                       layer1_bfid == file_record['bfid']:
-                                    #last_db_tried = copy.copy(item)
-                                    pnfs.set_last_db(copy.copy(item))
-                                    pnfsid_mp = item[1][1]
-                                    break
+                                    layer1_bfid = pnfs.get_layer_1(pnfs_path)
+                                    if layer1_bfid and \
+                                           layer1_bfid == file_record['bfid']:
+                                        pnfs.set_last_db(copy.copy(item))
+                                        pnfsid_mp = mount_point
+                                        break
                         else:
                             #...if it is not a match then we have a database
                             # not in our current cached list.  So we need
