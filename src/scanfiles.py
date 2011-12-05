@@ -21,6 +21,7 @@ import gc
 import signal
 import re
 
+
 # enstore modules
 import info_client
 import configuration_client
@@ -1190,6 +1191,7 @@ def check_bit_file(bfid, bfid_info = None):
         is_multiple_copy = True
     else:
         is_multiple_copy = False
+        original_file_record = None
     ### This first method will be faster, but relies on an updated
     ### info_server.py.
     """
@@ -1289,18 +1291,37 @@ def check_bit_file(bfid, bfid_info = None):
         errors_and_warnings(prefix, err, warn, info)
         return
 
+    if is_multiple_copy:
+        #We know this is a multiple copy, the storage file should point to
+        # the orginal copy.  So lets use the original copies information
+        # to find the path.
+        original_file_record, (err1, warn1, info1) = get_filedb_info(original_bfid)
+        if err1 or warn1:
+            errors_and_warnings(prefix, err + err1, warn + warn1, info + info1)
+            return
+
+        use_bfid = original_bfid
+        use_file_record = original_file_record
+        use_pnfsid = original_file_record['pnfsid']
+    else:
+        use_bfid = bfid
+        use_file_record = file_record
+        use_pnfsid = file_record['pnfsid']
+
     #Loop over all found mount points.
     try:
         #Obtain the current path.  There are many ways to try and find the
         # file.  The original pathname is a good start, but there are a
         # lot of things to try before resorting to get_path().
-        sfs_path = find_pnfs_file.find_id_path(file_record['pnfsid'],
-                                               bfid,
-                                               file_record=file_record,
+        sfs_path = find_pnfs_file.find_id_path(use_pnfsid,
+                                               use_bfid,
+                                               file_record=use_file_record,
                                                use_info_server=True)
     except (OSError, IOError), msg:
         #For easier investigations, lets include the paths.
         sfs_path = getattr(msg, 'filename', "")
+        if sfs_path == None:
+            sfs_path = ""
         
         #The following list contains responses that we need to handle special.
         # These will accompany an errno of EEXIST.
@@ -1311,10 +1332,13 @@ def check_bit_file(bfid, bfid_info = None):
         
         ### Note: msg.args[0] will be returned as ENOENT if a file is found
         ### to match the sfsid, but not the bfid.
-        
-        if msg.errno == errno.ENOENT and file_record['deleted'] in ['yes',
-                                                                    'unknown']:
+
+        if (msg.errno == errno.ENOENT or \
+            (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST)) and \
+            (file_record['deleted'] in ["yes", "unknown"] or is_multiple_copy):
             # There is no error here.  Everything agrees the file is gone.
+            # For multiple_copy files that should not have a record found
+            # in the SFS, we don't want to flag an error either.
             pass
 
         ### Test for mulitple_copies/duplicates before plain migration.  This
@@ -1322,13 +1346,9 @@ def check_bit_file(bfid, bfid_info = None):
         ### is_migrated_to_copy values too.
 
         elif is_multiple_copy:
-            if msg.errno in [errno.ENOENT] or \
-              (msg.args[0] == errno.EEXIST and msg.args[1] in EXISTS_LIST):
-                pass #No error here.  Just easier to write this if.
-            else:
-                #The multiple copy should not be findable, but in this
-                # situation it was.
-                err.append("multiple copy(%s)" % (msg.args[1],))
+            #The multiple copy should not be findable, but in this
+            # situation it was.
+            err.append("multiple copy(%s)" % (msg.args[1],))
         elif is_primary_copy:
             #The primary copy should match the file, but in this situation
             # it did not.
@@ -1343,6 +1363,12 @@ def check_bit_file(bfid, bfid_info = None):
                 # If the destination has been scanned and we still get here,
                 # does this check need to be furthur modified???
                 warn.append("migrated copy not marked deleted")
+            elif sfs_path and not namespace.is_id(sfs_path) \
+                     and not (is_multiple_copy or is_primary_copy):
+                #Catch the case where the migration source file is the active
+                # file in the storage file system instead of the new copy.
+                err.append("migration source copy is active in the SFS (%s)" \
+                           % (sfs_path,))
             else:
                 err.append("migration(%s)" % (msg.args[1],))
         elif is_migrated_copy and file_record['deleted'] == "yes":
@@ -1423,18 +1449,12 @@ def check_bit_file(bfid, bfid_info = None):
             info.append("deleted(no)")
         else:
             err.append(msg.args[1])
-        errors_and_warnings(prefix + ' ' + sfs_path, err, warn, info)
-        return
+
+        if err or warn:
+            errors_and_warnings(prefix, err, warn, info)
+            return
     except (ValueError,), msg:
         err.append(str(msg))
-        errors_and_warnings(prefix, err, warn, info)
-        return
-
-    #Catch the case where the migration source file is the active file
-    # in the storage file system instead of the new copy.
-    if is_migrated_copy and sfs_path \
-             and not (is_multiple_copy or is_primary_copy):
-        err.append("migration source copy is active in the storage file system")
         errors_and_warnings(prefix, err, warn, info)
         return
 
@@ -1459,7 +1479,7 @@ def check_bit_file(bfid, bfid_info = None):
         errors_and_warnings(prefix, err, warn, info)
         return
 
-    #If we are a supper user, reset the effective uid and gid.
+    #If we are a super user, reset the effective uid and gid.
     file_utils.acquire_lock_euid_egid()
     try:
         file_utils.set_euid_egid(f_stats[stat.ST_UID], f_stats[stat.ST_GID])
@@ -1893,12 +1913,16 @@ def check_file(f, file_info):
                            and filedb['drive'] != 'unknown:unknown':
                         err.append('drive(%s, %s)' % (layer4['drive'],
                                                   filedb['drive']))
+            elif not layer4.has_key('drive'):
+                warn.append("missing layer 4 drive")  #not fatal
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted drive')
 
     # CRC
     try:
-        if layer4.get('crc', "") != "": # some do not have this field
+        if layer4.get('crc', "") == "":  # some do not have this field
+            warn.append("missing layer 4 crc")  #not fatal
+        else:
             if long(layer4['crc']) != long(filedb['complete_crc']):
                 # Report if Enstore DB and the Enstore CRC in the storage
                 # file system layer 4 are not the same.
@@ -1928,16 +1952,18 @@ def check_file(f, file_info):
     try:
         layer4_name = get_enstore_pnfs_path(layer4.get('original_name', "NO-LAYER4_NAME"))
         current_name = get_enstore_pnfs_path(f)
-        filedb_name = get_enstore_pnfs_path(filedb.get('pnfs_name0', "NO-FILEDB-NAME"))
-        if layer4['original_name'] != filedb['pnfs_name0']: #layer4 vs filedb
-            if is_multiple_copy and layer4_name == filedb_name:
-                #If the corrected paths match, then there really isn't
-                # any problem.
-                pass
-            else:
-                #print layer 4, current name, file database.  ERROR
-                err.append("filename(%s, %s, %s)" %
-                           (layer4['original_name'], f, filedb['pnfs_name0']))
+        #filedb_name = get_enstore_pnfs_path(filedb.get('pnfs_name0', "NO-FILEDB-NAME"))
+        #For original copies, if the layer 4 and file DB original paths do
+        # not match, give an error.
+        #
+        #Multiple copies can not be subject to this test.  A moved/renamed
+        # original copy will modify the layer 4 value for the multiple copy,
+        # too.
+        if not is_multiple_copy and \
+           layer4['original_name'] != filedb['pnfs_name0']: #layer4 vs filedb
+            #print layer 4, current name, file database.  ERROR
+            err.append("filename(%s, %s, %s)" %
+                       (layer4['original_name'], f, filedb['pnfs_name0']))
         elif is_access_name(f):
             #Skip the renamed and moved tests if the filename of
             # the type ".(access)()".
@@ -2074,7 +2100,7 @@ class ScanfilesInterface(option.Interface):
         return (self.help_options, self.scanfile_options)
     
     #  define our specific parameters
-    parameters = ["[target_path [target_path_2 ...]]"] 
+    parameters = ["[target_path [target_path_2 ...]] | [bfid [bfid2 ...]]"] 
 
     scanfile_options = {
         #--bfid is considered obsolete
@@ -2103,7 +2129,7 @@ class ScanfilesInterface(option.Interface):
                          option.DEFAULT_NAME:"threaded",
                          option.DEFAULT_VALUE:1,
                          option.USER_LEVEL:option.USER,},
-        #--bfid is considered obsolete
+        #--vol is considered obsolete
         option.VOL:{option.HELP_STRING:"treat input as volumes",
                          option.VALUE_USAGE:option.IGNORED,
                          option.DEFAULT_VALUE:option.DEFAULT,
@@ -2214,18 +2240,19 @@ def do_work(intf):
     flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
     infc = info_client.infoClient(csc, flags = flags)
 
-    if intf_of_scanfiles.profile:
-        import profile
-        import pstats
-        profile.run("main(intf_of_scanfiles, file_object, file_list)", "/tmp/scanfiles_profile")
-        p = pstats.Stats("/tmp/scanfiles_profile")
-        p.sort_stats('cumulative').print_stats(100)
-    else:
-        main(intf_of_scanfiles, file_object, file_list)
+    main(intf_of_scanfiles, file_object, file_list)
 
 
 if __name__ == '__main__':
 
     intf_of_scanfiles = ScanfilesInterface(sys.argv, 0) # zero means admin
 
-    do_work(intf_of_scanfiles)
+    if intf_of_scanfiles.profile:
+        import profile
+        import pstats
+        profile.run("do_work(intf_of_scanfiles)",
+                    "/tmp/scanfiles_profile")
+        p = pstats.Stats("/tmp/scanfiles_profile")
+        p.sort_stats('cumulative').print_stats(100)
+    else:
+        do_work(intf_of_scanfiles)
