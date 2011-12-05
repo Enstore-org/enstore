@@ -136,6 +136,10 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
     def show_state(self):
         return self.send({'work':'show_state'})
 
+    def replay(self):
+        return self.send({'work':'replay',
+                          'func': 'replay_cache_written_events'})
+
     def set_pnfsid(self, ticket):
         ticket['work'] = "set_pnfsid"
         r = self.send(ticket)
@@ -738,6 +742,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.find_the_original = None
         self.find_duplicates = None
         self.force = None #use real clerks (True); use info server (False)
+        self.replay=None
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -789,6 +794,9 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"bfid",
                      option.USER_LEVEL:option.ADMIN},
+        option.REPLAY:{option.HELP_STRING:"replay cache written events",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.USER_LEVEL:option.ADMIN},
         option.FIND_COPIES:{option.HELP_STRING:"find the immediate copies of this file",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
@@ -994,6 +1002,10 @@ def do_work(intf):
         ticket  = fcc.get_children(intf.children)
         for i in ticket["children"]:
             pprint.pprint(i)
+    elif intf.replay:
+        ticket  = fcc.replay()
+        if ticket['status'][0] ==  e_errors.OK:
+            print "Successfully replayed cache written events"
     elif intf.bfids:
         if intf.force:
             ticket  = fcc.get_bfids(intf.bfids)

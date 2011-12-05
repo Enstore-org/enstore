@@ -323,6 +323,7 @@ MAKE_COPIES = "make-copies"                  #duplicate
 MAKE_FAILED_COPIES = "make-failed-copies"    #duplicate
 MARK_BAD = "mark-bad"                        #file
 GET_CHILDREN = "children"                        #file
+REPLAY = "replay"                        #file
 MATCH_DIRECTORY_FILE_FAMILY = "match-directory-file-family"  #enmv
 MATCH_VOLUME_FILE_FAMILY = "match-volume-file-family"        #enmv
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
@@ -534,7 +535,7 @@ valid_option_list = [
     GET_LOGFILE_NAME, GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE,
     GET_REFRESH, GET_SUSPECT_VOLS, GET_UPDATE_INTERVAL, GET_WORK,
     GET_WORK_SORTED, GET_SG_COUNT,
-    GVOL, 
+    GVOL,
     HELP, HISTORY, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_FAIR_SHARE, IGNORE_STORAGE_GROUP,
     IMPORT, INFILE, INFO, INPUT_DIR, INSERT, IO, IOAREA, IS_UP,
@@ -545,14 +546,14 @@ valid_option_list = [
     LIST_LIBRARY_MANAGERS, LIST_MEDIA_CHANGERS, LIST_MOVERS,
     LIST_SG_COUNT, LIST_SLOTS, LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
-    MAKE_HTML, MAKE_COPIES, MAKE_FAILED_COPIES, MARK_BAD, GET_CHILDREN,
+    MAKE_HTML, MAKE_COPIES, MAKE_FAILED_COPIES, MARK_BAD, GET_CHILDREN, REPLAY,
     MATCH_DIRECTORY_FILE_FAMILY, MATCH_VOLUME_FILE_FAMILY,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MESSAGES_FILE, MIGRATED, MIGRATED_FROM, MIGRATED_TO,
     MIGRATION_ONLY,
     MKDIR, MKDIRS, MMAP_IO, MMAP_SIZE,
     MODIFY, MOUNT, MOUNT_POINT, MOVER_DUMP, MOVER_TIMEOUT,
-    MULTIPLE_COPY_ONLY, 
+    MULTIPLE_COPY_ONLY,
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NO_CRC, NOT_ALLOWED, NO_MAIL,
     NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
@@ -668,13 +669,13 @@ class Interface:
         #Override this to true for thread names to appear in the log file.
         # Remember to set the thread names to something meaningful, too.
         self.include_thread_name = 0
-        
+
         apply(self.compile_options_dict, self.valid_dictionaries())
-        
+
         self.check_option_names()
 
         self.parse_options()
-        
+
         try:
             self.config_host = enstore_functions2.default_host()
             self.config_port = enstore_functions2.default_port()
@@ -684,14 +685,14 @@ class Interface:
 
 	if self.config_host == enstore_constants.DEFAULT_CONF_HOST:
 	    self.check_host(hostaddr.gethostinfo()[0])
-	else:            
+	else:
 	    self.check_host(self.config_host)
 
         if hasattr(self, "help") and self.help:
             self.print_help()
         if hasattr(self, "usage") and self.usage:
             self.print_usage()
-        
+
 ############################################################################
 
     parameters = []  #Don't put this in __init__().  It would clobber values.
@@ -795,7 +796,7 @@ class Interface:
                               }]
                }
         }
-                                     
+
 
 ############################################################################
 
@@ -808,7 +809,7 @@ class Interface:
                           filler_length, num_of_cols):
         #Set this for the first loop below.
         use_existing_line = 1
-        
+
         #Build the non-help string part of the command output. Assume
         # that option_names is less than 80 characters.
         #lines_of_text = []
@@ -872,7 +873,7 @@ class Interface:
         COMM_COLS = 29
 
         lines_of_text = [] #list of strings less than num_of_cols in length.
-        
+
         list_of_options = self.options.keys()
         list_of_options.sort()
         for opts in list_of_options:
@@ -967,7 +968,7 @@ class Interface:
             # that option_names is less than 80 characters.
             self.build_help_string(lines_of_text, help_string,
                                    COMM_COLS, num_of_cols)
-            
+
             for line in lines_of_text:
                 print line
         sys.exit(0)
@@ -1015,7 +1016,7 @@ class Interface:
             switch_string = " [ " + short_opts + " " + usage_line + "] "
 
         #If there are a lot of options, don't confuse the user and only
-        # report [OPTIONS]... instead.  
+        # report [OPTIONS]... instead.
         if len(usage_string) + len(switch_string) + \
            len(getattr(self, "paramater", [""])[0]) > 80:
             switch_string = " [OPTIONS]... "
@@ -1027,7 +1028,7 @@ class Interface:
                                 switch_string + parameter_set + "\n"
         if not full_usage_string:
             full_usage_string = usage_string + switch_string
-            
+
         return "Usage: \n" + full_usage_string
 
     def format_parameters(self):
@@ -1126,10 +1127,10 @@ class Interface:
                     continue
 
                 temp = temp + short_opt
-                
+
                 if self.options[opt].get(VALUE_USAGE, None) in [REQUIRED]:
                     temp = temp + "="
-                
+
         return temp
 
     #Goes through the compiled option dictionary pulling out long options
@@ -1151,7 +1152,7 @@ class Interface:
                     temp.append(opt + "=")
                 else:
                     temp.append(opt)
-                
+
         return temp
 
 ############################################################################
@@ -1241,16 +1242,16 @@ class Interface:
                 self.set_value(long_opt, value)
             else:
                 self.print_usage("Option %s requires value." % (long_opt,))
-                
+
         elif self.options[long_opt].get(VALUE_USAGE, None) == OPTIONAL:
             next_arg = self.next_argument(long_opt) #Used for optional.
 
-            #First, determine if the option, which may or may not have a 
+            #First, determine if the option, which may or may not have a
             # sub option, is followed in the command line with
             # an option that does not begin with "-" or "--".
             if value:
                 self.set_value(long_opt, value)
-                
+
             #If the option has an optional value and it is present then
             # find the value (albeit the hard way), set the value and then
             # remove the value from the list of previously unprocessed
@@ -1258,7 +1259,7 @@ class Interface:
             elif next_arg != None and not self.is_option(next_arg):
                 self.set_value(long_opt, next_arg)
                 self.args.remove(next_arg)
-                
+
             #Use the default value if none is specified.
             else:
                 self.set_value(long_opt, None) #Uses 'default'
@@ -1288,12 +1289,12 @@ class Interface:
                 self.print_usage("Option %s requires value." % (short_opt,))
 
         elif self.options[long_opt].get(VALUE_USAGE, None) == OPTIONAL:
-            #First, determine if the option, which may or may not have a 
+            #First, determine if the option, which may or may not have a
             # sub option, is followed in the command line with
             # an option that does not begin with "-" or "--".
             if value:
                 self.set_value(long_opt, value)
-                
+
             #If the option has an optional value and it is present then
             # find the value (albeit the hard way), set the value and then
             # remove the value from the list of previously unprocessed
@@ -1305,7 +1306,7 @@ class Interface:
                 self.args.remove(next_arg)
             else:
                 self.set_value(long_opt, None) #Uses 'default'
-                
+
         else: #INGORED
             self.set_value(long_opt, None) #Uses 'default'
 
@@ -1381,7 +1382,7 @@ class Interface:
         else:
             rtn = None
         return rtn
-    
+
         #Get a copy of the command line with values specified with equal
         # signs seperated.
         self.split_on_equals(self.some_args)
@@ -1422,7 +1423,7 @@ class Interface:
                 return rtn
 
         return None
-            
+
 ############################################################################
     #These options remove leading "-" or "--" as appropriate from opt
     # and return.
@@ -1434,7 +1435,7 @@ class Interface:
             return self.trim_short_option(opt)
         else:
             return opt
-        
+
     def trim_long_option(self, opt):
         #There must be at least 3 characters.  Two from "--" and one
         # alphanumeric character.
@@ -1443,7 +1444,7 @@ class Interface:
             return opt[2:]
         else:
             return opt
-            
+
     def trim_short_option(self, opt):
         if len(opt) and opt[0] == "-" and (opt[1] in string.letters or
                                            opt[1] in string.digits):
@@ -1470,7 +1471,7 @@ class Interface:
             return 0
         except TypeError:
             return 0
-    
+
     def is_short_option(self, opt):
         opt_check = self.trim_short_option(opt)
         try:
@@ -1516,7 +1517,7 @@ class Interface:
                 USER_LEVEL, USER) == USER2:
                 return 1
         return 0
-        
+
     def is_admin_option(self, opt):
         if self.is_long_option(opt):
             if self.options[self.trim_option(opt)].get(
@@ -1551,10 +1552,10 @@ class Interface:
         # Determine what the variable's name is.  Use the command string
         # as the default if a "value_name" field is not specified.
         opt_name = opt_dict.get(VALUE_NAME, long_opt)
-        
+
         #Convert command dashes to variable name underscores.
-        opt_name = string.replace(opt_name, "-", "_") 
-        
+        opt_name = string.replace(opt_name, "-", "_")
+
         return opt_name
 
     def get_default_name(self, opt_dict, long_opt):
@@ -1564,11 +1565,11 @@ class Interface:
             opt_name = opt_dict.get(VALUE_NAME, long_opt)
         else:
             opt_name = opt_dict.get(DEFAULT_NAME, long_opt)
-        
-        
+
+
         #Convert command dashes to variable name underscores.
-        opt_name = string.replace(opt_name, "-", "_") 
-        
+        opt_name = string.replace(opt_name, "-", "_")
+
         return opt_name
 
     def get_default_value(self, opt_dict, value):
@@ -1591,7 +1592,7 @@ class Interface:
                 return opt_dict.get(DEFAULT_VALUE, DEFAULT)
             else:
                 return value
-    
+
     def get_value_type(self, opt_dict):  #, value):
         try:
             if opt_dict.get(VALUE_TYPE, STRING) == INTEGER:
@@ -1645,7 +1646,7 @@ class Interface:
     # a singlge option exist) and sets the interface variables.  The last
     # function, set_extra_values(), handles when more than one argument
     # is parsed for an option.
-       
+
     def set_value(self, long_opt, value):
         #Make sure the name gets put inside if it isn't there already.
         if not self.options[long_opt].get(VALUE_NAME, None):
@@ -1754,7 +1755,7 @@ class Interface:
                 self.print_usage(str(msg))
 
             self.__set_value(opt_name, opt_typed_value)
-            
+
             #keep this list up to date for finding the next argument.
             self.some_args = self.some_args[1:]
 
@@ -1784,7 +1785,7 @@ class Interface:
             #keep this list up to date for finding the next argument.
             if opt_dict.get(EXTRA_VALUES, None) == None:
                 self.some_args = self.some_args[1:]
-        
+
         #For the cases where this needs to be set also.
         if opt_dict.get(FORCE_SET_DEFAULT, None):
             try:
@@ -1832,7 +1833,7 @@ class Interface:
                  next_arg != None and self.is_option(next_arg) and \
                  self.is_switch_option(next_arg):
                 next_arg = None
-                
+
             extra_option[EXTRA_OPTION] = 1 #This is sometimes important...
             self.set_from_dictionary(extra_option, long_opt, next_arg)
             try:
@@ -1853,7 +1854,7 @@ class Interface:
             value_is_used = True  #Set this back to the default.
 
 ############################################################################
-    
+
 if __name__ == '__main__':
     intf = Interface()
 

@@ -551,9 +551,9 @@ class FileDB(DbTable):
                 for key in ('package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count',\
-                            'storage_group','file_family','library','wrapper','cache_location'):
-                    if s.has_key(key):
-                        record[key] = s[key]
+                            'storage_group','file_family','library','wrapper','cache_location',
+                            'original_library','file_family_width'):
+                    record[key] = s.get(key,None)
 		return record
 
 	def import_format(self, s):
@@ -612,9 +612,10 @@ class FileDB(DbTable):
                 for key in ('package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count', \
-                            'storage_group','file_family','library','wrapper','cache_location'):
+                            'storage_group','file_family','library','wrapper','cache_location',
+                            'original_library','file_family_width'):
                     if s.has_key(key):
-                        record[key] = s[key]
+                        record[key] = s.get(key,None)
 		return record
 
 class VolumeDB(DbTable):

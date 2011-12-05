@@ -45,6 +45,8 @@ MAX_CONNECTIONS=20
 AMQP_BROKER = "amqp_broker"
 FILES_IN_TRANSITION_CHECK_INTERVAL = 60
 
+SELECT_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_status='CACHED' and f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
+
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
 def time2timestamp(t):
@@ -1302,6 +1304,8 @@ class FileClerkMethods(FileClerkInfoMethods):
         if gid != None:
             record["gid"] = gid
         record["deleted"] = "no"
+	record["original_library"] = ticket["fc"].get("original_library",None)
+	record["file_family_width"] = ticket["fc"].get("file_family_width",None)
 	if ticket["fc"].get("mover_type",None) == "DiskMover":
 		record["cache_status"] = file_cache_status.CacheStatus.CACHED
 		record["cache_location"] = record.get("location_cookie",None)
@@ -1985,16 +1989,53 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
         # connection is broken.
         self.set_error_handler(self.file_error_handler)
         self.connection_failure = 0
-	self.file_check_thread = threading.Thread(target=self.check_files_in_transition)
-	self.file_check_thread.start()
         # setup the communications with the event relay task
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(enstore_constants.FILE_CLERK,
                                  self.alive_interval)
 
+	threading.Thread(target=self.replay_cache_written_events).start()
+	self.file_check_thread = threading.Thread(target=self.check_files_in_transition)
+	self.file_check_thread.start()
+
+    def get_files_in_transition(self):
+	    q=SELECT_FILES_IN_TRANSITION
+	    res = self.filedb_dict.query_getresult(q)
+	    return res
+
+    def replay_cache_written_events(self):
+	    res=self.get_files_in_transition()
+	    for row in res:
+		    bfid = row[0]
+		    self.replay_cache_written_event(bfid)
+
+    def replay_cache_written_event(self,bfid):
+	    record=self.filedb_dict[bfid]
+	    event = pe_client.evt_cache_written_fc({ "fc" : { "original_library"  : record.get("original_library",None),
+							      "file_family_width" : record.get("file_family_width",None)
+							      }
+						     }, record)
+	    try:
+		    self.en_qpid_client.send(event)
+		    Trace.log(e_errors.INFO,"Succesfully replayed CACHE_WRITTEN event for %s"%(bfid,))
+	    except:
+		    Trace.log(e_errors.INFO,"Failed replay CACHE_WRITTEN event for %s"%(bfid,))
+		    pass
+
+    def replay(self,ticket):
+	    func_name="self."+ticket.get("func")
+	    func=eval(func_name)
+	    ticket["status"] = (e_errors.OK, None)
+	    try:
+		    func()
+	    except:
+		    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	    self.reply_to_caller(ticket)
+
+
     def check_files_in_transition(self) :
-	    q="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
+	    q=SELECT_FILES_IN_TRANSITION
 	    while True:
 		    res = self.filedb_dict.query_getresult(q)
 		    message = ""
