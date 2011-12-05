@@ -116,57 +116,7 @@ case $node in
 	    qualifier=d0en
 	    ;;
 
-  happy)    #Sasha Moibenko's Desktop
-	    ENSTORE_MAIL=moibenko@fnal.gov
-	    ENSTORE_CONFIG_HOST=$happy
-	    ENSTORE_CONFIG_FILE=happy.conf
-	    qualifier=happy
-	    complain=0
-	    ;;
-
-  water|rain|pool)
-	    #Michael Zalokar's Desktop
-	    ENSTORE_MAIL=zalokar@fnal.gov
-	    ENSTORE_CONFIG_HOST=$h2oen
-	    ENSTORE_CONFIG_FILE=water.conf
-	    complain=0
-	    ;;
-
-  fndapr)   #Eileen Berman's Desktop
-	    ENSTORE_MAIL=berman@fnal.gov
-	    ENSTORE_CONFIG_HOST=$fndapr
-	    ENSTORE_CONFIG_FILE=berman.conf
-	    complain=0
-	    ;;
-
-  woodlawn) #Chih-Hao Huang's Desktop
-	    ENSTORE_MAIL=huangch@fnal.gov
-	    ENSTORE_CONFIG_HOST=$woodlawn
-	    ENSTORE_CONFIG_FILE=woodlawn.conf
-	    complain=0
-	    ;;
-
-  kenwood)  #Chih-Hao Huang's Desktop
-	    ENSTORE_MAIL=huangch@fnal.gov
-	    ENSTORE_CONFIG_HOST=$kenwood
-	    ENSTORE_CONFIG_FILE=kenwood.conf
-	    complain=0
-	    ;;
-
-  airedale) #Jon Bakken's Desktop
-	    ENSTORE_MAIL=bakken@fnal.gov
-	    ENSTORE_CONFIG_HOST=$airedale
-	    ENSTORE_CONFIG_FILE=airedale.conf
-	    complain=0
-	    ;;
-
-# lancs)    ENSTORE_MAIL=enstore
-#	    ENSTORE_CONFIG_HOST=$lancs
-#	    ENSTORE_CONFIG_FILE=lancs.conf
-#	    complain=0
-#	    ;;
-
-  gccen*)   ENSTORE_MAIL=moibenko@fnal.gov,zalokar@fnal.gov,litvinse@fnal.gov
+  gccen*)   ENSTORE_MAIL=moibenko@fnal.gov,litvinse@fnal.gov
 	    ENSTORE_CONFIG_HOST=$gccen
 	    ENSTORE_CONFIG_FILE=gccen.conf
 	    complain=0
