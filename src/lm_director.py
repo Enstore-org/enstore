@@ -119,7 +119,8 @@ class LMD(dispatching_worker.DispatchingWorker,
 
     def _fetch_enstore_ticket(self):
         try:
-            return self.qpid_client.rcv.fetch()
+            #return self.qpid_client.rcv.fetch()
+            return self.qpid_client.fetch()
         except Queue.Empty:
             return None
         except qpid.messaging.ReceiverError, e:
