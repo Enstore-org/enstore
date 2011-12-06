@@ -3560,8 +3560,8 @@ class Display(Tkinter.Canvas):
 
         #If this mover's library is already remembered.
         library_color = self.library_colors.get(library, None)
-        print "library_color:", library_color, "library:", library
-        pprint.pprint(self.library_colors)
+        #print "library_color:", library_color, "library:", library
+        #pprint.pprint(self.library_colors)
         if self.library_colors.get(library, None):
             return self.library_colors[library]
 
