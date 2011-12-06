@@ -4017,7 +4017,7 @@ def outputfile_check(work_list, e):
                     # 4) user root is modifying something outside of the
                     #    /pnfs/fs/usr/xyz/ filesystem (EPERM).
                     y = "%s(1)" % (outputfile_use,)
-                    print "y:", y
+                    #print "y:", y
                     try:
                         fp=open(y, "w")
                         fp.write("")
@@ -5224,7 +5224,7 @@ def wait_for_message(listen_socket, lmc, work_list,
                 #We've timedout.
                 #A better mechanism will be needed if more than just
                 # the lmc will do things like this.
-#                print "DROPPING:", transaction_id_list
+                #                print "DROPPING:", transaction_id_list
                 Trace.log(TRANS_ID_LEVEL,
                           "dropping ids: %s" % (transaction_id_list,))
                 lmc.u.drop_deferred(transaction_id_list)
@@ -6562,15 +6562,16 @@ def set_outfile_permissions(ticket, encp_intf):
                         # them for consistancy is good for error checking.
                         dev = ticket['wrapper']['major'] << 8 + \
                               ticket['wrapper']['minor']
+                        update_t = ticket['fc']['update'].split(".")
                         fake_time = time.mktime(time.strptime(
-                            ticket['fc']['update'], "%Y-%m-%d %H:%M:%S"))
+                            update_t[0], "%Y-%m-%d %H:%M:%S"))
                         in_stat_info = (ticket['wrapper']['mode'],
                                         ticket['wrapper']['inode'],
                                         dev,  #Reconstructed.
                                         1,  #number of links
                                         ticket['wrapper']['uid'],
                                         ticket['wrapper']['gid'],
-                                        ticket['filesize'],
+                                        ticket['file_size'],
                                         fake_time,  #atime
                                         fake_time,  #mtime
                                         fake_time,  #ctime
@@ -9268,7 +9269,6 @@ def write_to_hsm(e, tinfo):
 
     done_ticket, listen_socket, unused, request_list = \
                  prepare_write_to_hsm(tinfo, e)
-
     if not e_errors.is_ok(done_ticket) or e.check:
         return done_ticket
 
@@ -11241,8 +11241,8 @@ def prepare_read_from_hsm(tinfo, e):
                     if os.getuid() == 0:
                         #Only try this when the real user is root.  
                         file_utils.chown(requests_per_vol[vol][i]['outfile'],
-                                         in_file_stats[stat.ST_UID],
-                                         in_file_stats[stat.ST_GID],
+                                         uid,
+                                         gid,
                                          unstable_filesystem=True)
             except (OSError, IOError, EncpError), msg:
                 #if not should_skip_deleted:
