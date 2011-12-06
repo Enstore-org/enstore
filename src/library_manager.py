@@ -1404,7 +1404,8 @@ class LibraryManagerMethods:
                         # The package is being processed by mover.
                         # Check the cache status
                         Trace.trace(self.trace_level+3, "_get_request: found package in wam")
-                        if request.ticket['fc']['cache_status']  == file_cache_status.CacheStatus.CACHED:
+                        if (request.ticket['fc']['cache_status']  == file_cache_status.CacheStatus.CACHED or
+                            w['fc']['cache_status'] == file_cache_status.CacheStatus.CACHED):
                             # the request can be sent to the mover
                             # return here
                             Trace.trace(self.trace_level+3, "_get_request: returning %s"%(request,))
@@ -1418,7 +1419,8 @@ class LibraryManagerMethods:
                                 # if it is the same request
                                 # break, we have no more requests to process
                                 request = None
-                                break
+                            break # return to while loop to check request against active works
+                            
                 else:
                     break
             else:
