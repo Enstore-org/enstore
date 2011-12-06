@@ -367,7 +367,7 @@ def __log_duration(t0, t1, func_name, args, status_message=None):
         __log_access_mount(func_name, args)
 
 #
-def __log_accces_path(func_name, args):
+def __log_access_path(func_name, args):
     if Trace.log_func != Trace.default_log_func:
         if type(args[0]) == types.StringType and args[0].find(".(access)(") != -1:
             #Log information about troublesome .(access)() paths.  If a lot of
@@ -376,8 +376,6 @@ def __log_accces_path(func_name, args):
             message = "Performing %s on file %s at %s." % \
                       (func_name, args[0], time.ctime())
             Trace.log(severity, message)
-            Trace.log_stack_trace()
-
 #
 def __log_access_mount(func_name, args):
     if os.uname()[0] == "Linux":
@@ -572,7 +570,7 @@ def __wrapper(function, args=(), unstable_filesystem=None):
     else:
         log_func_name = "%s" % (function.__name__,)
     __log_file_access(log_func_name, args)
-    __log_accces_path(log_func_name, args)
+    #__log_access_path(log_func_name, args)
 
     t0 = time.time()
 
