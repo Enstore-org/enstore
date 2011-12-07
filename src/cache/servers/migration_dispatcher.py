@@ -48,6 +48,9 @@ class MigrationList:
         self.id = id # MigrationList id
         self.state = state # state of the file list from file_list.py
         self.expected_reply = expected_reply # reply expected for this file list
+
+    def __repr__(self):
+        return "id %s list: %s"%(self.id, self.list_object)
         
 class MigrationDispatcher():
 
