@@ -38,12 +38,20 @@ class DispatcherClient(generic_client.GenericClient):
         self.timeout = rcv_timeout
         self.tries = rcv_tries
 
+   # reload policy when this method is called
+   # by the request from the client
     def reload_policy(self):
         r = self.send({'work': 'reload_policy'})
         return r
 
+   # get current policy
     def show_policy(self):
         r = self.send({'work': 'show_policy'})
+        return r
+
+   # get content of pools
+    def show_queue(self):
+        r = self.send({'work': 'show_queue'})
         return r
 
 
@@ -55,6 +63,7 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
         #self.restricted_opts = opts
         self.show = 0
         self.load = 0
+        self.get_queue = 0
         self.alive_rcv_timeout = generic_client.DEFAULT_TIMEOUT
         self.alive_retries = generic_client.DEFAULT_TRIES
         self.summary = 0
@@ -72,6 +81,10 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
                      option.DEFAULT_TYPE:option.INTEGER,
 		     option.USER_LEVEL:option.ADMIN
                      },
+        option.GET_QUEUE:{option.HELP_STRING:"print content of pools",
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.USER_LEVEL:option.ADMIN
+                          },
         option.SHOW:{option.HELP_STRING:"print the current policy in python format",
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.USER_LEVEL:option.ADMIN,
@@ -108,6 +121,14 @@ def do_work(intf):
             pprint.pprint(reply['dump'])
         else:
             pprint.pprint(reply)
+    elif intf.get_queue:
+        import pprint
+        reply = dispatcher_client.show_queue()
+        if reply.has_key('status') and reply['status'][0] == e_errors.OK:
+            # correct reply must contain 'dump' key by design
+            pprint.pprint(reply['pools'])
+        
+
     else:
 	intf.print_help()
     
