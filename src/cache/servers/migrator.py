@@ -227,6 +227,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             ### containing these files is not already written.
             ### This can be done by checking duplicate files map.
             ### Implementation must be HERE!!!!
+            Trace.trace(10, "pack_files: cache_file_path %s"%(cache_file_path,))
             
             if type(component['bfid']) == types.UnicodeType:
                 component['bfid'] = component['bfid'].encode("utf-8")
@@ -287,7 +288,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             for f, junk, junk in cache_file_list:
                 Trace.trace(10, "pack_files: add %s to %s"%(f, src_path))
                 rtn = os.system("tar --force-local -rPf %s %s"%(src_path, f))
-                print "RTN", rtn
 
         # Qpid converts strings to unicode.
         # Encp does not like this.
@@ -297,7 +297,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if type(dst) == types.UnicodeType:
             dst = dst.encode("utf-8")
         dst_path = "%s.tar"%(os.path.join(dst, src_fn))
-            
+        Trace.trace(10, "pack_files: returning %s %s %s"%(src_path, dst_path, bfids))
+           
         return src_path, dst_path, bfids
 
     # write aggregated file to tape
@@ -325,8 +326,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     write_enabled_counter = write_enabled_counter + 1
             if write_enabled_counter != len(request_list):
                 Trace.log(e_errors.ERROR, "No files will be archived, because some of them or all are already archived or being archived")
-                return True   
-            src_file_path, dst_file_path, bfid_list = self.pack_files(request_list)
+                return True
+            packed_file = self.pack_files(request_list)
+            if packed_file:
+                src_file_path, dst_file_path, bfid_list = packed_file
+            else:
+                src_file_path = dst_file_path = None
             if not (src_file_path and dst_file_path):
                 # aggregation failed
                 raise e_errors.EnstoreError(None, "Write to tape failed: no files to write", e_errors.NO_FILES)
@@ -671,7 +676,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             
             rc = self.fcc.set_cache_status(set_cache_params)
             if rc['status'][0] != e_errors.OK:
-                Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rec ['status']))
+                Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
                 return True # return True so that the message is confirmed
 
             # remove the rest (README.1st)
