@@ -143,6 +143,7 @@ class Dispatcher(mw.MigrationWorker,
          ticket['status'] = (e_errors.OK, None)
       except Exception, detail:
          ticket['status'] = (e_errors.ERROR, "Error loading policy for LMD: %s"%(detail,))
+         Trace.log(e_errors.ERROR, "reload_policy: %s" % (detail,))
       self.reply_to_caller(ticket)
          
 
@@ -154,8 +155,33 @@ class Dispatcher(mw.MigrationWorker,
          self.send_reply_with_long_answer(ticket)
       except Exception, detail:
          ticket['status'] = (e_errors.ERROR, "Error %s"%(detail,))
+         Trace.log(e_errors.ERROR, "show_policy: %s" % (detail,))
          self.reply_to_caller(ticket)
-         
+
+   # send content of pools
+   def show_queue(self, ticket):
+      Trace.trace(10, "show_queue")
+      ml = {}
+      for key in self.migrartion_pool:
+         ml[key] = {'id':self.migrartion_pool[key].id,
+                    'list': self.migrartion_pool[key].list_object.file_list,
+                    'type': self.migrartion_pool[key].list_object.list_type
+                    }
+      ticket['pools'] = {'cache_missed':self.cache_missed_pool,
+                         'cache_purge': self.cache_purge_pool,
+                         'cache_written': self.cache_written_pool,
+                         'migrartion_pool': ml,
+                         }
+      ticket['status'] = (e_errors.OK, None)
+      Trace.trace(10, "show_queue: ticket %s"%(ticket,))
+      try:
+         self.send_reply_with_long_answer(ticket)
+      except Exception, detail:
+         ticket['status'] = (e_errors.ERROR, "Error %s"%(detail,))
+         Trace.log(e_errors.ERROR, "show_queue: %s" % (detail,))
+         self.reply_to_caller(ticket)
+
+
    # move list from a list pool to migration pool
    # @param - from - pool
    # @param - item_to_move 
