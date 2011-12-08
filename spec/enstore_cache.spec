@@ -7,7 +7,7 @@ Summary: Enstore: Mass Storage System
 Name: enstore_cache
 # version number is based on the enstore rpm version taken as base version
 Version: 2.2.5
-Release: 2
+Release: 3
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -194,6 +194,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Thu Dec 08 2011  <moibenko@fnal.gov> -
+- python from enstore rpm 2.2-4
 * Thu Dec 08 2011  <moibenko@fnal.gov> -
 - modified encp to not loop in
 - _get_stat for write requests
