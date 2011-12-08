@@ -7,7 +7,7 @@ Summary: Enstore: Mass Storage System
 Name: enstore_cache
 # version number is based on the enstore rpm version taken as base version
 Version: 2.2.5
-Release: 3
+Release: 4
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -168,7 +168,7 @@ $ENSTORE_DIR/external_distr/update_sym_links.sh
 cp -f $ENSTORE_DIR/cumin/cumin.conf /etc
 chmod 400 /etc/cumin.conf
 cp -f $ENSTORE_DIR/sbin/qpid_broker /etc/rc.d/init.d
-cp -f $ENSTORE_DIR/site_specific/config/qpidd.conf $ENSTORE_DIR/qpid/etc
+cp -f $ENSTORE_DIR/etc/qpidd.conf $ENSTORE_DIR/qpid/etc
 cp -f $ENSTORE_DIR/site_specific/config/enstore.acl $ENSTORE_DIR/qpid/etc
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
@@ -194,6 +194,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Thu Dec 08 2011  <moibenko@fnal.gov> -
+- changed location of qpidd.conf
 * Thu Dec 08 2011  <moibenko@fnal.gov> -
 - python from enstore rpm 2.2-4
 * Thu Dec 08 2011  <moibenko@fnal.gov> -
