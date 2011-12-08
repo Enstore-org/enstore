@@ -366,7 +366,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                          'archive_status': "null",
                                          'cache_location': None})       # we are not changing this
                         
-            rc = self.fcc.set_cache_status(set_cache_params)
+            #rc = self.fcc.set_cache_status(set_cache_params)
+            rc = self.set_cache_status(set_cache_params)
             raise e_errors.EnstoreError(None, "encp write to tape failed", rc)
         
         # register archive file in file db
@@ -585,7 +586,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     
         Trace.trace(10, "read_from_tape:  files to stage %s %s"%(len(files_to_stage), files_to_stage))
         if len(files_to_stage) != 0:
-            rc = self.fcc.set_cache_status(set_cache_params)
+            #rc = self.fcc.set_cache_status(set_cache_params)
+            rc = self.set_cache_status(set_cache_params)
             Trace.trace(10, "read_from_tape: will stage %s"%(set_cache_params,))
             if rc['status'][0] != e_errors.OK:
                 Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
@@ -626,7 +628,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     # change cache_status back
                     for rec in set_cache_params:
                         rec['cache_status'] = file_cache_status.CacheStatus.PURGED
-                    rc = self.fcc.set_cache_status(set_cache_params)
+                    #rc = self.fcc.set_cache_status(set_cache_params)
+                    rc = self.set_cache_status(set_cache_params)
                     return False
 
             # unpack files
@@ -674,7 +677,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                              'archive_status': None,        # we are not changing this
                                              'cache_location': dst})
             
-            rc = self.fcc.set_cache_status(set_cache_params)
+            #rc = self.fcc.set_cache_status(set_cache_params)
+            rc = self.set_cache_status(set_cache_params)
             if rc['status'][0] != e_errors.OK:
                 Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
                 return True # return True so that the message is confirmed
