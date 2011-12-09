@@ -528,9 +528,11 @@ CREATE OR REPLACE FUNCTION populate_files_in_transition_table() RETURNS "trigger
     AS $$
 BEGIN
 IF(TG_OP='INSERT') THEN
-	BEGIN
+        IF NEW.original_library IS NOT NULL THEN
+	   BEGIN
 		INSERT INTO files_in_transition values (NEW.bfid);
-	END;
+	   END;
+        END IF;
 ELSEIF (TG_OP='UPDATE') THEN
 	IF (OLD.bfid<>NEW.bfid) THEN
 		BEGIN
