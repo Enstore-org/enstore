@@ -36,9 +36,9 @@ class DiskDriver(generic_driver.Driver):
         self.mode = mode
         self._active_time = 0 #time actually spent in read or write call
         if self.fd < 0:
+            dir_path = os.path.dirname(device)
             if mode ==1: # WRITE
                 mode = mode|os.O_CREAT
-                dir_path = os.path.dirname(device)
                 try:
                     if not os.path.exists(dir_path):
                         os.makedirs(dir_path, 0755)
