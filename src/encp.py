@@ -701,7 +701,7 @@ def get_directory_name(filepath):
 #Return True if the file passed in is a pnfs file with either layer 1 or
 # or layer 4 set.  False otherwise.  OSError, and IOError exceptions may
 # be thrown for other errors.
-def do_layers_exist(pnfs_filename):
+def do_layers_exist(pnfs_filename, encp_intf=None):
 
     if not pnfs_filename:
         return False
@@ -712,8 +712,8 @@ def do_layers_exist(pnfs_filename):
         layer_1_filename = sfs.layer_file(pnfs_filename, 1)
         layer_4_filename = sfs.layer_file(pnfs_filename, 4)
         
-        if _get_stat(layer_1_filename, sfs.get_stat)[stat.ST_SIZE] or \
-               _get_stat(layer_4_filename, sfs.get_stat)[stat.ST_SIZE] :
+        if _get_stat(layer_1_filename, sfs.get_stat, encp_intf)[stat.ST_SIZE] or \
+               _get_stat(layer_4_filename, sfs.get_stat, encp_intf)[stat.ST_SIZE] :
 
             #Layers found for the file!
             return True
@@ -846,10 +846,16 @@ def get_enstore_canonical_path(filepath):
           "Unable to return enstore pnfs canonical pathname: %s" % (filepath,),
                         e_errors.WRONGPARAMETER)
     
-def _get_stat(pathname, func=file_utils.get_stat):
+def _get_stat(pathname, func=file_utils.get_stat, e=None):
     __pychecker__="unusednames=i"
      
-    for i in [0, 1, 2, 3, 4]:
+    retries = 5
+    if e and e.outtype == HSMFILE:
+        # write request
+        # output file does not exist
+        # no need to retry
+        retries = 1
+    for i in range(retries):
         try:
             statinfo = func(pathname)
             return statinfo
@@ -859,16 +865,18 @@ def _get_stat(pathname, func=file_utils.get_stat):
             # happens a lot if pnfs is automounted. One node, flxi04,
             # appears to be throwing EIO instead for these cases.
             if msg.args[0] in [errno.EIO, errno.ENOENT]:
+                if retries == 1:
+                    break
                 time.sleep(1)
                 continue
             else:
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            
 
     raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-def get_stat(filename):
+def get_stat(filename, e=None):
     global pnfs_is_automounted
-
     pathname = os.path.abspath(filename)
 
     try:
@@ -889,6 +897,7 @@ def get_stat(filename):
             raise OSError(errno.ENOENT, "Force use of pnfs_agent.")
         else:
             statinfo = file_utils.get_stat(pathname)
+
         return statinfo
     except (OSError, IOError), msg:
         if getattr(msg, "errno", None) in [errno.ENOENT, errno.EIO]:
@@ -906,14 +915,15 @@ def get_stat(filename):
                 # In case of layer 1 or layer 4 and error
                 # call get stat from chimera/pnfs 
                 sfs = namespace.StorageFS(pathname)
-                return _get_stat(pathname, sfs.get_stat)
+                rc = _get_stat(pathname, sfs.get_stat, e)
+                return rc
             elif pnfs_is_automounted or \
                      namespace.is_storage_local_path(pathname, check_name_only = 1):
                 #Sometimes when using pnfs mounted locally the NFS client times
                 # out and gives the application the error ENOENT.  When in
                 # reality the file is fine when asked some time later.
                 # Automounting pnfs can cause timeout problems too.
-                statinfo = _get_stat(pathname)
+                statinfo = _get_stat(pathname, file_utils.get_stat, e)
                 return statinfo
             elif is_local_path(pathname, check_name_only = 1):
                 #You can only get here by choosing to name your files poorly.
@@ -3748,7 +3758,6 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
 # check the output file list for consistency
 # generate names based on input list if required
 def outputfile_check(work_list, e):
-
     verify_output_file_consistancy_start_time = time.time()
     
     dcache = e.put_cache #being lazy
@@ -3797,10 +3806,10 @@ def outputfile_check(work_list, e):
             #check to make sure that the filename string doesn't have any
             # wackiness to it.
             filename_check(outputfile_print)
-
+            
             #Grab this stat() once for all the checks about to be run.
             try:
-                fstatinfo = get_stat(outputfile_use)
+                fstatinfo = get_stat(outputfile_use, e)
             except (OSError, IOError):
                 fstatinfo = None
 
@@ -3891,6 +3900,7 @@ def outputfile_check(work_list, e):
                     # such file or directory error.  We need to ignore it
                     # if stat() on the file returns success
                     get_stat(outputfile_use)
+                    
                     layer1 = ''
                     layer4 = ''
                     try:
@@ -6975,7 +6985,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #If the user wants us to specifically check if another encp has
         # written (layers 1 or 4) to this pnfs file; now is the time to check.
         try:
-            if do_layers_exist(pnfs_filename):
+            if do_layers_exist(pnfs_filename, encp_intf):
                 #The do_layers_exist() function should never give an
                 # exist error for the 'real' file.  Any EEXIST errors
                 # from this section should only occur if layer 1 or 4 is
