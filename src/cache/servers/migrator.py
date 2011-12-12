@@ -15,6 +15,7 @@ import types
 import copy
 import errno
 import logging
+import statvfs
 
 # enstore imports
 import e_errors
@@ -93,11 +94,17 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.tmp_stage_area = self.my_conf['tmp_stage_area']  # area on disk where staged files are temporarily stored
 
         self.my_dispatcher = self.csc.get(self.my_conf['migration_dispatcher']) # migration dispatcher configuration
+        self.purge_watermarks = None
+        if self.my_dispatcher:
+          self.purge_watermarks = self.my_dispatcher.get("purge_watermarks", None) 
+            
         self.my_broker = self.csc.get("amqp_broker") # amqp broker configuration
         
         # configuration dictionary required by MigrationWorker
-        self.migration_worker_configuration = {}
-        self.migration_worker_configuration['server'] = self.my_dispatcher
+        self.migration_worker_configuration = {'server':{}}
+        self.migration_worker_configuration['server']['queue_work'] = self.my_dispatcher['migrator_work']
+        self.migration_worker_configuration['server']['queue_reply'] = self.my_dispatcher['migrator_reply']        
+        
         self.queue_in_name = self.name.split('.')[0]
         self.migration_worker_configuration['server']['queue_in'] = "%s; {create: receiver, delete: receiver}"%(self.queue_in_name,) # migrator input control queue
         # get amqp broker configuration - common for all servers
@@ -420,6 +427,35 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         
         return True # completed successfully, the request will be acknowledged
 
+
+    # check all conditions for purging the file
+    def really_purge(self, f_info):
+        if (f_info['status'][0] == e_errors.OK and
+            (f_info['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
+            ((f_info['cache_status'] != file_cache_status.CacheStatus.STAGING) and   # why would we purge the file which is being staged?
+             (f_info['cache_status'] != file_cache_status.CacheStatus.STAGING_REQUESTED) and   # why would we purge the file which is being staged?
+             (f_info['cache_status'] != file_cache_status.CacheStatus.PURGING) and   # file is being pugred
+             (f_info['cache_status'] != file_cache_status.CacheStatus.PURGED))):   # file is pugred
+            if self.purge_watermarks:
+                directory = f_info['cache_location']
+                try:
+                    stats = os.statvfs(directory)
+                    avail = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
+                    total = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]*1.
+                    fr_avail = avail/total
+                    if fr_avail > 1 - self.purge_watermarks[1]:
+                        rc = True
+                    else:
+                        rc = False
+                except OSError:
+                    rc = True # file was removed before, proceed with purge anyway
+            else:
+                rc = True
+        else:
+            rc = False
+        Trace.trace(10, "really_purge %s %s"%(f_info['bfid'], rc))
+        return rc
+
     # purge files from disk
     def purge_files(self, request):
         # save request
@@ -434,20 +470,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 bfid = bfid.encode("utf-8")
 
             rec = self.fcc.bfid_info(bfid)
-            if (rec['status'][0] == e_errors.OK and
-                (rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
-                ((rec['cache_status'] != file_cache_status.CacheStatus.STAGING) and   # why would we purge the file which is being staged?
-                 (rec['cache_status'] != file_cache_status.CacheStatus.STAGING_REQUESTED) and   # why would we purge the file which is being staged?
-                 (rec['cache_status'] != file_cache_status.CacheStatus.PURGING) and   # file is being pugred
-                 (rec['cache_status'] != file_cache_status.CacheStatus.PURGED))):    # file is pugred
+            if self.really_purge(rec):
                 rec['cache_status'] = file_cache_status.CacheStatus.PURGING
                 Trace.trace(10, "purge_files: purging %s"%(rec,))
                 set_cache_params.append({'bfid': bfid,
                                          'cache_status': file_cache_status.CacheStatus.PURGING,
                                          'archive_status': None,        # we are not changing this
                                          'cache_location': rec['cache_location']})       # we are not changing this
-                
-
 
         rc = self.set_cache_status(set_cache_params)
         Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
@@ -587,8 +616,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "read_from_tape:  files to stage %s %s"%(len(files_to_stage), files_to_stage))
         if len(files_to_stage) != 0:
             #rc = self.fcc.set_cache_status(set_cache_params)
-            rc = self.set_cache_status(set_cache_params)
             Trace.trace(10, "read_from_tape: will stage %s"%(set_cache_params,))
+            rc = self.set_cache_status(set_cache_params)
             if rc['status'][0] != e_errors.OK:
                 Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
                 return True # return True so that the message is confirmed
@@ -634,10 +663,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             # unpack files
             os.chdir(tmp_stage_dir_path)
-            if len(files_to_stage) > 1:
-                # untar packagd files
-                # if package contains more than one file
-                os.system("tar --force-local -xf %s"%(stage_fname,))
+            #if len(files_to_stage) > 1:
+            # untar packaged files
+            # if package contains more than one file
+            os.system("tar --force-local -xf %s"%(stage_fname,))
 
             # clear set_cache_params
             set_cache_params = []

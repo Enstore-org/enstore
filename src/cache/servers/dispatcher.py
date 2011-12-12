@@ -87,7 +87,11 @@ class Dispatcher(mw.MigrationWorker,
         self.dispatcher_configuration['amqp']['broker'] = self.csc.get("amqp_broker")
         
         self.max_time_in_cache = self.my_conf.get("max_time_in_cache", 3600)
-        self.file_purger = purge_files.FilePurger(self.csc, self.max_time_in_cache)
+        self.purge_watermarks = self.my_conf.get("purge_watermarks", None)
+        # purge_watermarks is a tuple
+        # (start_purging_disk_avalable, start_purging_disk_avalable)
+        # start_purging_disk_avalable - available space as afraction of the capacity
+        self.file_purger = purge_files.FilePurger(self.csc, self.max_time_in_cache, self.purge_watermarks)
         
         # create pools for lists
         self.file_deleted_pool = {}

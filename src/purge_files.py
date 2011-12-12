@@ -10,6 +10,7 @@
 import sys
 import os
 import time
+import statvfs
 
 # enstore imports
 import configuration_client
@@ -24,7 +25,7 @@ MAX_TIME_IN_CACHE = 3600
 
 class FilePurger:
     # init is stole from file_clerk
-    def  __init__(self, csc, max_time_in_cache=None):
+    def  __init__(self, csc, max_time_in_cache=None, watermarks=None):
         # Obtain information from the configuration server.
         self.csc = csc
         configuration_client.ConfigurationClient(csc)
@@ -44,7 +45,12 @@ class FilePurger:
             self.max_time_in_cache = max_time_in_cache
         else:
             self.max_time_in_cache = MAX_TIME_IN_CACHE
-            
+
+        # purge_watermarks is a tuple
+        # (start_purging_disk_avalable, start_purging_disk_avalable)
+        # start_purging_disk_avalable - available space as afraction of the capacity
+        self.purge_watermarks = watermarks
+        
         ic_conf = self.csc.get("info_server")
         self.infoc = info_client.infoClient(self.csc, 
                                             server_address=(ic_conf['host'],
@@ -63,6 +69,27 @@ class FilePurger:
             print "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!"
             sys.exit(1)
 
+    # check available space
+    # checks if disk space is beween watermarks
+    # and if yes returns True
+    def available_space_low(self, f_info):
+        directory = f_info['cache_location']
+        try:
+            stats = os.statvfs(directory)
+            avail = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
+            total = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]*1.
+            fr_avail = avail/total
+            if fr_avail < 1 - self.purge_watermarks[0]:
+                return True
+            else:
+                return False
+        except OSError:
+            return False
+        except:
+            return False
+            
+            
+
     def purge_this_file(self, f_info):
         rc = False
         if (f_info['cache_status'] == file_cache_status.CacheStatus.CACHED and
@@ -71,8 +98,11 @@ class FilePurger:
             t = time.mktime(time.strptime(f_info['cache_mod_time'], "%Y-%m-%d %H:%M:%S"))
             if time.time() - t > self.max_time_in_cache:
                 rc = True
+                if self.purge_watermarks:
+                    rc = self.available_space_low(f_info)
         return rc
             
+
     def files_to_purge(self):
         q = "select * from cached_files;"
         res = self.filedb_dict.query_getresult(q)
