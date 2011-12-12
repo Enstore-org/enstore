@@ -49,7 +49,7 @@ class DiskDriver(generic_driver.Driver):
                 self.fd = os.open(device, mode)
             except:
                 exc, msg, tb = sys.exc_info()
-                os.system("ls %s > /tmp/ls_out"%(os.path.dirname(path),))
+                os.system("ls %s > /tmp/ls_out"%(os.path.dirname(dir_path),))
                 raise exc, msg, tb
             
         self._rate = self._last_rate = self._bytes_transferred = 0L
