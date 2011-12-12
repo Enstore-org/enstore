@@ -105,6 +105,8 @@ class MigrationDispatcher():
           pass
 
     def _send_message(self,m):
+        Trace.trace(10, "_send_message: sending %s"%(m,))
+        
         self.qpid_client.snd_default.send(m)
 
     def send_status_request(self):
@@ -269,12 +271,12 @@ class MigrationDispatcher():
                 Trace.handle_error()
         
     def start_migration(self):
-        print "STARTED MIGR_DISP"
-        print "MIGR_DISP"
         for key in self.migration_pool.keys():
-            print "KEY IN MIG", key, self.migration_pool[key]
-            item = self.migration_pool[key]
-            self.migrate_list(item)
+            try:
+                item = self.migration_pool[key]
+                self.migrate_list(item)
+            except KeyError, detail:
+                Trace.log(e_errors.ERROR, "Error adding to migrate list %s %s"%(key, item))
 
 if __name__ == "__main__":
     migrator = sys.argv[1]
