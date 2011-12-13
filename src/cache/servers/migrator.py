@@ -589,7 +589,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # Create a list of files to get staged
         for  component in bfid_info:
             bfid = component['bfid']
-            Trace.trace(10, "read_from_tape: rec %s"%(component,))
+            Trace.trace(10, "read_from_tape: rec1 %s"%(component,))
             if component['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED:  # file is on tape and it can be staged
                 # check the state of each file
                 if component['cache_status'] == file_cache_status.CacheStatus.CACHED:
@@ -650,7 +650,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 if rc != 0:
                     # cleanup dirctories
                     try:
-                        os.removeedirs(tmp_stage_dir_path)
+                        os.removedirs(tmp_stage_dir_path)
                     except:
                         pass
 
@@ -700,7 +700,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                         Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, detail))
                         return False
                 
-                os.rename(src, dst)
+
+                try:
+                    os.rename(src, dst)
+                except Exception, detail:
+                    Trace.trace(10, "read_from_tape: exception renaming file %s %s"%(src, dst))
+                    # get stats
+                    stats = os.stat(src)
                 set_cache_params.append({'bfid': rec['bfid'],
                                          'cache_status':file_cache_status.CacheStatus.CACHED,
                                              'archive_status': None,        # we are not changing this
@@ -724,7 +730,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             
 
             #remove the temporary directory
-            os.removedirs(tmp_stage_dir_path)
+            try:
+                os.removedirs(tmp_stage_dir_path)
+            except OSError, errno.ENOTEMPTY:
+                Trace.trace(10, "read_from_tape: dir not empty %s"%(tmp_stage_dir_path))
+                os.system("ls -l %s > /tmp/mmm.out"%(tmp_stage_dir_path,))
         status_message = cache.messaging.mw_client.MWRStaged(orig_msg=rq)
         try:
             self._send_reply(status_message)
