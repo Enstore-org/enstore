@@ -1380,6 +1380,11 @@ class LibraryManagerMethods:
                 del(kwargs['active_volumes']) # multiple disk movers can access the same active volume
         request = method(*args, **kwargs)
         Trace.trace(self.trace_level+3, "_get_request: method %s args %s kwargs %s request %s"%(method.__name__, args, kwargs, request,))
+        if not mover_type or mover_type != 'DiskMover':
+            # return request right away
+            # only DiskMover requests need further processing inside of
+            # _get_request
+            return request
         if request and request.ticket['work'] != "read_from_hsm":
             # only read_from_hsm requests need further processing
             return request
@@ -1788,6 +1793,11 @@ class LibraryManagerMethods:
         else:
             # disk mover
             vol_veto_list = []
+            host_busy = self.client_host_busy(rq.ticket)
+            if host_busy:
+                sg, key_to_check = self.request_key(rq)
+                self.continue_scan = 1
+                return None, key_to_check # continue with key_to_ckeck
 
         Trace.trace(self.trace_level+4,"process_write_request: request next write volume for %s" % (vol_family,))
 
