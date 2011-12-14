@@ -71,11 +71,11 @@ libs=( $(enstore conf --list-lib|awk 'NR > 1 {print substr($1,1,match($1,/\./) -
 	robots="GS"
 	;;
     stken)
-	labels="FUJ,MAX0[^7],V,TEST29,TST07[4-9],TST098,TST189,TST19[01],TTC02[35678],TTC071"
+	labels="FUJ,MAX0[^7],V,TEST29,TST07[4-9],TST098,TST189,TST19[01],TTC02[578],TTC071"
 	robots="F1,G1,GS"
 	;;
     cdfen)
-	labels="I,TST098,TST10[012],TST19[4-9]"
+	labels="I,TST098,TST10[012],TST19[4-9],TTC02[36]"
 	robots="F1,GS"
 	;;
     d0en)
