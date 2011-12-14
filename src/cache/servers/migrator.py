@@ -662,6 +662,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     return False
 
             # unpack files
+            Trace.trace(10, "read_from_tape: changing directory to %s"%(tmp_stage_dir_path,))
             os.chdir(tmp_stage_dir_path)
             #if len(files_to_stage) > 1:
             # untar packaged files
@@ -669,7 +670,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             os.system("tar --force-local -xf %s"%(stage_fname,))
 
             # clear set_cache_params
-            set_cache_params = []
+            #set_cache_params = []
             
             # move files to their original location
             for rec in files_to_stage:
@@ -704,13 +705,29 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 try:
                     os.rename(src, dst)
                 except Exception, detail:
-                    Trace.trace(10, "read_from_tape: exception renaming file %s %s"%(src, dst))
+                    Trace.trace(10, "read_from_tape: exception renaming file %s %s %s"%(src, dst, detail))
                     # get stats
-                    stats = os.stat(src)
-                set_cache_params.append({'bfid': rec['bfid'],
-                                         'cache_status':file_cache_status.CacheStatus.CACHED,
-                                             'archive_status': None,        # we are not changing this
-                                             'cache_location': dst})
+                    try:
+                        stats = os.stat(src)
+                    except Exception, detail:
+                        if detail.args[0] != errno.ENOENT:
+                            Trace.log(e_errors.ERROR, "Package staging failed while renaming files %s %s"%(package_id, detail))
+                            # change cache_status back
+                            for rec in set_cache_params:
+                                rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                            #rc = self.fcc.set_cache_status(set_cache_params)
+                            rc = self.set_cache_status(set_cache_params)
+                            return False
+                            
+                    
+                #set_cache_params.append({'bfid': rec['bfid'],
+                #                         'cache_status':file_cache_status.CacheStatus.CACHED,
+                #                             'archive_status': None,        # we are not changing this
+                #                             'cache_location': dst})
+            # if we get here
+            # file staging and copying succeeded
+            for p in set_cache_params:
+                p['cache_status'] = file_cache_status.CacheStatus.CACHED
             
             #rc = self.fcc.set_cache_status(set_cache_params)
             rc = self.set_cache_status(set_cache_params)
