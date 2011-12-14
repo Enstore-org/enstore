@@ -169,7 +169,8 @@ class Dispatcher(mw.MigrationWorker,
       for key in self.migrartion_pool:
          ml[key] = {'id':self.migrartion_pool[key].id,
                     'list': self.migrartion_pool[key].list_object.file_list,
-                    'type': self.migrartion_pool[key].list_object.list_type
+                    'type': self.migrartion_pool[key].list_object.list_type,
+                    'time_qd': time.ctime(self.migrartion_pool[key].list_object.creation_time),
                     }
       ticket['pools'] = {'cache_missed':self.cache_missed_pool,
                          'cache_purge': self.cache_purge_pool,
@@ -187,10 +188,13 @@ class Dispatcher(mw.MigrationWorker,
 
 
    # move list from a list pool to migration pool
-   # @param - from - pool
-   # @param - item_to_move 
+   # @param - src - pool
+   # @param - item_to_move item to move is a key in the pool
    def move_to_migration_pool(self, src, item_to_move):
       self._lock.acquire()
+      # src[item_to_move] is a file_list.FIleList or
+      # file_list.FileListWithCRC
+      src[item_to_move].creation_time = time.time()
       list_id = src[item_to_move].list_id
       Trace.trace(10, "move_to_migration_pool list_id %s"%(list_id,))
       self.migrartion_pool[list_id] = migration_dispatcher.MigrationList(src[item_to_move],
