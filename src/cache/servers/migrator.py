@@ -598,12 +598,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     continue
                 elif component['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED:
                     # file clerk sets this when opens a file
-                    if component['bfid'] != package_id: # we stage files in the package, not the package itself
-                        files_to_stage.append(component)
-                        set_cache_params.append({'bfid': bfid,
-                                                 'cache_status':file_cache_status.CacheStatus.STAGING,
-                                                 'archive_status': None,        # we are not changing this
-                                                 'cache_location': None})       # we are not changing this yet
+                    #if component['bfid'] != package_id: # we stage files in the package, not the package itself
+                    files_to_stage.append(component)
+                    set_cache_params.append({'bfid': bfid,
+                                             'cache_status':file_cache_status.CacheStatus.STAGING,
+                                             'archive_status': None,        # we are not changing this
+                                             'cache_location': None})       # we are not changing this yet
                 if component['cache_status'] == file_cache_status.CacheStatus.STAGING:
                     # File is being staged
                     # Log this for the further investigation in
@@ -670,7 +670,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             os.system("tar --force-local -xf %s"%(stage_fname,))
 
             # clear set_cache_params
-            #set_cache_params = []
+            set_cache_params = []
             
             # move files to their original location
             for rec in files_to_stage:
@@ -720,14 +720,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                             return False
                             
                     
-                #set_cache_params.append({'bfid': rec['bfid'],
-                #                         'cache_status':file_cache_status.CacheStatus.CACHED,
-                #                             'archive_status': None,        # we are not changing this
-                #                             'cache_location': dst})
-            # if we get here
-            # file staging and copying succeeded
-            for p in set_cache_params:
-                p['cache_status'] = file_cache_status.CacheStatus.CACHED
+                set_cache_params.append({'bfid': rec['bfid'],
+                                         'cache_status':file_cache_status.CacheStatus.CACHED,
+                                             'archive_status': None,        # we are not changing this
+                                             'cache_location': dst})
             
             #rc = self.fcc.set_cache_status(set_cache_params)
             rc = self.set_cache_status(set_cache_params)
