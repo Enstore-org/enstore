@@ -23,7 +23,7 @@ class EnQpidClient:
     def __init__(self, host_port, myaddr=None, target=None ):
         self.log = logging.getLogger('log.encache.messaging')
         self.trace = logging.getLogger('trace.encache.messaging')
-        
+
         # skip all above, new:
         # @todo: url (and connection.url) keeps password in open when set, thus it is meaningless
         #   connection MUST be used over ssl
@@ -32,19 +32,19 @@ class EnQpidClient:
         self.broker = qpid.util.URL(u)
 
         self.trace.debug("EnQpidClient URL init: %s %s ", self.broker.host, self.broker.port )
-                
+
         if myaddr is not None:
             self.myaddr = myaddr     # my address to be used in reply receiver
         if target is not None:
             self.target = target    # destination address to be used in sender
-        
+
     def __str__(self):
         # show all variables in sorted order
         showList = sorted(set(self.__dict__))
 
-        return ("<%s instance at 0x%x>:\n" % (self.__class__.__name__,id(self))) + "\n".join(["  %s: %s" 
+        return ("<%s instance at 0x%x>:\n" % (self.__class__.__name__,id(self))) + "\n".join(["  %s: %s"
                 % (key.rjust(8), self.__dict__[key]) for key in showList])
-        
+
     def start(self):
         # @todo
         # print "DEBUG EnQpidClient URL start:" + self.url
@@ -71,7 +71,7 @@ class EnQpidClient:
             if not self.myaddr:
                 # set reply queue
                 #create exclusive queue with unique name for replies
-                self.myaddr = "reply_to:" + self.ssn.name             
+                self.myaddr = "reply_to:" + self.ssn.name
                 self.ssn.queue_declare(queue=self.myaddr, exclusive=True)
                 # @todo fix exchange name
                 self.ssn.exchange_bind(exchange="enstore.fcache", queue=self.myaddr, binding_key=self.myaddr)
@@ -79,7 +79,7 @@ class EnQpidClient:
             # do nothing - assume queue exists and bound, or the address contain option to create queue
 
             self.rcv_default = self.ssn.receiver(self.myaddr) # default receiver receives messages sent to us at myaddr
-            
+
         except AttributeError:
             self.trace.debug("EnQpidClient - no 'myaddr' defined")
             pass
@@ -99,7 +99,7 @@ class EnQpidClient:
         except:
             self.log.exception("qpid client send()")
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-          
+
     def fetch(self, *args, **kwargs ):
         try:
             return self.rcv_default.fetch(*args, **kwargs )
@@ -114,40 +114,40 @@ class EnQpidClient:
         """
         create additional receiver to read "source" queue
         """
-        rec = self.ssn.receiver(source,**options) 
+        rec = self.ssn.receiver(source,**options)
         setattr(self, name, rec)
         return getattr(self,name)
 
     # this will work only after client is started (session need to be set)
     def add_sender(self, name,target,**options):
         """
-        create additional sender 'target' to which messages will be sent 
+        create additional sender 'target' to which messages will be sent
         """
-        snd = self.ssn.sender(target,**options) 
+        snd = self.ssn.sender(target,**options)
         setattr(self, name, snd)
         return getattr(self,name)
 
-        
+
 if __name__ == "__main__":
-    
+
     def set_logging():
         lh = logging.StreamHandler()
         #    fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        # %(pathname)s 
+        # %(pathname)s
         fmt = logging.Formatter("%(filename)s %(lineno)d :: %(name)s :: %(module)s :: %(levelname)s :: %(message)s")
-        
+
         l_log = logging.getLogger('log.encache.messaging')
         l_trace = logging.getLogger('trace.encache.messaging')
         #add formatter to lh
         lh.setFormatter(fmt)
         l_log.addHandler(lh)
         l_trace.addHandler(lh)
-        
+
         l_log.setLevel(logging.DEBUG)
         l_trace.setLevel(logging.DEBUG)
-    
+
     set_logging()
-    
+
     amq_broker=("dmsen06.fnal.gov",5672)
     myaddr="policy_engine"
     target="migration_dispatcher"
@@ -155,20 +155,20 @@ if __name__ == "__main__":
     c = EnQpidClient(amq_broker, myaddr, target=target)
     #c = EnQpidClient(amq_broker, myaddr=myaddr, target=None)
     #c = EnQpidClient(amq_broker, None, target=target)
-    
+
     print c
     c.start()
     print c
-    
+
     r = c.add_receiver("from_md","md_replies")
     s = c.add_sender("to_mg","migrator", durable=True) # some existing queue
     print r
     print s
-    print c 
-    
+    print c
+
     do_fetch = False
     do_send = True
-    
+
     if do_fetch:
         m = c.fetch()
         if m :
@@ -176,7 +176,7 @@ if __name__ == "__main__":
             # ack message, one way of tree below:
             #c.ssn.acknowledge()                # ack all messages in the session
             c.ssn.acknowledge(m)                # ack this message
-            #c.ssn.acknowledge(m,sync=False)    # ack this message, do not wait till ack is consumed 
+            #c.ssn.acknowledge(m,sync=False)    # ack this message, do not wait till ack is consumed
 
     if do_send:
         c.send("client2 unit test")

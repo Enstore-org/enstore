@@ -42,7 +42,7 @@ def union(s):
                 res.append(j)
     return res
 
-# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
+# timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time
 def timestamp2time(s):
     if s == '1969-12-31 17:59:59':
         return -1
@@ -66,7 +66,7 @@ def capacity_str(x,mode="GB"):
         if x <= 1024:
             break
         x=x/1024
-    if neg:	## if x was negative coming in, restore the - sign  
+    if neg:	## if x was negative coming in, restore the - sign
         x = -x
     return "%6.2f%s"%(x,suffix)
 
@@ -130,7 +130,7 @@ class fileInfoMethods(generic_client.GenericClient):
 
     ###################################################################
     ## Begin file clerk functions.
-    
+
     def bfid_info(self, bfid, timeout = generic_client.DEFAULT_TIMEOUT,
                   retry = generic_client.DEFAULT_TRIES):
         r = self.send({"work" : "bfid_info", "bfid" : bfid}, timeout, retry)
@@ -157,7 +157,7 @@ class fileInfoMethods(generic_client.GenericClient):
                 else:
                     return res2
             res["copies"] = copies
-        return res 
+        return res
 
     # find_original(bfid) -- find the immidiate original
     def find_original(self, bfid, timeout = generic_client.DEFAULT_TIMEOUT,
@@ -279,7 +279,7 @@ class fileInfoMethods(generic_client.GenericClient):
             return done_ticket #Avoid duplicate "convert to external format"
         if not e_errors.is_ok(done_ticket):
             return done_ticket
-        
+
         # convert to external format
         active_list = copy.copy(done_ticket['active_list'])
         done_ticket['active_list'] = []
@@ -342,7 +342,7 @@ class fileInfoMethods(generic_client.GenericClient):
                   "external_label" : external_label}
         done_ticket = self.send(ticket, rcv_timeout = timeout,
                                 tries = retry, long_reply = 1)
-   
+
         #Try old way if the server is old too.
         if done_ticket['status'][0] == e_errors.KEYERROR and \
                done_ticket['status'][1].startswith("cannot find requested function"):
@@ -350,7 +350,7 @@ class fileInfoMethods(generic_client.GenericClient):
             return done_ticket #Avoid duplicate "convert to external format"
         if not e_errors.is_ok(done_ticket):
             return done_ticket
-        
+
         return done_ticket
 
     ### For backward compatiblility with old servers.  (2-19-2009)
@@ -452,7 +452,7 @@ class fileInfoMethods(generic_client.GenericClient):
             done_ticket = self.show_bad_old()
         if not e_errors.is_ok(done_ticket):
             return done_ticket
-        
+
         return done_ticket
 
     ### For backward compatiblility with old servers.  (2-19-2009)
@@ -496,6 +496,49 @@ class fileInfoMethods(generic_client.GenericClient):
         if done_ticket["status"][0] != e_errors.OK:
             return done_ticket
         return ticket
+
+    def print_volume_files(self,volume,ticket,print_all=None,package_info=None) :
+        if ticket['status'][0] == e_errors.OK:
+            output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" \
+                            % (len(volume))
+            if package_info:
+                output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s  %%-20s  %%-20s  %%-20s %%s" \
+                                % (len(volume))
+                print output_format \
+                      % ("label", "bfid", "size", "location_cookie", "delflag",
+                         "package_id", "archive_status","cache_status",
+                         "original_name")
+            else:
+                print output_format \
+                      % ("label", "bfid", "size", "location_cookie", "delflag",
+                         "original_name")
+
+            print
+            tape = ticket['tape_list']
+            for record in tape:
+                if not print_all:
+                    if record['bfid'] == record.get("package_id",None) : continue
+                if record['deleted'] == 'yes':
+                    deleted = 'deleted'
+                elif record['deleted'] == 'no':
+                    deleted = 'active'
+                else:
+                    deleted = 'unknown'
+                if package_info :
+                    print output_format % (volume,
+                                           record['bfid'], record['size'],
+                                           record['location_cookie'], deleted,
+                                           record.get("package_id",None),
+                                           record.get("archive_status",None),
+                                           record.get("cache_status",None),
+                                           record['pnfs_name0'])
+                else:
+                    if record['bfid'] == record.get("package_id",None) or not record.get("package_id",None):
+                        print output_format % (volume,
+                                               record['bfid'], record['size'],
+                                               record['location_cookie'], deleted,
+                                               record['pnfs_name0'])
+
 
     ## End file clerk functions.
     ###################################################################
@@ -895,7 +938,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
                                    flags=flags, logc=logc,
                                    alarmc=alarmc,
                                    server_name = MY_SERVER)
-        
+
         try:
             self.uid = pwd.getpwuid(os.getuid())[0]
         except:
@@ -940,7 +983,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
                   "bfid" : bfid}
         r = self.send(ticket)
         return r
-    
+
     def find_file_by_path(self, pnfs_name0):
         host, port, listen_socket = callback.get_callback()
         ticket = {"work" : "find_file_by_path2",
@@ -951,7 +994,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         if r['status'][0] == e_errors.KEYERROR and \
                r['status'][1].startswith("cannot find requested function"):
             r = self.find_file_by_path_old(pnfs_name0)
-        
+
         if r.has_key('work'):
             del r['work']
         return r
@@ -973,7 +1016,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         if r['status'][0] == e_errors.KEYERROR and \
                r['status'][1].startswith("cannot find requested function"):
             r = self.find_file_by_pnfsid_old(pnfsid)
-        
+
         if r.has_key('work'):
             del r['work']
         return r
@@ -996,7 +1039,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         if r['status'][0] == e_errors.KEYERROR and \
                r['status'][1].startswith("cannot find requested function"):
             r = self.find_file_by_location_old(vol, loc)
-        
+
         if r.has_key('work'):
             del r['work']
         return r
@@ -1020,7 +1063,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         if done_ticket['status'][0] == e_errors.KEYERROR and \
                done_ticket['status'][1].startswith("cannot find requested function"):
             return self.find_same_file_old(bfid)
-            
+
         return done_ticket
 
     ### For backward compatiblility with old servers.  (2-19-2009)
@@ -1033,7 +1076,7 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
                   #"callback_addr" : (host, port),
                   }
         return self.send(ticket)
-        
+
 
     ### For backward compatiblility with old servers.  (2-19-2009)
     def query_db_old(self, q):
@@ -1114,7 +1157,7 @@ def show_query_result(result):
 class InfoClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
-        self.list =None 
+        self.list =None
         self.bfid = 0
         self.bfids = None
         self.check = ""
@@ -1143,17 +1186,29 @@ class InfoClientInterface(generic_client.GenericClientInterface):
         self.find_original = None
         self.find_the_original = None
         self.find_duplicates = None
-        
+        self.package=None
+        self.pkginfo=None
+
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
-        
-        
+
+
     def valid_dictionaries(self):
         return (self.alive_options, self.help_options, self.trace_options,
                 self.info_options)
 
     info_options = {
-            option.BFID:{option.HELP_STRING:"get info of a file",
+             option.PACKAGE:{option.HELP_STRING:
+                            "Force printing package files",
+			    option.VALUE_USAGE:option.IGNORED,
+			    option.VALUE_TYPE:option.INTEGER,
+			    option.USER_LEVEL:option.HIDDEN},
+             option.PACKAGE_INFO:{option.HELP_STRING:
+                                  "Force printing information about package_id archive/cache status",
+                                  option.VALUE_USAGE:option.IGNORED,
+                                  option.VALUE_TYPE:option.INTEGER,
+                                  option.USER_LEVEL:option.HIDDEN},
+             option.BFID:{option.HELP_STRING:"get info of a file",
                             option.VALUE_TYPE:option.STRING,
                             option.VALUE_USAGE:option.REQUIRED,
                             option.USER_LEVEL:option.USER},
@@ -1280,7 +1335,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_LABEL:"volume_name",
                             option.USER_LEVEL:option.USER},
-            
+
             option.VOLS:{option.HELP_STRING:"list all volumes",
                             option.DEFAULT_VALUE:option.DEFAULT,
                             option.DEFAULT_TYPE:option.INTEGER,
@@ -1291,7 +1346,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_LABEL:"volume_name",
                             option.USER_LEVEL:option.ADMIN},
-            
+
             }
 
 def do_work(intf):
@@ -1304,25 +1359,7 @@ def do_work(intf):
 
     elif intf.list:
         ticket = ifc.tape_list(intf.list)
-        if ticket['status'][0] == e_errors.OK:
-            output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" \
-                            %(len(intf.list),)
-            print output_format \
-                  % ("label", "bfid", "size", "location_cookie", "delflag",
-                     "original_name")
-            print
-            tape = ticket['tape_list']
-            for record in tape:
-                if record['deleted'] == 'yes':
-                    deleted = 'deleted'
-                elif record['deleted'] == 'no':
-                    deleted = 'active'
-                else:
-                    deleted = 'unknown'
-                print output_format % (intf.list,
-                                       record['bfid'], record['size'],
-                                       record['location_cookie'], deleted,
-                                       record['pnfs_name0'])
+        ifc.print_volume_files(intf.list,ticket,intf.package,intf.pkginfo)
     elif intf.file:
         # is it vol:loc?
         try:
@@ -1459,11 +1496,11 @@ def do_work(intf):
         not_cond = None
         if nargs:
             if nargs == 3:
-                key = intf.args[0]	 
+                key = intf.args[0]
                 in_state=intf.args[1]
                 not_cond = intf.args[2]
             elif nargs == 2:
-                key = intf.args[0]	 
+                key = intf.args[0]
                 in_state=intf.args[1]
             elif nargs == 1:
                 key = None
@@ -1481,7 +1518,7 @@ def do_work(intf):
 
         # get the information from the server
         ticket = ifc.get_vols(key, in_state, not_cond)
-        
+
         # print out the answer
         if ticket.has_key("header"):		# full info
             show_volume_header()
@@ -1499,7 +1536,7 @@ def do_work(intf):
         ticket = ifc.get_pvols()
 
         # pull out just the answers we are looking for
-        
+
         problem_vol = {}
         for i in ticket['volumes']:
             if i['system_inhibit_0'] != 'none':
@@ -1550,7 +1587,7 @@ def do_work(intf):
             #Do the new way.
             if e_errors.is_ok(ticket):
                 show_query_result(ticket)
-        
+
     elif intf.ls_sg_count:
         ticket = ifc.list_sg_count()
         sgcnt = ticket['sgcnt']

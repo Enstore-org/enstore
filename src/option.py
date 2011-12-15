@@ -164,6 +164,8 @@ ADD = "add"                                  #volume
 AGE_TIME = "age-time"                        #encp
 ALIVE = "alive"
 ALL = "all"                                  #volume, start, stop
+PACKAGE = "package"
+PACKAGE_INFO = "pkginfo"
 ARRAY_SIZE = "array-size"                    #encp
 ASSIGN_SG = "assign-sg"                      #volume
 BACKUP = "backup"                            #volume, file
@@ -525,7 +527,7 @@ valid_option_list = [
     EXISTS, EXPORT, EXTERNAL_TRANSITIONS,
     FILE, FILE_FALLBACK,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
-    FILE_THREADS, FIND_SAME_FILE, FORCE, FULL,
+    FILE_THREADS, FIND_SAME_FILE, FORCE, PACKAGE, PACKAGE_INFO, FULL,
     FIND_ALL_COPIES, FIND_COPIES, FIND_DUPLICATES, FIND_ORIGINAL,
     FIND_SAME_FILE, FIND_THE_ORIGINAL,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,

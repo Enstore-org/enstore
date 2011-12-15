@@ -43,9 +43,9 @@ MAX_THREADS = 50
 MAX_CONNECTIONS=20
 
 AMQP_BROKER = "amqp_broker"
-FILES_IN_TRANSITION_CHECK_INTERVAL = 60
+FILES_IN_TRANSITION_CHECK_INTERVAL = 3600
 
-SELECT_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_status='CACHED' and f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
+SELECT_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_status='CACHED' and f.deleted='no' and f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
@@ -651,13 +651,14 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # then the edb.py file DB export_format() function is called to
     # rename the keys from the query.
     def __tape_list(self, external_label, export_format = False):
-        q = "select bfid, crc, deleted, drive, volume.label, \
-                    location_cookie, pnfs_path, pnfs_id, \
-                    sanity_size, sanity_crc, size \
-             from file, volume \
+        q = "select f.bfid, f.crc, f.deleted, f.drive, v.label as label, \
+                    f.location_cookie, f.pnfs_path, f.pnfs_id, \
+                    f.sanity_size, f.sanity_crc, f.size, \
+		    f.package_id, f.archive_status, f.cache_status \
+             from file f, volume v\
              where \
-                 file.volume = volume.id and volume.label = '%s' \
-             order by location_cookie;" % (external_label,)
+                 f.volume = v.id and v.label='%s' \
+		 order by f.location_cookie"%((external_label,))
         res = self.filedb_dict.query_dictresult(q)
         # convert to external format
         file_list = []
@@ -671,6 +672,22 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             if not value.has_key('pnfs_name0'):
                 value['pnfs_name0'] = "unknown"
             file_list.append(value)
+            if file_info.get("bfid",None) == file_info.get("package_id",None):
+	       result = self.filedb_dict.query_dictresult("select f.bfid, f.crc, f.deleted, f.drive, v.label , \
+	       f.location_cookie, f.pnfs_path, f.pnfs_id, \
+	       f.sanity_size, f.sanity_crc, f.size, \
+	       f.package_id, f.archive_status, f.cache_status \
+	       from file f, volume v where v.id=f.volume and f.package_id='%s' and f.bfid != '%s'"%((file_info.get("bfid",None),)*2))
+	       for finfo in result:
+		       finfo["location_cookie"] = file_info.get("location_cookie",None)
+		       finfo["label"] = file_info.get("label",None)
+		       if export_format:
+			       value = self.filedb_dict.export_format(finfo)
+		       else:
+			       value = finfo
+		       if not value.has_key('pnfs_name0'):
+			       value['pnfs_name0'] = "unknown"
+		       file_list.append(value)
         return file_list
 
     #### DONE
@@ -1056,6 +1073,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         record["size"]             = ticket["fc"]["size"]
         record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
         record["complete_crc"]     = ticket["fc"]["complete_crc"]
+	record["original_library"] = ticket["fc"].get("original_library",None)
 
         # uid and gid
         if ticket["fc"].has_key("uid"):
@@ -2012,16 +2030,17 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
     def replay_cache_written_event(self,bfid):
 	    record=self.filedb_dict[bfid]
-	    event = pe_client.evt_cache_written_fc({ "fc" : { "original_library"  : record.get("original_library",None),
-							      "file_family_width" : record.get("file_family_width",None)
-							      }
-						     }, record)
-	    try:
-		    self.en_qpid_client.send(event)
-		    Trace.log(e_errors.INFO,"Succesfully replayed CACHE_WRITTEN event for %s"%(bfid,))
-	    except:
-		    Trace.log(e_errors.INFO,"Failed replay CACHE_WRITTEN event for %s"%(bfid,))
-		    pass
+	    if record.get("original_library",None) :
+		    event = pe_client.evt_cache_written_fc({ "fc" : { "original_library"  : record.get("original_library",None),
+								      "file_family_width" : record.get("file_family_width",None)
+								      }
+							     }, record)
+		    try:
+			    self.en_qpid_client.send(event)
+			    Trace.log(e_errors.INFO,"Succesfully replayed CACHE_WRITTEN event for %s"%(bfid,))
+		    except:
+			    Trace.log(e_errors.INFO,"Failed replay CACHE_WRITTEN event for %s"%(bfid,))
+			    pass
 
     def replay(self,ticket):
 	    func_name="self."+ticket.get("func")
@@ -2043,7 +2062,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 			    message += "%s "%(row[0])
 		    if len(res)>0:
 			    Trace.alarm(e_errors.WARNING, "Files stuck in files_in_transiton table", message )
-		    time.sleep(3600)
+		    time.sleep(FILES_IN_TRANSITION_CHECK_INTERVAL)
 
 
     def file_error_handler(self, exc, msg, tb):

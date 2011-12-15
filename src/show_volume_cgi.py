@@ -70,11 +70,11 @@ def print_volume_summary(ticket,total):
     print "<pre>"
     pprint.pprint(ticket)
     print "<hr></pre>"
-    
+
 
 def print_volume_content(ticket,list):
-    format = "%%-%ds <a href=/cgi-bin/show_file_cgi.py?bfid=%%s>%%s</a> %%10s %%-22s %%-7s %%s"%(len(list))
-    header = " volume         bfid             size      location cookie     status           original path"
+    format = "%%-%ds <a href=/cgi-bin/show_file_cgi.py?bfid=%%s>%%-19s</a> %%10s %%-22s %%-7s <a href=/cgi-bin/show_file_cgi.py?bfid=%%s>%%-19s</a> %%-20s %%-20s %%s"%(len(list))
+    header = " volume         bfid             size      location cookie     status     package_id      archive_status        cache_status            original path"
     print '<pre>'
     print '<font color=#aa0000>'+header+'</font>'
     print '<p>'
@@ -90,11 +90,18 @@ def print_volume_content(ticket,list):
         else:
             deleted = 'unknown'
         print '<font color=\"'+color+'\">', format % (intf.list,
-                         record['bfid'],record['bfid'], record['size'],
-                         record['location_cookie'], deleted,
-                           record['pnfs_name0']), "</font>"
+                                                      record['bfid'],
+                                                      record['bfid'],
+                                                      record['size'],
+                                                      record['location_cookie'], deleted,
+                                                      record.get('package_id',None),
+                                                      record.get('package_id',None),
+                                                      record.get('archive_status',None),
+                                                      record.get('cache_status',None),
+                                                      record['pnfs_name0']
+                                                      ), "</font>"
     print '</pre>'
-    
+
 
 if __name__ == "__main__":
     form   = cgi.FieldStorage()

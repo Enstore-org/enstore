@@ -742,7 +742,9 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.find_the_original = None
         self.find_duplicates = None
         self.force = None #use real clerks (True); use info server (False)
+        self.package = None #print package files
         self.replay=None
+        self.pkginfo = None
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -825,6 +827,16 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
 			      option.VALUE_USAGE:option.IGNORED,
 			      option.VALUE_TYPE:option.INTEGER,
 			      option.USER_LEVEL:option.HIDDEN},
+        option.PACKAGE:{option.HELP_STRING:
+			      "Force printing package files",
+			      option.VALUE_USAGE:option.IGNORED,
+			      option.VALUE_TYPE:option.INTEGER,
+			      option.USER_LEVEL:option.HIDDEN},
+        option.PACKAGE_INFO:{option.HELP_STRING:
+                             "Force printing information about package_id archive/cache status",
+                             option.VALUE_USAGE:option.IGNORED,
+                             option.VALUE_TYPE:option.INTEGER,
+                             option.USER_LEVEL:option.HIDDEN},
         option.GET_CRCS:{option.HELP_STRING:"get crc of a file",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
@@ -834,7 +846,8 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"volume_name",
-                     option.USER_LEVEL:option.USER},
+                     option.USER_LEVEL:option.USER,
+                     },
         option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
@@ -954,27 +967,8 @@ def do_work(intf):
         if intf.force:
             ticket = fcc.tape_list(intf.list)
         else:
-            ticket = ifc.tape_list(intf.list)
-        if ticket['status'][0] == e_errors.OK:
-            output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" \
-                            % (len(intf.list))
-            print output_format \
-                  % ("label", "bfid", "size", "location_cookie", "delflag",
-                     "original_name")
-            print
-            tape = ticket['tape_list']
-            for record in tape:
-                if record['deleted'] == 'yes':
-                    deleted = 'deleted'
-                elif record['deleted'] == 'no':
-                    deleted = 'active'
-                else:
-                    deleted = 'unknown'
-                print output_format % (intf.list,
-                    record['bfid'], record['size'],
-                    record['location_cookie'], deleted,
-                    record['pnfs_name0'])
-
+            ticket = ifc.tape_list(intf.list,intf.all)
+        ifc.print_volume_files(intf.list,ticket,intf.package,intf.pkginfo)
     elif intf.mark_bad:
         ticket = fcc.mark_bad(intf.mark_bad, intf.bfid)
 
