@@ -517,7 +517,11 @@ class fileInfoMethods(generic_client.GenericClient):
             tape = ticket['tape_list']
             for record in tape:
                 if not print_all:
-                    if record['bfid'] == record.get("package_id",None) : continue
+                    if record['bfid'] == record.get("package_id",None) :
+                        continue
+                else:
+                    if record.get("package_id",None)  and record['bfid'] != record.get("package_id",None):
+                        continue
                 if record['deleted'] == 'yes':
                     deleted = 'deleted'
                 elif record['deleted'] == 'no':
@@ -533,11 +537,10 @@ class fileInfoMethods(generic_client.GenericClient):
                                            record.get("cache_status",None),
                                            record['pnfs_name0'])
                 else:
-                    if record['bfid'] == record.get("package_id",None) or not record.get("package_id",None):
-                        print output_format % (volume,
-                                               record['bfid'], record['size'],
-                                               record['location_cookie'], deleted,
-                                               record['pnfs_name0'])
+                    print output_format % (volume,
+                                           record['bfid'], record['size'],
+                                           record['location_cookie'], deleted,
+                                           record['pnfs_name0'])
 
 
     ## End file clerk functions.
@@ -1207,7 +1210,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
                                   "Force printing information about package_id archive/cache status",
                                   option.VALUE_USAGE:option.IGNORED,
                                   option.VALUE_TYPE:option.INTEGER,
-                                  option.USER_LEVEL:option.HIDDEN},
+                                  option.USER_LEVEL:option.USER},
              option.BFID:{option.HELP_STRING:"get info of a file",
                             option.VALUE_TYPE:option.STRING,
                             option.VALUE_USAGE:option.REQUIRED,
