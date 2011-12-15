@@ -1358,7 +1358,10 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    bfid, record = self.extract_bfid_from_ticket(ticket)
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
-	    if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
+	    #if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
+	    if record["cache_status"]  in [file_cache_status.CacheStatus.CACHED,
+					   file_cache_status.CacheStatus.STAGING_REQUESTED,
+					   file_cache_status.CacheStatus.STAGING]:		    
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
 		    return
@@ -1386,7 +1389,10 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
 
-	    if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
+	    #if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
+	    if record["cache_status"]  in [file_cache_status.CacheStatus.CACHED,
+					   file_cache_status.CacheStatus.STAGING_REQUESTED,
+					   file_cache_status.CacheStatus.STAGING]:		    
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
 		    return
