@@ -669,64 +669,82 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # if package contains more than one file
             os.system("tar --force-local -xf %s"%(stage_fname,))
 
-            # clear set_cache_params
-            set_cache_params = []
+            new_set_cache_params = []
             
             # move files to their original location
             for rec in files_to_stage:
-                src = rec.get('location_cookie', None)
+                if rec['bfid'] != rec['package_id']:
+                    src = rec.get('location_cookie', None)
 
-                if not self.stage_area:
-                    # file gets staged into the path
-                    # defined by location_cookie
-                    dst = src
-                src = src.lstrip("/")
-                if self.stage_area:
-                    # file gets staged into the path
-                    # defined by location_cookie
-                    # prepended by stage_area
-                    dst = os.path.join(self.stage_area, src)
-                Trace.trace(10, "read_from_tape: src %s s_a %s dst %s"%(src,self.stage_area, dst)) 
-                Trace.trace(10, "read_from_tape: d_a %s a_a %s s_a %s t_s_a %s"%(self.data_area,
-                                                                                 self.archive_area,
-                                                                                 self.stage_area,
-                                                                                 self.tmp_stage_area))
-                Trace.trace(10, "read_from_tape: renaming %s to %s"%(src, dst))
-                # create a destination directory
-                if not os.path.exists(os.path.dirname(dst)):
-                    try:
-                        Trace.trace(10, "read_from_tape creating detination directory %s for %s"%(os.path.dirname(dst), dst))
-                        os.makedirs(os.path.dirname(dst))
-                    except Exception, detail:
-                        Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, detail))
-                        return False
-                
-
-                try:
-                    os.rename(src, dst)
-                except Exception, detail:
-                    Trace.trace(10, "read_from_tape: exception renaming file %s %s %s"%(src, dst, detail))
-                    # get stats
-                    try:
-                        stats = os.stat(src)
-                    except Exception, detail:
-                        if detail.args[0] != errno.ENOENT:
-                            Trace.log(e_errors.ERROR, "Package staging failed while renaming files %s %s"%(package_id, detail))
-                            # change cache_status back
-                            for rec in set_cache_params:
-                                rec['cache_status'] = file_cache_status.CacheStatus.PURGED
-                            #rc = self.fcc.set_cache_status(set_cache_params)
-                            rc = self.set_cache_status(set_cache_params)
+                    if not self.stage_area:
+                        # file gets staged into the path
+                        # defined by location_cookie
+                        dst = src
+                    src = src.lstrip("/")
+                    if self.stage_area:
+                        # file gets staged into the path
+                        # defined by location_cookie
+                        # prepended by stage_area
+                        dst = os.path.join(self.stage_area, src)
+                    Trace.trace(10, "read_from_tape: src %s s_a %s dst %s"%(src,self.stage_area, dst)) 
+                    Trace.trace(10, "read_from_tape: d_a %s a_a %s s_a %s t_s_a %s"%(self.data_area,
+                                                                                     self.archive_area,
+                                                                                     self.stage_area,
+                                                                                     self.tmp_stage_area))
+                    Trace.trace(10, "read_from_tape: renaming %s to %s"%(src, dst))
+                    # create a destination directory
+                    if not os.path.exists(os.path.dirname(dst)):
+                        try:
+                            Trace.trace(10, "read_from_tape creating detination directory %s for %s"%(os.path.dirname(dst), dst))
+                            os.makedirs(os.path.dirname(dst))
+                        except Exception, detail:
+                            Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, detail))
                             return False
-                            
+
+
+                    try:
+                        os.rename(src, dst)
+                    except Exception, detail:
+                        Trace.trace(10, "read_from_tape: exception renaming file %s %s %s"%(src, dst, detail))
+                        # get stats
+                        try:
+                            stats = os.stat(src)
+                        except Exception, detail:
+                            if detail.args[0] != errno.ENOENT:
+                                Trace.log(e_errors.ERROR, "Package staging failed while renaming files %s %s"%(package_id, detail))
+                                # change cache_status back
+                                for rec in new_set_cache_params:
+                                    rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                                #rc = self.fcc.set_cache_status(new_set_cache_params)
+                                rc = self.set_cache_status(new_set_cache_params)
+                                return False
+
                     
-                set_cache_params.append({'bfid': rec['bfid'],
-                                         'cache_status':file_cache_status.CacheStatus.CACHED,
+                new_set_cache_params.append({'bfid': rec['bfid'],
+                                             'cache_status':file_cache_status.CacheStatus.CACHED,
                                              'archive_status': None,        # we are not changing this
                                              'cache_location': dst})
             
-            #rc = self.fcc.set_cache_status(set_cache_params)
-            rc = self.set_cache_status(set_cache_params)
+            # This is for debugging:
+            # Compare set_cache_params and new_new_set_cache_params.
+            if len(set_cache_params) != len(new_set_cache_params):
+                Trace.trace(10, "read_from_tape: set_cache_params are different %s %s"%(len(set_cache_params), len(new_set_cache_params)))
+                if len(set_cache_params) > len(new_set_cache_params):
+                    t_p = set_cache_params
+                    t_p1 = new_set_cache_params
+                else:
+                    t_p = new_set_cache_params
+                    t_p1 = set_cache_params
+                for p in t_p:
+                    for p1 in t_p1:
+                        if p['bfid'] == p1['bfid']:
+                            break
+                    else:
+                        Trace.trace(10, "read_from_tape: not found param %s"%(p['bfid']))
+                
+
+            #rc = self.fcc.set_cache_status(new_set_cache_params)
+            rc = self.set_cache_status(new_set_cache_params)
             if rc['status'][0] != e_errors.OK:
                 Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
                 return True # return True so that the message is confirmed
