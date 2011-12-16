@@ -1202,10 +1202,10 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 
     info_options = {
              option.PACKAGE:{option.HELP_STRING:
-                            "Force printing package files",
+                            "Force printing package files and non-packaged files",
 			    option.VALUE_USAGE:option.IGNORED,
 			    option.VALUE_TYPE:option.INTEGER,
-			    option.USER_LEVEL:option.HIDDEN},
+			    option.USER_LEVEL:option.USER},
              option.PACKAGE_INFO:{option.HELP_STRING:
                                   "Force printing information about package_id archive/cache status",
                                   option.VALUE_USAGE:option.IGNORED,
