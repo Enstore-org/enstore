@@ -189,7 +189,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # file clerk set_cache_status currently can not send long messages
     # this is a temporary solution
     def set_cache_status(self, set_cache_params):
-        Trace.trace(10, "set_cache_status: cache_params %s"%(len(set_cache_params),))
+        Trace.trace(10, "set_cache_status: cache_params %s %s"%(len(set_cache_params),set_cache_params))
         # create a local copy of set_cache_params,
         # because the array will be modified by pop()
         local_set_cache_params = copy.copy(set_cache_params)
@@ -197,20 +197,21 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         tmp_list = []
         while len(local_set_cache_params) > 0:
             param = local_set_cache_params.pop()
-            if len(str(tmp_list)) + len(str(param)) < 15000: # the maximal message size is 16384
-                tmp_list.append(param)
-            else:
-               list_of_set_cache_params.append(tmp_list)
-               tmp_list = []
-               tmp_list.append(param)
-        if not list_of_set_cache_params:
-            # tmp_list size did not exceed 15000
+            if param:
+                if len(str(tmp_list)) + len(str(param)) < 15000: # the maximal message size is 16384
+                    tmp_list.append(param)
+                else:
+                   list_of_set_cache_params.append(tmp_list)
+                   tmp_list = []
+                   tmp_list.append(param)
+        if tmp_list:
+            # append the rest
             list_of_set_cache_params.append(tmp_list)
-        Trace.trace(10, "set_cache_status: params %s"%(list_of_set_cache_params,))
+        Trace.trace(10, "set_cache_status: params %s %s"%(len(list_of_set_cache_params), list_of_set_cache_params,))
                
         # now send all these parameters
         for param_list in list_of_set_cache_params:
-            Trace.trace(10, "set_cache_status: sending set_cache_status %s"%(param_list,))
+            Trace.trace(10, "set_cache_status: sending set_cache_status %s %s"%(len(param_list), param_list,))
             
             rc = self.fcc.set_cache_status(param_list)
             Trace.trace(10, "set_cache_status: set_cache_status 1 returned %s"%(rc,))
@@ -719,7 +720,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                 rc = self.set_cache_status(new_set_cache_params)
                                 return False
 
-                    
+                Trace.trace(10, "read_from_tape: appending  new_set_cache_params %s"%(rec['bfid'],))
                 new_set_cache_params.append({'bfid': rec['bfid'],
                                              'cache_status':file_cache_status.CacheStatus.CACHED,
                                              'archive_status': None,        # we are not changing this
@@ -727,6 +728,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             
             # This is for debugging:
             # Compare set_cache_params and new_new_set_cache_params.
+            Trace.trace(10, "read_from_tape: new_set_cache_params %s %s"%(len(new_set_cache_params), new_set_cache_params,))
+            
             if len(set_cache_params) != len(new_set_cache_params):
                 Trace.trace(10, "read_from_tape: set_cache_params are different %s %s"%(len(set_cache_params), len(new_set_cache_params)))
                 if len(set_cache_params) > len(new_set_cache_params):
