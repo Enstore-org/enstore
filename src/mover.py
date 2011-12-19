@@ -6749,6 +6749,9 @@ class DiskMover(Mover):
                 if len(self.buffer._buf) != 1:
                     Trace.log(e_errors.ERROR,
                               "read_tape: error skipping over cpio header, len(buf)=%s"%(len(self.buffer._buf)))
+                    failed = 1
+                    self.transfer_failed(e_errors.READ_ERROR, "Invalid file header ", error_source=TAPE)
+                    break
                 b0 = self.buffer._buf[0]
                 if len(b0) >= self.wrapper.min_header_size:
                     try:
