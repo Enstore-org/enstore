@@ -257,6 +257,23 @@ def is_chimeraid(pnfsid):
             return 1
     return 0
 
+def is_chimeraid_or_pnfsid(pnfsid):
+    #This is an attempt to deterime if a string is a pnfsid.
+    # 1) Is it a string?
+    # 2) Is it 24 characters long?
+    # 3) All characters are in the capital hex character set.
+    #Note: Does it need to be capital set of hex characters???
+    len_of_pnfsid = len(pnfsid)
+    if type(pnfsid) == types.StringType and \
+           (len_of_pnfsid == 36 or len_of_pnfsid  == 24) :
+        allowable_characters = string.upper(string.hexdigits)
+        for c in pnfsid:
+            if c not in allowable_characters:
+                return 0
+        else: #success
+            return 1
+    return 0
+
 ##############################################################################
 
 #Remove the /pnfs/, /pnfs/fnal.gov/usr or /pnfs/fs/usr/ from the pnfs path.
@@ -1051,7 +1068,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 self.dir = ""
 
         #Test if the filename passed in is really a pnfs id.
-        if is_chimeraid(pnfsFilename):
+        if is_chimeraid_or_pnfsid(pnfsFilename):
             self.id = pnfsFilename
             try:
                 if shortcut:
@@ -1573,7 +1590,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         use_dir = remove_special_paths(use_dir)
 
         if id != None:
-            if is_chimeraid(id):
+            if is_chimeraid_or_pnfsid(id):
                 use_id = id
             else:
                 raise ValueError("The chimera id (%s) is not valid." % id)
@@ -1721,7 +1738,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                           return_all = False):
         
         if id != None:
-            if not is_chimeraid(id):
+            if not is_chimeraid_or_pnfsid(id):
                 raise ValueError("The pnfs id (%s) is not valid." % id)
         else:
             raise ValueError("No valid pnfs id.")

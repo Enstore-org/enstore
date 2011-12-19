@@ -73,9 +73,14 @@ class StorageFS(pnfs.Pnfs, chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient)
                                                mount_point, shortcut)
                 elif pnfs.is_pnfsid(pnfsFilename):
                     self.use_pnfs_agent = 0
-                    self.__class__ = pnfs.Pnfs
-                    pnfs.Pnfs.__init__(self, pnfsFilename, mount_point,
-                                       shortcut)
+                    try : 
+                        self.__class__ = pnfs.Pnfs
+                        pnfs.Pnfs.__init__(self, pnfsFilename, mount_point,
+                                           shortcut)
+                    except:
+                        self.__class__ = chimera.ChimeraFS
+                        chimera.ChimeraFS.__init__(self, pnfsFilename,
+                                                   mount_point, shortcut)
                 #elif luster.is_lusterid(pnfsFilename):
                 #    self.use_pnfs_agent = 0
                 #    self.__class__ = lustre.LusterFS
