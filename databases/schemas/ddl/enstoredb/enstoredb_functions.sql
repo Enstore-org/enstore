@@ -500,23 +500,27 @@ IF (TG_OP='UPDATE') THEN
 		      ---
 		      --- Updating package counters
 		      ---
-		      BEGIN
+		      IF (OLD.bfid <> OLD.package_id and OLD.package_id IS NOT NULL) THEN
+		          BEGIN
 	      	      	    update file set active_package_files_count=active_package_files_count-1 where bfid=OLD.package_id;
-		      END;
+			  END;
+		      END IF;
 	   	   END IF;
            ELSE
 	   	   IF (NEW.deleted='n') THEN
 		      ---
 		      --- Updating package counters
 		      ---
-		      BEGIN
+		      IF (OLD.bfid <> OLD.package_id and OLD.package_id IS NOT NULL) THEN
+		         BEGIN
 		      	    update file set active_package_files_count=active_package_files_count+1 where bfid=OLD.package_id;
-		      END;
+		         END;
+                      END IF;
 	   	   END IF;
 	   END IF;
 	END IF;
-END IF;
 RETURN NEW;
+END IF;
 END;
 $$
     LANGUAGE plpgsql;
@@ -539,7 +543,7 @@ ELSEIF (TG_OP='UPDATE') THEN
 			UPDATE files_in_transition set bfid=NEW.bfid where bfid=OLD.bfid;
 		END;
 	END IF;
-	IF (NEW.archive_status = 'ARCHIVED') THEN
+	IF (NEW.archive_status = 'ARCHIVED' OR NEW.deleted = 'y' ) THEN
 		BEGIN
 			DELETE FROM files_in_transition WHERE bfid=NEW.bfid;
 		END;
