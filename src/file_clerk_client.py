@@ -24,6 +24,7 @@ import pprint
 import volume_clerk_client
 import volume_family
 import pnfs
+import chimera
 import info_client
 import enstore_constants
 import file_utils
@@ -552,9 +553,10 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             #We get here if there is no path information.
             message = "no path information found for %s" % (bfid,)
             return {'status': (e_errors.FILE_CLERK_ERROR, message)}
-        if not pnfs.is_pnfs_path(bit_file['pnfs_name0'], check_name_only = 1):
-            message = "%s is not a valid pnfs path" % (bit_file['pnfs_name0'],)
-            return {'status': (e_errors.FILE_CLERK_ERROR, message)}
+        if not pnfs.is_pnfs_path(bit_file['pnfs_name0'], check_name_only = 1) and \
+           not chimera.is_chimera_path(bit_file['pnfs_name0'], check_name_only = 1):
+                message = "%s is not a valid chimera/pnfs path" % (bit_file['pnfs_name0'],)
+                return {'status': (e_errors.FILE_CLERK_ERROR, message)}
 
         # its directory has to exist
         p_p, p_f = os.path.split(bit_file['pnfs_name0'])
