@@ -86,9 +86,9 @@ def do_work(intf):
     if intf.alive:
         if reply['status'] == (e_errors.OK, None):
             print "Library Manager Director found at %s." % (reply['address'],)
+
     if reply:
         pass
-
     elif intf.load:
         reply = lmd_client.reload_policy()
         if reply.has_key('status'):

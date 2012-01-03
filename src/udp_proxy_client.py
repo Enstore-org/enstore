@@ -42,19 +42,17 @@ class ProxyClientInterface(generic_client.GenericClientInterface):
         self.name = "udp_proxy_client"
         self.alive_rcv_timeout = 2  #Required here
         self.alive_retries = 2      #Required here
-	generic_client.GenericClientInterface.__init__(self, args=args,
+        generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
-    parameters = ["udp_proxy_server"]    
-
     def valid_dictionaries(self):
-        return (self.help_options, self.alive_options)
+        return (self.help_options, self.alive_options, self.trace_options)
 
     # parse the options like normal but make sure we have other args
     def parse_options(self):
 
         generic_client.GenericClientInterface.parse_options(self)
-        if len(self.argv) <= 1: #if only "enstore library" is specified.
+        if len(self.argv) <= 1: #if only "enstore udp proxy server" is specified.
             self.print_help()
             sys.exit(0)
 

@@ -85,9 +85,8 @@ class LMD(dispatching_worker.DispatchingWorker,
         dispatching_worker.DispatchingWorker.__init__(self, (self.lmd_config['hostip'],
 	                                              self.lmd_config['port']))
         self.resubscribe_rate = 300
-
-	self.erc = event_relay_client.EventRelayClient(self)
-	self.erc.start_heartbeat(self.name,  self.alive_interval)
+        self.erc = event_relay_client.EventRelayClient(self)
+        self.erc.start_heartbeat(self.name,  self.alive_interval)
 
     ##############################################
     #### Configuration related methods
@@ -142,11 +141,14 @@ class LMD(dispatching_worker.DispatchingWorker,
         Trace.trace(10, "lmd_decision")         
         if type(ticket) != types.DictType:
             Trace.trace(10, "lmd serve_qpid()  - ticket is not dictionary type, ticket %s." % (ticket,))
-            result['status'] = (e_errors.LMD_WRONG_TICKET_FORMAT, 'LMD: ticket is not dictionary type')
-            return result
+            return {'status': (e_errors.LMD_WRONG_TICKET_FORMAT, 'LMD: ticket is not dictionary type')}
         result = ticket
         # create a copy of the original library
-        result['original_library'] = result['vc']['library']
+        try:
+            result['original_library'] = result['vc']['library']
+        except KeyErrror:
+           result['status'] = (e_errors.MALFORMED, "No library key specified")  
+           return result
         Trace.trace(10, "lmd_decision1 %s"%(result,))         
 
         try:
@@ -229,7 +231,6 @@ class LMD(dispatching_worker.DispatchingWorker,
 
     def stop_qpid_server(self):
         # tell serving thread to stop and wait until it finish    
-        print "STOP QPID SERVER"
         self.shutdown = True
         
         self.qpid_client.stop()

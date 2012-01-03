@@ -42,7 +42,7 @@ class U2As(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
     def  __init__(self, name, cs):
         # Obtain information from the configuration server cs.
         self.csc = cs
-        #self.name = name
+        self.name = name
         generic_server.GenericServer.__init__(self, self.csc, name,
 					      function = self.handle_er_msg)
 
@@ -72,7 +72,7 @@ class U2As(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
          
         if not e_errors.is_ok(self.amqp_broker_conf):
             e_message = "Unable to acquire configuration info for %s: %s: %s" % \
-                      (MY_NAME, self.amqp_broker_conf['status'][0], self.amqp_broker_conf['status'][1])
+                      (self.name, self.amqp_broker_conf['status'][0], self.amqp_broker_conf['status'][1])
             Trace.log(e_errors.ERROR, e_message)
             Trace.trace(10, "proxy_server, error in amqp_broker_conf")
             raise e_errors.EnstoreError(e_errors.CONFIGDEAD)
@@ -101,7 +101,7 @@ class U2As(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
                        self.resubscribe_rate)
 
         # start our heartbeat to the event relay process
-	self.erc.start_heartbeat(name, self.alive_interval)
+        self.erc.start_heartbeat(name, self.alive_interval)
         
     def start(self):
         # if UDP server is in raw mode :
@@ -133,33 +133,6 @@ class U2As(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
     def stop(self):
         self.u2a_srv.stop()
 
-    ####################################################################
-
-    # These extract value functions are used to get a value from the ticket
-    # and perform validity checks in a consistent fashion.  These functions
-    # duplicated in file_clerk.py; they should be made more generic to
-    # eliminate maintaining two sets of identical code.
-
-    def extract_value_from_zzz(self, key, ticket, fail_None = False):
-        try:
-            value = ticket[key]
-        except KeyError, detail:
-            message =  "%s: key %s is missing" % (MY_NAME, detail,)
-            ticket["status"] = (e_errors.KEYERROR, message)
-            Trace.log(e_errors.ERROR, message)
-            self.reply_to_caller(ticket)
-            return None
-
-        if fail_None and value == None:
-            message =  "%s: key %s is None" % (MY_NAME, key,)
-            ticket["status"] = (e_errors.KEYERROR, message)
-            Trace.log(e_errors.ERROR, message)
-            self.reply_to_caller(ticket)
-            return None
-
-        return value
-
-
 class U2AsInterface(generic_server.GenericServerInterface):
     def __init__(self):
         # fill in the defaults for possible options
@@ -175,10 +148,10 @@ class U2AsInterface(generic_server.GenericServerInterface):
 
     parameters = ["udp_proxy_server"]
 
-    # parse the options like normal but make sure we have a library manager
+    # parse the options like normal but make sure we have a proxy server
     def parse_options(self):
         option.Interface.parse_options(self)
-        # bomb out if we don't have a library manager
+        # bomb out if we don't have a proxy server
         if len(self.args) < 1 :
             self.missing_parameter(self.parameters())
             self.print_help()
@@ -197,7 +170,7 @@ def do_work():
     u2a.handle_generic_commands(intf)
 
     Trace.init( u2a.log_name, 'yes')
-    u2a._do_print({'levels':range(5, 400)}) # no manage_queue
+    # u2a._do_print({'levels':range(5, 400)}) # leave it here for debugging purposes
     u2a.start()
  
     while True:
@@ -206,28 +179,11 @@ def do_work():
             pass
         else:
             Trace.log(e_errors.INFO, "proxy_server %s (re)starting %s"%(intf.name, t_n))
-            #lm.run_in_thread(t_n, lm.mover_requests.serve_forever)
             dispatching_worker.run_in_thread(t_n, u2a.serve_forever)
-
-        '''
-        try:
-            t_n = 'u2a_proxy'
-            if thread_is_running(t_n):
-                pass
-            else:
-                Trace.log(e_errors.INFO, "%s (re)starting %s"%(intf.name, t_n))
-                #lm.run_in_thread(t_n, lm.mover_requests.serve_forever)
-                dispatching_worker.run_in_thread(t_n, u2a.start)
-
-        except SystemExit, exit_code:
-            sys.exit(exit_code)
-        except:
-            traceback.print_exc()
-        '''
         time.sleep(10)
         
 
-    Trace.alarm(e_errors.ALARM,"U2A proxy server %sfinished (impossible)"%(intf.name,))
+    Trace.alarm(e_errors.ALARM,"U2A proxy server %s finished (impossible)"%(intf.name,))
     
 # check if named thread is running
 def thread_is_running(thread_name):

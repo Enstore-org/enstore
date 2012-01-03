@@ -35,10 +35,10 @@ import dict_u2a
 #
 #                         }
 # 'minimal_file_size' - if file is less this file will be aggregated
-# 'min_files_in_pack' - minimal number of file in package,
+# 'min_files_in_pack' - minimal number of files in package,
 #                       if total size of files to be aggregated is less than minimal_file_size
-#                       and number of foles >= min_files_in_pack then files will get packaged
-# 'max_waiting_time' - if time of cellection of files for a package exceeds this value (sec),
+#                       and number of files >= min_files_in_pack then files will get packaged
+# 'max_waiting_time' - if time of collection of files for a package exceeds this value (sec),
 #                      the files will get packaged
                             
 class Selector:
@@ -79,6 +79,7 @@ class Selector:
     # @param - policy entry in the the policy configuration
     # @param - key to match
     def ticket_match(self, ticket, policy, key):
+        Trace.trace(10, "policy %s key %s"%(policy, key))
         try:
             pattern = "^%s" % (policy[key])
             item='%s'%(ticket.get(key, 'Unknown'),)
@@ -119,7 +120,6 @@ class Selector:
         
         # default match settings
         match = False, None
-        failed = False
 
         if not self.policydict:  # no policy configuration info
             return match
@@ -127,20 +127,19 @@ class Selector:
         # make a "flat" copy of ticket
         flat_ticket = self.make_flat_ticket(ticket)
         Trace.trace(10, "FLAT TICKET:%s"%(flat_ticket,))
+        
         library = flat_ticket['library']
         library_manager = library + ".library_manager"
         if self.policydict.has_key(library_manager):
-            rules = self.policydict[library_manager].keys() # these are policy numberc
+            rules = self.policydict[library_manager].keys() # these are policy numbers
             for rule in rules:
                 # start matching
-                policy_keys = self.policydict[library_manager][rule]['rule'] # these are plicy numbers
                 rule_dict = self.policydict[library_manager][rule]['rule']
-                nkeys = len(policy_keys)
                 nmatches = 0
-                for policy in policy_keys:
+                for policy in rule_dict:
                     if not self.ticket_match(flat_ticket, rule_dict, policy): break
                     nmatches = nmatches + 1
-                if nmatches == nkeys:
+                if nmatches == len(rule_dict):
                     # match found
                     # check the file size:
                     if ticket['file_size'] < self.policydict[library_manager][rule]['minimal_file_size']:
@@ -148,8 +147,10 @@ class Selector:
                         return match
         return match
 
+
+    # match entry in encp ticket dictionary with corresponding entry in rule dictionary keyed by 'key"
     # @param - ticket to match
-    # @return - (True/False, Library/None)
+    # @return - dictionary with policy constrains
     def match_found_pe(self, ticket):
         # returns a dictionary:
         # {'policy': policy_string, # a string uniquly identifying policy
@@ -168,6 +169,7 @@ class Selector:
         # make a "flat" copy of ticket
         flat_ticket = self.make_flat_ticket(ticket)
         Trace.trace(10, "FLAT TICKET:%s"%(flat_ticket,))
+        
         library = flat_ticket['library']
         library_manager = library + ".library_manager"
         if self.policydict.has_key(library_manager):
@@ -175,16 +177,13 @@ class Selector:
             for rule in rules:
                 policy_string = "%s."%(library,)
                 # start matching
-                policy_keys = self.policydict[library_manager][rule]['rule'] # these are plicy numbers
                 rule_dict = self.policydict[library_manager][rule]['rule']
-                nkeys = len(policy_keys)
                 nmatches = 0
-                Trace.trace(10, "POLICY KEYS %s"%(policy_keys,)) 
-                for policy in policy_keys:
+                for policy in rule_dict:
                     if not self.ticket_match(flat_ticket, rule_dict, policy): break
                     policy_string = policy_string+"%s."%(rule_dict[policy],)
                     nmatches = nmatches + 1
-                if nmatches == nkeys:
+                if nmatches == len(rule_dict):
                     # match found
                     # check the file size:
                     if ticket['file_size'] < self.policydict[library_manager][rule]['minimal_file_size']:
@@ -201,6 +200,7 @@ if __name__ == "__main__":
     import configuration_client
     host = socket.gethostname()
     ip = socket.gethostbyname(host)
+    Trace.print_levels[10] = 1
     r = Selector('/home/enstore/policy_files/lmd_policy.py')
     print "DICT", r.policydict
     ticket={'lm': {'address': (ip, 7520)}, 'unique_id': '%s-1005321365-0-28872'%(host,), 'infile': '/pnfs/rip6/happy/mam/aci.py',
