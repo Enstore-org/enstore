@@ -464,6 +464,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "purge_files: request %s"%(rq.content,))
         request_list = rq.content['file_list']
         set_cache_params = []
+        cur_package_id = -1
         for component in request_list:
             bfid = component['bfid']
             # Convert unicode to ASCII strings.
@@ -477,7 +478,16 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 set_cache_params.append({'bfid': bfid,
                                          'cache_status': file_cache_status.CacheStatus.PURGING,
                                          'archive_status': None,        # we are not changing this
-                                         'cache_location': rec['cache_location']})       # we are not changing this
+                                         'cache_location': rec['cache_location']})     
+                if rec['package_id'] and rec['package_id'] != bfid and cur_package_id != rec['package_id']:
+                    # append a package file itself
+                    cur_package_id = rec['package_id']
+                    set_cache_params.append({'bfid': cur_package_id,
+                                             'cache_status': file_cache_status.CacheStatus.PURGING,
+                                             'archive_status': None,        # we are not changing this
+                                             'cache_location': rec['cache_location']})     
+                    
+                    
 
         rc = self.set_cache_status(set_cache_params)
         Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
@@ -555,7 +565,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                        bfid_info = rc['children'] 
                 else: # single file
                     bfid_info.append(rec)
-                package_name = rec['pnfs_name0']
 
             else:
                 Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rec ['status']))
@@ -575,7 +584,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                         package_id = rec.get('package_id', None)
                         if package_id:
                             package_info = self.fcc.bfid_info(package_id)
-                            package_name = package_info['pnfs_name0']
                     if package_id != rec.get('package_id', None):
                         Trace.log(e_errors.ERROR,
                                   "File does not belong to the same package and will not be staged %s %s"%
@@ -583,7 +591,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     else:
                         bfid_info.append(rec)
 
-        package_name = self.fcc.bfid_info(bfid) 
+        package = self.fcc.bfid_info(bfid) 
         set_cache_params = [] # this list is needed to send set_cache_status command to file clerk
 
         # Internal list of bfid data is built
@@ -595,17 +603,16 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 # check the state of each file
                 if component['cache_status'] == file_cache_status.CacheStatus.CACHED:
                     # File is in cache and available immediately.
-                    # How could it get into a stage list anyway?
                     continue
                 elif component['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED:
                     # file clerk sets this when opens a file
-                    #if component['bfid'] != package_id: # we stage files in the package, not the package itself
-                    files_to_stage.append(component)
-                    set_cache_params.append({'bfid': bfid,
-                                             'cache_status':file_cache_status.CacheStatus.STAGING,
-                                             'archive_status': None,        # we are not changing this
-                                             'cache_location': None})       # we are not changing this yet
-                if component['cache_status'] == file_cache_status.CacheStatus.STAGING:
+                    if component['bfid'] != package_id: # we stage files in the package, not the package itself
+                        files_to_stage.append(component)
+                        set_cache_params.append({'bfid': bfid,
+                                                 'cache_status':file_cache_status.CacheStatus.STAGING,
+                                                 'archive_status': None,        # we are not changing this
+                                                 'cache_location': None})       # we are not changing this yet
+                elif component['cache_status'] == file_cache_status.CacheStatus.STAGING:
                     # File is being staged
                     # Log this for the further investigation in
                     # case the file was not staged.
@@ -613,9 +620,15 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     continue
                 else:
                     continue
-                    
+
         Trace.trace(10, "read_from_tape:  files to stage %s %s"%(len(files_to_stage), files_to_stage))
         if len(files_to_stage) != 0:
+            # append a package file
+            files_to_stage.append(package)
+            set_cache_params.append({'bfid': package['bfid'],
+                                     'cache_status':file_cache_status.CacheStatus.STAGING,
+                                     'archive_status': None,        # we are not changing this
+                                     'cache_location': None})       # we are not changing this yet
             #rc = self.fcc.set_cache_status(set_cache_params)
             Trace.trace(10, "read_from_tape: will stage %s"%(set_cache_params,))
             rc = self.set_cache_status(set_cache_params)
@@ -626,7 +639,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             for rec in files_to_stage:
                 # create a temporary directory for staging a package
                 # use package name for this
-                stage_fname = os.path.basename(package_name['pnfs_name0'])
+                stage_fname = os.path.basename(package['pnfs_name0'])
                 # file name looks like:
                 # /pnfs/fs/usr/data/moibenko/d2/LTO3/.package-2011-07-01T09:41:46.0Z.tar
                 tmp_stage_dirname = "".join((".",stage_fname.split(".")[1]))
@@ -687,11 +700,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                         # defined by location_cookie
                         # prepended by stage_area
                         dst = os.path.join(self.stage_area, src)
-                    Trace.trace(10, "read_from_tape: src %s s_a %s dst %s"%(src,self.stage_area, dst)) 
-                    Trace.trace(10, "read_from_tape: d_a %s a_a %s s_a %s t_s_a %s"%(self.data_area,
-                                                                                     self.archive_area,
-                                                                                     self.stage_area,
-                                                                                     self.tmp_stage_area))
+                    #Trace.trace(10, "read_from_tape: src %s s_a %s dst %s"%(src,self.stage_area, dst)) 
+                    #Trace.trace(10, "read_from_tape: d_a %s a_a %s s_a %s t_s_a %s"%(self.data_area,
+                    #                                                                 self.archive_area,
+                    #                                                                 self.stage_area,
+                    #                                                                 self.tmp_stage_area))
                     Trace.trace(10, "read_from_tape: renaming %s to %s"%(src, dst))
                     # create a destination directory
                     if not os.path.exists(os.path.dirname(dst)):
@@ -719,33 +732,19 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                 #rc = self.fcc.set_cache_status(new_set_cache_params)
                                 rc = self.set_cache_status(new_set_cache_params)
                                 return False
+                            
 
-                Trace.trace(10, "read_from_tape: appending  new_set_cache_params %s"%(rec['bfid'],))
-                new_set_cache_params.append({'bfid': rec['bfid'],
-                                             'cache_status':file_cache_status.CacheStatus.CACHED,
-                                             'archive_status': None,        # we are not changing this
-                                             'cache_location': dst})
+                    Trace.trace(10, "read_from_tape: appending  new_set_cache_params %s"%(rec['bfid'],))
+                    new_set_cache_params.append({'bfid': rec['bfid'],
+                                                 'cache_status':file_cache_status.CacheStatus.CACHED,
+                                                 'archive_status': None,        # we are not changing this
+                                                 'cache_location': dst})
+            new_set_cache_params.append({'bfid': rec['bfid'],
+                                         'cache_status':file_cache_status.CacheStatus.PURGED, # we do not read a package from cache
+                                         'archive_status': None,        # we are not changing this
+                                         'cache_location': None})
+                    
             
-            # This is for debugging:
-            # Compare set_cache_params and new_new_set_cache_params.
-            Trace.trace(10, "read_from_tape: new_set_cache_params %s %s"%(len(new_set_cache_params), new_set_cache_params,))
-            
-            if len(set_cache_params) != len(new_set_cache_params):
-                Trace.trace(10, "read_from_tape: set_cache_params are different %s %s"%(len(set_cache_params), len(new_set_cache_params)))
-                if len(set_cache_params) > len(new_set_cache_params):
-                    t_p = set_cache_params
-                    t_p1 = new_set_cache_params
-                else:
-                    t_p = new_set_cache_params
-                    t_p1 = set_cache_params
-                for p in t_p:
-                    for p1 in t_p1:
-                        if p['bfid'] == p1['bfid']:
-                            break
-                    else:
-                        Trace.trace(10, "read_from_tape: not found param %s"%(p['bfid']))
-                
-
             #rc = self.fcc.set_cache_status(new_set_cache_params)
             rc = self.set_cache_status(new_set_cache_params)
             if rc['status'][0] != e_errors.OK:
