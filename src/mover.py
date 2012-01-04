@@ -7053,6 +7053,7 @@ class DiskMover(Mover):
                 
 
     def position_media(self, filename):
+        Trace.log(e_errors.INFO, "position media for %s"%(filename,))
         x = filename # to trick pychecker
         have_tape = 0
         err = None
