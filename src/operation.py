@@ -189,9 +189,9 @@ def library_type(cluster, lib):
 			return '9310'
 		if lib == 'CDF-LTO3' or lib == 'CDF-LTO4G1':
 			return '8500G1'
-		if lib == 'CDF-LTO4GS':
+		if lib == 'CDF-LTO4GS' or lib == 'CDF-10KCGS':
 			return '8500GS'
-		if lib == 'CDF-LTO4F1':
+		if lib == 'CDF-LTO4F1' or lib == 'CDF-10KCF1':
 			return '8500F1'
 	elif cluster == 'GCC':
 		if lib == 'LTO3' or lib == 'LTO4' or lib == '10KCG1':
