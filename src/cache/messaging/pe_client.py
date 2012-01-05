@@ -32,7 +32,8 @@ class EvtFileDeleted(PEEvent):
 
         File deleted in Namespace
     """
-    # @todo: specify content - see ticket description in messaging HLD
+    # message content - see ticket description in messaging HLD, 
+    #  or 'tmin' ticket in the test unit for the minimum set of required keys  
     def __init__(self, content = None):
         PEEvent.__init__(self, type=mt.FILE_DELETED, content=content )
 
@@ -41,7 +42,8 @@ class EvtCacheMissed(PEEvent):
 
         Client attempted to read file from cache and file not found in cache.
     """
-    # @todo: specify content
+    # message content - see ticket description in messaging HLD, 
+    #  or 'tmin' ticket in the test unit for the minimum set of required keys  
     def __init__(self, content = None ):
         PEEvent.__init__(self, type=mt.CACHE_MISSED, content=content)
 
@@ -50,7 +52,8 @@ class EvtCachePurged(PEEvent):
 
         File replica removed from cache (Migrator)
     """
-    # @todo: specify content
+    # message content - see ticket description in messaging HLD, 
+    #  or 'tmin' ticket in the test unit for the minimum set of required keys  
     def __init__(self, content = None ):
         PEEvent.__init__(self, type=mt.CACHE_PURGED, content=content)
 
@@ -59,7 +62,8 @@ class EvtCacheWritten(PEEvent):
 
         File replica written to cache by client (enstore Disk Mover)
     """
-    # @todo: specify content
+    # message content - see ticket description in messaging HLD, 
+    #  or 'tmin' ticket in the test unit for the minimum set of required keys  
     def __init__(self, content = None ):
         PEEvent.__init__(self, type=mt.CACHE_WRITTEN, content=content)
 
@@ -68,7 +72,8 @@ class EvtCacheStaged(PEEvent):
 
         File staged from tape to cache (Migrator)
     """
-    # @todo: specify content
+    # message content - see ticket description in messaging HLD, 
+    #  or 'tmin' ticket in the test unit for the minimum set of required keys  
     def __init__(self, content = None ):
         PEEvent.__init__(self, type=mt.CACHE_STAGED, content=content)
 
