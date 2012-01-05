@@ -25,10 +25,8 @@ class EnqMessage(qpid.messaging.Message):
 
         qpid.messaging.Message.__init__(self, *args, **kwargs) 
 
-#        self.id = 0                 # @todo
-#        self.reply_to = None        # @todo
-
-        # @todo : when self.correlation_id is set, send() fails (both for uuid() and 0)
+        # self.correlation_id can be set in base class Message through **kwargs.
+        # set correlation_id here if it has not been set in Message constructor
         if self.correlation_id is None:
             self.correlation_id = str(uuid.uuid4()) # make a random UUID
 
