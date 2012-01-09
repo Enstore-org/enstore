@@ -45,7 +45,7 @@ MAX_CONNECTIONS=20
 AMQP_BROKER = "amqp_broker"
 FILES_IN_TRANSITION_CHECK_INTERVAL = 3600
 
-SELECT_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_status='CACHED' and f.deleted='no' and f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
+SELECT_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_status='CACHED' and f.deleted='n' and f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
