@@ -7021,6 +7021,7 @@ class DiskMover(Mover):
         
 
     # stage file into cache
+    # returns file cache location or None
     def stage_file(self):
         cache_status = self.file_info['cache_status']
         if cache_status != file_cache_status.CacheStatus.CACHED:
@@ -7028,10 +7029,12 @@ class DiskMover(Mover):
             # make this better!
             # When file gets staged its cache_status must chahge as
             # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
+            file_cache_location = None
             while not hasattr(self,'too_long_in_state_sent'):
                 info = self.fcc.bfid_info(self.file_info['bfid'])
                 Trace.log(e_errors.INFO, "staging status %s cache_status %s"%(info['cache_status'], cache_status))
                 if info['cache_status'] == file_cache_status.CacheStatus.CACHED:
+                    file_cache_location = info.get('cache_location', None)
                     break
                 else:
                     if (info['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED and
@@ -7050,6 +7053,7 @@ class DiskMover(Mover):
                     # Reset self.state_change_time
                     # to avoid "mover stuck in state condition"
                     self.state_change_time = time.time()
+            return file_cache_location
                 
 
     def position_media(self, filename):
@@ -7070,13 +7074,20 @@ class DiskMover(Mover):
             # Check if file exists.
             # If this is a cache file it might have been purged
             if not os.path.exists(filename):
-                self.stage_file()
-        try:
-            have_tape = self.tape_driver.open(filename, self.mode, retry_count=30)
-        except Exception, err:
-            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=DRIVE)
+                filename = self.stage_file()
+        if filename:
+            try:
+                have_tape = self.tape_driver.open(filename, self.mode, retry_count=30)
+            except Exception, err:
+                self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=DRIVE)
+                self.idle()
+                return
+        else:
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: filename is %s' %
+                                 (filename,), error_source=DRIVE)
             self.idle()
             return
+            
         if have_tape == 1:
             err = None
         else:
