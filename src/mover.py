@@ -7059,6 +7059,14 @@ class DiskMover(Mover):
         err = None
         Trace.trace(10, "position media")
         if self.current_work_ticket['work'] == "read_from_hsm":
+            if self.current_work_ticket['fc']['deleted'] != "no":
+                self.transfer_failed(e_errors.DELETED, 'file %s does not exist: deleted==%s' %
+                                     (self.current_work_ticket['fc']['pnfs_name0'],
+                                      self.current_work_ticket['fc']['deleted']),
+                                     error_source=UNKNOWN)
+                self.idle()
+                return
+                
             # Check if file exists.
             # If this is a cache file it might have been purged
             if not os.path.exists(filename):
@@ -7114,7 +7122,7 @@ class DiskMover(Mover):
             self.tr_failed = 0
             return
 
-        if exc != e_errors.ENCP_GONE:
+        if exc not in (e_errors.ENCP_GONE, e_errors.DELETED):
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
                 broken =  "max_consecutive_failures (%d) reached" %(self.max_consecutive_failures)
