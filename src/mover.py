@@ -7288,9 +7288,9 @@ class DiskMover(Mover):
 
         #Request the new bit file.
         fc_ticket['mover_type'] = self.mover_type        
-        Trace.log(e_errors.INFO, "new bitfile request1 %s" % (self.current_work_ticket,))
         
-        fc_ticket['original_ibrary'] = self.current_work_ticket.get('original_library', None)        
+        fc_ticket['original_library'] = self.current_work_ticket.get('original_library', None)
+        Trace.log(e_errors.INFO, "new bitfile request %s" % (fc_ticket,))
 
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
                                            'fc'  : fc_ticket
