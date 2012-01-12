@@ -519,8 +519,8 @@ IF (TG_OP='UPDATE') THEN
 	   	   END IF;
 	   END IF;
 	END IF;
-RETURN NEW;
 END IF;
+RETURN NEW;
 END;
 $$
     LANGUAGE plpgsql;
