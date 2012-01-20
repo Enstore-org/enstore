@@ -12,7 +12,7 @@ PYMODULES=$(PYTHON_DIR)/Python-*/Modules
 PYLIB=$(PYTHON_DIR)/lib/python2.*/lib-dynload
 
 # Need to build python with the freeze -E option (new with python 2.2.3).
-# This option forces all modules to be frozen.  This forces frozen python 
+# This option forces all modules to be frozen.  This forces frozen python
 # executables to keep from looking for external *.py and *.pyc files.
 # However, there are always exceptions.  Those are the -x options.  Those
 # modules listed as -x are to be excluded from the frozen binary (though if
@@ -20,7 +20,7 @@ PYLIB=$(PYTHON_DIR)/lib/python2.*/lib-dynload
 # OSes that won't have modules be there when running on UNIX.
 FREEZE_SKIP_OS=-x ce -x dos -x mac -x nt -x os2 -x riscos -x riscosenviron -x riscospath -x MacOS -x _winreg -x msvcrt -x MACFS -x macfs -x SOCKS -x Carbon.File -x Carbon.Folder -x Carbon.Folders
 FREEZE_SKIP_HTML=-x GimpGradientFile -x GimpPaletteFile -x Image -x ImageTk -x PaletteFile -x _imaging -x jarray
-FREEZE_SKIP_MISC=-x sitecustomize -x ic -x rourl2path -x EasyDialogs -x org.python.core -x org -x xreadlines -x os.path -x _emx_link -x _dummy_threading -x _subprocess -x email.Generator -x email.Iterators -x usercustomize -x _md5 -x _sha -x _sha256 -x _sha512 -x _xmlplus -x _xmlrpclib -x dummy.Process -x sgmlop -x multiprocessing -x pg -x whrandom
+FREEZE_SKIP_MISC=-x sitecustomize -x ic -x rourl2path -x EasyDialogs -x org.python.core -x org -x xreadlines -x os.path -x _emx_link -x _dummy_threading -x _subprocess -x email.Generator -x email.Iterators -x usercustomize -x _md5 -x _sha -x _sha256 -x _sha512 -x _xmlplus -x _xmlrpclib -x dummy.Process -x sgmlop -x multiprocessing -x pg -x whrandom -x _scproxy -x _warnings -x init_warnings
 FREEZE_SKIP_POSTGRES=`if [ "_Linux" != _$(MACH_OS) ]; then echo "-x pg"; fi`
 
 FREEZE_ENCP_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC)
@@ -65,7 +65,7 @@ check:
 
 ### The following groupings for for building the client side programs
 ### intended for release to the general public.
-### 
+###
 ### The two commands of interest are "make encp" and "make encp_for_dcache".
 
 pre_encp_cmd:
@@ -98,7 +98,7 @@ post_encp_cmd:
 # So far, make setuid installation manual
 #	chmod u+s $INSTALLDIR/enroute2
 
-	mkdir -m 0775 $(ENCP_BIN_DIR)/volume_import/
+	mkdir -p -m 0775 $(ENCP_BIN_DIR)/volume_import/
 	$(CP) $(ENSTORE_DIR)/volume_import/enstore_tape  $(ENCP_BIN_DIR)/volume_import/
 	$(CP) $(ENSTORE_DIR)/volume_import/*.c           $(ENCP_BIN_DIR)/volume_import/
 	$(CP) $(ENSTORE_DIR)/volume_import/*.h           $(ENCP_BIN_DIR)/volume_import/
@@ -133,7 +133,7 @@ ensync_cmd:
 enmv_cmd:
 	- rm -rf ENMV_BIN_TEMP
 	mkdir ENMV_BIN_TEMP
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENMV_BIN_TEMP enmv_user.py
+	python $(FREEZE)  $(FREEZE_ENCP_OPTIONS)  -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENMV_BIN_TEMP enmv_user.py
 	(cd ENMV_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENMV_BIN_TEMP/enmv_user      $(ENCP_BIN_DIR)/enmv
 	rm -rf ENMV_BIN_TEMP
@@ -144,7 +144,7 @@ encp_for_dcache: pre_encp_cmd encp_cmd_for_dcache enstore_cmd_for_dcache ensync_
 
 ### The following groupings for for building the server side programs
 ### intended for use by the Enstore administrators.
-### 
+###
 ### The command of interest is "make enstore".
 
 pre_enstore:
@@ -228,7 +228,7 @@ FULL_SERVER_LIST=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) $(SERV
 FULL_CLIENT_LIST=enstore_admin encp_admin ensync_admin enmv_admin
 
 $(FULL_SERVER_LIST): $$@.py
-	- rm -rf SERVER_BIN_TEMP 
+	- rm -rf SERVER_BIN_TEMP
 	mkdir SERVER_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP $@.py
 	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
@@ -244,7 +244,7 @@ $(FULL_CLIENT_LIST): $$@.py
 	rm -rf CLIENT_BIN_TEMP
 
 make_enstore_system: ../sbin/$$@.py
-	- rm -rf SERVER_BIN_TEMP 
+	- rm -rf SERVER_BIN_TEMP
 	mkdir SERVER_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP ../sbin/$@.py
 	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
