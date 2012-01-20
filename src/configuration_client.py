@@ -450,6 +450,12 @@ class ConfigurationClient(generic_client.GenericClient):
 
         return media_changer_list
 
+    #get list of migrators
+    ### Not thread safe!
+    def get_migrators_list(self, timeout=0, retry=0):
+        request = {'work': 'get_migrators'}
+        return self.send(request, timeout, retry)
+
     # get list of proxy servers with full config info
     def get_proxy_servers2(self, timeout=0, retry=0, conf_dict=None):
         proxy_server_list = []
@@ -497,6 +503,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.list_library_managers = 0
         self.list_media_changers = 0
         self.list_movers = 0
+        self.list_migrators = 0
         self.file_fallback = 0
         self.print_1 = 0
         self.copy = None
@@ -540,6 +547,12 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                                     option.USER_LEVEL:option.ADMIN},
         option.LIST_MOVERS:{option.HELP_STRING:
                             "list all movers in configuration",
+                            option.DEFAULT_VALUE:option.DEFAULT,
+                            option.DEFAULT_TYPE:option.INTEGER,
+                            option.VALUE_USAGE:option.IGNORED,
+                            option.USER_LEVEL:option.ADMIN},
+        option.LIST_MIGRATORS:{option.HELP_STRING:
+                            "list all migrators in configuration",
                             option.DEFAULT_VALUE:option.DEFAULT,
                             option.DEFAULT_TYPE:option.INTEGER,
                             option.VALUE_USAGE:option.IGNORED,
@@ -786,6 +799,24 @@ def do_work(intf):
                                   mover_info['mc_device'], mover_info['driver'],
                                   mover_info['library'])
                 
+    elif intf.list_migrators:
+        try:
+            result = csc.get_migrators_list(
+                timeout = intf.alive_rcv_timeout, retry = intf.alive_retries)
+        except (KeyboardInterrupt, SystemExit):
+            sys.exit(1)
+        except (socket.error, select.error), msg:
+            if msg.args[0] == errno.ETIMEDOUT:
+                result = {'status' : (e_errors.TIMEDOUT, str(msg))}
+            else:
+                result = {'status' : (e_errors.NET_ERROR, str(msg))}
+
+        if result.get("status", None) == None or e_errors.is_ok(result):
+            msg_spec = "%25s %15s"
+            print msg_spec % ("migrator", "host")
+            for migrator in result.values():
+                mig_info = csc.get(migrator['name'])
+                print msg_spec % (migrator['name'], mig_info['host'])
     else:
 	intf.print_help()
         sys.exit(0)

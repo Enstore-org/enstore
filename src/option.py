@@ -311,6 +311,7 @@ LIST_DRIVES = "list-drives"                  #media
 LIST_FAILED_COPIES = "list-failed-copies"    #duplicate
 LIST_LIBRARY_MANAGERS = "list-library-managers" #configuration
 LIST_MEDIA_CHANGERS = "list-media-changers"  #configuration
+LIST_MIGRATORS = "list-migrators"            #configuration
 LIST_MOVERS = "list-movers"                  #configuration
 LIST_SG_COUNT = "ls-sg-count"                #volume
 LIST_SLOTS = "list-slots"                    #media
@@ -545,7 +546,7 @@ valid_option_list = [
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_CLEAN, LIST_DIR, LIST_DRIVES,
     LIST_FAILED_COPIES,
-    LIST_LIBRARY_MANAGERS, LIST_MEDIA_CHANGERS, LIST_MOVERS,
+    LIST_LIBRARY_MANAGERS, LIST_MEDIA_CHANGERS, LIST_MIGRATORS, LIST_MOVERS,
     LIST_SG_COUNT, LIST_SLOTS, LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MAKE_COPIES, MAKE_FAILED_COPIES, MARK_BAD, GET_CHILDREN, REPLAY,
