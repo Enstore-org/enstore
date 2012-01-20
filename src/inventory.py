@@ -949,14 +949,16 @@ def inventory(output_dir, cache_dir):
     dbinfo = csc.get('database')
 
     vol_db = edb.VolumeDB(host=dbinfo['db_host'],
-                          port=dbinfo.get('db_port',8888),
                           user=dbinfo['dbuser'],
-                          jou='/tmp')
+                          port=dbinfo.get('db_port',8888),
+                          jou='/tmp',
+                          max_connections=1)
     file_db = edb.FileDB(host=dbinfo['db_host'],
-                         port=dbinfo.get('db_port',8888),
                          user=dbinfo['dbuser'],
+                         port=dbinfo.get('db_port',8888),
                          jou='/tmp',
-                         rdb = vol_db.db)
+                         rdb = vol_db.db,
+                         max_connections=1)
     # log to accounting db
     accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
     acs = accounting.accDB(accinfo['dbhost'],
@@ -1051,8 +1053,6 @@ def inventory(output_dir, cache_dir):
 
     for vk in vol_db.keys():
         vv = vol_db[vk]
-        if vv["media_type"] == "disk" :
-            continue
         if not vv: # vk is gone
             vv = vol_db[vk+'.deleted']
             if not vv:
