@@ -50,18 +50,80 @@ local   all         all                               trust
 host    all         all         127.0.0.1/32          trust
 # IPv6 local connections:
 host    all         all         ::1/128               trust
-#Private subnet.
-host enstoredb enstore        192.168.89.0/24 trust
-host enstoredb enstore_reader 192.168.89.0/24 trust
-#Our subnet.
-host enstoredb enstore     131.225.13.0/24                     trust
-#Read only other systems
-host enstoredb enstore_reader 131.225.164.0/24                 trust
-host enstoredb enstore_reader 131.225.215.0/24                 trust
-host enstoredb enstore_reader 131.225.13.0/24                  trust
-#Include ccfsrv2.
-host enstoredb enstore_reader 131.225.80.22/32                 trust
-#include two cms hosts, needed for migration
+# stkensrv0n
+host    enstoredb enstore 131.225.13.59/32 trust
+host    enstoredb enstore_reader 131.225.13.59/32 trust
+# stkensrv1n
+host    enstoredb enstore 131.225.13.53/32 trust
+host    enstoredb enstore_reader 131.225.13.53/32 trust
+# stkensrv2n
+host    enstoredb enstore 131.225.13.58/32 trust
+host    enstoredb enstore_reader 131.225.13.58/32 trust
+# stkensrv3n
+host    enstoredb enstore 131.225.13.51/32 trust
+host    enstoredb enstore_reader 131.225.13.51/32 trust
+# stkensrv4n
+host    enstoredb enstore 131.225.13.4/32 trust
+host    enstoredb enstore_reader 131.225.13.4/32 trust
+# stkensrv5n
+host    enstoredb enstore 131.225.13.3/32 trust
+host    enstoredb enstore_reader 131.225.13.3/32 trust
+# stkenscan1 (tablePlotter)
+host    enstoredb enstore_reader 131.225.13.10/32 trust
+# ensrv1
+host    enstoredb enstore_reader 131.225.13.16/32 trust
+# Read only other systems
+# cdfensrv0n
+host enstoredb enstore_reader 131.225.215.52/32       trust
+# cdfensrv1n
+host enstoredb enstore_reader 131.225.215.11/32       trust
+# cdfensrv2n
+host enstoredb enstore_reader 131.225.215.12/32       trust
+# cdfensrv3n
+host enstoredb enstore_reader 131.225.215.14/32       trust
+# cdfensrv4n
+host enstoredb enstore_reader 131.225.215.15/32       trust
+# cdfensrv5n
+host enstoredb enstore_reader 131.225.215.54/32       trust
+# d0ensrv0n
+host enstoredb enstore_reader 131.225.164.10/32       trust
+# d0ensrv1n
+host enstoredb enstore_reader 131.225.164.13/32       trust
+# d0ensrv2n
+host enstoredb enstore_reader 131.225.164.15/32       trust
+# d0ensrv3n
+host enstoredb enstore_reader 131.225.164.17/32       trust
+# d0ensrv4n
+host enstoredb enstore_reader 131.225.164.18/32       trust
+# d0ensrv5n
+host enstoredb enstore_reader 131.225.164.29/32       trust
+# uqbar (Dmitry's desktop)
+host enstoredb enstore_reader 131.225.84.42/32 trust
+# cmsstor12
 host enstoredb enstore        131.225.207.112/32               trust
+# cmsstor16
 host enstoredb enstore        131.225.207.13/32                trust
+# cmssrv28
 host enstoredb enstore_reader 131.225.206.33/32                trust
+# cmsstor211
+host enstoredb enstore        131.225.191.82/32                trust
+# cmsstor307
+host enstoredb enstore        131.225.188.255/32               trust
+# cmsstor308
+host enstoredb enstore        131.225.189.255/32               trust
+# stkendm5a
+host enstoredb enstore        131.225.13.14/32                 trust
+# stkendm6a
+host enstoredb enstore        131.225.13.18/32                 trust
+# stkendm7a
+host enstoredb enstore        131.225.13.19/32                 trust
+# stkendm8a
+host enstoredb enstore        131.225.13.22/32                 trust
+# stkendm9a
+host enstoredb enstore        131.225.13.23/32                 trust
+# stkendm10a
+host enstoredb enstore        131.225.13.74/32                 trust
+# stkendm11a
+host enstoredb enstore        131.225.13.29/32                 trust
+# stkendm12a
+host enstoredb enstore        131.225.13.80/32                 trust
