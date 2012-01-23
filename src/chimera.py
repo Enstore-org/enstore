@@ -4240,11 +4240,13 @@ class File:
 	# consistent() -- to see if data is consistent
 	def consistent(self):
 		# required field
+
 		if not self.bfid or not self.volume \
-                        or not self.size == None \
+                        or self.size == None \
 			or not self.location_cookie \
-			or not self.file_family or not self.path \
-			or not self.pnfs_id or not self.bfid \
+			or not self.file_family \
+                        or not self.path \
+			or not self.pnfs_id \
 			or not self.p_path:
 			return 0
 		return 1
