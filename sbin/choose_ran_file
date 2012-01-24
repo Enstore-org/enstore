@@ -20,7 +20,7 @@ if [ "${1:-}" = "-F" ] ; then force_try=1; shift; else force_try=0; fi
 
 #  $1 should be the number of tapes to list/copy.
 COUNT=${1:-1}
-#  $2 should be one of: "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" 
+#  $2 should be one of: "onlylast" or "alsolast" or "onlyfirst" or "alsofirst"
 #                       or "onlyfirstlast" or "alsofirstlast" or "onlyran"
 WHICH_FILE=${2:-"onlyran"}
 
@@ -145,9 +145,9 @@ trap 'echo Cleaning up temporary files. 1>&2;
 ###           older than three months, allow the tape for consideration.
 enstore info $timeout --query \
 "select label,library,media_type,wrapper,write_protected
-from volume where 
-    label not like '%.deleted' and 
-    label not like 'CLN%' and 
+from volume where
+    label not like '%.deleted' and
+    label not like 'CLN%' and
     label not like '%:%' and
     system_inhibit_0 = 'none' and
     ( system_inhibit_1 = 'readonly' or system_inhibit_1 = 'full' or
@@ -168,7 +168,7 @@ if [ $verbose -eq 1 ]; then
     echo "Found $N suitable tapes."
     cat "$VOLS_DEFINED"
 fi
-   
+
 if [ $N -eq 0 ]; then
    rm -f "$VOLS_DEFINED"
    exit 1
@@ -191,7 +191,7 @@ while [ $done -gt 0 ]; do
   ran=`python -c "import random;print random.randint(1,"$N")"`
   tape=`head -n $ran "$VOLS_DEFINED" | tail -n 1| awk '{print $1}'`
 
-  # Get up to date information on the tape to make sure we have a chance 
+  # Get up to date information on the tape to make sure we have a chance
   # to read a file.
   if [ $verbose -eq 1 ]; then
     echo `date` enstore info $timeout --vol $tape
@@ -199,9 +199,9 @@ while [ $done -gt 0 ]; do
   tinfo=`enstore info $timeout --vol $tape`
   if [ $? -ne 0 ]; then
     echo "Unable to obtain $tape information." 1>&2
-    
+
     exit 1
-  fi  
+  fi
   if [ $verbose -eq 1 ]; then
     echo "$tinfo"
   fi
@@ -212,7 +212,7 @@ while [ $done -gt 0 ]; do
     continue
   fi
   #We need to tell encp to tell the mover to load the tape for read-write
-  # mode (full or readonly; migrated too???).  This is so that we can audit 
+  # mode (full or readonly; migrated too???).  This is so that we can audit
   # the state of the write_protect tab.
   if [ `echo $tinfo | egrep -c "full|readonly|migrated"` -ne 0 ]; then
      override_ro="--override-ro-mount"
@@ -270,7 +270,7 @@ while [ $done -gt 0 ]; do
 
   # make sure this volume is still on the readable list.
   match_count=`egrep -c 'DELETED|NOACCESS|NOTALLOWED' "$TAPE_FILE_LIST"`
-  if [ $match_count -ne 0 ]; then 
+  if [ $match_count -ne 0 ]; then
     echo `date` REJECTED $tape is DELETED/NOACCESS/NOTALLOED 1>&2
     rm -f "$TAPE_FILE_LIST" "$TAPE_FILE_LIST_FORMATED"
     continue
@@ -284,10 +284,10 @@ while [ $done -gt 0 ]; do
   bad_filter=`for item in $(cat $BAD_FILE_LIST); do echo -n " |" $item; done | cut -c 2-`
   rm -f "$BAD_FILE_LIST"
 
-  # Get rid of volume information - we already processed that and don't 
-  # need it anymore. Get rid of all files the user already deleted. 
-  # We don't want to read these files.  If there aren't any files left, 
-  # start over with a new tape.  Ignore hidden files and sort the filelist 
+  # Get rid of volume information - we already processed that and don't
+  # need it anymore. Get rid of all files the user already deleted.
+  # We don't want to read these files.  If there aren't any files left,
+  # start over with a new tape.  Ignore hidden files and sort the filelist
   # according to location on the tape.  Also, skip known bad files.
   if [ -n "$bad_filter" ]; then
     grep /pnfs "$TAPE_FILE_LIST" | egrep -v 'deleted|  yes /' | grep active | egrep -v "$bad_filter" | grep -v '\/\.' | sort -k4 > "$TAPE_FILE_LIST_FORMATED"
@@ -296,7 +296,7 @@ while [ $done -gt 0 ]; do
   fi
   rm -f "$TAPE_FILE_LIST"
   NF=`wc "$TAPE_FILE_LIST_FORMATED" | awk '{print $1}'`
-  if [ $NF -gt 0 ]; then 
+  if [ $NF -gt 0 ]; then
     if [ $verbose -eq 1 ]; then echo `date`: $NF SUITABLE FILES on $tape; fi
   else
     if [ $verbose -eq 1 ]; then echo `date`: NO SUITABLE FILES on $tape; fi
@@ -329,22 +329,22 @@ while [ $done -gt 0 ]; do
   get_file_path()
   {
     bfid=$1  #The starting point.
- 
+
     # Use the bfid to get the pnfsid from Enstore DB.
     raw_pnfsid=`enstore info $timeout --bfid $bfid`
     if [ $? -ne 0 ]; then
       echo "Unable to get file information for $bfid" 1>&2
       return 1
     fi
-    pnfsid=`echo "$raw_pnfsid" | grep pnfsid | cut -c 13-36`
-    
+    pnfsid=`echo "$raw_pnfsid" | grep pnfsid | sed -e "s/\s*//g;s/'//g;s/,//g" | cut -d":" -f2`
+
     # Use the pnfsid to get the current path in PNFS.
     file=`enstore pnfs --path $pnfsid 2> /dev/null`
     if [ $? -ne 0 ]; then
       echo "Unable to get path for $pnfsid" 1>&2
       return 1
     fi
-    
+
     # Use the path to confirm the layer 1 bfid matches.
     file=`check_files $bfid "$file"`
     if [ $? -ne 0 ]; then
@@ -372,7 +372,7 @@ while [ $done -gt 0 ]; do
        fi
        ;;
   esac
-      
+
   #Pick a random file on the tape.
   case $WHICH_FILE in
     onlyran|alsofirst|alsolast|alsofirstlast|*)
@@ -389,7 +389,7 @@ while [ $done -gt 0 ]; do
          exit 1
        fi
        ;;
-  esac   
+  esac
 
   #Grab the last file on the tape.
   case $WHICH_FILE in
@@ -411,7 +411,7 @@ while [ $done -gt 0 ]; do
   rm -f "$TAPE_FILE_LIST_FORMATED"
 
   # Make a list of what the user wants.  Valid values are:
-  #  "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" 
+  #  "onlylast" or "alsolast" or "onlyfirst" or "alsofirst"
   #  or "onlyfirstlast" or "alsofirstlast" or "onlyran"
   case $WHICH_FILE in
     onlyran)       thefiles=$ran_file
@@ -451,11 +451,11 @@ while [ $done -gt 0 ]; do
     echo "$thefiles"
   else
     echo
-    echo "Random volume = $tape" 
+    echo "Random volume = $tape"
     echo "Random file = ${file_r-:}"
     echo "First  file = ${file_f-:}"
     echo "Last   file = ${file_l-:}"
-    echo 
+    echo
 
     #Obtain the library that this tape belongs too.
     raw_library=`enstore info $timeout --vol $tape`
@@ -492,7 +492,7 @@ while [ $done -gt 0 ]; do
 	echo
         continue
     fi
-    
+
     echo "$vols_at_movers"
     #If the system is busy, don't start encp.
     busy_movers=`echo "$vols_at_movers" | wc -l`
@@ -559,7 +559,7 @@ while [ $done -gt 0 ]; do
 	echo
 	#5 seems like a good number. Its greater than 3 indicating 3 failures.
 	# It is not -1, -2, 0, 10 or 7 which have special meaning in the plots.
-	#9-10-2002: Edited to return 0 instead of 5.  Emails were being 
+	#9-10-2002: Edited to return 0 instead of 5.  Emails were being
 	# generated that make this the simpliest solution.
 	exit 0
     fi
