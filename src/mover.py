@@ -3450,7 +3450,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.file_info['pnfs_name0'] = None # it may later come in get ticket
                         self.file_info['gid'] = self.gid
                         self.file_info['uid'] = self.uid
-                        fc_ticket['mover_type'] = self.mover_type        
+                        self.file_info['mover_type'] = self.mover_type        
                         
                         
                         ret = self.fcc.create_bit_file(self.file_info)
