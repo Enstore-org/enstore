@@ -4459,17 +4459,18 @@ def make_failed_copies(vcc, fcc, db, intf):
         "      and remaining > 0 " \
         "      and active_file_copying.bfid = file.bfid " \
         "      and (time < CURRENT_TIMESTAMP - interval '24 hours' or " \
-        "           time is NULL) --For some really old entries. " \
-        "  --These 4 pnfs_id/pnfs_path checks remove failed original " \
-        "  -- transfers from the output list. " \
+        "           time is NULL) " \
         "      and file.pnfs_id is not NULL " \
         "      and file.pnfs_id != '' " \
         "      and file.pnfs_path is not NULL " \
         "      and file.pnfs_path != '' " \
         "order by volume.id,time;"
+    # For some really old entries
+    # 4 last pnfs_id/pnfs_path checks remove failed original 
+    # transfers from the output list.  
+
     #Get the results.
     res = db.query(q).getresult()
-    
     bfid_lists = {} #sort into list by volume.
     for row in res:
         #row[0] is bfid
