@@ -25,8 +25,8 @@ class EnLogHandler(logging.Handler):
         #self.level = logging.DEBUG
         
         # enstore Trace name is global setting, it is called once and for all
-        Trace.init(name,'yes')
-        Trace.do_print([e_errors.INFO, e_errors.WARNING, e_errors.USER_ERROR, e_errors.ERROR, e_errors.ALARM, e_errors.EMAIL])
+        #Trace.init(name,'yes')
+        #Trace.do_print([e_errors.INFO, e_errors.WARNING, e_errors.USER_ERROR, e_errors.ERROR, e_errors.ALARM, e_errors.EMAIL])
 
         #Trace.trace( 6, "str")
         #Trace.alarm(...)
@@ -95,8 +95,8 @@ class EnTraceHandler(logging.Handler):
         #self.level = logging.DEBUG
         
         # enstore Trace name is global setting, it is called once and for all
-        Trace.init(name,'yes')
-        Trace.do_print([e_errors.WARNING, e_errors.INFO, e_errors.ERROR])
+        #Trace.init(name,'yes')
+        #Trace.do_print([e_errors.WARNING, e_errors.INFO, e_errors.ERROR])
 
         #Trace.trace( 6, "str")
         #Trace.alarm(...)
