@@ -33,7 +33,7 @@ import mw
 import cache.messaging.mw_client
 from cache.messaging.messages import MSG_TYPES as mt
 import cache.messaging.file_list as file_list
-
+import cache.en_logging.en_logging
 
 MY_NAME = enstore_constants.DISPATCHER
 
@@ -42,6 +42,7 @@ QPID_BROKER_NAME = "amqp_broker" # this must be in enstore_constants
 class Dispatcher(mw.MigrationWorker,
                  dispatching_worker.DispatchingWorker,
                  generic_server.GenericServer):
+
    def __init__(self, csc, auto_ack=True):
         '''
         Constructor
@@ -60,10 +61,11 @@ class Dispatcher(mw.MigrationWorker,
         self.dispatcher_configuration['server'] = {}
         self.dispatcher_configuration['server'] = self.my_conf
         self.queue_in_name = self.name.split('.')[0]
-        self.dispatcher_configuration['server']['queue_in'] = "%s; {create: receiver, delete: receiver}"%(self.queue_in_name,) # dispatcher input control queue
+        self.dispatcher_configuration['server']['queue_in'] = "%s; {create: receiver, delete: receiver}"% \
+                                                              (self.queue_in_name,) # dispatcher input control queue
         # queue_work is Policy Engine Server incoming queue (events from file_clerk for instance)
         # queue_reply is Policy Engine Server outcoming queue (to file_clerk for instance, but I do not know why it is needed
-        # create this queues if they do not exist
+        # create these queues if they do not exist
         self.dispatcher_configuration['server']['queue_work'] ="%s; {create: always}"%\
                                                                 (self.dispatcher_configuration['server']['queue_work'],)
         self.dispatcher_configuration['server']['queue_reply'] = "%s; {create: always}"%\
@@ -87,10 +89,11 @@ class Dispatcher(mw.MigrationWorker,
         self.dispatcher_configuration['amqp']['broker'] = self.csc.get("amqp_broker")
         
         self.max_time_in_cache = self.my_conf.get("max_time_in_cache", 3600)
+        self.check_watermarks = True # this allows to purge files ignoring watermarks
         self.purge_watermarks = self.my_conf.get("purge_watermarks", None)
         # purge_watermarks is a tuple
         # (start_purging_disk_avalable, start_purging_disk_avalable)
-        # start_purging_disk_avalable - available space as afraction of the capacity
+        # start_purging_disk_avalable - available space as a fraction of the capacity
         self.file_purger = purge_files.FilePurger(self.csc, self.max_time_in_cache, self.purge_watermarks)
         
         # create pools for lists
@@ -101,15 +104,15 @@ class Dispatcher(mw.MigrationWorker,
         self.cache_staged_pool = {}
 
         # create migration pool
-        self.migrartion_pool = {}
+        self.migration_pool = {}
 
         # create Migration Dispatcher
-        self.md = migration_dispatcher.MigrationDispatcher("M_D",
+        self.md = migration_dispatcher.MigrationDispatcher("MD",
                                                            self.dispatcher_configuration['amqp']['broker'],
                                                            self.my_conf['migrator_work'],
                                                            self.my_conf['migrator_reply'],
                                                            self._lock,
-                                                           self.migrartion_pool)
+                                                           self.migration_pool)
 
         # set event handlers
         self.handlers = {mt.FILE_DELETED:  self.handle_file_deleted,
@@ -126,11 +129,10 @@ class Dispatcher(mw.MigrationWorker,
         self.alive_interval = monitored_server.get_alive_interval(self.csc,
                                                                   MY_NAME,
                                                                   self.my_conf)
-        print "alive interval", self.alive_interval
-
 
         dispatching_worker.DispatchingWorker.__init__(self, (self.my_conf['hostip'],
 	                                              self.my_conf['port']))
+        self.logger, self.tracer = cache.en_logging.en_logging.set_logging(self.log_name)
         self.resubscribe_rate = 300
 
 	self.erc = event_relay_client.EventRelayClient(self)
@@ -146,7 +148,7 @@ class Dispatcher(mw.MigrationWorker,
          self.policy_selector.read_config()
          ticket['status'] = (e_errors.OK, None)
       except Exception, detail:
-         ticket['status'] = (e_errors.ERROR, "Error loading policy for LMD: %s"%(detail,))
+         ticket['status'] = (e_errors.ERROR, "Error loading policy for PE Server: %s"%(detail,))
          Trace.log(e_errors.ERROR, "reload_policy: %s" % (detail,))
       self.reply_to_caller(ticket)
          
@@ -166,16 +168,16 @@ class Dispatcher(mw.MigrationWorker,
    def show_queue(self, ticket):
       Trace.trace(10, "show_queue")
       ml = {}
-      for key in self.migrartion_pool:
-         ml[key] = {'id':self.migrartion_pool[key].id,
-                    'list': self.migrartion_pool[key].list_object.file_list,
-                    'type': self.migrartion_pool[key].list_object.list_type,
-                    'time_qd': time.ctime(self.migrartion_pool[key].list_object.creation_time),
+      for key in self.migration_pool:
+         ml[key] = {'id':self.migration_pool[key].id,
+                    'list': self.migration_pool[key].list_object.file_list,
+                    'type': self.migration_pool[key].list_object.list_type,
+                    'time_qd': time.ctime(self.migration_pool[key].list_object.creation_time),
                     }
       ticket['pools'] = {'cache_missed':self.cache_missed_pool,
                          'cache_purge': self.cache_purge_pool,
                          'cache_written': self.cache_written_pool,
-                         'migrartion_pool': ml,
+                         'migration_pool': ml,
                          }
       ticket['status'] = (e_errors.OK, None)
       Trace.trace(10, "show_queue: ticket %s"%(ticket,))
@@ -191,13 +193,13 @@ class Dispatcher(mw.MigrationWorker,
    # @param - src - pool
    # @param - item_to_move item to move is a key in the pool
    def move_to_migration_pool(self, src, item_to_move):
-      self._lock.acquire()
       # src[item_to_move] is a file_list.FIleList or
       # file_list.FileListWithCRC
       src[item_to_move].creation_time = time.time()
       list_id = src[item_to_move].list_id
       Trace.trace(10, "move_to_migration_pool list_id %s"%(list_id,))
-      self.migrartion_pool[list_id] = migration_dispatcher.MigrationList(src[item_to_move],
+      self._lock.acquire()
+      self.migration_pool[list_id] = migration_dispatcher.MigrationList(src[item_to_move],
                                                                          list_id,
                                                                          file_list.FILLED)
       del(src[item_to_move])
@@ -210,8 +212,9 @@ class Dispatcher(mw.MigrationWorker,
       Trace.trace(10, "CHECK POOLS")
       kick_migration = False
       # special case for purging cache
-      files_to_purge = self.file_purger.files_to_purge()
-      print "FILES_TO_PURGE", files_to_purge
+      files_to_purge = self.file_purger.files_to_purge(self.check_watermarks)
+      if not self.check_watermarks:
+         self.check_watermarks = True
       if files_to_purge:
          self.cache_purge_pool[files_to_purge.list_id] = files_to_purge
       for pool in (self.file_deleted_pool,
@@ -337,32 +340,28 @@ class Dispatcher(mw.MigrationWorker,
        Trace.trace(10, "handle_cache_written: POLICY:%s"%(policy['policy'],))
        return True
        
-       
-       pass
+
    def handle_cache_staged(self, message):
-       Trace.trace(10, "handle_cache_written reeceived: %s"%(message))
+       Trace.trace(10, "handle_cache_staged reeceived: %s"%(message))
        pass
-   
 
 
 class DispatcherInterface(generic_server.GenericServerInterface):
    pass
-    
+
 def do_work():
     # get an interface
     intf = DispatcherInterface()
 
-    import cache.en_logging.config_test_unit
-    
-    cache.en_logging.config_test_unit.set_logging_console()
-
     # create  Migrator instance
     dispatcher = Dispatcher((intf.config_host, intf.config_port))
+    
     dispatcher.handle_generic_commands(intf)
 
-    #Trace.init(migrator.log_name, 'yes')
-    dispatcher._do_print({'levels':range(5, 400)})
+    #dispatcher._do_print({'levels':range(5, 400)})
     dispatcher.start()
+    #dispatcher.logger.log(e_errors.ERROR, "DISP START")
+    dispatcher.logger.info("DISP START") # jst to check if logger works
  
     while True:
         t_n = 'dispatcher'

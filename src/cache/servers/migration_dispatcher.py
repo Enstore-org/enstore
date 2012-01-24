@@ -29,8 +29,7 @@ import file_cache_status
 import cache.errors
 #import cache.messaging.client2 as cmc
 import cache.messaging.client as cmc
-import cache.messaging.mw_client
-import cache.messaging.pe_client
+
 import cache.messaging.file_list as file_list
 import cache.messaging.mw_client as mw_client
 
@@ -49,7 +48,7 @@ class MigrationList:
         self.state = state # state of the file list from file_list.py
         self.expected_reply = expected_reply # reply expected for this file list
 
-    def __repr__(self):
+    def __str__(self):
         return "id %s list: %s"%(self.id, self.list_object)
         
 class MigrationDispatcher():
@@ -57,7 +56,11 @@ class MigrationDispatcher():
     def __init__(self, name, broker, queue_work, queue_reply, lock, migration_pool):
         '''
         @type name: str
-        @param name: name - migration worker name
+        @param name - migration dispatcher name
+        @param broker - qpid briker
+        @param queue_work - queue for miration dispatcher requests (request lsists are sent to this queue
+        @param queue_reply - replies from migrators are sent to this queue
+        @param migration_pool - poll where PE Server part puts lists to get served by Migration Dispatcher
         '''
         self.shutdown = False
         self.finished = False
@@ -85,7 +88,6 @@ class MigrationDispatcher():
         self.start()
 
     def _fetch_message(self):
-       print "MD: FETCH"
        try:
           return self.qpid_client.rcv_default.fetch()
        except Queue.Empty:
@@ -95,7 +97,6 @@ class MigrationDispatcher():
           return None
 
     def _ack_message(self, msg):
-       print "MD: ACK"
        try:
           self.trace.debug("_ack_message(): sending acknowledge")
           self.qpid_client.ssn.acknowledge(msg)         
@@ -111,7 +112,7 @@ class MigrationDispatcher():
 
     def send_status_request(self):
         Trace.trace(10, "Starting send_status_request")
-        status_cmd = cache.messaging.mw_client.MWCStatus(request_id=0)
+        status_cmd = mw_client.MWCStatus(request_id=0)
         
         while 1:
             if self.stop_status_loop:
@@ -122,7 +123,7 @@ class MigrationDispatcher():
                     # dispatcher had already received confirmation from
                     # migrator.
                     # Send status request to it
-                    status_cmd = cache.messaging.mw_client.MWCStatus(request_id=0, correlation_id=key)
+                    status_cmd = mw_client.MWCStatus(request_id=0, correlation_id=key)
                     Trace.trace(10, "send_status_request sending %s"%(status_cmd,))
                     self.migration_pool[key].status_requestor.send(status_cmd)
             time.sleep(10)
@@ -146,21 +147,25 @@ class MigrationDispatcher():
             # create sender on the queue declared in m.reply_to.
             # Correlation id is proagated for all mesaages related to the same request
             if not self.migration_pool[m.correlation_id].status_requestor:
-                self.migration_pool[m.correlation_id].status_requestor = self.qpid_client.add_sender("mw_qpid_interface", m.reply_to)
-        if msg_type == mt.MWR_ARCHIVED:
-            Trace.trace(10, "handle_message:MWR_ARCHIVED. Before %s"%(self.migration_pool,))
-            if self.migration_pool.has_key(m.correlation_id):
-               del(self.migration_pool[m.correlation_id])
-            Trace.trace(10, "handle_message:MWR_ARCHIVED. After %s"%(self.migration_pool,)) 
-        if msg_type == mt.MWR_PURGED:
-            Trace.trace(10, "handle_message:MWR_PURGED. Before %s"%(self.migration_pool,)) 
-            del(self.migration_pool[m.correlation_id])
-            Trace.trace(10, "handle_message:MWR_PURGED. After %s"%(self.migration_pool,)) 
+               self.lock.acquire()
+               try:
+                   self.migration_pool[m.correlation_id].status_requestor = self.qpid_client.add_sender("mw_qpid_interface", m.reply_to)
+               except:
+                   pass # for now
+               self.lock.release()
+        if msg_type in (mt.MWR_ARCHIVED, mt.MWR_PURGED, mt.MWR_STAGED): 
+            if msg_type == mt.MWR_ARCHIVED:
+                Trace.trace(10, "handle_message:MWR_ARCHIVED. Before %s"%(self.migration_pool,))
+            if msg_type == mt.MWR_PURGED:
+                Trace.trace(10, "handle_message:MWR_PURGED. Before %s"%(self.migration_pool,))
+            if msg_type == mt.MWR_STAGED:
+                Trace.trace(10, "handle_message:MWR_STAGED. Before %s"%(self.migration_pool,)) 
 
-        if msg_type == mt.MWR_STAGED:
-            Trace.trace(10, "handle_message:MWR_STAGED. Before %s"%(self.migration_pool,)) 
-            del(self.migration_pool[m.correlation_id])
-            Trace.trace(10, "handle_message:MWR_STAGED. After %s"%(self.migration_pool,)) 
+            if self.migration_pool.has_key(m.correlation_id):
+                self.lock.acquire() 
+                del(self.migration_pool[m.correlation_id])
+                self.lock.release()
+            Trace.trace(10, "handle_message:After %s"%(self.migration_pool,)) 
             
         if msg_type == mt.MWR_STATUS:
             # This message type can be received only as a result
@@ -176,6 +181,7 @@ class MigrationDispatcher():
                 # in this case the request needs to be re-sent
                 Trace.trace(10, "handle_message: Migrator replied with status None")
                 Trace.trace(10, "handle_message: reposting request")
+                self.migration_pool[m.correlation_id].state = file_list.FILLED 
                 self.migrate_list(self.migration_pool[m.correlation_id])
             else:
                 if  m.content['migrator_status'] == self.migration_pool[m.correlation_id].expected_reply:
@@ -184,6 +190,8 @@ class MigrationDispatcher():
                     # keyed by the correlation id
                     # all messages for a given action have the same correlation id.
                     Trace.trace(10, "handle_message: received expected status reply")
+                    del(self.migration_pool[m.correlation_id])
+
                 else:
                     Trace.trace(10, "handle_message: received %s expected %s"%(m.content['migrator_status'],
                                                                                self.migration_pool[m.correlation_id].expected_reply))
@@ -278,81 +286,3 @@ class MigrationDispatcher():
             except KeyError, detail:
                 Trace.log(e_errors.ERROR, "Error adding to migrate list %s %s"%(key, item))
 
-if __name__ == "__main__":
-    migrator = sys.argv[1]
-    
-    import cache.en_logging.config_test_unit
-    
-    cache.en_logging.config_test_unit.set_logging_console()
-    
-    l =  file_list.FileListWithCRC()
-    i = file_list.FileListItemWithCRC(bfid = "GCMS130824090400000",
-                                      nsid = "000100000000000000001A18",
-                                      path = "/pnfs/fs/usr/data/moibenko/d2/LTO3/library_manager.py",
-                                      libraries= ["LTO3"],
-                                      crc = 1234L) # just put something here
-    l.append(i)
-    i = file_list.FileListItemWithCRC(bfid = "GCMS130824093000000",
-                                      nsid = "000100000000000000001A48",
-                                      path = "/pnfs/fs/usr/data/moibenko/d2/LTO3/library_manager_client.py",
-                                      libraries= ["LTO3"],
-                                      crc = 34L) # just put something here
-                                      
-    l.append(i)
-    i = file_list.FileListItemWithCRC(bfid = "GCMS130824094700000",
-                                      nsid = "000100000000000000001A78",
-                                      path = "/pnfs/fs/usr/data/moibenko/d2/LTO3/media_changer.py",
-                                      libraries= ["LTO3"],
-                                      crc = 0L) # just put something here
-                                      
-    l.append(i)
-    i = file_list.FileListItemWithCRC(bfid = "GCMS130824096300000",
-                                      nsid = "000100000000000000001AA8",
-                                      path = "/pnfs/fs/usr/data/moibenko/d2/LTO3/media_changer_client.py",
-                                      libraries= ["LTO3"],
-                                      crc = 4L) # just put something here
-                                      
-    l.append(i)
-    i = file_list.FileListItemWithCRC(bfid = "GCMS130824100100000",
-                                      nsid = "000100000000000000001AD8",
-                                      path = "/pnfs/fs/usr/data/moibenko/d2/LTO3/mover.py",
-                                      libraries= ["LTO3"],
-                                      crc = 3L) # just put something here
-                                      
-    l.append(i)
-
-    mc = MigrationClient(migrator)
-    
-    while 1:
-        try:
-            rc = raw_input("1 - archive, 2 - purge, 3 - stage, 0 - exit: ")
-            if rc:
-                rc = int(rc)
-                if rc == 1:
-                    arch_command = mw_client.MWCArchive(l.file_list)
-                    #mc = MigrationClient(migrator)
-                    print "ARCHIVING"
-                    mc.expected_status_reply = file_cache_status.ArchiveStatus.ARCHIVED
-                    mc._send_message(arch_command)
-                elif rc == 2:
-                    purge_command = mw_client.MWCPurge(l.file_list)
-                    #mc = MigrationClient(migrator)
-                    print "PURGING"
-                    mc.expected_status_reply = file_cache_status.CacheStatus.PURGED
-                    mc._send_message(purge_command)
-                elif rc == 3:
-                    stage_command = mw_client.MWCStage(l.file_list)
-                    #mc = MigrationClient(migrator)
-                    print "STAGING"
-                    mc.expected_status_reply = file_cache_status.CacheStatus.CACHED
-                    mc._send_message(stage_command)
-                else:
-                    mc.stop()
-                    break
-        except KeyboardInterrupt:
-            print "Keyboard interrupt at main thread"
-            mc.stop()
-            break
-    
-    del mc
-    print "mc finished"

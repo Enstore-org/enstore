@@ -18,6 +18,7 @@ import edb
 import info_client
 import e_errors
 import file_cache_status
+import Trace
 import cache.messaging.file_list as file_list
 from cache.messaging.messages import MSG_TYPES as mt
 
@@ -90,7 +91,7 @@ class FilePurger:
             
             
 
-    def purge_this_file(self, f_info):
+    def purge_this_file(self, f_info, check_watermarks=True):
         rc = False
         if (f_info['cache_status'] == file_cache_status.CacheStatus.CACHED and
             f_info['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED):
@@ -98,12 +99,19 @@ class FilePurger:
             t = time.mktime(time.strptime(f_info['cache_mod_time'], "%Y-%m-%d %H:%M:%S"))
             if time.time() - t > self.max_time_in_cache:
                 rc = True
-                if self.purge_watermarks:
+                if f_info['cache_location'] == f_info['location_cookie']: # same location
+                    # When cache_location and location_cookie
+                    # the same cache pool configured for writes and reads.
+                    # we want to clean this pool,
+                    # but the final decision will be done by migrator.
+                    Trace.trace(10, "purge_this_file: same location %s %s"%(f_info['bfid'], f_info['cache_location']))
+                    return True
+                if check_watermarks and self.purge_watermarks:
                     rc = self.available_space_low(f_info)
         return rc
             
 
-    def files_to_purge(self):
+    def files_to_purge(self, check_watermarks=True):
         q = "select * from cached_files;"
         res = self.filedb_dict.query_getresult(q)
         total_in_cache = 0L
@@ -114,7 +122,7 @@ class FilePurger:
             f_info = self.infoc.bfid_info(bfid[0])
             if f_info['status'][0] == e_errors.OK:
                 total_in_cache = total_in_cache + 1
-                if self.purge_this_file(f_info):
+                if self.purge_this_file(f_info, check_watermarks):
                     purge_candidates.append(f_info)
                     total_purge_candidates = total_purge_candidates + 1
         if total_purge_candidates:
@@ -131,7 +139,7 @@ class FilePurger:
                 f_list.append(list_element)
 
             f_list.full = True
-        print "Total %s Purge Candidates %s"%(total_in_cache, total_purge_candidates)
+        Trace.trace(10, "Total %s Purge Candidates %s"%(total_in_cache, total_purge_candidates))
         
         return f_list
     
