@@ -231,10 +231,10 @@ def is_admin_chimera_path(pathname, check_name_only = None):
 
 #For compatibility with pnfs.py.
 is_admin_pnfs_path = is_admin_chimera_path
-        
+
 def isdir(pathname):
    return file_utils.wrapper(os.path.isdir, (pathname,), unstable_filesystem=True)
- 
+
 def isfile(pathname):
    return file_utils.wrapper(os.path.isfile, (pathname,), unstable_filesystem=True)
 
@@ -339,7 +339,7 @@ def get_layer(layer_filename, max_lines = None):
     split_path = os.path.split(layer_filename)
     use_layer_filename = os.path.join(remove_special_paths(split_path[0]),
                                       split_path[1])
-    
+
     i = 0
     while i < RETRY_COUNT:
         # get info from layer
@@ -529,7 +529,7 @@ def get_chimeraid(f):
     split_path = os.path.split(f)
     use_path = os.path.join(remove_special_paths(split_path[0]),
                             split_path[1])
-    
+
     #Get the id of the file or directory.
     try:
         fname = id_file(use_path)
@@ -558,10 +558,10 @@ get_id = get_chimeraid
 def get_parent_id(directory, pnfs_id):
     #Remove .(access)() paths from the directory.
     use_directory = remove_special_paths(directory)
-   
+
     #Create the filename to obtain the parent id.
     parent_id_name = os.path.join(use_directory, ".(parent)(%s)" % pnfs_id)
-    
+
     #Read the parent id.
     f = file_utils.open(parent_id_name, unstable_filesystem=True)
     try:
@@ -599,7 +599,7 @@ chimera_global_lock = threading.Lock()
 #Get currently mounted pnfs mountpoints.
 def parse_mtab():
     global mount_points_cache
-   
+
     #Different systems have different names for this file.
     # /etc/mtab: Linux, IRIX
     # /etc/mnttab: SunOS
@@ -866,7 +866,7 @@ def get_cache_by_mount_point(mount_point_key = None, default = None):
 
     chimera_global_lock.release()
     return return_value
- 
+
 ###############################################################################
 
 #Return a list of admin (/pnfs/fs like) mount points.
@@ -876,7 +876,7 @@ def get_enstore_admin_mount_point(chimeraid = None):
 
     #Get the list of pnfs mountpoints currently mounted.
     mtab_results = process_mtab()
-    
+
     for cached_item in mtab_results:
         db_num = cached_item[DB_NUMBER]
         mount_path = cached_item[DB_MOUNT_POINTS][0]  #Should only be one here.
@@ -891,7 +891,7 @@ def get_enstore_admin_mount_point(chimeraid = None):
             #At this point in the code, we only care about the mount points
             # that resemble the admin PNFS mount points.  (/pnfs/fs)
             mount_path = os.path.join(mount_path, "usr")
-            
+
             if chimeraid == None:
                 list_of_admin_mountpoints.append(mount_path)
             else:
@@ -914,7 +914,7 @@ def get_enstore_mount_point(chimeraid = None):
 
     #Get the list of pnfs mountpoints currently mounted.
     mtab_results = process_mtab()
-    
+
     for cached_item in mtab_results:
         db_num = cached_item[DB_NUMBER]
         mount_path = cached_item[DB_MOUNT_POINTS][0]  #Should only be one here.
@@ -1432,7 +1432,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
               l = []
            else:
               raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        
+
         return l
 
     ##########################################################################
@@ -1630,7 +1630,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                           "%s: %s" % (os.strerror(errno.ENODEV),
                                       "Too many matching mount points",),
                           rtn_filepaths)
-         
+
     def __get_path(self, use_id, search_path, target, shortcut):
         filepath = target.replace("\n", "")
 
@@ -1715,7 +1715,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     #In Chimera there is only one database, so these functions are identical.
     get_pnfs_db_directory = get_chimera_db_directory = get_mount_point
-     
+
     #Get the mountpoint for the pnfs id.
     # As a side effect also get the value of the pnfsname file.
     #
@@ -1736,7 +1736,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #  corresponding.
     def _get_mount_point2(self, id, directory, pnfsname=None,
                           return_all = False):
-        
+
         if id != None:
             if not is_chimeraid_or_pnfsid(id):
                 raise ValueError("The pnfs id (%s) is not valid." % id)
@@ -1751,7 +1751,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         #Strip this down to just the mount point.
         use_directory = self.get_mount_point(directory)
-        
+
         #Insert the default path first to try.  If that one has a hit, just
         # use it.  If not search all available mount points, hoping to find
         # just one that matches.
@@ -1816,13 +1816,13 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             elif count > 1 and return_all:
                 #Return all items from this search list set.
                 return mount_point_match_list, pnfs_value_match_list
-            
+
         else:
             #Found no matches.
             raise OSError(errno.ENOENT,
                           "%s: %s" % (os.strerror(errno.ENOENT),
                                       "PNFS ID not found: %s" % (id,)))
-         
+
     ##########################################################################
 
     # get the cursor information
@@ -1881,18 +1881,18 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # get the database information
     def get_database(self, directory=None):
-       
+
        if directory:
           dname = directory
        else:
           dname = self.dir
-          
+
        #return made-up data that is consistant with pnfs format
        val = self.get_mount_point(dname)
        for value in get_cache_by_db_info():
           if val in value[DB_MOUNT_POINTS]:
              return value[DB_INFO]
-          
+
        return None
 
 
@@ -1968,7 +1968,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
                 #The fset_file() function gives us the correct directory
                 # to use, regardles of a normal filename or .(access)()
-                # filename. 
+                # filename.
                 try_dir = os.path.dirname(fname)
                 #Determine the original path of the file with the new
                 # directory path.
@@ -2115,8 +2115,8 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 raise sys.exc_info()[0], sys.exc_info()[1], \
                       sys.exc_info()[2]
         except IndexError:
-            import traceback
-            traceback.print_tb()
+            exc, msg, tb = sys.exc_info()
+            Trace.handle_error(exc, msg, tb)
             raise IOError(errno.EIO, "%s: Layer %d is empty: %s" %
                           (os.strerror(errno.EIO),
                            enstore_constants.BFID_LAYER,
@@ -2509,7 +2509,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                data = file_utils.readlines(f)
             finally:
                f.close()
-               
+
             file_data_as_string = ""
             for line in data:
                 file_data_as_string = file_data_as_string + line
@@ -3291,7 +3291,7 @@ class Tag:
         if use_dir:
             dir_path, dir_name = os.path.split(use_dir)
             use_dir = os.path.join(remove_special_paths(dir_path), dir_name)
-            
+
         if use_dir:
             fname = os.path.join(use_dir, ".(tag)(%s)" % (tag,))
         else:
@@ -3608,7 +3608,7 @@ class Tag:
     ##########################################################################
 
     INVALID_CHARACTERS = "Chimera tag, %s, contains invalid characters."
-     
+
     #Print or edit the library
     def plibrary(self, intf):
         try:
@@ -4240,11 +4240,13 @@ class File:
 	# consistent() -- to see if data is consistent
 	def consistent(self):
 		# required field
+
 		if not self.bfid or not self.volume \
-                        or not self.size == None \
+                        or self.size == None \
 			or not self.location_cookie \
-			or not self.file_family or not self.path \
-			or not self.pnfs_id or not self.bfid \
+			or not self.file_family \
+                        or not self.path \
+			or not self.pnfs_id \
 			or not self.p_path:
 			return 0
 		return 1
