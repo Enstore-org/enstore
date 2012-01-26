@@ -214,7 +214,7 @@ then
 fi
 rm -f /tmp/journal_files
 # cat /tmp/journals >> $ENSTORE_FILES
-ls $backup_path/ACC-DST/*.01 >> $ENSTORE_FILES
+ls $backup_path/ACC-DST/* >> $ENSTORE_FILES
 
 lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
 list ""
