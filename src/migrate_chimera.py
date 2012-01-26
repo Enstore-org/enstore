@@ -806,6 +806,7 @@ def make_writeable(path):
 def nullify_pnfs(pname):
     for i in [1,2,4]:
         f = file_utils.open(chimera.layer_file(pname, i), 'w')
+        f.write("\n");
         f.close()
 
 def pnfs_find(bfid1, bfid2, pnfs_id, file_record = None,
