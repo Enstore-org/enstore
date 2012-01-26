@@ -419,6 +419,27 @@ def shell_command(command):
     del(pipeObj)
     return result 
 
+# same as shell command, but
+# returns
+# (command return code,
+# stdout,
+# stderr)
+def shell_command2(command):
+    pipeObj = subprocess.Popen(command,
+                               stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               shell=True,
+                               close_fds=True)
+    if pipeObj == None:
+        return None
+    # get stdout and stderr
+    result = pipeObj.communicate()
+    rc = [pipeObj.returncode]
+    del(pipeObj)
+    for r in result:
+        rc.append(r)
+    return tuple(rc) 
 
 ###########################################################################
 ##
