@@ -25,6 +25,7 @@ AS $$
 DECLARE
 	l_entries text[];
         location text;
+	file_data varchar;
 BEGIN
 	IF (TG_OP = 'INSERT') THEN
            location := f_enstore2uri(encode(NEW.ifiledata,'escape'));
@@ -54,14 +55,20 @@ BEGIN
 	   END;
            -- storage info
 	ELSEIF (TG_OP = 'UPDATE')  THEN
-           location := f_enstore2uri(encode(NEW.ifiledata,'escape'));
-	   IF location IS NOT NULL THEN
-	   UPDATE t_locationinfo
-	   	  SET ilocation = f_enstore2uri(encode(NEW.ifiledata, 'escape'))
-           WHERE ipnfsid = NEW.ipnfsid and itype=0;
-           l_entries = string_to_array(encode(NEW.ifiledata,'escape'), E'\n');
-	   UPDATE t_storageinfo SET istoragesubgroup=l_entries[4]
-	   WHERE  ipnfsid = NEW.ipnfsid;
+	   file_data := encode(NEW.ifiledata, 'escape');
+           IF ( file_data = E'\n') THEN
+	     UPDATE t_locationinfo SET ilocation = file_data
+               WHERE ipnfsid = NEW.ipnfsid and itype=0;
+           ELSE
+	      location := f_enstore2uri(file_data);
+              IF location IS NOT NULL THEN
+	         UPDATE t_locationinfo
+	   	    SET ilocation = f_enstore2uri(file_data)
+                    WHERE ipnfsid = NEW.ipnfsid and itype=0;
+                 l_entries = string_to_array(file_data, E'\n');
+	         UPDATE t_storageinfo SET istoragesubgroup=l_entries[4]
+	           WHERE  ipnfsid = NEW.ipnfsid;
+              END IF;
            END IF;
         END IF;
         RETURN NEW;
