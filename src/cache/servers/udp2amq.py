@@ -9,8 +9,6 @@
 
 '''
     udp2amq - enstore udp to amqp proxy
-
-    version based on Process
 '''
 
 # system imports
@@ -18,6 +16,7 @@ import sys
 import time
 import types
 from multiprocessing import Process
+import logging
 
 # qpid / amqp
 from qpid.messaging import Message 
@@ -28,39 +27,29 @@ import Queue
 from udp_server import UDPServer
 
 # enstore cache imports
-#from cache.messaging.client import EnQpidClient
 # refactoring: use frosen version of the file before it tested to work with next version
-from cache.messaging.client_1_1_2_3 import EnQpidClient
-
-debug = True
-timing = False
+#from cache.messaging.client_1_1_2_3 import EnQpidClient
+from cache.messaging.client import EnQpidClient
 
 def normalize_ticket(obj):
     """Normalize content of enstore ticket received from qpid by convering unicode to ascii and lists to tuples
     """
     if type(obj) in [types.NoneType, str, int, long, bool, float]:
         return obj
-
     elif type(obj) == unicode:
         return obj.encode()
-
     elif type(obj) is dict:
         d = {}
         for k,v in obj.iteritems():
-            # print "DEBUG k,v %s,%s" % (k,v)
+            # self.trace.debug(" k,v %s,%s",k,v )
             d[normalize_ticket(k)] = normalize_ticket(v)
         return d
-    
     elif type(obj) in [list, tuple]:
         return tuple(map(normalize_ticket,obj))
 
     return obj
 
-
 class UDP2amq(UDPServer):
-    '''
-    classdocs
-    '''
 
     def __init__(self, udp_srv_addr, receive_timeout=60., use_raw=None, amq_broker=("localhost",5672), target_addr=None, auto_ack=True ):
         '''
@@ -76,21 +65,24 @@ class UDP2amq(UDPServer):
         self.shutdown = False
         self.finished = False
         
-        UDPServer.__init__(self, udp_srv_addr, receive_timeout, use_raw)
-       
-        (host,port) = self.get_server_address()
-        if debug: 
-            print "DEBUG UDP2amq __init__() Host: %s %s" % (host, port)
-            print "DEBUG UDP2amq __init__() Address: %s" % target_addr
-              
-        self.myaddr = self._hp2q(host, port)
+        self.log = logging.getLogger('log.encache.udp2amq' )
+        self.trace = logging.getLogger('trace.encache.udp2amq' )
         
-        # @todo shall not be here, sender shall know about target. For now set "to=" in message manually
-        self.target_addr = target_addr
-        myaddr = "%s; {create: always}"%(self.myaddr,)
-        t_a = "%s; {create: always}"%(target_addr,)
-        self.qpid_client = EnQpidClient(amq_broker, myaddr, target=t_a)
+        UDPServer.__init__(self, udp_srv_addr, receive_timeout, use_raw)
 
+        # # AMQP to UDP, receive (fetch) from qpid queue
+        (host,port) = self.get_server_address()
+        self.trace.debug("Host: %s %s", host, port )
+        self.myaddr = self._hp2q(host, port)
+        myaddr = "%s; {create: always}"%(self.myaddr,)
+        self.qpid_client_r = EnQpidClient(amq_broker, myaddr)
+
+        # UDP to AMQP, send to qpid queue
+        self.trace.debug("Address: %s", target_addr )
+        self.target_addr = target_addr        
+        t_a = "%s; {create: always}"%(target_addr,)
+        self.qpid_client_s = EnQpidClient(amq_broker, target=t_a)
+        
         self.auto_ack = auto_ack 
 
     def _hp2q(self,host,port):
@@ -99,173 +91,102 @@ class UDP2amq(UDPServer):
 
     def serve_udp(self):
         """
-        read UDP message and send it to amq queue, send reply to UDP caller if send to AMQ was successful (but no retries).
-
+        Read UDP message and send it to amq queue
         """
-        self.qpid_client.start()
-        
-        while not self.shutdown:
-            try:
-                ticket = self.do_request() # udpsrv
-            except KeyboardInterrupt:
-                print "Keyboard interrupt at serve_udp thread"
-                break
-
-            if not ticket:
-                continue
-
-            if debug:
-                print "___________________________________________"
-                print "DEBUG UDP2amq serve_udp()  - got ticket=%s" %(ticket,)
-
-            if timing:
-                t0 = None
+        self.qpid_client_s.start()
+        try:
+            while not self.shutdown:
                 try:
-                    t0 = ticket["t"]
-                    t = time.time()
-                    print "udp2amq: in   dt=%s" % ((t-t0)*1000)
-                except:
-                    pass
-            
-
-            # forward ticket to AMQP
-            # @todo : set reply_to depending on 'r_a'
-
-            if type(ticket) == types.DictType and (ticket.get("r_a", None) or ticket.get("ra", None) ):
-                reply_to = self.myaddr
-            else:
-                reply_to = None
-
-            if debug: 
-                print "DEBUG UDP2amq serve_udp(): to=%s reply_to=%s" % (self.target_addr, reply_to)
-                
-            # qpid v0.6: msg = Message(content=ticket, to=self.target_addr, reply_to=reply_to)
-            msg = Message(content=ticket, reply_to=reply_to)
-
-            if timing:
-                print "udp2amq: crea dt=%s" % ((time.time()-t0)*1000)
-                            
-            try:    
-                # self.qpid_client.send(msg)
-                self.qpid_client.send(msg, sync=False)
-                if debug: print "DEBUG UDP2amq serve_udp() : message sent, msg=%s" % (msg)
-            except SendError, e:
-                if debug: print "DEBUG UDP2amq serve_udp() : sending message, error=", e
-                continue
-
-            if timing:
-                print "udp2amq: sent dt=%s" % ((time.time()-t0)*1000)
-
-            # reply to caller only if send to AMQ was successful. No retries.
-            # TODO: verify with Sasha that we do not reply yet here (reply when qpid replies) 
-            # self.reply_to_caller(ticket) # I'm udpsrv
+                    ticket = self.do_request() # udpsrv
+                except KeyboardInterrupt:
+                    self.log.info("Keyboard interrupt at serve_udp thread")
+                    break
+    
+                if not ticket:
+                    continue
+    
+                self.trace.debug("serve_udp()  - got ticket=%s", ticket)
+    
+                # forward ticket to AMQP
+                # @todo : set reply_to depending on 'r_a'
+                if type(ticket) == types.DictType and (ticket.get("r_a", None) or ticket.get("ra", None) ):
+                    reply_to = self.myaddr
+                else:
+                    reply_to = None
+    
+                self.trace.debug("serve_udp(): to=%s reply_to=%s", self.target_addr, reply_to )
+    
+                msg = Message(content=ticket, reply_to=reply_to)
+                                
+                try:
+                    self.qpid_client_s.send(msg, sync=False)
+                    self.trace.debug("serve_udp() : message sent, msg=%s", msg )
+                except SendError, e:
+                    self.log.error("serve_udp() : sending message, error=%s", e )
+                    continue
+    
+                # Send reply to UDP caller if send to AMQ was successful but do not retry if it failed.
+                # self.reply_to_caller(ticket) # I'm udpsrv
+        finally:
+            self.qpid_client_s.stop()
 
     def _fetch_qpid_reply(self):
         try:
-            msg = self.qpid_client.rcv.fetch()
-                
-            if timing:
-                t0 = None
-                try:
-                    ticket = msg.content
-                    t0 = ticket["t"]
-                except:
-                    pass
-            
-            if timing:
-                print "udp2amq: repl. fetched dt=%s" % ((time.time()-t0)*1000)
+            msg = self.qpid_client_r.fetch()
 
             # even there is no reply_to in message (such as in reply message) we want to ack it
-            # TODO: think do we need more control over reply ack
-            #-x if self.auto_ack and msg.reply_to:
             # make sure msg is not None, otherwise it will ack all messages in session
             if self.auto_ack and msg:
                 try:
-                    # @todo : acknowledge message after it has been replied by udp, when it with "wait"
+                    # @todo (?) : acknowledge message after it has been replied by udp, when it with "wait"
                     # @todo : close() snd.
-                    if debug: print "DEBUG UDP2amq _fetch_qpid_reply(): sending acknowledge"
-                    self.qpid_client.ssn.acknowledge(msg)
-                    
-                    if timing:
-                        print "udp2amq: repl acked dt=%s" % ((time.time()-t0)*1000)                
+                    self.trace.debug("_fetch_qpid_reply(): sending acknowledge")
+                    self.qpid_client_r.ssn.acknowledge(msg)             
                 except:
                     exc, emsg = sys.exc_info()[:2]
-                    if debug: print "DEBUG UDP2amq: Can not send auto acknowledge for the message. Exception e=%s msg=%s" % (str(exc), str(emsg))    
+                    self.log.error("Can not send auto acknowledge for the message. Exception e=%s msg=%s", 
+                                   str(exc), str(emsg) )    
                     pass
             return msg
         except Queue.Empty:
             return None
         except ReceiverError, e:
-            print e
+            self.log.error("_fetch_qpid_reply(): fetching message, error=%s", e )
             return None
         
     def serve_qpid(self):
         """
         read qpid messages from queue
         @todo propagate error in udp send to qpid ?  
-
         """
-        self.qpid_client.start() 
+        self.qpid_client_r.start() 
         try:
             while not self.shutdown:
                 reply =  self._fetch_qpid_reply()
                 if not reply:
                     continue
                 
-                if debug: print "DEBUG UDP2amq serve_qpid()  - got qpid reply=%s" %(reply,)
+                self.trace.debug("serve_qpid()  - got qpid reply=%s",reply)
      
                 # relay ticket to UDP
-                #-x ticket = reply.content
-                
                 # convert lists to tuples to make getsockaddrarg() happy, replace unicode by ascii str
                 ticket = normalize_ticket(reply.content)
-                
-                if timing:
-                    t0 = None
-                    try:
-                        t0 = ticket["t"]
-                        t = time.time()
-                        print "udp2amq: got reply dt=%s" % ((t-t0)*1000)
-                    except:
-                        pass
-                
-                # ... use "reply" instead
-                # back = self.send(msg=ticket, address, rcv_timeout = 10, max_send=3)
 
                 try:
-                    if debug: print "DEBUG UDP2amq serve_qpid()  - received reply, ticket %s." % (ticket)
-
-#Obsolete, replace by code block below
-#                    if type(ticket) == types.DictType and ticket.get("r_a", None):
-#                        # workaround the issue:
-#                        #   amqp transfers tuple as a list
-#                        #   error "AF_INET address must be tuple, not list " in PyTuple_Check, in getsockaddrarg()
-#                        ticket['r_a'][0]=tuple(ticket['r_a'][0])
-#                        # this also is converted to list, but there is no complaint so far - uncomment if needed
-#                        #- ticket["r_a"] = tuple(ticket['r_a'])               
-#                        self.reply_to_caller(ticket)
-#                    elif type(ticket) == types.DictType and ticket.get("ra", None):
-#                        # ditto : convert reply address to tuple, see above
-#                        ticket['r_a'][0]=tuple(ticket['r_a'][0])
-#                        self.reply_with_address(ticket)
-#->                    
+                    self.trace.debug("serve_qpid()  - received reply, ticket %s",ticket)
+                 
                     if type(ticket) == types.DictType and ticket.get("r_a", None):          
                         self.reply_to_caller(ticket)
                     elif type(ticket) == types.DictType and ticket.get("ra", None):
                         self.reply_with_address(ticket)
-#<-
                     else:
-                        if debug: print "DEBUG UDP2amq serve_qpid()  - no reply address in reply, ticket %s." % (ticket)
+                        self.log.warning("serve_qpid()  - no reply address in reply, ticket %s.",ticket)
                         continue
-
-                    if timing:
-                        print "udp2amq: replied to caller dt=%s" % ((time.time()-t0)*1000)
-
                 except:
                     exc, emsg = sys.exc_info()[:2]
-                    print "DEBUG UDP2amq serve_qpid()  - forwarding reply to udp client, (exception, msg)= %s %s" % (str(exc), str(emsg))
+                    self.log.error("serve_qpid()  - forwarding reply to udp client, (exception, msg)= %s %s", str(exc), str(emsg) )
         finally:
-            self.qpid_client.stop()
+            self.qpid_client_r.stop()
 
     def start(self):
         # start serving UDP in separate process
@@ -282,13 +203,17 @@ class UDP2amq(UDPServer):
         
         # stop direct feed first
         self.udp_proc.join()
-        self.qpid_client.stop() # @todo
-        # todo: set extra delay to allow replies to be processed by remote server?
+        # @todo: do we need to set extra delay to allow replies to be processed by remote server?
         self.qpid_proc.join()
         
 if __name__ == "__main__":    
+    import cache.en_logging.config_test_unit
+    
+    #cache.en_logging.config_test_unit.set_logging_console()
+    cache.en_logging.config_test_unit.set_logging_enstore(name="U2A_UNIT_TEST")
+    
     # instantiate UDP2amq server
-    u2a_srv = UDP2amq(('dmsen06.fnal.gov', 7700), use_raw=1, amq_broker=("dmsen06.fnal.gov",5672), target_addr="udp_relay_test")
+    u2a_srv = UDP2amq(('dmsen06.fnal.gov', 7700), use_raw=1, amq_broker=("dmsen04.fnal.gov",5672), target_addr="udp_relay_test")
     
     if u2a_srv.use_raw:
         u2a_srv.set_out_file()
@@ -309,3 +234,4 @@ if __name__ == "__main__":
     
     del u2a_srv
     print "finished"
+    
