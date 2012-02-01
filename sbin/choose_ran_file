@@ -304,57 +304,6 @@ while [ $done -gt 0 ]; do
     continue
   fi
 
-  # Use this function to verify that the bfid in layer 1 matches the
-  # expected value from the Enstore DB.
-  check_files()
-  {
-     #This function takes the second argument through the last argument and
-     # finds the file whos bfid matches that of the first argument.  When
-     # the match is found, 0 (success) is returned and the matching
-     # filename is echo-ed to stdout.
-     file_bfid=$1; shift
-     file_list=$*
-
-     for filename in `echo "$file_list"`; do
-        pnfs_bfid=`enstore pnfs --bfid $filename 2> /dev/null`
-	if [ "$pnfs_bfid" = "$file_bfid" ]; then
-	   echo $filename
-	   return 0
-	fi
-    done
-    return 1
-  }
-
-  #Knowing the bfid; get and confirm the correct path in PNFS.
-  get_file_path()
-  {
-    bfid=$1  #The starting point.
-
-    # Use the bfid to get the pnfsid from Enstore DB.
-    raw_pnfsid=`enstore info $timeout --bfid $bfid`
-    if [ $? -ne 0 ]; then
-      echo "Unable to get file information for $bfid" 1>&2
-      return 1
-    fi
-    pnfsid=`echo "$raw_pnfsid" | grep pnfsid | sed -e "s/\s*//g;s/'//g;s/,//g" | cut -d":" -f2`
-
-    # Use the pnfsid to get the current path in PNFS.
-    file=`enstore pnfs --path $pnfsid 2> /dev/null`
-    if [ $? -ne 0 ]; then
-      echo "Unable to get path for $pnfsid" 1>&2
-      return 1
-    fi
-
-    # Use the path to confirm the layer 1 bfid matches.
-    file=`check_files $bfid "$file"`
-    if [ $? -ne 0 ]; then
-      echo "Did not find matching bfid $bfid for path $file" 1>&2
-      return 1
-    fi
-
-    echo $file
-    return 0
-  }
 
     #Grab the first file on the tape.
   case $WHICH_FILE in
@@ -363,13 +312,6 @@ while [ $done -gt 0 ]; do
        file_f=`head -n 1 "${TAPE_FILE_LIST_FORMATED}" | awk '{print $NF,$1,$3,$4,$2}'`
        # Get the first file's bfid.
        first_bfid=`echo $file_f | awk '{print $5}'`
-       # Get that file's path.
-       first_file=`get_file_path $first_bfid`
-       if [ $? -ne 0 ]; then
-         echo "Found active file $first_bfid on $tape inaccessible in PNFS" 1>&2
-	 rm -f "$TAPE_FILE_LIST_FORMATED"
-         exit 1
-       fi
        ;;
   esac
 
@@ -381,13 +323,6 @@ while [ $done -gt 0 ]; do
        file_r=`head -n $ran "${TAPE_FILE_LIST_FORMATED}" | tail -n 1 | awk '{print $NF,$1,$3,$4,$2}'`
        # Get that file's bfid.
        ran_bfid=`echo $file_r | awk '{print $5}'`
-       # Get that file's path.
-       ran_file=`get_file_path $ran_bfid`
-       if [ $? -ne 0 ]; then
-         echo "Found active file $ran_bfid on $tape inaccessible in PNFS" 1>&2
-	 rm -f "$TAPE_FILE_LIST_FORMATED"
-         exit 1
-       fi
        ;;
   esac
 
@@ -398,13 +333,6 @@ while [ $done -gt 0 ]; do
        file_l=`tail -n 1 "${TAPE_FILE_LIST_FORMATED}" | awk '{print $NF,$1,$3,$4,$2}'`
        # Get the last file's bfid.
        last_bfid=`echo $file_l | awk '{print $5}'`
-       # Get that file's path.
-       last_file=`get_file_path $last_bfid`
-       if [ $? -ne 0 ]; then
-         echo "Found active file $last_bfid on $tape inaccessible in PNFS" 1>&2
-	 rm -f "$TAPE_FILE_LIST_FORMATED"
-         exit 1
-       fi
        ;;
   esac
 
@@ -414,41 +342,40 @@ while [ $done -gt 0 ]; do
   #  "onlylast" or "alsolast" or "onlyfirst" or "alsofirst"
   #  or "onlyfirstlast" or "alsofirstlast" or "onlyran"
   case $WHICH_FILE in
-    onlyran)       thefiles=$ran_file
-                   thebfids=$ran_bfid
-                   ;;
-    onlyfirst)     thefiles=$first_file
-                   thebfids=$first_bfid
-                   ;;
-    onlylast)      thefiles=$last_file
-                   thebfids=$last_bfid
-                   ;;
-    onlyfirstlast) thefiles="$first_file $last_file"
-                   thebfids="$first_bfid $last_bfid"
-                   ;;
-    alsofirst)     thefiles="$ran_file $first_file"
-                   thebfids="$ran_bfid $first_bfid"
-                   ;;
-    alsolast)      thefiles="$ran_file $last_file"
-                   thebfids="$ran_bfid $last_bfid"
-                   ;;
-    alsofirstlast) thefiles="$ran_file $first_file $last_file"
-                   thebfids="$ran_bfid $first_bfid $last_bfid"
-                   ;;
-    *)             thefiles=$ran_file
-                   thebfids=$ran_bfid
-                   ;;
+      onlyran)
+          thebfids=$ran_bfid
+          ;;
+      onlyfirst)
+          thebfids=$first_bfid
+          ;;
+      onlylast)
+	  thebfids=$last_bfid
+          ;;
+    onlyfirstlast)
+          thebfids="$first_bfid $last_bfid"
+          ;;
+    alsofirst)
+          thebfids="$ran_bfid $first_bfid"
+          ;;
+    alsolast)
+          thebfids="$ran_bfid $last_bfid"
+          ;;
+    alsofirstlast)
+          thebfids="$ran_bfid $first_bfid $last_bfid"
+          ;;
+      *)
+          thebfids=$ran_bfid
+          ;;
   esac
 
   #Make the list of bfids unique.  This avoids repeat reads if the first
   # and/or last file happen to be the randomly chosen file.
   thebfids=`echo "$thebfids" | tr " " "\n" | uniq`
-  thefiles=`echo "$thefiles" | tr " " "\n" | uniq`
 
   # ok, just tell the user the name of the file and do another if needed
   # or copy the file to /dev/null if user requested this
   if [ $copyit -eq 0 ]; then
-    echo "$thefiles"
+    echo "$thefids"
   else
     echo
     echo "Random volume = $tape"
@@ -566,7 +493,7 @@ while [ $done -gt 0 ]; do
 
     #Try and read the sample files.
     for b in $thebfids; do
-      cmd="encp --verbose 10 --bypass-filesystem-max-filesize-check --max-resubmit 7 --delayed-dismount 1 $override_ro --get-bfid $b /dev/null"
+      cmd="encp --skip-pnfs --verbose 10 --bypass-filesystem-max-filesize-check --max-resubmit 7 --delayed-dismount 1 $override_ro --get-bfid $b /dev/null"
       echo $cmd
       eval $cmd
       rc=$?
