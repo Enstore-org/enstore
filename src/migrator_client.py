@@ -45,7 +45,7 @@ class MigratorClientInterface(generic_client.GenericClientInterface):
 	generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
-    parameters = ["migrator"]    
+    parameters = ["migrator_name"]    
 
     def valid_dictionaries(self):
         return (self.help_options, self.alive_options)
@@ -54,7 +54,7 @@ class MigratorClientInterface(generic_client.GenericClientInterface):
     def parse_options(self):
 
         generic_client.GenericClientInterface.parse_options(self)
-        if len(self.argv) <= 1: #if only "enstore library" is specified.
+        if len(self.args) < 1: #if only "enstore migrator" is specified.
             self.print_help()
             sys.exit(0)
 
@@ -66,17 +66,22 @@ def do_work(intf):
     csc = configuration_client.ConfigurationClient((intf.config_host,
                                                     intf.config_port))
 
+    if intf.help:
+	intf.print_help()
+        return
+        
     rc = MigratorClient(csc, rcv_timeout = intf.alive_rcv_timeout,
                         rcv_tries=intf.alive_retries)
 
     reply = rc.handle_generic_commands(intf.name, intf)
 
-    #The user simply typed "enstore migrator" and nothing else.
-    if reply == None:
-        intf.print_help()
-    #The user performed an action.
+    if intf.alive:
+        if reply['status'] == (e_errors.OK, None):
+            print "Migrator %s found at %s." % (intf.name, reply['address'],)
+    if reply:
+        pass
     else:
-        rc.check_ticket(reply)
+	intf.print_help()
         
 
 if __name__ == "__main__":
