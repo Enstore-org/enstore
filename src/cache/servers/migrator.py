@@ -450,6 +450,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             return True
         packed_file = self.pack_files(request_list)
         Trace.trace(10, "write_to_tape: packed_file %s"%(packed_file,))
+        Trace.log(e_errors.INFO, "write_to_tape: packed_file %s"%(packed_file,))
         if packed_file:
             src_file_path, dst_file_path, bfid_list = packed_file
             if self.check_written_file():
@@ -651,6 +652,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         rc = self.set_cache_status(set_cache_params)
         Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
+        Trace.trace(e_errors.INFO, "Will purge files in cache")
                
         for item in set_cache_params:
             try:
@@ -753,6 +755,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         package = self.fcc.bfid_info(bfid) 
         set_cache_params = [] # this list is needed to send set_cache_status command to file clerk
+        Trace.log(e_errors.INFO, "Will stage package %s"%(package,))
 
         # Internal list of bfid data is built
         # Create a list of files to get staged
