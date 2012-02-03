@@ -2178,11 +2178,17 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 filepath = os.path.join(name, filepath)
 
             if filepath.startswith("root/fs/usr/"):
-                filepath = filepath[12:]
-            #We need to throw away the "first" item, since it will duplicate
+                filepath = filepath[5:]
+            # We need to throw away the "first" item, since it will duplicate
             # that of the found_search_path variable.
+            # DL : so filepath looks like "fs/usr/cms/...."
+            # search_path can be "/pnfs" so final filepath becomes "/pnfs/fs/usr.."
+            # or it can be       "/pnfs/fs" so final filepath becomes "/pnfs/fs/usr.."
+            #
             if filepath:
-                filepath = string.join(filepath.split("/", 1)[1:], "/")
+                if found_search_path.rstrip("/").split("/")[-1] == \
+                   filepath.lstrip("/").split("/",1)[0]:
+                    filepath = string.join(filepath.split("/", 1)[1:], "/")
         else:
             #If we get here, we don't know about this PNFS database yet.
 
