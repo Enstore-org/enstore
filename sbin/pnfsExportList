@@ -18,12 +18,12 @@ is_host()
 
    #Get the ip addresses on the current machine.  This was been tested on
    # Linux, Solaris and MacOS X.
-   ip_addrs=`ifconfig -a | egrep "inet " | awk '{print $2}' | sed 's/addr://'`
+   ip_addrs=`/sbin/ifconfig -a | egrep "inet " | awk '{print $2}' | sed 's/addr://'`
 
    #Take the IP of the host we are testing, and compare it with every IP
    # defined on the current node.
    for ip in $ip_addrs; do
-      if [ $ip_to_check = $ip ]; then
+      if [ "$ip_to_check" = "$ip" ]; then
          #echo 1
          return 1
       fi
