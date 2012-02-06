@@ -67,7 +67,7 @@ if __name__ == "__main__":
               "mount localhost:/ /mnt",
               "mkdir /mnt/admin/etc/config/dCache",
               "touch /mnt/admin/etc/config/dCache/dcache.conf",
-              "touch /mnt/admin/etc/config/dCache/'.(fset)(dcache.conf)(io)(on)'"
+              "touch /mnt/admin/etc/config/dCache/'.(fset)(dcache.conf)(io)(on)'",
               "mkdir -p /mnt/pnfs/fs/usr",
               "umount -l /mnt",
               "mount localhost:/pnfs /pnfs"):
