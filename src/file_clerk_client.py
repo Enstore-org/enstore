@@ -994,6 +994,7 @@ def do_work(intf):
                 print i
     elif intf.children:
         ticket  = fcc.get_children(intf.children)
+        if  ticket['status'][0] ==  e_errors.OK:
         for i in ticket["children"]:
             pprint.pprint(i)
     elif intf.replay:

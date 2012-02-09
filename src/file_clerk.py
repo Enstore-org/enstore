@@ -1590,6 +1590,12 @@ class FileClerkMethods(FileClerkInfoMethods):
 		self.reply_to_caller(ticket)
 		return
 
+	if record.get("package_id",None) == bfid and \
+	   record.get("active_package_files_count") > 0 :
+		ticket["status"] = (e_errors.FILE_CLERK_ERROR, "cannot set deleted non-empty package file")
+		self.reply_to_caller(ticket)
+		return
+
         if record["deleted"] != deleted:
             record["deleted"] = deleted
             self.filedb_dict[bfid] = record
