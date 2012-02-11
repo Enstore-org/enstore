@@ -68,6 +68,8 @@ if __name__ == "__main__":
         file_log      = os.path.join(old_dir,"files_%s.lst.log"%(dir,))
         file_errors   = os.path.join(old_dir,"files_%s.lst.errors"%(dir,))
         os.chdir("/pnfs/fs/usr/%s"%(dir,))
+        c="chmod +x /opt/d-cache/libexec/migration-check.sh"
+        rc=os.system(c)
         c="/opt/d-cache/libexec/migration-check.sh -k %s 1> %s 2> %s"%(file_list,file_log,file_errors)
         t0=time.time()
         rc=os.system(c)
