@@ -60,6 +60,19 @@ if __name__ == "__main__":
                 export_file.write(" %s(rw)"%(v,))
         export_file.write("\n");
 
+    for key in sortedkeys:
+        value=content[key]
+        sortedvalues = value[:]
+        sortedvalues.sort()
+        if key == "/fs" : continue
+        export_file.write("%s"%(key,))
+        for v in sortedvalues:
+            if trusted.has_key(v):
+                export_file.write(" %s(rw,no_root_squash)"%(v,))
+            else:
+                export_file.write(" %s(rw)"%(v,))
+        export_file.write("\n");
+
     export_file.close()
 
 
