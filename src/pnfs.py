@@ -2178,11 +2178,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 filepath = os.path.join(name, filepath)
 
             if filepath.startswith("root/fs/usr/"):
-                filepath = filepath[12:]
-            #We need to throw away the "first" item, since it will duplicate
-            # that of the found_search_path variable.
-            if filepath:
-                filepath = string.join(filepath.split("/", 1)[1:], "/")
+                filepath = filepath[5:]
+
         else:
             #If we get here, we don't know about this PNFS database yet.
 
@@ -2228,10 +2225,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 name = self._get_nameof(use_id, found_search_path)
                 filepath = os.path.join(name, filepath)
 
-        #Munge the starting point of the PNFS database with the rest of
+        # Munge the starting point of the PNFS database with the rest of
         # the path.
         if filepath:
-            filepath = os.path.join(found_search_path, filepath)
+            pieces=filepath.strip("/").split("/")
+            ip=0
+            for i,piece in enumerate(pieces):
+                if not file_utils.e_access(os.path.join(found_search_path,piece),os.F_OK) :
+                    continue
+                else:
+                    ip=i
+                    break
+            filepath = os.path.join(found_search_path,string.join(pieces[ip:],"/"))
         else:
             filepath = found_search_path
 

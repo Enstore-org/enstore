@@ -462,7 +462,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_10d CVS $Revision$ "
+    version_string = "v3_10e CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -473,7 +473,7 @@ def encp_client_version():
 
 def collect_garbage():
     collect_garbage_start_time = time.time()
-    
+
     #Force garbage collection while there is a lull in the action.  This
     # has nothing to do with opening the data tcp socket; just an attempt
     # at optimizing performance.
@@ -544,7 +544,7 @@ def convert_0_adler32_to_1_adler32(crc, filesize):
 def check_log_func(dummy_self, time, pid, name, args):
     pass
 #Used to turn off alarming when the --check option is enabled.
-def check_alarm_func(dummy_self, time, pid, name, root_error, 
+def check_alarm_func(dummy_self, time, pid, name, root_error,
                      severity, condition, remedy_type, args):
     pass
 
@@ -596,7 +596,7 @@ def combine_dict(*dictionaries):
                type(new[key]) == types.DictionaryType:
                          new[key] = combine_dict(new[key],
                                                  dictionaries[i][key])
-                         
+
             #Just set the value if not a dictionary.
             elif not new.has_key(key):
                 new[key] = dictionaries[i][key]
@@ -610,7 +610,7 @@ def bin(integer):
 
     temp = integer
     bool_list = []
-        
+
     for i in range(32):
         bool_list.append(temp % 2)
         temp = (temp >> 1)
@@ -694,7 +694,7 @@ def get_directory_name(filepath):
         directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
     else:
         directory_name = os.path.dirname(filepath)
-   
+
     return directory_name
 
 #Return True if the file passed in is a pnfs file with either layer 1 or
@@ -710,13 +710,13 @@ def do_layers_exist(pnfs_filename):
 
         layer_1_filename = sfs.layer_file(pnfs_filename, 1)
         layer_4_filename = sfs.layer_file(pnfs_filename, 4)
-        
+
         if _get_stat(layer_1_filename, sfs.get_stat)[stat.ST_SIZE] or \
                _get_stat(layer_4_filename, sfs.get_stat)[stat.ST_SIZE] :
 
             #Layers found for the file!
             return True
-        
+
     except (OSError, IOError):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
@@ -733,7 +733,7 @@ def clear_layers_1_and_4(work_ticket):
     else: #write
         use_pnfs_filename = work_ticket['outfile']
         report_pnfs_filename = work_ticket['outfilepath']
-    
+
     if not use_pnfs_filename:
         return False
 
@@ -746,7 +746,7 @@ def clear_layers_1_and_4(work_ticket):
         Trace.log(e_errors.INFO,
                   "Clearing layers 1 and 4 for file %s (%s)." %
                   (report_pnfs_filename, work_ticket.get('unique_id', None)))
-        
+
         sfs.writelayer(1, "", use_pnfs_filename)
         sfs.writelayer(4, "", use_pnfs_filename)
     except (IOError, OSError):
@@ -794,7 +794,7 @@ def get_enstore_fs_path(filepath):
     #Determine the canonical path base.
     canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
     canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
-    
+
     #Return an error if the file is not a pnfs filename.
     #if not namespace.is_storage_path(dirname, check_name_only = 1):
     #    raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
@@ -844,10 +844,10 @@ def get_enstore_canonical_path(filepath):
         raise EncpError(None,
           "Unable to return enstore pnfs canonical pathname: %s" % (filepath,),
                         e_errors.WRONGPARAMETER)
-    
+
 def _get_stat(pathname, func=file_utils.get_stat):
     __pychecker__="unusednames=i"
-     
+
     for i in [0, 1, 2, 3, 4]:
         try:
             statinfo = func(pathname)
@@ -903,7 +903,7 @@ def get_stat(filename):
                 return statinfo
             elif is_layer_access_name(pathname):
                 # In case of layer 1 or layer 4 and error
-                # call get stat from chimera/pnfs 
+                # call get stat from chimera/pnfs
                 sfs = namespace.StorageFS(pathname)
                 return _get_stat(pathname, sfs.get_stat)
             elif pnfs_is_automounted or \
@@ -946,7 +946,7 @@ def is_local_path(filename, check_name_only = None):
 
     dname = os.path.dirname(pathname)
     const_name = os.path.join(dname, ".(get)(const)")
-    
+
     try:
         file_utils.get_stat(const_name)
         return False
@@ -957,7 +957,7 @@ def is_local_path(filename, check_name_only = None):
         return True
     elif fstats:
         return True
-        
+
     return False
 
 # for automounted pnfs
@@ -1205,7 +1205,7 @@ def stat_decode(statinfo):
 ## These functions are used to update the time fields in the file system.
 ##
 ##############################################################################
-    
+
 def update_times(input_path, output_path):
     time_now = time.time()
 
@@ -1215,10 +1215,10 @@ def update_times(input_path, output_path):
 def update_modification_time(output_path, time_now = None):
 
     update_modification_time = time.time()
-    
+
     if time_now == None:
         time_now = update_modification_time
-    
+
     try:
         #Update the last modified time; set last access time to existing value.
         file_utils.utime(output_path,
@@ -1238,7 +1238,7 @@ def update_last_access_time(input_path, time_now = None):
 
     if time_now == None:
         time_now = update_last_access_start_time
-    
+
     try:
         #Update the last access time; set last modified time to existing value.
         file_utils.utime(input_path,
@@ -1281,7 +1281,7 @@ def is_read(ticket_or_interface):
             raise EncpError(errno.EINVAL, "Inconsistent file types.",
                             e_errors.BROKEN,
                             {'infilepath' : infile, 'outfilepath' : outfile})
-	
+
     #If the type is a dictionary...
     elif type(ticket_or_interface) == types.DictionaryType:
         work = ticket_or_interface.get('work', "")
@@ -1440,7 +1440,7 @@ def get_request_index(request_list, request):
 #Helper function for get_success_request_count.
 def __get_successes(request_list):
     successes = 0
-    
+
     for i in range(len(request_list)):
         if request_list[i].get('completion_status', None) == SUCCESS:
             successes = successes + 1
@@ -1463,7 +1463,7 @@ def get_success_request_count(requests):
 #Helper function for get_failed_request_count.
 def __get_failures(request_list):
     failures = 0
-    
+
     for i in range(len(request_list)):
         if request_list[i].get('completion_status', None) == FAILURE:
             failures = failures + 1
@@ -1482,7 +1482,7 @@ def get_failures_request_count(requests):
         raise TypeError("Expected List or Dictionary")
 
     return failures
-    
+
 ############################################################################
 ##
 ## All of these functions choose and cache a default client object.
@@ -1547,7 +1547,7 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
                           % (test_vcc.server_address, volume,
                              str(volume_info['status'])))
 
-            
+
     # get a configuration server
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
@@ -1604,7 +1604,7 @@ def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
 
     #There is no brand, since the file is too old.
     if not bfid:
-        #If not already cached, get the default. 
+        #If not already cached, get the default.
         if __csc == None:
             # Get the configuration server.
             config_host = enstore_functions2.default_host()
@@ -1643,7 +1643,7 @@ def _get_csc_from_bfid(bfid): #Should only be called from get_csc().
         if e_errors.is_ok(file_info):
             __fcc = fcc
             return __csc
-        
+
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
     if e_errors.is_ok(config_servers['status']):
@@ -1718,7 +1718,7 @@ def __get_csc(parameter=None):
     bfid = None
     volume = None
     address = None
-    
+
     #Due to branding we need to figure out which system is the correct one.
     # Should only matter for reads.  On a success, the variable 'brand' should
     # contain the brand of the bfid to be used in the rest of the function.
@@ -1743,11 +1743,11 @@ def __get_csc(parameter=None):
     #Remember this for comparisons later.
     #old_csc = __csc
 
-    #Call the correct version of the underlying get_csc functions.    
+    #Call the correct version of the underlying get_csc functions.
     if bfid:  #If passed a bfid.
         #brand = enstore_functions3.extract_brand(bfid)
         csc = _get_csc_from_bfid(bfid)
-    
+
     elif volume:  #If passed a volume.
         csc = _get_csc_from_volume(volume)
 
@@ -1778,7 +1778,7 @@ def __get_csc(parameter=None):
         elif not e_errors.is_ok(config):
             raise EncpError(None, str(config['status'][1]),
                             config['status'][0])
-            
+
         #Don't use the csc get() function to retrieve the
         # event_relay information; doing so will clobber
         # the dump-and-saved configuration.  Once, the
@@ -1822,7 +1822,7 @@ def __get_fcc(parameter = None):
 
     elif enstore_functions3.is_bfid(parameter):  #If passed a bfid.
         bfid = parameter
-        
+
     else:
         raise EncpError(None,
                         "Invalid bfid (%s) specified." % parameter,
@@ -1849,7 +1849,7 @@ def __get_fcc(parameter = None):
                 csc, logc = __logc, alarmc = __alarmc,
                 rcv_timeout=5, rcv_tries=12)
             return __fcc, None
-    
+
     #First check that the cached version matches the bfid brand.
     if __fcc != None and match_fc(__fcc.server_address):
         file_info = __fcc.bfid_info(bfid, 5, 12)
@@ -1933,7 +1933,7 @@ def __get_fcc(parameter = None):
                     message = "Using file_clerk at %s based on bfid %s." % \
                           (fcc_test.server_address, bfid)
                     Trace.log(e_errors.INFO, message)
-                    
+
                     __csc = csc_test
                     __fcc = fcc_test
                     if __acc != None:
@@ -1941,7 +1941,7 @@ def __get_fcc(parameter = None):
                             __csc, logname = 'ENCP',
                             logc = __logc, alarmc = __alarmc)
                     return __fcc, file_info
-        
+
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
@@ -1961,14 +1961,14 @@ def __get_fcc(parameter = None):
         #Stuff this back in.  Some message building code looks for this.
         # On errors the file clerk does not put it back.
         file_info['bfid'] = bfid
-        
+
         message = "Failure communicating with file clerk (%s) about" \
                   " bfid %s: %s" \
                   % (__fcc.server_address, bfid,
                      str(file_info['status'][0]))
 
         Trace.log(e_errors.WARNING, message)
-        
+
     return __fcc, file_info
 
 def get_fcc(bfid = None):
@@ -1987,7 +1987,7 @@ def match_fc(match_fc_addr):
 
         if fc_addr == match_fc_addr:
             return True
-    
+
     return False
 
 #match_fcc() - a helper function for __get_vcc().  It makes sure the file_clerk
@@ -2002,10 +2002,10 @@ def match_vc(match_vc_addr):
 
         if vc_addr == match_vc_addr:
             return True
-    
+
     return False
-    
-    
+
+
 def __get_vcc(parameter = None):
     global __vcc
     global __csc
@@ -2077,7 +2077,7 @@ def __get_vcc(parameter = None):
     if __vcc != None and \
            ((match_fc_addr and match_fc(match_fc_addr)) or not match_fc_addr) \
            and match_vc(__vcc.server_address):
-        
+
         volume_info = __vcc.inquire_vol(volume, 5, 12)
         if e_errors.is_ok(volume_info):
             return __vcc, volume_info
@@ -2094,7 +2094,7 @@ def __get_vcc(parameter = None):
     # to make sure the file_clerk address matches the curent configuration.
     if __csc != None and \
            ((match_fc_addr and match_fc(match_fc_addr)) or not match_fc_addr):
-        
+
         test_vcc = volume_clerk_client.VolumeClerkClient(
             __csc, logc = __logc, alarmc = __alarmc,
             rcv_timeout = 5, rcv_tries = 12)
@@ -2208,11 +2208,11 @@ def __get_vcc(parameter = None):
                   " volume %s: %s" \
                   % (__vcc.server_address, volume,
                      str(volume_info['status']))
-            
+
         Trace.log(e_errors.WARNING, message)
-                  
+
     return __vcc, volume_info
- 
+
 def get_vcc(volume = None):
 
     return __get_vcc(volume)[0]
@@ -2291,7 +2291,7 @@ def get_pac():
 
 def get_lmc(library, use_lmc_cache = True):
     global __lmc
-    
+
     #If the shortname was supplied, make it the longname.
     if library[-16:] != ".library_manager":
         lib = library + ".library_manager"
@@ -2309,7 +2309,7 @@ def get_lmc(library, use_lmc_cache = True):
             return __lmc
 
     csc = get_csc()
-    
+
     #Determine which IP and port to use.  By default it will use the standard
     # 'port' value from the configuration file.  However, if the configuration
     # key 'encp_port' exists then this port will be used.
@@ -2343,7 +2343,7 @@ def get_clerks(bfid_or_volume=None):
     #else:
     #    volume = None
     #    bfid = None
-        
+
     #If a bfid was passed in, we must obtain the fcc first.  This will
     # find the correct __csc.  The same is true with the vcc if a volume
     # name is passed in.
@@ -2375,7 +2375,7 @@ def get_clerks(bfid_or_volume=None):
         raise EncpError(errno.ENOPROTOOPT,
                         "File clerk not available",
                         e_errors.NET_ERROR, e_ticket)
-    
+
     if not vcc or vcc.server_address == None:
         raise EncpError(errno.ENOPROTOOPT,
                         "Volume clerk not available",
@@ -2399,7 +2399,7 @@ def check_server(csc, server_name):
     # send out an alive request - if config not working, give up
     rcv_timeout = 10
     alive_retries = 360
-    
+
     try:
         stati = csc.alive(server_name, rcv_timeout, alive_retries)
     except (KeyboardInterrupt, SystemExit):
@@ -2465,7 +2465,7 @@ def clients(intf):
         log_server_port = log_server_config.get('port', None)
         alarm_server_ip = alarm_server_config.get('hostip', None)
         alarm_server_port = alarm_server_config.get('port', None)
-        
+
         if log_server_ip and log_server_port:
             log_server_address = (log_server_ip, log_server_port)
         else:
@@ -2478,10 +2478,10 @@ def clients(intf):
         if namespace.pnfs_agent_client_requested or \
                namespace.pnfs_agent_client_allowed:
             pnfs_agent_config = config.get('pnfs_agent', {})
-        
+
             pnfs_agent_ip = pnfs_agent_config.get('hostip', None)
             pnfs_agent_port = pnfs_agent_config.get('port', None)
-            
+
             if pnfs_agent_ip and pnfs_agent_port:
                 pnfs_agent_address = (pnfs_agent_ip, pnfs_agent_port)
                 try:
@@ -2561,15 +2561,15 @@ def is_null_media_type(volume_clerk_ticket):
                         # 3) The library we are using uses null movers.
                         #
                         return True
-                       
+
                 else:
                     continue
 
                 break  #stop processing the outter loop.
 
     return False
-    
-            
+
+
 def max_attempts(csc, library, encp_intf):
 
     resend = {}
@@ -2625,7 +2625,7 @@ def max_attempts(csc, library, encp_intf):
     else:
         resend['max_retry'] = lm.get('max_encp_retries',
                                      enstore_constants.DEFAULT_ENCP_RETRIES)
-        
+
     if encp_intf.use_max_resubmit:
         resend['max_resubmits'] = encp_intf.max_resubmit
     else:
@@ -2654,7 +2654,7 @@ def check_library(library, e):
                 status_ticket = {'status' : status}
 
             return status_ticket
-        
+
     except SystemExit:
         #On error the library manager client calls sys.exit().  This
         # should catch that so we can handle it.
@@ -2680,7 +2680,7 @@ def check_library(library, e):
         else:
             status_ticket = {'status' : status}
         return status_ticket
-    
+
     status_ticket = lmc.get_lm_state(timeout=5, tries=5)
 
     if e_errors.is_ok(status_ticket):
@@ -2726,7 +2726,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         #Allready printed this error.  See last line of this function.
         # Also, a little hack in handle_retries....
         return
-    
+
     # check if all fields in ticket present
 
     #Check the file and volume clerk sub-tickets.
@@ -2738,7 +2738,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                   % (str(fc_ticket), str(type(fc_ticket))))
         fc_ticket = {}
     if type(vc_ticket) != types.DictType:
-        
+
         Trace.log(e_errors.WARNING,
                   "Did not excpect 'vc_ticket' value -- %s -- as type %s."
                   % (str(vc_ticket), str(type(vc_ticket))))
@@ -2849,7 +2849,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
             rw = "u"
     except EncpError:
         rw = "u"
-        
+
     if not data_access_layer_requested and status != e_errors.OK:
         out=sys.stderr
     else:
@@ -2897,7 +2897,7 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
         msg_type=e_errors.ERROR
         if status == e_errors.OK:
             msg_type = e_errors.INFO
-        errmsg=dalf % (inputfile, outputfile, filesize, 
+        errmsg=dalf % (inputfile, outputfile, filesize,
                        external_label, location_cookie,
                        device,device_sn,
                        transfer_time, seek_time, mount_time,
@@ -2958,7 +2958,7 @@ def get_callback_addresses(encp_intf):
     get_callback_addresses_start_time = time.time()
 
     done_ticket = {'status': (e_errors.OK, None)}
-    
+
     # get a port to talk on and listen for connections
     callback_addr, listen_socket = get_callback_addr()
     #If the socket does not exist, do not continue.
@@ -3035,7 +3035,7 @@ def get_udp_callback_addr(encp_intf, udps=None):
                                       socket.IPTOS_RELIABILITY)
 
     udp_callback_addr = (udps.server_address[0], udps.server_address[1])
-    
+
     Trace.message(CONFIG_LEVEL,
                   "Listening for mover(s) to send route back on (%s, %s)." %
                   udp_callback_addr)
@@ -3046,7 +3046,7 @@ def get_udp_callback_addr(encp_intf, udps=None):
 ##
 ## The following functions check various aspects of the metadata for
 ## better system integrity.
-## 
+##
 ##############################################################################
 
 #Make sure that the filename is valid.
@@ -3074,7 +3074,7 @@ def filename_check(filename):
 def filesystem_check(work_ticket):
 
     verify_file_system_consistancy_start_time = time.time()
-    
+
     #Get the target from the ticket.
     target_file = work_ticket['outfile']
     if target_file in ["/dev/null", "/dev/zero",
@@ -3085,7 +3085,7 @@ def filesystem_check(work_ticket):
 
     #Get the file size from the ticket.
     size = work_ticket['file_size']
-    
+
     #Not all operating systems support this POSIX limit yet (ie OSF1).
     try:
         #get the maximum filesize the local filesystem allows.
@@ -3115,7 +3115,7 @@ def filesystem_check(work_ticket):
         # of bits supported for filesize length.  Go with 32 here.
         # if that isn't enough use --bypass-filesystem-max-filesize-check.
         bits = 32
-        
+
     #Need to convert the bits into the maximum file size allowed.
     filesystem_max = 2L**(bits - 1) - 1
 
@@ -3169,7 +3169,7 @@ def wrappersize_check(work_ticket):
               (time.time() - verify_wrapper_size_consistancy_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
 #Make sure that the library can handle the filesize.
 #def librarysize_check(target_filepath, inputfile):
 def librarysize_check(work_ticket):
@@ -3219,7 +3219,7 @@ def librarysize_check(work_ticket):
 def tag_check(work_ticket):
 
     verify_tags_consistancy_start_time = time.time()
-    
+
     #Consistancy check for valid pnfs tag values.  These values are
     # placed inside the 'vc' sub-ticket.
     tags = ["file_family", "wrapper", "file_family_width",
@@ -3231,7 +3231,7 @@ def tag_check(work_ticket):
             # the lack of 'file_family' (because on copies it is
             # original_file_family) would fail all copies.
             break
-            
+
         try:
             #check for values that contain letters, digits and _.
             if not charset.is_in_charset(str(work_ticket['vc'][key])):
@@ -3278,7 +3278,7 @@ def null_mover_check(work_ticket, e):
             message = "NULL not in PNFS path: %s" % \
                (work_ticket['wrapper']['pnfsFilename'],)
             raise EncpError(None, message, e_errors.USERERROR)
-        
+
 
 # check the input file list for consistency
 def inputfile_check(work_list, e):
@@ -3286,7 +3286,7 @@ def inputfile_check(work_list, e):
     verify_input_file_consistancy_start_time = time.time()
 
     inputlist = []
-    
+
     """
     # create internal list of input unix files even if just 1 file passed in
     if type(input_files)==types.ListType:
@@ -3314,7 +3314,7 @@ def inputfile_check(work_list, e):
         #outputfile_print = work_ticket['outfilepath']
         inputfile_use = work_ticket['infile']
         inputfile_print = work_ticket['infilepath']
-        
+
         #If output location is /dev/null, skip the checks.
         if inputfile_use in ["/dev/zero",
                               "/dev/random", "/dev/urandom"]:
@@ -3324,7 +3324,7 @@ def inputfile_check(work_list, e):
         # filename is foobar, then skip this test and move to the next.
         if enstore_functions3.is_location_cookie(inputfile_use) and e.volume:
             continue
-            
+
         try:
             #check to make sure that the filename string doesn't have any
             # wackiness to it.
@@ -3334,7 +3334,7 @@ def inputfile_check(work_list, e):
             # so we handle it.
             if not e.override_deleted \
                and work_ticket['fc'].get('deleted', None) not in ['no', None]:
-            
+
                 #Since the file exists, we can get its stats.
                 #     statinfo = os.stat(inputlist[i])
                 statinfo = get_stat(inputfile_use)
@@ -3348,7 +3348,7 @@ def inputfile_check(work_list, e):
                 ###
                 ### We should have permission checks here, based on the
                 ### stat info.
-                ### 
+                ###
 
                 #For Reads make sure the filesystem size and the pnfs size
                 # match.  If the PNFS filesystem and layer 4 sizes are
@@ -3362,7 +3362,7 @@ def inputfile_check(work_list, e):
             # this will cause the 2nd to just overwrite the 1st
             try:
                 match_index = inputlist[:i].index(inputlist[i])
-                
+
                 raise EncpError(None,
                                 'Duplicate entry %s'%(inputlist[match_index],),
                                 e_errors.USERERROR,
@@ -3385,17 +3385,17 @@ def inputfile_check(work_list, e):
 def inputfile_check_pnfs(request_list, bfid_brand, e):
 
     verify_input_file_consistancy_start_time = time.time()
-    
+
     # create internal list of requests even if just 1 request passed in
     if type(request_list) != types.ListType:
         request_list = [request_list]
-    
+
 
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(0, len(request_list)):
 
         request = request_list[i]
-        
+
         #If we already know for the tape read (--volume) that the inputlist[i]
         # filename is foobar, then skip this test and move to the next.
         if enstore_functions3.is_location_cookie(request_list[i]) and e.volume:
@@ -3440,7 +3440,7 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
                 # different, calling this function raises OSError exception.
                 if is_read(e):
                     sfs.get_file_size(request_list[i]['infile'])
-                
+
                 #If no layer 4 is present, then report the error, raise an
                 # alarm, but continue with the transfer.
                 try:
@@ -3600,7 +3600,7 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
                 db_crc = None
                 rest['db_crc'] = namespace.UNKNOWN
 
-            #If there is missing information, 
+            #If there is missing information,
             if len(rest.keys()) > 0:
                 conflict_ticket = {}
                 conflict_ticket['infile'] = request['infile']
@@ -3742,14 +3742,14 @@ def inputfile_check_pnfs(request_list, bfid_brand, e):
     Trace.log(TIME_LEVEL, message)
 
     return
-    
+
 
 # check the output file list for consistency
 # generate names based on input list if required
 def outputfile_check(work_list, e):
 
     verify_output_file_consistancy_start_time = time.time()
-    
+
     dcache = e.put_cache #being lazy
 
     outputlist = []
@@ -3776,7 +3776,7 @@ def outputfile_check(work_list, e):
 
     # Make sure we can open the files. If we can't, we bomb out to user
     for i in range(len(work_list)):
-            
+
             work_ticket = work_list[i]
 
             #shortcuts.
@@ -3832,7 +3832,7 @@ def outputfile_check(work_list, e):
                     raise EncpError(errno.ENOTDIR, directory,
                                     e_errors.USERERROR,
                                     {'outfilepath' : outputfile_print})
-                                        
+
                 #if not access_check(directory, os.W_OK):
                 if not file_utils.e_access_cmp(dstatinfo, os.W_OK):
                     raise EncpError(errno.EACCES, directory,
@@ -3841,7 +3841,7 @@ def outputfile_check(work_list, e):
 
                 #Looks like the file is good.
                 outputlist.append(outputfile_print)
-                
+
             #File exists when run by a normal user.
             #elif access_check(outputlist[i], os.F_OK) and not dcache:
             elif fstatinfo and not dcache:
@@ -3876,7 +3876,7 @@ def outputfile_check(work_list, e):
                     raise EncpError(errno.EACCES, outputfile_print,
                                     e_errors.USERERROR,
                                     {'outfilepath' : outputfile_print})
-                
+
                 #Before continuing lets check to see if layers 1 and 4 are
                 # empty first.  This check is being added because it appears
                 # that the dcache can (and has) written multiple copies of
@@ -3898,7 +3898,7 @@ def outputfile_check(work_list, e):
                         # If we reach here it means layer 0 is present, but
                         # layer 1 is missing and therefore it must be chimera.
                         pass
- 
+
                     try :
                         layer4 = sfs.readlayer(4, outputfile_use)
                     except:
@@ -3921,7 +3921,7 @@ def outputfile_check(work_list, e):
                                                            outputfile_use)
                             except:
                                 continue
-                                                
+
                             if layer_data and \
                                    not layer_data[0].strip():
                                 message = "layer%s = %s  %s" % (layer,
@@ -3970,10 +3970,10 @@ def outputfile_check(work_list, e):
                                 message = "Layer 1 or layer 4 are already set: %s" \
                                           % (outputfile_print,),
                             #The layer 4 is already set.
-                            raise EncpError(errno.EEXIST, message, 
+                            raise EncpError(errno.EEXIST, message,
                                             e_errors.PNFS_ERROR,
                                             {'outfilepath' : outputfile_print})
-                        
+
                         elif l1_bfid or l4_line1:
                             if l1_bfid and l4_line1:
                                 message = "Layer 1 and layer 4 are corrupted: %s" \
@@ -3988,7 +3988,7 @@ def outputfile_check(work_list, e):
                                 #Impossible to get here, but handle it anyway.
                                 message = "Layer 1 or layer 4 are corrupted: %s" \
                                           % (outputfile_print,)
-                                
+
                             #The layers are corrupted.
                             raise EncpError(errno.EEXIST, message,
                                             e_errors.PNFS_ERROR,
@@ -4212,17 +4212,17 @@ def create_zero_length_local_files(filenames):
                 return
             else:
                 fname = f
-            
+
         delete_at_exit.register(fname)
 
         fd = file_utils.open_fd(fname, os.O_CREAT|os.O_EXCL|os.O_RDWR,
                                 mode=0666) #raises OSError on error.
-            
+
         if type(f) == types.DictType:
             #The inode is used later on to determine if another process
             # has deleted or removed the local file.
             f['local_inode'] = os.fstat(fd)[stat.ST_INO]
-            
+
         os.close(fd)
 
 
@@ -4245,7 +4245,7 @@ def get_dinfo():
 #Some stat fields need to be extracted and modified.
 def get_minfo(statinfo):
 
-    
+
     rtn = {}
 
     if not statinfo:
@@ -4258,7 +4258,7 @@ def get_minfo(statinfo):
         return rtn
 
     st_dec_dict = stat_decode(statinfo)
-    
+
     rtn['uid'] = st_dec_dict['uid']
     rtn['uname'] = st_dec_dict['uname']
     rtn['gid'] = st_dec_dict['gid']
@@ -4287,7 +4287,7 @@ def get_uinfo(e = None):
         #
         # For migration purposes, we need to do the same.
         return {}
-    
+
     if uinfo['uid'] == 0 and uinfo['gid'] == 0 \
        and e != None and (e.put_cache or e.migration_or_duplication):
         # For the case of dcache writes into enstore; we should use the
@@ -4295,7 +4295,7 @@ def get_uinfo(e = None):
         #
         # For migration purposes, we need to do the same.
         return {}
-    
+
     try:
         uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
     except (ValueError, AttributeError, TypeError, IndexError, KeyError):
@@ -4327,13 +4327,13 @@ def get_finfo(inputfile, outputfile, e):
     if is_write(e):
         finfo['mode'] = file_utils.get_stat(local_file)[stat.ST_MODE]
         finfo['mtime'] = int(time.time())
-    
+
     return finfo
 
 #This function takes as parameters...
 def get_winfo(pinfo, uinfo, finfo):
 
-    # create the wrapper subticket - copy all the pnfs info 
+    # create the wrapper subticket - copy all the pnfs info
     # into it for starters
     wrapper = {}
 
@@ -4349,7 +4349,7 @@ def get_winfo(pinfo, uinfo, finfo):
     # the user keys takes precedence over the pnfs keys
     for key in uinfo.keys():
         wrapper[key] = uinfo[key]
-        
+
     return wrapper
 
 def get_einfo(e):
@@ -4368,10 +4368,10 @@ def get_ininfo(inputfile):
     # Add the name if necessary.
     if inputfile in ["/dev/zero", "/dev/random", "/dev/urandom"]:
         return inputfile
-    
+
     if access_check(inputfile, os.F_OK):
         return inputfile
-    
+
     # get fully qualified name
     unused, ifullname, unused, ibasename = fullpath(inputfile)
 
@@ -4397,7 +4397,7 @@ def get_ininfo(inputfile):
     raise EncpError(errno.ENOENT, inputfile,
                     e_errors.USERERROR,
                     {'infilepath' : inputfile})
-    
+
 def get_oninfo(inputfile, outputfile, e):
     unused, ofullname, unused, unused = fullpath(outputfile) #e.output[0])
 
@@ -4537,7 +4537,7 @@ def open_routing_socket(mover_ip, encp_intf):
                     Trace.log(e_errors.ERROR, str(msg))
                     raise EncpError(None, "netstat output is empty",
                                     e_errors.OSERROR)
-                    
+
 		for route in route_list:
 		    #if route_ticket['mover_ip'] == route['Destination']:
 		    if mover_ip == route['Destination']:
@@ -4546,7 +4546,7 @@ def open_routing_socket(mover_ip, encp_intf):
 		    break
 
 		time.sleep(1)
-	    
+
             try:
                 #This is were the interface selection magic occurs.
                 #host_config.setup_interface(route_ticket['mover_ip'], ip)
@@ -4559,7 +4559,7 @@ def open_routing_socket(mover_ip, encp_intf):
                 Trace.log(e_errors.ERROR, str(msg))
                 raise EncpError(msg.args[0],
                                 str(msg), e_errors.OSERROR)
-	    
+
 	    #Return the ip of the local interface the data socket needs
 	    # to bind to in order for the antispoofing problem to be avoided.
 	    return ip
@@ -4588,7 +4588,7 @@ def open_control_socket(listen_socket, mover_timeout):
     while wait_left_time:
 
         time_to_select_control_socket = time.time()
-        
+
         read_fds, unused, unused = select.select([listen_socket], [], [],
                                                  wait_left_time)
 
@@ -4596,7 +4596,7 @@ def open_control_socket(listen_socket, mover_timeout):
                   (time.time() - time_to_select_control_socket,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
-        
+
         #If there are no successful connected sockets, then select timedout.
         if not read_fds:
             raise EncpError(errno.ETIMEDOUT,
@@ -4711,7 +4711,7 @@ def open_control_socket(listen_socket, mover_timeout):
             bytes_queued = callback.get_socket_read_queue_length(control_socket)
             if bytes_queued == 0:
                 Trace.log(e_errors.INFO, "No socket read queued count.")
-                
+
         except AttributeError:
             #FIONREAD not known on this system.
             bytes_queued = 0
@@ -4741,21 +4741,21 @@ def open_control_socket(listen_socket, mover_timeout):
         Trace.log(e_errors.INFO, message)
 
     return control_socket, address, ticket
-    
+
 ##############################################################################
 
 def open_data_socket(mover_addr, interface_ip = None):
     global fail_1st_data_socket_later_state #For error simulating.
 
     time_to_open_data_socket = time.time()
-    
+
     if interface_ip:
 	message = "Connecting data socket to mover (%s) with interface %s." \
 		  % (mover_addr, interface_ip) + elapsed_string()
     else:
 	message = "Connecting data socket to mover (%s)." % \
                   (mover_addr,) + elapsed_string()
-    
+
     Trace.message(INFO_LEVEL, message)
     Trace.log(e_errors.INFO, message)
 
@@ -4802,12 +4802,12 @@ def open_data_socket(mover_addr, interface_ip = None):
                                          [data_path_socket],[],30)
             break
         except (socket.error, select.error), msg:
-            if msg.args[0] in [errno.EINTR, errno.EAGAIN]: 
+            if msg.args[0] in [errno.EINTR, errno.EAGAIN]:
                 #Screen out interuptions from signals.
                 continue
             else:
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            
+
 
     if r or w:
         #Get the socket error condition...
@@ -4820,7 +4820,7 @@ def open_data_socket(mover_addr, interface_ip = None):
         if FAIL_1ST_DATA_SOCKET_LATER and not fail_1st_data_socket_later_state:
             rtn = 111  #111 is "Connection refused"
             fail_1st_data_socket_later_state = True  #Don't do this again.
-            
+
             message = "Simulating FAIL_1ST_DATA_SOCKET_LATER error."
             Trace.log(e_errors.INFO, message)
             Trace.message(ERROR_LEVEL, message, out_fp=sys.stderr)
@@ -4913,14 +4913,14 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
         do_udp_server = True
     else:
         do_udp_server = False
-    
+
     #Open the udp_serv.
     if do_udp_server:
         #Grab a new clean udp_server.
         ###udp_callback_addr, unused = get_udp_callback_addr(encp_intf, udp_serv)
         #The ticket item of 'routing_callback_addr' is a legacy name.
         ###request['routing_callback_addr'] = udp_callback_addr
-        
+
         try:
             message = "Waiting for udp message at: %s." % \
 		      str(udp_serv.server_socket.getsockname())
@@ -4935,7 +4935,7 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
             #If requested output the raw message.
             Trace.message(TICKET_LEVEL, "RTICKET MESSAGE:")
             Trace.message(TICKET_LEVEL, pprint.pformat(uticket))
-		
+
 	    if not e_errors.is_ok(uticket):
 		#Log the error.
 		Trace.log(e_errors.ERROR,
@@ -4977,7 +4977,7 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
         duration = max(start_time + encp_intf.resubmit_timeout - time.time(),0)
         if do_udp_server:  #DEPRICATED
             duration = min(duration, 5)
-        
+
         #Attempt to get the control socket connected with the mover.
         try:
 		control_socket, mover_address, ticket = open_control_socket(
@@ -5004,7 +5004,7 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
                     udp_serv.reply_to_caller(uticket)
                 else:
                     ticket['status'] = (e_errors.RESUBMITTING, None)
-                    
+
             elif hasattr(msg, "type"):
                 ticket['status'] = (msg.type, str(msg))
             else:
@@ -5026,7 +5026,7 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
                                                            work_tickets[i])
                             ticket = work_tickets[i]
                             break #Success, control socket opened!
-            
+
             #Since an error occured, just return it.
             return None, ticket
 
@@ -5042,7 +5042,7 @@ def mover_handshake_part1(listen_socket, udp_serv, work_tickets, encp_intf):
 
         #Verify that the id is one that we are excpeting and not one that got
         # lost in the ether.
-        # 
+        #
         # Check this before checking the status of the ticket.  It would be
         # bad if we were to fail a transfer, because an impostor sent an error.
         if ticket.get('unique_id', None) not in unique_id_list:
@@ -5168,12 +5168,12 @@ def wait_for_message(listen_socket, lmc, work_list,
         queued_recv_ids = getattr(lmc.u.get_tsd(), "recv_queue", {}).keys()
         Trace.log(TRANS_ID_LEVEL, "queued sent ids: %s  recv ids: %s" % \
                   (queued_sent_ids, queued_recv_ids))
-        
+
         #If we are using the new event loop and we have pending answers for UDP
         # replies that could arrive at any time, we need to execute this
         # nasty loop to be able to resend messages that have not received a
         # response.
-        
+
         loop_start_time = time.time()
         exp = 0
         base_timeout = 5 #seconds
@@ -5218,7 +5218,7 @@ def wait_for_message(listen_socket, lmc, work_list,
             r = [] #We don't have a message or connection.  Define this if
                    # the user specified "--resubmit_timeout 0" on the command
                    # line.
-            
+
             if transaction_id_list:
                 #We've timedout.
                 #A better mechanism will be needed if more than just
@@ -5230,7 +5230,7 @@ def wait_for_message(listen_socket, lmc, work_list,
 
     else:
         #There are no UDP messages to worry about resending while waiting.
-        
+
         #Listen for the control socket to connect or the library
         # manager's repsonse to the request resubmission.
         try:
@@ -5240,7 +5240,7 @@ def wait_for_message(listen_socket, lmc, work_list,
             response_ticket = {'status' : (e_errors.RESUBMITTING, str(msg))}
             return response_ticket, None, None
 
-    
+
     #Get the packets specified one at a time.
     Trace.log(99, "lmc_socket: %s   r: %s" % (lmc_socket, r))
     if lmc_socket in r:
@@ -5252,7 +5252,7 @@ def wait_for_message(listen_socket, lmc, work_list,
         if e_errors.is_timedout(response_ticket):
             response_ticket['status'] = (e_errors.RESUBMITTING, None)
 
-        control_socket = None 
+        control_socket = None
         data_path_socket = None
 
         #Encasing the transaction ID in a list is done only to make the
@@ -5285,7 +5285,7 @@ def wait_for_message(listen_socket, lmc, work_list,
 
         response_ticket = {'status' : (e_errors.TIMEDOUT, lmc.server_name)}
 
-        control_socket = None 
+        control_socket = None
         data_path_socket = None
 
         #If the library manager moved to a new host or port, we need to
@@ -5294,7 +5294,7 @@ def wait_for_message(listen_socket, lmc, work_list,
     else:  #We got nothing.
         response_ticket = {'status' : (e_errors.RESUBMITTING, None)}
 
-        control_socket = None 
+        control_socket = None
         data_path_socket = None
 
     return response_ticket, control_socket, data_path_socket
@@ -5302,7 +5302,7 @@ def wait_for_message(listen_socket, lmc, work_list,
 ############################################################################
 ##
 ## These functions handle the end of the Mover communication.
-## 
+##
 ############################################################################
 
 def receive_final_dialog(control_socket):
@@ -5317,10 +5317,10 @@ def receive_final_dialog(control_socket):
     #print "GETRUSAGE:", resource.getrusage(resource.RUSAGE_SELF)
     #print "TIMES:", os.times()
     #print "ELAPSED:", elapsed_string()
-    
-    # File has been sent - wait for final dialog with mover. 
-    # We know the file has hit some sort of media.... 
-    
+
+    # File has been sent - wait for final dialog with mover.
+    # We know the file has hit some sort of media....
+
     try:
         done_ticket = callback.read_tcp_obj(control_socket)
 
@@ -5346,7 +5346,7 @@ def receive_final_dialog(control_socket):
               (time.time() - receive_final_dialog_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
     return done_ticket
 
 def receive_final_dialog_2(udp_serv, e):
@@ -5359,7 +5359,7 @@ def receive_final_dialog_2(udp_serv, e):
     while time.time() < final_dialog_2_start_time + e.mover_timeout:
         mover_udp_done_ticket = udp_serv.do_request()
 
-        #If requested output the raw 
+        #If requested output the raw
         Trace.trace(11, "UDP MOVER MESSAGE:")
         Trace.trace(11, pprint.pformat(mover_udp_done_ticket))
 
@@ -5373,7 +5373,7 @@ def receive_final_dialog_2(udp_serv, e):
             continue
         else:
             break
-        
+
     Trace.message(TRANSFER_LEVEL, "Received final dialog (2).")
     Trace.message(TICKET_LEVEL, "FINAL DIALOG (udp):")
     Trace.message(TICKET_LEVEL, pprint.pformat(mover_udp_done_ticket))
@@ -5383,7 +5383,7 @@ def receive_final_dialog_2(udp_serv, e):
                   (time.time() - final_dialog_2_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
     return mover_udp_done_ticket
 
 def wait_for_final_dialog(control_socket, udp_serv, e):
@@ -5405,14 +5405,14 @@ def wait_for_final_dialog(control_socket, udp_serv, e):
         Trace.log(e_errors.ERROR, str(mover_udp_done_ticket))
 
     return mover_done_ticket
-        
+
 ############################################################################
 
 #Close all desriptors, but handle different types correctly.
 def close_descriptors(*fds):
 
     routes_to_close = {}
-    
+
     #For each file descriptor that is passed in, close it.  The fds can
     # contain integers or class instances with a "close" function attribute.
     for fd in fds:
@@ -5424,7 +5424,7 @@ def close_descriptors(*fds):
             pass
             #Trace.log(e_errors.WARNING,
             #          "Unable to cleanup routing table: %s" % (str(msg),))
-            
+
         if hasattr(fd, "close"):
 	    try:
 		fd.close()
@@ -5601,7 +5601,7 @@ def submit_one_request_send(ticket, encp_intf):
               (time.time() - submit_one_request_send_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
     ticket['status'] = (e_errors.OK, None)
 
     return ticket, transaction_id, lmc
@@ -5649,7 +5649,7 @@ def submit_all_request_recv(transaction_ids, work_list, lmc, encp_intf):
 #Wait for the one response for transaction_id.  Resend the original request
 # every 10 seconds until the response arives.
 def submit_one_request_recv(transaction_id, work_ticket, lmc, encp_intf):
-    
+
     submit_one_request_recv_start_time = time.time()
 
     #Try not to loop forever.
@@ -5738,7 +5738,7 @@ def __submit_request_recv(response_ticket, ticket = {}):
     #It will most likely be a while, so this would be a good time to
     # perform this maintenance.
     collect_garbage()
-    
+
     return response_ticket
 
 #This function is used to send all the initial requests to the LM.
@@ -5826,12 +5826,12 @@ def resubmit_one_request_send(ticket, encp_intf):
 
 #Open the local disk file for reading or writing (as appropriate).
 def open_local_file(work_ticket, tinfo, e):
-    
+
     open_local_file_start_time = time.time()
 
     Trace.message(5, "Opening local file.")
     Trace.log(e_errors.INFO, "Opening local file.")
-    
+
     if is_write(e):
         flags = os.O_RDONLY
     else: #reads
@@ -5902,7 +5902,7 @@ def open_local_file(work_ticket, tinfo, e):
     Trace.message(TRANSFER_LEVEL, "Local file %s opened.  elapsed=%s" %
                   (filename,
                    time.time() - tinfo['encp_start_time']))
-        
+
     #Record this.
     message = "[1] Time to open local file: %s sec." % \
               (time.time() - open_local_file_start_time,)
@@ -6018,7 +6018,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         #Pulling out args like this keeps pychecker happy.
         msg_args = getattr(msg, "args", (e_errors.IOERROR, errno.EIO,
                                          os.strerror(errno.EIO), os.getpid))
-        
+
         if msg_args[1] == errno.ENOSPC \
                or msg_args[1] == errno.EDQUOT: #These should be non-retriable.
             error_type = e_errors.NOSPACE
@@ -6026,7 +6026,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
             error_type = e_errors.DEVICE_ERROR
         else:
             error_type = e_errors.IOERROR
-            
+
         EXfer_ticket = {'status': (error_type,
                          "[ Error %d ] %s: %s" % (msg_args[1], msg_args[2],
                                                   msg_args[0]))}
@@ -6115,7 +6115,7 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
 ############################################################################
 ##
 ## The following functions do CRC checks.
-## 
+##
 ############################################################################
 
 
@@ -6148,20 +6148,20 @@ def check_crc(done_ticket, encp_intf, fd=None):
         compare_crc(done_ticket, encp_crc_1_seeded)
         if not e_errors.is_ok(done_ticket):
             return
-        
+
     #If the user wants a crc readback check of the new output file (reads
     # only) calculate it and compare.
     if encp_intf.ecrc:
         check_crc_readback(done_ticket, fd)
         if not e_errors.is_ok(done_ticket):
             return
-        
+
     # Check the CRC in pnfs layer 2 (set by dcache).
     if encp_intf.chk_crc and (encp_intf.get_cache or encp_intf.put_cache):
         check_crc_layer2(done_ticket, encp_crc_1_seeded)
         if not e_errors.is_ok(done_ticket):
             return
-    
+
     message = "[1] Time to check CRC: %s sec." % \
               (time.time() - check_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
@@ -6217,14 +6217,14 @@ def compare_crc(done_ticket, encp_crc_1_seeded):
 	      (time.time() - compare_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
     done_ticket['status'] = (e_errors.OK, None)
     return
 
 def check_crc_readback(done_ticket, fd):
     #Make these more accessable.
     mover_crc = done_ticket['fc'].get('complete_crc', None)
-    
+
     readback_crc_start_time = time.time()
     #If passed a file descriptor, make sure it is to a regular file.
     if fd and (type(fd) == types.IntType) and \
@@ -6252,7 +6252,7 @@ def check_crc_readback(done_ticket, fd):
 	      (time.time() - readback_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
     done_ticket['status'] = (e_errors.OK, None)
     return
 
@@ -6263,7 +6263,7 @@ def check_crc_layer2(done_ticket, encp_crc_1_seeded):
         pnfs_filename = done_ticket['infile']
     else: #write
         pnfs_filename = done_ticket['outfile']
-    
+
     try:
         # Get the pnfs layer 2 for this file.
 	sfs = namespace.StorageFS(pnfs_filename)
@@ -6296,14 +6296,14 @@ def check_crc_layer2(done_ticket, encp_crc_1_seeded):
 	      (time.time() - layer2_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
     done_ticket['status'] = (e_errors.OK, None)
     return
 
 ############################################################################
 ##
 ## The following functions to post transfer integrity checks.
-## 
+##
 ############################################################################
 
 #Double check that all of the filesizes agree.  As a performance bonus,
@@ -6449,7 +6449,7 @@ def verify_file_size(ticket, encp_intf = None):
             ticket['status'] = (e_errors.FILE_MODIFIED, msg)
     except: #Un-anticipated errors.
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        
+
     message = "[1] Time to verify file size: %s sec." % \
               (time.time() - verify_file_size_start_time,)
     Trace.message(TIME_LEVEL, message)
@@ -6458,7 +6458,7 @@ def verify_file_size(ticket, encp_intf = None):
 def verify_inode(ticket):
 
     verify_inode_start_time = time.time()
-    
+
     #Don't worry about checking when outfile is /dev/null.
     if ticket['outfile'] == '/dev/null':
         return
@@ -6470,13 +6470,13 @@ def verify_inode(ticket):
     except (OSError, IOError), detail:
         ticket['status'] = (e_errors.OSERROR, str(detail))
         return
-    
+
     try:
         if is_read(ticket):
             pnfs_filename = ticket['infile']
         else: #write
             pnfs_filename = ticket['outfile']
-        
+
         sfs = namespace.StorageFS(pnfs_filename)
         pnfs_stat = sfs.get_stat(pnfs_filename)
         pnfs_inode = pnfs_stat[stat.ST_INO]
@@ -6589,7 +6589,7 @@ def set_outfile_permissions(ticket, encp_intf):
                 try:
                     uid = in_stat_info[stat.ST_UID]
                     gid = in_stat_info[stat.ST_GID]
-                    
+
                     #handle remote file case
                     if is_write(ticket):
 #                        sfs = namespace.StorageFS(ticket['outfile'])
@@ -6612,7 +6612,7 @@ def set_outfile_permissions(ticket, encp_intf):
         Trace.log(TIME_LEVEL, message)
 
 ############################################################################
-        
+
 def finish_request(done_ticket, request_list, index, encp_intf):
     #Everything is fine.
     if e_errors.is_ok(done_ticket):
@@ -6639,7 +6639,7 @@ def finish_request(done_ticket, request_list, index, encp_intf):
             #Set completion status to successful.
             done_ticket['completion_status'] = SUCCESS
             done_ticket['exit_status'] = 0
-            
+
             #Store these changes back into the master list.
             request_list[index] = done_ticket
 
@@ -6693,7 +6693,7 @@ def finish_request(done_ticket, request_list, index, encp_intf):
 
     ### Should never get here!!!
     return None
-    
+
 ############################################################################
 ##
 ## The following functions handle error detection, error recover and request
@@ -6719,7 +6719,7 @@ def internal_handle_retries(request_list, request_dictionary, error_dictionary,
     remember_resubmits = encp_intf.max_resubmit
     encp_intf.max_retry = 2
     encp_intf.max_resubmit = 2
-    
+
     internal_result_dict = handle_retries(request_list, request_dictionary,
                                           error_dictionary, encp_intf,
                                           listen_socket = listen_socket,
@@ -6740,7 +6740,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     max_retries = encp_intf.max_retry
     max_submits = encp_intf.max_resubmit
     #verbose = encp_intf.verbose
-    
+
     #Before resubmitting, there are some fields that the library
     # manager and mover don't expect to receive from encp,
     # these should be removed.
@@ -6809,13 +6809,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     socket_dict = {'status':socket_status}
     if control_socket:
         check_control_socket_start_time = time.time()
-        
+
         try:
             socket_error = control_socket.getsockopt(socket.SOL_SOCKET,
                                                      socket.SO_ERROR)
         except socket.error, msg:
             socket_error = msg.args[0]
-        
+
         if socket_error:
             socket_status = (e_errors.NET_ERROR, os.strerror(socket_error))
             socket_dict = {'status':socket_status}
@@ -6836,7 +6836,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                         #If an error occured, deal with it.
                         read_fd = []
                         break
-                        
+
             #Check control socket for error.
             if read_fd:
                 #socket_dict = receive_final_dialog(control_socket)
@@ -6864,7 +6864,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # socket status to avoid wiping out an error.
     if e_errors.is_ok(socket_dict) and listen_socket:
         check_listen_socket_start_time = time.time()
-        
+
         socket_error = listen_socket.getsockopt(socket.SOL_SOCKET,
                                                 socket.SO_ERROR)
         if socket_error:
@@ -6880,10 +6880,10 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     lf_status = (e_errors.OK, None)
     if local_filename:
         check_local_filename_start_time = time.time()
-        
+
         try:
             #First determine if stat-ing the file produces any errors.
-            
+
             stats = os.stat(local_filename)
 
             #Check to make sure that the inode has not changed either.
@@ -6937,13 +6937,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
               (time.time() - check_local_filename_start_time,)
         Trace.message(TIME_LEVEL, message)
         Trace.log(TIME_LEVEL, message)
-        
+
     pf_status = (e_errors.OK, None)
     skip_layer_cleanup = False
     if is_write(encp_intf) and type(pnfs_filename) == types.StringType \
            and pnfs_filename and not request_dictionary.get('copy', None):
         check_pnfs_filename_start_time = time.time()
-        
+
         #If the user wants us to specifically check if another encp has
         # written (layers 1 or 4) to this pnfs file; now is the time to check.
         try:
@@ -7021,7 +7021,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #Use the ticket status.
     else:
         status = dict_status
-        
+
     #If there is no error, then don't do anything
     if e_errors.is_ok(status):
         result_dict = {'status':(e_errors.OK, None),
@@ -7115,7 +7115,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # original bfid string while (request_dictionary['fc']['bfid']
         # should contain the bfid of the copy (original included) that
         # was just tried.
-        
+
         fcc = get_fcc()
         #vcc = get_vcc()
 
@@ -7147,9 +7147,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #    print "Not using %s: %s" % (next_bfid, vc_ticket['status'])
             #elif not e_errors.is_ok(fc_ticket):
             #    print "Not using %s: %s" % (next_bfid, fc_ticket['status'])
-                
+
             del copy_list[copy_index]
-        
+
     #If the error is not retriable, remove it from the request queue.  There
     # are two types of non retriable errors.  Those that cause the transfer
     # to be aborted, and those that in addition to abborting the transfer
@@ -7184,7 +7184,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             # that we don't need to increase usage of combine_dict any
             # more than currently used.
             request_dictionary['data_access_layer_printed'] = 1
-        
+
         alarm_dict = {'infile':infile_print, 'outfile':outfile_print,
                       'status':status[1]}
         if e_errors.is_emailable(status[0]):
@@ -7352,12 +7352,12 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                'queue_size':len(request_list),
                                'transaction_id_list':transaction_id_list,
                                }
-    
+
     #Change the unique id so the library manager won't remove the retry
     # request when it removes the old one.  Do this only when there was an
     # actuall error, not just a timeout.  Also, increase the retry count by 1.
     else:
-        
+
         #Log the intermidiate error as a warning instead as a full error.
         Trace.log(e_errors.WARNING, "Retriable error: %s" % str(status))
 
@@ -7380,7 +7380,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         try:
             #Increase the retry count.
             request_dictionary['resend']['retry'] = retry + 1
-            
+
             #Before resending, there are some fields that the library
             # manager and mover don't expect to receive from encp,
             # these should be removed.
@@ -7422,13 +7422,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 sys.stderr.flush()
             except IOError:
                 pass
-            
+
         #Now it get checked.  But watch out for the recursion!!!
         internal_result_dict = internal_handle_retries([request_dictionary],
                                                        request_dictionary,
                                                        lm_response, encp_intf)
 
-        
+
         #If an unrecoverable error occured while retrying to LM.
         if e_errors.is_non_retriable(internal_result_dict['status'][0]):
             result_dict = {'status':internal_result_dict['status'],
@@ -7445,7 +7445,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                            'queue_size':len(request_list),
                            'transaction_id_list':transaction_id_list,
                            }
-            Trace.log(e_errors.ERROR, str(result_dict))            
+            Trace.log(e_errors.ERROR, str(result_dict))
         else:
             result_dict = {'status':(e_errors.RETRY,
                                      request_dictionary['unique_id']),
@@ -7454,7 +7454,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                            'queue_size':len(request_list),
                            'transaction_id_list':transaction_id_list,
                            }
-            
+
 
     #If we get here, then some type of error occured.  This means one of
     # three things happend.
@@ -7471,24 +7471,24 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
 ##
 ## The following functions are involved in calculating statistics for the
 ## transfer(s).
-## 
+##
 ############################################################################
 
 def calculate_rate(done_ticket, tinfo):
 
     calculate_rate_start_time = time.time()
-    
+
     # calculate some kind of rate - time from beginning to wait for
     # mover to respond until now. This doesn't include the overheads
     # before this, so it isn't a correct rate. I'm assuming that the
     # overheads I've neglected are small so the quoted rate is close
     # to the right one.  In any event, I calculate an overall rate at
     # the end of all transfers
-    
+
     Trace.message(TICKET_1_LEVEL, "CALCULATING RATE FROM:")
     Trace.message(TICKET_1_LEVEL, pprint.pformat(done_ticket))
     Trace.message(TICKET_1_LEVEL, pprint.pformat(tinfo))
-    
+
     #calculate MB relatated stats
     bytes_per_MB = float(1024 * 1024)
     MB_transfered = float(done_ticket['file_size']) / bytes_per_MB
@@ -7536,7 +7536,7 @@ def calculate_rate(done_ticket, tinfo):
         nsa = 0 #intf_encp.buffer_size
         dsa = 0
     """
-    
+
     if e_errors.is_ok(done_ticket['status'][0]):
 
         if transfer_time != 0:
@@ -7550,7 +7550,7 @@ def calculate_rate(done_ticket, tinfo):
         if network_time != 0:
             tinfo['%s_network_rate'%(u_id,)] = MB_transfered / network_time
         else:
-            tinfo['%s_network_rate'%(u_id,)] = 0.0            
+            tinfo['%s_network_rate'%(u_id,)] = 0.0
         if drive_time != 0:
             tinfo['%s_drive_rate'%(u_id,)] = MB_transfered / drive_time
         else:
@@ -7573,7 +7573,7 @@ def calculate_rate(done_ticket, tinfo):
         if not ffw:
             ffw = volume_family.extract_wrapper(
                 done_ticket.get('vc', {}).get('volume_family', ""))
-        
+
         print_format = "Transfer %s -> %s:\n" \
                  "\t%d bytes copied %s %s at %.3g MB/S\n " \
                  "\t(%.3g MB/S network) (%.3g MB/S drive) (%.3g MB/S disk)\n" \
@@ -7624,7 +7624,7 @@ def calculate_rate(done_ticket, tinfo):
             'disk_rate' : tinfo["%s_disk_rate"%(u_id,)],
             'overall_rate' : tinfo["%s_overall_rate"%(u_id,)],
             'transfer_rate' : tinfo["%s_transfer_rate"%(u_id,)],
-            'encp_crc' : done_ticket.get('ecrc', 
+            'encp_crc' : done_ticket.get('ecrc',
                                    done_ticket['exfer'].get('encp_crc', None)),
             }
 
@@ -7652,7 +7652,7 @@ def calculate_rate(done_ticket, tinfo):
                       #sg,
                       #done_ticket["encp_ip"],
                       #done_ticket['unique_id'])
-        
+
         Trace.message(DONE_LEVEL, print_format % print_values)
 
         Trace.log(e_errors.INFO, log_format % log_values, Trace.MSG_ENCP_XFER )
@@ -7742,13 +7742,13 @@ def calculate_rate(done_ticket, tinfo):
 def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 
     calculate_final_statistics_start_time = time.time()
-    
+
     #Determine the average of each time (overall, transfer, network,
     # tape and disk) of all transfers done for the encp.  If only one file
     # was transfered, then these rates should equal the files rates.
 
     statistics = {}
-    
+
     #Calculate total running time from the begining.
     now = time.time()
     tinfo['total'] = now - tinfo['encp_start_time']
@@ -7804,7 +7804,7 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
         statistics['MB_per_S_network'] = network_rate / count
     else:
         statistics['MB_per_S_network'] = 0.0
-        
+
     #get all the disk rates from the dictionary.
     disk_rate  = 0L
     count = 0
@@ -7816,12 +7816,12 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
         statistics['MB_per_S_disk'] = disk_rate / count
     else:
         statistics['MB_per_S_disk'] = 0.0
-    
+
     msg = "%s transferring %s bytes in %s files in %s sec.\n" \
           "\tOverall rate = %.3g MB/sec.  Transfer rate = %.3g MB/sec.\n" \
           "\tNetwork rate = %.3g MB/sec.  Drive rate = %.3g MB/sec.\n" \
           "\tDisk rate = %.3g MB/sec.  Exit status = %s."
-    
+
     if exit_status:
         msg = msg % ("Error after", bytes, number_of_files, tinfo['total'],
                      statistics["MB_per_S_overall"],
@@ -7849,7 +7849,7 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
               (time.time() - calculate_final_statistics_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
     return done_ticket
 
 ############################################################################
@@ -7865,7 +7865,7 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 def verify_write_request_consistancy(request_list, e):
 
     verify_write_request_consistancy_start_time = time.time()
-    
+
     outputfile_dict = {}
 
     for request in request_list:
@@ -7893,7 +7893,7 @@ def verify_write_request_consistancy(request_list, e):
                 raise EncpError(msg.ars, str(msg), e_errors.NET_ERROR,
                                 {'infilepath' : request['infilepath'],
                                  'outfilepath' : request['outfilepath']})
-            
+
         if request['outfile'] not in ["/dev/null", "/dev/zero",
                                       "/dev/random", "/dev/urandom"]:
             if not request['wrapper']['inode']:
@@ -8080,7 +8080,7 @@ def set_sfs_settings(ticket, intf_encp):
               (time.time() - location_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-    
+
     if not ticket.get('copy', None):  #Don't set layer 1 if copy.
         layer1_start_time = time.time() # Start time of setting pnfs layer 1.
 
@@ -8153,7 +8153,7 @@ def set_sfs_settings(ticket, intf_encp):
         layer4_start_time = time.time() # Start time of setting pnfs layer 4.
 
         #Store the cross reference data into layer 4.
-        
+
         #Write to the metadata layer 4 "file".
         Trace.message(INFO_LEVEL, "Setting layer 4.")
         try:
@@ -8294,7 +8294,7 @@ def set_sfs_settings(ticket, intf_encp):
 
 
 def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
-    
+
     create_write_requests_start_time = time.time()
     request_list = []
 
@@ -8487,7 +8487,7 @@ def create_write_request(work_ticket, file_number,
             istatinfo = file_utils.get_stat(ifullname)
         else: #The output file was given as a normal filename.
             #ifullname, ofullname = get_ninfo(e.input[i], e.output[0], e)
-            
+
             try:
                 istatinfo = file_utils.get_stat(work_ticket['infile'])
                 ifullname = work_ticket['infile']
@@ -8498,7 +8498,7 @@ def create_write_request(work_ticket, file_number,
                 istatinfo = file_utils.get_stat(ifullname)
 
             #inputfile_check(ifullname, e)
-            
+
             ofullname = get_oninfo(ifullname, e.output[0], e)
 
             #Determine the access path name.  (There isn't one yet, since
@@ -8530,10 +8530,10 @@ def create_write_request(work_ticket, file_number,
         storage_group = tags.get('storage_group', None)
         try:
             #Only need this after the last loop (when we don't get here).
-            del tags['all_libraries'] 
+            del tags['all_libraries']
         except KeyError:
             pass
-        
+
         #There is no sense to get these values every time.  Only get them
         # on the first pass.
         if not library:
@@ -8611,7 +8611,7 @@ def create_write_request(work_ticket, file_number,
         #Get the crc seed to use.
         encp_dict = csc.get('encp', 5, 5)
         crc_seed = encp_dict.get('crc_seed', 1)
-        
+
         #Get the data aquisition information.
         encp_daq = get_dinfo()
 
@@ -8624,7 +8624,7 @@ def create_write_request(work_ticket, file_number,
 
         #Combine the data into the wrapper sub-ticket.
         wrapper = get_winfo(pinfo, uinfo, finfo)
-        
+
         #Create the sub-ticket of the command line argument information.
         encp_el = get_einfo(e)
 
@@ -8661,7 +8661,7 @@ def create_write_request(work_ticket, file_number,
                                               shortcut=False)
                 ofullname = ofullname_list[0]
                 wrapper['pnfsFilename'] = ofullname
-        
+
 
         #We need to stop writing /pnfs/fs/usr/Migration/ paths in the wrappers
         # for every migrated to tape.  Correct the
@@ -8748,7 +8748,7 @@ def submit_write_request(work_ticket, encp_intf):
     # to log this for debugging.
     #
     #One case is now understood.  Some errors returned by the library
-    # manager contain a 'status' value and the original request, converted 
+    # manager contain a 'status' value and the original request, converted
     # to a string, under the key 'request'.
     try:
         if ticket['vc']['file_family']:
@@ -8788,7 +8788,7 @@ def stall_write_transfer(data_path_socket, control_socket, e):
     Trace.log(INFO_LEVEL,
               "stalling write transfer until signal bytes arives: %s sec" % \
               (e.mover_timeout,))
-    
+
     #Stall starting the count until the first byte is ready for writing.
     duration = e.mover_timeout
     while 1:
@@ -8902,7 +8902,7 @@ def write_post_transfer_update(done_ticket, e):
     if not e_errors.is_ok(done_ticket):
         clear_layers_1_and_4(done_ticket) #Reset this.
         return done_ticket
-    
+
 
     #Set the UNIX file permissions.
     #Writes errors to log file.
@@ -8934,7 +8934,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
 
         overall_start = time.time() #----------------------------Overall Start
 
-        
+
         ### 8-22-2008: Commented out the verify_write_request_consistancy()
         ### call here.  It does a lot of checks that don't need to be done
         ### that also put a lot of strain on PNFS.  The handle_retries()
@@ -8957,7 +8957,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
 
         Trace.message(TRANSFER_LEVEL, "Mover called back.  elapsed=%s" %
                       (time.time() - tinfo['encp_start_time'],))
-        
+
         Trace.message(TICKET_LEVEL, "WORK TICKET:")
         Trace.message(TICKET_LEVEL, pprint.pformat(work_ticket))
 
@@ -8972,7 +8972,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e,
                                      pnfs_filename = work_ticket['outfile'])
-        
+
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket)
             return combine_dict(result_dict, work_ticket)
@@ -8982,13 +8982,13 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         else:
             in_fd = done_ticket['fd']
 
-        Trace.message(TRANSFER_LEVEL, "Input file %s opened.   elapsed=%s" % 
+        Trace.message(TRANSFER_LEVEL, "Input file %s opened.   elapsed=%s" %
                       (work_ticket['infile'],
                        time.time()-tinfo['encp_start_time']))
 
         #We need to stall the transfer until the mover is ready.
         done_ticket = stall_write_transfer(data_path_socket, control_socket, e)
-        
+
         if not e_errors.is_ok(done_ticket):
             #Make one last check of everything before entering transfer_file().
             # Only test control_socket if a known problem exists.  Otherwise,
@@ -9015,7 +9015,7 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         done_ticket = transfer_file(in_fd, data_path_socket,
                                     control_socket, work_ticket,
                                     tinfo, e, udp_serv = udp_serv)
-        
+
         tstring = '%s_transfer_time' % work_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_time #--------------------------End
 
@@ -9077,15 +9077,15 @@ def write_hsm_file(work_ticket, control_socket, data_path_socket,
         except (IndexError, KeyError):
             Trace.log(e_errors.INFO, "unable to unregister file")
 
-        # calculate some kind of rate - time from beginning 
-        # to wait for mover to respond until now. This doesn't 
-        # include the overheads before this, so it isn't a 
-        # correct rate. I'm assuming that the overheads I've 
+        # calculate some kind of rate - time from beginning
+        # to wait for mover to respond until now. This doesn't
+        # include the overheads before this, so it isn't a
+        # correct rate. I'm assuming that the overheads I've
         # neglected are small so the quoted rate is close
-        # to the right one.  In any event, I calculate an 
+        # to the right one.  In any event, I calculate an
         # overall rate at the end of all transfers.
         calculate_rate(done_ticket, tinfo)
-             
+
         Trace.message(TRANSFER_LEVEL,
                       "File status after verification: %s   elapsed=%s" %
                       (done_ticket['status'],
@@ -9100,7 +9100,7 @@ def prepare_write_to_hsm(tinfo, e):
                  udp_serv, udp_callback_addr = get_callback_addresses(e)
     if not e_errors.is_ok(done_ticket):
         return done_ticket, listen_socket, udp_serv, None
-    
+
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
     try:
@@ -9144,7 +9144,7 @@ def prepare_write_to_hsm(tinfo, e):
         except:
             #We'll go with the original error here.
             pass
-        
+
         return e_ticket, listen_socket, udp_serv, []
 
     #If this is the case, don't worry about anything.
@@ -9285,7 +9285,7 @@ def write_to_hsm(e, tinfo):
                     'wrapper', {}).get('fullname', None)
                 external_label = request_ticket.get(
                     'fc', {}).get('external_label', None)
-            else: 
+            else:
                 # Skip these two handle_retries() checks if we only heard from
                 # the library manager.
                 local_filename = None
@@ -9318,7 +9318,7 @@ def write_to_hsm(e, tinfo):
             # thus request_ticket has this info already when an error
             # happens.
             done_ticket = combine_dict(result_dict, work_ticket, request_ticket)
-            
+
             if e_errors.is_non_retriable(result_dict):
 
                 #Regardless if index is None or not, make sure that
@@ -9421,7 +9421,7 @@ def write_to_hsm(e, tinfo):
             elif what_to_do == CONTINUE_FROM_BEGINNING:
                 #We get here only on a retriable error.
                 continue
-                
+
     # we are done transferring - close out the listen socket
     close_descriptors(listen_socket)
 
@@ -9491,7 +9491,7 @@ def sort_cookie(r1, r2):
     else:
         #The location cookie is a disk cookie.
         return 0
-    
+
 #Args:
 # Takes in a dictionary of lists of transfer requests sorted by volume.
 #Rerturns:
@@ -9536,12 +9536,12 @@ def verify_read_request_consistancy(requests_per_vol, e):
 
         #Obtain the quota limits for the target directory.
         fs_quotas = EXfer.quotas(outfile_name)
-    
+
     vols = requests_per_vol.keys()
     vols.sort()
     for vol in vols:
         request_list = requests_per_vol[vol]
-        
+
         for request in request_list:
 
             if request['infile'] not in ["/dev/zero",
@@ -9623,12 +9623,12 @@ def verify_read_request_consistancy(requests_per_vol, e):
                         raise EncpError(msg.ars, str(msg), e_errors.NET_ERROR,
                                         {'infilepath' : request['infilepath'],
                                          'outfilepath' : request['outfilepath']})
-                    
+
                 #This block of code makes sure the the user is not moving
                 # two files with the same basename in different directories
                 # into the same destination directory.
                 result = outputfile_dict.get(request['outfilepath'], None)
-                if result: 
+                if result:
                     #If the file is already in the list, give error.
                     raise EncpError(None,
                                     'Duplicate file entry: %s' % (result,),
@@ -9782,12 +9782,12 @@ def get_volume_clerk_info(volume_or_ticket, encp_intf=None):
     #While __get_vcc() can accept None as the parameter value,
     # we expect that it will not be, since the purpose of
     # get_volume_clerk_info() is to return the information about a bfid.
-    
+
     #Get the clerk info.
     vcc, vc_ticket = __get_vcc(volume_or_ticket)
 
     # Determine if the information returned is complete.
-    
+
     if vc_ticket == None:
         if type(volume_or_ticket) == types.StringType:
             volume_name = volume_or_ticket
@@ -9839,7 +9839,7 @@ def get_volume_clerk_info(volume_or_ticket, encp_intf=None):
     # the volume.  This is done after the above information is included
     # for the situation where the option to override a NOACCESS or
     # NOTALLOWED inhibit is set.
-    
+
     inhibit = vc_ticket['system_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
         if encp_intf != None and encp_intf.check:
@@ -9885,7 +9885,7 @@ def get_clerks_info(bfid, e):
         else:
             #Otherwise re-raise the exception.
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    
+
     #Return the information.
     return vc_ticket, fc_ticket
 
@@ -9945,7 +9945,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                                                             (e.output[0],)):
             rest = {'volume':e.volume}
             raise EncpError(errno.ENOTDIR, e.output[0],
-                            e_errors.USERERROR, rest)                          
+                            e_errors.USERERROR, rest)
 
         #Make sure there is a valid volume clerk inquiry.
         vc_reply = get_volume_clerk_info(e.volume)
@@ -9959,13 +9959,13 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         elif not e_errors.is_ok(vc_reply):
             if e.check:
                 vc_reply['exit_status'] = 2
-                
+
             raise EncpError(None, e.volume,
                             vc_reply['status'][0], vc_reply)
 
         Trace.message(TRANSFER_LEVEL, "Obtaining tape metadata.")
         sys.stdout.flush()
-        
+
         #Obtain the complete listing of the volume.  It is best to do
         # this now as opposed to each iteration in the large while
         # loop below.
@@ -9979,7 +9979,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         except e_errors.TCP_EXCEPTION:
             tape_ticket = {'status' : (e_errors.NET_ERROR,
                                        e_errors.TCP_EXCEPTION)}
-        
+
         #First check for errors.
         if not e_errors.is_ok(tape_ticket):
             rest = {'volume':e.volume}
@@ -10004,9 +10004,9 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 rest = {'volume':e.volume}
                 raise EncpError(getattr(msg, "errno", errno.EIO),
                                 "List file not accessable.",
-                                e_errors.OSERROR, rest) 
+                                e_errors.OSERROR, rest)
 
-        else:        
+        else:
             number_of_files = len(tape_ticket['tape_list'])
             list_of_files = tape_ticket['tape_list']
             #Always say one (for the ticket to send to the LM) when the
@@ -10129,7 +10129,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 e_type = e_errors.IOERROR
 
             raise EncpError(msg.args[0], use_infile, e_type, request)
-        
+
         if request == None:
             #This is a rare possibility.  Can occur when --volume and
             # --skip-deleted-files are both used.
@@ -10174,7 +10174,7 @@ def create_read_request(request, file_number,
         #If the user specified a volume to read.
         if e.volume:
 
-            
+
             #If these fail what could we do?
             fc_reply = request['fc']
             vc_reply = request['vc']
@@ -10282,7 +10282,7 @@ def create_read_request(request, file_number,
 
                     #Determine the inupt filename.
                     ifullname = pnfs_name0
-                    
+
 
             #If ifullname is still None, then the file does not exist
             # anywhere.  Use the correct name.
@@ -10297,7 +10297,7 @@ def create_read_request(request, file_number,
 
             #Grab the stat info.
             istatinfo = sfs.get_stat(iaccessname)
-                
+
             #This is an attempt to deal with data that is incomplete
             # from a failed previous transfer.
             if fc_reply.get('pnfs_name0', None) == None:
@@ -10436,7 +10436,7 @@ def create_read_request(request, file_number,
                         else:
                             raise sys.exc_info()[0], sys.exc_info()[1], \
                                   sys.exc_info()[2]
-                    
+
                 else:
                     istatinfo = None
             elif e.skip_pnfs:
@@ -10450,7 +10450,7 @@ def create_read_request(request, file_number,
 
         #### PNFS ID ###################################################
         elif e.get_cache:
-            
+
             if e.shortcut and e.override_path:
                 #If the user specified a pathname (with --override-path)
                 # on the command line use that name.  Otherwise if just
@@ -10482,7 +10482,7 @@ def create_read_request(request, file_number,
 
             #Grab the stat info.
             istatinfo = sfs.get_stat(iaccessname)
-            
+
             bfid = sfs.get_bit_file_id(iaccessname)
 
             vc_reply, fc_reply = get_clerks_info(bfid, e)
@@ -10508,7 +10508,7 @@ def create_read_request(request, file_number,
                 unused, ofullname, unused, unused = fullpath(e.output[0])
 
             read_work = 'read_from_hsm'
-            
+
         #### FILENAME #################################################
         #else the filename was given to encp.
         else:
@@ -10570,7 +10570,7 @@ def create_read_request(request, file_number,
             else:
                 ofullname = get_oninfo(ifullname, e.output[0], e)
 
-            
+
             #Determine the access path name.
             use_dir = get_directory_name(ifullname)
             iaccessname = sfs.access_file(use_dir, fc_reply['pnfsid'])
@@ -10630,7 +10630,7 @@ def create_read_request(request, file_number,
             #pinfo['major'] = 0
             #pinfo['minor'] = 0
             #pinfo['mode'] = 0
-        
+
         #Combine the data into the wrapper sub-ticket.
         wrapper = get_winfo(pinfo, uinfo, finfo)
 
@@ -10716,7 +10716,7 @@ def create_read_request(request, file_number,
 def submit_read_requests(requests, encp_intf):
 
     submit_read_requests_start_time = time.time()
-    
+
     submitted = 0
 
     #Sort the requests by location cookie.
@@ -10725,7 +10725,7 @@ def submit_read_requests(requests, encp_intf):
     for req in requests:
         #After enough failures handle_retries() will eventually abort
         # the transfer.
-        
+
         while req.get('completion_status', None) == None:
             try:
                 ticket, lmc = submit_one_request(req, encp_intf)
@@ -10738,7 +10738,7 @@ def submit_read_requests(requests, encp_intf):
                     ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
 
             result_dict = handle_retries(requests, req, ticket, encp_intf)
-            
+
             if e_errors.is_retriable(result_dict):
                 continue
             elif e_errors.is_non_retriable(result_dict):
@@ -10767,7 +10767,7 @@ def stall_read_transfer(data_path_socket, control_socket, work_ticket, e):
     Trace.log(INFO_LEVEL,
               "stalling read transfer until data arives: %s sec" % \
               (e.mover_timeout,))
-    
+
     #Stall starting the count until the first byte is ready for reading.
     duration = e.mover_timeout
     while 1:
@@ -10855,7 +10855,7 @@ def read_post_transfer_update(done_ticket, out_fd, e):
     except AttributeError:
         Trace.handle_error(severity=99)
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
- 
+
     if not e_errors.is_ok(done_ticket):
         return done_ticket
 
@@ -10905,7 +10905,7 @@ def read_post_transfer_update(done_ticket, out_fd, e):
 def read_hsm_file(request_ticket, control_socket, data_path_socket,
                   request_list, tinfo, e, udp_serv = None):
 
-    for rq in request_list: 
+    for rq in request_list:
         Trace.trace(17,"read_hsm_file: %s"%(rq['infile'],))
 
     read_hsm_file_start_time = time.time()
@@ -10938,7 +10938,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
                 #close_descriptors(control_socket, data_path_socket)
                 return combine_dict(result_dict, request_ticket)
     """
-                    
+
     Trace.message(TRANSFER_LEVEL, "Mover called back.  elapsed=%s" %
                   (time.time() - tinfo['encp_start_time'],))
     Trace.message(TICKET_LEVEL, "REQUEST:")
@@ -10959,7 +10959,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         return combine_dict(result_dict, request_ticket)
     else:
         out_fd = done_ticket['fd']
-    
+
     #We need to stall the transfer until the mover is ready.
     done_ticket = stall_read_transfer(data_path_socket, control_socket,
                                       request_ticket, e)
@@ -10969,7 +10969,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         # Only test control_socket if a known problem exists.  Otherwise,
         # for small files it is possible that a successful final dialog
         # message gets 'eaten' up.
-        
+
         external_label = request_ticket.get('fc',{}).get('external_label',
                                                          None)
         result_dict = handle_retries([request_ticket], request_ticket,
@@ -10982,7 +10982,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
             #close_descriptors(control_socket, data_path_socket, out_fd)
             close_descriptors(out_fd)
             return combine_dict(result_dict, request_ticket)
-        
+
     lap_start = time.time() #----------------------------------------Start
 
     try:
@@ -10993,7 +10993,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
         exc, msg = sys.exc_info()[:2]
         done_ticket = request_ticket
         done_ticket['status'] = (e_errors.UNKNOWN, "transfer_file(): (%s, %s)" % (str(exc), str(msg)))
-    
+
     lap_end = time.time()  #-----------------------------------------End
     tstring = "%s_transfer_time" % request_ticket['unique_id']
     tinfo[tstring] = lap_end - lap_start
@@ -11013,7 +11013,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
 
     #Make sure the exfer sub-ticket gets stored into request_ticket.
     request_ticket = combine_dict(done_ticket, request_ticket)
-    
+
     try:
         #This function write errors/warnings to the log file and put an
         # error status in the ticket.
@@ -11042,7 +11042,7 @@ def read_hsm_file(request_ticket, control_socket, data_path_socket,
     #Remove the new file from the list of those to be deleted should
     # encp stop suddenly.  (ie. crash or control-C).
     delete_at_exit.unregister(done_ticket['outfile']) #localname
-    
+
     tstring = "%s_overall_time" % done_ticket['unique_id']
     tinfo[tstring] = time.time() - overall_start #-------------Overall End
 
@@ -11080,7 +11080,7 @@ def prepare_read_from_hsm(tinfo, e):
                  udp_serv, udp_callback_addr = get_callback_addresses(e)
     if not e_errors.is_ok(done_ticket):
         return done_ticket, listen_socket, udp_serv, None
-    
+
     #Create all of the request dictionaries.
     try:
         requests_per_vol = create_read_requests(callback_addr,
@@ -11122,7 +11122,7 @@ def prepare_read_from_hsm(tinfo, e):
         except:
             #We'll go with the original error here.
             pass
-        
+
         return e_ticket, listen_socket, udp_serv, []
 
     #If this is the case, don't worry about anything.
@@ -11188,19 +11188,19 @@ def prepare_read_from_hsm(tinfo, e):
             should_skip_deleted = e.override_deleted and \
                              requests_per_vol[vol][i]['fc']['deleted'] != "no"
 
-            
+
             try:
                 create_zero_length_local_files(requests_per_vol[vol][i])
 
                 if not should_skip_deleted:
                     #If the file is not deleted, we should set the ownership
                     # to that of the owner of the original file.
-                    
+
                     ### Note to self: work on removing this stat().
                     in_file_stats = get_stat(requests_per_vol[vol][i]['infile'])
 
                     if os.getuid() == 0:
-                        #Only try this when the real user is root.  
+                        #Only try this when the real user is root.
                         file_utils.chown(requests_per_vol[vol][i]['outfile'],
                                          in_file_stats[stat.ST_UID],
                                          in_file_stats[stat.ST_GID],
@@ -11228,7 +11228,7 @@ def prepare_read_from_hsm(tinfo, e):
                                      (e_errors.UNKNOWN, str(msg))
 
                 requests_per_vol[vol][i]['completion_status'] = FAILURE
-                
+
                 return requests_per_vol[vol][i], listen_socket, udp_serv, requests_per_vol
             except:
                 #if not should_skip_deleted:
@@ -11248,7 +11248,7 @@ def read_from_hsm(e, tinfo):
     Trace.trace(16,"read_from_hsm input_files=%s  output=%s  verbose=%s  "
                 "chk_crc=%s t0=%s" % (e.input, e.output, e.verbose,
                                       e.chk_crc, tinfo['encp_start_time']))
-    
+
     # initialize
     byte_sum = 0L #Sum of bytes transfered (when transfering multiple files).
     exit_status = 0 #Used to determine the final message text.
@@ -11266,7 +11266,7 @@ def read_from_hsm(e, tinfo):
     # that volume. Read files from each volume before submitting requests
     # for different volumes.
     ######################################################################
-    
+
     vols = requests_per_vol.keys()
     vols.sort()
     for vol in vols:
@@ -11274,7 +11274,7 @@ def read_from_hsm(e, tinfo):
         #Report how many files are still to go.
         Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % \
                       all_requests_outstanding(requests_per_vol))
-        
+
         request_list = requests_per_vol[vol]
         number_of_files = number_of_files + len(request_list)
 
@@ -11295,7 +11295,7 @@ def read_from_hsm(e, tinfo):
                                 wait_for_message(listen_socket, lmc,
                                                  request_list,
                                                  transaction_id_list, e)
-                
+
                 #If we connected with the mover, add these two checks.
                 # Skip them if we only heard from the LM.
                 if control_socket:
@@ -11349,7 +11349,7 @@ def read_from_hsm(e, tinfo):
 
 
                 if e_errors.is_non_retriable(result_dict):
-                   
+
                     #Regardless if index is None or not, make sure that
                     # exit_status gets set to failure.
                     if e.migration_or_duplication:
@@ -11375,7 +11375,7 @@ def read_from_hsm(e, tinfo):
                             pass
                         Trace.log(e_errors.ERROR,
                                   message + "  " + str(done_ticket))
-                        
+
                     else:
                         #Combine the dictionaries.
                         work_ticket = combine_dict(done_ticket,
@@ -11390,7 +11390,7 @@ def read_from_hsm(e, tinfo):
                         done_ticket = work_ticket
 
                     return done_ticket
-                
+
                 if not e_errors.is_ok(result_dict):
                     #Combine the dictionaries.
                     work_ticket = combine_dict(done_ticket,
@@ -11439,7 +11439,7 @@ def read_from_hsm(e, tinfo):
                     #We get here only on an error.  If the value is 1, then
                     # the error should be transient.  If the value is 2, then
                     # the error will likely require human intervention to
-                    # resolve.  
+                    # resolve.
                     exit_status = request_ticket['exit_status']
                 # Do what finish_request() says to do.
                 if what_to_do == STOP:
@@ -11502,7 +11502,7 @@ class EncpInterface(option.Interface):
                         "--put-cache <pnfs|chimera id> <source file>"]
     parameters = user_parameters #gets overridden in __init__().
 
-    
+
 
     def __init__(self, args=sys.argv, user_mode=0):
         #This is flag is accessed via a global variable.
@@ -11519,7 +11519,7 @@ class EncpInterface(option.Interface):
         self.check = 0             # check if transfer attempt will occur
         self.ignore_fair_share = None # tells LM not count this write transfer
                                       # against the storage groups limit.
-        
+
         #messages for user options
         self.data_access_layer = 0 # no special listings
         self.verbose = 0           # higher the number the more is output
@@ -11535,7 +11535,7 @@ class EncpInterface(option.Interface):
 	self.direct_io = 0         # true if direct i/o should be used
 	self.mmap_io = 0           # true if memory mapped i/o should be used
 	self.threaded_exfer = 0    # true if EXfer should run multithreaded
-        
+
         #options effecting encp retries and resubmits
         self.max_retry = enstore_constants.DEFAULT_ENCP_RETRIES
         self.max_resubmit = enstore_constants.DEFAULT_ENCP_RESUBMISSIONS
@@ -11628,7 +11628,7 @@ class EncpInterface(option.Interface):
                                ('intype', {}), ('outtype', {}),
                                ]
         the_list.sort()
-        
+
         for name, info in the_list:
             #Get the correct name to use.  Use the defualt if a developer
             # specified one should be used instead.
@@ -11649,7 +11649,7 @@ class EncpInterface(option.Interface):
 
     def valid_dictionaries(self):
         return (self.help_options, self.encp_options)
-    
+
     def print_version(self):
         print encp_client_version()
         sys.exit(0)
@@ -12007,7 +12007,7 @@ class EncpInterface(option.Interface):
         if self.get_bfids:
             self.input = self.args[:-1]
             self.output = self.argv[-1]
-        
+
         if self.get_cache:
             self.input = None
             self.output = self.argv[-1]
@@ -12021,7 +12021,7 @@ class EncpInterface(option.Interface):
             else:
                 self.intype = HSMFILE
             return
-        
+
         if self.put_cache:
             self.input = self.argv[-1]
             self.output = None
@@ -12082,7 +12082,7 @@ class EncpInterface(option.Interface):
             #We need to make sure that all the files are to/from the same
             # place.  Store it here for processing later.
             m.append((host, port))
-            
+
             #If the file is a pnfs file, store a 1 in the list, if not store
             # a zero.  All files on the hsm system have /pnfs/ in there name.
             # Most have /pnfs/ at the very beginning, but automounted pnfs
@@ -12189,9 +12189,9 @@ class EncpInterface(option.Interface):
 
             e.append(os.path.exists(dirname))
             p.append(0) #Assume local file.
-            
+
         #Initialize some important values.
-        
+
 
         #The p# variables are used as holders for testing if all input files
         # are unixfiles or hsmfiles (aka pnfs files).
@@ -12204,7 +12204,7 @@ class EncpInterface(option.Interface):
         m2 = m[self.arglen - 1]
         #
         # Dmitry's hacking
-        # e1 = 
+        # e1 =
         #       0 - non-existing path, 1 - existing path
         ###e1 = e[0]
         ###e2 = e[self.arglen - 1]
@@ -12307,7 +12307,7 @@ class EncpInterface(option.Interface):
                 namespace.pnfs_agent_client_allowed = False
             else:
                 self.outtype = UNIXFILE
-                
+
         else:
             #Assign the collection of types to these variables.
             if p1 == 1:
@@ -12321,7 +12321,7 @@ class EncpInterface(option.Interface):
 
 ##############################################################################
 ##############################################################################
-            
+
 def log_encp_start(tinfo, intf):
     global err_msg #hack for migration to report any error.
 
@@ -12444,7 +12444,7 @@ def log_encp_start(tinfo, intf):
     release_info = ""
     for info in release_data:
         release_info = release_info + " " + info
-    
+
     #Other strings for the log file.
     start_line = "Start time: %s" % time.ctime(tinfo['encp_start_time'])
     command_line = "Command line: %s" % (string.join(intf.argv),)
@@ -12459,7 +12459,7 @@ def log_encp_start(tinfo, intf):
                    "FF Wrapper: %s  FF Width: %s" % \
                    (library, storage_group,
                     file_family,file_family_wrapper, file_family_width)
-    cwd_line = "Current working directory: %s:%s" % (hostname, cwd)    
+    cwd_line = "Current working directory: %s:%s" % (hostname, cwd)
 
     #Print this information to make debugging easier.
     Trace.message(DONE_LEVEL, start_line)
@@ -12492,7 +12492,7 @@ def log_encp_start(tinfo, intf):
 
 def final_say(intf, done_ticket):
     global err_msg
-    
+
     try:
         #Log the message that tells us that we are done.
         status = done_ticket.get('status', (e_errors.UNKNOWN,e_errors.UNKNOWN))
@@ -12526,7 +12526,7 @@ def final_say(intf, done_ticket):
             err_msg_lock.acquire()
             err_msg[thread.get_ident()] = str(status)
             err_msg_lock.release()
-        
+
         #Determine the filename(s).
         ifilename = done_ticket.get("infilepath", "")
         ofilename = done_ticket.get("outfilepath", "")
@@ -12542,15 +12542,15 @@ def final_say(intf, done_ticket):
             msg_str = string.replace(status[1], "\n\t", "  ")
         else:
             msg_str = str(status[1])
-            
+
         Trace.log(e_errors.INFO, msg_str)
-        
+
         if e_errors.is_alarmable(status):
             Trace.alarm(e_errors.ERROR, status[0],
                         {'infile':ifilename, 'outfile':ofilename,
                          'status':status[1]})
 
-        if intf.data_access_layer or not e_errors.is_ok(status):            
+        if intf.data_access_layer or not e_errors.is_ok(status):
             #We only want to print the data access layer if there was an error
             # or the user explicitly requested it.  In the cases where it will
             # be printed here, encp never got to the point of submitting
@@ -12591,13 +12591,13 @@ def final_say(intf, done_ticket):
         err_msg_lock.acquire()
         err_msg[thread.get_ident()] = str(("UNKNOWN", "UNKNOWN"))
         err_msg_lock.release()
-        
+
         #delete_at_exit.quit(1)
         return exit_status
 
     Trace.trace(20,"encp finished at %s"%(time.ctime(time.time()),))
     return exit_status
-    
+
     #Quit safely by Removing any zero length file for transfers that failed.
     #delete_at_exit.quit(exit_status)
 
@@ -12648,12 +12648,12 @@ def main(intf):
     elif intf.put_cache:
         #done_ticket, work_list = write_to_hsm(intf, tinfo)
         done_ticket = write_to_hsm(intf, tinfo)
-        
+
     ## have we been called "encp unixfile hsmfile" ?
     elif intf.intype == UNIXFILE and intf.outtype == HSMFILE :
         #done_ticket, work_list = write_to_hsm(intf, tinfo)
         done_ticket = write_to_hsm(intf, tinfo)
-        
+
     ## have we been called "encp hsmfile unixfile" ?
     elif intf.intype == HSMFILE and intf.outtype == UNIXFILE :
         #done_ticket, work_list = read_from_hsm(intf, tinfo)
@@ -12663,7 +12663,7 @@ def main(intf):
     elif intf.intype == RHSMFILE and intf.outtype == UNIXFILE :
         #done_ticket, work_list = read_from_hsm(intf, tinfo)
         done_ticket = read_from_hsm(intf, tinfo)
-        
+
     ## have we been called "encp unixfile rhsmfile" ?
     elif intf.intype == UNIXFILE and intf.outtype == RHSMFILE :
 #        emsg = "encp unix to remote hsm  is not implemented."
@@ -12704,9 +12704,9 @@ def do_work(intf, main=main):
         exc, msg = sys.exc_info()[:2]
         message = "encp aborted from: %s: %s" % (str(exc), str(msg))
         Trace.log(e_errors.ERROR, message)
-        
+
         exit_status = 1
-        
+
         err_msg_lock.acquire()
         err_msg[thread.get_ident()] = message
         err_msg_lock.release()
@@ -12749,9 +12749,9 @@ def do_work(intf, main=main):
             os.setegid(0)
         except:
             pass
-        
+
     file_utils.release_lock_euid_egid()
-    
+
     return exit_status
 
 #If mode = 0 it means admin, 1 means user, 2 means dcache.
@@ -12792,6 +12792,6 @@ def start(mode, do_work=do_work, main=main, Interface=EncpInterface):
         # indicates a non-retriable error.  Catching an exception outside of
         # do_work() should never happen.
         return 2
-        
+
 if __name__ == '__main__':
     delete_at_exit.quit(start(0))  #0 means admin
