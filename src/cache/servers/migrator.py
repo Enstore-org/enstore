@@ -18,6 +18,8 @@ import logging
 import statvfs
 import random
 import stat
+import multiprocessing
+import shutil
 
 # enstore imports
 import e_errors
@@ -38,6 +40,8 @@ import encp_wrapper
 import file_cache_status
 import checksum
 import strbuffer
+import volume_family
+import namespace
 
 # enstore cache imports
 #import cache.stub.mw as mw
@@ -99,18 +103,113 @@ def file_checkum(f):
         if r > 0:
             crc = checksum.adler32_o(crc, buf, 0, r)
         elif r < 0:
-            Trace.log(e_erros.ERROR, "file_checksum error %s reading %s"%(r, f))
+            Trace.log(e_errors.ERROR, "file_checksum error %s reading %s"%(r, f))
     if rest:
         r = strbuffer.buf_read(fd, buf, 0, rest)
         if r > 0:
             crc = checksum.adler32_o(crc, buf, 0, r)
         elif r < 0:
-            Trace.log(e_erros.ERROR, "file_checksum error %s reading %s"%(r, f))
+            Trace.log(e_errors.ERROR, "file_checksum error %s reading %s"%(r, f))
     # 1 seeded crc:
     crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(crc, fsize)
     
     return crc, crc_1_seeded
 
+
+# check files prepared for writing to tape
+# runs in subprocess to deal with
+# .nfs.... files
+# @param package - package complete path
+# exit code maps to True / False 
+def _check_packaged_files(archive_area, package):
+    Trace.trace(10, "_check_packaged_files: called with %s %s"%(archive_area, package))
+    # create a temporay directory
+    tmp_dir = os.path.join(archive_area, "tmp_CRC", os.path.dirname(package).lstrip("/"))
+    if not os.path.exists(tmp_dir):
+        try:
+            os.makedirs(tmp_dir)
+        except:
+            Trace.handle_error()
+            Trace.alarm(e_errors.ERROR, "Can not create tmp dir %s"%(tmp_dir,))
+            sys.exit("0")
+    # uwind the package into this directiry
+    os.chdir(tmp_dir)
+    rtn = os.system("tar --force-local -xf %s"%(package,))
+    # create list of files to check
+    try:
+        f = open("README.1st", "r")
+    except:
+        Trace.handle_error()
+        sys.exit("0") # False
+    # Check all files found in README.1st
+    first = True
+    for l in f.readlines():
+        # skip the first line
+        # it is the header
+        if first:
+            first = False
+            continue
+        lst = l.split(" ")
+        Trace.trace(10, "_check_packaged_files: %s, lst %s"%(l, lst))
+        cache_fn, pnfs_fn, crc = lst[0], lst[1], lst[2]
+        fn = cache_fn.lstrip("/")
+        crc = long(crc)
+        crc_0, crc_1 = file_checkum(fn)
+        check_result = True
+        if crc_0 != crc:
+            check_result = False
+            # compare 1 seeded crc
+            if crc_1 == crc:
+                check_result = True
+        if not check_result:
+            Trace.log(e_errors.ERROR, "selective CRC check error on %s. Calculated seed_0 %s seed_1 %s Expected %s"% \
+                      (fn, crc_0, crc_1, crc))
+            break
+    # remove these temporary files
+    f.seek(0)
+    first = True
+    Trace.trace(10, "_check_packaged_files: remove temporay files")
+    for l in f.readlines():
+        # skip the first line
+        # it is the header
+        if first:
+            first = False
+            continue
+        lst = l.split(" ")
+        Trace.trace(10, "_check_packaged_files: removing %s, lst %s"%(l, lst))
+        cache_fn, pnfs_fn, crc = lst[0], lst[1], lst[2]
+        fn = cache_fn.lstrip("/")
+        os.remove(fn)
+    os.remove("README.1st")
+    Trace.trace(10, "_check_packaged_files: exiting with %s"%(check_result,))
+
+    sys.exit(str(int(check_result))) # process must return a string value
+
+# check and set name space tags
+def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag):
+    tag = namespace.Tag(directory)
+    cl = tag.readtag("library")[0]
+    if cl != library_tag:
+        Trace.trace(10, "write_to_tape: library tag: %s"%(library_tag,))
+        tag.writetag("library", library_tag)
+    csg = tag.readtag("storage_group")[0]
+    if csg != sg_tag:
+        Trace.trace(10, "write_to_tape: SG tag: %s"%(sg_tag,))
+        tag.writetag("storage_group", sg_tag)
+    cff = tag.readtag("file_family")[0]
+    if cff != ff_tag:
+        Trace.trace(10, "write_to_tape: FF tag: %s"%(ff_tag,))
+        tag.writetag("file_family", ff_tag)
+    cffwr = tag.readtag("file_family_wrapper")[0]
+    if cffwr != ff_wrapper_tag:
+        Trace.trace(10, "write_to_tape: FF wrapper tag: %s"%(ff_wrapper_tag,))
+        tag.writetag("file_family_wrapper", ff_wrapper_tag)
+    cffw = tag.readtag("file_family_width")[0]
+    if cffw != ff_width_tag:
+        Trace.trace(10, "write_to_tape: FF width tag: %s"%(ff_width_tag,))
+        tag.writetag("file_family_width", ff_width_tag)
+    
+    
 class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServer, mw.MigrationWorker):
     """
     Configurable Migrator
@@ -122,7 +221,18 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.archive_area = self.my_conf['archive_area'] # area on disk where archvived files are temporarily stored
         self.stage_area = self.my_conf.get('stage_area','')   # area on disk where staged files are stored
         self.tmp_stage_area = self.my_conf['tmp_stage_area']  # area on disk where staged files are temporarily stored
-
+        self.packages_location = self.my_conf.get("packages_dir", "") # directory in name space for packages
+        if not self.packages_location:
+            Trace.alarm(e_errors.ERROR, "Define packages_dir in cofiguration! Exiting")
+            sys.exit(-1)
+        if not os.path.exists(self.packages_location):
+            try:
+                os.makedirs(self.packages_location)
+            except:
+                Trace.handle_error()
+                Trace.alarm(e_errors.ERROR, "Can not create packages_dir! Exiting")
+                sys.exit(-1)
+                
         self.my_dispatcher = self.csc.get(self.my_conf['migration_dispatcher']) # migration dispatcher configuration
         self.purge_watermarks = None
         if self.my_dispatcher:
@@ -240,43 +350,33 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # check files prepared for writing to tape
     # @param package - package complete path
     # @return True/False
+    # fork the process to check files
+    # wait until it returns
+    # this is needed becuase nfs creates .nfs files which
+    # get removed only when the process exits
+    # so the only way to remove temporay nfs directories is
+    # to terminate the process that leaves .nfs files open
     def check_packaged_files(self, package):
-        # create a temporay directory 
-        tmp_dir = os.path.join(self.archive_area, self.name, os.path.dirname(package))
-        # uwind the package into this directiry
-        Trace.trace(10, "check_packaged_files: tmp_dir %s"%(tmp_dir,))
-        os.chdir(tmp_dir)
-        rtn = os.system("tar --force-local -xf %s"%(package,))
-        # create list of files to check
+        Trace.trace(10, "check_packaged_files creating __check_packaged_files %s %s %s %s "%(type(self.archive_area),self.archive_area, type(package), package ))
+        
+        proc = multiprocessing.Process(target = _check_packaged_files, args = (self.archive_area, package))
+        Trace.trace(10, "check_packaged_files  calling _check_packaged_files")
+        proc.start()
+        Trace.trace(10, "check_packaged_files _check_packaged_files started")
+        proc.join()
+        Trace.trace(10, "check_packaged_files: returns %s"%(proc.exitcode))
+        
+        # Remove temporary directory
+        # created by _check_packaged_files here
+        # to take care about .nfs.... files
+        tmp_dir = os.path.join(self.archive_area, "tmp_CRC", os.path.dirname(package).lstrip("/"))
+        Trace.trace(10, "check_packaged_files: removing temporary directories")
         try:
-            f = open("README.1st", "r")
-        except:
+            shutil.rmtree(tmp_dir)
+            return True
+        except OSError, detail:
+            Trace.log(e_errors.ERROR, "check_packaged_files: error removind directory %s: %s"%(tmp_dir, detail,))
             return False
-        # Check all files found in README.1st
-        first = True
-        for l in f.readlines():
-            # skip the first line
-            # it is the header
-            if first:
-                first = False
-                continue
-            lst = l.split(" ")
-            Trace.trace(10, "check_packaged_files: l %s, lst %s"%(l, lst))
-            cache_fn, pnfs_fn, crc = lst[0], lst[1], lst[2]
-            fn = cache_fn.lstrip("/")
-            crc = long(crc)
-            crc_0, crc_1 = file_checkum(fn)
-            check_result = True
-            if crc_0 != crc:
-                check_result = False
-                # compare 1 seeded crc
-                if crc_1 == crc:
-                    check_result = True
-            if not check_result:
-                Trace.log(e_errors.ERROR, "selective CRC check error on %s. Calculated seed_0 %s seed_1 %s Expected %s"% \
-                          (fn, crc_0, crc_1, crc))
-                return False
-        return True
     
     # file clerk set_cache_status currently can not send long messages
     # this is a temporary solution
@@ -456,7 +556,15 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             if self.check_written_file():
                 # check the integrity of the packaged file
                 Trace.log(e_errors.INFO, "selective CRC check for package %s"%(bfid_list,))
-                if not self.check_packaged_files(src_file_path):
+                try:
+                    rc = self.check_packaged_files(src_file_path)
+                except:
+                    Trace.handle_error()
+                    Trace.log(e_errors.ERROR, "error checking CRC")
+                    return False
+            
+                    
+                if not rc:
                     Trace.alarm(e_errors.ERROR, "selective CRC check failed for %s"%(bfid_list,))
                     # Remove temporary file
                     Trace.trace(10, "write_to_tape: removing temporary file %s"%(src_file_path,))
@@ -485,6 +593,85 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # aggregation failed
             raise e_errors.EnstoreError(None, "Write to tape failed: no files to write", e_errors.NO_FILES)
 
+        # deduce package destination path in name space
+        # from bfid info of the first file in the package
+        dst_package_fn = os.path.basename(dst_file_path)
+        rec = self.fcc.bfid_info(bfid)
+        if (rec['status'][0] != e_errors.OK):
+            Trace.log(e_errors.ERROR,
+                      "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
+            return False
+        v_f = volume_family.make_volume_family(rec['storage_group'],
+                                               rec['file_family'],
+                                               rec['wrapper'])
+
+        # the package file will eventually go dst_dir
+        # appended with volume label
+        # we do not yet know the volume label
+        dst_dir = os.path.join(self.packages_location, v_f) 
+        Trace.trace(10, "write_to_tape: write to %s"%(dst_dir,))
+        tmp_dst_dir = os.path.join(dst_dir, "tmp")
+        Trace.trace(10, "write_to_tape: getting library tag for %s"%(os.path.basename(rec['pnfs_name0']),))
+        tag = namespace.Tag(os.path.dirname(rec['pnfs_name0']))
+        try:
+            lib=tag.readtag("library")
+            Trace.trace(10, "write_to_tape: original library tag: %s"%(lib,))
+        except:
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR, "error reading library tag")
+            return False
+            
+        if not os.path.exists(dst_dir):
+            Trace.trace(10, "write_to_tape: creating dst directory %s"%(dst_dir,))
+            os.makedirs(dst_dir)
+
+        # readtag returns a list with size 1 and a string as its element like
+        # ['LTO3GS,LTO3GS']
+        # set tags in the destination directory
+        try:
+            ns_tags(dst_dir,
+                    lib[0],
+                    rec['storage_group'],
+                    rec['file_family'],
+                    rec['wrapper'],
+                    rec['file_family_width'])
+        except:
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR, "will remove dst directory %s"%(dst_dir,))
+            # cleanup
+            os.remove(dst_dir)
+            return False
+                
+
+        Trace.trace(10, "write_to_tape: tmp_dst_dir %s"%(tmp_dst_dir,))
+        if not os.path.exists(tmp_dst_dir):
+            Trace.trace(10, "write_to_tape: create tmp_dst_dir %s"%(tmp_dst_dir,))
+            try:
+                os.makedirs(tmp_dst_dir)
+            except:
+                Trace.handle_error()
+                Trace.log(e_errors.ERROR, "Error creating tmp dst directory %s"%(tmp_dst_dir,))
+                return False
+                
+        try:
+            ns_tags(tmp_dst_dir,
+                    lib[0],
+                    rec['storage_group'],
+                    rec['file_family'],
+                    rec['wrapper'],
+                    rec['file_family_width'])
+        except:
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR, "will remove dst directory %s"%(dst_dir,))
+            # cleanup
+            os.remove(dst_dir)
+            return False
+
+        Trace.trace(10, "write_to_tape: dst_file_path: %s"%(dst_file_path,))
+
+        dst_file_path = os.path.join(tmp_dst_dir, dst_package_fn)
+        Trace.trace(10, "write_to_tape: dst_file_path: %s"%(dst_file_path,))
+
         # Change archive_status
         for bfid in bfid_list:
             # fill the argumet list for
@@ -506,7 +693,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         args.append(dst_file_path)
         Trace.trace(10, "write_to_tape: sending %s"%(args,))
         encp = encp_wrapper.Encp()
-        rc = encp.encp(args)
+        try:
+            rc = encp.encp(args)
+        except:
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR, "encp failed with exception")
+            rc = -1
+            
         Trace.trace(10, "write_to_tape: encp returned %s"%(rc,))
 
         # encp finished
@@ -522,6 +715,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             #rc = self.fcc.set_cache_status(set_cache_params)
             rc = self.set_cache_status(set_cache_params)
             Trace.log(e_errors.ERROR, "write_to_tape: encp write to tape failed: %s"%(rc,))
+            # cleanup
+            os.remove(dst_dir)
             return False
         
         # register archive file in file db
@@ -535,18 +730,104 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                    dst_bfids.append(rec['bfid'])
             else:
                 dst_bfids.append(res['bfid'])
-            update_time = time.localtime(time.time())
+
+            # move destination file to its final destination
+            # create final destination directory
+            # <packages_dir>/<volume_family>/<external_label>
+            bfid_info = self.fcc.bfid_info(dst_bfids[0])
+            if (bfid_info['status'][0] != e_errors.OK):
+                Trace.log(e_errors.ERROR,
+                          "write_to_tape: write to tape failed: can not get bfid info %s"%(bfid_info['status'],))
+                return False
+            # we need to use original (in case if there are multiple copies)
+            #rec = self.infoc.find_the_original(dst_bfids[0])
+            Trace.trace(10, "write_to_tape: find the original")
+            try:
+                rec = self.infoc.find_the_original(dst_bfids[0])
+                #rec = self.fcc.find_the_original(dst_bfids[0])
+            except:
+                Trace.trace(10, "write_to_tape: exception findingfind the original")
+                Trace.handle_error()
+            Trace.trace(10, "write_to_tape: find the original returned %s"%(rec,))
+            
+            if (rec['status'][0] != e_errors.OK):
+                Trace.log(e_errors.ERROR,
+                          "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
+                return False
+            if rec['original'] != dst_bfids[0]:
+                # get bfid info of original
+                bfid_info = self.fcc.bfid_info(rec['original'])
+                if (bfid_info['status'][0] != e_errors.OK):
+                    Trace.log(e_errors.ERROR,
+                              "write_to_tape: write to tape failed: can not get bfid info %s"%(bfid_info['status'],))
+                    return False
+            
+            
+            final_dst_dir = os.path.join(dst_dir, bfid_info['external_label'])
+            final_dst_path = os.path.join(final_dst_dir, os.path.basename(dst_file_path))
+            if not os.path.exists(final_dst_dir):
+                os.makedirs(final_dst_dir)
+            
+            # move file to its final destination in the name space
+            Trace.trace(10, "write_to_tape move package in name space from %s to %s"%
+                        (dst_file_path, final_dst_path))
+            try:
+                os.rename(dst_file_path, final_dst_path)
+            except:
+                Trace.handle_error()
+                return False
+
+            # change file name in layer 4 of name space
+            try:
+                sfs = namespace.StorageFS(final_dst_path)
+                xrefs = sfs.get_xreference()
+                Trace.trace(10, "xrefs %s %s %s %s %s %s %s %s %s %s %s"%(sfs.volume,
+                                                                          sfs.location_cookie,
+                                                                          sfs.size,
+                                                                          sfs.origff,
+                                                                          sfs.origname,
+                                                                          sfs.mapfile,
+                                                                          sfs.pnfsid_file,
+                                                                          sfs.pnfsid_map,
+                                                                          sfs.bfid,
+                                                                          sfs.origdrive,
+                                                                          sfs.crc))
+
+                sfs.origname = final_dst_path
+                sfs.set_xreference(sfs.volume,
+                                   sfs.location_cookie,
+                                   sfs.size,
+                                   sfs.origff,
+                                   sfs.origname,
+                                   sfs.mapfile,
+                                   sfs.pnfsid_file,
+                                   sfs.pnfsid_map,
+                                   sfs.bfid,
+                                   sfs.origdrive,
+                                   sfs.crc)
+            except:
+                Trace.handle_error()
+                return False
+            
             package_files_count = len(bfid_list)
             bfid_list = bfid_list + dst_bfids
+            update_time = time.localtime(time.time())
             for bfid in bfid_list:
                 del(rec) # to avoid interference
                 # read record
                 rec = self.fcc.bfid_info(bfid)
+                if (rec['status'][0] != e_errors.OK):
+                    Trace.log(e_errors.ERROR,
+                              "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
+                    return False
                 rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVED
                 rec['package_id'] = dst_bfids[0]
                 rec['package_files_count'] = package_files_count
                 rec['active_package_files_count'] = package_files_count
                 rec['archive_mod_time'] = time.strftime("%Y-%m-%d %H:%M:%S", update_time)
+                if rec['bfid'] in dst_bfids:
+                    # change pnfs_name0
+                    rec['pnfs_name0'] = final_dst_path
                 Trace.trace(10, "write_to_tape: sending modify record %s"%(rec,))
                 rc = self.fcc.modify(rec)
             #########
@@ -581,17 +862,18 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
 
     # check all conditions for purging the file
+    # returns True if purge conditions are met
     def really_purge(self, f_info):
         if (f_info['status'][0] == e_errors.OK and
             (f_info['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
-            ((f_info['cache_status'] != file_cache_status.CacheStatus.STAGING) and   # why would we purge the file which is being staged?
-             (f_info['cache_status'] != file_cache_status.CacheStatus.STAGING_REQUESTED) and   # why would we purge the file which is being staged?
-             (f_info['cache_status'] != file_cache_status.CacheStatus.PURGING) and   # file is being pugred
-             (f_info['cache_status'] != file_cache_status.CacheStatus.PURGED))):   # file is pugred
+            f_info['cache_status'] not in (file_cache_status.CacheStatus.STAGING,# why would we purge the file which is being staged?
+                                           file_cache_status.CacheStatus.STAGING_REQUESTED, # why would we purge the file which is being staged?
+                                           file_cache_status.CacheStatus.PURGING,# file is being pugred
+                                           file_cache_status.CacheStatus.PURGED)): # file is pugred
 
             # Enable to purge a file if it is in the write cache
             # and it is a time to purge it.
-            # Do not consider waterkarks
+            # Do not consider watermarks
             # because we do not want files to hang in write pool if it is not
             # the same as a read pool.
             if self.data_area != self.archive_area:
@@ -693,6 +975,172 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         
         return True # completed successfully, the request will be acknowledged
 
+
+    # stage files from tape
+    # helper method for read_from_tape
+    def stage_files(self, files_to_stage, package, set_cache_params):
+        # append a package file
+        files_to_stage.append(package)
+        set_cache_params.append({'bfid': package['bfid'],
+                                 'cache_status':file_cache_status.CacheStatus.STAGING,
+                                 'archive_status': None,        # we are not changing this
+                                 'cache_location': None})       # we are not changing this yet
+        #rc = self.fcc.set_cache_status(set_cache_params)
+        Trace.trace(10, "stage_files: will stage %s"%(set_cache_params,))
+        rc = self.set_cache_status(set_cache_params)
+        if rc['status'][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
+            return True # return True so that the message is confirmed
+
+        for rec in files_to_stage:
+            # create a temporary directory for staging a package
+            # use package name for this
+            stage_fname = os.path.basename(package['pnfs_name0'])
+            # file name looks like:
+            # /pnfs/fs/usr/data/moibenko/d2/LTO3/.package-2011-07-01T09:41:46.0Z.tar
+            tmp_stage_dirname = "".join((".",stage_fname.split(".")[1]))
+            tmp_stage_dir_path = os.path.join(self.tmp_stage_area, tmp_stage_dirname)
+            if not os.path.exists(tmp_stage_dir_path):
+                try:
+                    os.makedirs(tmp_stage_dir_path)
+                except:
+                    Trace.handle_error()
+                    pass
+            tmp_stage_file_path = os.path.join(tmp_stage_dir_path, stage_fname)
+
+        # now stage the package file
+        if not os.path.exists(tmp_stage_file_path):
+            # stage file from tape if it does not exist
+            args = ["encp", "--skip-pnfs", "--override-deleted", "--get-bfid", package['bfid'], tmp_stage_file_path]  
+            Trace.trace(10, "stage_files: sending %s"%(args,))
+            encp = encp_wrapper.Encp()
+            try:
+                rc = encp.encp(args)
+            except:
+                Trace.handle_error()
+                Trace.log(e_errors.ERROR, "encp failed with exception")
+                rc = -1
+
+            Trace.trace(10, "stage_files: encp returned %s"%(rc,))
+            if rc != 0:
+                # cleanup dirctories
+                try:
+                    os.removedirs(tmp_stage_dir_path)
+                except:
+                    pass
+
+                # change cache_status back
+                for rec in set_cache_params:
+                    rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                #rc = self.fcc.set_cache_status(set_cache_params)
+                rc = self.set_cache_status(set_cache_params)
+                return False
+
+        # unpack files
+        Trace.trace(10, "stage_files: changing directory to %s"%(tmp_stage_dir_path,))
+        os.chdir(tmp_stage_dir_path)
+        #if len(files_to_stage) > 1:
+        # untar packaged files
+        # if package contains more than one file
+        Trace.trace(10, "unwinding %s"%(stage_fname,))
+        rtn = enstore_functions2.shell_command2("tar --force-local -xf %s"%(stage_fname,))
+        Trace.trace(10, "unwind returned %s"%(rtn,))
+
+        if rtn[0] != 0 : # tar return code
+            Trace.log(e_errors.ERROR, "Error unwinding package %s %s"(stage_fname, rtn[2])) # stderr
+            # clean up
+            try:
+                rc = enstore_functions2.shell_command("rm -rf *")
+                rc = enstore_functions2.shell_command("rm -rf .*")
+            except:
+                pass
+
+            return False
+
+        new_set_cache_params = []
+
+        # move files to their original location
+        for rec in files_to_stage:
+            if rec['bfid'] != rec['package_id']:
+                src = rec.get('location_cookie', None)
+
+                if not self.stage_area:
+                    # file gets staged into the path
+                    # defined by location_cookie
+                    dst = src
+                src = src.lstrip("/")
+                if self.stage_area:
+                    # file gets staged into the path
+                    # defined by location_cookie
+                    # prepended by stage_area
+                    dst = os.path.join(self.stage_area, src)
+
+                Trace.trace(10, "stage_files: renaming %s to %s"%(src, dst))
+                # create a destination directory
+                if not os.path.exists(os.path.dirname(dst)):
+                    try:
+                        Trace.trace(10, "stage_files creating detination directory %s for %s"
+                                    %(os.path.dirname(dst), dst))
+                        os.makedirs(os.path.dirname(dst))
+                    except Exception, detail:
+                        Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, detail))
+                        return False
+
+
+                try:
+                    os.rename(src, dst)
+                except Exception, detail:
+                    Trace.trace(10, "stage_files: exception renaming file %s %s %s"%(src, dst, detail))
+                    # get stats
+                    try:
+                        stats = os.stat(src)
+                    except Exception, detail:
+                        if detail.args[0] != errno.ENOENT:
+                            Trace.log(e_errors.ERROR, "Package staging failed while renaming files %s %s"%(package_id, detail))
+                            # change cache_status back
+                            for rec in new_set_cache_params:
+                                rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                            #rc = self.fcc.set_cache_status(new_set_cache_params)
+                            rc = self.set_cache_status(new_set_cache_params)
+                            return False
+
+
+                Trace.trace(10, "stage_files: appending  new_set_cache_params %s"%(rec['bfid'],))
+                new_set_cache_params.append({'bfid': rec['bfid'],
+                                             'cache_status':file_cache_status.CacheStatus.CACHED,
+                                             'archive_status': None,        # we are not changing this
+                                             'cache_location': dst})
+        new_set_cache_params.append({'bfid': rec['bfid'],
+                                     'cache_status':file_cache_status.CacheStatus.PURGED, # we do not read a package from cache
+                                     'archive_status': None,        # we are not changing this
+                                     'cache_location': None})
+
+
+        #rc = self.fcc.set_cache_status(new_set_cache_params)
+        rc = self.set_cache_status(new_set_cache_params)
+        if rc['status'][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
+            return True # return True so that the message is confirmed
+
+        # remove the rest (README.1st)
+        Trace.trace(10, "stage_files: current dir %s"%(os.getcwd(),))
+        rc = enstore_functions2.shell_command("rm -rf *")
+        rc = enstore_functions2.shell_command("rm -rf .*")
+        # the following files are created
+        # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(1)(.package-2011-07-12T11:03:51.0Z.tar)
+        # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(2)(.package-2011-07-12T11:03:51.0Z.tar)
+        # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(3)(.package-2011-07-12T11:03:51.0Z.tar)
+        # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(4)(.package-2011-07-12T11:03:51.0Z.tar)
+
+
+        #remove the temporary directory
+        try:
+            os.removedirs(tmp_stage_dir_path)
+        except OSError, errno.ENOTEMPTY:
+            Trace.trace(10, "stage_files: dir not empty %s"%(tmp_stage_dir_path))
+            os.system("ls -l %s >> /tmp/migrator_stage_%s.out"%(tmp_stage_dir_path, self.name))
+        return True
+
     # read aggregated file from tape
     def read_from_tape(self, request):
         # save request
@@ -713,24 +1161,24 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             rec = self.fcc.bfid_info(bfid)
             Trace.trace(10, "read_from_tape: rec %s"%(rec,))
 
-            if rec['status'][0] == e_errors.OK:
-                package_id = rec.get('package_id', None)
-                if package_id == bfid:
-                    # request to stage a package
-                    # get all information about children
-                    rc = self.fcc.get_children(package_id)
-                    Trace.trace(10, "read_from_tape, bfid_data %s"%(rc,))
-                    if rc ['status'][0] != e_errors.OK:
-                        Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
-                        return True # return True so that the message is confirmed
-                    else:
-                       bfid_info = rc['children'] 
-                else: # single file
-                    bfid_info.append(rec)
-
-            else:
+            if rec['status'][0] != e_errors.OK:
                 Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rec ['status']))
                 return True # return True so that the message is confirmed
+            
+            package_id = rec.get('package_id', None)
+            if package_id == bfid:
+                # request to stage a package
+                # get all information about children
+                rc = self.fcc.get_children(package_id)
+                Trace.trace(10, "read_from_tape, bfid_data %s"%(rc,))
+                if rc ['status'][0] != e_errors.OK:
+                    Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
+                    return True # return True so that the message is confirmed
+                else:
+                    bfid_info = rc['children'] 
+            else: # single file
+                bfid_info.append(rec)
+
         else:
             package_id = None
             for component in request_list:
@@ -786,157 +1234,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         Trace.trace(10, "read_from_tape:  files to stage %s %s"%(len(files_to_stage), files_to_stage))
         if len(files_to_stage) != 0:
-            # append a package file
-            files_to_stage.append(package)
-            set_cache_params.append({'bfid': package['bfid'],
-                                     'cache_status':file_cache_status.CacheStatus.STAGING,
-                                     'archive_status': None,        # we are not changing this
-                                     'cache_location': None})       # we are not changing this yet
-            #rc = self.fcc.set_cache_status(set_cache_params)
-            Trace.trace(10, "read_from_tape: will stage %s"%(set_cache_params,))
-            rc = self.set_cache_status(set_cache_params)
-            if rc['status'][0] != e_errors.OK:
-                Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
-                return True # return True so that the message is confirmed
-            
-            for rec in files_to_stage:
-                # create a temporary directory for staging a package
-                # use package name for this
-                stage_fname = os.path.basename(package['pnfs_name0'])
-                # file name looks like:
-                # /pnfs/fs/usr/data/moibenko/d2/LTO3/.package-2011-07-01T09:41:46.0Z.tar
-                tmp_stage_dirname = "".join((".",stage_fname.split(".")[1]))
-                tmp_stage_dir_path = os.path.join(self.tmp_stage_area, tmp_stage_dirname)
-                if not os.path.exists(tmp_stage_dir_path):
-                    try:
-                        os.makedirs(tmp_stage_dir_path)
-                    except:
-                        Trace_handle_error()
-                        pass
-                tmp_stage_file_path = os.path.join(tmp_stage_dir_path, stage_fname)
-            
-            # now stage the package file
-            if not os.path.exists(tmp_stage_file_path):
-                # stage file from tape if it does not exist
-                args = ["encp", "--skip-pnfs", "--override-deleted", "--get-bfid", package_id, tmp_stage_file_path]  
-                Trace.trace(10, "read_from_tape: sending %s"%(args,))
-                encp = encp_wrapper.Encp()
-
-                rc = encp.encp(args)
-                Trace.trace(10, "read_from_tape: encp returned %s"%(rc,))
-                if rc != 0:
-                    # cleanup dirctories
-                    try:
-                        os.removedirs(tmp_stage_dir_path)
-                    except:
-                        pass
-
-                    # change cache_status back
-                    for rec in set_cache_params:
-                        rec['cache_status'] = file_cache_status.CacheStatus.PURGED
-                    #rc = self.fcc.set_cache_status(set_cache_params)
-                    rc = self.set_cache_status(set_cache_params)
-                    return False
-
-            # unpack files
-            Trace.trace(10, "read_from_tape: changing directory to %s"%(tmp_stage_dir_path,))
-            os.chdir(tmp_stage_dir_path)
-            #if len(files_to_stage) > 1:
-            # untar packaged files
-            # if package contains more than one file
-            Trace.trace(10, "unwinding %s"%(stage_fname,))
-            rtn = enstore_functions2.shell_command2("tar --force-local -xf %s"%(stage_fname,))
-            Trace.trace(10, "unwind returned %s"%(rtn,))
-            
-            if rtn[0] != 0 : # tar return code
-                Trace.log(e_errors.ERROR, "Error unwinding package %s %s"(stage_fname, rtn[2])) # stderr
-                return False
-
-            new_set_cache_params = []
-            
-            # move files to their original location
-            for rec in files_to_stage:
-                if rec['bfid'] != rec['package_id']:
-                    src = rec.get('location_cookie', None)
-
-                    if not self.stage_area:
-                        # file gets staged into the path
-                        # defined by location_cookie
-                        dst = src
-                    src = src.lstrip("/")
-                    if self.stage_area:
-                        # file gets staged into the path
-                        # defined by location_cookie
-                        # prepended by stage_area
-                        dst = os.path.join(self.stage_area, src)
-                    #Trace.trace(10, "read_from_tape: src %s s_a %s dst %s"%(src,self.stage_area, dst)) 
-                    #Trace.trace(10, "read_from_tape: d_a %s a_a %s s_a %s t_s_a %s"%(self.data_area,
-                    #                                                                 self.archive_area,
-                    #                                                                 self.stage_area,
-                    #                                                                 self.tmp_stage_area))
-                    Trace.trace(10, "read_from_tape: renaming %s to %s"%(src, dst))
-                    # create a destination directory
-                    if not os.path.exists(os.path.dirname(dst)):
-                        try:
-                            Trace.trace(10, "read_from_tape creating detination directory %s for %s"%(os.path.dirname(dst), dst))
-                            os.makedirs(os.path.dirname(dst))
-                        except Exception, detail:
-                            Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, detail))
-                            return False
-
-
-                    try:
-                        os.rename(src, dst)
-                    except Exception, detail:
-                        Trace.trace(10, "read_from_tape: exception renaming file %s %s %s"%(src, dst, detail))
-                        # get stats
-                        try:
-                            stats = os.stat(src)
-                        except Exception, detail:
-                            if detail.args[0] != errno.ENOENT:
-                                Trace.log(e_errors.ERROR, "Package staging failed while renaming files %s %s"%(package_id, detail))
-                                # change cache_status back
-                                for rec in new_set_cache_params:
-                                    rec['cache_status'] = file_cache_status.CacheStatus.PURGED
-                                #rc = self.fcc.set_cache_status(new_set_cache_params)
-                                rc = self.set_cache_status(new_set_cache_params)
-                                return False
-                            
-
-                    Trace.trace(10, "read_from_tape: appending  new_set_cache_params %s"%(rec['bfid'],))
-                    new_set_cache_params.append({'bfid': rec['bfid'],
-                                                 'cache_status':file_cache_status.CacheStatus.CACHED,
-                                                 'archive_status': None,        # we are not changing this
-                                                 'cache_location': dst})
-            new_set_cache_params.append({'bfid': rec['bfid'],
-                                         'cache_status':file_cache_status.CacheStatus.PURGED, # we do not read a package from cache
-                                         'archive_status': None,        # we are not changing this
-                                         'cache_location': None})
-                    
-            
-            #rc = self.fcc.set_cache_status(new_set_cache_params)
-            rc = self.set_cache_status(new_set_cache_params)
-            if rc['status'][0] != e_errors.OK:
-                Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
-                return True # return True so that the message is confirmed
-
-            # remove the rest (README.1st)
-            Trace.trace(10, "read_from_tape: current dir %s"%(os.getcwd(),))
-            rc = enstore_functions2.shell_command("rm -rf *")
-            rc = enstore_functions2.shell_command("rm -rf .*")
-            # the following files are created
-            # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(1)(.package-2011-07-12T11:03:51.0Z.tar)
-            # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(2)(.package-2011-07-12T11:03:51.0Z.tar)
-            # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(3)(.package-2011-07-12T11:03:51.0Z.tar)
-            # -rw-r--r-- 1 root root      0 Jul 12 11:29 .(use)(4)(.package-2011-07-12T11:03:51.0Z.tar)
-            
-
-            #remove the temporary directory
             try:
-                os.removedirs(tmp_stage_dir_path)
-            except OSError, errno.ENOTEMPTY:
-                Trace.trace(10, "read_from_tape: dir not empty %s"%(tmp_stage_dir_path))
-                os.system("ls -l %s > /tmp/mmm.out"%(tmp_stage_dir_path,))
+                rc = self.stage_files(files_to_stage, package, set_cache_params)
+            except:
+                Trace.handle_error()
+                return False
+            if not rc:
+                # stage has failed
+                return False
         status_message = cache.messaging.mw_client.MWRStaged(orig_msg=rq)
         try:
             self._send_reply(status_message)
@@ -1144,8 +1449,6 @@ def do_work():
     # get an interface
     intf = MigratorInterface()
 
-    import cache.en_logging.config_test_unit
-    
     # create  Migrator instance
     migrator = Migrator(intf.name, (intf.config_host, intf.config_port))
     migrator.handle_generic_commands(intf)
