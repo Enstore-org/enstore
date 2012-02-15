@@ -1759,8 +1759,7 @@ class LibraryManagerMethods:
                     Trace.trace(self.trace_level+4, 'process_write_request: movers %s'%(movers,))
                     for mover in movers:
                         Trace.trace(self.trace_level+40, "process_write_request: mover %s state %s time %s"%(mover['mover'], mover['state'],mover['time_in_state']))
-                        if mover['state'] == 'HAVE_BOUND' and  mover['external_label'] in vol_veto_list and mover['time_in_state'] < 31:
-
+                        if mover['state'] == 'HAVE_BOUND' and  mover['external_label'] in vol_veto_list:
                             found_mover = 1
                             break
                     if found_mover:
