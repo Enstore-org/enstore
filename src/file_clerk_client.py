@@ -710,6 +710,11 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         ticket['work'] = 'modify_file_record'
         return self.send(ticket)
 
+    # swap parents for children
+    def swap_package(self, ticket):
+        ticket['work'] = 'swap_package'
+        return self.send(ticket)
+
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
@@ -995,8 +1000,8 @@ def do_work(intf):
     elif intf.children:
         ticket  = fcc.get_children(intf.children)
         if  ticket['status'][0] ==  e_errors.OK:
-        for i in ticket["children"]:
-            pprint.pprint(i)
+            for i in ticket["children"]:
+                pprint.pprint(i)
     elif intf.replay:
         ticket  = fcc.replay()
         if ticket['status'][0] ==  e_errors.OK:

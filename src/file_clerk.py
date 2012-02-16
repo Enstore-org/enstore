@@ -33,6 +33,8 @@ import event_relay_messages
 import enstore_functions3
 import udp_server
 import file_cache_status
+import enstore_files
+import enstore_functions2
 import cache.messaging.client2 as qpid_client
 import cache.messaging.pe_client as pe_client
 
@@ -1358,10 +1360,9 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    bfid, record = self.extract_bfid_from_ticket(ticket)
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
-	    #if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
 	    if record["cache_status"]  in [file_cache_status.CacheStatus.CACHED,
 					   file_cache_status.CacheStatus.STAGING_REQUESTED,
-					   file_cache_status.CacheStatus.STAGING]:		    
+					   file_cache_status.CacheStatus.STAGING]:
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
 		    return
@@ -1389,10 +1390,9 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    if not bfid:
 		    return #extract_bfid_from_ticket handles its own errors.
 
-	    #if record["cache_status"]  == file_cache_status.CacheStatus.CACHED:
 	    if record["cache_status"]  in [file_cache_status.CacheStatus.CACHED,
 					   file_cache_status.CacheStatus.STAGING_REQUESTED,
-					   file_cache_status.CacheStatus.STAGING]:		    
+					   file_cache_status.CacheStatus.STAGING]:
 		    ticket["status"] = (e_errors.OK, None)
 		    self.reply_to_caller(ticket)
 		    return
@@ -1485,7 +1485,8 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    if k != 'bfid' and record.has_key(k):
 			    record[k] = ticket[k]
 	    #
-	    # retrieve the children
+	    # retrieve the children. Note that the query below retrieves the parent
+	    # as well
 	    #
 	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
 	    res = self.filedb_dict.query_getresult(q)
@@ -1498,10 +1499,47 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    for k in ticket.keys():
 			    if k != 'bfid' and record.has_key(k):
 				    child_record[k] = ticket[k]
+		    #
+		    # record change in db
+		    #
+		    self.filedb_dict[i[0]] = child_record
 
 	    ticket["status"] = (e_errors.OK, None)
 	    self.reply_to_caller(ticket)
 	    return
+
+    def swap_package(self, ticket) :
+	    #
+	    #  ticket must contain bfid of old package file and bfid of new package file
+	    # 'bfid', 'new_bfid'
+	    #
+	    #  this function is needed to migration
+	    #
+	    bfid     = self.extract_value_from_ticket('bfid', ticket, fail_None = True)
+	    new_bfid = self.extract_value_from_ticket('new_bfid', ticket, fail_None = True)
+	    if not bfid or not new_bfid:
+		    return
+	    #
+	    # swap_package handles all other errors on DB backend
+	    #
+	    q = "select swap_package('%s','%s')"%(bfid,new_bfid,)
+	    try:
+		    res = self.filedb_dict.update(q)
+	    except e_errors.EnstoreError as e:
+		    ticket["status"] = e.ticket["status"]
+		    self.reply_to_caller(ticket)
+		    return
+	    except:
+		    exc_type, exc_value = sys.exc_info()[:2]
+		    message = 'swap_parent(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+		    Trace.log(e_errors.ERROR, message)
+		    ticket["status"] = (e_errors.ERROR, message)
+		    self.reply_to_caller(ticket)
+		    return
+	    ticket["status"] = (e_errors.OK, None)
+	    self.reply_to_caller(ticket)
+	    return
+
 
     def set_cache_status(self,ticket):
 	    list_of_arguments = ticket.get("bfids",None)
@@ -2069,12 +2107,32 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 	    q=SELECT_FILES_IN_TRANSITION
 	    while True:
 		    res = self.filedb_dict.query_getresult(q)
-		    message = ""
-		    for row in res :
-			    message += "%s "%(row[0])
 		    if len(res)>0:
-			    Trace.alarm(e_errors.WARNING, "Files stuck in files_in_transiton table", message )
+			    txt=""
+			    f=open("/tmp/FILES_IN_TRANSITION","w")
+			    for row in res :
+				    txt += "%s\n"%(row[0])
+			    f.write("%s"%(txt,))
+			    f.close();
+			    inq_d = self.csc.get(enstore_constants.INQUISITOR, {})
+			    html_dir=inq_d.get("html_file",enstore_files.default_dir)
+			    html_host=inq_d.get("host","localhost")
+			    cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
+			    rc = enstore_functions2.shell_command2(cmd)
+			    failed=False
+			    if rc :
+				    if rc[0] !=0 :
+					    failed=True
+					    txt = "Failed to execute command %s\n. Output was %s\n. List of files: %s\n"%(cmd, rc[2], txt,)
+
+			    else :
+				    failed=True
+				    txt = "Failed to execute command %s\n. List of files: %s\n"%(cmd, txt,)
+			    if not failed :
+				    txt = 'See <A HREF="FILES_IN_TRANSITION">FILES_IN_TRANSITION</A>'
+			    Trace.alarm(e_errors.WARNING, " %d files stuck in files_in_transiton table"%len(res), txt )
 		    time.sleep(FILES_IN_TRANSITION_CHECK_INTERVAL)
+
 
 
     def file_error_handler(self, exc, msg, tb):

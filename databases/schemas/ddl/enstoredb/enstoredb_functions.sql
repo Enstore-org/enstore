@@ -569,6 +569,40 @@ $$
 
 ALTER FUNCTION public.populate_files_in_transition_table() OWNER TO enstore;
 
+
+CREATE OR REPLACE FUNCTION swap_package(old_bfid varchar, new_bfid varchar) RETURNS void
+AS $$
+DECLARE
+	old_record RECORD;
+	new_record RECORD;
+BEGIN
+      IF ( new_bfid is NULL ) THEN
+          RAISE EXCEPTION 'destination package bfid is not specified';
+	  RETURN;
+      END IF;
+      select into old_record * from file where bfid=old_bfid;
+      select into new_record * from file where bfid=new_bfid;
+      IF ( old_record is NULL ) THEN
+          RAISE EXCEPTION 'source package % does not exist', old_bfid;
+	  RETURN;
+      END IF;
+      IF ( new_record is NULL ) THEN
+          RAISE EXCEPTION 'destination package % does not exist', new_bfid;
+	  RETURN;
+      END IF;
+      IF ( old_record.package_id is NULL ) THEN
+          RAISE EXCEPTION '% is not a package file',old_bfid;
+	  RETURN;
+      END IF;
+      update file set package_id=new_bfid where package_id=old_bfid and package_id <> bfid;
+      update file set package_files_count=package_files_count+old_record.package_files_count, active_package_files_count=active_package_files_count+old_record.active_package_files_count,package_id=new_bfid where bfid=new_bfid;
+      update file set package_files_count=0, active_package_files_count=0 where bfid=old_bfid;
+END;
+$$
+LANGUAGE 'plpgsql';
+
+ALTER FUNCTION public.swap_package() OWNER TO enstore;
+
 --
 -- Name: write_protect_status(character varying); Type: FUNCTION; Schema: public; Owner: enstore
 --
