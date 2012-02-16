@@ -44,6 +44,31 @@ from   DBUtils import PooledDB
 import  psycopg2
 import psycopg2.extras
 
+def delete_trash_record(db,pnfsid) :
+    delete_cursor=None
+    success=True
+    try:
+        delete_cursor = db.cursor()
+        delete_cursor.execute("delete from t_locationinfo_trash where ipnfsid='%s'"%(pnfsid,))
+        db.commit()
+    except psycopg2.Error, msg:
+        success = False
+        try:
+            if db:
+                db.rollback()
+        except psycopg2.Error, msg:
+            sys.stderr.write("Failed to rollback delete of pnfsid %s from t_localinfo_trash, %s \n"%(pnfsid,
+                                                                                                     str(msg)))
+            pass
+    finally:
+        if delete_cursor:
+            try:
+                delete_cursor.close()
+            except:
+                pass
+            delete_cursor = None
+        return success
+
 def main(intf):
     success = True
     vols = []
@@ -99,29 +124,17 @@ def main(intf):
                     #
                     # just delete trash record
                     #
-                    try:
-                        delete_cursor = db.cursor()
-                        delete_cursor.execute("delete from t_locationinfo_trash where ipnfsid='%s'"%(pnfsid,))
-                        db.commit()
-                    except psycopg2.Error, msg:
+                    if not delete_trash_record(db,pnfsid):
                         success = False
-                        try:
-                            if db:
-                                db.rollback()
-                            continue
-                        except psycopg2.Error, msg:
-                            sys.stderr.write("Failed to rollback delete of pnfsid %s from t_localinfo_trash, database %s, %s \n"%(pnfsid,
-                                                                                                                                  str(value),
-                                                                                                                                  str(msg)))
-                            pass
-                    finally:
-                        if delete_cursor:
-                            delete_cursor.close()
-                            delete_cursor = None
                 else:
                     url_dict = urlparse.parse_qs(ilocation)
-                    if not url_dict:
-                        continue
+                    if not url_dict or not url_dict.get('bfid',None):
+                        #
+                        # just delete trash record
+                        #
+                        if not delete_trash_record(db,pnfsid):
+                            success=False
+                            continue
                     bfid     = url_dict.get('bfid')[0]
                     volume   = url_dict.get('enstore://enstore/?volume')[0]
                     fcc.bfid = bfid
@@ -137,30 +150,8 @@ def main(intf):
                         #
                         # delete record from trash
                         #
-                        delete_cursor=None
-                        try:
-                            delete_cursor = db.cursor()
-                            delete_cursor.execute("delete from t_locationinfo_trash where ipnfsid='%s'"%(pnfsid,))
-                            db.commit()
-                        except psycopg2.Error, msg:
-                            success = False
-                            try:
-                                if db:
-                                    db.rollback()
-                                    result = fcc.set_deleted('no')
-                                    if result['status'][0] != e_errors.OK:
-                                        sys.stderr.write("Succeeded to rollback delete of pnfsid %s from t_localinfo_trash, but failed to unmark deleted in enstoredb database\n"%(pnfsid,))
-                                        sys.stderr.write("%s %s\n"%(bfid,result['status'][1],))
-                                        continue
-                            except psycopg2.Error, msg:
-                                sys.stderr.write("Failed to rollback delete of pnfsid %s from t_localinfo_trash, database %s, %s \n"%(pnfsid,
-                                                                                                                                      str(value),
-                                                                                                                                      str(msg)))
-                                pass
-                        finally:
-                            if delete_cursor:
-                                delete_cursor.close()
-
+                        if not delete_trash_record(db,pnfsid):
+                            success=False
         finally:
             for item in [cursor, db, connectionPool]:
                 if item :
