@@ -44,6 +44,31 @@ from   DBUtils import PooledDB
 import  psycopg2
 import psycopg2.extras
 
+def delete_trash_record(db,pnfsid) :
+    delete_cursor=None
+    success=True
+    try:
+        delete_cursor = db.cursor()
+        delete_cursor.execute("delete from t_locationinfo_trash where ipnfsid='%s'"%(pnfsid,))
+        db.commit()
+    except psycopg2.Error, msg:
+        success = False
+        try:
+            if db:
+                db.rollback()
+        except psycopg2.Error, msg:
+            sys.stderr.write("Failed to rollback delete of pnfsid %s from t_localinfo_trash, %s \n"%(pnfsid,
+                                                                                                     str(msg)))
+            pass
+    finally:
+        if delete_cursor:
+            try:
+                delete_cursor.close()
+            except:
+                pass
+            delete_cursor = None
+        return success
+
 def main(intf):
     success = True
     vols = []
@@ -85,51 +110,48 @@ def main(intf):
             res=cursor.fetchall()
 
             for row in res:
+                delete_cursor=None
                 pnfsid=row.get('ipnfsid')
                 #
                 # ilocation field is URI like and looks:
                 #   enstore://enstore/?volume=NUL002&location_cookie=0000_000000000_0021154&size=1816&file_family=testers&original_name=/pnfs/fnal.gov/data/testers/NULL/enstore/fstab.16&map_file=&pnfsid_file=0000D05E3A18BB7F4378BB460A066B66B850&pnfsid_map=&bfid=B0MS129054868400000&origdrive=dmsdca03:/dev/null:0&crc=0
                 #
-                url_dict = urlparse.parse_qs(row.get('ilocation'))
-                bfid     = url_dict.get('bfid')[0]
-                volume   = url_dict.get('enstore://enstore/?volume')[0]
-                fcc.bfid = bfid
-                print 'deleting', bfid, '...',
-                result = fcc.set_deleted('yes')
-                if result['status'][0] != e_errors.OK:
-                    print bfid, result['status'][1]
-                    success = False
-                    continue
+                ilocation = row.get('ilocation')
+                #
+                # files in /pnfs/fs/usr/Migration will have ilocation set to '\n'
+                #
+                if ilocation == '\n' :
+                    #
+                    # just delete trash record
+                    #
+                    if not delete_trash_record(db,pnfsid):
+                        success = False
                 else:
-                    if not volume in vols:
-                        vols.append(volume)
-                    #
-                    # delete record from trash
-                    #
-                    delete_cursor=None
-                    try:
-                        delete_cursor = db.cursor()
-                        delete_cursor.execute("delete from t_locationinfo_trash where ipnfsid='%s'"%(pnfsid,))
-                        db.commit()
-                    except psycopg2.Error, msg:
-                        try:
-                            if db:
-                                db.rollback()
-                                result = fcc.set_deleted('no')
-                                if result['status'][0] != e_errors.OK:
-                                    sys.stderr.write("Succeeded to rollback delete of pnfsid %s from t_localinfo_trash, database %s, but failed to unmark deleted in enstoredb database\n")
-                                    sys.stderr.write("%s %s\n"%(bfid,result['status'][1],))
-                                    success = False
-                                    continue
-                        except psycopg2.Error, msg:
-                            sys.stderr.write("Failed to rollback delete of pnfsid %s from t_localinfo_trash, database %s, %s \n"%(pnfsid,
-                                                                                                                                  str(value),
-                                                                                                                                  str(msg)))
-                            pass
-                    finally:
-                        if delete_cursor:
-                            delete_cursor.close()
-
+                    url_dict = urlparse.parse_qs(ilocation)
+                    if not url_dict or not url_dict.get('bfid',None):
+                        #
+                        # just delete trash record
+                        #
+                        if not delete_trash_record(db,pnfsid):
+                            success=False
+                            continue
+                    bfid     = url_dict.get('bfid')[0]
+                    volume   = url_dict.get('enstore://enstore/?volume')[0]
+                    fcc.bfid = bfid
+                    print 'deleting', bfid, '...',
+                    result = fcc.set_deleted('yes')
+                    if result['status'][0] != e_errors.OK:
+                        print bfid, result['status'][1]
+                        success = False
+                        continue
+                    else:
+                        if not volume in vols:
+                            vols.append(volume)
+                        #
+                        # delete record from trash
+                        #
+                        if not delete_trash_record(db,pnfsid):
+                            success=False
         finally:
             for item in [cursor, db, connectionPool]:
                 if item :
