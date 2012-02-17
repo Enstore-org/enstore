@@ -122,8 +122,8 @@ server_functions = {
                mover_client.do_work, option.ADMIN],
     "network" : [enstore_saag_network.SaagNetworkInterface,
                  enstore_saag_network.do_work, option.ADMIN],
-    "pnfs" : [pnfs.PnfsInterface,
-              pnfs.do_work, option.USER],
+    "pnfs" : [namespace.NamespaceInterface,
+	     namespace.do_work, option.USER],
     "sfs" : [namespace.NamespaceInterface,
 	     namespace.do_work, option.USER],
     "up_down" : [enstore_up_down.UpDownInterface,
@@ -237,7 +237,7 @@ def call_function(executable, argv):
     return os.system(tmp_str)>>8
 
 def prompt_user(command="", node=""):
-    sys.stdout.write("Please confirm: %s enstore on %s [y/n def:n] : "%(command, 
+    sys.stdout.write("Please confirm: %s enstore on %s [y/n def:n] : "%(command,
 									node))
     return sys.stdin.readline()
 
@@ -254,7 +254,7 @@ def no_argv3():
     return no_argv_num(3)
 
 # this fuction is almost the same as in enstore_start
-# except setting is done for real not effective ids 
+# except setting is done for real not effective ids
 def check_user():
     #If in a cluster system...
     if enstore_start.is_in_cluster():
@@ -276,7 +276,7 @@ def check_user():
                 print "Should be running as user enstore, " \
                       "but the enstore user is not found."
                 sys.exit(1)
-            
+
         #Extract the user name.
 	try:
             name = pwd.getpwuid(os.geteuid())[0]
@@ -291,7 +291,7 @@ def do_rgang_command(fdefault, command):
     if (command.find("enstore start") != -1 or
         command.find("enstore stop") != -1):
         check_user()
-        
+
     farmlet = get_farmlet(fdefault)
     print 'rgang %s \"%s\"'%(farmlet, command)
     return os.system('rgang %s \"%s\"'%(farmlet, command))
@@ -311,7 +311,7 @@ class EnstoreInterface:
         else:
             return None
     """
-    
+
     def find_server_match(self, servers):
         total_matches = 0
         try:
@@ -393,7 +393,7 @@ class EnstoreInterface:
 	    # not really an error but we only got a help.
 	    self.error = 2
 
-            
+
 class Enstore:
 
     timeout = 2
@@ -500,13 +500,13 @@ class Enstore:
         answer = "y"
 	if PROMPT in command:
 	    if no_argv2():
-		answer = prompt_user(command = action, 
+		answer = prompt_user(command = action,
 				     node = "all nodes")
 	    elif no_argv3():
 		answer = prompt_user(command = action,
 			    node = "farmlet %s" % get_farmlet(""))
         return answer
-           
+
 
     def got_help(self, help):
 	for arg in sys.argv:
@@ -533,7 +533,7 @@ class Enstore:
         #if not self.get_config_from_server() and \
         #   not self.get_config_from_file():
         #    self.node = DEFAULT_AML2_NODE
-	    
+
 	rtn = 0
         if arg1 in local_scripts.keys():
 	    l_script = local_scripts[arg1]
@@ -559,7 +559,7 @@ class Enstore:
             rtn = server_functions[arg1][1](intf)
 
         #execute remote scripts
-        elif arg1 in remote_scripts.keys():	
+        elif arg1 in remote_scripts.keys():
 	    r_script = remote_scripts[arg1]
 	    if not self.got_help(r_script[0]):
 		#r_script contains a list of tuples.  the first element is the help,
@@ -580,5 +580,5 @@ class Enstore:
         else:
             rtn = 0
             self.intf.print_help()
-            
+
         sys.exit(rtn)
