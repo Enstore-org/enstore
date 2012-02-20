@@ -94,16 +94,16 @@ corresponding server when generating the SAAG page, and will not use
 </th>
 </tr>
 
-<tr><td><a NAME="allow">allow</a></td><td>allow host access on a per storage group. 
+<tr><td><a NAME="allow">allow</a></td><td>allow host access on a per storage group.
 	      </td>
 	      <td>Optional</td><td>None</td>
 </tr><tr><td><a NAME="lock">lock</a></td><td>if specified LM will start in
-	      this state. 
+	      this state.
 	      Allowed values:<br>lock - reject encp requests, give
 	      out works in the pending queue to movers<br>
 	      unlocked<br>
 	      ignore - do not put encp requests into pending queue,
-	      but return ok to encp<br> 
+	      but return ok to encp<br>
 	      pause - same as ignore, but also do not give out works
 	      in the pending<br>
 	      moverlock - reject mover requests<br>
@@ -120,7 +120,7 @@ corresponding server when generating the SAAG page, and will not use
 </tr>
 <tr><td><a NAME="suspect_volume_expiration_time">suspect_volume_expiration_time</a></td><td>remove entry from suspect volume list after this period of time</td>
 	      <td>Optional</td><td>None</td>
-	    
+
 </tr>
 <tr><td><a NAME="min_file_size">min_file_size</a></td><td>minimal file
 		  size</td>
@@ -144,7 +144,7 @@ corresponding server when generating the SAAG page, and will not use
 <tr><td><a
 	   NAME="CleanTapeVolumeFamily">CleanTapeVolumeFamily</a></td><td>volume family for cleaning tapes</td>
 	   <td>Optional</td><td>None</td>
-	    
+
 </tr>
 <tr><td><a
 	   NAME="storage_group_limits">storage_group_limits</a></td><td>Minimal amount of drives that can be used by a certain storage group (fair share) when different storage groups compete for tape drives</td>
@@ -193,7 +193,7 @@ corresponding server when generating the SAAG page, and will not use
 use_threads
 
 </table>
- 
+
 <h2>Mover Keys</h2>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
 <tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
@@ -244,7 +244,7 @@ use_threads
 <tr><td><a NAME="device">device</a></td><td>pathname to the UNIX tape
 	      device</td>
 	   <td>Mandatory</td><td>None</td>
-	  
+
 </tr>
 
 <tr><td><a NAME="dismount_delay">dismount_delay</a></td><td>delayed
@@ -674,11 +674,11 @@ Uses only general keys (along with database keys which are the same
 <tr><td><a NAME="CustomLog">CustomLog</a></td> <td>
 
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
-<tr><td><a NAME="combined">combined</td><td> full path to combined log file </td></tr> 
-<tr><td><a NAME="referer">referer</td><td> full path to referer log file </td></tr>  
-<tr><td><a NAME="agent">agent</td><td> full path to agent log file </td></tr>   
+<tr><td><a NAME="combined">combined</td><td> full path to combined log file </td></tr>
+<tr><td><a NAME="referer">referer</td><td> full path to referer log file </td></tr>
+<tr><td><a NAME="agent">agent</td><td> full path to agent log file </td></tr>
 </table>
-</td> 
+</td>
 <td>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
 <tr> <td>Mandatory</td></tr>
@@ -699,10 +699,10 @@ Uses only general keys (along with database keys which are the same
 <tr><td><a NAME="ScriptAlias">ScriptAlias</a></td> <td>
 
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
-<tr><td><a NAME="fake">fake</td><td> e.g. /cgi-bin/ </td></tr> 
-<tr><td><a NAME="real">real</td><td> real path to cgi scripts </td></tr>  
+<tr><td><a NAME="fake">fake</td><td> e.g. /cgi-bin/ </td></tr>
+<tr><td><a NAME="real">real</td><td> real path to cgi scripts </td></tr>
 </table>
-</td> 
+</td>
 <td>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF" >
 <tr> <td>Mandatory</td></tr>
@@ -862,7 +862,7 @@ Uses only general keys (along with database keys which are the same
 <tr><td><a NAME="msg_type_logs">msg_type_logs</a><td>log extractions
 	      based on the log type pattern</td>
 	   <td>Optional</td><td>None</td>
- 
+
 </tr>
 </table>
 
@@ -883,7 +883,7 @@ Uses only general keys (along with database keys which are the same
 <tr><td><a NAME="msg_type_logs">msg_type_logs</a><td>log extractions
 	      based on the log type pattern</td>
 	   <td>Optional</td><td>None</td>
- 
+
 </tr>
 </table>
 
@@ -946,7 +946,37 @@ Uses only general keys (along with database keys which are the same
 </tr>
 </table>
 
-<p>  
+
+<h2>Namespace Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="dbhost">dbhost</a></td><td>chimera database host machine</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="dbport">dbport</a></td><td>chimera database port</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+
+<tr><td><a NAME="dbname">dbname</a></td><td>chimera database name</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="dbuser">dbuser</a></td><td>chimera database user
+           </td>
+	   <td>Mandatory</td><td>None</td>
+</table>
+
+
+
+<p>
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
 Last modified: Wed Jan 19 17:58:30 CST 2011
