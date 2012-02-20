@@ -230,7 +230,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 os.makedirs(self.packages_location)
             except:
                 Trace.handle_error()
-                Trace.alarm(e_errors.ERROR, "Can not create packages_dir! Exiting")
+                Trace.alarm(e_errors.ERROR, "Can not create packages_dir %s! Exiting"%(self.packages_location,))
                 sys.exit(-1)
                 
         self.my_dispatcher = self.csc.get(self.my_conf['migration_dispatcher']) # migration dispatcher configuration
@@ -352,7 +352,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # @return True/False
     # fork the process to check files
     # wait until it returns
-    # this is needed becuase nfs creates .nfs files which
+    # this is needed because nfs creates .nfs files which
     # get removed only when the process exits
     # so the only way to remove temporay nfs directories is
     # to terminate the process that leaves .nfs files open
@@ -981,6 +981,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     def stage_files(self, files_to_stage, package, set_cache_params):
         # append a package file
         files_to_stage.append(package)
+        package_id = package['bfid']
         set_cache_params.append({'bfid': package['bfid'],
                                  'cache_status':file_cache_status.CacheStatus.STAGING,
                                  'archive_status': None,        # we are not changing this
