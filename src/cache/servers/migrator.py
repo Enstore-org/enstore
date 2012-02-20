@@ -156,12 +156,8 @@ def _check_packaged_files(archive_area, package):
         crc = long(crc)
         crc_0, crc_1 = file_checkum(fn)
         check_result = True
-        if crc_0 != crc:
+        if crc_0 != crc and crc_1 != crc:
             check_result = False
-            # compare 1 seeded crc
-            if crc_1 == crc:
-                check_result = True
-        if not check_result:
             Trace.log(e_errors.ERROR, "selective CRC check error on %s. Calculated seed_0 %s seed_1 %s Expected %s"% \
                       (fn, crc_0, crc_1, crc))
             break
