@@ -318,6 +318,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.set_handler(mt.MWC_STAGE, self.handle_stage_from_tape)
         self.set_handler(mt.MWC_STATUS, self.handle_status)
         """
+        self.draining = False # if this is set, complete current work and exit.
         
         # we want all message types processed by one handler
         self.handlers = {}
@@ -1306,11 +1307,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     self.status = file_cache_status.CacheStatus.PURGED
                 elif request_type ==mt.MWC_STAGE:
                     self.status = file_cache_status.CacheStatus.CACHED
-                    
-                return True
+                rc = True
             else:
-                return False
-            
+                rc = False
+            if self.draining:
+                Trace.log(e_errors.INFO, "Completed final assignment. Will exit")
+                self.shutdown = True # exit gracefully
+            return rc
             
         elif request_type in (mt.MWC_STATUS): # there could more reuquest of such nature in the future
             content = {"migrator_status": self.status, "name": self.name} # this may need more details
@@ -1420,6 +1423,32 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             return False
     """
 
+    ###################################
+    ### enstore commands
+    ###################################
+
+    # send current status
+    def get_status(self, ticket):
+        ticket['state'] = self.migrator_status()
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+    # quit_and_exit gracefully
+    # do not exit if work is in progress
+    def quit_and_exit(self, ticket):
+        self.draining = True
+        Trace.log(e_errors.INFO, "Starting draining")
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        if self.status in (None,
+                           file_cache_status.ArchiveStatus.ARCHIVED,
+                           file_cache_status.CacheStatus.PURGED,
+                           file_cache_status.CacheStatus.CACHED):
+            # currently there is no work
+            # can exit right away
+            Trace.log(e_errors.INFO, "Exit requested while no active work. Will exit")
+            sys.exit(0)
+        
 class MigratorInterface(generic_server.GenericServerInterface):
     def __init__(self):
         # fill in the defaults for possible options
@@ -1457,20 +1486,28 @@ def do_work():
     #Trace.init(migrator.log_name, 'yes') # leave it in the code to turn on when debugging
 
     migrator.start() # start mw
- 
+
+    t_n = 'migrator'
     while True:
-        t_n = 'migrator'
-        if thread_is_running(t_n):
-            pass
-        else:
-            Trace.log(e_errors.INFO, "migrator %s (re)starting %s"%(intf.name, t_n))
-            #lm.run_in_thread(t_n, lm.mover_requests.serve_forever)
-            dispatching_worker.run_in_thread(t_n, migrator.serve_forever)
+        try:
+            if thread_is_running(t_n):
+                pass
+            else:
+                if migrator.draining:
+                    migrator.stop()
+                    break
+                Trace.log(e_errors.INFO, "migrator %s (re)starting %s"%(intf.name, t_n))
+                #lm.run_in_thread(t_n, lm.mover_requests.serve_forever)
+                dispatching_worker.run_in_thread(t_n, migrator.serve_forever)
 
-        time.sleep(10)
-        
-
+            time.sleep(10)
+        except SystemExit:
+            os._exit(0)
+    if migrator.draining:
+        os._exit(0)
     Trace.alarm(e_errors.ALARM,"migrator %s finished (impossible)"%(intf.name,))
+
+        
 # check if named thread is running
 def thread_is_running(thread_name):
     threads = threading.enumerate()
