@@ -132,9 +132,14 @@ def _check_packaged_files(archive_area, package):
             Trace.handle_error()
             Trace.alarm(e_errors.ERROR, "Can not create tmp dir %s"%(tmp_dir,))
             sys.exit("0")
+
     # uwind the package into this directiry
     os.chdir(tmp_dir)
-    rtn = os.system("tar --force-local -xf %s"%(package,))
+    rtn = enstore_functions2.shell_command2("tar --force-local -xf %s"%(package,))
+    if rtn[0] != 0: # tar return code
+        Trace.log(e_errors.ERROR, "Error unwinding tar file %s %s"(rtn[2], package)) #stderr
+        sys.exit("0")
+
     # create list of files to check
     try:
         f = open("README.1st", "r")
@@ -438,7 +443,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.log(e_errors.ERROR, "File aggregation failed. File %s does not exist in cache"%(cache_file_path))
                 return None
         if len(cache_file_path) == 1: # single file
-            src = cache_file_path
+            src_path = cache_file_path
             dst = self.request_list[0][ 'path'] # complete file path in name space
         else: # multiple files
             # Create a special file containing the names
@@ -454,8 +459,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # Create tar file name
             t = time.time()
             t_int = long(t)
-            fraction = int(t-t_int)*1000 # this gradation allows 1000 distinct file names 
-            src_fn = ".package-%s-%s.%sZ"%(self.queue_in_name,
+            fraction = int((t-t_int)*1000) # this gradation allows 1000 distinct file names 
+            src_fn = "package-%s-%s.%sZ"%(self.queue_in_name,
                                            time.strftime("%Y-%m-%dT%H:%M:%S",
                                                          time.localtime(t_int)),
                                            fraction)
@@ -680,7 +685,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         rc = self.set_cache_status(set_cache_params)
         Trace.trace(10, "write_to_tape: will write %s into %s"%(src_file_path, dst_file_path,))
         #return
-        encp = encp_wrapper.Encp()
+        # create encp request
         args = ["encp"]
         if self.delayed_dismount:
             args.append("--delayed-dismount")
@@ -689,6 +694,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         args.append(dst_file_path)
         Trace.trace(10, "write_to_tape: sending %s"%(args,))
         encp = encp_wrapper.Encp()
+        # call encp
         try:
             rc = encp.encp(args)
         except:
@@ -776,7 +782,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # change file name in layer 4 of name space
             try:
                 sfs = namespace.StorageFS(final_dst_path)
-                xrefs = sfs.get_xreference()
+                xrefs = sfs.get_xreference() # xrerfs will not get used, sfs will be used instead
                 Trace.trace(10, "xrefs %s %s %s %s %s %s %s %s %s %s %s"%(sfs.volume,
                                                                           sfs.location_cookie,
                                                                           sfs.size,
@@ -989,21 +995,20 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
             return True # return True so that the message is confirmed
 
-        for rec in files_to_stage:
-            # create a temporary directory for staging a package
-            # use package name for this
-            stage_fname = os.path.basename(package['pnfs_name0'])
-            # file name looks like:
-            # /pnfs/fs/usr/data/moibenko/d2/LTO3/.package-2011-07-01T09:41:46.0Z.tar
-            tmp_stage_dirname = "".join((".",stage_fname.split(".")[1]))
-            tmp_stage_dir_path = os.path.join(self.tmp_stage_area, tmp_stage_dirname)
-            if not os.path.exists(tmp_stage_dir_path):
-                try:
-                    os.makedirs(tmp_stage_dir_path)
-                except:
-                    Trace.handle_error()
-                    pass
-            tmp_stage_file_path = os.path.join(tmp_stage_dir_path, stage_fname)
+        # create a temporary directory for staging a package
+        # use package name for this
+        stage_fname = os.path.basename(package['pnfs_name0'])
+        # file name looks like:
+        # /pnfs/fs/usr/data/moibenko/d2/LTO3/package-2011-07-01T09:41:46.0Z.tar
+        tmp_stage_dirname = "".join((".",stage_fname.split(".")[1]))
+        tmp_stage_dir_path = os.path.join(self.tmp_stage_area, tmp_stage_dirname)
+        if not os.path.exists(tmp_stage_dir_path):
+            try:
+                os.makedirs(tmp_stage_dir_path)
+            except:
+                Trace.handle_error()
+                pass
+        tmp_stage_file_path = os.path.join(tmp_stage_dir_path, stage_fname)
 
         # now stage the package file
         if not os.path.exists(tmp_stage_file_path):
@@ -1159,7 +1164,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.trace(10, "read_from_tape: rec %s"%(rec,))
 
             if rec['status'][0] != e_errors.OK:
-                Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rec ['status']))
+                Trace.log(e_errors.ERROR, "Package staging failed %s"%(rec ['status']))
                 return True # return True so that the message is confirmed
             
             package_id = rec.get('package_id', None)
@@ -1189,8 +1194,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     if not package_id:
                         # read the package id if the First file
                         package_id = rec.get('package_id', None)
-                        if package_id:
-                            package_info = self.fcc.bfid_info(package_id)
+
                     if package_id != rec.get('package_id', None):
                         Trace.log(e_errors.ERROR,
                                   "File does not belong to the same package and will not be staged %s %s"%
@@ -1198,7 +1202,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     else:
                         bfid_info.append(rec)
 
-        package = self.fcc.bfid_info(bfid) 
+        package = self.fcc.bfid_info(package_id) 
         set_cache_params = [] # this list is needed to send set_cache_status command to file clerk
         Trace.log(e_errors.INFO, "Will stage package %s"%(package,))
 
@@ -1415,7 +1419,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         else:
             return False
     """
-        
+
 class MigratorInterface(generic_server.GenericServerInterface):
     def __init__(self):
         # fill in the defaults for possible options
