@@ -137,7 +137,15 @@ def main(intf):
                             continue
                     bfid     = url_dict.get('bfid')[0]
                     volume   = url_dict.get('enstore://enstore/?volume')[0]
+
                     fcc.bfid = bfid
+                    if fcc.bfid_info().get('active_package_files_count',1) > 0 and \
+                           fcc.bfid_info().get('package_id',None)  == bfid :
+                        Trace.alarm(e_errors.WARNING,
+                                    'Skipping non-empy package file %s'%(bfid,),
+                                    fcc.bfid_info().get('pnfs_name0',None) )
+                        print 'skipping non-empty package file',bfid, '...'
+                        continue
                     print 'deleting', bfid, '...',
                     result = fcc.set_deleted('yes')
                     if result['status'][0] != e_errors.OK:
