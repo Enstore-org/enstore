@@ -552,7 +552,7 @@ class FileDB(DbTable):
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count',\
                             'storage_group','file_family','library','wrapper','cache_location',
-                            'original_library','file_family_width'):
+                            'original_library','file_family_width','tape_label'):
                     record[key] = s.get(key,None)
 		return record
 
@@ -613,11 +613,29 @@ class FileDB(DbTable):
                             'cache_mod_time','archive_mod_time',\
                             'active_package_files_count','package_files_count', \
                             'storage_group','file_family','library','wrapper','cache_location',
-                            'original_library','file_family_width'):
+                            'original_library','file_family_width','tape_label'):
                     if s.has_key(key):
                         record[key] = s.get(key,None)
 		return record
 
+        def __getitem__(self, key):
+            res=self.query_dictresult(self.retrieve_query%(key))
+            if len(res) == 0:
+                return None
+            else:
+                file=res[0]
+                #
+                # get volume info from parent
+                #
+                if file.get('package_id',None) and \
+                       file.get('package_id',None) != file.get('bfid',key) :
+                    res1=self.query_dictresult(self.retrieve_query%(file.get('package_id')))
+                    if len(res1) != 0 :
+                        package=res1[0]
+                        file["tape_label"] = package.get("label",None)
+                else:
+                    file["tape_label"]=file.get("label",None)
+                return self.export_format(file)
 class VolumeDB(DbTable):
 	def __init__(self,
                      host='localhost',
