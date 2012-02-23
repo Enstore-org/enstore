@@ -9291,9 +9291,21 @@ def write_to_hsm(e, tinfo):
         #Report how many files are still to go.
         Trace.message(TO_GO_LEVEL,
                       "FILES LEFT: %s" % requests_outstanding(request_list))
-
+        
         work_ticket, index, copy = get_next_request(request_list)
 
+        # Check if this is a multiple copy request
+        if copy != 0:
+            # This is a copy request.
+            # We do not make copies for files written to cache.
+            # Copies are done when these files migrate to tape.
+            if (e.enable_redirection == 1):
+                # The original request (copy 0) was redirected.
+                # Skip the copy request.
+                del(request_list[index])
+                work_ticket['status'] = (e_errors.OK, None)
+                return work_ticket
+            
         #Send the request to write the file to the library manager.
         done_ticket, lmc = submit_write_request(work_ticket, e)
 
