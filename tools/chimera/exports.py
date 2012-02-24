@@ -13,6 +13,7 @@ import socket
 PATH="/pnfs/fs/admin/etc/exports"
 
 if __name__ == "__main__":
+    our_host_name=socket.gethostname()
     export_file = open("exports","w")
     export_file.write("/ localhost(rw)\n")
     content={}
@@ -48,29 +49,45 @@ if __name__ == "__main__":
         value=content[key]
         sortedvalues = value[:]
         sortedvalues.sort()
+        sortedvalues_set=set(sortedvalues)
+        sortedvalues=list(sortedvalues_set)
+        sortedvalues.sort()
         if key == "/fs" :
             export_file.write("/pnfs%s"%(key,))
         else:
             export_file.write("/pnfs/fs/usr%s"%(key,))
 
+        hasUs=False
         for v in sortedvalues:
+            if v == our_host_name:
+                hasUs=True
             if trusted.has_key(v):
                 export_file.write(" %s(rw,no_root_squash)"%(v,))
             else:
                 export_file.write(" %s(rw)"%(v,))
+        if not hasUs:
+            export_file.write(" %s(rw,no_root_squash)"%(our_host_name,))
         export_file.write("\n");
 
     for key in sortedkeys:
         value=content[key]
         sortedvalues = value[:]
         sortedvalues.sort()
+        sortedvalues_set=set(sortedvalues)
+        sortedvalues=list(sortedvalues_set)
+        sortedvalues.sort()
         if key == "/fs" : continue
         export_file.write("%s"%(key,))
+        hasUs=False
         for v in sortedvalues:
+            if v == our_host_name:
+                hasUs=True
             if trusted.has_key(v):
                 export_file.write(" %s(rw,no_root_squash)"%(v,))
             else:
                 export_file.write(" %s(rw)"%(v,))
+        if not hasUs:
+            export_file.write(" %s(rw,no_root_squash)"%(our_host_name,))
         export_file.write("\n");
 
     export_file.close()
