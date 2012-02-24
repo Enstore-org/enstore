@@ -102,7 +102,7 @@ import enstore_functions2
 import configuration_client
 import e_errors
 try:
-	import remedy_interface
+	import snow_fliptab
 except:
 	pass
 debug = False
@@ -1357,7 +1357,7 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 	short_message = "write %s %d tapes (flip tabs) in %s %s tape library"%(job, n, cluster.lower()+'en', library_type.upper())
 	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore %s tape library.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster, library_type.upper())
 
-	return remedy_interface.submit_ticket(
+	return snow_fliptab.submit_ticket(
 		Service_Type='User Service Request',
 		Impact_Type='3-Moderate/Limited',
 		Urgency_Type='3-Medium',
