@@ -13,14 +13,14 @@ import configuration_client
 import e_errors
 import Trace
 import urlparse
-import namespace
+import enstore_constants
 from   DBUtils import PooledDB
 import  psycopg2
 import psycopg2.extras
 import time
 
 
-QUERY="select t_inodes.ipnfsid, t_inodes.imtime, l1.ipnfsid as layer1, encode(l2.ifiledata,'escape') as layer2, l4.ipnfsid as layer4 "+\
+QUERY="select t_inodes.ipnfsid, inode2path(t_inodes.ipnfsid) as path, t_inodes.imtime, l1.ipnfsid as layer1, encode(l2.ifiledata,'escape') as layer2, l4.ipnfsid as layer4 "+\
        "from t_inodes  left outer join t_level_4 l4 on (l4.ipnfsid=t_inodes.ipnfsid) "+\
        "left outer join t_level_1 l1 on (l1.ipnfsid=t_inodes.ipnfsid) "+\
        "left outer join  t_level_2 l2 on (l2.ipnfsid=t_inodes.ipnfsid) "+\
@@ -40,13 +40,14 @@ def print_header(f):
      f.write(FORMAT%("date", "pnfsid", "layer1", "layer2", "layer4", "path"))
 
 if __name__ == "__main__":
-    
+
     csc   = configuration_client.get_config_dict()
     web_server_dict = csc.get("web_server")
     web_server_name = web_server_dict.get("ServerName","localhost").split(".")[0]
     output_file = "/tmp/%s_pnfs_monitor"%(web_server_name,)
     html_dir = csc.get("crons").get("html_dir",None)
-
+    inq_d = csc.get(enstore_constants.INQUISITOR, {})
+    html_host=inq_d.get("host","localhost")
     if not html_dir :
         sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : html_dir is not found \n")
         sys.stderr.flush()
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     f = open(output_file,"w")
     f.write("Files with missing layers in pnfs : %s \n"%(time.ctime()))
     f.write("Brought to you by pnfs_monitor\n\n")
-    
+
 
     connectionPool = None
     cursor = None
@@ -81,13 +82,13 @@ if __name__ == "__main__":
             layer2 = row['layer2']
             layer1 = row['layer1']
             layer4 = row['layer4']
-            sfs = namespace.StorageFS(pnfsid)
+            path   = row['path']
             if not layer2 and not layer4 and not layer1 :
                 f.write(FORMAT%(date.strftime("%Y-%m-%d %H:%M:%S"),
                                 pnfsid, print_yes_no(layer1),
-                                print_yes_no(layer2), 
+                                print_yes_no(layer2),
                                 print_yes_no(layer4),
-                                sfs.filepath))
+                                path))
                 continue
             if layer2 :
                 for part in layer2.split('\n'):
@@ -102,11 +103,11 @@ if __name__ == "__main__":
             if not layer1 or not layer4 :
                 f.write(FORMAT%(date.strftime("%Y-%m-%d %H:%M:%S"),
                                 pnfsid, print_yes_no(layer1),
-                                print_yes_no(layer2), 
+                                print_yes_no(layer2),
                                 print_yes_no(layer4),
-                                sfs.filepath))
+                                path))
 
-            
+
     except:
         exc_type, exc_value = sys.exc_info()[:2]
         sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : " + str(exc_type)+' '+str(exc_value)+'\n')
@@ -116,9 +117,9 @@ if __name__ == "__main__":
             if item :
                 item.close()
     f.close()
-    cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,web_server_name,html_dir)
+    cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
     rc = os.system(cmd)
-    if rc : 
+    if rc :
         txt = "Failed to execute command %s\n.\n"%(cmd,)
         sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : "+txt+"\n")
         sys.stderr.flush()
