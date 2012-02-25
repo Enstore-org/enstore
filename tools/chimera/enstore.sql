@@ -41,17 +41,20 @@ BEGIN
 	      INSERT INTO t_storageinfo
 	      	  VALUES (NEW.ipnfsid,'enstore','enstore',l_entries[4]);
            END IF;
-
+	   --
            -- we assume all files coming through level4 to be CUSTODIAL-NEARLINE
+	   --
+           -- the block below is needed for files written directly by encp
+           --
 	   BEGIN
            INSERT INTO t_access_latency VALUES (NEW.ipnfsid, 0);
 	   EXCEPTION WHEN unique_violation THEN
-	   RAISE WARNING 't_access_latency already exists %',NEW.ipnfsid;
+	   RAISE NOTICE 't_access_latency already exists %',NEW.ipnfsid;
 	   END;
 	   BEGIN
 	   INSERT INTO t_retention_policy VALUES (NEW.ipnfsid, 0);
 	   EXCEPTION WHEN unique_violation THEN
-	   RAISE WARNING 't_retention_policy  exists %',NEW.ipnfsid;
+	   RAISE NOTICE 't_retention_policy  exists %',NEW.ipnfsid;
 	   END;
            -- storage info
 	ELSEIF (TG_OP = 'UPDATE')  THEN
