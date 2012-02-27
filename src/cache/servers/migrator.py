@@ -50,6 +50,21 @@ import cache.messaging.mw_client
 from cache.messaging.messages import MSG_TYPES as mt
 import cache.en_logging.en_logging
 
+DEBUGLOG=11 # log on this level to DEBUGLOG
+
+# intermediate states of migrator
+# to check in more details of what migrator is doing
+PACKAGING = "PACKAGING"
+UNPACKAGING = "UNPACKAGING"
+CHECKING_CRC = "CHECKING_CRC"
+WRITING_TO_TAPE = "WRITING_TO_TAPE"
+REGISTERING_ARCHIVE = "REGISTERING_ARCHIVE"
+CLEANING = "CLEANING"
+PREPARING_READ_FROM_TAPE = "PREPARING_READ_FROM_TAPE"
+READING_FROM_TAPE = "READING_FROM_TAPE"
+NONE=""
+
+
 # find a common prefix of 2 strings
 # presenting file paths (beginning with 1st position) 
 def find_common_prefix(s1, s2):
@@ -250,7 +265,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # @todo - change name in configuration file to make it more generic, "amqp"
         self.migration_worker_configuration['amqp'] = {}
         self.migration_worker_configuration['amqp']['broker'] = self.csc.get("amqp_broker") # amqp broker configuration
-        self.status = None # internal status of migrator to report to Migration Dispatcher
+
         fc_conf = self.csc.get("file_clerk")
         # specify tape dismout delay for write operations
         self.delayed_dismount = None
@@ -318,6 +333,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.set_handler(mt.MWC_STAGE, self.handle_stage_from_tape)
         self.set_handler(mt.MWC_STATUS, self.handle_status)
         """
+        self.status = None # internal status of migrator to report to Migration Dispatcher
+        self.status_change_time = 0.0
+        self.state = NONE # intermediate state of migrator
+        self.state_change_time = 0.0
         self.draining = False # if this is set, complete current work and exit.
         
         # we want all message types processed by one handler
@@ -339,6 +358,19 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(name, self.alive_interval)
 
+    # redefine __setattr__
+    # to treat some attributes differently
+    def __setattr__(self, attr, val):
+        try:
+            if attr == 'status':
+               self.__dict__['status_change_time'] = time.time()
+            if attr == 'state':
+               self.__dict__['state_change_time'] = time.time()
+               
+        except:
+           pass #don't want any errors here to stop us
+        self.__dict__[attr] = val
+       
     # is it time to data files integrity?
     # stolen from mover.py
     def check_written_file(self):
@@ -360,6 +392,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # to terminate the process that leaves .nfs files open
     def check_packaged_files(self, package):
         Trace.trace(10, "check_packaged_files creating __check_packaged_files %s %s %s %s "%(type(self.archive_area),self.archive_area, type(package), package ))
+        self.state = CHECKING_CRC
         
         proc = multiprocessing.Process(target = _check_packaged_files, args = (self.archive_area, package))
         Trace.trace(10, "check_packaged_files  calling _check_packaged_files")
@@ -374,11 +407,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         tmp_dir = os.path.join(self.archive_area, "tmp_CRC", os.path.dirname(package).lstrip("/"))
         Trace.trace(10, "check_packaged_files: removing temporary directories")
         try:
-            shutil.rmtree(tmp_dir)
-            return True
+           shutil.rmtree(tmp_dir)
+           return True
         except OSError, detail:
-            Trace.log(e_errors.ERROR, "check_packaged_files: error removind directory %s: %s"%(tmp_dir, detail,))
-            return False
+           Trace.log(e_errors.ERROR, "check_packaged_files: error removind directory %s: %s"%(tmp_dir, detail,))
+           return False
     
     # file clerk set_cache_status currently can not send long messages
     # this is a temporary solution
@@ -395,6 +428,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 if len(str(tmp_list)) + len(str(param)) < 15000: # the maximal message size is 16384
                     tmp_list.append(param)
                 else:
+                   Trace.trace(10, "set_cache_status appending %s"%(tmp_list,)) 
                    list_of_set_cache_params.append(tmp_list)
                    tmp_list = []
                    tmp_list.append(param)
@@ -422,6 +456,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         cache_file_list = []
         ns_file_list = []
         bfids = []
+        self.state = PACKAGING
         # create list of files to pack
         for component in request_list:
             cache_file_path = enstore_functions3.file_id2path(self.data_area,
@@ -486,19 +521,24 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             
             special_file.close()
 
-            # Create tar file
-            rtn = enstore_functions2.shell_command2("tar --force-local -cf %s %s"%(src_path, special_file_name))
+            # Create list of files for tar
+            file_list = open("file_list", "w")
+            file_list.write("%s\n"%(special_file_name,))
+            for f, junk, junk in cache_file_list:
+               file_list.write("%s\n"%(f,))
+            file_list.close()
+
+            # call tar command
+            Trace.log(DEBUGLOG, "Starting tar of %s files to %s"%(len(cache_file_list), src_path,))
+            
+            rtn = enstore_functions2.shell_command2("tar --force-local --exclude file_list -cf %s --files-from=file_list"%(src_path,))
             if rtn[0] != 0: # tar return code
                 Trace.log(e_errors.ERROR, "Error creating package %s %s"(src_path, rtn[2])) #stderr
                 return None, None, None
-                          
-            # Append cached files to archive
-            for f, junk, junk in cache_file_list:
-                Trace.trace(10, "pack_files: add %s to %s"%(f, src_path))
-                rtn = enstore_functions2.shell_command2("tar --force-local -rPf %s %s"%(src_path, f))
-                if rtn[0] != 0: # tar return code
-                    Trace.log(e_errors.ERROR, "Error creating package %s %s"(src_path, rtn[2])) #stderr
-                    return None, None, None
+            
+            Trace.log(DEBUGLOG, "Finished tar to %s"%(src_path,))              
+        os.remove("file_list")
+
         # Qpid converts strings to unicode.
         # Encp does not like this.
         # Convert unicode to ASCII strings.
@@ -573,8 +613,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
                     os.remove(src_file_path)
 
-                    # remove README.1st
-                    os.remove(os.path.join(os.path.dirname(src_file_path), "README.1st")) 
+                    # remove README.1st and file_list
+                    for f in ("README.1st", "file_ist"):
+                       try:
+                          os.remove(os.path.join(os.path.dirname(src_file_path), f))
+                       except:
+                          pass
                     # Remove temporary archive directory
                     try:
                         os.removedirs(os.path.dirname(src_file_path))
@@ -613,10 +657,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         dst_dir = os.path.join(self.packages_location, v_f) 
         Trace.trace(10, "write_to_tape: write to %s"%(dst_dir,))
         tmp_dst_dir = os.path.join(dst_dir, "tmp")
-        Trace.trace(10, "write_to_tape: getting library tag for %s"%(os.path.basename(rec['pnfs_name0']),))
+        Trace.trace(10, "write_to_tape: getting library tag for %s"%(rec['pnfs_name0']),)
         tag = namespace.Tag(os.path.dirname(rec['pnfs_name0']))
         try:
-            lib=tag.readtag("library")
+            lib=tag.readtag("library", os.path.dirname(rec['pnfs_name0']))
             Trace.trace(10, "write_to_tape: original library tag: %s"%(lib,))
         except:
             Trace.handle_error()
@@ -696,6 +740,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "write_to_tape: sending %s"%(args,))
         encp = encp_wrapper.Encp()
         # call encp
+        self.state = WRITING_TO_TAPE
         try:
             rc = encp.encp(args)
         except:
@@ -719,10 +764,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             rc = self.set_cache_status(set_cache_params)
             Trace.log(e_errors.ERROR, "write_to_tape: encp write to tape failed: %s"%(rc,))
             # cleanup
+            self.state = CLEANING
             os.remove(dst_dir)
             return False
         
         # register archive file in file db
+        self.state = REGISTERING_ARCHIVE
         res = self.infoc.find_file_by_path(dst_file_path)
         Trace.trace(10, "write_to_tape: find file %s returned %s"%(dst_file_path, res))
         
@@ -841,11 +888,15 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # The file from cache was successfully written to tape.
         # Remove temporary file
         Trace.trace(10, "write_to_tape: removing temporary file %s"%(src_file_path,))
-        
+        self.state = CLEANING        
         os.remove(src_file_path)
 
-        # remove README.1st
-        os.remove(os.path.join(os.path.dirname(src_file_path), "README.1st")) 
+        # remove README.1st and file_list
+        for f in ("README.1st", "file_ist"):
+           try:
+              os.remove(os.path.join(os.path.dirname(src_file_path), f))
+           except:
+              pass
         # Remove temporary archive directory
         try:
             os.removedirs(os.path.dirname(src_file_path))
@@ -853,7 +904,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.log(e_errors.ERROR, "write_to_tape: error removind directory: %s"%(detail,))
             pass
         
-            
         status_message = cache.messaging.mw_client.MWRArchived(orig_msg=rq)
         try:
             self._send_reply(status_message)
@@ -1026,7 +1076,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             Trace.trace(10, "stage_files: encp returned %s"%(rc,))
             if rc != 0:
-                # cleanup dirctories
+                # cleanup directories
                 try:
                     os.removedirs(tmp_stage_dir_path)
                 except:
@@ -1113,7 +1163,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                              'cache_status':file_cache_status.CacheStatus.CACHED,
                                              'archive_status': None,        # we are not changing this
                                              'cache_location': dst})
-        new_set_cache_params.append({'bfid': rec['bfid'],
+        # This is for package file
+        new_set_cache_params.append({'bfid': rec['package_id'],
                                      'cache_status':file_cache_status.CacheStatus.PURGED, # we do not read a package from cache
                                      'archive_status': None,        # we are not changing this
                                      'cache_location': None})
@@ -1125,7 +1176,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
             return True # return True so that the message is confirmed
 
-        # remove the rest (README.1st)
+        # remove the rest (README.1st, file_list)
         Trace.trace(10, "stage_files: current dir %s"%(os.getcwd(),))
         rc = enstore_functions2.shell_command("rm -rf *")
         rc = enstore_functions2.shell_command("rm -rf .*")
@@ -1148,6 +1199,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     def read_from_tape(self, request):
         # save request
         rq = copy.copy(request)
+        self.state = PREPARING_READ_FROM_TAPE
         Trace.trace(10, "read_from_tape: request %s"%(rq.content,))
         request_list = rq.content['file_list']
         # the request list must:
@@ -1237,6 +1289,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "read_from_tape:  files to stage %s %s"%(len(files_to_stage), files_to_stage))
         if len(files_to_stage) != 0:
             try:
+                self.state = READING_FROM_TAPE
                 rc = self.stage_files(files_to_stage, package, set_cache_params)
             except:
                 Trace.handle_error()
@@ -1308,6 +1361,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 elif request_type ==mt.MWC_STAGE:
                     self.status = file_cache_status.CacheStatus.CACHED
                 rc = True
+                self.state = NONE 
             else:
                 rc = False
             if self.draining:
@@ -1430,6 +1484,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # send current status
     def get_status(self, ticket):
         ticket['state'] = self.migrator_status()
+        ticket['time_in_state'] = time.time() - self.status_change_time
+        ticket['internal_state'] = self.state
+        ticket['time_in_internal_state'] = time.time() - self.state_change_time
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
@@ -1503,6 +1560,8 @@ def do_work():
             time.sleep(10)
         except SystemExit:
             os._exit(0)
+        if migrator.draining:
+           os._exit(0)
     if migrator.draining:
         os._exit(0)
     Trace.alarm(e_errors.ALARM,"migrator %s finished (impossible)"%(intf.name,))
@@ -1512,12 +1571,12 @@ def do_work():
 def thread_is_running(thread_name):
     threads = threading.enumerate()
     for thread in threads:
-        if ((thread.getName() == thread_name) and thread.isAlive()):
-            Trace.trace(10, "running")
-            return True
-    else:
-        Trace.trace(10, "not running")
-        return False
+       if ((thread.getName() == thread_name) and thread.isAlive()):
+          Trace.trace(10, "%s running"%(thread_name,))
+          return True
+       else:
+          Trace.trace(10, "%s running"%(thread_name,))
+          return False
 
 if __name__ == "__main__":
     do_work()
