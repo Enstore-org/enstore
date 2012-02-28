@@ -614,7 +614,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     os.remove(src_file_path)
 
                     # remove README.1st and file_list
-                    for f in ("README.1st", "file_ist"):
+                    for f in ("README.1st", "file_list"):
                        try:
                           os.remove(os.path.join(os.path.dirname(src_file_path), f))
                        except:
@@ -625,7 +625,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     except OSError, detail:
                         Trace.log(e_errors.ERROR, "write_to_tape: error removind directory: %s"%(detail,))
                         pass
-                    content = {"migrator_status": "ARCHIVE FAILED", "name": self.name} # this may need more details
+                    content = {"migrator_status":
+                               mt.FAILED,
+                               "detail": "ARCHIVING FAILED",
+                               "name": self.name} # this may need more details
                     status_message = cache.messaging.mw_client.MWRStatus(orig_msg=rq,
                                                              content= content)
                     try:
@@ -892,7 +895,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         os.remove(src_file_path)
 
         # remove README.1st and file_list
-        for f in ("README.1st", "file_ist"):
+        for f in ("README.1st", "file_list"):
            try:
               os.remove(os.path.join(os.path.dirname(src_file_path), f))
            except:
@@ -1332,11 +1335,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         request_type = message.properties["en_type"]
         if request_type in (mt.MWC_ARCHIVE, mt.MWC_PURGE, mt.MWC_STAGE):
             if request_type == mt.MWC_ARCHIVE:
-                self.status = file_cache_status.ArchiveStatus.ARCHIVING
+                self.status = mt.ARCHIVING
             elif request_type == mt.MWC_PURGE:
-                self.status = file_cache_status.CacheStatus.PURGING
+                self.status = mt.PURGING
             elif request_type ==mt.MWC_STAGE:
-                self.status = file_cache_status.CacheStatus.STAGING
+                self.status = mt.STAGING
             confirmation_message = cache.messaging.mw_client.MWRConfirmation(orig_msg=message,
                                                                              content=message.content,
                                                                              reply_to=self.queue_in_name,
@@ -1351,24 +1354,35 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 return False
             
             # run worker
-            if self.workers[request_type](self, message):
-                # work has completed successfully
-                del(self.work_dict[message.correlation_id])
-                if request_type == mt.MWC_ARCHIVE:
-                    self.status = file_cache_status.ArchiveStatus.ARCHIVED
-                elif request_type == mt.MWC_PURGE:
-                    self.status = file_cache_status.CacheStatus.PURGED
-                elif request_type ==mt.MWC_STAGE:
-                    self.status = file_cache_status.CacheStatus.CACHED
-                rc = True
-                self.state = NONE 
-            else:
-                rc = False
-            if self.draining:
-                Trace.log(e_errors.INFO, "Completed final assignment. Will exit")
-                self.shutdown = True # exit gracefully
-            return rc
-            
+            try:
+                if self.workers[request_type](self, message):
+                    # work has completed successfully
+                    del(self.work_dict[message.correlation_id])
+                    if request_type == mt.MWC_ARCHIVE:
+                        self.status = mt.ARCHIVED
+                    elif request_type == mt.MWC_PURGE:
+                        self.status = mt.PURGED
+                    elif request_type ==mt.MWC_STAGE:
+                        self.status = mt.CACHED
+                    rc = True
+                    self.state = NONE 
+                else:
+                    rc = False
+                if self.draining:
+                    Trace.log(e_errors.INFO, "Completed final assignment. Will exit")
+                    self.shutdown = True # exit gracefully
+                return rc
+            except:
+                exc, detail, tb = sys.exc_info()
+                Trace.handle_error(exc, detail, tb)
+                # send error message
+                content = {"migrator_status":
+                           mt.FAILED,
+                           "detail": "exception %s detail %s"%(exc, detail),
+                           "name": self.name}
+                status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
+                                                                     content= content)
+                
         elif request_type in (mt.MWC_STATUS): # there could more reuquest of such nature in the future
             content = {"migrator_status": self.status, "name": self.name} # this may need more details
             status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
@@ -1498,9 +1512,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         if self.status in (None,
-                           file_cache_status.ArchiveStatus.ARCHIVED,
-                           file_cache_status.CacheStatus.PURGED,
-                           file_cache_status.CacheStatus.CACHED):
+                           mt.ARCHIVED,
+                           mt.PURGED,
+                           mt.CACHED):
             # currently there is no work
             # can exit right away
             Trace.log(e_errors.INFO, "Exit requested while no active work. Will exit")

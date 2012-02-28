@@ -118,15 +118,21 @@ class MigrationDispatcher():
             if self.stop_status_loop:
                 break
             for key in self.migration_pool.keys():
-                if self.migration_pool[key].status_requestor:
-                    # If status requestor exist
-                    # dispatcher had already received confirmation from
-                    # migrator.
-                    # Send status request to it
-                    status_cmd = mw_client.MWCStatus(request_id=0, correlation_id=key)
-                    Trace.trace(10, "send_status_request sending %s"%(status_cmd,))
-                    self.migration_pool[key].status_requestor.send(status_cmd)
-            time.sleep(10)
+                try:
+                    if self.migration_pool[key].status_requestor:
+                        # If status requestor exist
+                        # dispatcher had already received confirmation from
+                        # migrator.
+                        # Send status request to it
+                        status_cmd = mw_client.MWCStatus(request_id=0, correlation_id=key)
+                        Trace.trace(10, "send_status_request sending %s"%(status_cmd,))
+                        self.migration_pool[key].status_requestor.send(status_cmd)
+                except KeyError:
+                    Trace.handle_error()
+                    Trace.log(e_errors.INFO,
+                              "error in send_status_request KeyError %s keys %s"%
+                              (key, self.migration_pool.keys()))
+            time.sleep(120)
 
 
     def handle_message(self,m):
@@ -137,6 +143,7 @@ class MigrationDispatcher():
         # can use these to exclude redelivered messages
         correlation_id = m.correlation_id
         redelivered = m.redelivered
+        Trace.trace(10, "handle_message:redelivered %s"%(redelivered,))
         
         # @todo check if message is on heap for processing
         if redelivered :
@@ -153,6 +160,7 @@ class MigrationDispatcher():
                except:
                    pass # for now
                self.lock.release()
+
         if msg_type in (mt.MWR_ARCHIVED, mt.MWR_PURGED, mt.MWR_STAGED): 
             if msg_type == mt.MWR_ARCHIVED:
                 Trace.trace(10, "handle_message:MWR_ARCHIVED. Before %s"%(self.migration_pool,))
@@ -175,26 +183,30 @@ class MigrationDispatcher():
             
             Trace.trace(10, "handle_message: MWR_STATUS recieved %s %s"%(m.content, m.correlation_id))
             Trace.trace(10, "handle_message: MPOOL %s"%(self.migration_pool,))
-            if  m.content['migrator_status'] == None:
+            if  m.content['migrator_status'] == None or m.content['migrator_status'] == mt.FAILED:
                 # Migrator restarted, but before restart it was doing
                 # some work which could have failed.
                 # in this case the request needs to be re-sent
-                Trace.trace(10, "handle_message: Migrator replied with status None")
+                Trace.trace(10, "handle_message: Migrator replied with status %s"%
+                            (m.content['migrator_status'],))
                 Trace.trace(10, "handle_message: reposting request")
                 self.migration_pool[m.correlation_id].state = file_list.FILLED 
                 self.migrate_list(self.migration_pool[m.correlation_id])
             else:
-                if  m.content['migrator_status'] == self.migration_pool[m.correlation_id].expected_reply:
-                    # expected reply is announced in the corresponding
-                    # migration pool entry
-                    # keyed by the correlation id
-                    # all messages for a given action have the same correlation id.
-                    Trace.trace(10, "handle_message: received expected status reply")
-                    del(self.migration_pool[m.correlation_id])
-
-                else:
-                    Trace.trace(10, "handle_message: received %s expected %s"%(m.content['migrator_status'],
-                                                                               self.migration_pool[m.correlation_id].expected_reply))
+                if self.migration_pool.has_key(correlation_id): 
+                    if m.content['migrator_status'] == self.migration_pool[m.correlation_id].expected_reply:
+                        # expected reply is announced in the corresponding
+                        # migration pool entry
+                        # keyed by the correlation id
+                        # all messages for a given action have the same correlation id.
+                        Trace.trace(10, "handle_message: received expected status reply")
+                        del(self.migration_pool[m.correlation_id])
+                        
+                    else:
+                        Trace.trace(10, "handle_message: received %s expected %s"%
+                                    (m.content['migrator_status'],
+                                     self.migration_pool[m.correlation_id].expected_reply))
+        Trace.trace(10, "handle_message:returning %s"%(True,))
                 
         return True
         
@@ -231,9 +243,14 @@ class MigrationDispatcher():
                     self.trace.debug("message processed correlation_id=%s, do_ack=%s", message.correlation_id, do_ack )   
                 except Exception,e:
                     # @todo - print exception type cleanly
+                    Trace.handle_error()
+                    Trace.trace(10, "serve_qpid exception processing handle_message %s"%
+                                (e,))
                     self.log.error("can not process message. Exception %s. Original message = %s",e,message)
+                    do_ack = True # to not hold message in the queue
              
                 # Acknowledge ORIGINAL ticket thus we will not get it again
+                Trace.trace(10, "serve_qpid doack %s"%(do_ack,))
                 if do_ack:
                     self._ack_message(message)
 
@@ -262,13 +279,13 @@ class MigrationDispatcher():
             # send list to migration dispatcher queue
             if migration_list.list_object.list_type == mt.CACHE_WRITTEN:
                command = mw_client.MWCArchive(migration_list.list_object.file_list, correlation_id = migration_list.id)
-               migration_list.expected_reply =  file_cache_status.ArchiveStatus.ARCHIVED
+               migration_list.expected_reply =  mt.ARCHIVED
             elif migration_list.list_object.list_type == mt.CACHE_MISSED:
                command = mw_client.MWCStage(migration_list.list_object.file_list, correlation_id = migration_list.id)
-               migration_list.expected_reply = file_cache_status.CacheStatus.CACHED 
+               migration_list.expected_reply = mt.CACHED 
             elif migration_list.list_object.list_type == mt.MDC_PURGE:
                command = mw_client.MWCPurge(migration_list.list_object.file_list, correlation_id = migration_list.id)
-               migration_list.expected_reply = file_cache_status.CacheStatus.PURGED
+               migration_list.expected_reply = mt.PURGED
             try:
                 # send command to migrator queue
                 # and set corresponding list state to ACTIVE

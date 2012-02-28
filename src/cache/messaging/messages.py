@@ -5,7 +5,7 @@
 # $Id$
 #
 ###############################################################################
-
+import file_cache_status
 class MSG_TYPES():
     """
     Enstore File Cache Events and Message Types 
@@ -31,17 +31,25 @@ class MSG_TYPES():
     UNPACK = "UNPACK"    # unpack container
     
     # Completion report
-    ARCHIVED = "ARCHIVED"
+    ARCHIVED = file_cache_status.ArchiveStatus.ARCHIVED
     DELETED = "DELETED"
     PACKED = "PACKED"
-    PURGED = "PURGED"
+    PURGED = file_cache_status.CacheStatus.PURGED
     MISSED = "MISSED"    # [file replica] not found [in cache]
     STAGED = "STAGED"
+    CACHED = file_cache_status.CacheStatus.CACHED
     WRITTEN = "WRITTEN"  # [file replica] written [into cache,] close() on write.
-    CREATED = "CREATED"  # [file replica] created [in cache, creat().] Follows file creation in NS, followed by replica is 'written'
+    CREATED = file_cache_status.CacheStatus.CREATED  # [file replica] created [in cache, creat().] Follows file creation in NS, followed by replica is 'written'
     UNPACKED = "UNPACKED"
+    FAILED="FAILED"
     
     CONFIRMATION = "CONFIRMATION"
+    
+    # Intermediate report
+    PURGING = file_cache_status.CacheStatus.PURGING
+    STAGING = file_cache_status.CacheStatus.STAGING
+    STAGING_REQUESTED = file_cache_status.CacheStatus.STAGING_REQUESTED
+    ARCHIVING = file_cache_status.ArchiveStatus.ARCHIVING
     
     # Operation and reply
     STATUS = "STATUS"
