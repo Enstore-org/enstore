@@ -1300,11 +1300,11 @@ def is_read(ticket_or_interface):
                       "Inconsistent file types:" + str(ticket_or_interface))
             raise EncpError(errno.EINVAL, "Inconsistent file types.",
                             e_errors.BROKEN, ticket_or_interface)
-        elif namespace.StorageFS(infile).is_storage_path(infile) \
-                 and not namespace.StorageFS(outfile).is_storage_path(outfile):
+        elif namespace.is_storage_path(infile) \
+                 and not namespace.is_storage_path(outfile):
             return 1
-        elif not namespace.StorageFS(infile).is_storage_path(infile) \
-                 and namespace.StorageFS(outfile).is_storage_path(outfile):
+        elif not namespace.is_storage_path(infile) \
+                 and namespace.is_storage_path(outfile):
             return 0
         else:
             Trace.log(e_errors.ERROR,
