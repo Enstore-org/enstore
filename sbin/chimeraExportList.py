@@ -59,6 +59,17 @@ if __name__ == "__main__":
         f.write("</pre> </td>\n")
         columns+=1
 
+#    for host, mpoints in reverse_content.iteritems():
+#        columns+=1
+#        if not columns % NCOLUMNS :
+#            f.write("</tr><tr>\n")
+#        f.write("<td style=\"vertical-align:top\"> <pre>\n")
+#        f.write("{0:-^60}".format(host))
+#        f.write("\n")
+#        for mp in mpoints:
+#            f.write("%s\n"%mp)
+#        f.write("</pre> </td>\n")
+
     if columns % NCOLUMNS:
         f.write("<\tr>\n")
     for line in ("</table>\n",
