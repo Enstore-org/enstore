@@ -147,10 +147,10 @@ class MigrationDispatcher():
         
         # @todo check if message is on heap for processing
         if redelivered :
-            #return None
+            # this may require additional processing
             pass
         if msg_type == mt.MWR_CONFIRMATION:
-            # Received the confirmation form migrator
+            # Received the confirmation from migrator
             # create sender on the queue declared in m.reply_to.
             # Correlation id is proagated for all mesaages related to the same request
             if not self.migration_pool[m.correlation_id].status_requestor:

@@ -54,6 +54,7 @@ DEBUGLOG=11 # log on this level to DEBUGLOG
 
 # intermediate states of migrator
 # to check in more details of what migrator is doing
+IDLE="IDLE"
 PACKAGING = "PACKAGING"
 UNPACKAGING = "UNPACKAGING"
 CHECKING_CRC = "CHECKING_CRC"
@@ -62,8 +63,6 @@ REGISTERING_ARCHIVE = "REGISTERING_ARCHIVE"
 CLEANING = "CLEANING"
 PREPARING_READ_FROM_TAPE = "PREPARING_READ_FROM_TAPE"
 READING_FROM_TAPE = "READING_FROM_TAPE"
-NONE=""
-
 
 # find a common prefix of 2 strings
 # presenting file paths (beginning with 1st position) 
@@ -335,7 +334,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         """
         self.status = None # internal status of migrator to report to Migration Dispatcher
         self.status_change_time = 0.0
-        self.state = NONE # intermediate state of migrator
+        self.state = IDLE # intermediate state of migrator
         self.state_change_time = 0.0
         self.draining = False # if this is set, complete current work and exit.
         
@@ -1365,7 +1364,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     elif request_type ==mt.MWC_STAGE:
                         self.status = mt.CACHED
                     rc = True
-                    self.state = NONE 
+                    self.state = IDLE 
                 else:
                     rc = False
                 if self.draining:
