@@ -353,8 +353,6 @@ def __log_duration(t0, t1, func_name, args, status_message=None):
     if Trace.log_func != Trace.default_log_func:
         now = time.time()
         duration = now - t0
-        if duration > 1.0:
-            Trace.log_stack_trace(severity=98)
         wait_duration = t1 - t0
         call_duration = now - t1
         message = "Time to call %s() for file %s: %f seconds (waited %f seconds)" \
