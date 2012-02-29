@@ -4016,7 +4016,6 @@ def outputfile_check(work_list, e):
                     # 4) user root is modifying something outside of the
                     #    /pnfs/fs/usr/xyz/ filesystem (EPERM).
                     y = "%s(1)" % (outputfile_use,)
-                    print "y:", y
                     try:
                         fp=open(y, "w")
                         fp.write("")
