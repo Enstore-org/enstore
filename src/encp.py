@@ -11259,7 +11259,7 @@ def prepare_read_from_hsm(tinfo, e):
                                          uid,
                                          gid,
                                          unstable_filesystem=True)
-             except (OSError, IOError, EncpError), msg:
+            except (OSError, IOError, EncpError), msg:
                 #if not should_skip_deleted:
                 #    file_utils.end_euid_egid() #Release the lock.
 
