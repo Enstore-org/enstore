@@ -615,7 +615,7 @@ def __wrapper(function, args=(), unstable_filesystem=None):
             return rtn
 
         exception_object = OSError(errno.EIO, "Unknown error")
-        s_m = str(exeption_object)
+        s_m = str(exception_object)
         __log_duration(t0, t1, log_func_name, args, status_message=s_m)
         raise exception_object
     except:
