@@ -224,6 +224,47 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
         Trace.trace(10, "write_to_tape: FF width tag: %s"%(ff_width_tag,))
         tag.writetag("file_family_width", ff_width_tag)
     
+
+class StorageArea():
+    """
+    This class is needed to effectively work with
+    NFS mounted storage areas.
+    It was fount that writes ove nfs are slow.
+    We want to tar files on the nfs server itself and not over nfs
+    """
+    def __init__(self, path, remotehost=""):
+        self.path = path
+        self.real_path = path # real path on this host
+        self.remote_path = path # path on remote host if nfs mounted
+        self.server = "localhost"
+
+        if remotehost:
+            # find the real path
+            self.real_path = os.path.realpath(self.path)
+            if self.real_path != self.path:
+                # there is a mount point or a link in the path
+                # lookup in /etc/mtab
+                f = open("/etc/mtab", "r")
+                mtab_entries = f.readlines()
+                for e in mtab_entries:
+                    columns = e.split(" ")
+                    dev = columns[0].strip()
+                    mpoint = ' '.join(columns[1].translate(None, string.whitespace[:5]).split())
+                    if mpoint != "/" and self.real_path.startswith(mpoint):
+                        parts = self.real_path.partition(mpoint)
+                        host, rpath = dev.split(":")
+                        rpath.lstrip("/")
+                        self.remote_path = os.path.join(rpath, parts[-1].lstrip("/"))
+                        self.server = host
+                        break
+
+    def __str__(self):
+        return "path %s real_path %s remote_path %s server %s"%(self.path,
+                                                                self.real_path,
+                                                                self.remote_path,
+                                                                self.server)
+
+
     
 class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServer, mw.MigrationWorker):
     """
@@ -232,11 +273,20 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
     def load_configuration(self):
         self.my_conf = self.csc.get(self.name)
-        self.data_area = self.my_conf['data_area'] # area on disk where original files are stored
-        self.archive_area = self.my_conf['archive_area'] # area on disk where archvived files are temporarily stored
-        self.stage_area = self.my_conf.get('stage_area','')   # area on disk where staged files are stored
-        self.tmp_stage_area = self.my_conf['tmp_stage_area']  # area on disk where staged files are temporarily stored
+        # it was discovered that write rates ove nfs are slow
+        # to deal with this problem packaging / unpackging will be done
+        # directly on the nfs server if it defined as aggregation_host in configuration
+        self.remote_aggregation_host = self.my_conf.get("aggregation_host", "")
+        self.data_area = StorageArea(self.my_conf['data_area'], self.remote_aggregation_host
+                                     ) # area on disk where original files are stored
+        self.archive_area = StorageArea(self.my_conf['archive_area'],
+                                        self.remote_aggregation_host) # area on disk where archvived files are temporarily stored
+        self.stage_area = StorageArea(self.my_conf.get('stage_area',''),
+                                      self.remote_aggregation_host)   # area on disk where staged files are stored
+        self.tmp_stage_area = StorageArea(self.my_conf['tmp_stage_area'],
+                                          self.remote_aggregation_host)  # area on disk where staged files are temporarily stored
         self.packages_location = self.my_conf.get("packages_dir", "") # directory in name space for packages
+
         if not self.packages_location:
             Trace.alarm(e_errors.ERROR, "Define packages_dir in cofiguration! Exiting")
             sys.exit(-1)
@@ -458,7 +508,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.state = PACKAGING
         # create list of files to pack
         for component in request_list:
-            cache_file_path = enstore_functions3.file_id2path(self.data_area,
+            cache_file_path = enstore_functions3.file_id2path(self.data_area.remote_path,
                                                               component['nsid']) # pnfsId
             ### Before packaging file we need to make sure that the packaged file
             ### containing these files is not already written.
@@ -501,7 +551,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                            fraction)
 
             # Create archive directory
-            archive_dir = os.path.join(self.archive_area, src_fn)
+            archive_dir = os.path.join(self.archive_area.remote_path, src_fn)
             
             src_path = "%s.tar"%(os.path.join(archive_dir, src_fn),)
             special_file_name = "README.1st"
@@ -524,13 +574,28 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             file_list = open("file_list", "w")
             file_list.write("%s\n"%(special_file_name,))
             for f, junk, junk in cache_file_list:
+               Trace.trace(10, "file_list entry %s"%(f,)) 
                file_list.write("%s\n"%(f,))
             file_list.close()
 
+
             # call tar command
             Trace.log(DEBUGLOG, "Starting tar of %s files to %s"%(len(cache_file_list), src_path,))
+
+            if self.remote_aggregation_host:
+                # run tar on the remote host
+                Trace.trace(10, "will run tar on remote host %s"%(self.remote_aggregation_host,))
+                tarcmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s; tar --force-local -cf %s --files-from=file_list"'%(self.remote_aggregation_host,
+                                                                                                 archive_dir,
+                                                                                                 src_path,)
+                Trace.trace(10, "tar cmd %s"%(tarcmd,))
+            else:
+                Trace.trace(10, "will run tar on local host %s")
+                tarcmd = "tar --force-local -cf %s --files-from=file_list"%(src_path,)
             
-            rtn = enstore_functions2.shell_command2("tar --force-local --exclude file_list -cf %s --files-from=file_list"%(src_path,))
+            rtn = enstore_functions2.shell_command2(tarcmd)
+            Trace.trace(10, "tar returned %s"%(rtn,))
+            
             if rtn[0] != 0: # tar return code
                 Trace.log(e_errors.ERROR, "Error creating package %s %s"(src_path, rtn[2])) #stderr
                 return None, None, None
@@ -829,6 +894,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.handle_error()
                 return False
 
+            Trace.log(e_errors.INFO, "renamed %s to %s"%(dst_file_path, final_dst_path))
             # change file name in layer 4 of name space
             try:
                 sfs = namespace.StorageFS(final_dst_path)
@@ -931,7 +997,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # Do not consider watermarks
             # because we do not want files to hang in write pool if it is not
             # the same as a read pool.
-            if self.data_area != self.archive_area:
+            if self.data_area.path != self.archive_area.path:
                 if f_info['cache_location'] == f_info['location_cookie']: # same location
                     return True
             
@@ -1053,8 +1119,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         stage_fname = os.path.basename(package['pnfs_name0'])
         # file name looks like:
         # /pnfs/fs/usr/data/moibenko/d2/LTO3/package-2011-07-01T09:41:46.0Z.tar
-        tmp_stage_dirname = "".join((".",stage_fname.split(".")[1]))
-        tmp_stage_dir_path = os.path.join(self.tmp_stage_area, tmp_stage_dirname)
+        tmp_stage_dirname = stage_fname.split(".tar")[0]
+        tmp_stage_dir_path = os.path.join(self.tmp_stage_area.remote_path, tmp_stage_dirname)
         if not os.path.exists(tmp_stage_dir_path):
             try:
                 os.makedirs(tmp_stage_dir_path)
@@ -1098,7 +1164,17 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # untar packaged files
         # if package contains more than one file
         Trace.trace(10, "unwinding %s"%(stage_fname,))
-        rtn = enstore_functions2.shell_command2("tar --force-local -xf %s"%(stage_fname,))
+        if self.remote_aggregation_host:
+            # run tar on the remote host
+            Trace.trace(10, "will run tar on remote host %s"%(self.remote_aggregation_host,))
+            tarcmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s; tar --force-local -xf %s"'% \
+                     (self.remote_aggregation_host,
+                      tmp_stage_dir_path,
+                      stage_fname)
+        else:
+            tarcmd = "tar --force-local -xf %s"%(stage_fname,)
+        Trace.trace(10, "tar cmd %s"%(tarcmd,))
+        rtn = enstore_functions2.shell_command2(tarcmd)
         Trace.trace(10, "unwind returned %s"%(rtn,))
 
         if rtn[0] != 0 : # tar return code
@@ -1128,7 +1204,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     # file gets staged into the path
                     # defined by location_cookie
                     # prepended by stage_area
-                    dst = os.path.join(self.stage_area, src)
+                    dst = os.path.join(self.stage_area.remote_path, src)
 
                 Trace.trace(10, "stage_files: renaming %s to %s"%(src, dst))
                 # create a destination directory
@@ -1382,14 +1458,16 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
                                                                      content= content)
                 
-        elif request_type in (mt.MWC_STATUS): # there could more reuquest of such nature in the future
+        elif request_type in (mt.MWC_STATUS): # there could more request of such nature in the future
             content = {"migrator_status": self.status, "name": self.name} # this may need more details
             status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
                                                                  content= content)
+            Trace.trace(10, "Sending status %s"%(status_message,))
+
             try:
-                Trace.trace(10, "Sending status %s"%(status_message,))
                 self._send_reply(status_message)
             except Exception, e:
+                Trace.trace(10, "exception sending reply %s"%(e,))
                 self.trace.exception("sending reply, exception %s", e)
                 return False
             # work has completed successfully
