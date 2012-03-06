@@ -711,7 +711,7 @@ class VolumeDB(DbTable):
 			data['modification_time']=-1
                 for k in ("active_files","deleted_files","unknown_files",\
                           "active_bytes","deleted_bytes","unknown_bytes"):
-                    data[k]=s.get(k,-1)
+                    data[k]=s.get(k,0)
 		return data;
 
 	def export_format(self, s):
@@ -751,7 +751,7 @@ class VolumeDB(DbTable):
 			data['modification_time']=-1
                 for k in ("active_files","deleted_files","unknown_files",\
                           "active_bytes","deleted_bytes","unknown_bytes"):
-                    data[k]=s.get(k,-1)
+                    data[k]=s.get(k,0)
 		return data;
 
 if __name__ == '__main__':
