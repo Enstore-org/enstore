@@ -7413,6 +7413,7 @@ class DiskMover(Mover):
             "unique_id": self.unique_id,
             "work": work,
             'time_in_state': now - self.state_change_time,
+            "current_time" : now,
             "library": self.current_library,
             "volume_clerk": self.vc_address,
             "library_list":self.libraries, # this is needed for the federation project
