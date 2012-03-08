@@ -51,7 +51,7 @@ def show_size(s):
     else:
         return "%7d Bytes"%(s)
 
-def print_volume_summary(ticket,total):
+def print_volume_summary(ticket):
     la_time='(unknown)'
     if ticket['last_access'] :
         if int(ticket['last_access'].split(' ')[-1])<1970:
@@ -63,7 +63,7 @@ def print_volume_summary(ticket,total):
     print "          Volume:", ticket['external_label']
     print "Last accessed on:", la_time
     print "      Bytes free:", show_size(ticket['remaining_bytes'])
-    print "   Bytes written:", show_size(total)
+    print "   Bytes written:", show_size(ticket.get('active_bytes',0L)+ticket.get('deleted_bytes',0L)+ticket.get('unknown_bytes',0L))
     print "        Inhibits:", ticket['system_inhibit'][0],"+",ticket['system_inhibit'][1]
     print '</b><hr></pre>'
     print "</font>"
@@ -128,13 +128,8 @@ if __name__ == "__main__":
         sys.exit(1)
     print_header ("Volume %s"%(volume),)
     print '<h1><font color=#aa0000>', volume, '</font></h1>'
+    print_volume_summary(ticket)
     f_ticket = ifc.tape_list(intf.list)
-    total=0L
-    if f_ticket['status'][0] == e_errors.OK:
-        tape = f_ticket['tape_list']
-        for record in tape:
-            total=total+long(record['size'])
-    print_volume_summary(ticket,total)
     if f_ticket['status'][0] == e_errors.OK:
         print_volume_content(f_ticket,intf.list)
 
