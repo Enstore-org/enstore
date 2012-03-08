@@ -403,7 +403,7 @@ def trace(severity, message, dolog=1, doalarm=1, out_fp=sys.stdout,
 
 #Send the message to the standard out (the default) or standard error.
 def message(severity, message, out_fp=sys.stdout, append_newline=True):
-    new_msg = trunc(message)
+    new_msg = message
     if message_levels.has_key(severity):
         #if out_fp not in [sys.stderr, sys.stdout]:
         #    write_trace_message("Neither stdout or stderr given.\n",
