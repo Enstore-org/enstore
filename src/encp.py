@@ -6566,15 +6566,16 @@ def set_outfile_permissions(ticket, encp_intf):
                         # them for consistancy is good for error checking.
                         dev = ticket['wrapper']['major'] << 8 + \
                               ticket['wrapper']['minor']
+                        update_t = ticket['fc']['update'].split(".") # this is needed in case if time is appended by ms
                         fake_time = time.mktime(time.strptime(
-                            ticket['fc']['update'], "%Y-%m-%d %H:%M:%S"))
+                            update_t[0], "%Y-%m-%d %H:%M:%S"))
                         in_stat_info = (ticket['wrapper']['mode'],
                                         ticket['wrapper']['inode'],
                                         dev,  #Reconstructed.
                                         1,  #number of links
                                         ticket['wrapper']['uid'],
                                         ticket['wrapper']['gid'],
-                                        ticket.get('filesize',ticket.get('file_size',0L)), # when merging head as SFA notices incosistency between filesize and file_suze, this should take care of it
+                                        ticket.get('filesize',ticket.get('file_size',0L)), # when merging head as SFA notices incosistency between filesize and file_size, this should take care of it
                                         fake_time,  #atime
                                         fake_time,  #mtime
                                         fake_time,  #ctime
