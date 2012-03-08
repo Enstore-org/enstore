@@ -245,7 +245,7 @@ if __name__ == "__main__":
     # get the interface
     intf = LMDInterface()
     lmd = LMD((intf.config_host, intf.config_port))
-    lmd._do_print({'levels':[10]})
+    #lmd._do_print({'levels':[10]})
     # start qpid server
     lmd.start_qpid_server()
     
