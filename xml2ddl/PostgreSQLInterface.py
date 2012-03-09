@@ -397,8 +397,6 @@ class PgDownloader(DownloadCommon):
 #        argTypes = strArgTypes.split(',')
 #        line below by litvinse@fnal.gov
         argTypes = strArgTypes.split()
-        print "HERE WE ARE ",rows[0]
-#        print "HERE WE ARE ",strRoutineName,argTypes,"\"",strArgTypes,"\""
         strQuery = """SELECT typname FROM pg_type WHERE oid = %s"""
         params = []
         for typeNum in argTypes:
@@ -463,8 +461,9 @@ class PgDownloader(DownloadCommon):
                 if argnames:
                     argnames = argnames[0]
                     if argnames != None:
-                        argnames = argnames[1:-1]
-                        argnames = argnames.split(',')
+                        # lines below commented by litvinse@fnal.gov
+                        #argnames = argnames[1:-1]
+                        #argnames = argnames.split(',')
                         for nIndex, argName in enumerate(argnames):
                             params[nIndex] += ' ' + argName
 
