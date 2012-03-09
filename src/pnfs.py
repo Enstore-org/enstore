@@ -2187,7 +2187,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             found_mount_point_id = None
             use_id = base_id
             while use_id != "000000000000000000001020":
-                use_id_db_num = int(use_id[:4])
+                #
+                # database number is hex based, need to use hex base to int call
+                #
+                use_id_db_num = int(use_id[:4],16)
 
                 try:
                     n = N(use_id_db_num, use_search_path)
