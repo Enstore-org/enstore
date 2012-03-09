@@ -1047,6 +1047,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #          full filepath.  Use the .../.(access)(%s) name instead.
     def __init__(self, pnfsFilename="", mount_point="", shortcut=None):
 
+
         #self.print_id is unique in each of pnfs.Pnfs, chimera.ChimeraFS,
         # and pnfs_agent_client.PnfsAgentClient.  It is to be used for
         # the printing of messages to name the specific interface
@@ -1595,7 +1596,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             else:
                 raise ValueError("The chimera id (%s) is not valid." % id)
         elif self.id != None:
-            if is_chimeraid(self.id):
+            if is_chimeraid_or_pnfsid(self.id):
                 use_id = self.id
             else:
                 raise ValueError("The chimera id (%s) is not valid." % self.id)
