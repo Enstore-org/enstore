@@ -1225,7 +1225,6 @@ def get_cache_by_db_info(db_info_key = None, default = None):
 #Return the .(get)(database) values as keyed by mount point.
 def get_cache_by_mount_point(mount_point_key = None, default = None):
     global database_info_cache  #dictionary
-
     pnfs_global_lock.acquire()
 
     try:
@@ -2187,7 +2186,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             found_mount_point_id = None
             use_id = base_id
             while use_id != "000000000000000000001020":
-                use_id_db_num = int(use_id[:4])
+                #
+                # database number is hex based, need to use hex base to int call
+                #
+                use_id_db_num = int(use_id[:4],16)
 
                 try:
                     n = N(use_id_db_num, use_search_path)
@@ -2225,7 +2227,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 name = self._get_nameof(use_id, found_search_path)
                 filepath = os.path.join(name, filepath)
 
-        #Munge the starting point of the PNFS database with the rest of
+        # Munge the starting point of the PNFS database with the rest of
         # the path.
         if filepath:
             pieces=filepath.strip("/").split("/")
