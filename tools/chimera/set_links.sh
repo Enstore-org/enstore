@@ -18,4 +18,4 @@ do
     ln -s pnfs/fs/usr/${d} ${d}
 done
 
-
+#ln -s /pnfs/fs fs
