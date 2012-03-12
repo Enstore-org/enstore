@@ -2130,7 +2130,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 				    txt = "Failed to execute command %s\n. List of files: %s\n"%(cmd, txt,)
 			    if not failed :
 				    txt = 'See <A HREF="FILES_IN_TRANSITION">FILES_IN_TRANSITION</A>'
-			    Trace.alarm(e_errors.WARNING, " %d files stuck in files_in_transiton table"%len(res), txt )
+			    Trace.alarm(e_errors.WARNING, " %d files stuck in files_in_transition table"%len(res), txt )
 		    time.sleep(FILES_IN_TRANSITION_CHECK_INTERVAL)
 
 
