@@ -17,8 +17,8 @@
 #set -x
 #
 if [ $# -lt 1 ] ; then
-  echo "USAGE : md2pathfinder <filename> "
-  exit 4 
+  echo "USAGE : `basename $0` <filename> "
+  exit 4
 fi
 filename=$1
 ls ".(const)(D)" 1>/dev/null 2>/dev/null
@@ -26,7 +26,7 @@ if [ $? -ne 0 ] ; then
    echo " Not in an pnfs Filesystem "
    exit 3
 fi
-pnfsid=`cat ".(id)($1)" 2>/dev/null`
+pnfsid=`head -n 1 ".(id)($1)" 2>/dev/null`
 if [ $? -ne 0 ] ; then
    nfile=`cat ".(nameof)($filename)" 2>/dev/null`
 
@@ -40,13 +40,13 @@ fi
 echo $pnfsid $filename
 sum=$filename
 while : ; do
-   pnfsid=`cat ".(parent)($pnfsid)" 2>/dev/null`
+   pnfsid=`head -n 1 ".(parent)($pnfsid)" 2>/dev/null`
    if [ $? -ne 0 ] ; then break ; fi
-   filename=`cat ".(nameof)($pnfsid)" 2>/dev/null`
+   filename=`head -n 1 ".(nameof)($pnfsid)" 2>/dev/null`
    if [ $? -eq 0 ] ; then
       echo $pnfsid $filename
       sum=${filename}/$sum
-   else 
+   else
       echo "$pnfsid -"
 #    break
    fi
