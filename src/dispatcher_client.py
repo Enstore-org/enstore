@@ -69,6 +69,7 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
         self.summary = 0
         self.timestamp = 0
         self.threaded_impl = None
+        self.verbose = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -88,11 +89,13 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
         option.SHOW:{option.HELP_STRING:"print the current policy in python format",
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.USER_LEVEL:option.ADMIN,
-                     }
+                     },
+        option.VERBOSE:{option.HELP_STRING:"verbose output. Used with --get-queue",
+                        option.SHORT_OPTION:"v",
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.USER_LEVEL:option.USER,
+                        }
         }
-
-
-
 def do_work(intf):
     dispatcher_client = DispatcherClient((intf.config_host, intf.config_port))
     Trace.init(dispatcher_client.get_name(MY_NAME))
@@ -122,12 +125,31 @@ def do_work(intf):
         else:
             pprint.pprint(reply)
     elif intf.get_queue:
-        import pprint
         reply = dispatcher_client.show_queue()
-        if reply.has_key('status') and reply['status'][0] == e_errors.OK:
-            # correct reply must contain 'dump' key by design
+        if intf.verbose:
+            import pprint
             pprint.pprint(reply['pools'])
-        
+        else:
+            if reply.has_key('status') and reply['status'][0] == e_errors.OK:
+                # reply looks like:
+                # {'cache_missed': {},
+                # 'cache_purge': {},
+                # 'cache_written': {},
+                # 'migration_pool'
+                # 'status':()
+                # }
+                # correct reply must contain 'dump' key by design
+                keys =reply['pools'].keys()
+                keys.sort()
+                for pool in keys: # pools are keys of the dictionary
+                    print "Pool %s Pool size %s"%(pool, len(reply['pools'][pool].keys()))
+                    if pool == 'migration_pool' and len(reply['pools'][pool].keys()) != 0:
+                        for k in reply['pools'][pool].keys():
+                            print "id %s list length %s type %s time_qd %s"% \
+                                  (k,
+                                   len(reply['pools'][pool][k]['list']),
+                                   reply['pools'][pool][k]['type'],
+                                   reply['pools'][pool][k]['time_qd'])
 
     else:
 	intf.print_help()
