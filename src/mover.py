@@ -7221,8 +7221,8 @@ class DiskMover(Mover):
         # self.update_lm(reset_timer=1)
         ##########################
         
-        if self.state == DRAINING:
-            self.idle()
+        if self.draining:
+            self.offline()
         else:
             self.state = HAVE_BOUND
         self.need_lm_update = (1, None, 1, None)
@@ -7311,7 +7311,7 @@ class DiskMover(Mover):
                 
         r0 = self.vol_info['remaining_bytes']  #value prior to this write
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
-        remaining = remaining = min(r1, r2)
+        remaining = min(r1, r2)
         self.vol_info['remaining_bytes']=remaining
         reply = self.vcc.set_remaining_bytes(self.current_volume,
                                              remaining,
