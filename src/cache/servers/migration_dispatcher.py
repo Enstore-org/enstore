@@ -132,7 +132,7 @@ class MigrationDispatcher():
                     Trace.log(e_errors.INFO,
                               "error in send_status_request KeyError %s keys %s"%
                               (key, self.migration_pool.keys()))
-            time.sleep(120)
+            time.sleep(600)
 
 
     def handle_message(self,m):
