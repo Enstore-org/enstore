@@ -1088,20 +1088,20 @@ def inventory(output_dir, cache_dir):
         ### Address the pages that report on the status(es) of the volume.
         ###
 
-        #First, skip updating the file information for volumes that have
-        # not been updated recently.
+        active = vsum['active']
+        deleted = vsum['deleted']
+        unknown = vsum['unknown']
+        active_size = vsum['active_size']
+        deleted_size = vsum['deleted_size']
+        unknown_size = vsum['unknown_size']
+        total = active + deleted + unknown
+        total_size = active_size+deleted_size+unknown_size
         skipped = False
+        # First, skip updating the file information for volumes that have
+        # not been updated recently.
         if vsum and long(vsum['last']) == long(vv['modification_time']):
             skipped = True
             # good, don't do anything
-            active = vsum['active']
-            deleted = vsum['deleted']
-            unknown = vsum['unknown']
-            active_size = vsum['active_size']
-            deleted_size = vsum['deleted_size']
-            unknown_size = vsum['unknown_size']
-            total = active + deleted + unknown
-            total_size = active_size+deleted_size+unknown_size
             unchanged.append(vk)
             n_unchanged = n_unchanged + 1
         #Do update the file information for volumes that have had there
@@ -1113,76 +1113,27 @@ def inventory(output_dir, cache_dir):
                                     0666)
             print_header(vv, fd_output)
 
-            # some volume statistics
+            # get all files of the volume
 
-            active = 0L
-            deleted = 0L
-            unknown = 0L
-            active_size = 0L
-            deleted_size = 0L
-            unknown_size = 0L
-
-            # dealing with files
-
-            # get all bfids of the volume
-
-            q = "select bfid from file, volume\
-                 where volume.label = '%s' and \
-                     file.volume = volume.id;"%(vk)
-            res = file_db.db.query(q).getresult()
-            for pfk in res:  #bfids:
-                # to work around the infamous missing key error due to
-                # live backup
-                f = file_db[pfk]
-                if f.has_key('deleted'):
-                    if f['deleted'] == 'yes':
-                        deleted = deleted + 1
-                        deleted_size = deleted_size + f['size']
-                    elif f['deleted'] == 'no':
-                        active = active + 1
-                        active_size = active_size + f['size']
-                    else:
-                        unknown = unknown + 1
-                        unknown_size = unknown_size + f['size']
-                else:
-                    unknown = unknown + 1
-                    unknown_size = unknown_size + f['size']
-
-
-                # write out file information
+            q = "select f.bfid, v.label, f.size, f.location_cookie, f.deleted, f.pnfs_path \
+                 from file f, volume v\
+                 where v.label = '%s' and \
+                 f.volume = v.id;"%(vk)
+            res = file_db.query_dictresult(q)
+            for f in res:
                 os.write(fd_output, "%10s %15s %15s %22s %7s %s\n" % \
-                    (f.get('external_label', "unknown"),
+                    (f.get('label', "unknown"),
                      f.get('bfid', "unknown"),
                      f.get('size', "unknown"),
                      f.get('location_cookie', "unknown"),
                      f.get('deleted', "unknown"),
-                     f.get('pnfs_name0', "unknown")))
-
+                     f.get('pnfs_path', "unknown")))
                 n_files = n_files + 1
 
-            #Sum the volume totals.
-            total = active+deleted+unknown
-            total_size = active_size+deleted_size+unknown_size
-            vsum = {
-                'last' : vv['modification_time'],
-                'active' : active,
-                'deleted' : deleted,
-                'unknown' : unknown,
-                'total' : total,
-                'active_size' : active_size,
-                'deleted_size' : deleted_size,
-                'unknown_size' : unknown_size,
-                'total_size' : total_size,
-                }
-            vol_sum[vk] = vsum
-
-            #Print out the volume information at the end.
             print_footer(vv, vsum, fd_output)
-
             #If the file is real, close it.
             if fd_output != 1:
                 os.close(fd_output)
-
             #Update the number of volumes changed counter.
             n_changed = n_changed + 1
 
