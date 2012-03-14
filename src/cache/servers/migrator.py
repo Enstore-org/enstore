@@ -20,6 +20,7 @@ import random
 import stat
 import multiprocessing
 import shutil
+import string
 
 # enstore imports
 import e_errors
@@ -229,16 +230,18 @@ class StorageArea():
     """
     This class is needed to effectively work with
     NFS mounted storage areas.
-    It was fount that writes ove nfs are slow.
+    It was found that writes over nfs are slow.
     We want to tar files on the nfs server itself and not over nfs
     """
+    #  @param path - path to storage arear
+    #  @param remotehost - remote host where the storage area resides
     def __init__(self, path, remotehost=""):
         self.path = path
         self.real_path = path # real path on this host
         self.remote_path = path # path on remote host if nfs mounted
         self.server = "localhost"
 
-        if remotehost:
+        if remotehost: 
             # find the real path
             self.real_path = os.path.realpath(self.path)
             if self.real_path != self.path:
@@ -286,6 +289,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.tmp_stage_area = StorageArea(self.my_conf['tmp_stage_area'],
                                           self.remote_aggregation_host)  # area on disk where staged files are temporarily stored
         self.packages_location = self.my_conf.get("packages_dir", "") # directory in name space for packages
+
+        self.blocking_factor =  self.my_conf.get("tar_blocking_factor", 20) # 20 is a default tar blocking factor
 
         if not self.packages_location:
             Trace.alarm(e_errors.ERROR, "Define packages_dir in cofiguration! Exiting")
@@ -443,7 +448,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "check_packaged_files creating __check_packaged_files %s %s %s %s "%(type(self.archive_area),self.archive_area, type(package), package ))
         self.state = CHECKING_CRC
         
-        proc = multiprocessing.Process(target = _check_packaged_files, args = (self.archive_area, package))
+        proc = multiprocessing.Process(target = _check_packaged_files, args = (self.archive_area.path, package))
         Trace.trace(10, "check_packaged_files  calling _check_packaged_files")
         proc.start()
         Trace.trace(10, "check_packaged_files _check_packaged_files started")
@@ -453,7 +458,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # Remove temporary directory
         # created by _check_packaged_files here
         # to take care about .nfs.... files
-        tmp_dir = os.path.join(self.archive_area, "tmp_CRC", os.path.dirname(package).lstrip("/"))
+        tmp_dir = os.path.join(self.archive_area.path, "tmp_CRC", os.path.dirname(package).lstrip("/"))
         Trace.trace(10, "check_packaged_files: removing temporary directories")
         try:
            shutil.rmtree(tmp_dir)
@@ -580,18 +585,20 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
 
             # call tar command
+            start_t = time.time()
             Trace.log(DEBUGLOG, "Starting tar of %s files to %s"%(len(cache_file_list), src_path,))
 
             if self.remote_aggregation_host:
                 # run tar on the remote host
                 Trace.trace(10, "will run tar on remote host %s"%(self.remote_aggregation_host,))
-                tarcmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s; tar --force-local -cf %s --files-from=file_list"'%(self.remote_aggregation_host,
-                                                                                                 archive_dir,
-                                                                                                 src_path,)
+                tarcmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s && tar -b %s --force-local -cf %s --files-from=file_list"'%(self.remote_aggregation_host,
+                                                                                                                               archive_dir,
+                                                                                                                               self.blocking_factor,
+                                                                                                                               src_path,)
                 Trace.trace(10, "tar cmd %s"%(tarcmd,))
             else:
                 Trace.trace(10, "will run tar on local host %s")
-                tarcmd = "tar --force-local -cf %s --files-from=file_list"%(src_path,)
+                tarcmd = "tar -b %s --force-local -cf %s --files-from=file_list"%(self.blocking_factor, src_path,)
             
             rtn = enstore_functions2.shell_command2(tarcmd)
             Trace.trace(10, "tar returned %s"%(rtn,))
@@ -600,7 +607,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.log(e_errors.ERROR, "Error creating package %s %s"(src_path, rtn[2])) #stderr
                 return None, None, None
             
-            Trace.log(DEBUGLOG, "Finished tar to %s"%(src_path,))              
+            t = time.time() - start_t
+            fstats = os.stat(src_path)
+            fsize = fstats[stat.ST_SIZE]/1000000.
+            
+            Trace.log(DEBUGLOG, "Finished tar to %s size %s rate %s MB/s"%(src_path, fsize, fsize/t))              
+            Trace.log(e_errors.INFO, "Finished tar to %s size %s rate %s MB/s"%(src_path, fsize, fsize/t))              
         os.remove("file_list")
 
         # Qpid converts strings to unicode.
@@ -1167,12 +1179,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if self.remote_aggregation_host:
             # run tar on the remote host
             Trace.trace(10, "will run tar on remote host %s"%(self.remote_aggregation_host,))
-            tarcmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s; tar --force-local -xf %s"'% \
+            tarcmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s && tar -b %s --force-local -xf %s"'% \
                      (self.remote_aggregation_host,
                       tmp_stage_dir_path,
+                      self.blocking_factor,
                       stage_fname)
         else:
-            tarcmd = "tar --force-local -xf %s"%(stage_fname,)
+            tarcmd = "tar -b %s --force-local -xf %s"%(self.blocking_factor, stage_fname,)
         Trace.trace(10, "tar cmd %s"%(tarcmd,))
         rtn = enstore_functions2.shell_command2(tarcmd)
         Trace.trace(10, "unwind returned %s"%(rtn,))
@@ -1405,10 +1418,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if self.work_dict.has_key(message.correlation_id):
             # the work on this request is in progress
             return False
-        self.work_dict[message.correlation_id] = message
+        #self.work_dict[message.correlation_id] = message # remove after debug AM!!
         # prepare work:
         request_type = message.properties["en_type"]
         if request_type in (mt.MWC_ARCHIVE, mt.MWC_PURGE, mt.MWC_STAGE):
+            self.work_dict[message.correlation_id] = message
             if request_type == mt.MWC_ARCHIVE:
                 self.status = mt.ARCHIVING
             elif request_type == mt.MWC_PURGE:
@@ -1460,6 +1474,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 
         elif request_type in (mt.MWC_STATUS): # there could more request of such nature in the future
             content = {"migrator_status": self.status, "name": self.name} # this may need more details
+            if not self.work_dict.has_key(message.correlation_id):
+                # know nothing about this work
+                # may be caused by restart of the migrator
+                content['migrator_status'] = None
             status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
                                                                  content= content)
             Trace.trace(10, "Sending status %s"%(status_message,))
