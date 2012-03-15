@@ -548,9 +548,10 @@ class FileDB(DbTable):
 				record['update'] = (s['update']).isoformat(' ')
 			else:
 				record['update'] = s['update']
+                for key in ('package_files_count', 'active_package_files_count'):
+                    record[key] = s.get(key,0)
                 for key in ('package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
-                            'active_package_files_count','package_files_count',\
                             'storage_group','file_family','library','wrapper','cache_location',
                             'original_library','file_family_width','tape_label'):
                     record[key] = s.get(key,None)
@@ -609,9 +610,10 @@ class FileDB(DbTable):
 			record["uid"] = s["uid"]
 		if s.has_key("gid"):
 			record["gid"] = s["gid"]
+                for key in ('package_files_count', 'active_package_files_count'):
+                    record[key] = s.get(key,0)
                 for key in ('package_id','cache_status','archive_status',\
                             'cache_mod_time','archive_mod_time',\
-                            'active_package_files_count','package_files_count', \
                             'storage_group','file_family','library','wrapper','cache_location',
                             'original_library','file_family_width','tape_label'):
                     if s.has_key(key):
