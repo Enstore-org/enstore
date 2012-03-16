@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 
 ###############################################################################
@@ -146,12 +145,26 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
             # systems that were successful at being included.
             self.extra_title_info.append(name)
 
+            valid_libraries = []
+            lms = csc.get_library_managers2(3, 3)
+            ###
+            ### Get the current list of libraries known to this Enstore system.
+            ###
+            for lib_info in lms:
+                library = lib_info['name'].split(".")[0]
+                valid_libraries.append(library)
+
+
             #Get the unique library and storage group combinations.
             sql_cmd = "select distinct media_type from volume " \
-                      " where label not like '%.deleted' and " \
-                      " library not like '%shelf';"
+                      " where library in ('%s')"%(string.join(valid_libraries,"','"))
+            sql_cmd += " and label not like '%.deleted' and media_type != 'null'"
 
             edb_res = edb.query(sql_cmd).getresult() #Get the values from the DB.
+
+            if  len(edb_res) == 0 :
+                edb.close()
+                return
 
             for row in edb_res:
                 #row[0] is a distinct media_type
