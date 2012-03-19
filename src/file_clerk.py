@@ -115,7 +115,19 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             sys.exit(1)
 
     def invoke_function(self, function, args=()):
-        if  function.__name__  == "tape_list3" or MY_NAME=="info_server":
+        if  function.__name__  in ("tape_list3",
+				   "set_cache_status",
+				   "alive",
+				   "get_bfids",
+				   "get_bfids2",
+				   "show_state",
+				   "find_copies",
+				   "replay",
+				   "get_brand",
+				   "get_crcs",
+				   "has_undeleted_file",
+				   "bfid_info") \
+				   or MY_NAME=="info_server":
 	    c = threading.activeCount()
             Trace.trace(5, "threads %s"%(c,))
             if c < self.max_threads:
