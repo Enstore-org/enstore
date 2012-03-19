@@ -153,6 +153,8 @@ def print_html(catalog, special, cluster):
         elif fname.startswith("COMPLETE_FILE_LISTING"):
             #We hide these behind the cgi that COMPLETE_FILE_LISTING points to.
             continue
+        elif fname.startswith("RECENT_FILES_ON_TAPE"):
+            continue
         else:
             print '<a href="' + os.path.join(inv_dir, fname) + '">', string.split(fname, '.')[0], '</a>&nbsp;&nbsp;'
             
@@ -160,6 +162,7 @@ def print_html(catalog, special, cluster):
             #Only do for summary.
             print '<br>'
 
+    print '<a href="enstore_recent_files_on_tape_cgi.py">', "RECENT_FILES_ON_TAPE", '</a>&nbsp;&nbsp;'
     ### The raw directory listing used to work.  But now that the security
     ### baseline STRONGLY recommends that this be disabled and we have
     ### disabled it; it does not make sense to include a link to something
