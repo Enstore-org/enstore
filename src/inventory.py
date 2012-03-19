@@ -1088,20 +1088,20 @@ def inventory(output_dir, cache_dir):
         ### Address the pages that report on the status(es) of the volume.
         ###
 
-        active = vsum['active']
-        deleted = vsum['deleted']
-        unknown = vsum['unknown']
-        active_size = vsum['active_size']
-        deleted_size = vsum['deleted_size']
-        unknown_size = vsum['unknown_size']
-        total = active + deleted + unknown
-        total_size = active_size+deleted_size+unknown_size
         skipped = False
         # First, skip updating the file information for volumes that have
         # not been updated recently.
         if vsum and long(vsum['last']) == long(vv['modification_time']):
             skipped = True
             # good, don't do anything
+            active = vsum['active']
+            deleted = vsum['deleted']
+            unknown = vsum['unknown']
+            active_size = vsum['active_size']
+            deleted_size = vsum['deleted_size']
+            unknown_size = vsum['unknown_size']
+            total = active + deleted + unknown
+            total_size = active_size+deleted_size+unknown_size
             unchanged.append(vk)
             n_unchanged = n_unchanged + 1
         #Do update the file information for volumes that have had there
@@ -1129,6 +1129,27 @@ def inventory(output_dir, cache_dir):
                      f.get('deleted', "unknown"),
                      f.get('pnfs_path', "unknown")))
                 n_files = n_files + 1
+
+            #Sum the volume totals.
+            total = 0
+            for k in ('active_files','deleted_files','unknown_files'):
+                total += vv[k]
+            total_size=0L
+            for k in ('active_bytes','deleted_bytes','unknown_bytes'):
+                total_size += vv[k]
+            vsum = {
+                'last' : vv['modification_time'],
+                'active' : vv['active_files'],
+                'deleted' : vv['deleted_files'],
+                'unknown' : vv['unknown_files'],
+                'total' : total,
+                'active_size' : vv['active_bytes'],
+                'deleted_size' : vv['deleted_bytes'],
+                'unknown_size' : vv['unknown_bytes'],
+                'total_size' : total_size,
+                }
+            vol_sum[vk] = vsum
+                
 
             print_footer(vv, vsum, fd_output)
             #If the file is real, close it.
