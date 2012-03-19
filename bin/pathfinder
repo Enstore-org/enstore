@@ -28,7 +28,7 @@ if [ $? -ne 0 ] ; then
 fi
 pnfsid=`head -n 1 ".(id)($1)" 2>/dev/null`
 if [ $? -ne 0 ] ; then
-   nfile=`cat ".(nameof)($filename)" 2>/dev/null`
+   nfile=`head -n 1 ".(nameof)($filename)" 2>/dev/null`
 
    if [ $? -ne 0 ] ; then
       echo " File not found : $filename "
