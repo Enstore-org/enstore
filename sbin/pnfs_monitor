@@ -57,7 +57,7 @@ get_pnfs_dbs()
     fi
 
 
-    $mdb status | sed '1,2d' | awk '{print $NF}' | sed 's:.*/::'
+    $mdb status | sed '1,2d' | awk '{print $NF}' | sed 's:.*/::' | egrep -v "^admin$"
 }
 
 parse_id()
@@ -70,7 +70,7 @@ parse_id()
     #   00010000000000000000A9B0
     # These swaps re-order the bytes:
     #   01 00    00 00    00 00    00 00    b0 a9 00 00
-    #     
+    #
     #   00 01    00 00    00 00    00 00    00 00 a9 b0
     # The first four groups are believed to swap the same way as the
     # database number (a.k.a. the first grouping of four bytes).
@@ -112,7 +112,7 @@ fname_showid="/pnfs/fs/usr/.(showid)(${pnfsid})"
 	#Not the type we are looking for.
 	return 1
     fi
-    
+
     return 0
 }
 
@@ -176,7 +176,7 @@ get_hsm_status()
     fname_l2="/pnfs/fs/usr/.(access)(${pnfsid})(2)"
     L2=`cat "$fname_l2"`
     if [ `echo "$L2" | wc -l` -ge 2 ]; then
-	echo "$L2" | grep "h=yes" > /dev/null 2>&1 
+	echo "$L2" | grep "h=yes" > /dev/null 2>&1
 	if [ $? -eq 0 ]; then
 	    echo y
 	    return 1
@@ -234,7 +234,7 @@ get_filepath()
     db_name=$1
     pnfsid=$2
 
-    #Loop over 
+    #Loop over
     count=1
     while [ $count -lt 3 ]; do
         pathfinder_path=$pnfs/tools/pathfinder
@@ -363,7 +363,7 @@ check_pnfsids()
 
 	#Get the file path.
 	path=`get_filepath $db_name $pnfsid`
-	
+
 	#
 	#Skip to next file if this file is a temporary nfs file.
 	#
@@ -385,7 +385,7 @@ check_pnfsids()
 	# the beginning to have the same file format as originally.  The
 	# shell eats the leading space up.
 	echo "" $line >> $TEMP_OUTPUT_FILE_2
-	
+
     done
 
     file_count=`wc -l $TEMP_OUTPUT_FILE_2 | awk '{print $1}' 2> /dev/null`
@@ -537,10 +537,10 @@ for db_name in `echo $db_list`; do
         # and $TEMP_OUTPUT_FILE_2.
 	check_pnfsids $TEMP_FILE_NEW "Recent"
     fi
-    
+
     #Send message to standard out.
     echo "Starting DB: $db_name with $old_count previously known files."
-    
+
     #
     # Output previously found broken files.
     #
