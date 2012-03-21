@@ -609,7 +609,15 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             return {'status': (e_errors.FILE_CLERK_ERROR, message)}
         if rtn_code and force != None:
             #check if any file has the same pnfs_id
-            pnfs_id = pnfs.get_pnfsid(bit_file['pnfs_name0'])
+            pnfs_id=""
+            if  pnfs.is_pnfs_path(bit_file['pnfs_name0'], check_name_only = 1) :
+                pnfs_id = pnfs.get_pnfsid(bit_file['pnfs_name0'])
+            elif chimera.is_chimera_path(bit_file['pnfs_name0'], check_name_only = 1):
+                pnfs_id = chimera.get_pnfsid(bit_file['pnfs_name0'])
+            else:
+                 message = "file %s is not chimera nor pnfs"\
+                           % (bit_file['pnfs_name0'])
+                 return {'status': (e_errors.FILE_CLERK_ERROR, message)}
             if pnfs_id != bit_file['pnfsid']:
                 message = "file pnfs id (%s) does not match database pnfs id (%s)"\
                           % (bit_file['pnfs_name0'], pnfs_id)
@@ -618,8 +626,14 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
         #Setup the File class to do the update.
         bit_file['file_family'] = file_family
-        pf = pnfs.File(bit_file)
-        # pf.show()
+        pf=None
+        if  pnfs.is_pnfs_path(bit_file['pnfs_name0'], check_name_only = 1) :
+            pf = pnfs.File(bit_file)
+        elif   chimera.is_chimera_path(bit_file['pnfs_name0'], check_name_only = 1):
+            pf = chimera.File(bit_file)
+        else:
+            message = "%s is not chimera not pnfs file" % (bit_file['pnfs_name0'],)
+            return {'status': (e_errors.FILE_CLERK_ERROR, message)}
 
         # Now create/update it; catch any error
         if not rtn_code:  #DOES NOT EXIST

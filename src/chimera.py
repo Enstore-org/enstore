@@ -735,12 +735,10 @@ def set_last_db(database_values):
         mount_points = mount_point
     else:
         mount_points = [mount_point,]
-
     last_db_tried = {DB_INFO : database_info,
                      DB_NUMBER : database_number,
                      DB_MOUNT_POINTS: mount_points,
                      }
-
 def get_last_db():
     global last_db_tried
     return last_db_tried
@@ -755,7 +753,6 @@ def process_mtab():
     if not mount_points_cache:
         #Sets global mount_points_cache.
         (mount_points_cache, database_info_cache) = parse_mtab()
-
         #_process_mtab()  #Currently a no-op for Chimera.
 
     return [last_db_tried] + sort_mtab()
@@ -789,9 +786,7 @@ def __db_cmp(x, y):
 
 def sort_mtab():
     global mount_points_cache
-
     chimera_global_lock.acquire()
-
     try:
         search_list = mount_points_cache.values()
         #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
@@ -851,7 +846,6 @@ def get_cache_by_db_info(db_info_key = None, default = None):
 #Return the .(get)(database) values as keyed by mount point.
 def get_cache_by_mount_point(mount_point_key = None, default = None):
     global database_info_cache  #dictionary
-
     chimera_global_lock.acquire()
 
     try:
@@ -4179,10 +4173,7 @@ class File:
 		if not self.exists():
 			# do nothing if it doesn't exist
 			return
-		if long(self.size) > 2147483647L:
-			size2 = 1
-		else:
-			size2 = long(self.size)
+                size2 = long(self.size)
 		real_size = file_utils.get_stat(
                    self.path, unstable_filesystem=True)[stat.ST_SIZE]
 		if long(real_size) == long(size2):	# do nothing
