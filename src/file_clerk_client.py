@@ -44,7 +44,7 @@ def union(s):
                 res.append(j)
     return res
 
-class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient, 
+class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                  backup_client.BackupClient):
 
     def __init__( self, csc, bfid=0, server_address=None, flags=0, logc=None,
@@ -57,7 +57,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         if tries != None:
             rcv_tries = tries
         ###
-            
+
         #generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
         #                                      flags=flags, logc=logc,
         #                                      alarmc=alarmc,
@@ -70,7 +70,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                                              rcv_timeout=rcv_timeout,
                                              rcv_tries=rcv_tries,
                                              server_name = MY_SERVER)
-        
+
 	self.bfid = bfid
 	#if self.server_address == None:
         #    self.server_address = self.get_server_address(
@@ -138,7 +138,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                 else:
                     return res2
             res["copies"] = copies
-        return res 
+        return res
 
     # find_original(bfid) -- find the immidiate original
     def find_original(self, bfid, timeout=0, retry=0):
@@ -200,7 +200,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                     'work' : "find_migration_info",
                     'bfid' : bfid,
                     }
-        
+
         r = self.send({'work' : "find_migration_info",
                        'bfid' : bfid,
                        'find_src' : use_find_src,
@@ -485,7 +485,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                        "sanity_cookie": sanity_cookie,
                        "complete_crc": complete_crc})
         return r
-        
+
     # delete a volume
 
     def delete_volume(self, vol):
@@ -520,7 +520,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         if not gid:
             gid = bit_file['gid']
 
-        """ 
+        """
 	# try its best to set uid and gid
         try:
             os.setregid(gid, gid)
@@ -574,7 +574,15 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             return {'status': (e_errors.FILE_CLERK_ERROR, message)}
         if rtn_code and force != None:
             #check if any file has the same pnfs_id
-            pnfs_id = pnfs.get_pnfsid(bit_file['pnfs_name0'])
+            pnfs_id=""
+            if  pnfs.is_pnfs_path(bit_file['pnfs_name0'], check_name_only = 1) :
+                pnfs_id = pnfs.get_pnfsid(bit_file['pnfs_name0'])
+            elif chimera.is_chimera_path(bit_file['pnfs_name0'], check_name_only = 1):
+                pnfs_id = chimera.get_pnfsid(bit_file['pnfs_name0'])
+            else:
+                 message = "file %s is not chimera nor pnfs"\
+                           % (bit_file['pnfs_name0'])
+                 return {'status': (e_errors.FILE_CLERK_ERROR, message)}
             if pnfs_id != bit_file['pnfsid']:
                 message = "file pnfs id (%s) does not match database pnfs id (%s)"\
                           % (bit_file['pnfs_name0'], pnfs_id)
@@ -583,8 +591,14 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
         #Setup the File class to do the update.
         bit_file['file_family'] = file_family
-        pf = pnfs.File(bit_file)
-        # pf.show()
+        pf=None
+        if  pnfs.is_pnfs_path(bit_file['pnfs_name0'], check_name_only = 1) :
+            pf = pnfs.File(bit_file)
+        elif   chimera.is_chimera_path(bit_file['pnfs_name0'], check_name_only = 1):
+            pf = chimera.File(bit_file)
+        else:
+            message = "%s is not chimera not pnfs file" % (bit_file['pnfs_name0'],)
+            return {'status': (e_errors.FILE_CLERK_ERROR, message)}
 
         # Now create/update it; catch any error
         if not rtn_code:  #DOES NOT EXIST
@@ -592,10 +606,10 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             if pf.exists() and force == None:
                 message = "%s already exists" % (bit_file['pnfs_name0'],)
                 return {'status': (e_errors.FILE_CLERK_ERROR, message)}
-          
-            if not pf.exists(): 
+
+            if not pf.exists():
                 #We need to wrap this code (when uid == 0) to set the euid and
-                # egid to the owner of the directory.  This will allow root 
+                # egid to the owner of the directory.  This will allow root
                 # to create files in non-admin and non-trusted filesystems.
                 #print "os.geteuid():", os.geteuid(), p_p
                 file_utils.match_euid_egid(p_p)
@@ -616,7 +630,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                 # of the file.
                 file_utils.chown(bit_file['pnfs_name0'], uid, gid)
 
-            
+
         else: #DOES EXIST
             file_utils.match_euid_egid(bit_file['pnfs_name0'])
             try:
@@ -625,10 +639,10 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             except:
                 message = "can not update %s: %s" % (pf.path,
                                                      sys.exc_info()[1])
-            
+
             file_utils.set_euid_egid(0, 0)
             file_utils.release_lock_euid_egid()
-                
+
             if message:
                 return {'status': (e_errors.FILE_CLERK_ERROR, message)}
 
@@ -640,7 +654,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
         return {'status':(e_errors.OK, None)}
 
-            
+
 
     # rebuild pnfs file entry
     def rebuild_pnfs_file(self, bfid, file_family = None):
@@ -683,7 +697,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         # fill in the defaults for the possible options
         #self.do_parse = flag
         #self.restricted_opts = opts
-        self.list =None 
+        self.list =None
         self.bfid = 0
         self.bfids = None
         self.backup = 0
@@ -775,7 +789,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_LABEL:"bfid",
                      option.USER_LEVEL:option.ADMIN},
         #Additionally, --force can be used to talk to the file clerk and
-        # not the info srver.  
+        # not the info srver.
         option.FORCE:{option.HELP_STRING:
 			      "Force restore of file from DB that still exists"
                               " (in some capacity) in PNFS.",
@@ -1076,7 +1090,7 @@ def do_work(intf):
         complete_crc = ticket['complete_crc']
         print "bfid %s: sanity_cookie %s, complete_crc %s"%(`bfid`,ticket["sanity_cookie"],
                                                             `ticket["complete_crc"]`) #keep L suffix
-        
+
     else:
 	intf.print_help()
         sys.exit(0)

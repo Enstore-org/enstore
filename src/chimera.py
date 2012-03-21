@@ -1047,7 +1047,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #          full filepath.  Use the .../.(access)(%s) name instead.
     def __init__(self, pnfsFilename="", mount_point="", shortcut=None):
 
-       
+
         #self.print_id is unique in each of pnfs.Pnfs, chimera.ChimeraFS,
         # and pnfs_agent_client.PnfsAgentClient.  It is to be used for
         # the printing of messages to name the specific interface
@@ -4179,10 +4179,7 @@ class File:
 		if not self.exists():
 			# do nothing if it doesn't exist
 			return
-		if long(self.size) > 2147483647L:
-			size2 = 1
-		else:
-			size2 = long(self.size)
+                size2 = long(self.size)
 		real_size = file_utils.get_stat(
                    self.path, unstable_filesystem=True)[stat.ST_SIZE]
 		if long(real_size) == long(size2):	# do nothing
