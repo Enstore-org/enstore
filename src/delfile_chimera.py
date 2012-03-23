@@ -87,7 +87,7 @@ def main(intf):
         return False
 
     if not e_errors.is_ok(namespaceDictionary):
-        sys.stderr.write("Got errror retrieving namespace dictionary from config %s\n"%(str(namespaceDictionary['status'])))
+        sys.stderr.write("Got error retrieving namespace dictionary from config %s\n"%(str(namespaceDictionary['status'])))
         return False
 
     del namespaceDictionary['status']
@@ -139,17 +139,22 @@ def main(intf):
                     volume   = url_dict.get('enstore://enstore/?volume')[0]
 
                     fcc.bfid = bfid
-                    if fcc.bfid_info().get('active_package_files_count',1) > 0 and \
+                    if fcc.bfid_info().get('active_package_files_count',0) > 0 and \
                            fcc.bfid_info().get('package_id',None)  == bfid :
-                        Trace.alarm(e_errors.WARNING,
-                                    'Skipping non-empy package file %s'%(bfid,),
-                                    fcc.bfid_info().get('pnfs_name0',None) )
+                        Trace.log(e_errors.WARNING,
+                                  'Skipping non-empy package file %s'%(bfid,),
+                                  fcc.bfid_info().get('pnfs_name0',None) )
                         print 'skipping non-empty package file',bfid, '...'
                         continue
                     print 'deleting', bfid, '...',
                     result = fcc.set_deleted('yes')
-                    if result['status'][0] != e_errors.OK:
-                        print bfid, result['status'][1]
+                    #
+                    # during SFA testing we encountered many cases when BFID of these file
+                    # no longer in database. Skip these as not errors.
+                    #
+                    if result['status'][0] != e_errors.OK and \
+                           result['status'][0] != e_errors.NO_FILE:
+                        print bfid,  result['status'][1]
                         success = False
                         continue
                     else:
@@ -171,7 +176,7 @@ def main(intf):
         if result['status'][0] == e_errors.OK:
             print 'done'
         else:
-            print 'failed'
+            print 'failed', result['status']
             success = False
 
     if not success:
@@ -198,7 +203,6 @@ def do_work(intf):
 
         del tb #No cyclic references.
         sys.exit(1)
-
     sys.exit(exit_status)
 
 class DelfileInterface(option.Interface):
