@@ -204,23 +204,43 @@ def _check_packaged_files(archive_area, package):
 # check and set name space tags
 def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag):
     tag = namespace.Tag(directory)
-    cl = tag.readtag("library")[0]
+    try:
+        cl = tag.readtag("library")[0]
+    except IOError,detail:
+        if detail.errno == errno.ENOENT:
+            cl = ""
     if cl != library_tag:
         Trace.trace(10, "write_to_tape: library tag: %s"%(library_tag,))
         tag.writetag("library", library_tag)
-    csg = tag.readtag("storage_group")[0]
+    try:
+        csg = tag.readtag("storage_group")[0]
+    except IOError,detail:
+        if detail.errno == errno.ENOENT:
+            csg = ""
     if csg != sg_tag:
         Trace.trace(10, "write_to_tape: SG tag: %s"%(sg_tag,))
         tag.writetag("storage_group", sg_tag)
-    cff = tag.readtag("file_family")[0]
+    try:
+        cff = tag.readtag("file_family")[0]
+    except IOError,detail:
+        if detail.errno == errno.ENOENT:
+            cff = ""
     if cff != ff_tag:
         Trace.trace(10, "write_to_tape: FF tag: %s"%(ff_tag,))
         tag.writetag("file_family", ff_tag)
-    cffwr = tag.readtag("file_family_wrapper")[0]
+    try:
+        cffwr = tag.readtag("file_family_wrapper")[0]
+    except IOError,detail:
+        if detail.errno == errno.ENOENT:
+            cffwr = ""
     if cffwr != ff_wrapper_tag:
         Trace.trace(10, "write_to_tape: FF wrapper tag: %s"%(ff_wrapper_tag,))
         tag.writetag("file_family_wrapper", ff_wrapper_tag)
-    cffw = tag.readtag("file_family_width")[0]
+    try:
+        cffw = tag.readtag("file_family_width")[0]
+    except IOError,detail:
+        if detail.errno == errno.ENOENT:
+            cffw = ""
     if cffw != ff_width_tag:
         Trace.trace(10, "write_to_tape: FF width tag: %s"%(ff_width_tag,))
         tag.writetag("file_family_width", ff_width_tag)
@@ -388,9 +408,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.set_handler(mt.MWC_STATUS, self.handle_status)
         """
         self.status = None # internal status of migrator to report to Migration Dispatcher
-        self.status_change_time = 0.0
+        self.status_change_time = time.time()
         self.state = IDLE # intermediate state of migrator
-        self.state_change_time = 0.0
+        self.state_change_time = time.time()
         self.draining = False # if this is set, complete current work and exit.
         
         # we want all message types processed by one handler
@@ -597,7 +617,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                                                                                                                src_path,)
                 Trace.trace(10, "tar cmd %s"%(tarcmd,))
             else:
-                Trace.trace(10, "will run tar on local host %s")
+                Trace.trace(10, "will run tar on local host")
                 tarcmd = "tar -b %s --force-local -cf %s --files-from=file_list"%(self.blocking_factor, src_path,)
             
             rtn = enstore_functions2.shell_command2(tarcmd)
@@ -626,6 +646,28 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "pack_files: returning %s %s %s"%(src_path, dst_path, bfids))
            
         return src_path, dst_path, bfids
+
+    # clean up after write
+    # remove temporary files
+    # and directories
+    def clean_up_after_write(self, tmp_file_path):
+        Trace.trace(10, "clean_up_after_write: removing temporary file %s"%(tmp_file_path,))
+        self.state = CLEANING        
+        os.remove(tmp_file_path)
+
+        # remove README.1st and file_list
+        for f in ("README.1st", "file_list"):
+           try:
+              os.remove(os.path.join(os.path.dirname(tmp_file_path), f))
+           except:
+              pass
+        # Remove temporary archive directory
+        try:
+            os.removedirs(os.path.dirname(tmp_file_path))
+        except OSError, detail:
+            Trace.log(e_errors.ERROR, "write_to_tape: error removing directory: %s"%(detail,))
+            pass
+        
 
     # write aggregated file to tape
     def write_to_tape(self, request):
@@ -658,14 +700,26 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     Trace.log(e_errors.INFO, "File was not included into package %s archive_status %s"%
                               (rec['bfid'], rec['archive_status']))
             else:
-                Trace.log(e_errors.INFO,
+                Trace.log(DEBUGLOG,
                           "FC error: %s. File was not included into package %s archive_status %s"%
                           (rec['status'], rec['bfid'], rec['archive_status']))
 
         if write_enabled_counter != len(request_list):
-            Trace.trace(10, "No files will be archived, because some of them or all are already archived or being archived")
+            Trace.log(DEBUGLOG, "No files will be archived, because some of them or all have been already archived or being archived write_enabled_counter %s request_list lenght %s request id %s"%(write_enabled_counter, len(request_list), rq.correlation_id))
             Trace.log(e_errors.ERROR, "No files will be archived, because some of them or all are already archived or being archived")
-            return True
+            # send reply
+            content = {"migrator_status":
+                       mt.FAILED,
+                       "detail": "REBUILD PACKAGE",
+                       "name": self.name} # this may need more details
+            status_message = cache.messaging.mw_client.MWRStatus(orig_msg=rq,
+                                                     content= content)
+            try:
+                self._send_reply(status_message)
+            except Exception, e:
+                self.trace.exception("sending reply, exception %s", e)
+            return False
+            
         packed_file = self.pack_files(request_list)
         Trace.trace(10, "write_to_tape: packed_file %s"%(packed_file,))
         Trace.log(e_errors.INFO, "write_to_tape: packed_file %s"%(packed_file,))
@@ -843,8 +897,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             rc = self.set_cache_status(set_cache_params)
             Trace.log(e_errors.ERROR, "write_to_tape: encp write to tape failed: %s"%(rc,))
             # cleanup
-            self.state = CLEANING
             os.remove(dst_dir)
+            self.clean_up_after_write(src_file_path)
             return False
         
         # register archive file in file db
@@ -967,22 +1021,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         # The file from cache was successfully written to tape.
         # Remove temporary file
-        Trace.trace(10, "write_to_tape: removing temporary file %s"%(src_file_path,))
-        self.state = CLEANING        
-        os.remove(src_file_path)
-
-        # remove README.1st and file_list
-        for f in ("README.1st", "file_list"):
-           try:
-              os.remove(os.path.join(os.path.dirname(src_file_path), f))
-           except:
-              pass
-        # Remove temporary archive directory
-        try:
-            os.removedirs(os.path.dirname(src_file_path))
-        except OSError, detail:
-            Trace.log(e_errors.ERROR, "write_to_tape: error removind directory: %s"%(detail,))
-            pass
+        self.clean_up_after_write(src_file_path)
         
         status_message = cache.messaging.mw_client.MWRArchived(orig_msg=rq)
         try:
@@ -1308,7 +1347,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.trace(10, "read_from_tape: rec %s"%(rec,))
 
             if rec['status'][0] != e_errors.OK:
-                Trace.log(e_errors.ERROR, "Package staging failed %s"%(rec ['status']))
+                Trace.log(e_errors.ERROR, "Package staging failed %s"%(rec ['status'],))
                 return True # return True so that the message is confirmed
             
             package_id = rec.get('package_id', None)
@@ -1489,7 +1528,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 self.trace.exception("sending reply, exception %s", e)
                 return False
             # work has completed successfully
-            del(self.work_dict[message.correlation_id])
+            if self.work_dict.has_key(message.correlation_id):
+                del(self.work_dict[message.correlation_id])
             return True
         return True
 
