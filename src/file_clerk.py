@@ -92,10 +92,14 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
 
 	self.amqp_broker_dict = self.csc.get(AMQP_BROKER)
+	dispatcher_conf = self.csc.get('dispatcher', None)
+	fc_queue = "%s; {create: always}"%(dispatcher_conf['queue_reply'],)
+	pe_queue = "%s; {create: always}"%(dispatcher_conf['queue_work'],)
+					   
 	self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
 							self.amqp_broker_dict['port']),
-						       "file_clerk",
-						       "policy_engine")
+						       fc_queue,
+						       pe_queue)
 	self.en_qpid_client.start()
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
