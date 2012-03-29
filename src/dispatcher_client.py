@@ -38,23 +38,34 @@ class DispatcherClient(generic_client.GenericClient):
         self.timeout = rcv_timeout
         self.tries = rcv_tries
 
-   # reload policy when this method is called
-   # by the request from the client
+    # reload policy when this method is called
+    # by the request from the client
     def reload_policy(self):
         r = self.send({'work': 'reload_policy'})
         return r
 
-   # get current policy
+    # get current policy
     def show_policy(self):
         r = self.send({'work': 'show_policy'})
         return r
 
-   # get content of pools
+    # get content of pools
     def show_queue(self):
         r = self.send({'work': 'show_queue'})
         return r
 
+    # delete entry from migration pool
+    def delete_list(self, id):
+        r = self.send({'work': 'delete_list',
+                       'id': id})
+        return r
 
+    # show migration pool entry
+    def show_id(self, id):
+        r = self.send({'work': 'show_id',
+                       'id': id})
+        return r
+       
 
 class DispatcherClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
@@ -70,6 +81,8 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
         self.timestamp = 0
         self.threaded_impl = None
         self.verbose = 0
+        self.id = ""
+        self.delete_work = ""
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -93,8 +106,18 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
         option.VERBOSE:{option.HELP_STRING:"verbose output. Used with --get-queue",
                         option.SHORT_OPTION:"v",
                         option.VALUE_TYPE:option.INTEGER,
-                        option.USER_LEVEL:option.USER,
-                        }
+                        option.USER_LEVEL:option.ADMIN,
+                        },
+        option.ID:{option.HELP_STRING:"get information about specific id in migration pool.",
+                   option.VALUE_TYPE:option.STRING,
+                   option.VALUE_USAGE:option.REQUIRED,
+                   option.USER_LEVEL:option.ADMIN,
+                   },
+        option.DELETE_WORK:{option.HELP_STRING:
+                            "delete list from migration pool identified by its id",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.USER_LEVEL:option.ADMIN},
         }
 def do_work(intf):
     dispatcher_client = DispatcherClient((intf.config_host, intf.config_port))
@@ -150,6 +173,18 @@ def do_work(intf):
                                    len(reply['pools'][pool][k]['list']),
                                    reply['pools'][pool][k]['type'],
                                    reply['pools'][pool][k]['time_qd'])
+    elif intf.id:
+        reply = dispatcher_client.show_id(intf.id)
+        if reply.has_key('status') and reply['status'][0] == e_errors.OK:
+            import pprint
+            pprint.pprint(reply['id_info'])
+        else:
+            print "Bad reply: %s"%(reply,)
+    elif intf.delete_work:
+        r = dispatcher_client.delete_list(intf.delete_work)
+        print r['status']
+            
+        
 
     else:
 	intf.print_help()

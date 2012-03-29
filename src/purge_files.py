@@ -23,6 +23,13 @@ import cache.messaging.file_list as file_list
 from cache.messaging.messages import MSG_TYPES as mt
 
 MAX_TIME_IN_CACHE = 3600
+# Positioning parameres in bfid info
+P_BFID = 0
+P_CACHE_STATUS = 1
+P_ARCHIVE_STATUS = 2
+P_CACHE_MOD_TIME = 3
+P_CACHE_LOCATION = 4
+P_LOCATION_COOKIE = 5
 
 class FilePurger:
     # init is stole from file_clerk
@@ -74,7 +81,7 @@ class FilePurger:
     # checks if disk space is beween watermarks
     # and if yes returns True
     def available_space_low(self, f_info):
-        directory = f_info['cache_location']
+        directory = os.path.dirname(f_info[4])
         try:
             stats = os.statvfs(directory)
             avail = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
@@ -88,66 +95,93 @@ class FilePurger:
             return False
         except:
             return False
-            
-            
 
     def purge_this_file(self, f_info, check_watermarks=True):
+        # f_info is a list:
+        # f_info[0] - bfid
+        # f_info[1] - cache_status
+        # f_info[2] - archive_status
+        # f_info[3] - cache_mod_time
+        # f_info[4] - cache_location
+        # f_info[5] - location_cookie
+        
         rc = False
-        if (f_info['cache_status'] == file_cache_status.CacheStatus.CACHED and
-            f_info['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED):
+        if (f_info[P_CACHE_STATUS] == file_cache_status.CacheStatus.CACHED and
+            f_info[P_ARCHIVE_STATUS] == file_cache_status.ArchiveStatus.ARCHIVED):
             # check how long is this file in cache
-            t = time.mktime(time.strptime(f_info['cache_mod_time'], "%Y-%m-%d %H:%M:%S"))
+            t = time.mktime(time.strptime(f_info[P_CACHE_MOD_TIME], "%Y-%m-%d %H:%M:%S"))
             if time.time() - t > self.max_time_in_cache:
                 rc = True
-                if f_info['cache_location'] == f_info['location_cookie']: # same location
+                if f_info[P_CACHE_LOCATION] == f_info[P_LOCATION_COOKIE]: # same location
                     # When cache_location and location_cookie
                     # the same cache pool configured for writes and reads.
                     # we want to clean this pool,
                     # but the final decision will be done by migrator.
-                    Trace.trace(10, "purge_this_file: same location %s %s"%(f_info['bfid'], f_info['cache_location']))
+                    Trace.trace(10, "purge_this_file: same location %s %s"%(f_info[P_BFID], f_info[P_CACHE_LOCATION]))
                     return True
                 if check_watermarks and self.purge_watermarks:
                     rc = self.available_space_low(f_info)
+                
         return rc
             
-
     def files_to_purge(self, check_watermarks=True):
-        q = "select * from cached_files;"
+        Trace.trace(10, "files_to_purge")
+        #q = "select * from cached_files limit 100;"
+        #q = "select * from cached_files"
+        #q = "select bfid, cache_status, archive_status, cache_mod_time, cache_location, location_cookie from file where bfid in (select * from cached_files limit 100);"
+        q = "select bfid, cache_status, archive_status, cache_mod_time, cache_location, location_cookie from file where bfid in (select * from cached_files);"
         res = self.filedb_dict.query_getresult(q)
-        total_in_cache = 0L
+        total_in_cache = len(res)
+        Trace.trace(10, "files_to_purge in cache. %s"%(total_in_cache,))
         total_purge_candidates = 0L
         purge_candidates = []
-        f_list = None
-        for bfid in res:
-            f_info = self.infoc.bfid_info(bfid[0])
-            if f_info['status'][0] == e_errors.OK:
-                total_in_cache = total_in_cache + 1
-                if self.purge_this_file(f_info, check_watermarks):
-                    purge_candidates.append(f_info)
-                    total_purge_candidates = total_purge_candidates + 1
-        if total_purge_candidates:
+        list_of_file_lists = []
+        for f_info in res:
+            if self.purge_this_file(f_info, check_watermarks):
+                purge_candidates.append(f_info[P_BFID])
+                total_purge_candidates = total_purge_candidates + 1
+        f_counter = 0L
+        l_counter = 0L
+        Trace.trace(10, "files_to_purge cand. %s"%(total_purge_candidates,))
+        while f_counter < total_purge_candidates:
             # create a list of files to purge
-            list_id = "%s"%(int(time.time()),)
-            f_list = file_list.FileList(id = list_id,
-                                        list_type = mt.MDC_PURGE,
-                                        list_name = "Purge")
-            for f in purge_candidates:
-                list_element = file_list.FileListItem(bfid = f['bfid'],
-                                                      nsid = f['pnfsid'],
-                                                      path = f['pnfs_name0'],
-                                                      libraries = [f['library']])
-                f_list.append(list_element)
-
+            if l_counter == 0:
+                # create list of elements with conatant size 500 or total_purge_candidates
+                l_size = min(total_purge_candidates, 500)
+                # create a list of files to purge
+                list_id = "%s_%s"%(int(time.time()), f_counter)
+                f_list = file_list.FileList(id = list_id,
+                                            list_type = mt.MDC_PURGE,
+                                            list_name = "Purge_%s"%(list_id))
+            while l_counter < l_size:
+                if f_counter < total_purge_candidates:
+                    list_element = file_list.FileListItem(bfid = purge_candidates[f_counter],
+                                                          nsid = "",
+                                                          path = "",
+                                                          libraries = [])
+                    f_list.append(list_element)
+                    l_counter = l_counter + 1
+                    f_counter = f_counter + 1
+                else:
+                    break
+                
             f_list.full = True
-        Trace.trace(10, "Total %s Purge Candidates %s"%(total_in_cache, total_purge_candidates))
+            l_counter = 0
+            list_of_file_lists.append(f_list)
+
+        Trace.log(e_errors.INFO, "Total %s Purge Candidates %s"%(total_in_cache, total_purge_candidates))
         
-        return f_list
+        return list_of_file_lists
     
 if __name__ == "__main__":
     # get a file purger
     config_host = os.getenv('ENSTORE_CONFIG_HOST')
     config_port = int(os.getenv('ENSTORE_CONFIG_PORT'))
+    Trace.init("PPP", "yes")
+
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     fp = FilePurger(csc)
     fc = fp.files_to_purge()
     print fc
+    Trace.print_levels[5]=1
+    print len(fc)

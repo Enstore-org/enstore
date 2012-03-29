@@ -106,6 +106,9 @@ class Dispatcher(mw.MigrationWorker,
         # create migration pool
         self.migration_pool = {}
 
+        # create purge work pool
+        self.purge_pool = {}
+
         # create Migration Dispatcher
         self.md = migration_dispatcher.MigrationDispatcher("MD",
                                                            self.dispatcher_configuration['amqp']['broker'],
@@ -184,11 +187,43 @@ class Dispatcher(mw.MigrationWorker,
       try:
          self.send_reply_with_long_answer(ticket)
       except Exception, detail:
-         ticket['status'] = (e_errors.ERROR, "Error %s"%(detail,))
+         ticket = {'status': (e_errors.ERROR, "Error %s"%(detail,))}
          Trace.log(e_errors.ERROR, "show_queue: %s" % (detail,))
          self.reply_to_caller(ticket)
 
-
+   # send migration pool entry
+   def show_id(self, ticket):
+      if not self.migration_pool.has_key(ticket['id']):
+         ticket['status'] = (e_errors.KEYERROR, "No such id %s"%(ticket['id'],))
+         self.reply_to_caller(ticket)
+         return
+      ticket['status'] = (e_errors.OK, None)
+      ticket['id_info'] = self.migration_pool[ticket['id']].list_object.file_list
+      Trace.trace(10, "show_id: ticket %s"%(ticket,))
+      try:
+         self.send_reply_with_long_answer(ticket)
+      except Exception, detail:
+         ticket['status'] = (e_errors.ERROR, "Error %s"%(detail,))
+         Trace.log(e_errors.ERROR, "show_id: %s" % (detail,))
+         self.reply_to_caller(ticket)
+      
+   # delete migration pool entry
+   def delete_list(self, ticket):
+      if not self.migration_pool.has_key(ticket['id']):
+         ticket['status'] = (e_errors.KEYERROR, "No such id %s"%(ticket['id'],))
+         self.reply_to_caller(ticket)
+         return
+      ticket['status'] = (e_errors.OK, None)
+      self._lock.acquire()
+      try:
+         del(self.migration_pool[ticket['id']])
+      
+      except Exception, detail:
+         ticket['status'] = (e_errors.ERROR, "Error %s"%(detail,))
+      self._lock.release()
+         
+      self.reply_to_caller(ticket)
+             
    # move list from a list pool to migration pool
    # @param - src - pool
    # @param - item_to_move item to move is a key in the pool
@@ -204,6 +239,20 @@ class Dispatcher(mw.MigrationWorker,
                                                                          file_list.FILLED)
       del(src[item_to_move])
       self._lock.release()
+
+   # move list from a list pool to purge work pool
+   # @param - src - pool
+   # @param - item_to_move item to move is a key in the pool
+   def move_to_purge_pool(self, src, item_to_move):
+      # src[item_to_move] is a file_list.FIleList or
+      # file_list.FileListWithCRC
+      src[item_to_move].creation_time = time.time()
+      list_id = src[item_to_move].list_id
+      Trace.trace(10, "move_to_migration_pool list_id %s"%(list_id,))
+      self.purge_pool[list_id] = migration_dispatcher.MigrationList(src[item_to_move],
+                                                                    list_id,
+                                                                    file_list.FILLED)
+      del(src[item_to_move])
       
    # check pools and move lists to migration pool
    # if needed
@@ -212,16 +261,21 @@ class Dispatcher(mw.MigrationWorker,
       Trace.trace(10, "CHECK POOLS")
       kick_migration = False
       # special case for purging cache
-      files_to_purge = self.file_purger.files_to_purge(self.check_watermarks)
-      if not self.check_watermarks:
-         self.check_watermarks = True
-      if files_to_purge:
-         self.cache_purge_pool[files_to_purge.list_id] = files_to_purge
+      t = time.time()
+      if t - self.time_to_purge >= self.purge_pool_to: # run this every f.purge_pool_to seconds
+         files_to_purge = self.file_purger.files_to_purge(self.check_watermarks)
+         if not self.check_watermarks:
+            self.check_watermarks = True
+         if len(files_to_purge) != 0:
+            for f in files_to_purge:
+               self.cache_purge_pool[f.list_id] = f
+         self.time_to_purge = time.time()
+         self.purge_pool_to = 11*60
       for pool in (self.file_deleted_pool,
                    self.cache_missed_pool,
-                   self.cache_purge_pool,
                    self.cache_written_pool,
-                   self.cache_staged_pool):
+                   self.cache_staged_pool,
+                   self.cache_purge_pool):
          Trace.trace(10, "check_pools %s"%(pool,))
          for key in pool.keys():
              if pool[key].list_expired():
@@ -234,6 +288,8 @@ class Dispatcher(mw.MigrationWorker,
          self.md.start_migration()
          
    def check_pools_thread(self):
+      self.purge_pool_to = 0 # to start purging right after the dispather starts
+      self.time_to_purge = time.time()
       while not self.shutdown:
          Trace.trace(10, "check_pools_thread")
          self.check_pools()
