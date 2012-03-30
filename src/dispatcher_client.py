@@ -60,13 +60,18 @@ class DispatcherClient(generic_client.GenericClient):
                        'id': id})
         return r
 
+
+    # flush all pending writes to migrator queue
+    def flush(self):
+        r = self.send({'work': 'flush'})
+        return r
+
     # show migration pool entry
     def show_id(self, id):
         r = self.send({'work': 'show_id',
                        'id': id})
         return r
        
-
 class DispatcherClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
         # fill in the defaults for the possible options
@@ -83,6 +88,8 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
         self.verbose = 0
         self.id = ""
         self.delete_work = ""
+        self.start_draining = 0
+
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -99,6 +106,10 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
                           option.DEFAULT_TYPE:option.INTEGER,
                           option.USER_LEVEL:option.ADMIN
                           },
+        option.START_DRAINING:{option.HELP_STRING:"start draining write requests",
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.USER_LEVEL:option.ADMIN,
+                     },
         option.SHOW:{option.HELP_STRING:"print the current policy in python format",
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.USER_LEVEL:option.ADMIN,
@@ -119,6 +130,7 @@ class DispatcherClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.USER_LEVEL:option.ADMIN},
         }
+
 def do_work(intf):
     dispatcher_client = DispatcherClient((intf.config_host, intf.config_port))
     Trace.init(dispatcher_client.get_name(MY_NAME))
@@ -168,8 +180,9 @@ def do_work(intf):
                     print "Pool %s Pool size %s"%(pool, len(reply['pools'][pool].keys()))
                     if pool == 'migration_pool' and len(reply['pools'][pool].keys()) != 0:
                         for k in reply['pools'][pool].keys():
-                            print "id %s list length %s type %s time_qd %s"% \
+                            print "id %s policy %s list length %s type %s time_qd %s"% \
                                   (k,
+                                   reply['pools'][pool][k]['policy'],
                                    len(reply['pools'][pool][k]['list']),
                                    reply['pools'][pool][k]['type'],
                                    reply['pools'][pool][k]['time_qd'])
@@ -183,9 +196,10 @@ def do_work(intf):
     elif intf.delete_work:
         r = dispatcher_client.delete_list(intf.delete_work)
         print r['status']
-            
+    elif intf.start_draining:
+        r = dispatcher_client.flush()
+        print r
         
-
     else:
 	intf.print_help()
     
