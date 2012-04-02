@@ -601,7 +601,7 @@ END;
 $$
 LANGUAGE 'plpgsql';
 
-ALTER FUNCTION public.swap_package() OWNER TO enstore;
+ALTER FUNCTION public.swap_package(varchar,varchar) OWNER TO enstore;
 
 --
 -- Name: write_protect_status(character varying); Type: FUNCTION; Schema: public; Owner: enstore
@@ -653,12 +653,15 @@ INSERT into media_capacity select 'T10000T2',  5401000000000 where not exists (s
 INSERT into cache_statuses select 'CREATED','file was written to cache' where not exists (select status, explanation from cache_statuses where status='CREATED' and explanation='file was written to cache');
 INSERT into cache_statuses select 'PURGING','file is being purged' where not exists (select status, explanation from cache_statuses where status='PURGING' and explanation='file is being purged');
 INSERT into cache_statuses select 'PURGED','file wad deleted in cache' where not exists (select status, explanation from cache_statuses where status='PURGED' and explanation='file was deleted in cache');
+INSERT into cache_statuses select 'STAGING','file is being staged to cache from tape' where not exists (select status, explanation from cache_statuses where status='STAGING' and explanation='file is being staged to cache from tape');
 INSERT into cache_statuses select 'CACHED','file is in cache' where not exists (select status, explanation from cache_statuses where status='CACHED' and explanation='file is in cache');
+INSERT into cache_statuses select 'STAGING_REQUESTED','staging of file has been requested' where not exists (select status, explanation from cache_statuses where status='STAGING_REQUESTED' and explanation='staging of file has been requested');
+INSERT into cache_statuses select 'PURGING_REQUESTED','purging of file has been requested' where not exists (select status, explanation from cache_statuses where status='PURGING_REQUESTED' and explanation='purging of file has been requested');
+INSERT into cache_statuses select 'STAGED','file is in cache' where not exists (select status, explanation from cache_statuses where status='STAGED' and explanation='file is in cache');
+INSERT into cache_statuses select 'FAILED','staging has failed' where not exists (select status, explanation from cache_statuses where status='FAILED' and explanation='staging has failed');
 
 INSERT into archive_statuses select 'ARCHIVED','file was written to tape' where not exists (select status, explanation from archive_statuses where status='ARCHIVED' and explanation='file was written to tape');
 INSERT into archive_statuses select 'ARCHIVING','file is being written to tape. This state is useful for the recovery from failure' where not exists (select status, explanation from archive_statuses where status='ARCHIVING' and explanation='file is being written to tape. This state is useful for the recovery from failure');
-INSERT into archive_statuses select 'STAGING','file is being staged to cache from tape' where not exists (select status, explanation from archive_statuses where status='STAGING' and explanation='file is being staged to cache from tape');
-INSERT into archive_statuses select 'STAGING_REQUESTED','staging of file has been requested' where not exists (select status, explanation from archive_statuses where status='STAGING_REQUESTED' and explanation='staging of file has been requested');
-INSERT into archive_statuses select 'STAGED','file is in cache' where not exists (select status, explanation from archive_statuses where status='STAGED' and explanation='file is in cache');
+INSERT into archive_statuses select 'FAILED','archival has failed' where not exists (select status, explanation from archive_statuses where status='FAILED' and explanation='archival has failed');
 
 
