@@ -64,6 +64,7 @@ import event_relay_messages
 import file_cache_status
 import scsi_mode_select
 
+DEBUG_LOG=11
 """
 Mover:
 
@@ -7019,6 +7020,23 @@ class DiskMover(Mover):
         Trace.trace(29,"FILE NAME %s"%(self.file,))
         self.position_media(work_file)
         
+    # check connection in READ mode 
+    def check_connection(self):
+        Trace.trace(40, "check_connection started")
+        if self.mode == READ:
+            Trace.trace(40, "check_connection mode %s"%(mode_name(self.mode),))
+            try:
+                if self.control_socket:
+                    r, w, ex = select.select([self.control_socket], [self.control_socket], [], 10)
+                    Trace.trace(40, "check_connection1 %s %s %s"%(r, w, ex))
+                    Trace.trace(40, "r= %s"%(r,))
+                    if r:
+                        # r - read socket appears when client connection gets closed
+                        return False
+            except:
+                pass
+        return True
+
 
     # stage file into cache
     # returns file cache location or None
@@ -7030,9 +7048,10 @@ class DiskMover(Mover):
             # When file gets staged its cache_status must chahge as
             # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
             file_cache_location = None
+            loop_counter = 1L
             while not hasattr(self,'too_long_in_state_sent'):
                 info = self.fcc.bfid_info(self.file_info['bfid'])
-                Trace.log(e_errors.INFO, "staging status %s cache_status %s"%(info['cache_status'], cache_status))
+                Trace.log(DEBUG_LOG, "staging status %s cache_status %s"%(info['cache_status'], cache_status))
                 if info['cache_status'] == file_cache_status.CacheStatus.CACHED:
                     file_cache_location = info.get('cache_location', None)
                     break
@@ -7053,6 +7072,13 @@ class DiskMover(Mover):
                     # Reset self.state_change_time
                     # to avoid "mover stuck in state condition"
                     self.state_change_time = time.time()
+                if loop_counter % 100:
+                    # check if encp is still connected
+                    if not self.check_connection():
+                        self.transfer_failed(e_errors.ENCP_GONE, "encp gone while waiting for stage", error_source=USER)
+                        break
+                    loop_counter = loop_counter + 1
+                    
             return file_cache_location
                 
 
