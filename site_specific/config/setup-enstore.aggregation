@@ -1,7 +1,7 @@
 # source this file to set enstore environment
-rpm -q enstore > /dev/null
+rpm -q enstore_cache > /dev/null
 if [ $? -eq 0 ]; then 
-	ENSTORE_DIR=`rpm -ql enstore | head -1`
+	ENSTORE_DIR=`rpm -ql enstore_cache | head -1`
 else
 	echo "Enstore is not installed"
 	exit 1
