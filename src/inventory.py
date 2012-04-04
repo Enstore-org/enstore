@@ -1089,6 +1089,14 @@ def inventory(output_dir, cache_dir):
         ###
 
         skipped = False
+        active = 0
+        deleted = 0
+        unknown = 0
+        active_size = 0
+        deleted_size = 0
+        unknown_size = 0
+        total = 0
+        total_size = 0
         # First, skip updating the file information for volumes that have
         # not been updated recently.
         if vsum and long(vsum['last']) == long(vv['modification_time']):
@@ -1131,6 +1139,12 @@ def inventory(output_dir, cache_dir):
                 n_files = n_files + 1
 
             #Sum the volume totals.
+            active  =  vv['active_files']
+            deleted =  vv['deleted_files']
+            unknown =  vv['unknown_files']
+            active_size = vv['active_bytes']
+            deleted_size = vv['deleted_bytes']
+            unknown_size = vv['unknown_bytes']
             total = 0
             for k in ('active_files','deleted_files','unknown_files'):
                 total += vv[k]
@@ -1149,7 +1163,6 @@ def inventory(output_dir, cache_dir):
                 'total_size' : total_size,
                 }
             vol_sum[vk] = vsum
-                
 
             print_footer(vv, vsum, fd_output)
             #If the file is real, close it.
