@@ -95,7 +95,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 	dispatcher_conf = self.csc.get('dispatcher', None)
 	fc_queue = "%s; {create: always}"%(dispatcher_conf['queue_reply'],)
 	pe_queue = "%s; {create: always}"%(dispatcher_conf['queue_work'],)
-					   
+
 	self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
 							self.amqp_broker_dict['port']),
 						       fc_queue,
@@ -1560,8 +1560,8 @@ class FileClerkMethods(FileClerkInfoMethods):
     def set_cache_status(self,ticket):
 	    list_of_arguments = ticket.get("bfids",None)
 	    if not list_of_arguments:
-		    ticket["status"] = (e_errors.ERROR,"Failed to extract list of bfids from ticket %s"%(str(ticket)))
-		    self.reply_to_caller(ticket)
+		    self.reply_to_caller({"status" : (e_errors.ERROR,
+						      "Failed to extract list of bfids from ticket %s"%(str(ticket)))})
 		    return
 	    for item in list_of_arguments:
 		    bfid = item.get("bfid",None)
@@ -1589,11 +1589,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    # record changes in db
 		    #
 		    self.filedb_dict[bfid] = record
-	    ticket["status"] = (e_errors.OK, None)
-	    try:
-		    self.send_reply_with_long_answer(ticket)
-	    except (socket.error, select.error), msg:
-		    Trace.log(e_errors.INFO, "set_cache_status: %s" % (str(msg),))
+	    self.reply_to_caller({"status" : (e_errors.OK, None)})
 
     #### DONE
     def set_crcs(self, ticket):

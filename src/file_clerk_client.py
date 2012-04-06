@@ -113,7 +113,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         else:
             raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(arguments))
         ticket["work"] = "set_cache_status"
-        r = self.send(ticket, long_reply = 1)
+        r = self.send(ticket)
         return r
 
     def open_bitfile(self, bfid):
