@@ -658,14 +658,19 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.trace(10, "write_to_tape: bfid_info %s"%(rec,))
 
             if (rec['status'][0] == e_errors.OK):
-                if (rec['archive_status'] not in
-                    (file_cache_status.ArchiveStatus.ARCHIVED,
-                     file_cache_status.ArchiveStatus.ARCHIVING) and
-                    (rec['deleted'] == "no")): # file can be already deleted by the archiving time
-                    write_enabled_counter = write_enabled_counter + 1
-                else:
-                    Trace.log(e_errors.INFO, "File was not included into package %s archive_status %s"%
-                              (rec['bfid'], rec['archive_status']))
+                try:
+                    if (rec['archive_status'] not in
+                        (file_cache_status.ArchiveStatus.ARCHIVED,
+                         file_cache_status.ArchiveStatus.ARCHIVING) and
+                        (rec['deleted'] == "no")): # file can be already deleted by the archiving time
+                        write_enabled_counter = write_enabled_counter + 1
+                    else:
+                        Trace.log(e_errors.INFO, "File was not included into package %s archive_status %s"%
+                                  (rec['bfid'], rec['archive_status']))
+                except Exception, detail:
+                    Trace.log(DEBUGLOG, "FC error: %s. Returned status OK but still error %s"%(detail, rec)) 
+                    
+                
             else:
                 Trace.log(DEBUGLOG,
                           "FC error: %s. File was not included into package %s archive_status %s"%
@@ -996,34 +1001,38 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # check all conditions for purging the file
     # returns True if purge conditions are met
     def really_purge(self, f_info):
-        if (f_info['status'][0] == e_errors.OK and
-            (f_info['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
-            (f_info['cache_status'] == file_cache_status.CacheStatus.PURGING_REQUESTED)):
-            # Enable to purge a file if it is in the write cache
-            # and it is a time to purge it.
-            # Do not consider watermarks
-            # because we do not want files to hang in write pool if it is not
-            # the same as a read pool.
-            if self.data_area.path != self.archive_area.path:
-                if f_info['cache_location'] == f_info['location_cookie']: # same location
-                    return True
-            
-            if self.purge_watermarks:
-                directory = f_info['cache_location']
-                try:
-                    stats = os.statvfs(directory)
-                    avail = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
-                    total = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]*1.
-                    fr_avail = avail/total
-                    if fr_avail > 1 - self.purge_watermarks[1]:
-                        rc = True
-                    else:
-                        rc = False
-                except OSError:
-                    rc = True # file was removed before, proceed with purge anyway
+        try:
+            if (f_info['status'][0] == e_errors.OK and
+                (f_info['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
+                (f_info['cache_status'] == file_cache_status.CacheStatus.PURGING_REQUESTED)):
+                # Enable to purge a file if it is in the write cache
+                # and it is a time to purge it.
+                # Do not consider watermarks
+                # because we do not want files to hang in write pool if it is not
+                # the same as a read pool.
+                if self.data_area.path != self.archive_area.path:
+                    if f_info['cache_location'] == f_info['location_cookie']: # same location
+                        return True
+
+                if self.purge_watermarks:
+                    directory = f_info['cache_location']
+                    try:
+                        stats = os.statvfs(directory)
+                        avail = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
+                        total = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]*1.
+                        fr_avail = avail/total
+                        if fr_avail > 1 - self.purge_watermarks[1]:
+                            rc = True
+                        else:
+                            rc = False
+                    except OSError:
+                        rc = True # file was removed before, proceed with purge anyway
+                else:
+                    rc = True
             else:
-                rc = True
-        else:
+                rc = False
+        except Exception, detail:
+            Trace.log(DEBUGLOG, "really_purge failed %s. Why? %s"%(detail, f_info,))
             rc = False
         Trace.trace(10, "really_purge %s %s"%(f_info['bfid'], rc))
         return rc
