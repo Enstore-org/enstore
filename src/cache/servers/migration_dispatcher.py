@@ -209,11 +209,21 @@ class MigrationDispatcher():
                 # Migrator restarted, but before restart it was doing
                 # some work which could have failed.
                 # in this case the request needs to be re-sent
-                Trace.trace(10, "handle_message: Migrator replied with status %s"%
-                            (m.content['migrator_status'],))
-                Trace.trace(10, "handle_message: reposting request")
-                pool[m.correlation_id].state = file_list.FILLED 
-                self.migrate_list(pool[m.correlation_id], sender)
+                if pool.has_key(m.correlation_id): 
+                    Trace.trace(10, "handle_message: Migrator replied with status %s"%
+                                (m.content['migrator_status'],))
+                    if m.content['migrator_status'] == mt.FAILED:
+                        if m.content.has_key("detail") and m.content['detail'] == "REBUILD PACKAGE":
+                            # migrator failed to write package
+                            # delete corresponding migration_pool record
+                            # so that it can be rebuilt later
+                            del(pool[m.correlation_id])
+                            Trace.trace(10, "deleted from migration pool to get rebuilt")
+                    
+                    if pool.has_key(m.correlation_id): 
+                        Trace.trace(10, "handle_message: reposting request")
+                        pool[m.correlation_id].state = file_list.FILLED 
+                        self.migrate_list(pool[m.correlation_id], sender)
             else:
                 if pool.has_key(correlation_id): 
                     if m.content['migrator_status'] == pool[m.correlation_id].expected_reply:
