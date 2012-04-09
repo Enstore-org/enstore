@@ -5075,6 +5075,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         ticket['status'] = (status, error_info)
         Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket))
+        Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket['status'],))
         try:
             callback.write_tcp_obj(self.control_socket, ticket)
         except:
@@ -6817,6 +6818,9 @@ class DiskMover(Mover):
                                      'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                         return
+            #Trace.log(e_errors.INFO, "fake read CRC error")
+            #self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+            return
 
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
@@ -7045,7 +7049,7 @@ class DiskMover(Mover):
         if cache_status != file_cache_status.CacheStatus.CACHED:
             Trace.log(e_errors.INFO, "staging status at the start %s"%(cache_status,))
             # make this better!
-            # When file gets staged its cache_status must chahge as
+            # When file gets staged its cache_status must change as
             # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
             file_cache_location = None
             loop_counter = 1L
@@ -7072,14 +7076,16 @@ class DiskMover(Mover):
                     # Reset self.state_change_time
                     # to avoid "mover stuck in state condition"
                     self.state_change_time = time.time()
-                if loop_counter % 100:
+                if loop_counter % 100 == 0:
                     # check if encp is still connected
                     if not self.check_connection():
                         self.transfer_failed(e_errors.ENCP_GONE, "encp gone while waiting for stage", error_source=USER)
                         break
-                    loop_counter = loop_counter + 1
+                loop_counter = loop_counter + 1
+        else:
+            file_cache_location = self.file_info.get('cache_location', None)
                     
-            return file_cache_location
+        return file_cache_location
                 
 
     def position_media(self, filename):
@@ -7099,8 +7105,12 @@ class DiskMover(Mover):
                 
             # Check if file exists.
             # If this is a cache file it might have been purged
-            if not os.path.exists(filename):
-                filename = self.stage_file()
+            #if not os.path.exists(filename):
+            #    filename = self.stage_file()
+            # Assume that all files have cache_status
+            # and call self.stage_file() always.
+            # This is needed to re-stage file on disk if it was corrupted
+            filename = self.stage_file()
         if filename:
             try:
                 have_tape = self.tape_driver.open(filename, self.mode, retry_count=30)
@@ -7171,7 +7181,19 @@ class DiskMover(Mover):
                 broken =  "max_failures (%d) per failure_interval (%d) reached" % (self.max_failures,
                                                                                      self.failure_interval)
             self.transfers_failed = self.transfers_failed + 1
+        if exc == e_errors.CRC_ERROR and self.mode == READ:
+            # do not remove cached file (leave it for investigation), but set it to PURGED
+            # try:
+            #     os.remove(self.file)
+            # except:
+            #    pass
+            self.fcc.set_cache_status([{'bfid': self.file_info['bfid'],
+                                        'cache_status': file_cache_status.CacheStatus.PURGED,
+                                        'archive_status': None,        # we are not changing this
+                                        'cache_location': self.file_info['cache_location']}])
+                                      
 
+        self.current_work_ticket['status'] = (str(exc), str(msg))
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
         self.need_lm_update = (1, ERROR, 1, error_source)
