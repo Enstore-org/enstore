@@ -49,6 +49,7 @@ class MSG_TYPES():
     PURGING = file_cache_status.CacheStatus.PURGING
     STAGING = file_cache_status.CacheStatus.STAGING
     STAGING_REQUESTED = file_cache_status.CacheStatus.STAGING_REQUESTED
+    PURGING_REQUESTED = file_cache_status.CacheStatus.PURGING_REQUESTED
     ARCHIVING = file_cache_status.ArchiveStatus.ARCHIVING
     
     # Operation and reply
