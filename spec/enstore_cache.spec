@@ -37,15 +37,15 @@ rm -rf enstore-setup
 # copy all supporting products
 #pydir=`rpm -ql Python-enstore2.6 | head -1`
 PYTHON_DIR=$RPM_BUILD_ROOT/%{prefix}/Python
-#cp -rp $pydir $PYTHON_DIR
-#rm -rf $PYTHON_DIR/*.tgz
-#fttdir=`rpm -ql ftt | head -1`
+cp -rp $pydir $PYTHON_DIR
+rm -rf $PYTHON_DIR/*.tgz
+fttdir=`rpm -ql ftt | head -1`
 FTT_DIR=$RPM_BUILD_ROOT/%{prefix}/FTT
-#cp -rp $fttdir $FTT_DIR
-#rm -rf $FTT_DIR/*.tgz
-#swigdir=`rpm -ql swig-enstore | head -1`
+cp -rp $fttdir $FTT_DIR
+rm -rf $FTT_DIR/*.tgz
+swigdir=`rpm -ql swig-enstore | head -1`
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
-#cp -rp $swigdir $SWIG_DIR
+cp -rp $swigdir $SWIG_DIR
 
 QPID_DIR=$RPM_BUILD_ROOT/%{prefix}/qpid
 #cp -rp $QPID $QPID_DIR
