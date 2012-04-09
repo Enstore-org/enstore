@@ -53,20 +53,30 @@ class MigrationList:
         
 class MigrationDispatcher():
 
-    def __init__(self, name, broker, queue_work, queue_reply, lock, migration_pool):
+    def __init__(self,
+                 name,
+                 broker,
+                 queue_work,
+                 queue_reply,
+                 queue_work_purge,
+                 lock,
+                 migration_pool,
+                 purge_pool):
         '''
         @type name: str
         @param name - migration dispatcher name
-        @param broker - qpid briker
+        @param broker - qpid broker
         @param queue_work - queue for miration dispatcher requests (request lsists are sent to this queue
         @param queue_reply - replies from migrators are sent to this queue
         @param migration_pool - poll where PE Server part puts lists to get served by Migration Dispatcher
+        @param purge_pool - purge pool where PE Server part puts lists to get served by Migration Dispatcher
         '''
         self.shutdown = False
         self.finished = False
         self.auto_ack = True  # auto ack incoming messages
         self.lock = lock
         self.migration_pool = migration_pool
+        self.purge_pool = purge_pool
         
         self.log = logging.getLogger('log.encache.%s' % name)
         self.trace = logging.getLogger('trace.encache.%s' % name)
@@ -82,6 +92,7 @@ class MigrationDispatcher():
         self.trace.debug("create clients")
         q_w = "%s; {create: always}"%(queue_work,)
         q_r = "%s; {create: always}"%(queue_reply,)
+        self.purge_queue = "%s;{create: always}"%(queue_work_purge,) 
         self.qpid_client = cmc.EnQpidClient(amq_broker, myaddr=q_r, target=q_w)
 
         # start it here
@@ -115,23 +126,25 @@ class MigrationDispatcher():
         status_cmd = mw_client.MWCStatus(request_id=0)
         
         while 1:
-            if self.stop_status_loop:
-                break
-            for key in self.migration_pool.keys():
-                try:
-                    if self.migration_pool[key].status_requestor:
-                        # If status requestor exist
-                        # dispatcher had already received confirmation from
-                        # migrator.
-                        # Send status request to it
-                        status_cmd = mw_client.MWCStatus(request_id=0, correlation_id=key)
-                        Trace.trace(10, "send_status_request sending %s"%(status_cmd,))
-                        self.migration_pool[key].status_requestor.send(status_cmd)
-                except KeyError:
-                    Trace.handle_error()
-                    Trace.log(e_errors.INFO,
-                              "error in send_status_request KeyError %s keys %s"%
-                              (key, self.migration_pool.keys()))
+            for pool in (self.migration_pool, self.purge_pool):
+
+                if self.stop_status_loop:
+                    break
+                for key in pool.keys():
+                    try:
+                        if pool[key].status_requestor:
+                            # If status requestor exist
+                            # dispatcher had already received confirmation from
+                            # migrator.
+                            # Send status request to it
+                            status_cmd = mw_client.MWCStatus(request_id=0, correlation_id=key)
+                            Trace.trace(10, "send_status_request sending %s"%(status_cmd,))
+                            pool[key].status_requestor.send(status_cmd)
+                    except KeyError:
+                        Trace.handle_error()
+                        Trace.log(e_errors.INFO,
+                                  "error in send_status_request KeyError %s keys %s"%
+                                  (key, pool.keys()))
             time.sleep(600)
 
 
@@ -149,31 +162,40 @@ class MigrationDispatcher():
         if redelivered :
             # this may require additional processing
             pass
+        if self.migration_pool.has_key(m.correlation_id):
+            pool = self.migration_pool
+            sender = self.qpid_client.snd_default
+        elif self.purge_pool.has_key(m.correlation_id):
+            pool = self.purge_pool
+            sender = self.purge_sender
+        else:
+            # dispacher must have been restarted and does not have
+            # a record with this cirrelation id
+            return
+
         if msg_type == mt.MWR_CONFIRMATION:
             # Received the confirmation from migrator
             # create sender on the queue declared in m.reply_to.
-            # Correlation id is proagated for all mesaages related to the same request
-            if not self.migration_pool[m.correlation_id].status_requestor:
+            # Correlation id is propagated for all mesaages related to the same request
+            # first find which pool is the confirnmation for
+
+            if not pool[m.correlation_id].status_requestor:
                self.lock.acquire()
                try:
-                   self.migration_pool[m.correlation_id].status_requestor = self.qpid_client.add_sender("mw_qpid_interface", m.reply_to)
+                   pool[m.correlation_id].status_requestor = self.qpid_client.add_sender("mw_qpid_interface", m.reply_to)
                except:
                    pass # for now
                self.lock.release()
 
         if msg_type in (mt.MWR_ARCHIVED, mt.MWR_PURGED, mt.MWR_STAGED): 
-            if msg_type == mt.MWR_ARCHIVED:
-                Trace.trace(10, "handle_message:MWR_ARCHIVED. Before %s"%(self.migration_pool,))
-            if msg_type == mt.MWR_PURGED:
-                Trace.trace(10, "handle_message:MWR_PURGED. Before %s"%(self.migration_pool,))
-            if msg_type == mt.MWR_STAGED:
-                Trace.trace(10, "handle_message:MWR_STAGED. Before %s"%(self.migration_pool,)) 
-
-            if self.migration_pool.has_key(m.correlation_id):
-                self.lock.acquire() 
-                del(self.migration_pool[m.correlation_id])
+            if pool.has_key(m.correlation_id):
+                self.lock.acquire()
+                try:
+                    del(pool[m.correlation_id])
+                except:
+                    pass
                 self.lock.release()
-            Trace.trace(10, "handle_message:After %s"%(self.migration_pool,)) 
+            Trace.trace(10, "handle_message:After %s"%(pool,)) 
             
         if msg_type == mt.MWR_STATUS:
             # This message type can be received only as a result
@@ -182,7 +204,7 @@ class MigrationDispatcher():
             # for migration dispatcher
             
             Trace.trace(10, "handle_message: MWR_STATUS recieved %s %s"%(m.content, m.correlation_id))
-            Trace.trace(10, "handle_message: MPOOL %s"%(self.migration_pool,))
+            Trace.trace(10, "handle_message: MPOOL %s"%(pool,))
             if  m.content['migrator_status'] == None or m.content['migrator_status'] == mt.FAILED:
                 # Migrator restarted, but before restart it was doing
                 # some work which could have failed.
@@ -190,22 +212,22 @@ class MigrationDispatcher():
                 Trace.trace(10, "handle_message: Migrator replied with status %s"%
                             (m.content['migrator_status'],))
                 Trace.trace(10, "handle_message: reposting request")
-                self.migration_pool[m.correlation_id].state = file_list.FILLED 
-                self.migrate_list(self.migration_pool[m.correlation_id])
+                pool[m.correlation_id].state = file_list.FILLED 
+                self.migrate_list(pool[m.correlation_id], sender)
             else:
-                if self.migration_pool.has_key(correlation_id): 
-                    if m.content['migrator_status'] == self.migration_pool[m.correlation_id].expected_reply:
+                if pool.has_key(correlation_id): 
+                    if m.content['migrator_status'] == pool[m.correlation_id].expected_reply:
                         # expected reply is announced in the corresponding
                         # migration pool entry
                         # keyed by the correlation id
                         # all messages for a given action have the same correlation id.
                         Trace.trace(10, "handle_message: received expected status reply")
-                        del(self.migration_pool[m.correlation_id])
+                        del(pool[m.correlation_id])
                         
                     else:
                         Trace.trace(10, "handle_message: received %s expected %s"%
                                     (m.content['migrator_status'],
-                                     self.migration_pool[m.correlation_id].expected_reply))
+                                     self.pool[m.correlation_id].expected_reply))
         Trace.trace(10, "handle_message:returning %s"%(True,))
                 
         return True
@@ -216,6 +238,8 @@ class MigrationDispatcher():
         """
         self.qpid_client.start()
         print "QPID client started", self.shutdown
+        self.purge_sender = self.qpid_client.add_sender("purge_queue", self.purge_queue)
+        
         try:
             while not self.shutdown:
                 # Fetch message from qpid queue
@@ -274,7 +298,7 @@ class MigrationDispatcher():
         self.status_thread.join()
 
 
-    def migrate_list(self, migration_list):
+    def migrate_list(self, migration_list, send_client):
         if migration_list.state != file_list.ACTIVE:
             # send list to migration dispatcher queue
             if migration_list.list_object.list_type == mt.CACHE_WRITTEN:
@@ -287,19 +311,26 @@ class MigrationDispatcher():
                command = mw_client.MWCPurge(migration_list.list_object.file_list, correlation_id = migration_list.id)
                migration_list.expected_reply = mt.PURGED
             try:
-                # send command to migrator queue
+                # send command to the queue defined in send_client
                 # and set corresponding list state to ACTIVE
                 # for monitoring of execution 
-                self._send_message(command)
+                send_client.send(command)
                 migration_list.state = file_list.ACTIVE
             except:
                 Trace.handle_error()
-        
+
+
     def start_migration(self):
         for key in self.migration_pool.keys():
             try:
                 item = self.migration_pool[key]
-                self.migrate_list(item)
+                self.migrate_list(item, self.qpid_client.snd_default)
             except KeyError, detail:
                 Trace.log(e_errors.ERROR, "Error adding to migrate list %s %s"%(key, item))
+        for key in self.purge_pool.keys():
+            try:
+                item = self.purge_pool[key]
+                self.migrate_list(item, self.purge_sender)
+            except KeyError, detail:
+                Trace.log(e_errors.ERROR, "Error adding to purge list %s %s"%(key, item))
 

@@ -43,6 +43,7 @@ import checksum
 import strbuffer
 import volume_family
 import namespace
+import set_cache_status
 
 # enstore cache imports
 #import cache.stub.mw as mw
@@ -330,8 +331,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             
         # configuration dictionary required by MigrationWorker
         self.migration_worker_configuration = {'server':{}}
-        self.migration_worker_configuration['server']['queue_work'] = self.my_dispatcher['migrator_work']
-        self.migration_worker_configuration['server']['queue_reply'] = self.my_dispatcher['migrator_reply']        
+        self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always}"%(self.my_dispatcher['migrator_work'],)
+        self.migration_worker_configuration['server']['queue_reply'] = "%s; {create: always}"%(self.my_dispatcher['migrator_reply'],)        
         
         self.queue_in_name = self.name.split('.')[0]
         self.migration_worker_configuration['server']['queue_in'] = "%s; {create: receiver, delete: receiver}"%(self.queue_in_name,) # migrator input control queue
@@ -487,39 +488,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
            Trace.log(e_errors.ERROR, "check_packaged_files: error removind directory %s: %s"%(tmp_dir, detail,))
            return False
     
-    # file clerk set_cache_status currently can not send long messages
-    # this is a temporary solution
-    def set_cache_status(self, set_cache_params):
-        Trace.trace(10, "set_cache_status: cache_params %s %s"%(len(set_cache_params),set_cache_params))
-        # create a local copy of set_cache_params,
-        # because the array will be modified by pop()
-        local_set_cache_params = copy.copy(set_cache_params)
-        list_of_set_cache_params = []
-        tmp_list = []
-        while len(local_set_cache_params) > 0:
-            param = local_set_cache_params.pop()
-            if param:
-                if len(str(tmp_list)) + len(str(param)) < 15000: # the maximal message size is 16384
-                    tmp_list.append(param)
-                else:
-                   Trace.trace(10, "set_cache_status appending %s"%(tmp_list,)) 
-                   list_of_set_cache_params.append(tmp_list)
-                   tmp_list = []
-                   tmp_list.append(param)
-        if tmp_list:
-            # append the rest
-            list_of_set_cache_params.append(tmp_list)
-        Trace.trace(10, "set_cache_status: params %s %s"%(len(list_of_set_cache_params), list_of_set_cache_params,))
-               
-        # now send all these parameters
-        rc = None # define rc
-        for param_list in list_of_set_cache_params:
-            Trace.trace(10, "set_cache_status: sending set_cache_status %s %s"%(len(param_list), param_list,))
-            
-            rc = self.fcc.set_cache_status(param_list)
-            Trace.trace(10, "set_cache_status: set_cache_status 1 returned %s"%(rc,))
-        return rc
-
     # pack files into a single aggregated file
     # if there are multiple files in request list
     # 
@@ -668,7 +636,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.log(e_errors.ERROR, "write_to_tape: error removing directory: %s"%(detail,))
             pass
         
-
     # write aggregated file to tape
     def write_to_tape(self, request):
         # save request
@@ -707,6 +674,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if write_enabled_counter != len(request_list):
             Trace.log(DEBUGLOG, "No files will be archived, because some of them or all have been already archived or being archived write_enabled_counter %s request_list lenght %s request id %s"%(write_enabled_counter, len(request_list), rq.correlation_id))
             Trace.log(e_errors.ERROR, "No files will be archived, because some of them or all are already archived or being archived")
+
             # send reply
             content = {"migrator_status":
                        mt.FAILED,
@@ -816,9 +784,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     rec['file_family_width'])
         except:
             Trace.handle_error()
-            Trace.log(e_errors.ERROR, "will remove dst directory %s"%(dst_dir,))
-            # cleanup
-            os.remove(dst_dir)
             return False
                 
 
@@ -841,9 +806,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     rec['file_family_width'])
         except:
             Trace.handle_error()
-            Trace.log(e_errors.ERROR, "will remove dst directory %s"%(dst_dir,))
-            # cleanup
-            os.remove(dst_dir)
             return False
 
         Trace.trace(10, "write_to_tape: dst_file_path: %s"%(dst_file_path,))
@@ -860,7 +822,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                      'cache_status':None,# we are not changing this
                                      'archive_status': file_cache_status.ArchiveStatus.ARCHIVING,
                                      'cache_location': None})       # we are not changing this
-        rc = self.set_cache_status(set_cache_params)
+        rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         Trace.trace(10, "write_to_tape: will write %s into %s"%(src_file_path, dst_file_path,))
         #return
         # create encp request
@@ -894,10 +856,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                          'cache_location': None})       # we are not changing this
                         
             #rc = self.fcc.set_cache_status(set_cache_params)
-            rc = self.set_cache_status(set_cache_params)
+            rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
             Trace.log(e_errors.ERROR, "write_to_tape: encp write to tape failed: %s"%(rc,))
-            # cleanup
-            os.remove(dst_dir)
             self.clean_up_after_write(src_file_path)
             return False
         
@@ -1038,11 +998,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     def really_purge(self, f_info):
         if (f_info['status'][0] == e_errors.OK and
             (f_info['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED) and # file is on tape
-            f_info['cache_status'] not in (file_cache_status.CacheStatus.STAGING,# why would we purge the file which is being staged?
-                                           file_cache_status.CacheStatus.STAGING_REQUESTED, # why would we purge the file which is being staged?
-                                           file_cache_status.CacheStatus.PURGING,# file is being pugred
-                                           file_cache_status.CacheStatus.PURGED)): # file is pugred
-
+            (f_info['cache_status'] == file_cache_status.CacheStatus.PURGING_REQUESTED)):
             # Enable to purge a file if it is in the write cache
             # and it is a time to purge it.
             # Do not consider watermarks
@@ -1104,7 +1060,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     
                     
 
-        rc = self.set_cache_status(set_cache_params)
+        rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
         Trace.trace(e_errors.INFO, "Will purge files in cache")
                
@@ -1135,7 +1091,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             except Exception, detail:
                 Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
 
-        rc = self.set_cache_status(set_cache_params)
+        rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         Trace.trace(10, "purge_files: set_cache_status 2 returned %s"%(rc,))
 
         status_message = cache.messaging.mw_client.MWRPurged(orig_msg=rq)
@@ -1160,7 +1116,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                  'cache_location': None})       # we are not changing this yet
         #rc = self.fcc.set_cache_status(set_cache_params)
         Trace.trace(10, "stage_files: will stage %s"%(set_cache_params,))
-        rc = self.set_cache_status(set_cache_params)
+        rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         if rc['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
             return True # return True so that the message is confirmed
@@ -1205,7 +1161,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 for rec in set_cache_params:
                     rec['cache_status'] = file_cache_status.CacheStatus.PURGED
                 #rc = self.fcc.set_cache_status(set_cache_params)
-                rc = self.set_cache_status(set_cache_params)
+                rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
                 return False
 
         # unpack files
@@ -1284,7 +1240,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                             for rec in new_set_cache_params:
                                 rec['cache_status'] = file_cache_status.CacheStatus.PURGED
                             #rc = self.fcc.set_cache_status(new_set_cache_params)
-                            rc = self.set_cache_status(new_set_cache_params)
+                            rc = set_cache_status.set_cache_status(self.fcc, new_set_cache_params)
                             return False
 
 
@@ -1301,7 +1257,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
 
         #rc = self.fcc.set_cache_status(new_set_cache_params)
-        rc = self.set_cache_status(new_set_cache_params)
+        rc = set_cache_status.set_cache_status(self.fcc, new_set_cache_params)
         if rc['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
             return True # return True so that the message is confirmed
@@ -1466,6 +1422,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 self.status = mt.ARCHIVING
             elif request_type == mt.MWC_PURGE:
                 self.status = mt.PURGING
+                self.state = mt.PURGING
             elif request_type ==mt.MWC_STAGE:
                 self.status = mt.STAGING
             confirmation_message = cache.messaging.mw_client.MWRConfirmation(orig_msg=message,
