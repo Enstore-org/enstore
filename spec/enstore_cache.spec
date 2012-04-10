@@ -6,8 +6,8 @@
 Summary: Enstore: Mass Storage System
 Name: enstore_cache
 # version number is based on the enstore rpm version taken as base version
-Version: 2.2.5
-Release: 4
+Version: 2.2.2
+Release: 5
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
