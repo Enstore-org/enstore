@@ -35,7 +35,7 @@ rm -rf enstore-setup
 
 %setup -q -c -n %{prefix}
 # copy all supporting products
-#pydir=`rpm -ql Python-enstore2.6 | head -1`
+pydir=`rpm -ql Python-enstore2.6 | head -1`
 PYTHON_DIR=$RPM_BUILD_ROOT/%{prefix}/Python
 cp -rp $pydir $PYTHON_DIR
 rm -rf $PYTHON_DIR/*.tgz
@@ -170,6 +170,7 @@ chmod 400 /etc/cumin.conf
 cp -f $ENSTORE_DIR/sbin/qpid_broker /etc/rc.d/init.d
 cp -f $ENSTORE_DIR/etc/qpidd.conf $ENSTORE_DIR/qpid/etc
 cp -f $ENSTORE_DIR/site_specific/config/enstore.acl $ENSTORE_DIR/qpid/etc
+cp -p $ENSTORE_DIR/etc/qpid_extra.pth $PYTHON_DIR/lib/python2.6/site-packages/extra.pth
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
 rm /tmp/enstore-setup
