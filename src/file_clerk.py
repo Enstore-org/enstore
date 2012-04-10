@@ -1560,8 +1560,10 @@ class FileClerkMethods(FileClerkInfoMethods):
     def set_cache_status(self,ticket):
 	    list_of_arguments = ticket.get("bfids",None)
 	    if not list_of_arguments:
-		    self.reply_to_caller({"status" : (e_errors.ERROR,
-						      "Failed to extract list of bfids from ticket %s"%(str(ticket)))})
+		    ticket["status"] = (e_errors.ERROR,
+					"Failed to extract list of bfids from ticket %s"%(str(ticket)))
+		    
+		    self.reply_to_caller(ticket)
 		    return
 	    for item in list_of_arguments:
 		    bfid = item.get("bfid",None)
@@ -1589,7 +1591,9 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    # record changes in db
 		    #
 		    self.filedb_dict[bfid] = record
-	    self.reply_to_caller({"status" : (e_errors.OK, None)})
+	    del(ticket["bfids"])
+	    ticket["status"] = (e_errors.OK, None)
+	    self.reply_to_caller(ticket)
 
     #### DONE
     def set_crcs(self, ticket):
