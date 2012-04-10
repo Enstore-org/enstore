@@ -171,6 +171,12 @@ cp -f $ENSTORE_DIR/sbin/qpid_broker /etc/rc.d/init.d
 cp -f $ENSTORE_DIR/etc/qpidd.conf $ENSTORE_DIR/qpid/etc
 cp -f $ENSTORE_DIR/site_specific/config/enstore.acl $ENSTORE_DIR/qpid/etc
 cp -p $ENSTORE_DIR/etc/qpid_extra.pth $PYTHON_DIR/lib/python2.6/site-packages/extra.pth
+# if pycairo exists add it to enstore for cumin to run
+PYCAIRO_DIR=/opt/install/cairo/pixman-0.24.0/zlib-1.2.5/libpng-1.5.6/freetype-2.4.8/cairo-1.10.2/pycairo-1.8.10
+if [ -d "$PYCAIRO_DIR" ]; then
+	cd $PYCAIRO_DIR
+	make install
+fi
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
 rm /tmp/enstore-setup
