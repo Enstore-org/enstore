@@ -7246,7 +7246,10 @@ class DiskMover(Mover):
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
         self.net_driver.close()
-        self.tape_driver.close()
+        try:
+            self.tape_driver.close()
+        except OSError, detail:
+            Trace.log(DEBUG_LOG, "transfer_completed error closing tape driver %s"%(str(detail),))
         if self.mode == WRITE:
             # move temporary file to destination files
             try:
