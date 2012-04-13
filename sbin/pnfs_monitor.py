@@ -28,7 +28,15 @@ QUERY="select t_inodes.ipnfsid, inode2path(t_inodes.ipnfsid) as path, t_inodes.i
        "left outer join  t_level_2 l2 on (l2.ipnfsid=t_inodes.ipnfsid) "+\
        "where t_inodes.itype=32768 and t_inodes.iio=0  and "+\
        "((t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours' and "+\
-       "t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours') or t_inodes.ipnfsid in('%s'))"
+       "t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours') or t_inodes.ipnfsid in('%s')) order by t_inodes.imtime"
+
+QUERY1="select t_inodes.ipnfsid, inode2path(t_inodes.ipnfsid) as path, t_inodes.imtime, l1.ipnfsid as layer1, encode(l2.ifiledata,'escape') as layer2, l4.ipnfsid as layer4 "+\
+       "from t_inodes  left outer join t_level_4 l4 on (l4.ipnfsid=t_inodes.ipnfsid) "+\
+       "left outer join t_level_1 l1 on (l1.ipnfsid=t_inodes.ipnfsid) "+\
+       "left outer join  t_level_2 l2 on (l2.ipnfsid=t_inodes.ipnfsid) "+\
+       "where t_inodes.itype=32768 and t_inodes.iio=0  and "+\
+       "(t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours' and "+\
+       "t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours') order by t_inodes.imtime"
 
 def print_yes_no(value):
     if not value:
@@ -36,10 +44,13 @@ def print_yes_no(value):
     else:
         return 'y'
 
-FORMAT = "%20s | %36s | %6s | %6s | %6s | %s \n"
+#FORMAT = "%20s | %36s | %6s | %6s | %6s | %s \n"
+HEADER_FORMAT="{0:^20} | {1:^36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:} \n"
+FORMAT ="{0:<20} | {1:<36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:<} \n"
 
 def print_header(f):
-     f.write(FORMAT%("date", "pnfsid", "layer1", "layer2", "layer4", "path"))
+     #f.write(FORMAT%("date", "pnfsid", "layer1", "layer2", "layer4", "path"))
+     f.write(HEADER_FORMAT.format("date", "pnfsid", "layer1", "layer2", "layer4", "pools","path"))
 
 def select(dbname,dbuser,query):
     connectionPool = None
@@ -115,20 +126,50 @@ if __name__ == "__main__":
         sys.exit(1)
 
     f = open(output_file,"w")
+    f.write("Files with missing layers in pnfs : %s \n"%(time.ctime()))
+    f.write("Brought to you by pnfs_monitor\n\n")
+    print_header(f)
     failed = False
     try:
-        f.write("Files with missing layers in pnfs : %s \n"%(time.ctime()))
-        f.write("Brought to you by pnfs_monitor\n\n")
-        print_header(f)
+        #
+        # first query previously known files w/o layers
+        #
         res = select("monitor","enstore","select ipnfsid from files_with_no_layers")
         pnfsids=[]
         if len(res) > 0:
+            
             for row in res:
                 pnfsids.append(row['ipnfsid'])
-
-        res = select("chimera","enstore",QUERY%string.join(pnfsids,"','"))
-        isVolatile=False
+            #
+            # check that the pnfsids stored in files_with_no_layer are still in t_inodes
+            #
+            res = select("chimera","enstore","select ipnfsid from t_inodes where ipnfsid in ('%s')"%string.join(pnfsids,"','"))
+            chimera_pnfsids = []
+            if len(res) > 0:
+                for row in res:
+                    chimera_pnfsids.append(row["ipnfsid"].strip())
+                diff = set(pnfsids) - set(chimera_pnfsids)
+                intersection = set(pnfsids) & set(chimera_pnfsids)
+                if len(diff) > 0:
+                    #
+                    # delete from files_with_no_layers pnfsids that are no longer there 
+                    # 
+                    insert("monitor","enstore","delete from files_with_no_layers where ipnfsid in ('%s')"%(string.join(diff,"','")))
+                if len(intersection) > 0:
+                    res = select("chimera","enstore",QUERY%string.join(intersection,"','"))
+                else:
+                    res = select("chimera","enstore",QUERY1)
+            else:
+                #
+                # none of the pnfsids from files_with_no_layers exist in t_inodes
+                #
+                insert("monitor","enstore","delete from files_with_no_layers where ipnfsid in ('%s')"%(string.join(pnfsids,"','")))
+                res = select("chimera","enstore",QUERY1)
+        else:
+            res = select("chimera","enstore",QUERY1)
+        
         for row in res:
+            isVolatile=False
             pnfsid = row['ipnfsid']
             date   = row['imtime']
             layer2 = row['layer2']
@@ -140,11 +181,21 @@ if __name__ == "__main__":
                     insert("monitor","enstore","delete from files_with_no_layers where ipnfsid='%s'"%(pnfsid,))
                 continue
             if not layer2 and not layer4 and not layer1 :
-                f.write(FORMAT%(date.strftime("%Y-%m-%d %H:%M:%S"),
-                                pnfsid, print_yes_no(layer1),
-                                print_yes_no(layer2),
-                                print_yes_no(layer4),
-                                path))
+                pres = select("chimera","enstore","select ilocation from t_locationinfo where ipnfsid='%s' and itype=1"%(pnfsid,))
+                pools=""
+                if len(pres) > 0:
+                    for p in pres:
+                        pools += p["ilocation"] + ","
+                    if pools != "" :
+                        pools = pools[:-1]
+                    else:
+                        pools = "N/A"
+                f.write(FORMAT.format(date.strftime("%Y-%m-%d %H:%M:%S"),
+                                      pnfsid, print_yes_no(layer1),
+                                      print_yes_no(layer2),
+                                      print_yes_no(layer4),
+                                      pools,
+                                      path))
                 if pnfsid not in pnfsids:
                     insert("monitor","enstore","insert into files_with_no_layers values ('%s')"%(pnfsid,))
                 continue
@@ -159,11 +210,21 @@ if __name__ == "__main__":
                             isVolatile=True
                 if isVolatile : continue
             if not layer1 or not layer4 :
-                f.write(FORMAT%(date.strftime("%Y-%m-%d %H:%M:%S"),
-                                pnfsid, print_yes_no(layer1),
-                                print_yes_no(layer2),
-                                print_yes_no(layer4),
-                                path))
+                pres = select("chimera","enstore","select ilocation from t_locationinfo where ipnfsid='%s' and itype=1"%(pnfsid,))
+                pools=""
+                if len(pres) > 0:
+                    for p in pres:
+                        pools += p["ilocation"] + ","
+                    if pools != "" :
+                        pools = pools[:-1]
+                    else:
+                        pools = "N/A"
+                f.write(FORMAT.format(date.strftime("%Y-%m-%d %H:%M:%S"),
+                                      pnfsid, print_yes_no(layer1),
+                                      print_yes_no(layer2),
+                                      print_yes_no(layer4),
+                                      pools,
+                                      path))
                 if pnfsid not in pnfsids:
                     insert("monitor","enstore","insert into files_with_no_layers values ('%s')"%(pnfsid,))
     except:
@@ -177,7 +238,6 @@ if __name__ == "__main__":
     if not failed:
         cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
         rc = os.system(cmd)
-        rc=0
         if rc :
             txt = "Failed to execute command %s\n.\n"%(cmd,)
             sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))+" : "+txt+"\n")
