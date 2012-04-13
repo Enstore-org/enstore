@@ -1,8 +1,0 @@
-#!/bin/sh
-
-PREFIX=/diska/tape-inventory
-
-for i in `grep GB ${PREFIX}/VOLUMES | grep -v ".deleted" | awk '{print $1}'`
-do
-    grep $i ${PREFIX}/$i | grep " no "| awk '{print $1, $2, $6}'
-done

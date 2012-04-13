@@ -1,5 +1,0 @@
-#Needs to run on the web server.
-30 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500F1 $ENSTORE_DIR/sbin/tab_flipping_nanny -l CDF-10KCF1,CDF-LTO4F1 -a > /dev/null 2> /dev/null
-35 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500GS $ENSTORE_DIR/sbin/tab_flipping_nanny -l CDF-10KCGS,CDF-LTO4GS -a > /dev/null 2> /dev/null
-# Hmm, LTO3 are nowrite in CDF-LTO3 and CDF-LTO4G1 no longer exists
-#40 05 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch_8500G1 $ENSTORE_DIR/sbin/tab_flipping_nanny -l CDF-LTO3,CDF-LTO4G1 -a > /dev/null 2> /dev/null
