@@ -39,9 +39,9 @@ if __name__ == "__main__":
                  "<h1><center>Chimera ExportList Fetch Begin: %s </center><h1><hr>\n"%(time.ctime()),
                  "<table bgcolor=\"#dfdff0\" nosave>\n"):
         f.write(line)
-        
+
     f.write("<tr>\n")
-    
+
     columns=0
     keys = reverse_content.keys()
     keys.sort()
@@ -58,7 +58,7 @@ if __name__ == "__main__":
             f.write("%s\n"%mp)
         f.write("</pre> </td>\n")
         columns+=1
-    
+
 #    for host, mpoints in reverse_content.iteritems():
 #        columns+=1
 #        if not columns % NCOLUMNS :
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 #        f.write("</pre> </td>\n")
 
     if columns % NCOLUMNS:
-        f.write("<\tr>\n")
+        f.write("</tr>\n")
     for line in ("</table>\n",
                  "<h1><center>Chimera ExportList Fetch Done:  %s </center><h1><hr>\n"%(time.ctime()),
                  "</html>\n"):
