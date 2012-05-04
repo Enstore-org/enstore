@@ -1890,7 +1890,7 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
        #return made-up data that is consistant with pnfs format
        val = self.get_mount_point(dname)
-       for value in get_cache_by_db_info():
+       for value in get_cache_by_db_info().values():
           if val in value[DB_MOUNT_POINTS]:
              return value[DB_INFO]
 
