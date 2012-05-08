@@ -28,7 +28,7 @@ import volume_clerk_client
 #import pnfs
 import chimera
 import migrate_chimera
-import duplication_util
+import duplication_util_chimera
 import e_errors
 import Trace
 import option
@@ -80,7 +80,7 @@ DuplicateInterface.migrate_options[option.MAKE_COPIES] = {
     ]}
 
 #Avoid duplicate code testing for possible okay error messages.
-def handle_string_return_code(rtn_str,txt): 
+def handle_string_return_code(rtn_str,txt):
     if rtn_str and rtn_str.find(txt) != -1:
         return None  #Error returned, but for this case pretend it's okay.
     elif rtn_str:
@@ -111,10 +111,10 @@ def search_order_duplication(src_bfid, src_file_record, dst_bfid,
     #               false otherwise.
     #fcc: File Clerk Client instance.
     #db: postgres connection object instance.
-    
+
     #Arguements is_it_copied and is_it_swapped used by migrate_chimera.py version.
     __pychecker__="unusednames=is_it_copied,is_it_swapped"
-    
+
     if dst_bfid:
         duplicates = migrate_chimera.is_duplicated(dst_bfid, fcc, db)
         if src_bfid in duplicates:
@@ -125,7 +125,7 @@ def search_order_duplication(src_bfid, src_file_record, dst_bfid,
             return dst_bfid, src_bfid, dst_file_record, src_file_record
 
     return src_bfid, dst_bfid, src_file_record, dst_file_record
-    
+
 # migration_file_family(ff) -- making up a file family for migration
 def migration_file_family_duplication(bfid, ff, fcc, intf, deleted=migrate_chimera.NO):
     reply_ticket = fcc.find_all_copies(bfid)
@@ -257,7 +257,7 @@ def _duplicate_metadata(MY_TASK, job, fcc, db):
     res = fcc.modify(m1)
     if not e_errors.is_ok(res['status']):
         return "failed to change pnfsid for %s" % (dst_bfid,)
-    
+
     # register duplication
 
     # get a duplication manager
@@ -299,7 +299,7 @@ def duplicate_metadata(job, fcc, db):
                % (src_file_record['bfid'], src_path,
                   dst_file_record['bfid'], mig_path))
         return None
-    
+
     res = _duplicate_metadata(MY_TASK, job, fcc, db)
 
     if res:
@@ -398,7 +398,7 @@ if __name__ == '__main__':
 		if msg.errno == errno.EPIPE:
 			#User piped the output to another process, but
 			# didn't read all the data from the migrate process.
-			pass  
+			pass
 		else:
 			raise sys.exc_info()[0], sys.exc_info()[1], \
 			      sys.exc_info()[2]
