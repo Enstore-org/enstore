@@ -13,7 +13,7 @@ Duplication is very similar to migration.
 The difference is, duplication keeps both copies and makes the new files
 as duplicates of the original ones.
 
-The code is borrowed from migrate.py. It is imported and modified.
+The code is borrowed from migrate.py (now it is migrate_chimera.py). It is imported and modified.
 """
 
 # system imports
@@ -25,7 +25,8 @@ import errno
 
 # enstore imports
 import volume_clerk_client
-import pnfs
+#import pnfs
+import chimera
 import migrate_chimera
 import duplication_util
 import e_errors
@@ -332,7 +333,7 @@ def is_expected_volume_duplication(MY_TASK, vol, likely_path, fcc, db):
 	#Confirm that the destination volume matches the volume that
 	# pnfs is pointing to.  This is true for swapped duplicate
 	# files.
-	pf = pnfs.File(likely_path)
+	pf = chimera.File(likely_path)
 	pf_volume = getattr(pf, "volume", None)
 	if pf_volume == None:
 		message = "No file info for %s. " % (likely_path,)

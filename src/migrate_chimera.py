@@ -117,7 +117,7 @@ import socket
 import file_clerk_client
 import volume_clerk_client
 import configuration_client
-import pnfs
+#import pnfs
 import chimera
 import namespace
 import option
@@ -2809,7 +2809,7 @@ def migration_path(path, file_record, deleted = NO):
 
         #...just be sure to stick .m. at the beginning and to
         # limit the character count.
-        use_fname = ".m.%s" % (fname,)[:pnfs.PATH_MAX]
+        use_fname = ".m.%s" % (fname,)[:chimera.PATH_MAX]
         mig_path = os.path.join(mig_dir, use_fname)
         return mig_path
     elif len(admin_mount_points) >= 1:
@@ -2840,7 +2840,7 @@ def migration_path(path, file_record, deleted = NO):
 
     #We want to use the non-deleted path if it still exists or we know that
     # the original path still exists.
-    if pnfs.is_admin_pnfs_path(path) or \
+    if chimera.is_admin_pnfs_path(path) or \
            file_utils.e_access(non_deleted_path, os.F_OK):
         return non_deleted_path
 
@@ -5816,23 +5816,23 @@ def use_libraries(bfid, filepath, file_record, db, intf):
     user_libraries = user_libraries.split(",")
 
     if file_record['deleted'] == "yes": #unknown should never get this far
-        use_dirpath = pnfs.get_directory_name(file_record['pnfs_name0'])
+        use_dirpath = chimera.get_directory_name(file_record['pnfs_name0'])
     else:
-        use_dirpath = pnfs.get_directory_name(filepath)
+        use_dirpath = chimera.get_directory_name(filepath)
 
     #Get the pnfs specified libraries.
     dirs_to_try = []
     try:
-        dirs_to_try.append(pnfs.get_enstore_fs_path(use_dirpath))
+        dirs_to_try.append(chimera.get_enstore_fs_path(use_dirpath))
     except OSError:
         pass
     try:
-        dirs_to_try.append(pnfs.get_enstore_pnfs_path(use_dirpath))
+        dirs_to_try.append(chimera.get_enstore_pnfs_path(use_dirpath))
     except OSError:
         pass
     for dir_to_check in dirs_to_try:
         try:
-            pnfs_libraries = pnfs.Tag().readtag("library", dir_to_check)[0].split(",")
+            pnfs_libraries = chimera.Tag().readtag("library", dir_to_check)[0].split(",")
             break #Found it!
         except (OSError, IOError):
             pass
@@ -5955,7 +5955,7 @@ def _verify_metadata(MY_TASK, job, fcc, db):
     # IDs to the owner of the file.
     #
     # If the source PNFS file has been deleted only do the
-    # pnfs.File() instantiation; skip the euid/egid stuff to
+    # chimera.File() instantiation; skip the euid/egid stuff to
     # avoid tracebacks.
     """
 
@@ -6575,7 +6575,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
         try:
             #We want the size in layer 4, since large files
             # store a 1 for the size in pnfs.
-            src_size = long(pnfs.get_layer_4(src_path).get('size', None))
+            src_size = long(chimera.get_layer_4(src_path).get('size', None))
         except (OSError, IOError):
             src_size = None
         except (TypeError):
@@ -6649,7 +6649,7 @@ def write_new_file(job, encp, vcc, fcc, intf, db):
     # regardless if the file was already copied, or it was
     # just copied.
     if not is_it_copied:
-        pf2 = pnfs.File(mig_path)
+        pf2 = chimera.File(mig_path)
         dst_bfid = pf2.bfid
         has_tmp_file = True
         if dst_bfid == None:
@@ -8469,7 +8469,7 @@ def is_expected_volume_migration(MY_TASK, vol, likely_path, fcc, db):
 	__pychecker__ = "unusednames=fcc"
 
 	# make sure the volume is the same
-	pf = pnfs.File(likely_path)
+	pf = chimera.File(likely_path)
 	pf_volume = getattr(pf, "volume", None)
         if pf_volume == None:
                 error_log(MY_TASK,
@@ -8709,7 +8709,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
                 error_log(MY_TASK, v_original['status'])
                 sys.exit(1)
 
-        p = pnfs.File(src)
+        p = chimera.File(src)
         p.volume = f_original['external_label']
         p.location_cookie = f_original['location_cookie']
         p.bfid = original_bfid
@@ -8720,7 +8720,7 @@ def restore_file(src_file_record, vcc, fcc, db, intf, src_volume_record=None):
     else:
         #We are not restoring a multiple copy file.
 
-        p = pnfs.File(src)
+        p = chimera.File(src)
         p.volume = src_file_record['external_label']
         p.location_cookie = src_file_record['location_cookie']
         p.bfid = src_bfid
@@ -9312,7 +9312,7 @@ def get_targets(bfid_list_queue, volume_list_queue, isc, intf):
             bfid_list_queue.put(file_record['bfid'], block=True)
         else:
             try:
-                f = pnfs.File(target)
+                f = chimera.File(target)
                 if f.bfid:
                     bfid_list_queue.put(f.bfid, block=True)
                 else:
