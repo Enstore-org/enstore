@@ -49,7 +49,7 @@ GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
 
 $ENSTORE_DIR/external_distr/update_sym_links.sh -c
 
-export ENSTORE_CONFIG_HOST=cdfnsrv2.fnal.gov
+export ENSTORE_CONFIG_HOST=cdfensrv2.fnal.gov
 export ENSTORE_CONFIG_PORT=7500
 export ENSTORE_CONFIG_FILE=/home/enstore/enstore/etc/cdf.conf
 export ENSTORE_MAIL=enstore-auto@fnal.gov
