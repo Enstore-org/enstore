@@ -12,6 +12,7 @@ import errno
 import sys
 import socket
 import os
+import types
 
 # enstore imports
 import generic_client
@@ -98,6 +99,36 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             ticket = self.set_pnfsid(ticket)
         return ticket
 
+    def set_cache_status(self, arguments) :
+        #
+        # arguments look like a dictionary or a list of
+        # dictionaries with keys
+        # "bfid", "cache_status","archive_status","cache_location"
+        ticket={}
+        ticket["bfids"]=[]
+        if type(arguments) == types.ListType:
+            ticket["bfids"] = arguments[:]
+        elif type(arguments) ==  types.DictType:
+            ticket["bfids"].append(arguments)
+        else:
+            raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(arguments))
+        ticket["work"] = "set_cache_status"
+        r = self.send(ticket)
+        return r
+
+    def open_bitfile(self, bfid):
+        r = self.send({"work" : "open_bitfile", "bfid" : bfid})
+        return r
+
+    def open_bitfile_for_package(self, bfid):
+        r = self.send({"work" : "open_bitfile_for_package", "bfid" : bfid})
+        return r
+
+    def set_children(self, ticket):
+        ticket["work"] = "set_children"
+        r = self.send(ticket)
+        return r
+
     def new_bit_file(self, ticket):
         ticket['work'] = "new_bit_file"
         r = self.send(ticket)
@@ -105,6 +136,10 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
     def show_state(self):
         return self.send({'work':'show_state'})
+
+    def replay(self):
+        return self.send({'work':'replay',
+                          'func': 'replay_cache_written_events'})
 
     def set_pnfsid(self, ticket):
         ticket['work'] = "set_pnfsid"
@@ -691,6 +726,11 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         ticket['work'] = 'modify_file_record'
         return self.send(ticket)
 
+    # swap parents for children
+    def swap_package(self, ticket):
+        ticket['work'] = 'swap_package'
+        return self.send(ticket)
+
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
@@ -700,6 +740,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.list =None
         self.bfid = 0
         self.bfids = None
+        self.children = None
         self.backup = 0
         self.deleted = 0
 	self.restore = ""
@@ -722,6 +763,9 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.find_the_original = None
         self.find_duplicates = None
         self.force = None #use real clerks (True); use info server (False)
+        self.package = None #print package files
+        self.replay=None
+        self.pkginfo = None
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -768,6 +812,14 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"bfid",
                      option.USER_LEVEL:option.ADMIN},
+        option.GET_CHILDREN:{option.HELP_STRING:"find all children of the package file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"bfid",
+                     option.USER_LEVEL:option.ADMIN},
+        option.REPLAY:{option.HELP_STRING:"replay cache written events",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.USER_LEVEL:option.ADMIN},
         option.FIND_COPIES:{option.HELP_STRING:"find the immediate copies of this file",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
@@ -796,6 +848,16 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
 			      option.VALUE_USAGE:option.IGNORED,
 			      option.VALUE_TYPE:option.INTEGER,
 			      option.USER_LEVEL:option.HIDDEN},
+        option.PACKAGE:{option.HELP_STRING:
+                        "Force printing package files and non-packaged files",
+                        option.VALUE_USAGE:option.IGNORED,
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.USER_LEVEL:option.ADMIN},
+        option.PACKAGE_INFO:{option.HELP_STRING:
+                             "Force printing information about package_id archive/cache status",
+                             option.VALUE_USAGE:option.IGNORED,
+                             option.VALUE_TYPE:option.INTEGER,
+                             option.USER_LEVEL:option.ADMIN},
         option.GET_CRCS:{option.HELP_STRING:"get crc of a file",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
@@ -805,7 +867,8 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"volume_name",
-                     option.USER_LEVEL:option.USER},
+                     option.USER_LEVEL:option.USER,
+                     },
         option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
@@ -925,27 +988,8 @@ def do_work(intf):
         if intf.force:
             ticket = fcc.tape_list(intf.list)
         else:
-            ticket = ifc.tape_list(intf.list)
-        if ticket['status'][0] == e_errors.OK:
-            output_format = "%%-%ds %%-20s %%10s %%-22s %%-7s %%s" \
-                            % (len(intf.list))
-            print output_format \
-                  % ("label", "bfid", "size", "location_cookie", "delflag",
-                     "original_name")
-            print
-            tape = ticket['tape_list']
-            for record in tape:
-                if record['deleted'] == 'yes':
-                    deleted = 'deleted'
-                elif record['deleted'] == 'no':
-                    deleted = 'active'
-                else:
-                    deleted = 'unknown'
-                print output_format % (intf.list,
-                    record['bfid'], record['size'],
-                    record['location_cookie'], deleted,
-                    record['pnfs_name0'])
-
+            ticket = ifc.tape_list(intf.list,intf.all)
+        ifc.print_volume_files(intf.list,ticket,intf.package,intf.pkginfo)
     elif intf.mark_bad:
         ticket = fcc.mark_bad(intf.mark_bad, intf.bfid)
 
@@ -969,6 +1013,15 @@ def do_work(intf):
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['active_list']:
                 print i
+    elif intf.children:
+        ticket  = fcc.get_children(intf.children)
+        if  ticket['status'][0] ==  e_errors.OK:
+            for i in ticket["children"]:
+                pprint.pprint(i)
+    elif intf.replay:
+        ticket  = fcc.replay()
+        if ticket['status'][0] ==  e_errors.OK:
+            print "Successfully replayed cache written events"
     elif intf.bfids:
         if intf.force:
             ticket  = fcc.get_bfids(intf.bfids)

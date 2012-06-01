@@ -8,12 +8,34 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
 # check if file exist
-check="${1:-x}" # check if file exist if argiment is "c"
+check="${1:-x}" # check if file exist if argument is "c"
 ###
 ### Links in sbin directory
 ###
 for file in `cat $ENSTORE_DIR/external_distr/sbin_links | fgrep -v "#"`
 do
+    if [ -n ${file} ]
+    then
+	do_update=1
+	if [ $check = "-c" -a -r $ENSTORE_DIR/sbin/${file} ]
+	then
+	    # if we wanted to check for the existence of the file
+	    # and it existed do not update it
+	    do_update=0
+	fi
+	if [ $do_update -ne 0 ]
+	then
+	    rm -f $ENSTORE_DIR/sbin/${file} 
+	    ln -s $ENSTORE_DIR/src/${file}.py $ENSTORE_DIR/sbin/${file}
+	fi
+    fi
+done
+
+###
+### Additional links in sbin directory for File Aggregation System
+for path in `cat $ENSTORE_DIR/external_distr/file_aggregation_links | fgrep -v "#"`
+do
+    file=`basename $path`
     if [ -n ${file} ]
     then
 	do_update=1
@@ -26,7 +48,7 @@ do
 	if [ $do_update -ne 0 ]
 	then
 	    rm -f $ENSTORE_DIR/sbin/${file} 
-	    ln -s $ENSTORE_DIR/src/${file}.py $ENSTORE_DIR/sbin/${file}
+	    ln -s $ENSTORE_DIR/src/${path}.py $ENSTORE_DIR/sbin/${file}
 	fi
     fi
 done
@@ -56,7 +78,7 @@ done
 do_update=1
 if [ $check = "-c" -a  -r $ENSTORE_DIR/bin/enstore ]
 then 
-    # if we wanted to check for the existance of the file
+    # if we wanted to check for the existence of the file
     # and it existed do not update it
     do_update=0
 fi
@@ -125,3 +147,4 @@ then
 
 fi
 ######
+

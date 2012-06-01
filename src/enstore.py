@@ -32,6 +32,7 @@ import library_manager_client
 import log_client
 import event_relay_client
 import media_changer_client
+import migrator_client
 import mover_client
 import monitor_client
 import option
@@ -49,6 +50,10 @@ import enstore_restart
 import backup
 import pnfs_agent_client
 import scanfiles
+import udp_proxy_client
+import lm_director_client
+import dispatcher_client
+
 try:
 	import quota
 except:
@@ -95,6 +100,12 @@ server_functions = {
               file_clerk_client.do_work, option.USER],
     "pnfs_agent" : [pnfs_agent_client.PnfsAgentClientInterface,
 		    pnfs_agent_client.do_work, option.ADMIN],
+    "lmdirector" : [lm_director_client.LMDClientInterface,
+		    lm_director_client.do_work, option.ADMIN],
+    "dispatcher" : [dispatcher_client.DispatcherClientInterface,
+		    dispatcher_client.do_work, option.ADMIN],
+    "udp_proxy" : [udp_proxy_client.ProxyClientInterface,
+		    udp_proxy_client.do_work, option.ADMIN],
     "inquisitor" : [inquisitor_client.InquisitorClientInterface,
                     inquisitor_client.do_work, option.ADMIN],
     "library" : [library_manager_client.LibraryManagerClientInterface,
@@ -103,6 +114,8 @@ server_functions = {
              log_client.do_work, option.ADMIN],
     "media" : [media_changer_client.MediaChangerClientInterface,
                media_changer_client.do_work, option.ADMIN],
+    "migrator" : [migrator_client.MigratorClientInterface,
+		  migrator_client.do_work, option.ADMIN],
     "monitor" : [monitor_client.MonitorServerClientInterface,
                  monitor_client.do_work, option.USER],
     "mover" : [mover_client.MoverClientInterface,

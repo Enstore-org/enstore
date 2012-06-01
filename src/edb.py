@@ -372,7 +372,6 @@ class DbTable:
 		res = self.query_dictresult(self.retrieve_query%(key))
 		if len(res) == 0:	# insert
 			cmd = self.insert_query%get_fields_and_values(v1)
-			# print cmd
 			self.insert(cmd)
 		else:			# update
 			d = diff_fields_and_values(res[0], v1)
@@ -483,11 +482,9 @@ class FileDB(DbTable):
                                  max_idle=max_idle)
 
 		self.retrieve_query = "\
-        		select \
-                		bfid, crc, deleted, drive, \
-				volume.label, location_cookie, pnfs_path, \
-                		pnfs_id, sanity_size, sanity_crc, size, \
-				uid, gid, update \
+        		select file.*, volume.label, volume.file_family, \
+                                volume.storage_group, volume.library, \
+                                volume.wrapper \
         		from file, volume \
         		where \
                 		file.volume = volume.id and \
@@ -508,7 +505,7 @@ class FileDB(DbTable):
 		if s['deleted'] == 'y':
 			deleted = 'yes'
 		elif s['deleted'] == 'n':
-			deleted = 'no'
+ 			deleted = 'no'
 		else:
 			deleted = 'unknown'
 
@@ -551,7 +548,13 @@ class FileDB(DbTable):
 				record['update'] = (s['update']).isoformat(' ')
 			else:
 				record['update'] = s['update']
-
+                for key in ('package_files_count', 'active_package_files_count'):
+                    record[key] = s.get(key,0)
+                for key in ('package_id','cache_status','archive_status',\
+                            'cache_mod_time','archive_mod_time',\
+                            'storage_group','file_family','library','wrapper','cache_location',
+                            'original_library','file_family_width','tape_label'):
+                    record[key] = s.get(key,None)
 		return record
 
 	def import_format(self, s):
@@ -607,8 +610,34 @@ class FileDB(DbTable):
 			record["uid"] = s["uid"]
 		if s.has_key("gid"):
 			record["gid"] = s["gid"]
+                for key in ('package_files_count', 'active_package_files_count'):
+                    record[key] = s.get(key,0)
+                for key in ('package_id','cache_status','archive_status',\
+                            'cache_mod_time','archive_mod_time',\
+                            'storage_group','file_family','library','wrapper','cache_location',
+                            'original_library','file_family_width','tape_label'):
+                    if s.has_key(key):
+                        record[key] = s.get(key,None)
 		return record
 
+        def __getitem__(self, key):
+            res=self.query_dictresult(self.retrieve_query%(key))
+            if len(res) == 0:
+                return None
+            else:
+                file=res[0]
+                #
+                # get volume info from parent
+                #
+                if file.get('package_id',None) and \
+                       file.get('package_id',None) != file.get('bfid',key) :
+                    res1=self.query_dictresult(self.retrieve_query%(file.get('package_id')))
+                    if len(res1) != 0 :
+                        package=res1[0]
+                        file["tape_label"] = package.get("label",None)
+                else:
+                    file["tape_label"]=file.get("label",None)
+                return self.export_format(file)
 class VolumeDB(DbTable):
 	def __init__(self,
                      host='localhost',
@@ -752,7 +781,7 @@ class VolumeDB(DbTable):
                 for k in ("active_files","deleted_files","unknown_files",\
                           "active_bytes","deleted_bytes","unknown_bytes"):
                     data[k]=s.get(k,0)
-		return data;
+		return data
 
 if __name__ == '__main__':
 	v=VolumeDB();

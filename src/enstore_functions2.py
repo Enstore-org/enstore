@@ -245,6 +245,9 @@ def print_list(aList, sep=" "):
 def get_mover_status_filename():
     return "enstore_movers.html"
 
+def get_migrator_status_filename():
+    return "enstore_migrators.html"
+
 def override_to_status(override):
     # translate the override value to a real status
     if type(override) == types.ListType:
@@ -351,9 +354,17 @@ def is_this(server, suffix):
 def is_library_manager(server):
     return is_this(server, enstore_constants.LIBRARY_MANAGER)
 
+# return true if the passed server name ends in "udp_proxy_server"
+def is_udp_proxy_server(server):
+    return is_this(server, enstore_constants.UDP_PROXY_SERVER)
+
 # return true if the passed server name ends in "mover"
 def is_mover(server):
     return is_this(server, enstore_constants.MOVER)
+
+# return true if the passed server name ends in "migrator"
+def is_migrator(server):
+    return is_this(server, enstore_constants.MIGRATOR)
 
 # return true if the passed server name ends in "media_changer"
 def is_media_changer(server):
@@ -408,6 +419,27 @@ def shell_command(command):
     del(pipeObj)
     return result 
 
+# same as shell command, but
+# returns
+# (command return code,
+# stdout,
+# stderr)
+def shell_command2(command):
+    pipeObj = subprocess.Popen(command,
+                               stdin=subprocess.PIPE,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               shell=True,
+                               close_fds=True)
+    if pipeObj == None:
+        return None
+    # get stdout and stderr
+    result = pipeObj.communicate()
+    rc = [pipeObj.returncode]
+    del(pipeObj)
+    for r in result:
+        rc.append(r)
+    return tuple(rc) 
 
 ###########################################################################
 ##

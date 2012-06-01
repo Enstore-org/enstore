@@ -146,6 +146,8 @@ INFO = " Info Server"
 EV_RLY = "Event Relay"
 UP_DOWN = "up_down"
 RATE = "Ratekeeper"
+LMD = "Library Manager Director"
+DISPR = "PE Server and Migr. Dispatcher"
 
 # server names used in config file
 ###Note: enstore start/stop assumes that the spelling here matches that of
@@ -165,6 +167,8 @@ CONFIGURATION_SERVER = "configuration_server" # included for use by inquisitor
 WWW_SERVER = "www_server"
 RATEKEEPER = "ratekeeper"
 MONITOR_SERVER = "monitor_server"
+LM_DIRECTOR = "lm_director"
+DISPATCHER = "dispatcher" # Policy Engine server and Migration Dispatcher
 
 SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
                 DRVS: DRIVESTAT_SERVER,
@@ -177,7 +181,10 @@ SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
 		PNFSA : PNFS_AGENT,
 		CONFIGS : CONFIG_SERVER,
 		EV_RLY : EVENT_RELAY,
-		RATE : RATEKEEPER}
+		RATE : RATEKEEPER,
+                LMD: LM_DIRECTOR,
+                DISPR: DISPATCHER,
+                }
 
 #The client names.
 ACCOUNTING_CLIENT = "accounting_client"
@@ -194,8 +201,10 @@ INQUISITOR_CLIENT = "INQ_CLIENT"
 LIBRARY_MANAGER_CLIENT = ".LM"
 LOG_CLIENT = "LOG_CLIENT"
 MEDIA_CHANGER_CLIENT = ".MC"
+MIGRATOR_CLIENT = "MIGRATOR_CLIENT"
 MONITOR_CLIENT = "MNTR_CLI"
 #MOVER_CLIENT = ?
+UDP_PROXY_CLIENT = "UDP_PROXY_CLIENT"
 RATEKEEPER_CLIENT = "RATEKEEPER_CLIENT"
 VOLUME_CLERK_CLIENT = "VOLUME_C_CLIENT"
 PNFS_AGENT_CLIENT = "PNFS_A_CLIENT"
@@ -341,14 +350,20 @@ NO_PENDING = "No pending work"
 NEVER_ALIVE = -1
 
 LIBRARY_MANAGER = "library_manager"
+MIGRATOR = "migrator"
 MOVER = "mover"
+DISK_MOVER = "DiskMover"
 VC = "vc"
 NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
+UDP_PROXY_SERVER="udp_proxy_server"
+LM_DIRECTOR_CLIENT = "lm_director_client"
+DISPATCHER_CLIENT = "dispatcher_client" 
+
 GENERIC_SERVERS = [ ACCOUNTING_SERVER, ALARM_SERVER, CONFIGURATION_SERVER,
                     DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INFO_SERVER,
                     INQUISITOR, LOG_SERVER, PNFS_AGENT, RATEKEEPER,
-                    VOLUME_CLERK ]
+                    VOLUME_CLERK, LM_DIRECTOR, DISPATCHER ]
 
 # Trace.trace output levels used by the inquisitor
 INQFILEDBG = 6

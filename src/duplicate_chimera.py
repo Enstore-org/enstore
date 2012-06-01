@@ -28,7 +28,7 @@ import volume_clerk_client
 #import pnfs
 import chimera
 import migrate_chimera
-import duplication_util_chimera
+import duplication_util_chimera as duplication_util
 import e_errors
 import Trace
 import option

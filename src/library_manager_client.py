@@ -276,14 +276,13 @@ class LibraryManagerClient(generic_client.GenericClient) :
 
         r,w,x = select.select([listen_socket], [], [], 15)
         if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for library manager callback"
-        
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, "timeout waiting for library manager callback", e_errors.TIMEDOUT)        
         control_socket, address = listen_socket.accept()
 
         if not hostaddr.allow(address):
             control_socket.close()
             listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, "address %s not allowed" %(address,), e_errors.TIMEDOUT)
 
         ticket = callback.read_tcp_obj_new(control_socket)
         listen_socket.close()

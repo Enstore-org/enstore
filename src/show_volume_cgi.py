@@ -51,7 +51,7 @@ def show_size(s):
     else:
         return "%7d Bytes"%(s)
 
-def print_volume_summary(ticket,total):
+def print_volume_summary(ticket):
     la_time='(unknown)'
     if ticket['last_access'] :
         if int(ticket['last_access'].split(' ')[-1])<1970:
@@ -63,18 +63,18 @@ def print_volume_summary(ticket,total):
     print "          Volume:", ticket['external_label']
     print "Last accessed on:", la_time
     print "      Bytes free:", show_size(ticket['remaining_bytes'])
-    print "   Bytes written:", show_size(total)
+    print "   Bytes written:", show_size(ticket.get('active_bytes',0L)+ticket.get('deleted_bytes',0L)+ticket.get('unknown_bytes',0L))
     print "        Inhibits:", ticket['system_inhibit'][0],"+",ticket['system_inhibit'][1]
     print '</b><hr></pre>'
     print "</font>"
     print "<pre>"
     pprint.pprint(ticket)
     print "<hr></pre>"
-    
+
 
 def print_volume_content(ticket,list):
-    format = "%%-%ds <a href=/cgi-bin/show_file_cgi.py?bfid=%%s>%%s</a> %%10s %%-22s %%-7s %%s"%(len(list))
-    header = " volume         bfid             size      location cookie     status           original path"
+    format = "%%-%ds <a href=/cgi-bin/show_file_cgi.py?bfid=%%s>%%-19s</a> %%10s %%-22s %%-7s <a href=/cgi-bin/show_file_cgi.py?bfid=%%s>%%-19s</a> %%-20s %%-20s %%s"%(len(list))
+    header = " volume         bfid             size      location cookie     status     package_id      archive_status        cache_status            original path"
     print '<pre>'
     print '<font color=#aa0000>'+header+'</font>'
     print '<p>'
@@ -90,11 +90,18 @@ def print_volume_content(ticket,list):
         else:
             deleted = 'unknown'
         print '<font color=\"'+color+'\">', format % (intf.list,
-                         record['bfid'],record['bfid'], record['size'],
-                         record['location_cookie'], deleted,
-                           record['pnfs_name0']), "</font>"
+                                                      record['bfid'],
+                                                      record['bfid'],
+                                                      record['size'],
+                                                      record['location_cookie'], deleted,
+                                                      record.get('package_id',None),
+                                                      record.get('package_id',None),
+                                                      record.get('archive_status',None),
+                                                      record.get('cache_status',None),
+                                                      record['pnfs_name0']
+                                                      ), "</font>"
     print '</pre>'
-    
+
 
 if __name__ == "__main__":
     form   = cgi.FieldStorage()
@@ -121,13 +128,8 @@ if __name__ == "__main__":
         sys.exit(1)
     print_header ("Volume %s"%(volume),)
     print '<h1><font color=#aa0000>', volume, '</font></h1>'
+    print_volume_summary(ticket)
     f_ticket = ifc.tape_list(intf.list)
-    total=0L
-    if f_ticket['status'][0] == e_errors.OK:
-        tape = f_ticket['tape_list']
-        for record in tape:
-            total=total+long(record['size'])
-    print_volume_summary(ticket,total)
     if f_ticket['status'][0] == e_errors.OK:
         print_volume_content(f_ticket,intf.list)
 

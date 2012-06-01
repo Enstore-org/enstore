@@ -168,13 +168,13 @@ def start_postmaster(db_path):
 			os.unlink(pid_file)
 
 		# starting postmaster
-		cmd = "postmaster -h '' -D %s &"%(db_path)
+		cmd = "postmaster -D %s &"%(db_path)
 		os.system(cmd)
 		time.sleep(15)
 
 #stop postmaster
 def stop_postmaster(db_path):
-	pid = os.popen("ps -axw| grep postmaster | grep %s | grep -v grep | awk '{print $1}'"%(db_path)).readline()
+	pid = os.popen("ps axw| grep postmaster | grep %s | grep -v grep | awk '{print $1}'"%(db_path)).readline()
 	pid = string.strip(pid)
 	if pid:
 		print timeofday.tod(), "Stopping postmaster"
@@ -190,9 +190,15 @@ def extract_backup(check_dir, container):
 	os.system("dropdb backup")
 	os.system("createdb backup")
 	# os.system("pg_restore -d backup -v "+container)
+        #os.system("pg_restore -d backup -v -s -x -O "+container)
 	os.system("psql backup -c 'create sequence volume_seq;'")
 	os.system("psql backup -c 'create sequence state_type_seq;'")
 	os.system("pg_restore -d backup -v -s -t bad_file "+container)
+	os.system("pg_restore -d backup -v -s -t cache_statuses "+container)
+	os.system("pg_restore -d backup -v -s -t archive_statuses "+container)
+	os.system("pg_restore -d backup -v -s -t files_in_transition "+container)
+	os.system("pg_restore -d backup -v -s -t cached_files "+container)
+	os.system("pg_restore -d backup -v -s -t active_file_copying "+container)
 	os.system("pg_restore -d backup -v -s -t file "+container)
 	os.system("pg_restore -d backup -v -s -t media_capacity "+container)
 	os.system("pg_restore -d backup -v -s -t migration "+container)
@@ -212,6 +218,9 @@ def extract_backup(check_dir, container):
         os.system("psql backup -c 'alter table only volume add constraint volume_pkey primary key (id);'")
 	os.system("psql backup -c 'create index volume_storage_group_idx on volume(storage_group);'")
 	os.system("psql backup -c 'create index volume_system_inhibit_0_idx on volume(system_inhibit_0);'")
+        os.system("psql backup -c 'alter table only file add constraint file_pkey primary key (bfid);'")
+	os.system("psql backup -c 'CREATE INDEX package_id_fk_idx ON file USING btree (package_id);'")
+	os.system("psql backup -c 'CREATE INDEX file_volume_idx ON file USING btree (volume);'")
 
 LISTING_FILE = "COMPLETE_FILE_LISTING"
 
@@ -224,8 +233,25 @@ def check_db(check_dir):
 	f.close()
 
 	print timeofday.tod(), "Listing all files ... (old style)"
-	cmd = "psql -d backup -A -F ' ' -c "+'"'+"select bfid, label as volume, file_family, size, crc, location_cookie, pnfs_path as path from file, volume where file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n';"+'"'+" >> "+out_file
-	print cmd
+        query = "select bfid, label as volume, file_family, size, crc, location_cookie, pnfs_path as path, archive_status from file, \
+        volume where file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n'"
+
+        sg_query = "SELECT v.storage_group, v.file_family, "+\
+                   "CASE WHEN f.package_id <> f.bfid and f.package_id is not null "+\
+                   "THEN (select label from file, volume where volume.id=file.volume and file.bfid=f.package_id) "+\
+                   "ELSE v.label "+\
+                   "END as volume, "+\
+                   "CASE when f.package_id <> f.bfid and f.package_id is not null "+\
+                   "THEN (select location_cookie from file where bfid=f.package_id) "+\
+                   "ELSE f.location_cookie "+\
+                   "END as location_cookie, "+\
+                   "f.bfid, f.size, f.crc, f.pnfs_id, f.pnfs_path, f.archive_status "+\
+                   "FROM file f, volume v "+\
+                   "WHERE f.volume=v.id and v.system_inhibit_0 != 'DELETED' and f.deleted = 'n' and v.storage_group='%s' "+\
+                   "ORDER by v.file_family, volume, location_cookie"
+
+
+	cmd = "psql -d backup -A -F ' ' -c \"%s\" >> %s"%(query,out_file,)
 	os.system(cmd)
 
 	db = pg.DB(dbname='backup')
@@ -245,18 +271,15 @@ def check_db(check_dir):
 		print timeofday.tod(), "Listing %s files ... "%(sg)
 
 		if sg == 'cms':
-			cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_id, pnfs_path as path from file, volume where storage_group = '%s' and file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n' order by file_family, label, location_cookie;"%(sg)+'"'+' |sed -e "s/\/\//\//g" >> '+out_file
+                    cmd = "psql -d backup -A -F ' ' -c \"%s\" | sed -e 's/\/\//\//g' >> %s"%((sg_query%(sg,)),out_file)
 		else:
-			cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where storage_group = '%s' and file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n' order by file_family, label, location_cookie;"%(sg)+'"'+" >> "+out_file
-		print cmd
+                    cmd = "psql -d backup -A -F ' ' -c \"%s\" >> %s"%((sg_query%(sg,)),out_file)
 		os.system(cmd)
 
 	# generate pnfs dictionary
 	print timeofday.tod(), "Generating PNFS.XREF ..."
 	pnfs_dict_file = os.path.join(check_dir, 'PNFS.XREF')
 	cmd = "psql -d backup -A -F ' ' -c "+'"'+"select pnfs_id, bfid, size, pnfs_path from file where deleted = 'n' and not pnfs_path is null"+'"'+" -o %s"%(pnfs_dict_file)
-
-	print cmd
 	os.system(cmd)
 
 if __name__ == "__main__":

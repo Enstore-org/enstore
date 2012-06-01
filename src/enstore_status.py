@@ -402,3 +402,13 @@ class EnStatus:
 	    if not self.text[key][enstore_constants.STATUS]:
 		self.text[key][enstore_constants.STATUS] = enstore_constants.UNKNOWN_S
             self.text[key][enstore_constants.STATE] = "%s"%(ticket[enstore_constants.STATE],)
+
+
+    # output the migrator status
+    def output_migratorstatus(self, ticket, key):
+        # clean out all the old info but save the status
+        self.text[key] = {enstore_constants.STATUS : self.text[key][enstore_constants.STATUS]}
+	lcl_state = ticket[enstore_constants.STATE], ticket['internal_state']
+        self.text[key][enstore_constants.ID] = (ticket['current_id'])
+        self.text[key][enstore_constants.FILES] = str(ticket['current_migration_file'])
+        self.text[key][enstore_constants.STATE] = "%s"%(lcl_state,)

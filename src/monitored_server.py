@@ -5,6 +5,7 @@ import string
 
 import enstore_constants
 import enstore_functions
+import migrator_client
 import mover_client
 import library_manager_client
 import e_errors
@@ -14,6 +15,7 @@ DEFAULT_ALIVE_INTERVAL = 30
 NO_HEARTBEAT = -1
 DEFAULT_HUNG_INTERVAL = 90
 DEFAULT_MOVER_HUNG_INTERVAL = 600
+DEFAULT_MIGRATOR_HUNG_INTERVAL = 600
 NO_TIMEOUT = 0
 HUNG = 1
 TIMEDOUT = 2
@@ -266,6 +268,35 @@ class MonitoredRatekeeper(MonitoredServer):
     def __init__(self, config):
 	MonitoredServer.__init__(self, config, enstore_constants.RATEKEEPER)
 
+# Monitored Library Manager Director
+class MonitoredLMD(MonitoredServer):
+
+    def __init__(self, config):
+	MonitoredServer.__init__(self, config, enstore_constants.LM_DIRECTOR)
+
+
+# Monitored Policy Engine Server and Migration Dispatcher
+class MonitoredDispatcher(MonitoredServer):
+
+    def __init__(self, config):
+	MonitoredServer.__init__(self, config, enstore_constants.DISPATCHER)
+
+
+class MonitoredMigrator(MonitoredServer):
+
+    STATUS_FIELDS = {enstore_constants.STATE : (enstore_constants.UNKNOWN_S,enstore_constants.UNKNOWN_S), # state, internal_state
+		     enstore_constants.TRANSFERS_COMPLETED : DASH,
+		     enstore_constants.TRANSFERS_FAILED : DASH,
+		     enstore_constants.FILES : "",
+		     enstore_constants.MODE : "",
+		     enstore_constants.ID : "",
+		     enstore_constants.STATUS : ()}
+
+    def __init__(self, config, name, csc):
+	MonitoredServer.__init__(self, config, name, DEFAULT_MIGRATOR_HUNG_INTERVAL)
+	self.csc = csc
+	self.client = migrator_client.MigratorClient(self.csc, self.name)
+	self.status_keys = self.STATUS_FIELDS.keys()
 
 class MonitoredMover(MonitoredServer):
 
@@ -291,6 +322,10 @@ class MonitoredMover(MonitoredServer):
 
 
 class MonitoredMediaChanger(MonitoredServer):
+
+    pass
+
+class MonitoredUDPProxyServer(MonitoredServer):
 
     pass
 

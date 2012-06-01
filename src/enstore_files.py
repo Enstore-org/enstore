@@ -260,6 +260,13 @@ class HTMLMoverStatusFile(EnStatusFile):
         self.file_name = "%s.new"%(file,)
         self.refresh = refresh
 
+class HTMLMigratorStatusFile(EnStatusFile):
+
+    def __init__(self, file, refresh, system_tag=""):
+        EnStatusFile.__init__(self, file, system_tag)
+        self.file_name = "%s.new"%(file,)
+        self.refresh = refresh
+
 class HTMLFileListFile(EnStatusFile):
 
     def __init__(self, file, refresh, system_tag=""):
@@ -277,6 +284,8 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
         self.refresh = refresh
 	self.page_thresholds = page_thresholds
 	self.mover_file = HTMLMoverStatusFile("%s/enstore_movers.html"%(self.html_dir,),
+					      refresh, system_tag)
+	self.migrator_file = HTMLMoverStatusFile("%s/enstore_migrators.html"%(self.html_dir,),
 					      refresh, system_tag)
 	self.filelist_file = HTMLFileListFile("%s/enstore_files.html"%(self.html_dir,),
 					      refresh, system_tag)
@@ -392,6 +401,13 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	    self.mover_file.write(doc)
 	    self.mover_file.close()
 	    self.docs_to_install.append(self.mover_file)
+	    # now make the migrator page
+	    doc = enstore_html.EnMigratorStatusPage(self.refresh, self.system_tag)
+	    doc.body(self.text)
+	    self.migrator_file.open()
+	    self.migrator_file.write(doc)
+	    self.migrator_file.close()
+	    self.docs_to_install.append(self.migrator_file)
 	    # now make the file list page
 	    doc = enstore_html.EnFileListPage(self.refresh, self.system_tag,
 					      self.page_thresholds[enstore_constants.FILE_LIST])

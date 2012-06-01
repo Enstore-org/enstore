@@ -272,7 +272,7 @@ def stop_server(gc, servername):
         return 0
 
 def stop_server_from_pid_file(servername):
-    #If there is no responce from the server, determine if it is hung.
+    #If there is no response from the server, determine if it is hung.
     try:
         fp = open(get_temp_file(servername), "r")
         data = fp.readlines()
@@ -570,6 +570,13 @@ def do_work(intf):
            intf.should_stop(mover):
             check_server(csc, mover)
 
+    #Migrators.
+    migrators = find_servers_by_type(csc, enstore_constants.MIGRATOR)
+    for migrator in migrators:
+        if intf.should_stop(enstore_constants.MIGRATOR) or \
+           intf.should_stop(migrator):
+            check_server(csc, migrator)
+
     #Media changers.
     media_changers = find_servers_by_type(csc, enstore_constants.MEDIA_CHANGER)
     for media_changer in media_changers:
@@ -583,6 +590,13 @@ def do_work(intf):
         if intf.should_stop(enstore_constants.LIBRARY_MANAGER) or \
            intf.should_stop(library_manager):
             check_server(csc, library_manager)
+
+    # udp to amq proxy servers
+    proxy_servers = find_servers_by_type(csc, enstore_constants.UDP_PROXY_SERVER)
+    for proxy_server in proxy_servers:
+        if intf.should_stop(enstore_constants.UDP_PROXY_SERVER) or \
+           intf.should_stop(proxy_server):
+            check_server(csc, proxy_server)
 
     #Added by Dmitry, stopping pnfs_agent
     agents = find_servers_by_type(csc, enstore_constants.PNFS_AGENT)
@@ -608,16 +622,20 @@ def do_work(intf):
     #     database deamons
 
     #Stop the servers.
+    
     for server in [ enstore_constants.ACCOUNTING_SERVER,
                     enstore_constants.DRIVESTAT_SERVER,
                     enstore_constants.ALARM_SERVER,
+                    enstore_constants.LM_DIRECTOR,
+                    enstore_constants.DISPATCHER,
                     enstore_constants.INFO_SERVER,
                     enstore_constants.FILE_CLERK,
                     enstore_constants.VOLUME_CLERK,
                     enstore_constants.INQUISITOR,
                     enstore_constants.RATEKEEPER,
                     enstore_constants.MONITOR_SERVER,
-                    enstore_constants.LOG_SERVER,]:
+                    enstore_constants.LOG_SERVER]:
+
         if intf.should_stop(server):
             check_server(csc, server)
 

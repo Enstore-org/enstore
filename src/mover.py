@@ -61,9 +61,10 @@ import drivestat_client
 import Trace
 import generic_driver
 import event_relay_messages
+import file_cache_status
 import scsi_mode_select
 
-
+DEBUG_LOG=11
 """
 Mover:
 
@@ -1334,8 +1335,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.force_clean = 0
         # check if device exists
         if not os.path.exists(self.config['device']):
-            Trace.alarm(e_errors.ALARM, "Cannot start. Device %s does not exist"%(self.config['device'],))
-            sys.exit(-1)
+            if isinstance(self, DiskMover):
+                # try to create disk data directory
+                try:
+                    os.makedirs(self.config['device'], 0755)
+                except OSError, detail:
+                    if detail[0] != errno.EEXIST:
+                        raise OSError(detail)
+            else:
+                Trace.alarm(e_errors.ALARM, "Cannot start. Device %s does not exist"%(self.config['device'],))
+                sys.exit(-1)
 
         #################################
         ### Mover type dependent settings
@@ -1347,10 +1356,32 @@ class Mover(dispatching_worker.DispatchingWorker,
             default_media_type = "disk"
             self.default_block_size = 131072
             self.tape_driver = disk_driver.DiskDriver()
-            self.mover_type = self.config.get('type','DiskMover')
+            self.mover_type = self.config.get('type', enstore_constants.DISK_MOVER)
             self.max_rate = self.config.get('max_rate', 100*MB) #XXX
             self.ip_map = self.config.get('ip_map','cluster_fs')
             # for cluster fs all files are available for any disk mover
+            # Temporary file for write operations.
+            # The data is written into this file.
+            # After write completes this file is moved into real destination file.
+            # If write does not complete due to mover crash or
+            # other unexpected halt this file does not get removed
+            # indicating a problem with file transfer.
+            tmp_dir = self.config.get("tmp_dir", "%s/tmp"%(self.config['device'],))
+            self.tmp_file = os.path.join(tmp_dir, self.name)
+            try:
+                os.makedirs(tmp_dir, 0755)
+            except OSError, detail:
+                if detail[0] != errno.EEXIST:
+                    Trace.alarm(e_errors.ALARM, "Cannot start. OSError %s"%(str(detail),))
+                    sys.exit(-1)
+            # check if tmp file exists on start
+            try:
+                f = open(self.tmp_file, 'r')
+            
+            except IOError, detail:
+                if detail[0] != errno.ENOENT:
+                    Trace.alarm(e_errors.ALARM, "Cannot start. OSError %s"%(str(detail),))
+                    sys.exit(-1)
         else:
             self.do_eject = 1
             self.do_cleaning = 1
@@ -3420,6 +3451,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.file_info['pnfs_name0'] = None # it may later come in get ticket
                         self.file_info['gid'] = self.gid
                         self.file_info['uid'] = self.uid
+                        self.file_info['mover_type'] = self.mover_type        
                         
                         
                         ret = self.fcc.create_bit_file(self.file_info)
@@ -4987,7 +5019,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.ERROR,'file clerk error: missing original bfid for copy')
                 return 0
             fc_ticket['original_bfid'] = original_bfid
-                
+        
+        fc_ticket['mover_type'] = self.mover_type        
         Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
             
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
@@ -5042,6 +5075,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         ticket['status'] = (status, error_info)
         Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket))
+        Trace.log(e_errors.INFO, "Sending done to client: %s"%(ticket['status'],))
         try:
             callback.write_tcp_obj(self.control_socket, ticket)
         except:
@@ -6717,6 +6751,9 @@ class DiskMover(Mover):
                 if len(self.buffer._buf) != 1:
                     Trace.log(e_errors.ERROR,
                               "read_tape: error skipping over cpio header, len(buf)=%s"%(len(self.buffer._buf)))
+                    failed = 1
+                    self.transfer_failed(e_errors.READ_ERROR, "Invalid file header ", error_source=TAPE)
+                    break
                 b0 = self.buffer._buf[0]
                 if len(b0) >= self.wrapper.min_header_size:
                     try:
@@ -6781,6 +6818,9 @@ class DiskMover(Mover):
                                      'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                         return
+            #Trace.log(e_errors.INFO, "fake read CRC error")
+            #self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+            return
 
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
@@ -6829,7 +6869,7 @@ class DiskMover(Mover):
         
         ticket['mover']={}
         ticket['mover'].update(self.config)
-        ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
+        ticket['mover']['device'] = "%s:%s" % (self.config['ip_map'], self.config['device'])
         if ticket['fc']['external_label'] == None:
             del(ticket['fc']['external_label'])
         self.current_work_ticket = ticket
@@ -6859,6 +6899,7 @@ class DiskMover(Mover):
         ##all groveling around in the ticket should be done here
         fc = ticket['fc']
         vc = ticket['vc']
+        
         self.file_info.update(fc)
         self.vol_info.update(vc)
         self.volume_family=vc['volume_family']
@@ -6949,12 +6990,22 @@ class DiskMover(Mover):
             client_filename = self.client_hostname + ":" + client_filename
                                 
         if self.mode == READ:
-            self.file = fc['location_cookie']
+            self.file = fc['cache_location']
             self.files = (pnfs_filename, client_filename)
             self.buffer.header_size = None
+            work_file = self.file
         elif self.mode == WRITE:
             if fc.has_key('pnfsid'):
                 self.file = enstore_functions3.file_id2path(self.device, fc['pnfsid'])
+                work_file = self.tmp_file 
+                # create directory for file
+                dir_name = os.path.dirname(self.file)
+                if not os.path.exists(dir_name):
+                    try:
+                        os.makedirs(dir_name, 0755)
+                    except Exception, detail:
+                        if detail[0] != errno.EEXIST:
+                            self.transfer_failed(e_errors.OSERROR, str(detail), error_source=DRIVE)
                 self.files = (client_filename, pnfs_filename)
             else:
                 self.transfer_failed(e_errors.MALFORMED, 'expected Key "pnfsid". Current dictionary %s'%(fc,), error_source=USER)
@@ -6971,30 +7022,121 @@ class DiskMover(Mover):
             self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
 
         Trace.trace(29,"FILE NAME %s"%(self.file,))
-        self.position_media(self.file)
+        self.position_media(work_file)
         
+    # check connection in READ mode 
+    def check_connection(self):
+        Trace.trace(40, "check_connection started")
+        if self.mode == READ:
+            Trace.trace(40, "check_connection mode %s"%(mode_name(self.mode),))
+            try:
+                if self.control_socket:
+                    r, w, ex = select.select([self.control_socket], [self.control_socket], [], 10)
+                    Trace.trace(40, "check_connection1 %s %s %s"%(r, w, ex))
+                    Trace.trace(40, "r= %s"%(r,))
+                    if r:
+                        # r - read socket appears when client connection gets closed
+                        return False
+            except:
+                pass
+        return True
+
+
+    # stage file into cache
+    # returns file cache location or None
+    def stage_file(self):
+        cache_status = self.file_info['cache_status']
+        if cache_status != file_cache_status.CacheStatus.CACHED:
+            Trace.log(e_errors.INFO, "staging status at the start %s"%(cache_status,))
+            # make this better!
+            # When file gets staged its cache_status must change as
+            # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
+            file_cache_location = None
+            loop_counter = 1L
+            while not hasattr(self,'too_long_in_state_sent'):
+                info = self.fcc.bfid_info(self.file_info['bfid'])
+                Trace.log(DEBUG_LOG, "staging status %s cache_status %s"%(info['cache_status'], cache_status))
+                if info['cache_status'] == file_cache_status.CacheStatus.CACHED:
+                    file_cache_location = info.get('cache_location', None)
+                    break
+                else:
+                    if (info['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED and
+                        cache_status != file_cache_status.CacheStatus.STAGING_REQUESTED):
+                        cache_status = info['cache_status'] # File Clerk requested staging
+                    elif (info['cache_status'] == file_cache_status.CacheStatus.STAGING and
+                        cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED):
+                        cache_status == info['cache_status'] # Mirator started staging
+                    elif (info['cache_status'] == file_cache_status.CacheStatus.PURGED and
+                          ((cache_status ==  file_cache_status.CacheStatus.STAGING or
+                            cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED))):
+                        Trace.log(e_errors.ERROR, "File staging has failed for %s %s "%(info['bfid'], info['pnfs_name0']))
+                        break
+                    time.sleep(2)
+                    # Staging a file may take a very long time.
+                    # Reset self.state_change_time
+                    # to avoid "mover stuck in state condition"
+                    self.state_change_time = time.time()
+                if loop_counter % 100 == 0:
+                    # check if encp is still connected
+                    if not self.check_connection():
+                        self.transfer_failed(e_errors.ENCP_GONE, "encp gone while waiting for stage", error_source=USER)
+                        self.idle()
+                        return None
+                loop_counter = loop_counter + 1
+        else:
+            file_cache_location = self.file_info.get('cache_location', None)
+                    
+        return file_cache_location
+                
+
     def position_media(self, filename):
+        Trace.log(e_errors.INFO, "position media for %s"%(filename,))
         x = filename # to trick pychecker
         have_tape = 0
         err = None
         Trace.trace(10, "position media")
-        try:
-            have_tape = self.tape_driver.open(self.file, self.mode, retry_count=30)
-        except OSError, err:
-            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
-            self.idle()
+        if self.current_work_ticket['work'] == "read_from_hsm":
+            if self.current_work_ticket['fc']['deleted'] != "no":
+                self.transfer_failed(e_errors.DELETED, 'file %s does not exist: deleted==%s' %
+                                     (self.current_work_ticket['fc']['pnfs_name0'],
+                                      self.current_work_ticket['fc']['deleted']),
+                                     error_source=UNKNOWN)
+                self.idle()
+                return
+                
+            # Check if file exists.
+            # If this is a cache file it might have been purged
+            #if not os.path.exists(filename):
+            #    filename = self.stage_file()
+            # Assume that all files have cache_status
+            # and call self.stage_file() always.
+            # This is needed to re-stage file on disk if it was corrupted
+            filename = self.stage_file()
+        if filename:
+            try:
+                have_tape = self.tape_driver.open(filename, self.mode, retry_count=30)
+            except Exception, err:
+                self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=DRIVE)
+                self.idle()
+                return
+        else:
+            if self.state != IDLE:
+                self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: filename is %s' %
+                                     (filename,), error_source=DRIVE)
+                self.idle()
             return
+            
         if have_tape == 1:
             err = None
         else:
-            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=ROBOT)
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure: %s' % (err,), error_source=DRIVE)
             self.idle()
             return
 
         self.start_transfer()
         return 1
             
-    def transfer_failed(self, exc=None, msg=None, error_source=None):
+    def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=0):
         Trace.trace(25, "TR FAILED")
         self.timer('transfer_time')
         ticket = self.current_work_ticket
@@ -7009,11 +7151,10 @@ class DiskMover(Mover):
 
         self.log_state()
         self.tape_driver.close()
-        if self.mode == WRITE:
-            try:
-                os.unlink(self.file)
-            except:
-                pass
+        try:
+            os.unlink(self.tmp_file)
+        except:
+            pass
         if self.tr_failed:
             return          ## this function has been alredy called in the other thread
         self.tr_failed = 1
@@ -7030,7 +7171,7 @@ class DiskMover(Mover):
             self.tr_failed = 0
             return
 
-        if exc != e_errors.ENCP_GONE:
+        if exc not in (e_errors.ENCP_GONE, e_errors.DELETED):
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
                 broken =  "max_consecutive_failures (%d) reached" %(self.max_consecutive_failures)
@@ -7042,7 +7183,19 @@ class DiskMover(Mover):
                 broken =  "max_failures (%d) per failure_interval (%d) reached" % (self.max_failures,
                                                                                      self.failure_interval)
             self.transfers_failed = self.transfers_failed + 1
+        if exc == e_errors.CRC_ERROR and self.mode == READ:
+            # do not remove cached file (leave it for investigation), but set it to PURGED
+            # try:
+            #     os.remove(self.file)
+            # except:
+            #    pass
+            self.fcc.set_cache_status([{'bfid': self.file_info['bfid'],
+                                        'cache_status': file_cache_status.CacheStatus.PURGED,
+                                        'archive_status': None,        # we are not changing this
+                                        'cache_location': self.file_info['cache_location']}])
+                                      
 
+        self.current_work_ticket['status'] = (str(exc), str(msg))
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
         self.need_lm_update = (1, ERROR, 1, error_source)
@@ -7095,7 +7248,21 @@ class DiskMover(Mover):
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
         self.net_driver.close()
-        self.tape_driver.close()
+        try:
+            self.tape_driver.close()
+        except OSError, detail:
+            Trace.log(DEBUG_LOG, "transfer_completed error closing tape driver %s"%(str(detail),))
+        if self.mode == WRITE:
+            # move temporary file to destination files
+            try:
+                os.rename(self.tmp_file, self.file)
+            except Exception, detail:
+                Trace.alarm(e_errors.ALARM, "error saving file %s to %s. Detail %s"%
+                            (self.tmp_file, self.file, str(detail)))
+                self.transfer_failed(e_errors.OSERROR, 'transfer failure: %s' % (str(detail),), error_source=DRIVE)
+                self.idle()
+            
+ 
         now = time.time()
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
@@ -7107,8 +7274,8 @@ class DiskMover(Mover):
         # self.update_lm(reset_timer=1)
         ##########################
         
-        if self.state == DRAINING:
-            self.idle()
+        if self.draining:
+            self.offline()
         else:
             self.state = HAVE_BOUND
         self.need_lm_update = (1, None, 1, None)
@@ -7157,7 +7324,7 @@ class DiskMover(Mover):
                              self.current_volume,
                              r2,
                              eod_cookie = '0000_000000000_0000001',
-                             wrapper = 'null',
+                             wrapper = self.vol_info['wrapper'], # actually disk file will have no wrapper
                              blocksize = self.buffer.blocksize)
             Trace.log(e_errors.INFO,"Add volume returned %s"%(r,))
             if r['status'][0] != e_errors.OK:
@@ -7173,6 +7340,9 @@ class DiskMover(Mover):
             return 0
 
         #Request the new bit file.
+        fc_ticket['mover_type'] = self.mover_type        
+        
+        fc_ticket['original_library'] = self.current_work_ticket.get('original_library', None)
         Trace.log(e_errors.INFO, "new bitfile request %s" % (fc_ticket,))
 
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
@@ -7194,7 +7364,7 @@ class DiskMover(Mover):
                 
         r0 = self.vol_info['remaining_bytes']  #value prior to this write
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
-        remaining = remaining = min(r1, r2)
+        remaining = min(r1, r2)
         self.vol_info['remaining_bytes']=remaining
         reply = self.vcc.set_remaining_bytes(self.current_volume,
                                              remaining,
@@ -7296,6 +7466,7 @@ class DiskMover(Mover):
             "unique_id": self.unique_id,
             "work": work,
             'time_in_state': now - self.state_change_time,
+            "current_time" : now,
             "library": self.current_library,
             "volume_clerk": self.vc_address,
             "library_list":self.libraries, # this is needed for the federation project

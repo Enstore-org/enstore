@@ -1163,8 +1163,6 @@ def inventory(output_dir, cache_dir):
                 'total_size' : total_size,
                 }
             vol_sum[vk] = vsum
-
-
             print_footer(vv, vsum, fd_output)
             #If the file is real, close it.
             if fd_output != 1:

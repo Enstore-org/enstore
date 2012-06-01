@@ -30,10 +30,10 @@ import Trace
 PNFS_SETUP = "/usr/etc/pnfsSetup"
 
 def get_trash():
-    
+
     #Historical note: This function used to look at the 'TRASH_CAN'
     # environmental variable for the value to return.
-    
+
     #We need to automatically detect if there is a pnfs server configured.
     # If there is, then we need to find the trash value and return it.
 
@@ -50,7 +50,7 @@ def get_trash():
         words = line.split("=")
         if words[0] == "trash":
             return os.path.join(words[1].strip(), "4")
-    
+
     sys.stderr.write("No trash directory listed in %s.\n" % (PNFS_SETUP,))
     return None
 
@@ -65,7 +65,7 @@ def get_bfid(mf):
 
     if len(r) > 8:
         return string.strip(r[0]), string.strip(r[8])
-    
+
     return None, None
 
 def main(intf):
@@ -89,9 +89,16 @@ def main(intf):
         if bfid:
             if not vol in vols:
                 vols.append(vol)
-            print 'deleting', bfid, '...',
             # delete
             fcc.bfid = bfid
+            if fcc.bfid_info().get('active_package_files_count',1) > 0 and \
+                   fcc.bfid_info().get('package_id',None)  == bfid :
+                Trace.alarm(e_errors.WARNING,
+                            'Skipping non-empy package file %s'%(bfid,),
+                            fcc.bfid_info().get('pnfs_name0',None) )
+                print 'skipping non-empty package file',bfid, '...'
+                continue
+            print 'deleting', bfid, '...',
             result = fcc.set_deleted('yes')
             if result['status'][0] != e_errors.OK:
                 print bfid, result['status'][1]
@@ -137,7 +144,7 @@ def do_work(intf):
         traceback.print_exception( exc, msg, tb )
         #Also, send it to the log file.
         Trace.handle_error(exc, msg, tb)
-        
+
         del tb #No cyclic references.
         sys.exit(1)
 

@@ -13,6 +13,7 @@ import time
 import string
 import socket
 import select
+import types
 
 import threading
 
@@ -31,12 +32,22 @@ import hostaddr
 import event_relay_messages
 import enstore_functions3
 import udp_server
+import file_cache_status
+import enstore_files
+import enstore_functions2
+import cache.messaging.client2 as qpid_client
+import cache.messaging.pe_client as pe_client
 
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
 MAX_CONNECTION_FAILURE = 5
 
 MAX_THREADS = 50
 MAX_CONNECTIONS=20
+
+AMQP_BROKER = "amqp_broker"
+FILES_IN_TRANSITION_CHECK_INTERVAL = 3600
+
+SELECT_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f where f.bfid in (select bfid from files_in_transition) and ( f.archive_status is NULL or f.archive_status != 'ARCHIVED') and f.cache_status='CACHED' and f.deleted='n' and f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
@@ -80,6 +91,16 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         self.max_connections = dbInfo.get('max_connections',MAX_CONNECTIONS)
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
 
+	self.amqp_broker_dict = self.csc.get(AMQP_BROKER)
+	dispatcher_conf = self.csc.get('dispatcher', None)
+	fc_queue = "%s; {create: always}"%(dispatcher_conf['queue_reply'],)
+	pe_queue = "%s; {create: always}"%(dispatcher_conf['queue_work'],)
+
+	self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
+							self.amqp_broker_dict['port']),
+						       fc_queue,
+						       pe_queue)
+	self.en_qpid_client.start()
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
         try:
@@ -98,7 +119,19 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             sys.exit(1)
 
     def invoke_function(self, function, args=()):
-        if  function.__name__  == "tape_list3" or MY_NAME=="info_server":
+        if  function.__name__  in ("tape_list3",
+				   "set_cache_status",
+				   "alive",
+				   "get_bfids",
+				   "get_bfids2",
+				   "show_state",
+				   "find_copies",
+				   "replay",
+				   "get_brand",
+				   "get_crcs",
+				   "has_undeleted_file",
+				   "bfid_info") \
+				   or MY_NAME=="info_server":
 	    c = threading.activeCount()
             Trace.trace(5, "threads %s"%(c,))
             if c < self.max_threads:
@@ -125,7 +158,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         try:
             value = ticket[key]
         except KeyError, detail:
-            message =  "%s: key %s is missing" % (MY_NAME, detail,)
+            message =  "%s: key %s is missing" % (MY_NAME, detail)
             ticket["status"] = (e_errors.KEYERROR, message)
             Trace.log(e_errors.ERROR, message)
             self.reply_to_caller(ticket)
@@ -636,13 +669,14 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # then the edb.py file DB export_format() function is called to
     # rename the keys from the query.
     def __tape_list(self, external_label, export_format = False):
-        q = "select bfid, crc, deleted, drive, volume.label, \
-                    location_cookie, pnfs_path, pnfs_id, \
-                    sanity_size, sanity_crc, size \
-             from file, volume \
+        q = "select f.bfid, f.crc, f.deleted, f.drive, v.label as label, \
+                    f.location_cookie, f.pnfs_path, f.pnfs_id, \
+                    f.sanity_size, f.sanity_crc, f.size, \
+		    f.package_id, f.archive_status, f.cache_status \
+             from file f, volume v\
              where \
-                 file.volume = volume.id and volume.label = '%s' \
-             order by location_cookie;" % (external_label,)
+                 f.volume = v.id and v.label='%s' \
+		 order by f.location_cookie"%((external_label,))
         res = self.filedb_dict.query_dictresult(q)
         # convert to external format
         file_list = []
@@ -656,6 +690,22 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             if not value.has_key('pnfs_name0'):
                 value['pnfs_name0'] = "unknown"
             file_list.append(value)
+            if file_info.get("bfid",None) == file_info.get("package_id",None):
+	       result = self.filedb_dict.query_dictresult("select f.bfid, f.crc, f.deleted, f.drive , \
+	       f.location_cookie, f.pnfs_path, f.pnfs_id, \
+	       f.sanity_size, f.sanity_crc, f.size, \
+	       f.package_id, f.archive_status, f.cache_status \
+	       from file f where f.package_id='%s' and f.bfid != '%s'"%((file_info.get("bfid",None),)*2))
+	       for finfo in result:
+		       finfo["location_cookie"] = file_info.get("location_cookie",None)
+		       finfo["label"] = file_info.get("label",None)
+		       if export_format:
+			       value = self.filedb_dict.export_format(finfo)
+		       else:
+			       value = finfo
+		       if not value.has_key('pnfs_name0'):
+			       value['pnfs_name0'] = "unknown"
+		       file_list.append(value)
         return file_list
 
     #### DONE
@@ -1041,6 +1091,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         record["size"]             = ticket["fc"]["size"]
         record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
         record["complete_crc"]     = ticket["fc"]["complete_crc"]
+	record["original_library"] = ticket["fc"].get("original_library",None)
 
         # uid and gid
         if ticket["fc"].has_key("uid"):
@@ -1114,6 +1165,11 @@ class FileClerkMethods(FileClerkInfoMethods):
                 return
 
         record["bfid"] = bfid
+	now = time.time()
+	if ticket["fc"].get("mover_type",None) == "DiskMover":
+		record["cache_status"] = file_cache_status.CacheStatus.CREATED
+		record["cache_mod_time"] = time2timestamp(now)
+
         # record it to the database
         self.filedb_dict[bfid] = record
 
@@ -1284,18 +1340,260 @@ class FileClerkMethods(FileClerkInfoMethods):
         if gid != None:
             record["gid"] = gid
         record["deleted"] = "no"
+	record["original_library"] = ticket["fc"].get("original_library",None)
+	record["file_family_width"] = ticket["fc"].get("file_family_width",None)
+	if ticket["fc"].get("mover_type",None) == "DiskMover":
+		record["cache_status"] = file_cache_status.CacheStatus.CACHED
+		record["cache_location"] = record.get("location_cookie",None)
 
         # take care of the copy count
         original = self._find_original(bfid)
         if original:
             self.made_copy(original)
 
-        # record our changes
-        self.filedb_dict[bfid] = record
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        Trace.trace(12,'set_pnfsid %s'%(ticket,))
-        return
+	# record our changes
+	self.filedb_dict[bfid] = record
+	ticket["status"] = (e_errors.OK, None)
+	#
+	# send event to PE
+	#
+	if ticket["fc"].get("mover_type",None) == "DiskMover":
+		event = pe_client.evt_cache_written_fc(ticket,record)
+		try:
+			self.en_qpid_client.send(event)
+		except:
+			ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+
+	self.reply_to_caller(ticket)
+
+	Trace.trace(12,'set_pnfsid %s'%(ticket,))
+	return
+
+    def open_bitfile(self, ticket):
+	    #
+	    # ticket contains only bfid
+	    #
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+	    if record["cache_status"]  in [file_cache_status.CacheStatus.CACHED,
+					   file_cache_status.CacheStatus.STAGING_REQUESTED,
+					   file_cache_status.CacheStatus.STAGING]:
+		    ticket["status"] = (e_errors.OK, None)
+		    self.reply_to_caller(ticket)
+		    return
+	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED;
+	    #
+	    # record change in DB
+	    #
+	    self.filedb_dict[bfid] = record
+	    event = pe_client.evt_cache_miss_fc(ticket,record)
+	    ticket["status"] = (e_errors.OK, None)
+	    try:
+		    self.en_qpid_client.send(event)
+	    except:
+		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	    ticket["fc"] = record
+	    self.reply_to_caller(ticket)
+	    return
+
+    def open_bitfile_for_package(self, ticket):
+	    #
+	    # this function changes the status of package file and
+	    # we rely on DB trigger to change the status of all files in the package
+	    #
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+
+	    if record["cache_status"]  in [file_cache_status.CacheStatus.CACHED,
+					   file_cache_status.CacheStatus.STAGING_REQUESTED,
+					   file_cache_status.CacheStatus.STAGING]:
+		    ticket["status"] = (e_errors.OK, None)
+		    self.reply_to_caller(ticket)
+		    return
+	    #
+	    # check that this is indeed the package file. Package file
+	    #
+	    if bfid != record['package_id'] or \
+	       type(record['package_id']) == types.NoneType :
+		    ticket["status"] = (e_errors.ERROR, "This is not a package file")
+		    self.reply_to_caller(ticket)
+		    return
+	    record["cache_status"] = file_cache_status.CacheStatus.STAGING_REQUESTED
+	    self.filedb_dict[bfid] = record
+	    #
+	    # retrieve the children
+	    #
+	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(record["package_id"],)
+	    res = self.filedb_dict.query_getresult(q)
+	    now = time.time()
+	    for i in res:
+		    child_record = self.filedb_dict[i[0]]
+		    if child_record["cache_status"] != file_cache_status.CacheStatus.CACHED:
+			    child_record["cache_status"] =  file_cache_status.CacheStatus.STAGING_REQUESTED
+		    else:
+			    child_record["cache_mod_time"] = time2timestamp(now)
+		    #
+		    # record change in db
+		    #
+		    self.filedb_dict[i[0]] = child_record
+	    ticket["status"] = (e_errors.OK, None)
+	    ticket["fc"] = record
+	    event = pe_client.evt_cache_miss_fc(ticket,record)
+	    try:
+		    self.en_qpid_client.send(event)
+	    except:
+		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	    self.reply_to_caller(ticket)
+
+    def get_children(self, ticket):
+	    #
+	    # this function return files that belong to package back to caller
+	    #
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+	    #
+	    # check that this is indeed the package file. Package file
+	    #
+	    if bfid != record['package_id'] or \
+	       type(record['package_id']) == types.NoneType :
+		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+		    self.reply_to_caller(ticket)
+		    return
+	    #
+	    # retrieve the children
+	    #
+	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
+	    res = self.filedb_dict.query_getresult(q)
+	    file_records = []
+	    for i in res:
+		    child_record = self.filedb_dict[i[0]]
+		    file_records.append(self.filedb_dict[i[0]])
+	    ticket["status"] = (e_errors.OK, None)
+	    ticket["children"] = file_records
+	    try:
+		    self.send_reply_with_long_answer(ticket)
+	    except (socket.error, select.error), msg:
+		    Trace.log(e_errors.INFO, "get_children: %s" % (str(msg),))
+
+    def set_children(self, ticket):
+	    #
+	    # this function operates on package file and modifies
+	    # their fields in db
+	    #
+	    bfid, record = self.extract_bfid_from_ticket(ticket)
+	    if not bfid:
+		    return #extract_bfid_from_ticket handles its own errors.
+	    #
+	    # check that this is indeed the package file. Package file
+	    #
+	    if bfid != record['package_id'] or \
+	       type(record['package_id']) == types.NoneType :
+		    ticket["status"] = (e_errors.ERROR, "This is no a package file")
+		    self.reply_to_caller(ticket)
+		    return
+	    #
+	    # modify values for package file
+	    #
+	    for k in ticket.keys():
+		    if k != 'bfid' and record.has_key(k):
+			    record[k] = ticket[k]
+	    #
+	    # retrieve the children. Note that the query below retrieves the parent
+	    # as well
+	    #
+	    q = "select bfid from file where package_id = '%s' and deleted='n'"%(bfid,)
+	    res = self.filedb_dict.query_getresult(q)
+	    file_records = []
+	    for i in res:
+		    child_record = self.filedb_dict[i[0]]
+		    #
+		    # modify values for files in package
+		    #
+		    for k in ticket.keys():
+			    if k != 'bfid' and record.has_key(k):
+				    child_record[k] = ticket[k]
+		    #
+		    # record change in db
+		    #
+		    self.filedb_dict[i[0]] = child_record
+
+	    ticket["status"] = (e_errors.OK, None)
+	    self.reply_to_caller(ticket)
+	    return
+
+    def swap_package(self, ticket) :
+	    #
+	    #  ticket must contain bfid of old package file and bfid of new package file
+	    # 'bfid', 'new_bfid'
+	    #
+	    #  this function is needed to migration
+	    #
+	    bfid     = self.extract_value_from_ticket('bfid', ticket, fail_None = True)
+	    new_bfid = self.extract_value_from_ticket('new_bfid', ticket, fail_None = True)
+	    if not bfid or not new_bfid:
+		    return
+	    #
+	    # swap_package handles all other errors on DB backend
+	    #
+	    q = "select swap_package('%s','%s')"%(bfid,new_bfid,)
+	    try:
+		    res = self.filedb_dict.update(q)
+	    except e_errors.EnstoreError as e:
+		    ticket["status"] = e.ticket["status"]
+		    self.reply_to_caller(ticket)
+		    return
+	    except:
+		    exc_type, exc_value = sys.exc_info()[:2]
+		    message = 'swap_parent(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+		    Trace.log(e_errors.ERROR, message)
+		    ticket["status"] = (e_errors.ERROR, message)
+		    self.reply_to_caller(ticket)
+		    return
+	    ticket["status"] = (e_errors.OK, None)
+	    self.reply_to_caller(ticket)
+	    return
+
+
+    def set_cache_status(self,ticket):
+	    list_of_arguments = ticket.get("bfids",None)
+	    if not list_of_arguments:
+		    ticket["status"] = (e_errors.ERROR,
+					"Failed to extract list of bfids from ticket %s"%(str(ticket)))
+		    
+		    self.reply_to_caller(ticket)
+		    return
+	    for item in list_of_arguments:
+		    bfid = item.get("bfid",None)
+		    if not bfid:
+			    continue
+		    cache_status   = item.get("cache_status",None)
+		    archive_status = item.get("archive_status",None)
+		    cache_location = item.get("cache_location",None)
+		    record = self.filedb_dict[bfid]
+		    if not record:
+			    continue
+		    if cache_location:
+			    if cache_location == "null" :
+				    cache_location = None
+			    record["cache_location"]=cache_location
+		    if cache_status :
+			    if cache_status == "null":
+				    cache_status = None
+			    record["cache_status"]=cache_status
+		    if archive_status:
+			    if archive_status == "null":
+				    archive_status=None
+			    record["archive_status"]=archive_status
+		    #
+		    # record changes in db
+		    #
+		    self.filedb_dict[bfid] = record
+	    del(ticket["bfids"])
+	    ticket["status"] = (e_errors.OK, None)
+	    self.reply_to_caller(ticket)
 
     #### DONE
     def set_crcs(self, ticket):
@@ -1343,6 +1641,12 @@ class FileClerkMethods(FileClerkInfoMethods):
 			message=message+"\""+f+"\","
 		message = message[:-1]  #remove trailing comma
 		ticket["status"] = (e_errors.FILE_CLERK_ERROR, message)
+		self.reply_to_caller(ticket)
+		return
+
+	if record.get("package_id",None) == bfid and \
+	   record.get("active_package_files_count") > 0 :
+		ticket["status"] = (e_errors.FILE_CLERK_ERROR, "cannot set deleted non-empty package file")
 		self.reply_to_caller(ticket)
 		return
 
@@ -1769,12 +2073,82 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
         # connection is broken.
         self.set_error_handler(self.file_error_handler)
         self.connection_failure = 0
-
         # setup the communications with the event relay task
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(enstore_constants.FILE_CLERK,
                                  self.alive_interval)
+
+	threading.Thread(target=self.replay_cache_written_events).start()
+	self.file_check_thread = threading.Thread(target=self.check_files_in_transition)
+	self.file_check_thread.start()
+
+    def get_files_in_transition(self):
+	    q=SELECT_FILES_IN_TRANSITION
+	    res = self.filedb_dict.query_getresult(q)
+	    return res
+
+    def replay_cache_written_events(self):
+	    res=self.get_files_in_transition()
+	    for row in res:
+		    bfid = row[0]
+		    self.replay_cache_written_event(bfid)
+
+    def replay_cache_written_event(self,bfid):
+	    record=self.filedb_dict[bfid]
+	    if record.get("original_library",None) :
+		    event = pe_client.evt_cache_written_fc({ "fc" : { "original_library"  : record.get("original_library",None),
+								      "file_family_width" : record.get("file_family_width",None)
+								      }
+							     }, record)
+		    try:
+			    self.en_qpid_client.send(event)
+			    Trace.log(e_errors.INFO,"Succesfully replayed CACHE_WRITTEN event for %s"%(bfid,))
+		    except:
+			    Trace.log(e_errors.INFO,"Failed replay CACHE_WRITTEN event for %s"%(bfid,))
+			    pass
+
+    def replay(self,ticket):
+	    func_name="self."+ticket.get("func")
+	    func=eval(func_name)
+	    ticket["status"] = (e_errors.OK, None)
+	    try:
+		    func()
+	    except:
+		    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	    self.reply_to_caller(ticket)
+
+
+    def check_files_in_transition(self) :
+	    q=SELECT_FILES_IN_TRANSITION
+	    while True:
+		    res = self.filedb_dict.query_getresult(q)
+		    if len(res)>0:
+			    txt=""
+			    f=open("/tmp/FILES_IN_TRANSITION","w")
+			    for row in res :
+				    txt += "%s\n"%(row[0])
+			    f.write("%s"%(txt,))
+			    f.close();
+			    inq_d = self.csc.get(enstore_constants.INQUISITOR, {})
+			    html_dir=inq_d.get("html_file",enstore_files.default_dir)
+			    html_host=inq_d.get("host","localhost")
+			    cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
+			    rc = enstore_functions2.shell_command2(cmd)
+			    failed=False
+			    if rc :
+				    if rc[0] !=0 :
+					    failed=True
+					    txt = "Failed to execute command %s\n. Output was %s\n. List of files: %s\n"%(cmd, rc[2], txt,)
+
+			    else :
+				    failed=True
+				    txt = "Failed to execute command %s\n. List of files: %s\n"%(cmd, txt,)
+			    if not failed :
+				    txt = 'See <A HREF="FILES_IN_TRANSITION">FILES_IN_TRANSITION</A>'
+			    Trace.alarm(e_errors.WARNING, " %d files stuck in files_in_transition table"%len(res), txt )
+		    time.sleep(FILES_IN_TRANSITION_CHECK_INTERVAL)
+
 
 
     def file_error_handler(self, exc, msg, tb):

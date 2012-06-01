@@ -453,7 +453,6 @@ def check_server(csc, name, intf, cmd):
     if not is_on_host(info.get('host', None)) and \
        not is_on_host(info.get('hostip', None)):
         return
-
     if intf.nocheck:
         rtn = {'status':("nocheck","nocheck")}
     else:
@@ -508,7 +507,7 @@ def check_server(csc, name, intf, cmd):
                 else:
                     rtn = {'status':("e_errors.SERVERDIED","not running")}
 
-    #Process responce.
+    #Process response.
     if not e_errors.is_ok(rtn):
         print "Starting %s: %s:%s" % (name, info['hostip'], info['port'])
 
@@ -593,7 +592,11 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
         "ratekeeper",
         "library",
         "media",
+        "migrator",
         "mover",
+        "udp_proxy_server",
+        "lm_director",
+        "dispatcher",
         "monitor_server",
         "pnfs_agent",
         ]
@@ -621,7 +624,6 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
                         option.USER_LEVEL:option.ADMIN,
                         }
         }
-
 def do_work(intf):
     Trace.init(MY_NAME)
 
@@ -643,19 +645,20 @@ def do_work(intf):
 
     csc = get_csc()
     rtn = csc.alive(configuration_client.MY_SERVER, 3, 3)
-    #print "AM rtn", rtn
     if not e_errors.is_ok(rtn):
         #If the configuration server was not specifically specified.
         print "Configuration server not running:", rtn['status']
         sys.exit(1)
     
+    config_dict = csc.dump_and_save()
     # We know the config server is up.  Get the database info.
-    db_dir = csc.get('database', {}).get('db_dir', None)
+    #db_dir = csc.get('database', {}).get('db_dir', None)
+    db_dir = config_dict.get('database', {}).get('db_dir', None)
     if not db_dir:
         print "Unable to determine database directory."
         sys.exit(1)
 
-    #The movers need to run as root, check for sudo.
+    #The movers and migrators need to run as root, check for sudo.
     if os.system("sudo -V > /dev/null 2> /dev/null"): #if true sudo not found.
         sudo = str("")
     else:
@@ -680,7 +683,9 @@ def do_work(intf):
                     enstore_constants.INFO_SERVER,
                     enstore_constants.INQUISITOR,
                     enstore_constants.RATEKEEPER,
-                    enstore_constants.MONITOR_SERVER]:
+                    enstore_constants.MONITOR_SERVER,
+                    enstore_constants.LM_DIRECTOR,
+                    enstore_constants.DISPATCHER]:
         if intf.should_start(server):
             check_server(csc, server, intf,
                          "$ENSTORE_DIR/sbin/%s" % (server,))
@@ -703,8 +708,14 @@ def do_work(intf):
     #             "db_deadlock -h %s  -t 1 &" % db_dir)
 
     #Get the library names.
-    libraries = csc.get_library_managers().keys()
-    libraries = map((lambda l: l + ".library_manager"), libraries)
+    libraries = []
+    lib_dicts = csc.get_library_managers2(conf_dict=config_dict)
+    for lib in lib_dicts:
+        lm_name = lib.get('name', None)
+        if lm_name:
+            libraries.append(lm_name)
+
+    #libraries = map((lambda l: l + ".library_manager"), libraries)
 
     #Libraries.
     for library_manager in libraries:
@@ -715,8 +726,9 @@ def do_work(intf):
                           (library_manager,))
 
     #Media changers.
-    media_changers = csc.get_media_changers()
-    for media_changer_info in media_changers.values():
+    mc_dicts = csc.get_media_changers2(conf_dict=config_dict)
+     
+    for media_changer_info in mc_dicts:
         media_changer_name = media_changer_info['name']
         if intf.should_start(enstore_constants.MEDIA_CHANGER) or \
            intf.should_start(media_changer_name):
@@ -734,9 +746,10 @@ def do_work(intf):
     """
 
     #Movers.
-    movers = csc.get_movers(None)
+    movers = csc.get_movers2(None, conf_dict=config_dict)
+    #movers = map((lambda l: l + ".mover"), movers)
     for mover_info in movers:
-        mover_name = mover_info['mover']
+        mover_name = mover_info['mover']+".mover"
         if intf.should_start(enstore_constants.MOVER) or \
            intf.should_start(mover_name):
             check_server(csc, mover_name, intf,
@@ -757,7 +770,24 @@ def do_work(intf):
                          "%s $ENSTORE_DIR/sbin/mover %s" %
                          (sudo, mover_name))
     """
-        
+    # Migrators
+    migrators = csc.get_migrators(conf_dict=config_dict)
+    for migrator in migrators:
+        if intf.should_start(enstore_constants.MIGRATOR) or \
+           intf.should_start(migrator):
+            check_server(csc, migrator, intf,
+                         "%s $ENSTORE_DIR/sbin/migrator %s" %
+                         (sudo, migrator,))
+    
+    # Proxy servers
+    proxy_servers = csc.get_proxy_servers2(conf_dict=config_dict)
+    for proxy_server_info in proxy_servers:
+        proxy_server_name = proxy_server_info['name']
+        if intf.should_start(enstore_constants.UDP_PROXY_SERVER) or \
+           intf.should_start(proxy_server_name):
+            check_server(csc, proxy_server_name, intf,
+                         "$ENSTORE_DIR/sbin/udp_proxy_server %s" %
+                         (proxy_server_name,))
     sys.exit(0)
 
 if __name__ == '__main__':

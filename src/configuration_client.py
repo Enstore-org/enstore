@@ -340,38 +340,63 @@ class ConfigurationClient(generic_client.GenericClient):
     #
     # The library_manager parameter should be the full "name.library_manager"
     # style name.  If all movers are to be returned, pass None instead.
-    def get_movers2(self, library_manager, timeout=0, retry=0):
+    def get_movers2(self, library_manager, timeout=0, retry=0, conf_dict=None):
         mover_list = []
         
-        conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
-        if e_errors.is_ok(conf_dict):
-            for item in conf_dict.items():
-                if item[0][-6:] == ".mover":
+        if conf_dict == None: 
+            conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
+        if not e_errors.is_ok(conf_dict):
+            return mover_list
+        for item in conf_dict.items():
+            if item[0][-6:] == ".mover":
 
-                    #If a library_manager was provided, make sure only
-                    # movers that use it are returned.
-                    if library_manager:
-                        if type(item[1]['library']) == types.StringType:
-                            lib_list = [item[1]['library']]
-                        elif type(item[1]['library']) == types.ListType:
-                            lib_list = item[1]['library']
-                        else:
-                            #Not an expected type, so it will never match.
-                            continue
-                        for library in lib_list:
-                            if library_manager == library:
-                                #Found a match for this mover to the
-                                # requested library_manager.
-                                break
-                        else:
-                            #No match.
-                            continue
-                        
-                    item[1]['name'] = item[0]
-                    item[1]['mover'] = item[0][:-6]
-                    mover_list.append(item[1])
+                #If a library_manager was provided, make sure only
+                # movers that use it are returned.
+                if library_manager:
+                    if type(item[1]['library']) == types.StringType:
+                        lib_list = [item[1]['library']]
+                    elif type(item[1]['library']) == types.ListType:
+                        lib_list = item[1]['library']
+                    else:
+                        #Not an expected type, so it will never match.
+                        continue
+                    for library in lib_list:
+                        if library_manager == library:
+                            #Found a match for this mover to the
+                            # requested library_manager.
+                            break
+                    else:
+                        #No match.
+                        continue
+
+                item[1]['name'] = item[0]
+                item[1]['mover'] = item[0][:-6]
+                mover_list.append(item[1])
 
         return mover_list
+
+    # get list of the migrators with full config info
+    def get_migrators2(self, timeout=0, retry=0, conf_dict=None):
+        migrator_list = []
+        
+        if conf_dict == None: 
+            conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
+        if not e_errors.is_ok(conf_dict):
+            return migrator_list
+
+        for key, value in conf_dict.items():
+            if key[-9:] == ".migrator":
+                value['name'] = key
+                migrator_list.append(value)
+        return migrator_list
+
+    # get list of the migrators
+    def get_migrators(self, timeout=0, retry=0, conf_dict=None):
+        migrator_list = []
+        migrator_list1 = self.get_migrators2(timeout, retry, conf_dict)
+        for migrator in migrator_list1:
+           migrator_list.append(migrator['name'])
+        return migrator_list
 
     # get media changer associated with a library manager
     def get_media_changer(self, library_manager, timeout=0, retry=0):
@@ -386,16 +411,19 @@ class ConfigurationClient(generic_client.GenericClient):
         return self.send(request, timeout, retry)
 
     # get list of library managers with full config info
-    def get_library_managers2(self, timeout=0, retry=0):
+    def get_library_managers2(self, timeout=0, retry=0, conf_dict=None):
         library_manager_list = []
         
-        conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
-        if e_errors.is_ok(conf_dict):
-            for item in conf_dict.items():
-                if item[0][-16:] == ".library_manager":
-                    item[1]['name'] = item[0]
-                    item[1]['library_manager'] = item[0][:-16]
-                    library_manager_list.append(item[1])
+        if conf_dict == None: 
+            conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
+        if not e_errors.is_ok(conf_dict):
+            return library_manager_list
+
+        for item in conf_dict.items():
+            if item[0][-16:] == ".library_manager":
+                item[1]['name'] = item[0]
+                item[1]['library_manager'] = item[0][:-16]
+                library_manager_list.append(item[1])
 
         return library_manager_list
 
@@ -406,19 +434,45 @@ class ConfigurationClient(generic_client.GenericClient):
         return self.send(request, timeout, retry)
 
     # get list of media changers with full config info
-    def get_media_changers2(self, timeout=0, retry=0):
+    def get_media_changers2(self, timeout=0, retry=0, conf_dict=None):
         media_changer_list = []
         
-        conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
-        if e_errors.is_ok(conf_dict):
-            for item in conf_dict.items():
-                if item[0][-14:] == ".media_changer":
-                    item[1]['name'] = item[0]
-                    item[1]['media_changer'] = item[0][:-14]
-                    media_changer_list.append(item[1])
+        if conf_dict == None: 
+            conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
+        if not e_errors.is_ok(conf_dict):
+            return media_changer_list
+
+        for item in conf_dict.items():
+            if item[0][-14:] == ".media_changer":
+                item[1]['name'] = item[0]
+                item[1]['media_changer'] = item[0][:-14]
+                media_changer_list.append(item[1])
 
         return media_changer_list
 
+    #get list of migrators
+    ### Not thread safe!
+    def get_migrators_list(self, timeout=0, retry=0):
+        request = {'work': 'get_migrators'}
+        return self.send(request, timeout, retry)
+
+    # get list of proxy servers with full config info
+    def get_proxy_servers2(self, timeout=0, retry=0, conf_dict=None):
+        proxy_server_list = []
+        
+        if conf_dict == None: 
+            conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
+            if not e_errors.is_ok(conf_dict):
+                return proxy_server_list
+
+        for item in conf_dict.items():
+            if item[0][-17:] == ".udp_proxy_server":
+                item[1]['name'] = item[0]
+                item[1]['udp_proxy_server'] = item[0][:-17]
+                proxy_server_list.append(item[1])
+
+        return proxy_server_list
+    
     # get the configuration dictionary element(s) that contain the specified
     # key, value pair
     def get_dict_entry(self, keyValue, timeout=0, retry=0):
@@ -449,6 +503,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.list_library_managers = 0
         self.list_media_changers = 0
         self.list_movers = 0
+        self.list_migrators = 0
         self.file_fallback = 0
         self.print_1 = 0
         self.copy = None
@@ -492,6 +547,12 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                                     option.USER_LEVEL:option.ADMIN},
         option.LIST_MOVERS:{option.HELP_STRING:
                             "list all movers in configuration",
+                            option.DEFAULT_VALUE:option.DEFAULT,
+                            option.DEFAULT_TYPE:option.INTEGER,
+                            option.VALUE_USAGE:option.IGNORED,
+                            option.USER_LEVEL:option.ADMIN},
+        option.LIST_MIGRATORS:{option.HELP_STRING:
+                            "list all migrators in configuration",
                             option.DEFAULT_VALUE:option.DEFAULT,
                             option.DEFAULT_TYPE:option.INTEGER,
                             option.VALUE_USAGE:option.IGNORED,
@@ -738,6 +799,24 @@ def do_work(intf):
                                   mover_info['mc_device'], mover_info['driver'],
                                   mover_info['library'])
                 
+    elif intf.list_migrators:
+        try:
+            result = csc.get_migrators_list(
+                timeout = intf.alive_rcv_timeout, retry = intf.alive_retries)
+        except (KeyboardInterrupt, SystemExit):
+            sys.exit(1)
+        except (socket.error, select.error), msg:
+            if msg.args[0] == errno.ETIMEDOUT:
+                result = {'status' : (e_errors.TIMEDOUT, str(msg))}
+            else:
+                result = {'status' : (e_errors.NET_ERROR, str(msg))}
+
+        if result.get("status", None) == None or e_errors.is_ok(result):
+            msg_spec = "%25s %15s"
+            print msg_spec % ("migrator", "host")
+            for migrator in result.values():
+                mig_info = csc.get(migrator['name'])
+                print msg_spec % (migrator['name'], mig_info['host'])
     else:
 	intf.print_help()
         sys.exit(0)

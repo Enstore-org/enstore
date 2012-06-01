@@ -478,6 +478,132 @@ $$
 ALTER FUNCTION public.update_volume_file_counters() OWNER TO enstore;
 
 --
+-- Name: populate file, files_in_transition; Type: FUNCTION; Schema: public; Owner: enstore
+--
+
+CREATE OR REPLACE FUNCTION populate_file_table() RETURNS "trigger"
+    AS $$
+BEGIN
+--      IF(TG_OP='INSERT') THEN
+        -- NEW.cache_status='CREATED';
+	-- NEW.cache_mod_time=LOCALTIMESTAMP(0);
+IF (TG_OP='UPDATE') THEN
+        IF (OLD.cache_status<>NEW.cache_status) THEN
+		NEW.cache_mod_time=LOCALTIMESTAMP(0);
+	END IF;
+        IF (OLD.archive_status<>NEW.archive_status) THEN
+		NEW.archive_mod_time=LOCALTIMESTAMP(0);
+	END IF;
+	IF (NEW.deleted<>OLD.deleted) THEN
+	   IF (OLD.deleted='n') THEN
+	   	   IF (NEW.deleted='y' OR NEW.deleted='u') THEN
+		      ---
+		      --- Updating package counters
+		      ---
+		      IF (OLD.bfid <> OLD.package_id and OLD.package_id IS NOT NULL) THEN
+		          BEGIN
+	      	      	    update file set active_package_files_count=active_package_files_count-1 where bfid=OLD.package_id;
+			  END;
+		      END IF;
+	   	   END IF;
+           ELSE
+	   	   IF (NEW.deleted='n') THEN
+		      ---
+		      --- Updating package counters
+		      ---
+		      IF (OLD.bfid <> OLD.package_id and OLD.package_id IS NOT NULL) THEN
+		         BEGIN
+		      	    update file set active_package_files_count=active_package_files_count+1 where bfid=OLD.package_id;
+		         END;
+                      END IF;
+	   	   END IF;
+	   END IF;
+	END IF;
+END IF;
+RETURN NEW;
+END;
+$$
+    LANGUAGE plpgsql;
+
+
+ALTER FUNCTION public.populate_file_table() OWNER TO enstore;
+
+CREATE OR REPLACE FUNCTION populate_files_in_transition_table() RETURNS "trigger"
+    AS $$
+BEGIN
+IF(TG_OP='INSERT') THEN
+        IF NEW.original_library IS NOT NULL THEN
+	   BEGIN
+		INSERT INTO files_in_transition values (NEW.bfid);
+	   END;
+        END IF;
+ELSEIF (TG_OP='UPDATE') THEN
+	IF (OLD.bfid<>NEW.bfid) THEN
+		BEGIN
+			UPDATE files_in_transition set bfid=NEW.bfid where bfid=OLD.bfid;
+		END;
+	END IF;
+	IF (NEW.archive_status = 'ARCHIVED' OR NEW.deleted = 'y' ) THEN
+		BEGIN
+			DELETE FROM files_in_transition WHERE bfid=NEW.bfid;
+		END;
+	END IF;
+	IF (OLD.cache_status<>NEW.cache_status) THEN
+	   IF (NEW.cache_status = 'CACHED') THEN
+	      	BEGIN
+			INSERT INTO cached_files values (NEW.bfid);
+		END;
+	   ELSE
+             BEGIN
+	            DELETE FROM cached_files WHERE bfid=NEW.bfid;
+	     END;
+	   END IF;
+        END IF;
+
+END IF;
+RETURN NEW;
+END;
+$$
+    LANGUAGE plpgsql;
+
+
+ALTER FUNCTION public.populate_files_in_transition_table() OWNER TO enstore;
+
+
+CREATE OR REPLACE FUNCTION swap_package(old_bfid varchar, new_bfid varchar) RETURNS void
+AS $$
+DECLARE
+	old_record RECORD;
+	new_record RECORD;
+BEGIN
+      IF ( new_bfid is NULL ) THEN
+          RAISE EXCEPTION 'destination package bfid is not specified';
+	  RETURN;
+      END IF;
+      select into old_record * from file where bfid=old_bfid;
+      select into new_record * from file where bfid=new_bfid;
+      IF ( old_record is NULL ) THEN
+          RAISE EXCEPTION 'source package % does not exist', old_bfid;
+	  RETURN;
+      END IF;
+      IF ( new_record is NULL ) THEN
+          RAISE EXCEPTION 'destination package % does not exist', new_bfid;
+	  RETURN;
+      END IF;
+      IF ( old_record.package_id is NULL ) THEN
+          RAISE EXCEPTION '% is not a package file',old_bfid;
+	  RETURN;
+      END IF;
+      update file set package_id=new_bfid where package_id=old_bfid and package_id <> bfid;
+      update file set package_files_count=package_files_count+old_record.package_files_count, active_package_files_count=active_package_files_count+old_record.active_package_files_count,package_id=new_bfid where bfid=new_bfid;
+      update file set package_files_count=0, active_package_files_count=0 where bfid=old_bfid;
+END;
+$$
+LANGUAGE 'plpgsql';
+
+ALTER FUNCTION public.swap_package(varchar,varchar) OWNER TO enstore;
+
+--
 -- Name: write_protect_status(character varying); Type: FUNCTION; Schema: public; Owner: enstore
 --
 
@@ -501,3 +627,41 @@ $_$
 
 
 ALTER FUNCTION public.write_protect_status(character varying) OWNER TO enstore;
+
+INSERT into state_type (name) select 'system_inhibit_0' as name  where not exists (select state_type.name from state_type where state_type.name='system_inhibit_0');
+INSERT into state_type (name) select 'system_inhibit_1' as name  where not exists (select state_type.name from state_type where state_type.name='system_inhibit_1');
+INSERT into state_type (name) select 'user_inhibit_1'   as name  where not exists (select state_type.name from state_type where state_type.name='user_inhibit_0');
+INSERT into state_type (name) select 'user_inhibit_1'   as name  where not exists (select state_type.name from state_type where state_type.name='user_inhibit_1');
+INSERT into state_type (name) select 'write_protect'    as name  where not exists (select state_type.name from state_type where state_type.name='write_protect');
+INSERT into state_type (name) select 'other'            as name  where not exists (select state_type.name from state_type where state_type.name='other');
+INSERT into state_type (name) select 'modified'         as name  where not exists (select state_type.name from state_type where state_type.name='modified');
+INSERT into state_type (name) select 'set_comment'      as name  where not exists (select state_type.name from state_type where state_type.name='set_comment');
+INSERT into state_type (name) select 'new_library'      as name  where not exists (select state_type.name from state_type where state_type.name='new_library');
+
+INSERT into option (key, value) select 'quota', 'disabled' where not exists (select option.key,option.value from option where option.key='quota' and option.value='disabled');
+
+INSERT into media_capacity select '9840',        21474836480 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9840'     and  media_capacity.capacity=21474836480);
+INSERT into media_capacity select '9940',        64424509440 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940'     and  media_capacity.capacity=64424509440);
+INSERT into media_capacity select '9940B',      214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940B'    and  media_capacity.capacity=214748364800);
+INSERT into media_capacity select 'DECDLT',      21474836480 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='DECDLT'   and  media_capacity.capacity=21474836480);
+INSERT into media_capacity select 'null',       214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='null'     and  media_capacity.capacity=214748364800);
+INSERT into media_capacity select 'LTO2',       214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO2'     and  media_capacity.capacity=214748364800);
+INSERT into media_capacity select 'LTO3',       429496729600 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO3'     and  media_capacity.capacity=429496729600);
+INSERT into media_capacity select 'LTO4',       858993459200 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO4'     and  media_capacity.capacity=858993459200);
+INSERT into media_capacity select 'T10000T2',  5401000000000 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='T10000T2' and  media_capacity.capacity=5401000000000);
+
+INSERT into cache_statuses select 'CREATED','file was written to cache' where not exists (select status, explanation from cache_statuses where status='CREATED' and explanation='file was written to cache');
+INSERT into cache_statuses select 'PURGING','file is being purged' where not exists (select status, explanation from cache_statuses where status='PURGING' and explanation='file is being purged');
+INSERT into cache_statuses select 'PURGED','file wad deleted in cache' where not exists (select status, explanation from cache_statuses where status='PURGED' and explanation='file was deleted in cache');
+INSERT into cache_statuses select 'STAGING','file is being staged to cache from tape' where not exists (select status, explanation from cache_statuses where status='STAGING' and explanation='file is being staged to cache from tape');
+INSERT into cache_statuses select 'CACHED','file is in cache' where not exists (select status, explanation from cache_statuses where status='CACHED' and explanation='file is in cache');
+INSERT into cache_statuses select 'STAGING_REQUESTED','staging of file has been requested' where not exists (select status, explanation from cache_statuses where status='STAGING_REQUESTED' and explanation='staging of file has been requested');
+INSERT into cache_statuses select 'PURGING_REQUESTED','purging of file has been requested' where not exists (select status, explanation from cache_statuses where status='PURGING_REQUESTED' and explanation='purging of file has been requested');
+INSERT into cache_statuses select 'STAGED','file is in cache' where not exists (select status, explanation from cache_statuses where status='STAGED' and explanation='file is in cache');
+INSERT into cache_statuses select 'FAILED','staging has failed' where not exists (select status, explanation from cache_statuses where status='FAILED' and explanation='staging has failed');
+
+INSERT into archive_statuses select 'ARCHIVED','file was written to tape' where not exists (select status, explanation from archive_statuses where status='ARCHIVED' and explanation='file was written to tape');
+INSERT into archive_statuses select 'ARCHIVING','file is being written to tape. This state is useful for the recovery from failure' where not exists (select status, explanation from archive_statuses where status='ARCHIVING' and explanation='file is being written to tape. This state is useful for the recovery from failure');
+INSERT into archive_statuses select 'FAILED','archival has failed' where not exists (select status, explanation from archive_statuses where status='FAILED' and explanation='archival has failed');
+
+

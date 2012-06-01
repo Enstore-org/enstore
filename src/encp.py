@@ -215,6 +215,7 @@ import udp_client
 import file_utils
 import cleanUDP
 import namespace
+import library_manager_director_client
 
 ### The following constants:
 ###     USE_NEW_EVENT_LOOP
@@ -462,7 +463,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_10e CVS $Revision$ "
+    version_string = "v3_11 CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -700,7 +701,7 @@ def get_directory_name(filepath):
 #Return True if the file passed in is a pnfs file with either layer 1 or
 # or layer 4 set.  False otherwise.  OSError, and IOError exceptions may
 # be thrown for other errors.
-def do_layers_exist(pnfs_filename):
+def do_layers_exist(pnfs_filename, encp_intf=None):
 
     if not pnfs_filename:
         return False
@@ -710,10 +711,8 @@ def do_layers_exist(pnfs_filename):
 
         layer_1_filename = sfs.layer_file(pnfs_filename, 1)
         layer_4_filename = sfs.layer_file(pnfs_filename, 4)
-
-        if _get_stat(layer_1_filename, sfs.get_stat)[stat.ST_SIZE] or \
-               _get_stat(layer_4_filename, sfs.get_stat)[stat.ST_SIZE] :
-
+        if _get_stat(layer_1_filename, sfs.get_stat, encp_intf)[stat.ST_SIZE] or \
+               _get_stat(layer_4_filename, sfs.get_stat, encp_intf)[stat.ST_SIZE] :
             #Layers found for the file!
             return True
 
@@ -845,10 +844,16 @@ def get_enstore_canonical_path(filepath):
           "Unable to return enstore pnfs canonical pathname: %s" % (filepath,),
                         e_errors.WRONGPARAMETER)
 
-def _get_stat(pathname, func=file_utils.get_stat):
+def _get_stat(pathname, func=file_utils.get_stat, e=None):
     __pychecker__="unusednames=i"
 
-    for i in [0, 1, 2, 3, 4]:
+    retries = 5
+    if e and e.outtype == HSMFILE:
+        # write request
+        # output file does not exist
+        # no need to retry
+        retries = 1
+    for i in range(retries):
         try:
             statinfo = func(pathname)
             return statinfo
@@ -858,6 +863,8 @@ def _get_stat(pathname, func=file_utils.get_stat):
             # happens a lot if pnfs is automounted. One node, flxi04,
             # appears to be throwing EIO instead for these cases.
             if msg.args[0] in [errno.EIO, errno.ENOENT]:
+                if retries == 1:
+                    break
                 time.sleep(1)
                 continue
             else:
@@ -865,9 +872,8 @@ def _get_stat(pathname, func=file_utils.get_stat):
 
     raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
-def get_stat(filename):
+def get_stat(filename, e=None):
     global pnfs_is_automounted
-
     pathname = os.path.abspath(filename)
 
     try:
@@ -888,6 +894,7 @@ def get_stat(filename):
             raise OSError(errno.ENOENT, "Force use of pnfs_agent.")
         else:
             statinfo = file_utils.get_stat(pathname)
+
         return statinfo
     except (OSError, IOError), msg:
         if getattr(msg, "errno", None) in [errno.ENOENT, errno.EIO]:
@@ -905,14 +912,15 @@ def get_stat(filename):
                 # In case of layer 1 or layer 4 and error
                 # call get stat from chimera/pnfs
                 sfs = namespace.StorageFS(pathname)
-                return _get_stat(pathname, sfs.get_stat)
+                rc = _get_stat(pathname, sfs.get_stat, e)
+                return rc
             elif pnfs_is_automounted or \
                      namespace.is_storage_local_path(pathname, check_name_only = 1):
                 #Sometimes when using pnfs mounted locally the NFS client times
                 # out and gives the application the error ENOENT.  When in
                 # reality the file is fine when asked some time later.
                 # Automounting pnfs can cause timeout problems too.
-                statinfo = _get_stat(pathname)
+                statinfo = _get_stat(pathname, file_utils.get_stat, e)
                 return statinfo
             elif is_local_path(pathname, check_name_only = 1):
                 #You can only get here by choosing to name your files poorly.
@@ -2569,7 +2577,6 @@ def is_null_media_type(volume_clerk_ticket):
 
     return False
 
-
 def max_attempts(csc, library, encp_intf):
 
     resend = {}
@@ -3279,7 +3286,6 @@ def null_mover_check(work_ticket, e):
                (work_ticket['wrapper']['pnfsFilename'],)
             raise EncpError(None, message, e_errors.USERERROR)
 
-
 # check the input file list for consistency
 def inputfile_check(work_list, e):
 
@@ -3775,8 +3781,8 @@ def outputfile_check(work_list, e):
         work_list = [work_list]
 
     # Make sure we can open the files. If we can't, we bomb out to user
-    for i in range(len(work_list)):
 
+    for i in range(len(work_list)):
             work_ticket = work_list[i]
 
             #shortcuts.
@@ -3799,7 +3805,7 @@ def outputfile_check(work_list, e):
 
             #Grab this stat() once for all the checks about to be run.
             try:
-                fstatinfo = get_stat(outputfile_use)
+                fstatinfo = get_stat(outputfile_use, e)
             except (OSError, IOError):
                 fstatinfo = None
 
@@ -3890,6 +3896,7 @@ def outputfile_check(work_list, e):
                     # such file or directory error.  We need to ignore it
                     # if stat() on the file returns success
                     get_stat(outputfile_use)
+
                     layer1 = ''
                     layer4 = ''
                     try:
@@ -5222,7 +5229,7 @@ def wait_for_message(listen_socket, lmc, work_list,
                 #We've timedout.
                 #A better mechanism will be needed if more than just
                 # the lmc will do things like this.
-#                print "DROPPING:", transaction_id_list
+                #                print "DROPPING:", transaction_id_list
                 Trace.log(TRANS_ID_LEVEL,
                           "dropping ids: %s" % (transaction_id_list,))
                 lmc.u.drop_deferred(transaction_id_list)
@@ -5474,7 +5481,6 @@ def close_descriptors(*fds):
 ############################################################################
 
 def submit_one_request_send(ticket, encp_intf):
-
     submit_one_request_send_start_time = time.time()
 
     #Before resending, there are some fields that the library
@@ -5505,6 +5511,26 @@ def submit_one_request_send(ticket, encp_intf):
         filename = "unknown filename"
         Trace.log(e_errors.ERROR,
                   "Failed to determine the type of transfer: %s" % str(msg))
+
+    #Get the answer from the library manager director.
+    orig_library = ticket['vc']['library'] + ".library_manager"
+    csc = get_csc()
+    lm_config = csc.get(orig_library, 3, 3)
+    if e_errors.is_ok(lm_config) and encp_intf.enable_redirection == 1 and ticket['work'] == "write_to_hsm":
+       lmd_name = lm_config.get('use_LMD', None)
+       if lmd_name:
+           lmd = library_manager_director_client.LibraryManagerDirectorClient(csc, lmd_name)
+           Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET\n%s:"%(pprint.pformat(ticket),))
+
+           ticket = lmd.get_library_manager(ticket)
+
+           Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET\n%s:"%(pprint.pformat(ticket),))
+
+           if not e_errors.is_ok(ticket):
+               ticket['status'] = (e_errors.USERERROR,
+                   "Unable to access library manager director: %s" % \
+                   (ticket['status'],))
+               return ticket, None, None
 
     #Send work ticket to LM.  As long as a single encp process is restricted
     # to working with one enstore system, not passing get_csc() the ticket
@@ -5746,7 +5772,7 @@ def submit_one_request(ticket, encp_intf):
     #return submit_one_request_recv(transaction_id, ticket, lmc, encp_intf), lmc
     rticket, transaction_id, lmc = submit_one_request_send(ticket, encp_intf)
     if not e_errors.is_ok(rticket):
-        return ticket, lmc
+        return combine_dict(rticket, ticket), lmc
     response_ticket, transaction_id = submit_one_request_recv(
         transaction_id, ticket, lmc, encp_intf)
     return response_ticket, lmc
@@ -6160,7 +6186,6 @@ def check_crc(done_ticket, encp_intf, fd=None):
         check_crc_layer2(done_ticket, encp_crc_1_seeded)
         if not e_errors.is_ok(done_ticket):
             return
-
     message = "[1] Time to check CRC: %s sec." % \
               (time.time() - check_crc_start_time,)
     Trace.message(TIME_LEVEL, message)
@@ -6385,20 +6410,25 @@ def verify_file_size(ticket, encp_intf = None):
             pnfs_filesize = ticket['file_size']
             pnfs_real_size = pnfs_filesize
         else:
-            #We need to obtain the size in PNFS.
-            sfs = namespace.StorageFS(pnfs_filename)
-            pnfs_stat = sfs.get_stat(pnfs_filename)
-            pnfs_filesize = pnfs_stat[stat.ST_SIZE]
-            pnfs_inode = pnfs_stat[stat.ST_INO]
-
-            if pnfs_filesize == 1 and ticket['file_size'] > 1:
-                #For files larger than 2GB, we need to look at the size in
-                # layer 4.  PNFS can't handle filesizes larger than that, so
-                # as a workaround encp sets large files to have a PNFS size
-                # of 1 and puts the real size in layer 4.
-                pnfs_real_size = sfs.get_file_size(pnfs_filename)
+            # this needs a better solution
+            # if --get-bfid and --skip-pnfs we DO not USE any sfs information!!
+            if encp_intf and encp_intf.get_bfid and encp_intf.skip_pnfs:
+                pnfs_real_size = ticket['file_size']
             else:
-                pnfs_real_size = pnfs_filesize
+                #We need to obtain the size in PNFS.
+                sfs = namespace.StorageFS(pnfs_filename)
+                pnfs_stat = sfs.get_stat(pnfs_filename)
+                pnfs_filesize = pnfs_stat[stat.ST_SIZE]
+                pnfs_inode = pnfs_stat[stat.ST_INO]
+
+                if pnfs_filesize == 1 and ticket['file_size'] > 1:
+                    #For files larger than 2GB, we need to look at the size in
+                    # layer 4.  PNFS can't handle filesizes larger than that, so
+                    # as a workaround encp sets large files to have a PNFS size
+                    # of 1 and puts the real size in layer 4.
+                    pnfs_real_size = sfs.get_file_size(pnfs_filename)
+                else:
+                    pnfs_real_size = pnfs_filesize
     except (TypeError), detail:
         ticket['status'] = (e_errors.OK, "No files sizes to verify.")
         return
@@ -6533,15 +6563,16 @@ def set_outfile_permissions(ticket, encp_intf):
                         # them for consistancy is good for error checking.
                         dev = ticket['wrapper']['major'] << 8 + \
                               ticket['wrapper']['minor']
+                        update_t = ticket['fc']['update'].split(".")[0] # this is needed in case if time is appended by ms
                         fake_time = time.mktime(time.strptime(
-                            ticket['fc']['update'], "%Y-%m-%d %H:%M:%S"))
+                            update_t, "%Y-%m-%d %H:%M:%S"))
                         in_stat_info = (ticket['wrapper']['mode'],
                                         ticket['wrapper']['inode'],
                                         dev,  #Reconstructed.
                                         1,  #number of links
                                         ticket['wrapper']['uid'],
                                         ticket['wrapper']['gid'],
-                                        ticket['filesize'],
+                                        ticket.get('filesize',ticket.get('file_size',0L)), # when merging head as SFA notices incosistency between filesize and file_size, this should take care of it
                                         fake_time,  #atime
                                         fake_time,  #mtime
                                         fake_time,  #ctime
@@ -6567,7 +6598,6 @@ def set_outfile_permissions(ticket, encp_intf):
 
             try:
                 perms = in_stat_info[stat.ST_MODE]
-
                 #handle remote file case
                 if is_write(ticket):
                     sfs = namespace.StorageFS(ticket['outfile'])
@@ -6946,7 +6976,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #If the user wants us to specifically check if another encp has
         # written (layers 1 or 4) to this pnfs file; now is the time to check.
         try:
-            if do_layers_exist(pnfs_filename):
+            if do_layers_exist(pnfs_filename, encp_intf):
                 #The do_layers_exist() function should never give an
                 # exist error for the 'real' file.  Any EEXIST errors
                 # from this section should only occur if layer 1 or 4 is
@@ -8208,6 +8238,10 @@ def set_sfs_settings(ticket, intf_encp):
         fc_ticket["fc"]["drive"] = drive
         fc_ticket["fc"]['uid'] = ticket['wrapper']['uid']
         fc_ticket["fc"]['gid'] = ticket['wrapper']['gid']
+        fc_ticket["fc"]['library'] = ticket['vc'].get('library', None)
+        fc_ticket["fc"]['original_library'] = ticket.get('original_library', None)
+        fc_ticket["fc"]['file_family_width'] = ticket['vc'].get('file_family_width', 1)
+
 
         #As long as encp is restricted to working with one enstore system
         # at a time, passing get_fcc() the bfid info is not necessary.
@@ -8660,7 +8694,6 @@ def create_write_request(work_ticket, file_number,
                                               shortcut=False)
                 ofullname = ofullname_list[0]
                 wrapper['pnfsFilename'] = ofullname
-
 
         #We need to stop writing /pnfs/fs/usr/Migration/ paths in the wrappers
         # for every migrated to tape.  Correct the
@@ -9236,7 +9269,6 @@ def write_to_hsm(e, tinfo):
 
     done_ticket, listen_socket, unused, request_list = \
                  prepare_write_to_hsm(tinfo, e)
-
     if not e_errors.is_ok(done_ticket) or e.check:
         return done_ticket
 
@@ -9251,6 +9283,18 @@ def write_to_hsm(e, tinfo):
                       "FILES LEFT: %s" % requests_outstanding(request_list))
 
         work_ticket, index, copy = get_next_request(request_list)
+
+        # Check if this is a multiple copy request
+        if copy != 0:
+            # This is a copy request.
+            # We do not make copies for files written to cache.
+            # Copies are done when these files migrate to tape.
+            if (e.enable_redirection == 1):
+                # The original request (copy 0) was redirected.
+                # Skip the copy request.
+                del(request_list[index])
+                work_ticket['status'] = (e_errors.OK, None)
+                return work_ticket
 
         #Send the request to write the file to the library manager.
         done_ticket, lmc = submit_write_request(work_ticket, e)
@@ -10147,7 +10191,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
               (time.time() - create_read_requests_start_time,)
     Trace.message(TIME_LEVEL, message)
     Trace.log(TIME_LEVEL, message)
-
     return requests_per_vol
 
 
@@ -11084,6 +11127,7 @@ def prepare_read_from_hsm(tinfo, e):
     try:
         requests_per_vol = create_read_requests(callback_addr,
                                                 udp_callback_addr, tinfo, e)
+
     except (SystemExit, KeyboardInterrupt):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
@@ -11196,13 +11240,22 @@ def prepare_read_from_hsm(tinfo, e):
                     # to that of the owner of the original file.
 
                     ### Note to self: work on removing this stat().
-                    in_file_stats = get_stat(requests_per_vol[vol][i]['infile'])
 
+
+                    #Only try this when the real user is root.
                     if os.getuid() == 0:
-                        #Only try this when the real user is root.
+                        # if --get-bfid and --skip-pnfs is specified do not use
+                        # a convoluted get_stat
+                        if e.get_bfid and e.skip_pnfs:
+                            uid = requests_per_vol[vol][i]['fc']['uid']
+                            gid = requests_per_vol[vol][i]['fc']['gid']
+                        else:
+                            in_file_stats = get_stat(requests_per_vol[vol][i]['infile'])
+                            uid = in_file_stats[stat.ST_UID]
+                            gid = in_file_stats[stat.ST_GID]
                         file_utils.chown(requests_per_vol[vol][i]['outfile'],
-                                         in_file_stats[stat.ST_UID],
-                                         in_file_stats[stat.ST_GID],
+                                         uid,
+                                         gid,
                                          unstable_filesystem=True)
             except (OSError, IOError, EncpError), msg:
                 #if not should_skip_deleted:
@@ -11611,12 +11664,14 @@ class EncpInterface(option.Interface):
                not (hasattr(self, 'put') or hasattr(self, 'get')):
             self.parameters = self.admin_parameters
 
+        # Disable redirection of encp to another library manager
+        self.enable_redirection = 0
+
         # parse the options
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
         # This is accessed globally...
         pnfs_is_automounted = self.pnfs_is_automounted
-
 
     def __str__(self):
         str_rep = ""
@@ -11709,6 +11764,18 @@ class EncpInterface(option.Interface):
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_TYPE:option.INTEGER,
                        option.USER_LEVEL:option.USER,},
+        #option.DISABLE_REDIRECTION:{option.HELP_STRING:
+        #                  "Disable redirection of request to another library."
+        #                  " Do not use Library Manager Director" ,
+        #                  option.DEFAULT_TYPE:option.INTEGER,
+        #                  option.DEFAULT_VALUE:1,
+        #                  option.USER_LEVEL:option.ADMIN,},
+        option.ENABLE_REDIRECTION:{option.HELP_STRING:
+                          "Enable redirection of request to another library."
+                          " Use Library Manager Director" ,
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.DEFAULT_VALUE:1,
+                          option.USER_LEVEL:option.USER,},
         option.DIRECT_IO:{option.HELP_STRING:
                           "Use direct i/o for disk access on supporting "
                           "filesystems.",

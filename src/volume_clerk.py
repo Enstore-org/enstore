@@ -726,14 +726,14 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
                     q = q + "where %s = %s"%(key, val)
                 else:
                     q = q + "where %s %s %s"%(key, cond, val)
-            q = q + "and not label like '%%.deleted'"
+            q = q + " and not label like '%%.deleted'"
         elif state:
             if enstore_functions2.is_readonly_state(state):
                 #readonly states are the only ones in system_inhibit_1?
                 q = q + "where system_inhibit_1 = '%s'"%(state)
             else:
                 q = q + "where system_inhibit_0 = '%s'"%(string.upper(state))
-            q = q + "and not label like '%%.deleted'"
+            q = q + " and not label like '%%.deleted'"
 
         reply['header'] = 'FULL'
 

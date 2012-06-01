@@ -31,6 +31,13 @@ def write_request_ok(ticket):
                'storage_group': '',
                }
 
+    fsize_type = 0L
+    # hack as in read_request_ok
+    if type(ticket['file_size']) == type(0):  
+        fsize_type = 0
+    elif type(ticket['file_size']) == type(None):
+        fsize_type = None
+
     inode_type = 0L
     if type(ticket['wrapper']['inode']) == type(0):
         inode_type = 0
@@ -48,7 +55,7 @@ def write_request_ok(ticket):
                     'mtime': 0,
                     'pnfsFilename': '',
                     'sanity_size': 0,
-                    'size_bytes': 0L,
+                    'size_bytes': fsize_type,
                     'type': '',
                     'uid': 0,
                     'uname': ''}

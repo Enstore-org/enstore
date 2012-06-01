@@ -267,25 +267,36 @@ REVOKE ALL ON TABLE write_protection_audit FROM enstore;
 GRANT ALL ON TABLE write_protection_audit TO enstore;
 GRANT SELECT ON TABLE write_protection_audit TO enstore_reader;
 
+--
+-- Name: files_in_transition; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE files_in_transition FROM PUBLIC;
+REVOKE ALL ON TABLE files_in_transition FROM enstore;
+GRANT ALL ON TABLE files_in_transition TO enstore;
+GRANT SELECT ON TABLE files_in_transition TO enstore_reader;
+
+
+--
+-- Name: cache_statuses; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE cache_statuses FROM PUBLIC;
+REVOKE ALL ON TABLE cache_statuses FROM enstore;
+GRANT ALL ON TABLE cache_statuses TO enstore;
+GRANT SELECT ON TABLE cache_statuses TO enstore_reader;
+
+--
+-- Name: archive_statuses; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE archive_statuses FROM PUBLIC;
+REVOKE ALL ON TABLE archive_statuses FROM enstore;
+GRANT ALL ON TABLE archive_statuses TO enstore;
+GRANT SELECT ON TABLE archive_statuses TO enstore_reader;
+
 
 --
 -- PostgreSQL database dump complete
 --
 
-insert into state_type (name) values ('system_inhibit_0');
-insert into state_type (name) values ('system_inhibit_1');
-insert into state_type (name) values ('user_inhibit_0');
-insert into state_type (name) values ('user_inhibit_1');
-insert into state_type (name) values ('write_protect');
-insert into state_type (name) values ('other');
-insert into state_type (name) values ('modified');
-insert into state_type (name) values ('set_comment');
-insert into state_type (name) values ('new_library');
-
-insert into option (key, value) values ('quota', 'disabled');
-
-insert into media_capacity values('9840', 21474836480);
-insert into media_capacity values('9940', 64424509440);
-insert into media_capacity values('9940B', 214748364800);
-insert into media_capacity values('DECDLT', 21474836480);
-insert into media_capacity values('null', 214748364800);

@@ -682,6 +682,22 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
                                            'name': key}
         self.reply_to_caller(ret)
 
+    #get list of migrators
+    ### Not thread safe.  The ticket['r_a'] value isn't passed to
+    ### reply_to_caller() via ret, so the reply the client asked for may
+    ### not be what they get.
+    def get_migrators(self, ticket):
+        __pychecker__ = "unusednames=ticket"
+        
+        ret = {}
+        for key in self.get_config_keys():
+            index = string.find (key, ".migrator")
+            if index != -1:
+                migrator = key[:index]
+                item = self.get_dict_entry(key)
+                ret[migrator] = {'address':(item['host'],item['port']),
+				     'name': key}
+        self.reply_to_caller(ret)
     def reply_serverlist( self, ticket):
         __pychecker__ = "unusednames=ticket"
 

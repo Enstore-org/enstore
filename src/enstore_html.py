@@ -68,11 +68,13 @@ TAG = 'tag'
 
 BAD_MOVER_STATES = [mover_constants.OFFLINE, mover_constants.DRAINING,
 		    mover_constants.ERROR]
+BAD_MIGRATOR_STATES = [mover_constants.OFFLINE, mover_constants.ERROR]
 BAD_LM_STATES = [e_errors.BROKEN]
 
 HEADINGS = ["Name", "Status", "Host", "Date/Time", "Last Time Alive"]
 MEDIA_CHANGERS = "Media Changers"
 SERVERS = "Servers"
+MIGRATORS = "Migrators"
 MOVERS = "Movers"
 UNMONITORED_SERVERS = "Unmonitored Servers"
 THE_INQUISITOR = "The Inquisitor"
@@ -631,6 +633,145 @@ class EnMoverStatusPage(EnBaseHtmlDoc):
             if enstore_functions2.is_mover(server):
                 # this is a mover. output its info
                 self.mv_row(server, table)
+	return table
+
+    # generate the body of the file
+    def body(self, data_dict):
+	# this is the data we will output
+	self.data_dict = data_dict
+	# create the outer table and its rows
+	table = self.table_top()
+	table.append(empty_row())
+	table.append(empty_row())
+	table.append(self.big_title(self.title))
+	table.append(empty_row())
+	table.append(HTMLgen.TR(HTMLgen.TD(self.main_table())))
+	self.trailer(table)
+	self.append(table)
+
+class EnMigratorStatusPage(EnBaseHtmlDoc):
+
+    def __init__(self, refresh=60, system_tag=""):
+	EnBaseHtmlDoc.__init__(self, refresh=refresh, 
+			       help_file="migratorStatusHelp.html",
+			       system_tag=system_tag)
+	self.title = "Migrators Page"
+	self.source_server = THE_INQUISITOR
+	self.script_title_gif = "migrator.gif"
+	self.description = ""
+
+    # add the volume information if it exists
+    def add_bytes_volume_info(self, migratord, tr, mgkey):
+        pass
+
+    # add the eod/location cookie information if it exists
+    def add_bytes_eod_info(self, migratord, tr, mgkey):
+        pass
+    # add input and output files 
+    def add_files(self, migratord, table):
+        pass
+
+    # add the migrator information
+    def migrator_row(self, migrator, table):
+	# we may not have any other info on this migrator as the inq may not be
+	# watching it.
+	md = self.data_dict.get(migrator, {})
+	if md:
+	    # we may have gotten an error when trying to get it, 
+	    # so look for a piece of it.  (efb used to be 'or')
+	    if md.has_key(enstore_constants.STATE) and \
+	       md[enstore_constants.STATE]:
+		# get the first word of the mover state, we will use this to
+		# tell if this is a bad state or not
+		words = string.split(md[enstore_constants.STATE])
+		if words[0] in BAD_MIGRATOR_STATES:
+		    table.append(self.alive_row(migrator, 
+					     md[enstore_constants.STATUS], 
+						FUSCHIA))
+		else:
+		    table.append(self.alive_row(migrator, 
+					     md[enstore_constants.STATUS]))
+
+		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                                "ID",
+						color=BRICKRED, 
+						html_escape='OFF')))
+		tr.append(HTMLgen.TD(md[enstore_constants.ID],
+                                     align="LEFT"))
+		m_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
+					     align="LEFT", bgcolor=YELLOW, 
+					     width="100%")
+		m_table.append(empty_row(4))
+		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                                "file",
+						color=BRICKRED, 
+						html_escape='OFF')))
+		tr.append(HTMLgen.TD(md[enstore_constants.FILES],
+                                     align="LEFT"))
+                
+                m_table.append(tr)
+		if md.has_key(enstore_constants.LAST_READ):
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                                  "Last%sRead%s(bytes)"%(NBSP,
+									 NBSP),
+						  color=BRICKRED, 
+						  html_escape='OFF'),
+					       align="CENTER"))
+		    self.add_bytes_volume_info(md, tr, 
+					       enstore_constants.LAST_READ)
+		    m_table.append(tr)
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(
+                                                 "Last%sWrite%s(bytes)"%(NBSP,
+									 NBSP),
+						 color=BRICKRED, 
+						 html_escape='OFF'),
+					       align="CENTER"))
+		    self.add_bytes_eod_info(md, tr, 
+					    enstore_constants.LAST_WRITE)
+		    m_table.append(tr)
+		    self.add_files(md, m_table)
+		elif md.has_key(enstore_constants.CUR_READ):
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                               "Current%sRead%s(bytes)"%(NBSP,
+									 NBSP),
+					       color=BRICKRED, 
+					       html_escape='OFF'),
+					       align="CENTER"))
+		    self.add_bytes_volume_info(md, tr, 
+					       enstore_constants.CUR_READ)
+		    m_table.append(tr)
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+			                     "Current%sWrite%s(bytes)"%(NBSP,
+									NBSP),
+					     color=BRICKRED, 
+					     html_escape='OFF'),
+					       align="CENTER"))
+		    self.add_bytes_eod_info(md, tr, 
+					    enstore_constants.CUR_WRITE)
+		    m_table.append(tr)
+		    self.add_files(md, m_table)
+		tr = HTMLgen.TR(empty_data())
+		tr.append(HTMLgen.TD(m_table, colspan=5, width="100%"))
+		table.append(tr)
+	    else:
+		# all we have is the alive information
+		table.append(self.alive_row(migrator, 
+					    md[enstore_constants.STATUS]))
+
+    # generate the main table with all of the information
+    def main_table(self):
+	# first create the table headings for each column
+	tr = HTMLgen.TR()
+	for hdr in HEADINGS:
+	    tr.append(self.make_th(hdr))
+	table = HTMLgen.TableLite(tr, align="CENTER", cellpadding=0,
+				  cellspacing=0, bgcolor=AQUA, width="100%")
+	skeys = sort_keys(self.data_dict)
+        for server in skeys:
+            # look for migrators
+            if enstore_functions2.is_migrator(server):
+                # this is a migrator. Output its info
+                self.migrator_row(server, table)
 	return table
 
     # generate the body of the file
@@ -1358,6 +1499,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	#              movers
 	self.servers = sort_keys(self.data_dict)
 	got_movers = 0
+	got_migrators = False
 	got_unmonitored_server = 0
 	shortcut_lm = []
 	for server in self.servers:
@@ -1369,6 +1511,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    elif not got_movers and enstore_functions2.is_mover(server):
                 first_mover = server
 		got_movers = 1
+	    elif not got_migrators and enstore_functions2.is_migrator(server):
+                first_migrator = server
+		got_migrators = True
 	# now we have the list of table data elements.  now create the table.
 	caption = HTMLgen.Caption(HTMLgen.Bold(HTMLgen.Font("Shortcuts", 
 							    color=BRICKRED,
@@ -1387,6 +1532,11 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	if got_movers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(first_mover,), MOVERS)
+	# now the migrators
+	if got_migrators:
+	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
+						  '#%s'%(first_migrator,), MIGRATORS)
+        
 	# now the unmonitored servers
 	if got_unmonitored_server:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
@@ -1425,6 +1575,17 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		    self.unmonitored_servers.append(self.server_row(server))
 		else:
 		    # this is a media changer. output its alive info
+		    table.append(self.server_row(server))
+
+    # output all of the udp proxy server rows 
+    def udp_proxy_server_rows(self, table, skeys):
+	# now output the udp proxy serverr information
+	for server in skeys:
+	    if enstore_functions2.is_udp_proxy_server(server):
+		if self.not_being_monitored(server):
+		    self.unmonitored_servers.append(self.server_row(server))
+		else:
+		    # this is a udp proxy server. Output its alive info
 		    table.append(self.server_row(server))
 
     # output the row that lists the total transfers (current and pending) row
@@ -1680,6 +1841,48 @@ class EnSysStatusPage(EnBaseHtmlDoc):
                     table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.NAME(server))))
 		    table.append(self.mover_row(server))
 
+    def migrator_row(self, server):
+	# this is a migrator. output its info
+	m_d = self.data_dict.get(server, {})
+	name = self.server_url(server, enstore_functions2.get_migrator_status_filename(),
+			       server)
+	if m_d.has_key(enstore_constants.STATE) and \
+	   m_d[enstore_constants.STATE]:
+	    # append the migrators state to its status information
+	    # if we are updating the web page faster that receiving the new
+	    # info, then we already have a correct status
+	    if string.find(m_d[enstore_constants.STATUS][0], NBSP) == -1 and \
+	       m_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
+		m_d[enstore_constants.STATUS][0] = \
+			      "%s%s:%s%s"%(m_d[enstore_constants.STATUS][0], 
+					   NBSP, NBSP, 
+					   m_d[enstore_constants.STATE])
+	    # get the first word of the migrator state, we will use this
+	    # to tell if this is a bad state or not
+	    words = string.split(m_d[enstore_constants.STATE])
+	    if words[0] in BAD_MIGRATOR_STATES:
+		return self.alive_row(server, 
+				      m_d[enstore_constants.STATUS], 
+				      FUSCHIA, link=name)
+	    else:
+		return self.alive_row(server, 
+				      m_d[enstore_constants.STATUS],
+				      link=name)
+	else:
+	    return self.alive_row(server, 
+				  m_d[enstore_constants.STATUS],
+				  link=name)
+
+    # output all of the migrator rows 
+    def migrator_rows(self, table, skeys):
+	for server in skeys:
+	    if enstore_functions2.is_migrator(server):
+		if self.not_being_monitored(server):
+		    self.unmonitored_servers.append(self.migrator_row(server))
+		else:
+                    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.NAME(server))))
+		    table.append(self.migrator_row(server))
+
     def unmonitored_server_rows(self, table):
 	for row in self.unmonitored_servers:
 	    table.append(row)
@@ -1696,8 +1899,10 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	self.unmonitored_servers = []
 	self.generic_server_rows(table)
 	self.media_changer_rows(table, skeys)
+	self.udp_proxy_server_rows(table, skeys)
 	self.library_manager_rows(table, skeys)
 	self.mover_rows(table, skeys)
+	self.migrator_rows(table, skeys)
 	self.unmonitored_server_rows(table)
 	return table
 
@@ -2664,6 +2869,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 	keys = sort_keys(dict)
 	lm = {}
 	mv = {}
+        migrators = {}
 	mc = {}
 	gs = {}
 	for key in keys:
@@ -2674,12 +2880,15 @@ class EnSaagPage(EnBaseHtmlDoc):
 		    mv[key] = dict[key]
 		elif enstore_functions2.is_media_changer(key):
 		    mc[key] = dict[key]
+		elif enstore_functions2.is_migrator(key):
+		    migrators[key] = dict[key]
 		else:
 		    gs[key] = dict[key]
 	else:
 	    lm_keys = sort_keys(lm)
 	    mv_keys = sort_keys(mv)
 	    mc_keys = sort_keys(mc)
+            migrator_keys = sort_keys(migrators)
 	    gs_keys = sort_keys(gs)
 	while (len(lm_keys) + len(mc_keys) + len(gs_keys)) > 0:
 	    tr = HTMLgen.TR()
@@ -2702,6 +2911,19 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    mv_keys = self.add_data(mv, mv_keys, tr, out_dict, offline_dict)
 	    mv_keys = self.add_data(mv, mv_keys, tr, out_dict, offline_dict)
 	    mv_keys = self.add_data(mv, mv_keys, tr, out_dict, offline_dict)
+	    entable.append(tr)
+            
+       # now add the migrator information 
+	tr = HTMLgen.TR(empty_header())
+	tr.append(HTMLgen.TH(HTMLgen.Font(HTMLgen.U("Migrators"), size="+1", 
+					  color=BRICKRED), align="RIGHT", colspan=2))
+	entable.append(tr)
+	while len( migrator_keys) > 0:
+	    tr = HTMLgen.TR()
+	    migrator_keys = self.add_data(migrators, migrator_keys, tr, out_dict, offline_dict)
+	    migrator_keys = self.add_data(migrators, migrator_keys, tr, out_dict, offline_dict)
+	    migrator_keys = self.add_data(migrators, migrator_keys, tr, out_dict, offline_dict)
+	    migrator_keys = self.add_data(migrators, migrator_keys, tr, out_dict, offline_dict)
 	    entable.append(tr)
 	return entable
 

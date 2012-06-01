@@ -53,7 +53,10 @@ server_map = {"log_server" : enstore_constants.LOGS,
 	      "ratekeeper" : enstore_constants.RATEKEEPER,
 	      "enstore" : enstore_constants.ENSTORE,
 	      "network" : enstore_constants.NETWORK,
-	      "alarms" : enstore_constants.ANYALARMS}
+	      "alarms" : enstore_constants.ANYALARMS,
+              "dispatcher": enstore_constants.DISPR,
+              "lm_director": enstore_constants.LMD, 
+              }
 
 server_keys = server_map.keys()
 
@@ -205,6 +208,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.servers_by_name = {}
 	self.override_mail_sent = {}
 	self.mover_state = {}
+	self.migrator_state = {}
 	self.lm_queues = {}
         self.name = MY_NAME
 	self.html_dir = None
@@ -466,12 +470,32 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 self.server_d[key] = monitored_server.MonitoredMover(cdict, key,
 								     self.csc)
                 self.er_lock.release()
+        elif enstore_functions2.is_migrator(key):
+            cdict = config_d[key]
+            if self.ok_to_monitor(cdict):
+                self.er_lock.acquire()
+                try:
+                    self.server_d[key] = monitored_server.MonitoredMigrator(cdict, key,
+                                                                        self.csc)
+                except:
+                    pass
+                self.er_lock.release()
         elif enstore_functions2.is_media_changer(key):
             cdict = config_d[key]
             if self.ok_to_monitor(cdict):
                 self.er_lock.acquire()
                 self.server_d[key] = monitored_server.MonitoredMediaChanger(cdict,
                                                                             key)
+                self.er_lock.release()
+        elif enstore_functions2.is_udp_proxy_server(key):
+            cdict = config_d[key]
+            if self.ok_to_monitor(cdict):
+                self.er_lock.acquire()
+                try:
+                    self.server_d[key] = monitored_server.MonitoredUDPProxyServer(cdict,
+                                                                                  key)
+                except:
+                    pass
                 self.er_lock.release()
         elif enstore_functions2.is_library_manager(key):
             cdict = config_d[key]
@@ -957,6 +981,26 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.new_server_status = 1
         return rtn
 
+    # get the information from the migrator
+    def update_migrator(self, migrator):
+        rtn = 1          # assume no timeouts
+        enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
+				   "get new state from %s"%(migrator.name,))
+        self.migrator_state[migrator.name] = migrator.client.status(self.alive_rcv_timeout,
+							   self.alive_retries)
+	migrator.check_status_ticket(self.migrator_state[migrator.name])
+        self.serverfile.output_migratorstatus(self.migrator_state[migrator.name], migrator.name)
+	migrator.server_status = self.migrator_state[migrator.name][enstore_constants.STATE]
+        if e_errors.is_timedout(self.migrator_state[migrator.name]):
+            rtn = 0
+            self.serverfile.output_etimedout(migrator.host, enstore_constants.NO_STATE,
+					     time.time(), migrator.name,
+					     migrator.output_last_alive)
+            enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
+				       "migrator_status - ERROR, timed out")
+        self.new_server_status = 1
+        return rtn
+
     # only change the status of the inquisitor on the system status page to
     # timed out, then exit.
     def update_exit(self, exit_code):
@@ -1181,6 +1225,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     else:
                         # do not report it as success
                         success_servers.remove(aServer)
+
+
+                if enstore_functions2.is_migrator(aServer):
+                    rtn = self.update_migrator(server)
+                    #self.check_for_bad_writes(server)
+                    # mark the mover alive again as we just got info and it may
+                    # have taken awhile to get it.  only mark it alive if there was
+                    # no problem getting the status
+                    if rtn:
+                        server = self.server_is_alive(aServer)
+                    else:
+                        # do not report it as success
+                        success_servers.remove(aServer)
+
+
+
+
+                        
                 # if server is a library_manager, we need to get some extra status
                 if enstore_functions2.is_library_manager(aServer):
                     rtn = self.update_library_manager(server)
@@ -2033,6 +2095,16 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.drivestat_server = monitored_server.MonitoredDrivestatServer(cdict)
 	self.servers_by_name[enstore_constants.DRIVESTAT_SERVER] = self.drivestat_server
 
+        # Library Manager Director
+        cdict = self.config_d.get(enstore_constants.LM_DIRECTOR, {})
+        self.lm_director = monitored_server.MonitoredLMD(cdict)
+	self.servers_by_name[enstore_constants.LM_DIRECTOR] = self.lm_director
+
+        # Policy Engine Server and Migration Dispatcher
+        cdict = self.config_d.get(enstore_constants.DISPATCHER, {})
+        self.dispatcher = monitored_server.MonitoredDispatcher(cdict)
+	self.servers_by_name[enstore_constants.DISPATCHER] = self.dispatcher
+
         for server_key in self.server_d.keys():
             server = self.server_d[server_key]
             server.hung_interval = self.inquisitor.get_hung_interval(server.name)
@@ -2156,7 +2228,6 @@ if __name__ == "__main__":
 
     # get interface
     intf = InquisitorInterface()
-
     # get the inquisitor
     inq = Inquisitor((intf.config_host, intf.config_port),
                      intf.html_file, intf.update_interval,
