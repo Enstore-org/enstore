@@ -42,7 +42,7 @@ SEC_OPTS="
 mkdir -p $RUN_DIR
 mkdir -p $LOG_DIR
 
-command=${1:-restart}
+command=${1:-status}
 
 # startup options are set in qpidd.conf
 # use "qpidd --help" to see file location
@@ -63,9 +63,25 @@ restart)
 	$0 stop
 	$0 start
 	;;
+status)
+	PID_FILE_ASCII=/tmp/qpidd.5672.ascii.pid
+        rm -f ${PID_FILE_ASCII}
+	$EXE -c 1>${PID_FILE_ASCII} 2>/dev/null 
+	RC=$?
+	case "$RC" in 
+          0)
+            echo "qpidd (pid `cat ${PID_FILE_ASCII}`) is running...";
+            exit 0
+          ;;
+          1)
+            echo "qpidd stopped";
+            exit 1
+          ;;
+        esac;
+	;;
 *)
 	echo "Error: Invalid option $command"
-	echo "USAGE: $0 [stop|start|restart]"
+	echo "USAGE: $0 [stop|start|restart|status]"
 	exit 1
 	;;
 esac
