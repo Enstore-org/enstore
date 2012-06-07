@@ -35,7 +35,7 @@ import udp_server
 import file_cache_status
 import enstore_files
 import enstore_functions2
-import cache.messaging.client2 as qpid_client
+import cache.messaging.client as qpid_client
 import cache.messaging.pe_client as pe_client
 
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
