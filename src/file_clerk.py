@@ -35,8 +35,21 @@ import udp_server
 import file_cache_status
 import enstore_files
 import enstore_functions2
-import cache.messaging.client as qpid_client
-import cache.messaging.pe_client as pe_client
+
+isSFA=False
+
+try:
+	import cache.messaging.client as qpid_client
+	try:
+		import cache.messaging.pe_client as pe_client
+		isSFA=True
+	except ImportError, msg:
+		Trace.log(e_errors.INFO,"Failed to import cache.messaging.pe_client: %s"%(str(msg),))
+		pass
+except ImportError, msg:
+	Trace.log(e_errors.INFO,"Failed to import cache.messaging.client: %s"%(str(msg),))
+	pass
+
 
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
 MAX_CONNECTION_FAILURE = 5
@@ -62,6 +75,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### here either.
 
     def  __init__(self, csc):
+        global isSFA
         # Obtain information from the configuration server.
         self.csc = configuration_client.ConfigurationClient(csc)
         self.keys = self.csc.get(MY_NAME) #wait forever???
@@ -91,16 +105,30 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         self.max_connections = dbInfo.get('max_connections',MAX_CONNECTIONS)
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
 
-	self.amqp_broker_dict = self.csc.get(AMQP_BROKER)
-	dispatcher_conf = self.csc.get('dispatcher', None)
-	fc_queue = "%s; {create: always}"%(dispatcher_conf['queue_reply'],)
-	pe_queue = "%s; {create: always}"%(dispatcher_conf['queue_work'],)
 
-	self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
-							self.amqp_broker_dict['port']),
-						       fc_queue,
-						       pe_queue)
-	self.en_qpid_client.start()
+	self.en_qpid_client = None
+	self.amqp_broker_dict = None
+	if isSFA:
+		self.amqp_broker_dict = self.csc.get(AMQP_BROKER,None)
+		if self.amqp_broker_dict and self.amqp_broker_dict["status"][0] == e_errors.OK :
+			dispatcher_conf = self.csc.get('dispatcher', None)
+			if dispatcher_conf and dispatcher_conf["status"][0] == e_errors.OK :
+				fc_queue = "%s; {create: always}"%(dispatcher_conf['queue_reply'],)
+				pe_queue = "%s; {create: always}"%(dispatcher_conf['queue_work'],)
+				self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
+										self.amqp_broker_dict['port']),
+									       fc_queue,
+									       pe_queue)
+			else:
+				if dispatcher_conf :
+					Trace.log(e_errors.INFO,  dispatcher_conf["status"][1])
+				else:
+					Trace.log(e_errors.INFO,  "Failed to extract 'dispatcher' from configuration")
+		else:
+			if self.amqp_broker_dict:
+				Trace.log(e_errors.INFO,  self.amqp_broker_dict["status"][1])
+			else:
+				Trace.log(e_errors.INFO,  "Failed to extract '%s' from configuration"%(AMQP_BROKER,))
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
         try:
@@ -1357,12 +1385,13 @@ class FileClerkMethods(FileClerkInfoMethods):
 	#
 	# send event to PE
 	#
-	if ticket["fc"].get("mover_type",None) == "DiskMover":
-		event = pe_client.evt_cache_written_fc(ticket,record)
-		try:
-			self.en_qpid_client.send(event)
-		except:
-			ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	if self.en_qpid_client :
+		if ticket["fc"].get("mover_type",None) == "DiskMover":
+			event = pe_client.evt_cache_written_fc(ticket,record)
+			try:
+				self.en_qpid_client.send(event)
+			except:
+				ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 
 	self.reply_to_caller(ticket)
 
@@ -1387,12 +1416,13 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    # record change in DB
 	    #
 	    self.filedb_dict[bfid] = record
-	    event = pe_client.evt_cache_miss_fc(ticket,record)
 	    ticket["status"] = (e_errors.OK, None)
-	    try:
-		    self.en_qpid_client.send(event)
-	    except:
-		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	    if self.en_qpid_client :
+		    event = pe_client.evt_cache_miss_fc(ticket,record)
+		    try:
+			    self.en_qpid_client.send(event)
+		    except:
+			    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 	    ticket["fc"] = record
 	    self.reply_to_caller(ticket)
 	    return
@@ -1440,11 +1470,12 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    self.filedb_dict[i[0]] = child_record
 	    ticket["status"] = (e_errors.OK, None)
 	    ticket["fc"] = record
-	    event = pe_client.evt_cache_miss_fc(ticket,record)
-	    try:
-		    self.en_qpid_client.send(event)
-	    except:
-		ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	    if self.en_qpid_client :
+		    event = pe_client.evt_cache_miss_fc(ticket,record)
+		    try:
+			    self.en_qpid_client.send(event)
+		    except:
+			    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
 	    self.reply_to_caller(ticket)
 
     def get_children(self, ticket):
@@ -1562,7 +1593,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    if not list_of_arguments:
 		    ticket["status"] = (e_errors.ERROR,
 					"Failed to extract list of bfids from ticket %s"%(str(ticket)))
-		    
+
 		    self.reply_to_caller(ticket)
 		    return
 	    for item in list_of_arguments:
@@ -2109,13 +2140,16 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 			    pass
 
     def replay(self,ticket):
-	    func_name="self."+ticket.get("func")
-	    func=eval(func_name)
-	    ticket["status"] = (e_errors.OK, None)
-	    try:
-		    func()
-	    except:
-		    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	    if self.en_qpid_client :
+		    func_name="self."+ticket.get("func")
+		    func=eval(func_name)
+		    ticket["status"] = (e_errors.OK, None)
+		    try:
+			    func()
+		    except:
+			    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+	    else:
+		    ticket["status"] = (e_errors.ERROR, "No qpid client defined, check configuration")
 	    self.reply_to_caller(ticket)
 
 
