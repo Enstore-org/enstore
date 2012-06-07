@@ -19,10 +19,10 @@ import  psycopg2
 import psycopg2.extras
 import time
 
-# 
-# create table files_with_no_layers (ipnfsid character(36) PRIMARY KEY );
 #
-QUERY="select t_inodes.ipnfsid, inode2path(t_inodes.ipnfsid) as path, t_inodes.imtime, l1.ipnfsid as layer1, encode(l2.ifiledata,'escape') as layer2, l4.ipnfsid as layer4 "+\
+# create table files_with_no_layers (ipnfsid varchar(36) PRIMARY KEY );
+#
+QUERY="select t_inodes.ipnfsid, t_inodes.isize, inode2path(t_inodes.ipnfsid) as path, t_inodes.imtime, l1.ipnfsid as layer1, encode(l2.ifiledata,'escape') as layer2, l4.ipnfsid as layer4 "+\
        "from t_inodes  left outer join t_level_4 l4 on (l4.ipnfsid=t_inodes.ipnfsid) "+\
        "left outer join t_level_1 l1 on (l1.ipnfsid=t_inodes.ipnfsid) "+\
        "left outer join  t_level_2 l2 on (l2.ipnfsid=t_inodes.ipnfsid) "+\
@@ -30,7 +30,7 @@ QUERY="select t_inodes.ipnfsid, inode2path(t_inodes.ipnfsid) as path, t_inodes.i
        "((t_inodes.imtime > CURRENT_TIMESTAMP - INTERVAL '49 hours' and "+\
        "t_inodes.imtime < CURRENT_TIMESTAMP - INTERVAL '24 hours') or t_inodes.ipnfsid in('%s')) order by t_inodes.imtime"
 
-QUERY1="select t_inodes.ipnfsid, inode2path(t_inodes.ipnfsid) as path, t_inodes.imtime, l1.ipnfsid as layer1, encode(l2.ifiledata,'escape') as layer2, l4.ipnfsid as layer4 "+\
+QUERY1="select t_inodes.ipnfsid, t_inodes.isize, inode2path(t_inodes.ipnfsid) as path, t_inodes.imtime, l1.ipnfsid as layer1, encode(l2.ifiledata,'escape') as layer2, l4.ipnfsid as layer4 "+\
        "from t_inodes  left outer join t_level_4 l4 on (l4.ipnfsid=t_inodes.ipnfsid) "+\
        "left outer join t_level_1 l1 on (l1.ipnfsid=t_inodes.ipnfsid) "+\
        "left outer join  t_level_2 l2 on (l2.ipnfsid=t_inodes.ipnfsid) "+\
@@ -45,12 +45,12 @@ def print_yes_no(value):
         return 'y'
 
 #FORMAT = "%20s | %36s | %6s | %6s | %6s | %s \n"
-HEADER_FORMAT="{0:^20} | {1:^36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:} \n"
-FORMAT ="{0:<20} | {1:<36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:<} \n"
+HEADER_FORMAT="{0:^20} | {1:^36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:^14} | {7:} \n"
+FORMAT ="{0:<20} | {1:<36} | {2:^6} | {3:^6} | {4:^6} | {5:^48} | {6:>14} | {7:<} \n"
 
 def print_header(f):
      #f.write(FORMAT%("date", "pnfsid", "layer1", "layer2", "layer4", "path"))
-     f.write(HEADER_FORMAT.format("date", "pnfsid", "layer1", "layer2", "layer4", "pools","path"))
+     f.write(HEADER_FORMAT.format("date", "pnfsid", "layer1", "layer2", "layer4", "pools","size [bytes]","path"))
 
 def select(dbname,dbuser,query):
     connectionPool = None
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         res = select("monitor","enstore","select ipnfsid from files_with_no_layers")
         pnfsids=[]
         if len(res) > 0:
-            
+
             for row in res:
                 pnfsids.append(row['ipnfsid'])
             #
@@ -152,8 +152,8 @@ if __name__ == "__main__":
                 intersection = set(pnfsids) & set(chimera_pnfsids)
                 if len(diff) > 0:
                     #
-                    # delete from files_with_no_layers pnfsids that are no longer there 
-                    # 
+                    # delete from files_with_no_layers pnfsids that are no longer there
+                    #
                     insert("monitor","enstore","delete from files_with_no_layers where ipnfsid in ('%s')"%(string.join(diff,"','")))
                 if len(intersection) > 0:
                     res = select("chimera","enstore",QUERY%string.join(intersection,"','"))
@@ -167,7 +167,7 @@ if __name__ == "__main__":
                 res = select("chimera","enstore",QUERY1)
         else:
             res = select("chimera","enstore",QUERY1)
-        
+
         for row in res:
             isVolatile=False
             pnfsid = row['ipnfsid']
@@ -175,6 +175,7 @@ if __name__ == "__main__":
             layer2 = row['layer2']
             layer1 = row['layer1']
             layer4 = row['layer4']
+            isize  = row['isize']
             path   = row['path']
             if layer1 and layer2 and layer4 :
                 if pnfsid in pnfsids:
@@ -195,6 +196,7 @@ if __name__ == "__main__":
                                       print_yes_no(layer2),
                                       print_yes_no(layer4),
                                       pools,
+                                      isize,
                                       path))
                 if pnfsid not in pnfsids:
                     insert("monitor","enstore","insert into files_with_no_layers values ('%s')"%(pnfsid,))
@@ -224,6 +226,7 @@ if __name__ == "__main__":
                                       print_yes_no(layer2),
                                       print_yes_no(layer4),
                                       pools,
+                                      isize,
                                       path))
                 if pnfsid not in pnfsids:
                     insert("monitor","enstore","insert into files_with_no_layers values ('%s')"%(pnfsid,))
@@ -233,7 +236,7 @@ if __name__ == "__main__":
         sys.stderr.flush()
         failed=True
         pass
-        
+
     f.close()
     if not failed:
         cmd="$ENSTORE_DIR/sbin/enrcp %s %s:%s"%(f.name,html_host,html_dir)
