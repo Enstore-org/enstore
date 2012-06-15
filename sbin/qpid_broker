@@ -7,14 +7,12 @@
 ###############################################################################
 
 # chkconfig: 345 96 04
-# description: qpid_broker is wrapper script to start/stop qpidd broker for enstore
+# description: start/stop/check status of enstore qpidd broker
 #
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-node=`uname -n`
-
-# only resetup everything if not currently set up
+# setup enstore in case it was not
 if [ "${ENSTORE_DIR:-}" = "" -o "${QPID_DIR:-}" = "" ];
 then
    . /usr/local/etc/setups.sh
@@ -30,8 +28,8 @@ mkdir -p $LOG_DIR
 
 command=${1:-status}
 
-# startup options are set in qpidd.conf
-# use "qpidd --help" to see file location
+# qpidd startup options are set in qpidd.conf
+# Use "qpidd --help" to find qpidd.conf file location
 
 case $command in
 
@@ -46,24 +44,42 @@ start)
         $CMD
 	;;
 restart)
-	$0 stop
+	$0 stop 2>/dev/null
 	$0 start
 	;;
-status)
-	PID_FILE_ASCII=/tmp/qpidd.5672.ascii.pid
-        rm -f ${PID_FILE_ASCII}
-	$EXE -c 1>${PID_FILE_ASCII} 2>/dev/null 
+status) 
+
+        out=`${EXE} -c 2>/dev/null`
 	RC=$?
 	case "$RC" in 
           0)
-            echo "qpidd (pid `cat ${PID_FILE_ASCII}`) is running...";
-            exit 0
+            echo "qpidd (pid ${out}) is running"
           ;;
           1)
-            echo "qpidd stopped";
-            exit 1
+            # Workaround:
+            # qpidd tries to open qpidd log file even if it is run only for status check
+            # log file can be owned by root, hence to access it you shall be root
+            # report error differently in this case
+            if [ ${UID} -eq "0" ]
+            then
+                # don't check further if root
+                echo "qpidd stopped"
+            else
+                # re-run status check to capture stderr
+                err=`${EXE} -c 2>&1`
+                if [[ $err = *"Unexpected error: Can't open log file:"* ]]
+                then 
+                    echo "Script shall be run by root. ${err}"
+                else
+                    echo "qpidd stopped"
+                fi
+            fi
+            # end workaround
           ;;
-        esac;
+          *)
+            echo "'qpidd -c' returned status=$RC"
+        exit $RC
+        esac
 	;;
 *)
 	echo "Error: Invalid option $command"
