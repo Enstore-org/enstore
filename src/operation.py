@@ -1366,8 +1366,8 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='9310'):
 		Action = 'CREATE',
 		Status_Type = 'Assigned',
 		CiName = system_name.upper().split('.')[0],
-		Assigned_Group='Facilities Support Services', # group that takes care of tab flipping
-		Product_Categorization_Tier_1='Facility Support Services',
+		Assigned_Group='Logistics/PREP Support', # group that takes care of tab flipping
+		Product_Categorization_Tier_1='Logistics/PREP Support',
 		Product_Categorization_Tier_2='Tape Handling',
 		)
 
