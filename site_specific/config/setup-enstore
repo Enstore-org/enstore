@@ -20,6 +20,28 @@ export ENSTORE_OUT
 SWIG_DIR=$ENSTORE_DIR/SWIG
 export SWIG_DIR
 export SWIG_LIB=$SWIG_DIR/swig_lib
+export QPID_DIR=$ENSTORE_DIR/qpid
+
+# build PATH
+
+# add directory to path only once thus this file can be sourced multiple times
+pathmunge () { 
+         if ! [[ $PATH =~ (^|:)$1($|:) ]] ; then 
+             if [ "$2" = "after" ] ; then
+                PATH=$PATH:$1;
+             else
+                PATH=$1:$PATH;
+             fi
+         fi
+}
+
+pathmunge $SWIG_DIR
+pathmunge $QPID_DIR/bin
+pathmunge $ENSTORE_DIR/tools
+pathmunge $ENSTORE_DIR/bin
+pathmunge $ENSTORE_DIR/sbin
+
+
 PATH=$SWIG_DIR:$PATH
 
 PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$ENSTORE_DIR/tools:$PATH
@@ -27,16 +49,17 @@ rpm -q pnfs > /dev/null
 if [ $? -eq 0 ]; then
         p_d=`rpm -ql pnfs | grep bin | head -1`
         PNFS_DIR=`dirname $p_d`
-        PATH=$PATH:$PNFS_DIR/tools
+	pathmunge $PNFS_DIR/tools after
         export PNFS_DIR
 fi
 
-#CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc; export CVSROOT # This is just a reminder where cvc root is
+pathmunge $PYTHON_DIR/bin
+# end build path
+
 #unset CVS_RSH 2>/dev/null; # this is needed for PIC
 
 PYTHONINC=`ls -d $PYTHON_DIR/include/python*`; export PYTHONINC
 PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*`;export PYTHONLIB
-PATH=$PYTHON_DIR/bin:$PATH
 PYTHONPATH=$ENSTORE_DIR:$ENSTORE_DIR/src:$ENSTORE_DIR/modules:$ENSTORE_DIR/HTMLgen:$ENSTORE_DIR/PyGreSQL; export PYTHONPATH
 PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
 
