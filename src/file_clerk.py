@@ -75,7 +75,6 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     ### here either.
 
     def  __init__(self, csc):
-        global isSFA
         # Obtain information from the configuration server.
         self.csc = configuration_client.ConfigurationClient(csc)
         self.keys = self.csc.get(MY_NAME) #wait forever???
@@ -105,31 +104,6 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         self.max_connections = dbInfo.get('max_connections',MAX_CONNECTIONS)
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
 
-
-	self.en_qpid_client = None
-	self.amqp_broker_dict = None
-	if isSFA:
-		self.amqp_broker_dict = self.csc.get(AMQP_BROKER,None)
-		if self.amqp_broker_dict and self.amqp_broker_dict["status"][0] == e_errors.OK :
-			dispatcher_conf = self.csc.get('dispatcher', None)
-			if dispatcher_conf and dispatcher_conf["status"][0] == e_errors.OK :
-				fc_queue = "%s; {create: always}"%(dispatcher_conf['queue_reply'],)
-				pe_queue = "%s; {create: always}"%(dispatcher_conf['queue_work'],)
-				self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
-										self.amqp_broker_dict['port']),
-									       fc_queue,
-									       pe_queue)
-				self.en_qpid_client.start()
-			else:
-				if dispatcher_conf :
-					Trace.log(e_errors.INFO,  dispatcher_conf["status"][1])
-				else:
-					Trace.log(e_errors.INFO,  "Failed to extract 'dispatcher' from configuration")
-		else:
-			if self.amqp_broker_dict:
-				Trace.log(e_errors.INFO,  self.amqp_broker_dict["status"][1])
-			else:
-				Trace.log(e_errors.INFO,  "Failed to extract '%s' from configuration"%(AMQP_BROKER,))
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
         try:
@@ -1012,6 +986,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 class FileClerkMethods(FileClerkInfoMethods):
 
     def __init__(self, csc):
+        global isSFA
         FileClerkInfoMethods.__init__(self, csc)
 
         # find the brand
@@ -1023,6 +998,32 @@ class FileClerkMethods(FileClerkInfoMethods):
             brand = string.upper(string.split(os.uname()[1], ".")[0][:2])+'MS'
             Trace.log(e_errors.INFO,
                       "No brand is found, using '%s'" % (brand,))
+	self.en_qpid_client = None
+	self.amqp_broker_dict = None
+	if isSFA:
+		self.amqp_broker_dict = self.csc.get(AMQP_BROKER,None)
+		if self.amqp_broker_dict and self.amqp_broker_dict["status"][0] == e_errors.OK :
+			dispatcher_conf = self.csc.get('dispatcher', None)
+			if dispatcher_conf and dispatcher_conf["status"][0] == e_errors.OK :
+				fc_queue = "%s; {create: always}"%(dispatcher_conf['queue_reply'],)
+				pe_queue = "%s; {create: always}"%(dispatcher_conf['queue_work'],)
+				self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
+										self.amqp_broker_dict['port']),
+									       fc_queue,
+									       pe_queue)
+				self.en_qpid_client.start()
+			else:
+				if dispatcher_conf :
+					Trace.log(e_errors.INFO,  dispatcher_conf["status"][1])
+				else:
+					Trace.log(e_errors.INFO,  "Failed to extract 'dispatcher' from configuration")
+		else:
+			if self.amqp_broker_dict:
+				Trace.log(e_errors.INFO,  self.amqp_broker_dict["status"][1])
+			else:
+				Trace.log(e_errors.INFO,  "Failed to extract '%s' from configuration"%(AMQP_BROKER,))
+
+
 
         #Set the brand.
         self.set_brand(brand)
