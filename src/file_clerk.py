@@ -119,6 +119,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 										self.amqp_broker_dict['port']),
 									       fc_queue,
 									       pe_queue)
+				self.en_qpid_client.start()
 			else:
 				if dispatcher_conf :
 					Trace.log(e_errors.INFO,  dispatcher_conf["status"][1])
