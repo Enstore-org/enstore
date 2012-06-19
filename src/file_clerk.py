@@ -46,6 +46,11 @@ try:
 	except ImportError, msg:
 		Trace.log(e_errors.INFO,"Failed to import cache.messaging.pe_client: %s"%(str(msg),))
 		pass
+	try:
+		import cache.en_logging.en_logging
+	except ImportError, msg:
+		Trace.log(e_errors.INFO,"Failed to import cache.en_logging.en_logging: %s"%(str(msg),))
+		pass
 except ImportError, msg:
 	Trace.log(e_errors.INFO,"Failed to import cache.messaging.client: %s"%(str(msg),))
 	pass
@@ -1005,6 +1010,11 @@ class FileClerkMethods(FileClerkInfoMethods):
 		if self.amqp_broker_dict and self.amqp_broker_dict["status"][0] == e_errors.OK :
 			dispatcher_conf = self.csc.get('dispatcher', None)
 			if dispatcher_conf and dispatcher_conf["status"][0] == e_errors.OK :
+				try:
+					cache.en_logging.en_logging.set_logging(self.log_name)
+				except NameError, msg:
+					# import error already reported
+					pass
 				fc_queue = "%s; {create: always}"%(dispatcher_conf['queue_reply'],)
 				pe_queue = "%s; {create: always}"%(dispatcher_conf['queue_work'],)
 				self.en_qpid_client = qpid_client.EnQpidClient((self.amqp_broker_dict['host'],
