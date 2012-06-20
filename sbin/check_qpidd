@@ -30,7 +30,8 @@ then
         --client-name CHECK_QPIDD --severity W --root-error "QPIDD GONE" \
         --message "qpidd broker not running, restarting"
     $ENSTORE_DIR/sbin/qpid_broker restart
-    exit 1
+    #exit 1
+    exit 0
 fi
 
 exit 0
