@@ -1,4 +1,0 @@
-pg_hba.conf-instance-* - pg_hba.conf that contain Fermilab specifics 
-postgresql.conf        - generic file that contains modified settings 
-pg_hba.conf            - generic pg_hba (can be used to create database 
-                         in arbitrary place)
