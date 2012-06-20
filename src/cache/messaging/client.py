@@ -17,6 +17,12 @@ import qpid.util
 #from qpid.log import enable, DEBUG, WARN
 import cache.messaging.constants as cmsc
 
+# qpid Connection reconnect_timeout in seconds
+TO_RECONNECT_INTERVAL = 10
+TO_RECONNECT_INTERVAL_MIN  = 10
+TO_RECONNECT_INTERVAL_MAX = 60
+TO_CON_CLOSE=5 # Connection Close timeout in sec
+
 debug = False
 
 class EnQpidClient:
@@ -50,8 +56,8 @@ class EnQpidClient:
         # print "DEBUG EnQpidClient URL start:" + self.url
         self.trace.debug("EnQpidClient broker host, port: %s %s", self.broker.host, self.broker.port )
 
-        self.conn = qpid.messaging.Connection(url=self.broker)
-        self.conn.reconnect = True
+        self.conn = qpid.messaging.Connection(url=self.broker,
+        					                  reconnect=True,reconnect_interval=TO_RECONNECT_INTERVAL)
 
         self.conn.open()
         self.ssn = self.conn.session()
@@ -88,7 +94,7 @@ class EnQpidClient:
         # @todo: We do not acknowledge whatever is left in the queue - it is not processed.
         self.started = False
         try:
-            self.conn.close()
+            self.conn.close(TO_CON_CLOSE)
         except :
             self.log.exception("qpid client - Can not close qpid connection ", self.conn)
 
@@ -129,6 +135,7 @@ class EnQpidClient:
 
         
 if __name__ == "__main__":
+    import time
     
     def set_logging():
         lh = logging.StreamHandler()
@@ -148,9 +155,11 @@ if __name__ == "__main__":
     
     set_logging()
     
-    amq_broker=("dmsen06.fnal.gov",5672)
-    myaddr="policy_engine"
-    target="migration_dispatcher"
+    amq_broker=("dmsen04",5672)
+    myaddr="t_policy_engine; {create: always, delete: always}"
+    target="t_migration_dispatcher; {create: always, delete: always}"
+    qr = "t_md_replies; {create: always, delete: always}"
+    qm = "t_migrator; {create: always, delete: always}"
 
     c = EnQpidClient(amq_broker, myaddr, target=target)
     #c = EnQpidClient(amq_broker, myaddr=myaddr, target=None)
@@ -160,14 +169,15 @@ if __name__ == "__main__":
     c.start()
     print c
     
-    r = c.add_receiver("from_md","md_replies")
-    s = c.add_sender("to_mg","migrator", durable=True) # some existing queue
+    r = c.add_receiver("from_md",qr)
+    s = c.add_sender("to_mg",qm, durable=True) # some existing queue
     print r
     print s
     print c 
     
     do_fetch = False
     do_send = True
+    do_consume = True
     
     if do_fetch:
         m = c.fetch()
@@ -180,3 +190,11 @@ if __name__ == "__main__":
 
     if do_send:
         c.send("client2 unit test")
+    
+    # consume message we just sent
+    rdr = c.add_receiver("drain",target)
+    time.sleep(1)
+    
+    mr=c.drain.fetch()
+    c.ssn.acknowledge(mr)
+    print mr
