@@ -17,6 +17,7 @@ import select
 import types
 import time
 import imp
+import getpass
 
 # enstore imports
 import generic_client
@@ -307,7 +308,8 @@ class ConfigurationClient(generic_client.GenericClient):
 
     # reload a new  configuration dictionary
     def load(self, configfile, timeout=0, retry=0):
-        request = {'work' : 'load' ,  'configfile' : configfile }
+        
+        request = {'work' : 'load' ,  'configfile' : configfile, 'user': getpass.getuser() }
         x = self.send(request, timeout, retry)
         return x
 

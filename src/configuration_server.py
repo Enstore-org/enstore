@@ -17,6 +17,8 @@ import time
 import copy
 import threading
 import errno
+import smtplib
+import pwd
 
 # enstore imports
 #import setpath
@@ -31,6 +33,7 @@ import Trace
 import e_errors
 import hostaddr
 import callback
+import udp_client
 
 MY_NAME = enstore_constants.CONFIGURATION_SERVER   #"CONFIG_SERVER"
 
@@ -592,8 +595,55 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             return
         self.send_reply_with_long_answer(reply)
             
+    # This was stolen from alarm client and modified to send alarm to alarm server.
+    # Alarms do not work in configuration server as in any other enstore server.
+    # Instead of being sent to log or alarm server they just get written to stdout.
+    def _alarm_func(self, alarm_server, log_server, pid, name, root_error, 
+		   severity, condition, remedy_type, args):
+        
+	if type(severity) == types.IntType:
+	    severity = e_errors.sevdict.get(severity, 
+					    e_errors.sevdict[e_errors.ERROR])
+        ticket = {}
+        ticket['work'] = "post_alarm"
+        ticket[enstore_constants.UID] = os.geteuid()
+        ticket[enstore_constants.PID] = pid
+        ticket[enstore_constants.SOURCE] = name
+	ticket[enstore_constants.SEVERITY] = severity
+	ticket[enstore_constants.ROOT_ERROR] = root_error
+        ticket[enstore_constants.CONDITION] = condition
+        ticket[enstore_constants.REMEDY_TYPE] = remedy_type
+	ticket['text'] = args
+	log_msg = "%s, %s (severity : %s)"%(root_error, args, severity)
+
+        u = udp_client.UDPClient()
+        
+        #u.send(ticket, alarm_server, rcv_timeout=10)
+        u.send_no_wait(ticket, alarm_server)
+
+        # send e-mail
+        # stolen from operation.py
+        from_addr = pwd.getpwuid(os.getuid())[0]+'@'+os.uname()[1]
+	if os.environ['ENSTORE_MAIL']:
+		to_addr = os.environ['ENSTORE_MAIL']
+	else:
+		to_addr = "enstore-admin@fnal.gov"
+	msg = [	"From: %s"%(from_addr),
+		"To: %s"%(to_addr),
+                "Subject: Configuration server: Configuration re-loaded",
+		"",
+                root_error,
+                "%s"%(args,)
+                ]
+	smtplib.SMTP('localhost').sendmail(from_addr, [to_addr], "\n".join(msg)) 
+        
+        # log it for posterity
+        Trace.log(e_errors.ALARM, log_msg, Trace.MSG_ALARM)
+
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):
+        my_alarm_server = self.configdict['alarm_server']
+        reply_address = ticket['r_a'] # save reply address
 	try:
             configfile = ticket['configfile']
             ticket['status'] = self.load_config(configfile)
@@ -616,8 +666,20 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         if e_errors.is_ok(ticket['status']):
             # send an event relay message
             self.erc.send(self.new_config_message)
-            # Record in the log file the successfull reload.
-            Trace.log(e_errors.INFO, "Configuration reloaded.")
+            # Send alarm and record in the log file the successfull reload.
+            self._alarm_func((my_alarm_server['host'], my_alarm_server['port']),
+                              None,
+                              os.getpid(),
+                              MY_NAME,
+                              "Configuration reloaded from %s"%(reply_address[0][0],),
+                              e_errors.INFO,
+                              None,
+                              None,
+                              {"user": ticket.get("user", ""),
+                               "configfile": ticket.get("configfile", "")
+                               }
+                              )
+                              
         else:
             Trace.log(e_errors.ERROR, "Configuration reload failed: %s" %
                       (ticket['status'],))
