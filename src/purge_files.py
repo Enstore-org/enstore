@@ -30,6 +30,8 @@ P_ARCHIVE_STATUS = 2
 P_CACHE_MOD_TIME = 3
 P_CACHE_LOCATION = 4
 P_LOCATION_COOKIE = 5
+DB_CONNECTION_TO = 10
+DB_CONNECTION_RETRY = 60
 
 class FilePurger:
     # init is stole from file_clerk
@@ -63,17 +65,25 @@ class FilePurger:
         self.infoc = info_client.infoClient(self.csc, 
                                             server_address=(ic_conf['host'],
                                                             ic_conf['port']))
-        #Open conection to the Enstore DB.
-        try:
-            # proper default values are supplied by edb.FileDB constructor
-            self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host',None),
-                                          port=dbInfo.get('db_port',None),
-                                          user=dbInfo.get('dbuser',None),
-                                          database=dbInfo.get('dbname',None))
-        except:
-            exc_type, exc_value = sys.exc_info()[:2]
-            message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
-            print message
+        # Try to connect to enstore DB.
+        # This is needed in case when computer running enstore DB is restarting.
+        retry_cnt = 0
+        for retry_cnt in range(DB_CONNECTION_RETRY):
+            #Open conection to the Enstore DB.
+            try:
+                # proper default values are supplied by edb.FileDB constructor
+                self.filedb_dict = edb.FileDB(host=dbInfo.get('db_host',None),
+                                              port=dbInfo.get('db_port',None),
+                                              user=dbInfo.get('dbuser',None),
+                                              database=dbInfo.get('dbname',None))
+                Trace.log(e_errors.INFO, "Connected to enstore DB")
+                break
+            except:
+                exc_type, exc_value = sys.exc_info()[:2]
+                message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+                Trace.log(e_errors.WARNING, "%s. Re-trying"%(message,))
+                time.sleep(DB_CONNECTION_TO)
+        else:
             print "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!"
             sys.exit(1)
 
