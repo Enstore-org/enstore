@@ -180,7 +180,7 @@ class Selector:
                 nmatches = 0
                 for policy in rule_dict:
                     if not self.ticket_match(flat_ticket, rule_dict, policy): break
-                    policy_string = policy_string+"%s."%(rule_dict[policy],)
+                    policy_string = policy_string+"%s."%(flat_ticket[policy],)
                     nmatches = nmatches + 1
                 if nmatches == len(rule_dict):
                     # match found
