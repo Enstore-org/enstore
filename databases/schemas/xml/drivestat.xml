@@ -4,11 +4,11 @@
     <column name="drive_sn" type="varchar" size="32"/>
     <column name="drive_vendor" type="varchar" size="32"/>
     <column name="product_type" type="varchar" size="32"/>
-    <column name="host" type="varchar" size="32"/>
+    <column name="host" type="varchar"/>
     <column name="logical_drive_name" type="varchar" size="32"/>
     <column name="stat_type" type="varchar" size="32"/>
     <column name="time" type="timestamp"/>
-    <column name="tape_volser" type="varchar" size="32"/>
+    <column name="tape_volser" type="varchar"/>
     <column name="power_hrs" type="integer"/>
     <column name="motion_hrs" type="integer"/>
     <column name="cleaning_bit" type="integer"/>

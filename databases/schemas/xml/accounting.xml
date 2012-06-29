@@ -68,7 +68,7 @@
   <table name="event">
     <column name="tag" type="varchar" size="48" null="no" key="1"/>
     <column name="name" type="varchar" size="64" null="no"/>
-    <column name="node" type="varchar" size="32" null="no"/>
+    <column name="node" type="varchar" null="no"/>
     <column name="username" type="varchar" size="32" null="no"/>
     <column name="start" type="timestamp" null="no"/>
     <column name="finish" type="timestamp"/>
@@ -181,8 +181,8 @@
     </indexes>
   </table>
   <table name="tape_mounts">
-    <column name="node" type="varchar" size="32" null="no"/>
-    <column name="volume" type="varchar" size="16" null="no"/>
+    <column name="node" type="varchar" null="no"/>
+    <column name="volume" type="varchar" null="no"/>
     <column name="type" type="varchar" size="32" null="no"/>
     <column name="logname" type="varchar" size="16" null="no"/>
     <column name="start" type="timestamp" null="no"/>
@@ -198,7 +198,7 @@
     </indexes>
   </table>
   <table name="tape_mounts_tmp">
-    <column name="volume" type="varchar" size="16" null="no" key="1"/>
+    <column name="volume" type="varchar" null="no" key="1"/>
     <column name="state" type="varchar" size="1" null="no" key="2"/>
     <column name="id" type="bigint"/>
     <indexes>
@@ -240,7 +240,7 @@
   </table>
   <table name="encp_xfer">
     <column name="date" type="timestamp" null="no"/>
-    <column name="node" type="varchar" size="32" null="no"/>
+    <column name="node" type="varchar" null="no"/>
     <column name="pid" type="integer" null="no"/>
     <column name="username" type="varchar" size="32" null="no"/>
     <column name="src" type="text" null="no"/>
@@ -250,7 +250,7 @@
     <column name="overall_rate" type="bigint" null="no"/>
     <column name="network_rate" type="bigint" null="no"/>
     <column name="drive_rate" type="bigint" null="no"/>
-    <column name="volume" type="varchar" size="16" null="no"/>
+    <column name="volume" type="varchar" null="no"/>
     <column name="mover" type="varchar" size="32" null="no"/>
     <column name="drive_id" type="varchar" size="16" null="no"/>
     <column name="drive_sn" type="varchar" size="16" null="no"/>
@@ -311,24 +311,6 @@
         <index name="error_storage_group_idx" columns="storage_group"/>
         <index name="error_volume_idx" columns="volume"/>
         <index name="error_wrapper_idx" columns="wrapper"/>
-    </indexes>
-  </table>
-  <table name="drive_data">
-    <column name="date" type="timestamp" null="no"/>
-    <column name="drive_id" type="varchar" size="16" null="no"/>
-    <column name="drive_sn" type="varchar" size="16" null="no"/>
-    <column name="volume" type="varchar" size="16" null="no"/>
-    <column name="drive_rate" type="bigint" null="no"/>
-    <column name="rw" type="bpchar" null="no"/>
-    <column name="write_error_count" type="bigint" null="no" default="0"/>
-    <column name="read_error_count" type="bigint" null="no" default="0"/>
-    <column name="bfid" type="varchar" null="no"/>
-    <column name="file_size" type="bigint" null="no" default="0"/>
-    <indexes>
-        <index name="drive_data_date_idx" columns="date"/>
-	<index name="drive_data_drive_id_idx" columns="drive_id"/>
-	<index name="drive_data_volume_idx" columns="volume"/>
-	<index name="drive_data_bfid_idx" columns="bfid"/>
     </indexes>
   </table>
   <view name="encp_xfer_by_day_view">
