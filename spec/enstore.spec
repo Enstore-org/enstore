@@ -5,8 +5,8 @@
 ###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 2.2.2
-Release: 5
+Version: 3.0.0
+Release: 0
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -19,8 +19,9 @@ Prefix: opt/enstore
 Requires: postgresql-libs
 
 %description
-Standalone Enstore. Enstore is a Distributed Mass Storage System. 
+Enstore Distributed Mass Storage System. 
 The main storage media it uses is magnetic tape, although the new media can be added.
+Beginning with version 3.X File Aggregation Feature is added.
 For the postinstallation and configuration instructions please see enstore/README
 
 %prep
@@ -60,6 +61,8 @@ rm -rf $FTT_DIR/*.tgz
 swigdir=`rpm -ql swig-enstore | head -1`
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
 cp -rp $swigdir $SWIG_DIR
+tar xzf /tmp/enstore_qpid.tgz
+cp -p $ENSTORE_DIR/etc/extra_python.pth $ENSTORE_DIR/Python/lib/python2.6/site-packages
 
 # create a tepmorary setup file
 #+++++++++++
@@ -98,7 +101,6 @@ fi
 
 PATH=/usr/sbin:$PATH
 # check if user "enstore" and group "enstore "exist"
-
 echo 'Checking if group "enstore" exists' 
 grep enstore /etc/group
 if [ $? -ne 0 ]; then
@@ -118,7 +120,7 @@ fi
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
 
 %post
-echo "POSTINSTALL"
+#echo "POSTINSTALL"
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 rm -rf /tmp/enstore-setup
 PYTHON_DIR=$ENSTORE_DIR/Python
@@ -136,6 +138,9 @@ echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 . /tmp/enstore-setup
 #chown -R enstore.enstore /home/enstore
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
+
+# copy qpid extras
+cp -p /opt/enstore/etc/extra_python.pth /opt/enstore/Python/lib/python2.6/site-packages
 echo "Creating sudoers file"
 echo "The original is saved into /etc/sudoers.enstore_save"
 if [ ! -f /etc/sudoers.enstore_save ]; then
@@ -152,7 +157,8 @@ echo '                        	FTT_DIR	KRBTKFILE"' >> /etc/sudoers.e
 echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
 echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
 echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
-echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL, NOPASSWD:MOVER" >> /etc/sudoers.e
+echo "Cmnd_Alias      MIGRATOR = ${ENSTORE_DIR}/sbin/migrator" >> /etc/sudoers.e
+echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL, NOPASSWD:MOVER, NOPASSWD:MIGRATOR" >> /etc/sudoers.e
 rm -f /etc/sudoers
 cp /etc/sudoers.e /etc/sudoers
 chmod 440 /etc/sudoers
@@ -174,7 +180,6 @@ $ENSTORE_DIR/external_distr/update_sym_links.sh
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
 rm /tmp/enstore-setup
-echo "Enstore installed. Please read README file"
 
 %preun
 echo "PRE UNINSTALL"
@@ -195,6 +200,9 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Thu Jun 07 2012  <moibenko@fnal.gov> -
+- Added Small Files Aggregation
+- new version 3.0.0-0
 * Wed Jul 13 2011  <moibenko@fnal.gov> -
 - new release 2.2.2-3
 * Fri May 06 2011  <moibenko@fnal.gov> -
