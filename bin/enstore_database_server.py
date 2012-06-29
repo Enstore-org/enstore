@@ -6,6 +6,7 @@ import time
 import option
 import configuration_client
 import e_errors
+import enstore_start
 
 debug = True
 dbserver_cmd = 'postmaster'
@@ -90,7 +91,7 @@ def usage():
 def start_all(csc):
 	for i in db_servers:
 		server = csc.get(i)
-		if node == server['dbhost']:
+                if enstore_start.is_on_host(server['dbhost']):
 			start_database(
 				server['dbport'],
 				server['dbarea'],
@@ -99,7 +100,7 @@ def start_all(csc):
 def stop_all(csc):
 	for i in db_servers:
 		server = csc.get(i)
-		if node == server['dbhost']:
+                if enstore_start.is_on_host(server['dbhost']):
 			stop_database(
 				server['dbarea'],
 				server['dbserverowner'])
@@ -116,8 +117,6 @@ if __name__ == '__main__':
 		if debug:
 			print "configuration_server is not responding ... Get configuration from local file"
 		csc = configuration_client.configdict_from_file()
-
-	node = os.uname()[1]
 
 	if len(sys.argv) < 2:
 		usage()
