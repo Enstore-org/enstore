@@ -417,6 +417,11 @@ state. Default - do not restart</td>
 	   <td>Optional</td><td>0</td>
 
 </tr>
+<tr><td><a NAME="tmp_dir">tmp_dir</a></td><td>
+	      temporary place for written files (for disk mover only!)</td>
+	   <td>Optional</td><td>None</td>
+
+</tr>
 </table>
 
 
@@ -856,27 +861,6 @@ Uses only general keys (along with database keys which are the same
 <th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
 </th>
 </tr>
-<tr><td><a NAME="log_file_path">log_file_path</a><td>patt to the log
-	      files directory</td>
-	   <td>Mandatory</td><td>None</td>
-<tr><td><a NAME="msg_type_logs">msg_type_logs</a><td>log extractions
-	      based on the log type pattern</td>
-	   <td>Optional</td><td>None</td>
-
-</tr>
-</table>
-
-<h2>Log Server Keys</h2>
-<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
-<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
-</th>
-<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
-</th>
-<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
-</th>
-<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
-</th>
-</tr>
 <tr><td><a NAME="log_file_path">log_file_path</a><td>path to the log
 	      files directory</td>
 	   <td>Mandatory</td><td>None</td>
@@ -976,10 +960,147 @@ Uses only general keys (along with database keys which are the same
 
 
 
+<h1>Additional Keys for File Aggregation Configuration</h1>
+<hr>
+See details in "Small Files Aggregation High Level Design" document.
+<br>
+<h2>Migration Dispather</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="queue_work">queue_work</a></td><td>Incoming queue name</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="queue_reply">queue_reply</a></td><td>Reply queue name</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+</tr>
+<tr><td><a NAME="migrator_work">migrator_work</a></td><td>Migrator queue name</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="migrator_reply"migrator_reply</a></td><td>Migrator reply queue name</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="policy_file">policy_file</a></td><td>Path to file with current policies</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="max_time_in_cache">max_time_in_cache</a></td><td>Maximal time before files get purged from cache</td>
+	   <td>Optional</td><td>1 hour</td>
+</tr>
+<tr><td><a NAME="purge_watermarks">purge_watermarks</a></td><td> Tuple 
+                <p>
+		<ul>
+		   <li> start purge if data space is full more than this factor 
+		   <li> stop purgeif data space is full less than this factor
+		</ul>
+	   </td>
+	   <td>Optional</td><td>None</td>
+</tr>
+<tr><td><a NAME="purge_dispatcher">purge_dispatcher</a></td><td>Purge dispatcher for a given dispatcher</td>
+	   <td>Optional</td><td>None</td>
+</tr>
+</table>
+
+<h2>UDP Proxy Server</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="udp_port">udp_port</a></td><td>port for transferring enstore UDP messages</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="target_addr">target_addr</a></td><td>queue for transferring AMQP messages</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+</table>
+
+<h2>Library Manager Director</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="queue_in">queue_in</a></td><td>AMQP queue name on which LM director communicates with proxy server</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="udp_proxy_server">target_addr</a></td><td>proxy server with which LM director communicates</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="policy_file">policy_file</a></td><td>Path to file with current policies</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+</table>
+
+<h2>Migrator</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="migration_dispatcher">migration_dispatcher</a></td><td>migration dispatcher in configuration</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="data_area">data_area</a></td><td>disk area where (written) files are stored</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="archive_area">archive_area</a></td><td>disk area where archive is created during data archiving</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="stage_area">stage_area</a></td><td>disk area where archived files get staged from tape</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="tmp_stage_area">tmp_stage_area</a></td><td>disk area where staged files are temporarily stored</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="packages_dir">packages_dir</a></td><td>directory in name space for packages</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="dismount_delay">dismount_delay</a></td><td>delay for dismounting tape</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="check_written_file">check_written_file</a></td><td>if greater than 0, then randomly check files written using this number as the mean</td>
+	   <td>Optional</td><td>0 - do not check</td>
+</tr>
+<tr><td><a NAME="tar_blocking_factor">tar_blocking_factor</a></td><td>blocking factor for archiver (tar)</td>
+	   <td>Optional</td><td>None</td>
+</tr>
+
+</table>
+
+
+
 <p>
+
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Wed Jan 19 17:58:30 CST 2011
+Last modified: Wed Jun 27 11:21:00 CST 2012
 <!-- hhmts end -->
   </body>
 </html>
