@@ -14,6 +14,7 @@ Readonly access to file and volume database
 import os
 import sys
 import string
+import threading
 # import pprint
 
 # enstore import
@@ -33,11 +34,14 @@ import edb
 import esgdb
 import enstore_functions2
 import enstore_functions3
+import configuration_client
 import volume_clerk
 import file_clerk
 
 MY_NAME = enstore_constants.INFO_SERVER   #"info_server"
 MAX_CONNECTION_FAILURE = 5
+MAX_THREADS = 50
+MAX_CONNECTIONS=20
 
 # err_msg(fucntion, ticket, exc, value) -- format error message from
 # exceptions
@@ -51,6 +55,7 @@ class Interface(generic_server.GenericServerInterface):
 
 	def valid_dictionary(self):
 		return (self.help_options)
+query_lock = threading.Lock()
 
 class Server(file_clerk.FileClerkInfoMethods,
 	     volume_clerk.VolumeClerkInfoMethods,
@@ -60,44 +65,57 @@ class Server(file_clerk.FileClerkInfoMethods,
 		self.debug = 0
 		generic_server.GenericServer.__init__(self, csc, MY_NAME,
 						function = self.handle_er_msg)
-		Trace.init(self.log_name)
-		self.connection_failure = 0
-		## We no longer need to call __init__() from dispatching
-		## worker since it is called from the file and volume clerk
-		## inits below.
-		#   att = self.csc.get(MY_NAME)
-		#   dispatching_worker.DispatchingWorker.__init__(self,
-		#	   (att['hostip'], att['port']))
-		file_clerk.MY_NAME = MY_NAME
-		volume_clerk.MY_NAME = MY_NAME
-		file_clerk.FileClerkInfoMethods.__init__(self, csc)
-		volume_clerk.VolumeClerkInfoMethods.__init__(self, csc)
-
-		# get database connection
-		dbInfo = self.csc.get("database")
-		try:
-			# proper default values are supplied by edb.FileDB constructor
-			self.file = edb.FileDB(host=dbInfo.get('db_host',None),
-                                               port=dbInfo.get('db_port',None),
-                                               user=dbInfo.get('dbuser_reader',None),
-                                               database=dbInfo.get('dbname',None),
-					       auto_journal=0)
-		except:
-			exc_type, exc_value = sys.exc_info()[:2]
-			msg = "%s %s %s" % (str(exc_type), str(exc_value),
-					    "IS POSTMASTER RUNNING?")
-			Trace.log(e_errors.ERROR,msg)
-			Trace.alarm(e_errors.ERROR,msg, {})
-			Trace.log(e_errors.ERROR,
-			     "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
+		self.csc  = configuration_client.ConfigurationClient(csc)
+		self.keys = self.csc.get(MY_NAME)
+		if not e_errors.is_ok(self.keys):
+			message = "Unable to acquire configuration info for %s: %s: %s" % \
+				  (MY_NAME, self.keys['status'][0], self.keys['status'][1])
+			Trace.log(e_errors.ERROR, message)
 			sys.exit(1)
 
-		self.db = self.file.db
-		self.volume = edb.VolumeDB(host=dbInfo['db_host'],
-					   port=dbInfo['db_port'],
-					   user=dbInfo['dbuser'],
-					   auto_journal=0, rdb=self.db)
-		self.sgdb = esgdb.SGDb(self.db)
+		dispatching_worker.DispatchingWorker.__init__(
+			self, (self.keys['hostip'], self.keys['port']))
+
+		dbInfo = None
+		try:
+			dbInfo = self.csc.get('database')
+		except Exception, msg:
+			Trace.alarm(e_errors.ERROR, str(msg), {})
+			Trace.log(e_errors.ERROR, "can not find database key in configuration")
+			sys.exit(1)
+
+		self.connection_failure = 0
+		file_clerk.MY_NAME = MY_NAME
+		volume_clerk.MY_NAME = MY_NAME
+
+		self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
+		self.max_connections = max(dbInfo.get('max_connections',MAX_CONNECTIONS),
+					   self.max_threads+1)
+
+		try:
+			self.volumedb_dict = edb.VolumeDB(host=dbInfo.get('db_host','localhost'),
+							  port=dbInfo.get('db_port',8888),
+							  user=dbInfo.get('dbuser_reader','enstore_reader'),
+							  database=dbInfo.get('dbname','enstoredb'),
+							  auto_journal=0,
+							  max_connections=self.max_connections)
+			self.filedb_dict  = edb.FileDB(host=dbInfo.get('db_host','localhost'),
+						       port=dbInfo.get('db_port',8888),
+						       user=dbInfo.get('dbuser_reader','enstore_reader'),
+						       database=dbInfo.get('dbname','enstoredb'),
+						       auto_journal=0,
+						       max_connections=self.max_connections,
+						       rdb=self.volumedb_dict.db)
+			self.db = self.volumedb_dict.db
+			self.sgdb = esgdb.SGDb(self.db)
+		except:
+			exc_type, exc_value = sys.exc_info()[:2]
+			message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+			Trace.log(e_errors.ERROR, message)
+			Trace.alarm(e_errors.ERROR, message, {})
+			Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
+			sys.exit(1)
+
 
 
 		# setup the communications with the event relay task
@@ -137,16 +155,16 @@ class Server(file_clerk.FileClerkInfoMethods,
 	# reconnect() -- re-establish connection to database
 	def reconnect(self, msg="unknown reason"):
 		try:
-			self.file.reconnect()
+			self.volumedb_dict.reconnect()
 			Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+str(msg))
 			self.connection_failure = 0
-			self.db = self.file.db
-			self.volume.db = self.db
+			self.db = self.volumedb_dict.db
+			self.filedb_dict.db = self.db
 			self.sgdb.db = self.db
 		except:
 			Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
-				"Is database server running on %s:%d?"%(self.file.host,
-				self.file.port))
+				"Is database server running on %s:%d?"%(self.filedb_dict.host,
+				self.filedb_dict.port))
 			self.connection_failure = self.connection_failure + 1
 			if self.connection_failure > MAX_CONNECTION_FAILURE:
 				pass	# place holder for future RED BALL
@@ -272,7 +290,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		q="select bfid from file where pnfs_path='%s'"%(pnfs_path,)
 		res=[]
 		try:
-			res = self.file.query_dictresult(q)
+			res = self.filedb_dict.query_dictresult(q)
 			#
 			# edb module raises underlying DB errors as EnstoreError.
 			#
@@ -328,7 +346,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		q = "select bfid from file where pnfs_id = '%s'" % (pnfs_id,)
 		res=[]
 		try:
-			res = self.file.query_dictresult(q)
+			res = self.filedb_dict.query_dictresult(q)
 			#
 			# edb module raises underlying DB errors as EnstoreError.
 			#
@@ -403,7 +421,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		(external_label, location_cookie)
 		res=[]
 		try:
-			res=self.file.query_dictresult(q)
+			res=self.filedb_dict.query_dictresult(q)
 			#
 			# edb module raises underlying DB errors as EnstoreError.
 			#
@@ -457,7 +475,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		    % (record['size'], record['complete_crc'],
 		       record['sanity_cookie'][0], record['sanity_cookie'][1])
 
-		res = self.file.query_getresult(q)
+		res = self.filedb_dict.query_getresult(q)
 
 		files = []
 		for i in res:
@@ -510,6 +528,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 	def __query_db_part2(self, ticket):
 		q = ticket["query"]
 		result = {}
+		query_lock.acquire()
 		try:
 			res = self.db.query(q)
 			result['result'] = res.getresult()
@@ -520,7 +539,8 @@ class Server(file_clerk.FileClerkInfoMethods,
 			exc_type, exc_value = sys.exc_info()[:2]
 			msg = 'query_db(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
 			result['status'] = (e_errors.DATABASE_ERROR, msg)
-
+		finally:
+			query_lock.release()
 		return result
 
 	def query_db(self, ticket):
