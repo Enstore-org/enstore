@@ -390,7 +390,7 @@ class LMD(EnstoreServer): # library manager director
 			       enstore_constants.DOWN)
 	self.reason_down = "lm_director down"
 
-class Dispatcher(EnstoreServer): # library manager director
+class Dispatcher(EnstoreServer): # dispatcher
 
     def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, enstore_constants.DISPATCHER,
@@ -584,6 +584,10 @@ def do_real_work():
     config_d_keys = config_d.keys()
 
     # create all objects
+    ###################################################
+    #  Mandatory enstore servers
+    ###################################################
+
     cs = ConfigServer(offline_d, override_d, seen_down_d, allowed_down_d)
     log = LogServer(offline_d, override_d, seen_down_d, allowed_down_d)
     alarm = AlarmServer(offline_d, override_d, seen_down_d, allowed_down_d)
@@ -594,9 +598,20 @@ def do_real_work():
                    AccountingServer(offline_d, override_d, seen_down_d, allowed_down_d),
                    InfoServer(offline_d, override_d, seen_down_d, allowed_down_d),
                    DrivestatServer(offline_d, override_d, seen_down_d, allowed_down_d),
-                   LMD(offline_d, override_d, seen_down_d, allowed_down_d),
-                   Dispatcher(offline_d, override_d, seen_down_d, allowed_down_d),
                    ]
+    ###################################################
+    
+    ###################################################
+    #  Optional SFA Servers
+    ###################################################
+
+    lm_director = config_d.get("lm_director", None)
+    if lm_director:
+       server_list.append(LMD(offline_d, override_d, seen_down_d, allowed_down_d))
+    dispatcher = config_d.get("dispatcher", None)
+    if dispatcher:
+       server_list.append(Dispatcher(offline_d, override_d, seen_down_d, allowed_down_d))
+    ###################################################
     
     library_managers = get_library_managers(config_d_keys)
     upd_proxy_servers = get_udp_proxy_servers(config_d_keys)
