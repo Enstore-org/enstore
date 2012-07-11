@@ -67,6 +67,19 @@ def select(value,query):
 
 def parse_mtab(volumes):
     volume_map={}
+    #
+    # first check if we have area directory existing locally
+    #
+    for  v in volumes:
+        if os.path.exists(v):
+            volume_map[v] = v
+    if volume_map:
+        return volume_map
+
+    #
+    # the loop below checks maatches on NFS partion
+    # name. Arbitrary mount point name
+    #
     for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
         try:
             fp = file_utils.open(mtab_file, "r")
@@ -94,7 +107,7 @@ def parse_mtab(volumes):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     return volume_map
 
-def print_html(summary):
+def print_header():
     print "Content-type: text/html"
     print
     print '<html>'
@@ -108,6 +121,14 @@ def print_html(summary):
     print '<font size=7 color="#ff0000"> Enstore SFA HUD</font>'
     print '<hr>'
 
+def print_footer(): 
+    print "</center>"
+    print '</body>'
+    print '</html>'
+
+
+def print_html(summary):
+    print_header()
     print "<table border=\"1\">"
     print "<tr><th>Volume</th><th>KB in transition</th><th># Files in Transition</th><th>Used Size(KB)</th><th>Total Size(KB)</th></tr>"
     print "<tr><td>data_area(write cache)</td><td>"+str(summary["data_area"]["size"])+\
@@ -139,10 +160,7 @@ def print_html(summary):
 
     print '<hr>'
 
-    print "</center>"
-    print '</body>'
-    print '</html>'
-
+    print_footer()
 
 def main():
     # Obtain the correct values for ENSTORE_CONFIG_HOST and ENSTORE_CONFIG_PORT
@@ -169,20 +187,31 @@ def main():
                   "data_area",
                   "archive_area"):
             areas[k] = m[k]
-
     volume_map=parse_mtab(areas.values())
+    diff = set(areas.values()) - set(volume_map.keys())
+    if len(diff) != 0 :
+        print_header()
+        print "<div style=\"text-align:left\">"
+        print "Could not find expected aggregation mount points:"
+        print "<ul>"
+        for i in diff:
+            for key,value in areas.iteritems():
+                if value == i :
+                    print "<li> %s area is not mounted to %s</li>"%(key,value)
+        print "</ul>"
+        print "</div>"
+        print_footer()
+        return
+        
     for key,value in volume_map.iteritems():
-        tag=""
         for k,v in areas.iteritems():
             if v==key:
-                tag=k
+                stats  = os.statvfs(value)
+                avail  = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE] / KB
+                total  = long(stats[statvfs.F_BLOCKS])*stats[statvfs.F_BSIZE] / KB
+                summary[k] = { 'used' : total - avail,
+                                 'total' : total }
                 break
-        stats  = os.statvfs(value)
-        avail  = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE] / KB
-        total  = long(stats[statvfs.F_BLOCKS])*stats[statvfs.F_BSIZE] / KB
-        summary[tag] = { 'used' : total - avail,
-                         'total' : total }
-
     dbinfo = csc.get("database")
 
     #
