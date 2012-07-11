@@ -1372,7 +1372,7 @@ def do_work(intf):
         if enstore_functions3.is_volume(vol) and \
            enstore_functions3.is_location_cookie(loc):
             ticket = ifc.find_file_by_location(vol, loc)
-        elif enstore_functions3.is_pnfsid(intf.file):
+        elif enstore_functions3.is_pnfsid(intf.file) or enstore_functions3.is_chimeraid(intf.file) :
             #Make sure that pnfsids go before bfids.  A non-branded
             # bfid can look like a pnfsid.  The obvious difference
             # is the length (pnfs ids are longer), but since the

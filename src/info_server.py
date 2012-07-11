@@ -244,7 +244,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 	def __find_file(self, bfid, ticket, error_target, item_name = None,
 			include_volume_info = False):
 		#Get the file information from the database.
-		finfo  = getattr(self, 'file', {})[bfid]
+		finfo=self.filedb_dict[bfid]
 		if not finfo:
 			ticket['status'] = (e_errors.NO_FILE,
 				"%s: %s not found" % (MY_NAME, error_target))
@@ -252,7 +252,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 			return
 		if include_volume_info:
 			#Get the volume information from the database.
-			vinfo  = getattr(self, 'volume', {})[finfo['external_label']]
+			vinfo  =  self.volumedb_dict[finfo['external_label']]
 			if not vinfo:
 				ticket['status'] = (e_errors.NO_VOLUME,
 						    "%s: %s not found" % (MY_NAME, error_target))
@@ -336,7 +336,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 							  fail_None = True)
 		if not pnfs_id:
 			return #extract_value_from_ticket handles its own errors.
-		if not enstore_functions3.is_pnfsid(pnfs_id):
+		if not enstore_functions3.is_pnfsid(pnfs_id) and not enstore_functions3.is_chimeraid(pnfs_id) :
 			message = "pnfsid %s not valid" % \
 				  (pnfs_id,)
 			ticket["status"] = (e_errors.WRONG_FORMAT, message)
