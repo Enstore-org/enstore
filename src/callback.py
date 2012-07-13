@@ -39,6 +39,10 @@ import host_config
 from en_eval import en_eval
 import Interfaces
 
+MSG_LEN_POSITIONS = 12
+MSG_LEN_POSITIONS_OLD = 8
+PROTOCOL = "PROTO001" # must be 8 caharacters to be used in place of old message length
+ 
 """
 class TCPError(socket.error):
 
@@ -441,19 +445,48 @@ def timeout_send(sock,msg,timeout=15*60):
 
     return nwritten, error_string
 
+# this function is to optimize code in write raw
+def _send_raw(sock, message, message_length, timeout):
+    ptr = 0
+    while ptr < message_length:
+        nwritten, error_string = timeout_send(sock, message[ptr:],
+                                              timeout)
+        if type(nwritten) != types.IntType or nwritten <= 0:
+            break
+        ptr = ptr + nwritten
+    if ptr < message_length:
+        error_string = "short write: expected %s, sent %s"\
+                       % (message_length, ptr)
+        return 1, error_string
+    if ptr != message_length:
+        error_string = "bad write: message length (expected %s, sent %s) %s" \
+                       % (message_length, ptr, error_string)
+        return 1, error_string
+    return 0, ""
+
+    
 #send a message, with bytecount and rudimentary security
 ## Note: Make sure to consider that sock could be a socket object, socket
 ##       fd or pipe fd.
 def write_raw(sock, msg, timeout=15*60):
     max_pkt_size=16384
+    proto = ""
     try:
         #Determine the length of the payload.
         msg_len = len(msg)
-
+        if msg_len > 99999999: # the biggest 8 digit number allowed by old implementation
+            # new protocol
+            ml_format="%%0%sd"%(MSG_LEN_POSITIONS)
+            proto = PROTOCOL
+        else:
+            # old protocol
+            ml_format="%%0%sd"%(MSG_LEN_POSITIONS_OLD)
+            
+        #First part of the message sent is MSG_LEN_POSITIONS characters consisiting of the
         #First part of the message sent is 8 characters consisiting of the
         # length of the payload part of the message.  Put these bytes together
         # and determine the length.
-        msg_msg_len = "%08d" % (msg_len,)
+        msg_msg_len = ml_format%(msg_len,)
         msg_len_len = len(str(msg_msg_len))
 
         #Second part of the message sent is 8 characters of Enstore
@@ -468,42 +501,21 @@ def write_raw(sock, msg, timeout=15*60):
         checksum_msg = hex8(checksum.adler32(salt, msg, msg_len))
         checksum_len = len(checksum_msg)
 
-        #This value will hold any errors returned from timeout_send().
-        error_string = ""
-
+        # send the protocol prefix if there is one
+        if proto:
+            e, err_msg = _send_raw(sock, proto, len(proto), timeout)
+            if e:
+               return e, err_msg 
+            
         #Now actually write out the length of the payload to the socket.
-        ptr = 0
-        while ptr < msg_len_len:
-            nwritten, error_string = timeout_send(sock, msg_msg_len[ptr:],
-                                                  timeout)
-            if type(nwritten) != types.IntType or nwritten <= 0:
-                break
-            ptr = ptr + nwritten
-        if ptr < msg_len_len:
-            error_string = "short write: message length (expected 8, sent %s) %s"\
-                           % (ptr, error_string)
-            return 1, error_string
-        if ptr != msg_len_len:
-            error_string = "bad write: message length (expected 8, sent %s) %s" \
-                           % (ptr, error_string)
-            return 1, error_string
+        e, err_msg = _send_raw(sock, msg_msg_len, msg_len_len, timeout)
+        if e:
+            return e, err_msg 
 
         #This time write out the 'signature'.
-        ptr = 0
-        while ptr < msg_signature_len:
-            nwritten, error_string = timeout_send(sock, msg_signature[ptr:],
-                                                  timeout)
-            if type(nwritten) != types.IntType or nwritten <= 0:
-                break
-            ptr = ptr + nwritten
-        if ptr < msg_signature_len:
-            error_string = "short write: salt (expected 8, sent %s) %s" \
-                           % (ptr, error_string)
-            return 1, error_string
-        if ptr != msg_signature_len:
-            error_string = "bad write: salt (expected 8, sent %s) %s" \
-                           % (ptr, error_string)
-            return 1, error_string
+        e, err_msg = _send_raw(sock, msg_signature, msg_signature_len, timeout)
+        if e:
+            return e, err_msg 
 
         #Write the payload to the socket.
         ptr = 0
@@ -514,30 +526,18 @@ def write_raw(sock, msg, timeout=15*60):
                 break
             ptr = ptr + nwritten
         if ptr < msg_len:
-            error_string = "short write: message (expected %d, sent %s) %s" \
-                           % (msg_len, ptr, error_string)
+            error_string = "short write: message expected %d, sent %s" \
+                           % (msg_len, ptr)
             return 1, error_string
         if ptr != msg_len:
-            error_string = "bad write: message (expected %d, sent %s) %s" \
-                           % (msg_len, ptr, error_string)
+            error_string = "bad write: message expected %d, sent %s" \
+                           % (msg_len, ptr)
             return 1, error_string
 
         #Lastly, write out the checksum of the payload.
-        ptr = 0
-        while ptr < checksum_len:
-            nwritten, error_string = timeout_send(sock, checksum_msg[ptr:],
-                                                  timeout)
-            if type(nwritten) != types.IntType or nwritten <= 0:
-                break
-            ptr = ptr + nwritten
-        if ptr < checksum_len:
-            error_string = "short write: checksum (expected 4, sent %s) %s" \
-                            % (ptr, error_string)
-            return 1, error_string
-        if ptr != checksum_len:
-            error_string = "bad write: checksum (expected 4, sent %s) %s" \
-                           % (ptr, error_string)
-            return 1, error_string
+        e, err_msg = _send_raw(sock, checksum_msg, checksum_len, timeout)
+        if e:
+            return e, err_msg 
 
         return 0, ""
     except (socket.error, select.error, OSError), detail:
@@ -648,20 +648,37 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
 #read_raw - return tuple of message read and error string.  One or the other
 # should be returned as an empty string.
 def read_raw(fd, timeout=15*60):
-    # Read in the length of the payload part of the message.
+    # Read in the length of the payload part of the message or the protocol string for a new protocol
     tmp, error_string = timeout_recv(fd, 8, timeout) # the message length
     len_tmp = len(tmp)
     if len_tmp != 8:
-        
         error_string = "%s; read_raw: wrong bytecount (%d) '%s'" % \
                        (error_string, len_tmp, tmp)
         return "", error_string
     try:
         bytecount = int(tmp)
     except (ValueError, TypeError):
-        error_string = "%s; read_raw: bad bytecount '%s'" % \
-                       (error_string, tmp,)
-        return "", error_string
+        if tmp[:8] == PROTOCOL:
+            # new protocol
+            # the bytecount follows
+            # Read in the length of the payload part of the message
+            tmp, error_string = timeout_recv(fd, MSG_LEN_POSITIONS, timeout) # the message length
+            len_tmp = len(tmp)
+            if len_tmp != MSG_LEN_POSITIONS:
+
+                error_string = "%s; read_raw: wrong bytecount (%d) '%s'" % \
+                               (error_string, len_tmp, tmp)
+                return "", error_string
+            try:
+                bytecount = int(tmp)
+            except (ValueError, TypeError):
+                error_string = "%s; read_raw: bad bytecount '%s'" % \
+                               (error_string, tmp,)
+                return "", error_string
+        else:
+            error_string = "%s; read_raw: bad bytecount '%s'" % \
+                           (error_string, tmp,)
+            return "", error_string
 
     #Read in the signature.
     tmp, error_string = timeout_recv(fd, 8, timeout) # the 'signature'
