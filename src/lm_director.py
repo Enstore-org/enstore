@@ -161,6 +161,11 @@ class LMD(dispatching_worker.DispatchingWorker,
         Trace.trace(10, "lmd_decision2 rc=%s lm=%s"%(rc, new_library,))         
         if rc:
             result['vc']['library'] = new_library
+            # do not allow multiple copies if request was re-directed
+            # the copy will be done on a package file
+            copies = result['fc'].get("copies", 0)
+            if copies:
+                result['fc']['copies'] = 0
         result['status'] = (e_errors.OK, None)    
         return result
 
