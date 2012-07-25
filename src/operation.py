@@ -169,20 +169,20 @@ def library_type(cluster, lib):
 			return '9310'
 		if lib == 'samlto2' or lib == 'samlto':
 			return 'aml2'
-		if lib == 'D0-LTO4F1':
+		if lib == 'D0-LTO4F1' or lib == 'D0-10KCF1':
 			return '8500F1'
 		if lib == 'D0-LTO4G1':
 			return '8500G1'
-		if lib == 'D0-LTO4GS':
+		if lib == 'D0-LTO4GS' or lib == 'D0-10KCGS':
 			return '8500GS'
 	elif cluster == 'STK':
 		if lib == 'CD-9940B' or lib == '9940':
 			return '9310'
 		if lib == 'CD-LTO3' or lib == 'CD-LTO4G1' or lib == 'CD-10KCG1':
 			return '8500G1'
-		if lib == 'CD-LTO3GS' or lib == 'CD-LTO4GS':
+		if lib == 'CD-LTO3GS' or lib == 'CD-LTO4GS' or lib == 'CD-10KCGS':
 			return '8500GS'
-		if lib == 'CD-LTO4F1':
+		if lib == 'CD-LTO4F1' or lib == 'CD-10KCF1':
 			return '8500F1'
 	elif cluster == 'CDF':
 		if lib == 'CDF-9940B' or lib == 'cdf':
@@ -1321,7 +1321,7 @@ def make_cap(l, library_type='9310', cap_n = 0):
 		if cluster == "D0":
 			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,9,0 "
 		elif cluster == "STK":
-			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,5,0 "
+			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,1,0 "
 		elif cluster == "CDF":
 			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 1,5,0 "
 		else:
