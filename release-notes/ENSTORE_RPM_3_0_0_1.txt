@@ -1,0 +1,37 @@
+<html><body><pre>
+                      Enstore release notes, from ENSTORE_RPM_3_0_0_0 to ENSTORE_RPM_3_0_0_1
+                      Detailed cvs commit logs
+
+
+.
+./etc
+
+========== volume_audit.html ====================================================================================
+
+added link to D0 T10KC (GS) burn rate plot http://uqbar.fnal.gov/reviews/r/552/ 
+
+./src
+
+========== callback.py ====================================================================================
+
+old callback.py restricts the message length to 8 digit number.
+Longer messages fail to get received.
+The lengh of the message was incresed to 12 digit number.
+For backward compatibility the PROTOXXX message perfix was introduced.
+bz 1161, rb http://uqbar.fnal.gov/reviews/r/550/
+
+
+========== lm_director.py ====================================================================================
+
+Do not allow multiple copies for re-directed write request. Multiple copies will be done later when files get aggregated and package is written to tape. 
+
+========== operation.py ====================================================================================
+
+Added mappings for 10KC libraries to their respective robots, modified stken output CAP for FCC robots, and added D0-10KCGS to d0en tab flipping crontab, all per bug 1181, and review board http://uqbar.fnal.gov/reviews/r/549/ . 
+
+./crontabs
+========== tab_flip_watch_d0en ====================================================================================
+
+Added mappings for 10KC libraries to their respective robots, modified stken output CAP for FCC robots, and added D0-10KCGS to d0en tab flipping crontab, all per bug 1181, and review board http://uqbar.fnal.gov/reviews/r/549/ . 
+
+</pre></body></html>
