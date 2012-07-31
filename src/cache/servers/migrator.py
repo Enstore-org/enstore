@@ -637,6 +637,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         except OSError, detail:
             Trace.log(e_errors.ERROR, "write_to_tape: error removing directory: %s"%(detail,))
             pass
+        self.state = IDLE        
+        
         
     # write aggregated file to tape
     def write_to_tape(self, request):
@@ -651,6 +653,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             
         # check if files can be written to tape
         write_enabled_counter = 0
+        output_library_tag = []
         for component in request_list:
             bfid = component['bfid']
             # Convert unicode to ASCII strings.
@@ -666,6 +669,29 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                          file_cache_status.ArchiveStatus.ARCHIVING) and
                         (rec['deleted'] == "no")): # file can be already deleted by the archiving time
                         write_enabled_counter = write_enabled_counter + 1
+                        # get the library tag and combine output library tag
+                        Trace.trace(10, "write_to_tape: getting library tag for %s"%(rec['pnfs_name0']),)
+                        tag = namespace.Tag(os.path.dirname(rec['pnfs_name0']))
+                        try:
+                            lib_tag =tag.readtag("library", os.path.dirname(rec['pnfs_name0']))
+                        except:
+                            Trace.handle_error()
+                            Trace.log(e_errors.ERROR, "error reading library tag")
+                            return False
+                            Trace.trace(10, "write_to_tape: original library tag: %s"%(lib,))
+                        # readtag returns a list with size 1 and a string as its element like
+                        # ['LTO3GS,LTO3GS']
+                        Trace.trace(10, "write_to_tape: library tag %s"%(lib_tag[0],))
+                        if not lib_tag[0] in output_library_tag:
+                            for lib in output_library_tag:
+                                # the following code shold resolve cases when
+                                # the lib_tag[0] is already a part of the comma separated tag in output_library_tag
+                                if lib_tag[0] in lib.split(","):
+                                    break
+                            else:
+                                output_library_tag.append(lib_tag[0])
+                        
+                        Trace.trace(10, "write_to_tape: output library tag %s"%(output_library_tag),)
                     else:
                         Trace.log(e_errors.INFO, "File was not included into package %s archive_status %s"%
                                   (rec['bfid'], rec['archive_status']))
@@ -766,34 +792,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         dst_dir = os.path.join(self.packages_location, v_f) 
         Trace.trace(10, "write_to_tape: write to %s"%(dst_dir,))
         tmp_dst_dir = os.path.join(dst_dir, "tmp")
-        Trace.trace(10, "write_to_tape: getting library tag for %s"%(rec['pnfs_name0']),)
-        tag = namespace.Tag(os.path.dirname(rec['pnfs_name0']))
-        try:
-            lib=tag.readtag("library", os.path.dirname(rec['pnfs_name0']))
-            Trace.trace(10, "write_to_tape: original library tag: %s"%(lib,))
-        except:
-            Trace.handle_error()
-            Trace.log(e_errors.ERROR, "error reading library tag")
-            return False
             
         if not os.path.exists(dst_dir):
             Trace.trace(10, "write_to_tape: creating dst directory %s"%(dst_dir,))
             os.makedirs(dst_dir)
-
-        # readtag returns a list with size 1 and a string as its element like
-        # ['LTO3GS,LTO3GS']
-        # set tags in the destination directory
-        try:
-            ns_tags(dst_dir,
-                    lib[0],
-                    rec['storage_group'],
-                    rec['file_family'],
-                    rec['wrapper'],
-                    rec['file_family_width'])
-        except:
-            Trace.handle_error()
-            return False
-                
 
         Trace.trace(10, "write_to_tape: tmp_dst_dir %s"%(tmp_dst_dir,))
         if not os.path.exists(tmp_dst_dir):
@@ -805,9 +807,17 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.log(e_errors.ERROR, "Error creating tmp dst directory %s"%(tmp_dst_dir,))
                 return False
                 
+        # convert output_library_tag to a comma separated string
+        # if its size is more than one (multiple copies)
+        if len(output_library_tag) == 1:
+           output_library_tag_str = output_library_tag[0]
+        else:
+            output_library_tag_str = ","
+            output_library_tag_str.join(output_library_tag)
+        Trace.trace(10, "write_to_tape: dst library tag: %s"%(output_library_tag_str,))
         try:
             ns_tags(tmp_dst_dir,
-                    lib[0],
+                    output_library_tag_str,
                     rec['storage_group'],
                     rec['file_family'],
                     rec['wrapper'],
@@ -879,6 +889,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             if res.has_key('file_list'):
                 for rec in res['file_list']:
                    dst_bfids.append(rec['bfid'])
+                   
             else:
                 dst_bfids.append(res['bfid'])
 
@@ -895,7 +906,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.trace(10, "write_to_tape: find the original")
             try:
                 rec = self.infoc.find_the_original(dst_bfids[0])
-                #rec = self.fcc.find_the_original(dst_bfids[0])
             except:
                 Trace.trace(10, "write_to_tape: exception findingfind the original")
                 Trace.handle_error()
@@ -905,6 +915,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.log(e_errors.ERROR,
                           "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
                 return False
+
             if rec['original'] != dst_bfids[0]:
                 # get bfid info of original
                 bfid_info = self.fcc.bfid_info(rec['original'])
@@ -980,6 +991,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 if rec['bfid'] in dst_bfids:
                     # change pnfs_name0
                     rec['pnfs_name0'] = final_dst_path
+
                 Trace.trace(10, "write_to_tape: sending modify record %s"%(rec,))
                 rc = self.fcc.modify(rec)
             #########
