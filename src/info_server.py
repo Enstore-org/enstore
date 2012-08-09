@@ -476,11 +476,7 @@ class Server(file_clerk.FileClerkInfoMethods,
 		       record['sanity_cookie'][0], record['sanity_cookie'][1])
 
 		res = self.filedb_dict.query_getresult(q)
-
-		files = []
-		for i in res:
-			files.append(self.file[i[0]])
-		ticket["files"] = files
+		ticket["files"] = [self.filedb_dict[i[0]] for i in res]
 		ticket["status"] = (e_errors.OK, None)
 
 		return ticket
