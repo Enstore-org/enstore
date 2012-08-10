@@ -135,6 +135,7 @@ import volume_assert_wrapper
 import delete_at_exit
 from scanfiles import ThreadWithResult
 import info_client
+import file_cache_status
 
 debug = False	# debugging mode
 
@@ -4452,6 +4453,7 @@ def update_failed_done(bfid, db):
 
 #For duplication only.
 def make_failed_copies(vcc, fcc, db, intf):
+
     MY_TASK = "MAKE_FAILED_COPIES"
 
     return_exit_status = 0
@@ -4469,7 +4471,7 @@ def make_failed_copies(vcc, fcc, db, intf):
         "      and file.pnfs_path is not NULL " \
         "      and file.pnfs_path != '' " \
         "order by volume.id,time;"
-    #Get the results.
+     #Get the results.
     res = db.query(q).getresult()
 
     bfid_lists = {} #sort into list by volume.
@@ -4512,41 +4514,73 @@ def make_failed_copies(vcc, fcc, db, intf):
             for bfid in use_bfid_list:
                 ### The duplicatation was successfull.
 
-                log(MY_TASK, "Decrementing the remaining count by " \
-                    "one for bfid %s." % (bfid,))
+                #log(MY_TASK, "Decrementing the remaining count by " \
+                #    "one for bfid %s." % (bfid,))
 
-                #Build the sql query.
-                #Decrement the number of files remaining by one.
-                ### Note: What happens when this values reaches zero?
-                q = "update active_file_copying " \
-                    "set remaining = remaining - 1 " \
-                    "where bfid = '%s'" % (bfid,)
+                update_res = fcc.made_copy(bfid)
 
-                #Get the results.
-                try:
-                    update_res = db.query(q)
-                except:
-                    exc_type, exc_value = sys.exc_info()[:2]
-                    error_log(MY_TASK, str(exc_type), str(exc_value), q)
-                    return 1 + return_exit_status
-
-                #Make sure this is a numeric type.
-                update_res = long(update_res)
-
-                if update_res == 1:
-                    ok_log(MY_TASK, "Decremented the remaining count by " \
-                           "one for bfid %s." % (bfid,))
-                elif update_res > 0:
-                    #Should never happen with unique volume ids.
+                if not e_errors.is_ok(update_res['status']):
                     error_log(MY_TASK,
-                              "Decremented %s the remaining count by " \
-                              "one for bfid %s." % (update_res, bfid))
+                              "Failed to update active_file_copying for bfid %s." % (bfid,))
                     return 1 + return_exit_status  #Error
-                else:
-                    error_log(MY_TASK,
-                              "Failed to decremented the remaining count by " \
-                              "one for bfid %s." % (bfid,))
-                    return 1 + return_exit_status  #Error
+ 
+                # If original file is a package....
+                file_info = fcc.bfid_info(bfid)
+                if  e_errors.is_ok(file_info['status']) and bfid == file_info['package_id']:
+                    # get children of this package
+                    # their information will be used to create copies in enstore DB
+                    children = fcc.get_children(bfid)
+                    if not e_errors.is_ok(children['status']):
+                        error_log(MY_TASK,
+                                  "Failed to get children for bfid %s: %s" % (bfid, children['status']))
+                        return 1 + return_exit_status  #Error
+                    # find copies of this package file
+                    copies = fcc.find_copies(bfid)
+                    if not e_errors.is_ok(copies['status']):
+                        error_log(MY_TASK,
+                                  "Failed to find copies for bfid %s: %s" % (bfid, copies['status']))
+                        return 1 + return_exit_status  #Error
+                            
+                    # create new bit-files - refences to a copy of original
+                    for copy_bfid in copies['copies']:
+                        # get a copy record
+                        copy_info = fcc.bfid_info(copy_bfid)
+                        copy_info['archive_status'] = file_info['archive_status']
+                        copy_info['package_id'] = copy_info['bfid'] 
+                        copy_info['package_files_count'] = file_info['package_files_count']
+                        copy_info['active_package_files_count'] = file_info['active_package_files_count']
+                        copy_info['archive_mod_time'] = file_info['archive_mod_time']
+                        
+                        if not e_errors.is_ok(copy_info['status']):
+                            error_log(MY_TASK,
+                                      "Failed to get copy info for bfid %s: %s" % (copy_bfid, copy_info['status']))
+                            return 1 + return_exit_status  #Error
+                            
+                        for rec in children['children']:
+                            if rec['bfid'] != bfid: # do not update original package record
+                                rec['original_bfid'] = rec['bfid']
+                                rec['package_id'] = copy_info['bfid']
+                                rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                                del(rec['bfid'])
+                                rc = fcc.new_bit_file({'fc':rec})
+                                if rc['status'][0] != e_errors.OK:
+                                    error_log(MY_TASK,
+                                              "Failed to register copy for bfid %s: %s" % (bfid, rc['status']))
+                                    return 1 + return_exit_status  #Error
+                                rec['bfid'] = rc['fc']['bfid']
+                                rc = fcc.modify(rec)
+                                if rc['status'][0] != e_errors.OK:
+                                     error_log(MY_TASK,
+                                              "Failed to modify copy for bfid %s: %s" % (bfid, rc['status']))
+                                     return 1 + return_exit_status  #Error
+
+                        rc = fcc.modify(copy_info)
+                        if rc['status'][0] != e_errors.OK:
+                            error_log(MY_TASK,
+                                      "Failed to modify copy for bfid %s: %s" % (bfid, rc['status']))
+                            return 1 + return_exit_status  #Error
+                        
+                               
 
         #For debugging, do only one file.
         if debug:

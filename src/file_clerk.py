@@ -1089,14 +1089,14 @@ class FileClerkMethods(FileClerkInfoMethods):
             return 1
         return
 
-    # made_copy(bfid) -- decrease copies count
+    # _made_copy(bfid) -- decrease copies count
     #                    if the count becomes zero, delete the record
-    def made_copy(self, bfid):
+    def _made_copy(self, bfid):
         q = "select * from active_file_copying where bfid = '%s';"%(bfid)
         res = self.filedb_dict.query_dictresult(q)
         if not res:
             Trace.log(e_errors.ERROR, "made_copy(): %s does not have copies"%(bfid))
-            return
+            return 0
         if res[0]['remaining'] <= 1:
             # all done, delete this entry
             q = "delete from active_file_copying where bfid = '%s';"%(bfid)
@@ -1110,7 +1110,7 @@ class FileClerkMethods(FileClerkInfoMethods):
                 res = self.filedb_dict.insert(q)
             except:
                 return 1
-        return
+        return 0
 
     ####################################################################
 
@@ -1389,7 +1389,7 @@ class FileClerkMethods(FileClerkInfoMethods):
         # take care of the copy count
         original = self._find_original(bfid)
         if original:
-            self.made_copy(original)
+            self._made_copy(original)
 
 	# record our changes
 	self.filedb_dict[bfid] = record
@@ -1926,6 +1926,20 @@ class FileClerkMethods(FileClerkInfoMethods):
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
             Trace.log(e_errors.KEYERROR, msg)
 
+        self.reply_to_caller(ticket)
+        return
+
+    # made_copy(ticket) -- decrease copies count
+    #                    if the count becomes zero, delete the record
+    def made_copy(self, ticket):
+        bfid, record = self.extract_bfid_from_ticket(ticket)
+        if not bfid:
+            return #extract_bfid_from_ticket handles its own errors.
+
+	ticket['status'] = (e_errors.OK, "")
+	rc = self._made_copy(ticket['bfid'])
+	if rc != 0:
+	    ticket['status'] = (e_errors.ERROR, "")
         self.reply_to_caller(ticket)
         return
 

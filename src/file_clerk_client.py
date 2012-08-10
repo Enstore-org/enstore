@@ -731,6 +731,10 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         ticket['work'] = 'swap_package'
         return self.send(ticket)
 
+    def made_copy(self, bfid):
+        r = self.send({"work" : "made_copy", "bfid" : bfid})
+        return r
+
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
