@@ -58,8 +58,8 @@ MB=enstore_constants.MB
 GB=enstore_constants.GB
 SAFETY_FACTOR=enstore_constants.SAFETY_FACTOR
 MIN_LEFT=enstore_constants.MIN_LEFT
-INQUIRE_VOL_TO = 5
-INQUIRE_VOL_RETRY = 3
+INQUIRE_VOL_TO = 15
+INQUIRE_VOL_RETRY = 2
 
 DEBUG_LOG=9 # make entries in DEBUGLOG file at this level
 # Trace levels for different classes and methods
