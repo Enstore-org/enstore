@@ -195,60 +195,15 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         return value
 
-    def extract_bfid_from_ticket(self, ticket, key = "bfid",
-                                 check_exists = True):
-
-        return_record = False
-        if hasattr(self, "filedb_dict"):
-            return_record = True
-
-        bfid = self.extract_value_from_ticket(key, ticket, fail_None = True)
-        if not bfid:
-            if return_record:
-                #extract_value_from_ticket handles its own errors.
-                return None, None
-            else:
-                return None
-
-        #Check bfid format.
-        if not enstore_functions3.is_bfid(bfid):
-            message = "%s: bfid %s not valid" % (MY_NAME, bfid,)
-            ticket["status"] = (e_errors.WRONG_FORMAT, message)
-            Trace.log(e_errors.ERROR, message)
-            self.reply_to_caller(ticket)
-            if return_record:
-                return None, None
-            else:
-                return None
-
-        if check_exists and return_record:
-            #Make sure the bfid exists.  (getattr() keeps pychecker quite.)
-            record = getattr(self, 'filedb_dict', {})[bfid]
-            if not record:
-                message = "%s: no such bfid %s" % (MY_NAME, bfid,)
-                ticket["status"] = (e_errors.NO_FILE, message)
-                Trace.log(e_errors.ERROR, message)
-                self.reply_to_caller(ticket)
-                return None, None
-
-        if check_exists and return_record:
-            return bfid, record
-        else:
-            return bfid
 
     def extract_external_label_from_ticket(self, ticket,
                                            key = "external_label",
                                            check_exists = True):
 
-        return_record = False
-        if hasattr(self, "volumedb_dict"):
-            return_record = True
-
         external_label = self.extract_value_from_ticket(key, ticket,
                                                         fail_None = True)
         if not external_label:
-            if return_record:
-                #extract_value_from_ticket handles its own errors.
+            if check_exists:
                 return None, None
             else:
                 return None
@@ -260,14 +215,12 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
             ticket["status"] = (e_errors.WRONG_FORMAT, message)
             Trace.log(e_errors.ERROR, message)
             self.reply_to_caller(ticket)
-            if return_record:
-                return None, None
-            else:
-                return None
+            return None, None
 
-        if check_exists and return_record:
+        record = None
+        if check_exists :
             #Make sure the volume exists.
-            record = getattr(self, 'volumedb_dict', {})[external_label]
+            record =  self.volumedb_dict[external_label]
             if not record:
                 message = "%s: no such external_label %s" \
                           % (MY_NAME, external_label,)
@@ -275,10 +228,8 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
                 Trace.log(e_errors.ERROR, message)
                 self.reply_to_caller(ticket)
                 return None, None
-        else:
-            record = None
 
-        if check_exists and return_record:
+        if check_exists:
             return external_label, record
         else:
             return external_label
@@ -1040,11 +991,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         src_vol, src_record = self.extract_external_label_from_ticket(ticket,
                                                            key = 'src_vol')
         if not src_vol:
-            return #extract_bfid_from_ticket handles its own errors.
+            return #extract_external_label_from_ticket handles its own errors.
         dst_vol, dst_record = self.extract_external_label_from_ticket(ticket,
                                                            key = 'dst_vol')
         if not dst_vol:
-            return #extract_bfid_from_ticket handles its own errors.
+            return #extract_external_label_from_ticket handles its own errors.
 
         q = "select migration.src_bfid, src_bfid, copied, swapped, checked, closed " \
             "from migration,file f1, volume v1, file f2, volume v2 " \
@@ -1068,11 +1019,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         src_vol, src_record = self.extract_external_label_from_ticket(ticket,
                                                               key = 'src_vol')
         if not src_vol:
-            return #extract_bfid_from_ticket handles its own errors.
+            return #extract_external_label_from_ticket handles its own errors.
         dst_vol, dst_record = self.extract_external_label_from_ticket(ticket,
                                                               key = 'dst_vol')
         if not dst_vol:
-            return #extract_bfid_from_ticket handles its own errors.
+            return #extract_external_label_from_ticket handles its own errors.
 
         q = "select file_copies_map.bfid, alt_bfid " \
             "from file_copies_map,file f1, volume v1, file f2, volume v2 " \
@@ -1099,11 +1050,11 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
         src_vol, src_record = self.extract_external_label_from_ticket(ticket,
                                                                key = 'src_vol')
         if not src_vol:
-            return #extract_bfid_from_ticket handles its own errors.
+            return #extract_external_label_from_ticket handles its own errors.
         dst_vol, dst_record = self.extract_external_label_from_ticket(ticket,
                                                               key = 'dst_vol')
         if not dst_vol:
-            return #extract_bfid_from_ticket handles its own errors.
+            return #extract_external_label_from_ticket handles its own errors.
 
         vol_id_list = []
         for vol in (src_vol, dst_vol):
