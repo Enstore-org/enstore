@@ -861,23 +861,54 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.log(e_errors.ERROR, "encp failed with exception")
             rc = -1
             
-        Trace.trace(10, "write_to_tape: encp returned %s"%(rc,))
+        Trace.trace(10, "write_to_tape: encp returned %s %s"%(rc, encp.exit_status))
 
         # encp finished
         if rc != 0:
-            set_cache_params = []
-            # Change archive_status
-            for bfid in bfid_list:
-                set_cache_params.append({'bfid': bfid,
-                                         'cache_status':None,# we are not changing this
-                                         'archive_status': "null",
-                                         'cache_location': None})       # we are not changing this
+            really_failed = True
+            # check if this was a multiple cpy request
+            if len(output_library_tag_str.split(",")) > 1:
+                # check if the original was written to a tape successfully
+                res = self.infoc.find_file_by_path(dst_file_path)
+                Trace.trace(10, "write_to_tape: find file %s returned %s"%(dst_file_path, res))
+                if e_errors.is_ok(res['status']) and res['deleted'] == "no":
+                    # File exists.
+                    # Check if it is in the active_file_copying
+                    q_res = self.infoc.query_db("select bfid,remaining from active_file_copying where bfid='%s'"%(res['bfid'],))
+                    Trace.trace(10, "write_to_tape: db query returned %s %s"%(rc, q_res))
+                    
+                    # Example of query return
+                    #  {'ntuples': 1,
+                    #   'fields': ('bfid', 'remaining''),
+                    #   'status': ('ok', None),
+                    # 'result': [('GCMS134403394000000', 1]}
+                    #
+                    if e_errors.is_ok(q_res['status']) and q_res['ntuples'] != 0:
+                        # the original is active_file_copying
+                        # which means it is on tape but the copy failed
+                        Trace.alarm(e_errors.WARNING, "Original %s is on tape," \
+                                    "but the copy failed. Check later if this file has a copy"%(res['bfid'],))
+                        really_failed = False # the original is on tape
+            if really_failed:
+                set_cache_params = []
+                # Change archive_status
+                for bfid in bfid_list:
+                    set_cache_params.append({'bfid': bfid,
+                                             'cache_status':None,# we are not changing this
+                                             'archive_status': "null",
+                                             'cache_location': None})       # we are not changing this
                         
-            #rc = self.fcc.set_cache_status(set_cache_params)
-            rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
-            Trace.log(e_errors.ERROR, "write_to_tape: encp write to tape failed: %s"%(rc,))
-            self.clean_up_after_write(src_file_path)
-            return False
+                    rc1 = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+                    Trace.log(e_errors.ERROR, "write_to_tape: encp write to tape failed: %s"%(rc,))
+                    self.clean_up_after_write(src_file_path)
+                    Trace.log(e_errors.INFO, "setting %s to deleted failed with %s"%(res['bfid'], res['status'],))
+                # remove tepmporary file in name space if exists
+                Trace.trace(10, "write_to_tape: removing temp. file %s"%(dst_file_path,))
+                try:
+                    os.remove(dst_file_path)
+                except:
+                    pass
+                return False
         
         # register archive file in file db
         self.state = REGISTERING_ARCHIVE
@@ -915,7 +946,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.log(e_errors.ERROR,
                           "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
                 return False
-
+            original_pack_bfid = rec['original']
             if rec['original'] != dst_bfids[0]:
                 # get bfid info of original
                 bfid_info = self.fcc.bfid_info(rec['original'])
@@ -924,76 +955,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                               "write_to_tape: write to tape failed: can not get bfid info %s"%(bfid_info['status'],))
                     return False
             
-            
-            final_dst_dir = os.path.join(dst_dir, bfid_info['external_label'])
-            final_dst_path = os.path.join(final_dst_dir, os.path.basename(dst_file_path))
-            if not os.path.exists(final_dst_dir):
-                os.makedirs(final_dst_dir)
-            
-            # move file to its final destination in the name space
-            Trace.trace(10, "write_to_tape move package in name space from %s to %s"%
-                        (dst_file_path, final_dst_path))
-            try:
-                os.rename(dst_file_path, final_dst_path)
-            except:
-                Trace.handle_error()
-                return False
-
-            Trace.log(e_errors.INFO, "renamed %s to %s"%(dst_file_path, final_dst_path))
-            # change file name in layer 4 of name space
-            try:
-                sfs = namespace.StorageFS(final_dst_path)
-                xrefs = sfs.get_xreference() # xrerfs will not get used, sfs will be used instead
-                Trace.trace(10, "xrefs %s %s %s %s %s %s %s %s %s %s %s"%(sfs.volume,
-                                                                          sfs.location_cookie,
-                                                                          sfs.size,
-                                                                          sfs.origff,
-                                                                          sfs.origname,
-                                                                          sfs.mapfile,
-                                                                          sfs.pnfsid_file,
-                                                                          sfs.pnfsid_map,
-                                                                          sfs.bfid,
-                                                                          sfs.origdrive,
-                                                                          sfs.crc))
-
-                sfs.origname = final_dst_path
-                sfs.set_xreference(sfs.volume,
-                                   sfs.location_cookie,
-                                   sfs.size,
-                                   sfs.origff,
-                                   sfs.origname,
-                                   sfs.mapfile,
-                                   sfs.pnfsid_file,
-                                   sfs.pnfsid_map,
-                                   sfs.bfid,
-                                   sfs.origdrive,
-                                   sfs.crc)
-            except:
-                Trace.handle_error()
-                return False
-            
-            package_files_count = len(bfid_list)
-            bfid_list = bfid_list + dst_bfids
-            update_time = time.localtime(time.time())
-            for bfid in bfid_list:
-                del(rec) # to avoid interference
-                # read record
-                rec = self.fcc.bfid_info(bfid)
-                if (rec['status'][0] != e_errors.OK):
-                    Trace.log(e_errors.ERROR,
-                              "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
-                    return False
-                rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVED
-                rec['package_id'] = dst_bfids[0]
-                rec['package_files_count'] = package_files_count
-                rec['active_package_files_count'] = package_files_count
-                rec['archive_mod_time'] = time.strftime("%Y-%m-%d %H:%M:%S", update_time)
-                if rec['bfid'] in dst_bfids:
-                    # change pnfs_name0
-                    rec['pnfs_name0'] = final_dst_path
-
-                Trace.trace(10, "write_to_tape: sending modify record %s"%(rec,))
-                rc = self.fcc.modify(rec)
+            rc = self.complete_write_to_tape(dst_file_path, dst_dir, bfid_info['external_label'],
+                                             bfid_list, dst_bfids, output_library_tag_str, original_pack_bfid)
+            if not rc:
+                return rc
             #########
                                                  
         else:
@@ -1013,6 +978,128 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         return True # completed successfully, the request will be acknowledged
 
 
+    # helper method to update cross references in namespace and update file records in File Clerk
+    # @param src_path - name_space full name of the temporary package file
+    # @param dst_dir - name_space destination directory for a package file
+    # @param external_label - tape label for a package file
+    # @param bfid_list - list of bfids of files in a package
+    # @param dst_bfids - list of bfid(s) of package(s) 
+    # @param output_library_tag - libray tag for the package file
+    # @param original_pack_bfid - bfid or the original package tag for the package file
+    # exit code True / False 
+    def complete_write_to_tape(self, src_path, dst_dir, external_label, bfid_list, dst_bfids, output_library_tag, original_pack_bfid):
+        final_dst_dir = os.path.join(dst_dir, external_label)
+        final_dst_path = os.path.join(final_dst_dir, os.path.basename(src_path))
+        if not os.path.exists(final_dst_dir):
+            os.makedirs(final_dst_dir)
+
+        # move file to its final destination in the name space
+        Trace.trace(10, "complete_write_to_tape: move package in name space from %s to %s"%
+                    (src_path, final_dst_path))
+        try:
+            os.rename(src_path, final_dst_path)
+        except:
+            Trace.handle_error()
+            return False
+
+        Trace.log(e_errors.INFO, "renamed %s to %s"%(src_path, final_dst_path))
+        # change file name in layer 4 of name space
+        try:
+            sfs = namespace.StorageFS(final_dst_path)
+            xrefs = sfs.get_xreference() # xrefs will not get used, sfs will be used instead
+            Trace.trace(10, "xrefs %s %s %s %s %s %s %s %s %s %s %s"%(sfs.volume,
+                                                                      sfs.location_cookie,
+                                                                      sfs.size,
+                                                                      sfs.origff,
+                                                                      sfs.origname,
+                                                                      sfs.mapfile,
+                                                                      sfs.pnfsid_file,
+                                                                      sfs.pnfsid_map,
+                                                                      sfs.bfid,
+                                                                      sfs.origdrive,
+                                                                      sfs.crc))
+
+            sfs.origname = final_dst_path
+            sfs.set_xreference(sfs.volume,
+                               sfs.location_cookie,
+                               sfs.size,
+                               sfs.origff,
+                               sfs.origname,
+                               sfs.mapfile,
+                               sfs.pnfsid_file,
+                               sfs.pnfsid_map,
+                               sfs.bfid,
+                               sfs.origdrive,
+                               sfs.crc)
+        except:
+            Trace.handle_error()
+            return False
+
+        package_files_count = len(bfid_list)
+        bfid_list = bfid_list + dst_bfids
+        update_time = time.localtime(time.time())
+        records = []
+        pack_records = []
+        rec = {}
+        for bfid in bfid_list:
+            del(rec) # to avoid interference
+            # read record
+            rec = self.fcc.bfid_info(bfid)
+            if (rec['status'][0] != e_errors.OK):
+                Trace.log(e_errors.ERROR,
+                          "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
+                return False
+            rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVED
+            rec['package_id'] = original_pack_bfid
+            rec['package_files_count'] = package_files_count
+            rec['active_package_files_count'] = package_files_count
+            rec['archive_mod_time'] = time.strftime("%Y-%m-%d %H:%M:%S", update_time)
+            if rec['bfid'] in dst_bfids:
+
+                # change pnfs_name0
+                rec['pnfs_name0'] = final_dst_path
+                # and original library
+                rec['original_library'] = output_library_tag
+                # package_id for a copy is its own bfid
+                if rec['bfid'] != original_pack_bfid:
+                    rec['package_id'] = rec['bfid']
+                pack_records.append(rec)
+            else:
+                records.append(rec)
+            Trace.trace(10, "complete_write_to_tape: sending modify record %s"%(rec,))
+            rc = self.fcc.modify(rec)
+            Trace.trace(10, "complete_write_to_tape: modify record returned %s"%(rc,))
+            
+            if not rc:
+                return False
+
+        if len(pack_records) > 1:
+            # multiple copies
+            for dupl in pack_records:
+               if dupl['bfid'] != original_pack_bfid:
+                   # create new bit-files - refences to a copy of original
+                   for rec in records:
+                       Trace.trace(10, "complete_write_to_tape: creating duplicates %s"%(rec,))
+                       rec['original_bfid'] = rec['bfid']
+                       rec['package_id'] = dupl['bfid']
+                       rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                       del(rec['bfid'])
+                       Trace.trace(10, "complete_write_to_tape: sending new_bit_file %s"%(rec,))
+                       rc = self.fcc.new_bit_file({'fc':rec})
+                       Trace.trace(10, "complete_write_to_tape:  new_bit_file returned %s"%(rc,))
+                       if rc['status'][0] != e_errors.OK:
+                           Trace.log(e_errors.ERROR, "complete_write_to_tape: new_bit_file returned %s"%(rc,))
+                           return False
+                       rec['bfid'] = rc['fc']['bfid']
+                       Trace.trace(10, "complete_write_to_tape: sending modify record %s"%(rec,))
+                       rc = self.fcc.modify(rec)
+                       Trace.trace(10, "complete_write_to_tape: modify record returned %s"%(rc,))
+                       if rc['status'][0] != e_errors.OK:
+                           Trace.log(e_errors.ERROR, "complete_write_to_tape: modify record returned %s"%(rc,))
+                           return False
+
+        return True
+            
     # check all conditions for purging the file
     # returns True if purge conditions are met
     def really_purge(self, f_info):
