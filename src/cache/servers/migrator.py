@@ -890,6 +890,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                     "but the copy failed. Check later if this file has a copy"%(res['bfid'],))
                         really_failed = False # the original is on tape
             if really_failed:
+                Trace.log(e_errors.ERROR, "write_to_tape: encp write to tape failed: %s"%(rc,))
                 set_cache_params = []
                 # Change archive_status
                 for bfid in bfid_list:
@@ -899,9 +900,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                              'cache_location': None})       # we are not changing this
                         
                     rc1 = set_cache_status.set_cache_status(self.fcc, set_cache_params)
-                    Trace.log(e_errors.ERROR, "write_to_tape: encp write to tape failed: %s"%(rc,))
                     self.clean_up_after_write(src_file_path)
-                    Trace.log(e_errors.INFO, "setting %s to deleted failed with %s"%(res['bfid'], res['status'],))
                 # remove tepmporary file in name space if exists
                 Trace.trace(10, "write_to_tape: removing temp. file %s"%(dst_file_path,))
                 try:
