@@ -266,6 +266,29 @@ find $ENSTORELOG -follow -daystart -mtime +30 -exec rm -fr {} \;
 find $ENSTORELOG -follow -daystart -name "DEBUGLOG*" -mtime +10 -exec rm -fr {} \;
 
 
+#### Billing DB backup ####################################################
+
+BILLING_FILES=$VAULT/billing.files
+rm -f $BILLING_FILES
+if [ ! -d ${filePath}/billing-backup ]; then
+    mkdir  ${filePath}/billing-backup
+fi
+find ${filePath}/billing-backup -type f $find_options  -name "*sql*"  > $BILLING_FILES
+lines=`wc -l $BILLING_FILES | awk '{print $1}'`
+list ""
+list "Billing backup: $lines files to backup to tape"
+doit "cat $BILLING_FILES"
+list ""
+counter=0
+cat $BILLING_FILES| while read file; do
+  counter=`expr $counter + 1`;
+  list "$counter of $lines billing files: $file"
+  saveit $file
+done
+if [ -f $QUIT ]; then exit 1; fi
+rm -f $BILLING_FILES
+find ${filePath}/billing-backup -type f $find_options  -name "*sql*" -exec rm -fr {} \;
+
 ############################################################################
 
 #next time, get only new files since we started the backup.
