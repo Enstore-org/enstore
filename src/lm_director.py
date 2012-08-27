@@ -19,10 +19,6 @@ import string
 #import multiprocessing
 import threading
 
-# qpid / amqp
-import qpid.messaging
-import Queue
-
 # enstore imports
 import e_errors
 import enstore_constants
@@ -33,10 +29,6 @@ import monitored_server
 import Trace
 import string
 import lmd_policy_selector
-
-# enstore cache imports
-#from cache.messaging.client import EnQpidClient
-import cache.messaging.client as cmc
 
 MY_NAME = enstore_constants.LM_DIRECTOR
 QPID_BROKER_NAME = "amqp_broker" # this must be in enstore_constants
@@ -59,11 +51,27 @@ class LMD(dispatching_worker.DispatchingWorker,
 
         # get all necessary information from configuration
         self.lmd_config = self.csc.get(MY_NAME)
-        broker_config = self.csc.get(QPID_BROKER_NAME)
-        proxy_server_config = self.csc.get(self.lmd_config['udp_proxy_server'])
+        udp_proxy_server = self.lmd_config.get('udp_proxy_server', None)
+        Trace.log(e_errors.INFO, "UDP proxy server: %s"%(udp_proxy_server,))
+        self.proxy_server_config = None
+        if udp_proxy_server:
+            # UDP proxy server is defined
+            # use qpid
+            self.qpid =  __import__("qpid")
+            self.Queue = __import__("Queue")
+            import cache.messaging.client as cmc
+            broker_config = self.csc.get(QPID_BROKER_NAME)
+            self.proxy_server_config = self.csc.get(udp_proxy_server, None)
+            Trace.log(e_errors.INFO, "UDP proxy server conf: %s"%(self.proxy_server_config,))
         
-        self.queue_in = self.lmd_config['queue_in'] # this must be the same as target_addr for LMD.udp_proxy_server
-        self.queue_out = "udp2amq_%s_%s"%(proxy_server_config['hostip'], proxy_server_config['udp_port']) 
+            self.queue_in = self.lmd_config['queue_in'] # this must be the same as target_addr for LMD.udp_proxy_server
+            self.queue_out = "udp2amq_%s_%s"%(self.proxy_server_config['hostip'], self.proxy_server_config['udp_port']) 
+            queue_in = "%s; {create: always}"%(self.queue_in,)
+            queue_out = "%s; {create: always}"%(self.queue_out,)
+            self.qpid_client = cmc.EnQpidClient((broker_config['host'], broker_config['port']), queue_in, queue_out)
+            self.auto_ack = auto_ack
+            Trace.log(e_errors.INFO, "lmd _init in %s out %s"%(self.queue_in, self.queue_out))
+            
         self.policy_file = self.lmd_config['policy_file']
         try:
             self.policy_selector = lmd_policy_selector.Selector(self.policy_file)
@@ -71,12 +79,6 @@ class LMD(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ALARM, "Can not create policy selector: %s" %(detail,))
             sys.exit(-1)
         
-        Trace.log(e_errors.INFO, "lmd _init in %s out %s"%(self.queue_in, self.queue_out))
-        
-        queue_in = "%s; {create: always}"%(self.queue_in,)
-        queue_out = "%s; {create: always}"%(self.queue_out,)
-        self.qpid_client = cmc.EnQpidClient((broker_config['host'], broker_config['port']), queue_in, queue_out)
-        self.auto_ack = auto_ack 
 
         self.alive_interval = monitored_server.get_alive_interval(self.csc,
                                                                   MY_NAME,
@@ -120,9 +122,9 @@ class LMD(dispatching_worker.DispatchingWorker,
         try:
             #return self.qpid_client.rcv.fetch()
             return self.qpid_client.fetch()
-        except Queue.Empty:
+        except self.Queue.Empty:
             return None
-        except qpid.messaging.ReceiverError, e:
+        except self.qpid.messaging.ReceiverError, e:
             Trace.trace(10, "_fetch_enstore_ticket exception %s"%(e,))
             return None
 
@@ -140,7 +142,7 @@ class LMD(dispatching_worker.DispatchingWorker,
     def lmd_decision(self, ticket):
         Trace.trace(10, "lmd_decision")
         if type(ticket) != types.DictType:
-            Trace.trace(10, "lmd serve_qpid()  - ticket is not dictionary type, ticket %s." % (ticket,))
+            Trace.trace(10, "lmd_decision  - ticket is not dictionary type, ticket %s." % (ticket,))
             return {'status': (e_errors.LMD_WRONG_TICKET_FORMAT, 'LMD: ticket is not dictionary type')}
         result = ticket
         # create a copy of the original library
@@ -200,7 +202,7 @@ class LMD(dispatching_worker.DispatchingWorker,
                     result = self.lmd_decision(ticket)
                     Trace.trace(10, "serve_qpid: decision %s"%(result,))
 
-                    reply = qpid.messaging.Message(result, correlation_id=message.correlation_id )      
+                    reply = self.qpid.messaging.Message(result, correlation_id=message.correlation_id )      
                 except Exception, detail:
                     Trace.log(e_errors.ERROR, "Exception processing encp request %s: %s"%(detail, message))
 
@@ -209,7 +211,7 @@ class LMD(dispatching_worker.DispatchingWorker,
                     if reply :
                         self.qpid_client.send(reply)
                         Trace.trace(10, "serve_qpid: reply sent %s"%(reply,))
-                except qpid.messaging.SendError, e:
+                except self.qpid.messaging.SendError, e:
                     Trace.trace(10, "serve_qpid: exception sending reply  %s"%(e,))
                     continue
                     
@@ -229,6 +231,8 @@ class LMD(dispatching_worker.DispatchingWorker,
         
 
     def start_qpid_server(self):
+        if not self.proxy_server_config:
+            return
         # start qpid server in separate process (we may add more processes reading the same queue)
         print "START QPID SERVER"
         # Use threading!
@@ -238,6 +242,8 @@ class LMD(dispatching_worker.DispatchingWorker,
         self.qpid_proc.start()
 
     def stop_qpid_server(self):
+        if not self.proxy_server_config:
+            return
         # tell serving thread to stop and wait until it finish    
         self.shutdown = True
         
