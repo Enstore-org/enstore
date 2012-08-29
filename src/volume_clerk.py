@@ -1566,6 +1566,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
     def __delete_volume(self, vol, recycle = 0, check_state = 1,
                         clear_sg = False, reset_declared = True,
                         record = None):
+        status = e_errors.OK, None
         if record == None:
             # check existence of the volume
             record = self.volumedb_dict[vol]
@@ -1632,9 +1633,14 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             else: # don't do anything further
                 return status
         else:    # never written
-            del self.volumedb_dict[vol]
-            status = e_errors.OK, None
-            Trace.log(e_errors.INFO, 'Empty volume "%s" has been deleted'%(vol))
+            if not recycle:
+                #
+                # we only delete the volume if we are not recycling it, otherwise
+                # the history is lost
+                #
+                del self.volumedb_dict[vol]
+                status = e_errors.OK, None
+                Trace.log(e_errors.INFO, 'Empty volume "%s" has been deleted'%(vol))
 
         # recycling it?
 
@@ -1680,10 +1686,11 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                 finally:
                     sg_lock.release()
 
-            # take care of write_protect state
-            if renamed: # take it from its previous life
+            if renamed:
+                # take care of write_protect state
+                # take it from its previous life
                 q = "select time, value from state, state_type, volume \
-                    where \
+                     where \
                         state.type = state_type.id and \
                         state_type.name = 'write_protect' and \
                         state.volume = volume.id and \
@@ -1695,8 +1702,15 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                         self.change_state(vol, 'write_protect', res[0]['value'])
                         message = 'volume "%s" has been recycled' % (vol,)
                         Trace.log(e_errors.INFO, message)
-                except:    # fail save
+                except:
                     pass
+                # take care of history by re-assigning state record from <volume>.deleted to <volume>
+                q = "update state set volume=(select id from volume where label='%s') \
+                     where volume=(select id from volume where label='%s')"%(vol,renamed,)
+                try:
+                    self.volumedb_dict.update(q)
+                except:
+                    return e_errors.ERROR, "Failed to preserve volume history"
 
         else:
 
