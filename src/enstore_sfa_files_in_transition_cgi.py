@@ -3,7 +3,7 @@
 import os
 import sys
 import string
-import time 
+import time
 import enstore_functions2
 import enstore_functions3
 import configuration_client
@@ -11,7 +11,7 @@ import info_client
 import e_errors
 import file_utils
 import statvfs
-import dispatcher_client 
+import dispatcher_client
 from   DBUtils import PooledDB
 import  psycopg2
 import psycopg2.extras
@@ -61,7 +61,7 @@ def get_environment():
             print "Unable to determine ENSTORE_CONFIG_PORT."
             sys.exit(1)
         pfile.close()
-        
+
 def select(value,query):
     connectionPool = None
     cursor = None
@@ -88,7 +88,7 @@ def select(value,query):
         for item in [cursor, db, connectionPool]:
             if item :
                 item.close()
-    
+
 def parse_mtab(volumes):
     volume_map={}
     for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
@@ -158,9 +158,12 @@ def main():
                          p["rule"]["wrapper"]
                 print "<TD><a href=\"#"+policy+"\">"+policy+"</a></TD>"
                 for key in p:
-                    if key == 'minimal_file_size' : p[key] /= KB
                     print "<TD>"
-                    print key,"=",p[key]
+                    if key == 'minimal_file_size' :
+                        p[key] /= KB
+                        print key,"=",p[key],"(kB)"
+                    else:
+                        print key,"=",p[key]
                     print "</TD>"
                 print "</TR>"
     print "</TABLE>"
@@ -190,10 +193,10 @@ def main():
                     if not files.has_key(policy):
                         #files[policy] = {"migration_pool" : [] , "cache_written" : [] }
                         files[policy] = { }
-                    if not files[policy].has_key(pool) : 
+                    if not files[policy].has_key(pool) :
                         files[policy][pool] = {}
                     if not files[policy][pool].has_key(k):
-                        files[policy][pool][k] = [] 
+                        files[policy][pool][k] = []
                     l = result['pools'][pool][k]['list']
                     for item in l:
                         files_pool_policy[policy][pool].append(item["bfid"])
@@ -211,7 +214,7 @@ def main():
                     if not files.has_key(policy):
                         #files[policy] = {"migration_pool" : [] , "cache_written" : [] }
                         files[policy] = { }
-                    if not files[policy].has_key(pool) : 
+                    if not files[policy].has_key(pool) :
                         files[policy][pool] = {}
                     if not files[policy][pool].has_key(value.list_id):
                         files[policy][pool][value.list_id] = []
@@ -238,7 +241,7 @@ def main():
                 res = select(dbinfo,Q1)
                 count = int(res[0]["count"])
                 size  = long(res[0]["total"])
-                
+
                 print "<h2>pool=%s, total=%d, size=%d (kB), #of lists=%d</h2>"%(pool,count,size,len(list))
                 for key, value in list.iteritems():
                     Q1 = "select count(*), sum(size)/1024. as total from file where bfid in ('%s')"%(string.join(value,"','"))
@@ -268,7 +271,7 @@ def main():
                     print "</pre>"
     print '</body>'
     print '</html>'
-   
+
 
 if __name__ == '__main__':
 
