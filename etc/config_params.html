@@ -132,6 +132,16 @@ corresponding server when generating the SAAG page, and will not use
 	      <td>Optional</td><td>2GB-2kB</td>
 
 </tr>
+<tr><td><a NAME="max_in_active">max_in_active</a></td><td>maximal time allowed for the
+	      transfer to be in ACTIVE state</td>
+	      <td>Optional</td><td>7200(s)</td>
+
+<tr><td><a NAME="max_in_other">max_in_other</a></td><td>maximal time allowed for the
+	      transfer or mover to be in other than ACTIVE state</td>
+	      <td>Optional</td><td>2000(s)</td>
+
+</tr>
+
 <tr><td><a NAME="blank_error_increment">blank_error_increment</a></td><td>do not set volume to NOACCESS in case of FTT_EBLANK error until the number of erros exceeds max_suspect_movers+blank_error_increment</td>
 	      <td>Optional</td><td>5</td>
 
@@ -185,13 +195,15 @@ corresponding server when generating the SAAG page, and will not use
 <tr><td><a
 	   NAME="use_threads">use_threads</a></td><td>Use separate
 	      threads for every mover request (shows problems during
-	      testing, avoid settung to True).
+	      testing, avoid setting to True).
 	      </td>
 	   <td>Optional</td><td>False</td>
 
 </tr>
-use_threads
+<tr><td><a NAME="use_LMD">use_LMD</a></td><td>for SFA clients use this Library Manager Director</td>
+	      <td>Optional</td><td>None</td>
 
+</tr>
 </table>
 
 <h2>Mover Keys</h2>
@@ -1009,7 +1021,7 @@ See details in "Small Files Aggregation High Level Design" document.
 </tr>
 </table>
 
-<h2>UDP Proxy Server</h2>
+<h2>UDP Proxy Server (optional)</h2>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
 <tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
 </th>
@@ -1042,10 +1054,13 @@ See details in "Small Files Aggregation High Level Design" document.
 </tr>
 
 <tr><td><a NAME="queue_in">queue_in</a></td><td>AMQP queue name on which LM director communicates with proxy server</td>
-	   <td>Mandatory</td><td>None</td>
+	   <td>Optional. Do not configure it not using UDP Proxy Server</td><td>None</td>
 </tr>
-<tr><td><a NAME="udp_proxy_server">target_addr</a></td><td>proxy server with which LM director communicates</td>
-	   <td>Mandatory</td><td>None</td>
+<tr><td><a NAME="udp_proxy_server">udp_proxy_server</a></td><td>proxy server with which LM director communicates</td>
+	   <td>Optional. encp communicates directly with LMD if proxy is not set.</td><td>None</td>
+</tr>
+<tr><td><a NAME="udp_port">udp_port</a></td><td>Define this port and set it == 'port' if not using UDP Proxy Server</td>
+	   <td>Optional</td><td>None</td>
 </tr>
 <tr><td><a NAME="policy_file">policy_file</a></td><td>Path to file with current policies</td>
 	   <td>Mandatory</td><td>None</td>
@@ -1100,7 +1115,7 @@ See details in "Small Files Aggregation High Level Design" document.
 
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Wed Jun 27 11:21:00 CST 2012
+Last modified: Fri Aug 31 16:13:00 CST 2012
 <!-- hhmts end -->
   </body>
 </html>
