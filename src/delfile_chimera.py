@@ -133,8 +133,9 @@ def main(intf):
                         # just delete trash record
                         #
                         if not delete_trash_record(db,pnfsid):
+                            # if not successful set success to False
                             success=False
-                            continue
+                        continue
                     bfid     = url_dict.get('bfid')[0]
                     volume   = url_dict.get('enstore://enstore/?volume')[0]
 
