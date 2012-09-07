@@ -97,7 +97,8 @@ class FileList:
         self.file_list.remove(item.d)
         
     def __repr__(self):
-        return "id=%s name=%s type=%s content %s" % (self.list_id, self.list_name, self.list_type, self.file_list)
+        return "id=%s name=%s created %s type=%s content %s" % \
+               (self.list_id, self.list_name, time.ctime(self.creation_time), self.list_type, self.file_list)
 
 class FileListWithCRC(FileList):
     """
