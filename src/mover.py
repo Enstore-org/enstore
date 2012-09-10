@@ -2020,21 +2020,29 @@ class Mover(dispatching_worker.DispatchingWorker,
                     transfer_stuck = 0 
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
                     if self.bytes_read_last == self.bytes_read:
-                        # Trace.trace(8, "net thread %s tape thread %s"%(n_thread.isAlive(),t_thread.isAlive())) 
-                        Trace.log(e_errors.INFO, "net thread %s tape thread %s"%(n_thread.isAlive(),t_thread.isAlive())) # Remove this when problem is fixed !!!!! 
-                        # see what thread is active
-                        if n_thread.isAlive() and not t_thread.isAlive():
-                            # we better do not drop a connection while
-                            # tape thread is alive
-                            # tape thread can itself detect that
-                            # transfer out is slow and error out
-                            # this is the case when tape thread read
-                            # the data into the buffer and finished
-                            # (buffer is bigger than file size)
-                            transfer_stuck = 1
-                            if hasattr(self,'too_long_in_state_sent'):
-                                del(self.too_long_in_state_sent)
+                        if self.mode == WRITE:
+                            if self.bytes_written == self.bytes_to_write:
+                                # data transfer completed
+                                # but the state has not yet changed
+                                # return here to not raise a false alarm
+                                return
+                        else:
+                            Trace.log(e_errors.INFO, "net thread %s tape thread %s"%(n_thread.isAlive(),t_thread.isAlive())) # Remove this when problem is fixed !!!!! 
+                            # see what thread is active
+                            if n_thread.isAlive() and not t_thread.isAlive():
+                                # we better do not drop a connection while
+                                # tape thread is alive
+                                # tape thread can itself detect that
+                                # transfer out is slow and error out
+                                # this is the case when tape thread read
+                                # the data into the buffer and finished
+                                # (buffer is bigger than file size)
+                                transfer_stuck = 1
+                                if hasattr(self,'too_long_in_state_sent'):
+                                    del(self.too_long_in_state_sent)
                     else:
+                        # data is being transferred
+                        # do not raise alarm
                         return
                             
                 if not hasattr(self,'too_long_in_state_sent'):
@@ -2337,7 +2345,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             if self.tr_failed:
                 break
-            self.bytes_read_last = self.bytes_read    
             if self.buffer.full():
                 Trace.trace(9, "read_client: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
@@ -2372,6 +2379,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 message = "read_client: %s"%(reason,)
                 self.transfer_failed(e_errors.ENCP_GONE, msg=message, error_source=NETWORK)
                 return
+            self.bytes_read_last = self.bytes_read
             self.bytes_read = self.bytes_read + bytes_read
 
             if not self.buffer.low():
