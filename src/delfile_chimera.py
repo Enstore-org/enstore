@@ -49,7 +49,11 @@ def delete_trash_record(db,pnfsid) :
     success=True
     try:
         delete_cursor = db.cursor()
-        delete_cursor.execute("delete from t_locationinfo_trash where ipnfsid='%s'"%(pnfsid,))
+        #
+        # we are removing only TAPE files (itype=0) DISK files (itype=1) are handled by dCache
+        # cleaner
+        #
+        delete_cursor.execute("delete from t_locationinfo_trash where ipnfsid='%s' and itype=0"%(pnfsid,))
         db.commit()
     except psycopg2.Error, msg:
         success = False
@@ -106,6 +110,10 @@ def main(intf):
                                               database=value.get('dbname','chimera'))
             db = connectionPool.connection()
             cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            #
+            # we are looking for only TAPE files (itype=0) DISK files (itype=1) are handled by dCache
+            # cleaner
+            #
             cursor.execute("select * from t_locationinfo_trash where itype=0")
             res=cursor.fetchall()
 
