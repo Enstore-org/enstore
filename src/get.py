@@ -27,7 +27,7 @@ import host_config
 import Trace
 #import checksum
 import option
-#import enstore_functions3
+import enstore_functions3
 import callback
 
 #Completion status field values.
@@ -149,7 +149,7 @@ class GetInterface(encp.EncpInterface):
 def error_output(request):
     #Get the info.
     lc = request.get('fc', {}).get("location_cookie", None)
-    file_number = encp.extract_file_number(lc)
+    file_number = enstore_functions3.extract_file_number(lc)
     message = request.get("status", (e_errors.UNKNOWN, None))
     #Format the output.
     msg = "error_output %s %s\n" % (file_number, message)
@@ -583,7 +583,7 @@ def mover_handshake2_original(work_ticket, udp_socket, e):
 
         #Record the event of sending the request to the mover.
         message = "Sending file %s request to the mover." % \
-                encp.extract_file_number(work_ticket['fc']['location_cookie'])
+                enstore_functions3.extract_file_number(work_ticket['fc']['location_cookie'])
         Trace.message(TRANSFER_LEVEL, message)
         Trace.log(e_errors.INFO, message)
 
@@ -835,7 +835,7 @@ def get_next_request(request_list, e): #, filenumber = None):
         if e.list or not e.read_to_end_of_tape:
             return None, 0
         else:
-            filenumber = encp.extract_file_number(request_list[-1]['fc']['location_cookie'])
+            filenumber =enstore_functions3.extract_file_number(request_list[-1]['fc']['location_cookie'])
             request = next_request_update(copy.deepcopy(request_list[0]),
                                           filenumber + 1, e)
             request_list.append(request)
