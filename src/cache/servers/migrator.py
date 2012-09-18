@@ -898,9 +898,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                              'cache_status':None,# we are not changing this
                                              'archive_status': "null",
                                              'cache_location': None})       # we are not changing this
-                        
-                    rc1 = set_cache_status.set_cache_status(self.fcc, set_cache_params)
-                    self.clean_up_after_write(src_file_path)
+
+                # this comment is added to please RB, which ignores
+                # changes with whitespaces only
+                rc1 = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+                self.clean_up_after_write(src_file_path)
                 # remove tepmporary file in name space if exists
                 Trace.trace(10, "write_to_tape: removing temp. file %s"%(dst_file_path,))
                 try:
