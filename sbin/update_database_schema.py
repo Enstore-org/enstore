@@ -128,21 +128,13 @@ if __name__ == "__main__":
     #
     # move ALTER at the end
     #
-
-    create_no_index = "%s_diff_1.sql"%(dbname,)
-    create_index    = "%s_diff_2.sql"%(dbname,)
-    alter_file      = "%s_diff_3.sql"%(dbname,)
-
-    cmd="cat %s | grep -v ALTER | grep -v \"CREATE INDEX\" > %s"%(diff_file_tmp,create_no_index,)
+    no_alter_file="%s_diff_1.sql"%(dbname,)
+    alter_file="%s_diff_2.sql"%(dbname,)
+    cmd="cat %s | grep -v ALTER > %s"%(diff_file_tmp,no_alter_file,)
     os.system(cmd)
-
-    cmd="cat %s | grep -v ALTER | grep \"CREATE INDEX\" > %s"%(diff_file_tmp,create_index,)
-    os.system(cmd)
-
     cmd="cat %s | grep ALTER > %s"%(diff_file_tmp,alter_file,)
     os.system(cmd)
-    
-    cmd="cat %s %s %s > %s"%(create_no_index, alter_file, create_index, diff_file,)
+    cmd="cat %s %s > %s"%(no_alter_file,alter_file,diff_file,)
     if (os.system(cmd)):
         print_error("failed to execute %s"%(cmd))
         sys.exit(1)
@@ -162,8 +154,7 @@ if __name__ == "__main__":
                                                                                                                      update_file,)
     os.system(cmd)
     os.unlink(alter_file)
-    os.unlink(create_no_index)
-    os.unlink(create_index)
+    os.unlink(no_alter_file)
     os.unlink(diff_file_tmp)
     os.unlink("schema.xml")
     os.unlink(diff_file)
