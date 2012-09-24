@@ -2424,7 +2424,43 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
         if not external_label:
             return #extract_external_lable_from_ticket handles its own errors.
 
+
+        eod_cookie = None
+        eod_cookie_on_record = None
+
+        try:
+            eod_cookie_on_record = enstore_functions3.extract_file_number(record["eod_cookie"])
+            eod_cookie           = enstore_functions3.extract_file_number(ticket["eod_cookie"])
+        except KeyError,detail:
+            ticket["status"] = (e_errors.KEYERROR, str(detail))
+            Trace.log(e_errors.ERROR, str(detail))
+            self.reply_to_caller(ticket)
+            return
+        except:
+            exc, msg = sys.exc_info()[:2]
+            Trace.handle_error(exc, msg)
+            ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, str(msg))
+            self.reply_to_caller(ticket)
+            return
+
+        if not eod_cookie :
+            message = "eod_cookie is malformed : %s"%(ticket["eod_cookie"],)
+            ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, message)
+            Trace.log(e_errors.ERROR, message)
+            self.reply_to_caller(ticket)
+            return
+
+        if eod_cookie_on_record and (eod_cookie <= eod_cookie_on_record) :
+            message = "Refuse to set eod_cookie from %s, to %s"%(record["eod_cookie"],
+                                                                 ticket["eod_cookie"],)
+            ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, message)
+            Trace.log(e_errors.ERROR, message)
+            self.reply_to_caller(ticket)
+            return
+
+
         # update the fields that have changed
+
         try:
             for key in ["remaining_bytes","eod_cookie"]:
                 record[key] = ticket[key]
