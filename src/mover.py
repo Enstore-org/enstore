@@ -1488,6 +1488,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.files_written_cnt = 0
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
         self.max_in_state_cnt = self.config.get('max_in_state_cnt', 2)
+        self.remaining_factor = self.config.get('remaining_factor', 0.01)
         crc_control = self.config.get("read_crc_control", None)
         if crc_control and crc_control in (0,1):
             self.read_crc_control = crc_control
@@ -4607,12 +4608,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             ### network errors should not count toward rd_err, wr_err
             if self.mode == WRITE:
                 self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
-                #Heuristic: if tape is more than 90% full and we get a write error, mark it full
+                # Heuristic: if tape is more than  remaining_factor*capacity full and we get a write error, 
+                # mark it full
                 try:
                     capacity = self.vol_info['capacity_bytes']
                     remaining = self.vol_info['remaining_bytes']
                     eod = self.vol_info['eod_cookie']
-                    if remaining <= 0.1 * capacity:
+                    if remaining <= self.remaining_factor * capacity:
                         Trace.log(e_errors.INFO,
                                   "heuristic: write error on vol %s, remaining=%s, capacity=%s, marking volume full"%
                                   (self.current_volume, remaining, capacity))
@@ -4994,7 +4996,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.alarm(e_errors.ALARM, 'Wrong remaining bytes count detected: prev %s current %s expected %s'%(r0, r2, r1))
             return 0
         '''    
-        if r1 <= 0.1 * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
+        if r1 <= self.remaining_factor * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
             remaining = min(r1, r2)
         else:                     #trust what the drive tells us, as long as we are under 90% full
             remaining = r2
