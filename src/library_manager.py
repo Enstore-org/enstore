@@ -2190,9 +2190,13 @@ class LibraryManagerMethods:
         status = None
         # what is current volume state?
         self.current_volume_info = self.inquire_vol(external_label)
+        Trace.trace(self.trace_level, "next_work_this_volume: current volume info: %s"%(self.current_volume_info,))
         if self.current_volume_info['status'][0] == e_errors.TIMEDOUT:
             Trace.log(e_errors.ERROR, "No volume info %s. Do not know how to proceed"%
                       (self.current_volume_info,))
+            return  None, (e_errors.NOWORK, None)
+        if self.current_volume_info['system_inhibit'][0] in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+            Trace.log(e_errors.ERROR, "Volume %s is unavailable: %s"%(external_label, self.current_volume_info['system_inhibit']))
             return  None, (e_errors.NOWORK, None)
 
         self.init_request_selection()
