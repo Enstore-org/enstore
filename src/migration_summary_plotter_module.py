@@ -369,7 +369,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             else:
                 miny=0
             if total_volumes:
-                 percent = min(100,100*(closed_count/total_volumes))
+                 percent = min(100,100*(float(closed_count)/total_volumes))
                  #Don't set yrange if total_volumes is zero, otherwise the
                  # plot will fail from the error:
                  # "line 0: Can't plot with an empty y range!"
@@ -384,7 +384,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                           % (self.summary_started.get(key, 0L),))
             plot_fp.write('set label "Migrated %s" at graph .05,.85\n' \
                           % (self.summary_done.get(key, 0L),))
-            plot_fp.write('set label "Closed %s (%s%% done)" at graph .05,.80\n' \
+            plot_fp.write('set label "Closed %s (%.2f%% done)" at graph .05,.80\n' \
                           % (self.summary_closed.get(key, 0L),percent))
             plot_fp.write('set label "Total %s" at graph .05,.75\n' \
                           % (total_volumes,))
