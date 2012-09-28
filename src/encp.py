@@ -463,7 +463,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11 CVS $Revision$ "
+    version_string = "v3_11a CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -2331,9 +2331,9 @@ def get_lmc(library, use_lmc_cache = True):
                                            library_dict.get('host', None))
             server_address = (server_host, server_port)
 
-    __lmc = library_manager_client.LibraryManagerClient(
-        csc, lib, logc = __logc, alarmc = __alarmc,
-        rcv_timeout = 5, rcv_tries = 20, server_address = server_address)
+            __lmc = library_manager_client.LibraryManagerClient(
+                csc, lib, logc = __logc, alarmc = __alarmc,
+                rcv_timeout = 5, rcv_tries = 20, server_address = server_address)
 
     return __lmc
 
@@ -12007,7 +12007,7 @@ class EncpInterface(option.Interface):
                        #option.DEFAULT_VALUE:1,
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_TYPE:option.STRING,
-                       option.USER_LEVEL:option.ADMIN,},
+                       option.USER_LEVEL:option.USER,},
         }
 
     ##########################################################################
