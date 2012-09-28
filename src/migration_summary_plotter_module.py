@@ -297,6 +297,8 @@ group by media_type,capacity_bytes;
 
 
 ACCUMULATED = "accumulated"
+ACCUMULATED_NG = "accumulated_ng"
+ACCUMULATED_LG = "accumulated_log"
 DAILY = "daily"
 
 class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
@@ -337,22 +339,19 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         #plot_fp.write('set nokey\n')
         plot_fp.write('set label "Plotted %s " at graph 1.01,0 rotate font "Helvetica,10"\n' % (time.ctime(),))
 
-        if plot_type == ACCUMULATED:
-            
+        if plot_type in ( ACCUMULATED, ACCUMULATED_NG, ACCUMULATED_LG):
             started_count = self.summary_started.get(key, 0L)
             #done_count = self.summary_done.get(key, 0L)
             closed_count = self.summary_closed.get(key, 0L)
             remaining_count = self.summary_remaining.get(key, 0L)
             total_count = self.summary_total.get(key, 0L)
-            
             #This is possibly used for adjusting the goal line.  See comment
             # below for possible reasons.
             if started_count > total_count:
                 goal_adjust = started_count - total_count
             else:
                 goal_adjust = 0
-
-            #Determine the number of volumes that is the goal.  Basically,
+            #Determine the number of volumes that is the goal.  Basically
             # this takes the sum of the number of tapes closed added to the
             # number of tapes remaining.  However, it is far more complicated.
             #
@@ -360,28 +359,38 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             # clobbered into 9940B tapes.  Thus, more tapes can be migrated
             # than what summary_total will contain at this point in time
             # for the total number of 9940As.  This is where goal_adjust
-            # comes into play.
+            # comes into play
             total_volumes = max(total_count + goal_adjust,
                                 (closed_count + remaining_count))
-
+            #This is possibly used for adjusting the goal line.  See comm
+            if plot_type == ACCUMULATED_LG:
+                plot_fp.write('set logscale y\n')
+                miny=1.0
+            else:
+                miny=0
             if total_volumes:
-                #Don't set yrange if total_volumes is zero, otherwise the
-                # plot will fail from the error:
-                # "line 0: Can't plot with an empty y range!"
-                plot_fp.write('set yrange [ 0 : %f ]\n' % (total_volumes * 1.1,))
-            plot_fp.write('set label "Remaining %s" at graph .05,.95\n' \
+                 percent = min(100,100*(closed_count/total_volumes))
+                 #Don't set yrange if total_volumes is zero, otherwise the
+                 # plot will fail from the error:
+                 # "line 0: Can't plot with an empty y range!"
+                 
+                 if plot_type != ACCUMULATED_NG:
+                    plot_fp.write('set yrange [ %f : %f ]\n' % (miny,total_volumes * 1.1))
+            else:
+                percent=100
+            plot_fp.write('set label "Remaining %s " at graph .05,.95\n' \
                           % (self.summary_remaining.get(key, 0L),))
             plot_fp.write('set label "Started %s" at graph .05,.90\n' \
                           % (self.summary_started.get(key, 0L),))
             plot_fp.write('set label "Migrated %s" at graph .05,.85\n' \
                           % (self.summary_done.get(key, 0L),))
-            plot_fp.write('set label "Closed %s" at graph .05,.80\n' \
-                          % (self.summary_closed.get(key, 0L),))
+            plot_fp.write('set label "Closed %s (%s%% done)" at graph .05,.80\n' \
+                          % (self.summary_closed.get(key, 0L),percent))
             plot_fp.write('set label "Total %s" at graph .05,.75\n' \
                           % (total_volumes,))
         else: #Daily
-             plot_fp.write('set yrange [ 0 : ]\n')
-        
+            plot_fp.write('set yrange [ 0 : ]\n')
+
         #Build the plot command line.
         plot_line = "plot "
         for i in range(len(columns)):
@@ -393,7 +402,7 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             #Add the next set of plots.
             plot_line = plot_line + '"%s" using 1:%d title "%s" with impulses lw 10' % (data_filename, column, titles[i])
         #If the plot is accumulated, plot the total to migrate.
-        if plot_type == ACCUMULATED:
+        if plot_type in ( ACCUMULATED, ACCUMULATED_LG):
             plot_line = '%s, x,%s title "goal" with lines lw 4' % (plot_line, total_volumes)
             pass
         #Put the whole thing together.
@@ -545,6 +554,10 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
 
             print "Plotting %s accumulated" % (key,)
             self._plot(key, ACCUMULATED)
+            print "Plotting %s accumulated_ng" % (key,)
+            self._plot(key,ACCUMULATED_NG)
+            print "Plotting %s accumulated_lg" % (key,)
+            self._plot(key,ACCUMULATED_LG)                      
             print "Plotting %s daily" % (key,)
             self._plot(key, DAILY)
 
@@ -555,21 +568,21 @@ class MigrationSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             except:
                 pass
 
-    #Plot type is either ACCUMULATED or DAILY.
+    #Plot type is either ACCUMULATED ACCUULATED_NG ACCUMULATED_LG or DAILY.
     def _plot(self, key, plot_type):
 
             #Get some filenames for the various files that get created.
             ps_filename = os.path.join(self.web_dir,
-                      "migration_summary_%s_%s.ps" % (plot_type, key,))
+                      "migration_%s_%s.ps" % (plot_type, key,))
             jpeg_filename = os.path.join(self.web_dir,
-                      "migration_summary_%s_%s.jpg" % (plot_type, key,))
+                      "migration_%s_%s.jpg" % (plot_type, key,))
             jpeg_filename_stamp = os.path.join(self.web_dir,
-                      "migration_summary_%s_%s_stamp.jpg" % (plot_type, key,))
+                      "migration_%s_%s_stamp.jpg" % (plot_type, key,))
             plot_filename = os.path.join(self.temp_dir,
-                      "migration_summary_%s_%s.plot" % (plot_type, key,))
+                      "migration_%s_%s.plot" % (plot_type, key,))
 
             titles = ['started', 'migrated/duplicated', 'closed']
-            if plot_type == ACCUMULATED:
+            if plot_type in ( ACCUMULATED, ACCUMULATED_NG, ACCUMULATED_LG):
                 columns = [5, 6, 7]
             elif plot_type == DAILY:
                 columns = [2, 3, 4]
