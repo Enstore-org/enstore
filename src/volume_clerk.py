@@ -2450,14 +2450,38 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
             self.reply_to_caller(ticket)
             return
 
-        if eod_cookie_on_record and (eod_cookie <= eod_cookie_on_record) :
-            message = "Refuse to set eod_cookie from %s, to %s"%(record["eod_cookie"],
-                                                                 ticket["eod_cookie"],)
-            ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, message)
-            Trace.log(e_errors.ERROR, message)
-            self.reply_to_caller(ticket)
-            return
-
+        if eod_cookie_on_record:
+            if eod_cookie < eod_cookie_on_record:
+                if record["media_type"] == "disk" :
+                    #
+                    # in case of disk media type we can have asyncronous set_remaining
+                    # calls for a given volume. As these numbers do not matter for disk
+                    # volume we ignore them
+                    #
+                    message = "disk media_type, refuse to set eod_cookie from %s, to %s"%(record["eod_cookie"],
+                                                                                          ticket["eod_cookie"],)
+                    ticket["status"] = (e_errors.OK, message)
+                    Trace.log(e_errors.INFO, message)
+                else:
+                    #
+                    # in case of non-disk media type we error out if there
+                    # is an attempt to set eod_cookie wich is less than one on record
+                    #
+                    message = "Refuse to set eod_cookie from %s, to %s"%(record["eod_cookie"],
+                                                                         ticket["eod_cookie"],)
+                    ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, message)
+                    Trace.log(e_errors.ERROR, message)
+                self.reply_to_caller(ticket)
+                return
+            elif eod_cookie == eod_cookie_on_record:
+                #
+                # This is assumed to be retry call, just return success
+                #
+                message = "Got the same eod_cookie as on record (%s, %s)"%(record["eod_cookie"],
+                                                                           ticket["eod_cookie"],)
+                ticket["status"] = (e_errors.OK, message)
+                self.reply_to_caller(ticket)
+                return
 
         # update the fields that have changed
 
