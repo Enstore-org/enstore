@@ -3413,7 +3413,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 work_at_mover_unique_id = string.join(s1[:-1], "-")
                 Trace.trace(self.my_trace_level, "mover_idle: m_id %s w_id %s"%(mover_rq_unique_id,work_at_mover_unique_id))
             # check if it is a backed up request
-            if mover_rq_unique_id and mover_rq_unique_id != work_at_mover_unique_id:
+            if ((mover_rq_unique_id and mover_rq_unique_id != work_at_mover_unique_id) and
+                ( mticket["time_in_state"] < 60)): # allow 60 s for possible communication re-tries
                 Trace.trace(self.my_trace_level+1,"mover_idle: found backed up mover %s" % (mticket['mover'],))
                 Trace.trace(self.my_trace_level+1,"mover_idle: mover_rq_unique_id %s work_at_mover_unique_id %s"%(mover_rq_unique_id, work_at_mover_unique_id))
                 self.reply_to_caller(nowork) # AM!!!!!
