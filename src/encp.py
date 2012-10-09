@@ -5219,7 +5219,6 @@ def wait_for_message(listen_socket, lmc, work_list,
                 continue
 
             break
-
         else:
             r = [] #We don't have a message or connection.  Define this if
                    # the user specified "--resubmit_timeout 0" on the command
@@ -5522,7 +5521,9 @@ def submit_one_request_send(ticket, encp_intf):
            lmd = library_manager_director_client.LibraryManagerDirectorClient(csc, lmd_name)
            Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET\n%s:"%(pprint.pformat(ticket),))
 
-           ticket = lmd.get_library_manager(ticket)
+           t = lmd.get_library_manager(copy.deepcopy(ticket))
+
+           ticket.update(dict(filter(lambda i : i[0] not in ("work"),t.iteritems()))
 
            Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET\n%s:"%(pprint.pformat(ticket),))
 
