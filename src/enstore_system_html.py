@@ -189,7 +189,7 @@ class EnstoreSystemHtml:
         add_row_to_table(self.info_table,"http://www-ccf.fnal.gov/enstore/documentation.html","Mass Storage System Documentation Page",
                          "Documentation, reports, talks for Enstore and dCache")
         if not remote:
-            add_row_to_table(self.info_table,"http://www-isd.fnal.gov/enstore/enstore_status_only.html",
+            add_row_to_table(self.info_table,"http://www-ccf.fnal.gov/enstore/enstore_status_only.html",
                                     "Production System's Overall Status","Status for all production Enstore systems")
             
         
