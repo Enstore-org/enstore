@@ -890,13 +890,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             if attr == 'state':
                 if val != getattr(self, 'state', None):
+                    self.time_in_state = 0.0
+                    self.in_state_to_cnt = 0
+                    self.__dict__['state_change_time'] = time.time()
                     Trace.notify("state %s %s" % (self.shortname, state_name(val)))
                 if val != SETUP:
                     self.tmp_vol = None
                     self.tmp_vf = None
-                self.time_in_state = 0.0
-                self.in_state_to_cnt = 0
-                self.__dict__['state_change_time'] = time.time()
                 if self.starting == 0:
                     if val == IDLE:
                         # in idle update interval for update_lm is as set
