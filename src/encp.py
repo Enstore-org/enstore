@@ -5523,7 +5523,7 @@ def submit_one_request_send(ticket, encp_intf):
 
            t = lmd.get_library_manager(copy.deepcopy(ticket))
 
-           ticket.update(dict(filter(lambda i : i[0] not in ("work"),t.iteritems()))
+           ticket.update(dict(filter(lambda i : i[0] not in ("work"),t.iteritems())))
 
            Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET\n%s:"%(pprint.pformat(ticket),))
 
