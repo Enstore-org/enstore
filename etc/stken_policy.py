@@ -15,7 +15,7 @@ policydict = {'CD-LTO4F1.library_manager': {
                                                     },
                                            'minimal_file_size': 8000000000L,
                                            'resulting_library':'CD-DiskSF',
-                                           'max_files_in_pack': 200, 
+                                           'max_files_in_pack': 2000, 
                                            'max_waiting_time': 24*3600,
                                            },
                                            3: {'rule': {'storage_group': 'lqcd',
