@@ -390,8 +390,13 @@ def do_work2(intf):
         (enstore_constants.MOUNTS_PER_ROBOT_PLOTS_SUBDIR,
          "Mounts/day per tape library"),
         ]
-
-    use_subdir_list = []
+    
+    if csc.get("dispatcher"):
+        # Append link only if SFA is in configuration
+        subdir_description_list.append((enstore_constants.SFA_STATS_PLOTS_SUBDIR,
+                                        "Small Files Aggregation Statistics"))
+    
+        use_subdir_list = []
     #Loop over all the plot subdirs making pages.
     for subdir, plot_name in subdir_description_list:
         full_subdir_path = os.path.join(plots_subdir, subdir)

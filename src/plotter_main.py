@@ -48,15 +48,16 @@ def usage(cmd):
     print "\t -M [--mover-summary]   : plot mover summary"
     print "\t -L [--library-mounts]   : plot tape library mounts"
     print "\t -l [--latencies]       : plot latencies plot"
+    print "\t -S [--sfa-stats]       : plot Small Files Aggregation Statistics"
     print "\t -h [--help]        : show this message"
 
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfeqtibMlL"
+        short_args = "hmrudspfeqtibMlLS"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
                      "slots", "pnfs-bakup", "file-family-analysis",
                      "quotas", "tapes-burn-rate", "migration-summary",
-                     "bytes-per-day", "mover-summary","latencies","library-mounts"]
+                     "bytes-per-day", "mover-summary","latencies","library-mounts", "sfa-stats"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError, msg:
         print msg
@@ -133,5 +134,13 @@ if __name__ == "__main__":
         if o in ("-L","--library-mounts"):
             aModule = mounts_per_robot_plotter_module.MountsPerRobotPlotterModule("library-mounts")
             f.add(aModule)
+        if o in ("-S","--sfa-stats"):
+            if f.csc.get("dispatcher"):
+                import sfa_plotter_module
+                aModule = sfa_plotter_module.SFAStatsPlotterModule("SFA_Statistics")
+                f.add(aModule)
+            else:
+                print "Small Files Configuration is not defined"
+                sys.exit(1)
 
     f.do_work()
