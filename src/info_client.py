@@ -335,11 +335,15 @@ class fileInfoMethods(generic_client.GenericClient):
 
         return ticket
 
-    def tape_list(self, external_label,
+    def tape_list(self, external_label, all_files = True,
                   timeout = generic_client.DEFAULT_TIMEOUT,
                   retry = generic_client.DEFAULT_TRIES):
         ticket = {"work"           : "tape_list3",
-                  "external_label" : external_label}
+                  "external_label" : external_label,
+                  "all" : all_files, # If all is False then get list of files, only resided on tape,
+                  # do not include members of packages.
+                  }
+        
         done_ticket = self.send(ticket, rcv_timeout = timeout,
                                 tries = retry, long_reply = 1)
 

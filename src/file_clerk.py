@@ -676,7 +676,9 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # db query are returned in the dictionary.  If export_format is True,
     # then the edb.py file DB export_format() function is called to
     # rename the keys from the query.
-    def __tape_list(self, external_label, export_format = False):
+    # If all_files is False then get list of files, only resided on tape,
+    # do not include members of packages.
+    def __tape_list(self, external_label, export_format = False, all_files = True):
         q = "select f.bfid, f.crc, f.deleted, f.drive, v.label as label, \
                     f.location_cookie, f.pnfs_path, f.pnfs_id, \
                     f.sanity_size, f.sanity_crc, f.size, \
@@ -698,7 +700,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             if not value.has_key('pnfs_name0'):
                 value['pnfs_name0'] = "unknown"
             file_list.append(value)
-            if file_info.get("bfid",None) == file_info.get("package_id",None):
+            if file_info.get("bfid",None) == file_info.get("package_id",None) and all_files :
 	       result = self.filedb_dict.query_dictresult("select f.bfid, f.crc, f.deleted, f.drive , \
 	       f.location_cookie, f.pnfs_path, f.pnfs_id, \
 	       f.sanity_size, f.sanity_crc, f.size, \
@@ -734,7 +736,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # log the activity
         Trace.log(e_errors.INFO, "start listing " + external_label)
 
-        vol = self.__tape_list(external_label)
+        vol = self.__tape_list(external_label, all_files = ticket.get("all", True))
 
         # finishing up
 
@@ -764,7 +766,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
         # log the activity
         Trace.log(e_errors.INFO, "start listing " + external_label + " (2)")
 
-        vol = self.__tape_list(external_label)
+        vol = self.__tape_list(external_label, all_files = ticket.get("all", True))
 
 
         # finishing up
@@ -804,7 +806,9 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             return
 
         # get reply
-        file_info = self.__tape_list(external_label, export_format = True)
+        file_info = self.__tape_list(external_label, 
+				     export_format = True, 
+				     all_files = ticket.get("all", True))
         ticket['tape_list'] = file_info
 
         # send the reply
