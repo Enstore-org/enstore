@@ -2021,7 +2021,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     transfer_stuck = 0 
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
                     if self.bytes_read_last == self.bytes_read:
-                        if self.mode == WRITE:
+                        if self.mode in (WRITE, ASSERT):
                             if self.bytes_written == self.bytes_to_write:
                                 # data transfer completed
                                 # but the state has not yet changed
@@ -2047,7 +2047,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return
                             
                 if not hasattr(self,'too_long_in_state_sent'):
-                    if self.state != ERROR:
+                    if self.state != ERROR and self.mode != ASSERT: # in ASSERT mode network is not used
                         try:
                             
                             Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
@@ -3823,8 +3823,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         self.setup_mode = mode
         ## pprint.pprint(ticket)
-        if (self.save_state not in (IDLE, HAVE_BOUND) or
-            self.setup_mode == ASSERT and self.save_state != IDLE):
+        #if (self.save_state not in (IDLE, HAVE_BOUND) or
+        #    self.setup_mode == ASSERT and self.save_state != IDLE):
+        if self.save_state not in (IDLE, HAVE_BOUND):
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
             self.unlock_state()
@@ -4026,7 +4027,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                            server_address=ticket['fc']['address'])
                         Trace.log(e_errors.INFO, "calling tape_list")
-                        file_list = fcc.tape_list(ticket['vc']['external_label'], timeout = 300, retry = 2)
+                        file_list = fcc.tape_list(ticket['vc']['external_label'], all_files = False, timeout = 300, retry = 2)
+                        
                         Trace.log(e_errors.INFO, "tape_list returned")
                         fc_address = ticket['fc']['address']
                         Trace.trace(24, "file List %s:: %s"%(type(file_list), file_list))
@@ -5808,10 +5810,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             tm = time.localtime(time.time())
             time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
             Trace.log(e_errors.INFO, "dismounted %s %s %s"%(self.current_volume,self.config['product_id'], time_msg))
-            #self.current_volume = None
-            if self.setup_mode == ASSERT:
-                self.send_client_done(self.current_work_ticket, e_errors.OK, None)
-
             if self.draining:
                 #self.state = OFFLINE
                 self.offline()

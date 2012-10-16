@@ -213,6 +213,7 @@ def create_assert_list(check_requests):
             ticket['callback_addr'] = callback_addr
             ticket['vc'] = vc
             ticket['vc']['address'] = vcc_list[i].server_address  #vcc instance
+            ticket['vc']['storage_group'] = ''
             #Optional values based on command line switches.
             if check_requests[vol] == []:
                 ticket['action'] = "crc_check"
@@ -226,6 +227,14 @@ def create_assert_list(check_requests):
             ticket['fc']['external_label'] = vc['external_label']
             ticket['fc']['location_cookie'] = "0000_000000000_0000000"
             ticket['fc']['address'] = fcc_list[i].server_address  #fcc instance
+            ticket['fc']['pnfsid'] = ''
+            ticket['fc']['pnfs_name0'] = ''
+            ticket['fc']['deleted'] = ''
+            ticket['fc']['bfid'] = ''
+            ticket['fc']['sanity_cookie'] = (0,0)
+            ticket['fc']['complete_crc'] = 0L
+            ticket['fc']['size'] = 0L
+            
 	    ticket['times'] = {}
 	    ticket['times']['t0'] = time.time()
 	    ticket['encp'] = {}
@@ -234,6 +243,7 @@ def create_assert_list(check_requests):
             ticket['encp']['curpri'] = 0  #For transfers, this is set by LM.
             ticket['encp']['delpri'] = 0
             ticket['encp']['agetime'] = 0
+            ticket['encp']['delayed_dismount'] = 1
             ticket['infile'] = ""
             ticket['outfile'] = ""
             ticket['volume'] = vol
@@ -243,7 +253,15 @@ def create_assert_list(check_requests):
             ticket['wrapper']['machine'] = os.uname()
             ticket["wrapper"]["pnfsFilename"] = ""
             ticket["wrapper"]["fullname"] = ""
+            ticket["wrapper"]['inode'] = 0
+            ticket["wrapper"]['major'] = 0
+            ticket["wrapper"]['minor'] = 0
+            ticket["wrapper"]['sanity_size'] = 0
+            ticket["wrapper"]['mode'] = 0
             ticket['override_ro_mount'] = 1
+            
+            ticket['file_size'] = 0
+            ticket['version'] = ''
 
             #Add the assert work ticket to the list of volume asserts.
             assert_list.append(ticket)

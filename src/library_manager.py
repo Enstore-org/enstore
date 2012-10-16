@@ -2909,7 +2909,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 error_detected = True
 
         if not error_detected:
-            error_detected = self.restrict_version_access(ticket['vc']['storage_group'], self.legal_encp_version, ticket)
+            if ticket.get("work_in_work") == "volume_assert":
+                # do not check version
+                pass
+            else:
+                error_detected = self.restrict_version_access(ticket['vc']['storage_group'], self.legal_encp_version, ticket)
 
         if not error_detected:
             # check if request is alredy in the queue
@@ -3561,6 +3565,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w['r_a'] = saved_reply_address
         # remove this mover from idle_movers list
         self.remove_idle_mover(mticket["mover"])
+        if w.has_key("work_in_work"):
+            w['work'] = w['work_in_work']
         self.reply_to_caller(w)
 
         ### XXX are these all needed?
@@ -3868,6 +3874,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # thread safe
             w['r_a'] = saved_reply_address
             Trace.trace(self.my_trace_level, "_mover_bound_volume: HAVE_BOUND: Sending")
+            if w.has_key("work_in_work"):
+                w['work'] = w['work_in_work']
+            
             self.reply_to_caller(w)
             Trace.trace(self.my_trace_level, "_mover_bound_volume: HAVE_BOUND: Sent")
 
