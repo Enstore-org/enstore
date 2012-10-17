@@ -820,6 +820,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # 0: calculate CRC when reading memory
 
         self.assert_ok = threading.Event() # for synchronization in ASSERT mode
+        self.network_write_active = False   # to indicate network write activity
 
 
 
@@ -2047,9 +2048,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return
                             
                 if not hasattr(self,'too_long_in_state_sent'):
-                    if self.state != ERROR and self.mode != ASSERT: # in ASSERT mode network is not used
+                    if (self.state != ERROR and
+                        self.mode != ASSERT and  #in ASSERT mode network is not used
+                        not self.network_write_active): # no network activity
                         try:
-                            
                             Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
                                         (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
                         except TypeError:
@@ -3604,6 +3606,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #Trace.trace(33, "bytes_written %s bytes to write %s"%(self.bytes_written,self.bytes_to_write))
                 if self.tr_failed:
                     break
+                self.network_write_active = (self.bytes_written_last != self.bytes_written)
                 self.bytes_written_last = self.bytes_written
                 if self.buffer.empty():
                     # there is no data to transfer to the client
@@ -3710,6 +3713,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                      'external_label':self.current_work_ticket['vc']['external_label']})
                         self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                         return
+            self.network_write_active = (self.bytes_written_last != self.bytes_written)
             self.bytes_written_last = self.bytes_written                
         if self.read_tape_running != 0:
             # this is for the cases when transfer has completed
@@ -4084,6 +4088,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.need_lm_update = (1, None, 0, None)
                     self.assert_ok.clear()
                     self.net_driver.close()
+                    self.network_write_active = False # reset to indicate no network activity
                     Trace.trace(24, "assert return: %s"%(self.assert_return,))
                     ticket['return_file_list'][loc_cookie] = self.assert_return
                     if self.assert_return != e_errors.OK:
@@ -4338,6 +4343,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.send_client_done(self.current_work_ticket, e_errors.WRITE_ERROR,
                                           "tape %s is write protected"%(self.current_volume,))
                     self.net_driver.close()
+                    self.network_write_active = False # reset to indicate no network activity
                     
                     thread = threading.currentThread()
                     if thread:
@@ -4649,6 +4655,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             #This resulted in 15 min timeout for encp retry.
             # When fixed, encp retries immediately. (bz # 767)
             self.net_driver.close()
+            self.network_write_active = False # reset to indicate no network activity
 
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         if exc == e_errors.MOVER_STUCK:
@@ -4834,6 +4841,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
         self.net_driver.close()
+        self.network_write_active = False # reset to indicate no network activity
         now = time.time()
         self.dismount_time = now + self.delay
         if error:
@@ -5861,6 +5869,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.control_socket:
                     self.send_client_done(self.current_work_ticket, e_errors.DISMOUNTFAILED, s_status[0])
                     self.net_driver.close()
+                    self.network_write_active = False # reset to indicate no network activity
                 Trace.alarm(e_errors.ERROR, "dismount %s failed: %s" % (self.current_volume, status))
                 self.last_error = s_status
             broken = "dismount %s failed: %s" % (self.current_volume, status)
@@ -6077,6 +6086,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                     returned_work=None)
                 self.send_client_done(self.current_work_ticket, e_errors.MOUNTFAILED, s_status[0])
                 self.net_driver.close()
+                self.network_write_active = False # reset to indicate no network activity
                 if status[1] == e_errors.MC_VOLNOTFOUND:
                     try:
                         self.set_volume_noaccess(volume_label, "Volume not found. See log for details")
@@ -7206,6 +7216,7 @@ class DiskMover(Mover):
         self.current_work_ticket['status'] = (str(exc), str(msg))
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
+        self.network_write_active = False # reset to indicate no network activity
         self.need_lm_update = (1, ERROR, 1, error_source)
 
         if broken:
@@ -7256,6 +7267,7 @@ class DiskMover(Mover):
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
         self.net_driver.close()
+        self.network_write_active = False # reset to indicate no network activity
         try:
             self.tape_driver.close()
         except OSError, detail:
