@@ -66,6 +66,8 @@ CLEANING = "CLEANING"
 PREPARING_READ_FROM_TAPE = "PREPARING_READ_FROM_TAPE"
 READING_FROM_TAPE = "READING_FROM_TAPE"
 
+MAX_CPIO_FILE_SIZE = 8*enstore_constants.GB - 1 # maximal file size for cpoi_odc wrapper is 8GB-1
+
 # find a common prefix of 2 strings
 # presenting file paths (beginning with 1st position) 
 def find_common_prefix(s1, s2):
@@ -203,7 +205,7 @@ def _check_packaged_files(archive_area, package):
     sys.exit(str(int(check_result))) # process must return a string value
 
 # check and set name space tags
-def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag):
+def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag, fsize):
     tag = namespace.Tag(directory)
     try:
         cl = tag.readtag("library")[0]
@@ -234,6 +236,8 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
     except IOError,detail:
         if detail.errno == errno.ENOENT:
             cffwr = ""
+    if fsize > MAX_CPIO_FILE_SIZE and ff_wrapper_tag == "cpio_odc":
+        ff_wrapper_tag = "cern"
     if cffwr != ff_wrapper_tag:
         Trace.trace(10, "write_to_tape: FF wrapper tag: %s"%(ff_wrapper_tag,))
         tag.writetag("file_family_wrapper", ff_wrapper_tag)
@@ -815,13 +819,15 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             output_library_tag_str = ","
             output_library_tag_str.join(output_library_tag)
         Trace.trace(10, "write_to_tape: dst library tag: %s"%(output_library_tag_str,))
+        fstats = os.stat(src_file_path)
         try:
             ns_tags(tmp_dst_dir,
                     output_library_tag_str,
                     rec['storage_group'],
                     rec['file_family'],
                     rec['wrapper'],
-                    rec['file_family_width'])
+                    rec['file_family_width'],
+                    fstats[stat.ST_SIZE])
         except:
             Trace.handle_error()
             return False
