@@ -237,12 +237,14 @@ class fileInfoMethods(generic_client.GenericClient):
         r, w, x = select.select([listen_socket], [], [], 60)
         if not r:
             listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+            errmsg = "timeout waiting for file clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
         control_socket, address = listen_socket.accept()
         if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
         listen_socket.close()
@@ -303,12 +305,14 @@ class fileInfoMethods(generic_client.GenericClient):
         r, w, x = select.select([listen_socket], [], [], 60)
         if not r:
             listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+            errmsg = "timeout waiting for file clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
         control_socket, address = listen_socket.accept()
         if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
         listen_socket.close()
@@ -372,12 +376,14 @@ class fileInfoMethods(generic_client.GenericClient):
         r, w, x = select.select([listen_socket], [], [], 60)
         if not r:
             listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+            errmsg = "timeout waiting for file clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
         control_socket, address = listen_socket.accept()
         if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
         listen_socket.close()
@@ -473,12 +479,14 @@ class fileInfoMethods(generic_client.GenericClient):
         r, w, x = select.select([listen_socket], [], [], 60)
         if not r:
             listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+            errmsg = "timeout waiting for file clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
         control_socket, address = listen_socket.accept()
         if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
         listen_socket.close()
@@ -609,14 +617,16 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         r,w,x = select.select([listen_socket], [], [], 60)
         if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for info clerk callback"
+            errmsg = "timeout waiting for info clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
 
         control_socket, address = listen_socket.accept()
 
         if not hostaddr.allow(address):
             control_socket.close()
             listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
 
@@ -688,14 +698,16 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         r,w,x = select.select([listen_socket], [], [], 60)
         if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for info clerk callback"
+            errmsg = "timeout waiting for info clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
 
         control_socket, address = listen_socket.accept()
 
         if not hostaddr.allow(address):
             control_socket.close()
             listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
 
@@ -757,14 +769,16 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         r,w,x = select.select([listen_socket], [], [], 60)
         if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
+            errmsg = "timeout waiting for volume clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
 
         control_socket, address = listen_socket.accept()
 
         if not hostaddr.allow(address):
             control_socket.close()
             listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
 
@@ -820,14 +834,16 @@ class volumeInfoMethods(generic_client.GenericClient):
 
         r,w,x = select.select([listen_socket], [], [], 60)
         if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
+            errmsg = "timeout waiting for volume clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
 
         control_socket, address = listen_socket.accept()
 
         if not hostaddr.allow(address):
             control_socket.close()
             listen_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
 
@@ -885,13 +901,15 @@ class volumeInfoMethods(generic_client.GenericClient):
         r, w, x = select.select([listen_socket], [], [], 60)
         if not r:
             listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
+            errmsg = "timeout waiting for volume clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
 
         control_socket, address = listen_socket.accept()
         if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
         listen_socket.close()
@@ -1100,12 +1118,14 @@ class infoClient(fileInfoMethods, volumeInfoMethods):
         r, w, x = select.select([listen_socket], [], [], 60)
         if not r:
             listen_socket.close()
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+            errmsg = "timeout waiting for file clerk callback"
+            raise e_errors.EnstoreError(errno.ETIMEDOUT, errmsg, e_errors.TIMEDOUT)
         control_socket, address = listen_socket.accept()
         if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
-            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+            errmsg = "address %s not allowed" % (address,)
+            raise e_errors.EnstoreError(errno.EPROTO, errmsg, e_errors.NOTALLOWED)
 
         ticket = callback.read_tcp_obj(control_socket)
         listen_socket.close()
