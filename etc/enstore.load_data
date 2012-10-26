@@ -1,2 +1,0 @@
-copy rvolume from '/diskb/enstore-database/volume.dmp';
-copy rfile from '/diskb/enstore-database/file.dmp';

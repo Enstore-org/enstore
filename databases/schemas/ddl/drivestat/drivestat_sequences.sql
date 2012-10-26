@@ -1,1 +1,0 @@
-\echo 'No sequences in drivestat database'

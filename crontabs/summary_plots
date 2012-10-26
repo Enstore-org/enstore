@@ -1,8 +1,0 @@
-#The crontabs with two pound signs at the beginning of the comment are
-# not known to be SDE ready.
-
-# summary/overall tape burn rates
-0 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p summary-burn-rate  $ENSTORE_DIR/src/summary_plots.py -t > /dev/null 2> /dev/null
-
-# summary/overall bytes per day transfered
-30 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p summary_overall_plot  $ENSTORE_DIR/src/summary_plots.py -b > /dev/null 2> /dev/null
