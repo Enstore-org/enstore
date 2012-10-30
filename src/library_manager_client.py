@@ -319,7 +319,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return self.send({"work":"storage_groups"}, timeout, tries)
 
     def volume_assert(self, ticket, timeout=0, tries=0):
-        ticket['work'] = "volume_assert"
+        ticket['work'] = "read_from_hsm"
+        ticket['work_in_work'] = "volume_assert"
         return self.send(ticket, timeout, tries)
 
     #tell lm to print pending work queue
