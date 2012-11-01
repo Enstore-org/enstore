@@ -5831,7 +5831,6 @@ def is_deleted_file_family(ff):
 
     return True
 
-
 # use_libraries() - Return the library or libraries to write to tape with.
 #                   If multiple libraries are specified (to use the encp
 #                   multiple copy feature) they are a comma seperated list
@@ -5860,14 +5859,20 @@ def use_libraries(bfid, filepath, file_record, db, intf):
         dirs_to_try.append(chimera.get_enstore_fs_path(use_dirpath))
     except OSError:
         pass
+    
     try:
         dirs_to_try.append(chimera.get_enstore_pnfs_path(use_dirpath))
     except OSError:
         pass
+    
     for dir_to_check in dirs_to_try:
         try:
-            pnfs_libraries = chimera.Tag().readtag("library", dir_to_check)[0].split(",")
-            break #Found it!
+            libs = chimera.Tag().readtag("library", dir_to_check)
+            if libs is not None and len(libs) > 0:
+                pnfs_libraries = libs[0].split(",")
+                break #Found it!
+            else:
+                error_log("Library tag does not exist or empty in pnfs directory %s" % (dir_to_check,) )
         except (OSError, IOError):
             pass
     else:
