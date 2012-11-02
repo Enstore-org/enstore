@@ -68,41 +68,6 @@ READING_FROM_TAPE = "READING_FROM_TAPE"
 
 MAX_CPIO_FILE_SIZE = 8*enstore_constants.GB - 1 # maximal file size for cpoi_odc wrapper is 8GB-1
 
-# find a common prefix of 2 strings
-# presenting file paths (beginning with 1st position) 
-def find_common_prefix(s1, s2):
-    if len(s1) < len(s2): # swap s1 and s2
-        t_s2 = s2
-        s2 = s1
-        s1 = t_s2
-    s1_split = s1.split('/')
-    s2_split = s2.split('/')
-    common = []
-
-    for i in range(len(s2_split)):
-        if  s2_split[i] == s1_split[i]:
-            common.append(s2_split[i])
-        else:
-            break
-    p = '/'.join((common))
-    #print "P", p
-    return p
-
-
-# find directory common for all files in a path
-def find_common_dir(paths):
-    # paths - list of absolute file paths
-    dirs = []
-    for path in paths:
-        if path[0] != '/':
-            return None # path must be absolute
-        else:
-            dirs.append(os.path.dirname(path))
-    common_path = dirs[0]
-    for i in range(1, len(dirs)):
-        common_path = find_common_prefix(common_path, dirs[i])
-    return common_path
-
 # calculate file checksum
 # returns a tuple (0_seeded_crc, 1_seeded_crc)
 def file_checkum(f):
@@ -316,6 +281,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.packages_location = self.my_conf.get("packages_dir", "") # directory in name space for packages
 
         self.blocking_factor =  self.my_conf.get("tar_blocking_factor", 20) # 20 is a default tar blocking factor
+        self.namespace_top_dir = self.my_conf.get("namespace_top_dir", "/pnfs/fs/usr") # use to resolve file path
 
         if not self.packages_location:
             Trace.alarm(e_errors.ERROR, "Define packages_dir in cofiguration! Exiting")
@@ -419,6 +385,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.cur_id = None
         self.migration_file = None
         self.draining = False # if this is set, complete current work and exit.
+        self.ns = namespace.StorageFS(self.namespace_top_dir)
         
         # we want all message types processed by one handler
         self.handlers = {}
@@ -534,12 +501,6 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # of file as known in the namespace.
             # This file can be used for metadate recovery.
             #
-            # find the destination directory
-            dst = find_common_dir(ns_file_list)
-            if not dst:
-                Trace.log(e_errors.ERROR, "File aggregation failed. Can not find common destination directory")
-                return None
-
             # Create tar file name
             t = time.time()
             t_int = long(t)
@@ -614,12 +575,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # Convert unicode to ASCII strings.
         if type(src_path) == types.UnicodeType:
             src_path = src_path.encode("utf-8")
-        if type(dst) == types.UnicodeType:
-            dst = dst.encode("utf-8")
-        dst_path = "%s.tar"%(os.path.join(dst, src_fn))
-        Trace.trace(10, "pack_files: returning %s %s %s"%(src_path, dst_path, bfids))
+        Trace.trace(10, "pack_files: returning %s %s"%(src_path, bfids))
            
-        return src_path, dst_path, bfids
+        return src_path, bfids
 
     # clean up after write
     # remove temporary files
@@ -673,11 +631,24 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                          file_cache_status.ArchiveStatus.ARCHIVING) and
                         (rec['deleted'] == "no")): # file can be already deleted by the archiving time
                         write_enabled_counter = write_enabled_counter + 1
-                        # get the library tag and combine output library tag
-                        Trace.trace(10, "write_to_tape: getting library tag for %s"%(rec['pnfs_name0']),)
-                        tag = namespace.Tag(os.path.dirname(rec['pnfs_name0']))
+
+                        # resolve file name by its pnfs id
+                        # check if the file path exists
+                        Trace.trace(10, "write_to_tape: getting path for %s"%(rec['pnfsid'],))
                         try:
-                            lib_tag =tag.readtag("library", os.path.dirname(rec['pnfs_name0']))
+                            fs_path =  self.ns.get_path(rec['pnfsid'])
+                        except OSError:
+                            # see chimera.get_path()
+                            Trace.log(e_errors.ERROR, "No file with pnfsid %s was found"%(rec['pnfsid'],))
+                            return False
+                        f_name = fs_path[0]
+
+                        # get the library tag and combine output library tag
+                        Trace.trace(10, "write_to_tape: getting library tag for %s"%(f_name),)
+                        tag = namespace.Tag(os.path.dirname(f_name))
+                        # 
+                        try:
+                            lib_tag =tag.readtag("library", os.path.dirname(f_name))
                         except:
                             Trace.handle_error()
                             Trace.log(e_errors.ERROR, "error reading library tag")
@@ -729,8 +700,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "write_to_tape: packed_file %s"%(packed_file,))
         Trace.log(e_errors.INFO, "write_to_tape: packed_file %s"%(packed_file,))
         if packed_file:
-            src_file_path, dst_file_path, bfid_list = packed_file
-            self.migration_file = dst_file_path
+            src_file_path, bfid_list = packed_file
             if self.check_written_file():
                 # check the integrity of the packaged file
                 Trace.log(e_errors.INFO, "selective CRC check for package %s"%(bfid_list,))
@@ -774,13 +744,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     return False
         else:
             src_file_path = dst_file_path = None
-        if not (src_file_path and dst_file_path):
+        if not (src_file_path):
             # aggregation failed
             raise e_errors.EnstoreError(None, "Write to tape failed: no files to write", e_errors.NO_FILES)
 
         # deduce package destination path in name space
         # from bfid info of the first file in the package
-        dst_package_fn = os.path.basename(dst_file_path)
+        dst_package_fn = os.path.basename(src_file_path)
         rec = self.fcc.bfid_info(bfid)
         if (rec['status'][0] != e_errors.OK):
             Trace.log(e_errors.ERROR,
@@ -832,10 +802,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.handle_error()
             return False
 
-        Trace.trace(10, "write_to_tape: dst_file_path: %s"%(dst_file_path,))
-
         dst_file_path = os.path.join(tmp_dst_dir, dst_package_fn)
         Trace.trace(10, "write_to_tape: dst_file_path: %s"%(dst_file_path,))
+        self.migration_file = dst_file_path
 
         # Change archive_status
         for bfid in bfid_list:
