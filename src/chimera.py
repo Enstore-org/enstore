@@ -1656,7 +1656,6 @@ class ChimeraFS:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             name = self._get_nameof(use_id, search_path) #get nameof parent id
             filepath = os.path.join(name, filepath) #join filepath together
         filepath = os.path.join("/", filepath)
-        filepath = string.join((filepath.split("/")[2:]), "/")
 
         #Munge the mount point and the directories.  First check if the two
         # paths can be munged without modification.
