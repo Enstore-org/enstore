@@ -752,7 +752,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.alive_retries = 0
         self.get_crcs=None
         self.set_crcs=None
-	self.all = 0
+	self.all = 1
         self.ls_active = None
         self.mark_bad = None
         self.unmark_bad = None
