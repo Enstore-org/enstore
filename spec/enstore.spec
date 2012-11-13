@@ -62,7 +62,6 @@ swigdir=`rpm -ql swig-enstore | head -1`
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
 cp -rp $swigdir $SWIG_DIR
 tar xzf /tmp/enstore_qpid.tgz
-cp -p $ENSTORE_DIR/etc/extra_python.pth $PYTHON_DIR/lib/python2.6/site-packages
 
 # create a tepmorary setup file
 #+++++++++++
