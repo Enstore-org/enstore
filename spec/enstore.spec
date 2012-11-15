@@ -16,7 +16,7 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: postgresql-libs
+Requires: postgresql-libs, mt-st
 
 %description
 Enstore Distributed Mass Storage System. 
