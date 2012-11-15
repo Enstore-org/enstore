@@ -178,7 +178,7 @@ echo "Updating symbolic links"
 $ENSTORE_DIR/external_distr/update_sym_links.sh
 if [ ! -d ~enstore/config ]; then 
    echo "Creating default output directory: /var/log/enstore"
-   mkdir /var/log/enstore
+   mkdir -p /var/log/enstore
    chown enstore.enstore /var/log/enstore
 fi
 rm -f $ENSTORE_DIR/debugfiles.list
