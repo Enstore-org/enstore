@@ -50,7 +50,8 @@ class dsDB:
 		track_retries,
 		underrun,
 		mount_count,
-		wp = 0):
+		wp = 0,
+		mover_name=None):
 
 		if type(time2) != type(""):
 			time2 = time2timestamp(time2)
@@ -77,7 +78,8 @@ class dsDB:
 			"track_retries": track_retries,
 			"underrun": underrun,
 			"mount_count": mount_count,
-			"wp": wp
+			"wp": wp,
+			"mover_name": mover_name
 			}
 
 		self.insert('status', values)

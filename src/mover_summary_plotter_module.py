@@ -21,7 +21,7 @@ WEB_SUB_DIRECTORY = enstore_constants.MOVER_SUMMARY_PLOTS_SUBDIR
 MB = 1048576L
 
 Q = "select date, drive_rate from encp_xfer where date between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP and mover='%s' and size>536870912" # files greater than 500MiB
-Q1 = "select time,write_errors,read_errors from status where time between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP and  host='%s' "
+Q1 = "select time,write_errors,read_errors from status where time between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP and mover_name='%s' "
 SELECT_MIN_MAX = "select min(drive_rate),max(drive_rate)  from encp_xfer where date between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP"
 
 class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
@@ -122,7 +122,7 @@ class MoverSummaryPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                    user  = drv.get('dbuser_reader', 'enstore_reader'))
         for mover in self.mover_list:
             e=self.drive_error_ntuples.get(mover['name'])
-            q=Q1%(mover['host'])
+            q=Q1%(mover['name'])
             res=db.query(q)
             for row in res.getresult():
                 e.get_data_file().write("%s %d %d \n"%(row[0],row[1],row[2]))

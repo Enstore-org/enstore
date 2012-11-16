@@ -76,8 +76,9 @@ class dsClient(generic_client.GenericClient):
 		track_retries,
 		underrun,
 		mount_count,
-		wp = 0):
-		
+		wp = 0,
+		mover_name=None):
+
 		ticket = {
 			"work": "log_stat",
 			"drive_sn": drive_sn,
@@ -101,7 +102,8 @@ class dsClient(generic_client.GenericClient):
 			"track_retries": track_retries,
 			"underrun": underrun,
 			"mount_count": mount_count,
-			"wp": wp}
+			"wp": wp,
+			"mover_name" : mover_name}
 
 		self.send2(ticket)
 
@@ -128,7 +130,8 @@ class dsClient(generic_client.GenericClient):
 		100,
 		10,
 		1999,
-		0)
+		0,
+		"DummyMover.mover")
 
 if __name__ == '__main__':
 	intf = option.Interface()

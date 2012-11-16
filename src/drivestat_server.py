@@ -91,7 +91,6 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			track_retries = ticket['track_retries']
 			underrun = ticket['underrun']
 			mount_count = ticket['mount_count']
-			wp = ticket['wp']
 		except KeyError, detail:
 			Trace.log(e_errors.ERROR, "key %s is missing"  % (detail))
 
@@ -127,7 +126,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			track_retries,
 			underrun,
 			mount_count,
-			wp)
+			wp,
+			ticket.get("mover_name",None))
 
 	# The following are local methods
 
