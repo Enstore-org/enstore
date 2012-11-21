@@ -25,9 +25,10 @@ import configuration_client
 import Trace
 import option
 import generic_client
+import dbaccess
 
 TITLE="ENSTORE SYSTEM INFORMATION"
-LINKCOLOR="#0000EF" 
+LINKCOLOR="#0000EF"
 VLINKCOLOR="#55188A"
 ALINKCOLOR="#FF0000"
 BGCOLOR="#FFFFFF"
@@ -38,6 +39,8 @@ TITLECOLOR="#770000"
 TABLECOLOR="#DFF0FF"
 HTMLFILE="enstore_system.html"
 
+TIB=1<<40
+
 class EnstoreSystemHtmlInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
@@ -47,17 +50,17 @@ class EnstoreSystemHtmlInterface(generic_client.GenericClientInterface):
 
     def valid_dictionaries(self):
         return (self.help_options,)
-    
+
 
 def add_row_to_table(table,link,name,explanation):
     tr=HTMLgen.TR()
     tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(HTMLgen.Href(link,name), size=TEXTSIZE,color=TEXTCOLOR),align="LEFT")))
     tr.append(HTMLgen.TD(HTMLgen.Font(explanation,size=TEXTSIZE,color=TEXTCOLOR),valign="CENTER"))
     table.append(tr)
-        
+
 
 class EnstoreSystemHtml:
-    def __init__(self,name,bytes="0.0",remote=False):
+    def __init__(self,name,bytes_dict,remote=False):
         self.page=enstore_html.EnBaseHtmlDoc(refresh=60)
         self.page.title=TITLE
         self.page.linkcolor=LINKCOLOR
@@ -79,16 +82,25 @@ class EnstoreSystemHtml:
         ### User Data Table
         ###
         self.user_data_table=HTMLgen.TableLite(cellpadding=2,cellspacing=2,border=4)
-        t2tr1=HTMLgen.TR()
-        t2tr1.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font("User Data on Tape &nbsp;:&nbsp;",
-                                                          html_escape='OFF',
-                                                          size="+2"))))
-        t2tr1.append(HTMLgen.TD(HTMLgen.Font("%s TiB"%(bytes),
-                                             html_escape='OFF',
-                                             size="+2",color=TITLECOLOR),
-                                bgcolor="#FFFFF0"))
+        self.user_data_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font("User Data on Tape [TiB]",
+                                                                                    html_escape='OFF',
+                                                                                    size="+2")),colspan=len(bytes_dict))))
+        t2tr1 = HTMLgen.TR()
+        for k in bytes_dict.keys():
+            t2tr1.append(HTMLgen.TD(HTMLgen.Font("%s"%(k),
+                                                 html_escape='OFF',
+                                                 size="+2",color=TITLECOLOR),
+                                    bgcolor="#FFFFF0",align="CENTER"))
+
         self.user_data_table.append(t2tr1)
-        
+        t2tr1 = HTMLgen.TR()
+        for k in bytes_dict.keys():
+            t2tr1.append(HTMLgen.TD(HTMLgen.Font("%8.2f "%(bytes_dict.get(k)),
+                                                 html_escape='OFF',
+                                                 size="+2",color=TITLECOLOR),
+                                    bgcolor="#FFFFF0",align="CENTER"))
+        self.user_data_table.append(t2tr1)
+
         global_table.append(HTMLgen.TR(HTMLgen.TD(self.user_data_table,align="CENTER")))
         global_table.append(HTMLgen.TR(enstore_html.empty_data()))
 
@@ -169,21 +181,21 @@ class EnstoreSystemHtml:
                          "cron_pics.html",  #Need constant???
                          "Cronjob Status",
                          "Lots of cronjob exit status for past week")
-        
-                                    
+
+
         global_table.append(HTMLgen.TR(self.status_table))
         global_table.append(HTMLgen.TR(enstore_html.empty_data()))
 
         global_table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Center(HTMLgen.Image("info.gif",align="CENTER")))))
         global_table.append(HTMLgen.TR(enstore_html.empty_data()))
-        
+
 
         ###
         ### Info Table
         ###
         self.info_table=HTMLgen.TableLite(cellpadding=2,bgcolor=TABLECOLOR,cellspacing=5,border=2)
         self.info_table.width="100%"
-        
+
         if not remote:
             add_row_to_table(self.info_table,"http://www-ccf.fnal.gov/enstore","Mass Storage System Main Page","Storage links for Enstore and dCache")
         add_row_to_table(self.info_table,"http://www-ccf.fnal.gov/enstore/documentation.html","Mass Storage System Documentation Page",
@@ -191,9 +203,9 @@ class EnstoreSystemHtml:
         if not remote:
             add_row_to_table(self.info_table,"http://www-ccf.fnal.gov/enstore/enstore_status_only.html",
                                     "Production System's Overall Status","Status for all production Enstore systems")
-            
-        
-        
+
+
+
         global_table.append(HTMLgen.TR(self.info_table))
         global_table.append(HTMLgen.TR(enstore_html.empty_data()))
         self.page.append(HTMLgen.Center(global_table))
@@ -217,25 +229,27 @@ def do_work(intf):
     if socket.gethostbyname(socket.gethostname())[0:7] == "131.225" :
         print "We are in Fermilab", server.get_system_name()
         remote=False
-    q="select coalesce(sum(size),0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
-    
+
+    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, sum(active_bytes) as active from volume where system_inhibit_0!='DELETED' and media_type!='null'"
     if not remote:
-         q="select sum(deleted_bytes+unknown_bytes+active_bytes)  from volume where system_inhibit_0!='DELETED' and media_type!='null' and library not like '%shelf%' and library not like '%test%'"
+	    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, sum(active_bytes) as active  from volume where system_inhibit_0!='DELETED' and media_type!='null' and library not like '%shelf%' and library not like '%test%'"
 
     config_server_client_dict = configuration_client.get_config_dict()
     acc            = config_server_client_dict.get("database", {})
-    
-    byte_count = 0.0
-    try: 
-        db = pg.DB(host  = acc.get('db_host', "localhost"),
-                   dbname= acc.get('dbname', "enstoredb"),
-                   port  = acc.get('db_port', 5432),
-                   user  = acc.get('dbuser', "enstore"))
-        res=db.query(q)
-        for row in res.getresult():
+
+    byte_count = {"total":0, "active":0}
+    try:
+        db = dbaccess.DatabaseAccess(maxconnections=1,
+				     host     = acc.get('db_host', "localhost"),
+				     database = acc.get('dbname', "enstoredb"),
+				     port     = acc.get('db_port', 5432),
+				     user     = acc.get('dbuser', "enstore"))
+        res=db.query_dictresult(q)
+        for row in res:
             if not row:
                 continue
-            byte_count = float(row[0])/(1024.*1024.*1024.*1024.)
+	    for key,value in row.iteritems():
+		    byte_count[key]=float(value)/float(TIB)
         db.close()
     except:
         Trace.handle_error()
@@ -244,8 +258,8 @@ def do_work(intf):
     name=server.get_system_name()
     if not name:
         name="unknown"
-        
-    main_web_page=EnstoreSystemHtml(name, "%8.2f" % (byte_count), remote)
+
+    main_web_page=EnstoreSystemHtml(name, byte_count, remote)
 
     html_dir=None
     if server.inq_d.has_key("html_file"):

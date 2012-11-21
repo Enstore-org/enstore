@@ -69,7 +69,7 @@ MB = 1024.0 * 1024.0
 GB = MB * 1024.0
 TB = GB * 1024.0
 PB = TB * 1024.0
-UNITS = "TB"
+UNITS = "TiB"
 
 
 if __name__ == "__main__":
@@ -79,14 +79,16 @@ if __name__ == "__main__":
     # directory is /fnal/ups/prd/www_pages/enstore.
     total = 0.0
     total_bytes = 0.0
+    active = 0.0
+    active_bytes = 0.0
     units = ""
     dead_nodes = []
 
     cnf_d = configuration_client.get_config_dict()
     servers=cnf_d.get('known_config_servers',[])
-    
+
     for server in servers:
-        if (server == 'status') : continue 
+        if (server == 'status') : continue
         server_name,server_port = servers.get(server)
         if ping(server_name) == ALIVE:
             csc   = configuration_client.ConfigurationClient((server_name, server_port))
@@ -95,7 +97,7 @@ if __name__ == "__main__":
             if not e_errors.is_ok(inq_d):
                 dead_nodes.append(server)
                 continue
-           
+
             config_dict = csc.dump_and_save(5, 2)
             if not e_errors.is_ok(config_dict):
                 dead_nodes.append(server)
@@ -113,9 +115,17 @@ if __name__ == "__main__":
                 lines = file.readlines()
                 for line in lines:
                     # translate total bytes into terabytes
-                    bytes = float(string.strip(line))
-                    total = total + bytes/TB
-                    total_bytes = total_bytes + bytes
+                    parts = line.split()
+                    bytes = float(string.strip(parts[0]))
+                    total += bytes/TB
+                    total_bytes += bytes
+                    if len(parts)>1:
+                        bytes = float(string.strip(parts[1]))
+                        active +=  bytes/TB
+                        active_bytes +=  bytes
+                    else:
+                        active = total
+                        active_bytes = total_bytes
                 else:
                     file.close()
             else:
@@ -133,12 +143,12 @@ if __name__ == "__main__":
             str = str[0:-1] +")"
 	else:
 	    str = ""
-            
+
 	# output the total count
 	file = open(TOTAL_FILE, 'w')
-        file.write("%.3f %s %s\n"%(total, UNITS, str))
+        file.write("%.3f / %.3f %s %s\n"%(total,active, UNITS, str))
 	file.close()
 
         file = open(TOTAL_BYTES_FILE, 'w')
-        file.write("%.0f"%(total_bytes,))
+        file.write("%.0f / %.0f"%(total_bytes,active_bytes))
         file.close()
