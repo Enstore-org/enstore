@@ -136,6 +136,7 @@ import delete_at_exit
 from scanfiles import ThreadWithResult
 import info_client
 import file_cache_status
+import checksum
 
 debug = False	# debugging mode
 
@@ -6109,7 +6110,10 @@ def _verify_metadata(MY_TASK, job, fcc, db):
     if src_file_record['size'] != dst_file_record['size']:
         err_msg = "%s and %s have different size" % (src_bfid, dst_bfid)
     elif src_file_record['complete_crc'] != dst_file_record['complete_crc']:
-        err_msg = "%s and %s have different crc" % (src_bfid, dst_bfid)
+        # check against 1 seed crc
+        seed_1_crc = checksum.convert_0_adler32_to_1_adler32(src_file_record['complete_crc'], src_file_record['size'])
+        if seed_1_crc != dst_file_record['complete_crc']:
+            err_msg = "%s and %s have different crc" % (src_bfid, dst_bfid)
     elif src_file_record['sanity_cookie'] != dst_file_record['sanity_cookie']:
         err_msg = "%s and %s have different sanity_cookie" % (src_bfid, dst_bfid)
         log(MY_TASK, str(src_file_record['sanity_cookie']), str(dst_file_record['sanity_cookie']))
