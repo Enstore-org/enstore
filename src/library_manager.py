@@ -517,18 +517,24 @@ class AtMovers:
                         add_to_list = 0
                         time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
                         state = self.at_movers[mover].get('state', 'unknown')
+                        operation = self.at_movers[mover].get('operation', 'unknown')
+                        current_location = self.at_movers[mover].get('current_location', '')
                         if time_in_state > self.max_time_in_other:
                             if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND', 'SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT']:
                                 add_to_list = 1
-                            if time_in_state > self.max_time_in_active and (state == 'ACTIVE' or state == 'SEEK' or state == 'MOUNT_WAIT' or state =='DISMOUNT_WAIT'):
-                                if not mover in self.alarm_sent:
-                                    # send alarm only once
-                                    Trace.alarm(e_errors.ALARM,
-                                                "The mover %s is in state %s for %s minutes, Please check the mover"%
-                                                (mover, state, int(time_in_state)/60))
-                                #add_to_list = 1
+                            if time_in_state > self.max_time_in_active and state in ['ACTIVE', 'SEEK', 'MOUNT_WAIT','DISMOUNT_WAIT']:
+                                if (state == 'ACTIVE' and operation == 'ASSERT'):
+                                    add_to_list = 0
+                                else:
+                                    if not mover in self.alarm_sent:
+                                        # send alarm only once
+                                        Trace.alarm(e_errors.ALARM,
+                                                    "The mover %s is in state %s for %s minutes, Please check the mover"%
+                                                    (mover, state, int(time_in_state)/60))
+                                        self.alarm_sent.append(mover)
                             else:
-                                self.alarm_sent.remove(mover)
+                                if mover in self.alarm_sent:
+                                    self.alarm_sent.remove(mover)
 
                             if add_to_list:
                                 self.dont_update[mover] = state
