@@ -217,7 +217,7 @@ def main():
     #
     # files in trasition
     #
-    res=select(dbinfo,"select coalesce(sum(size)/1024.,0) as total,count(*) from file where bfid in (select bfid from files_in_transition)")
+    res=select(dbinfo,"select coalesce(sum(size)/1024.,0) as total,count(*) from file where bfid in (select bfid from files_in_transition) and cache_status='CACHED'")
     summary["data_area"]["files"]=int(res[0]["count"])
     summary["data_area"]["size"]=long(res[0]["total"])
 
