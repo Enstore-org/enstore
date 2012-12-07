@@ -1,14 +1,24 @@
 #!/usr/bin/env python
+###############################################################################
+#
+# $Id$
+#
+# HUD - Heads Up Display: shows information about data flows in SFA (Small File
+# Aggregation)
+#
+###############################################################################
+
 
 import os
 import sys
 import string
-import time
+import time 
 import enstore_functions2
 import configuration_client
 import e_errors
 import file_utils
 import statvfs
+import dispatcher_client 
 from   DBUtils import PooledDB
 import  psycopg2
 import psycopg2.extras
@@ -37,7 +47,7 @@ def get_environment():
             print "Unable to determine ENSTORE_CONFIG_PORT."
             sys.exit(1)
         pfile.close()
-
+        
 def select(value,query):
     connectionPool = None
     cursor = None
@@ -64,7 +74,7 @@ def select(value,query):
         for item in [cursor, db, connectionPool]:
             if item :
                 item.close()
-
+    
 def parse_mtab(volumes):
     volume_map={}
     #
@@ -80,6 +90,7 @@ def parse_mtab(volumes):
     # the loop below checks maatches on NFS partion
     # name. Arbitrary mount point name
     #
+    
     for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
         try:
             fp = file_utils.open(mtab_file, "r")
@@ -126,9 +137,20 @@ def print_footer():
     print '</body>'
     print '</html>'
 
-
 def print_html(summary):
-    print_header()
+    print "Content-type: text/html"
+    print
+    print '<html>'
+    print '<head>'
+    print '<title> Enstore SFA HUD </title>'
+    print '</head>'
+    print '<body bgcolor="#ffffd0">'
+    print '<hr>'
+
+    print "<center>"
+    print '<font size=7 color="#ff0000"> Enstore SFA HUD</font>'
+    print '<hr>'
+
     print "<table border=\"1\">"
     print "<tr><th>Volume</th><th>KB in transition</th><th># Files in Transition</th><th>Used Size(KB)</th><th>Total Size(KB)</th></tr>"
     print "<tr><td>data_area(write cache)</td><td>"+str(summary["data_area"]["size"])+\
@@ -137,7 +159,7 @@ def print_html(summary):
           "</td><td>"+str(summary["data_area"]["total"])+"</td></tr>"
     print "</table>"
 
-
+    
     print "<table border=\"1\">"
     print "<tr><th>Volume</th><th>Used Size(KB)</th><th>Total Size(KB)</th></tr>"
     print "<tr><td>archive_area(package staging)</td>" \
@@ -149,8 +171,12 @@ def print_html(summary):
     print "<table border=\"1\">"
     print "<tr><th>Volume</th><th># Files</th><th>Used Size(KB)</th><th>Total Size(KB)</th></tr>"
     print "<tr><td>stage_area(read cache)</td>"+\
-          "<td>"+str(summary["stage_area"]["files"])+\
-          "</td><td>"+str(summary["stage_area"]["used"])+\
+          "<td>"
+    if summary["stage_area"]["files"] > 0 : 
+        print "<a href='enstore_sfa_show_cached_files_cgi.py'>",str(summary["stage_area"]["files"]),"</a>"
+    else:
+        print str(summary["stage_area"]["files"])
+    print "</td><td>"+str(summary["stage_area"]["used"])+\
           "</td><td>"+str(summary["stage_area"]["total"])+"</td></tr>"
     print "</table>"
 
@@ -160,28 +186,24 @@ def print_html(summary):
 
     print '<hr>'
 
-    print_footer()
+    print "</center>"
+    print '</body>'
+    print '</html>'
+    
 
 def main():
     # Obtain the correct values for ENSTORE_CONFIG_HOST and ENSTORE_CONFIG_PORT
     # if they are not already available.
     get_environment()
 
-    #Get the configuration server client.
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host, config_port))
-
-
-
-    # in the beginning ...
-
-
     migrator_list   = csc.get_migrators2()
 
     areas = {}
     summary = {}
-
+    
     for m in migrator_list:
         for k in ("stage_area",
                   "data_area",
@@ -202,7 +224,7 @@ def main():
         print "</div>"
         print_footer()
         return
-        
+    
     for key,value in volume_map.iteritems():
         for k,v in areas.iteritems():
             if v==key:
@@ -212,6 +234,7 @@ def main():
                 summary[k] = { 'used' : total - avail,
                                  'total' : total }
                 break
+
     dbinfo = csc.get("database")
 
     #
@@ -230,7 +253,8 @@ def main():
     summary["stage_area"]["size"]=long(res[0]["total"])
 
     print_html(summary)
-
+    
+    
 
 if __name__ == '__main__':
 
