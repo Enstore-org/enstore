@@ -68,19 +68,21 @@ save_loop() {
     done
 
     #copy the pnfsdLog file over too, but only if its size>0
-    fullpath=$pnfsdLog
-    save_low nomd2tool
-    if [ $? -ne 0 ] ; then return 1 ; fi
+    if [ -e $pnfsdLog ]; then
+	fullpath=$pnfsdLog
+	save_low nomd2tool
+	if [ $? -ne 0 ] ; then return 1 ; fi
 
-    #now, in principle, there may be some pnfsdLog files that plog compressed
-    # get those too if their size>0 but don't compress them again
-    plog_more="$pnfsdLog*.Z"
-    if [ `echo $plog_more | grep -c "\*.Z$"` -eq 0 ]; then
-	for fullpath in $plog_more; do
-	    save_low nomd2tool
-	    if [ $? -ne 0 ] ; then return 1 ; fi
-	    rm -f $fullpath # don't keep old backups around and just keep recopying them
-	done
+        # now, in principle, there may be some pnfsdLog files that plog compressed
+        # get those too if their size>0 but don't compress them again
+	plog_more="$pnfsdLog*.Z"
+	if [ `echo $plog_more | grep -c "\*.Z$"` -eq 0 ]; then
+	    for fullpath in $plog_more; do
+		save_low nomd2tool
+		if [ $? -ne 0 ] ; then return 1 ; fi
+		rm -f $fullpath # don't keep old backups around and just keep recopying them
+	    done
+	fi
     fi
 }
 
