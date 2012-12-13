@@ -170,6 +170,14 @@ def _check_packaged_files(archive_area, package):
     sys.exit(str(int(check_result))) # process must return a string value
 
 # check and set name space tags
+# @param directory - destination directory
+# @param library_tag - library tag
+# @param sg_tag - storage group
+# @param ff_tag - file family tag
+# @param ff_wrapper_tag - file family wrapper tag
+# @param ff_width_tag - file family width tag
+# @param fsize - file size
+# exit code resulting file family wrapper
 def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag, fsize):
     tag = namespace.Tag(directory)
     try:
@@ -205,7 +213,8 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
         ff_wrapper_tag = "cern"
     if cffwr != ff_wrapper_tag:
         Trace.trace(10, "write_to_tape: FF wrapper tag: %s"%(ff_wrapper_tag,))
-        tag.writetag("file_family_wrapper", ff_wrapper_tag)
+        # Do not set wrapper tag, just return it to be used as encp option.
+        # This is done to not interfere with other migrators writing into the same directory
     try:
         cffw = tag.readtag("file_family_width")[0]
     except IOError,detail:
@@ -214,6 +223,7 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
     if cffw != ff_width_tag:
         Trace.trace(10, "write_to_tape: FF width tag: %s"%(ff_width_tag,))
         tag.writetag("file_family_width", ff_width_tag)
+    return ff_wrapper_tag
     
 
 class StorageArea():
@@ -798,13 +808,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "write_to_tape: dst library tag: %s"%(output_library_tag_str,))
         fstats = os.stat(src_file_path)
         try:
-            ns_tags(tmp_dst_dir,
-                    output_library_tag_str,
-                    rec['storage_group'],
-                    rec['file_family'],
-                    rec['wrapper'],
-                    rec['file_family_width'],
-                    fstats[stat.ST_SIZE])
+            ff_wrapper = ns_tags(tmp_dst_dir,
+                                 output_library_tag_str,
+                                 rec['storage_group'],
+                                 rec['file_family'],
+                                 rec['wrapper'],
+                                 rec['file_family_width'],
+                                 fstats[stat.ST_SIZE])
         except:
             Trace.handle_error()
             return False
@@ -830,6 +840,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if self.delayed_dismount:
             args.append("--delayed-dismount")
             args.append(str(self.delayed_dismount))
+        args.append("--file-family-wrapper")
+        args.append(ff_wrapper)
         args.append(src_file_path)
         args.append(dst_file_path)
         Trace.trace(10, "write_to_tape: sending %s"%(args,))
