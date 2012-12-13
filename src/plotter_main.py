@@ -137,8 +137,12 @@ if __name__ == "__main__":
         if o in ("-S","--sfa-stats"):
             if f.csc.get("dispatcher"):
                 import sfa_plotter_module
-                aModule = sfa_plotter_module.SFAStatsPlotterModule("SFA_Statistics")
-                f.add(aModule)
+                SFA_Stats_Module = sfa_plotter_module.SFAStatsPlotterModule("SFA_Statistics")
+                f.add(SFA_Stats_Module)
+                data_file = f.csc.get("SFA_Stats",{}).get("aggregation_rates_data")
+                if data_file:
+                    SFA_Aggregation_rates_Module = sfa_plotter_module.SFATarRatesPlotterModule("SFA_tar_rates", date=None, data_file=data_file)
+                    f.add(SFA_Aggregation_rates_Module)
             else:
                 print "Small Files Configuration is not defined"
                 sys.exit(1)
