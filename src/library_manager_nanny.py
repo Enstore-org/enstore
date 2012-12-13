@@ -148,24 +148,36 @@ try:
                 port = int(port)
                 rc = alive((host, port), 10, 5)
                 if rc['status'][0] == e_errors.TIMEDOUT:
-                    Trace.log(e_errors.ERROR, "Library manager %s is not responding on %s %s"%(lm['name'], host, port))
-                    not_responding_ports = not_responding_ports + 1
+                    # retry to diminish false alarms
+                    time.sleep(10)
+                    rc = alive((host, port), 10, 5)
+                    if rc['status'][0] == e_errors.TIMEDOUT:
+                        Trace.log(e_errors.ERROR, "Library manager %s is not responding on %s %s"%(lm['name'], host, port))
+                        not_responding_ports = not_responding_ports + 1
 
             port = lm.get("mover_port", None)
             if port:
                 port = int(port)
                 rc = alive((host, port), 10, 5)
                 if rc['status'][0] == e_errors.TIMEDOUT:
-                    Trace.log(e_errors.ERROR, "Library manager %s is not responding on %s %s"%(lm['name'], host, port))
-                    not_responding_ports = not_responding_ports + 1
+                    # retry to diminish false alarms
+                    time.sleep(10)
+                    rc = alive((host, port), 10, 5)
+                    if rc['status'][0] == e_errors.TIMEDOUT:
+                        Trace.log(e_errors.ERROR, "Library manager %s is not responding on %s mover port %s"%(lm['name'], host, port))
+                        not_responding_ports = not_responding_ports + 1
 
             port = lm.get("encp_port", None)
             if port:
                 port = int(port)
                 rc = alive((host, port), 10, 5)
                 if rc['status'][0] == e_errors.TIMEDOUT:
-                    Trace.log(e_errors.ERROR, "Library manager %s is not responding on %s %s"%(lm['name'], host, port))
-                    not_responding_ports = not_responding_ports + 1
+                    # retry to diminish false alarms
+                    time.sleep(10)
+                    rc = alive((host, port), 10, 5)
+                    if rc['status'][0] == e_errors.TIMEDOUT:
+                        Trace.log(e_errors.ERROR, "Library manager %s is not responding on %s encp port %s"%(lm['name'], host, port))
+                        not_responding_ports = not_responding_ports + 1
 
             # library manager is running and hanging
             if not_responding_ports > 0:
