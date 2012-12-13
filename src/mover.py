@@ -1303,8 +1303,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   stats[self.ftt.TRACK_RETRY],
                                   stats[self.ftt.UNDERRUN],
                                   0,
-                                  write_prot,
-                                  self.name)
+                                  write_prot)
                 
     def start(self):
         self.logname = self.config.get('logname', self.name)
@@ -7298,7 +7297,7 @@ class DiskMover(Mover):
         if self.draining:
             self.offline()
         else:
-            self.state = HAVE_BOUND
+            self.idle()
         self.need_lm_update = (1, None, 1, None)
         self.log_state()
     
