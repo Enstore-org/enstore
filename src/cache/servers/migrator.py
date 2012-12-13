@@ -616,6 +616,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # check if files can be written to tape
         write_enabled_counter = 0
         output_library_tag = []
+        components_to_remove = []
         for component in request_list:
             bfid = component['bfid']
             # Convert unicode to ASCII strings.
@@ -626,10 +627,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             if (rec['status'][0] == e_errors.OK):
                 try:
-                    if (rec['archive_status'] not in
-                        (file_cache_status.ArchiveStatus.ARCHIVED,
-                         file_cache_status.ArchiveStatus.ARCHIVING) and
-                        (rec['deleted'] == "no")): # file can be already deleted by the archiving time
+                    if (rec['archive_status'] != file_cache_status.ArchiveStatus.ARCHIVING and
+                        rec['deleted'] == "no"): # file can be already deleted by the archiving time
                         write_enabled_counter = write_enabled_counter + 1
 
                         # resolve file name by its pnfs id
@@ -670,6 +669,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     else:
                         Trace.log(e_errors.INFO, "File was not included into package %s archive_status %s"%
                                   (rec['bfid'], rec['archive_status']))
+                        if rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED:
+                            components_to_remove.append(component)
+                            
                 except Exception, detail:
                     Trace.log(DEBUGLOG, "FC error: %s. Returned status OK but still error %s"%(detail, rec)) 
                     
@@ -678,7 +680,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.log(DEBUGLOG,
                           "FC error: %s. File was not included into package %s archive_status %s"%
                           (rec['status'], rec['bfid'], rec['archive_status']))
-
+        for c in components_to_remove:
+            request_list.remove(c)
+        if len(request_list) == 0:
+            Trace.log(e_errors.INFO, "list is empty, nothing to write")
+            return True
+            
         if write_enabled_counter != len(request_list):
             Trace.log(DEBUGLOG, "No files will be archived, because some of them or all have been already archived or being archived write_enabled_counter %s request_list lenght %s request id %s"%(write_enabled_counter, len(request_list), rq.correlation_id))
             Trace.log(e_errors.ERROR, "No files will be archived, because some of them or all are already archived or being archived")
