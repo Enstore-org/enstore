@@ -216,6 +216,19 @@ def put(lock, event, buffer, queue_size, message, requests, f, enable_reinsert, 
         except IndexError:
             msg = "%s: %s: From client %s: %s" % \
                       (exc, msg, client_addr, request)
+        # There were cases when request could not get formatted as a string.
+        # This apparently happened during port scan
+        except:
+            try:
+                exc, msg = sys.exc_info()[:2]
+                msg = "%s: %s: From client %s" % \
+                      (exc, msg, client_addr)
+            except:
+                exc, msg = sys.exc_info()[:2]
+                msg = "%s: %s: " % \
+                      (exc, msg)
+                
+            
         Trace.log(5, msg)
 
         #Set these to something.
