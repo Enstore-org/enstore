@@ -4524,7 +4524,7 @@ def make_failed_copies(vcc, fcc, db, intf):
                     error_log(MY_TASK,
                               "Failed to update active_file_copying for bfid %s." % (bfid,))
                     return 1 + return_exit_status  #Error
- 
+
                 # If original file is a package....
                 file_info = fcc.bfid_info(bfid)
                 if  e_errors.is_ok(file_info['status']) and bfid == file_info['package_id']:
@@ -4541,22 +4541,22 @@ def make_failed_copies(vcc, fcc, db, intf):
                         error_log(MY_TASK,
                                   "Failed to find copies for bfid %s: %s" % (bfid, copies['status']))
                         return 1 + return_exit_status  #Error
-                            
+
                     # create new bit-files - refences to a copy of original
                     for copy_bfid in copies['copies']:
                         # get a copy record
                         copy_info = fcc.bfid_info(copy_bfid)
                         copy_info['archive_status'] = file_info['archive_status']
-                        copy_info['package_id'] = copy_info['bfid'] 
+                        copy_info['package_id'] = copy_info['bfid']
                         copy_info['package_files_count'] = file_info['package_files_count']
                         copy_info['active_package_files_count'] = file_info['active_package_files_count']
                         copy_info['archive_mod_time'] = file_info['archive_mod_time']
-                        
+
                         if not e_errors.is_ok(copy_info['status']):
                             error_log(MY_TASK,
                                       "Failed to get copy info for bfid %s: %s" % (copy_bfid, copy_info['status']))
                             return 1 + return_exit_status  #Error
-                            
+
                         for rec in children['children']:
                             if rec['bfid'] != bfid: # do not update original package record
                                 rec['original_bfid'] = rec['bfid']
@@ -4580,8 +4580,8 @@ def make_failed_copies(vcc, fcc, db, intf):
                             error_log(MY_TASK,
                                       "Failed to modify copy for bfid %s: %s" % (bfid, rc['status']))
                             return 1 + return_exit_status  #Error
-                        
-                               
+
+
 
         #For debugging, do only one file.
         if debug:
@@ -5860,12 +5860,12 @@ def use_libraries(bfid, filepath, file_record, db, intf):
         dirs_to_try.append(chimera.get_enstore_fs_path(use_dirpath))
     except OSError:
         pass
-    
+
     try:
         dirs_to_try.append(chimera.get_enstore_pnfs_path(use_dirpath))
     except OSError:
         pass
-    
+
     for dir_to_check in dirs_to_try:
         try:
             libs = chimera.Tag().readtag("library", dir_to_check)
@@ -6425,8 +6425,8 @@ def write_file(MY_TASK,
 	dst_options = ["--storage-group", sg, "--file-family", ff,
 		       "--file-family-wrapper", wrapper,
                        "--library", libraries,
-		       "--override-path", src_path,
-                       "--file-family-width", "1"]
+                       "--override-path", src_path,
+                       "--file-family-width", str(intf.file_family_width)]
 
 	argv = ["encp"] + use_verbose + encp_options + use_priority + \
                dst_options + use_threads + [tmp_path, mig_path]
@@ -9111,6 +9111,7 @@ class MigrateInterface(option.Interface):
                 self.make_copies = None
                 self.library__ = None
                 self.infile = None
+                self.file_family_width = 1
 
 		option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -9120,7 +9121,7 @@ class MigrateInterface(option.Interface):
 	#  define our specific parameters
 	parameters = [
 		"[bfid1 [bfid2 [bfid3 ...]]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
-                "[media_type [library [storage_group [file_family [wrapper]]]]]",
+                "[media_type [library [storage_group [file_family [file_family_width] [wrapper]]]]]]",
 		"--restore [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
 		"--scan [bfid1 [bfid2 [bfid3 ...]] | [vol1 [vol2 [vol3 ...]]] | [file1 [file2 [file3 ...]]] | [vol1:lc1 [vol2:lc2 [vol3:lc3 ...]]]",
 		"--migrated-from <vol1 [vol2 [vol3 ...]]>",  #volumes only
@@ -9147,6 +9148,12 @@ class MigrateInterface(option.Interface):
 				    "override the pnfs file family tag.",
 				    option.VALUE_USAGE:option.REQUIRED,
 				    option.VALUE_TYPE:option.STRING,
+				    option.USER_LEVEL:option.USER,},
+		option.FILE_FAMILY_WIDTH:{option.HELP_STRING:
+				    "Specify an alternative file family width to "
+				    "override the pnfs file family width.",
+				    option.VALUE_USAGE:option.REQUIRED,
+				    option.VALUE_TYPE:option.INTEGER,
 				    option.USER_LEVEL:option.USER,},
 		option.FORCE:{option.HELP_STRING:
 			      "Allow migration on already migrated volume.",
