@@ -2005,7 +2005,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     
                 
         now = time.time()
-
+        Trace.trace(20, "reset_timer %s"%(reset_timer,))
         if reset_timer:
             self.reset_interval_timer(self.update_lm)
 
@@ -2018,6 +2018,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         (time_in_state,self.time_in_state,self.max_time_in_state, self.state_change_time))
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
                 (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
+                send_alarm = True
                 if self.state == ACTIVE:
                     transfer_stuck = 0 
                     Trace.trace(8, "bytes read last %s bytes read %s"%(self.bytes_read_last, self.bytes_read))
@@ -2045,9 +2046,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     else:
                         # data is being transferred
                         # do not raise alarm
-                        return
+                        send_alarm = False
                             
-                if not hasattr(self,'too_long_in_state_sent'):
+                if not hasattr(self,'too_long_in_state_sent') and send_alarm:
                     if (self.state != ERROR and
                         self.mode != ASSERT and  #in ASSERT mode network is not used
                         not self.network_write_active): # no network activity
