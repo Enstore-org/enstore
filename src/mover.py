@@ -7067,18 +7067,6 @@ class DiskMover(Mover):
         cache_status = self.file_info['cache_status']
         if cache_status != file_cache_status.CacheStatus.CACHED:
             Trace.log(e_errors.INFO, "staging status at the start %s"%(cache_status,))
-            # check if the file can be staged
-            rticket = self.vcc.is_vol_available(self.current_work_ticket['work'], 
-                                                self.file_info['tape_label'],
-                                                None, 
-                                                self.file_info['size'], 
-                                                timeout=5, 
-                                                retry=2)
-            if not e_errors.is_ok(rticket):
-               self.transfer_failed(rticket['status'][0], rticket['status'][1], error_source=TAPE) 
-               self.idle()
-               return None
-
             # make this better!
             # When file gets staged its cache_status must change as
             # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
@@ -7087,33 +7075,45 @@ class DiskMover(Mover):
             while not hasattr(self,'too_long_in_state_sent'):
                 info = self.fcc.bfid_info(self.file_info['bfid'])
                 Trace.log(DEBUG_LOG, "staging status %s cache_status %s"%(info['cache_status'], cache_status))
+
                 if info['cache_status'] == file_cache_status.CacheStatus.CACHED:
                     file_cache_location = info.get('cache_location', None)
                     break
-                else:
-                    if (info['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED and
-                        cache_status != file_cache_status.CacheStatus.STAGING_REQUESTED):
-                        cache_status = info['cache_status'] # File Clerk requested staging
-                    elif (info['cache_status'] == file_cache_status.CacheStatus.STAGING and
-                        cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED):
-                        cache_status == info['cache_status'] # Mirator started staging
-                    elif (info['cache_status'] == file_cache_status.CacheStatus.PURGED and
-                          ((cache_status ==  file_cache_status.CacheStatus.STAGING or
-                            cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED))):
-                        Trace.log(e_errors.ERROR, "File staging has failed for %s %s "%(info['bfid'], info['pnfs_name0']))
-                        break
-                    time.sleep(2)
-                    # Staging a file may take a very long time.
-                    # Reset self.state_change_time
-                    # to avoid "mover stuck in state condition"
-                    self.state_change_time = time.time()
-                if loop_counter % 100 == 0:
-                    # check if encp is still connected
-                    if not self.check_connection():
-                        self.transfer_failed(e_errors.ENCP_GONE, "encp gone while waiting for stage", error_source=USER)
-                        self.idle()
-                        return None
-                loop_counter = loop_counter + 1
+                # check if the file can be staged
+                rticket = self.vcc.is_vol_available(self.current_work_ticket['work'], 
+                                                    self.file_info['tape_label'],
+                                                    None, 
+                                                    self.file_info['size'], 
+                                                    timeout=5, 
+                                                    retry=2)
+                if not e_errors.is_ok(rticket):
+                   self.transfer_failed(rticket['status'][0], rticket['status'][1], error_source=TAPE) 
+                   self.idle()
+                   break                    
+
+                if (info['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED and
+                    cache_status != file_cache_status.CacheStatus.STAGING_REQUESTED):
+                    cache_status = info['cache_status'] # File Clerk requested staging
+                elif (info['cache_status'] == file_cache_status.CacheStatus.STAGING and
+                    cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED):
+                    cache_status == info['cache_status'] # Mirator started staging
+                elif (info['cache_status'] == file_cache_status.CacheStatus.PURGED and
+                      ((cache_status ==  file_cache_status.CacheStatus.STAGING or
+                        cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED))):
+                    Trace.log(e_errors.ERROR, "File staging has failed for %s %s "%(info['bfid'], info['pnfs_name0']))
+                    break
+                time.sleep(2)
+                # Staging a file may take a very long time.
+                # Reset self.state_change_time
+                # to avoid "mover stuck in state condition"
+                self.state_change_time = time.time()
+            if loop_counter % 100 == 0:
+                # check if encp is still connected
+                if not self.check_connection():
+                    self.transfer_failed(e_errors.ENCP_GONE, "encp gone while waiting for stage", error_source=USER)
+                    self.idle()
+                    return None
+            loop_counter = loop_counter + 1
         else:
             file_cache_location = self.file_info.get('cache_location', None)
                     
