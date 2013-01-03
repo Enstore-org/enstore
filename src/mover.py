@@ -7067,6 +7067,18 @@ class DiskMover(Mover):
         cache_status = self.file_info['cache_status']
         if cache_status != file_cache_status.CacheStatus.CACHED:
             Trace.log(e_errors.INFO, "staging status at the start %s"%(cache_status,))
+            # check if the file can be staged
+            rticket = self.vcc.is_vol_available(self.current_work_ticket['work'], 
+                                                self.file_info['tape_label'],
+                                                None, 
+                                                self.file_info['size'], 
+                                                timeout=5, 
+                                                retry=2)
+            if not e_errors.is_ok(rticket):
+               self.transfer_failed(rticket['status'][0], rticket['status'][1], error_source=TAPE) 
+               self.idle()
+               return None
+
             # make this better!
             # When file gets staged its cache_status must change as
             # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
@@ -7120,6 +7132,7 @@ class DiskMover(Mover):
                                      (self.current_work_ticket['fc']['pnfs_name0'],
                                       self.current_work_ticket['fc']['deleted']),
                                      error_source=UNKNOWN)
+                
                 self.idle()
                 return
                 
@@ -7190,7 +7203,7 @@ class DiskMover(Mover):
             self.tr_failed = 0
             return
 
-        if exc not in (e_errors.ENCP_GONE, e_errors.DELETED):
+        if exc not in (e_errors.ENCP_GONE, e_errors.DELETED, e_errors.NOACCESS,e_errors.NOTALLOWED):
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
                 broken =  "max_consecutive_failures (%d) reached" %(self.max_consecutive_failures)
