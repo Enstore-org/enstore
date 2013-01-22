@@ -6,7 +6,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 3.0.0
-Release: 4
+Release: 5
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -139,6 +139,7 @@ echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 
 # copy qpid extras
+echo "Copying /opt/enstore/etc/extra_python.pth to /opt/enstore/Python/lib/python2.6/site-packages"
 cp -p /opt/enstore/etc/extra_python.pth /opt/enstore/Python/lib/python2.6/site-packages
 echo "Creating sudoers file"
 echo "The original is saved into /etc/sudoers.enstore_save"
@@ -204,7 +205,10 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
-*Thu Dec 13 14:22:48 CST 2012
+* Tue Jan 22 17:47:48 2013 <moibenko@fnal.gov> -
+- new version 3.0.0-5
+- only 2 mods: library_manager.py and mover.py
+* Thu Dec 13 14:22:48 2012 <moibenko@fnal.gov> -
 - new version 3.0.0-4
 * Fri Oct 26 2012  <moibenko@fnal.gov> -
 - new version 3.0.0-3
