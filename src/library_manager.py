@@ -3582,6 +3582,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         mticket['unique_id'] =  w['unique_id']
         mticket['status'] =  (e_errors.OK, None)
         mticket['state'] = 'SETUP'
+        mticket['time_in_state'] = 0.
 
         # update volume status
         # get it directly from volume clerk as mover
@@ -3919,6 +3920,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             mticket['volume_family'] = w['vc']['volume_family']
             mticket['unique_id'] = w['unique_id']
             mticket['state'] = 'SETUP'
+            mticket['time_in_state'] = 0.
             Trace.trace(self.my_trace_level,"mover_bound_volume: mover %s label %s vol_fam %s" %
                         (mticket['mover'], mticket['external_label'],
                          mticket['volume_family']))
