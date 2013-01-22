@@ -1303,7 +1303,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   stats[self.ftt.TRACK_RETRY],
                                   stats[self.ftt.UNDERRUN],
                                   0,
-                                  write_prot)
+                                  write_prot,
+                                  self.name)
                 
     def start(self):
         self.logname = self.config.get('logname', self.name)
