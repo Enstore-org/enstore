@@ -6,7 +6,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 3.0.0
-Release: 5
+Release: 6
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -205,6 +205,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Wed Jan 23 16:00:00 2013 <moibenko@fnal.gov> -
+- new version 3.0.0-6
 * Tue Jan 22 17:47:48 2013 <moibenko@fnal.gov> -
 - new version 3.0.0-5
 - only 2 mods: library_manager.py and mover.py
