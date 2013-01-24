@@ -205,12 +205,12 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
-* Wed Jan 23 16:00:00 2013 <moibenko@fnal.gov> -
+* Wed Jan 23 2013 <moibenko@fnal.gov> -
 - new version 3.0.0-6
-* Tue Jan 22 17:47:48 2013 <moibenko@fnal.gov> -
+* Tue Jan 22 2013 <moibenko@fnal.gov> -
 - new version 3.0.0-5
 - only 2 mods: library_manager.py and mover.py
-* Thu Dec 13 14:22:48 2012 <moibenko@fnal.gov> -
+* Thu Dec 13 2012 <moibenko@fnal.gov> -
 - new version 3.0.0-4
 * Fri Oct 26 2012  <moibenko@fnal.gov> -
 - new version 3.0.0-3
