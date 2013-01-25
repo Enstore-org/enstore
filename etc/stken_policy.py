@@ -93,7 +93,7 @@ policydict = {
                                            'minimal_file_size': 2000000000L,
                                            'max_files_in_pack': 100, 
                                            'max_waiting_time': 120,
-                                           'resulting_library':'CD-DiskSF'
+                                           'resulting_library':'CD-DiskSFT'
                                            }
                              
                              },
@@ -105,7 +105,7 @@ policydict = {
                                            'minimal_file_size': 2000000000L,
                                            'max_files_in_pack': 100, 
                                            'max_waiting_time': 120,
-                                           'resulting_library':'CD-DiskSF'
+                                           'resulting_library':'CD-DiskSFT'
                                            }
                              
                              },
