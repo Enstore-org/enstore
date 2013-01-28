@@ -6426,7 +6426,8 @@ def write_file(MY_TASK,
 		       "--file-family-wrapper", wrapper,
                        "--library", libraries,
                        "--override-path", src_path,
-                       "--file-family-width", str(intf.file_family_width)]
+                       "--file-family-width", str(intf.file_family_width),
+                       "--no-crc"]
 
 	argv = ["encp"] + use_verbose + encp_options + use_priority + \
                dst_options + use_threads + [tmp_path, mig_path]
