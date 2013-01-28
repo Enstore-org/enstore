@@ -241,7 +241,8 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             
             self.rate_ntuples[log_name] = histogram.Ntuple(log_name+"_aggr_rate_vs_date", log_name)
             self.rate_ntuples[log_name].set_time_axis()
-            self.rate_ntuples[log_name].set_time_axis_format("%y-%m-%d")
+            #self.rate_ntuples[log_name].set_time_axis_format("%y-%m-%d")
+            self.rate_ntuples[log_name].set_time_axis_format("%m-%d")
             df= self.rate_ntuples[log_name].get_data_file()
             self.rate_ntuples[log_name].set_opt_stat()
             self.rate_ntuples[log_name].set_ylabel("Aggregation Rates [MB/s]")
@@ -253,8 +254,8 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             while ln:
                 a = ln.split(' ')
                 self.rate_histograms[log_name].fill(float(a[4]))
-                df.write("%s %f \n"%(a[0], float(a[4])))
-                self.rate_ntuples[log_name].get_data_file().write("%s %f \n"%(a[0], float(a[4])))
+                df.write("%s 00:00:00 %f \n"%(a[0], float(a[4])))
+                self.rate_ntuples[log_name].get_data_file().write("%s 00:00:00 %f \n"%(a[0], float(a[4])))
                 self.rate_ntuples[log_name].entries += 1
                 ln = in_f.readline()
             data_file.close()
@@ -266,7 +267,7 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 self.rate_histograms[log_name].plot(directory = self.web_dir)
                 self.rate_ntuples[log_name].get_data_file().flush()
                 self.rate_ntuples[log_name].get_data_file().close()
-                self.rate_ntuples[log_name].plot("1:2",directory = self.web_dir) 
+                self.rate_ntuples[log_name].plot("1:3",directory = self.web_dir) 
             except:
                 pass
 
