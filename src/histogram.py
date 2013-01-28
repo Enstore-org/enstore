@@ -493,7 +493,7 @@ class Histogram1D(BasicHistogram):
                 hist.variance =hist.rms2-hist.mean*hist.mean
                 hist.variance =math.sqrt(hist.variance)
                 hist.mean_error=hist.variance/math.sqrt(float(hist.entries))
-                hist.variance_error==hist.variance/math.sqrt(2.*float(hist.entries))
+                hist.variance_error=hist.variance/math.sqrt(2.*float(hist.entries))
             else:
                 hist.mean = 0.
                 hist.rms2 = 0.
@@ -531,7 +531,7 @@ class Histogram1D(BasicHistogram):
                 hist.variance =hist.rms2-hist.mean*hist.mean
                 hist.variance =math.sqrt(hist.variance)
                 hist.mean_error=hist.variance/math.sqrt(float(hist.entries))
-                hist.variance_error==hist.variance/math.sqrt(2.*float(hist.entries))
+                hist.variance_error=hist.variance/math.sqrt(2.*float(hist.entries))
             else:
                 hist.mean = 0.
                 hist.rms2 = 0.
@@ -573,7 +573,7 @@ class Histogram1D(BasicHistogram):
                 hist.variance =hist.rms2-hist.mean*hist.mean
                 hist.variance =math.sqrt(hist.variance)
                 hist.mean_error=hist.variance/math.sqrt(float(hist.entries))
-                hist.variance_error==hist.variance/math.sqrt(2.*float(hist.entries))
+                hist.variance_error=hist.variance/math.sqrt(2.*float(hist.entries))
             else:
                 hist.mean = 0.
                 hist.rms2 = 0.
@@ -610,7 +610,7 @@ class Histogram1D(BasicHistogram):
                 hist.variance =hist.rms2-hist.mean*hist.mean
                 hist.variance =math.sqrt(hist.variance)
                 hist.mean_error=hist.variance/math.sqrt(float(hist.entries))
-                hist.variance_error==hist.variance/math.sqrt(2.*float(hist.entries))
+                hist.variance_error=hist.variance/math.sqrt(2.*float(hist.entries))
             else:
                 hist.mean = 0.
                 hist.rms2 = 0.
