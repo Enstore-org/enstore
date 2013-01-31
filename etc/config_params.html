@@ -1100,11 +1100,20 @@ See details in "Small Files Aggregation High Level Design" document.
 <tr><td><a NAME="tmp_stage_area">tmp_stage_area</a></td><td>disk area where staged files are temporarily stored</td>
 	   <td>Mandatory</td><td>None</td>
 </tr>
+<tr><td><a NAME="aggregation_host">aggregation_host</a></td><td>host on which aggregation (packing) is done (if defined)</td>
+	   <td>Optional</td><td>None</td>
+</tr>
+<tr><td><a NAME="staging_host">staging_host</a></td><td>host on which staging (unpacking) is done (if defined)</td>
+	   <td>Optional</td><td>None</td>
+</tr>
 <tr><td><a NAME="packages_dir">packages_dir</a></td><td>directory in name space for packages</td>
 	   <td>Mandatory</td><td>None</td>
 </tr>
 <tr><td><a NAME="dismount_delay">dismount_delay</a></td><td>delay for dismounting tape</td>
 	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="delta_priority">delta_priority</a></td><td>delta priority for encp calls</td>
+	   <td>Optional</td><td>10</td>
 </tr>
 <tr><td><a NAME="check_written_file">check_written_file</a></td><td>if greater than 0, then randomly check files written using this number as the mean</td>
 	   <td>Optional</td><td>0 - do not check</td>

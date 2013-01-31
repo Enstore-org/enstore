@@ -280,18 +280,20 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # to deal with this problem packaging / unpackging will be done
         # directly on the nfs server if it defined as aggregation_host in configuration
         self.remote_aggregation_host = self.my_conf.get("aggregation_host", "")
+        self.remote_staging_host = self.my_conf.get("staging_host", "")
         self.data_area = StorageArea(self.my_conf['data_area'], self.remote_aggregation_host
                                      ) # area on disk where original files are stored
         self.archive_area = StorageArea(self.my_conf['archive_area'],
                                         self.remote_aggregation_host) # area on disk where archvived files are temporarily stored
         self.stage_area = StorageArea(self.my_conf.get('stage_area',''),
-                                      self.remote_aggregation_host)   # area on disk where staged files are stored
+                                      self.remote_staging_host)   # area on disk where staged files are stored
         self.tmp_stage_area = StorageArea(self.my_conf['tmp_stage_area'],
-                                          self.remote_aggregation_host)  # area on disk where staged files are temporarily stored
+                                          self.remote_staging_host)  # area on disk where staged files are temporarily stored
         self.packages_location = self.my_conf.get("packages_dir", "") # directory in name space for packages
 
         self.blocking_factor =  self.my_conf.get("tar_blocking_factor", 20) # 20 is a default tar blocking factor
         self.namespace_top_dir = self.my_conf.get("namespace_top_dir", "/pnfs/fs/usr") # use to resolve file path
+        self.delta_pri = str(self.my_conf.get("delta_priority", 10)) # delta priority of encp request
 
         if not self.packages_location:
             Trace.alarm(e_errors.ERROR, "Define packages_dir in cofiguration! Exiting")
@@ -421,9 +423,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     def __setattr__(self, attr, val):
         try:
             if attr == 'status':
-               self.__dict__['status_change_time'] = time.time()
+               self.status_change_time = self.state_change_time = time.time()
             if attr == 'state':
-               self.__dict__['state_change_time'] = time.time()
+               self.state_change_time = time.time()
                
         except:
            pass #don't want any errors here to stop us
@@ -576,8 +578,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             fstats = os.stat(src_path)
             fsize = fstats[stat.ST_SIZE]/1000000.
             
-            Trace.log(DEBUGLOG, "Finished tar to %s size %s rate %s MB/s"%(src_path, fsize, fsize/t))              
-            Trace.log(e_errors.INFO, "Finished tar to %s size %s rate %s MB/s"%(src_path, fsize, fsize/t))              
+            Trace.log(e_errors.INFO, "Finished tar to %s size %s MB rate %s MB/s"%(src_path, fsize, fsize/t))              
         os.remove("file_list")
 
         # Qpid converts strings to unicode.
@@ -836,14 +837,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "write_to_tape: will write %s into %s"%(src_file_path, dst_file_path,))
         #return
         # create encp request
-        args = ["encp"]
+        args = ["encp", "--threaded"]
         if self.delayed_dismount:
-            args.append("--delayed-dismount")
-            args.append(str(self.delayed_dismount))
-        args.append("--file-family-wrapper")
-        args.append(ff_wrapper)
-        args.append(src_file_path)
-        args.append(dst_file_path)
+            args.extend(("--delayed-dismount", str(self.delayed_dismount)))
+        args.extend(("--file-family-wrapper", ff_wrapper, "--delpri", self.delta_pri, src_file_path, dst_file_path))
         Trace.trace(10, "write_to_tape: sending %s"%(args,))
         encp = encp_wrapper.Encp()
         # call encp
@@ -1245,7 +1242,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # now stage the package file
         if not os.path.exists(tmp_stage_file_path):
             # stage file from tape if it does not exist
-            args = ["encp", "--skip-pnfs", "--override-deleted", "--get-bfid", package['bfid'], tmp_stage_file_path]  
+            args = ["encp", "--threaded",
+                    "--skip-pnfs",
+                    "--override-deleted",
+                    "--delpri", self.delta_pri,
+                    "--get-bfid",
+                    package['bfid'],
+                    tmp_stage_file_path
+                    ]
             Trace.trace(10, "stage_files: sending %s"%(args,))
             encp = encp_wrapper.Encp()
             try:
@@ -1277,18 +1281,20 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # untar packaged files
         # if package contains more than one file
         Trace.trace(10, "unwinding %s"%(stage_fname,))
-        if self.remote_aggregation_host:
+        if self.remote_staging_host:
             # run tar on the remote host
             Trace.trace(10, "will run tar on remote host %s"%(self.remote_aggregation_host,))
             tarcmd = 'export ENSSH=/usr/bin/ssh; enrsh %s "cd %s && tar -b %s --force-local -xf %s"'% \
-                     (self.remote_aggregation_host,
+                     (self.remote_staging_host,
                       tmp_stage_dir_path,
                       self.blocking_factor,
                       stage_fname)
         else:
             tarcmd = "tar -b %s --force-local -xf %s"%(self.blocking_factor, stage_fname,)
         Trace.trace(10, "tar cmd %s"%(tarcmd,))
+        start_t = time.time() 
         rtn = enstore_functions2.shell_command2(tarcmd)
+        t = time.time() - start_t
         Trace.trace(10, "unwind returned %s"%(rtn,))
 
         if rtn[0] != 0 : # tar return code
@@ -1302,6 +1308,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             return False
 
+        Trace.log(e_errors.INFO, "Finished tar from %s size %s MB rate %s MB/s"%(stage_fname, package["size"], package["size"]/1000000./t))              
+        
         new_set_cache_params = []
 
         # move files to their original location
@@ -1400,6 +1408,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         bfid_info = []
         files_to_stage = []
+        Trace.trace(10, "read_from_tape: request len %s"%(len(request_list),))
         if len(request_list) == 1:
             # check if the package staging is requested
             bfid = request_list[0]['bfid']
@@ -1447,6 +1456,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     else:
                         bfid_info.append(rec)
 
+        Trace.trace(10, "read_from_tape: package_id %s"%(package_id,))
+        if not package_id:
+            Trace.alarm(e_errors.ERROR, "is file on tape? bfid=%s"%(bfid,))
+            return False
         package = self.fcc.bfid_info(package_id) 
         set_cache_params = [] # this list is needed to send set_cache_status command to file clerk
         Trace.log(e_errors.INFO, "Will stage package %s"%(package,))
