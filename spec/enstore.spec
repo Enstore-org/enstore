@@ -123,14 +123,14 @@ fi
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 rm -rf /tmp/enstore-setup
 PYTHON_DIR=$ENSTORE_DIR/Python
-echo PYTHON_DIR=$PYTHON_DIR
+echo PYTHON_DIR=$PYTHON_DIR > /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
 echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
 FTT_DIR=$ENSTORE_DIR/FTT
-echo FTT_DIR=$FTT_DIR
+echo FTT_DIR=$FTT_DIR >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
 
 echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
