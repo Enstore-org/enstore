@@ -20,8 +20,10 @@ class EnLogHandler(logging.Handler):
     
     def __init__(self,name):
         """Initialize the handler"""
-        self.name = name
+
         logging.Handler.__init__(self,level=logging.DEBUG)
+        self.name = name
+
         #self.level = logging.DEBUG
         
         # enstore Trace name is global setting, it is called once and for all
@@ -90,8 +92,9 @@ class EnTraceHandler(logging.Handler):
     
     def __init__(self,name):
         """Initialize the handler"""
-        self.name = name
+
         logging.Handler.__init__(self,level=logging.DEBUG)
+        self.name = name
         #self.level = logging.DEBUG
         
         # enstore Trace name is global setting, it is called once and for all
