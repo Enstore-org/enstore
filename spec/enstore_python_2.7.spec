@@ -5,8 +5,8 @@
 ###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 3.0.1
-Release: 3
+Version: 3.1.1
+Release: 6
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -65,7 +65,7 @@ tar xzf /tmp/enstore_qpid_python2.7.tgz
 
 # create a tepmorary setup file
 #+++++++++++
-echo PYTHON_DIR=$PYTHON_DIR> /tmp/enstore-setup
+echo PYTHON_DIR=$PYTHON_DIR > /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
@@ -85,6 +85,8 @@ echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 %build
 . /tmp/enstore-setup
 echo "BUILD"
+which_python=`which python`
+echo "PYTHON_EXE `file -L /usr/src/redhat/BUILD/opt/enstore/Python/bin/python | cut -f 3 -d ' ' | cut -f 1 -d '-'`"
 make clean
 make all
 
@@ -113,7 +115,8 @@ if [ $? -ne 0 ]; then
 	useradd -u 5744 -g enstore enstore
 	chmod 775 ~enstore
 fi
-
+echo "Removing /%{prefix}"
+rm -rf /%{prefix}
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 #%post
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
@@ -123,14 +126,14 @@ fi
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 rm -rf /tmp/enstore-setup
 PYTHON_DIR=$ENSTORE_DIR/Python
-echo PYTHON_DIR=$PYTHON_DIR
+echo PYTHON_DIR=$PYTHON_DIR > /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
 echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
 FTT_DIR=$ENSTORE_DIR/FTT
-echo FTT_DIR=$FTT_DIR
+echo FTT_DIR=$FTT_DIR >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
 
 echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
@@ -183,7 +186,7 @@ if [ ! -d ~enstore/config ]; then
 fi
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
-rm /tmp/enstore-setup
+#rm /tmp/enstore-setup
 
 %preun
 echo "PRE UNINSTALL"
@@ -204,6 +207,9 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Tue Feb  5 2013  <moibenko@fnal.gov> -
+- new version 3.1.1-6
+- with python 2.7
 * Thu Nov 15 2012  <moibenko@fnal.gov> -
 - new version 3.0.1-0
 - with python 2.7
