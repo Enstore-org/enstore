@@ -151,12 +151,24 @@ class SFAStatsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
 
 class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
-    def __init__(self, name, isActive=True, date=None, data_file=None):
+    def __init__(self, name, isActive=True, date=None, data_file=None, grep_pattern=None, tmp_file=None):
+        """
+        @param name - plot name
+        @param date - get data for this date if specified
+        @param data_file - file where data is kept/saved
+        @param grep_pattern - pattern to grep in enstore log files
+        @param tmp_file - file to temporary save grep results
+        """
+        
         enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
+        self.name = name
         self.rate_histograms = {}
         self.rate_ntuples = {}
         self.date = date
         self.data_file = data_file
+        self.data_file_name = os.path.basename(self.data_file)
+        self.pattern = grep_pattern
+        self.tmp_file = tmp_file
 
     def book(self, frame):
         cron_dict = frame.get_configuration_client().get("crons", {})
@@ -175,8 +187,17 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
         self.log_file_path = log_server_info.get('log_file_path')
         
+    def _get_migrators(self):
+        migrators = self.csc.get_migrators()
+        for migrator in migrators:
+            # get log names
+            migrator_configuration = self.csc.get(migrator, None)
+            if migrator_configuration:
+                self.log_names.append(migrator_configuration['logname'])
+        
     def fill(self, frame):
         self.log_names = []
+        self._get_migrators()
         # enstore log file name
         if not self.date:
             tm = time.localtime()          # get the local time
@@ -196,32 +217,32 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             rc = os.system(c)
             if rc != 0:
                 # not found
-                cmd = "grep -H 'Finished tar to' %s >> %s"%(log_file_path, self.data_file)
+                cmd = "grep -H '%s' %s >> %s"%(self.pattern, log_file_path, self.data_file)
                 os.system(cmd)
-                cmd = "grep -H 'Finished tar to' %s | sed -e 's/.*LOG-//' | sed -e 's/:/ /' | awk '{print $1,$2,$7,$13,$15}' > /tmp/tar_rates"%(self.data_file,)
+                cmd = "grep -H '%s' %s | sed -e 's/.*LOG-//' | sed -e 's/:/ /' | awk '{print $1,$2,$7,$13,$16}' > %s"% \
+                      (self.pattern, self.data_file, self.tmp_file)
             else:
                 cmd = None
         else:
-            # create a temporay file from log log file
-            cmd = "grep -H 'Finished tar to' %s | sed -e 's/.*LOG-//' | sed -e 's/:/ /' | awk '{print $1,$2,$7,$13,$15}' > /tmp/tar_rates"%(path,)
+            # create a temporary file from log file
+            cmd = "grep -H '%s' %s | sed -e 's/.*LOG-//' | sed -e 's/:/ /' | awk '{print $1,$2,$7,$13,$16}' > %s"% \
+                  (self.pattern, path, self.tmp_file)
         if cmd:
             os.system(cmd)
         
-        migrators = self.csc.get_migrators()
-        for migrator in migrators:
-            # get log names
-            migrator_configuration = self.csc.get(migrator, None)
-            if migrator_configuration:
-                self.log_names.append(migrator_configuration['logname'])
         for log_name in self.log_names:
-            cmd = "fgrep %s /tmp/tar_rates > /tmp/%s_tar_rates"%(log_name, log_name)
+            #cmd = "fgrep %s /tmp/tar_rates > /tmp/%s_tar_rates"%(log_name, log_name)
+            cmd = "fgrep %s %s > /tmp/%s_%s"%(log_name,
+                                              self.tmp_file,
+                                              log_name, os.path.basename(self.tmp_file))
             os.system(cmd)
 
             # find min / max
-            cmd = "sort -g -k 5 /tmp/%s_tar_rates | sed -n '1p;$p' | awk '{print $5}'> /tmp/%s_min_max"%(log_name, log_name)
+            cmd = "sort -g -k 5 /tmp/%s_%s | sed -n '1p;$p' | awk '{print $5}'> /tmp/%s_min_max_%s"% \
+                  (log_name, os.path.basename(self.tmp_file), log_name, self.data_file_name,)
             os.system(cmd)
             try:
-                mm = open("/tmp/%s_min_max"%(log_name,), 'r')
+                mm = open("/tmp/%s_min_max_%s"%(log_name, self.data_file_name), 'r')
             except OSError, IOError:
                 continue
             try:
@@ -229,38 +250,34 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 max = float(mm.readline())
             except ValueError:
                 continue
-            #self.rate_histograms[log_name] = histogram.Ntuple(log_name, "%s Migrator Aggregation Rates"%(log_name,))
-            self.rate_histograms[log_name] = histogram.Histogram1D(log_name+"_aggr_rates", "%s Migrator Aggregation Rates"%(log_name,),int(max-min),min,max)
-            #self.rate_histograms[log_name].set_time_axis(True)
+            self.rate_histograms[log_name] = histogram.Histogram1D(log_name+"_%s_rates"%(self.data_file_name,),
+                                                                   "%s %s"%(log_name,self.name),int(max-min), min, max)
             self.rate_histograms[log_name].set_marker_type("impulses")
             self.rate_histograms[log_name].set_line_width(10)
-            #self.rate_histograms[log_name].set_time_axis_format("%y-%m-%d %H:%M")
-            #self.rate_histograms[log_name].set_time_axis_format("%y-%m-%d")
-            self.rate_histograms[log_name].set_xlabel("Aggregation Rates [MB/s]")
+            self.rate_histograms[log_name].set_xlabel("Rates [MB/s]")
             self.rate_histograms[log_name].set_ylabel("Entries")
             
-            self.rate_ntuples[log_name] = histogram.Ntuple(log_name+"_aggr_rate_vs_date", log_name)
+            self.rate_ntuples[log_name] = histogram.Ntuple(log_name+"_%s_rate_vs_date"%(self.data_file_name,),
+                                                           "%s %s"%(log_name,self.name))
             self.rate_ntuples[log_name].set_time_axis()
-            #self.rate_ntuples[log_name].set_time_axis_format("%y-%m-%d")
             self.rate_ntuples[log_name].set_time_axis_format("%m-%d")
             df= self.rate_ntuples[log_name].get_data_file()
             self.rate_ntuples[log_name].set_opt_stat()
-            self.rate_ntuples[log_name].set_ylabel("Aggregation Rates [MB/s]")
+            self.rate_ntuples[log_name].set_ylabel("Rates [MB/s]")
             self.rate_ntuples[log_name].set_xlabel("date")
 
             data_file = self.rate_histograms[log_name].get_data_file()
-            in_f = open("/tmp/%s_tar_rates"%(log_name,), 'r')
+            in_f = open("/tmp/"+log_name+"_%s_rates"%(self.data_file_name,), 'r')
             ln = in_f.readline()
             while ln:
                 a = ln.split(' ')
                 self.rate_histograms[log_name].fill(float(a[4]))
-                df.write("%s 00:00:00 %f \n"%(a[0], float(a[4])))
-                self.rate_ntuples[log_name].get_data_file().write("%s 00:00:00 %f \n"%(a[0], float(a[4])))
+                df.write("%s %s %f \n"%(a[0], a[1], float(a[4])))
                 self.rate_ntuples[log_name].entries += 1
                 ln = in_f.readline()
             data_file.close()
                                 
-
+        
     def plot(self):
         for log_name in self.log_names:
             try:

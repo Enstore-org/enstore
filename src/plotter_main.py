@@ -139,10 +139,22 @@ if __name__ == "__main__":
                 import sfa_plotter_module
                 SFA_Stats_Module = sfa_plotter_module.SFAStatsPlotterModule("SFA_Statistics")
                 f.add(SFA_Stats_Module)
-                data_file = f.csc.get("SFA_Stats",{}).get("aggregation_rates_data")
-                if data_file:
-                    SFA_Aggregation_rates_Module = sfa_plotter_module.SFATarRatesPlotterModule("SFA_tar_rates", date=None, data_file=data_file)
+                pack_data_file = f.csc.get("SFA_Stats",{}).get("packaging_rates_data")
+                unpack_data_file = f.csc.get("SFA_Stats",{}).get("unpackaging_rates_data")
+                if pack_data_file:
+                    SFA_Aggregation_rates_Module = sfa_plotter_module.SFATarRatesPlotterModule("SFA_pack_rates",
+                                                                                               date=None,
+                                                                                               data_file=pack_data_file,
+                                                                                               grep_pattern="Finished tar to",
+                                                                                               tmp_file="/tmp/pack_rates")
                     f.add(SFA_Aggregation_rates_Module)
+                if unpack_data_file:
+                    SFA_Stage_rates_Module = sfa_plotter_module.SFATarRatesPlotterModule("SFA_unpack_rates",
+                                                                                         date=None,
+                                                                                         data_file=unpack_data_file,
+                                                                                         grep_pattern="Finished tar from",
+                                                                                         tmp_file="/tmp/unpack_rates")
+                    f.add(SFA_Stage_rates_Module)
             else:
                 print "Small Files Configuration is not defined"
                 sys.exit(1)
