@@ -139,14 +139,14 @@ def migration_file_family_duplication(bfid, ff, fcc, intf, deleted=migrate_chime
         return migrate_chimera.DELETED_FILE_FAMILY + migrate_chimera.MIGRATION_FILE_FAMILY_KEY % (count,)
     else:
         if intf.file_family:
-	    return intf.file_family + migrate_chimera.MIGRATION_FILE_FAMILY_KEY % (count,)
+            return intf.file_family + migrate_chimera.MIGRATION_FILE_FAMILY_KEY % (count,)
         else:
-	    return ff + migrate_chimera.MIGRATION_FILE_FAMILY_KEY % (count,)
+            return ff + migrate_chimera.MIGRATION_FILE_FAMILY_KEY % (count,)
 
 # normal_file_family(ff) -- making up a normal file family from a
 #				migration file family
 def normal_file_family_duplication(ff):
-	return re.sub("_copy_[0-9]*", "", ff, 1)
+    return re.sub("_copy_[0-9]*", "", ff, 1)
 
 #Return True if the file_family has the pattern of a migration/duplication
 # file.  False otherwise.
@@ -241,8 +241,13 @@ def _duplicate_metadata(MY_TASK, job, fcc, db):
     src_bfid = src_file_record['bfid']
     dst_bfid = dst_file_record['bfid']
 
-    # swapping metadata
-    m1 = {'bfid': dst_bfid,
+    # SFA: check if duplicated file is a package
+    package_id = src_file_record.get("package_id", None)
+    package_files_count = src_file_record.get("package_files_count", 0)
+    src_is_a_package = (package_id is not None) and (src_bfid == package_id)
+
+    # update destination file metadata: set pnfs id and path
+    mod_record = {'bfid': dst_bfid,
 	  'pnfsid':src_file_record['pnfsid'],
 	  'pnfs_name0':src_file_record['pnfs_name0']}
     if src_file_record['deleted'] == migrate_chimera.YES:
@@ -251,34 +256,44 @@ def _duplicate_metadata(MY_TASK, job, fcc, db):
             # copies before the constraints in the DB were modified
             # to make the pair (src_bfid, dst_bfid) unique instead of
             # each column src_bfid & dst_bfid being unique.
-            m1['deleted'] = f0['deleted']
+            mod_record['deleted'] = f0['deleted']
         else:
-            m1['deleted'] = migrate_chimera.YES
-    res = fcc.modify(m1)
+            mod_record['deleted'] = migrate_chimera.YES
+    res = fcc.modify(mod_record)
     if not e_errors.is_ok(res['status']):
         return "failed to change pnfsid for %s" % (dst_bfid,)
 
     # register duplication
-
     # get a duplication manager
-    dm = duplication_util.DuplicationManager()
     rtn = None
-    if not dm.is_primary_and_copy(src_bfid, dst_bfid):
-        #If the file_copies_map table was not set by log_copied(), we
-        # need to do so now.  This can happen if the duplication began
-        # with duplicate.py less than 1.37 or log_copied() starting with
-        # revision 1.37 failed between updating the two tables.
-        if src_file_record['deleted'] == migrate_chimera.YES:
-            #The make_duplicate() function doesn't handle deleted files.
-            rtn = dm.register_duplicate(src_bfid, dst_bfid)
-        elif src_file_record['deleted'] == migrate_chimera.NO:
-            rtn = dm.make_duplicate(src_bfid, dst_bfid)
-        else:
-            #We should never get here!
-            pass
-    dm.db.close()
+    try:
+        dm = duplication_util.DuplicationManager()
+        if not dm.is_primary_and_copy(src_bfid, dst_bfid):
+            #If the file_copies_map table was not set by log_copied(), we
+            # need to do so now.  This can happen if the duplication began
+            # with duplicate.py less than 1.37 or log_copied() starting with
+            # revision 1.37 failed between updating the two tables.
+            if src_file_record['deleted'] == migrate_chimera.YES:
+                #The make_duplicate() function doesn't handle deleted files.
+                rtn = dm.register_duplicate(src_bfid, dst_bfid)
+            elif src_file_record['deleted'] == migrate_chimera.NO:
+                rtn = dm.make_duplicate(src_bfid, dst_bfid)
+            else:
+                #We should never get here!
+                pass
+    finally:
+        dm.db.close()
 
-    return handle_string_return_code(rtn, "are already copies")
+    if rtn:
+        return handle_string_return_code(rtn, "are already copies")
+
+    # SFA: if duplicated file is a package and not empty, create children for new package
+    if src_is_a_package and package_files_count > 0:
+        rc = migrate_chimera.dup_packaged_meta_one(MY_TASK, src_file_record, dst_bfid, fcc)
+        if rc:
+            rtn = "failed to create children bfids for package %s" % (dst_bfid,)
+
+    return rtn
 
 def duplicate_metadata(job, fcc, db):
     MY_TASK = "DUPLICATE_METADATA"
