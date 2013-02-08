@@ -716,9 +716,9 @@ class VolumeDB(DbTable):
         sts = string.split(s['volume_family'],'.') if s.has_key('volume_family') else None
         data={}
         if s.has_key('blocksize') :
-            data['block_size'] = s[blocksize]
+            data['block_size'] = s['blocksize']
         if s.has_key('external_label') :
-            data['label']= s['external_label'],
+            data['label']= s['external_label']
         for k in ('capacity_bytes','eod_cookie',
                   'library','media_type','non_del_files',
                   'remaining_bytes','sum_mounts','sum_rd_access',
@@ -732,24 +732,16 @@ class VolumeDB(DbTable):
                 data[k] = time2timestamp(s[k])
 
         if s.has_key('system_inhibit'):
-            data['system_inhibit_0'] =  s['system_inhibit'][0],
-            data['system_inhibit_1'] =  s['system_inhibit'][1],
+            data['system_inhibit_0'],data['system_inhibit_1'] = s['system_inhibit']
 
         if s.has_key('user_inhibit'):
-            data['user_inhibit_0'] =  s['user_inhibit'][0],
-            data['user_inhibit_1'] =  s['user_inhibit'][1],
+            data['user_inhibit_0'],data['user_inhibit_1'] = s['user_inhibit']
 
         if s.has_key('si_time'):
-            data['si_time_0'] = time2timestamp(s['si_time'][0]),
-            data['si_time_1'] = time2timestamp(s['si_time'][1]),
+            data['si_time_0'],data['si_time_1'] = map(time2timestamp,s['si_time'])
 
         if sts and len(sts) == 3:
-            data['storage_group'] = sts[0],
-            data['file_family']   = sts[1],
-            data['wrapper']       = sts[2],
-
-        if s.has_key('modification_time') :
-            data['modification_time'] = time2timestamp(s['modification_time'])
+            data['storage_group'],data['file_family'],data['wrapper'] = sts
 
         for k in ("active_files","deleted_files","unknown_files",\
                   "active_bytes","deleted_bytes","unknown_bytes"):
