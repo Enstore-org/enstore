@@ -1,1 +1,0 @@
-\echo 'No functions in drivestat database'

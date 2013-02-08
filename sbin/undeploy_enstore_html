@@ -1,9 +1,0 @@
-#!/bin/bash
-
-/sbin/service httpd stop 
-rm -f  /etc/httpd/conf/httpd.conf
-mv /etc/httpd/conf/httpd.conf.orig /etc/httpd/conf/httpd.conf
-mv /etc/init.d/httpd.orig /etc/init.d/httpd
-
-exit 0 
-

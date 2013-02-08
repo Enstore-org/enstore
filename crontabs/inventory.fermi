@@ -1,2 +1,0 @@
-# Must follow robot_inventory, which runs 1 hour ahead for each time period
-30 2,8,14,20 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p silocheck  $ENSTORE_DIR/sbin/silo-check > /dev/null 2> /dev/null

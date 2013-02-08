@@ -1,2 +1,0 @@
-#This cronjob watches for qpidd broker and restarts it with qpid_broker if it is missing
-0-59/5 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p checkqpidd -no-enstore $ENSTORE_DIR/sbin/check_qpidd >/dev/null 2>/dev/null
