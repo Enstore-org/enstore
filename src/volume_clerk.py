@@ -2249,14 +2249,13 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                     Trace.log(e_errors.INFO, "Assigning fake volume %s from storage group %s to library %s, volume family %s"
                       % (vol['external_label'], pool, library, vol_fam))
                     vol["status"] = (e_errors.OK, None)
-                    vol['r_a'] = saved_reply_address
-                    self.reply_to_caller(vol)
                 else:
                     message = "%s: no new volumes available [%s, %s]" \
                               % (MY_NAME, library, vol_fam)
                     ticket["status"] = (e_errors.NOVOLUME, message)
                     Trace.alarm(e_errors.ERROR, 'NO VOLUME', message)
-                    self.reply_to_caller(ticket)
+                vol['r_a'] = saved_reply_address
+                self.reply_to_caller(vol)
                 return
 
         if not vol or len(vol) == 0:
@@ -2352,7 +2351,7 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                                         message)
                 finally:
                     sg_lock.release()
-            self.volumedb_dict[label] = vol
+            self.volumedb_dict[label] = { 'volume_family' : vol['volume_family'], 'wrapper' : vol['wrapper'] }
             vol['status'] = (e_errors.OK, None)
             vol['r_a'] = saved_reply_address
             self.reply_to_caller(vol)
