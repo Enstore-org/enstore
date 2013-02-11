@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+<#!/usr/bin/env python
 
 ###############################################################################
 #
@@ -392,7 +392,7 @@ class SummaryBurnRatePlotterModule(#enstore_plotter_module.EnstorePlotterModule,
 
             #Get the capacity in Gigabytes of the tapes belonging to this
             # library.
-            capacity, media_type = self.get_capacity(media_type, edb)
+            capacity, media_type = self.get_capacity(key, edb)
             if capacity == None:
                 #Skip media that does not have a valid library defined
                 # for it anymore.
