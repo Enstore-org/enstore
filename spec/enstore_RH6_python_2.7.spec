@@ -15,7 +15,8 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: postgresql-libs, mt-st, qpid-cpp-client-ssl, qpid-cpp-server-ssl, python-qpid-qmf,qpid-qmf,qpid-cpp-server,python-qpid,qpid-tools, qpid-cpp-client
+Requires: postgresql-libs, mt-st 
+#qpid-cpp-client-ssl, qpid-cpp-server-ssl, python-qpid-qmf,qpid-qmf,qpid-cpp-server,python-qpid,qpid-tools, qpid-cpp-client
 %global _missing_build_ids_terminate_build 0
 %define debug_package %{nil}
 %global __arch_install_post %{nil}
@@ -73,6 +74,7 @@ mkdir -p $SWIG_DIR
 mkdir -p SWIG
 cp -rp $swigdir/* $SWIG_DIR
 cp -rp $swigdir/* SWIG
+tar xzf /tmp/enstore_qpid_python2.7.tgz
 
 # create a tepmorary setup file
 #+++++++++++
