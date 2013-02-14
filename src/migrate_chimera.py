@@ -450,8 +450,7 @@ def init(intf):
     if ( intf.debug_level and type(intf.debug_level) is int and intf.debug_level > 1):
         debug_p = True
 
-    csc = configuration_client.ConfigurationClient((intf.config_host,
-							intf.config_port))
+    csc = configuration_client.ConfigurationClient((intf.config_host,intf.config_port))
 
     db_info = csc.get('database')
     if socket.gethostname() == "gccenmvr2a.fnal.gov":
@@ -466,138 +465,138 @@ def init(intf):
 
     #Verify that all libraries passed in exist.
     if intf.library and not intf.show:
-            for library in intf.library.split(","):
-	        library_fullname = library + ".library_manager"
-                lib_dict = csc.get(library_fullname)
-                if not e_errors.is_ok(lib_dict):
-                        sys.stderr.write("library %s does not exist\n" %
-                                         (library,))
-                        sys.exit(1)
+        for library in intf.library.split(","):
+            library_fullname = library + ".library_manager"
+            lib_dict = csc.get(library_fullname)
+            if not e_errors.is_ok(lib_dict):
+                sys.stderr.write("library %s does not exist\n" %(library,))
+                sys.exit(1)
 
     if debug:
         log("library check okay")
 
-	#Make sure we got the spool directory from command line or
-	# from configuration.
-	if intf.spool_dir:
-		SPOOL_DIR = intf.spool_dir
-	if not SPOOL_DIR:
-		SPOOL_DIR = enstore_functions2.default_value("SPOOL_DIR")
-	##if not SPOOL_DIR and getattr(intf, 'make_failed_copies', None):
-	##	crons_dict = csc.get('crons')
-	##	SPOOL_DIR = crons_dict.get("spool_dir", None)
-	##	if SPOOL_DIR and not os.path.exists(SPOOL_DIR):
-	##		os.makedirs(SPOOL_DIR)
+    #Make sure we got the spool directory from command line or
+    # from configuration.
+    if intf.spool_dir:
+        SPOOL_DIR = intf.spool_dir
+    if not SPOOL_DIR:
+        SPOOL_DIR = enstore_functions2.default_value("SPOOL_DIR")
+    ##if not SPOOL_DIR and getattr(intf, 'make_failed_copies', None):
+    ##	crons_dict = csc.get('crons')
+    ##	SPOOL_DIR = crons_dict.get("spool_dir", None)
+    ##	if SPOOL_DIR and not os.path.exists(SPOOL_DIR):
+    ##		os.makedirs(SPOOL_DIR)
 
-        #Verify if PNFS is trusted.  There will likely only be one mount
-        # point to check, but handle more if necessary.
-        if os.getuid() == 0:
-            #Get a list of /pnfs/fs/usr like mount points.
-            amp = chimera.get_enstore_admin_mount_point() #amp = Admin Mount Point
-            if len(amp) == 0 and \
-                   not getattr(intf, 'make_failed_copies', None) and \
-                   not getattr(intf, 'make_copies', None):
+    #Verify if PNFS is trusted.  There will likely only be one mount
+    # point to check, but handle more if necessary.
+    if os.getuid() == 0:
+        #Get a list of /pnfs/fs/usr like mount points.
+        amp = chimera.get_enstore_admin_mount_point() #amp = Admin Mount Point
+        if len(amp) == 0 and \
+            not getattr(intf, 'make_failed_copies', None) and \
+            not getattr(intf, 'make_copies', None):
                 #If PNFS is not trusted, give up.
                 sys.stderr.write("no PNFS admin mount points found\n")
                 sys.exit(1)
-            for directory in amp:
-                test_file = "%s/.is_pnfs_trusted_test" % (directory,)
-                #Create the test file.
-                try:
-                    open_file = open(test_file, "w")
-                except (OSError, IOError), msg:
-                    #If PNFS is not trusted, give up.
-                    sys.stderr.write("%s is not trusted [1]: %s\n" % (amp, str(msg),))
+
+        for directory in amp:
+            test_file = "%s/.is_pnfs_trusted_test" % (directory,)
+            #Create the test file.
+            try:
+                open_file = open(test_file, "w")
+            except (OSError, IOError), msg:
+                #If PNFS is not trusted, give up.
+                sys.stderr.write("%s is not trusted [1]: %s\n" % (amp, str(msg),))
+                sys.exit(1)
+            #Close the test file.
+            open_file.close()
+            #Remove the test file.
+            try:
+                os.remove(test_file)
+            except (OSError, IOError), msg:
+                if msg.args[0] == errno.ENOENT:
+                    pass
+                else:
+                    #If PNFS is not trusted?  Give up?
+                    sys.stderr.write("%s is not trusted [2]: %s\n" % (amp, str(msg),))
                     sys.exit(1)
-                #Close the test file.
-                open_file.close()
-                #Remove the test file.
+        else: # "for directory in amp:"
+            pnfs_is_trusted = True
+            do_seteuid = False
+
+    if debug:
+        log("trusted PNFS check okay")
+
+    #If we are running duplication in make_failed_copies mode,
+    # do seteuid() calls.
+    if not pnfs_is_trusted and getattr(intf, 'make_failed_copies', None):
+        do_seteuid = True
+
+    # check for no_log commands
+    if not intf.migrated_to and not intf.migrated_from and \
+       not intf.status and not intf.show and \
+       not getattr(intf, "summary", None):
+            #First, verify for these commands we are user root.
+            if os.geteuid() != 0:
+                sys.stderr.write("Must run as user root.\n")
+                sys.exit(1)
+
+            # check for directories
+
+            #log dir
+            if not os.access(LOG_DIR, os.F_OK):
+                os.makedirs(LOG_DIR)
+            if not os.access(LOG_DIR, os.W_OK):
+                message = "Insufficient permissions to open log file."
+                error_log(message)
+                sys.exit(1)
+            log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
+            log(MIGRATION_NAME, string.join(sys.argv, " "))
+
+    if debug:
+        log("log dir check okay")
+
+    # check for spool_dir commands
+    if not intf.migrated_to and not intf.migrated_from and \
+       not intf.status and not intf.show and not intf.scan_volumes and \
+       not intf.scan and not getattr(intf, "restore", None):
+            #spool dir
+            if not SPOOL_DIR:
+                message = "No spool directory specified."
+                error_log(message)
+                sys.exit(1)
+            if not os.access(SPOOL_DIR, os.W_OK):
+                os.makedirs(SPOOL_DIR)
+
+            #migration dir - Make sure it has correct permissions.
+            admin_mount_points = chimera.get_enstore_admin_mount_point()
+            for mp in admin_mount_points:
+                mig_dir = os.path.join(mp, MIGRATION_DB)
                 try:
-                    os.remove(test_file)
-                except (OSError, IOError), msg:
-                    if msg.args[0] == errno.ENOENT:
-                        pass
-                    else:
-                        #If PNFS is not trusted?  Give up?
-                        sys.stderr.write("%s is not trusted [2]: %s\n" % (amp, str(msg),))
+                    d_stat = os.stat(mig_dir)
+                    stat_mode = d_stat[stat.ST_MODE]
+                except (OSError, IOError):
+                    continue
+
+                if not stat_mode & stat.S_IRUSR or \
+                   not stat_mode & stat.S_IWUSR or \
+                   not stat_mode & stat.S_IXUSR or \
+                   not stat_mode & stat.S_IRGRP or \
+                   not stat_mode & stat.S_IWGRP or \
+                   not stat_mode & stat.S_IXGRP or \
+                   not stat_mode & stat.S_IROTH or \
+                   not stat_mode & stat.S_IWOTH or \
+                   not stat_mode & stat.S_IXOTH:
+                        message = "Bad permissions for %s.  " \
+                                  "Expected 0777." % \
+                                   (mig_dir,)
+                        log(message)
                         sys.exit(1)
-            else:
-                pnfs_is_trusted = True
-                do_seteuid = False
 
-        if debug:
-            log("trusted PNFS check okay")
+    if debug:
+        log("spool_dir check okay")
 
-        #If we are running duplication in make_failed_copies mode,
-        # do seteuid() calls.
-        if not pnfs_is_trusted and getattr(intf, 'make_failed_copies', None):
-            do_seteuid = True
-
-	# check for no_log commands
-	if not intf.migrated_to and not intf.migrated_from and \
-	   not intf.status and not intf.show and \
-	   not getattr(intf, "summary", None):
-		#First, verify for these commands we are user root.
-		if os.geteuid() != 0:
-			sys.stderr.write("Must run as user root.\n")
-			sys.exit(1)
-
-		# check for directories
-
-		#log dir
-		if not os.access(LOG_DIR, os.F_OK):
-			os.makedirs(LOG_DIR)
-		if not os.access(LOG_DIR, os.W_OK):
-			message = "Insufficent permissions to open log file."
-			error_log(message)
-			sys.exit(1)
-		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
-		log(MIGRATION_NAME, string.join(sys.argv, " "))
-
-        if debug:
-            log("log check okay")
-
-	# check for spool_dir commands
-	if not intf.migrated_to and not intf.migrated_from and \
-	   not intf.status and not intf.show and not intf.scan_volumes and \
-           not intf.scan and not getattr(intf, "restore", None):
-		#spool dir
-		if not SPOOL_DIR:
-			message = "No spool directory specified."
-			error_log(message)
-			sys.exit(1)
-		if not os.access(SPOOL_DIR, os.W_OK):
-			os.makedirs(SPOOL_DIR)
-
-		#migration dir - Make sure it has correct permissions.
-		admin_mount_points = chimera.get_enstore_admin_mount_point()
-		for mp in admin_mount_points:
-			mig_dir = os.path.join(mp, MIGRATION_DB)
-			try:
-				d_stat = os.stat(mig_dir)
-				stat_mode = d_stat[stat.ST_MODE]
-			except (OSError, IOError):
-				continue
-
-			if not stat_mode & stat.S_IRUSR or \
-			   not stat_mode & stat.S_IWUSR or \
-			   not stat_mode & stat.S_IXUSR or \
-			   not stat_mode & stat.S_IRGRP or \
-			   not stat_mode & stat.S_IWGRP or \
-			   not stat_mode & stat.S_IXGRP or \
-			   not stat_mode & stat.S_IROTH or \
-			   not stat_mode & stat.S_IWOTH or \
-			   not stat_mode & stat.S_IXOTH:
-				message = "Bad permissions for %s.  " \
-					  "Expected 0777." % \
-					  (mig_dir,)
-				log(message)
-				sys.exit(1)
-
-        if debug:
-            log("spool_dir check okay")
-
-	return
+    return
 
 
 #Return two important values for the copy queue:
