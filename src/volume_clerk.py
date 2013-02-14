@@ -2472,15 +2472,6 @@ class VolumeClerkMethods(VolumeClerkInfoMethods):
                     Trace.log(e_errors.ERROR, message)
                 self.reply_to_caller(ticket)
                 return
-            elif eod_cookie == eod_cookie_on_record:
-                #
-                # This is assumed to be retry call, just return success
-                #
-                message = "Got the same eod_cookie as on record (%s, %s)"%(record["eod_cookie"],
-                                                                           ticket["eod_cookie"],)
-                ticket["status"] = (e_errors.OK, message)
-                self.reply_to_caller(ticket)
-                return
 
         # update the fields that have changed
 
