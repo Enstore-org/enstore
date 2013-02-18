@@ -4661,23 +4661,38 @@ def update_failed_done(bfid, db):
     db.query(q)
 
 #For duplication only.
+
+# These must be set to False in production:
+DEBUG_DONT_WAIT = False
+#DEBUG_DONT_WAIT = True
+
 def make_failed_copies(vcc, fcc, db, intf):
 
     MY_TASK = "MAKE_FAILED_COPIES"
 
     #Build the sql query.
-    q = ("select active_file_copying.*, volume.label " 
+    fmt = ("select active_file_copying.*, volume.label " 
         "from active_file_copying, volume, file " 
         "where file.volume = volume.id " 
         "      and remaining > 0 " 
         "      and active_file_copying.bfid = file.bfid " 
-        "      and (time < CURRENT_TIMESTAMP - interval '24 hours' or " 
+        "      and ( "
+        "           time < CURRENT_TIMESTAMP - interval '%s' or " 
         "           time is NULL)  " 
         "      and file.pnfs_id is not NULL " 
         "      and file.pnfs_id != '' " 
         "      and file.pnfs_path is not NULL " 
         "      and file.pnfs_path != '' " 
         "order by volume.id,time;" )
+
+    interval = "24 hours"
+    if DEBUG_DONT_WAIT:
+        interval = "1 minute"
+        log("#### WARNING: wait time is set to '%s' in make_failed_copies(), check DEBUG_DONT_WAIT seting"
+            % interval)
+        
+    q = fmt % (interval,)
+    
     #Get the results.
     res = db.query(q).getresult()
 
@@ -4720,28 +4735,19 @@ def make_failed_copies(vcc, fcc, db, intf):
         exit_status = _make_copies(MY_TASK, volume, use_bfid_list, vcc, fcc, db, intf)
         return_exit_status = return_exit_status + exit_status
 
-        # Error, process next volume
+        # continue to process next volume in case of error
         if exit_status:
             continue
         
         ### The duplicatation was successfull.
 
         # process bfids in the copy volume
+        # in case of error update error count but continue to process other copies 
         for bfid in use_bfid_list:
             update_res = fcc.made_copy(bfid)
-            # can't update DB - report and return
             if not e_errors.is_ok(update_res['status']):
-                # update error count but continue with other copies in case of error
                 error_log(MY_TASK,"Failed to update active_file_copying for bfid %s." % (bfid,))
                 return_exit_status = return_exit_status +1
-                continue  # process next bfid
-
-            # If original file is a package create children for the new package
-            file_info = fcc.bfid_info(bfid)
-            if e_errors.is_ok(file_info['status']) and bfid == file_info['package_id']:
-                rc = dup_packaged_meta_all(MY_TASK, file_info, fcc)
-                # update error count but continue with other copies in case of error
-                return_exit_status = return_exit_status + rc
 
     return return_exit_status
 
@@ -4785,51 +4791,30 @@ def make_copies(vcc, fcc, db, intf):
 
         #Get the active files without multple copies on the current volume.
         
-# the original query with comments (for understanding)
-#        q1 = "select file.bfid " \
-#             "from file " \
-#             "left join volume on volume.id = file.volume " \
-#             "left join file_copies_map on file.bfid = file_copies_map.bfid " \
-#             "left join migration on file.bfid = migration.src_bfid " \
-#             "where label = '%s' " \
-#             "      and " \
-#             "      (/* Found a file not yet started. */ " \
-#             "       (file_copies_map.alt_bfid is NULL and " \
-#             "        file.deleted = 'n') " \
-#             "       or " \
-#             "       /* Found a file started but not yet finished to " \
-#             "          --make-copies completion state. */ " \
-#             "       (volume.system_inhibit_1 not in ('duplicating', " \
-#             "                                        'duplicated', " \
-#             "                                        'migrating', " \
-#             "                                        'migrated', " \
-#             "                                        'cloning', " \
-#             "                                        'cloned') " \
-#             "        and migration.dst_bfid = file_copies_map.alt_bfid) " \
-#             "      ) " \
-#             "order by file.bfid;" % (volume,)
+        fmt = ( "select file.bfid "
+             "from file "
+             "left join volume on volume.id = file.volume " 
+             "left join file_copies_map on file.bfid = file_copies_map.bfid " 
+             "left join migration on file.bfid = migration.src_bfid " 
+             "where label = '%s' " 
+             "      and " 
+             "      (" 
+             # Found a file not yet started.
+             "       (file_copies_map.alt_bfid is NULL and " 
+             "        file.deleted = 'n') " 
+             "       or " 
+             # Found a file started but not yet finished to 
+             "       (volume.system_inhibit_1 not in ('duplicating', " 
+             "                                        'duplicated', " 
+             "                                        'migrating', " 
+             "                                        'migrated', " 
+             "                                        'cloning', " 
+             "                                        'cloned') " 
+             "        and migration.dst_bfid = file_copies_map.alt_bfid) " 
+             "      ) " 
+             "order by file.bfid;" )
 
-        q1 = "select file.bfid " \
-             "from file " \
-             "left join volume on volume.id = file.volume " \
-             "left join file_copies_map on file.bfid = file_copies_map.bfid " \
-             "left join migration on file.bfid = migration.src_bfid " \
-             "where label = '%s' " \
-             "      and " \
-             "      (" \
-             "       (file_copies_map.alt_bfid is NULL and " \
-             "        file.deleted = 'n') " \
-             "       or " \
-             "       (volume.system_inhibit_1 not in ('duplicating', " \
-             "                                        'duplicated', " \
-             "                                        'migrating', " \
-             "                                        'migrated', " \
-             "                                        'cloning', " \
-             "                                        'cloned') " \
-             "        and migration.dst_bfid = file_copies_map.alt_bfid) " \
-             "      ) " \
-             "order by file.bfid;" % (volume,)
-
+        q1 = fmt % (volume,)
         res1 = db.query(q1).getresult()
 
         bfid_list = []
