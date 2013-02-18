@@ -64,7 +64,7 @@ DuplicateInterface.migrate_options[option.MAKE_COPIES] = {
     {option.VALUE_NAME:"media_type",
      option.VALUE_TYPE:option.STRING,
      option.VALUE_USAGE:option.REQUIRED,},
-    {option.VALUE_NAME:"library__",  #Avoid colision with --library.
+    {option.VALUE_NAME:"library__",  #Avoid collision with --library.
      option.VALUE_TYPE:option.STRING,
      option.VALUE_USAGE:option.OPTIONAL,
      option.VALUE_LABEL:"library"},
@@ -112,7 +112,7 @@ def search_order_duplication(src_bfid, src_file_record, dst_bfid,
     #fcc: File Clerk Client instance.
     #db: postgres connection object instance.
 
-    #Arguements is_it_copied and is_it_swapped used by migrate_chimera.py version.
+    #arguments is_it_copied and is_it_swapped used by migrate_chimera.py version.
     __pychecker__="unusednames=is_it_copied,is_it_swapped"
 
     if dst_bfid:
@@ -197,7 +197,7 @@ def log_uncopied_duplication(src_bfid, dst_bfid, fcc, db):
         return 0  #Success.
 
 #When duplicating to multiple copies, we need to make sure we pick the
-# first original, not the altimate original.
+# first original, not the ultimate original.
 def find_original_duplication(bfid, fcc):
     original_reply = fcc.find_original(bfid)
     f0 = {}
@@ -263,10 +263,16 @@ def _duplicate_metadata(MY_TASK, job, fcc, db):
     if not e_errors.is_ok(res['status']):
         return "failed to change pnfsid for %s" % (dst_bfid,)
 
+    # SFA: if duplicated file is a package and not empty, create children for new package
+    if src_is_a_package and package_files_count > 0:
+        rc = migrate_chimera.dup_packaged_meta_one(MY_TASK, src_file_record, dst_bfid, fcc)
+        if rc:
+            return "failed to create children bfids for package %s" % (dst_bfid,)
+    
     # register duplication
-    # get a duplication manager
     rtn = None
     try:
+        # get duplication manager
         dm = duplication_util.DuplicationManager()
         if not dm.is_primary_and_copy(src_bfid, dst_bfid):
             #If the file_copies_map table was not set by log_copied(), we
@@ -286,13 +292,7 @@ def _duplicate_metadata(MY_TASK, job, fcc, db):
 
     if rtn:
         return handle_string_return_code(rtn, "are already copies")
-
-    # SFA: if duplicated file is a package and not empty, create children for new package
-    if src_is_a_package and package_files_count > 0:
-        rc = migrate_chimera.dup_packaged_meta_one(MY_TASK, src_file_record, dst_bfid, fcc)
-        if rc:
-            rtn = "failed to create children bfids for package %s" % (dst_bfid,)
-
+    
     return rtn
 
 def duplicate_metadata(job, fcc, db):
@@ -365,7 +365,7 @@ def is_expected_volume_duplication(MY_TASK, vol, likely_path, fcc, db):
                         pf.show()
 			return False
 
-		#If the original volume and the volume we are scaning
+		#If the original volume and the volume we are scanning
 		# does not match the volume in pnfs layer 4, report
 		# the error.
 		if pf_volume != original_file_info['external_label']:
@@ -380,7 +380,7 @@ def is_expected_volume_duplication(MY_TASK, vol, likely_path, fcc, db):
 
 #Duplication doesn't do cloning.
 def setup_cloning_duplication():
-	pass
+    pass
 
 ##
 ## Override migration functions with those for duplication.
@@ -400,20 +400,20 @@ migrate_chimera.search_order = search_order_duplication
 
 if __name__ == '__main__':
 
-    	Trace.init(migrate_chimera.MIGRATION_NAME)
+        Trace.init(migrate_chimera.MIGRATION_NAME)
         Trace.do_message(0)
 
         delete_at_exit.setup_signal_handling()
 
-	intf_of_migrate = migrate_chimera.MigrateInterface(sys.argv, 0) # zero means admin
+        intf_of_migrate = migrate_chimera.MigrateInterface(sys.argv, 0) # zero means admin
 
-	try:
-		migrate_chimera.do_work(intf_of_migrate)
-	except (OSError, IOError), msg:
-		if msg.errno == errno.EPIPE:
-			#User piped the output to another process, but
-			# didn't read all the data from the migrate process.
-			pass
-		else:
-			raise sys.exc_info()[0], sys.exc_info()[1], \
-			      sys.exc_info()[2]
+        try:
+            migrate_chimera.do_work(intf_of_migrate)
+        except (OSError, IOError), msg:
+            if msg.errno == errno.EPIPE:
+                #User piped the output to another process, but
+                # didn't read all the data from the migrate process.
+                pass
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], \
+                      sys.exc_info()[2]
