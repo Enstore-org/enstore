@@ -7,9 +7,13 @@
 ./src
 ========== duplicate_chimera.py ====================================================================================
 
+move up package children creation before duplicate get registered, fix typos n tabs
+
 merge SFA package based migration, from branch migration_package_based, r 1.4.2.4 . RB 631 
 
 ========== edb.py ====================================================================================
+
+fix cut&paste artefacts introduced by previous patch
 
 1) add ability to modify specific parts of the record in database 
 2) skip updating fields that are updated by the trigger 
@@ -24,6 +28,10 @@ fix file in transition query http://uqbar/reviews/r/630/
 bug fix: replace erroneous "==" with "=" 
 
 ========== migrate_chimera.py ====================================================================================
+
+removed copying package children in make_failed_copies(). Refactor init() to bring code structure in consistence with r 1.10
+
+rb 641: refactor indentation in init() to get rid of mixed tabs. It fixes changes in logic.
 
 merge SFA package based migration, from branch migration_package_based, r 1.7.2.16 . RB 631 
 
@@ -43,10 +51,12 @@ add unpackaging rates per migrator plots and chage the names of existing plots. 
 fix issue with timestamp 
 
 ========== summary_burn_rate_plotter_module.py ====================================================================================
-
+fixed typo in header
 
 
 ========== volume_clerk.py ====================================================================================
+
+set_remaining_bytes: allow to update record with the same eod_cookie specified.
 
 1) add ability to modify specific parts of the record in database 
 2) skip updating fields that are updated by the trigger 
