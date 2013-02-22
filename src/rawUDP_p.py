@@ -18,12 +18,11 @@ import cleanUDP
 import udp_common
 import checksum
 import Trace
-
-
+import enstore_constants
 
 DEBUG = False
 #DEBUG = True
-MAX_PACKET_SIZE = 16384
+MAX_PACKET_SIZE = enstore_constants.MAX_UDP_PACKET_SIZE
 MAX_QUEUE_SIZE = 200000
 SHUFFLE_THRESHOLD = 1000 # reinsert at the lower index beginning with this queue size
 

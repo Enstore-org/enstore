@@ -33,6 +33,7 @@ import udp_common
 import Trace
 import e_errors
 import host_config
+import enstore_constants
 # for python 2.6 and latter use
 # rawUDP_p -- process based rawUDP for better use of multiprocessor environment
 # and to avoid GIL
@@ -61,7 +62,7 @@ class UDPServer:
     
     def __init__(self, server_address, receive_timeout=60., use_raw=None):
         self.socket_type = socket.SOCK_DGRAM
-        self.max_packet_size = 16384
+        self.max_packet_size = enstore_constants.MAX_UDP_PACKET_SIZE
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
         self._lock = threading.Lock()

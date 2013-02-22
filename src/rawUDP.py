@@ -16,9 +16,10 @@ import udp_common
 import Trace
 import checksum 
 import time
+import enstore_constants
 
 DEBUG = False
-MAX_PACKET_SIZE = 16384
+MAX_PACKET_SIZE = enstore_constants.MAX_UDP_PACKET_SIZE
 MAX_QUEUE_SIZE = 200000
 SHUFFLE_THRESHOLD = 1000 # reinsert at the lower index beginning with this queue size
 

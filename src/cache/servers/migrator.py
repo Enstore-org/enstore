@@ -825,15 +825,19 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.migration_file = dst_file_path
 
         # Change archive_status
+        set_cache_params = []
         for bfid in bfid_list:
             # fill the argumet list for
             # set_cache_status method
-            set_cache_params = []
             set_cache_params.append({'bfid': bfid,
                                      'cache_status':None,# we are not changing this
                                      'archive_status': file_cache_status.ArchiveStatus.ARCHIVING,
                                      'cache_location': None})       # we are not changing this
         rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+        if not e_errors.is_ok(rc['status']):
+            Trace.alarm(e_errors.ALARM, "set cache status failed with %s"%(rc,))
+            return False
+        
         Trace.trace(10, "write_to_tape: will write %s into %s"%(src_file_path, dst_file_path,))
         #return
         # create encp request

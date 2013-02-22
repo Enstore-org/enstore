@@ -10,6 +10,10 @@
 import copy
 
 import Trace
+import enstore_constants
+import e_errors
+
+PAD_SIZE=100 # addtional pad for enstore message
 
 # @param fcc - file clerk client
 # @param set_cache_params list of set_cache_status parameters to set
@@ -24,7 +28,7 @@ def set_cache_status(fcc, set_cache_params):
     while len(local_set_cache_params) > 0:
         param = local_set_cache_params.pop()
         if param:
-            if len(str(tmp_list)) + len(str(param)) < 15000: # the maximal message size is 16384
+            if len(str(tmp_list)) + len(str(param)) < enstore_constants.MAX_UDP_PACKET_SIZE-PAD_SIZE:
                 tmp_list.append(param)
             else:
                Trace.trace(10, "set_cache_status appending %s"%(tmp_list,)) 
@@ -39,8 +43,10 @@ def set_cache_status(fcc, set_cache_params):
     # now send all these parameters
     rc = None # define rc
     for param_list in list_of_set_cache_params:
-        Trace.trace(10, "set_cache_status: sending set_cache_status %s %s"%(len(param_list), param_list,))
+        Trace.trace(10, "set_cache_status: sending set_cache_status %s %s"%(len(str(param_list)), param_list,))
 
         rc = fcc.set_cache_status(param_list)
         Trace.trace(10, "set_cache_status: set_cache_status 1 returned %s"%(rc,))
+        if not e_errors.is_ok(rc['status']):
+            break
     return rc

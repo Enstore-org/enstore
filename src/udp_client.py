@@ -27,10 +27,11 @@ import checksum
 import cleanUDP
 import udp_common
 import host_config
+import enstore_constants
 
 
 MAX_EXPONENT=6 # do not increase reeive TO in send beyond this
-TRANSFER_MAX=16384 #Max size of UDP datagram.
+TRANSFER_MAX=enstore_constants.MAX_UDP_PACKET_SIZE #Max size of UDP datagram.
 
 
 def wait_rsp( sock, address, rcv_timeout ):
@@ -523,6 +524,10 @@ if __name__ == "__main__" :
     u = UDPClient()
     print "Default client callback for %s thread: %s" % (threading.current_thread().getName(), (u.get_tsd().host, u.get_tsd().port))
     message = {'message' : "TEST MESSAGE"}
+    # To test big data transfers consider the following:
+    # data = open("big_text_file", "r").readlines() where big_text_file size is < enstore_constants.MAX_UDP_PACKET_SIZE,
+    ## and > 16KB
+    # message = {'message':data}
     address = ("localhost", 7700)
 
     test_thread = threading.Thread(target = send_test,
