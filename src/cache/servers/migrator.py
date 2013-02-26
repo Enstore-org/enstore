@@ -1312,7 +1312,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             return False
 
-        Trace.log(e_errors.INFO, "Finished tar from %s size %s MB rate %s MB/s"%(stage_fname, package["size"], package["size"]/1000000./t))              
+        Trace.log(e_errors.INFO, "Finished tar from %s size %s MB rate %s MB/s"%
+                  (stage_fname, package["size"]/1000000., package["size"]/1000000./t))              
         
         new_set_cache_params = []
 
