@@ -4749,8 +4749,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                     
                 if self.maybe_clean():
                     Trace.trace(26,"cleaned")
-                    self.state = IDLE
-                    #self.tr_failed = 0
                     self.dont_update_lm = 0
                     return
                 
@@ -4878,14 +4876,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             
         else:
             self.state = HAVE_BOUND
-            if self.maybe_clean():
-                self.state = IDLE
+            self.maybe_clean()
         self.log_state()
         self.need_lm_update = (1, None, 1, None)
             
     def maybe_clean(self):
         if self.memory_error:
-            return
+            return 1
         Trace.log(e_errors.INFO, "maybe_clean")
         cur_thread = threading.currentThread()
         if cur_thread:
@@ -4911,6 +4908,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             except self.ftt.FTTError, detail:
                 Trace.alarm(e_errors.ALARM,"Possible Drive problem %s %s"%(self.ftt.FTTError, detail))
                 self.set_volume_noaccess(self.current_volume, "Possible drive problem. See log for details")
+                if not self.stop: # otherwise do not dismount for further diagnostics
+                    self.dismount_volume()
                 self.offline()
                 return 1
                 
@@ -4930,6 +4929,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mcc.doCleaningCycle(self.config)
             self.state = save_state
             Trace.log(e_errors.INFO, "cleaning complete")
+            self.state = IDLE
         Trace.log(e_errors.INFO, "returned from maybe_clean")
         return did_cleaning
         
