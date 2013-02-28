@@ -1158,7 +1158,7 @@ class LibraryManagerMethods:
         else:
             self.set_vcc(vol_server_address)
             Trace.trace(self.trace_level+2, 'is_vol_available work %s label %s family %s size %s'%(work, label, family, size))
-            rticket = self.vcc.is_vol_available(work, label, family, size, timeout=5, retry=2)
+            rticket = self.vcc.is_vol_available(work, label, family, size, timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
         Trace.trace(self.trace_level+2, 'is_vol_available %s'%(rticket,))
         return rticket
 
@@ -1192,10 +1192,14 @@ class LibraryManagerMethods:
                 return vol_rec
         else:
             start_t=time.time()
-            v = self.vcc.next_write_volume(library, size, volume_family, veto_list, first_found, mover, timeout=5, retry=2)
+            v = self.vcc.next_write_volume(library, size, volume_family, veto_list, first_found, mover,
+                                           timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
             Trace.trace(self.trace_level+2, "vcc.next_write_volume, time in state %s"%(time.time()-start_t, ))
+            if v['status'][0] == e_errors.TIMEDOUT:
+                Trace.alarm(e_errors.INFO, "volume clerk problem next_write_volume: TIMEDOUT")
             if v['status'][0] == e_errors.OK and v['external_label']:
                 self.write_volumes.append(v)
+                
             return v
 
     ########################################
@@ -2165,7 +2169,8 @@ class LibraryManagerMethods:
 
             ret = self.is_vol_available(rq.work,  external_label,
                                         rq.ticket['vc']['volume_family'],
-                                        fsize, rq.ticket['vc']['address'])
+                                        fsize, rq.ticket['vc']['address'],
+                                        timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
             Trace.trace(100, "vcc.is_vol_avail, time in state %s"%(time.time()-start_t, ))
         Trace.trace(self.trace_level+12,"check_read_request: ret %s" % (ret,))
         if ret['status'][0] != e_errors.OK:
@@ -2284,8 +2289,9 @@ class LibraryManagerMethods:
                                             # fits to request
                                             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
                                             ret = self.vcc.is_vol_available(rq.work,  mover['external_label'],
-                                            rq.ticket['vc']['volume_family'],
-                                            fsize)
+                                                                            rq.ticket['vc']['volume_family'],
+                                                                            fsize,
+                                                                            timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
                                             if ret["status"][0] == e_errors.OK:
                                                 found_mover = 1
                                                 break
@@ -4070,7 +4076,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                             #                                                 server_address=mticket['volume_clerk'])
                         else:
                             self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-                        self.vcc.set_system_noaccess(mticket['external_label'], timeout=5, retry=2)
+                        self.vcc.set_system_noaccess(mticket['external_label'], timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
                         Trace.alarm(e_errors.ERROR,
                                     "Mover error (%s) caused volume %s to go NOACCESS"%(mticket['mover'],
                                                                                    mticket['external_label']))
@@ -4456,7 +4462,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.pri_sel.read_config()
         self.restrictor.read_config()
         self.max_requests = self.keys.get('max_requests', 3000) # maximal number of requests in the queue
-        # if restrict_access_in_bound is True then restrict simultaneos host access
+        self.volume_clerk_to = self.keys.get('volume_clerk_timeout', 10)
+        self.volume_clerk_retry = self.keys.get('volume_clerk_retry', 0)
+
+        # if restrict_access_in_bound is True then restrict simultaneous host access
         # as specified in discipline
         self.restrict_access_in_bound = self.keys.get('restrict_access_in_bound', None)
         Trace.trace(self.my_trace_level+2,"reinit:restrict_access_in_bound %s"%(self.restrict_access_in_bound,))
