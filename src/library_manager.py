@@ -2169,8 +2169,7 @@ class LibraryManagerMethods:
 
             ret = self.is_vol_available(rq.work,  external_label,
                                         rq.ticket['vc']['volume_family'],
-                                        fsize, rq.ticket['vc']['address'],
-                                        timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
+                                        fsize, rq.ticket['vc']['address'])
             Trace.trace(100, "vcc.is_vol_avail, time in state %s"%(time.time()-start_t, ))
         Trace.trace(self.trace_level+12,"check_read_request: ret %s" % (ret,))
         if ret['status'][0] != e_errors.OK:
@@ -2290,8 +2289,8 @@ class LibraryManagerMethods:
                                             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
                                             ret = self.vcc.is_vol_available(rq.work,  mover['external_label'],
                                                                             rq.ticket['vc']['volume_family'],
-                                                                            fsize,
-                                                                            timeout=self.volume_clerk_to, retry=self.volume_clerk_retry)
+                                                                            fsize)
+
                                             if ret["status"][0] == e_errors.OK:
                                                 found_mover = 1
                                                 break
