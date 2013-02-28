@@ -49,7 +49,7 @@ import enstore_stop
 import enstore_restart
 import backup
 import pnfs_agent_client
-import scanfiles
+import scan
 import udp_proxy_client
 import lm_director_client
 import dispatcher_client
@@ -148,8 +148,8 @@ server_functions = {
                  enstore_restart.do_work, option.ADMIN],
     "backup" : [backup.BackupInterface,
                 backup.do_work, option.ADMIN],
-    "scanfiles" : [scanfiles.ScanfilesInterface,
-		   scanfiles.do_work, option.ADMIN],
+    "scan": [scan.ScanInterface,
+             scan.do_work, option.ADMIN],
     }
 
 def get_farmlet(default):
