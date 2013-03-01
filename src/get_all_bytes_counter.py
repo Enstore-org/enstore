@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
 	# output the total count
 	file = open(TOTAL_FILE, 'w')
-        file.write("%.3f / %.3f %s %s\n"%(total,active, UNITS, str))
+        file.write("Active: %.3f / Total: %.3f %s %s\n"%(active,total, UNITS, str))
 	file.close()
 
         file = open(TOTAL_BYTES_FILE, 'w')
