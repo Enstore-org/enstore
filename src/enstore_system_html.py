@@ -230,9 +230,15 @@ def do_work(intf):
         print "We are in Fermilab", server.get_system_name()
         remote=False
 
-    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, sum(active_bytes) as active from volume where system_inhibit_0!='DELETED' and media_type!='null'"
+    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, \
+    sum(active_bytes) as active from volume \
+    where system_inhibit_0!='DELETED' and media_type!='null'"
     if not remote:
-	    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, sum(active_bytes) as active  from volume where system_inhibit_0!='DELETED' and media_type!='null' and library not like '%shelf%' and library not like '%test%'"
+	    q="select sum(deleted_bytes+unknown_bytes+active_bytes) as total, \
+            sum(active_bytes) as active \
+            from volume where system_inhibit_0!='DELETED' and \
+            media_type not in ('null','disk') and \
+            library not like '%shelf%' and library not like '%test%'"
 
     config_server_client_dict = configuration_client.get_config_dict()
     acc            = config_server_client_dict.get("database", {})
