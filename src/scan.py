@@ -702,7 +702,7 @@ class CommandLineOptionsParser(optparse.OptionParser):
     
     def __init__(self):
         
-        usage = '%prog -t SCAN_TYPE'
+        usage = '%prog -t SCAN_TYPE [OPTIONS]'
         optparse.OptionParser.__init__(self, usage=usage)
         
         self._add_options()
@@ -1045,17 +1045,25 @@ class Scanner:
         # Note: Writing in "/var/run" requires root permissions.
         ld_mode = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP
         #       = 0o660 = 432
-        ld_uid = pwd.getpwnam('enstore').pw_uid  # User must exist.
-        ld_gid = grp.getgrnam('enstore').gr_gid  # Group must exist.
+        try: 
+            ld_uid = pwd.getpwnam('enstore').pw_uid
+        except KeyError:  # User 'enstore' does not exist.
+            ld_uid = -1  # -1 keeps the value unchanged.
+        try: 
+            ld_gid = grp.getgrnam('enstore').gr_gid
+        except KeyError:  # Group 'enstore' does not exist.
+            ld_gid = -1  # -1 keeps the value unchanged.
         
         # Create lock directory
         umask_original = os.umask(0)
-        try: os.mkdir(ld_name, ld_mode)  # This assumes parent dir exists.
+        try: 
+            os.mkdir(ld_name, ld_mode)  # This assumes parent dir exists.
         except OSError:
             if not os.path.isdir(ld_name): raise
-        else:
+        else: 
             os.chown(ld_name, ld_uid, ld_gid)
-        finally: os.umask(umask_original)
+        finally: 
+            os.umask(umask_original)
         
         # Establish lock file settings
         lf_name = '{0}.lock'.format(settings['scriptname_root'])
@@ -1065,13 +1073,16 @@ class Scanner:
         
         # Create lock file
         umask_original = os.umask(0)
-        try: lf_fd = os.open(lf_path, lf_flags, lf_mode)
-        finally: os.umask(umask_original)
+        try: 
+            lf_fd = os.open(lf_path, lf_flags, lf_mode)
+        finally: 
+            os.umask(umask_original)
         # Note: It is not necessary to use "os.fdopen(lf_fd, 'w')" to open a 
         # file handle, or to keep it open for the duration of the process.
         
         # Try locking the file
-        try: fcntl.lockf(lf_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try: 
+            fcntl.lockf(lf_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except IOError:
             msg = ('Error: {0} may already be running. Only one instance of it '
                    'can run at a time.'
