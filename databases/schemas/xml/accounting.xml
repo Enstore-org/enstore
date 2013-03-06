@@ -183,6 +183,9 @@
   <table name="tape_mounts">
     <column name="node" type="varchar" null="no"/>
     <column name="volume" type="varchar" null="no"/>
+    <column name="storage_group" type="varchar"/>
+    <column name="reads" type="integer"/>
+    <column name="writes" type="integer"/>
     <column name="type" type="varchar" size="32" null="no"/>
     <column name="logname" type="varchar" size="16" null="no"/>
     <column name="start" type="timestamp" null="no"/>
@@ -195,6 +198,7 @@
         <index name="tape_mnts_type_idx" columns="type"/>
         <index name="tape_mnts_volume_idx" columns="volume"/>
         <index name="tape_mounts_logname_idx" columns="logname"/>
+        <index name="tape_mounts_storage_group_idx" columns="storage_group"/>
     </indexes>
   </table>
   <table name="tape_mounts_tmp">

@@ -79,7 +79,7 @@ class accClient(generic_client.GenericClient):
 	def debug_off(self):
 		self.debug(0)
 
-	def log_start_mount(self, volume, type, start=None):
+	def log_start_mount(self, volume, type, sg=None, start=None):
 		if not self.server_address: return
 		if not start:
 			start = time.time()
@@ -87,6 +87,7 @@ class accClient(generic_client.GenericClient):
 			'work': 'log_start_mount',
 			'node': self.node,
 			'volume': volume,
+			'storage_group' : sg,
 			'type': type,
 			'logname': self.logname,
 			'start': start}
@@ -108,7 +109,7 @@ class accClient(generic_client.GenericClient):
 		if not self.server_address: return
 		self.log_finish_mount(volume, finish, state)
 
-	def log_start_dismount(self, volume, type, start=None):
+	def log_start_dismount(self, volume, type, sg=None, reads=0, writes=0, start=None):
 		if not self.server_address: return
 		if not start:
 			start = time.time()
@@ -116,6 +117,9 @@ class accClient(generic_client.GenericClient):
 			'work': 'log_start_dismount',
 			'node': self.node,
 			'volume': volume,
+			'storage_group' : sg,
+			'reads' : reads,
+			'writes' : writes,
 			'type': type,
 			'logname': self.logname,
 			'start': start}

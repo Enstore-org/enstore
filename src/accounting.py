@@ -47,13 +47,16 @@ class accDB:
 	def insert(self, table, dict):
 		return self.db.insert(table, dict)
 
-	def log_start_mount(self, node, volume, mtype, logname, start):
+	def log_start_mount(self, node, volume, sg, mtype, logname, start):
 		# This is the main table
 		if type(start) != type(""):
 			start = time2timestamp(start)
 		res = self.db.insert('tape_mounts', {
 			'node': node,
 			'volume': volume,
+			'storage_group' : sg,
+			'reads' : 0,
+			'writes' : 0,
 			'type': mtype,
 			'logname': logname,
 			'start': start,
@@ -121,7 +124,7 @@ class accDB:
 			return
 
 
-	def log_start_dismount(self, node, volume, mtype, logname, start):
+	def log_start_dismount(self, node, volume, sg, reads, writes, mtype, logname, start):
 		if type(start) != type(""):
 			start = time2timestamp(start)
 
@@ -129,6 +132,9 @@ class accDB:
 		res = self.db.insert('tape_mounts', {
 			'node': node,
 			'volume': volume,
+			'storage_group' : sg,
+			'reads' : reads,
+			'writes' : writes,
 			'type': mtype,
 			'logname': logname,
 			'start': start,

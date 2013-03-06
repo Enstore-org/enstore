@@ -5800,7 +5800,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken= ''
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
-        self.asc.log_start_dismount(self.current_volume,self.config['product_id'])
+        self.asc.log_start_dismount(self.current_volume,
+                                    self.config['product_id'],
+                                    volume_family.extract_storage_group(self.vol_info['volume_family']),
+                                    writes=0,
+                                    reads=0)
+
         while 1:
             mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
             status = mcc_reply.get('status')
@@ -5976,7 +5981,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "mounting %s %s %s"%(volume_label, self.config['product_id'],time_msg),
                   msg_type=Trace.MSG_MC_LOAD_REQ)
 
-        self.asc.log_start_mount(self.current_volume,self.config['product_id'])
+        self.asc.log_start_mount(self.current_volume,
+                                 self.config['product_id'],
+                                 volume_family.extract_storage_group(self.vol_info['volume_family']))
+
                                  
         self.current_location = 0L
         vi = self.vol_info

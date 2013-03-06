@@ -309,6 +309,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			self.accDB.log_start_mount(
 				ticket['node'],
 				ticket['volume'],
+				ticket.get('storage_group'),
 				lsm_type,
 				ticket['logname'],
 				ticket['start'])
@@ -346,6 +347,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			self.accDB.log_start_dismount(
 				ticket['node'],
 				ticket['volume'],
+				ticket.get('storage_group'),
+				ticket.get('reads',0),
+				ticket.get('writes',0),
 				ticket['type'],
 				ticket['logname'],
 				ticket['start'])
