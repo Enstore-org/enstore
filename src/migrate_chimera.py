@@ -450,6 +450,11 @@ def init(intf):
     if ( intf.debug_level and type(intf.debug_level) is int and intf.debug_level > 1):
         debug_p = True
 
+    if intf.do_print:
+        Trace.do_print(intf.do_print)
+    if intf.do_log:
+        Trace.do_log(intf.do_log)
+
     csc = configuration_client.ConfigurationClient((intf.config_host,intf.config_port))
 
     db_info = csc.get('database')
@@ -9560,11 +9565,19 @@ class MigrateInterface(option.Interface):
         self.library__ = None
         self.infile = None
         self.file_family_width = 1
+        
+        self.do_print = []
+        self.dont_print = []
+        self.do_log = []
+        self.dont_log = []
+        self.do_alarm = []
+        self.dont_alarm = []
 
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
     def valid_dictionaries(self):
-        return (self.help_options, self.migrate_options)
+#        return (self.help_options, self.migrate_options)
+        return (self.help_options, self.migrate_options, self.trace_options)
 
     #  define our specific parameters
     parameters = [
