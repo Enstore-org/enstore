@@ -881,6 +881,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.on_start = 1 # to debug memory problems
         self.restart_flag = 0
 
+        self.read_count_per_mount = 0 # files successfully read per mounted tape
+        self.write_count_per_mount = 0 # files successfully written per mounted tape
+        
         # get mover configuration
         self.config = self.csc.get(self.name)
         if self.config['status'][0] != 'ok':
@@ -4836,8 +4839,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         if self.mode == WRITE:
+            self.write_count_per_mount += 1
             self.vcc.update_counts(self.current_volume, wr_access=1)
         else:
+            self.read_count_per_mount += 1
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
         self.net_driver.close()
@@ -5802,9 +5807,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
         self.asc.log_start_dismount(self.current_volume,
                                     self.config['product_id'],
-                                    volume_family.extract_storage_group(self.vol_info['volume_family']),
-                                    writes=0,
-                                    reads=0)
+                                    sg=volume_family.extract_storage_group(self.vol_info['volume_family']),
+                                    reads=self.read_count_per_mount,
+                                    writes=self.write_count_per_mount)
 
         while 1:
             mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
@@ -5921,7 +5926,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             volume_status = (vinfo.get('system_inhibit',['Unknown', 'Unknown']),
                              vinfo.get('user_inhibit',['Unknown', 'Unknown']))
 
-            volume_family = vinfo.get('volume_family', 'Unknown')
+            vol_family = vinfo.get('volume_family', 'Unknown')
             ticket =  {
                 "mover":  self.name,
                 "address": self.address,
@@ -5931,7 +5936,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 "returned_work": None,
                 "state": state_name(IDLE),
                 "status": (e_errors.OK, None),
-                "volume_family": volume_family,
+                "volume_family": vol_family,
                 "volume_status": volume_status,
                 "operation": mode_name(self.mode),
                 "error_source": None,
@@ -5945,7 +5950,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.state = MOUNT_WAIT
         self.current_volume = volume_label
-
+        self.read_count_per_mount = self.write_count_per_mount = 0
 
         # XXX DEBUG Block of code to get more info on why label is missing on some mounts
         if not self.vol_info.get('external_label'):
@@ -5984,7 +5989,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.asc.log_start_mount(self.current_volume,
                                  self.config['product_id'],
                                  volume_family.extract_storage_group(self.vol_info['volume_family']))
-
                                  
         self.current_location = 0L
         vi = self.vol_info
