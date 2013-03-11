@@ -5594,6 +5594,7 @@ def submit_one_request_send(ticket, encp_intf):
         #This is used to keep multiple encps in a migration in sync.
         # Otherwise, it should have no effect.
         try:
+            Trace.log(98, "<<< start_lock.release(), TP #2, except")
             start_lock.release()
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -5604,6 +5605,7 @@ def submit_one_request_send(ticket, encp_intf):
         #This is used to keep multiple encps in a migration in sync.
         # Otherwise, it should have no effect.
         try:
+            Trace.log(98, "<<< start_lock.release(), TP #3, except")
             start_lock.release()
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -5614,7 +5616,9 @@ def submit_one_request_send(ticket, encp_intf):
     #This is used to keep multiple encps in a migration in sync.
     # Otherwise, it should have no effect.
     try:
+        Trace.log(98, "<<< start_lock.release(), TP #4, after send_deferred() - going to release")
         start_lock.release()
+        Trace.log(98, "<<< start_lock.release(), TP #4, after send_deferred(), released")
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
@@ -12763,7 +12767,9 @@ def main(intf):
 def do_work(intf, main=main):
 
     #Keep multiple encps within a migration in sync.
+    Trace.log(98, "--- start_lock.acquire(), TP #0, before")
     start_lock.acquire()
+    Trace.log(98, ">>> start_lock.acquire(), TP #0, got lock")
 
     try:
         exit_status = main(intf)
@@ -12800,6 +12806,7 @@ def do_work(intf, main=main):
 
     #Keep multiple encps within a migration in sync.
     try:
+        Trace.log(98, "<<< start_lock.release(), TP #1 main")
         start_lock.release()
     except:
         pass
