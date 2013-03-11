@@ -5843,7 +5843,7 @@ def copy_files(thread_num, file_records, volume_record, copy_queue,
     vcc = volume_clerk_client.VolumeClerkClient(csc)
 
     # get an encp
-    name_ending = ""
+    name_ending = "_0"
     if thread_num:
             name_ending = "_%s" % (thread_num,)
     threading.currentThread().setName("READ%s" % (name_ending,))
@@ -7320,9 +7320,10 @@ def write_new_files(thread_num, copy_queue, scan_queue, intf,
     db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
     # get an encp
-    name_ending = ""
+    name_ending = "_0"
     if thread_num:
-            name_ending = "_%s" % (thread_num,)
+        name_ending = "_%s" % (thread_num,)
+
     if deleted_files == YES:
             name_ending = "%s_DEL" % (name_ending,)
     threading.currentThread().setName("WRITE%s" % (name_ending,))
@@ -7845,7 +7846,7 @@ def final_scan(thread_num, scan_list, intf, deleted_files = NO):
     db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
     # get an encp
-    name_ending = ""
+    name_ending = "_0"
     if thread_num:
         name_ending = "_%s" % (thread_num,)
     if deleted_files == YES:
