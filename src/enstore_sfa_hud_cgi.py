@@ -12,13 +12,13 @@
 import os
 import sys
 import string
-import time 
+import time
 import enstore_functions2
 import configuration_client
 import e_errors
 import file_utils
 import statvfs
-import dispatcher_client 
+import dispatcher_client
 from   DBUtils import PooledDB
 import  psycopg2
 import psycopg2.extras
@@ -47,7 +47,7 @@ def get_environment():
             print "Unable to determine ENSTORE_CONFIG_PORT."
             sys.exit(1)
         pfile.close()
-        
+
 def select(value,query):
     connectionPool = None
     cursor = None
@@ -74,7 +74,7 @@ def select(value,query):
         for item in [cursor, db, connectionPool]:
             if item :
                 item.close()
-    
+
 def parse_mtab(volumes):
     volume_map={}
     #
@@ -90,7 +90,7 @@ def parse_mtab(volumes):
     # the loop below checks maatches on NFS partion
     # name. Arbitrary mount point name
     #
-    
+
     for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
         try:
             fp = file_utils.open(mtab_file, "r")
@@ -132,7 +132,7 @@ def print_header():
     print '<font size=7 color="#ff0000"> Enstore SFA HUD</font>'
     print '<hr>'
 
-def print_footer(): 
+def print_footer():
     print "</center>"
     print '</body>'
     print '</html>'
@@ -159,7 +159,7 @@ def print_html(summary):
           "</td><td>"+str(summary["data_area"]["total"])+"</td></tr>"
     print "</table>"
 
-    
+
     print "<table border=\"1\">"
     print "<tr><th>Volume</th><th>Used Size(KB)</th><th>Total Size(KB)</th></tr>"
     print "<tr><td>archive_area(package staging)</td>" \
@@ -172,7 +172,7 @@ def print_html(summary):
     print "<tr><th>Volume</th><th># Files</th><th>Used Size(KB)</th><th>Total Size(KB)</th></tr>"
     print "<tr><td>stage_area(read cache)</td>"+\
           "<td>"
-    if summary["stage_area"]["files"] > 0 : 
+    if summary["stage_area"]["files"] > 0 :
         print "<a href='enstore_sfa_show_cached_files_cgi.py'>",str(summary["stage_area"]["files"]),"</a>"
     else:
         print str(summary["stage_area"]["files"])
@@ -189,7 +189,7 @@ def print_html(summary):
     print "</center>"
     print '</body>'
     print '</html>'
-    
+
 
 def main():
     # Obtain the correct values for ENSTORE_CONFIG_HOST and ENSTORE_CONFIG_PORT
@@ -203,7 +203,7 @@ def main():
 
     areas = {}
     summary = {}
-    
+
     for m in migrator_list:
         for k in ("stage_area",
                   "data_area",
@@ -224,7 +224,7 @@ def main():
         print "</div>"
         print_footer()
         return
-    
+
     for key,value in volume_map.iteritems():
         for k,v in areas.iteritems():
             if v==key:
@@ -238,9 +238,9 @@ def main():
     dbinfo = csc.get("database")
 
     #
-    # files in trasition
+    # files in transition
     #
-    res=select(dbinfo,"select coalesce(sum(size)/1024.,0) as total,count(*) from file where bfid in (select bfid from files_in_transition) and cache_status='CACHED'")
+    res=select(dbinfo,"select coalesce(sum(f.size)/1024.,0) as total,count(*) from file f, files_in_transition fit where f.bfid=fit.bfid and f.cache_status='CACHED'")
     summary["data_area"]["files"]=int(res[0]["count"])
     summary["data_area"]["size"]=long(res[0]["total"])
 
@@ -253,8 +253,8 @@ def main():
     summary["stage_area"]["size"]=long(res[0]["total"])
 
     print_html(summary)
-    
-    
+
+
 
 if __name__ == '__main__':
 
