@@ -354,6 +354,7 @@ NEW_LIBRARY = "new-library"                  #volume
 NO_ACCESS = "no-access"                      #volume
 NOCHECK = "nocheck"                          #dbs
 NO_CRC = "no-crc"                            #encp
+SINGLE_THREADED_ENCP = "single-threaded-encp" #migration
 NO_MAIL = "no-mail"                          #up_down
 NO_PLOT_HTML = "no-plot-html"                #plotter
 NOT_ALLOWED = "not-allowed"                  #volume
@@ -384,6 +385,7 @@ PREFIX = "prefix"                            #enstore_make_log_plot
 PRIORITY = "priority"                        #library, encp, migrate
 PRINT = "print"                              #conf
 PRINT_QUEUE = "print-queue"                  #library
+PROC_LIMIT="proc-limit"                      #migrate
 PROCEED_NUMBER = "proceed-number"            #migrate
 PROFILE = "profile"                          #entv
 PUT_CACHE = "put-cache"                      #encp
@@ -564,6 +566,7 @@ valid_option_list = [
     OVERRIDE_DELETED, OVERRIDE_NOACCESS, OVERRIDE_PATH, OVERRIDE_RO_MOUNT,
     PAGES, PARENT, PATH, PLOT, PLOTS,
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT, POSITION,
+    PROC_LIMIT,
     PROCEED_NUMBER, PREFIX, PRIORITY, PRINT, PRINT_QUEUE,PROFILE, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,
     QUERY, QL,
@@ -578,6 +581,7 @@ valid_option_list = [
     SHOW_COPIES,
     SHOWID, SHOW_IGNORED_STORAGE_GROUPS,
     SHOW_QUOTA, SHOW_ROBOT, SHOW_STATE, SHOW_VOLUME,
+    SINGLE_THREADED_ENCP,
     SIZE, SKIP_BAD, SKIP_DELETED_FILES, SKIP_PNFS,
     SOURCE_ONLY,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,

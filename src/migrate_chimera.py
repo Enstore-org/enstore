@@ -28,7 +28,7 @@ Migration:
 [2] swap metadata
     -- new copy is immediate available after swapping
 [3] final scan
-    -- read mirgated file as users do
+    -- read migrated file as users do
     -- paranoid reassurance
 
 Implementation issues:
@@ -177,8 +177,8 @@ USE_VOLUME_ASSERT = False
 # cousin program to encp.
 USE_GET = False
 
-#When true, start PROC_LIMIT number of processes/threads for reading and
-# PROC_LIMIT number of processes/threads for writing.
+#When true, start  N="proc_limit" number of processes/threads workers  for reading and
+# N="proc_limit" number of processes/threads for writing.
 ##
 ## Currently use of this mode results in a deadlock.
 ##
@@ -195,11 +195,12 @@ if PARALLEL_FILE_TRANSFER and \
     except (IOError):
         pass
 
-#Pass --threaded to encp if true.
-USE_THREADED_ENCP = True
+#Pass --threaded to encp if true. This can be changed through "--single-threaded-encp" option
+use_threaded_encp = True
 
-#Number of read/write processes/threads pairs to juggle at once.
-PROC_LIMIT = 3
+#Number of read/write processes/threads pairs to juggle at once, it can be changed by call option
+PROC_LIMIT_DEFAULT = 3
+proc_limit = PROC_LIMIT_DEFAULT
 
 ##
 ## End multiple_threads / forked_processes global variables.
@@ -443,6 +444,8 @@ def init(intf):
     global do_seteuid
     global debug
     global debug_p
+    global use_threaded_encp
+    global proc_limit
 
     #Make getting debug information from the command line possible.
     if intf.debug:
@@ -454,6 +457,20 @@ def init(intf):
         Trace.do_print(intf.do_print)
     if intf.do_log:
         Trace.do_log(intf.do_log)
+
+    if intf.proc_limit_is_set:
+        if intf.proc_limit <= 0:
+            sys.stderr.write("proc_limit is not positive, %d\n" %(intf.proc_limit,))
+            sys.exit(1)
+        proc_limit = intf.proc_limit
+    if debug:
+        print "set proc_limit=", proc_limit
+
+    if intf.single_threaded_encp:
+        use_threaded_encp = False
+
+    if debug:
+        print "set use_threaded_encp=", use_threaded_encp
 
     csc = configuration_client.ConfigurationClient((intf.config_host,intf.config_port))
 
@@ -740,7 +757,7 @@ def get_queue_numbers(src_bfids, intf, volume_record=None):
     else:
         #Adjust the file limit to account for the number of processes/threads.
         if PARALLEL_FILE_TRANSFER:
-            use_file_limit = FILE_LIMIT / PROC_LIMIT
+            use_file_limit = FILE_LIMIT / proc_limit
         else:
             use_file_limit = FILE_LIMIT
 
@@ -3323,7 +3340,7 @@ class MigrateQueue:
                         if item == SENTINEL:
                             #Flag the sentinel item is received.  This needs to
                             # happen here.  If not, then for a volume with
-                            # fewer than (PROC_LIMIT * low_watermark) files,
+                            # fewer than (proc_limit * low_watermark) files,
                             # there is no trigger to start moving the files
                             # to new tapes.  Thus, resulting in a deadlock.
                             self.finished = True
@@ -5241,7 +5258,7 @@ def read_file(MY_TASK, read_job, encp, intf):
     else:
         use_override_deleted = []
         use_path = [src_path]
-    if USE_THREADED_ENCP:
+    if use_threaded_encp:
         use_threads = ["--threaded"]
     else:
         use_threads = []
@@ -5323,7 +5340,7 @@ def read_files(MY_TASK, read_jobs, encp, intf):
         use_priority = ["--priority", str(intf.priority)]
     else:
         use_priority = ["--priority", str(ENCP_PRIORITY)]
-    if USE_THREADED_ENCP:
+    if use_threaded_encp:
         use_threads = ["--threaded"]
     else:
         use_threads = []
@@ -6825,7 +6842,7 @@ def write_file(MY_TASK,
             use_priority = ["--priority", str(intf.priority)]
         else:
             use_priority = ["--priority", str(ENCP_PRIORITY)]
-        if USE_THREADED_ENCP:
+        if use_threaded_encp:
                 use_threads = ["--threaded"]
         else:
                 use_threads = []
@@ -6841,7 +6858,7 @@ def write_file(MY_TASK,
         user_libraries = libraries.split(",")
         dismount_delay = str(2 * len(user_libraries))
         encp_options = ["--delayed-dismount", dismount_delay,
-                        "--ignore-fair-share", "--threaded"]
+                        "--ignore-fair-share"]
         #Override these tags to use the original values from the source tape.
         # --override-path is used to specify the correct path to be used
         # in the wrappers written with the file on tape, since this path
@@ -8296,16 +8313,16 @@ def migrate(file_records, intf, volume_record=None):
         #Limit the number of processes/threads if only one or two files
         # is in the list.
 	if PARALLEL_FILE_TRANSFER:
-		use_proc_limit = min(PROC_LIMIT, len(file_records))
+		use_proc_limit = min(proc_limit, len(file_records))
 	else:
 		use_proc_limit = min(1, len(file_records))
 
 	i = 0
-	#Make a list of PROC_LIMIT length.  Each element should
+	#Make a list of proc_limit length.  Each element should
 	# itself be an empty list.
 	#
-	# Don't do "[[]] * PROC_LIMIT"!!!  That will only succeed
-	# in creating PROC_LIMIT references to the same list.
+	# Don't do "[[]] * proc_limit"!!!  That will only succeed
+	# in creating proc_limit references to the same list.
 	use_bfids_lists = []
 	while i < use_proc_limit:
 		use_bfids_lists.append([])
@@ -9559,6 +9576,9 @@ class MigrateInterface(option.Interface):
         self.use_volume_assert = None
         self.debug = None
         self.debug_level = 0
+        self.proc_limit_is_set = None
+        self.proc_limit = 0
+        self.single_threaded_encp = None
         self.scan = None
         self.migration_only = None
         self.multiple_copy_only = None
@@ -9763,6 +9783,23 @@ class MigrateInterface(option.Interface):
 				       option.VALUE_USAGE:option.IGNORED,
 				       option.VALUE_TYPE:option.INTEGER,
 				       option.USER_LEVEL:option.ADMIN,},
+        option.SINGLE_THREADED_ENCP:{option.HELP_STRING:
+                       "Call encp WITHOUT threaded option ",
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.VALUE_TYPE:option.INTEGER,
+                       option.USER_LEVEL:option.ADMIN,},
+       option.PROC_LIMIT:{option.HELP_STRING:
+             "limit number of read and write migration workers to N max each",
+              option.DEFAULT_NAME:'proc_limit_is_set',
+              option.DEFAULT_VALUE:1,
+              option.DEFAULT_TYPE:option.INTEGER,
+              option.VALUE_NAME:'proc_limit',
+              option.VALUE_TYPE:option.INTEGER,
+              option.VALUE_USAGE:option.REQUIRED,
+              option.VALUE_LABEL:"N",
+              option.USER_LEVEL:option.USER,
+              option.FORCE_SET_DEFAULT:option.FORCE,
+        },
 		option.USE_VOLUME_ASSERT:{option.HELP_STRING:
 					  "Use volume assert when scanning "
 					  "destination files.",
