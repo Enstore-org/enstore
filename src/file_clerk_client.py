@@ -723,8 +723,16 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
     # modify file record
     def modify(self, ticket):
-        ticket['work'] = 'modify_file_record'
-        return self.send(ticket)
+        if type(ticket) == types.DictType :
+            ticket['work'] = 'modify_file_record'
+            return self.send(ticket)
+        elif type(ticket) == types.ListType:
+            rticket = {}
+            rticket["work"] = 'modify_file_records'
+            rticket["list"] = ticket
+            return self.send(rticket)
+        else:
+            raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(ticket))
 
     # swap parents for children
     def swap_package(self, ticket):

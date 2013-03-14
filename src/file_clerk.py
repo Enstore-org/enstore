@@ -1331,7 +1331,6 @@ class FileClerkMethods(FileClerkInfoMethods):
     # bfid must exist
 
     def modify_file_record(self, ticket):
-
         bfid, record = self.extract_bfid_from_ticket(ticket)
         if not bfid:
             return #extract_bfid_from_ticket handles its own errors.
@@ -1341,16 +1340,29 @@ class FileClerkMethods(FileClerkInfoMethods):
 
         # modify the values
         for k in ticket.keys():
-            # can not change bfid!
-            if k != 'bfid' and record.has_key(k):
-                record[k] = ticket[k]
+	    # can not change bfid!
+	    if k != 'bfid' and record.has_key(k):
+	        record[k] = ticket[k]
 
         # assigning it to database
         self.filedb_dict[bfid] = record
         Trace.log(e_errors.INFO, 'modified to '+`record`)
         ticket['status'] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        return
+	self.reply_to_caller(ticket)
+	return
+
+    def modify_file_records(self, ticket):
+        try:
+	    records = ticket["list"]
+	    for record in records:
+	        bfid = record["bfid"]
+	        self.filedb_dict[bfid] = record
+	    ticket['status'] = (e_errors.OK, None)
+	except IndexError, msg:
+	    ticket['status'] = (e_errors.ERROR, msg)
+	finally:
+	    del(ticket["list"])
+	    self.reply_to_caller(ticket)
 
     #### DONE
     # update the database entry for this file - add the pnfs file id
