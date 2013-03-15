@@ -10,7 +10,6 @@
 import sys
 import os
 import time
-import statvfs
 
 # enstore imports
 import configuration_client
@@ -92,11 +91,13 @@ class FilePurger:
     # and if yes returns True
     def available_space_low(self, f_info):
         directory = os.path.dirname(f_info[4])
+        Trace.trace(10, "available_space_low: %s"%(directory,))
         try:
             stats = os.statvfs(directory)
-            avail = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
-            total = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]*1.
+            avail = float(stats.f_bavail)
+            total = float(stats.f_blocks)
             fr_avail = avail/total
+            Trace.trace(10, "available_space_low: %s %s"%(fr_avail, self.purge_watermarks[0],))
             if fr_avail < 1 - self.purge_watermarks[0]:
                 return True
             else:
@@ -114,8 +115,14 @@ class FilePurger:
         # f_info[3] - cache_mod_time
         # f_info[4] - cache_location
         # f_info[5] - location_cookie
-        
+
         rc = False
+        Trace.trace(10, "purge_this_file: bfid %s CACHE_STATUS %s ARCHIVE_STATUS %s CACHE_MOD_TIME %s max_t %s"%
+                    (f_info[P_BFID],
+                     f_info[P_CACHE_STATUS],
+                     f_info[P_ARCHIVE_STATUS],
+                     f_info[P_CACHE_MOD_TIME],
+                     self.max_time_in_cache))
         if (f_info[P_CACHE_STATUS] == file_cache_status.CacheStatus.CACHED and
             f_info[P_ARCHIVE_STATUS] == file_cache_status.ArchiveStatus.ARCHIVED):
             # check how long is this file in cache
@@ -131,18 +138,13 @@ class FilePurger:
                     return True
                 if check_watermarks and self.purge_watermarks:
                     rc = self.available_space_low(f_info)
-                
+
         return rc
-            
-    def files_to_purge(self, check_watermarks=True):
-        Trace.trace(10, "files_to_purge")
-        #q = "select * from cached_files limit 100;"
-        #q = "select * from cached_files"
-        #q = "select bfid, cache_status, archive_status, cache_mod_time, cache_location, location_cookie from file where bfid in (select * from cached_files limit 100);"
-        q = "select bfid, cache_status, archive_status, cache_mod_time, cache_location, location_cookie from file where bfid in (select * from cached_files);"
-        res = self.filedb_dict.query_getresult(q)
+
+    def files_to_purge_with_query(self, query, check_watermarks=True):
+        res = self.filedb_dict.query_getresult(query)
         total_in_cache = len(res)
-        Trace.trace(10, "files_to_purge in cache. %s"%(total_in_cache,))
+        Trace.trace(10, "files_to_purge_with_query in cache. %s"%(total_in_cache,))
         total_purge_candidates = 0L
         purge_candidates = []
         list_of_file_lists = []
@@ -150,9 +152,10 @@ class FilePurger:
             if self.purge_this_file(f_info, check_watermarks):
                 purge_candidates.append(f_info[P_BFID])
                 total_purge_candidates = total_purge_candidates + 1
+
         f_counter = 0L
         l_counter = 0L
-        Trace.trace(10, "files_to_purge cand. %s"%(total_purge_candidates,))
+        Trace.trace(10, "files_to_purge_with_query cand. %s"%(total_purge_candidates,))
         while f_counter < total_purge_candidates:
             # create a list of files to purge
             if l_counter == 0:
@@ -180,9 +183,46 @@ class FilePurger:
             list_of_file_lists.append(f_list)
 
         Trace.log(e_errors.INFO, "Total %s Purge Candidates %s"%(total_in_cache, total_purge_candidates))
-        
+
         return list_of_file_lists
-    
+
+    def files_to_purge(self, check_watermarks=True):
+        Trace.trace(10, "files_to_purge")
+        # comment for queries:
+        # The limit 1000 was found empirically.
+        # For bigger number of total purge candidates
+        # something happens when putting requests in qpid queue.
+        # Qpid shows that messages are in the queue, but they do not get fetched
+        # by purge migrators.
+
+        # comment for write_q:
+        # To check that file is in write cache compare cache_location and location_cookie.
+        # If they are the same the file is in write cache.
+
+        write_q = " select f.bfid, f.cache_status, f.archive_status, " \
+                  " f.cache_mod_time, f.cache_location, f.location_cookie from file f, " \
+                  " cached_files cf where f.bfid=cf.bfid " \
+                  " and f.cache_status='CACHED' and f.archive_status='ARCHIVED' " \
+                  " and f.cache_mod_time < CURRENT_TIMESTAMP - interval '%s' " \
+                  " and f.cache_location=f.location_cookie " \
+                  " order by f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
+
+        # comment for read_q:
+        # To check that file is in read cache compare cache_location and location_cookie.
+        # If they are differen the file is in read cache.
+
+        read_q = " select f.bfid, f.cache_status, f.archive_status, " \
+                 " f.cache_mod_time, f.cache_location, f.location_cookie from file f, " \
+                 " cached_files cf where f.bfid=cf.bfid " \
+                 " and f.cache_status='CACHED' and f.archive_status='ARCHIVED' " \
+                 " and f.cache_mod_time < CURRENT_TIMESTAMP - interval '%s' " \
+                 " and f.cache_location!=f.location_cookie " \
+                 " order by f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
+
+        write_purge_list = self.files_to_purge_with_query(write_q, check_watermarks)
+        read_purge_list = self.files_to_purge_with_query(read_q, check_watermarks)
+        return write_purge_list + read_purge_list
+
 if __name__ == "__main__":
     # get a file purger
     config_host = os.getenv('ENSTORE_CONFIG_HOST')
