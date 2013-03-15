@@ -15,7 +15,6 @@ import types
 import copy
 import errno
 import logging
-import statvfs
 import random
 import stat
 import multiprocessing
@@ -1116,8 +1115,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     directory = f_info['cache_location']
                     try:
                         stats = os.statvfs(directory)
-                        avail = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
-                        total = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]*1.
+                        avail = float(stats.f_bavail)
+                        total = float(stats.f_blocks)
                         fr_avail = avail/total
                         if fr_avail > 1 - self.purge_watermarks[1]:
                             rc = True
