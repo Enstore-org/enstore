@@ -415,6 +415,9 @@ class AtMovers:
         # volume_family
         # work (read/write)
         # current location
+        state = mover_info.get('state')
+        if state == 'IDLE':
+            return
         Trace.trace(self.trace_level,"AtMovers:put: %s" % (mover_info,))
         Trace.trace(self.trace_level,"AtMovers put before: at_movers: %s" % (self.at_movers,))
         Trace.trace(self.trace_level+1,"AtMovers put before: sg_vf: %s" % (self.sg_vf,))
@@ -423,7 +426,6 @@ class AtMovers:
         if not mover_info['volume_family']: return
         if not mover_info['mover']: return
         mover = mover_info['mover']
-        state = mover_info.get('state', None)
         if self.dont_update and self.dont_update.has_key(mover):
             if state == self.dont_update[mover]:
                 return
@@ -3966,7 +3968,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     #  responsibility to retry
     # THE LIBRARY COULD NOT MOUNT THE TAPE IN THE DRIVE AND IF THE MOVER
     # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
-    # this will be raplaced with error handlers!!!!!!!!!!!!!!!!
+    # this will be replaced with error handlers!!!!!!!!!!!!!!!!
     def mover_error(self, mticket):
         Trace.log(e_errors.ERROR,"MOVER ERROR RQ %s"%(mticket,))
         Trace.trace(self.my_trace_level, "mover_error: %s"%(mticket,))
@@ -3975,13 +3977,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
         if mticket["state"] == "IDLE":
             self.add_idle_mover(mticket["mover"])
+            self.volumes_at_movers.delete(mticket)
         else:
             # just for a case when for some reason
-            # mover idle request comes with mover state != IDLE
+            # mover error request comes with mover state != IDLE
             self.remove_idle_mover(mticket["mover"])
-        Trace.trace(self.my_trace_level,"_mover_error:idle movers %s"%(self.idle_movers,))
-
-        self.volumes_at_movers.put(mticket)
+            self.volumes_at_movers.put(mticket)
+        Trace.trace(self.my_trace_level,"mover_error:idle movers %s"%(self.idle_movers,))
 
         # get the work ticket for the volume
         w = {}
