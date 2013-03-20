@@ -172,7 +172,6 @@ def get_clerks_list():
     return csc_list, vcc_list, fcc_list
 
 def create_assert_list(check_requests):
-
     #The list of volume clerks to check.
     csc_list, vcc_list, fcc_list = get_clerks_list()
 
@@ -218,7 +217,7 @@ def create_assert_list(check_requests):
             if check_requests[vol] == []:
                 ticket['action'] = "crc_check"
                 #ticket['parameters'] = [] #optional
-            elif type(check_requests[vol])== types.TupleType:
+            elif isinstance(check_requests[vol], (tuple, list)):
                 ticket['action'] = "crc_check"
                 ticket['parameters'] = check_requests[vol]
             #The following are for the inquisitor.

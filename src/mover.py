@@ -44,8 +44,9 @@ import option
 import dispatching_worker
 import volume_clerk_client
 import volume_family
-import file_clerk_client                
-import media_changer_client             
+import file_clerk_client
+import info_client
+import media_changer_client
 import callback
 import checksum
 import e_errors
@@ -3796,6 +3797,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._error_source = None
         self.lock_state()
         self.save_state = self.state
+        Trace.trace(24, "setup_transfer: save_state %s"%(state_name(self.save_state),))
         self.udp_cm_sent = 0
         self.unique_id = ticket['unique_id']
         self.uid = -1
@@ -3962,7 +3964,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         vc = ticket['vc']
         self.vol_info.update(vc)
         self.volume_family=vc['volume_family']
-        self.mount_volume(ticket['vc']['external_label'])
+        if not (self.save_state == HAVE_BOUND and self.current_volume == ticket['vc']['external_label']):
+            self.mount_volume(ticket['vc']['external_label'])
         if self.state in  (ERROR, IDLE):
             Trace.log(e_errors.ERROR, "ASSERT failed %s" % (self.current_work_ticket['status'],))
             self.current_work_ticket['status'] = (e_errors.MOUNTFAILED, None)
@@ -3975,8 +3978,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.need_lm_update = (1, None, 0, None)
         for retry_open in range(3):
             Trace.trace(10, "position media")
-            Trace.trace(10, "tape_driver.open mode %s"%(mode_name(self.mode),))
-            have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
+            have_tape = self.tape_driver.open(self.device, READ, retry_count=30)
             if have_tape == 1:
                 err = None
                 self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
@@ -4023,23 +4025,31 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mode = ASSERT
             if (ticket['action'] == 'crc_check'):
                 read_whole_tape = True
+                ic_conf = self.csc.get("info_server")
+                info_c = info_client.infoClient(self.csc,
+                                            server_address=(ic_conf['host'],
+                                                            ic_conf['port']))
+                file_info = {}
+                fc_address = ticket['fc']['address']
                 ticket['return_file_list'] = {}
                 Trace.trace(24, 'ticket %s'%(ticket,))
                 if ticket.has_key('parameters') and type(ticket['parameters']) == type([]) and ticket['parameters']:
                     read_whole_tape = False
                     # Initialize return list
                     for lc in ticket['parameters']:
-                       ticket['return_file_list'][lc] = e_errors.UNKNOWN 
+                       rec = info_c.find_file_by_location(ticket['vc']['external_label'], lc)
+                       if rec['status'][0] != e_errors.OK:
+                           self.transfer_failed(file_list['status'][0], file_list['status'][1])
+                           return
+                       ticket['return_file_list'][lc] = e_errors.UNKNOWN
+                       file_info[lc] = rec
                 else:
                     # get file list for the whole tape from file clerk
                     try:
-                        fcc = file_clerk_client.FileClient(self.csc, bfid=0,
-                                                           server_address=ticket['fc']['address'])
                         Trace.log(e_errors.INFO, "calling tape_list")
-                        file_list = fcc.tape_list(ticket['vc']['external_label'], all_files = False, timeout = 300, retry = 2)
-                        
+                        file_list = info_c.tape_list(ticket['vc']['external_label'], all_files = False, timeout = 300, retry = 2)
+
                         Trace.log(e_errors.INFO, "tape_list returned")
-                        fc_address = ticket['fc']['address']
                         Trace.trace(24, "file List %s:: %s"%(type(file_list), file_list))
                         if file_list['status'][0] != e_errors.OK:
                             self.transfer_failed(file_list['status'][0], file_list['status'][1])
@@ -4049,12 +4059,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.transfer_failed(exc, msg, error_source=USER)
                         return
                     # create the list of location cookies
-                    file_info = {}
                     for entry in file_list['tape_list']:
                         ticket['return_file_list'][entry['location_cookie']] = e_errors.UNKNOWN
                         file_info[entry['location_cookie']] = entry
                     Trace.trace(24, "file_info %s"%(file_info,))
-                            
+
                 Trace.trace(24, 'ticket %s'%(ticket,))
                         
                 keys = ticket['return_file_list'].keys()
@@ -4077,7 +4086,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(24, "t1 %s"%(type(self.current_work_ticket),))
                     Trace.trace(24, "t11 %s"%(type(self.current_work_ticket['fc']),))
                     Trace.trace(24, "t2 %s"%(type(file_info),))
-                    Trace.trace(24, "t21 %s"%(type(file_info[loc_cookie]),))
+                    Trace.trace(24, "t21 %s"%(type(file_info.get(loc_cookie)),))
                     self.current_work_ticket['fc'] = file_info[loc_cookie]
                     self.current_work_ticket['fc']['address'] = fc_address
                     self.finish_transfer_setup()
@@ -4308,6 +4317,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.mode == ASSERT:
             return
         #######
+        Trace.trace(24, "setup_transfer: save_state %s volume %s cur %s "%(state_name(self.save_state),volume_label, self.current_volume))
+
         if volume_label == self.current_volume and self.save_state == HAVE_BOUND: #no mount needed
             self.timer('mount_time')
             self.position_media(verify_label=0)
