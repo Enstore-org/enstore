@@ -1358,7 +1358,7 @@ class FileClerkMethods(FileClerkInfoMethods):
 	        bfid = record["bfid"]
 	        self.filedb_dict[bfid] = record
 	    ticket['status'] = (e_errors.OK, None)
-	except IndexError, msg:
+	except (IndexError, KeyError), msg:
 	    ticket['status'] = (e_errors.ERROR, msg)
 	finally:
 	    del(ticket["list"])

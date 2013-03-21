@@ -567,66 +567,63 @@ class FileDB(DbTable):
         return record
 
     def import_format(self, s):
-        if s['deleted'] == 'yes' or s['deleted'] == 'y':
-            deleted = 'y'
-        elif s['deleted'] == 'no' or s['deleted'] == 'n':
-            deleted = 'n'
-        else:
-            deleted = 'u'
+        deleted=None
+        if s.get('deleted') in ('yes','y') :
+            deleted='y'
+        elif s.get('deleted') in ('n','no') :
+            deleted='n'
+        elif s.has_key('deleted'):
+            deleted='u'
 
-        # Take care of sanity_cookie
-        if s['sanity_cookie'][0] == None:
-            sanity_size = -1
-        else:
-            sanity_size = s['sanity_cookie'][0]
-        if s['sanity_cookie'][1] == None:
-            sanity_crc = -1
-        else:
-            sanity_crc = s['sanity_cookie'][1]
+        sanity_size, sanity_crc, crc= (None, None, None)
+        if s.get('sanity_cookie'):
+            sanity_size = s['sanity_cookie'][0] if s['sanity_cookie'][0] else -1
+            sanity_crc  = s['sanity_cookie'][1] if s['sanity_cookie'][1] else -1
 
-        # take care of crc
-        if s['complete_crc'] == None:
-            crc = -1
-        else:
-            crc = s['complete_crc']
+        if s.has_key('complete_crc'):
+            crc = s['complete_crc'] if s['complete_crc'] else -1
 
         escape_string = getattr(pg, "escape_string", None)
+        pnfs_path = None
         if escape_string:
             #For pg.py 3.8.1 and later.  This escapes the SQL
             # special characters.
-            pnfs_path = escape_string(s['pnfs_name0'])
+            if s.has_key('pnfs_name0'):
+                pnfs_path = escape_string(s['pnfs_name0'])
         else:
             #At least handle this one character if using too old
             # of a version of pg.py.
-            pnfs_path = s['pnfs_name0'].replace("'", "''")
+            if s.has_key('pnfs_name0') :
+                pnfs_path = s['pnfs_name0'].replace("'", "''")
 
-        record = {
-                'bfid': s['bfid'],
-                'crc': crc,
-                'deleted': deleted,
-                'drive': s['drive'],
-                'volume': ('lookup_vol', s['external_label']),
-                'location_cookie': s['location_cookie'],
-                'pnfs_path': pnfs_path,
-                'pnfs_id': s['pnfsid'],
-                'sanity_size': sanity_size,
-                'sanity_crc': sanity_crc,
-                'size': s['size'],
-                }
+        record={}
 
-        # handle uid and gid
-        if s.has_key("uid"):
-            record["uid"] = s["uid"]
-        if s.has_key("gid"):
-            record["gid"] = s["gid"]
+        if s.has_key('external_label'):
+            record['volume'] = ('lookup_vol', s['external_label'])
+        if s.has_key('pnfsid'):
+            record['pnfs_id'] = s['pnfsid']
+
+        if deleted :
+            record['deleted']=deleted
+        if crc:
+            record['crc']=crc
+        if pnfs_path:
+            record['pnfs_path']=pnfs_path
+        if sanity_size:
+            record['sanity_size'] = sanity_size
+        if sanity_crc:
+            record['sanity_crc'] = sanity_crc
+
         for key in ('package_files_count', 'active_package_files_count'):
-            record[key] = s.get(key,0)
-        for key in ('package_id','cache_status','archive_status',\
-                    'cache_mod_time','archive_mod_time',\
-                    'storage_group','file_family','library','wrapper','cache_location',
-                    'original_library','file_family_width','tape_label'):
             if s.has_key(key):
-                record[key] = s.get(key,None)
+                record[key] = s.get(key,0)
+            for key in ('bfid','drive','location_cookie','size','uid','gid',
+                        'package_id','cache_status','archive_status',
+                        'cache_mod_time','archive_mod_time',
+                        'storage_group','file_family','library','wrapper','cache_location',
+                        'original_library','file_family_width','tape_label'):
+                if s.has_key(key):
+                    record[key] = s.get(key,None)
         return record
 
     def __getitem__(self, key):
