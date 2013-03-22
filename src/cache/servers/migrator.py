@@ -1032,25 +1032,25 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         package_files_count = len(bfid_list)
         bfid_list = bfid_list + dst_bfids
-        update_time = time.localtime(time.time())
+        update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         records = []
         pack_records = []
-        rec = {}
+        
         for bfid in bfid_list:
-            del(rec) # to avoid interference
-            # read record
-            rec = self.fcc.bfid_info(bfid)
-            if (rec['status'][0] != e_errors.OK):
-                Trace.log(e_errors.ERROR,
-                          "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
-                return False
+            if bfid in dst_bfids:
+                rec = self.fcc.bfid_info(bfid)
+            else:
+                rec = {}
+                rec['bfid'] = bfid
             rec['archive_status'] = file_cache_status.ArchiveStatus.ARCHIVED
             rec['package_id'] = original_pack_bfid
             rec['package_files_count'] = package_files_count
             rec['active_package_files_count'] = package_files_count
-            rec['archive_mod_time'] = time.strftime("%Y-%m-%d %H:%M:%S", update_time)
-            if rec['bfid'] in dst_bfids:
+            rec['archive_mod_time'] = update_time
+            rec['deleted'] = "no"
 
+            if bfid in dst_bfids:
+                # package file
                 # change pnfs_name0
                 rec['pnfs_name0'] = final_dst_path
                 # and original library
@@ -1060,37 +1060,45 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     rec['package_id'] = rec['bfid']
                 pack_records.append(rec)
             else:
+                # member of a package
                 records.append(rec)
-            Trace.trace(10, "complete_write_to_tape: sending modify record %s"%(rec,))
-            rc = self.fcc.modify(rec)
-            Trace.trace(10, "complete_write_to_tape: modify record returned %s"%(rc,))
-            
-            if not rc:
-                return False
+
+        rc = set_cache_status.modify_records(self.fcc, records)
+        Trace.trace(10, "complete_write_to_tape: modify_records records returned %s"%(rc,))
+        if not e_errors.is_ok(rc['status']):
+            return False
+        rc = set_cache_status.modify_records(self.fcc, pack_records)
+        Trace.trace(10, "complete_write_to_tape: modify_records pack_records returned %s"%(rc,))
+        if not e_errors.is_ok(rc['status']):
+            return False
 
         if len(pack_records) > 1:
             # multiple copies
             for dupl in pack_records:
                if dupl['bfid'] != original_pack_bfid:
                    # create new bit-files - refences to a copy of original
+                   dupl_records = []
                    for rec in records:
+                       # for duplcate files we need a complete file info.
+                       new_rec = self.fcc.bfid_info(rec['bfid'])
                        Trace.trace(10, "complete_write_to_tape: creating duplicates %s"%(rec,))
-                       rec['original_bfid'] = rec['bfid']
-                       rec['package_id'] = dupl['bfid']
-                       rec['cache_status'] = file_cache_status.CacheStatus.PURGED
-                       del(rec['bfid'])
+                       new_rec['original_bfid'] = rec['bfid']
+                       new_rec['package_id'] = dupl['bfid']
+                       new_rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+                       del(new_rec['bfid'])
                        Trace.trace(10, "complete_write_to_tape: sending new_bit_file %s"%(rec,))
-                       rc = self.fcc.new_bit_file({'fc':rec})
+                       rc = self.fcc.new_bit_file({'fc':new_rec})
                        Trace.trace(10, "complete_write_to_tape:  new_bit_file returned %s"%(rc,))
                        if rc['status'][0] != e_errors.OK:
                            Trace.log(e_errors.ERROR, "complete_write_to_tape: new_bit_file returned %s"%(rc,))
                            return False
-                       rec['bfid'] = rc['fc']['bfid']
-                       Trace.trace(10, "complete_write_to_tape: sending modify record %s"%(rec,))
-                       rc = self.fcc.modify(rec)
-                       Trace.trace(10, "complete_write_to_tape: modify record returned %s"%(rc,))
-                       if rc['status'][0] != e_errors.OK:
-                           Trace.log(e_errors.ERROR, "complete_write_to_tape: modify record returned %s"%(rc,))
+                       new_rec['bfid'] = rc['fc']['bfid']
+                       dupl_records.append(new_rec)
+                   if len(dupl_records) != 0:
+                       Trace.trace(10, "complete_write_to_tape: modifying dupl %s"%(dupl_records,))
+                       rc = set_cache_status.modify_records(self.fcc, dupl_records)
+                       Trace.trace(10, "complete_write_to_tape: modify_records returned %s"%(rc,))
+                       if not e_errors.is_ok(rc['status']):
                            return False
 
         return True
