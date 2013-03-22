@@ -5594,7 +5594,7 @@ def submit_one_request_send(ticket, encp_intf):
         #This is used to keep multiple encps in a migration in sync.
         # Otherwise, it should have no effect.
         try:
-            Trace.log(98, "<<< start_lock.release(), TP #2, except")
+            #Trace.log(98, "<<< start_lock.release(), TP #2, except")
             start_lock.release()
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -5605,7 +5605,7 @@ def submit_one_request_send(ticket, encp_intf):
         #This is used to keep multiple encps in a migration in sync.
         # Otherwise, it should have no effect.
         try:
-            Trace.log(98, "<<< start_lock.release(), TP #3, except")
+            #Trace.log(98, "<<< start_lock.release(), TP #3, except")
             start_lock.release()
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -5616,9 +5616,9 @@ def submit_one_request_send(ticket, encp_intf):
     #This is used to keep multiple encps in a migration in sync.
     # Otherwise, it should have no effect.
     try:
-        Trace.log(98, "<<< start_lock.release(), TP #4, after send_deferred() - going to release")
+        #Trace.log(98, "<<< start_lock.release(), TP #4, after send_deferred() - going to release")
         start_lock.release()
-        Trace.log(98, "<<< start_lock.release(), TP #4, after send_deferred(), released")
+        #Trace.log(98, "<<< start_lock.release(), TP #4, after send_deferred(), released")
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
@@ -7096,7 +7096,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 #Something is very wrong, deal with it later.
                 pass
     """
-
     #If the mover doesn't call back after max_submits number of times, give up.
     # If the error is already non-retriable, skip this step.
     if max_submits != None and resubmits >= max_submits \
@@ -7400,12 +7399,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # against to determine if its original succeeded.
         if not request_dictionary.has_key('retried_unique_ids'):
             request_dictionary['retried_unique_ids'] = []
-        old_uniqu_id = request_dictionary['unique_id']
-        request_dictionary['retried_unique_ids'].append(old_uniqu_id)
+        old_unique_id = request_dictionary['unique_id']
+        request_dictionary['retried_unique_ids'].append(old_unique_id)
 
         #Get a new unique id for the transfer request since the last attempt
         # ended in error.
-        request_dictionary['unique_id'] = generate_unique_id()
+        if status[0] != e_errors.TIMEDOUT:
+            request_dictionary['unique_id'] = generate_unique_id()
 
         #keep a list of transactions to wait for later.
         transaction_id_list = []
@@ -12767,9 +12767,9 @@ def main(intf):
 def do_work(intf, main=main):
 
     #Keep multiple encps within a migration in sync.
-    Trace.log(98, "--- start_lock.acquire(), TP #0, before")
+    #Trace.log(98, "--- start_lock.acquire(), TP #0, before")
     start_lock.acquire()
-    Trace.log(98, ">>> start_lock.acquire(), TP #0, got lock")
+    #Trace.log(98, ">>> start_lock.acquire(), TP #0, got lock")
 
     try:
         exit_status = main(intf)
@@ -12806,7 +12806,7 @@ def do_work(intf, main=main):
 
     #Keep multiple encps within a migration in sync.
     try:
-        Trace.log(98, "<<< start_lock.release(), TP #1 main")
+        #Trace.log(98, "<<< start_lock.release(), TP #1 main")
         start_lock.release()
     except:
         pass
