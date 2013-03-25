@@ -27,7 +27,6 @@ get instructions on how to build a custom python .
 echo INSTALL
 echo $RPM_BUILD_ROOT
 pwd
-%define debug_package %{nil}
 
 %clean
 rm -rf $RPM_BUILD_ROOT/*
