@@ -21,8 +21,6 @@ import enstore_constants
 
 WEB_SUB_DIRECTORY = enstore_constants.SFA_STATS_PLOTS_SUBDIR
 
-MB = 1048576
-
 class SFAStatsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def __init__(self,name,isActive=True):
         enstore_plotter_module.EnstorePlotterModule.__init__(self,name,isActive)
@@ -81,8 +79,8 @@ class SFAStatsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         #################################################
         hc = self.files_cached_histogram
         hp = self.files_purged_histogram
-        files_cached_purged_query = "select cache_status, count(*), sum(size), cache_mod_time::date from file where cache_status in ('PURGED','CACHED') and cache_mod_time>CURRENT_TIMESTAMP - interval '1 mons' group by cache_mod_time::date, cache_status order by cache_mod_time::date;"
-        
+        files_cached_purged_query = "select cache_status, count(*), sum(size), cache_mod_time::date from file where cache_status in ('PURGED','CACHED') and bfid!=package_id and cache_mod_time>CURRENT_TIMESTAMP - interval '1 mons' group by cache_mod_time::date, cache_status order by cache_mod_time::date;"
+
         res = self.db.query(files_cached_purged_query).getresult()
         cached_data_file = hc.get_data_file()
         purged_data_file = hp.get_data_file()
@@ -95,24 +93,26 @@ class SFAStatsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 h = hp
                 data_file = purged_data_file
             if data_file:
-                data_file.write("%d %f %s\n"%(row[1], row[2]/MB, row[3]))
+                data_file.write("%d %f %s\n"%(row[1], row[2]/enstore_constants.MB, row[3]))
                 h.entries += 1 # temporary work around for Ntuple
         cached_data_file.close()
         purged_data_file.close()
-        
+
         ##################################################
         # Files archived histogram
         #################################################
         ha = self.files_archived_histogram
 
-        files_archived_query = "select count(bfid) , sum(size), archive_mod_time::date from file where archive_status='ARCHIVED' and archive_mod_time  between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP group by archive_mod_time::date order by archive_mod_time::date;"
+        files_archived_query = "select count(bfid) , sum(size), archive_mod_time::date from file where archive_status='ARCHIVED' and bfid!=package_id and archive_mod_time  between CURRENT_TIMESTAMP - interval '1 mons' and CURRENT_TIMESTAMP group by archive_mod_time::date order by archive_mod_time::date;"
+        total_files_archived_query = "select count(*), sum(size) from file where archive_status='ARCHIVED' and bfid!=package_id;"
         res = self.db.query(files_archived_query).getresult()
         data_file = ha.get_data_file()
         for row in res:
-            data_file.write("%d %f %s\n"%(row[0], row[1]/MB, row[2]))
+            data_file.write("%d %f %s\n"%(row[0], row[1]/enstore_constants.MB, row[2]))
             ha.entries += 1 # temporary work around for Ntuple
         data_file.close()
-
+        res= self.db.query(total_files_archived_query).getresult()
+        self.total_files_archived, self.total_bytes_archived  = res[0]
         self.db.close()
 
 
@@ -127,17 +127,19 @@ class SFAStatsPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             h.set_name(self.name+ "_bytes_cached")
             h.set_ylabel("Bytes Cached (MB)")
             h.plot("3:2", directory = self.web_dir)
-        
+
         h = self.files_archived_histogram
         if h.n_entries() > 0:
             # Files archived plot
+            h.set_title("%s (Total Files=%s)"%(h.get_title(),self.total_files_archived))
             h.plot("3:1", directory = self.web_dir)
             # Bytes archived plot
-            h.set_title("Bytes Archived")
+            h.set_title("Bytes Archived (Total Bytes=%.2f GB)"%(self.total_bytes_archived/enstore_constants.GB,))
+
             h.set_name(self.name+ "_bytes_archived")
             h.set_ylabel("Bytes Archived (MB)")
             h.plot("3:2", directory = self.web_dir)
-        
+
         h = self.files_purged_histogram
         if h.n_entries() > 0:
             # Files purged plot
