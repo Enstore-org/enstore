@@ -122,6 +122,10 @@ messages it is time to increase maximal udp message size for enstore. The sizes 
 although usually were not exceeding 16KB. Some messages though require ether bigger udp message size or fragmentation 
 (as in set_cache_status). (bz 1283). 
 
+========== sfa_plotter_module.py ============================================================================
+Add total archived files and bytes to SFA statistic plots
+(bz 1304, rb 674)
+
 ========== udp_client.py ====================================================================================
 
 Increase the maximal size of udp message and use it in migrator. As linux has progressed to support higher size of udp 
