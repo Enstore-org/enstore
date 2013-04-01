@@ -274,12 +274,12 @@ class VolumeClerkInfoMethods(dispatching_worker.DispatchingWorker):
     # has_undeleted_file(vol) -- check if vol has undeleted file
 
     def has_undeleted_file(self, vol):
-        q = "select (unknown_files+active_files) from volume where label = '%s'"%(vol)
+        q = "select unknown_files,active_files from volume where label = '%s'"%(vol)
         res = self.volumedb_dict.query_getresult(q)
         if len(res)>0:
-            return res[0][0]
+            return (res[0][0]>0 or res[0][1]>0)
         else:
-            return 0
+            return False
 
     # check if quota is enabled in the configuration #### DONE
     def quota_enabled2(self):
