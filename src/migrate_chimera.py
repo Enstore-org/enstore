@@ -6476,12 +6476,23 @@ def _swap_metadata(MY_TASK, job, fcc, db, src_is_a_package=False):
     # Path conversion:
     # src_file_record['pnfs_name0'] is as written
     #     /pnfs/data2/file_aggregation/packages/ALEX.TestClone_7.cpio_odc/VOK310/package-M5-2012-04-11T17:48:35.884Z.tar 
-    # src_path is as mounted on this system
+    # src_path is as mounted on this system ('canonical' pnfs file name)
     #     /pnfs/fs/usr/data2/file_aggregation/packages/ALEX.TestClone_7.cpio_odc/VOK310/package-M5-2012-04-11T17:48:35.884Z.tar
     # We will be replacing volume name like .../VOK310/... 
-    #   but the side effect will be also modifying pnfs mount point to canonical setting
-    #src_pnfs_name = src_file_record['pnfs_name0']
-    src_pnfs_name = src_path
+    #   but the side effect will be modifying pnfs mount point to canonical setting
+
+    # 4/4/13 As a stop gap measure to avoid failing the original file name check in encp,
+    #   change file name to canonical for packages only but not for regular files:
+
+    # pnfs path to be set in pnfs layer 4:
+    # 1) This is the old way before SFA packaged based migration.
+    #  - use the original name in FC src file record
+    #  (same as prior to SFA)
+    src_pnfs_name = src_file_record['pnfs_name0']
+
+    # 2) This is to convert original file name for all files (packages and unpackaged)
+    #     to canonical pnfs name /pnfs/fs/usr/...
+    #src_pnfs_name = src_path
     
     if src_is_a_package :
         # move package file in pnfs to directory with new volume name
@@ -6489,7 +6500,7 @@ def _swap_metadata(MY_TASK, job, fcc, db, src_is_a_package=False):
         err_msg, new_name = _move_package_file(src_pnfs_name,volume,p1)
         if err_msg is not None:
             return err_msg
-        # use new pnfs location
+        # use new pnfs location and use canonical pnfs file name
         src_pnfs_name = new_name
         src_path = new_name
 
