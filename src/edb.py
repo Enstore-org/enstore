@@ -587,13 +587,13 @@ class FileDB(DbTable):
         pnfs_path = None
         if escape_string:
             #For pg.py 3.8.1 and later.  This escapes the SQL
-            # special characters.
-            if s.has_key('pnfs_name0'):
+            # special characters.s
+            if s.has_key('pnfs_name0') and s['pnfs_name0'] :
                 pnfs_path = escape_string(s['pnfs_name0'])
         else:
             #At least handle this one character if using too old
             # of a version of pg.py.
-            if s.has_key('pnfs_name0') :
+            if s.has_key('pnfs_name0') and  s['pnfs_name0'] :
                 pnfs_path = s['pnfs_name0'].replace("'", "''")
 
         record={}
