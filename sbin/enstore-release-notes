@@ -90,7 +90,7 @@ report_dir()
 print_header()
 {
   echo "<html><body><pre>"
-  echo "                      Estore release notes, from $1 to $2"
+  echo "                      Enstore release notes, from $1 to $2"
 
 
   echo "                      Detailed cvs commit logs"
