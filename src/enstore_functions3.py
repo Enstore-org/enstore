@@ -95,8 +95,11 @@ def is_volume_tape(volume):
         if re.search("^[A-Z0-9]{6}(.deleted){0,1}$", volume):
             return 1   #If passed a volume.
         elif re.search("^[A-Z0-9]{6}(L)[0-9]{1}(.deleted){0,1}$", volume):
-            return 1   #If passed a volume.
-
+            # LTO1,2 have L1 or L2 suffix
+            return 1
+        elif re.search("^[A-Z0-9]{6}(JC)(.deleted){0,1}$", volume):
+            # KIAE has 3592 tapes labeled as A00188JC
+            return 1
     return 0
 
 def is_volume_disk(volume):
