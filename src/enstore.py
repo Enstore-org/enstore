@@ -49,7 +49,6 @@ import enstore_stop
 import enstore_restart
 import backup
 import pnfs_agent_client
-import scan
 import udp_proxy_client
 import lm_director_client
 import dispatcher_client
@@ -59,6 +58,11 @@ try:
 except:
 	import fake_quota
 	quota = fake_quota
+
+try:
+    import scan
+except:
+    pass
 
 # define in 1 place all the hoary pieces of the command needed to access an
 # entire enstore system.
@@ -148,9 +152,13 @@ server_functions = {
                  enstore_restart.do_work, option.ADMIN],
     "backup" : [backup.BackupInterface,
                 backup.do_work, option.ADMIN],
-    "scan": [scan.ScanInterface,
-             scan.do_work, option.ADMIN],
     }
+
+try:
+    server_functions['scan'] = [scan.ScanInterface,
+                                scan.do_work, option.ADMIN]
+except:
+    pass
 
 def get_farmlet(default):
     if len(sys.argv) > 1:
