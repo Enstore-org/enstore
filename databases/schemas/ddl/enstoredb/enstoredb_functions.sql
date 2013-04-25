@@ -447,6 +447,7 @@ ELSEIF (TG_OP='UPDATE') THEN
 			update volume set unknown_files= unknown_files+1, unknown_bytes=unknown_bytes+OLD.size+delta,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
 		ELSEIF (NEW.deleted='y') THEN
 			update volume set deleted_files= deleted_files+1, deleted_bytes=deleted_bytes+OLD.size+delta,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
+			delete from active_file_copying where bfid=OLD.bfid;
 		ELSEIF (NEW.deleted='n') THEN
 			update volume set active_files= active_files+1, active_bytes=active_bytes+OLD.size+delta,modification_time=LOCALTIMESTAMP(0) where volume.id=NEW.volume;
 		END IF;
