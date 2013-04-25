@@ -5,7 +5,7 @@
 # $Date$
 # $Id$
 #
-# Builds Enstore Main page 
+# Builds Enstore Main page
 # Author: Dmitry Litvintsev (litvinse@fnal.gov) 06/08/07
 #
 ###############################################################################
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     if hostname != server.get_server_host() :
         print "Doing nothing - we are not supposed to do anything here "
         sys.exit(2)
-        
+
     remote=True
     if socket.gethostbyname(socket.gethostname())[0:7] == "131.225" :
         print "We are in Fermilab", server.get_system_name()
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
 
     main_web_page=enstore_system_html.EnstoreSystemHtml(server.get_system_name(),
-                                                        "0.00", remote)
+                                                        {"total":0, "active":0}, remote)
 
     html_dir=None
     if server.inq_d.has_key("html_file"):
@@ -96,9 +96,9 @@ if __name__ == "__main__":
     except:
         print "Failed to permission  mask of ",cgi_dir," to ",0755
         pass
-     
 
-             
-    
-    
-           
+
+
+
+
+
