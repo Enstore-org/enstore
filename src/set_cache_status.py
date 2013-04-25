@@ -12,7 +12,7 @@ import Trace
 import enstore_constants
 import e_errors
 
-PAD_SIZE=100 # addtional pad for enstore message
+PAD_SIZE=200 # addtional pad for enstore message
 
 # @param fcc - file clerk client
 # @param set_cache_params list of set_cache_status parameters to set
