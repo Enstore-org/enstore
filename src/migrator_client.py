@@ -57,7 +57,7 @@ class MigratorClientInterface(generic_client.GenericClientInterface):
     parameters = ["migrator_name"]    
 
     def valid_dictionaries(self):
-        return (self.help_options, self.alive_options, self.migrator_options)
+        return (self.help_options, self.alive_options, self.trace_options, self.migrator_options)
     
     migrator_options = {
         option.STATUS:{option.HELP_STRING:"print migrator status",
