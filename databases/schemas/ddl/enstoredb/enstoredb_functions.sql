@@ -639,8 +639,6 @@ INSERT into state_type (name) select 'modified'         as name  where not exist
 INSERT into state_type (name) select 'set_comment'      as name  where not exists (select state_type.name from state_type where state_type.name='set_comment');
 INSERT into state_type (name) select 'new_library'      as name  where not exists (select state_type.name from state_type where state_type.name='new_library');
 
-INSERT into option (key, value) select 'quota', 'disabled' where not exists (select option.key,option.value from option where option.key='quota' and option.value='disabled');
-
 INSERT into media_capacity select '9840',        21474836480 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9840'     and  media_capacity.capacity=21474836480);
 INSERT into media_capacity select '9940',        64424509440 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940'     and  media_capacity.capacity=64424509440);
 INSERT into media_capacity select '9940B',      214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940B'    and  media_capacity.capacity=214748364800);

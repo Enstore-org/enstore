@@ -54,6 +54,14 @@ class DatabaseAccess:
         self.pool.close()
 
     def query(self,s,cursor_factory=None) :
+        colnames,res=self.__query(s,cursor_factory)
+        return res
+
+    def query_with_columns(self,s,cursor_factory=None) :
+        colnames,res=self.__query(s,cursor_factory)
+        return colnames,res
+
+    def __query(self,s,cursor_factory=None) :
         db,cursor=None,None
         try:
             db=self.pool.connection();
@@ -62,11 +70,12 @@ class DatabaseAccess:
             else:
                 cursor=db.cursor()
             cursor.execute(s)
+            colnames=[desc[0] for desc in cursor.description]
             res=cursor.fetchall()
             cursor.close()
             db.close()
             db,cursor=None,None
-            return res
+            return colnames,res
         except psycopg2.Error, msg:
             try:
                 for c in (cursor,db):
