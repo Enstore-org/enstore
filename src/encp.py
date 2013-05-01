@@ -5512,26 +5512,31 @@ def submit_one_request_send(ticket, encp_intf):
                   "Failed to determine the type of transfer: %s" % str(msg))
 
     #Get the answer from the library manager director.
-    orig_library = ticket['vc']['library'] + ".library_manager"
+    orig_library = ticket['vc']['library']
     csc = get_csc()
-    lm_config = csc.get(orig_library, 3, 3)
-    if e_errors.is_ok(lm_config) and encp_intf.enable_redirection == 1 and ticket['work'] == "write_to_hsm":
-       lmd_name = lm_config.get('use_LMD', None)
-       if lmd_name:
-           lmd = library_manager_director_client.LibraryManagerDirectorClient(csc, lmd_name)
-           Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET\n%s:"%(pprint.pformat(ticket),))
+    lm_config = csc.get(orig_library+ ".library_manager", 3, 3)
+    if e_errors.is_ok(lm_config) and \
+           encp_intf.enable_redirection == 1 and \
+           ticket['work'] == "write_to_hsm":
+        lmd_name = lm_config.get('use_LMD', None)
+        if lmd_name:
+            lmd = library_manager_director_client.LibraryManagerDirectorClient(csc, lmd_name)
+            Trace.message(TICKET_1_LEVEL, "LMD SUBMISSION TICKET\n%s:"%(pprint.pformat(ticket),))
 
-           t = lmd.get_library_manager(copy.deepcopy(ticket))
+            t = lmd.get_library_manager(copy.deepcopy(ticket))
 
-           ticket.update(dict(filter(lambda i : i[0] not in ("work"),t.iteritems())))
+            ticket.update(dict(filter(lambda i : i[0] not in ("work"),t.iteritems())))
 
-           Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET\n%s:"%(pprint.pformat(ticket),))
+            Trace.message(TICKET_1_LEVEL, "LMD REPLY TICKET\n%s:"%(pprint.pformat(ticket),))
 
-           if not e_errors.is_ok(ticket):
-               ticket['status'] = (e_errors.USERERROR,
-                   "Unable to access library manager director: %s" % \
-                   (ticket['status'],))
-               return ticket, None, None
+            if not e_errors.is_ok(ticket):
+                ticket['status'] = (e_errors.USERERROR,
+                                    "Unable to access library manager director: %s" % \
+                                    (ticket['status'],))
+                return ticket, None, None
+
+    if orig_library !=  ticket['vc']['library']:
+        encp_intf.redirected = True
 
     #Send work ticket to LM.  As long as a single encp process is restricted
     # to working with one enstore system, not passing get_csc() the ticket
@@ -9294,7 +9299,7 @@ def write_to_hsm(e, tinfo):
             # This is a copy request.
             # We do not make copies for files written to cache.
             # Copies are done when these files migrate to tape.
-            if (e.enable_redirection == 1):
+            if e.enable_redirection == 1 and e.redirected:
                 # The original request (copy 0) was redirected.
                 # Skip the copy request.
                 del(request_list[index])
@@ -11671,6 +11676,9 @@ class EncpInterface(option.Interface):
 
         # Disable redirection of encp to another library manager
         self.enable_redirection = 0
+
+        # Flag which is set if redirection occured
+        self.redirected = False
 
         # parse the options
         option.Interface.__init__(self, args=args, user_mode=user_mode)
