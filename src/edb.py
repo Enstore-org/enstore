@@ -576,12 +576,12 @@ class FileDB(DbTable):
             deleted='u'
 
         sanity_size, sanity_crc, crc= (None, None, None)
-        if s.get('sanity_cookie'):
-            sanity_size = s['sanity_cookie'][0] if s['sanity_cookie'][0] else -1
-            sanity_crc  = s['sanity_cookie'][1] if s['sanity_cookie'][1] else -1
+        if s.has_key('sanity_cookie'):
+            sanity_size = s['sanity_cookie'][0] if s['sanity_cookie'][0] != None else -1
+            sanity_crc  = s['sanity_cookie'][1] if s['sanity_cookie'][1] != None else -1
 
         if s.has_key('complete_crc'):
-            crc = s['complete_crc'] if s['complete_crc'] else -1
+            crc = s['complete_crc'] if s['complete_crc'] != None else -1
 
         escape_string = getattr(pg, "escape_string", None)
         pnfs_path = None
@@ -603,15 +603,15 @@ class FileDB(DbTable):
         if s.has_key('pnfsid'):
             record['pnfs_id'] = s['pnfsid']
 
-        if deleted :
+        if deleted != None :
             record['deleted']=deleted
-        if crc:
+        if crc != None:
             record['crc']=crc
-        if pnfs_path:
+        if pnfs_path != None :
             record['pnfs_path']=pnfs_path
-        if sanity_size:
+        if sanity_size != None :
             record['sanity_size'] = sanity_size
-        if sanity_crc:
+        if sanity_crc != None :
             record['sanity_crc'] = sanity_crc
 
         for key in ('package_files_count', 'active_package_files_count'):
