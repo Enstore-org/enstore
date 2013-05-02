@@ -17,6 +17,7 @@ import sys
 import os
 import time
 import errno
+import string
 
 class Attribute:
     def __init__(self, name, title):
@@ -29,6 +30,7 @@ class Attribute:
         self.marker_type="points"
         self.marker_text=""
         self.additional_text=""
+        self.commands=[]
         self.line_width=1
         self.line_color=1
         self.data_file=None  #open(self.data_file_name,"w");
@@ -92,6 +94,9 @@ class Attribute:
 
     def add_text(self,txt):
         self.additional_text=self.additional_text+txt
+
+    def add_command(self,txt):
+        self.commands.append(txt)
 
     def set_marker_type(self,txt):
         self.marker_type=txt
@@ -231,7 +236,8 @@ class Ntuple(BasicHistogram):
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
                      "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)
+                     "set xlabel '%s'\n"%(self.xlabel)+ \
+                     string.join(self.commands,"\n")+"\n"
         long_string=long_string+" set pm3d; set palette; \n";
         if (  self.time_axis ) :
             long_string=long_string+"set xlabel '%s'\n"%(self.xlabel)+ \
@@ -282,6 +288,10 @@ class Plotter:
         self.histogram_list = []
         self.name = name
         self.title = title
+        self.commands=[]
+
+    def add_command(self,txt):
+        self.commands.append(txt)
 
     def remove(self, filename):
         #delete the specified file.
@@ -332,7 +342,8 @@ class Plotter:
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
                      "set ylabel '%s'\n"%(self.histogram_list[0].get_ylabel(),)+ \
-                     "set xlabel '%s'\n"%(self.histogram_list[0].get_xlabel(),)
+                     "set xlabel '%s'\n"%(self.histogram_list[0].get_xlabel(),)+ \
+                     string.join(self.commands,"\n")+"\n"
         if ( self.histogram_list[0].get_logy() ) :
             long_string=long_string+"set logscale y\n"
             long_string=long_string+"set yrange [ 0.99  : ]\n"
@@ -907,7 +918,8 @@ class Histogram1D(BasicHistogram):
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
                      "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)
+                     "set xlabel '%s'\n"%(self.xlabel)+ \
+                     string.join(self.commands,"\n")+"\n"
         if ( self.get_opt_stat() ) :
             long_string=long_string+self.add_opt_stat()
         if (  self.time_axis ) :
@@ -979,7 +991,8 @@ class Histogram1D(BasicHistogram):
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
                      "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)
+                     "set xlabel '%s'\n"%(self.xlabel)+ \
+                     string.join(self.commands,"\n")+"\n"
         if ( self.get_opt_stat() ) :
             long_string=long_string+self.add_opt_stat()
         if (  self.time_axis ) :
@@ -1055,7 +1068,8 @@ class Histogram1D(BasicHistogram):
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
                      "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)
+                     "set xlabel '%s'\n"%(self.xlabel)+ \
+                     string.join(self.commands,"\n")+"\n"
         if ( self.get_opt_stat() ) :
             long_string=long_string+"set key right top Left samplen 20 title \""+\
                          "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
@@ -1265,7 +1279,8 @@ class Histogram2D(Histogram1D):
                      "set pm3d at b \n"+\
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set zlabel '%s'\n"%(self.zlabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)
+                     "set xlabel '%s'\n"%(self.xlabel)+ \
+                     string.join(self.commands,"\n")+"\n"
         if (  self.time_axis ) :
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
@@ -1333,7 +1348,8 @@ class Histogram2D(Histogram1D):
                      "set grid\n"+ \
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set zlabel '%s'\n"%(self.zlabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)
+                     "set xlabel '%s'\n"%(self.xlabel)+ \
+                     string.join(self.commands,"\n")+"\n"
         for bin in range(self.nbins) :
             x,y=self.get_bin_center(bin)
             count=self.get_bin_content(bin)
@@ -1450,6 +1466,7 @@ if __name__ == "__main__":
     plotter.add(h1)
     plotter.add(h2)
     plotter.add(sum_p)
+    plotter.add_command("set key outside")
     plotter.plot()
 
     #
