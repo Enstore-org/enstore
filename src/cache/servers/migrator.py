@@ -637,7 +637,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             if (rec['status'][0] == e_errors.OK):
                 try:
-                    if (rec['archive_status'] != file_cache_status.ArchiveStatus.ARCHIVING and
+                    if (rec['archive_status'] not in (file_cache_status.ArchiveStatus.ARCHIVING, file_cache_status.ArchiveStatus.ARCHIVED) and
                         rec['deleted'] == "no"): # file can be already deleted by the archiving time
                         write_enabled_counter = write_enabled_counter + 1
 
