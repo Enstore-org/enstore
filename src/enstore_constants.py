@@ -210,12 +210,13 @@ RATEKEEPER_CLIENT = "RATEKEEPER_CLIENT"
 VOLUME_CLERK_CLIENT = "VOLUME_C_CLIENT"
 PNFS_AGENT_CLIENT = "PNFS_A_CLIENT"
 
-#The following are directory names appened by the plotter_main.py to
+#The following are directory names appended by the plotter_main.py to
 # the html_dir to put different types of plots in different sub-directories.
 PLOTS_SUBDIR = ""  #plots/"
 MOUNT_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
 RATEKEEPER_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
 DRIVE_UTILIZATION_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
+DRIVE_HOURS_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "drive-hours")
 SLOT_USAGE_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
 PNFS_BACKUP_TIME_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
 FILE_FAMILY_ANALYSIS_PLOT_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "file_family_usage")
@@ -231,7 +232,7 @@ MOUNT_LATENCY_SUMMARY_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "latencies")
 MOUNTS_PER_ROBOT_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "mounts-per-robot")
 SFA_STATS_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "sfa")
 
-#The following are directory names appened by the html_main.py to
+#The following are directory names appended by the html_main.py to
 # the html_dir to put different types of pages in different sub-directories.
 WEB_SUBDIR = "generated_html/"
 OLD_WEB_SUBDIR = ""

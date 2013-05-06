@@ -311,7 +311,7 @@ def do_work(intf):
 #               page background.
 # plot_name : A string describing the contents of the plots in the
 #             plot directory.
-# links_l : Only the top page should specifiy this.  It is a list of
+# links_l : Only the top page should specify this.  It is a list of
 #           tuples containing the sub-plot-directories and the description
 #           of the plots.
 def make_plot(full_subdir_path, url_gif_dir, plot_name, links_l = None):
@@ -365,6 +365,8 @@ def do_work2(intf):
          "Instantaneous Encp Rates"),
         (enstore_constants.DRIVE_UTILIZATION_PLOTS_SUBDIR,
          "Tape Drives in Use per Drive Type"),
+        (enstore_constants.DRIVE_HOURS_PLOTS_SUBDIR,
+         "Tape Drive usage hours per Storage Group plots"),
         (enstore_constants.SLOT_USAGE_PLOTS_SUBDIR,
          "Tape Slot usage per Robot"),
         (enstore_constants.PNFS_BACKUP_TIME_PLOTS_SUBDIR,

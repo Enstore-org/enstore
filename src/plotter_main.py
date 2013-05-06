@@ -30,6 +30,7 @@ import bytes_per_day_plotter_module
 import mover_summary_plotter_module
 import mount_latency_plotter_module
 import mounts_per_robot_plotter_module
+import drive_hours_plotter_module
 
 def usage(cmd):
     print "Usage: %s [options] "%(cmd,)
@@ -37,6 +38,7 @@ def usage(cmd):
     print "\t -m [--mounts]          : plot mount plots "
     print "\t -u [--utilization]     : plot drive utilization (old name)"
     print "\t -d [--drives]          : plot drive utilization"
+    print "\t -D [--drive-hours]     : plot drive hours per day"
     print "\t -s [--slots]           : plot slot utilization"
     print "\t -p [--pnfs-backup]     : plot pnfs backup time"
     print "\t -f [--file-family-analysis] : plot file family analysis"
@@ -44,7 +46,7 @@ def usage(cmd):
     print "\t -q [--quotas]          : plot quotas by storage group"
     print "\t -t [--tapes-burn-rate] : plot tape usage by storage group"
     print "\t -i [--migration-summary] : plot migration progress"
-    print "\t -b [--bytes-per-day]   : plot bytes transfered per day"
+    print "\t -b [--bytes-per-day]   : plot bytes transferred per day"
     print "\t -M [--mover-summary]   : plot mover summary"
     print "\t -L [--library-mounts]   : plot tape library mounts"
     print "\t -l [--latencies]       : plot latencies plot"
@@ -53,11 +55,12 @@ def usage(cmd):
 
 if __name__ == "__main__":
     try:
-        short_args = "hmrudspfeqtibMlLS"
+        short_args = "hmrudDspfeqtibMlLS"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
-                     "slots", "pnfs-bakup", "file-family-analysis",
-                     "quotas", "tapes-burn-rate", "migration-summary",
-                     "bytes-per-day", "mover-summary","latencies","library-mounts", "sfa-stats"]
+                     "drive-hours", "slots", "pnfs-bakup",
+                     "file-family-analysis", "quotas", "tapes-burn-rate",
+                     "migration-summary", "bytes-per-day", "mover-summary",
+                     "latencies", "library-mounts", "sfa-stats"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError, msg:
         print msg
@@ -89,6 +92,10 @@ if __name__ == "__main__":
         # drive utilization
         if o in ("-u","--utilization", "-d", "--drives"):
             aModule = drive_utilization_plotter_module.DriveUtilizationPlotterModule("utilization")
+            f.add(aModule)
+        # drive hours per day
+        if o in ("-D","--drive-hours"):
+            aModule = drive_hours_plotter_module.DriveHoursPlotterModule("drive-hours")
             f.add(aModule)
         # slot utilization
         if o in ("-s","--slots"):
