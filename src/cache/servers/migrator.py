@@ -1126,10 +1126,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                         avail = float(stats.f_bavail)
                         total = float(stats.f_blocks)
                         fr_avail = avail/total
-                        if fr_avail > 1 - self.purge_watermarks[1]:
-                            rc = True
-                        else:
-                            rc = False
+                        rc = fr_avail < 1 - self.purge_watermarks[1] 
+                        # purge_watermarks[1] is the lower watermark,
+                        # we do not want to go lower.
                     except OSError:
                         rc = True # file was removed before, proceed with purge anyway
                 else:
