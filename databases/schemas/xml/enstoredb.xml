@@ -23,6 +23,9 @@
     <column name="bfid" type="varchar" null="no" key="1"/>
     <column name="remaining" type="integer"/>
     <column name="time" type="timestamptz" default="now()"/>
+    <relations>
+        <relation name="$1" column="bfid" table="file" fk="bfid" ondelete="cascade"/>
+    </relations>
   </table>
   <table name="bad_file">
     <column name="bfid" type="varchar"/>
@@ -265,6 +268,16 @@
         <relation name="cache_status_fk" column="cache_status" table="cache_statuses" fk="status"/>
         <relation name="archive_status_fk" column="archive_status" table="archive_statuses" fk="status"/>
     </relations>
+  </table>
+  <table name="historic_tape_bytes">
+    <column name="date" type="timestamp" null="no" key="1"/>
+    <column name="storage_group" type="varchar" null="no" key="2"/>
+    <column name="active_bytes" type="bigint"/>
+    <column name="unknown_bytes" type="bigint"/>
+    <column name="deleted_bytes" type="bigint"/>
+    <column name="active_files" type="bigint"/>
+    <column name="unknown_files" type="bigint"/>
+    <column name="deleted_files" type="bigint"/>
   </table>
   <view name="cms_volume_with_only_deleted_files">
     SELECT volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1 AS state, volume.media_type, volume.library FROM volume WHERE (((((volume.storage_group)::text = 'cms'::text) AND ((volume.system_inhibit_0)::text = 'none'::text)) AND ((volume.active_files + volume.unknown_files) = 0)) AND (volume.deleted_files &gt; 0));
