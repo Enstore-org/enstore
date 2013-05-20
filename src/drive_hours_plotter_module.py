@@ -145,13 +145,13 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         for t, v1 in self.mounts.iteritems():
 
             plot_name = '%s' % (t,)
-            plot_title = 'Drive time by storage group for volume %s.' % (t,)
+            plot_title = 'Drive time by storage group for %s drives.' % (t,)
             plotter = histogram.Plotter(plot_name, plot_title)
             plotter.add_command(plot_key_setting)
 
             iplot_name = 'accumulative_%s' % (t,)
             iplot_title = ('Accumulative drive time by storage group for '
-                           'volume %s.') % (t,)
+                           '%s drives.') % (t,)
             iplotter = histogram.Plotter(iplot_name, iplot_title)
             iplotter.add_command(plot_key_setting)
 
