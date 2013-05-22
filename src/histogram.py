@@ -445,6 +445,9 @@ class Histogram1D(BasicHistogram):
             self.binarray.append(0.)
             self.sumarray.append(0.)
 
+    def __gt__(self,other):
+        return sum(self.binarray)>sum(other.binarray)
+
     def copy(self) :
         other = Histogram1D(self.name,
                             self.title,
