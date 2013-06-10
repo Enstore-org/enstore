@@ -21,6 +21,7 @@ import alarm_client
 import e_errors
 import quota as equota
 import accounting
+import dbaccess
 
 #Multiplier to determine if the actual size of the tape is close enough
 # to the the stated capacity of that media type.
@@ -966,7 +967,13 @@ def inventory(output_dir, cache_dir):
                            accinfo.get("dbport",8800),
                            accinfo['dbuser'])
     #
-    eq = equota.Quota(vol_db.db)
+
+    db = dbaccess.DatabaseAccess(maxconnections=1,
+                                 host     = dbinfo.get("db_host","localhost"),
+                                 database = dbinfo.get('dbname', "enstoredb"),
+                                 port     = dbinfo.get('db_port', 5432),
+                                 user     = dbinfo.get('dbuser', "enstore"))
+    eq = equota.Quota(db)
 
     #Get the media_types for each library.
     library_media_types = {}
@@ -1519,6 +1526,7 @@ def inventory(output_dir, cache_dir):
             res = acs.db.query(q)
 
     #Remember to close the DB connections, too.
+    db.close()
     vol_db.close()
     #file_db.close() #Linked to vol_db, so closing one closes both.
     #eq.close() #Linked to vol_db, so closing one closes both.
