@@ -234,7 +234,7 @@ def main():
         print "</table>"
         dbinfo = csc.get("database")
         for policy, poollists in  files.iteritems():
-            print "<h2><policy=<a name=\"%s\">%s</a></h2>"%(policy,policy,)
+            print "<h2><policy=<a id=\"%s\">%s</a></h2>"%(policy,policy,)
             for pool, list in poollists.iteritems():
                 files_in_pool_policies = files_pool_policy[policy][pool]
                 Q1 = "select count(*), sum(size)/1024. as total from file where bfid in ('%s')"%(string.join(files_in_pool_policies,"','"))
@@ -251,23 +251,34 @@ def main():
                     print "list id=%s, total=%d,size=%d (kB), time_qd=%s</h2>"%(key,count,size,times[key])
                     print "<pre>"
                     print "cache_mod_time storage_group file_family volume location_cookie bfid size crc pnfs_id pnfs_path archive_status"
-                    Q = "select f.cache_mod_time,v.storage_group,v.file_family,v.label as volume,f.location_cookie,f.bfid,f.size, \
-                    f.crc,f.pnfs_id,f.pnfs_path,f.archive_status from file f, volume v where v.id=f.volume and f.bfid in ('%s')"%(string.join(value,"','"))
-                    res=select(dbinfo,Q)
-                    for row in res:
-                        for k in ("cache_mod_time",
-                                  "storage_group",
-                                  "file_family",
-                                  "volume",
-                                  "location_cookie",
-                                  "bfid",
-                                  "size",
-                                  "crc",
-                                  "pnfs_id",
-                                  "pnfs_path",
-                                  "archive_status"):
-                            print row[k],
-                        print ""
+                    nfiles = len(value)
+                    start = 0
+                    end = start
+                    while (end < nfiles) :
+
+                        if end+100 > nfiles:
+                            end = nfiles
+                        else:
+                            end += 100
+
+                        Q = "select f.cache_mod_time,v.storage_group,v.file_family,v.label as volume,f.location_cookie,f.bfid,f.size, \
+                        f.crc,f.pnfs_id,f.pnfs_path,f.archive_status from file f, volume v where v.id=f.volume and f.bfid in ('%s')"%(string.join(value[start:end],"','"))
+                        res=select(dbinfo,Q)
+                        for row in res:
+                            for k in ("cache_mod_time",
+                                      "storage_group",
+                                      "file_family",
+                                      "volume",
+                                      "location_cookie",
+                                      "bfid",
+                                      "size",
+                                      "crc",
+                                      "pnfs_id",
+                                      "pnfs_path",
+                                      "archive_status"):
+                                print row[k],
+                            print ""
+                        start=end
                     print "</pre>"
     print '</body>'
     print '</html>'
