@@ -376,7 +376,9 @@ class Plotter:
             else :
                 long_string=long_string+"'"+pts_file_name+"' using 1:3 "
             long_string=long_string+" t '"+hist.get_marker_text()+"' with "\
-                     +hist.get_marker_type()+" lw "+str(hist.get_line_width())+" lt "+str(hist.get_line_color())+"  "
+                     +hist.get_marker_type()+" lw "+str(hist.get_line_width())+" "
+            if hist.get_line_color() != 0 :
+                 long_string += " lt "+str(hist.get_line_color())+"  "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
 
