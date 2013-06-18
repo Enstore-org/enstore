@@ -7,8 +7,8 @@
 ###############################################################################
 
 """
-Plots drive usage hours versus date, stacked by storage group, individually for
-each unique volume.
+Plot drive usage hours versus date, stacked by storage group, individually for
+each unique drive type.
 """
 
 # Python imports
@@ -25,18 +25,13 @@ import histogram
 # Note: This module is referenced by the "plotter_main" module.
 
 WEB_SUB_DIRECTORY = enstore_constants.DRIVE_HOURS_PLOTS_SUBDIR
-# Note: Above constant is also referenced by "enstore_make_plot_page" module.
+# Note: Above constant is referenced by "enstore_make_plot_page" module.
 TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
 
 
 class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
-    """Plots drive usage hours versus date, stacked by storage group,
-    individually for each unique volume."""
-
-    def __init__(self, name, isActive=True):
-
-        base_class = enstore_plotter_module.EnstorePlotterModule
-        base_class.__init__(self, name, isActive)
+    """Plot drive usage hours versus date, stacked by storage group,
+    individually for each unique drive type."""
 
     def book(self, frame):
         """Create destination directory for plots, as needed."""
@@ -129,18 +124,31 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     def plot(self):
         """Write plot files."""
 
+        str_time_format = "%Y-%m-%d %H:%M:%S"
+
         now_time = time.time()
-        t = time.ctime(time.time())
         Y, M, D, _h, _m, _s, wd, jd, dst = time.localtime(now_time)
         now_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
+        now_time_str = time.strftime(str_time_format,
+                                     time.localtime(now_time))
+
         start_time = now_time - 32 * 86400  # (32 days)
-        Y, M, D, h, _m, s, wd, jd, dst = time.localtime(start_time)
+        Y, M, D, _h, _m, _s, wd, jd, dst = time.localtime(start_time)
         start_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
+        start_time_str = time.strftime(str_time_format,
+                                       time.localtime(start_time))
+
+        #print('xrange: min={}; max={};'.format(start_time_str, now_time_str))
 
         plot_key_setting = 'set key outside width 2'
         # Note: "width 2" is used above to prevent a residual overlap of the
         # legend's labels and the histogram.
         ylabel = 'Drive time (hours/day)'
+
+        set_xrange_cmds =  ('set xdata time',
+                            'set timefmt "{}"'.format(str_time_format),
+                            'set xrange ["{}":"{}"]'.format(start_time_str,
+                                                            now_time_str))
 
         for t, v1 in self.mounts.iteritems():
 
@@ -148,12 +156,16 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             plot_title = 'Drive time by storage group for %s drives.' % (t,)
             plotter = histogram.Plotter(plot_name, plot_title)
             plotter.add_command(plot_key_setting)
+            for cmd in set_xrange_cmds:
+                plotter.add_command(cmd)
 
             iplot_name = 'accumulative_%s' % (t,)
             iplot_title = ('Accumulative drive time by storage group for '
                            '%s drives.') % (t,)
             iplotter = histogram.Plotter(iplot_name, iplot_title)
             iplotter.add_command(plot_key_setting)
+            for cmd in set_xrange_cmds:
+                iplotter.add_command(cmd)
 
             s = histogram.Histogram1D('h_' + t, 'h_' + t, 32,
                                       float(start_time), float(now_time))
