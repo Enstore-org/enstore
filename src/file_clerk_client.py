@@ -49,22 +49,8 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                  backup_client.BackupClient):
 
     def __init__( self, csc, bfid=0, server_address=None, flags=0, logc=None,
-                  alarmc=None, rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES,
-                  #Timeout and tries are for backward compatibility.
-                  timeout=None, tries=None):
-        ###For backward compatibility.
-        if timeout != None:
-            rcv_timeout = timeout
-        if tries != None:
-            rcv_tries = tries
-        ###
+                  alarmc=None, rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES):
 
-        #generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
-        #                                      flags=flags, logc=logc,
-        #                                      alarmc=alarmc,
-        #                                      rcv_timeout=rcv_timeout,
-        #                                      rcv_tries=rcv_tries,
-        #                                      server_name = MY_SERVER)
         info_client.fileInfoMethods.__init__(self,csc,MY_NAME,server_address,
                                              flags=flags, logc=logc,
                                              alarmc=alarmc,
@@ -73,12 +59,9 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                                              server_name = MY_SERVER)
 
 	self.bfid = bfid
-	#if self.server_address == None:
-        #    self.server_address = self.get_server_address(
-        #        MY_SERVER, rcv_timeout, rcv_tries)
 
     # create a bit file using complete metadata -- bypassing all
-    def create_bit_file(self, file):
+    def create_bit_file(self, file, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         # file is a structure without bfid
         ticket = {"fc":{}}
         ticket["fc"]["external_label"] = str(file["external_label"])
@@ -96,10 +79,10 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             ticket["fc"]["gid"] = file["gid"]
         ticket = self.new_bit_file(ticket)
         if ticket["status"][0] == e_errors.OK:
-            ticket = self.set_pnfsid(ticket)
+            ticket = self.set_pnfsid(ticket, timeout=timeout, retry=retry)
         return ticket
 
-    def set_cache_status(self, arguments) :
+    def set_cache_status(self, arguments, timeout=0, retry=0):
         #
         # arguments look like a dictionary or a list of
         # dictionaries with keys
@@ -113,42 +96,45 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         else:
             raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(arguments))
         ticket["work"] = "set_cache_status"
-        r = self.send(ticket)
+        r = self.send(ticket,rcv_timeout=timeout, tries=retry)
         return r
 
-    def open_bitfile(self, bfid):
-        r = self.send({"work" : "open_bitfile", "bfid" : bfid})
+    def open_bitfile(self, bfid, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
+        r = self.send({"work" : "open_bitfile", "bfid" : bfid},  rcv_timeout=timeout, tries=retry)
         return r
 
-    def open_bitfile_for_package(self, bfid):
-        r = self.send({"work" : "open_bitfile_for_package", "bfid" : bfid})
+    def open_bitfile_for_package(self, bfid, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
+        r = self.send({"work" : "open_bitfile_for_package", "bfid" : bfid}, rcv_timeout=timeout, tries=retry)
         return r
 
-    def set_children(self, ticket):
+    def set_children(self, ticket, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         ticket["work"] = "set_children"
-        r = self.send(ticket)
+        r = self.send(ticket, rcv_timeout=timeout, tries=retry)
         return r
 
-    def new_bit_file(self, ticket):
+    def new_bit_file(self,
+                     ticket,
+                     timeout=RCV_TIMEOUT,
+                     retry=RCV_TRIES):
         ticket['work'] = "new_bit_file"
-        r = self.send(ticket)
+        r = self.send(ticket,rcv_timeout=timeout, tries=retry)
         return r
 
-    def show_state(self):
-        return self.send({'work':'show_state'})
+    def show_state(self, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
+        return self.send({'work':'show_state'}, rcv_timeout=timeout, tries=retry)
 
-    def replay(self):
+    def replay(self, timeout=0, retry=0):
         return self.send({'work':'replay',
-                          'func': 'replay_cache_written_events'})
+                          'func': 'replay_cache_written_events'}, rcv_timeout=timeout, tries=retry)
 
-    def set_pnfsid(self, ticket):
+    def set_pnfsid(self, ticket, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         ticket['work'] = "set_pnfsid"
-        r = self.send(ticket)
+        r = self.send(ticket, rcv_timeout=timeout, tries=retry)
         return r
 
     def get_brand(self, timeout=0, retry=0):
         ticket = {'work': 'get_brand'}
-        r = self.send(ticket, timeout, retry)
+        r = self.send(ticket, rcv_timeout=timeout, tries=retry)
         if r['status'][0] == e_errors.OK:
             return r['brand']
         else:
@@ -158,12 +144,12 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
     def find_copies(self, bfid, timeout=0, retry=0):
         ticket = {'work': 'find_copies',
                   'bfid': bfid}
-        return self.send(ticket, timeout, retry)
+        return self.send(ticket, rcv_timeout=timeout, tries=retry)
 
     # find_all_copies(bfid) -- find all copies from this file
     # This is done on the client side
-    def find_all_copies(self, bfid):
-        res = self.find_copies(bfid)
+    def find_all_copies(self, bfid, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
+        res = self.find_copies(bfid,timeout,retry)
         if res["status"][0] == e_errors.OK:
             copies = union([[bfid], res["copies"]])
             for i in res["copies"]:
@@ -180,18 +166,18 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         ticket = {'work': 'find_original',
                   'bfid': bfid}
         if bfid:
-            ticket = self.send(ticket, timeout, retry)
+            ticket = self.send(ticket, rcv_timeout=timeout, tries=retry)
         else:
             ticket['status'] = (e_errors.OK, None)
         return ticket
 
     # find_the_original(bfid) -- find the altimate original of this file
     # This is done on the client side
-    def find_the_original(self, bfid):
-        res = self.find_original(bfid)
+    def find_the_original(self, bfid, timeout=0, retry=0):
+        res = self.find_original(bfid, timeout,retry)
         if res['status'][0] == e_errors.OK:
             if res['original']:
-                res2 = self.find_the_original(res['original'])
+                res2 = self.find_the_original(res['original'], timeout,retry)
                 return res2
             # this is actually the else part
             res['original'] = bfid
@@ -199,16 +185,16 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
     # find_duplicates(bfid) -- find all original/copies of this file
     # This is done on the client side
-    def find_duplicates(self, bfid):
-        res = self.find_the_original(bfid)
+    def find_duplicates(self, bfid, timeout=0, retry=0):
+        res = self.find_the_original(bfid,timeout,retry)
         if res['status'][0] == e_errors.OK:
             return self.find_all_copies(res['original'])
         return res
 
     # get all pairs of bfids relating to migration/duplication of
     # the specified bfid
-    def find_migrated(self, bfid):
-        r = self.send({"work" : "find_migrated", "bfid" : bfid})
+    def find_migrated(self, bfid, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
+        r = self.send({"work" : "find_migrated", "bfid" : bfid}, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
         return r
@@ -241,7 +227,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
                        'find_src' : use_find_src,
                        'find_dst' : use_find_dst,
                        'order_by' : order_by,
-                       }, timeout, retry)
+                       }, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
         return r
@@ -251,7 +237,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         r = self.send({'work' : "set_copied",
                        'src_bfid' : src_bfid,
                        'dst_bfid' : dst_bfid,
-                       }, timeout, retry)
+                       }, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
         return r
@@ -261,7 +247,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         r = self.send({'work' : "unset_copied",
                        'src_bfid' : src_bfid,
                        'dst_bfid' : dst_bfid,
-                       }, timeout, retry)
+                       }, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
         return r
@@ -271,7 +257,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         r = self.send({'work' : "set_swapped",
                        'src_bfid' : src_bfid,
                        'dst_bfid' : dst_bfid,
-                       }, timeout, retry)
+                       }, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
         return r
@@ -281,7 +267,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         r = self.send({'work' : "unset_swapped",
                        'src_bfid' : src_bfid,
                        'dst_bfid' : dst_bfid,
-                       }, timeout, retry)
+                       }, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
         return r
@@ -291,7 +277,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         r = self.send({'work' : "set_checked",
                        'src_bfid' : src_bfid,
                        'dst_bfid' : dst_bfid,
-                       }, timeout, retry)
+                       }, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
         return r
@@ -301,7 +287,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         r = self.send({'work' : "unset_checked",
                        'src_bfid' : src_bfid,
                        'dst_bfid' : dst_bfid,
-                       }, timeout, retry)
+                       }, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
         return r
@@ -311,7 +297,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         r = self.send({'work' : "set_closed",
                        'src_bfid' : src_bfid,
                        'dst_bfid' : dst_bfid,
-                       }, timeout, retry)
+                       }, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
         return r
@@ -321,7 +307,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         r = self.send({'work' : "unset_closed",
                        'src_bfid' : src_bfid,
                        'dst_bfid' : dst_bfid,
-                       }, timeout, retry)
+                       }, rcv_timeout=timeout, tries=retry)
         if r.has_key('work'):
             del r['work']
 
@@ -331,7 +317,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
     #     r = self.send(ticket)
     #     return r
 
-    def mark_bad(self, path, specified_bfid = None):
+    def mark_bad(self, path, specified_bfid = None, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         # get the full absolute path
         a_path = os.path.abspath(path)
         dirname, filename = os.path.split(a_path)
@@ -355,7 +341,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         #Detect if the suplied bfid is a multiple copy of the primary bfid.
         is_multiple_copy = False
         if specified_bfid:
-            copy_dict = self.find_all_copies(bfid)
+            copy_dict = self.find_all_copies(bfid,timeout,retry)
             if e_errors.is_ok(copy_dict):
                 copy_bfids = copy_dict['copies']
             else:
@@ -378,7 +364,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             msg = "can not find bfid for %s"%(path)
             return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
-        record = self.bfid_info(bfid)
+        record = self.bfid_info(bfid,timeout,retry)
         if record['status'][0] != e_errors.OK:
             return record
 
@@ -395,12 +381,12 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
         # log it in the bad_file table of the database
         ticket = {'work': 'mark_bad', 'bfid': bfid, 'path': bad_file};
-        ticket = self.send(ticket)
+        ticket = self.send(ticket,rcv_timeout=timeout, tries=retry)
         if ticket['status'][0] == e_errors.OK:
             print bfid, a_path, "->", bad_file
         return ticket
 
-    def unmark_bad(self, path, specified_bfid = None):
+    def unmark_bad(self, path, specified_bfid = None, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         # get the full absolute path
         a_path = os.path.abspath(path)
         dirname, filename = os.path.split(a_path)
@@ -427,7 +413,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         #Detect if the suplied bfid is a multiple copy of the primary bfid.
         is_multiple_copy = False
         if specified_bfid:
-            copy_dict = self.find_all_copies(bfid)
+            copy_dict = self.find_all_copies(bfid,timeout,retry)
             if e_errors.is_ok(copy_dict):
                 copy_bfids = copy_dict['copies']
             else:
@@ -450,7 +436,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             msg = "%s is not officially a bad file"%(path)
             return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
-        record = self.bfid_info(bfid)
+        record = self.bfid_info(bfid,timeout,retry)
         if record['status'][0] != e_errors.OK:
             return record
 
@@ -467,7 +453,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
         # log it
         ticket = {'work': 'unmark_bad', 'bfid': bfid}
-        ticket = self.send(ticket)
+        ticket = self.send(ticket,rcv_timeout=timeout, tries=retry)
         if ticket['status'][0] == e_errors.OK:
             print bfid, a_path, "->", good_file
         return ticket
@@ -476,7 +462,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         if not bfid:
             bfid = self.bfid
         r = self.send({"work" : "bfid_info",
-                       "bfid" : bfid }, timeout, retry)
+                       "bfid" : bfid }, rcv_timeout=timeout, tries=retry)
 
         if r.has_key("work"):
             del r['work']
@@ -484,15 +470,15 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         return r
 
     # This is only to be used internally
-    def exist_bfids(self, bfids = []):
+    def exist_bfids(self, bfids = [], timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         if bfids == None:
             bfids = self.bfid
         r = self.send({"work" : "exist_bfids",
-                       "bfids": bfids} )
+                       "bfids": bfids}, rcv_timeout=timeout, tries=retry)
         return r['result']
 
     # This is a retrofit for bfid
-    def set_deleted(self, deleted, restore_dir="no", bfid = None):
+    def set_deleted(self, deleted, restore_dir="no", bfid = None, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         deleted = string.lower(deleted);
         if deleted not in enstore_constants.FILE_DELETED_FLAGS:
             message="Unsupported delete flag \"%s\", supported flags are "%(deleted,)
@@ -505,46 +491,46 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
         r = self.send({"work"        : "set_deleted",
                        "bfid"        : bfid,
                        "deleted"     : deleted,
-		       "restore_dir" : restore_dir } )
+		       "restore_dir" : restore_dir },  rcv_timeout=timeout, tries=retry)
         return r
 
 
-    def get_crcs(self, bfid):
+    def get_crcs(self, bfid,  timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         r = self.send({"work"        : "get_crcs",
-                       "bfid"        : bfid})
+                       "bfid"        : bfid},  rcv_timeout=timeout, tries=retry)
         return r
 
-    def set_crcs(self, bfid, sanity_cookie, complete_crc):
+    def set_crcs(self, bfid, sanity_cookie, complete_crc, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         r = self.send({"work"        : "set_crcs",
                        "bfid"        : bfid,
                        "sanity_cookie": sanity_cookie,
-                       "complete_crc": complete_crc})
+                       "complete_crc": complete_crc}, rcv_timeout=timeout, tries=retry)
         return r
 
     # delete a volume
 
-    def delete_volume(self, vol):
+    def delete_volume(self, vol, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         r = self.send({"work"           : "delete_volume",
-		       "external_label" : vol } )
+		       "external_label" : vol }, rcv_timeout=timeout, tries=retry)
 	return r
 
     # erase a volume
 
-    def erase_volume(self, vol):
+    def erase_volume(self, vol, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         r = self.send({"work"           : "erase_volume",
-		       "external_label" : vol } )
+		       "external_label" : vol }, rcv_timeout=timeout, tries=retry)
 	return r
 
     # does the volume contain any undeleted file?
 
-    def has_undeleted_file(self, vol):
+    def has_undeleted_file(self, vol,  timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         r = self.send({"work"           : "has_undeleted_file",
-		       "external_label" : vol } )
+		       "external_label" : vol }, rcv_timeout=timeout, tries=retry)
 	return r
 
-    def restore(self, bfid, uid = None, gid = None, force = None):
+    def restore(self, bfid, uid = None, gid = None, force = None,  timeout=0,  retry=0):
         # get the file information from the file clerk
-        bit_file = self.bfid_info(bfid)
+        bit_file = self.bfid_info(bfid,timeout,retry)
         if bit_file['status'][0] != e_errors.OK:
             return bit_file
         del bit_file['status']
@@ -692,40 +678,40 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
 
 
     # rebuild pnfs file entry
-    def rebuild_pnfs_file(self, bfid, file_family = None):
+    def rebuild_pnfs_file(self, bfid, file_family = None, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         ticket = {"work": "restore_file2",
                   "bfid": bfid,
                   "check": 0}
         if file_family:
             ticket['file_family'] = file_family
-        return self.send(ticket)
+        return self.send(ticket, rcv_timeout=timeout, tries=retry)
 
     # get volume map name for given bfid
-    def get_volmap_name(self, bfid = None):
+    def get_volmap_name(self, bfid = None, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         if not bfid:
             bfid = self.bfid
         r = self.send({"work"           : "get_volmap_name",
-                       "bfid"           : bfid} )
+                       "bfid"           : bfid},  rcv_timeout=timeout, tries=retry)
 	return r
 
     # delete bitfile
-    def del_bfid(self, bfid = None):
+    def del_bfid(self, bfid = None,  timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         if not bfid:
             bfid = self.bfid
         r = self.send({"work"           : "del_bfid",
-                       "bfid"           : bfid} )
+                       "bfid"           : bfid}, rcv_timeout=timeout, tries=retry)
 	return r
 
     # create file record
-    def add(self, ticket):
+    def add(self, ticket, timeout=0, retry=0):
         ticket['work'] = 'add_file_record'
-        return self.send(ticket)
+        return self.send(ticket,rcv_timeout=timeout, tries=retry)
 
     # modify file record
-    def modify(self, ticket):
+    def modify(self, ticket, timeout=0, retry=0):
         if type(ticket) == types.DictType :
             ticket['work'] = 'modify_file_record'
-            return self.send(ticket)
+            return self.send(ticket,rcv_timeout=timeout, tries=retry)
         elif type(ticket) == types.ListType:
             rticket = {}
             rticket["work"] = 'modify_file_records'
@@ -735,12 +721,12 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
             raise TypeError,"Expect dictionary or list of dictionaries, not %s"%(type(ticket))
 
     # swap parents for children
-    def swap_package(self, ticket):
+    def swap_package(self, ticket, timeout=0, retry=0):
         ticket['work'] = 'swap_package'
-        return self.send(ticket)
+        return self.send(ticket,rcv_timeout=timeout, tries=retry )
 
-    def made_copy(self, bfid):
-        r = self.send({"work" : "made_copy", "bfid" : bfid})
+    def made_copy(self, bfid,  timeout=0, retry=0):
+        r = self.send({"work" : "made_copy", "bfid" : bfid}, rcv_timeout=timeout, tries=retry )
         return r
 
 class FileClerkClientInterface(generic_client.GenericClientInterface):
