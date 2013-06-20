@@ -4087,8 +4087,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(24, "t11 %s"%(type(self.current_work_ticket['fc']),))
                     Trace.trace(24, "t2 %s"%(type(file_info),))
                     Trace.trace(24, "t21 %s"%(type(file_info.get(loc_cookie)),))
+                    Trace.trace(24, "t22 %s"%(ticket,))
                     self.current_work_ticket['fc'] = file_info[loc_cookie]
                     self.current_work_ticket['fc']['address'] = fc_address
+                    Trace.trace(24, "t23 %s"%(self.current_work_ticket,))
                     self.finish_transfer_setup()
                     Trace.trace(24, "t31 starting seek thread" )
                     self.run_in_thread('seek_thread', self.seek_to_location,
@@ -4120,12 +4122,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                                          "The assert client is gone %s" %
                                          (self.current_work_ticket['callback_addr'],),
                                          error_source=NETWORK)
-                    
-                else:
+
+                elif not self.tr_failed:
                     self.transfer_completed(stat)
                     Trace.log(e_errors.INFO, "The assert for %s is completed" %
                               (ticket['vc']['external_label'],))
-                                
+
         else:
             self.transfer_completed(e_errors.OK)
             Trace.log(e_errors.INFO, "The assert for %s is completed" %
@@ -4309,9 +4311,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.bytes_to_write = self.bytes_to_write + len(self.header) + len(self.trailer)
             self.buffer.file_size = self.bytes_to_write
             self.buffer.trailer_pnt = self.buffer.file_size - len(self.trailer)
-            self.target_location = None        
+            self.target_location = None
 
         Trace.trace(10, "finish_transfer_setup: label %s state %s"%(volume_label, state_name(self.save_state)))
+        Trace.trace(10, "finish_transfer_setup: ticket %s"%(self.current_work_ticket,))
         # this is for crc check in ASSERT mode
         Trace.trace(24, "finish_transfer_setup MODE %s"%(mode_name(self.mode),))
         if self.mode == ASSERT:
@@ -4505,15 +4508,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.run_in_thread('seek_thread', self.seek_to_location,
                            args = (location, self.mode==WRITE),
                            after_function=self.start_transfer)
-        
+
         return 1
-            
+
     def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=1):
         exc = str(exc)
-        if self.mode == ASSERT:
-            self._error = exc # I do this here to not break the rest of the code
-            self.assert_ok.set()
-        
+
         if self.state == OFFLINE:
             # transfer failed should not get called in OFFLINE state
             return
@@ -4540,6 +4540,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.tr_failed = 1
         broken = ""
         ftt_eio =0
+
+        if self.mode == ASSERT:
+            self._error = exc # I do this here to not break the rest of the code
+            self.assert_ok.set()
 
         if type(msg) != type(""):
             msg = str(msg)
@@ -5109,6 +5113,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def send_client_done(self, ticket, status, error_info=None):
         Trace.trace(13, "send_client_done %s"%(self.control_socket))
+        Trace.trace(13, "send_client_done status %s error_info %s ticket %s"%(status, error_info, ticket))
         if self.control_socket == None:
             return
         ticket['status'] = (status, error_info)
