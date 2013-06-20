@@ -3,7 +3,7 @@
 
 # make standard plots
 30 1,6,15 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p inqPlotUpdate -setup gnuplot python $ENSTORE_DIR/src/plotter.py --encp --mount > /dev/null 2> /dev/null
-# storage grpup activity - instead of make_sg_plot
+# storage group activity - instead of make_sg_plot
 50 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; cd /tmp; $ENSTORE_DIR/sbin/ecron -p sgPlotUpdate -setup gnuplot $ENSTORE_DIR/sbin/make_sg_plot > /dev/null 2> /dev/null
 #
 ##30 2,7,16 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_overall_plot python $ENSTORE_DIR/src/plotter.py --total_bytes --pts_nodes=d0ensrv2,stkensrv2,cdfensrv2 --no-plot-html  > /dev/null 2> /dev/null
@@ -24,6 +24,8 @@
 25 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi $ENSTORE_DIR/src/plotter_main.py -e >/dev/null 2> /dev/null
 # file family usage
 50 23 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p file_family_usage $ENSTORE_DIR/src/plotter_main.py -f > /dev/null 2> /dev/null
+# files read and written per mount
+45 0 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p filesrw -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py --files-rw > /dev/null 2> /dev/null
 # quotas
 5 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p quotas  $ENSTORE_DIR/src/plotter_main.py -q > /dev/null 2> /dev/null
 # pnfs backup time
