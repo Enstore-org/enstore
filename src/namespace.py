@@ -118,6 +118,10 @@ class StorageFS(pnfs.Pnfs, chimera.ChimeraFS, pnfs_agent_client.PnfsAgentClient)
                 else:
                     self.use_pnfs_agent = 0
             else:
+                # Use chimera by default
+                self.__class__ = chimera.ChimeraFS
+                chimera.ChimeraFS.__init__(self, pnfsFilename,
+                                           mount_point, shortcut)
                 self.use_pnfs_agent = 0
         except:
             if Trace.log_func != Trace.default_log_func:
