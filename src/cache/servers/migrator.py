@@ -56,6 +56,7 @@ DEBUGLOG=11 # log on this level to DEBUGLOG
 # intermediate states of migrator
 # to check in more details of what migrator is doing
 IDLE="IDLE"
+PREPARING_PACKAGING = "PREPARING_PACKAGING"
 PACKAGING = "PACKAGING"
 UNPACKAGING = "UNPACKAGING"
 CHECKING_CRC = "CHECKING_CRC"
@@ -64,6 +65,7 @@ REGISTERING_ARCHIVE = "REGISTERING_ARCHIVE"
 CLEANING = "CLEANING"
 PREPARING_READ_FROM_TAPE = "PREPARING_READ_FROM_TAPE"
 READING_FROM_TAPE = "READING_FROM_TAPE"
+CHANGING_STATE = "CHANGING_STATE"
 
 MAX_CPIO_FILE_SIZE = 8*enstore_constants.GB - 1 # maximal file size for cpoi_odc wrapper is 8GB-1
 
@@ -185,7 +187,7 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
         if detail.errno == errno.ENOENT:
             cl = ""
     if cl != library_tag:
-        Trace.trace(10, "write_to_tape: library tag: %s"%(library_tag,))
+        Trace.trace(10, "ns_tags: library tag: %s"%(library_tag,))
         tag.writetag("library", library_tag)
     try:
         csg = tag.readtag("storage_group")[0]
@@ -193,7 +195,7 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
         if detail.errno == errno.ENOENT:
             csg = ""
     if csg != sg_tag:
-        Trace.trace(10, "write_to_tape: SG tag: %s"%(sg_tag,))
+        Trace.trace(10, "ns_tags: SG tag: %s"%(sg_tag,))
         tag.writetag("storage_group", sg_tag)
     try:
         cff = tag.readtag("file_family")[0]
@@ -201,7 +203,7 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
         if detail.errno == errno.ENOENT:
             cff = ""
     if cff != ff_tag:
-        Trace.trace(10, "write_to_tape: FF tag: %s"%(ff_tag,))
+        Trace.trace(10, "ns_tags: FF tag: %s"%(ff_tag,))
         tag.writetag("file_family", ff_tag)
     try:
         cffwr = tag.readtag("file_family_wrapper")[0]
@@ -211,7 +213,7 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
     if fsize > MAX_CPIO_FILE_SIZE and ff_wrapper_tag == "cpio_odc":
         ff_wrapper_tag = "cern"
     if cffwr != ff_wrapper_tag:
-        Trace.trace(10, "write_to_tape: FF wrapper tag: %s"%(ff_wrapper_tag,))
+        Trace.trace(10, "ns_tags: FF wrapper tag: %s"%(ff_wrapper_tag,))
         # Do not set wrapper tag, just return it to be used as encp option.
         # This is done to not interfere with other migrators writing into the same directory
     try:
@@ -220,7 +222,7 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
         if detail.errno == errno.ENOENT:
             cffw = ""
     if cffw != ff_width_tag:
-        Trace.trace(10, "write_to_tape: FF width tag: %s"%(ff_width_tag,))
+        Trace.trace(10, "ns_tags: FF width tag: %s"%(ff_width_tag,))
         tag.writetag("file_family_width", ff_width_tag)
     return ff_wrapper_tag
     
@@ -396,7 +398,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.cur_id = None
         self.migration_file = None
         self.draining = False # if this is set, complete current work and exit.
-        self.ns = namespace.StorageFS(self.namespace_top_dir)
+        # Below is a tricky way to instantiate a correct superclass from
+        # either Chimera or pnfs.
+        # Actually namespace.StorageFS.__init__ needs to get modified to use
+        # chimera by default and correct use of specified mount point.
+        self.ns = namespace.StorageFS(self.namespace_top_dir, self.namespace_top_dir)
         
         # we want all message types processed by one handler
         self.handlers = {}
@@ -420,15 +426,22 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # redefine __setattr__
     # to treat some attributes differently
     def __setattr__(self, attr, val):
+        t = time.time()
+        dt = 0
         try:
             if attr == 'status':
-               self.status_change_time = self.state_change_time = time.time()
+                dt = t - self.status_change_time 
+                self.status_change_time = self.state_change_time = t
             if attr == 'state':
-               self.state_change_time = time.time()
-               
+                dt = t - self.state_change_time            
+                self.state_change_time = t
+            old_val = self.__dict__[attr]
         except:
-           pass #don't want any errors here to stop us
+            pass #don't want any errors here to stop us
+
         self.__dict__[attr] = val
+        if dt:
+            Trace.log(e_errors.INFO, "Time in %s %s"%(old_val, dt)) 
        
     # is it time to data files integrity?
     # stolen from mover.py
@@ -476,6 +489,16 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # if there are multiple files in request list
     # 
     def pack_files(self, request_list):
+        """
+        request_list is a list of components:
+        {'libraries': [],
+        'complete_crc': crc,
+        'nsid': name_space_id,
+        'path': name_space_path,
+        'bfid': bfid,
+        'location_cookie': location_on_disk
+        }
+        """
         Trace.trace(10, "pack_files: request_list %s"%(request_list,))
         if not request_list:
             return None
@@ -485,8 +508,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.state = PACKAGING
         # create list of files to pack
         for component in request_list:
-            cache_file_path = enstore_functions3.file_id2path(self.data_area.remote_path,
-                                                              component['nsid']) # pnfsId
+            #cache_file_path = enstore_functions3.file_id2path(self.data_area.remote_path,
+            #                                                  component['nsid']) # pnfsId
+            cache_file_path = component['location_cookie']
             ### Before packaging file we need to make sure that the packaged file
             ### containing these files is not already written.
             ### This can be done by checking duplicate files map.
@@ -607,11 +631,85 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         try:
             os.removedirs(os.path.dirname(tmp_file_path))
         except OSError, detail:
-            Trace.log(e_errors.ERROR, "write_to_tape: error removing directory: %s"%(detail,))
+            Trace.log(e_errors.ERROR, "clean_up_after_write: error removing directory: %s"%(detail,))
             pass
         self.state = IDLE        
         
         
+    # get library tag
+    def get_library_tag(self, file_info):
+        """
+        param file_info - recored from file DB
+        return - tuple (status, library_tag)
+                 status - e_errors.OK, e_errors.ERROR
+                 library_tag - library tag, None
+        """
+        f_name = file_info['pnfs_name0']
+        # use canonical path
+        if f_name.find(self.namespace_top_dir) == -1:
+            # Replace "/pnfs" with self.namespace_top_dir.
+            # This assumes that all file names in namespace begin with /pnfs
+            # If the mount point name on a user host does not match the name in /pnfs/fs/usr
+            # this approach will not work.
+            # In such case the tag.readtag will cause an exception with the consequent path
+            # discovery by pnfs id (See code below).
+            Trace.trace(10, "using canonical name for %s"%(f_name,))
+            f_name=f_name.replace("/pnfs", self.namespace_top_dir,1) 
+        f_dir = os.path.dirname(f_name)
+        Trace.trace(10, "get_library_tag: src dirs %s f_dir %s"%(self.src_dirs, f_dir))
+
+        if f_dir not in self.src_dirs:
+            Trace.trace(10, "get_library_tag: getting library tag for %s"%(f_name),)
+            try:
+                tag = namespace.Tag(f_dir)
+                lib_tag =tag.readtag("library", f_dir)
+            except:
+                Trace.handle_error()
+                Trace.log(e_errors.ERROR, "error reading library tag, will try by id")
+                # resolve file name by its pnfs id
+                Trace.trace(10, "get_library_tag: getting path for %s"%(file_info['pnfsid'],))
+                try:
+                    fs_path =  self.ns.get_path(id=file_info['pnfsid'])
+                except OSError:
+                    # see chimera.get_path()
+                    Trace.log(e_errors.ERROR, "No file with pnfsid %s was found"%(file_info['pnfsid'],))
+                    return e_errors.ERROR, None
+                Trace.trace(10, "get_library_tag: fs_path %s"%(fs_path),)
+                f_name = fs_path[0]
+                f_dir = os.path.dirname(f_name)
+                if f_dir not in self.src_dirs:
+                    # get the library tag
+                    Trace.trace(10, "get_library_tag: getting library tag for %s"%(f_name),)
+                    tag = namespace.Tag(f_dir)
+                    try:
+                        lib_tag =tag.readtag("library", f_dir)
+                    except:
+                        Trace.handle_error()
+                        Trace.log(e_errors.ERROR, "error reading library tag")
+                        return e_errors.ERROR, None
+                    self.src_dirs.append(f_dir) # cache src dir to not repeat tag operations on already processed directory
+                else:
+                    return e_errors.OK, None
+            self.src_dirs.append(f_dir) # cache src dir to not repeat tag operations on already processed directory
+        else:
+            return e_errors.OK, None 
+        Trace.trace(10, "get_library_tag: original library tag: %s"%(lib_tag,))
+        # readtag returns a list with size 1 and a string as its element like
+        # ['LTO3GS,LTO3GS']
+        Trace.trace(10, "get_library_tag: library tag %s"%(lib_tag[0],))
+        return e_errors.OK,lib_tag[0]
+        
+    # combine output library tag
+    def update_library_tag(self, library_tag):
+        if not library_tag in self.output_library_tag:
+            for lib in self.output_library_tag:
+                # the following code shold resolve cases when
+                # the library_tag[0] is already a part of the comma separated tag in output_library_tag
+                if library_tag[0] in lib.split(","):
+                    break
+            else:
+                self.output_library_tag.append(library_tag)
+
     # write aggregated file to tape
     def write_to_tape(self, request):
         # save request
@@ -625,8 +723,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             
         # check if files can be written to tape
         write_enabled_counter = 0
-        output_library_tag = []
+        self.output_library_tag = []
         components_to_remove = []
+        self.src_dirs = []
+        self.state = PREPARING_PACKAGING
         for component in request_list:
             bfid = component['bfid']
             # Convert unicode to ASCII strings.
@@ -641,49 +741,27 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                         rec['deleted'] == "no"): # file can be already deleted by the archiving time
                         write_enabled_counter = write_enabled_counter + 1
 
-                        # resolve file name by its pnfs id
-                        # check if the file path exists
-                        Trace.trace(10, "write_to_tape: getting path for %s"%(rec['pnfsid'],))
-                        try:
-                            fs_path =  self.ns.get_path(rec['pnfsid'])
-                        except OSError:
-                            # see chimera.get_path()
-                            Trace.log(e_errors.ERROR, "No file with pnfsid %s was found"%(rec['pnfsid'],))
-                            return False
-                        f_name = fs_path[0]
+                        # get library tag
+                        err, lib_tag = self.get_library_tag(rec)
+                        if err != e_errors.OK:
+                            return False # all diagnostics was recorded by get_library_tag
 
-                        # get the library tag and combine output library tag
-                        Trace.trace(10, "write_to_tape: getting library tag for %s"%(f_name),)
-                        tag = namespace.Tag(os.path.dirname(f_name))
-                        # 
-                        try:
-                            lib_tag =tag.readtag("library", os.path.dirname(f_name))
-                        except:
-                            Trace.handle_error()
-                            Trace.log(e_errors.ERROR, "error reading library tag")
-                            return False
-                            Trace.trace(10, "write_to_tape: original library tag: %s"%(lib,))
-                        # readtag returns a list with size 1 and a string as its element like
-                        # ['LTO3GS,LTO3GS']
-                        Trace.trace(10, "write_to_tape: library tag %s"%(lib_tag[0],))
-                        if not lib_tag[0] in output_library_tag:
-                            for lib in output_library_tag:
-                                # the following code shold resolve cases when
-                                # the lib_tag[0] is already a part of the comma separated tag in output_library_tag
-                                if lib_tag[0] in lib.split(","):
-                                    break
-                            else:
-                                output_library_tag.append(lib_tag[0])
-                        
-                        Trace.trace(10, "write_to_tape: output library tag %s"%(output_library_tag),)
+                        if lib_tag:
+                            self.update_library_tag(lib_tag)
+                            Trace.trace(10, "write_to_tape: output library tag %s"%(self.output_library_tag),)
+                        # Add location cookie.
+                        # This makes any migrator to be able to access disk file written by any disk mover.
+                        # This is very useful on multi cluster system.
+                        key = "location_cookie"
+                        component.update({key:rec[key]})
                     else:
-                        Trace.log(e_errors.INFO, "File was not included into package %s archive_status %s"%
+                        Trace.log(DEBUGLOG, "File was not included into package %s archive_status %s"%
                                   (rec['bfid'], rec['archive_status']))
                         if rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED:
                             components_to_remove.append(component)
                             
                 except Exception, detail:
-                    Trace.log(DEBUGLOG, "FC error: %s. Returned status OK but still error %s"%(detail, rec)) 
+                    Trace.log(DEBUGLOG, "Error: %s. Returned status OK but still error %s"%(detail, rec)) 
                     
                 
             else:
@@ -800,11 +878,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 
         # convert output_library_tag to a comma separated string
         # if its size is more than one (multiple copies)
-        if len(output_library_tag) == 1:
-           output_library_tag_str = output_library_tag[0]
+        if len(self.output_library_tag) == 1:
+           output_library_tag_str = self.output_library_tag[0]
         else:
             output_library_tag_str = ","
-            output_library_tag_str.join(output_library_tag)
+            output_library_tag_str.join(self.output_library_tag)
         Trace.trace(10, "write_to_tape: dst library tag: %s"%(output_library_tag_str,))
         fstats = os.stat(src_file_path)
         try:
@@ -832,6 +910,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                      'cache_status':None,# we are not changing this
                                      'archive_status': file_cache_status.ArchiveStatus.ARCHIVING,
                                      'cache_location': None})       # we are not changing this
+        self.state = CHANGING_STATE
         rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         if not e_errors.is_ok(rc['status']):
             Trace.alarm(e_errors.ALARM, "set cache status failed with %s"%(rc,))
@@ -895,6 +974,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
                 # this comment is added to please RB, which ignores
                 # changes with whitespaces only
+                self.state = CHANGING_STATE
                 rc1 = set_cache_status.set_cache_status(self.fcc, set_cache_params)
                 self.clean_up_after_write(src_file_path)
                 # remove tepmporary file in name space if exists
@@ -1000,6 +1080,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.log(e_errors.INFO, "renamed %s to %s"%(src_path, final_dst_path))
         # change file name in layer 4 of name space
         try:
+            #sfs = namespace.StorageFS(final_dst_path)
             sfs = namespace.StorageFS(final_dst_path)
             xrefs = sfs.get_xreference() # xrefs will not get used, sfs will be used instead
             Trace.trace(10, "xrefs %s %s %s %s %s %s %s %s %s %s %s"%(sfs.volume,
@@ -1063,6 +1144,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 # member of a package
                 records.append(rec)
 
+        self.state = CHANGING_STATE
         rc = set_cache_status.modify_records(self.fcc, records)
         Trace.trace(10, "complete_write_to_tape: modify_records records returned %s"%(rc,))
         if not e_errors.is_ok(rc['status']):
@@ -1096,6 +1178,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                        dupl_records.append(new_rec)
                    if len(dupl_records) != 0:
                        Trace.trace(10, "complete_write_to_tape: modifying dupl %s"%(dupl_records,))
+                       self.state = CHANGING_STATE
                        rc = set_cache_status.modify_records(self.fcc, dupl_records)
                        Trace.trace(10, "complete_write_to_tape: modify_records returned %s"%(rc,))
                        if not e_errors.is_ok(rc['status']):
@@ -1172,7 +1255,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                              'cache_location': rec['cache_location']})     
                     
                     
-
+        self.state = CHANGING_STATE
         rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
         Trace.trace(e_errors.INFO, "Will purge files in cache")
@@ -1199,11 +1282,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     Trace.trace(10, "purge_files: error removind directory: %s"%(detail,))
                 else:
                     item['cache_status'] = file_cache_status.CacheStatus.PURGED
-                    Trace.log(e_errors.INFO, "purge_files: purged %s"%(item['cache_location'],))
+                    Trace.log(DEBUGLOG, "purge_files: purged %s"%(item['cache_location'],))
                     
             except Exception, detail:
                 Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
 
+        self.state = CHANGING_STATE
         rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         Trace.trace(10, "purge_files: set_cache_status 2 returned %s"%(rc,))
 
@@ -1229,6 +1313,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                  'cache_location': None})       # we are not changing this yet
         #rc = self.fcc.set_cache_status(set_cache_params)
         Trace.trace(10, "stage_files: will stage %s"%(set_cache_params,))
+        self.state = CHANGING_STATE
         rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         if rc['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
@@ -1281,6 +1366,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 for rec in set_cache_params:
                     rec['cache_status'] = file_cache_status.CacheStatus.PURGED
                 #rc = self.fcc.set_cache_status(set_cache_params)
+                self.state = CHANGING_STATE
                 rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
                 return False
 
@@ -1365,6 +1451,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                             for rec in new_set_cache_params:
                                 rec['cache_status'] = file_cache_status.CacheStatus.PURGED
                             #rc = self.fcc.set_cache_status(new_set_cache_params)
+                            self.state = CHANGING_STATE
                             rc = set_cache_status.set_cache_status(self.fcc, new_set_cache_params)
                             return False
 
@@ -1382,6 +1469,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
 
         #rc = self.fcc.set_cache_status(new_set_cache_params)
+        self.state = CHANGING_STATE
         rc = set_cache_status.set_cache_status(self.fcc, new_set_cache_params)
         if rc['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
