@@ -60,7 +60,11 @@ MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
 MAX_CONNECTION_FAILURE = 5
 
 MAX_THREADS = 50
-MAX_CONNECTIONS=20
+# we have run into issues with file_clerk locking up
+# when number of max threads was more than number of max
+# connections. Set it to max number of threads + 1 (counting
+# main thread)
+MAX_CONNECTIONS=MAX_THREADS+1
 
 AMQP_BROKER = "amqp_broker"
 FILES_IN_TRANSITION_CHECK_INTERVAL = 3600
@@ -70,6 +74,10 @@ where f.bfid=fit.bfid and \
 (f.archive_status is null or f.archive_status != 'ARCHIVED') \
 and f.cache_status='CACHED' and f.deleted='n' and \
 f.cache_mod_time <  CURRENT_TIMESTAMP - interval '1 day' "
+SELECT_ALL_FILES_IN_TRANSITION="select f.bfid, f.cache_status, f.cache_mod_time from file f, files_in_transition fit \
+where f.bfid=fit.bfid and \
+(f.archive_status is null or f.archive_status != 'ARCHIVED') \
+and f.cache_status='CACHED' and f.deleted='n'"
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 # copied from migrate.py
@@ -110,8 +118,9 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
             dbHome = os.environ['ENSTORE_DIR']
             jouHome = dbHome
 
-        self.max_connections = dbInfo.get('max_connections',MAX_CONNECTIONS)
         self.max_threads     = dbInfo.get('max_threads',MAX_THREADS)
+        self.max_connections = max(dbInfo.get('max_connections',MAX_CONNECTIONS),
+                                   self.max_threads+1)
 
         #Open conection to the Enstore DB.
         Trace.log(e_errors.INFO, "opening file database using edb.FileDB")
@@ -121,7 +130,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 					      port=dbInfo.get('db_port',None),
 					      user=dbInfo.get('dbuser',None),
 					      database=dbInfo.get('dbname',None),
-					      jou=jouHome)
+					      jou=jouHome,
+					      max_connections=self.max_connections)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             message = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
@@ -2160,13 +2170,16 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 	self.file_check_thread = threading.Thread(target=self.check_files_in_transition)
 	self.file_check_thread.start()
 
-    def get_files_in_transition(self):
+    def get_files_in_transition(self, all=None):
+        if all:
+            q=SELECT_ALL_FILES_IN_TRANSITION
+        else:
 	    q=SELECT_FILES_IN_TRANSITION
-	    res = self.filedb_dict.query_getresult(q)
-	    return res
+        res = self.filedb_dict.query_getresult(q)
+        return res
 
-    def replay_cache_written_events(self):
-	    res=self.get_files_in_transition()
+    def replay_cache_written_events(self, all=None):
+	    res=self.get_files_in_transition(all)
 	    for row in res:
 		    bfid = row[0]
 		    self.replay_cache_written_event(bfid)
@@ -2186,17 +2199,18 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
 			    pass
 
     def replay(self,ticket):
-	    if self.en_qpid_client :
-		    func_name="self."+ticket.get("func")
-		    func=eval(func_name)
-		    ticket["status"] = (e_errors.OK, None)
-		    try:
-			    func()
-		    except:
-			    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
-	    else:
-		    ticket["status"] = (e_errors.ERROR, "No qpid client defined, check configuration")
-	    self.reply_to_caller(ticket)
+        if self.en_qpid_client :
+            func_name="self."+ticket.get("func")
+            func=eval(func_name)
+            arg = ticket.get("args")
+            ticket["status"] = (e_errors.OK, None)
+            try:
+                func(arg)
+            except:
+                ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+        else:
+            ticket["status"] = (e_errors.ERROR, "No qpid client defined, check configuration")
+        self.reply_to_caller(ticket)
 
 
     def check_files_in_transition(self) :

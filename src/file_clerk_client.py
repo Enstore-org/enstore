@@ -123,9 +123,12 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
     def show_state(self, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         return self.send({'work':'show_state'}, rcv_timeout=timeout, tries=retry)
 
-    def replay(self, timeout=0, retry=0):
-        return self.send({'work':'replay',
-                          'func': 'replay_cache_written_events'}, rcv_timeout=timeout, tries=retry)
+    def replay(self, all = None, timeout=0, retry=0):
+        ticket ={'work':'replay',
+                 'func': 'replay_cache_written_events'}
+        if all:
+            ticket['args'] = all
+        return self.send(ticket, rcv_timeout=timeout, tries=retry)
 
     def set_pnfsid(self, ticket, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         ticket['work'] = "set_pnfsid"
@@ -815,9 +818,18 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"bfid",
                      option.USER_LEVEL:option.ADMIN},
-        option.REPLAY:{option.HELP_STRING:"replay cache written events",
-                      option.VALUE_TYPE:option.INTEGER,
-                      option.USER_LEVEL:option.ADMIN},
+        option.REPLAY:{option.HELP_STRING:"replay cache written events. If REPLAY presents and is > 1, replay all",
+                       option.VALUE_TYPE:option.INTEGER,
+                       option.USER_LEVEL:option.ADMIN,
+                       option.EXTRA_VALUES:[{
+                           option.VALUE_LABEL:"replay",
+                           option.VALUE_TYPE:option.INTEGER,
+                           option.VALUE_USAGE:option.OPTIONAL,
+                           option.DEFAULT_TYPE:option.INTEGER,
+                           option.DEFAULT_VALUE:1
+                           }]
+                       },
+
         option.FIND_COPIES:{option.HELP_STRING:"find the immediate copies of this file",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
@@ -1017,7 +1029,10 @@ def do_work(intf):
             for i in ticket["children"]:
                 pprint.pprint(i)
     elif intf.replay:
-        ticket  = fcc.replay()
+        if intf.replay > 1: 
+            ticket  = fcc.replay(all=True)
+        else:
+            ticket  = fcc.replay()
         if ticket['status'][0] ==  e_errors.OK:
             print "Successfully replayed cache written events"
     elif intf.bfids:
