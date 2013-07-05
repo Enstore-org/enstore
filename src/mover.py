@@ -951,11 +951,31 @@ class Mover(dispatching_worker.DispatchingWorker,
                     v = value
                 else:
                     v = ">100"
-                
+
             f.write("%s = %s, len = %s\n"%(name, v, l))
         f.write("=========================================\n")
         f.close()
-        
+
+    # new_bit_file wrapper
+    def set_new_bitfile(self, request):
+        Trace.log(e_errors.INFO,"new bitfile request %s"%(request))
+        fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
+                                            'fc'  : request
+                                            },
+                                          timeout = 60,
+                                          retry = 0)
+        Trace.log(e_errors.INFO,"New bit file returned %s" % (fcc_reply,))
+        if fcc_reply['status'][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR,
+                       "cannot assign new bfid")
+            self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
+            return
+        if fcc_reply['fc']['location_cookie'] != request['location_cookie']:
+            Trace.log(e_errors.ERROR,
+                       "error assigning new bfid requested: %s returned %s"%(request, fcc_reply))
+            return
+        return fcc_reply
+
     # execute shell command
     def shell_command(self, command):
         res = enstore_functions2.shell_command(command)
@@ -5061,23 +5081,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.ERROR,'file clerk error: missing original bfid for copy')
                 return 0
             fc_ticket['original_bfid'] = original_bfid
-        
-        fc_ticket['mover_type'] = self.mover_type        
-        Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
-            
-        fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
-                                            'fc'  : fc_ticket
-                                            })
-        if fcc_reply['status'][0] != e_errors.OK:
-            Trace.log(e_errors.ERROR,
-                       "cannot assign new bfid")
-            self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
-            #XXX exception?
-            return 0
+
+        fc_ticket['mover_type'] = self.mover_type
+        fcc_reply = self.set_new_bitfile(fc_ticket)
+        if not fcc_reply:
+            return fcc_reply
         ## HACK: restore crc's before replying to caller
         fc_ticket = fcc_reply['fc']
         fc_ticket['sanity_cookie'] = sanity_cookie
-        fc_ticket['complete_crc'] = complete_crc 
+        fc_ticket['complete_crc'] = complete_crc
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
         Trace.log(e_errors.INFO,"set remaining: %s %s %s" %(self.current_volume, remaining, eod))
@@ -7403,25 +7415,18 @@ class DiskMover(Mover):
             return 0
 
         #Request the new bit file.
-        fc_ticket['mover_type'] = self.mover_type        
-        
+        fc_ticket['mover_type'] = self.mover_type
+
         fc_ticket['original_library'] = self.current_work_ticket.get('original_library', None)
         Trace.log(e_errors.INFO, "new bitfile request %s" % (fc_ticket,))
 
-        fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
-                                           'fc'  : fc_ticket
-                                           })
-        Trace.log(e_errors.INFO,"New bit file returned %s" % (fcc_reply,))
-        if fcc_reply['status'][0] != e_errors.OK:
-            Trace.log(e_errors.ERROR, "cannot assign new bfid")
-            self.transfer_failed(e_errors.ERROR,
-                                 "Cannot assign new bit file ID")
-            #XXX exception?
-            return 0
+        fcc_reply = self.set_new_bitfile(fc_ticket)
+        if not fcc_reply:
+            return fcc_reply
         ## HACK: restore crc's before replying to caller
         fc_ticket = fcc_reply['fc']
         fc_ticket['sanity_cookie'] = sanity_cookie
-        fc_ticket['complete_crc'] = complete_crc 
+        fc_ticket['complete_crc'] = complete_crc
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
                 
