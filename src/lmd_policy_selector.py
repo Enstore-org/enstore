@@ -79,7 +79,7 @@ class Selector:
     def ticket_match(self, ticket, policy, key):
         Trace.trace(10, "policy %s key %s"%(policy, key))
         try:
-            pattern = "^%s" % (policy[key])
+            pattern = "^%s$" % (policy[key])
             item='%s'%(ticket.get(key, 'Unknown'),)
             Trace.trace(10, "pattern %s item %s"%(pattern, item))
             return re.search(pattern, item)
@@ -156,6 +156,7 @@ class Selector:
         #  'minimal_file_size' # see description in the begging of code
         #  'max_files_in_pack' # see description in the begging of code
         #  'max_waiting_time'  # see description in the begging of code
+        #  'disk_library'      # policy disk library
         #  }
         # or {} if no matching policy was found
         # default match settings
@@ -190,6 +191,7 @@ class Selector:
                         match['minimal_file_size'] = self.policydict[library_manager][rule]['minimal_file_size']
                         match['max_files_in_pack'] = self.policydict[library_manager][rule]['max_files_in_pack']
                         match['max_waiting_time'] = self.policydict[library_manager][rule]['max_waiting_time']
+                        match['disk_library'] = self.policydict[library_manager][rule]['resulting_library']
                         return match
         return match
 
