@@ -212,7 +212,7 @@ def evt_cache_miss_t(fc_ticket):
     """
     vc_keys = ['library','storage_group', 'file_family','file_family_width',
                'external_label','volume_family']
-    fc_keys = ['bfid','location_cookie', 'deleted' ]
+    fc_keys = ['bfid','location_cookie', 'deleted', 'disk_library']
 
     ev = _get_proto(fc_ticket, vc_keys = vc_keys, fc_keys = fc_keys )
     ev['file']['complete_crc'] = fc_ticket['fc']['complete_crc']

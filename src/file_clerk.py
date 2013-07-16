@@ -1459,13 +1459,14 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    #
 	    self.filedb_dict[bfid] = record
 	    ticket["status"] = (e_errors.OK, None)
+	    ticket["fc"] = record
+	    ticket["fc"]["disk_library"] = record["library"]
 	    if self.en_qpid_client :
 		    event = pe_client.evt_cache_miss_fc(ticket,record)
 		    try:
 			    self.en_qpid_client.send(event)
 		    except:
 			    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
-	    ticket["fc"] = record
 	    self.reply_to_caller(ticket)
 	    return
 
@@ -1510,8 +1511,10 @@ class FileClerkMethods(FileClerkInfoMethods):
 		    # record change in db
 		    #
 		    self.filedb_dict[i[0]] = child_record
+
 	    ticket["status"] = (e_errors.OK, None)
 	    ticket["fc"] = record
+	    ticket["fc"]["disk_library"] = child_record["library"]
 	    if self.en_qpid_client :
 		    event = pe_client.evt_cache_miss_fc(ticket,record)
 		    try:
