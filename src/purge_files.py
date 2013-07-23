@@ -29,6 +29,7 @@ P_ARCHIVE_STATUS = 2
 P_CACHE_MOD_TIME = 3
 P_CACHE_LOCATION = 4
 P_LOCATION_COOKIE = 5
+P_LIBRARY = 6
 DB_CONNECTION_TO = 10
 DB_CONNECTION_RETRY = 60
 
@@ -115,6 +116,7 @@ class FilePurger:
         # f_info[3] - cache_mod_time
         # f_info[4] - cache_location
         # f_info[5] - location_cookie
+        # f_info[6] - disk library (not used here)
 
         rc = False
         Trace.trace(10, "purge_this_file: bfid %s CACHE_STATUS %s ARCHIVE_STATUS %s CACHE_MOD_TIME %s max_t %s"%
@@ -142,45 +144,58 @@ class FilePurger:
         return rc
 
     def files_to_purge_with_query(self, query, check_watermarks=True):
+        Trace.trace(10, "files_to_purge_with_query command. %s"%(query,))
         res = self.filedb_dict.query_getresult(query)
+        if not res:
+            return []
         total_in_cache = len(res)
         Trace.trace(10, "files_to_purge_with_query in cache. %s"%(total_in_cache,))
-        total_purge_candidates = 0L
+        libraries = {}
         purge_candidates = []
         list_of_file_lists = []
+        total_purge_candidates = 0L
         for f_info in res:
+            if not f_info[P_LIBRARY] in libraries.keys():
+                libraries[f_info[P_LIBRARY]] = {'per_lib_purge_candidates': 0L,
+                                        'purge_candidates': []
+                                        }
             if self.purge_this_file(f_info, check_watermarks):
-                purge_candidates.append(f_info[P_BFID])
-                total_purge_candidates = total_purge_candidates + 1
-
-        f_counter = 0L
-        l_counter = 0L
-        Trace.trace(10, "files_to_purge_with_query cand. %s"%(total_purge_candidates,))
-        while f_counter < total_purge_candidates:
-            # create a list of files to purge
-            if l_counter == 0:
-                # create list of elements with conatant size 500 or total_purge_candidates
-                l_size = min(total_purge_candidates, 500)
+                libraries[f_info[P_LIBRARY]]['purge_candidates'].append(f_info[P_BFID])
+                libraries[f_info[P_LIBRARY]]['per_lib_purge_candidates'] += 1
+        for library in libraries.keys():
+            f_counter = 0L
+            l_counter = 0L
+            per_lib_purge_candidates =  libraries[library]['per_lib_purge_candidates']
+            Trace.trace(10, "files_to_purge_with_query cand. for %s %s"%(library, per_lib_purge_candidates,))
+            while f_counter < per_lib_purge_candidates:
                 # create a list of files to purge
-                list_id = "%s_%s"%(int(time.time()), f_counter)
-                f_list = file_list.FileList(id = list_id,
-                                            list_type = mt.MDC_PURGE,
-                                            list_name = "Purge_%s"%(list_id))
-            while l_counter < l_size:
-                if f_counter < total_purge_candidates:
-                    list_element = file_list.FileListItem(bfid = purge_candidates[f_counter],
-                                                          nsid = "",
-                                                          path = "",
-                                                          libraries = [])
-                    f_list.append(list_element)
-                    l_counter = l_counter + 1
-                    f_counter = f_counter + 1
-                else:
-                    break
-                
-            f_list.full = True
-            l_counter = 0
-            list_of_file_lists.append(f_list)
+                if l_counter == 0:
+                    # create list of elements with conatant size 500 or total_purge_candidates
+                    l_size = min(per_lib_purge_candidates, 500)
+                    # create a list of files to purge
+                    list_id = "%s_%s"%(int(time.time()), f_counter)
+                    f_list = file_list.FileList(id = list_id,
+                                                list_type = mt.MDC_PURGE,
+                                                list_name = "Purge_%s"%(list_id),
+                                                disk_library = library)
+                purge_candidates = libraries[library]['purge_candidates']
+                while l_counter < l_size:
+                    if f_counter < per_lib_purge_candidates:
+                        list_element = file_list.FileListItem(bfid = purge_candidates[f_counter],
+                                                              nsid = "",
+                                                              path = "",
+                                                              libraries = [])
+                        f_list.append(list_element)
+                        l_counter += 1
+                        f_counter += 1
+                    else:
+                        break
+
+                f_list.full = True
+                l_counter = 0
+                list_of_file_lists.append(f_list)
+
+            total_purge_candidates += per_lib_purge_candidates
 
         Trace.log(e_errors.INFO, "Total %s Purge Candidates %s"%(total_in_cache, total_purge_candidates))
 
@@ -200,27 +215,29 @@ class FilePurger:
         # If they are the same the file is in write cache.
 
         write_q = " select f.bfid, f.cache_status, f.archive_status, " \
-                  " f.cache_mod_time, f.cache_location, f.location_cookie from file f, " \
-                  " cached_files cf where f.bfid=cf.bfid " \
+                  " f.cache_mod_time, f.cache_location, f.location_cookie, v.library from file f, volume v, " \
+                  " cached_files cf where f.bfid=cf.bfid and f.volume=v.id " \
                   " and f.cache_status='CACHED' and f.archive_status='ARCHIVED' " \
                   " and f.cache_mod_time < CURRENT_TIMESTAMP - interval '%s' " \
                   " and f.cache_location=f.location_cookie " \
-                  " order by f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
+                  " order by v.library,f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
 
         # comment for read_q:
         # To check that file is in read cache compare cache_location and location_cookie.
-        # If they are differen the file is in read cache.
+        # If they are different the file is in read cache.
 
         read_q = " select f.bfid, f.cache_status, f.archive_status, " \
-                 " f.cache_mod_time, f.cache_location, f.location_cookie from file f, " \
-                 " cached_files cf where f.bfid=cf.bfid " \
+                 " f.cache_mod_time, f.cache_location, f.location_cookie, v.library from file f, volume v, " \
+                 " cached_files cf where f.bfid=cf.bfid and f.volume=v.id " \
                  " and f.cache_status='CACHED' and f.archive_status='ARCHIVED' " \
                  " and f.cache_mod_time < CURRENT_TIMESTAMP - interval '%s' " \
                  " and f.cache_location!=f.location_cookie " \
-                 " order by f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
+                 " order by v.library,f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
 
         write_purge_list = self.files_to_purge_with_query(write_q, check_watermarks)
+        Trace.trace(10, "write query returned %s"%(write_purge_list,))
         read_purge_list = self.files_to_purge_with_query(read_q, check_watermarks)
+        Trace.trace(10, "read query returned %s"%(read_purge_list,))
         return write_purge_list + read_purge_list
 
 if __name__ == "__main__":
@@ -228,10 +245,10 @@ if __name__ == "__main__":
     config_host = os.getenv('ENSTORE_CONFIG_HOST')
     config_port = int(os.getenv('ENSTORE_CONFIG_PORT'))
     Trace.init("PPP", "yes")
+    Trace.print_levels[5,10]=1
 
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     fp = FilePurger(csc)
     fc = fp.files_to_purge()
     print fc
-    Trace.print_levels[5]=1
     print len(fc)

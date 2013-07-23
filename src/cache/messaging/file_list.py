@@ -58,7 +58,8 @@ class FileList:
                  list_name = "",
                  minimal_data_size = 1000000,
                  maximal_file_count = 100,
-                 max_time_in_list = 300): # 5 minutes
+                 max_time_in_list = 300,
+                 disk_library = None):
         self.list_type = list_type
         self.list_id = id # unique list id
         self.list_name = list_name
@@ -67,10 +68,11 @@ class FileList:
         self.minimal_data_size = minimal_data_size
         self.maximal_file_count = maximal_file_count
         self.max_time_in_list = max_time_in_list
+        self.disk_library = disk_library
         self.data_size = 0L
         self.full = False
         self.state = None
-        
+
     def _append(self, item, data_size=0L):
         self.state = FILLING
         if not item.d in self.file_list:
@@ -95,15 +97,17 @@ class FileList:
 
     def remove(self, item):
         self.file_list.remove(item.d)
-        
+
     def __repr__(self):
-        return "id=%s name=%s created %s type=%s content %s" % \
-               (self.list_id, self.list_name, time.ctime(self.creation_time), self.list_type, self.file_list)
+        return "id=%s name=%s created %s type=%s disk_library=%s, content %s" % \
+               (self.list_id, self.list_name,
+                time.ctime(self.creation_time),
+                self.list_type, self.disk_library, self.file_list)
 
 class FileListWithCRC(FileList):
     """
     File List With CRC.
-    
+
     This is a wrapper class which checks if the appending item has a correct format.
     """
     def append(self, item, data_size=0L):
@@ -119,22 +123,20 @@ if __name__ == "__main__":
     print "L", l
     l.remove(i)
     print "L after remove:", l
-    
-    lc =  FileListWithCRC()
-    ic = FileListItemWithCRC(bfid = "CDMS0001", nsid = "0DAF0001", path = "/diska/aaa/f1", 
+
+    lc =  FileListWithCRC(disk_library='DISK_LIBRARY')
+    ic = FileListItemWithCRC(bfid = "CDMS0001", nsid = "0DAF0001", path = "/diska/aaa/f1",
                              libraries= ["lib1", "lib2"], crc=3020422051L)
     try:
         print "expected to fail"
-        ic2 = FileListItemWithCRC(bfid = "CDMS0001", nsid = "0DAF0001", path = "/diska/aaa/f1", 
+        ic2 = FileListItemWithCRC(bfid = "CDMS0001", nsid = "0DAF0001", path = "/diska/aaa/f1",
                                   libraries= ["lib1", "lib2"])
     except Exception, e:
         print "LC constructor failed", e
         pass
-    
+
     lc.append(ic)
     print "LC", lc
+    print "DL", lc.disk_library
     lc.remove(ic)
     print "LC after remove:", lc
-
-    
-    
