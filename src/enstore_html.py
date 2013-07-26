@@ -677,86 +677,95 @@ class EnMigratorStatusPage(EnBaseHtmlDoc):
 	# watching it.
 	md = self.data_dict.get(migrator, {})
 	if md:
-	    # we may have gotten an error when trying to get it, 
-	    # so look for a piece of it.  (efb used to be 'or')
-	    if md.has_key(enstore_constants.STATE) and \
-	       md[enstore_constants.STATE]:
-		# get the first word of the mover state, we will use this to
-		# tell if this is a bad state or not
-		words = string.split(md[enstore_constants.STATE])
-		if words[0] in BAD_MIGRATOR_STATES:
-		    table.append(self.alive_row(migrator, 
-					     md[enstore_constants.STATUS], 
-						FUSCHIA))
-		else:
-		    table.append(self.alive_row(migrator, 
-					     md[enstore_constants.STATUS]))
+            for k in md:
+                # we may have gotten an error when trying to get it,
+                # so look for a piece of it.  (efb used to be 'or')
+                if isinstance(md[k], dict) and md[k].has_key(enstore_constants.STATE) and \
+                   md[k][enstore_constants.STATE]:
+                    # get the first word of the mover state, we will use this to
+                    # tell if this is a bad state or not
+                    words = string.split(md[k][enstore_constants.STATE])
+                    if words[0] in BAD_MIGRATOR_STATES:
+                        table.append(self.alive_row(migrator,
+                                                 md[enstore_constants.STATUS],
+                                                    FUSCHIA))
+                    else:
+                        table.append(self.alive_row(migrator,
+                                                 md[enstore_constants.STATUS]))
 
-		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
-                                                "ID",
-						color=BRICKRED, 
-						html_escape='OFF')))
-		tr.append(HTMLgen.TD(md[enstore_constants.ID],
-                                     align="LEFT"))
-		m_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
-					     align="LEFT", bgcolor=YELLOW, 
-					     width="100%")
-		m_table.append(empty_row(4))
-		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
-                                                "file",
-						color=BRICKRED, 
-						html_escape='OFF')))
-		tr.append(HTMLgen.TD(md[enstore_constants.FILES],
-                                     align="LEFT"))
-                
-                m_table.append(tr)
-		if md.has_key(enstore_constants.LAST_READ):
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
-                                                  "Last%sRead%s(bytes)"%(NBSP,
-									 NBSP),
-						  color=BRICKRED, 
-						  html_escape='OFF'),
-					       align="CENTER"))
-		    self.add_bytes_volume_info(md, tr, 
-					       enstore_constants.LAST_READ)
-		    m_table.append(tr)
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(
-                                                 "Last%sWrite%s(bytes)"%(NBSP,
-									 NBSP),
-						 color=BRICKRED, 
-						 html_escape='OFF'),
-					       align="CENTER"))
-		    self.add_bytes_eod_info(md, tr, 
-					    enstore_constants.LAST_WRITE)
-		    m_table.append(tr)
-		    self.add_files(md, m_table)
-		elif md.has_key(enstore_constants.CUR_READ):
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
-                                               "Current%sRead%s(bytes)"%(NBSP,
-									 NBSP),
-					       color=BRICKRED, 
-					       html_escape='OFF'),
-					       align="CENTER"))
-		    self.add_bytes_volume_info(md, tr, 
-					       enstore_constants.CUR_READ)
-		    m_table.append(tr)
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
-			                     "Current%sWrite%s(bytes)"%(NBSP,
-									NBSP),
-					     color=BRICKRED, 
-					     html_escape='OFF'),
-					       align="CENTER"))
-		    self.add_bytes_eod_info(md, tr, 
-					    enstore_constants.CUR_WRITE)
-		    m_table.append(tr)
-		    self.add_files(md, m_table)
-		tr = HTMLgen.TR(empty_data())
-		tr.append(HTMLgen.TD(m_table, colspan=5, width="100%"))
-		table.append(tr)
-	    else:
-		# all we have is the alive information
-		table.append(self.alive_row(migrator, 
-					    md[enstore_constants.STATUS]))
+                    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                                    "ID",
+                                                    color=BRICKRED,
+                                                    html_escape='OFF')))
+                    tr.append(HTMLgen.TD(md[k][enstore_constants.ID],
+                                         align="LEFT"))
+                    m_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
+                                                 align="LEFT", bgcolor=YELLOW,
+                                                 width="100%")
+                    m_table.append(empty_row(2))
+                    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                                    "state",
+                                                    color=BRICKRED,
+                                                    html_escape='OFF')))
+                    tr.append(HTMLgen.TD(md[k][enstore_constants.STATE],
+                                         align="LEFT"))
+
+                    m_table.append(tr)
+                    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                                    "file",
+                                                    color=BRICKRED,
+                                                    html_escape='OFF')))
+                    tr.append(HTMLgen.TD(md[k][enstore_constants.FILES],
+                                         align="LEFT"))
+
+                    m_table.append(tr)
+                    if md[k].has_key(enstore_constants.LAST_READ):
+                        tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                                      "Last%sRead%s(bytes)"%(NBSP,
+                                                                             NBSP),
+                                                      color=BRICKRED, 
+                                                      html_escape='OFF'),
+                                                   align="CENTER"))
+                        self.add_bytes_volume_info(md, tr, 
+                                                   enstore_constants.LAST_READ)
+                        m_table.append(tr)
+                        tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(
+                                                     "Last%sWrite%s(bytes)"%(NBSP,
+                                                                             NBSP),
+                                                     color=BRICKRED,
+                                                     html_escape='OFF'),
+                                                   align="CENTER"))
+                        self.add_bytes_eod_info(md, tr,
+                                                enstore_constants.LAST_WRITE)
+                        m_table.append(tr)
+                        self.add_files(md, m_table)
+                    elif md[k].has_key(enstore_constants.CUR_READ):
+                        tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                                   "Current%sRead%s(bytes)"%(NBSP,
+                                                                             NBSP),
+                                                   color=BRICKRED,
+                                                   html_escape='OFF'),
+                                                   align="CENTER"))
+                        self.add_bytes_volume_info(md, tr, 
+                                                   enstore_constants.CUR_READ)
+                        m_table.append(tr)
+                        tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(\
+                                                 "Current%sWrite%s(bytes)"%(NBSP,
+                                                                            NBSP),
+                                                 color=BRICKRED, 
+                                                 html_escape='OFF'),
+                                                   align="CENTER"))
+                        self.add_bytes_eod_info(md, tr, 
+                                                enstore_constants.CUR_WRITE)
+                        m_table.append(tr)
+                        self.add_files(md, m_table)
+                    tr = HTMLgen.TR(empty_data())
+                    tr.append(HTMLgen.TD(m_table, colspan=5, width="100%"))
+                    table.append(tr)
+                else:
+                    # all we have is the alive information
+                    table.append(self.alive_row(migrator, 
+                                                md[enstore_constants.STATUS]))
 
     # generate the main table with all of the information
     def main_table(self):
@@ -1846,42 +1855,46 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	m_d = self.data_dict.get(server, {})
 	name = self.server_url(server, enstore_functions2.get_migrator_status_filename(),
 			       server)
-	if m_d.has_key(enstore_constants.STATE) and \
-	   m_d[enstore_constants.STATE]:
-	    # append the migrators state to its status information
-	    # if we are updating the web page faster that receiving the new
-	    # info, then we already have a correct status
-	    if string.find(m_d[enstore_constants.STATUS][0], NBSP) == -1 and \
-	       m_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
-		m_d[enstore_constants.STATUS][0] = \
-			      "%s%s:%s%s"%(m_d[enstore_constants.STATUS][0], 
-					   NBSP, NBSP, 
-					   m_d[enstore_constants.STATE])
-	    # get the first word of the migrator state, we will use this
-	    # to tell if this is a bad state or not
-	    words = string.split(m_d[enstore_constants.STATE])
-	    if words[0] in BAD_MIGRATOR_STATES:
-		return self.alive_row(server, 
-				      m_d[enstore_constants.STATUS], 
-				      FUSCHIA, link=name)
-	    else:
-		return self.alive_row(server, 
-				      m_d[enstore_constants.STATUS],
-				      link=name)
-	else:
-	    return self.alive_row(server, 
-				  m_d[enstore_constants.STATUS],
-				  link=name)
+        rows = []
 
-    # output all of the migrator rows 
+        for k in m_d:
+            if isinstance(md[k], dict) and m_d[k].has_key(enstore_constants.STATE) and \
+               m_d[k][enstore_constants.STATE]:
+                # append the migrators state to its status information
+                # if we are updating the web page faster that receiving the new
+                # info, then we already have a correct status
+                if string.find(m_d[enstore_constants.STATUS][0], NBSP) == -1 and \
+                   m_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
+                    tr = HTMLgen.TR()
+                    tr.append(HTMLgen.TD(m_d[k][enstore_constants.STATE],
+                                         align="LEFT", colspan=3, size="-1"))
+                    rows.append(tr)
+
+                # get the first word of the migrator state, we will use this
+                # to tell if this is a bad state or not
+                words = string.split(m_d[k][enstore_constants.STATE])
+                if words[0] in BAD_MIGRATOR_STATES:
+                    return self.alive_row(server,
+                                          m_d[enstore_constants.STATUS],
+                                          FUSCHIA, link=name)
+        r = self.alive_row(server,
+                              m_d[enstore_constants.STATUS],
+                              link=name)
+        r.append(empty_data())
+        for row in rows:
+            r.append(row)
+        return r
+
+    # output all of the migrator rows
     def migrator_rows(self, table, skeys):
 	for server in skeys:
 	    if enstore_functions2.is_migrator(server):
+                m_row = self.migrator_row(server)
 		if self.not_being_monitored(server):
-		    self.unmonitored_servers.append(self.migrator_row(server))
+		    self.unmonitored_servers.append(m_row)
 		else:
                     table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.NAME(server))))
-		    table.append(self.migrator_row(server))
+		    table.append(m_row)
 
     def unmonitored_server_rows(self, table):
 	for row in self.unmonitored_servers:

@@ -986,12 +986,19 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         rtn = 1          # assume no timeouts
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG,
 				   "get new state from %s"%(migrator.name,))
+
         self.migrator_state[migrator.name] = migrator.client.status(self.alive_rcv_timeout,
 							   self.alive_retries)
-	migrator.check_status_ticket(self.migrator_state[migrator.name])
-        self.serverfile.output_migratorstatus(self.migrator_state[migrator.name], migrator.name)
-	migrator.server_status = self.migrator_state[migrator.name][enstore_constants.STATE]
-        if e_errors.is_timedout(self.migrator_state[migrator.name]):
+        mig_state = self.migrator_state[migrator.name]
+	migrator.check_status_ticket(mig_state)
+        self.serverfile.output_migratorstatus(mig_state, migrator.name)
+        migrator.server_status = {}
+        for k in mig_state:
+            if isinstance(mig_state[k], dict):
+                migrator.server_status[k] = (mig_state[k]['state'], mig_state[k]['internal_state'])
+	#migrator.server_status = self.migrator_state[migrator.name][enstore_constants.STATE]
+
+        if e_errors.is_timedout(mig_state):
             rtn = 0
             self.serverfile.output_etimedout(migrator.host, enstore_constants.NO_STATE,
 					     time.time(), migrator.name,
