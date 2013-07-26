@@ -20,6 +20,8 @@ import stat
 import multiprocessing
 import shutil
 import string
+import qpid.util
+import qpid.messaging
 
 # enstore imports
 import e_errors
@@ -52,6 +54,8 @@ from cache.messaging.messages import MSG_TYPES as mt
 import cache.en_logging.en_logging
 
 DEBUGLOG=11 # log on this level to DEBUGLOG
+
+MAX_PROCESS = 10
 
 # intermediate states of migrator
 # to check in more details of what migrator is doing
@@ -307,14 +311,28 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.alarm(e_errors.ERROR, "Can not create packages_dir %s! Exiting"%(self.packages_location,))
                 sys.exit(-1)
                 
-        self.my_dispatcher = self.csc.get(self.my_conf['migration_dispatcher']) # migration dispatcher configuration
+        my_dispatcher_name = self.my_conf['migration_dispatcher']        
+        self.my_dispatcher = self.csc.get(my_dispatcher_name) # migration dispatcher configuration
         self.purge_watermarks = None
         if self.my_dispatcher:
           self.purge_watermarks = self.my_dispatcher.get("purge_watermarks", None) 
             
-        # configuration dictionary required by MigrationWorker
+        self.clustered_configuration = self.my_dispatcher.get("clustered_configuration")
         self.migration_worker_configuration = {'server':{}}
-        self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always}"%(self.my_dispatcher['migrator_work'],)
+        if self.clustered_configuration:
+            work_exchange = self.my_dispatcher['migrator_work']
+            work_queue_key = self.my_conf.get('disk_library')
+            if not work_queue_key:
+                Trace.alarm(e_errors.ALARM, "disk_library is not defined. Fix configuration. Bye")
+                sys.exit(1)
+            work_queue = work_queue_key
+            self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always, node:{x-bindings:[{exchange:'%s', queue:'%s',key:'%s'}]}}"%(work_queue, work_exchange, work_queue, work_queue_key)
+        else:
+            self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always}"%(self.my_dispatcher['migrator_work'],)
+            
+
+
+
         self.migration_worker_configuration['server']['queue_reply'] = "%s; {create: always}"%(self.my_dispatcher['migrator_reply'],)        
         
         self.queue_in_name = self.name.split('.')[0]
@@ -336,6 +354,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         # period to check integrity of files to be written (like in the mover code)
         self.check_written_file_period = self.my_conf.get('check_written_file', 0)
+
+        self.max_proc = min(self.my_conf.get('max_process', MAX_PROCESS), MAX_PROCESS) # maximum number of allowed processes
+        if self.max_proc < 0:
+            self.max_proc = MAX_PROCESS
 
         self.fcc = file_clerk_client.FileClient(self.csc, bfid=0,
                                                 server_address=(fc_conf['host'],
@@ -396,14 +418,18 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.state = IDLE # intermediate state of migrator
         self.state_change_time = time.time()
         self.cur_id = None
-        self.migration_file = None
         self.draining = False # if this is set, complete current work and exit.
         # Below is a tricky way to instantiate a correct superclass from
         # either Chimera or pnfs.
         # Actually namespace.StorageFS.__init__ needs to get modified to use
         # chimera by default and correct use of specified mount point.
         self.ns = namespace.StorageFS(self.namespace_top_dir, self.namespace_top_dir)
-        
+
+        self.manager = multiprocessing.Manager() # to manage shared data
+        self.proc_lock = self.manager.Lock()
+        self.proc_counter = self.manager.Value('i', 0)
+        self.proc_statuses = self.manager.list()
+        self.status_dict = {}        
         # we want all message types processed by one handler
         self.handlers = {}
         for request_type in (mt.MWC_PURGE,
@@ -423,7 +449,18 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(name, self.alive_interval)
 
-    # redefine __setattr__
+    def _change_proc_counter(self, increment=0):
+        Trace.trace(10, "_change_proc_counter: increment %s"%(increment,))
+        self.proc_lock.acquire()
+        if increment:
+            # positive or negative
+            incd = self.proc_counter.value + increment
+            if incd >= 0 and incd <= self.max_proc:
+                self.proc_counter.value = incd
+        self.proc_lock.release()
+        return self.proc_counter.value
+    
+    # re-define __setattr__
     # to treat some attributes differently
     def __setattr__(self, attr, val):
         t = time.time()
@@ -432,15 +469,22 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             if attr == 'status':
                 dt = t - self.status_change_time 
                 self.status_change_time = self.state_change_time = t
+                if self.cur_id:
+                    self.status_dict['state'] = val 
+                    self.status_dict['time_in_state'] = self.status_change_time
             if attr == 'state':
                 dt = t - self.state_change_time            
                 self.state_change_time = t
+                if self.cur_id:
+                    self.status_dict['internal_state'] = val
+                    self.status_dict['time_in_internal_state'] = self.state_change_time
             old_val = self.__dict__[attr]
         except:
+            #Trace.handle_error()
             pass #don't want any errors here to stop us
 
         self.__dict__[attr] = val
-        if dt:
+        if dt and self.cur_id:
             Trace.log(e_errors.INFO, "Time in %s %s"%(old_val, dt)) 
        
     # is it time to data files integrity?
@@ -711,7 +755,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 self.output_library_tag.append(library_tag)
 
     # write aggregated file to tape
-    def write_to_tape(self, request):
+    def write_to_tape(self, request, mq):
         # save request
         rq = copy.copy(request)
         Trace.trace(10, "write_to_tape: request %s"%(rq.content,))
@@ -786,7 +830,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             status_message = cache.messaging.mw_client.MWRStatus(orig_msg=rq,
                                                      content= content)
             try:
-                self._send_reply(status_message)
+                mq.put(status_message)
             except Exception, e:
                 self.trace.exception("sending reply, exception %s", e)
             return False
@@ -833,7 +877,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     status_message = cache.messaging.mw_client.MWRStatus(orig_msg=rq,
                                                              content= content)
                     try:
-                        self._send_reply(status_message)
+                        mq.put(status_message)
                     except Exception, e:
                         self.trace.exception("sending reply, exception %s", e)
                     return False
@@ -899,8 +943,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         dst_file_path = os.path.join(tmp_dst_dir, dst_package_fn)
         Trace.trace(10, "write_to_tape: dst_file_path: %s"%(dst_file_path,))
-        self.migration_file = dst_file_path
-
+        self.status_dict['current_migration_file'] = dst_file_path
+ 
         # Change archive_status
         set_cache_params = []
         for bfid in bfid_list:
@@ -1045,7 +1089,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         
         status_message = cache.messaging.mw_client.MWRArchived(orig_msg=rq)
         try:
-            self._send_reply(status_message)
+            mq.put(status_message)
         except Exception, e:
             self.trace.exception("sending reply, exception %s", e)
             return False
@@ -1225,7 +1269,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         return rc
 
     # purge files from disk
-    def purge_files(self, request):
+    def purge_files(self, request, mq):
         # save request
         rq = copy.copy(request)
         Trace.trace(10, "purge_files: request %s"%(rq.content,))
@@ -1293,7 +1337,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         status_message = cache.messaging.mw_client.MWRPurged(orig_msg=rq)
         try:
-            self._send_reply(status_message)
+            mq.put(status_message)
         except Exception, e:
             self.trace.exception("sending reply, exception %s", e)
             return False
@@ -1495,7 +1539,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         return True
 
     # read aggregated file from tape
-    def read_from_tape(self, request):
+    def read_from_tape(self, request, mq):
         # save request
         rq = copy.copy(request)
         self.state = PREPARING_READ_FROM_TAPE
@@ -1562,7 +1606,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         package = self.fcc.bfid_info(package_id) 
         set_cache_params = [] # this list is needed to send set_cache_status command to file clerk
         Trace.log(e_errors.INFO, "Will stage package %s"%(package,))
-        self.migration_file = package['pnfs_name0']
+        self.status_dict['current_migration_file'] = package['pnfs_name0']
 
         # Internal list of bfid data is built
         # Create a list of files to get staged
@@ -1604,7 +1648,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 return False
         status_message = cache.messaging.mw_client.MWRStaged(orig_msg=rq)
         try:
-            self._send_reply(status_message)
+            mq.put(status_message)
         except Exception, e:
             self.trace.exception("sending reply, exception %s", e)
             return False
@@ -1618,24 +1662,130 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # return migrator status
     def migrator_status(self):
         return self.status
-    
-
 
     workers = {mt.MWC_ARCHIVE: write_to_tape,
                mt.MWC_PURGE:   purge_files,
                mt.MWC_STAGE:   read_from_tape,
                }
 
+    # starts and monitors worker process
+    # runs in a separate thread
+    def run_mw_request(self, message):
+        Trace.trace(10, "run_mw_request: %s"%(message,))
+        # run worker
+        Trace.log(e_errors.INFO, "starting new process total processes %s"%(self._change_proc_counter(),))
+        status_dict = self.manager.dict() # create shared dictionary to hold status
+        status_dict['state'] = self.status
+        status_dict['internal_state'] = IDLE
+        status_dict['time_in_internal_state'] = status_dict['time_in_state'] = time.time()
+        status_dict['current_id'] = message.correlation_id
+        status_dict['current_migration_file'] = ""
+        self.proc_statuses.append(status_dict) # and append it to shared list
+        q = multiprocessing.Queue() # the returned message will be here
+        try:
+            mw_proc = multiprocessing.Process(target = self.process_mw_request, args=(message, q, status_dict))
+            Trace.trace(10, "run_mw_request: starting process")
+            mw_proc.start()
+            Trace.trace(10, "run_mw_request: waiting for process")
+            mw_proc.join()
+            Trace.trace(10, "run_mw_request: process finished")
+            rc = True
+        except:
+            rc = False
+            exc, detail, tb = sys.exc_info()
+            Trace.handle_error(exc, detail, tb)
+            # send error message
+            content = {"migrator_status":
+                       mt.FAILED,
+                       "detail": "exception %s detail %s"%(exc, detail),
+                       "name": self.name}
+            status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
+                                                                 content= content)
+            try:
+                self._send_reply(status_message)
+            except Exception, e:
+                self.trace.exception("sending reply, exception %s", e)
+        if self.work_dict.has_key(message.correlation_id):
+            del(self.work_dict[message.correlation_id])
+        proc_counter = self._change_proc_counter(-1)
+        msg = q.get()
+        if msg:
+            Trace.trace(10, "SEND REPLY FROM THREAD %s"%(msg,))
+            self._send_reply(msg)
+        q.close()
+        self.proc_statuses.remove(status_dict)
+        return rc
+    
+    def process_mw_request(self, message, queue, status_dict):
+        Trace.trace(10, "process_mw_request: %s"%(message,))
+        request_type = message.properties["en_type"]
+        self.cur_id = message.correlation_id
+        self.status_dict = status_dict
+        rc = True
+        # run worker
+        try:
+            if self.workers[request_type](self, message, queue):
+                # work has completed successfully
+                if request_type == mt.MWC_ARCHIVE:
+                    self.status = mt.ARCHIVED
+                elif request_type == mt.MWC_PURGE:
+                    self.status = mt.PURGED
+                elif request_type ==mt.MWC_STAGE:
+                    self.status = mt.CACHED
+                self.state = IDLE 
+            else:
+                rc = False
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.handle_error(exc, detail, tb)
+            # send error message
+            content = {"migrator_status":
+                       mt.FAILED,
+                       "detail": "exception %s detail %s"%(exc, detail),
+                       "name": self.name}
+            status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
+                                                                 content= content)
+            queue.put(status_message)
+            rc = False
+
+        self.status_dict.clear()
+        return rc
+
     # handle all types of requests
     def handle_request(self, message):
         Trace.trace(10, "handle_request received: %s"%(message))
+        # check process counter
+        proc_counter = self._change_proc_counter()
+        Trace.trace(10, "handle_request PC: %s"%(proc_counter))
+        if self.draining:
+            # do not process request
+            # waiting for all works to finish
+            if proc_counter == 0:
+                self.shutdown = True
+            return True
+        if proc_counter >= self.max_proc:
+            # do not process request
+            Trace.log(e_errors.INFO, "Migrator is full. Will not process request %s"%(message.correlation_id,))
+            content = {"migrator_status":
+                       mt.FAILED,
+                       "detail": "RESEND",
+                       "name": self.name} # this may need more details
+            status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
+                                                                 content= content)
+            Trace.trace(10, "Migrator is full. Will not process request %s sending back %s"%(message.correlation_id, status_message))
+            
+            self._send_reply(status_message)
+            
+            Trace.trace(10, "Migrator is full. reply sent")
+            return False
+
         if self.work_dict.has_key(message.correlation_id):
             # the work on this request is in progress
+            Trace.trace(10, "handle_request exit due to : %s"%(message.correlation_id,))
             return False
         #self.work_dict[message.correlation_id] = message # remove after debug AM!!
         # prepare work:
         request_type = message.properties["en_type"]
-        self.cur_id = message.correlation_id
         if request_type in (mt.MWC_ARCHIVE, mt.MWC_PURGE, mt.MWC_STAGE):
             self.work_dict[message.correlation_id] = message
             if request_type == mt.MWC_ARCHIVE:
@@ -1655,28 +1805,18 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.trace(10, "Sending confirmation")
                 self._send_reply(confirmation_message)
             except Exception, e:
+                Trace.trace(10, "Confirmation sending exception")
                 self.trace.exception("sending reply, exception %s", e)
                 return False
             
-            # run worker
+            # launch worker
+            proc_counter = self._change_proc_counter(1)
             try:
-                if self.workers[request_type](self, message):
-                    # work has completed successfully
-                    del(self.work_dict[message.correlation_id])
-                    if request_type == mt.MWC_ARCHIVE:
-                        self.status = mt.ARCHIVED
-                    elif request_type == mt.MWC_PURGE:
-                        self.status = mt.PURGED
-                    elif request_type ==mt.MWC_STAGE:
-                        self.status = mt.CACHED
-                    rc = True
-                    self.state = IDLE 
-                else:
-                    rc = False
-                if self.draining:
-                    Trace.log(e_errors.INFO, "Completed final assignment. Will exit")
-                    self.shutdown = True # exit gracefully
-                return rc
+                Trace.trace(10, "handle_request: launching worker")
+                dispatching_worker.run_in_thread(thread_name=None,
+						     function=self.run_mw_request,
+						     args=(message,))
+
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
@@ -1687,6 +1827,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                            "name": self.name}
                 status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
                                                                      content= content)
+                try:
+                    Trace.trace(10, "Sending failed status message")
+                    self._send_reply(status_message)
+                except Exception, e:
+                    self.trace.exception("sending reply, exception %s", e)
+                return False
+                
                 
         elif request_type in (mt.MWC_STATUS): # there could more request of such nature in the future
             content = {"migrator_status": self.status, "name": self.name} # this may need more details
@@ -1809,13 +1956,18 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
     # send current status
     def get_status(self, ticket):
-        ticket['state'] = self.migrator_status()
-        ticket['time_in_state'] = time.time() - self.status_change_time
-        ticket['internal_state'] = self.state
-        ticket['time_in_internal_state'] = time.time() - self.state_change_time
-        ticket['current_id'] = self.cur_id
-        ticket['current_migration_file'] = self.migration_file
-        
+        Trace.trace(10, "get_status: %s"%(self.proc_statuses,))
+        for item in self.proc_statuses:
+            if len(item):
+                # dictionary is not empty
+                id = item['current_id']
+                ticket[id] = {}
+                ticket[id]['state'] = item['state']
+                ticket[id]['time_in_state'] = time.time() - item['time_in_state']
+                ticket[id]['internal_state'] = item['internal_state']
+                ticket[id]['time_in_internal_state'] = time.time() - item['time_in_internal_state']
+                ticket[id]['current_id'] = item['current_id']
+                ticket[id]['current_migration_file'] = item['current_migration_file']
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 

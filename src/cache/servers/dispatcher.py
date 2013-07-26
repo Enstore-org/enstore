@@ -53,13 +53,9 @@ class Dispatcher(mw.MigrationWorker,
                                               function = self.handle_er_msg)
         self._lock = threading.Lock()
         self.my_conf = self.csc.get(self.name)
-        self.purge_conf = self.my_conf.get('purge_dispatcher', None)
         self.shutdown = False
         self.finished = False
         Trace.init(self.log_name, "yes")
-        if not self.purge_conf:
-            Trace.log(e_errors.ALARM, "Purge configuration is not defined in configuration. Will exit")
-            sys.exit(-1)
 
         # get all necessary information from configuration
         # configuration dictionary required by MigrationWorker
@@ -93,7 +89,14 @@ class Dispatcher(mw.MigrationWorker,
         # get amqp broker configuration - common for all servers
         self.dispatcher_configuration['amqp'] = {}
         self.dispatcher_configuration['amqp']['broker'] = self.csc.get("amqp_broker")
+
+        # Clustered configuration assumes using
+        # clusters of disk movers and migrators grouped around one disk library.
+        # Cluster uses a dedicated cache system.
+        # If no clustered configuration is defined
+        # All disk movers and migrators use the same cache.
         
+        self.clustered_configuration = self.my_conf.get("clustered_configuration")
         self.max_time_in_cache = self.my_conf.get("max_time_in_cache", 3600)
         self.check_watermarks = True # this allows to purge files ignoring watermarks
         self.purge_watermarks = self.my_conf.get("purge_watermarks", None)
@@ -120,11 +123,10 @@ class Dispatcher(mw.MigrationWorker,
                                                            self.dispatcher_configuration['amqp']['broker'],
                                                            self.my_conf['migrator_work'],
                                                            self.my_conf['migrator_reply'],
-                                                           self.purge_conf['migrator_work'],
                                                            self._lock,
                                                            self.migration_pool,
-                                                           self.purge_pool)
-
+                                                           self.purge_pool,
+                                                           self.clustered_configuration)
         # set event handlers
         self.handlers = {mt.FILE_DELETED:  self.handle_file_deleted,
                          mt.CACHE_MISSED:  self.handle_cache_missed,
@@ -270,8 +272,8 @@ class Dispatcher(mw.MigrationWorker,
       Trace.trace(10, "move_to_migration_pool list_id %s"%(list_id,))
       self._lock.acquire()
       self.migration_pool[list_id] = migration_dispatcher.MigrationList(src[item_to_move],
-                                                                         list_id,
-                                                                         file_list.FILLED)
+                                                                        list_id,
+                                                                        file_list.FILLED)
       del(src[item_to_move])
       self._lock.release()
 
@@ -369,12 +371,15 @@ class Dispatcher(mw.MigrationWorker,
 
    def handle_cache_missed(self, message):
        Trace.trace(10, "handle_cache_missed received: %s"%(message))
-       Trace.trace(10, "handle_cache_missed content: %s"%(message.content))
-       Trace.trace(10, "handle_cache_missed correlation_id: %s"%(message.correlation_id))
        l_name = message.content['file']['name']
+       if self.clustered_configuration:
+          disk_library = message.content['enstore'].get('disk_library')
+       else:
+          disk_library = ""
        f_list = file_list.FileListWithCRC(id = message.correlation_id,
-                                                list_type = message.properties["en_type"],
-                                                list_name = l_name)
+                                          list_type = message.properties["en_type"],
+                                          list_name = l_name,
+                                          disk_library = disk_library)
        
        self.cache_missed_pool[l_name] = f_list
        list_element = file_list.FileListItemWithCRC(bfid = message.content['enstore']['bfid'],
@@ -426,13 +431,18 @@ class Dispatcher(mw.MigrationWorker,
           Trace.trace(10, "handle_cache_written pool: %s"%(self.cache_written_pool.keys(),))
           Trace.trace(10, "handle_cache_written policy: %s"%(policy,))
           if not policy['policy'] in self.cache_written_pool.keys():
+             if self.clustered_configuration:
+                disk_library = policy.get('disk_library')
+             else:
+                disk_library = ""
              # Create list
              f_list = file_list.FileListWithCRC(id = message.correlation_id,
                                                 list_type = message.properties["en_type"],
                                                 list_name = policy['policy'],
                                                 minimal_data_size = policy['minimal_file_size'],
                                                 maximal_file_count = policy['max_files_in_pack'],
-                                                max_time_in_list = policy['max_waiting_time'])
+                                                max_time_in_list = policy['max_waiting_time'],
+                                                disk_library = disk_library)
              self.cache_written_pool[policy['policy']] = f_list
           list_element = file_list.FileListItemWithCRC(bfid = new_content['enstore']['bfid'],
                                                        nsid = new_content['enstore']['id'],
@@ -471,7 +481,7 @@ def do_work():
     
     dispatcher.handle_generic_commands(intf)
 
-    #dispatcher._do_print({'levels':[10]})
+    #dispatcher._do_print({'levels':range(5,20)})
     dispatcher.start()
     #dispatcher.logger.log(e_errors.ERROR, "DISP START")
     dispatcher.logger.info("DISP START") # jst to check if logger works

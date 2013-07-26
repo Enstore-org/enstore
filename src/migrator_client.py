@@ -103,7 +103,8 @@ def do_work(intf):
 
     elif intf.status:
         ticket = mc.status()
-        print ticket
+        import pprint
+        pprint.pprint(ticket)
     elif intf.start_draining:
         ticket = mc.quit_and_exit()
         print ticket
