@@ -966,9 +966,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                           retry = 0)
         Trace.log(e_errors.INFO,"New bit file returned %s" % (fcc_reply,))
         if fcc_reply['status'][0] != e_errors.OK:
-            Trace.log(e_errors.ERROR,
-                       "cannot assign new bfid")
-            self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
+            Trace.log(e_errors.ERROR, "Cannot assign new bit file ID")
             return
         if fcc_reply['fc']['location_cookie'] != request['location_cookie']:
             Trace.log(e_errors.ERROR,
@@ -7288,7 +7286,6 @@ class DiskMover(Mover):
             cur_thread_name = None
 
         Trace.trace(26,"current thread %s"%(cur_thread_name,))
-
         if save_state == DRAINING:
 
             self.offline()
@@ -7297,7 +7294,6 @@ class DiskMover(Mover):
             self.current_volume = None
         
         self.tr_failed = 0   
-        
     
     def transfer_completed(self):
         self.consecutive_failures = 0
