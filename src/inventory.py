@@ -1060,6 +1060,8 @@ def inventory(output_dir, cache_dir):
 
     for vk in vol_db.keys():
         vv = vol_db[vk]
+        if vv.get('media_type') in ('null','disk') :
+            continue
         if not vv: # vk is gone
             vv = vol_db[vk+'.deleted']
             if not vv:
