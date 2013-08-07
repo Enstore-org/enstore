@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 ###############################################################################
 #
-# $Author$
-# $Date$
 # $Id$
 #
 # generic framework class
@@ -32,6 +30,7 @@ import mover_summary_plotter_module
 import mount_latency_plotter_module
 import mounts_per_robot_plotter_module
 import drive_hours_plotter_module
+import drive_hours_sep_plotter_module
 
 def usage(cmd):
     print "Usage: %s [options] "%(cmd,)
@@ -39,7 +38,8 @@ def usage(cmd):
     print "\t -m [--mounts]          : plot mount plots "
     print "\t -u [--utilization]     : plot drive utilization (old name)"
     print "\t -d [--drives]          : plot drive utilization"
-    print "\t -D [--drive-hours]     : plot drive hours per day"
+    print "\t -D [--drive-hours]     : plot drive hours per day, stacked by storage group"
+    print "\t -H [--drive-hours-sep] : plot drive hours per day, separately for each storage group"
     print "\t -s [--slots]           : plot slot utilization"
     print "\t -p [--pnfs-backup]     : plot pnfs backup time"
     print "\t -f [--file-family-analysis] : plot file family analysis"
@@ -53,13 +53,13 @@ def usage(cmd):
     print "\t -L [--library-mounts]  : plot tape library mounts"
     print "\t -l [--latencies]       : plot latencies plot"
     print "\t -S [--sfa-stats]       : plot Small Files Aggregation Statistics"
-    print "\t -h [--help]        : show this message"
+    print "\t -h [--help]            : show this message"
 
 if __name__ == "__main__":
     try:
-        short_args = "hmrudDspfFeqtibMlLS"
+        short_args = "hmrudDHspfFeqtibMlLS"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
-                     "drive-hours", "slots", "pnfs-bakup",
+                     "drive-hours", "drive-hours-sep", "slots", "pnfs-backup",
                      "file-family-analysis", "files-rw", "quotas",
                      "tapes-burn-rate", "migration-summary", "bytes-per-day",
                      "mover-summary", "latencies", "library-mounts",
@@ -96,9 +96,13 @@ if __name__ == "__main__":
         if o in ("-u","--utilization", "-d", "--drives"):
             aModule = drive_utilization_plotter_module.DriveUtilizationPlotterModule("utilization")
             f.add(aModule)
-        # drive hours per day
+        # drive hours per day, stacked by storage group
         if o in ("-D","--drive-hours"):
             aModule = drive_hours_plotter_module.DriveHoursPlotterModule("drive-hours")
+            f.add(aModule)
+        # drive hours per day, separately for each storage group
+        if o in ("-H","--drive-hours-sep"):
+            aModule = drive_hours_sep_plotter_module.DriveHoursSepPlotterModule("drive-hours-sep")
             f.add(aModule)
         # slot utilization
         if o in ("-s","--slots"):
@@ -128,7 +132,7 @@ if __name__ == "__main__":
         if o in ("-i","--migration-summary"):
             aModule = migration_summary_plotter_module.MigrationSummaryPlotterModule("migration_summary")
             f.add(aModule)
-        # byes per day
+        # bytes per day
         if o in ("-b","--bytes-per-day"):
             aModule = bytes_per_day_plotter_module.BytesPerDayPlotterModule("bytes-per-day")
             f.add(aModule)

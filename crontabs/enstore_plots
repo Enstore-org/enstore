@@ -16,12 +16,14 @@
 3,13,33,48 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p makeplot -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py -r > /dev/null 2> /dev/null
 #drive utilization
 3,13,33,48 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p driveUtilization -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py --utilization > /dev/null 2> /dev/null
-# drive hours per day
+# drive usage hours (stacked)
 55 0 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p drivehours -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py --drive-hours > /dev/null 2> /dev/null
+# drive usage hours (separated)
+55 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p drivehours_sep -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py --drive-hours-sep > /dev/null 2> /dev/null
 #slot utilization
 10 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; cd /tmp; $ENSTORE_DIR/sbin/ecron -p slotUtilization -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py --slots > /dev/null 2> /dev/null
 # encp rate multi
-25 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi $ENSTORE_DIR/src/plotter_main.py -e >/dev/null 2> /dev/null
+25 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi $ENSTORE_DIR/src/plotter_main.py -e >/dev/null 2> /dev/null
 # file family usage
 50 23 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p file_family_usage $ENSTORE_DIR/src/plotter_main.py -f > /dev/null 2> /dev/null
 # files read and written per mount
@@ -33,9 +35,9 @@
 # tape burn rates
 0 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p burn-rate  $ENSTORE_DIR/src/plotter_main.py -t > /dev/null 2> /dev/null
 #migration summary
-41 7 * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p migration_summary_plots $ENSTORE_DIR/src/plotter_main.py --migration-summary > /dev/null 2> /dev/null
+41 7 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p migration_summary_plots $ENSTORE_DIR/src/plotter_main.py --migration-summary > /dev/null 2> /dev/null
 #mover summary
-30 1 * * 1 enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p mover_summary_plots $ENSTORE_DIR/src/plotter_main.py -M > /dev/null 2> /dev/null
+30 1 * * 1 enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p mover_summary_plots $ENSTORE_DIR/src/plotter_main.py -M > /dev/null 2> /dev/null
 # fills slot usage in DB
 30 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p fill_slot_usage python $ENSTORE_DIR/src/fill_slot_usage.py > /dev/null 2> /dev/null
 # plots mount latency plots
@@ -44,4 +46,3 @@
 30 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p library_mounts $ENSTORE_DIR/src/plotter_main.py -L > /dev/null 2> /dev/null
 # Small Files Aggregation Statistics
 35 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p sfa_stats $ENSTORE_DIR/src/plotter_main.py -S > /dev/null 2> /dev/null
-
