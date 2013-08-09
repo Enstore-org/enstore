@@ -994,7 +994,7 @@ Uses only general keys (along with database keys which are the same
 <hr>
 See details in "Small Files Aggregation High Level Design" document.
 <br>
-<h2>Migration Dispather</h2>
+<h2>Dispatcher</h2>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
 <tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
 </th>
@@ -1029,33 +1029,13 @@ See details in "Small Files Aggregation High Level Design" document.
                 <p>
 		<ul>
 		   <li> start purge if data space is full more than this factor 
-		   <li> stop purgeif data space is full less than this factor
+		   <li> stop purge if data space is full less than this factor
 		</ul>
 	   </td>
 	   <td>Optional</td><td>None</td>
 </tr>
-<tr><td><a NAME="purge_dispatcher">purge_dispatcher</a></td><td>Purge dispatcher for a given dispatcher</td>
-	   <td>Optional</td><td>None</td>
-</tr>
-</table>
-
-<h2>UDP Proxy Server (optional)</h2>
-<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
-<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
-</th>
-<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
-</th>
-<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
-</th>
-<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
-</th>
-</tr>
-
-<tr><td><a NAME="udp_port">udp_port</a></td><td>port for transferring enstore UDP messages</td>
-	   <td>Mandatory</td><td>None</td>
-</tr>
-<tr><td><a NAME="target_addr">target_addr</a></td><td>queue for transferring AMQP messages</td>
-	   <td>Mandatory</td><td>None</td>
+<tr><td><a NAME="clustered_configuration">clustered_configuration</a></td><td>Enable clustered configuration</td>
+	   <td>Optional</td><td>None (Disabled)</td>
 </tr>
 </table>
 
@@ -1133,10 +1113,16 @@ See details in "Small Files Aggregation High Level Design" document.
 <tr><td><a NAME="tar_blocking_factor">tar_blocking_factor</a></td><td>blocking factor for archiver (tar)</td>
 	   <td>Optional</td><td>None</td>
 </tr>
+<tr><td><a NAME="disk_library">disk_library</a></td><td>disk library to which this migrator belongs</td>
+	   <td>Mandatory</td><td>None</td>
+</tr>
+<tr><td><a NAME="max_process">max_process</a></td><td>Maximum number of work processes per migrator</td>
+	   <td>Optional</td><td>10</td>
+</tr>
 
 </table>
 
-<h2>SFA Stats:defines paramters for SFA monitoring plots (Optional)</h2>
+<h2>SFA Stats:defines parameters for SFA monitoring plots (Optional)</h2>
 <a NAME="SFA_Stats"></a>
 <table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
 <tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
