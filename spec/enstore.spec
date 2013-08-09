@@ -5,8 +5,8 @@
 ###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 3.0.2
-Release: 1
+Version: 3.3.0
+Release: 0
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -26,9 +26,9 @@ For the postinstallation and configuration instructions please see enstore/READM
 
 %prep
 # check if all supporting rpms are installed
-rpm -q Python-enstore2.6
+rpm -q Python-enstore2.7
 if [ $? -ne 0 ]; then
-	echo "Python-enstore2.6 is not installed"
+	echo "Python-enstore2.7 is not installed"
 	exit 1
 fi
 rpm -q ftt
@@ -50,7 +50,7 @@ rm -rf enstore-setup
 
 %setup -q -c -n %{prefix}
 # copy all supporting products
-pydir=`rpm -ql Python-enstore2.6 | head -1`
+pydir=`rpm -ql Python-enstore2.7 | head -1`
 PYTHON_DIR=$RPM_BUILD_ROOT/%{prefix}/Python
 cp -rp $pydir $PYTHON_DIR
 rm -rf $PYTHON_DIR/*.tgz
@@ -61,11 +61,11 @@ rm -rf $FTT_DIR/*.tgz
 swigdir=`rpm -ql swig-enstore | head -1`
 SWIG_DIR=$RPM_BUILD_ROOT/%{prefix}/SWIG
 cp -rp $swigdir $SWIG_DIR
-tar xzf /tmp/enstore_qpid.tgz
+tar xzf /tmp/enstore_qpid_python2.7.tgz
 
 # create a tepmorary setup file
 #+++++++++++
-echo PYTHON_DIR=$PYTHON_DIR> /tmp/enstore-setup
+echo PYTHON_DIR=$PYTHON_DIR > /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
@@ -85,6 +85,8 @@ echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 %build
 . /tmp/enstore-setup
 echo "BUILD"
+which_python=`which python`
+echo "PYTHON_EXE `file -L /usr/src/redhat/BUILD/opt/enstore/Python/bin/python | cut -f 3 -d ' ' | cut -f 1 -d '-'`"
 make clean
 make all
 
@@ -113,7 +115,8 @@ if [ $? -ne 0 ]; then
 	useradd -u 5744 -g enstore enstore
 	chmod 775 ~enstore
 fi
-
+echo "Removing /%{prefix}"
+rm -rf /%{prefix}
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 #%post
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
@@ -139,8 +142,7 @@ echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 
 # copy qpid extras
-echo "Copying /opt/enstore/etc/extra_python.pth to /opt/enstore/Python/lib/python2.6/site-packages"
-cp -p /opt/enstore/etc/extra_python.pth /opt/enstore/Python/lib/python2.6/site-packages
+cp -p /opt/enstore/etc/extra_python.pth /opt/enstore/Python/lib/python2.7/site-packages
 echo "Creating sudoers file"
 echo "The original is saved into /etc/sudoers.enstore_save"
 if [ ! -f /etc/sudoers.enstore_save ]; then
@@ -184,7 +186,7 @@ if [ ! -d ~enstore/config ]; then
 fi
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
-rm /tmp/enstore-setup
+#rm /tmp/enstore-setup
 
 %preun
 echo "PRE UNINSTALL"
@@ -205,15 +207,14 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
-* Mon Feb 11 2013 <moibenko@fnal.gov> -
-- new version 3.0.2-0
-* Wed Jan 23 2013 <moibenko@fnal.gov> -
-- new version 3.0.0-6
-* Tue Jan 22 2013 <moibenko@fnal.gov> -
-- new version 3.0.0-5
-- only 2 mods: library_manager.py and mover.py
-* Thu Dec 13 2012 <moibenko@fnal.gov> -
-- new version 3.0.0-4
+* Mon Feb 11 2013  <moibenko@fnal.gov> -
+- new version 3.1.2-0
+* Tue Feb  5 2013  <moibenko@fnal.gov> -
+- new version 3.1.1-6
+- with python 2.7
+* Thu Nov 15 2012  <moibenko@fnal.gov> -
+- new version 3.0.1-0
+- with python 2.7
 * Fri Oct 26 2012  <moibenko@fnal.gov> -
 - new version 3.0.0-3
 * Mon Sep 10 2012  <moibenko@fnal.gov> -
