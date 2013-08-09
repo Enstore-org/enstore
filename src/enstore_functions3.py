@@ -87,7 +87,6 @@ def is_volume(volume):
             return 1
         elif is_volume_disk(volume):
             return 1
-        
     return 0
 
 def is_volume_tape(volume):
@@ -97,8 +96,8 @@ def is_volume_tape(volume):
         elif re.search("^[A-Z0-9]{6}(L)[0-9]{1}(.deleted){0,1}$", volume):
             # LTO1,2 have L1 or L2 suffix
             return 1
-        elif re.search("^[A-Z0-9]{6}(JC)(.deleted){0,1}$", volume):
-            # KIAE has 3592 tapes labeled as A00188JC
+        elif re.search("^[A-Z0-9]{6}(JC|JY|J)(.deleted){0,1}$", volume):
+            # KIAE has 3592 tapes labeled as A00188JC. There also could be JY or just J
             return 1
     return 0
 
