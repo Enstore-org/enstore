@@ -2,6 +2,7 @@
 -- PostgreSQL database dump
 --
 
+SET statement_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = off;
 SET check_function_bodies = false;
@@ -9,18 +10,13 @@ SET client_min_messages = warning;
 SET escape_string_warning = off;
 
 --
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: products
---
-
-COMMENT ON SCHEMA public IS 'Standard public schema';
-
-
---
 -- Name: plpgsql; Type: PROCEDURAL LANGUAGE; Schema: -; Owner: products
 --
 
 CREATE PROCEDURAL LANGUAGE plpgsql;
 
+
+ALTER PROCEDURAL LANGUAGE plpgsql OWNER TO products;
 
 SET search_path = public, pg_catalog;
 
@@ -43,8 +39,8 @@ ALTER TYPE public.bd OWNER TO enstore;
 CREATE TYPE daily_xfer_size AS (
 	date date,
 	storage_group character varying,
-	"read" bigint,
-	"write" bigint
+	read bigint,
+	write bigint
 );
 
 
@@ -57,8 +53,8 @@ ALTER TYPE public.daily_xfer_size OWNER TO enstore;
 CREATE TYPE ts AS (
 	storage_group character varying,
 	total bigint,
-	"read" bigint,
-	"write" bigint
+	read bigint,
+	write bigint
 );
 
 
@@ -69,6 +65,7 @@ ALTER TYPE public.ts OWNER TO enstore;
 --
 
 CREATE FUNCTION blanks_drawn(date) RETURNS SETOF bd
+    LANGUAGE sql
     AS $_$
 select
     a.media_type, a.blanks - b.blanks as blanks_drawn
@@ -77,8 +74,7 @@ from
     blanks_of_day(current_date) b
 where
     a.media_type = b.media_type;
-$_$
-    LANGUAGE sql;
+$_$;
 
 
 ALTER FUNCTION public.blanks_drawn(date) OWNER TO enstore;
@@ -88,6 +84,7 @@ ALTER FUNCTION public.blanks_drawn(date) OWNER TO enstore;
 --
 
 CREATE FUNCTION blanks_drawn(date, date) RETURNS SETOF bd
+    LANGUAGE sql
     AS $_$
 select
     a.media_type, a.blanks - b.blanks as blanks_drawn
@@ -96,8 +93,7 @@ from
     blanks_of_day($2::date) b
  where
     a.media_type = b.media_type;
-$_$
-    LANGUAGE sql;
+$_$;
 
 
 ALTER FUNCTION public.blanks_drawn(date, date) OWNER TO enstore;
@@ -107,6 +103,7 @@ ALTER FUNCTION public.blanks_drawn(date, date) OWNER TO enstore;
 --
 
 CREATE FUNCTION blanks_drawn_last_7days() RETURNS SETOF bd
+    LANGUAGE sql
     AS $$
 select
     a.media_type, a.blanks - b.blanks as blanks_drawn
@@ -115,8 +112,7 @@ from
     blanks_of_day(current_date) b
 where
     a.media_type = b.media_type;
- $$
-    LANGUAGE sql;
+ $$;
 
 
 ALTER FUNCTION public.blanks_drawn_last_7days() OWNER TO enstore;
@@ -143,6 +139,7 @@ ALTER TABLE public.blanks OWNER TO enstore;
 --
 
 CREATE FUNCTION blanks_of_day(date) RETURNS SETOF blanks
+    LANGUAGE sql
     AS $_$
 select
     *
@@ -150,8 +147,7 @@ from
     blanks
 where
     date = (select min(date) from blanks where date >= $1::date and date < $1::date + '1 day'::interval);
-$_$
-    LANGUAGE sql;
+$_$;
 
 
 ALTER FUNCTION public.blanks_of_day(date) OWNER TO enstore;
@@ -175,6 +171,7 @@ ALTER TABLE public.xfer_count_by_day OWNER TO enstore;
 --
 
 CREATE FUNCTION daily_count(date) RETURNS SETOF xfer_count_by_day
+    LANGUAGE sql
     AS $_$
 select
     $1::date,
@@ -186,8 +183,7 @@ from
 where
     date >= $1 and date < $1 + 1
 group by storage_group;
-$_$
-    LANGUAGE sql;
+$_$;
 
 
 ALTER FUNCTION public.daily_count(date) OWNER TO enstore;
@@ -199,8 +195,8 @@ ALTER FUNCTION public.daily_count(date) OWNER TO enstore;
 CREATE TABLE xfer_by_day (
     date date NOT NULL,
     storage_group character varying NOT NULL,
-    "read" bigint,
-    "write" bigint,
+    read bigint,
+    write bigint,
     n_read bigint,
     n_write bigint
 );
@@ -213,6 +209,7 @@ ALTER TABLE public.xfer_by_day OWNER TO enstore;
 --
 
 CREATE FUNCTION daily_size(date) RETURNS SETOF xfer_by_day
+    LANGUAGE sql
     AS $_$
 select
     $1::date,
@@ -226,8 +223,7 @@ from
 where
     date >= $1 and date < $1 + 1
 group by storage_group;
-$_$
-    LANGUAGE sql;
+$_$;
 
 
 ALTER FUNCTION public.daily_size(date) OWNER TO enstore;
@@ -239,8 +235,8 @@ ALTER FUNCTION public.daily_size(date) OWNER TO enstore;
 CREATE TABLE xfer_by_day_by_mover (
     date date NOT NULL,
     mover character varying NOT NULL,
-    "read" bigint,
-    "write" bigint
+    read bigint,
+    write bigint
 );
 
 
@@ -251,6 +247,7 @@ ALTER TABLE public.xfer_by_day_by_mover OWNER TO enstore;
 --
 
 CREATE FUNCTION daily_size_by_mover(date) RETURNS SETOF xfer_by_day_by_mover
+    LANGUAGE sql
     AS $_$
 select
     $1::date,
@@ -262,8 +259,7 @@ from
 where
     date >= $1 and date < $1 + 1
 group by rtrim(mover, '.mover');
-$_$
-    LANGUAGE sql;
+$_$;
 
 
 ALTER FUNCTION public.daily_size_by_mover(date) OWNER TO enstore;
@@ -273,6 +269,7 @@ ALTER FUNCTION public.daily_size_by_mover(date) OWNER TO enstore;
 --
 
 CREATE FUNCTION data_transfer(timestamp without time zone) RETURNS SETOF ts
+    LANGUAGE sql
     AS $_$
 select
         storage_group,
@@ -291,8 +288,7 @@ where
         date >= $1::timestamp
 group by storage_group
 order by storage_group;
-$_$
-    LANGUAGE sql;
+$_$;
 
 
 ALTER FUNCTION public.data_transfer(timestamp without time zone) OWNER TO enstore;
@@ -302,6 +298,7 @@ ALTER FUNCTION public.data_transfer(timestamp without time zone) OWNER TO enstor
 --
 
 CREATE FUNCTION data_transfer(timestamp without time zone, timestamp without time zone) RETURNS SETOF ts
+    LANGUAGE sql
     AS $_$
 select
         storage_group,
@@ -320,8 +317,7 @@ where
         date >= $1::timestamp and date < $2::timestamp
 group by storage_group
 order by storage_group;
-$_$
-    LANGUAGE sql;
+$_$;
 
 
 ALTER FUNCTION public.data_transfer(timestamp without time zone, timestamp without time zone) OWNER TO enstore;
@@ -331,6 +327,7 @@ ALTER FUNCTION public.data_transfer(timestamp without time zone, timestamp witho
 --
 
 CREATE FUNCTION data_transfer_last_7days() RETURNS SETOF ts
+    LANGUAGE sql
     AS $$
 select
         storage_group,
@@ -350,8 +347,7 @@ where
         date < current_date
 group by storage_group
 order by storage_group;
-$$
-    LANGUAGE sql;
+$$;
 
 
 ALTER FUNCTION public.data_transfer_last_7days() OWNER TO enstore;
@@ -361,6 +357,7 @@ ALTER FUNCTION public.data_transfer_last_7days() OWNER TO enstore;
 --
 
 CREATE FUNCTION make_daily_xfer_count() RETURNS date
+    LANGUAGE plpgsql
     AS $$
 declare
 	day date;
@@ -379,8 +376,7 @@ begin
 	end loop;
 	return day;
 end;
-$$
-    LANGUAGE plpgsql;
+$$;
 
 
 ALTER FUNCTION public.make_daily_xfer_count() OWNER TO enstore;
@@ -390,6 +386,7 @@ ALTER FUNCTION public.make_daily_xfer_count() OWNER TO enstore;
 --
 
 CREATE FUNCTION make_daily_xfer_size() RETURNS date
+    LANGUAGE plpgsql
     AS $$
 declare
 	day date;
@@ -408,8 +405,7 @@ begin
 	end loop;
 	return day;
 end;
-$$
-    LANGUAGE plpgsql;
+$$;
 
 
 ALTER FUNCTION public.make_daily_xfer_size() OWNER TO enstore;
@@ -419,6 +415,7 @@ ALTER FUNCTION public.make_daily_xfer_size() OWNER TO enstore;
 --
 
 CREATE FUNCTION make_daily_xfer_size(date) RETURNS date
+    LANGUAGE plpgsql
     AS $_$
 declare
 	day date;
@@ -437,8 +434,7 @@ begin
 	end loop;
 	return day;
 end;
-$_$
-    LANGUAGE plpgsql;
+$_$;
 
 
 ALTER FUNCTION public.make_daily_xfer_size(date) OWNER TO enstore;
@@ -448,6 +444,7 @@ ALTER FUNCTION public.make_daily_xfer_size(date) OWNER TO enstore;
 --
 
 CREATE FUNCTION make_daily_xfer_size_by_mover(date) RETURNS date
+    LANGUAGE plpgsql
     AS $_$
 declare
 	day date;
@@ -466,8 +463,7 @@ begin
 	end loop;
 	return day;
 end;
-$_$
-    LANGUAGE plpgsql;
+$_$;
 
 
 ALTER FUNCTION public.make_daily_xfer_size_by_mover(date) OWNER TO enstore;
@@ -477,6 +473,7 @@ ALTER FUNCTION public.make_daily_xfer_size_by_mover(date) OWNER TO enstore;
 --
 
 CREATE FUNCTION make_daily_xfer_size_by_mover() RETURNS date
+    LANGUAGE plpgsql
     AS $$
 declare
 	day date;
@@ -495,8 +492,7 @@ begin
 	end loop;
 	return day;
 end;
-$$
-    LANGUAGE plpgsql;
+$$;
 
 
 ALTER FUNCTION public.make_daily_xfer_size_by_mover() OWNER TO enstore;
@@ -506,6 +502,7 @@ ALTER FUNCTION public.make_daily_xfer_size_by_mover() OWNER TO enstore;
 --
 
 CREATE FUNCTION make_first_daily_size_by_mover() RETURNS date
+    LANGUAGE plpgsql
     AS $$
 declare
         first_day date;
@@ -519,8 +516,7 @@ begin
         end if;
         return first_day;
 end;
-$$
-    LANGUAGE plpgsql;
+$$;
 
 
 ALTER FUNCTION public.make_first_daily_size_by_mover() OWNER TO enstore;
@@ -530,6 +526,7 @@ ALTER FUNCTION public.make_first_daily_size_by_mover() OWNER TO enstore;
 --
 
 CREATE FUNCTION make_first_daily_xfer_count() RETURNS date
+    LANGUAGE plpgsql
     AS $$
 declare
 	first_day date;
@@ -543,8 +540,7 @@ begin
 	end if;
 	return first_day;
 end;
-$$
-    LANGUAGE plpgsql;
+$$;
 
 
 ALTER FUNCTION public.make_first_daily_xfer_count() OWNER TO enstore;
@@ -554,6 +550,7 @@ ALTER FUNCTION public.make_first_daily_xfer_count() OWNER TO enstore;
 --
 
 CREATE FUNCTION make_first_daily_xfer_size() RETURNS date
+    LANGUAGE plpgsql
     AS $$
 declare
 	first_day date;
@@ -567,8 +564,7 @@ begin
 	end if;
 	return first_day;
 end;
-$$
-    LANGUAGE plpgsql;
+$$;
 
 
 ALTER FUNCTION public.make_first_daily_xfer_size() OWNER TO enstore;
@@ -578,6 +574,7 @@ ALTER FUNCTION public.make_first_daily_xfer_size() OWNER TO enstore;
 --
 
 CREATE FUNCTION make_first_monthly_xfer_size() RETURNS date
+    LANGUAGE plpgsql
     AS $$
 declare
 	first_month date;
@@ -591,8 +588,7 @@ begin
 	end if;
 	return first_month;
 end;
-$$
-    LANGUAGE plpgsql;
+$$;
 
 
 ALTER FUNCTION public.make_first_monthly_xfer_size() OWNER TO enstore;
@@ -602,6 +598,7 @@ ALTER FUNCTION public.make_first_monthly_xfer_size() OWNER TO enstore;
 --
 
 CREATE FUNCTION make_monthly_xfer_size(date) RETURNS date
+    LANGUAGE plpgsql
     AS $_$
 declare
 	month date;
@@ -620,8 +617,7 @@ begin
 	end loop;
 	return month;
 end;
-$_$
-    LANGUAGE plpgsql;
+$_$;
 
 
 ALTER FUNCTION public.make_monthly_xfer_size(date) OWNER TO enstore;
@@ -631,6 +627,7 @@ ALTER FUNCTION public.make_monthly_xfer_size(date) OWNER TO enstore;
 --
 
 CREATE FUNCTION make_monthly_xfer_size() RETURNS date
+    LANGUAGE plpgsql
     AS $$
 declare
 	month date;
@@ -649,8 +646,7 @@ begin
 	end loop;
 	return month;
 end;
-$$
-    LANGUAGE plpgsql;
+$$;
 
 
 ALTER FUNCTION public.make_monthly_xfer_size() OWNER TO enstore;
@@ -660,6 +656,7 @@ ALTER FUNCTION public.make_monthly_xfer_size() OWNER TO enstore;
 --
 
 CREATE FUNCTION monthly_size(date) RETURNS SETOF daily_xfer_size
+    LANGUAGE sql
     AS $_$
 select
     year_month(date) as date,
@@ -671,8 +668,7 @@ from
 where
     date >= year_month($1) and date < year_month($1) + '1 mons'::interval
 group by year_month(date), storage_group;
-$_$
-    LANGUAGE sql;
+$_$;
 
 
 ALTER FUNCTION public.monthly_size(date) OWNER TO enstore;
@@ -682,8 +678,8 @@ ALTER FUNCTION public.monthly_size(date) OWNER TO enstore;
 --
 
 CREATE FUNCTION plpgsql_call_handler() RETURNS language_handler
-    AS '$libdir/plpgsql', 'plpgsql_call_handler'
-    LANGUAGE c;
+    LANGUAGE c
+    AS '$libdir/plpgsql', 'plpgsql_call_handler';
 
 
 ALTER FUNCTION public.plpgsql_call_handler() OWNER TO products;
@@ -693,17 +689,36 @@ ALTER FUNCTION public.plpgsql_call_handler() OWNER TO products;
 --
 
 CREATE FUNCTION plpgsql_validator(oid) RETURNS void
-    AS '$libdir/plpgsql', 'plpgsql_validator'
-    LANGUAGE c;
+    LANGUAGE c
+    AS '$libdir/plpgsql', 'plpgsql_validator';
 
 
 ALTER FUNCTION public.plpgsql_validator(oid) OWNER TO products;
+
+--
+-- Name: timestamp2unix(timestamp with time zone); Type: FUNCTION; Schema: public; Owner: enstore
+--
+
+CREATE FUNCTION timestamp2unix(timestamp with time zone) RETURNS bigint
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE
+    UNIXTIMESTAMP BIGINT;
+BEGIN
+    select CAST (extract( epoch from $1) as BIGINT)  into UNIXTIMESTAMP;
+    return UNIXTIMESTAMP*1000;
+END;
+$_$;
+
+
+ALTER FUNCTION public.timestamp2unix(timestamp with time zone) OWNER TO enstore;
 
 --
 -- Name: unix2timestamp(bigint); Type: FUNCTION; Schema: public; Owner: enstore
 --
 
 CREATE FUNCTION unix2timestamp(bigint) RETURNS timestamp with time zone
+    LANGUAGE plpgsql
     AS $_$
 DECLARE
     STAMP  TIMESTAMP WITH TIME ZONE;
@@ -711,8 +726,7 @@ BEGIN
     select TIMESTAMP WITH TIME ZONE 'epoch' +($1) * INTERVAL '1 second' into STAMP;
     return STAMP;
 END;
-$_$
-    LANGUAGE plpgsql;
+$_$;
 
 
 ALTER FUNCTION public.unix2timestamp(bigint) OWNER TO enstore;
@@ -722,9 +736,9 @@ ALTER FUNCTION public.unix2timestamp(bigint) OWNER TO enstore;
 --
 
 CREATE FUNCTION year_month(timestamp without time zone) RETURNS date
+    LANGUAGE sql
     AS $_$
-select to_date(to_char($1, 'YYYY-MM-01'), 'YYYY-MM-DD');$_$
-    LANGUAGE sql;
+select to_date(to_char($1, 'YYYY-MM-01'), 'YYYY-MM-DD');$_$;
 
 
 ALTER FUNCTION public.year_month(timestamp without time zone) OWNER TO enstore;
@@ -737,7 +751,7 @@ SET default_with_oids = false;
 
 CREATE TABLE drive_utilization (
     "time" timestamp with time zone NOT NULL,
-    "type" character varying NOT NULL,
+    type character varying NOT NULL,
     total integer,
     busy integer,
     tape_library character varying DEFAULT 'TBA'::character varying NOT NULL,
@@ -760,7 +774,7 @@ CREATE TABLE encp_error (
     username character varying NOT NULL,
     encp_id character varying,
     version character varying NOT NULL,
-    "type" character varying NOT NULL,
+    type character varying NOT NULL,
     error character varying NOT NULL,
     src character varying,
     dst character varying,
@@ -785,7 +799,7 @@ ALTER TABLE public.encp_error OWNER TO enstore;
 
 CREATE TABLE encp_xfer (
     date timestamp without time zone NOT NULL,
-    node character varying(32) NOT NULL,
+    node character varying NOT NULL,
     pid integer NOT NULL,
     username character varying(32) NOT NULL,
     src text NOT NULL,
@@ -795,7 +809,7 @@ CREATE TABLE encp_xfer (
     overall_rate bigint NOT NULL,
     network_rate bigint NOT NULL,
     drive_rate bigint NOT NULL,
-    volume character varying(16) NOT NULL,
+    volume character varying NOT NULL,
     mover character varying(32) NOT NULL,
     drive_id character varying(16) NOT NULL,
     drive_sn character varying(16) NOT NULL,
@@ -857,42 +871,22 @@ CREATE VIEW encp_xfer_by_day_view AS
 ALTER TABLE public.encp_xfer_by_day_view OWNER TO enstore;
 
 --
--- Name: enstore_tables; Type: VIEW; Schema: public; Owner: enstore
---
-
-CREATE VIEW enstore_tables AS
-    SELECT n.nspname AS schemaname, c.relname AS tablename, pg_get_userbyid(c.relowner) AS tableowner, c.reltuples AS "rows", c.relpages AS pages, t.spcname AS "tablespace", c.relhaspkey AS haspkey, c.relhasindex AS hasindexes, c.relhasrules AS hasrules, (c.reltriggers > 0) AS hastriggers FROM ((pg_class c LEFT JOIN pg_namespace n ON ((n.oid = c.relnamespace))) LEFT JOIN pg_tablespace t ON ((t.oid = c.reltablespace))) WHERE ((c.relkind = 'r'::"char") AND (n.nspname = 'public'::name));
-
-
-ALTER TABLE public.enstore_tables OWNER TO enstore;
-
---
 -- Name: event; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
 
 CREATE TABLE event (
     tag character varying(48) NOT NULL,
     name character varying(64) NOT NULL,
-    node character varying(32) NOT NULL,
+    node character varying NOT NULL,
     username character varying(32) NOT NULL,
-    "start" timestamp without time zone NOT NULL,
+    start timestamp without time zone NOT NULL,
     finish timestamp without time zone,
     status integer,
-    "comment" character varying(64)
+    comment character varying(64)
 );
 
 
 ALTER TABLE public.event OWNER TO enstore;
-
---
--- Name: lock_status; Type: VIEW; Schema: public; Owner: enstore
---
-
-CREATE VIEW lock_status AS
-    SELECT (SELECT pg_class.relname FROM pg_class WHERE (pg_class.oid = pg_locks.relation)) AS "table", (SELECT pg_database.datname FROM pg_database WHERE (pg_database.oid = pg_locks."database")) AS "database", pg_locks."transaction", (SELECT pg_stat_activity.usename FROM pg_stat_activity WHERE (pg_stat_activity.procpid = pg_locks.pid)) AS "user", pg_locks."mode", pg_locks."granted" FROM pg_locks;
-
-
-ALTER TABLE public.lock_status OWNER TO enstore;
 
 SET default_with_oids = false;
 
@@ -947,8 +941,8 @@ SET default_with_oids = true;
 
 CREATE TABLE old_bytes_per_day (
     date date,
-    "read" bigint,
-    "write" bigint
+    read bigint,
+    write bigint
 );
 
 
@@ -997,8 +991,8 @@ ALTER TABLE public.quotas OWNER TO enstore;
 
 CREATE TABLE rate (
     "time" timestamp with time zone NOT NULL,
-    "read" bigint,
-    "write" bigint,
+    read bigint,
+    write bigint,
     read_null bigint,
     write_null bigint
 );
@@ -1013,7 +1007,7 @@ ALTER TABLE public.rate OWNER TO enstore;
 CREATE TABLE tape_library_slots_usage (
     "time" timestamp with time zone NOT NULL,
     tape_library character varying NOT NULL,
-    "location" character varying NOT NULL,
+    location character varying NOT NULL,
     media_type character varying,
     total integer,
     free integer,
@@ -1031,13 +1025,16 @@ SET default_with_oids = true;
 --
 
 CREATE TABLE tape_mounts (
-    node character varying(32) NOT NULL,
-    volume character varying(16) NOT NULL,
-    "type" character varying(32) NOT NULL,
+    node character varying NOT NULL,
+    volume character varying NOT NULL,
+    type character varying(32) NOT NULL,
     logname character varying(16) NOT NULL,
-    "start" timestamp without time zone NOT NULL,
+    start timestamp without time zone NOT NULL,
     finish timestamp without time zone,
-    state character(1) NOT NULL
+    state character(1) NOT NULL,
+    storage_group character varying,
+    reads integer,
+    writes integer
 );
 
 
@@ -1048,7 +1045,7 @@ ALTER TABLE public.tape_mounts OWNER TO enstore;
 --
 
 CREATE TABLE tape_mounts_tmp (
-    volume character varying(16) NOT NULL,
+    volume character varying NOT NULL,
     state character varying(1) NOT NULL,
     id bigint
 );
@@ -1078,8 +1075,8 @@ SET default_with_oids = true;
 CREATE TABLE tmp_xfer_by_day (
     date date NOT NULL,
     storage_group character varying NOT NULL,
-    "read" bigint,
-    "write" bigint
+    read bigint,
+    write bigint
 );
 
 
@@ -1123,8 +1120,8 @@ ALTER TABLE public.write_protect_summary_by_library OWNER TO enstore;
 CREATE TABLE xfer_by_month (
     date date NOT NULL,
     storage_group character varying NOT NULL,
-    "read" bigint,
-    "write" bigint
+    read bigint,
+    write bigint
 );
 
 
@@ -1183,7 +1180,7 @@ ALTER TABLE ONLY blanks
 --
 
 ALTER TABLE ONLY tape_library_slots_usage
-    ADD CONSTRAINT tape_library_slots_usage_pkey PRIMARY KEY ("time", tape_library, "location");
+    ADD CONSTRAINT tape_library_slots_usage_pkey PRIMARY KEY ("time", tape_library, location);
 
 
 --
@@ -1258,7 +1255,7 @@ CREATE INDEX drive_utilization_time_idx ON drive_utilization USING btree ("time"
 -- Name: drive_utilization_type_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
-CREATE INDEX drive_utilization_type_idx ON drive_utilization USING btree ("type");
+CREATE INDEX drive_utilization_type_idx ON drive_utilization USING btree (type);
 
 
 --
@@ -1384,7 +1381,7 @@ CREATE INDEX event_oid_idx ON event USING btree (oid);
 -- Name: event_start_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
-CREATE INDEX event_start_idx ON event USING btree ("start");
+CREATE INDEX event_start_idx ON event USING btree (start);
 
 
 --
@@ -1419,7 +1416,7 @@ CREATE INDEX quota_storage_group_idx ON quota USING btree (storage_group);
 -- Name: tape_library_slots_usage_location_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
-CREATE INDEX tape_library_slots_usage_location_idx ON tape_library_slots_usage USING btree ("location");
+CREATE INDEX tape_library_slots_usage_location_idx ON tape_library_slots_usage USING btree (location);
 
 
 --
@@ -1461,14 +1458,14 @@ CREATE INDEX tape_mnts_oid_idx ON tape_mounts USING btree (oid);
 -- Name: tape_mnts_start_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
-CREATE INDEX tape_mnts_start_idx ON tape_mounts USING btree ("start");
+CREATE INDEX tape_mnts_start_idx ON tape_mounts USING btree (start);
 
 
 --
 -- Name: tape_mnts_type_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
-CREATE INDEX tape_mnts_type_idx ON tape_mounts USING btree ("type");
+CREATE INDEX tape_mnts_type_idx ON tape_mounts USING btree (type);
 
 
 --
@@ -1483,6 +1480,13 @@ CREATE INDEX tape_mnts_volume_idx ON tape_mounts USING btree (volume);
 --
 
 CREATE INDEX tape_mounts_logname_idx ON tape_mounts USING btree (logname);
+
+
+--
+-- Name: tape_mounts_storage_group_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX tape_mounts_storage_group_idx ON tape_mounts USING btree (storage_group);
 
 
 --
@@ -1675,16 +1679,6 @@ GRANT SELECT ON TABLE encp_xfer_average_by_storage_group TO enstore_reader;
 
 
 --
--- Name: enstore_tables; Type: ACL; Schema: public; Owner: enstore
---
-
-REVOKE ALL ON TABLE enstore_tables FROM PUBLIC;
-REVOKE ALL ON TABLE enstore_tables FROM enstore;
-GRANT ALL ON TABLE enstore_tables TO enstore;
-GRANT SELECT ON TABLE enstore_tables TO enstore_reader;
-
-
---
 -- Name: event; Type: ACL; Schema: public; Owner: enstore
 --
 
@@ -1692,16 +1686,6 @@ REVOKE ALL ON TABLE event FROM PUBLIC;
 REVOKE ALL ON TABLE event FROM enstore;
 GRANT ALL ON TABLE event TO enstore;
 GRANT SELECT ON TABLE event TO enstore_reader;
-
-
---
--- Name: lock_status; Type: ACL; Schema: public; Owner: enstore
---
-
-REVOKE ALL ON TABLE lock_status FROM PUBLIC;
-REVOKE ALL ON TABLE lock_status FROM enstore;
-GRANT ALL ON TABLE lock_status TO enstore;
-GRANT SELECT ON TABLE lock_status TO enstore_reader;
 
 
 --
