@@ -1858,7 +1858,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
         rows = []
 
         for k in m_d:
-            if isinstance(md[k], dict) and m_d[k].has_key(enstore_constants.STATE) and \
+            if isinstance(m_d[k], dict) and m_d[k].has_key(enstore_constants.STATE) and \
                m_d[k][enstore_constants.STATE]:
                 # append the migrators state to its status information
                 # if we are updating the web page faster that receiving the new

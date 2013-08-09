@@ -1,0 +1,196 @@
+
+                          Enstore Configuration Keys
+     _________________________________________________________________
+
+
+Common Keys
+
+   Key Description
+   host server host name
+   hostip server host IP address
+   port server port number
+   logname server name in the log
+   inq_ignore if present the inquisitor will not monitor corresponding server
+   norestart if present inq will not restart corresponding server/mover
+   noupdown 'enstore system' process will not look at the corresponding server
+   when generating the SAAG page, and will not use the information in deciding
+   to turn the ball red
+
+Library Manager Keys
+
+   Key Description
+   lock if specified LM will start in this state. Allowed values:locked,
+   unlocked, ignore, pause, nowrite, noread
+   max_encp_retries maximal number of encp retries for a given LM
+   max_suspect_movers if number of suspect movers on which a given volume
+   failed >= of max_suspect_movers, this volume will be set to NOACCESS state
+   (default value - 3)
+   suspect_volume_expiration_time remove entry from suspect volume list after
+   this period of time (default value - None)
+   min_file_size minimal file size (default value - 0)
+   max_file_size maximal size of the file allowed by this library (default
+   value 2GB - 2kB)
+   blank_error_increment do not set volume to NOACCESS in case of FTT_EBLANK
+   error until the number of erros exceeds
+   max_suspect_movers+blank_error_increment (default value - 5)
+   legal_encp_version minimal encp version number allowed to acess enstore
+   CleanTapeVolumeFamily volume family for cleaning tapes
+   storage_group_limits Minimal amount of drives that can be used by a certain
+   storage group (fair share) when different storage groups compete for tape
+   drives
+
+Mover Keys
+
+   Key Description
+   do_eject eject tape on dismount (default value - 'yes')
+   do_cleaning clean tape drive by the mover request (defaults value - 'yes')
+   mc_device media changer device as declared in the robot
+   min_buffer minimal amount of memory to allocate for buffering when
+   transferring data (default value - 8MB)
+   max_buffer maximal amount of memory to allocate for buffering (defaults
+   value - 64MB)
+   max_rate  maximum  sustained transfer rate for writes. This is used to
+   calculate optimal buffer size
+   device pathname to the UNIX tape device
+   dismount_delay delayed dismount value to use when none specified by the
+   client (default value 60 seconds).Set to negative value to get "infinite"
+   dismount delay
+   mount_delay number of seconds to wait after media changer mount completes,
+   before trying to open device. Default is 15 for FTT driver, 0 for NULL
+   driver
+   max_dismount_delay maximal dismount delay that can be set for this mover
+   (default value - 600 seconds)
+   library library(ies) that this mover serve
+   driver low lewel media driver ('FTTDriver' for tape, 'NullDriver' for null
+   mover)
+   max_consecutive_failures number of any consecutive errors after which the
+   mover goes OFFLINE
+   max_failures  Mover will go OFFLINE if this many transfers fail within
+   failure_interval (see below)
+   failure_interval Interval for above (default value 3600 sec.)
+   send_stats send tape drive statistics to the drivestat Data Base (defaul
+   value - 1, which means "send")
+   type specifies the type of mover ('','Mover','DiskMover')
+   media_type media type used for the mover
+   log_state if set log the state of the mover processes
+   syslog_entry expression to match in the syslog for the low level failure
+   diagnostics
+   restart_on_error restart mover if it went to the ERROR state. Default - do
+   not restart
+   connect_timeout TimeOut for mover connection to encp (default value - 15 s)
+   connect_retries number of connection retries to encp (default value - 4)
+   update_interval interval for the mover to ask LM for the work (default value
+   - 15 s)
+   single_filemark if not 0 write single file mark (Default value - 0 - write 2
+   filemarks)
+   check_written_file if greater than 0, then randomly check files written
+   using this number as the mean (default value:0 - no check)
+   check_first_written_file Reread and check CRC on a first write after a tape
+   mount
+   max_time_in_state maximal time for a mover to be in any transfer state
+   (other than IDLE or ACTIVE) (default - 600 s)
+   max_in_state_cnt  if this counter expires Mover errors out with "Mover
+   stuck..." message. (default - 3)
+   statistics_path path to the statistics file(default - None)
+   compression 0 means no compression. Everything else means use the drive
+   compression (default: None - use the drive compression)
+   get_remaining_from_stats get remaining bytes info from drive
+   blank_error_increment Sometimes ftt returns FTT_EBLANK for not blank tapes.
+   To allow a tape to be in a pool and not to go to NOACCESS. Integer, default
+   5
+
+Media Changer Keys
+
+   Key Description
+   type type of the media changer (name of the media changer class)
+   acls_host host name of STK robot control machine (specific for STK Library)
+   acls_uname user name to access STK robot control program (specific for STK
+   Library)
+   RobotArm robot arm in AML2 robot (specific for AML2 robotic library)
+   IdleTimeHome home robot arm if it is idle and not in a home position after
+   this period of time has expired (default 5 min, specific for AML2 robotic
+   library)
+   IOBoxMedia  specifies  types  of  media  and  addresses  of IO box for
+   importing/exporting tapes into the robot (specific for AML2 robotic library)
+   DriveCleanTime if present, specifes the type of media, time until cleaning
+   tape gets dismounted and number of cleaning cycles to clean a tape drive
+   DriveCleanTime if present, specifes the maximal number of simultaneous
+   requests to robot. Integer, default 7
+
+Volume Clerk Keys
+
+   Key Description
+   max_noaccess_cnt if number of volumes consecutively set to NOACCES reaches
+   this number, the corresponding library will be paused (default - 2)
+
+File Clerk Keys
+
+   Key                       Description
+   brand brand for bit file id to distinguish between systems
+
+Info Server Keys
+
+    Key        Description
+   dbhost enstore database host
+   dbname enstore data base name
+
+Database Keys
+
+    Key               Description
+   db_dir  enstore database directory
+   jou_dir enstore database journal directory
+   db_host enstore database host
+   dbname  enstore database name
+   db_port enstore database port
+
+Accounting Server Keys
+
+    Key             Description
+   dbhost accounting data base host machine
+   dbname accounting data base name
+
+Drivestat Server Keys
+
+    Key         Description
+   dbhost drivestat database host
+   dbport drivestat database port
+   dbname drivestat data base name
+
+Inquisitor Keys
+
+   Key Description
+   alive_rcv_timeout amount of time to wait when doing a tcp transfer
+   alive_retries number of times to retry a failed tcp transfer
+   default_alive_interval number of seconds expected between alive messages
+   from the event_relay
+   default_hung_interval number of seconds after which if no alive message is
+   received, the server is marked as dead
+   html_file directory location of the html web area
+   http_log_file_path path to log files in the as used in a url
+   max_encp_lines maximum number of encps reported on the encp history page
+   node_write_check set an alarm if there are writes in the library manager
+   queue (from these nodes) and there are no active transfers from the nodes
+   refresh automatic refresh rate for the web pages
+   user_log_dirs dictionary specifying additional links that should be added to
+   the log file web page under user log dirs
+   www_host url description of the web host
+
+Alarm Server Keys
+
+   Key Description
+   alarm_actions dictionary describing actions to be taken when the specified
+   alarms are received. the format is as follows - [severity_string:[[action1,
+   action_parameters, action_parameters], ...], ...}.supported actions are -
+   send email; params = [action_name, 1|*, optional_params...]; if 1, only send
+   mail the first time the alarm is seen, * - always send mail when get this
+   alarm or add the alarm to the web page only
+
+System Keys
+
+   Key Description
+   allowed_down dictionary defining how many times a server is allowed down
+   before it is marked with a red ball by the 'enstore system' command. each
+   server has a list associated with it that has the followinw format - [number
+   of consecutive times when checked and no alive message rcvd, timeout]
+
+   Last modified: Mon Nov 20 09:08:43 CST 2006
