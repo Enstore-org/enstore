@@ -5,7 +5,7 @@
 ###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 3.2.2
+Version: 3.4.0
 Release: 0
 License: GPL
 Group: System Environment/Base
@@ -15,7 +15,8 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: postgresql-libs, mt-st 
+Requires: postgresql92, postgresql92-contrib, postgresql92-server,
+postgresql92, mt-st 
 #qpid-cpp-client-ssl, qpid-cpp-server-ssl, python-qpid-qmf,qpid-qmf,qpid-cpp-server,python-qpid,qpid-tools, qpid-cpp-client
 %global _missing_build_ids_terminate_build 0
 %define debug_package %{nil}
