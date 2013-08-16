@@ -15,8 +15,8 @@ AutoReqProv: no
 AutoProv: no
 AutoReq: no
 Prefix: opt/enstore
-Requires: postgresql92, postgresql92-contrib, postgresql92-server, postgresql92, mt-st 
-#qpid-cpp-client-ssl, qpid-cpp-server-ssl, python-qpid-qmf,qpid-qmf,qpid-cpp-server,python-qpid,qpid-tools, qpid-cpp-client
+Requires: mt-st 
+
 %global _missing_build_ids_terminate_build 0
 %define debug_package %{nil}
 %global __arch_install_post %{nil}
@@ -166,12 +166,12 @@ echo "The original is saved into /etc/sudoers.enstore_save"
 if [ ! -f /etc/sudoers.enstore_save ]; then
     cp /etc/sudoers /etc/sudoers.enstore_save
 fi
-# we do not want tty, but it may be set by default
-sed -e /requiretty/{d} /etc/sudoers.enstore_save > /etc/sudoers.e
+# we do not want tty, but it may be set by default and preserve PATH
+sed -e /requiretty/{d} -e /secure_path/{d} /etc/sudoers.enstore_save > /etc/sudoers.e
 chmod 740 /etc/sudoers.e
 # Need to add env_keep because in RH5 the sudoers was modified to
 #reset all environment 
-echo 'Defaults env_keep =	"PATH PYTHON_DIR PYTHONPATH PYTHONINC PYTHONLIB \' >> /etc/sudoers.e
+echo 'Defaults env_keep +=	"PATH PYTHON_DIR PYTHONPATH PYTHONINC PYTHONLIB \' >> /etc/sudoers.e
 echo '                        	ENSTORE_CONFIG_HOST ENSTORE_CONFIG_PORT ENSTORE_DIR ENSTORE_MAIL \' >> /etc/sudoers.e
 echo '                        	FTT_DIR	KRBTKFILE"' >> /etc/sudoers.e
 echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
@@ -226,6 +226,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Mon Aug 12 2013 <moibenko@fnal.gov> -
+- new version 3.4.0-0 
 * Mon Feb 11 2013 <moibenko@fnal.gov> -
 - new version 3.2.2-0
 * Fri Oct 26 2012  <moibenko@fnal.gov> -
