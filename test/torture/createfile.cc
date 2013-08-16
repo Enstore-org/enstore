@@ -16,23 +16,23 @@ static const long long GB = KB * MB;
 static const long long TB = KB * GB;
 static const int ichunk=MB/sizeof(double);
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) { 
 	if (argc < 3) {
 		cerr<<"Enter size and file name"<<endl;
 		return 1;
         }
 	float fsize     = atof(argv[1]);
 	long long isize = (long long)fsize*MB;
-
+	
 	string name     = argv[2];
 
 	long long  total_size = 0;
 	ofstream file(name.c_str(), ios::out | ios::binary);
 	long long pos;
 	srand(time(NULL));
-        double*  buffer = new double[ichunk];
-	while(total_size<isize) {
-		for (int i=0;i<ichunk;i++) {
+	while(total_size<isize) { 
+		double*  buffer = new double[ichunk];
+		for (int i=0;i<ichunk;i++) { 
 			double a = getNum(1000.);
 			buffer[i] = a;
 		}
@@ -40,10 +40,10 @@ int main(int argc, char* argv[]) {
 		file.seekp(pos);
 		file.write((char*)buffer, ichunk*sizeof(double));
 		pos=file.tellp();
+		delete [] buffer;
 		total_size+=MB;
 	}
 	file.close();
-        delete [] buffer;
 	return 0;
 }
 

@@ -35,14 +35,6 @@ Megred FILE_AGGREGATION_V2 into the trunk
 Added description of of SFA components 
 
 ./src
-========== callback.py ====================================================================================
-
-old callback.py restricts the message length to 8 digit number.
-Longer messages fail to get received.
-The lengh of the message was incresed to 12 digit number.
-For backward compatibility the PROTOXXX message perfix was introduced.
-bz 1161, rb http://uqbar.fnal.gov/reviews/r/550/
-
 ========== checkdb.py ====================================================================================
 
 Megred FILE_AGGREGATION_V2 into the trunk 
@@ -148,19 +140,10 @@ rb526: remove cache/messaging/client2 module references
 Megred FILE_AGGREGATION_V2 into the trunk 
 
 ========== info_client.py ====================================================================================
-fix issue intriduced in previous patch : there was residual reference to
-class attributes that were removed. Also handle "enstore info --file <PNFSID>" it
-was failing because chimera pnfs id was recognized as pnfs id.
-http://uqbar/reviews/r/546/
-
 
 Megred FILE_AGGREGATION_V2 into the trunk 
 
 ========== info_server.py ====================================================================================
-fix issue intriduced in previous patch : there was residual reference to
-class attributes that were removed. Also handle "enstore info --file <PNFSID>" it
-was failing because chimera pnfs id was recognized as pnfs id.
-http://uqbar/reviews/r/546/
 
 serialize 'enstore info --query' calls. remove calling constructors FileClerkInfoMethods, VolumeClerkInfoMethods constructors from info_server.Server constructor. http://uqbar/reviews/r/545/ 
 

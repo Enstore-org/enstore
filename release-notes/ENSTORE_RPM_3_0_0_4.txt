@@ -63,9 +63,6 @@ branches: 1.7.2; change head back to v1.5, package based migration will be in se
 package based migration. NOTE: Switching packages fails on the first pass and completes on second. 
 
 ========== mover.py ====================================================================================
-BUG FIX: gracefully reject cache file if it can not be staged.
-If cache file can not be staged due to the correspoding aggregated tape file unavailability,
-return the reason to the client and go to the idle state. (bz 1260).
 
 BUG FIX: do not set disk mover into HAVE_BOUND state (bz 1253 (partial)). 
 Set disk mover to idle, not HAVE_BOUND after completion of a file transfer. 
@@ -85,14 +82,6 @@ Add SFA aggregation rates to SFA statistic plots (bz 1252)
 ========== sfa_plotter_module.py ====================================================================================
 
 Add SFA aggregation rates to SFA statistic plots (bz 1252) 
-
-========== rawUDP.py ====================================================================================
-
-Make request processing more robust against wrong formats. (bz 1256).
-
-========== rawUDP_p.py ====================================================================================
-
-Make request processing more robust against wrong formats. (bz 1256).
 
 ./src/cache/servers
 ========== migrator.py ====================================================================================
