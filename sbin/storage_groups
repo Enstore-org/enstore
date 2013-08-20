@@ -1,9 +1,0 @@
-#! /bin/sh
-
-#Note: $$ is the current pid.  This should help with uniquenes.
-file=/tmp/all_storage_groups_$$
-
-enstore info --query "select distinct storage_group from volume;" 2> /dev/null | sed '1,2d' | sort | uniq > $file
-
-cat $file
-rm $file

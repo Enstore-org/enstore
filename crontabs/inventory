@@ -1,1 +1,0 @@
-50 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p offline_inventory nice -n 20 python $ENSTORE_DIR/src/inventory.py > /dev/null 2> /dev/null

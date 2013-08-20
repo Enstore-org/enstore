@@ -1,8 +1,0 @@
-# path to qpid python packages installed externally, e.g. qpid and mllib, qmf and qmf2 and probably more
-#
-# copy this file into Python/lib/python2.6/site-packages/extra.pth
-#/opt/qpid-0.8/lib/python2.6/site-packages
-#
-# now it is in 
-# /opt/enstore_cache/qpid/lib/python2.6/site-packages
-../../../../qpid/lib/python2.6/site-packages

@@ -1,3 +1,0 @@
-0 4 15 * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p log-stash log-stash > /dev/null 2> /dev/null
-01 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p traceback_check $ENSTORE_DIR/sbin/check_for_traceback > /dev/null 2> /dev/null
-20 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p rdist-log rdist-log  > /dev/null 2> /dev/null

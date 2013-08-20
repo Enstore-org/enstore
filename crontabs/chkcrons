@@ -1,1 +1,0 @@
-50 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p chkcrons nice -n 20 chkcrons.py  >/dev/null 2>/dev/null

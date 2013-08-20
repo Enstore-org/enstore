@@ -1,1 +1,0 @@
-35 15 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p non_production_files non_production_files  > /dev/null 2>&1

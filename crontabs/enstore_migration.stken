@@ -1,1 +1,0 @@
-30 10,12,16,22 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/isa-tools/bin/migration-summary > /diska/tape-inventory/MIGRATION_STATUS 2> /dev/null

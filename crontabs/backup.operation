@@ -1,3 +1,0 @@
-0 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -l -p operation_backup db_backup.py operation> /dev/null 2>/dev/null
-
-#0 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/ecron -p operationdb_backup -l pg_dump -h stkensrv0 -p 8800 -F c -f /diska/pgdb-backup/operation.backup.`date \+\%H` operation > /dev/null 2> /dev/null

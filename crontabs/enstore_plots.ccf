@@ -1,6 +1,0 @@
-##
-30 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p write-tabs "sh -c 'cd /home/enstore/write_tabs; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; $ENSTORE_DIR/sbin/write_tabs.py'"  > /dev/null 2> /dev/null
-
-##
-30 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p xfer-stat-daily "sh -c 'cd /home/enstore/xfer_stat; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; $ENSTORE_DIR/sbin/xfer_stats_daily.py'"  > /dev/null 2> /dev/null
-00 2 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p xfer-stat-monthly "sh -c 'cd /home/enstore/xfer_stat; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; $ENSTORE_DIR/sbin/xfer_stats_monthly.py'"  > /dev/null 2> /dev/null

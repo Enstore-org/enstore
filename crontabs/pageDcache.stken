@@ -1,9 +1,0 @@
-#25 * * * * enstore /home/enstore/enstore/sbin/ecron -p readDcache -setup gsspy_krb -setup kftp /home/enstore/enstore/sbin/readDcache > /dev/null 2> /dev/null
-10 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheDccp /home/enstore/enstore/sbin/pageDcache dccp fndca > /dev/null 2> /dev/null
-15 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheGridftp /home/enstore/enstore/sbin/pageDcache gridftp fndca > /dev/null 2> /dev/null
-#20 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheSRM /home/enstore/enstore/sbin/pageDcache srm fndca > /dev/null 2> /dev/null
-#25 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheKftp /home/enstore/enstore/sbin/pageDcache kftp fndca > /dev/null 2> /dev/null
-#0-59/10 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheKftp /home/enstore/enstore/sbin/pageDcache kftp fndca > /dev/null 2> /dev/null
-#30 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheCmsDccp /home/enstore/enstore/sbin/pageDcache dccp cms > /dev/null 2> /dev/null
-#35 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheCmsGridftp /home/enstore/enstore/sbin/pageDcache gridftp cms > /dev/null 2> /dev/null
-#40 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheCmsSRM /home/enstore/enstore/sbin/pageDcache srm cms > /dev/null 2> /dev/null

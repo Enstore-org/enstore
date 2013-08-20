@@ -1,1 +1,0 @@
-cat $2| while read tape; do echo $tape; $ENSTORE_DIR/test/CDF_migration/CDF_migrate$1 $tape;done

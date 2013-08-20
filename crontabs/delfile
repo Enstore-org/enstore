@@ -1,1 +1,0 @@
-0-55/5 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -q -p delfile $ENSTORE_DIR/src/delfile_chimera.py >/dev/null 2>/dev/null

@@ -1,7 +1,0 @@
-i pkginfo
-!default 0755 root bin
-d none volume_import=volume_import ? ? ?
-d none /etc
-d none /etc/profile.d
-f none /etc/profile.d/encp.sh=../../etc/profile.d/encp.sh
-f none /etc/profile.d/encp.csh=../../etc/profile.d/encp.csh

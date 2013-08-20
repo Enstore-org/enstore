@@ -1,5 +1,0 @@
-#!/bin/sh
-. /usr/local/etc/setups.sh
-setup pnfs
-mdb status 2>/dev/null | grep  " $1 " | grep -c enabled
-exit

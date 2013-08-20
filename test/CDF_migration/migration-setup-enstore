@@ -1,9 +1,0 @@
-# source me
-
-set +u
-. /usr/local/etc/setups.sh
-setup enstore
-ENSTORE_CONFIG_HOST=cdfensrv2.fnal.gov
-if [ -z "${ENSTORE_DIR:-}" ]; then echo `date` ERROR: can not setup enstore; exit 1; fi
-set -u
-

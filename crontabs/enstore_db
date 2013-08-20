@@ -1,2 +1,0 @@
-10 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p backup enstore backup > /dev/null 2> /dev/null
-30 23 28-31 * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p historic_bytes_on_tape $ENSTORE_DIR/sbin/historic_bytes_on_tape.sh > /dev/null 2>&1
