@@ -409,7 +409,7 @@ SET default_tablespace = '';
 SET default_with_oids = true;
 
 --
--- Name: qa; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: qa; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE qa (
@@ -540,7 +540,7 @@ $$;
 ALTER FUNCTION public.swap_package(old_bfid character varying, new_bfid character varying) OWNER TO enstore;
 
 --
--- Name: tc; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: tc; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE tc (
@@ -767,7 +767,7 @@ ALTER FUNCTION public.write_protect_status(character varying) OWNER TO enstore;
 SET default_with_oids = false;
 
 --
--- Name: active_file_copying; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: active_file_copying; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE active_file_copying (
@@ -780,7 +780,7 @@ CREATE TABLE active_file_copying (
 ALTER TABLE public.active_file_copying OWNER TO enstore;
 
 --
--- Name: archive_statuses; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: archive_statuses; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE archive_statuses (
@@ -794,7 +794,7 @@ ALTER TABLE public.archive_statuses OWNER TO enstore;
 SET default_with_oids = true;
 
 --
--- Name: bad_file; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: bad_file; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE bad_file (
@@ -808,7 +808,7 @@ ALTER TABLE public.bad_file OWNER TO enstore;
 SET default_with_oids = false;
 
 --
--- Name: cache_statuses; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: cache_statuses; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE cache_statuses (
@@ -820,7 +820,7 @@ CREATE TABLE cache_statuses (
 ALTER TABLE public.cache_statuses OWNER TO enstore;
 
 --
--- Name: cached_files; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: cached_files; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE cached_files (
@@ -833,7 +833,7 @@ ALTER TABLE public.cached_files OWNER TO enstore;
 SET default_with_oids = true;
 
 --
--- Name: volume; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE volume (
@@ -889,7 +889,7 @@ CREATE VIEW cms_volume_with_only_deleted_files AS
 ALTER TABLE public.cms_volume_with_only_deleted_files OWNER TO enstore;
 
 --
--- Name: file; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE file (
@@ -923,7 +923,7 @@ CREATE TABLE file (
 ALTER TABLE public.file OWNER TO enstore;
 
 --
--- Name: file_copies_map; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_copies_map; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE file_copies_map (
@@ -967,7 +967,7 @@ ALTER TABLE public.file_info OWNER TO enstore;
 SET default_with_oids = false;
 
 --
--- Name: files_in_transition; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: files_in_transition; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE files_in_transition (
@@ -978,7 +978,7 @@ CREATE TABLE files_in_transition (
 ALTER TABLE public.files_in_transition OWNER TO enstore;
 
 --
--- Name: historic_tape_bytes; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: historic_tape_bytes; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE historic_tape_bytes (
@@ -998,7 +998,7 @@ ALTER TABLE public.historic_tape_bytes OWNER TO enstore;
 SET default_with_oids = true;
 
 --
--- Name: media_capacity; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: media_capacity; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE media_capacity (
@@ -1010,7 +1010,7 @@ CREATE TABLE media_capacity (
 ALTER TABLE public.media_capacity OWNER TO enstore;
 
 --
--- Name: migration; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE migration (
@@ -1027,7 +1027,7 @@ CREATE TABLE migration (
 ALTER TABLE public.migration OWNER TO enstore;
 
 --
--- Name: migration_history; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration_history; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE migration_history (
@@ -1043,7 +1043,7 @@ CREATE TABLE migration_history (
 ALTER TABLE public.migration_history OWNER TO enstore;
 
 --
--- Name: no_flipping_file_family; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: no_flipping_file_family; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE no_flipping_file_family (
@@ -1055,7 +1055,7 @@ CREATE TABLE no_flipping_file_family (
 ALTER TABLE public.no_flipping_file_family OWNER TO enstore;
 
 --
--- Name: no_flipping_storage_group; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: no_flipping_storage_group; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE no_flipping_storage_group (
@@ -1066,7 +1066,7 @@ CREATE TABLE no_flipping_storage_group (
 ALTER TABLE public.no_flipping_storage_group OWNER TO enstore;
 
 --
--- Name: option; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: option; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE option (
@@ -1078,7 +1078,7 @@ CREATE TABLE option (
 ALTER TABLE public.option OWNER TO enstore;
 
 --
--- Name: quota; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: quota; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE quota (
@@ -1096,7 +1096,7 @@ ALTER TABLE public.quota OWNER TO enstore;
 SET default_with_oids = false;
 
 --
--- Name: quotas; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: quotas; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE quotas (
@@ -1127,7 +1127,7 @@ ALTER TABLE public.remaining_blanks OWNER TO enstore;
 SET default_with_oids = true;
 
 --
--- Name: sg_count; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: sg_count; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE sg_count (
@@ -1140,7 +1140,7 @@ CREATE TABLE sg_count (
 ALTER TABLE public.sg_count OWNER TO enstore;
 
 --
--- Name: state; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE state (
@@ -1154,7 +1154,7 @@ CREATE TABLE state (
 ALTER TABLE public.state OWNER TO enstore;
 
 --
--- Name: state_type; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state_type; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE state_type (
@@ -1182,7 +1182,7 @@ ALTER TABLE public.state_type_seq OWNER TO enstore;
 SET default_with_oids = false;
 
 --
--- Name: volume_audit; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_audit; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE volume_audit (
@@ -1199,7 +1199,7 @@ CREATE TABLE volume_audit (
 ALTER TABLE public.volume_audit OWNER TO enstore;
 
 --
--- Name: volume_audit_counter; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_audit_counter; Type: TABLE; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE TABLE volume_audit_counter (
@@ -1293,7 +1293,7 @@ ALTER TABLE volume_audit ALTER COLUMN id SET DEFAULT nextval('volume_audit_id_se
 
 
 --
--- Name: active_file_copying_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: active_file_copying_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY active_file_copying
@@ -1301,7 +1301,7 @@ ALTER TABLE ONLY active_file_copying
 
 
 --
--- Name: file_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY file
@@ -1309,7 +1309,7 @@ ALTER TABLE ONLY file
 
 
 --
--- Name: media_capacity_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: media_capacity_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY media_capacity
@@ -1317,7 +1317,7 @@ ALTER TABLE ONLY media_capacity
 
 
 --
--- Name: migration_history_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration_history_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY migration_history
@@ -1325,7 +1325,7 @@ ALTER TABLE ONLY migration_history
 
 
 --
--- Name: migration_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY migration
@@ -1333,7 +1333,7 @@ ALTER TABLE ONLY migration
 
 
 --
--- Name: pk_archive_statuses; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: pk_archive_statuses; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY archive_statuses
@@ -1341,7 +1341,7 @@ ALTER TABLE ONLY archive_statuses
 
 
 --
--- Name: pk_cache_statuses; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: pk_cache_statuses; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY cache_statuses
@@ -1349,7 +1349,7 @@ ALTER TABLE ONLY cache_statuses
 
 
 --
--- Name: pk_cached_files; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: pk_cached_files; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY cached_files
@@ -1357,7 +1357,7 @@ ALTER TABLE ONLY cached_files
 
 
 --
--- Name: pk_files_in_transition; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: pk_files_in_transition; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY files_in_transition
@@ -1365,7 +1365,7 @@ ALTER TABLE ONLY files_in_transition
 
 
 --
--- Name: pk_historic_tape_bytes; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: pk_historic_tape_bytes; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY historic_tape_bytes
@@ -1373,7 +1373,7 @@ ALTER TABLE ONLY historic_tape_bytes
 
 
 --
--- Name: quota_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: quota_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY quota
@@ -1381,7 +1381,7 @@ ALTER TABLE ONLY quota
 
 
 --
--- Name: quotas_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: quotas_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY quotas
@@ -1389,7 +1389,7 @@ ALTER TABLE ONLY quotas
 
 
 --
--- Name: sg_count_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: sg_count_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY sg_count
@@ -1397,7 +1397,7 @@ ALTER TABLE ONLY sg_count
 
 
 --
--- Name: state_type_name_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state_type_name_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY state_type
@@ -1405,7 +1405,7 @@ ALTER TABLE ONLY state_type
 
 
 --
--- Name: state_type_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state_type_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY state_type
@@ -1413,7 +1413,7 @@ ALTER TABLE ONLY state_type
 
 
 --
--- Name: volume_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY volume_audit
@@ -1421,7 +1421,7 @@ ALTER TABLE ONLY volume_audit
 
 
 --
--- Name: volume_label_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_label_key; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY volume
@@ -1429,7 +1429,7 @@ ALTER TABLE ONLY volume
 
 
 --
--- Name: volume_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace:
 --
 
 ALTER TABLE ONLY volume
@@ -1437,308 +1437,308 @@ ALTER TABLE ONLY volume
 
 
 --
--- Name: archive_status_fk_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: archive_status_fk_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX archive_status_fk_idx ON file USING btree (archive_status);
 
 
 --
--- Name: bad_file_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: bad_file_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX bad_file_bfid_idx ON bad_file USING btree (bfid);
 
 
 --
--- Name: cache_location_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: cache_location_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX cache_location_idx ON file USING btree (cache_location);
 
 
 --
--- Name: cache_status_fk_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: cache_status_fk_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX cache_status_fk_idx ON file USING btree (cache_status);
 
 
 --
--- Name: file_copies_map_alt_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_copies_map_alt_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_copies_map_alt_bfid_idx ON file_copies_map USING btree (alt_bfid);
 
 
 --
--- Name: file_copies_map_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_copies_map_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_copies_map_bfid_idx ON file_copies_map USING btree (bfid);
 
 
 --
--- Name: file_crc_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_crc_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_crc_idx ON file USING btree (crc);
 
 
 --
--- Name: file_deleted_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_deleted_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_deleted_idx ON file USING btree (deleted);
 
 
 --
--- Name: file_family_width_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_family_width_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_family_width_idx ON file USING btree (file_family_width);
 
 
 --
--- Name: file_location_cookie_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_location_cookie_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_location_cookie_idx ON file USING btree (location_cookie);
 
 
 --
--- Name: file_pnfs_id_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_pnfs_id_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_pnfs_id_idx ON file USING btree (pnfs_id);
 
 
 --
--- Name: file_pnfs_path_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_pnfs_path_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_pnfs_path_idx ON file USING btree (pnfs_path);
 
 
 --
--- Name: file_sanity_crc_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_sanity_crc_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_sanity_crc_idx ON file USING btree (sanity_crc);
 
 
 --
--- Name: file_sanity_size_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_sanity_size_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_sanity_size_idx ON file USING btree (sanity_size);
 
 
 --
--- Name: file_size_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_size_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_size_idx ON file USING btree (size);
 
 
 --
--- Name: file_volume_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: file_volume_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX file_volume_idx ON file USING btree (volume);
 
 
 --
--- Name: migration_dst_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration_dst_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX migration_dst_bfid_idx ON migration USING btree (dst_bfid);
 
 
 --
--- Name: migration_history_dst_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration_history_dst_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX migration_history_dst_idx ON migration_history USING btree (dst);
 
 
 --
--- Name: migration_history_src_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration_history_src_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX migration_history_src_idx ON migration_history USING btree (src);
 
 
 --
--- Name: migration_src_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: migration_src_bfid_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX migration_src_bfid_idx ON migration USING btree (src_bfid);
 
 
 --
--- Name: original_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: original_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX original_library_idx ON file USING btree (original_library);
 
 
 --
--- Name: package_id_fk_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: package_id_fk_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX package_id_fk_idx ON file USING btree (package_id);
 
 
 --
--- Name: quota_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: quota_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX quota_library_idx ON quota USING btree (library);
 
 
 --
--- Name: quota_storage_group_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: quota_storage_group_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX quota_storage_group_idx ON quota USING btree (storage_group);
 
 
 --
--- Name: state_time_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state_time_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX state_time_idx ON state USING btree ("time");
 
 
 --
--- Name: state_type_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state_type_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX state_type_idx ON state USING btree (type);
 
 
 --
--- Name: state_value_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state_value_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX state_value_idx ON state USING btree (value);
 
 
 --
--- Name: state_volume_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: state_volume_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX state_volume_idx ON state USING btree (volume);
 
 
 --
--- Name: volume_declared_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_declared_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_declared_idx ON volume USING btree (declared);
 
 
 --
--- Name: volume_eod_cookie_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_eod_cookie_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_eod_cookie_idx ON volume USING btree (eod_cookie);
 
 
 --
--- Name: volume_file_family_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_file_family_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_file_family_idx ON volume USING btree (file_family);
 
 
 --
--- Name: volume_label_key_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_label_key_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_label_key_idx ON volume USING btree (label);
 
 
 --
--- Name: volume_last_access_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_last_access_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_last_access_idx ON volume USING btree (last_access);
 
 
 --
--- Name: volume_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_library_idx ON volume USING btree (library);
 
 
 --
--- Name: volume_media_type_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_media_type_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_media_type_idx ON volume USING btree (media_type);
 
 
 --
--- Name: volume_modification_time_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_modification_time_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_modification_time_idx ON volume USING btree (modification_time);
 
 
 --
--- Name: volume_remaining_bytes_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_remaining_bytes_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_remaining_bytes_idx ON volume USING btree (remaining_bytes);
 
 
 --
--- Name: volume_storage_group_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_storage_group_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_storage_group_idx ON volume USING btree (storage_group);
 
 
 --
--- Name: volume_system_inhibit_0_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_system_inhibit_0_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_system_inhibit_0_idx ON volume USING btree (system_inhibit_0);
 
 
 --
--- Name: volume_system_inhibit_1_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_system_inhibit_1_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_system_inhibit_1_idx ON volume USING btree (system_inhibit_1);
 
 
 --
--- Name: volume_user_inhibit_0_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_user_inhibit_0_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_user_inhibit_0_idx ON volume USING btree (user_inhibit_0);
 
 
 --
--- Name: volume_user_inhibit_1_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_user_inhibit_1_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_user_inhibit_1_idx ON volume USING btree (user_inhibit_1);
 
 
 --
--- Name: volume_wrapper_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_wrapper_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_wrapper_idx ON volume USING btree (wrapper);
 
 
 --
--- Name: volume_write_protected_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: volume_write_protected_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace:
 --
 
 CREATE INDEX volume_write_protected_idx ON volume USING btree (write_protected);
@@ -2207,3 +2207,37 @@ GRANT SELECT ON TABLE write_protection_audit TO enstore_reader;
 -- PostgreSQL database dump complete
 --
 
+INSERT into state_type (name) select 'system_inhibit_0' as name  where not exists (select state_type.name from state_type where state_type.name='system_inhibit_0');
+INSERT into state_type (name) select 'system_inhibit_1' as name  where not exists (select state_type.name from state_type where state_type.name='system_inhibit_1');
+INSERT into state_type (name) select 'user_inhibit_1'   as name  where not exists (select state_type.name from state_type where state_type.name='user_inhibit_0');
+INSERT into state_type (name) select 'user_inhibit_1'   as name  where not exists (select state_type.name from state_type where state_type.name='user_inhibit_1');
+INSERT into state_type (name) select 'write_protect'    as name  where not exists (select state_type.name from state_type where state_type.name='write_protect');
+INSERT into state_type (name) select 'other'            as name  where not exists (select state_type.name from state_type where state_type.name='other');
+INSERT into state_type (name) select 'modified'         as name  where not exists (select state_type.name from state_type where state_type.name='modified');
+INSERT into state_type (name) select 'set_comment'      as name  where not exists (select state_type.name from state_type where state_type.name='set_comment');
+INSERT into state_type (name) select 'new_library'      as name  where not exists (select state_type.name from state_type where state_type.name='new_library');
+
+INSERT into media_capacity select '9840',        21474836480 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9840'     and  media_capacity.capacity=21474836480);
+INSERT into media_capacity select '9940',        64424509440 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940'     and  media_capacity.capacity=64424509440);
+INSERT into media_capacity select '9940B',      214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='9940B'    and  media_capacity.capacity=214748364800);
+INSERT into media_capacity select 'DECDLT',      21474836480 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='DECDLT'   and  media_capacity.capacity=21474836480);
+INSERT into media_capacity select 'null',       214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='null'     and  media_capacity.capacity=214748364800);
+INSERT into media_capacity select 'LTO2',       214748364800 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO2'     and  media_capacity.capacity=214748364800);
+INSERT into media_capacity select 'LTO3',       429496729600 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO3'     and  media_capacity.capacity=429496729600);
+INSERT into media_capacity select 'LTO4',       858993459200 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='LTO4'     and  media_capacity.capacity=858993459200);
+INSERT into media_capacity select 'T10000T2',  5401000000000 where not exists (select media_capacity.type, media_capacity.capacity from media_capacity where media_capacity.type='T10000T2' and  media_capacity.capacity=5401000000000);
+
+INSERT into cache_statuses select 'CREATED','file was written to cache' where not exists (select status, explanation from cache_statuses where status='CREATED' and explanation='file was written to cache');
+INSERT into cache_statuses select 'PURGING','file is being purged' where not exists (select status, explanation from cache_statuses where status='PURGING' and explanation='file is being purged');
+INSERT into cache_statuses select 'PURGED','file wad deleted in cache' where not exists (select status, explanation from cache_statuses where status='PURGED' and explanation='file was deleted in cache');
+INSERT into cache_statuses select 'STAGING','file is being staged to cache from tape' where not exists (select status, explanation from cache_statuses where status='STAGING' and explanation='file is being staged to cache from tape');
+INSERT into cache_statuses select 'CACHED','file is in cache' where not exists (select status, explanation from cache_statuses where status='CACHED' and explanation='file is in cache');
+INSERT into cache_statuses select 'STAGING_REQUESTED','staging of file has been requested' where not exists (select status, explanation from cache_statuses where status='STAGING_REQUESTED' and explanation='staging of file has been requested');
+INSERT into cache_statuses select 'PURGING_REQUESTED','purging of file has been requested' where not exists (select status, explanation from cache_statuses where status='PURGING_REQUESTED' and explanation='purging of file has been requested');
+INSERT into cache_statuses select 'STAGED','file is in cache' where not exists (select status, explanation from cache_statuses where status='STAGED' and explanation='file is in cache');
+INSERT into cache_statuses select 'FAILED','staging has failed' where not exists (select status, explanation from cache_statuses where status='FAILED' and explanation='staging has failed');
+
+INSERT into archive_statuses select 'ARCHIVED','file was written to tape' where not exists (select status, explanation from archive_statuses where status='ARCHIVED' and explanation='file was written to tape');
+INSERT into archive_statuses select 'ARCHIVING','file is being written to tape. This state is useful for the recovery from failure' where not exists (select status, explanation from archive_statuses where status='ARCHIVING' and explanation='file is being written to tape. This state is useful for the recovery from failure');
+INSERT into archive_statuses select 'FAILED','archival has failed' where not exists (select status, explanation from archive_statuses where status='FAILED' and explanation='archival has failed');
+INSERT into option select 'quota','disabled'  where not exists (select key, value from option where key='quota' and value='disabled');

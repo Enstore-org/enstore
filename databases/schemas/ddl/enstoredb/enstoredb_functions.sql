@@ -662,5 +662,4 @@ INSERT into cache_statuses select 'FAILED','staging has failed' where not exists
 INSERT into archive_statuses select 'ARCHIVED','file was written to tape' where not exists (select status, explanation from archive_statuses where status='ARCHIVED' and explanation='file was written to tape');
 INSERT into archive_statuses select 'ARCHIVING','file is being written to tape. This state is useful for the recovery from failure' where not exists (select status, explanation from archive_statuses where status='ARCHIVING' and explanation='file is being written to tape. This state is useful for the recovery from failure');
 INSERT into archive_statuses select 'FAILED','archival has failed' where not exists (select status, explanation from archive_statuses where status='FAILED' and explanation='archival has failed');
-
-
+INSERT into option select 'quota','disabled'  where not exists (select key, value from option where key='quota' and value='disabled');
