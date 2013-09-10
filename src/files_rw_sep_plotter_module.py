@@ -7,14 +7,14 @@
 ###############################################################################
 
 """
-Plot drive usage hours versus date, separately for each unique drive type and
-storage group combination.
+Plot number of files read and written per mount versus date, separately for
+each unique drive type and storage group combination.
 
 .. note::
 
    - This module is referenced by the :mod:`plotter_main` module.
    - This module has code in common with the
-     :mod:`drive_hours_plotter_module` module.
+     :mod:`files_rw_plotter_module` module.
 """
 
 # Python imports
@@ -28,16 +28,18 @@ import enstore_constants
 import enstore_plotter_module
 import histogram
 
-WEB_SUB_DIRECTORY = enstore_constants.DRIVE_HOURS_SEP_PLOTS_SUBDIR
+WEB_SUB_DIRECTORY = enstore_constants.FILES_RW_SEP_PLOTS_SUBDIR
 """Subdirectory in which to write plots. This constant is also referenced by
 the :mod:`enstore_make_plot_page` module."""
 
 TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
 """PostgreSQL condition for the period of time for which to plot."""
 
-class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
-    """Plot drive usage hours versus date, separately for each unique drive
-    type and storage group combination."""
+class FilesRWSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
+    """Plot number of files read and written per mount versus date, separately
+    for each unique drive type and storage group combination."""
+
+    plot_accumulative = False
 
     def book(self, frame):
         """
@@ -78,65 +80,34 @@ class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                                      )
 
         # Read from database
-        db_query = ("select * from tape_mounts where "
-                    "start notnull and finish notnull "
-                    "and storage_group notnull "
-                    "and start > {0} "
-                    "and state in ('M','D') "
-                    "order by start asc").format(TIME_CONDITION)
+        db_query = ("select type as drive, storage_group, "
+                    "date_trunc('day', finish) as date, "
+                    "sum(reads)::float/count(state) as reads_per_dismount, "
+                    "sum(writes)::float/count(state) as writes_per_dismount, "
+                    "(sum(reads)+sum(writes))::float/count(state) "
+                    " as reads_and_writes_per_dismount "
+                    "from tape_mounts where "
+                    "storage_group notnull and finish notnull "
+                    "and finish > {0} and state='D' "
+                    "group by drive, storage_group, date "
+                    "order by drive, storage_group, date"
+                    ).format(TIME_CONDITION)
         res = db.query_dictresult(db_query)
 
-        # Populate mounts
-        mounts = {}
+        # Restructure data into nested dict
+        counts = {}
         for row in res:
-
-            start = time.strptime(row.get('start'), '%Y-%m-%d %H:%M:%S')
-            start = time.mktime(start)
-            finish = time.strptime(row.get('finish'), '%Y-%m-%d %H:%M:%S')
-            finish = time.mktime(finish)
-
-            t = row.get('type')
-            label = row.get('volume')
-            sg = row.get('storage_group')
-            if not sg:
-                continue
-
-            state = row.get('state')
-            if state == 'M':
-                if t not in mounts:
-                    mounts[t] = {}
-                if sg not in mounts[t]:
-                    mounts[t][sg] = {}
-                if label not in mounts[t][sg]:
-                    mounts[t][sg][label] = {'M': [], 'D': []}
-
-                # Before each mount, we should have equal mounts and dismounts.
-                len_m = len(mounts[t][sg][label]['M'])
-                len_d = len(mounts[t][sg][label]['D'])
-                if len_m != len_d:
-                    continue
-
-                mounts[t][sg][label]['M'].append(start)
-
-            elif state == 'D':
-                if t not in mounts:
-                    continue
-                if sg not in mounts[t]:
-                    continue
-                if label not in mounts[t][sg]:
-                    continue
-
-                # Before each dismount, mounts should be ahead of dismounts by
-                # 1.
-                len_m = len(mounts[t][sg][label]['M'])
-                len_d = len(mounts[t][sg][label]['D'])
-                if len_m == len_d:
-                    continue
-
-                mounts[t][sg][label]['D'].append(finish)
+            row = row.get
+            counts.setdefault(row('drive'), {}) \
+                  .setdefault(row('storage_group'), {}) \
+                   [row('date')] = {'reads': row('reads_per_dismount'),
+                                    'writes': row('writes_per_dismount'),
+                                    'reads+writes':
+                                        row('reads_and_writes_per_dismount')
+                                    }
 
         db.close()
-        self.mounts = mounts
+        self.counts = counts
 
     def plot(self):
         """Write all plot files."""
@@ -163,39 +134,49 @@ class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                                                                 now_time_str))
 
         # Make plots
-        for drive, drive_dict in self.mounts.iteritems():
-            for sg, sg_dict in drive_dict.iteritems():
-                self._write_plot(drive, sg, sg_dict)
+        for action in ('reads', 'writes'): #, 'reads+writes'):
+            for drive, drive_dict in self.counts.iteritems():
+                for sg, sg_dict in drive_dict.iteritems():
+                    self._write_plot(action, drive, sg, sg_dict)
 
-    def _write_plot(self, drive, sg, sg_dict):
+    def _write_plot(self, action, drive, sg, sg_dict):
         """
-        Write plots for the indicated drive type and storage group.
+        Write plots for the indicated action, drive type and storage group.
 
+        :type action: :obj:`str`
+        :arg action: This can be ``reads``, ``writes`` or ``reads+writes``.
         :type drive: :obj:`str`
         :arg drive: drive type.
         :type sg: :obj:`str`
         :arg sg: storage group.
         :type sg_dict: :obj:`dict`
-        :arg sg_dict: This corresponds to ``self.mounts[drive][sg]``.
+        :arg sg_dict: This corresponds to ``self.counts[drive][sg]``.
         """
 
-        for plot_type in ('basic', 'integral'):
+        # Establish plot types
+        plot_types = ['basic']
+        if self.plot_accumulative:
+            plot_types.append('integral')
+
+        # Create and write plots
+        for plot_type in plot_types:
 
             # Note: The "basic" plot type must be first. The "integral"
             # histogram is generated from the basic histogram.
 
-            print('Plotting: drive={}; storage_group={}; type={}'
-                  .format(drive, sg, plot_type))
+            print('Plotting: action={}; drive={}; storage_group={}; type={}'
+                  .format(action, drive, sg, plot_type))
 
             # Initialize plotter
             if plot_type == 'basic':
-                plot_name = '{}_{}'.format(sg, drive)
-                plot_title = ('Drive usage for {} storage group for {} drives.'
-                              ).format(sg, drive)
+                plot_name = '_'.join((sg, drive, action))
+                plot_title = ('Average file {} per mount for {} storage group '
+                              'for {} drives.').format(action, sg, drive)
             elif plot_type == 'integral':
-                plot_name = 'Accumulative_{}_{}'.format(sg, drive)
-                plot_title = ('Accumulative drive usage for {} storage group '
-                              'for {} drives.').format(sg, drive)
+                plot_name = '_'.join(('Accumulative', sg, drive, action))
+                plot_title = ('Accumulative average file {} per mount for {} '
+                              'storage group for {} drives.'
+                              ).format(action, sg, drive)
             plotter = histogram.Plotter(plot_name, plot_title)
             for cmd in self.set_xrange_cmds:
                 plotter.add_command(cmd)
@@ -214,9 +195,10 @@ class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             hist.set_time_axis(True)
             hist.set_xlabel('Date (year-month-day)')
             if plot_type == 'basic':
-                ylabel = 'Drive usage hours'
+                ylabel = 'Average file {} per mount'.format(action)
             elif plot_type == 'integral':
-                ylabel = 'Accumulative drive usage hours'
+                ylabel = ('Accumulative average file {} per mount'
+                          ).format(action)
             hist.set_ylabel(ylabel)
             hist.set_line_width(20)
             hist.set_marker_type('impulses')
@@ -225,18 +207,11 @@ class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
             # Fill histogram
             if plot_type == 'basic':
-                for _volume, md_times in sg_dict.iteritems():
-                    starts = md_times['M']  # starts of mounts
-                    finishes = md_times['D']  # finishes of dismounts
-                    durations = [f - s for s, f in zip(starts, finishes)]
-                    for i, duration in enumerate(durations):
-                        finish_time = finishes[i]
-                        duration = duration / 3600.  # seconds to hours
-                        hist.fill(finish_time, duration)
-                        # Note: In the code above, even if a mount-start and
-                        # the corresponding dismount-finish times occur on
-                        # separate dates, the duration is recorded only for the
-                        # dismount date.
+                for date, date_dict in sg_dict.iteritems():
+                    date = time.mktime(time.strptime(date,
+                                                     '%Y-%m-%d %H:%M:%S'))
+                    value = date_dict[action]
+                    hist.fill(date, value)
 
             # Plot histogram
             plotter.add(hist)

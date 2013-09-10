@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 ###############################################################################
 #
 # $Id$
@@ -21,6 +22,7 @@ import mounts_plotter_module
 import pnfs_backup_plotter_module
 import file_family_analysis_plotter_module
 import files_rw_plotter_module
+import files_rw_sep_plotter_module
 import encp_rate_multi_plotter_module
 import quotas_plotter_module
 import tapes_burn_rate_plotter_module
@@ -43,7 +45,8 @@ def usage(cmd):
     print "\t -s [--slots]           : plot slot utilization"
     print "\t -p [--pnfs-backup]     : plot pnfs backup time"
     print "\t -f [--file-family-analysis] : plot file family analysis"
-    print "\t -F [--files-rw]        : plot file reads and writes per mount"
+    print "\t -F [--files-rw]        : plot file reads and writes per mount, stacked by storage group"
+    print "\t -W [--files-rw-sep]    : plot file reads and writes per mount, separately for each storage group"
     print "\t -e [--encp-rate-multi] : plot multiple encp rates"
     print "\t -q [--quotas]          : plot quotas by storage group"
     print "\t -t [--tapes-burn-rate] : plot tape usage by storage group"
@@ -57,13 +60,13 @@ def usage(cmd):
 
 if __name__ == "__main__":
     try:
-        short_args = "hmrudDHspfFeqtibMlLS"
+        short_args = "hmrudDHspfFWeqtibMlLS"
         long_args = ["help", "mounts", "rate", "utilization", "drives",
                      "drive-hours", "drive-hours-sep", "slots", "pnfs-backup",
-                     "file-family-analysis", "files-rw", "quotas",
-                     "tapes-burn-rate", "migration-summary", "bytes-per-day",
-                     "mover-summary", "latencies", "library-mounts",
-                     "sfa-stats"]
+                     "file-family-analysis", "files-rw", "files-rw-sep",
+                     "quotas", "tapes-burn-rate", "migration-summary",
+                     "bytes-per-day", "mover-summary", "latencies",
+                     "library-mounts", "sfa-stats"]
         opts, args = getopt.getopt(sys.argv[1:], short_args, long_args)
     except getopt.GetoptError, msg:
         print msg
@@ -114,7 +117,7 @@ if __name__ == "__main__":
             f.add(aModule)
         # file family analysis
         if o in ("-f","--file-family-analysis"):
-            aModule = file_family_analysis_plotter_module.FileFamilyAnalysisPlotterModule("file_family_analisys")
+            aModule = file_family_analysis_plotter_module.FileFamilyAnalysisPlotterModule("file_family_analysis")
             f.add(aModule)
         # encp rate multi
         if o in ("-e","--encp-rate-multi"):
@@ -148,9 +151,13 @@ if __name__ == "__main__":
         if o in ("-L","--library-mounts"):
             aModule = mounts_per_robot_plotter_module.MountsPerRobotPlotterModule("library-mounts")
             f.add(aModule)
-        # file reads and writes per mount
+        # file reads and writes per mount, stacked by storage group
         if o in ("-F","--files-rw"):
             aModule = files_rw_plotter_module.FilesRWPlotterModule("files-rw")
+            f.add(aModule)
+        # file reads and writes per mount, separately for each storage group
+        if o in ("-W","--files-rw-sep"):
+            aModule = files_rw_sep_plotter_module.FilesRWSepPlotterModule("files-rw-sep")
             f.add(aModule)
         if o in ("-S","--sfa-stats"):
             if f.csc.get("dispatcher"):

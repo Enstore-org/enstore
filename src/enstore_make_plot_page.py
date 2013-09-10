@@ -376,7 +376,9 @@ def do_work2(intf):
         (enstore_constants.FILE_FAMILY_ANALYSIS_PLOT_SUBDIR,
          "Tape occupancies per Storage Group Plots"),
         (enstore_constants.FILES_RW_PLOTS_SUBDIR,
-         "Files read and written / mount, per drive type by storage group"),
+         "Files read and written per mount per drive type, stacked by storage group"),
+        (enstore_constants.FILES_RW_SEP_PLOTS_SUBDIR,
+         "Files read and written per mount per drive type, separately for each storage group"),
         (enstore_constants.ENCP_RATE_MULTI_PLOTS_SUBDIR,
          "Encp rates per Storage Group Plots"),
         (enstore_constants.QUOTA_PLOTS_SUBDIR,
@@ -396,12 +398,12 @@ def do_work2(intf):
         (enstore_constants.MOUNTS_PER_ROBOT_PLOTS_SUBDIR,
          "Mounts/day per tape library"),
         ]
-    
+
     if csc.get("dispatcher"):
         # Append link only if SFA is in configuration
         subdir_description_list.append((enstore_constants.SFA_STATS_PLOTS_SUBDIR,
                                         "Small Files Aggregation Statistics"))
-    
+
         use_subdir_list = []
     #Loop over all the plot subdirs making pages.
     for subdir, plot_name in subdir_description_list:

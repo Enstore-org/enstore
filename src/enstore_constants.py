@@ -4,7 +4,7 @@
 #
 # $Id$
 #
-# this file contains constants used in several enstore modules
+# This file contains constants used in several enstore modules.
 #
 ###############################################################################
 
@@ -219,6 +219,7 @@ DRIVE_UTILIZATION_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
 DRIVE_HOURS_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "drive-hours")
 DRIVE_HOURS_SEP_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "drive-hours-sep")
 FILES_RW_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "files-rw")
+FILES_RW_SEP_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "files-rw-sep")
 SLOT_USAGE_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
 PNFS_BACKUP_TIME_PLOTS_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "")
 FILE_FAMILY_ANALYSIS_PLOT_SUBDIR = "%s%s" % (PLOTS_SUBDIR, "file_family_usage")
