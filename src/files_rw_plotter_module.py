@@ -9,6 +9,12 @@
 """
 Plot number of files read and written per mount versus date, stacked by
 storage group, individually for each unique drive type.
+
+.. note::
+
+   - This module is referenced by the :mod:`plotter_main` module.
+   - This module has code in common with the
+     :mod:`files_rw_sep_plotter_module` module.
 """
 
 # Python imports
@@ -22,11 +28,12 @@ import enstore_constants
 import enstore_plotter_module
 import histogram
 
-# Note: This module is referenced by the "plotter_main" module.
-
 WEB_SUB_DIRECTORY = enstore_constants.FILES_RW_PLOTS_SUBDIR
-# Note: Above constant is referenced by "enstore_make_plot_page" module.
+"""Subdirectory in which to write plots. This constant is also referenced by
+the :mod:`enstore_make_plot_page` module."""
+
 TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
+"""PostgreSQL condition for the period of time for which to plot."""
 
 class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot number of files read and written per mount versus date, stacked
@@ -35,7 +42,12 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     plot_accumulative = False
 
     def book(self, frame):
-        """Create destination directory for plots, as needed."""
+        """
+        Create destination directory for plots as needed.
+
+        :type frame: :class:`enstore_plotter_framework.EnstorePlotterFramework`
+        :arg frame: provides configuration client.
+        """
 
         cron_dict = frame.get_configuration_client().get('crons', {})
         self.html_dir = cron_dict.get('html_dir', '')
@@ -49,7 +61,12 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         print('Plots sub-directory: {}'.format(self.web_dir))
 
     def fill(self, frame):
-        """Read and store values for plots from the database into memory."""
+        """
+        Read and store values for plots from the database into memory.
+
+        :type frame: :class:`enstore_plotter_framework.EnstorePlotterFramework`
+        :arg frame: provides configuration client.
+        """
 
         # Get database
         csc = frame.get_configuration_client()
@@ -58,7 +75,7 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         db = dbaccess.DatabaseAccess(maxconnections=1,
                                      host=db_get('dbhost', 'localhost'),
                                      database=db_get('dbname', 'accounting'),
-                                     port=db_get('dbport', 9900),
+                                     port=db_get('dbport', 8800),
                                      user=db_get('dbuser', 'enstore'),
                                      )
 
@@ -109,8 +126,6 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         start_time_str = time.strftime(str_time_format,
                                        time.localtime(start_time))
 
-        #print('xrange: min={}; max={};'.format(start_time_str, now_time_str))
-
         plot_key_setting = 'set key outside width 2'
         # Note: "width 2" is used above to prevent a residual overlap of the
         # legend's labels and the histogram.
@@ -143,7 +158,7 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
                 if self.plot_accumulative:
 
-                    iplot_name = 'accumulative_{}'.format(plot_name)
+                    iplot_name = 'Accumulative_{}'.format(plot_name)
                     iplot_title = ('Accumulative average file {} per mount '
                                    'by storage group for {} drives.').format(
                                    action, drive)
@@ -162,7 +177,7 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 color = 0
                 for sg, sg_dict in drive_dict.iteritems():
 
-                    print('Processing: action={}; drive={}; storage_group={};'
+                    print('Plotting: action={}; drive={}; storage_group={};'
                           .format(action, drive, sg))
 
                     color += 1

@@ -9,6 +9,12 @@
 """
 Plot drive usage hours versus date, stacked by storage group, individually for
 each unique drive type.
+
+.. note::
+
+   - This module is referenced by the :mod:`plotter_main` module.
+   - This module has code in common with the
+     :mod:`drive_hours_sep_plotter_module` module.
 """
 
 # Python imports
@@ -22,19 +28,24 @@ import enstore_constants
 import enstore_plotter_module
 import histogram
 
-# Note: This module is referenced by the "plotter_main" module.
-
 WEB_SUB_DIRECTORY = enstore_constants.DRIVE_HOURS_PLOTS_SUBDIR
-# Note: Above constant is referenced by "enstore_make_plot_page" module.
-TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
+"""Subdirectory in which to write plots. This constant is also referenced by
+the :mod:`enstore_make_plot_page` module."""
 
+TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
+"""PostgreSQL condition for the period of time for which to plot."""
 
 class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot drive usage hours versus date, stacked by storage group,
     individually for each unique drive type."""
 
     def book(self, frame):
-        """Create destination directory for plots, as needed."""
+        """
+        Create destination directory for plots as needed.
+
+        :type frame: :class:`enstore_plotter_framework.EnstorePlotterFramework`
+        :arg frame: provides configuration client.
+        """
 
         cron_dict = frame.get_configuration_client().get('crons', {})
         self.html_dir = cron_dict.get('html_dir', '')
@@ -45,9 +56,15 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         self.web_dir = os.path.join(self.html_dir, WEB_SUB_DIRECTORY)
         if not os.path.exists(self.web_dir):
             os.makedirs(self.web_dir)
+        print('Plots sub-directory: {}'.format(self.web_dir))
 
     def fill(self, frame):
-        """Read and store values for plots from the database into memory."""
+        """
+        Read and store values for plots from the database into memory.
+
+        :type frame: :class:`enstore_plotter_framework.EnstorePlotterFramework`
+        :arg frame: provides configuration client.
+        """
 
         # Get database
         csc = frame.get_configuration_client()
@@ -56,7 +73,7 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         db = dbaccess.DatabaseAccess(maxconnections=1,
                                      host=db_get('dbhost', 'localhost'),
                                      database=db_get('dbname', 'accounting'),
-                                     port=db_get('dbport', 9900),
+                                     port=db_get('dbport', 8800),
                                      user=db_get('dbuser', 'enstore'),
                                      )
 
@@ -138,12 +155,11 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         start_time_str = time.strftime(str_time_format,
                                        time.localtime(start_time))
 
-        #print('xrange: min={}; max={};'.format(start_time_str, now_time_str))
-
         plot_key_setting = 'set key outside width 2'
         # Note: "width 2" is used above to prevent a residual overlap of the
         # legend's labels and the histogram.
-        ylabel = 'Drive time (hours/day)'
+        ylabel = 'Drive usage hours'
+        ylabel_i = 'Accumulative {}'.format(ylabel.lower())
 
         set_xrange_cmds =  ('set xdata time',
                             'set timefmt "{}"'.format(str_time_format),
@@ -153,14 +169,14 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         for t, v1 in self.mounts.iteritems():
 
             plot_name = '%s' % (t,)
-            plot_title = 'Drive time by storage group for %s drives.' % (t,)
+            plot_title = 'Drive usage by storage group for %s drives.' % (t,)
             plotter = histogram.Plotter(plot_name, plot_title)
             plotter.add_command(plot_key_setting)
             for cmd in set_xrange_cmds:
                 plotter.add_command(cmd)
 
-            iplot_name = 'accumulative_%s' % (t,)
-            iplot_title = ('Accumulative drive time by storage group for '
+            iplot_name = 'Accumulative_%s' % (t,)
+            iplot_title = ('Accumulative drive usage by storage group for '
                            '%s drives.') % (t,)
             iplotter = histogram.Plotter(iplot_name, iplot_title)
             iplotter.add_command(plot_key_setting)
@@ -178,17 +194,21 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             color = 1
             for sg, v2 in v1.iteritems():
 
+                print('Plotting: drive={}; storage_group={}'.format(t, sg))
+
                 h = histogram.Histogram1D(t + '__' + sg, t + '__' + sg, 32,
                                           float(start_time), float(now_time))
 
-                duration = 0
                 for _volume, data in v2.iteritems():
                     mounts = data['M']
                     dismounts = data['D']
                     durations = [y - x for x, y in zip(mounts, dismounts)]
-                    duration += sum(durations)
                     for i, v in enumerate(durations):
-                        h.fill(mounts[i], v / 3600.)
+                        h.fill(dismounts[i], v / 3600.)
+                        # Note: In the code above, even if a mount-start and
+                        # the corresponding dismount-finish times occur on
+                        # separate dates, the duration is recorded only for the
+                        # dismount date.
 
                 h.set_time_axis(True)
                 h.set_ylabel(ylabel)
@@ -212,7 +232,7 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 integral = h.integral()
                 integral.set_marker_text(sg)
                 integral.set_marker_type('impulses')
-                integral.set_ylabel(ylabel)
+                integral.set_ylabel(ylabel_i)
 
                 tmp = s_i + integral
                 marker_text = integral.get_marker_text()
@@ -230,7 +250,6 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
                 s_i = tmp
                 color += 1
-                print(t, sg, duration)
 
             plotter.reshuffle()
             plotter.plot(directory=self.web_dir)
