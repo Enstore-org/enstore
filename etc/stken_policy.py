@@ -42,7 +42,7 @@ policydict = {
                                                     'wrapper': 'cpio_odc',
                                                     },
                                            'minimal_file_size': 4000000000L,
-                                           'resulting_library':'CD-DiskSF',
+                                           'resulting_library':'CD-DiskSF1',
                                            'max_files_in_pack': 10*1000, 
                                            'max_waiting_time': 12*3600,
                                            },
