@@ -271,10 +271,14 @@ class Dispatcher(mw.MigrationWorker,
       list_id = src[item_to_move].list_id
       Trace.trace(10, "move_to_migration_pool list_id %s"%(list_id,))
       self._lock.acquire()
-      self.migration_pool[list_id] = migration_dispatcher.MigrationList(src[item_to_move],
-                                                                        list_id,
-                                                                        file_list.FILLED)
-      del(src[item_to_move])
+      try:
+         self.migration_pool[list_id] = migration_dispatcher.MigrationList(src[item_to_move],
+                                                                           list_id,
+                                                                           file_list.FILLED)
+      except Exception, detail:
+         Trace.log(e_errors.ERROR, "Error moving to migration pool: %s"%(detail,))
+      if src.has_key(item_to_move):
+         del(src[item_to_move])
       self._lock.release()
 
    # move list from a list pool to purge work pool
@@ -286,11 +290,14 @@ class Dispatcher(mw.MigrationWorker,
       self.cache_purge_pool[item_to_move].creation_time = time.time()
       list_id = self.cache_purge_pool[item_to_move].list_id
       Trace.trace(10, "move_to_purge_pool list_id %s"%(list_id,))
-      self.purge_pool[list_id] = migration_dispatcher.MigrationList(self.cache_purge_pool[item_to_move],
-                                                                    list_id,
-                                                                    file_list.FILLED)
-      Trace.trace(10, "move_to_purge_pool deleting %s"%(item_to_move,))
-      del(self.cache_purge_pool[item_to_move])
+      try:
+         self.purge_pool[list_id] = migration_dispatcher.MigrationList(self.cache_purge_pool[item_to_move],
+                                                                       list_id,
+                                                                       file_list.FILLED)
+      except Exception, detail:
+         Trace.log(e_errors.ERROR, "Error moving to purge pool: %s"%(detail,))
+      if self.cache_purge_pool.has_key(item_to_move):
+         del(self.cache_purge_pool[item_to_move])
 
    # check pools and move lists to migration pool
    # if needed
