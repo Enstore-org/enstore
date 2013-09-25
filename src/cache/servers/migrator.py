@@ -816,6 +816,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             request_list.remove(c)
         if len(request_list) == 0:
             Trace.log(e_errors.INFO, "list is empty, nothing to write")
+            status_message = cache.messaging.mw_client.MWRArchived(orig_msg=rq)
+            try:
+                mq.put(status_message)
+            except Exception, e:
+                self.trace.exception("sending reply, exception %s", e)
+                return False
             return True
             
         if write_enabled_counter != len(request_list):
