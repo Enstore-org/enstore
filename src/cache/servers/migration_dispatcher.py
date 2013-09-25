@@ -342,15 +342,13 @@ class MigrationDispatcher():
             except:
                 Trace.handle_error()
 
-    def start_migration(self):
-        for pool in (self.migration_pool, self.purge_pool):
-            for key in pool:
-                try:
-                    item = pool[key]
-                    sender = self._create_sender(self.queue_work, item.list_object.disk_library)
-                    self.migrate_list(item, sender)
-                except KeyError, detail:
-                    Trace.log(e_errors.ERROR, "Error adding to list %s %s"%(key, item))
+    def start_migration(self, pool, key):
+        try:
+            item = pool[key]
+            sender = self._create_sender(self.queue_work, item.list_object.disk_library)
+            self.migrate_list(item, sender)
+        except KeyError, detail:
+            Trace.log(e_errors.ERROR, "Error adding to list %s %s"%(key, item))
 
 
 

@@ -248,13 +248,14 @@ class Dispatcher(mw.MigrationWorker,
       items = self.cache_written_pool.keys()
       ticket['status'] = (e_errors.OK, None)
       if items:
-         try:
-            for item in items:
+         for item in items:
+            try:
                self.cache_written_pool[item].full = True
+               id = self.cache_written_pool[item].list_id
                self.move_to_migration_pool(self.cache_written_pool, item)
-            self.md.start_migration()
-         except Exception, detail:
-            ticket['status'] = (e_errors.ERROR, "%s"%(detail,))
+               self.md.start_migration(self.migration_pool, id)
+            except Exception, detail:
+               ticket['status'] = (e_errors.ERROR, "%s"%(detail,))
          ticket['draining'] = items
       else:
          ticket['status'] = (e_errors.OK, "Nothing to drain")
@@ -304,7 +305,6 @@ class Dispatcher(mw.MigrationWorker,
    # run this periodically
    def check_pools(self):
       Trace.trace(10, "CHECK POOLS")
-      kick_migration = False
       # special case for purging cache
       t = time.time()
       if t - self.time_to_purge >= self.purge_pool_to: # run this every f.purge_pool_to seconds
@@ -323,17 +323,16 @@ class Dispatcher(mw.MigrationWorker,
          Trace.trace(10, "check_pools %s"%(pool,))
          for key in pool.keys():
              if pool[key].list_expired():
+               id = pool[key].list_id
                # List time expired,
                # pass this list to Migration Dispatcher
                Trace.trace(10, "check pools passing to migration dispatcher %s" % (key,))
                self.move_to_migration_pool(pool, key)
-               kick_migration = True
-      if kick_migration:
-         self.md.start_migration()
+               self.md.start_migration(self.migration_pool, id)
       files_to_purge = []
-      kick_migration = False
       for key in self.cache_purge_pool.keys():
           if self.cache_purge_pool[key].list_expired():
+            id = self.cache_purge_pool[key].list_id
             # List time expired,
             # pass this list to Migration Dispatcher
             Trace.trace(10, "check pools passing purge to migration dispatcher %s" % (key,))
@@ -348,10 +347,7 @@ class Dispatcher(mw.MigrationWorker,
                Trace.log(e_errors.ERROR, "set_cache_status failed %s"%(rc,))
 
             self.move_to_purge_pool(key)
-            kick_migration = True
-            
-      if kick_migration:
-         self.md.start_migration()
+            self.md.start_migration(self.purge_pool, id)
          
    def check_pools_thread(self):
       self.purge_pool_to = 0 # to start purging right after the dispather starts
@@ -406,8 +402,9 @@ class Dispatcher(mw.MigrationWorker,
        rec = self.fcc.bfid_info(bfid)
        if rec ['status'][0] == e_errors.OK and message.content['enstore']['bfid'] == rec['package_id']:
           self.cache_missed_pool[l_name].full = True
+          id = self.cache_missed_pool[l_name].list_id
           self.move_to_migration_pool(self.cache_missed_pool, l_name)
-          self.md.start_migration()
+          self.md.start_migration(self.migration_pool, id)
        return True
 
 
@@ -460,9 +457,10 @@ class Dispatcher(mw.MigrationWorker,
           self.cache_written_pool[policy['policy']].append(list_element, new_content['enstore']['file_size'])
           if self.cache_written_pool[policy['policy']].full:
              # pass this list to Migration Dispatcher
+             id = self.cache_written_pool[policy['policy']].list_id
              Trace.trace(10, "handle_cache_written passing to migration dispatcher")
              self.move_to_migration_pool(self.cache_written_pool, policy['policy'])
-             self.md.start_migration()
+             self.md.start_migration(self.migration_pool, id)
              
        else:
           Trace.alarm(e_errors.ALARM, "Potential data loss. No policy for %s"%(new_content,))
