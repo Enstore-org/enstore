@@ -9,6 +9,7 @@
 # system imports
 import os
 import errno
+import time
 
 # enstore imports
 #import enstore_plotter_framework
@@ -56,3 +57,17 @@ class EnstorePlotterModule:
         os.close(dst_fd)
         #Remove the source file.
         os.remove(src)
+
+def roundtime(seconds, rounding=None):
+    """
+    Round the provided time and return it.
+
+    `seconds`: time in seconds.
+    `rounding`: None, 'floor' or 'ceil'.
+    """
+
+    Y, M, D, h, m, s, wd, jd, dst = time.localtime(seconds)
+    hms = {None: (h, m, s), 'floor': (0, 0, 0), 'ceil': (23, 59, 59)}
+    h, m, s = hms[rounding]
+    seconds_rounded = time.mktime((Y, M, D, h, m, s, wd, jd, dst))
+    return seconds_rounded

@@ -39,6 +39,9 @@ GB=KB*MB
 TB=KB*GB
 PB=KB*TB
 
+SECS_PER_DAY = 86400
+SECS_PER_HALF_DAY = 43200
+
 #These strings are the beginning parts of the capacity and rate constants.
 CAPACITY_PREFIX="CAP_"
 RATE_PREFIX="RATE_"

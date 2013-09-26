@@ -39,6 +39,7 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot number of files read and written per mount versus date, stacked
        by storage group, individually for each unique drive type."""
 
+    num_bins = 32
     plot_accumulative = False
 
     def book(self, frame):
@@ -115,14 +116,14 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         str_time_format = "%Y-%m-%d %H:%M:%S"
 
         now_time = time.time()
-        Y, M, D, _h, _m, _s, wd, jd, dst = time.localtime(now_time)
-        now_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
+        now_time = enstore_plotter_module.roundtime(now_time, 'ceil')
+        now_time -= enstore_constants.SECS_PER_HALF_DAY  # For bin placement.
         now_time_str = time.strftime(str_time_format,
                                      time.localtime(now_time))
 
-        start_time = now_time - 32 * 86400  # (32 days)
-        Y, M, D, _h, _m, _s, wd, jd, dst = time.localtime(start_time)
-        start_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
+        start_time = now_time - self.num_bins * enstore_constants.SECS_PER_DAY
+        # Note: "start_time = enstore_plotter_module.roundtime(start_time,
+        #                     'ceil')" has no effect.
         start_time_str = time.strftime(str_time_format,
                                        time.localtime(start_time))
 
@@ -135,6 +136,7 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                             'set xrange ["{}":"{}"]'.format(start_time_str,
                                                             now_time_str))
 
+        # Make plots
         for action in ('reads', 'writes'): #, 'reads+writes'):
 
             ylabel = 'Average file {} per mount'.format(action)
@@ -151,7 +153,7 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
                 hist_sum_name = 'h_' + plot_name
                 hist_sum = histogram.Histogram1D(hist_sum_name,
-                                                 hist_sum_name, 32,
+                                                 hist_sum_name, self.num_bins,
                                                  float(start_time),
                                                  float(now_time))
                 hist_sum.set_time_axis(True)
@@ -169,7 +171,8 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
                     ihist_sum_name = 'acc_' + plot_name
                     ihist_sum = histogram.Histogram1D(ihist_sum_name,
-                                                      ihist_sum_name, 32,
+                                                      ihist_sum_name,
+                                                      self.num_bins,
                                                       float(start_time),
                                                       float(now_time))
                     ihist_sum.set_time_axis(True)
@@ -183,15 +186,19 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                     color += 1
 
                     hist_name = plot_name + '_' + sg
-                    hist = histogram.Histogram1D(hist_name, hist_name, 32,
+                    hist = histogram.Histogram1D(hist_name, hist_name,
+                                                 self.num_bins,
                                                  float(start_time),
                                                  float(now_time))
 
-                    for date, date_dict in sg_dict.iteritems():
-                        date = time.mktime(time.strptime(date,
+                    for datetime_str, datetime_dict in sg_dict.iteritems():
+                        secs = time.mktime(time.strptime(datetime_str,
                                                          '%Y-%m-%d %H:%M:%S'))
-                        value = date_dict[action]
-                        hist.fill(date, value)
+                        secs -= enstore_constants.SECS_PER_HALF_DAY
+                        # Note: The shift above is to match the previously
+                        # applied shift of now_time and start_time by half day.
+                        value = datetime_dict[action]
+                        hist.fill(secs, value)
 
                     hist.set_time_axis(True)
                     hist.set_ylabel(ylabel)

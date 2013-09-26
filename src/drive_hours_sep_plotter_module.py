@@ -35,9 +35,12 @@ the :mod:`enstore_make_plot_page` module."""
 TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
 """PostgreSQL condition for the period of time for which to plot."""
 
+
 class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot drive usage hours versus date, separately for each unique drive
     type and storage group combination."""
+
+    num_bins = 32
 
     def book(self, frame):
         """
@@ -144,15 +147,15 @@ class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         str_time_format = "%Y-%m-%d %H:%M:%S"
 
         now_time = time.time()
-        Y, M, D, _h, _m, _s, wd, jd, dst = time.localtime(now_time)
-        now_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
+        now_time = enstore_plotter_module.roundtime(now_time, 'ceil')
+        now_time -= enstore_constants.SECS_PER_HALF_DAY  # For bin placement.
         self.now_time = now_time
         now_time_str = time.strftime(str_time_format,
                                      time.localtime(now_time))
 
-        start_time = now_time - 32 * 86400  # (32 days)
-        Y, M, D, _h, _m, _s, wd, jd, dst = time.localtime(start_time)
-        start_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
+        start_time = now_time - self.num_bins * enstore_constants.SECS_PER_DAY
+        # Note: "start_time = enstore_plotter_module.roundtime(start_time,
+        #                     'ceil')" has no effect.
         self.start_time = start_time
         start_time_str = time.strftime(str_time_format,
                                        time.localtime(start_time))
@@ -203,7 +206,8 @@ class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             # Initialize histogram
             if plot_type == 'basic':
                 hists = {}
-                hist = histogram.Histogram1D(plot_name, plot_title, 32,
+                hist = histogram.Histogram1D(plot_name, plot_title,
+                                             self.num_bins,
                                              float(self.start_time),
                                              float(self.now_time))
                 hists['basic'] = hist
@@ -231,12 +235,14 @@ class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                     durations = [f - s for s, f in zip(starts, finishes)]
                     for i, duration in enumerate(durations):
                         finish_time = finishes[i]
-                        duration = duration / 3600.  # seconds to hours
+                        finish_time -= enstore_constants.SECS_PER_HALF_DAY
+                        # Note: The shift above is to match the previously
+                        # applied shift of now_time and start_time by half day.
+                        duration /= 3600.  # convert seconds to hours
                         hist.fill(finish_time, duration)
-                        # Note: In the code above, even if a mount-start and
-                        # the corresponding dismount-finish times occur on
-                        # separate dates, the duration is recorded only for the
-                        # dismount date.
+                        # Note: If a mount-start and the corresponding
+                        # dismount-finish times occur on separate dates, the
+                        # duration is recorded only for the dismount date.
 
             # Plot histogram
             plotter.add(hist)

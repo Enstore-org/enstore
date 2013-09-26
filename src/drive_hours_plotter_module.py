@@ -39,6 +39,8 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot drive usage hours versus date, stacked by storage group,
     individually for each unique drive type."""
 
+    num_bins = 32
+
     def book(self, frame):
         """
         Create destination directory for plots as needed.
@@ -144,14 +146,14 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         str_time_format = "%Y-%m-%d %H:%M:%S"
 
         now_time = time.time()
-        Y, M, D, _h, _m, _s, wd, jd, dst = time.localtime(now_time)
-        now_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
+        now_time = enstore_plotter_module.roundtime(now_time, 'ceil')
+        now_time -= enstore_constants.SECS_PER_HALF_DAY  # For bin placement.
         now_time_str = time.strftime(str_time_format,
                                      time.localtime(now_time))
 
-        start_time = now_time - 32 * 86400  # (32 days)
-        Y, M, D, _h, _m, _s, wd, jd, dst = time.localtime(start_time)
-        start_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
+        start_time = now_time - self.num_bins * enstore_constants.SECS_PER_DAY
+        # Note: "start_time = enstore_plotter_module.roundtime(start_time,
+        #                     'ceil')" has no effect.
         start_time_str = time.strftime(str_time_format,
                                        time.localtime(start_time))
 
@@ -166,6 +168,7 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                             'set xrange ["{}":"{}"]'.format(start_time_str,
                                                             now_time_str))
 
+        # Make plots
         for t, v1 in self.mounts.iteritems():
 
             plot_name = '%s' % (t,)
@@ -183,9 +186,9 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             for cmd in set_xrange_cmds:
                 iplotter.add_command(cmd)
 
-            s = histogram.Histogram1D('h_' + t, 'h_' + t, 32,
+            s = histogram.Histogram1D('h_' + t, 'h_' + t, self.num_bins,
                                       float(start_time), float(now_time))
-            s_i = histogram.Histogram1D('acc_' + t, 'acc_' + t, 32,
+            s_i = histogram.Histogram1D('acc_' + t, 'acc_' + t, self.num_bins,
                                         float(start_time), float(now_time))
 
             s.set_time_axis(True)
@@ -196,7 +199,8 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
 
                 print('Plotting: drive={}; storage_group={}'.format(t, sg))
 
-                h = histogram.Histogram1D(t + '__' + sg, t + '__' + sg, 32,
+                h = histogram.Histogram1D(t + '__' + sg, t + '__' + sg,
+                                          self.num_bins,
                                           float(start_time), float(now_time))
 
                 for _volume, data in v2.iteritems():
@@ -204,11 +208,14 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                     dismounts = data['D']
                     durations = [y - x for x, y in zip(mounts, dismounts)]
                     for i, v in enumerate(durations):
-                        h.fill(dismounts[i], v / 3600.)
-                        # Note: In the code above, even if a mount-start and
-                        # the corresponding dismount-finish times occur on
-                        # separate dates, the duration is recorded only for the
-                        # dismount date.
+                        finish_time = dismounts[i]
+                        finish_time -= enstore_constants.SECS_PER_HALF_DAY
+                        # Note: The shift above is to match the previously
+                        # applied shift of now_time and start_time by half day.
+                        h.fill(finish_time, v / 3600.)
+                        # Note: If a mount-start and the corresponding
+                        # dismount-finish times occur on separate dates, the
+                        # duration is recorded only for the dismount date.
 
                 h.set_time_axis(True)
                 h.set_ylabel(ylabel)
