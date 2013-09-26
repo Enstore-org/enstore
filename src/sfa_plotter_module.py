@@ -252,8 +252,11 @@ class SFATarRatesPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                 max = float(mm.readline())
             except ValueError:
                 continue
+            nbins = int(max-min)
+            if nbins == 0:
+                nbins = 1
             self.rate_histograms[log_name] = histogram.Histogram1D(log_name+"_%s_rates"%(self.data_file_name,),
-                                                                   "%s %s"%(log_name,self.name),int(max-min), min, max)
+                                                                   "%s %s"%(log_name,self.name),nbins, min, max)
             self.rate_histograms[log_name].set_marker_type("impulses")
             self.rate_histograms[log_name].set_line_width(10)
             self.rate_histograms[log_name].set_xlabel("Rates [MB/s]")
