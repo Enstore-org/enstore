@@ -1,0 +1,144 @@
+<h3>Document Hierarchy</h3>
+
+    <P>HTMLgen defines a class hierarchy supporting
+    several types of documents. A BasicDocument class provides a base
+    class which all the other classes inherit from. A SimpleDocument
+    can be used for most general purpose HTML files (it replaces what
+    used to be known as MinimalDocument). A SeriesDocument supports a
+    standardized page layout and navigation features. This was
+    formally known as the Document class. FramesetDocument is, as
+    before, used as a container for Frames and sub-documents. Separate
+    from this inheritance tree is a new TemplateDocument class.
+      <img src="../image/docclass.jpg" width="400" height="200"
+    align="center">
+
+<h3>BasicDocument</h3>
+
+    <P>The BasicDocument primarily provides the common HTML document
+    features for the other classes, although it is not abstract and
+    can be used directly. It supports attributes such as title and
+    colors but does not support CSS. Likewise it does NOT support the
+    use of a resource file to specify attributes. The non-keyword
+    arguments are assumed to be objects to place in the document as it's
+    initial contents.
+
+<h3>SimpleDocument</h3>
+
+    <P>The SimpleDocument class is used when you don't want or need
+    the header and footer document structure of the SeriesDocument
+    class, but still want the other features. It supports the resource
+    file feature for things like specifying backgrounds, etc., and is
+    particularly useful for CGI scripts and documents where the
+    content is fully customized. This is the replacement name for the
+    older MinimalDocument class from HTMLgen 1.2.
+
+<h3>SeriesDocument</h3>
+
+      <p>The SeriesDocument class supports a style of web page structure
+      described in Patrick Lynch's excellent <a
+      href="http://info.med.yale.edu/caim/StyleManual_Top.HTML"> Web
+      Page Style Manual</a> at the Yale Center for Advanced
+      Instructional Media. The specifics of this document style can be
+      altered to taste by the use of parameters set in a resource
+      file.  Any class attribute can be set in the resource
+      file and applied across many generated web pages. This way a
+      series of pages can be generated with a consistent look without
+      opening up the module and subclassing with Python.
+
+      <p><img src="../image/Doc_Layout.GIF" width="472" height="297">
+
+      <P>The SeriesDocument framework also provides a mechanism for
+      inserting navigation buttons in each document.  It's important
+      to provide navigation links in each web page as people tend to
+      book-mark pages they like or have come from a search engine. We
+      don't want to provide a page that they can't climb out of. There
+      are four slots for navigation buttons; previous page, next page,
+      top of manual, and home page. If a URL isn't provided then that
+      slot is made transparent with another gif file called "blank"
+      which is the same width as a navigation button it replaces.
+
+<h4>Usage</h4> 
+
+      <p>The typical use is to instantiate a SeriesDocument object using a
+      resource file and then taking Python objects, (strings, list,
+      etc.)  and sending them to classes appropriate for their mark-up.
+      These mark-up objects are then appended into the document object
+      until you are finished with the page.  Then simply use the write
+      method on the document object to send the generated HTML to a
+      file. See the HTMLtest module for examples.
+
+      <p>The nominal argument to the SeriesDocument class is a filename. This
+      resource file contains simple Python assignments for attributes
+      which configure the class instance. All the following attributes
+      can be set this way:
+
+<ul>
+<li><var>base</var> = object of the Base class
+<li><var>meta</var> = object of the Meta class
+<li><var>logo</var> = ('filename', width, height)  All images
+	  are specified with a tuple of string, int, int. If the size
+	  of the graphic is unknown, use 0, 0.  This one is the little
+	  graphic on the footer of each page.
+<li><var>banner</var> = ('filename', width, height) Banner graphic at
+	  the top of page.
+<li><var>title</var> =  string to be used as the document title.
+<li><var>subtitle</var> = string to be used as the document subtitle.
+	  If non-nil, this string will be used for the doc title
+	  instead of title.
+<li><var>author</var> = String used in the copyright notice
+<li><var>email</var> = Email address for feedback mailto: tag
+<li><var>zone</var> = string used to label the time zone if datetime
+	  is used. By default not used.
+<li><var>bgcolor</var> = Color string (can use variables from
+	  HTMLcolors.py)
+<li><var>background</var> = string filename of a graphic used as the
+	  doc background.
+<li><var>textcolor</var> = Color string used for text.  (can use
+	  variables from HTMLcolors.py)
+<li><var>linkcolor</var> = Color string used for hyperlinked text. 
+<li><var>vlinkcolor</var> = Color string used for visited hypertext.
+<li><var>place_nav_buttons</var> = Flag to enable/disable the use of
+	  navigation buttons. Default is on. Set to 0 to disable.
+<li><var>blank</var> = Image tuple for the transparent spacer gif
+<li><var>prev</var> = Image tuple for the Previous Page button
+<li><var>next</var> = Image tuple for the Next Page button
+<li><var>top</var> = Image tuple for the Top of Manual button
+<li><var>home</var> = Image tuple for the site Home Page button
+<li><var>goprev</var> = URL string for the prev button
+<li><var>gonext</var> = URL string for the next button
+<li><var>gotop </var> = URL string for the top button
+<li><var>gohome</var> = URL string for the home button
+<li><var>script</var> = a single or list of Script objects to be included in the HEAD
+<li><var>onLoad</var> = Script, which is executed when the document is loaded
+<li><var>onUnload</var> = Script, which is executed when the document is unloaded
+</ul>
+
+      <p>Of the above, the most likely to be placed into a resource
+      file will be the logo, author, email, the colors and graphics
+      buttons. The resource file is execfile'd so it should be a
+      trusted file. See the .rc files in the distribution directory
+      for examples.
+
+<h3>FramesetDocument</h3>
+
+      <P>FramesetDocument inherits from BasicDocument and is used as a
+      container for Frameset objects only.  The FramesetDocument is an
+      even more stripped down class used for containing Framesets
+      only. In this case there is no BODY element at all.  <BR><img
+      src="../image/note.gif" width="20" height="20" alt="N.B.">The
+      arguments given to the constructor are Framesets, not a resource
+      file.
+
+<h3>TemplateDocument</h3>
+
+      <p>The new TemplateDocument class supports the use of an initial
+      HTML file as a template into which substitutions are made at run
+      time. Symbols surrounded by curly braces {like_this} act as
+      markers and are checked against a given mapping then
+      substitutions are made for each value found.  This class is used
+      when you have an intricate HTML document which would be
+      inconvenient to synthesize with HTMLgen classes from scratch. A
+      WYSIWYG web page tool can then be used to write these template
+      pages and just place the named symbols in the doc and just
+      construct the substitution mapping at run time. This approach is
+      fast and efficient but requires Python 1.5 or newer.

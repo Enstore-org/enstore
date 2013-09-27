@@ -1,0 +1,179 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>HTMLgen 2.2.2 Online Documentation</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<IMG src="../image/tables.gif" height="40" width="472" alt="tables.gif" border="0"><BR>
+<A HREF="frames.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="forms.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<A HREF="overview.html"><IMG src="../image/top.gif" height="22" width="66" alt="Top of Manual" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>HTMLgen 2.2.2 Online Documentation</H3>
+<H2>Tables</H2>
+<HR>
+
+<h3>TWO IMPLEMENTATIONS</h3>
+
+      <P>There are actually two separate table implementations in
+      HTMLgen now. The first was historically taken from the old
+      HTMLsupport.py function library. It was
+      designed to take a list of lists and construct a table correctly
+      sized to contain the data, and allowed for some limited
+      customization. For general table display it works fine and is
+      named <strong>Table</strong> in this module.
+
+      <P>The newer implementation was a result of feedback I got
+      during the 1.2 beta releases. It is a collection of classes for the
+      lower level table primitives, <strong>TD</strong>,
+      <strong>TR</strong>, <strong>TH</strong> and
+      <strong>Caption</strong> along with a simple container class
+      called <strong>TableLite</strong>. I called it TableLite because
+      it does very little for you, (but it does get out of the
+      way). The user is thus responsible for structuring the contents
+      of each row of the table as well as all other heading and border
+      specifications with the appropriate mix of these classes.
+      Although this requires more coding work on the user's part it
+      does provide complete flexibility and control over the table
+      construction. For those with special table needs, building
+      custom classes on top of TableLite and friends may be the
+      favored approach. <BR><img src="../image/note.gif" width="20" height="20" alt="N.B.">Please
+      be aware though, that this approach can become a performance
+      problem as all the low level elements are implemented as class
+      instances. It'll be at least two times as slow as a more
+      hardwired approach such as Table. (In particular, the
+      <code>start_tag()</code> method is cool from a reuse perspective
+      but is expensive in CPU cycles.)
+
+<h3>FEATURES</h3>
+   <h4>Table class</h4>
+        <P>The Table class is instantiated with the table's name
+        (which becomes it's caption), and then is tailored with
+        various keyword parameters or direct attribute
+        assignments. Several attributes control alignment, spacing,
+        border characteristics. The default settings result in a table
+        which looks much like the following. Border is set to 2, cell
+        padding is 4, and overall width is 100%. For example the
+        following code was used to generate the next table. 
+<pre>
+>>> t = HTMLgen.Table('Caption')
+>>> h = ['head 1', 'head 2', 'head 3']
+>>> t.heading = h
+>>> l = ['one', 'two','three']
+>>> t.body = [l]
+>>> print t
+</pre>
+
+<A NAME="Caption"></A>
+<P><TABLE border=2 cellpadding=4 cellspacing=1 width="100%">
+<CAPTION align=top><STRONG>Caption</STRONG></CAPTION>
+<TR Align=center> <TH ColSpan=1>head 1</TH><TH ColSpan=1>head 2</TH><TH ColSpan=1>head 3</TH></TR>
+<TR> <TD Align=left>one</TD> <TD Align=left>two</TD> <TD Align=left>three</TD> </TR>
+</TABLE>
+        
+      <P>The body attribute contains a list of lists, the length of
+      which determines the number of rows in the table. The heading
+      attribute is just a list of strings and determines the number of
+      columns. The intent behind the Table class is to provide a
+      simple interface using fairly natural Python datatypes as
+      arguments. See the main manual for detailed documentation.
+
+   <h4>The TableLite class(es)</h4>
+
+    <P>The TableLite class is a general container class to be
+      populated by instances from the TD, TR, TH, and Caption
+      classes. All these classes inherit from AbstractTag like most
+      other HTML markup classes. AbstractTag supports such things as
+      append, prepend, copy, markup, as well as others. The following
+      is a usage example.
+
+<pre>
+>>> TDlist = map(HTMLgen.TD, ['one', 'two', 'three'])
+>>> body = HTMLgen.TR()
+>>> body = body + TDlist
+>>> THlist = map(HTMLgen.TH, ['head 1', 'head 2', 'head 3'])
+>>> heading = HTMLgen.TR()
+>>> heading = heading + THlist
+>>> cap = HTMLgen.Caption('Caption')
+>>> t = HTMLgen.TableLite(border=2, cellpadding=4, cellspacing=1,width="100%")
+>>> t.append(cap, heading, body)
+</pre>
+
+      <P>This is obviously more complicated but is necessary when
+        using low level classes such as these. Note: the defaults are
+        only what the browser might use; the TableLite class provides
+        no defaults like the Table class.
+
+        <P>The examples below use the <em>barchart</em> module to generate
+        tables which use the TableLite class.
+
+<HR>
+<TABLE cellpadding="3" cellspacing="0"><CAPTION><STRONG>System Throughput (jobs/week)</STRONG></CAPTION>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">asc1</TD><TD align="right" width="70" bgcolor="#9999CC">   1352.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="298" alt="1352"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">asc4</TD><TD align="right" width="70" bgcolor="#9999CC">   1292.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-yellow.gif" height="13" width="247" alt="1292"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">asc8</TD><TD align="right" width="70" bgcolor="#9999CC">   1371.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="314" alt="1371"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">cn1</TD><TD align="right" width="70" bgcolor="#9999CC">   1472.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-red.gif" height="13" width="400" alt="1472"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">cn2</TD><TD align="right" width="70" bgcolor="#9999CC">   1411.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-red.gif" height="13" width="348" alt="1411"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">dn1</TD><TD align="right" width="70" bgcolor="#9999CC">   1441.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-red.gif" height="13" width="373" alt="1441"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">dn2</TD><TD align="right" width="70" bgcolor="#9999CC">   1381.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="322" alt="1381"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">fddo1</TD><TD align="right" width="70" bgcolor="#9999CC">   1418.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-red.gif" height="13" width="354" alt="1418"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">fddo2</TD><TD align="right" width="70" bgcolor="#9999CC">   1341.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="288" alt="1341"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">fddo3</TD><TD align="right" width="70" bgcolor="#9999CC">   1280.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-yellow.gif" height="13" width="237" alt="1280"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">fddo4</TD><TD align="right" width="70" bgcolor="#9999CC">   1318.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="269" alt="1318"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">orb3</TD><TD align="right" width="70" bgcolor="#9999CC">   1390.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="330" alt="1390"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">AVERAGE</TD><TD align="right" width="70" bgcolor="#9999CC">   1372.0</TD><TD bgcolor="#33CCCC"><b>^ 1000.0</b> lower bound<br> SCALE: <IMG src="../image/bar-blue.gif" height="13" width="40" alt="bar-blue.gif"> =    47.2 units</TD></TR>
+</TABLE>
+
+<PRE>
+     Label      value
+      asc1       1352
+      asc4       1292
+      asc8       1371
+       cn1       1472
+       cn2       1411
+       dn1       1441
+       dn2       1381
+     fddo1       1418
+     fddo2       1341
+     fddo3       1280
+     fddo4       1318
+      orb3       1390
+
+</PRE>
+
+<HR>
+<TABLE cellpadding="3" cellspacing="0"><CAPTION><STRONG>System Load</STRONG></CAPTION>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">fddo1</TD><TD align="right" width="70" bgcolor="#9999CC">   3234.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="175" alt="1418"><IMG src="../image/bar-red.gif" height="13" width="148" alt="1201"><IMG src="../image/bar-yellow.gif" height="13" width="60" alt="490"><IMG src="../image/bar-purple.gif" height="13" width="15" alt="125"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">fddo2</TD><TD align="right" width="70" bgcolor="#9999CC">   2820.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="165" alt="1341"><IMG src="../image/bar-red.gif" height="13" width="100" alt="810"><IMG src="../image/bar-yellow.gif" height="13" width="57" alt="466"><IMG src="../image/bar-purple.gif" height="13" width="25" alt="203"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">fddo3</TD><TD align="right" width="70" bgcolor="#9999CC">   2264.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="158" alt="1280"><IMG src="../image/bar-red.gif" height="13" width="69" alt="560"><IMG src="../image/bar-yellow.gif" height="13" width="15" alt="129"><IMG src="../image/bar-purple.gif" height="13" width="36" alt="295"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">fddo4</TD><TD align="right" width="70" bgcolor="#9999CC">   2299.0</TD><TD bgcolor="#DDDDDD"><IMG src="../image/bar-blue.gif" height="13" width="163" alt="1318"><IMG src="../image/bar-red.gif" height="13" width="56" alt="456"><IMG src="../image/bar-yellow.gif" height="13" width="29" alt="235"><IMG src="../image/bar-purple.gif" height="13" width="35" alt="290"></TD></TR>
+<TR><TD align="left" width="70" bgcolor="#33CCCC">AVERAGE</TD><TD align="right" width="70" bgcolor="#9999CC">   2654.0</TD><TD bgcolor="#33CCCC"><IMG src="../image/bar-blue.gif" height="13" width="30" alt="bar-blue.gif"> <FONT size="-1">User</FONT> &nbsp;&nbsp; <IMG src="../image/bar-red.gif" height="13" width="30" alt="bar-red.gif"> <FONT size="-1">System</FONT> &nbsp;&nbsp; <IMG src="../image/bar-yellow.gif" height="13" width="30" alt="bar-yellow.gif"> <FONT size="-1">I/O</FONT> &nbsp;&nbsp; <IMG src="../image/bar-purple.gif" height="13" width="30" alt="bar-purple.gif"> <FONT size="-1">Wait</FONT> &nbsp;&nbsp;</TD></TR>
+</TABLE>
+
+<PRE>
+     Label       User     System        I/O       Wait
+     fddo1       1418       1201        490        125
+     fddo2       1341        810        466        203
+     fddo3       1280        560        129        295
+     fddo4       1318        456        235        290
+
+</PRE>
+
+
+<P><HR>
+<A HREF="frames.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="forms.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<A HREF="overview.html"><IMG src="../image/top.gif" height="22" width="66" alt="Top of Manual" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 1996-7 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;ri&#101;dr&#105;ch&#64;py&#116;ho&#110;pr&#111;s.&#99;om">friedrich@pythonpros.com</A><br>
+Generated: Thu Aug 5, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

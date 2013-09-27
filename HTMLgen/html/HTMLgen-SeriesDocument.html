@@ -1,0 +1,227 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class SeriesDocument - Primary container class for an HTML document as part of a series.</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="HTMLgen-Select.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-SimpleDocument.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class SeriesDocument - Primary container class for an HTML document as part of a series.</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLgen</PRE>
+
+<PRE>class SeriesDocument(SimpleDocument)
+  string __module__ = 'HTMLgen'
+  def __str__(self)
+  string author = 'Micky Mouse'
+  tuple banner = ('/image/banner.gif', 472, 30)
+  tuple blank = ('../image/blank.gif', 71, 19)
+  string email = 'micky@disney.com'
+  <A HREF="#def footer(self)">def footer(self)</A>
+  None alinkcolor = None
+  None alinkcolor = None
+  None alinkcolor = None
+  None alinkcolor = None
+  <A HREF="#def header(self)">def header(self)</A>
+  tuple home = ('../image/BTN_HomePage.gi ...
+  tuple logo = ('/image/logo.gif', 36, 35)
+  <A HREF="#def nav_buttons(self)">def nav_buttons(self)</A>
+  tuple next = ('../image/BTN_NextPage.gi ...
+  string place_nav_buttons = 'yes'
+  tuple prev = ('../image/BTN_PrevPage.gi ...
+  None alinkcolor = None
+  tuple top = ('../image/BTN_ManualTop.g ...
+  string zone = ' Central US'
+
+  # Methods inherited by SeriesDocument from SimpleDocument
+  def __init__(self, resource = None, **kw)
+  <A HREF="#def html_body_tag(self)">def html_body_tag(self)</A>
+  <A HREF="#def html_head(self)">def html_head(self)</A>
+
+  # Methods inherited by SeriesDocument from BasicDocument
+  <A HREF="#def append(self, *items)">def append(self, *items)</A>
+  <A HREF="#def append_file(self, filename, marker_function = None)">def append_file(self, filename, marker_function = None)</A>
+  <A HREF="#def copy(self)">def copy(self)</A>
+  <A HREF="#def prepend(self, *items)">def prepend(self, *items)</A>
+  <A HREF="#def write(self, filename = None)">def write(self, filename = None)</A>
+</PRE>
+
+<PRE>alias Document = SeriesDocument
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Formerly known as Document().</P>
+
+
+<P>Navigation mechanisms are provided.</P>
+
+
+<P>Single optional string argument for the path to a resource file
+used to specify document parameters. This helps minimize the need
+for subclassing from this class. Keyword parameters may be used
+for any of the following class attributes. See <EM>HTMLtest.py</EM> for
+example usage.</P>
+
+<H3><A NAME="def append(self, *items)">def append(self, *items)</A></H3>
+
+
+<P>Add content to the Document object.</P>
+
+
+<P>Arg <EM>items</EM> can be plain text or objects; multiple arguments supported.
+</P>
+
+<H3><A NAME="def append_file(self, filename, marker_function = None)">def append_file(self, filename, marker_function = None)</A></H3>
+
+
+<P>Add the contents of a file to the document.</P>
+
+<DL>
+<DT><B>filename</B><DD>the filename of the file to be read [string]
+<DT><B>marker_function</B><DD>a callable object which the text read from
+  the file will be passed through before being added to the
+  document.
+
+</DL>
+
+<H3><A NAME="def copy(self)">def copy(self)</A></H3>
+
+
+<P>Return a complete copy of the current Document object.
+</P>
+
+<H3><A NAME="def footer(self)">def footer(self)</A></H3>
+
+
+<P>Generate the standard footer markups.
+</P>
+
+<H3><A NAME="def header(self)">def header(self)</A></H3>
+
+
+<P>Generate the standard header markups.
+</P>
+
+<H3><A NAME="def html_body_tag(self)">def html_body_tag(self)</A></H3>
+
+
+<P>Return BODY tag with attributes.
+</P>
+
+<H3><A NAME="def html_head(self)">def html_head(self)</A></H3>
+
+
+<P>Generate the HEAD TITLE and BODY tags.
+</P>
+
+<H3><A NAME="def nav_buttons(self)">def nav_buttons(self)</A></H3>
+
+
+<P>Generate hyperlinked navigation buttons.</P>
+
+
+<P>If a self.go* attribute is null that corresponding button is
+replaced with a transparent gif to properly space the remaining
+buttons.
+</P>
+
+<H3><A NAME="def prepend(self, *items)">def prepend(self, *items)</A></H3>
+
+
+<P>Add content to the beginning of the Document object.</P>
+
+
+<P>Arg <EM>items</EM> can be plain text or objects; multiple arguments supported.
+</P>
+
+<H3><A NAME="def write(self, filename = None)">def write(self, filename = None)</A></H3>
+
+
+<P>Emit the Document HTML to a file or standard output.</P>
+
+
+<P>In Unix you can use environment variables in filenames.
+Will print to stdout if no argument.
+</P>
+
+<H2>Class instance attributes and keyword arguments</H2>
+
+<DL>
+<DT><B>    base</B><DD>object of the Base class
+<DT><B>    meta</B><DD>object of the Meta class
+<DT><B>    cgi </B><DD>if non zero will issue a mime type of text/html
+<DT><B>    logo</B><DD>('filename', width, height)  All images are specified
+             with a tuple of string, int, int. If the size of the
+             graphic is unknown, use 0, 0.  This one is the little
+             graphic on the footer of each page.
+<DT><B>    banner</B><DD>('filename', width, height) Banner graphic at
+             the top of page. Can also be set to a string filename
+             or an Image object. Can be autosized if it's a GIF.
+<DT><B>    title</B><DD>string to be used as the document title.
+<DT><B>    subtitle</B><DD>string to be used as the document subtitle.
+             If non-nil, this string will be used for the doc title
+             instead of title.
+<DT><B>    author</B><DD>String used in the copyright notice
+<DT><B>    email</B><DD>Email address for feedback mailto: tag
+<DT><B>    zone</B><DD>string used to label the time zone if datetime
+             is used. By default not used.
+<DT><B>    bgcolor</B><DD>Color string (can use variables from
+             HTMLcolors.py)
+<DT><B>    background</B><DD>string filename of a graphic used as the
+             doc background.
+<DT><B>    textcolor</B><DD>Color string used for text.  (can use
+             variables from HTMLcolors.py)
+<DT><B>    linkcolor</B><DD>Color string used for hyperlinked text. 
+<DT><B>    vlinkcolor</B><DD>Color string used for visited hypertext.
+<DT><B>    alinkcolor</B><DD>Color string used for active hypertext.
+<DT><B>    place_nav_buttons</B><DD>Flag to enable/disable the use of
+             navigation buttons.
+             Default is on. Set to 0 to disable.
+<DT><B>    blank</B><DD>Image tuple for the transparent spacer gif
+<DT><B>    prev</B><DD>Image tuple for the Previous Page button
+<DT><B>    next</B><DD>Image tuple for the Next Page button
+<DT><B>    top</B><DD>Image tuple for the Top of Manual button
+<DT><B>    home</B><DD>Image tuple for the site Home Page button
+<DT><B>    goprev</B><DD>URL string for the prev button
+<DT><B>    gonext</B><DD>URL string for the next button
+<DT><B>    gotop </B><DD>URL string for the top button
+<DT><B>    gohome</B><DD>URL string for the home button
+<DT><B>    script</B><DD>a single or list of Script objects to be included in the &lt;HEAD&gt;
+<DT><B>    onLoad</B><DD>Script, which is executed when the document is loaded
+<DT><B>    onUnload</B><DD>Script, which is executed when the document is unloaded
+
+</DL>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLgen_overview.html">HTMLgen</A></P>
+
+
+<P><A HREF="HTMLgen-SimpleDocument.html">SimpleDocument</A></P>
+
+
+<P><HR>
+<A HREF="HTMLgen-Select.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-SimpleDocument.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;ri&#101;dr&#105;ch&#64;py&#116;ho&#110;pr&#111;s.&#99;om">friedrich@pythonpros.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

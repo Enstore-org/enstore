@@ -1,0 +1,2608 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>HTMLgen.py</TITLE>
+</HEAD>
+<BODY BGCOLOR="#FFFFFF">
+<PRE>#<FONT color="#009900">'$Id$'</FONT>
+
+<FONT color="#DD0000"># COPYRIGHT (C) 1996-9  ROBIN FRIEDRICH  email:Robin.Friedrich@pdq.net</FONT>
+<FONT color="#DD0000"># Permission to use, copy, modify, and distribute this software and</FONT>
+<FONT color="#DD0000"># its documentation for any purpose and without fee is hereby granted,</FONT>
+<FONT color="#DD0000"># provided that the above copyright notice appear in all copies and</FONT>
+<FONT color="#DD0000"># that both that copyright notice and this permission notice appear in</FONT>
+<FONT color="#DD0000"># supporting documentation.</FONT>
+<FONT color="#DD0000"># THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS</FONT>
+<FONT color="#DD0000"># SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND</FONT>
+<FONT color="#DD0000"># FITNESS, IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY</FONT>
+<FONT color="#DD0000"># SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER</FONT>
+<FONT color="#DD0000"># RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF</FONT>
+<FONT color="#DD0000"># CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN</FONT>
+<FONT color="#DD0000"># CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.</FONT>
+
+<FONT color="#0000DD">"""A class library for the generation of HTML documents.
+
+Each HTML tag type has a supporting class which is responsible for
+emitting itself as valid HTML formatted text. An attempt is made to
+provide classes for newer HTML 3.2 and proposed tag elements.  The
+definitive reference for HTML tag elements can be found at
+[W3C].  Also, I used the HTML book by Musciano and
+Kennedy from [O Reilly] (2nd. Ed.) as the guiding reference.
+
+The Document classes are container objects which act as a focal point
+to populate all the contents of a particular web page. It also can
+enforce consistent document formating according to the guidelines from
+the [Yale Web Style Manual].
+
+Features include customization of document template graphics / colors
+through use of resource files, minimizing the need for modifying or
+subclassing from the module source code. Support for tables, frames,
+forms (persistent and otherwise) and client-side imagemaps are included.
+
+A newer implementation for the Table support is now included,
+TableLite().  In support of this there are new tag classes TD, TH, TR
+and Caption.  These class instances can be assembled in any way to
+populate the TableLite container object. 
+
+.. [W3C] http://www.W3.org/TR/REC-html32.html
+.. [O Reilly] http://www.oreilly.com/catalog/html3/index.html
+.. [Yale Web Style Manual] http://info.med.yale.edu/caim/manual/contents.html
+"""</FONT>
+
+import string, re, time, os
+import UserList, copy
+from imgsize import imgsize
+
+__author__ = <FONT color="#009900">'Robin Friedrich   friedrich@pythonpros.com'</FONT>
+__version__ = <FONT color="#009900">'2.2.2'</FONT>
+
+StringType = type(<FONT color="#009900">'s'</FONT>)
+IntType    = type(3)
+ListType   = type([1])
+TupleType  = type((1,2))
+InstanceType = type(UserList.UserList())
+CONTYPE = <FONT color="#009900">'Content-Type: text/html\n\n'</FONT>
+DOCTYPE = <FONT color="#009900">'&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN"&gt;\n&lt;HTML&gt;\n'</FONT>
+PRINTECHO = 1
+
+
+<FONT color="#DD0000">#################</FONT>
+<FONT color="#DD0000"># CLASS LIBRARY #</FONT>
+<FONT color="#DD0000">#################</FONT>
+
+
+<FONT color="#DD0000">#======= NEW CLASS STRUCTURE ============</FONT>
+<FONT color="#DD0000"># HTMLgen 1       HTMLgen 2</FONT>
+<FONT color="#DD0000"># --------------- ------------------</FONT>
+<FONT color="#DD0000"># Document        SeriesDocument</FONT>
+<FONT color="#DD0000"># MinimalDocument SimpleDocument</FONT>
+<FONT color="#DD0000">#                 BasicDocument (base class)</FONT>
+<FONT color="#DD0000">#                 TemplateDocument</FONT>
+
+<STRONG>class BasicDocument</STRONG>:
+    <FONT color="#0000DD">"""Base class to define an HTML document.
+
+    Non-keyword arguments are taken as the initial contents for this object.
+
+    Keyword arguments:
+        title -- HTML TITLE attribute for document
+        bgcolor -- background color expressed in hex-triplet or names from HTMLcolors.
+        background -- background image filename
+        cgi -- flag to indicate if this is used in CGI context (1 if it is)
+        textcolor -- color to use for normal text
+        linkcolor -- color to use for hyperlinks
+        vlinkcolor -- color to use for visited hyperlinks
+        alinkcolor -- color to use when hyperlink is active
+    """</FONT>
+    title = <FONT color="#009900">''</FONT>
+    cgi = None
+    bgcolor = None
+    background = None
+    textcolor = None
+    linkcolor = None
+    vlinkcolor = None
+    alinkcolor = None
+    
+<FONT color="#CC6600">    def __init__</FONT>(self, *args, **kw):
+        self.contents = list(args)
+        for name, value in kw.items():
+            setattr(self, name, value)
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = []
+        if self.cgi:
+            s.append(<FONT color="#009900">'Content-Type: text/html\n\n'</FONT> + DOCTYPE)
+        else:
+            s.append(DOCTYPE)
+        s.append(<FONT color="#009900">'\n&lt;!-- This file generated using Python HTMLgen module. --&gt;\n'</FONT>)
+
+        <FONT color="#DD0000"># build the HEAD and BODY tags</FONT>
+        s.append(self.html_head())
+        s.append(self.html_body_tag())
+
+        <FONT color="#DD0000"># DOCUMENT CONTENT SECTION and FOOTER added on</FONT>
+        bodystring = <FONT color="#009900">'%s\n'</FONT> * len(self.contents)
+        s.append((bodystring % tuple(self.contents)))
+
+        <FONT color="#DD0000"># CLOSE the document</FONT>
+        s.append(<FONT color="#009900">'\n&lt;/BODY&gt; &lt;/HTML&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#CC6600">    def html_head</FONT>(self):
+        <FONT color="#0000DD">"""Generate the HEAD, TITLE and BODY tags.
+        """</FONT>
+        return '<HEAD>\n  <META NAME="GENERATOR" CONTENT="HTMLgen %s">\n\
+        <TITLE>%s</TITLE> </HEAD>\n' % (__version__, self.title)
+    
+<FONT color="#CC6600">    def html_body_tag</FONT>(self):
+        <FONT color="#0000DD">"""Return BODY tag with attributes.
+        """</FONT>
+        s = [<FONT color="#009900">'&lt;BODY'</FONT>]
+        if self.bgcolor:    s.append(<FONT color="#009900">' BGCOLOR="%s"'</FONT> % self.bgcolor)
+        if self.background: s.append(<FONT color="#009900">' BACKGROUND="%s"'</FONT> % self.background)
+        if self.textcolor:  s.append(<FONT color="#009900">' TEXT="%s"'</FONT> % self.textcolor)
+        if self.linkcolor:  s.append(<FONT color="#009900">' LINK="%s"'</FONT> % self.linkcolor)
+        if self.vlinkcolor: s.append(<FONT color="#009900">' VLINK="%s"'</FONT> % self.vlinkcolor)
+        if self.alinkcolor: s.append(<FONT color="#009900">' ALINK="%s"'</FONT> % self.alinkcolor)
+        s.append(<FONT color="#009900">'&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#CC6600">    def append_file</FONT>(self, filename, marker_function = None):
+        <FONT color="#0000DD">"""Add the contents of a file to the document.
+
+        filename -- the filename of the file to be read [string]
+        marker_function -- a callable object which the text read from
+          the file will be passed through before being added to the
+          document.
+        """</FONT>
+        f = open(mpath(filename), <FONT color="#009900">'r'</FONT>)
+        if marker_function:
+            self.append(marker_function(f.read()))
+        else:
+            self.append(f.read())
+        f.close()
+        
+<FONT color="#CC6600">    def append</FONT>(self, *items):
+        <FONT color="#0000DD">"""Add content to the Document object.
+        
+        Arg *items* can be plain text or objects; multiple arguments supported.
+        """</FONT>
+        for item in items:
+            self.contents.append(item)
+
+<FONT color="#CC6600">    def prepend</FONT>(self, *items):
+        <FONT color="#0000DD">"""Add content to the beginning of the Document object.
+        
+        Arg *items* can be plain text or objects; multiple arguments supported.
+        """</FONT>
+        for item in items:
+            self.contents.insert(0, item)
+
+<FONT color="#CC6600">    def copy</FONT>(self):
+        <FONT color="#0000DD">"""Return a complete copy of the current Document object.
+        """</FONT>
+        return copy.deepcopy(self)
+
+<FONT color="#CC6600">    def write</FONT>(self, filename = None):
+        <FONT color="#0000DD">"""Emit the Document HTML to a file or standard output.
+        
+        In Unix you can use environment variables in filenames.
+        Will print to stdout if no argument.
+        """</FONT>
+        if filename:
+            f = open(mpath(filename), <FONT color="#009900">'w'</FONT>)
+            f.write(str(self))
+            f.close()
+            if PRINTECHO: print <FONT color="#009900">'wrote: "'</FONT>+filename+<FONT color="#009900">'"'</FONT>
+        else:
+            import sys
+            sys.stdout.write(str(self))
+
+<STRONG>class FramesetDocument</STRONG>(BasicDocument):
+    <FONT color="#0000DD">"""A minimal document suitable for entering Framesets.
+
+    Arguments are for contents **NOT** a document resource file.
+
+    Keyword Parameters
+    
+        title -- string to be used as the document title.
+        base  -- object of the Base class
+        meta  -- object of the Meta class
+        cgi   -- if non zero will issue a mime type of text/html
+        script -- a single or list of Script objects to be included in the &lt;HEAD&gt;
+    
+    No &lt;body&gt; markup. Instead add Frameset(s) with the constructor or
+    append method.
+    """</FONT>
+    base = None
+    meta = None
+    cgi = None
+    script = None
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = []
+        if self.cgi:
+            s.append(<FONT color="#009900">'Content-Type: text/html\n\n'</FONT> + DOCTYPE)
+        else:
+            s.append(DOCTYPE)
+        s.append(<FONT color="#009900">'\n&lt;!-- This file generated using Python HTMLgen module. --&gt;\n'</FONT>)
+
+        <FONT color="#DD0000"># build the HEAD tag</FONT>
+        s.append(self.html_head())
+
+        <FONT color="#DD0000"># DOCUMENT CONTENT SECTION</FONT>
+        bodystring = <FONT color="#009900">'%s\n'</FONT> * len(self.contents)
+        s.append((bodystring % tuple(self.contents)))
+
+        <FONT color="#DD0000"># CLOSE the document</FONT>
+        s.append(<FONT color="#009900">'\n&lt;/HTML&gt;'</FONT>)        
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+
+<STRONG>class SimpleDocument</STRONG>(BasicDocument):
+    <FONT color="#0000DD">"""Supports all features of a self contained document.
+
+    This includes support for CSS1, meta and base tags, and embedded
+    scripts.
+
+    First constructor argument is resource file containing document
+    attribute settings.
+    """</FONT>
+    base = None
+    style = None
+    stylesheet = None
+    meta = None
+    onLoad = None
+    onUnload = None
+    script = None
+    
+<FONT color="#CC6600">    def __init__</FONT>(self, resource = None, **kw):
+        self.contents = []
+        <FONT color="#DD0000"># Read attributes from resource file into instance namespace</FONT>
+        if resource: execfile(mpath(resource), self.__dict__)
+        for name, value in kw.items():
+            setattr(self, name, value)
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = []
+        if self.cgi:
+            s.append(<FONT color="#009900">'Content-Type: text/html\n\n'</FONT> + DOCTYPE)
+        else:
+            s.append(DOCTYPE)
+        s.append(<FONT color="#009900">'\n&lt;!-- This file generated using Python HTMLgen module. --&gt;\n'</FONT>)
+
+        <FONT color="#DD0000"># build the HEAD and BODY tags</FONT>
+        s.append(self.html_head())
+        s.append(self.html_body_tag())
+
+        <FONT color="#DD0000"># DOCUMENT CONTENT SECTION and FOOTER added on</FONT>
+        bodystring = <FONT color="#009900">'%s\n'</FONT> * len(self.contents)
+        s.append((bodystring % tuple(self.contents)))
+
+        s.append(<FONT color="#009900">'\n&lt;/BODY&gt; &lt;/HTML&gt;\n'</FONT>) # CLOSE the document
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#CC6600">    def html_head</FONT>(self):
+        <FONT color="#0000DD">"""Generate the HEAD TITLE and BODY tags.
+        """</FONT>
+        s = ['<HEAD>\n  <META NAME="GENERATOR" CONTENT="HTMLgen %s">\n\
+        <TITLE>%s</TITLE>\n' % (__version__, self.title)]
+        if self.meta: s.append(str(self.meta))
+        if self.base: s.append(str(self.base))
+        if self.stylesheet:
+            s.append(<FONT color="#009900">'\n &lt;LINK rel=stylesheet href="%s" type=text/css title="%s"&gt;\n'</FONT> \
+                     % (self.stylesheet, self.stylesheet))
+        if self.style:
+            s.append(<FONT color="#009900">'\n&lt;STYLE&gt;\n&lt;!--\n%s\n--&gt;\n&lt;/style&gt;\n'</FONT> % self.style)
+        if self.script: <FONT color="#DD0000"># for javascripts</FONT>
+            if type(self.script) in (TupleType, ListType):
+                for script in self.script:
+                    s.append(str(script))
+            else:
+                s.append(str(self.script))
+        s.append(<FONT color="#009900">'&lt;/HEAD&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#CC6600">    def html_body_tag</FONT>(self):
+        <FONT color="#0000DD">"""Return BODY tag with attributes.
+        """</FONT>
+        s = [<FONT color="#009900">'&lt;BODY'</FONT>]
+        if self.bgcolor:    s.append(<FONT color="#009900">' BGCOLOR="%s"'</FONT> % self.bgcolor)
+        if self.background: s.append(<FONT color="#009900">' BACKGROUND="%s"'</FONT> % self.background)
+        if self.textcolor:  s.append(<FONT color="#009900">' TEXT="%s"'</FONT> % self.textcolor)
+        if self.linkcolor:  s.append(<FONT color="#009900">' LINK="%s"'</FONT> % self.linkcolor)
+        if self.vlinkcolor: s.append(<FONT color="#009900">' VLINK="%s"'</FONT> % self.vlinkcolor)
+        if self.alinkcolor: s.append(<FONT color="#009900">' ALINK="%s"'</FONT> % self.alinkcolor)
+        if self.onLoad:     s.append(<FONT color="#009900">' onLoad="%s"'</FONT> % self.onLoad)
+        if self.onUnload:   s.append(<FONT color="#009900">' onUnload="%s"'</FONT> % self.onUnload)
+        s.append(<FONT color="#009900">'&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+
+<STRONG>class SeriesDocument</STRONG>(SimpleDocument):
+    <FONT color="#0000DD">"""Primary container class for an HTML document as part of a series.
+
+    Formerly known as Document().
+
+    Navigation mechanisms are provided.
+
+    Single optional string argument for the path to a resource file
+    used to specify document parameters. This helps minimize the need
+    for subclassing from this class. Keyword parameters may be used
+    for any of the following class attributes. See *HTMLtest.py* for
+    example usage.
+
+    Class instance attributes and keyword arguments
+    
+        base -- object of the Base class
+        meta -- object of the Meta class
+        cgi  -- if non zero will issue a mime type of text/html
+        logo -- (<FONT color="#009900">'filename'</FONT>, width, height)  All images are specified
+                 with a tuple of string, int, int. If the size of the
+                 graphic is unknown, use 0, 0.  This one is the little
+                 graphic on the footer of each page.
+        banner -- (<FONT color="#009900">'filename'</FONT>, width, height) Banner graphic at
+                 the top of page. Can also be set to a string filename
+                 or an Image object. Can be autosized if it's a GIF.
+        title --  string to be used as the document title.
+        subtitle -- string to be used as the document subtitle.
+                 If non-nil, this string will be used for the doc title
+                 instead of title.
+        author -- String used in the copyright notice
+        email -- Email address for feedback mailto: tag
+        zone -- string used to label the time zone if datetime
+                 is used. By default not used.
+        bgcolor -- Color string (can use variables from
+                 HTMLcolors.py)
+        background -- string filename of a graphic used as the
+                 doc background.
+        textcolor -- Color string used for text.  (can use
+                 variables from HTMLcolors.py)
+        linkcolor -- Color string used for hyperlinked text. 
+        vlinkcolor -- Color string used for visited hypertext.
+        alinkcolor -- Color string used for active hypertext.
+        place_nav_buttons -- Flag to enable/disable the use of
+                 navigation buttons.
+                 Default is on. Set to 0 to disable.
+        blank -- Image tuple for the transparent spacer gif
+        prev -- Image tuple for the Previous Page button
+        next -- Image tuple for the Next Page button
+        top -- Image tuple for the Top of Manual button
+        home -- Image tuple for the site Home Page button
+        goprev -- URL string for the prev button
+        gonext -- URL string for the next button
+        gotop  -- URL string for the top button
+        gohome -- URL string for the home button
+        script -- a single or list of Script objects to be included in the <HEAD>
+        onLoad -- Script, which is executed when the document is loaded
+        onUnload -- Script, which is executed when the document is unloaded
+    """</FONT>
+    subtitle = None
+    banner = (<FONT color="#009900">'/image/banner.gif'</FONT>, 472, 30)
+    logo = (<FONT color="#009900">'/image/logo.gif'</FONT>, 36, 35)
+    author = <FONT color="#009900">'Micky Mouse'</FONT>
+    email = <FONT color="#009900">'micky@disney.com'</FONT>
+    zone = <FONT color="#009900">' Central US'</FONT>
+    place_nav_buttons = <FONT color="#009900">'yes'</FONT>
+    blank = (<FONT color="#009900">'../image/blank.gif'</FONT>, 71, 19)
+    prev = (<FONT color="#009900">'../image/BTN_PrevPage.gif'</FONT>, 71, 19)
+    next = (<FONT color="#009900">'../image/BTN_NextPage.gif'</FONT>, 71, 19)
+    top = (<FONT color="#009900">'../image/BTN_ManualTop.gif'</FONT>, 74, 19)
+    home = (<FONT color="#009900">'../image/BTN_HomePage.gif'</FONT>, 74, 19)
+    goprev = None <FONT color="#DD0000"># URLs for above navigation buttons</FONT>
+    gonext = None
+    gotop  = None
+    gohome = None
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = []
+        if self.cgi:
+            s.append(CONTYPE + DOCTYPE)
+        else:
+            s.append(DOCTYPE)
+        s.append(<FONT color="#009900">'\n&lt;!-- This file generated using Python HTMLgen module. --&gt;\n'</FONT>)
+        <FONT color="#DD0000"># build the HEAD and BODY tags</FONT>
+        s.append(self.html_head())
+        s.append(self.html_body_tag())
+        <FONT color="#DD0000"># HEADER SECTION</FONT>
+        s.append(self.header())
+
+        <FONT color="#DD0000"># DOCUMENT CONTENT SECTION and FOOTER added on</FONT>
+        bodystring = <FONT color="#009900">'%s\n'</FONT> * len(self.contents)
+        s.append((bodystring % tuple(self.contents)))
+        
+        s.append(self.footer())
+        s.append(<FONT color="#009900">'\n&lt;/BODY&gt; &lt;/HTML&gt;\n'</FONT>) # CLOSE the document
+        return string.join(s, <FONT color="#009900">''</FONT>)
+    
+<FONT color="#CC6600">    def header</FONT>(self):
+        <FONT color="#0000DD">"""Generate the standard header markups.
+        """</FONT>
+        <FONT color="#DD0000"># HEADER SECTION - overload this if you don't like mine.</FONT>
+        s = []
+        if self.banner:
+            bannertype = type(self.banner)
+            if bannertype in (TupleType, StringType):
+                s.append(str(Image(self.banner, border=0)) + <FONT color="#009900">'&lt;BR&gt;\n'</FONT>)
+            elif bannertype == InstanceType:
+                s.append(str(self.banner) + <FONT color="#009900">'&lt;BR&gt;\n'</FONT>)
+            else:
+                raise TypeError, <FONT color="#009900">'banner must be either a tuple, instance, or string.'</FONT>
+        if self.place_nav_buttons:
+            s.append(self.nav_buttons())
+        s.append(str(Heading(3,self.title)))
+        if self.subtitle:
+            s.append(<FONT color="#009900">'&lt;H2&gt;%s&lt;/H2&gt;\n'</FONT> % self.subtitle)
+        s.append(<FONT color="#009900">'&lt;HR&gt;\n\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#CC6600">    def nav_buttons</FONT>(self):
+        <FONT color="#0000DD">"""Generate hyperlinked navigation buttons.
+
+        If a self.go* attribute is null that corresponding button is
+        replaced with a transparent gif to properly space the remaining
+        buttons.
+        """</FONT>
+        s = []
+        if self.goprev: <FONT color="#DD0000"># place an image button for previous page</FONT>
+            btn = Image(self.prev, border=0, alt=<FONT color="#009900">'Previous'</FONT>)
+            link = Href(self.goprev, str(btn))
+            s.append(str(link) + <FONT color="#009900">' \n'</FONT>)
+        else: <FONT color="#DD0000"># place a blank gif as spacer</FONT>
+            <FONT color="#DD0000">#btn = Image(self.blank)</FONT>
+            s.append(<FONT color="#009900">'&lt;span style="width: 60px"&gt;&lt;/span&gt; \n'</FONT>)
+        if self.gonext: <FONT color="#DD0000"># place an image button for next page</FONT>
+            btn = Image(self.next, border=0, alt=<FONT color="#009900">'Next'</FONT>)
+            link = Href(self.gonext, str(btn))
+            s.append(str(link) + <FONT color="#009900">' \n'</FONT>)
+        else: <FONT color="#DD0000"># place a blank gif as spacer</FONT>
+            btn = Image(self.blank)
+            s.append(str(btn) + <FONT color="#009900">' \n'</FONT>)
+        if self.gotop: <FONT color="#DD0000"># place an image button for top of manual page</FONT>
+            btn = Image(self.top, border=0, alt=<FONT color="#009900">'Top of Manual'</FONT>)
+            link = Href(self.gotop, str(btn))
+            s.append(str(link) + <FONT color="#009900">' \n'</FONT>)
+        else: <FONT color="#DD0000"># place a blank gif as spacer</FONT>
+            btn = Image(self.blank)
+            s.append(str(btn) + <FONT color="#009900">' \n'</FONT>)
+        if self.gohome: <FONT color="#DD0000"># place an image button for site home page</FONT>
+            btn = Image(self.home, border=0, alt=<FONT color="#009900">'Home Page'</FONT>)
+            link = Href(self.gohome, str(btn))
+            s.append(str(link) + <FONT color="#009900">' \n'</FONT>)
+        else: <FONT color="#DD0000"># place a blank gif as spacer</FONT>
+            btn = Image(self.blank)
+            s.append(str(btn) + <FONT color="#009900">' \n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+ 
+<FONT color="#CC6600">    def footer</FONT>(self):
+        <FONT color="#0000DD">"""Generate the standard footer markups.
+        """</FONT>
+        <FONT color="#DD0000"># FOOTER SECTION - overload this if you don't like mine.</FONT>
+        t = time.localtime(time.time())
+        <FONT color="#DD0000">#self.datetime = time.strftime("%c %Z", t)    #not available in JPython</FONT>
+        self.datetime = time.asctime(t)
+        <FONT color="#DD0000">#self.date = time.strftime("%A %B %d, %Y", t)</FONT>
+        x = string.split(self.datetime)
+        self.date = x[0] + <FONT color="#009900">' '</FONT> + x[1] + <FONT color="#009900">' '</FONT> + x[2] + <FONT color="#009900">', '</FONT> + x[4]
+        s =  [<FONT color="#009900">'\n&lt;P&gt;&lt;HR&gt;\n'</FONT>]
+        if self.place_nav_buttons:
+            s.append(self.nav_buttons())
+        s.append(<FONT color="#009900">'&lt;BR&gt;'</FONT> + str(Image(self.logo, align=<FONT color="#009900">'bottom'</FONT>)))
+        s.append(<FONT color="#009900">'\n<FONT SIZE="-1"><P>Copyright &#169 %s<BR>All Rights Reserved<BR>\n'</FONT> \
+            % self.author)
+        s.append(<FONT color="#009900">'\nComments to author: '</FONT> + str(MailTo(self.email)) )
+        s.append(<FONT color="#009900">'&lt;br&gt;\nGenerated: %s &lt;BR&gt;'</FONT> % self.date) # can use self.datetime here instead
+        s.append(<FONT color="#009900">'<hr>\n</FONT>'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#DD0000"># Aliases for backward compatability with HTMLgen 1.2</FONT>
+Document = SeriesDocument
+MinimalDocument = SimpleDocument
+
+
+<STRONG>class StringTemplate</STRONG>:
+    <FONT color="#0000DD">"""Generate documents based on a template and a substitution mapping.
+
+    Must use Python 1.5 or newer. Uses re and the get method on dictionaries.
+
+    Usage:
+       T = TemplateDocument(<FONT color="#009900">'Xfile'</FONT>)
+       T.substitutions = {<FONT color="#009900">'month'</FONT>: ObjectY, <FONT color="#009900">'town'</FONT>: <FONT color="#009900">'Scarborough'</FONT>}
+       T.write(<FONT color="#009900">'Maine.html'</FONT>)
+
+    A dictionary, or object that behaves like a dictionary, is assigned to the
+    *substitutions* attribute which has symbols as keys to objects. Upon every
+    occurance of these symbols surrounded by braces {} in the source template,
+    the corresponding value is converted to a string and substituted in the output.
+
+    For example, source text which looks like:
+     I lost my heart at {town} Fair.
+    becomes:
+     I lost my heart at Scarborough Fair.
+
+    Symbols in braces which do not correspond to a key in the dictionary remain
+    unchanged.
+
+    An optional third argument to the class is a list or two strings to be
+    used as the delimiters instead of { } braces. They must be of the same
+    length; for example [<FONT color="#009900">'##+'</FONT>, <FONT color="#009900">'##'</FONT>] is invalid.
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, template, substitutions=None, **kw):
+        self.delimiters = [<FONT color="#009900">'{'</FONT>, <FONT color="#009900">'}'</FONT>]
+        self.__dict__.update(kw)
+        if len(self.delimiters) != 2:
+            raise ValueError("delimiter argument must be a pair of strings")
+        self.delimiter_width = len(self.delimiters[0])
+        delimiters = map(re.escape, self.delimiters)
+        self.subpatstr = delimiters[0] + "[\w_]+" + delimiters[1]
+        self.subpat = re.compile(self.subpatstr)
+        self.substitutions = substitutions or {}
+        self.set_template(template)
+
+<FONT color="#CC6600">    def set_template</FONT>(self, template):
+        self.source = template
+    
+<FONT color="#CC6600">    def keys</FONT>(self):
+        return self.substitutions.keys()
+
+<FONT color="#CC6600">    def __setitem__</FONT>(self, name, value):
+        self.substitutions[name] = value
+        
+<FONT color="#CC6600">    def __getitem__</FONT>(self, name):
+        return self.substitutions[name]
+      
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        return self._sub(self.source)
+
+<FONT color="#CC6600">    def _sub</FONT>(self, source, subs=None):
+        <FONT color="#0000DD">"""Perform source text substitutions.
+
+        *source* string containing template source text
+        *subs* mapping of symbols to replacement values
+        """</FONT>
+        substitutions = subs or self.substitutions
+        dw = self.delimiter_width
+        i = 0
+        output = []
+        matched = self.subpat.search(source[i:])
+        while matched:
+            a, b = matched.span()
+            output.append(source[i:i+a])
+            <FONT color="#DD0000"># using the new get method for dicts in 1.5</FONT>
+            output.append(str(substitutions.get(
+                   source[i+a+dw:i+b-dw], source[i+a:i+b])))
+            i = i + b
+            matched = self.subpat.search(source[i:])
+        else:
+            output.append(source[i:])
+        return string.join(output, <FONT color="#009900">''</FONT>)
+    
+<FONT color="#CC6600">    def write</FONT>(self, filename = None):
+        <FONT color="#0000DD">"""Emit the Document HTML to a file or standard output.
+        
+        Will not overwrite file is it exists and is textually the same.
+        In Unix you can use environment variables in filenames.
+        Will print to stdout if no argument given.
+        """</FONT>
+        if filename:
+            filename = mpath(filename)
+            if os.path.exists(filename):
+                s = str(self)
+                if compare_s2f(s, filename):
+                    f = open(filename, <FONT color="#009900">'w'</FONT>)
+                    f.write(str(self))
+                    f.close()
+                    if PRINTECHO: print <FONT color="#009900">'wrote: "'</FONT>+filename+<FONT color="#009900">'"'</FONT>
+                else:
+                    if PRINTECHO: print <FONT color="#009900">'file unchanged: "'</FONT>+filename+<FONT color="#009900">'"'</FONT>
+            else:
+                f = open(filename, <FONT color="#009900">'w'</FONT>)
+                f.write(str(self))
+                f.close()
+                if PRINTECHO: print <FONT color="#009900">'wrote: "'</FONT>+filename+<FONT color="#009900">'"'</FONT>
+        else:
+            import sys
+            sys.stdout.write(str(self))
+
+<STRONG>class TemplateDocument</STRONG>(StringTemplate):
+    <FONT color="#0000DD">"""Generate documents based on a template and a substitution mapping.
+
+    Must use Python 1.5 or newer. Uses re and the get method on dictionaries.
+
+    Usage:
+       T = TemplateDocument(<FONT color="#009900">'Xfile'</FONT>)
+       T.substitutions = {<FONT color="#009900">'month'</FONT>: ObjectY, <FONT color="#009900">'town'</FONT>: <FONT color="#009900">'Scarborough'</FONT>}
+       T.write(<FONT color="#009900">'Maine.html'</FONT>)
+
+    A dictionary, or object that behaves like a dictionary, is assigned to the
+    *substitutions* attribute which has symbols as keys to objects. Upon every
+    occurance of these symbols surrounded by braces {} in the source template,
+    the corresponding value is converted to a string and substituted in the output.
+
+    For example, source text which looks like:
+     I lost my heart at {town} Fair.
+    becomes:
+     I lost my heart at Scarborough Fair.
+
+    Symbols in braces which do not correspond to a key in the dictionary remain
+    unchanged.
+
+    An optional third argument to the class is a list or two strings to be
+    used as the delimiters instead of { } braces. They must be of the same
+    length; for example [<FONT color="#009900">'##+'</FONT>, <FONT color="#009900">'##'</FONT>] is invalid.
+    """</FONT>
+<FONT color="#CC6600">    def set_template</FONT>(self, template):
+        f = open(mpath(template))
+        self.source = f.read()
+        f.close()
+
+<STRONG>class AutoStringTemplate</STRONG>(StringTemplate):
+    marker_begin = <FONT color="#009900">'&lt;!--{%s}Begin--&gt;'</FONT>
+    marker_end   = <FONT color="#009900">'&lt;!--{%s}End--&gt;'</FONT>
+    R = re.compile(r"<!--{(?P<key>[\w_]+)}Begin-->(?P<text>.*?)<!--{\1}End-->", re.S)
+    
+<FONT color="#CC6600">    def set_template</FONT>(self, template):
+        <FONT color="#0000DD">"""Set template string and normalize by extracting comment tokens.
+        """</FONT>
+        self.source = template
+        self.extract_template()
+        
+<FONT color="#CC6600">    def extract_template</FONT>(self, source=None):
+        <FONT color="#0000DD">"""Convert comment-marked regions to a regular {tokens}.
+        
+        Updates the substitution dictionary with the text from the region.
+        """</FONT>
+        source = source or self.source
+        a = 0
+        newsubs = {}
+        newtemplate = []
+        d1, d2 = self.delimiters
+        while 1:
+            m = self.R.search(source, a)
+            if m:
+                start, end = m.span()
+                newtemplate.append(source[a:start])
+                a = end
+                newsubs[m.group(<FONT color="#009900">'key'</FONT>)] = m.group(<FONT color="#009900">'text'</FONT>)
+                newtemplate.append(d1+m.group(<FONT color="#009900">'key'</FONT>)+d2)
+            else:
+                newtemplate.append(source[a:])
+                break
+        self.source = string.join(newtemplate, <FONT color="#009900">''</FONT>)
+        self.substitutions.update(newsubs)
+
+<FONT color="#CC6600">    def _sub</FONT>(self, source, subs=None):
+        <FONT color="#0000DD">"""Perform source text substitutions.
+
+        *source* string containing template source text
+        *subs* mapping of symbols to replacement values
+        """</FONT>
+        substitutions = subs or self.substitutions
+        dw = self.delimiter_width
+        i = 0
+        output = []
+        matched = self.subpat.search(source[i:])
+        while matched:
+            a, b = matched.span()
+            output.append(source[i:i+a])
+            <FONT color="#DD0000">#implant comments to mark the location of the tokens</FONT>
+            output.append(self.marker_begin % source[i+a+dw:i+b-dw])
+            <FONT color="#DD0000"># using the new get method for dicts in 1.5</FONT>
+            output.append(str(substitutions.get(
+                   source[i+a+dw:i+b-dw], source[i+a:i+b])))
+            output.append(self.marker_end % source[i+a+dw:i+b-dw])
+            i = i + b
+            matched = self.subpat.search(source[i:])
+        else:
+            output.append(source[i:])
+        return string.join(output, <FONT color="#009900">''</FONT>)
+
+<STRONG>class AutoTemplateDocument</STRONG>(AutoStringTemplate):
+    <FONT color="#0000DD">"""Generate documents based on a template and a substitution mapping.
+    
+    The primary difference between AutoTemplateDocument and TemplateDocument
+    is that the Auto version can read through an HTML file previously
+    generated with this class and identify the regions of text that were
+    substituted. It then extracts that text into the substitution dictionary
+    and can then be updated. The intent is to eliminate the need to 
+    maintain separate content files for insertion into templates. The HTML
+    output file can double as a template for future use.
+    Output from this class have their filled regions marked by comments:
+        ...gets <!--{wz}Begin-->glued,<!--{wz}End--> in place...
+    Which came from ...gets {wz} in place... in old style template syntax.
+    
+    AutoTemplateDocument is a functional superset of TemplateDocument and should
+    be compatible.
+
+    Usage:
+       T = AutoTemplateDocument(<FONT color="#009900">'Maine.html'</FONT>)
+       T.substitutions = {<FONT color="#009900">'month'</FONT>: ObjectY, <FONT color="#009900">'town'</FONT>: <FONT color="#009900">'Scarborough'</FONT>}
+       or
+       T[<FONT color="#009900">'month'</FONT>] = ObjectY ; T[<FONT color="#009900">'town'</FONT>] = <FONT color="#009900">'Scarborough'</FONT>
+       T.write(<FONT color="#009900">'Maine.html'</FONT>)
+    
+    A dictionary, or object that behaves like a dictionary, is assigned to the
+    *substitutions* attribute which has symbols as keys to objects. Upon every
+    occurance of these symbols surrounded by braces {} in the source template,
+    the corresponding value is converted to a string and substituted in the output.
+
+    For example, source text which looks like:
+     I lost my heart at {town} Fair.
+    becomes:
+     I lost my heart at Scarborough Fair.
+
+    Symbols in braces which do not correspond to a key in the dictionary remain
+    unchanged.
+
+    An optional third argument to the class is a list or two strings to be
+    used as the delimiters instead of { } braces. They must be of the same
+    length; for example [<FONT color="#009900">'##+'</FONT>, <FONT color="#009900">'##'</FONT>] is invalid.
+    """</FONT>
+<FONT color="#CC6600">    def set_template</FONT>(self, template):
+        f = open(mpath(template))
+        self.source = f.read()
+        f.close()
+
+
+<STRONG>class Container</STRONG>:
+    <FONT color="#0000DD">"""A holder for a list of HTMLgen objects.    
+    """</FONT>
+
+<FONT color="#CC6600">    def __init__</FONT>(self, *args, **kw):
+        self.contents = list(args)
+        for name, value in kw.items():
+            setattr(self, name, value)
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        bodystring = <FONT color="#009900">'%s\n'</FONT> * len(self.contents)
+        return bodystring % tuple(self.contents)
+
+<FONT color="#CC6600">    def __add__</FONT>(self, other):
+        new = self.__class__()
+        new.contents = self.contents + other.contents
+        return new
+        
+<FONT color="#CC6600">    def append_file</FONT>(self, filename, marker_function = None):
+        <FONT color="#0000DD">"""Add the contents of a file to the document.
+
+        filename -- the filename of the file to be read [string]
+        marker_function -- a callable object which the text read from
+          the file will be passed through before being added to the
+          document.
+        """</FONT>
+        f = open(mpath(filename), <FONT color="#009900">'r'</FONT>)
+        if marker_function:
+            self.append(marker_function(f.read()))
+        else:
+            self.append(f.read())
+        f.close()
+        
+<FONT color="#CC6600">    def append</FONT>(self, *items):
+        <FONT color="#0000DD">"""Add content to the Document object.
+        
+        Arg *items* can be plain text or objects; multiple arguments supported.
+        """</FONT>
+        for item in items:
+            self.contents.append(item)
+
+<FONT color="#CC6600">    def prepend</FONT>(self, *items):
+        <FONT color="#0000DD">"""Add content to the beginning of the Document object.
+        
+        Arg *items* can be plain text or objects; multiple arguments supported.
+        """</FONT>
+        li = len(items)
+        for i in range(li-1, 0, -1):
+            self.contents.insert(0, items[i])
+
+<FONT color="#CC6600">    def copy</FONT>(self):
+        <FONT color="#0000DD">"""Return a complete copy of the current Container object.
+        """</FONT>
+        return copy.deepcopy(self)
+
+<FONT color="#DD0000">#===================</FONT>
+        
+<STRONG>class Meta</STRONG>:
+    <FONT color="#0000DD">"""Set document Meta-information.
+
+    The META element is used within the HEAD element to embed
+    document meta-information not defined by other HTML elements.
+    
+    Keywords supported
+ 
+        name  -- NAME element attribute (default: <FONT color="#009900">'keywords'</FONT>)
+        equiv  -- will map to the HTTP-EQUIV attribute
+        content -- mandatory attribute (default: <FONT color="#009900">'python,HTMLgen'</FONT>)
+        url -- URL naturally
+    
+    Example:
+
+        Meta( name=<FONT color="#009900">'keywords'</FONT>, content=<FONT color="#009900">'eggs,spam,beans'</FONT> )
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, **kw):
+        self.equiv = <FONT color="#009900">'keywords'</FONT>
+        self.name  = <FONT color="#009900">''</FONT>
+        self.content = <FONT color="#009900">'python,HTMLgen'</FONT>
+        self.url = <FONT color="#009900">''</FONT>
+        for item in kw.keys():
+            self.__dict__[item] = kw[item]
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = [<FONT color="#009900">'&lt;META'</FONT>]
+        if self.equiv: s.append(<FONT color="#009900">' HTTP-EQUIV="%s"'</FONT> % self.equiv)
+        if self.name:  s.append(<FONT color="#009900">' NAME="%s"'</FONT> % self.name)
+        if self.content: s.append(<FONT color="#009900">' CONTENT="%s"'</FONT> % self.content)
+        if self.url: s.append(<FONT color="#009900">' URL="%s"'</FONT> % self.url)
+        s.append(<FONT color="#009900">'&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#DD0000">##### Client-side Imagemap Support #####</FONT>
+
+<STRONG>class Map</STRONG>:
+    <FONT color="#0000DD">"""Used to name and describe a client-side image map.
+
+    The *areas* argument is a list of Area objects.
+    Keyword arg is supported for *name*, which defines the map name
+    to be used with the usemap attribute of an Image class instance.
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, areas = None, **kw):
+        self.areas = areas or []
+        self.name = <FONT color="#009900">''</FONT>
+        for item in kw.keys():
+            self.__dict__[item] = kw[item]
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = [<FONT color="#009900">'\n&lt;MAP NAME="%s"&gt;\n'</FONT> % self.name]
+        for area in self.areas:
+            s.append(str(area))
+        s.append(<FONT color="#009900">'&lt;/MAP&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+
+<STRONG>class Href</STRONG>:
+    <FONT color="#0000DD">"""Generate a hyperlink.
+
+    Argument 1 is the URL and argument 2 is the hyperlink text.
+
+    Keyword arguments
+
+        target -- is an optional target symbol 
+        onClick --  is the script-code which is executed when link is clicked.
+        onMouseOver -- the script-code which is executed when the mouse
+                       moves over the link.
+        onMouseOut -- the script-code which is executed when the mouse
+                       moves off the link.
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, url=<FONT color="#009900">''</FONT>, text=<FONT color="#009900">''</FONT>, **kw):
+        self.target = None
+        self.onClick = None
+        self.onMouseOver = None
+        self.onMouseOut = None
+        self.url = url
+        self.text = text
+        for item in kw.keys():
+            if self.__dict__.has_key(item):
+                self.__dict__[item] = kw[item]
+            else:
+                raise KeyError, `item`+<FONT color="#009900">' not a valid parameter for this class.'</FONT>
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = [<FONT color="#009900">'&lt;A HREF="%s"'</FONT> % self.url]
+        if self.target: s.append(<FONT color="#009900">' TARGET="%s"'</FONT> % self.target)
+        if self.onClick: s.append(<FONT color="#009900">' onClick="%s"'</FONT> % self.onClick)
+        if self.onMouseOver: s.append(<FONT color="#009900">' onMouseOver="%s"'</FONT> % self.onMouseOver)
+        if self.onMouseOut: s.append(<FONT color="#009900">' onMouseOut="%s"'</FONT> % self.onMouseOut)
+        s.append(<FONT color="#009900">'&gt;%s&lt;/A&gt;'</FONT> % self.text)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#CC6600">    def append</FONT>(self, content):
+        self.text = self.text + str(content)
+        
+
+A = HREF = Href <FONT color="#DD0000"># alias</FONT>
+
+<STRONG>class Name</STRONG>(Href):
+    <FONT color="#0000DD">"""Generate a named anchor.
+
+    Arg *url* is a string or URL object,
+    Arg *text* is optional string or object to be highlighted as the anchor.
+    """</FONT>
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        return <FONT color="#009900">'&lt;A NAME="%s"&gt;%s&lt;/A&gt;'</FONT> % (self.url, self.text)
+
+NAME = Name <FONT color="#DD0000"># alias</FONT>
+
+<STRONG>class MailTo</STRONG>:
+    <FONT color="#0000DD">"""A Mailto href
+
+    First argument is an email address, optional second argument is
+    the text shown as the underlined hyperlink. Default is the email
+    address. Optional third argument is a Subject: for the email.
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, address=<FONT color="#009900">''</FONT>, text=None, subject=None):
+        self.address = address
+        self.text = text or address
+        self.subject = subject
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        if self.subject: self.address = "%s?subject=%s" % (self.address, self.subject)
+        return <FONT color="#009900">'&lt;A HREF="mailto:%s"&gt;%s&lt;/A&gt;'</FONT> % (self.antispam(self.address), self.text)
+
+<FONT color="#CC6600">    def antispam</FONT>(self, address):
+        <FONT color="#0000DD">"""Process a string with HTML encodings to defeat address spiders.
+        """</FONT>
+        from whrandom import choice
+        buffer = map(None, address)
+        for i in range(0, len(address), choice((2,3,4))):
+            buffer[i] = <FONT color="#009900">'&amp;#%d;'</FONT> % ord(buffer[i])
+        return string.join(buffer,<FONT color="#009900">''</FONT>)
+
+MAILTO = Mailto = MailTo <FONT color="#DD0000"># aliases</FONT>
+
+<STRONG>class P</STRONG>:
+    <FONT color="#0000DD">"""Just echo a &lt;P&gt; tag."""</FONT>
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        return <FONT color="#009900">'\n&lt;P&gt;\n'</FONT>
+
+<FONT color="#DD0000"># List constructs</FONT>
+
+<STRONG>class List</STRONG>(UserList.UserList):
+    <FONT color="#0000DD">"""Will generate a bulleted list given a list argument.
+
+    Now supports rendering a list into multiple columns by setting the
+    *columns* attribute to a number greater than one. This is
+    implemented using tables and you can also set a background color
+    for the list itself by using the *bgcolor* attribute.
+
+    Supports nested lists, i.e. lists of lists. Each time a list is
+    encountered in a list it will indent those contents w.r.t. the
+    prior list entry. This can continue indefinitely through nested
+    lists although there are only three different bullets provided by
+    the browser (typically).
+    
+    Optional keyword *indent* can be used to indicate whether you want
+    the list to start left justified or indented. *indent=0* will make
+    it left justified. The default is to indent.
+
+    Optional keyword *type* can be set to either disk, circle, or
+    square to specify what kind of symbol is used for each list item's
+    bullet. (Netscape extension)
+    
+    Since we inherit from the UserList class any normal list
+    operations work on instances of this class.  Any list contents
+    will do. Each of the items will be emitted in html if they are
+    themselves objects from this module.
+    Aliases: UL, BulletList
+    """</FONT>
+
+    I_am_a_list = 1
+    tagname = <FONT color="#009900">'UL'</FONT>
+    attrs = (<FONT color="#009900">'type'</FONT>,<FONT color="#009900">'align'</FONT>,<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>,<FONT color="#009900">'style'</FONT>)
+    flags = (<FONT color="#009900">'compact'</FONT>,)
+    columns = 1
+    bgcolor = <FONT color="#009900">''</FONT>
+    pad = <FONT color="#009900">'    '</FONT>
+    indent = 1
+<FONT color="#CC6600">    def __init__</FONT>(self, list = None, **kw):
+        self.data = []
+        self.lvl = 0
+        if list:
+            if type(list) == type(self.data):
+                self.data[:] = list
+            else:
+                self.data[:] = list.data[:]
+        for item in kw.keys():
+            self.__dict__[string.lower(item)] = kw[item]
+
+<FONT color="#CC6600">    def __getslice__</FONT>(self, i, j):
+        newlist = copy.copy(self)
+        newlist.data = self.data[i:j]
+        newlist.columns = 1 <FONT color="#DD0000"># don't forget that the copy will carry</FONT>
+                            <FONT color="#DD0000"># the old attribute value. set to 1</FONT>
+        return newlist
+
+<FONT color="#CC6600">    def multi_column_table</FONT>(self):
+        <FONT color="#0000DD">"""Return a table containing the list sliced into columns.
+        """</FONT>
+        slices = self.column_slices(self.columns)
+        table = TableLite(border=0, cellpadding=3)
+        if self.bgcolor: table.bgcolor = self.bgcolor
+        for begin, end in slices:
+            column = TD(self[begin:end], valign=<FONT color="#009900">'top'</FONT>, html_escape=<FONT color="#009900">'no'</FONT>)
+            table.append(column)
+        return table
+
+<FONT color="#CC6600">    def column_slices</FONT>(self, columns=1):
+        <FONT color="#0000DD">"""Calculate a list of index pairs bounding column slices.
+        """</FONT>
+        list_len = len(self.data)
+        col_len, remainder = divmod(list_len, columns)
+        if remainder: col_len = col_len + 1
+        indexpairs = []
+        if columns > 1:
+            for column in range(columns):
+                col_end = (column+1)*col_len
+                if col_end < list_len:
+                    indexpairs.append((column*col_len, col_end))
+                else:
+                    indexpairs.append((column*col_len, list_len))
+        else:
+            indexpairs.append((0, list_len))
+        return indexpairs
+        
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        if self.columns > 1: <FONT color="#DD0000"># go to the new multicolumn feature</FONT>
+            return str(self.multi_column_table())
+        <FONT color="#DD0000"># same as before</FONT>
+        self.firstitem = 1
+        self.s = []
+        if self.indent:
+            self.s.append(self.pad*self.lvl + self.start_element())
+        for item in self.data: <FONT color="#DD0000">#start processing main list</FONT>
+            itemtype = type(item)
+            if itemtype == InstanceType: 
+                try: <FONT color="#DD0000"># in case it's a nested list object</FONT>
+                    if item.I_am_a_list:
+                        itemtype = ListType
+                except AttributeError:
+                    pass
+            if itemtype == ListType: <FONT color="#DD0000">#process the sub list</FONT>
+                self.sub_list(item)
+            else:
+                self.s.append(self.render_list_item(item))
+
+        if self.indent: <FONT color="#DD0000">#close out this level of list</FONT>
+            self.s.append(self.pad*self.lvl + self.end_element())
+        self.lvl = 0
+        return string.join(self.s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#CC6600">    def sub_list</FONT>(self, list):
+        <FONT color="#0000DD">"""Recursive method for generating a subordinate list
+        """</FONT>
+        self.lvl = self.lvl + 1
+        if type(list) == InstanceType:
+            try:
+                if list.I_am_a_list: <FONT color="#DD0000">#render the List object</FONT>
+                    list.lvl = self.lvl
+                    self.s.append(str(list))
+            except AttributeError:
+                pass
+        else:
+            self.s.append(self.pad*self.lvl + self.start_element())
+            for item in list:
+                itemtype = type(item)
+                if itemtype == InstanceType:
+                    try: <FONT color="#DD0000">#could be another nested List child object</FONT>
+                        if item.I_am_a_list:
+                            itemtype = ListType
+                    except AttributeError:
+                        pass
+                if itemtype == ListType:
+                    self.sub_list(item) <FONT color="#DD0000">#recurse for sub lists</FONT>
+                else: <FONT color="#DD0000"># or just render it</FONT>
+                    self.s.append(self.render_list_item(item))
+            <FONT color="#DD0000"># close out this list level</FONT>
+            self.s.append(self.pad*self.lvl + self.end_element())
+        self.lvl = self.lvl - 1 <FONT color="#DD0000">#decrement indentation level</FONT>
+
+<FONT color="#CC6600">    def render_list_item</FONT>(self, item):
+        <FONT color="#0000DD">"""Renders the individual list items
+
+        Overloaded by child classes to represent other list styles.
+        """</FONT>
+        return <FONT color="#009900">'%s&lt;LI&gt;%s\n'</FONT> % (self.pad*self.lvl, item)
+
+<FONT color="#CC6600">    def start_element</FONT>(self):
+        <FONT color="#0000DD">"""Generic creator for the HTML element opening tag.
+
+        Reads tagname, attrs and flags to return appropriate tag.
+        """</FONT>
+        s = [<FONT color="#009900">'&lt;'</FONT> + self.tagname]
+        for attr in self.attrs:
+            try:
+                s.append(<FONT color="#009900">' %s="%s"'</FONT> % (attr, getattr(self, attr)))
+            except AttributeError:
+                pass
+        for flag in self.flags:
+            try:
+                x = getattr(self, flag)
+                s.append(<FONT color="#009900">' %s'</FONT> % flag)
+            except AttributeError:
+                pass
+        s.append(<FONT color="#009900">'&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<FONT color="#CC6600">    def end_element</FONT>(self):
+        <FONT color="#0000DD">"""Closes the HTML element
+        """</FONT>
+        return <FONT color="#009900">'&lt;/%s&gt;\n'</FONT> % self.tagname
+
+<FONT color="#CC6600">    def append</FONT>(self, *items):
+        <FONT color="#0000DD">"""Append entries to the end of the list
+        """</FONT>
+        for item in items:
+            self.data.append(item)
+    
+UL = BulletList = List  <FONT color="#DD0000">#Aliases</FONT>
+
+<STRONG>class OrderedList</STRONG>(List):
+    <FONT color="#0000DD">"""Will generate a numbered list given a list arg.
+
+    Optional keyword *type* can be used to specify whether you want
+    the list items marked with: capital letters (type=<FONT color="#009900">'A'</FONT>), small
+    letters (type=<FONT color="#009900">'a'</FONT>), large Roman numerals (type=<FONT color="#009900">'I'</FONT>), small Roman
+    numerals (type=<FONT color="#009900">'i'</FONT>). The default is arabic numbers. The other
+    types are HTML3.2 only and may not be supported by browsers yet.
+    Any list contents will do. Each of the items will be emitted
+    in HTML if they are themselves objects.
+    """</FONT>
+    tagname = <FONT color="#009900">'OL'</FONT>
+    attrs = (<FONT color="#009900">'type'</FONT>,<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>,<FONT color="#009900">'style'</FONT>)
+
+OL = NumberedList = OrderedList
+
+<STRONG>class DefinitionList</STRONG>(List):
+    <FONT color="#0000DD">"""Show a series of items and item definitions.
+
+    Arg is a list of tuple pairs:
+    [(string/object,string/object),(,)...]  1st item in each pair is
+    the word to be defined. It will be rendered in bold. 2nd is the
+    string which will be indented to it's next-line-right. If the
+    *compact* flag is set to non-empty, the definition side will be
+    placed on the same line.  Example
+
+        DefinitionList([( 4 , <FONT color="#009900">'Number after 3'</FONT>) , ( 1 , <FONT color="#009900">'Unity'</FONT>)] ) will emit:
+        4
+            Number after 3
+        1
+            Unity
+    """</FONT>
+    tagname = <FONT color="#009900">'DL'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>,<FONT color="#009900">'style'</FONT>)
+    flags = (<FONT color="#009900">'compact'</FONT>,)
+<FONT color="#CC6600">    def render_list_item</FONT>(self, item):
+        <FONT color="#0000DD">"""Overload method to perform DT/DD markup.
+        """</FONT>
+        return <FONT color="#009900">'%s&lt;DT&gt;&lt;B&gt;%s&lt;/B&gt;&lt;DD&gt;%s\n'</FONT> % (self.pad*self.lvl, item[0], item[1])
+
+DL = DefinitionList
+
+<STRONG>class ImageBulletList</STRONG>(List):
+    <FONT color="#0000DD">"""Show a list of images with adjoining text(or object).
+
+    Arg is a list of tuple pairs: [(Image_obj, string/object),(,)...]
+    Generates an inlined image then the text followed by a &lt;BR&gt;
+    for each element.
+    """</FONT>
+    tagname = <FONT color="#009900">'UL'</FONT>
+    attrs = ()
+    flags = ()
+<FONT color="#CC6600">    def render_list_item</FONT>(self, item):
+        <FONT color="#0000DD">"""Overload method to take first item from an item tuple and
+        setting it next to the second item, using BR to separate list items.
+        """</FONT>
+        return <FONT color="#009900">'%s%s %s&lt;BR&gt;\n'</FONT> % (self.pad*self.lvl, item[0], item[1])
+
+<STRONG>class NonBulletList</STRONG>(List):
+    <FONT color="#0000DD">"""Generate a raw indented list without bullet symbols.
+
+    Arg is a list of python objects:
+    """</FONT>
+    tagname = <FONT color="#009900">'UL'</FONT>
+    attrs = ()
+    flags = ()
+<FONT color="#CC6600">    def render_list_item</FONT>(self, item):
+        <FONT color="#0000DD">"""Overload method to take first item from an item tuple and
+        setting it next to the second item, using BR to separate list items.
+        """</FONT>
+        return <FONT color="#009900">'%s%s&lt;BR&gt;\n'</FONT> % (self.pad*self.lvl, item)
+
+
+<FONT color="#DD0000">####### FORM TAGS ########</FONT>
+<STRONG>class Form</STRONG>:
+    <FONT color="#0000DD">"""Define a user filled form. Uses POST method.
+   
+    *cgi* is the URL to the CGI processing program.  Input objects
+    (any others as well) are appended to this container widget.
+    
+    Keywords
+    
+        name -- name of the form
+        submit -- The Input object to be used as the submit button.
+                  If none specified a Submit button will automatically
+                  be appended to the form. Do not manually append your
+                  submit button. HTMLgen will append it for you.
+        reset  -- Input object to be used as a reset button.
+        target -- set a TARGET attribute
+        enctype -- specify an Encoding type.
+        onSubmit -- script, which is executed, when the form is submitted
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, cgi = None, **kw):
+        self.contents = []
+        self.cgi = cgi
+        self.submit = Input(type=<FONT color="#009900">'submit'</FONT>, name=<FONT color="#009900">'SubmitButton'</FONT>, value=<FONT color="#009900">'Send'</FONT>)
+        self.reset = None
+        self.target = None
+        self.enctype = None
+        self.name = None
+        self.onSubmit = <FONT color="#009900">''</FONT>
+        overlay_values(self, kw)
+
+<FONT color="#CC6600">    def append</FONT>(self, *items):
+        <FONT color="#0000DD">"""Append any number of items to the form container.
+        """</FONT>
+        for item in items:
+            self.contents.append(str(item))
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = [<FONT color="#009900">'\n&lt;FORM METHOD="POST"'</FONT>]
+        if self.cgi: s.append(<FONT color="#009900">' ACTION="%s"'</FONT> % self.cgi)
+        if self.enctype: s.append(<FONT color="#009900">' ENCTYPE="%s"'</FONT> % self.enctype)
+        if self.target: s.append(<FONT color="#009900">' TARGET="%s"'</FONT> % self.target)
+        if self.name: s.append(<FONT color="#009900">' NAME="%s"'</FONT> % self.name)
+        if self.onSubmit: s.append(<FONT color="#009900">' onSubmit="%s"'</FONT> % self.onSubmit)
+        s.append(<FONT color="#009900">'&gt;\n'</FONT>)
+        s = s + self.contents
+        s.append(str(self.submit))
+        if self.reset: s.append(str(self.reset))
+        s.append(<FONT color="#009900">'\n&lt;/FORM&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+        
+        
+<FONT color="#CC6600">def overlay_values</FONT>(obj, dict):
+    <FONT color="#0000DD">"""Adds each item from dict to the given object iff there already
+    exists such a key. Raises KeyError if you try to update the value
+    of non-existing keys.
+    """</FONT>
+    for key in dict.keys():
+        if hasattr(obj, key):
+            obj.__dict__[key] = dict[key]
+        else:
+            raise KeyError(`key` + <FONT color="#009900">' not a keyword for '</FONT> + obj.__class__.__name__)
+
+
+<STRONG>class Input</STRONG>:
+    <FONT color="#0000DD">"""General Form Input tags.
+
+    Keyword Arguments
+
+        type -- <FONT color="#009900">'TEXT'</FONT> (default) Supported types include password, checkbox,
+                      radio, file, submit, reset, hidden.
+        name -- provides the datum name
+        value -- the initial value of the input item
+        checked --  flag indicating if the item is checked initially
+        size -- size of the widget (e.g. size=10 for a text widget is it's width)
+        maxlength -- maximum number of characters accepted by the textfield.
+        border -- border width in pixels for an image type.
+        align -- top|middle|bottom align w.r.t. adjoining text for image types.
+        llabel  --  an optional string set to the left of the widget
+        rlabel  --  an optional string set to the right of the widget
+        onBlur -- script, which is executed, when the field loses focus,
+                  useful for the text-type 
+        onChange -- script, which is executed, when the field value changed,
+                    useful for the text-type
+        onClick -- script, which is executed, when the field in clicked,
+                   useful for the button, checkbox, radio, submit, reset type
+        onFocus -- script, which is executed, when the field receives focus,
+                   useful for the text-type
+        onSelect -- script, which is executed, when part of the field 
+                    is selected, useful for the text-type
+    """</FONT>
+    re_type = re.compile(<FONT color="#009900">'text|password|checkbox|radio|image|button|file|submit|reset|hidden'</FONT>,
+                            re.IGNORECASE)
+<FONT color="#CC6600">    def __init__</FONT>(self, **kw):
+        self.type = <FONT color="#009900">'TEXT'</FONT>
+        self.name = <FONT color="#009900">'Default_Name'</FONT>
+        self.value = None
+        self.checked = <FONT color="#009900">''</FONT>
+        self.size = 0
+        self.maxlength = 0
+        self.llabel = <FONT color="#009900">''</FONT>
+        self.rlabel = <FONT color="#009900">''</FONT>
+        self.onBlur = <FONT color="#009900">''</FONT>
+        self.onChange = <FONT color="#009900">''</FONT>
+        self.onClick = <FONT color="#009900">''</FONT>
+        self.onFocus = <FONT color="#009900">''</FONT>
+        self.onSelect = <FONT color="#009900">''</FONT>
+        self.border = None
+        self.align = <FONT color="#009900">''</FONT>
+        for item in kw.keys():
+            if self.__dict__.has_key(item):
+                self.__dict__[item] = kw[item]
+            else:
+                raise KeyError, `item`+<FONT color="#009900">' not a valid parameter of the Input class.'</FONT>
+        if Input.re_type.search(self.type) is None:
+            raise KeyError, `self.type`+<FONT color="#009900">' not a valid type of Input class.'</FONT>
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = []
+        if self.llabel: s.append(str(self.llabel))
+        s.append(<FONT color="#009900">'\n&lt;INPUT'</FONT>)
+        if self.type: s.append(<FONT color="#009900">' TYPE="%s"'</FONT> % self.type)
+        if self.name: s.append(<FONT color="#009900">' NAME="%s"'</FONT> % self.name)
+        if self.value is not None: s.append(<FONT color="#009900">' VALUE="%s"'</FONT> % self.value)
+        if self.checked: s.append(<FONT color="#009900">' CHECKED'</FONT>)
+        if self.size: s.append(<FONT color="#009900">' SIZE=%s'</FONT> % self.size)
+        if self.maxlength: s.append(<FONT color="#009900">' MAXLENGTH=%s'</FONT> % self.maxlength)
+        if self.onBlur: s.append(<FONT color="#009900">' onBlur="%s"'</FONT> % self.onBlur)
+        if self.onChange: s.append(<FONT color="#009900">' onChange="%s"'</FONT> % self.onChange)
+        if self.onClick: s.append(<FONT color="#009900">' onClick="%s"'</FONT> % self.onClick)
+        if self.onFocus: s.append(<FONT color="#009900">' onFocus="%s"'</FONT> % self.onFocus)
+        if self.onSelect: s.append(<FONT color="#009900">' onSelect="%s"'</FONT> % self.onSelect)
+        if self.border is not None: s.append(<FONT color="#009900">' BORDER="%s"'</FONT> % self.border)
+        if self.align: s.append(<FONT color="#009900">' ALIGN="%s"'</FONT> % self.align)
+        s.append(<FONT color="#009900">'&gt;'</FONT>)
+        if self.rlabel: s.append(str(self.rlabel))
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+
+<STRONG>class Select</STRONG>(UserList.UserList):
+    <FONT color="#0000DD">"""Used to define a list widget or option widget.
+    
+    Pass a list of strings to show a list with those values. Alternatively
+    can pass a list of tuple pairs. Each pair contains the displayed string
+    and it's associatated value mapping. If no value mapping is needed just
+    use something that evaluates to None.
+
+    Keyword Arguments:
+    
+        name -- provides the datum name
+        size -- the visual size. 1 means use an option popup widget. 
+                               &gt;=2 means use a list widget with that many lines.
+        multiple -- flag to indicate whether multiple selections are supported.
+        selected -- list of values to be shown as pre-selected.
+        onBlur -- script, which is executed, when the field loses focus
+        onChange -- script, which is executed, when the field value changed
+        onFocus -- script, which is executed, when the field receives focus
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, data=None, **kw):
+        UserList.UserList.__init__(self, data)
+        self.name = <FONT color="#009900">''</FONT>
+        self.size = 1
+        self.multiple = None
+        self.selected = []
+        self.onBlur = <FONT color="#009900">''</FONT>
+        self.onChange = <FONT color="#009900">''</FONT>
+        self.onFocus = <FONT color="#009900">''</FONT>
+        for item in kw.keys():
+            if self.__dict__.has_key(item):
+                self.__dict__[item] = kw[item]
+            else:
+                raise KeyError, `item`+<FONT color="#009900">' not a valid parameter of the Select class.'</FONT>
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = [<FONT color="#009900">'&lt;SELECT NAME="%s"'</FONT> % self.name]
+        if self.size: s.append(<FONT color="#009900">' SIZE=%s'</FONT> % self.size)
+        if self.multiple: s.append(<FONT color="#009900">' MULTIPLE'</FONT>)
+        if self.onBlur: s.append(<FONT color="#009900">' onBlur="%s"'</FONT> % self.onBlur)
+        if self.onChange: s.append(<FONT color="#009900">' onChange="%s"'</FONT> % self.onChange)
+        if self.onFocus: s.append(<FONT color="#009900">' onFocus="%s"'</FONT> % self.onFocus)
+        s.append(<FONT color="#009900">'&gt;\n'</FONT>)
+        if type(self.data[0]) is TupleType:
+            for item, value in self.data:
+                s.append(<FONT color="#009900">'&lt;OPTION'</FONT>)
+                if value is not None:
+                    s.append(<FONT color="#009900">' Value="%s"'</FONT> % value)
+                if value in self.selected:
+                    s.append(<FONT color="#009900">' SELECTED'</FONT>)
+                else:
+                    if item in self.selected:
+                        s.append(<FONT color="#009900">' SELECTED'</FONT>)
+                s.append(<FONT color="#009900">'&gt;%s\n'</FONT> % item)
+        else:
+            for item in self.data:
+                if item not in self.selected:
+                    s.append(<FONT color="#009900">'&lt;OPTION&gt;%s\n'</FONT> % item)
+                else:
+                    s.append(<FONT color="#009900">'&lt;OPTION SELECTED&gt;%s\n'</FONT> % item)
+        s.append(<FONT color="#009900">'&lt;/SELECT&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<STRONG>class Textarea</STRONG>:
+    <FONT color="#0000DD">"""Used for an entry widget to type multi-line text (for forms).
+
+    Keyword Arguments:
+
+        rows -- sets the number of text rows. (default=4)
+        cols -- sets the number of text columns. (default=40)
+        onBlur -- script, which is executed, when the field loses focus
+        onChange -- script, which is executed, when the field value changed
+        onFocus -- script, which is executed, when the field receives focus
+        onSelect -- script, which is executed, when part of the field 
+                    is selected
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, text=<FONT color="#009900">''</FONT>, **kw):
+        self.text = text
+        self.name = <FONT color="#009900">'text_area'</FONT>
+        self.rows = 4
+        self.cols = 40
+        self.onBlur = <FONT color="#009900">''</FONT>
+        self.onChange = <FONT color="#009900">''</FONT>
+        self.onFocus = <FONT color="#009900">''</FONT>
+        self.onSelect = <FONT color="#009900">''</FONT>
+        for item in kw.keys():
+            if self.__dict__.has_key(item):
+                self.__dict__[item] = kw[item]
+            else:
+                raise KeyError, `item`+<FONT color="#009900">' not a valid parameter of the Textarea class.'</FONT>
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = [<FONT color="#009900">'&lt;TEXTAREA NAME="%s" ROWS=%s COLS=%s'</FONT> % (self.name, self.rows, self.cols)]
+        if self.onBlur: s.append(<FONT color="#009900">' onBlur="%s"'</FONT> % self.onBlur)
+        if self.onChange: s.append(<FONT color="#009900">' onChange="%s"'</FONT> % self.onChange)
+        if self.onFocus: s.append(<FONT color="#009900">' onFocus="%s"'</FONT> % self.onFocus)
+        if self.onSelect: s.append(<FONT color="#009900">' onSelect="%s"'</FONT> % self.onSelect)
+        s.append(<FONT color="#009900">'&gt;'</FONT>)
+        s.append(str(self.text))
+        s.append(<FONT color="#009900">'&lt;/TEXTAREA&gt;'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+
+<STRONG>class Script</STRONG>:
+    <FONT color="#0000DD">"""Construct a Script
+
+    Keyword Arguments
+
+        Defaults in (parenthesis).  Keyword parameters may be set as attributes of 
+        the instantiated script object as well.
+
+        language -- specifies the language (<FONT color="#009900">'JavaScript'</FONT>)
+        src -- specifies the location
+        code -- script code, which is printed in comments, to hide it from non
+                java-script browsers
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, **kw):
+        <FONT color="#DD0000"># Specify the default values</FONT>
+        self.language = <FONT color="#009900">'JavaScript'</FONT>
+        self.src = <FONT color="#009900">''</FONT>
+        self.code = <FONT color="#009900">''</FONT>
+        <FONT color="#DD0000"># Now overlay the keyword arguments from caller</FONT>
+        for k in kw.keys():
+            if self.__dict__.has_key(k):
+                self.__dict__[k] = kw[k]
+            else:
+                print `k`, "isn't a valid parameter for this class."
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = [<FONT color="#009900">'&lt;SCRIPT LANGUAGE="%s" '</FONT> % self.language]
+        if self.src: s.append(<FONT color="#009900">'SRC="%s" '</FONT> % self.src)
+        s.append(<FONT color="#009900">'&gt;'</FONT>)
+        if self.code: s.append(<FONT color="#009900">'&lt;!--\n%s\n//--&gt;\n'</FONT> % self.code)
+        s.append(<FONT color="#009900">'&lt;/SCRIPT&gt;'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+    
+<FONT color="#CC6600">    def append</FONT>(self, s):
+        self.code = self.code + s
+  
+
+<FONT color="#DD0000">####################</FONT>
+
+
+<STRONG>class Table</STRONG>:
+    <FONT color="#0000DD">"""Construct a Table with Python lists.
+
+    Instantiate with a string argument for the table's name (caption).
+    Set object.heading to a list of strings representing the column headings.
+    Set object.body to a list of lists representing rows. **WARNING:** the body
+    attribute will be edited to conform to html. If you don't want your
+    data changed make a copy of this list and use that with the table object.
+
+    Keyword Parameters
+
+        Defaults in (parenthesis).  Keyword parameters may be set as attributes of the
+        instantiated table object as well.
+
+        caption_align -- <FONT color="#009900">'top'</FONT>|<FONT color="#009900">'bottom'</FONT>  specifies the location of the table title (<FONT color="#009900">'top'</FONT>)
+        border -- the width in pixels of the bevel effect around the table (2)
+        cell_padding -- the distance between cell text and the cell boundary (4)
+        cell_spacing -- the width of the cell borders themselves (1)
+        width -- the width of the entire table wrt the current window width (<FONT color="#009900">'100%'</FONT>)
+        colspan -- a list specifying the number of columns spanned by that heading
+               index. e.g. t.colspan = [2,2] will place 2 headings spanning
+               2 columns each (assuming the body has 4 columns).
+        heading --  list of strings, the length of which determine the number of
+                   columns.  ( [<FONT color="#009900">'&amp;nbsp'</FONT>]*3 )
+        heading_align -- <FONT color="#009900">'center'</FONT>|<FONT color="#009900">'left'</FONT>|<FONT color="#009900">'right'</FONT>
+                        horizontally align text in the header row (<FONT color="#009900">'center'</FONT>)
+        heading_valign --  <FONT color="#009900">'middle'</FONT> |<FONT color="#009900">'top'</FONT>|<FONT color="#009900">'bottom'</FONT>
+                        vertically align text in the header row (<FONT color="#009900">'middle'</FONT>)
+        body_color -- a list of colors, for each column (None)
+        heading_color -- a list of color for each column heading (None)
+             For both these the index used is i%len(..._color) so
+             the color cycles through the columns
+        body -- a list of lists in row major order containing strings or objects
+               to populate the body of the table. ( [[<FONT color="#009900">'&amp;nbsp'</FONT>]*3] )
+        column1_align -- <FONT color="#009900">'left'</FONT>|<FONT color="#009900">'right'</FONT>|<FONT color="#009900">'center'</FONT>  text alignment of the first column
+        cell_align --    <FONT color="#009900">'left'</FONT>|<FONT color="#009900">'right'</FONT>|<FONT color="#009900">'center'</FONT>  text alignment for all other cells
+        cell_line_breaks -- 1|0  flag to determine if newline char in body text will be
+                  converted to <br> symbols; 1 they will, 0 they won't. (1)
+        
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, tabletitle=<FONT color="#009900">''</FONT>, **kw):
+        <FONT color="#0000DD">"""Arg1 is a string title for the table caption, optional keyword
+        arguments follow.
+        """</FONT>
+        <FONT color="#DD0000"># Specify the default values</FONT>
+        self.tabletitle = tabletitle
+        self.caption_align = <FONT color="#009900">'top'</FONT>
+        self.border = 2
+        self.cell_padding = 4
+        self.cell_spacing = 1
+        self.width = <FONT color="#009900">'100%'</FONT>
+        self.heading = None
+        self.heading_align = <FONT color="#009900">'center'</FONT>
+        self.heading_valign = <FONT color="#009900">'middle'</FONT>
+        self.body = [[<FONT color="#009900">'&amp;nbsp;'</FONT>]*3]
+        self.column1_align = <FONT color="#009900">'left'</FONT>
+        self.cell_align = <FONT color="#009900">'left'</FONT>
+        self.cell_line_breaks = 1
+        self.colspan = None
+        self.body_color= None
+        self.heading_color=None
+        <FONT color="#DD0000"># Now overlay the keyword arguments from caller</FONT>
+        for k in kw.keys():
+            if self.__dict__.has_key(k):
+                self.__dict__[k] = kw[k]
+            else:
+                print `k`, "isn't a valid parameter for this class."
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        <FONT color="#0000DD">"""Generates the html for the entire table.
+        """</FONT>
+        if self.tabletitle:
+           s = [str(Name(self.tabletitle)) + <FONT color="#009900">'\n&lt;P&gt;'</FONT>]
+        else:
+           s = []
+
+        s.append(<FONT color="#009900">'&lt;TABLE border=%s cellpadding=%s cellspacing=%s width="%s"&gt;\n'</FONT> % \
+                (self.border, self.cell_padding, self.cell_spacing, self.width))
+        if self.tabletitle:
+            s.append(<FONT color="#009900">'<CAPTION align=%s><STRONG>%s</STRONG></CAPTION>\n'</FONT> % \
+                    (self.caption_align, self.tabletitle))
+
+        for i in range(len(self.body)):
+            for j in range(len(self.body[i])):
+                if type(self.body[i][j]) == StringType:
+                    <FONT color="#DD0000">#process cell contents to insert breaks for \n char.</FONT>
+                    if self.cell_line_breaks:
+                        self.body[i][j] = string.replace(self.body[i][j], <FONT color="#009900">'\n'</FONT>,<FONT color="#009900">'&lt;br&gt;'</FONT>)
+                    else:
+                        self.body[i][j] = Text(self.body[i][j])
+
+        <FONT color="#DD0000"># Initialize colspan property to 1 for each</FONT>
+        <FONT color="#DD0000"># heading column if user doesn't provide it.</FONT>
+        if self.heading:
+            if not self.colspan:
+                if type(self.heading[0]) == ListType:
+                    self.colspan = [1]*len(self.heading[0])
+                else:
+                    self.colspan = [1]*len(self.heading)
+        <FONT color="#DD0000"># Construct heading spec</FONT>
+        <FONT color="#DD0000">#  can handle multi-row headings. colspan is a list specifying how many</FONT>
+        <FONT color="#DD0000">#  columns the i-th element should span. Spanning only applies to the first</FONT>
+        <FONT color="#DD0000">#  or only heading line.</FONT>
+        if self.heading:
+            prefix = <FONT color="#009900">'&lt;TR Align='</FONT> + self.heading_align + <FONT color="#009900">'&gt; '</FONT>
+            postfix = <FONT color="#009900">'&lt;/TR&gt;\n'</FONT>
+            middle = <FONT color="#009900">''</FONT>
+            if type(self.heading[0]) == ListType:
+                for i in range(len(self.heading[0])):
+                    middle = middle + <FONT color="#009900">'&lt;TH ColSpan=%s%s&gt;'</FONT> % \
+                             (self.colspan[i], \
+                              self.get_body_color(self.heading_color,i)) \
+                              + str(self.heading[0][i]) +<FONT color="#009900">'&lt;/TH&gt;'</FONT>
+                s.append(prefix + middle + postfix)
+                for i in range(len(self.heading[1])):
+                    middle = middle + <FONT color="#009900">'&lt;TH&gt;'</FONT> + str(self.heading[i]) +<FONT color="#009900">'&lt;/TH&gt;'</FONT>
+                for heading_row in self.heading[1:]:
+                    for i in range(len(self.heading[1])):
+                        middle = middle + <FONT color="#009900">'&lt;TH&gt;'</FONT> + heading_row[i] +<FONT color="#009900">'&lt;/TH&gt;'</FONT>
+                    s.append(prefix + middle + postfix)
+            else:
+                for i in range(len(self.heading)):
+                    middle = middle + <FONT color="#009900">'&lt;TH ColSpan=%s%s&gt;'</FONT> % \
+                             (self.colspan[i], \
+                              self.get_body_color(self.heading_color,i)) \
+                              + str(self.heading[i]) +<FONT color="#009900">'&lt;/TH&gt;'</FONT>
+                s.append(prefix + middle + postfix)
+        <FONT color="#DD0000"># construct the rows themselves</FONT>
+        stmp = <FONT color="#009900">'&lt;TD Align=%s %s&gt;'</FONT>
+        for row in self.body:
+            s.append(<FONT color="#009900">'&lt;TR&gt;'</FONT>)
+            for i in range(len(row)):
+                if i == 0 :
+                    ss1 = self.column1_align
+                else:
+                    ss1 = self.cell_align
+                s.append(stmp % (ss1, self.get_body_color(self.body_color,i)))
+                s.append(str(row[i]))
+                s.append(<FONT color="#009900">'&lt;/TD&gt;\n'</FONT>)
+            s.append(<FONT color="#009900">'&lt;/TR&gt;\n'</FONT>)
+        <FONT color="#DD0000">#close table</FONT>
+        s.append(<FONT color="#009900">'&lt;/TABLE&gt;&lt;P&gt;\n'</FONT>)
+        return string.join(s, <FONT color="#009900">''</FONT>)
+    
+<FONT color="#CC6600">    def get_body_color</FONT>(self, colors, i):
+        <FONT color="#0000DD">"""Return bgcolor argument for column number i
+        """</FONT>
+        if colors is not None: 
+            try: 
+                index = i % len(colors) 
+                return <FONT color="#009900">' bgcolor="%s"'</FONT> % colors[index] 
+            except: 
+                pass 
+        return <FONT color="#009900">''</FONT>
+
+
+<FONT color="#DD0000">#--------------------New stuff--------------------------#</FONT>
+
+<FONT color="#CC6600">def _make_attr_inits</FONT>(opts):
+    <FONT color="#0000DD">"""Construct a format string and dictionary suitable for value
+    substitution of tag attributes.
+    """</FONT>
+    a = []
+    d = {}
+    for name in opts:
+        a.append(<FONT color="#009900">'%('</FONT>+name+<FONT color="#009900">')s'</FONT>)
+        d[name] = <FONT color="#009900">''</FONT>
+    return string.join(a, <FONT color="#009900">''</FONT>), d  
+
+<STRONG>class AbstractTagSingle</STRONG>:
+    "Abstract base class for all tag markup classes not requiring a closure tag."
+    tagname = <FONT color="#009900">''</FONT> # to be provided by derived classes
+    attrs = ()   <FONT color="#DD0000"># to be provided by derived classes</FONT>
+    attr_template = <FONT color="#009900">''</FONT> # to be provided by derived classes
+    attr_dict = {}     <FONT color="#DD0000"># to be provided by derived classes</FONT>
+    
+<FONT color="#CC6600">    def __init__</FONT>(self, *args, **kw):
+        self.__dict__[<FONT color="#009900">'attr_dict'</FONT>] = copy.copy(self.__class__.attr_dict)
+        self.args = args
+        for name, value in kw.items():
+            name = string.lower(name)
+            setattr(self, name, value)
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        <FONT color="#0000DD">"""Generate an HTML formatted string for this object.
+        """</FONT>
+        return  <FONT color="#009900">'&lt;%s'</FONT> % self.tagname + self.attr_template % self.attr_dict + <FONT color="#009900">'&gt;'</FONT>
+        
+<FONT color="#CC6600">    def __setattr__</FONT>(self, name, value):
+        <FONT color="#0000DD">"""Intercept attribute assignments.
+
+        If the attribute is a legal HTML tag attribute add it to the
+        dict used for substitution in __str__, otherwise just set it as
+        an instance attribute.
+        """</FONT>
+        name = string.lower(name)
+        if name in self.attrs:
+            self.attr_dict[name] = <FONT color="#009900">' %s="%s"'</FONT> % (name, value)
+        self.__dict__[name] = value
+
+<STRONG>class Image</STRONG>(AbstractTagSingle):
+    <FONT color="#0000DD">"""Inlined Image
+
+    The *filename* argument is a filename, or URL of a graphic image,
+    or a triple of ( filename, width, height ) where dimensions are in
+    pixels. Where the filename is found to be a valid pathname to an
+    existing graphic file that file will be read to determine its width and
+    height properties. GIF, JPEG, and PNG files are understood.
+    
+    Keyword Arguments
+    
+        width  -- (int) Width in pixels
+        height -- (int) Height in pixels
+        border -- (int) Border width in pixels
+        align  -- (string) <FONT color="#009900">'top'</FONT>|<FONT color="#009900">'middle'</FONT>|<FONT color="#009900">'bottom'</FONT>|<FONT color="#009900">'right'</FONT>|<FONT color="#009900">'left'</FONT>
+        alt    -- (string) Text to substitute for the image in nonGUI browsers
+        usemap -- Imagemap name or Map object
+        ismap  -- Flag (1|0) indicating if a server side imagemap is available.
+        absolute -- Absolute path to the directory containing the image
+        prefix -- Relative path or URL to directory containing the image
+        hspace -- Number of pixels to be added to the left and right of the image.
+        vspace -- Number of pixels to be added to the top and bottom of the image.
+        name -- A name for this image to be used by JavaScript
+        Class -- A CSS class this tag belongs to.
+        style -- A CSS inline style specification.
+    """</FONT>
+    tagname = <FONT color="#009900">'IMG'</FONT>
+    attrs = (<FONT color="#009900">'src'</FONT>, <FONT color="#009900">'height'</FONT>, <FONT color="#009900">'width'</FONT>, <FONT color="#009900">'alt'</FONT>, <FONT color="#009900">'border'</FONT>, <FONT color="#009900">'align'</FONT>, <FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>,
+             <FONT color="#009900">'hspace'</FONT>,<FONT color="#009900">'vspace'</FONT>, <FONT color="#009900">'lowsrc'</FONT>, <FONT color="#009900">'name'</FONT>, <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'usemap'</FONT>, <FONT color="#009900">'ismap'</FONT> )
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+<FONT color="#CC6600">    def __init__</FONT>(self, *args, **kw):
+        apply(AbstractTagSingle.__init__, (self,) + args, kw)
+        self.prefix = None
+        self.absolute = None
+        if self.args:
+            self.process_arg(self.args[0])
+
+<FONT color="#CC6600">    def process_arg</FONT>(self, arg):
+        <FONT color="#DD0000"># unpack the tuple if needed</FONT>
+        if type(arg) == TupleType:
+            self.filename = arg[0]
+            self.width = arg[1]
+            self.height = arg[2]
+        else:
+            self.filename = arg
+        self.src = self.filename
+        <FONT color="#DD0000"># if the file is there test it to get size</FONT>
+        if not self.attr_dict[<FONT color="#009900">'width'</FONT>]: # assume if the user has set the width property
+            <FONT color="#DD0000"># she knows the image size already or wants to resize it.</FONT>
+            try:
+                self.width, self.height = imgsize(self.filename)
+            except IOError:
+                pass
+
+<FONT color="#CC6600">    def calc_rel_path</FONT>(self, from_dir=None):
+        <FONT color="#0000DD">"""Calculate the relative path from <FONT color="#009900">'from_dir'</FONT> to the
+        absolute location of the image file.
+
+        Sets self.prefix.
+        """</FONT>
+        if not from_dir:
+            from_dir = os.getcwd()
+        if self.absolute:
+            self.prefix = relpath(from_dir, self.absolute)
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        if self.prefix:
+            self.src = os.path.join(self.prefix, self.filename)
+        if not self.attr_dict[<FONT color="#009900">'alt'</FONT>]:
+            self.alt = os.path.basename(self.filename)
+        if self.attr_dict[<FONT color="#009900">'usemap'</FONT>]:
+            if type(self.attr_dict[<FONT color="#009900">'usemap'</FONT>]) == InstanceType:
+                <FONT color="#DD0000"># can use a Map instance for this</FONT>
+                try:
+                    self.usemap = <FONT color="#009900">'#'</FONT> + self.usemap.name
+                except:
+                    pass
+        return AbstractTagSingle.__str__(self)
+
+IMG = Image <FONT color="#DD0000"># alias</FONT>
+
+<STRONG>class BR</STRONG>(AbstractTagSingle):
+    <FONT color="#0000DD">"""Break tag. Argument is an integer integer multiplier. BR(2)==<FONT color="#009900">'&lt;BR&gt;&lt;BR&gt;'</FONT>
+    """</FONT>
+    tagname = <FONT color="#009900">'BR'</FONT>
+    attrs = (<FONT color="#009900">'clear'</FONT>,)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        s = AbstractTagSingle.__str__(self)
+        if self.args and type(self.args[0]) is IntType:
+            return s*self.args[0]
+        else:
+            return s
+
+<STRONG>class Base</STRONG>(AbstractTagSingle):
+    <FONT color="#0000DD">"""Specify the base URL for all relative URLs in this document.
+
+    One string argument required. It must be a complete file name, and
+    is usually the original URL of this document.  If this file is
+    moved, having the BASE set to the original URL eliminates the need
+    to also move all the documents which are identified by relative
+    URL links in this document.
+    """</FONT>
+    tagname = <FONT color="#009900">'BASE'</FONT>
+    attrs = (<FONT color="#009900">'href'</FONT>, <FONT color="#009900">'target'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+<STRONG>class BaseFont</STRONG>(AbstractTagSingle):
+    <FONT color="#0000DD">"""Specify the font size for subsequent text.
+    """</FONT>
+    tagname = <FONT color="#009900">'BASEFONT'</FONT>
+    attrs = (<FONT color="#009900">'color'</FONT>, <FONT color="#009900">'name'</FONT>, <FONT color="#009900">'size'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+<STRONG>class Embed</STRONG>(AbstractTagSingle):
+    <FONT color="#0000DD">"""Embed an application in this document.
+    """</FONT>
+    tagname = <FONT color="#009900">'EMBED'</FONT>
+    attrs = (<FONT color="#009900">'align'</FONT>, <FONT color="#009900">'border'</FONT>, <FONT color="#009900">'height'</FONT>, <FONT color="#009900">'hidden'</FONT>, <FONT color="#009900">'hspace'</FONT>,
+             <FONT color="#009900">'name'</FONT>, <FONT color="#009900">'palette'</FONT>, <FONT color="#009900">'pluginspage'</FONT>, <FONT color="#009900">'src'</FONT>, <FONT color="#009900">'type'</FONT>,
+             <FONT color="#009900">'units'</FONT>, <FONT color="#009900">'vspace'</FONT>, <FONT color="#009900">'width'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+<STRONG>class HR</STRONG>(AbstractTagSingle):
+    <FONT color="#0000DD">"""Break the current text flow and insert a horizontal rule.
+    """</FONT>
+    tagname = <FONT color="#009900">'HR'</FONT>
+    attrs = (<FONT color="#009900">'align'</FONT>, <FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'color'</FONT>, <FONT color="#009900">'noshade'</FONT>, <FONT color="#009900">'size'</FONT>,
+             <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'width'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+
+<STRONG>class AbstractTag</STRONG>:
+    "Abstract base class for all tag markup classes requiring a closure tag."
+    tagname = <FONT color="#009900">''</FONT> # to be provided by derived classes
+    attrs = ()   <FONT color="#DD0000"># to be provided by derived classes</FONT>
+    attr_template = <FONT color="#009900">''</FONT> # to be provided by derived classes
+    attr_dict = {}      <FONT color="#DD0000"># to be provided by derived classes</FONT>
+    html_escape = <FONT color="#009900">'ON'</FONT>
+    trailer = <FONT color="#009900">'\n'</FONT>
+    
+<FONT color="#CC6600">    def __init__</FONT>(self, *contents, **kw):
+        self.__dict__[<FONT color="#009900">'contents'</FONT>] = []
+        self.__dict__[<FONT color="#009900">'attr_dict'</FONT>] = copy.copy(self.__class__.attr_dict)
+        for item in contents:
+            self.contents.append(item)
+        for name, value in kw.items():
+            name = string.lower(name)
+            setattr(self, name, value)
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        <FONT color="#0000DD">"""Generate an HTML formatted string for this object.
+        """</FONT>
+        s = [<FONT color="#009900">'&lt;%s'</FONT> % self.tagname]  # tag opening
+        s.append(self.attr_template % self.attr_dict + <FONT color="#009900">'&gt;'</FONT>) # options
+        <FONT color="#DD0000"># crunch through the contents</FONT>
+        for item in self.contents:
+            if type(item) is StringType and self.html_escape == <FONT color="#009900">'ON'</FONT>:
+                s.append(escape(item))
+            else:
+                s.append(str(item))
+        <FONT color="#DD0000"># close out the marked region</FONT>
+        s.append( <FONT color="#009900">'&lt;/%s&gt;'</FONT> % self.tagname)
+        return string.join(s, <FONT color="#009900">''</FONT>) + self.trailer
+        
+<FONT color="#CC6600">    def __setattr__</FONT>(self, name, value):
+        <FONT color="#0000DD">"""Intercept attribute assignments.
+
+        If the attribute is a legal HTML tag attribute add it to the
+        dict used for substitution in __str__, otherwise just set it as
+        an instance attribute.
+        """</FONT>
+        name = string.lower(name)
+        if name in self.attrs:
+            self.attr_dict[name] = <FONT color="#009900">' %s="%s"'</FONT> % (name, value)
+        else:
+            self.__dict__[name] = value
+
+<FONT color="#CC6600">    def __call__</FONT>(self, text):
+        <FONT color="#0000DD">"""Enable instances to be callable as text processing functions.
+
+        For Example:
+
+          >>> S = HTMLgen.Strong()
+          >>> print S(<FONT color="#009900">'Hi!'</FONT>)
+          >>> <STRONG>Hi!</STRONG>
+        """</FONT>
+        self.__dict__[<FONT color="#009900">'contents'</FONT>] = [text]
+        return str(self)
+
+<FONT color="#CC6600">    def __add__</FONT>(self, other):
+        <FONT color="#0000DD">"""Support self + list
+        """</FONT>
+        if type(other) is ListType:
+            self.contents = self.contents + other
+            return self
+        else:
+            raise TypeError, <FONT color="#009900">'can only add lists to this object'</FONT>
+            
+<FONT color="#CC6600">    def append</FONT>(self, *items):
+        <FONT color="#0000DD">"""Append one or more items to the end of the container.
+        """</FONT>
+        for item in items:
+            self.contents.append(item)
+
+<FONT color="#CC6600">    def prepend</FONT>(self, *items):
+        <FONT color="#0000DD">"""Prepend one or more items to the top of the container.
+        """</FONT>
+        for item in items:
+            self.contents.insert(0, item)
+
+<FONT color="#CC6600">    def empty</FONT>(self):
+        <FONT color="#0000DD">"""Empty the contents of the container.
+        """</FONT>
+        self.contents = []
+
+<FONT color="#CC6600">    def __len__</FONT>(self):
+        <FONT color="#0000DD">"""Return the integer length of the container list.
+        """</FONT>
+        return len(self.contents)
+
+<FONT color="#CC6600">    def last</FONT>(self):
+        <FONT color="#0000DD">"""Return a reference to the last item in the container.
+        """</FONT>
+        return self.contents[-1]
+
+<FONT color="#CC6600">    def copy</FONT>(self):
+        <FONT color="#0000DD">"""Return a full copy of the object.
+        """</FONT>
+        return copy.deepcopy(self)
+
+<FONT color="#CC6600">    def markup</FONT>(self, rex=None, marker=None, **kw):
+        <FONT color="#0000DD">"""Markup the contained text matching a regular expression with
+        a tag class instance or function. 
+
+        Arguments
+
+            rex -- a regular expression object or pattern which will be used
+                to match all text patterns in the Paragraph body. Must have a single
+                group defined. Group 1 is the matching text that will be marked.
+                Default to all parenthetical text.
+            marker -- an HTMLgen class instance to which the found text will
+                be sent for wrapping (using its __call__ method). Default is Emphasis.
+
+        Keywords
+        
+            collapse -- When set to 1 removes the non-grouped matching text
+                from the output. Default 0.
+
+        Returns the number of matching text groups.
+        """</FONT>
+        collapse = 0
+        if kw.has_key(<FONT color="#009900">'collapse'</FONT>): collapse = kw[<FONT color="#009900">'collapse'</FONT>]
+        text = string.join(map(str, self.contents))
+        newtext, count = markup_re(text, rex, marker, collapse)
+        if count:
+            self.contents = [newtext]
+            self.html_escape = <FONT color="#009900">'OFF'</FONT>
+        return count
+
+
+<STRONG>class Area</STRONG>(AbstractTagSingle):
+    <FONT color="#0000DD">"""Specify a click-sensitive area of an image.
+
+    The area is linked to a HREF specified by the *href* attribute.
+    The *coords* attribute is required and describes the position of
+    an area (in pixels) of the image in comma-separated x,y
+    coordinates where the upper-left corner is "0,0". For shape=<FONT color="#009900">'rect'</FONT>
+    (the default), it is "left,top,right,bottom". For shape=<FONT color="#009900">'circle'</FONT>,
+    it is "center_x,center_y,radius". For shape=<FONT color="#009900">'polygon'</FONT>, it is
+    successive x,y vertices of the polygon. If the first and last
+    coordinates are not the same, then a segment is inferred to close
+    the polygon. If no *href* keyword is given a *NOHREF* will be
+    generated indicating that this region should generate no links.
+    
+    Keyword Arguments
+    
+        href --  Typically a reference to an image
+        coords --  string holding a list of coordinates defining
+        shape  -- <FONT color="#009900">'rect'</FONT>|<FONT color="#009900">'circle'</FONT>|<FONT color="#009900">'polygon'</FONT>
+    """</FONT>
+    tagname = <FONT color="#009900">'AREA'</FONT>
+    attrs = (<FONT color="#009900">'alt'</FONT>,<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'coords'</FONT>,<FONT color="#009900">'href'</FONT>,<FONT color="#009900">'id'</FONT>,<FONT color="#009900">'name'</FONT>,
+	     <FONT color="#009900">'onmouseout'</FONT>,<FONT color="#009900">'onmouseover'</FONT>,<FONT color="#009900">'shape'</FONT>,<FONT color="#009900">'target'</FONT>)
+    attr_template, attr_dict = _make_attr_inits(attrs)
+    attr_dict[<FONT color="#009900">'href'</FONT>] = <FONT color="#009900">' nohref'</FONT>
+
+<FONT color="#DD0000">###### FRAME SUPPORT ######</FONT>
+
+<STRONG>class Frameset</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Define a Frameset to contain Frames or more Framesets"""</FONT>
+    tagname = <FONT color="#009900">'FRAMESET'</FONT>
+    attrs = (<FONT color="#009900">'border'</FONT>,<FONT color="#009900">'bordercolor'</FONT>,<FONT color="#009900">'cols'</FONT>,<FONT color="#009900">'frameborder'</FONT>,<FONT color="#009900">'framespacing'</FONT>,<FONT color="#009900">'onblur'</FONT>,
+	     <FONT color="#009900">'onfocus'</FONT>,<FONT color="#009900">'onload'</FONT>,<FONT color="#009900">'onunload'</FONT>,<FONT color="#009900">'rows'</FONT>)
+    attr_template, attr_dict = _make_attr_inits(attrs)
+
+<STRONG>class NoFrames</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Issue a message on browsers that don't support frames"""</FONT>
+    tagname = <FONT color="#009900">'NOFRAMES'</FONT>
+    attrs = ()
+    attr_template, attr_dict = _make_attr_inits(attrs)
+
+<FONT color="#CC6600">    def __init__</FONT>(self, *contents, **kw):
+	AbstractTag.__init__(self)
+	for content in contents: self.append(content)
+	for name, value in kw.items(): self.__setattr__(name,value)
+	if len(contents) == 0:
+	    self.append(Heading(2,<FONT color="#009900">'Frame ALERT!'</FONT>,align=<FONT color="#009900">'center'</FONT>),
+			Para(<FONT color="#0000DD">"""This document is designed to be viewed using Netscape's
+			Frame features.  If you are seeing this message, you are using
+			a frame challenged browser."""</FONT>),
+			Para(<FONT color="#009900">'A '</FONT>,Strong(<FONT color="#009900">'Frame-capable'</FONT>),<FONT color="#009900">' browser can be retrieved from'</FONT>,
+			     Href(<FONT color="#009900">'http://home.netscape.com/'</FONT>,<FONT color="#009900">'Netscape Communications'</FONT>),
+			     <FONT color="#009900">' or '</FONT>,
+			     Href(<FONT color="#009900">'http://www.microsoft.com/'</FONT>,<FONT color="#009900">'Microsoft'</FONT>)))
+
+<STRONG>class Frame</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Define the characteristics of an individual frame.
+
+    Keywords Arguments
+
+        src  -- is a HREF which points to the initial contents of the frame.
+        name -- is the window name used by others to direct content into this frame.
+        marginwidth -- is the number of pixels used to pad the left and right
+               sides of the frame.
+        marginheight -- is the number of pixels used to pad the top and bottom
+               sides of the frame.
+        scrolling -- is used to indicate scrolling policy set to <FONT color="#009900">'yes'</FONT>|<FONT color="#009900">'no'</FONT>|<FONT color="#009900">'auto'</FONT>
+        noresize -- is a flag which instructs the browser to disallow frame resizing. 
+               set to non zero lock size ( noresize=1 ).
+    """</FONT>
+    
+    tagname = <FONT color="#009900">'FRAME'</FONT>
+    attrs = (<FONT color="#009900">'align'</FONT>,<FONT color="#009900">'bordercolor'</FONT>,<FONT color="#009900">'frameborder'</FONT>,<FONT color="#009900">'marginheight'</FONT>,<FONT color="#009900">'marginwidth'</FONT>,<FONT color="#009900">'name'</FONT>,
+	     <FONT color="#009900">'noresize'</FONT>,<FONT color="#009900">'scrolling'</FONT>,<FONT color="#009900">'src'</FONT>)
+    attr_template, attr_dict = _make_attr_inits(attrs)
+
+
+
+<STRONG>class Paragraph</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Define a Paragraph.
+
+    Takes a single string/object argument and the optional
+    keyword argument <FONT color="#009900">'align'</FONT> which may be one of (left, right,
+    center).  As always, Class and style keywords are supported.
+    **Not to be confused with class P**. That is
+    just for inserting a para break.
+
+    Example:
+    
+        Paragraph(<FONT color="#009900">'Some text to center'</FONT>, align=<FONT color="#009900">'center'</FONT>)
+    """</FONT>
+    tagname = <FONT color="#009900">'P'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'align'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+Para = Paragraph <FONT color="#DD0000"># Alias</FONT>
+
+<FONT color="#DD0000"># Headings</FONT>
+
+<STRONG>class Heading</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Heading markups for H1 - H6
+
+    Heading(level, text, **kw)
+
+    The *level* arg is an integer for the level of the heading.
+    Valid levels are 1-6.
+    The *text* arg is a string (or any object) for the text of the heading.
+    Keyword arguments are align, Class, and style.
+
+    For example:
+    h = Heading(2, <FONT color="#009900">'Chapter 3'</FONT>, align=<FONT color="#009900">'center'</FONT>)
+    """</FONT>
+    tagname = <FONT color="#009900">''</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'align'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        if not self.tagname:
+            if self.contents[0] not in (1,2,3,4,5,6):
+                raise AttributeError, "First arg of Heading must be int from 1 to 6."
+            self.tagname = <FONT color="#009900">'H%d'</FONT> % self.contents[0]
+            del self.contents[0]
+        return AbstractTag.__str__(self)
+
+H = Head = Header = Heading <FONT color="#DD0000"># Aliases</FONT>
+
+<STRONG>class Caption</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Define a caption for a table.
+    """</FONT>
+    tagname = <FONT color="#009900">'CAPTION'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'align'</FONT>, <FONT color="#009900">'valign'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+<STRONG>class TH</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Define a table header cell.
+    """</FONT>
+    tagname = <FONT color="#009900">'TH'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'nowrap'</FONT>, <FONT color="#009900">'align'</FONT>,<FONT color="#009900">'valign'</FONT>,<FONT color="#009900">'rowspan'</FONT>,
+             <FONT color="#009900">'colspan'</FONT>, <FONT color="#009900">'height'</FONT>, <FONT color="#009900">'width'</FONT>, <FONT color="#009900">'bgcolor'</FONT>, <FONT color="#009900">'background'</FONT>,
+             <FONT color="#009900">'bordercolor'</FONT>, <FONT color="#009900">'bordercolordark'</FONT>, <FONT color="#009900">'bordercolorlight'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class TR</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Define a row of cells within a table.
+    """</FONT>
+    tagname = <FONT color="#009900">'TR'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'align'</FONT>, <FONT color="#009900">'bgcolor'</FONT>, <FONT color="#009900">'bordercolor'</FONT>,
+             <FONT color="#009900">'bordercolordark'</FONT>, <FONT color="#009900">'bordercolorlight'</FONT>, <FONT color="#009900">'nowrap'</FONT>, <FONT color="#009900">'valign'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+<STRONG>class TD</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Define a table data cell.
+    """</FONT>
+    tagname = <FONT color="#009900">'TD'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'nowrap'</FONT>, <FONT color="#009900">'align'</FONT>,<FONT color="#009900">'valign'</FONT>, <FONT color="#009900">'background'</FONT>,
+             <FONT color="#009900">'bordercolor'</FONT>, <FONT color="#009900">'bordercolordark'</FONT>, <FONT color="#009900">'bordercolorlight'</FONT>,
+             <FONT color="#009900">'rowspan'</FONT>,<FONT color="#009900">'colspan'</FONT>,<FONT color="#009900">'height'</FONT>, <FONT color="#009900">'width'</FONT>,<FONT color="#009900">'bgcolor'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class TableLite</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Container class for TH TD TR and Caption objects.
+    """</FONT>
+    tagname = <FONT color="#009900">'TABLE'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'align'</FONT>, <FONT color="#009900">'background'</FONT>, <FONT color="#009900">'border'</FONT>,
+             <FONT color="#009900">'bordercolor'</FONT>, <FONT color="#009900">'bordercolordark'</FONT>, <FONT color="#009900">'bordercolorlight'</FONT>,
+             <FONT color="#009900">'cols'</FONT>, <FONT color="#009900">'frame'</FONT>, <FONT color="#009900">'cellpadding'</FONT>, <FONT color="#009900">'cellspacing'</FONT>,
+             <FONT color="#009900">'height'</FONT>, <FONT color="#009900">'hspace'</FONT>, <FONT color="#009900">'width'</FONT>, <FONT color="#009900">'bgcolor'</FONT>, <FONT color="#009900">'nowrap'</FONT>,
+             <FONT color="#009900">'rules'</FONT>, <FONT color="#009900">'valign'</FONT>, <FONT color="#009900">'vspace'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+<STRONG>class Pre</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Render the text verbatim honoring line breaks and spacing.
+
+    Does not escape special characters. To override this set html_escape
+    to <FONT color="#009900">'ON'</FONT>.
+    """</FONT>
+    tagname = <FONT color="#009900">'PRE'</FONT>
+    attrs = (<FONT color="#009900">'width'</FONT>,)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    html_escape = <FONT color="#009900">'OFF'</FONT>
+
+<STRONG>class Strike</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""The text is struck trough with a horizontal line.
+    """</FONT>
+    tagname = <FONT color="#009900">'STRIKE'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class Blockquote</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Indent text as a block quotation.
+    """</FONT>
+    tagname = <FONT color="#009900">'BLOCKQUOTE'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+Indent = Blockquote
+
+<STRONG>class Big</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Format text in a bigger font.
+    """</FONT>
+    tagname = <FONT color="#009900">'BIG'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class Font</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Set the size or color of the text.
+    """</FONT>
+    tagname = <FONT color="#009900">'FONT'</FONT>
+    attrs = (<FONT color="#009900">'color'</FONT>, <FONT color="#009900">'face'</FONT>, <FONT color="#009900">'size'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class Address</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""A mailing address. Not a URL.
+    """</FONT>
+    tagname = <FONT color="#009900">'ADDRESS'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class Emphasis</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Format with additional emphasis. (usually italics)
+    """</FONT>
+    tagname = <FONT color="#009900">'EM'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class Center</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Center the text.
+    """</FONT>
+    tagname = <FONT color="#009900">'center'</FONT>
+    attrs = ()
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    
+<STRONG>class Cite</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""A citation.
+    """</FONT>
+    tagname = <FONT color="#009900">'CITE'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class KBD</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Keyboard-like input.
+    """</FONT>
+    tagname = <FONT color="#009900">'KBD'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    html_escape = <FONT color="#009900">'OFF'</FONT>
+
+<STRONG>class Sample</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Sample text. Escaping of special characters is not performed.
+
+    To enable escaping set html_escape=<FONT color="#009900">'ON'</FONT>.
+    """</FONT>
+    tagname = <FONT color="#009900">'SAMP'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    html_escape = <FONT color="#009900">'OFF'</FONT>
+    
+<STRONG>class Strong</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Strongly emphasize the text.
+    """</FONT>
+    tagname = <FONT color="#009900">'STRONG'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class Code</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Code sample. Escaping of special characters is not performed.
+
+    To enable escaping set html_escape=<FONT color="#009900">'ON'</FONT>.
+    """</FONT>
+    tagname = <FONT color="#009900">'CODE'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    html_escape = <FONT color="#009900">'OFF'</FONT>
+
+<STRONG>class Define</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Format as definition text.
+    """</FONT>
+    tagname = <FONT color="#009900">'DFN'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+<STRONG>class Var</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Used for variable names.
+    """</FONT>
+    tagname = <FONT color="#009900">'VAR'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class Div</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Specify a division within a document.
+    """</FONT>
+    tagname = <FONT color="#009900">'DIV'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>, <FONT color="#009900">'align'</FONT>, <FONT color="#009900">'lang'</FONT>, <FONT color="#009900">'nowrap'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+<STRONG>class TT</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Format teletype style.
+    """</FONT>
+    tagname = <FONT color="#009900">'TT'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class U</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Underlined text.
+    """</FONT>
+    tagname = <FONT color="#009900">'U'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class Nobr</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Specify non-breaking text.
+    """</FONT>
+    tagname = <FONT color="#009900">'NOBR'</FONT>
+    attrs = ()
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+    
+<STRONG>class Small</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Render in a smaller font.
+    """</FONT>
+    tagname = <FONT color="#009900">'SMALL'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+    
+<STRONG>class Sub</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Render as subscript.
+    """</FONT>
+    tagname = <FONT color="#009900">'SUB'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+
+<STRONG>class Sup</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Render as subscript.
+    """</FONT>
+    tagname = <FONT color="#009900">'SUP'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+    trailer = <FONT color="#009900">''</FONT>
+    
+<STRONG>class Span</STRONG>(AbstractTag):
+    <FONT color="#0000DD">"""Generic tag to mark text for a style application.
+    """</FONT>
+    tagname = <FONT color="#009900">'SPAN'</FONT>
+    attrs = (<FONT color="#009900">'class'</FONT>,<FONT color="#009900">'id'</FONT>, <FONT color="#009900">'style'</FONT>)
+    attr_template , attr_dict = _make_attr_inits(attrs)
+
+
+
+<FONT color="#DD0000"># Text Formatting Classes</FONT>
+<STRONG>class InitialCaps</STRONG>:
+    <FONT color="#0000DD">"""Utility class to process text into Initial Upper Case style
+    using Font specifications. All text is converted to upper case
+    and the initial characters are altered by the size given by
+    the optional second argument. The rest of the characters are
+    altered by the size given in the optional third argument.
+
+    For example:
+    
+       InitialCaps(<FONT color="#009900">'We the people'</FONT>, <FONT color="#009900">'+3'</FONT>, <FONT color="#009900">'+1'</FONT>)
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, text=<FONT color="#009900">''</FONT>, upsize = <FONT color="#009900">'+2'</FONT>, downsize = <FONT color="#009900">'+1'</FONT>):
+        self.hi = Font(size=upsize)
+        self.lo = Font(size=downsize)
+        self.text = text
+        self.upsize = upsize
+        self.downsize = downsize
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        list = string.split(self.text)
+        wordlist = []
+        for word in list:
+            word = self.hi(string.upper(word[0])) + self.lo(string.upper(word[1:]))
+            wordlist.append(word)
+        return string.join(wordlist)
+
+<FONT color="#CC6600">    def __call__</FONT>(self, text):
+        self.text = text
+        return self.__str__()
+
+<STRONG>class Text</STRONG>:
+    <FONT color="#0000DD">"""Class to encapsulate text. Escape special characters for HTML.
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, text=<FONT color="#009900">''</FONT>):
+        if type(text) == StringType:
+            text = escape(text)
+        self.text = str(text)
+
+<FONT color="#CC6600">    def append</FONT>(self, text=<FONT color="#009900">''</FONT>):
+        <FONT color="#0000DD">"""Concatenate text characters onto the end.
+        
+        Will escape special characters.
+        """</FONT>
+        if type(text) == StringType:
+            text = escape(text)
+        self.text = self.text + <FONT color="#009900">' '</FONT> + str(text)
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        return self.text
+
+<STRONG>class RawText</STRONG>:
+    <FONT color="#0000DD">"""Class to encapsulate raw text. Does **NOT** escape special characters.
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, text=<FONT color="#009900">''</FONT>):
+        self.text = text
+        
+<FONT color="#CC6600">    def append</FONT>(self, text):
+        self.text = self.text + str(text)
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        return self.text
+
+<FONT color="#DD0000"># ALIASES</FONT>
+PRE = Pre
+Bold = STRONG = Strong
+Italic = EM = Emphasis
+Typewriter = TT
+
+<STRONG>class Comment</STRONG>:
+    <FONT color="#0000DD">"""Place a comment internal to the HTML document.
+
+    Will not be visible from the browser.
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, text=<FONT color="#009900">''</FONT>):
+        self.text = text
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        return <FONT color="#009900">'\n&lt;!-- %s --&gt;\n'</FONT> % self.text
+
+<FONT color="#CC6600">    def __call__</FONT>(self, text):
+        self.text = text
+        return self.__str__()
+
+<FONT color="#DD0000">###### UTILITIES USED INTERNALLY ########</FONT>
+
+<FONT color="#CC6600">def escape</FONT>(text, replace=string.replace):
+    <FONT color="#0000DD">"""Converts the special characters <FONT color="#009900">'&lt;'</FONT>, <FONT color="#009900">'&gt;'</FONT>, and <FONT color="#009900">'&amp;'</FONT>.
+
+    RFC 1866 specifies that these characters be represented
+    in HTML as &lt; &gt; and &amp; respectively. In Python
+    1.5 we use the new string.replace() function for speed.
+    """</FONT>
+    text = replace(text, <FONT color="#009900">'&amp;'</FONT>, <FONT color="#009900">'&amp;amp;'</FONT>) # must be done 1st
+    text = replace(text, <FONT color="#009900">'&lt;'</FONT>, <FONT color="#009900">'&amp;lt;'</FONT>)
+    text = replace(text, <FONT color="#009900">'&gt;'</FONT>, <FONT color="#009900">'&amp;gt;'</FONT>)
+    return text
+
+<FONT color="#CC6600">def markup_re</FONT>(text, rex=None, marker=None, collapse=0):
+    <FONT color="#0000DD">"""Markup the contained text with a given re pattern/object with
+    a given tag class instance. Uses re module.
+
+    Arguments
+
+        text -- string to act on
+        rex -- a regular expression object or pattern from the re module which will be used
+            to match all text patterns in the Paragraph body. Must have a single
+            group defined. Group 1 is the matching text that will be marked.
+            Defaults to all parenthetical text.
+        marker -- an HTMLgen class instance to which the found text will
+            be sent for wrapping (using its __call__ method). Default is Emphasis.
+            Can be your function as well.
+        collapse -- Optional flag. When set to 1 removes the non-
+            grouped matching text from the output. Default 0.
+
+    Returns tuple pair of the marked text and the number of matching text groups.
+    """</FONT>
+    if rex is None: rex = re.compile(<FONT color="#009900">'\(([^)]*)\)'</FONT>)
+    if marker is None: marker = Emphasis()
+    if type(rex) == StringType: rex = re.compile(rex)
+    endpoints = []
+    output = []
+    i = 0
+    count = 0
+    while 1:
+        # build up a list of tuples: ( <FONT color="#009900">'u'</FONT>|<FONT color="#009900">'m'</FONT>, begin, end ) 
+        # <FONT color="#009900">'u'</FONT> indicates unmarked text and <FONT color="#009900">'m'</FONT> marked text
+        <FONT color="#DD0000"># begin and end is the range of characters</FONT>
+        match = rex.search(text, i)
+        if match:
+            if collapse: <FONT color="#DD0000">#skip chars outside group1</FONT>
+                endpoints.append( (<FONT color="#009900">'u'</FONT>, i, match.start(0)) )
+                i = match.end(0)
+            else: <FONT color="#DD0000">#incl chars outside group1</FONT>
+                endpoints.append( (<FONT color="#009900">'u'</FONT>, i, match.start(1)) )
+                i = match.end(1)
+            endpoints.append( (<FONT color="#009900">'m'</FONT>, match.start(1), match.end(1)) ) #text2Bmarked
+            count = count + 1
+        else:
+            endpoints.append( (<FONT color="#009900">'u'</FONT>, i, len(text) ) ) # tack on an ending slice
+            break
+
+    if count == 0: return text, 0  <FONT color="#DD0000"># didn't find any matches</FONT>
+    for (style, begin, end) in endpoints:
+        if style == <FONT color="#009900">'m'</FONT>:
+            output.append(marker(text[begin:end]))
+        else:
+            output.append(text[begin:end])
+    return string.join(output, <FONT color="#009900">''</FONT>), count
+
+
+<STRONG>class URL</STRONG>:
+    <FONT color="#0000DD">"""Represent a Universal Resource Locator.
+    
+    Assumed to be of the form: **http://www.node.edu/directory/file.html**
+    with *http* being an example protocol, *www.node.edu* being an example
+    network node, *directory* being the directory path on that node, and
+    *file.html* being the target filename. The argument string is parsed
+    into attributes .proto , .node , .dir , .file respectively and may
+    be altered individually after instantiation. The __str__ method
+    simply reassembles the components into a full URL string.
+    """</FONT>
+<FONT color="#CC6600">    def __init__</FONT>(self, url):
+        self.url = url
+        self.parse(url)
+<FONT color="#CC6600">    def parse</FONT>(self, url):
+        import urlparse
+        self.unparse = urlparse.urlunparse
+        self.proto, self.node, self.path, self.params, self.query, self.fragment = \
+                    urlparse(url)
+        self.dir, self.file = self.split(self.path)
+
+<FONT color="#CC6600">    def split</FONT>(self, p):
+        <FONT color="#0000DD">"""Same as posixpath.split()
+
+        Copied here for availability on the Mac.
+        """</FONT>
+        i = string.rfind(p, <FONT color="#009900">'/'</FONT>) + 1
+        head, tail = p[:i], p[i:]
+        if head and head != <FONT color="#009900">'/'</FONT>*len(head):
+                while head[-1] == <FONT color="#009900">'/'</FONT>:
+                        head = head[:-1]
+        return head, tail
+
+<FONT color="#CC6600">    def __str__</FONT>(self):
+        return self.unparse( (self.proto,
+                              self.node,
+                              self.dir+self.file,
+                              self.params,
+                              self.query, self.fragment) )
+
+<FONT color="#CC6600">    def copy</FONT>(self):
+        <FONT color="#0000DD">"""No argument. Return a copy of this object.
+        """</FONT>
+        return copy.deepcopy(self)
+
+<FONT color="#CC6600">def mpath</FONT>(path):
+    <FONT color="#0000DD">"""Converts a POSIX path to an equivalent Macintosh path.
+
+    Works for ./x ../x /x and bare pathnames.
+    Won<FONT color="#009900">'t work for '</FONT>../../style/paths'.
+
+    Also will expand environment variables and Cshell tilde
+    notation if running on a POSIX platform.
+    """</FONT>
+    import os
+    if os.name == <FONT color="#009900">'mac'</FONT> : #I'm on a Mac
+        if path[:3] == <FONT color="#009900">'../'</FONT>: #parent
+            mp = <FONT color="#009900">'::'</FONT>
+            path = path[3:]
+        elif path[:2] == <FONT color="#009900">'./'</FONT>: #relative
+            mp = <FONT color="#009900">':'</FONT>
+            path = path[2:]
+        elif path[0] == <FONT color="#009900">'/'</FONT>: #absolute
+            mp = <FONT color="#009900">''</FONT>
+            path = path[1:]
+        else: <FONT color="#DD0000"># bare relative</FONT>
+            mp = <FONT color="#009900">''</FONT>
+        pl = string.split(path, <FONT color="#009900">'/'</FONT>)
+        mp = mp + string.join(pl, <FONT color="#009900">':'</FONT>)
+        return mp
+    elif os.name == <FONT color="#009900">'posix'</FONT>: # Expand Unix variables
+        if path[0] == <FONT color="#009900">'~'</FONT> :
+            path = os.path.expanduser( path )
+        if <FONT color="#009900">'$'</FONT> in path:
+            path = os.path.expandvars( path )
+        return path
+    else: <FONT color="#DD0000"># needs to take care of dos &amp; nt someday</FONT>
+        return path
+
+#_realopen = open  #If I do a lot of mpath I can overload <FONT color="#009900">'open'</FONT>
+#def open(filename, mode = <FONT color="#009900">'r'</FONT>, bufsize = -1):
+<FONT color="#DD0000">#    return _realopen( mpath(filename), mode, bufsize )</FONT>
+
+<FONT color="#CC6600">def relpath</FONT>(path1, path2):
+    <FONT color="#0000DD">"""Return the relative path from directory <FONT color="#009900">'path1'</FONT> to directory <FONT color="#009900">'path2'</FONT>
+
+    Both arguments are assumed to be directory names as there is no
+    way to really distinguish a file from a directory by names
+    alone. To loosen this restriction one can either assume that both
+    arguments represent files or directories currently extant so that
+    they can be tested, or add extra arguments to flag the path types
+    (file or directory).
+
+    I chose to impose this restriction because I will use this function
+    in places where the pathnames are for files yet to be created.
+    """</FONT>
+    common = os.path.commonprefix([path1, path2])
+    sliceoff = len(common)
+    path1 = path1[sliceoff:]
+    path2 = path2[sliceoff:]
+
+    dirs1 = string.split(path1, os.sep) <FONT color="#DD0000"># list of directory components below</FONT>
+                                        <FONT color="#DD0000"># the common path</FONT>
+    dirs1 = filter(lambda x: x, dirs1)  <FONT color="#DD0000"># filter out empty elements</FONT>
+    rel = (os.pardir+os.sep)*len(dirs1) <FONT color="#DD0000"># construct the relative path to the</FONT>
+                                        <FONT color="#DD0000"># common point</FONT>
+    return rel+path2
+
+
+<FONT color="#CC6600">def compare_f2f</FONT>(f1, f2):
+    <FONT color="#0000DD">"""Helper to compare two files, return 0 if they are equal."""</FONT>
+
+    BUFSIZE = 8192
+    fp1 = open(f1)
+    try:
+        fp2 = open(f2)
+        try:
+            while 1:
+                b1 = fp1.read(BUFSIZE)
+                b2 = fp2.read(BUFSIZE)
+                if not b1 and not b2: return 0
+                c = cmp(b1, b2)
+                if c:
+                    return c
+        finally:
+            fp2.close()
+    finally:
+        fp1.close()
+
+<FONT color="#CC6600">def compare_s2f</FONT>(s, f2):
+    <FONT color="#0000DD">"""Helper to compare a string to a file, return 0 if they are equal."""</FONT>
+
+    BUFSIZE = 8192
+    i = 0
+    fp2 = open(f2)
+    try:
+        while 1:
+            try:
+                b1 = s[i: i + BUFSIZE]
+                i = i + BUFSIZE
+            except IndexError:
+                b1 = <FONT color="#009900">''</FONT>
+            b2 = fp2.read(BUFSIZE)
+            if not b1 and not b2: return 0
+            c = cmp(b1, b2)
+            if c: return c
+    finally:
+        fp2.close()
+</PRE>
+
+
+</BODY> </HTML>

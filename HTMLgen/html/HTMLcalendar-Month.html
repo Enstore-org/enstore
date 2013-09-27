@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class Month - Class representing a month as an HTML document (page).</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="HTMLcalendar-Day.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLcalendar-Year.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class Month - Class representing a month as an HTML document (page).</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLcalendar</PRE>
+
+<PRE>class Month(SimpleDocument)
+  def __getitem__(self, index)
+  def __init__(self, year=1997, month=1)
+  string __module__ = 'HTMLcalendar'
+  def __setitem__(self, index, dayobj)
+  <A HREF="#def add_appt(self, appt)">def add_appt(self, appt)</A>
+
+  # Methods inherited by Month from SimpleDocument
+  def __str__(self)
+  <A HREF="#def html_body_tag(self)">def html_body_tag(self)</A>
+  <A HREF="#def html_head(self)">def html_head(self)</A>
+
+  # Methods inherited by Month from BasicDocument
+  <A HREF="#def append(self, *items)">def append(self, *items)</A>
+  <A HREF="#def append_file(self, filename, marker_function = None)">def append_file(self, filename, marker_function = None)</A>
+  <A HREF="#def copy(self)">def copy(self)</A>
+  <A HREF="#def prepend(self, *items)">def prepend(self, *items)</A>
+  <A HREF="#def write(self, filename = None)">def write(self, filename = None)</A>
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Tweeks to the appearance of the calendar would mostly be done here.
+Indexing into this class instance will reference the DateTable object
+contained within.
+</P>
+
+<H3><A NAME="def add_appt(self, appt)">def add_appt(self, appt)</A></H3>
+
+
+<P>Argument is a 6-tuple.</P>
+
+
+<P>Form:
+   (year, month, day, hour, minute, text)
+    int    int   int  str    str     str  &lt;- type
+</P>
+
+<H3><A NAME="def append(self, *items)">def append(self, *items)</A></H3>
+
+
+<P>Add content to the Document object.</P>
+
+
+<P>Arg <EM>items</EM> can be plain text or objects; multiple arguments supported.
+</P>
+
+<H3><A NAME="def append_file(self, filename, marker_function = None)">def append_file(self, filename, marker_function = None)</A></H3>
+
+
+<P>Add the contents of a file to the document.</P>
+
+<DL>
+<DT><B>filename</B><DD>the filename of the file to be read [string]
+<DT><B>marker_function</B><DD>a callable object which the text read from
+  the file will be passed through before being added to the
+  document.
+
+</DL>
+
+<H3><A NAME="def copy(self)">def copy(self)</A></H3>
+
+
+<P>Return a complete copy of the current Document object.
+</P>
+
+<H3><A NAME="def html_body_tag(self)">def html_body_tag(self)</A></H3>
+
+
+<P>Return BODY tag with attributes.
+</P>
+
+<H3><A NAME="def html_head(self)">def html_head(self)</A></H3>
+
+
+<P>Generate the HEAD TITLE and BODY tags.
+</P>
+
+<H3><A NAME="def prepend(self, *items)">def prepend(self, *items)</A></H3>
+
+
+<P>Add content to the beginning of the Document object.</P>
+
+
+<P>Arg <EM>items</EM> can be plain text or objects; multiple arguments supported.
+</P>
+
+<H3><A NAME="def write(self, filename = None)">def write(self, filename = None)</A></H3>
+
+
+<P>Emit the Document HTML to a file or standard output.</P>
+
+
+<P>In Unix you can use environment variables in filenames.
+Will print to stdout if no argument.
+</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLcalendar_overview.html">HTMLcalendar</A></P>
+
+
+<P><A HREF="HTMLgen-SimpleDocument.html">SimpleDocument</A></P>
+
+
+<P><HR>
+<A HREF="HTMLcalendar-Day.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLcalendar-Year.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#100;ev@&#110;ull">dev@null</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

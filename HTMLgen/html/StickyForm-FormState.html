@@ -1,0 +1,78 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class FormState - This is a Dictionary which holds the state of a form.</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<span style="width: 60px"></span> 
+<A HREF="StickyForm-StickyForm.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class FormState - This is a Dictionary which holds the state of a form.</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import StickyForm</PRE>
+
+<PRE>class FormState(UserDict)
+  def __init__(self, field_storage=None)
+  string __module__ = 'StickyForm'
+  def restore(self,filename)
+  def save(self,filename)
+
+  # Methods inherited by FormState from UserDict
+  def __cmp__(self, dict)
+  def __delitem__(self, key)
+  def __getitem__(self, key)
+  def __len__(self)
+  def __repr__(self)
+  def __setitem__(self, key, item)
+  def clear(self)
+  def copy(self)
+  def get(self, key, failobj=None)
+  def has_key(self, key)
+  def items(self)
+  def keys(self)
+  def update(self, other)
+  def values(self)
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>It is like a simplified FieldStorage class.
+Each key is the name of a form element.
+Each value is either a string or a list of strings which 
+define that value.</P>
+
+
+<P>You can create a FormState from a FieldStorage.
+You can save and restore FormStates from text files</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="StickyForm_overview.html">StickyForm</A></P>
+
+
+<P><A HREF="UserDict-UserDict.html">UserDict</A></P>
+
+
+<P><HR>
+<span style="width: 60px"></span> 
+<A HREF="StickyForm-StickyForm.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Amos Latteier<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#97;mo&#115;@a&#114;ac&#110;et&#46;co&#109;">amos@aracnet.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

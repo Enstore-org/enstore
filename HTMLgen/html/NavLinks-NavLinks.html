@@ -1,0 +1,146 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class NavLinks - Provide function to insert a hyperlink navigation component in a document.</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="NavLinks-AllIcons.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class NavLinks - Provide function to insert a hyperlink navigation component in a document.</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import NavLinks</PRE>
+
+<PRE>class NavLinks
+  def __call__(self, docs, marker='NAVLINKS')
+  def __init__(self, **kw)
+  string __module__ = 'NavLinks'
+  <A HREF="#def generate_navbar(self, index)">def generate_navbar(self, index)</A>
+  <A HREF="#def get_left_terminus(self)">def get_left_terminus(self)</A>
+  <A HREF="#def get_right_terminus(self)">def get_right_terminus(self)</A>
+  <A HREF="#def get_sep(self)">def get_sep(self)</A>
+  <A HREF="#def link_future_page(self, index)">def link_future_page(self, index)</A>
+  <A HREF="#def link_next_page(self, index)">def link_next_page(self, index)</A>
+  <A HREF="#def link_past_page(self, index)">def link_past_page(self, index)</A>
+  <A HREF="#def link_previous_page(self, index)">def link_previous_page(self, index)</A>
+  <A HREF="#def link_this_page(self, index)">def link_this_page(self, index)</A>
+  <A HREF="#def link_up(self)">def link_up(self)</A>
+  <A HREF="#def null(self, *arg)">def null(self, *arg)</A>
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Usage:  A = NavLinks()
+        A(list_of_docs)    where list_of_docs is a list of tuple pairs
+                           (HTMLdoc, docfilename). HTMLdoc can be either
+                           an instance of SimpleDocument (or child),
+                           an instance of StringTemplate (or child),
+                           or a string. These documents must contain a
+                           marker string "{NAVLINKS}" where you wish the
+                           nav aid to be placed. The docfilename is the
+                           filename for the HTML document when it is
+                           written to disk.
+                           Calling the NavLinks instance as a function
+                           given this list of tuples mutates the individual
+                           documents. Then it is up to the user to write
+                           the objects out as files. See test() for examples.
+                           An optional second argument to the instance call
+                           can specify a different tag, e.g.,
+                               A(doclist, 'INDEX') would look for {INDEX}
+                           instead of {NAVLINKS}.
+</P>
+
+<H3><A NAME="def generate_navbar(self, index)">def generate_navbar(self, index)</A></H3>
+
+
+<P>Generate and return navbar.
+</P>
+
+<H3><A NAME="def get_left_terminus(self)">def get_left_terminus(self)</A></H3>
+
+
+<P>Return symbol used as left delimiter of navlinks.
+</P>
+
+<H3><A NAME="def get_right_terminus(self)">def get_right_terminus(self)</A></H3>
+
+
+<P>Return symbol used as right delimiter of navlinks.
+</P>
+
+<H3><A NAME="def get_sep(self)">def get_sep(self)</A></H3>
+
+
+<P>Return symbol used to separate navlinks.
+</P>
+
+<H3><A NAME="def link_future_page(self, index)">def link_future_page(self, index)</A></H3>
+
+
+<P>Return symbol used for non-adjacent following pages.
+</P>
+
+<H3><A NAME="def link_next_page(self, index)">def link_next_page(self, index)</A></H3>
+
+
+<P>Return symbol used for next page.
+</P>
+
+<H3><A NAME="def link_past_page(self, index)">def link_past_page(self, index)</A></H3>
+
+
+<P>Return symbol used for non-adjacent past pages.
+</P>
+
+<H3><A NAME="def link_previous_page(self, index)">def link_previous_page(self, index)</A></H3>
+
+
+<P>Return symbol used for previous page.
+</P>
+
+<H3><A NAME="def link_this_page(self, index)">def link_this_page(self, index)</A></H3>
+
+
+<P>Return symbol used for this page.
+</P>
+
+<H3><A NAME="def link_up(self)">def link_up(self)</A></H3>
+
+
+<P>Return symbol used to traverse upward.
+</P>
+
+<H3><A NAME="def null(self, *arg)">def null(self, *arg)</A></H3>
+
+
+<P>Return empty string. Used to nullify one of these feature methods.
+</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="NavLinks_overview.html">NavLinks</A></P>
+
+
+<P><HR>
+<A HREF="NavLinks-AllIcons.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 1996-9 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;r&#105;e&#100;r&#105;c&#104;@&#112;y&#116;h&#111;n&#112;r&#111;s&#46;c&#111;m">friedrich@pythonpros.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>
