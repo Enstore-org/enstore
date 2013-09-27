@@ -1,0 +1,1 @@
+ -fPIC -I/usr/src/linux/include/scsi

@@ -1,0 +1,50 @@
+#!/bin/ksh
+# @(#) $Id$
+# ============================================================================
+# this script is to run ftt_test with the input data from
+# $FTT_DIR\ftt_test\scripts directory
+# ============================================================================
+check=${FTT_DIR?ftt_run_test:Error FTT_DIR is not set} 
+#===============================================================================
+# Get the tape device by looking in $2. If that's not set,
+# try FTT_TAPE. If that's not set either, then exit.
+export FTT_TAPE
+FTT_TAPE=${2:-${FTT_TAPE:-""}}
+FTT_TAPE=${FTT_TAPE:?"No device specified"}
+#===============================================================================
+
+script=${FTT_DIR}/ftt_test/scripts/$1
+
+if [ $1 = describe -o $1 = rate ] 
+then  
+    if [ ! -a $script ] 
+    then 
+	echo "ftt_run_test: Error - file $script not found"
+	exit 0 
+    fi
+     
+    if [ ! -x $script ] 
+    then 
+	echo "ftt_run_test: Error - $script has wrong permition" 
+	exit 0 
+    fi
+    
+#-------------- execute script
+
+    exec $script $2 $3 $4 $5 $6 $7 $8 $9
+    
+fi
+
+if [ -a $script.dat ] 
+then 
+    script="$script.dat"
+fi
+
+if [ ! -a $script ] 
+then 
+    echo "ftt_run_test: Error file $script not found " 
+    exit 0 
+fi
+
+exec  ${FTT_DIR}/bin/ftt_test < $script
+

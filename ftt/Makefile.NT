@@ -1,0 +1,51 @@
+#
+# @(#) $Id$
+#
+# File:           Makefile.NT
+#
+# Author(s):      Dorota I Genser  
+#        e-mail: "dorota@fnal.gov"
+#
+# Description:
+#              This is make file to build ftt library on Windoiws NT using nmake	
+#	
+####################################################################################  
+
+
+#---------------------------------------------- Used to build noDebug version
+!IF "$(NODEB)" != ""
+DEB = "NODEB=1"
+DB  = 
+!ELSE
+DEB = ""
+!ENDIF
+
+#---------------------------------------------- Working directories
+
+
+ALL : 
+		cd ftt_lib
+		$(MAKE) /f Makefile.NT $(DEB)
+		cd ..
+		cd ftt_test
+		$(MAKE) /f Makefile.NT $(DEB)
+		cd ..
+
+CLEAN:
+		cd ftt_lib
+		$(MAKE) /f Makefile.NT clean
+		cd ..
+		cd ftt_test
+		$(MAKE) /f Makefile.NT clean
+		cd ..
+				   
+
+CLOBBER :
+		cd ftt_lib 
+		$(MAKE) /f Makefile.NT clobber 
+		cd ..
+		cd ftt_test
+		$(MAKE) /f Makefile.NT clobber 
+
+ 
+			 
