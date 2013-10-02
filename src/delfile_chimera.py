@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# $Id$
+# $Id: delfile_chimera.py,v 1.7 2013/10/02 18:34:20 litvinse Exp $
 #
 # Equivalent of delfile for chimera
 # relies on configuration entry that looks like this:
@@ -178,15 +178,6 @@ def main(intf):
             for item in [cursor, db, connectionPool]:
                 if item :
                     item.close()
-
-    for i in vols:
-        print 'touching', i, '...',
-        result = vcc.touch(i)
-        if result['status'][0] == e_errors.OK:
-            print 'done'
-        else:
-            print 'failed', result['status']
-            success = False
 
     if not success:
         return 1
