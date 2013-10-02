@@ -220,7 +220,7 @@ class FilePurger:
                   " and f.cache_status='CACHED' and f.archive_status='ARCHIVED' " \
                   " and f.cache_mod_time < CURRENT_TIMESTAMP - interval '%s' " \
                   " and f.cache_location=f.location_cookie " \
-                  " order by v.library,f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
+                  " order by f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
 
         # comment for read_q:
         # To check that file is in read cache compare cache_location and location_cookie.
@@ -232,7 +232,7 @@ class FilePurger:
                  " and f.cache_status='CACHED' and f.archive_status='ARCHIVED' " \
                  " and f.cache_mod_time < CURRENT_TIMESTAMP - interval '%s' " \
                  " and f.cache_location!=f.location_cookie " \
-                 " order by v.library,f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
+                 " order by f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
 
         write_purge_list = self.files_to_purge_with_query(write_q, check_watermarks)
         Trace.trace(10, "write query returned %s"%(write_purge_list,))
