@@ -179,15 +179,6 @@ def main(intf):
                 if item :
                     item.close()
 
-    for i in vols:
-        print 'touching', i, '...',
-        result = vcc.touch(i)
-        if result['status'][0] == e_errors.OK:
-            print 'done'
-        else:
-            print 'failed', result['status']
-            success = False
-
     if not success:
         return 1
 
