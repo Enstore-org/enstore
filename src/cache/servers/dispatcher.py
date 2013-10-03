@@ -2,7 +2,7 @@
 
 ##############################################################################
 #
-# $Id$
+# $Id: dispatcher.py,v 1.6 2013/10/01 20:04:53 moibenko Exp $
 #
 ##############################################################################
 
@@ -354,7 +354,10 @@ class Dispatcher(mw.MigrationWorker,
       self.time_to_purge = time.time()
       while not self.shutdown:
          Trace.trace(10, "check_pools_thread")
-         self.check_pools()
+         try:
+            self.check_pools()
+         except Exception, detail:
+            Trace.log(e_errors.ERROR, "Exception in check_pools %s"%(detail,))
          time.sleep(10)
 
    def start(self):
