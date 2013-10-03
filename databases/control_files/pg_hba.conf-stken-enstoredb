@@ -112,3 +112,7 @@ host enstoredb enstore        131.225.13.71/32                 trust
 # added gccensrv1, 02
 host enstoredb enstore        131.225.13.129/32                 trust
 host enstoredb enstore        131.225.13.132/32                 trust
+# added pmig03, 04
+host enstoredb enstore        131.225.13.98/32                 trust
+host enstoredb enstore        131.225.13.102/32                 trust
+
