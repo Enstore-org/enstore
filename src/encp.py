@@ -463,7 +463,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11a CVS $Revision$ "
+    version_string = "v3_11b CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -692,7 +692,7 @@ def get_directory_name(filepath):
                           sys.exc_info()[2]
 
         #Build the .(access)() filename of the parent directory.
-        directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
+        directory_name = os.path.join(os.path.dirname(dirname), ".(access)(%s)" % parent_id)
     else:
         directory_name = os.path.dirname(filepath)
 
