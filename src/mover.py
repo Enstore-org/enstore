@@ -959,15 +959,21 @@ class Mover(dispatching_worker.DispatchingWorker,
     # new_bit_file wrapper
     def set_new_bitfile(self, request):
         Trace.log(e_errors.INFO,"new bitfile request %s"%(request))
-        fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
-                                            'fc'  : request
-                                            },
-                                          timeout = 60,
-                                          retry = 0)
-        Trace.log(e_errors.INFO,"New bit file returned %s" % (fcc_reply,))
-        if fcc_reply['status'][0] != e_errors.OK:
-            Trace.log(e_errors.ERROR, "Cannot assign new bit file ID")
-            return
+        for _ in range(2):
+            fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
+                                               'fc'  : request
+                                               },
+                                              timeout = 60,
+                                              retry = 0)
+            Trace.log(e_errors.INFO,"New bit file returned %s" % (fcc_reply,))
+            if fcc_reply['status'][0] == e_errors.OK:
+                break
+            else:
+                if fcc_reply['status'][0] != e_errors.TIMEDOUT:
+                    Trace.log(e_errors.ERROR, "Cannot assign new bit file ID")
+                    return
+                else:
+                    Trace.log(e_errors.INFO,"re-trying new bitfile request %s"%(request))
         if fcc_reply['fc']['location_cookie'] != request['location_cookie']:
             Trace.log(e_errors.ERROR,
                        "error assigning new bfid requested: %s returned %s"%(request, fcc_reply))
