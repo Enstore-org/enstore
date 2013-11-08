@@ -136,7 +136,15 @@ policydict = {
                                            'max_files_in_pack': 50, 
                                            'max_waiting_time': 24*3600,
                                            },
-
+                                           16: {'rule': {'storage_group': 'scene',
+                                                    'file_family': 'scene',
+                                                    'wrapper': 'cpio_odc',
+                                                    },
+                                           'minimal_file_size': 4000000000L,
+                                           'resulting_library':'CD-DiskSF1',
+                                           'max_files_in_pack': 65, 
+                                           'max_waiting_time': 24*3600,
+                                           },
                              },
               'CD-LTO4F1.library_manager': {
                                            1: {'rule': {'storage_group': 'argoneut',
