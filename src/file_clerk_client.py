@@ -123,7 +123,7 @@ class FileClient(info_client.fileInfoMethods, #generic_client.GenericClient,
     def show_state(self, timeout=RCV_TIMEOUT, retry=RCV_TRIES):
         return self.send({'work':'show_state'}, rcv_timeout=timeout, tries=retry)
 
-    def replay(self, all = None, timeout=0, retry=0):
+    def replay(self, all = None, timeout=1200, retry=1):
         ticket ={'work':'replay',
                  'func': 'replay_cache_written_events'}
         if all:
