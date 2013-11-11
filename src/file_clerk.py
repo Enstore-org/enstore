@@ -1546,7 +1546,6 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    res = self.filedb_dict.query_getresult(q)
 	    file_records = []
 	    for i in res:
-		    child_record = self.filedb_dict[i[0]]
 		    file_records.append(self.filedb_dict[i[0]])
 	    ticket["status"] = (e_errors.OK, None)
 	    ticket["children"] = file_records
