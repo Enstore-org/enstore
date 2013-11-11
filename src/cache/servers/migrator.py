@@ -72,6 +72,8 @@ READING_FROM_TAPE = "READING_FROM_TAPE"
 CHANGING_STATE = "CHANGING_STATE"
 
 MAX_CPIO_FILE_SIZE = 8*enstore_constants.GB - 1 # maximal file size for cpoi_odc wrapper is 8GB-1
+SET_CHILDREN_TO = 120
+SET_CHILDREN_RETRY = 2
 
 # calculate file checksum
 # returns a tuple (0_seeded_crc, 1_seeded_crc)
@@ -776,7 +778,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # Convert unicode to ASCII strings.
             if type(bfid) == types.UnicodeType:
                 bfid = bfid.encode("utf-8")
-            rec = self.fcc.bfid_info(bfid)
+            rec = self.infoc.bfid_info(bfid)
             Trace.trace(10, "write_to_tape: bfid_info %s"%(rec,))
 
             if (rec['status'][0] == e_errors.OK):
@@ -896,7 +898,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # deduce package destination path in name space
         # from bfid info of the first file in the package
         dst_package_fn = os.path.basename(src_file_path)
-        rec = self.fcc.bfid_info(bfid)
+        rec = self.infoc.bfid_info(bfid)
         if (rec['status'][0] != e_errors.OK):
             Trace.log(e_errors.ERROR,
                       "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
@@ -1052,7 +1054,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # move destination file to its final destination
             # create final destination directory
             # <packages_dir>/<volume_family>/<external_label>
-            bfid_info = self.fcc.bfid_info(dst_bfids[0])
+            bfid_info = self.infoc.bfid_info(dst_bfids[0])
             if (bfid_info['status'][0] != e_errors.OK):
                 Trace.log(e_errors.ERROR,
                           "write_to_tape: write to tape failed: can not get bfid info %s"%(bfid_info['status'],))
@@ -1074,12 +1076,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             original_pack_bfid = rec['original']
             if rec['original'] != dst_bfids[0]:
                 # get bfid info of original
-                bfid_info = self.fcc.bfid_info(rec['original'])
+                bfid_info = self.infoc.bfid_info(rec['original'])
                 if (bfid_info['status'][0] != e_errors.OK):
                     Trace.log(e_errors.ERROR,
                               "write_to_tape: write to tape failed: can not get bfid info %s"%(bfid_info['status'],))
                     return False
-            
+
             rc = self.complete_write_to_tape(dst_file_path, dst_dir, bfid_info['external_label'],
                                              bfid_list, dst_bfids, output_library_tag_str, original_pack_bfid)
             if not rc:
@@ -1166,10 +1168,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         records = []
         pack_records = []
-        
+
         for bfid in bfid_list:
             if bfid in dst_bfids:
-                rec = self.fcc.bfid_info(bfid)
+                rec = self.infoc.bfid_info(bfid)
             else:
                 rec = {}
                 rec['bfid'] = bfid
@@ -1212,7 +1214,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                    dupl_records = []
                    for rec in records:
                        # for duplcate files we need a complete file info.
-                       new_rec = self.fcc.bfid_info(rec['bfid'])
+                       new_rec = self.infoc.bfid_info(rec['bfid'])
                        Trace.trace(10, "complete_write_to_tape: creating duplicates %s"%(rec,))
                        new_rec['original_bfid'] = rec['bfid']
                        new_rec['package_id'] = dupl['bfid']
@@ -1288,7 +1290,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             if type(bfid) == types.UnicodeType:
                 bfid = bfid.encode("utf-8")
 
-            rec = self.fcc.bfid_info(bfid)
+            rec = self.infoc.bfid_info(bfid)
             if self.really_purge(rec):
                 rec['cache_status'] = file_cache_status.CacheStatus.PURGING
                 Trace.trace(10, "purge_files: purging %s"%(rec,))
@@ -1354,20 +1356,28 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # stage files from tape
     # helper method for read_from_tape
     def stage_files(self, files_to_stage, package, set_cache_params):
-        # append a package file
-        files_to_stage.append(package)
-        package_id = package['bfid']
-        set_cache_params.append({'bfid': package['bfid'],
-                                 'cache_status':file_cache_status.CacheStatus.STAGING,
-                                 'archive_status': None,        # we are not changing this
-                                 'cache_location': None})       # we are not changing this yet
-        #rc = self.fcc.set_cache_status(set_cache_params)
-        Trace.trace(10, "stage_files: will stage %s"%(set_cache_params,))
         self.state = CHANGING_STATE
-        rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+        files_to_stage.append(package)
+        stage_the_whole_package = False
+        if set_cache_params[0]['bfid'] == package['bfid']:
+            # staging package
+            stage_the_whole_package = True
+            rc = self.fcc.set_children(set_cache_params[0], timeout=SET_CHILDREN_TO, retry = SET_CHILDREN_RETRY)
+        else:
+            # append a package file
+            package_id = package['bfid']
+            set_cache_params.append({'bfid': package['bfid'],
+                                     'cache_status':file_cache_status.CacheStatus.STAGING,
+                                     'archive_status': None,        # we are not changing this
+                                     'cache_location': None})       # we are not changing this yet
+            #rc = self.fcc.set_cache_status(set_cache_params)
+            Trace.trace(10, "stage_files: will stage %s"%(set_cache_params,))
+            rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         if rc['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
+            self.state = IDLE
             return True # return True so that the message is confirmed
+
 
         # create a temporary directory for staging a package
         # use package name for this
@@ -1397,6 +1407,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     ]
             Trace.trace(10, "stage_files: sending %s"%(args,))
             encp = encp_wrapper.Encp()
+            self.state = READING_FROM_TAPE
             try:
                 rc = encp.encp(args)
             except:
@@ -1417,7 +1428,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     rec['cache_status'] = file_cache_status.CacheStatus.PURGED
                 #rc = self.fcc.set_cache_status(set_cache_params)
                 self.state = CHANGING_STATE
-                rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+                if stage_the_whole_package:
+                    rc = self.fcc.set_children(set_cache_params[0], timeout=SET_CHILDREN_TO, retry = SET_CHILDREN_RETRY)
+                else:
+                    rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+                self.state = IDLE
                 return False
 
         # unpack files
@@ -1452,14 +1467,24 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             except:
                 pass
 
+            # change cache_status back
+            for rec in set_cache_params:
+                rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+            self.state = CHANGING_STATE
+            if stage_the_whole_package:
+                rc = self.fcc.set_children(set_cache_params[0], timeout=SET_CHILDREN_TO, retry =SET_CHILDREN_RETRY)
+            else:
+                rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+            self.state = IDLE
             return False
 
         Trace.log(e_errors.INFO, "Finished tar from %s size %s MB rate %s MB/s"%
-                  (stage_fname, package["size"]/1000000., package["size"]/1000000./t))              
-        
+                  (stage_fname, package["size"]/1000000., package["size"]/1000000./t))
+
         new_set_cache_params = []
 
         # move files to their original location
+        renaming_failed = False
         for rec in files_to_stage:
             if rec['bfid'] != rec['package_id']:
                 src = rec.get('location_cookie', None)
@@ -1497,20 +1522,26 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     except Exception, detail:
                         if detail.args[0] != errno.ENOENT:
                             Trace.log(e_errors.ERROR, "Package staging failed while renaming files %s %s"%(package_id, detail))
-                            # change cache_status back
-                            for rec in new_set_cache_params:
-                                rec['cache_status'] = file_cache_status.CacheStatus.PURGED
-                            #rc = self.fcc.set_cache_status(new_set_cache_params)
-                            self.state = CHANGING_STATE
-                            rc = set_cache_status.set_cache_status(self.fcc, new_set_cache_params)
-                            return False
-
-
+                            renaming_failed = True
+                            break
                 Trace.trace(10, "stage_files: appending  new_set_cache_params %s"%(rec['bfid'],))
                 new_set_cache_params.append({'bfid': rec['bfid'],
                                              'cache_status':file_cache_status.CacheStatus.CACHED,
                                              'archive_status': None,        # we are not changing this
                                              'cache_location': dst})
+        if renaming_failed:
+            # change cache_status back
+            for rec in set_cache_params:
+                rec['cache_status'] = file_cache_status.CacheStatus.PURGED
+            self.state = CHANGING_STATE
+            if stage_the_whole_package:
+                rc = self.fcc.set_children(set_cache_params[0], timeout=SET_CHILDREN_TO, retry = SET_CHILDREN_RETRY)
+            else:
+                rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
+            self.state = IDLE
+            return False
+
+
         # This is for package file
         new_set_cache_params.append({'bfid': rec['package_id'],
                                      'cache_status':file_cache_status.CacheStatus.PURGED, # we do not read a package from cache
@@ -1521,6 +1552,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         #rc = self.fcc.set_cache_status(new_set_cache_params)
         self.state = CHANGING_STATE
         rc = set_cache_status.set_cache_status(self.fcc, new_set_cache_params)
+        self.state = IDLE
         if rc['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
             return True # return True so that the message is confirmed
@@ -1555,15 +1587,17 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # 1. Have a single component OR if NOT
         # 2. Have the same package bfid
 
+        stage_the_whole_package = False
         bfid_info = []
         files_to_stage = []
+        package = None
         Trace.trace(10, "read_from_tape: request len %s"%(len(request_list),))
         if len(request_list) == 1:
             # check if the package staging is requested
             bfid = request_list[0]['bfid']
             if type(bfid) == types.UnicodeType:
                 bfid = bfid.encode("utf-8")
-            rec = self.fcc.bfid_info(bfid)
+            rec = self.infoc.bfid_info(bfid)
             Trace.trace(10, "read_from_tape: rec %s"%(rec,))
 
             if rec['status'][0] != e_errors.OK:
@@ -1574,13 +1608,17 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             if package_id == bfid:
                 # request to stage a package
                 # get all information about children
-                rc = self.fcc.get_children(package_id)
+                rc = self.fcc.get_children(package_id, timeout=SET_CHILDREN_TO, retry = SET_CHILDREN_RETRY)
                 Trace.trace(10, "read_from_tape, bfid_data %s"%(rc,))
                 if rc ['status'][0] != e_errors.OK:
                     Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
                     return True # return True so that the message is confirmed
                 else:
-                    bfid_info = rc['children'] 
+                    bfid_info.append(rec)
+                    package = rec
+                    files_to_stage = rc['children']
+
+                    stage_the_whole_package = True
             else: # single file
                 bfid_info.append(rec)
 
@@ -1592,7 +1630,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 if type(bfid) == types.UnicodeType:
                     bfid = bfid.encode("utf-8")
 
-                rec = self.fcc.bfid_info(bfid)
+                rec = self.infoc.bfid_info(bfid)
                 if rec['status'][0] == e_errors.OK:
                     if not package_id:
                         # read the package id if the First file
@@ -1609,42 +1647,49 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if not package_id:
             Trace.alarm(e_errors.ERROR, "is file on tape? bfid=%s"%(bfid,))
             return False
-        package = self.fcc.bfid_info(package_id) 
+        if not package:
+            package = self.infoc.bfid_info(package_id)
+
         set_cache_params = [] # this list is needed to send set_cache_status command to file clerk
         Trace.log(e_errors.INFO, "Will stage package %s"%(package,))
         self.status_dict['current_migration_file'] = package['pnfs_name0']
 
-        # Internal list of bfid data is built
-        # Create a list of files to get staged
-        for  component in bfid_info:
-            bfid = component['bfid']
-            Trace.trace(10, "read_from_tape: rec1 %s"%(component,))
-            if component['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED:  # file is on tape and it can be staged
-                # check the state of each file
-                if component['cache_status'] == file_cache_status.CacheStatus.CACHED:
-                    # File is in cache and available immediately.
-                    continue
-                elif component['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED:
-                    # file clerk sets this when opens a file
-                    if component['bfid'] != package_id: # we stage files in the package, not the package itself
-                        files_to_stage.append(component)
-                        set_cache_params.append({'bfid': bfid,
-                                                 'cache_status':file_cache_status.CacheStatus.STAGING,
-                                                 'archive_status': None,        # we are not changing this
-                                                 'cache_location': None})       # we are not changing this yet
-                elif component['cache_status'] == file_cache_status.CacheStatus.STAGING:
-                    # File is being staged
-                    # Log this for the further investigation in
-                    # case the file was not staged.
-                    Trace.log(e_errors.INFO, "File is being staged %s %s"%(component['bfid'], component['pnfs_name0']))
-                    continue
-                else:
-                    continue
+        if stage_the_whole_package:
+            set_cache_params.append({'bfid': package_id,
+                                     'cache_status':file_cache_status.CacheStatus.STAGING,
+                                     })
+
+        else:
+            # Internal list of bfid data is built
+            # Create a list of files to get staged
+            for  component in bfid_info:
+                bfid = component['bfid']
+                Trace.trace(10, "read_from_tape: rec1 %s"%(component,))
+                if component['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED:  # file is on tape and it can be staged
+                    # check the state of each file
+                    if component['cache_status'] == file_cache_status.CacheStatus.CACHED:
+                        # File is in cache and available immediately.
+                        continue
+                    elif component['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED:
+                        # file clerk sets this when opens a file
+                        if component['bfid'] != package_id: # we stage files in the package, not the package itself
+                            files_to_stage.append(component)
+                            set_cache_params.append({'bfid': bfid,
+                                                     'cache_status':file_cache_status.CacheStatus.STAGING,
+                                                     'archive_status': None,        # we are not changing this
+                                                     'cache_location': None})       # we are not changing this yet
+                    elif component['cache_status'] == file_cache_status.CacheStatus.STAGING:
+                        # File is being staged
+                        # Log this for the further investigation in
+                        # case the file was not staged.
+                        Trace.log(e_errors.INFO, "File is being staged %s %s"%(component['bfid'], component['pnfs_name0']))
+                        continue
+                    else:
+                        continue
 
         Trace.trace(10, "read_from_tape:  files to stage %s %s"%(len(files_to_stage), files_to_stage))
         if len(files_to_stage) != 0:
             try:
-                self.state = READING_FROM_TAPE
                 rc = self.stage_files(files_to_stage, package, set_cache_params)
             except:
                 Trace.handle_error()
