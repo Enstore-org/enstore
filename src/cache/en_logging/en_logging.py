@@ -37,19 +37,6 @@ def set_logging(name):
 
    tracer = logging.getLogger('trace.encache')    
    tracer.addHandler(th)
-   #tracer.setLevel(logging.DEBUG)
-   
-   # Qpid
-   qpid_fmt = logging.Formatter("%(levelname)s %(message)s")
-      # Log settings
-   qh = cache.en_logging.handlers.EnLogHandler(name)
-   qh.setFormatter(qpid_fmt)
-
-   q_logger = logging.getLogger('qpid')
-   q_logger.addHandler(qh)
-   # adjust report level here or reset it later
-   # can get logger 'qpid.messaging' and adjust its level separately
-   q_logger.setLevel(logging.WARNING)
-   
+   tracer.setLevel(logging.DEBUG)
    return logger, tracer
    
