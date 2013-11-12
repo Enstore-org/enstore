@@ -144,6 +144,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     def invoke_function(self, function, args=()):
         if  function.__name__  in ("tape_list3",
 				   "set_cache_status",
+				   "get_children",
+				   "set_children",
 				   "alive",
 				   "get_bfids",
 				   "get_bfids2",
