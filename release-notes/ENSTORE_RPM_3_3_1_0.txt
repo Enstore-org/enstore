@@ -46,6 +46,12 @@ Change default retry settings in FCC replay. replay uses timeout=0 and retry=0 w
 
 ========== file_clerk.py ====================================================================================
 
+http://uqbar.fnal.gov/reviews/r/755
+move get_children, set_children to separate thread
+
+Remove unused statement. This statement is not used and could stay if it would not cause an additional DB query.
+bz 1397, rb 754
+
 http://uqbar/reviews/r/747/ do not truncate time.time() to seconds when forming BFID 
 
 ========== files_rw_plotter_module.py ====================================================================================
