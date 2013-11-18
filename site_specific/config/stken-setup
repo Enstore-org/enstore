@@ -75,7 +75,6 @@ unset CVS_RSH 2>//dev/null;
 #export ENSSH=/usr/bin/ssh
 #export ENSCP=/usr/bin/scp
 
-
 export ENSTORE_CONFIG_HOST=stkensrv2n.fnal.gov
 export ENSTORE_CONFIG_PORT=7500
 export ENSTORE_CONFIG_FILE=/opt/enstore/etc/stk.conf
