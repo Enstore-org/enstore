@@ -1,3 +1,4 @@
+# source this file to set enstore environment
 rpm -q enstore > /dev/null
 if [ $? -eq 0 ]; then 
 	ENSTORE_DIR=`rpm -ql enstore | head -1`
@@ -6,38 +7,68 @@ else
 	exit 1
 fi
 
-PYTHON_DIR=$ENSTORE_DIR/Python
-FTT_DIR=$ENSTORE_DIR/FTT
-ENSTORE_HOME=/home/enstore
-ENSTORE_OUT=/var/log/enstore
-
+export HOME=${HOME:=/home/enstore} # set if not exists, such as for cgi
 export ENSTORE_DIR
-export PYTHON_DIR
-export FTT_DIR
-export ENSTORE_HOME
-export ENSTORE_OUT
-SWIG_DIR=$ENSTORE_DIR/SWIG
-export SWIG_DIR
-export SWIG_LIB=$SWIG_DIR/swig_lib
-PATH=$SWIG_DIR:$PATH
 
-PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$ENSTORE_DIR/tools:$PATH
+export PYTHON_DIR=$ENSTORE_DIR/Python
+export FTT_DIR=$ENSTORE_DIR/FTT
+export ENSTORE_HOME=/home/enstore
+export ENSTORE_OUT=/var/log/enstore
+
+export SWIG_DIR=$ENSTORE_DIR/SWIG
+export SWIG_LIB=$SWIG_DIR/swig_lib
+export QPID_DIR=$ENSTORE_DIR/qpid
+export ESPER_DIR=$ENSTORE_DIR/esper
+
+# build PATH
+
+# add directory to path only once thus this file can be sourced multiple times
+pathmunge () { 
+         if ! [[ $PATH =~ (^|:)$1($|:) ]] ; then 
+             if [ "$2" = "after" ] ; then
+                PATH=$PATH:$1;
+             else
+                PATH=$1:$PATH;
+             fi
+         fi
+}
+
+# for reference: path old way
+#PATH=$SWIG_DIR:$PATH
+#PATH=$QPID_DIR/bin:$PATH
+#PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$ENSTORE_DIR/tools:$PATH
+
+pathmunge $SWIG_DIR
+pathmunge $QPID_DIR/bin
+pathmunge $ENSTORE_DIR/tools
+pathmunge $ENSTORE_DIR/bin
+pathmunge $ENSTORE_DIR/sbin
+
 rpm -q pnfs > /dev/null
 if [ $? -eq 0 ]; then
         p_d=`rpm -ql pnfs | grep bin | head -1`
         PNFS_DIR=`dirname $p_d`
-        PATH=$PATH:$PNFS_DIR/tools
+        #- PATH=$PATH:$PNFS_DIR/tools
+	pathmunge $PNFS_DIR/tools after
         export PNFS_DIR
 fi
 
-#CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc; export CVSROOT
-#unset CVS_RSH 2>//dev/null;
+pathmunge $PYTHON_DIR/bin
+
+# end build path
 
 PYTHONINC=`ls -d $PYTHON_DIR/include/python*`; export PYTHONINC
 PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*`;export PYTHONLIB
-PATH=$PYTHON_DIR/bin:$PATH
+#- PATH=$PYTHON_DIR/bin:$PATH
 PYTHONPATH=$ENSTORE_DIR:$ENSTORE_DIR/src:$ENSTORE_DIR/modules:$ENSTORE_DIR/HTMLgen:$ENSTORE_DIR/PyGreSQL; export PYTHONPATH
 PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
+
+GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
+
+$ENSTORE_DIR/external_distr/update_sym_links.sh -c
+
+CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc; export CVSROOT
+unset CVS_RSH 2>//dev/null;
 
 # if using ssh for enstore node communications for discribution, upgade, and maintenance 
 # uncomment the following lines
@@ -45,12 +76,9 @@ PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
 #export ENSCP=/usr/bin/scp
 
 
-GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
-
-$ENSTORE_DIR/external_distr/update_sym_links.sh -c
-
-export ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+export ENSTORE_CONFIG_HOST=stkensrv2n.fnal.gov
 export ENSTORE_CONFIG_PORT=7500
-export ENSTORE_CONFIG_FILE=/home/enstore/enstore/etc/stk.conf
+export ENSTORE_CONFIG_FILE=/opt/enstore/etc/stk.conf
 export ENSTORE_MAIL=enstore-auto@fnal.gov
 export FARMLETS_DIR=/usr/local/etc/farmlets
+export CVS_RSH=ssh
