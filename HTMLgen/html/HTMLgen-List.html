@@ -1,0 +1,171 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class List - Will generate a bulleted list given a list argument.</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="HTMLgen-KBD.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-MailTo.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class List - Will generate a bulleted list given a list argument.</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLgen</PRE>
+
+<PRE>class List(UserList)
+  int I_am_a_list = 1
+  def __getslice__(self, i, j)
+  def __init__(self, list = None, **kw)
+  string __module__ = 'HTMLgen'
+  def __str__(self)
+  <A HREF="#def append(self, *items)">def append(self, *items)</A>
+  tuple attrs = ('type', 'align', 'class', ...
+  string attr_template = ''
+  <A HREF="#def column_slices(self, columns=1)">def column_slices(self, columns=1)</A>
+  int I_am_a_list = 1
+  <A HREF="#def end_element(self)">def end_element(self)</A>
+  tuple flags = ('compact',)
+  int I_am_a_list = 1
+  <A HREF="#def multi_column_table(self)">def multi_column_table(self)</A>
+  string pad = '    '
+  <A HREF="#def render_list_item(self, item)">def render_list_item(self, item)</A>
+  <A HREF="#def start_element(self)">def start_element(self)</A>
+  <A HREF="#def sub_list(self, list)">def sub_list(self, list)</A>
+  string tagname = 'UL'
+
+  # Methods inherited by List from UserList
+  def __add__(self, list)
+  def __cmp__(self, list)
+  def __delitem__(self, i)
+  def __delslice__(self, i, j)
+  def __getitem__(self, i)
+  def __len__(self)
+  def __mul__(self, n)
+  def __mul__(self, n)
+  def __radd__(self, list)
+  def __repr__(self)
+  def __setitem__(self, i, item)
+  def __setslice__(self, i, j, list)
+  def count(self, item)
+  def index(self, item)
+  def insert(self, i, item)
+  def pop(self, i=-1)
+  def remove(self, item)
+  def reverse(self)
+  def sort(self, *args)
+</PRE>
+
+<PRE>alias BulletList = List
+alias UL = List
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Now supports rendering a list into multiple columns by setting the
+<EM>columns</EM> attribute to a number greater than one. This is
+implemented using tables and you can also set a background color
+for the list itself by using the <EM>bgcolor</EM> attribute.</P>
+
+
+<P>Supports nested lists, i.e. lists of lists. Each time a list is
+encountered in a list it will indent those contents w.r.t. the
+prior list entry. This can continue indefinitely through nested
+lists although there are only three different bullets provided by
+the browser (typically).</P>
+
+
+<P>Optional keyword <EM>indent</EM> can be used to indicate whether you want
+the list to start left justified or indented. <EM>indent=0</EM> will make
+it left justified. The default is to indent.</P>
+
+
+<P>Optional keyword <EM>type</EM> can be set to either disk, circle, or
+square to specify what kind of symbol is used for each list item's
+bullet. (Netscape extension)</P>
+
+
+<P>Since we inherit from the UserList class any normal list
+operations work on instances of this class.  Any list contents
+will do. Each of the items will be emitted in html if they are
+themselves objects from this module.
+Aliases: UL, BulletList
+</P>
+
+<H3><A NAME="def append(self, *items)">def append(self, *items)</A></H3>
+
+
+<P>Append entries to the end of the list
+</P>
+
+<H3><A NAME="def column_slices(self, columns=1)">def column_slices(self, columns=1)</A></H3>
+
+
+<P>Calculate a list of index pairs bounding column slices.
+</P>
+
+<H3><A NAME="def end_element(self)">def end_element(self)</A></H3>
+
+
+<P>Closes the HTML element
+</P>
+
+<H3><A NAME="def multi_column_table(self)">def multi_column_table(self)</A></H3>
+
+
+<P>Return a table containing the list sliced into columns.
+</P>
+
+<H3><A NAME="def render_list_item(self, item)">def render_list_item(self, item)</A></H3>
+
+
+<P>Renders the individual list items</P>
+
+
+<P>Overloaded by child classes to represent other list styles.
+</P>
+
+<H3><A NAME="def start_element(self)">def start_element(self)</A></H3>
+
+
+<P>Generic creator for the HTML element opening tag.</P>
+
+
+<P>Reads tagname, attrs and flags to return appropriate tag.
+</P>
+
+<H3><A NAME="def sub_list(self, list)">def sub_list(self, list)</A></H3>
+
+
+<P>Recursive method for generating a subordinate list
+</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLgen_overview.html">HTMLgen</A></P>
+
+
+<P><A HREF="UserList-UserList.html">UserList</A></P>
+
+
+<P><HR>
+<A HREF="HTMLgen-KBD.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-MailTo.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;rie&#100;ric&#104;@py&#116;hon&#112;ros&#46;com">friedrich@pythonpros.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

@@ -1,0 +1,112 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class Image - Inlined Image</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="HTMLgen-Href.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-ImageBulletList.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class Image - Inlined Image</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLgen</PRE>
+
+<PRE>class Image(AbstractTagSingle)
+  def __init__(self, *args, **kw)
+  string __module__ = 'HTMLgen'
+  def __str__(self)
+  dictionary attr_dict = {'id': '', 'border': '', ' ...
+  string attr_template = '%(src)s%(height)s%(width) ...
+  tuple attrs = ('src', 'height', 'width', ...
+  <A HREF="#def calc_rel_path(self, from_dir=None)">def calc_rel_path(self, from_dir=None)</A>
+  def process_arg(self, arg)
+  string tagname = 'IMG'
+
+  # Methods inherited by Image from AbstractTagSingle
+  <A HREF="#def __setattr__(self, name, value)">def __setattr__(self, name, value)</A>
+</PRE>
+
+<PRE>alias IMG = Image
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>The <EM>filename</EM> argument is a filename, or URL of a graphic image,
+or a triple of ( filename, width, height ) where dimensions are in
+pixels. Where the filename is found to be a valid pathname to an
+existing graphic file that file will be read to determine its width and
+height properties. GIF, JPEG, and PNG files are understood.</P>
+
+<H3><A NAME="def __setattr__(self, name, value)">def __setattr__(self, name, value)</A></H3>
+
+
+<P>Intercept attribute assignments.</P>
+
+
+<P>If the attribute is a legal HTML tag attribute add it to the
+dict used for substitution in __str__, otherwise just set it as
+an instance attribute.
+</P>
+
+<H3><A NAME="def calc_rel_path(self, from_dir=None)">def calc_rel_path(self, from_dir=None)</A></H3>
+
+
+<P>Calculate the relative path from <CODE>from_dir</CODE>
+ to the
+absolute location of the image file.</P>
+
+
+<P>Sets self.prefix.
+</P>
+
+<H2>Keyword Arguments</H2>
+
+<DL>
+<DT><B>    width </B><DD>(int) Width in pixels
+<DT><B>    height</B><DD>(int) Height in pixels
+<DT><B>    border</B><DD>(int) Border width in pixels
+<DT><B>    align </B><DD>(string) 'top'|'middle'|'bottom'|'right'|'left'
+<DT><B>    alt   </B><DD>(string) Text to substitute for the image in nonGUI browsers
+<DT><B>    usemap</B><DD>Imagemap name or Map object
+<DT><B>    ismap </B><DD>Flag (1|0) indicating if a server side imagemap is available.
+<DT><B>    absolute</B><DD>Absolute path to the directory containing the image
+<DT><B>    prefix</B><DD>Relative path or URL to directory containing the image
+<DT><B>    hspace</B><DD>Number of pixels to be added to the left and right of the image.
+<DT><B>    vspace</B><DD>Number of pixels to be added to the top and bottom of the image.
+<DT><B>    name</B><DD>A name for this image to be used by JavaScript
+<DT><B>    Class</B><DD>A CSS class this tag belongs to.
+<DT><B>    style</B><DD>A CSS inline style specification.
+
+</DL>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLgen_overview.html">HTMLgen</A></P>
+
+
+<P><A HREF="HTMLgen-AbstractTagSingle.html">AbstractTagSingle</A></P>
+
+
+<P><HR>
+<A HREF="HTMLgen-Href.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-ImageBulletList.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;rie&#100;ric&#104;@py&#116;hon&#112;ros&#46;com">friedrich@pythonpros.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

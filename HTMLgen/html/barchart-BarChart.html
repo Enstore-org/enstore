@@ -1,0 +1,132 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class BarChart</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<span style="width: 60px"></span> 
+<A HREF="barchart-DataList.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class BarChart</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import barchart</PRE>
+
+<PRE>class BarChart
+  <A HREF="#def __init__(self, datalist=None)">def __init__(self, datalist=None)</A>
+  string __module__ = 'barchart'
+  <A HREF="#def __str__(self)">def __str__(self)</A>
+  string GRAY2 = '#DDDDDD'
+  <A HREF="#def color_code(self, value)">def color_code(self, value)</A>
+  <A HREF="#def gen_bar(self, value, color='blue')">def gen_bar(self, value, color='blue')</A>
+  <A HREF="#def gen_legend(self)">def gen_legend(self)</A>
+  <A HREF="#def initialize(self)">def initialize(self)</A>
+  string WHITE = '#FFFFFF'
+  <A HREF="#def make_bar_cell(self, dict)">def make_bar_cell(self, dict)</A>
+  int max_width = 400
+  <A HREF="#def normalize(self)">def normalize(self)</A>
+  <A HREF="#def pixels(self, magnitude)">def pixels(self, magnitude)</A>
+  string attr_template = ''
+  string CADETBLUE = '#9999CC'
+  int day_month_order = 0
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Class which takes a DataList object and creates
+the HTML to represent a color coded bar chart.</P>
+
+
+<P>Values to be charted are limited to non-negative values.
+</P>
+
+<H3><A NAME="def __init__(self, datalist=None)">def __init__(self, datalist=None)</A></H3>
+
+
+<P>datalist is an instance of class DataList</P>
+
+<H3><A NAME="def __str__(self)">def __str__(self)</A></H3>
+
+
+<P>Generate HTML for the entire table and caption.
+</P>
+
+<H3><A NAME="def color_code(self, value)">def color_code(self, value)</A></H3>
+
+
+<P>return a color string based on whether the given datum
+falls beyond thresholds. Works off self.thresholds=(low,hi).
+</P>
+
+<H3><A NAME="def gen_bar(self, value, color='blue')">def gen_bar(self, value, color='blue')</A></H3>
+
+
+<P>return Image object for the scaled bar graphic
+</P>
+
+<H3><A NAME="def gen_legend(self)">def gen_legend(self)</A></H3>
+
+
+<P>Return an HTML string which displays the legend for the chart.
+</P>
+
+<H3><A NAME="def initialize(self)">def initialize(self)</A></H3>
+
+
+<P>Initialize the chart properties.</P>
+
+
+<P>This method is overloaded by child classes.
+</P>
+
+<H3><A NAME="def make_bar_cell(self, dict)">def make_bar_cell(self, dict)</A></H3>
+
+
+<P>return a TD object containing the scaled bar
+</P>
+
+<H3><A NAME="def normalize(self)">def normalize(self)</A></H3>
+
+
+<P>Scale data to values between 0 and 400.</P>
+
+
+<P>Determine peak value and set scale accordingly.  If the values
+are clustered within 30% of each other, will shift the zero
+point for the barchart up to exagerate the value differences.
+To inhibit this, set the .bound_zero attribute to "yes".
+</P>
+
+<H3><A NAME="def pixels(self, magnitude)">def pixels(self, magnitude)</A></H3>
+
+
+<P>returns the integer number of pixels to represent a given magnitude.
+</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="barchart_overview.html">barchart</A></P>
+
+
+<P><HR>
+<span style="width: 60px"></span> 
+<A HREF="barchart-DataList.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#100;ev@&#110;ull">dev@null</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

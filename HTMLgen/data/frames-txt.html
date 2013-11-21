@@ -1,0 +1,22 @@
+
+<h3>DESIGN</h3>
+
+      <P>An individual web page can be broken up into multiple panes
+      called frames. The definition of this subdivision is done by the
+      FRAMESET element and thus the Frameset class. A simple document
+      file is used to contain the Frameset and it's contents. HTMLgen
+      provides the FramesetDocument class for this purpose. The
+      characteristics of each frame are specified in the FRAME
+      element. Typically the frame just points to a source file for
+      it's display contents. Each frame has a name declared by which
+      it may be refered to by other Href tags using a target
+      attribute.
+
+      <P>The resulting heirarchy looks like this:
+      <UL><LI>FramesetDocument object contains one
+          <UL><LI>Frameset object which contains two or more 
+              <UL><LI>Frame objects each pointing to an HTML file.
+                <LI>or other Frameset objects
+              </UL>
+          </UL>
+      </UL>

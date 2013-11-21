@@ -1,0 +1,79 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class BaseFont</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="HTMLgen-Base.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-BasicDocument.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class BaseFont</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLgen</PRE>
+
+<PRE>class BaseFont(AbstractTagSingle)
+  string __module__ = 'HTMLgen'
+  dictionary attr_dict = {'size': '', 'name': '', ' ...
+  string attr_template = '%(color)s%(name)s%(size)s'
+  tuple attrs = ('color', 'name', 'size')
+  string tagname = 'BASEFONT'
+
+  # Methods inherited by BaseFont from AbstractTagSingle
+  def __init__(self, *args, **kw)
+  <A HREF="#def __setattr__(self, name, value)">def __setattr__(self, name, value)</A>
+  <A HREF="#def __str__(self)">def __str__(self)</A>
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Specify the font size for subsequent text.
+</P>
+
+<H3><A NAME="def __setattr__(self, name, value)">def __setattr__(self, name, value)</A></H3>
+
+
+<P>Intercept attribute assignments.</P>
+
+
+<P>If the attribute is a legal HTML tag attribute add it to the
+dict used for substitution in __str__, otherwise just set it as
+an instance attribute.
+</P>
+
+<H3><A NAME="def __str__(self)">def __str__(self)</A></H3>
+
+
+<P>Generate an HTML formatted string for this object.
+</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLgen_overview.html">HTMLgen</A></P>
+
+
+<P><A HREF="HTMLgen-AbstractTagSingle.html">AbstractTagSingle</A></P>
+
+
+<P><HR>
+<A HREF="HTMLgen-Base.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-BasicDocument.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;rie&#100;ric&#104;@py&#116;hon&#112;ros&#46;com">friedrich@pythonpros.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

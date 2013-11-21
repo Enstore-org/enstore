@@ -1,0 +1,67 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2">
+        <TITLE>Function markup_regex</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<A HREF="HTMLgen-markup_re.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-mpath.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Function markup_regex</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLgen</PRE>
+
+<PRE>def markup_regex(text, rex=None, marker=None, collapse=0)</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Markup the contained text with a given regex with
+a given tag class instance. Uses regex module.</P>
+
+<H3>Arguments</H3>
+
+<DL>
+<DT><B>    text</B><DD>string to act on
+<DT><B>    rex</B><DD>a regular expression object or pattern which will be used
+        to match all text patterns in the Paragraph body. Must have a single
+        group defined. Group 1 is the matching text that will be marked.
+        Default to all parenthetical text.
+<DT><B>    marker</B><DD>an HTMLgen class instance (or any function) to which the found text will
+        be sent for wrapping (using its __call__ method). Default is Emphasis.
+        Can be your function as well.
+<DT><B>    collapse</B><DD>Optional flag. When set to 1 removes the non-
+        grouped matching text from the output. Default 0.
+</DL>
+
+
+<P>Returns the marked text and the number of matching text groups.
+</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLgen_overview.html">HTMLgen</A></P>
+
+
+<P><HR>
+<A HREF="HTMLgen-markup_re.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="HTMLgen-mpath.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;rie&#100;ric&#104;@py&#116;hon&#112;ros&#46;com">friedrich@pythonpros.com</A><br>
+Generated: Tue Mar 16 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

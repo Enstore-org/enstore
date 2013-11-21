@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>Class Directory - Object representing a directory tree structure.</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<span style="width: 60px"></span> 
+<A HREF="HTMLutil-been_marked.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>Class Directory - Object representing a directory tree structure.</H3>
+<HR>
+
+<H2>SYNOPSIS</H2>
+
+<PRE>import HTMLutil</PRE>
+
+<PRE>class Directory(UserList)
+  def __cmp__(self, item)
+  def __init__(self, name='root', data=None)
+  string __module__ = 'HTMLutil'
+  <A HREF="#def add_object(self, pathlist, object)">def add_object(self, pathlist, object)</A>
+  <A HREF="#def ls(self, pad='')">def ls(self, pad='')</A>
+  <A HREF="#def tree(self)">def tree(self)</A>
+
+  # Methods inherited by Directory from UserList
+  def __add__(self, list)
+  def __delitem__(self, i)
+  def __delslice__(self, i, j)
+  def __getitem__(self, i)
+  def __getslice__(self, i, j)
+  def __len__(self)
+  def __mul__(self, n)
+  def __mul__(self, n)
+  def __radd__(self, list)
+  def __repr__(self)
+  def __setitem__(self, i, item)
+  def __setslice__(self, i, j, list)
+  def append(self, item)
+  def count(self, item)
+  def index(self, item)
+  def insert(self, i, item)
+  def pop(self, i=-1)
+  def remove(self, item)
+  def reverse(self)
+  def sort(self, *args)
+</PRE>
+
+<H2>DESCRIPTION</H2>
+
+
+<P>Instances of this class can be populated with objects
+at the end of a path list. The path list is a list of
+strings representing directory names leading to the
+target value. The data structure can be emitted in a
+format condusive to processing by HTMLgen.List and
+friends.</P>
+
+<H3><A NAME="def add_object(self, pathlist, object)">def add_object(self, pathlist, object)</A></H3>
+
+
+<P>Add a new object into the directory structure.</P>
+
+
+<P>*pathlist* is a list of strings to be used as directory
+names leading to the object. If a subdirectory name does
+not exist one will be created automatically.</P>
+
+
+<P>*object* can be any python object. 
+</P>
+
+<H3><A NAME="def ls(self, pad='')">def ls(self, pad='')</A></H3>
+
+
+<P>Print an indented representation of the entire directory
+contents.
+</P>
+
+<H3><A NAME="def tree(self)">def tree(self)</A></H3>
+
+
+<P>Return the Directory object as a list of items and
+nested lists, aka tree, suitable for use in a HTMLgen.List
+class.
+</P>
+
+<H2>For example:</H2>
+
+<PRE>  D = Directory()
+  D.add_object(['path','to','directory'], object)
+  [would be analogous to creating a file "/path/to/directory/object"]
+  ... repeated for any number of objects ...
+  LoL = D.tree()
+  html_list = HTMLgen.List(LoL)</PRE>
+
+
+<P>Unlike a file system which requires that a directory
+to exist before a file can be added; Directory will
+automatically create new directories in the path as
+needed.
+</P>
+
+<H2>SEE ALSO</H2>
+
+
+<P><A HREF="HTMLutil_overview.html">HTMLutil</A></P>
+
+
+<P><A HREF="UserList-UserList.html">UserList</A></P>
+
+
+<P><HR>
+<span style="width: 60px"></span> 
+<A HREF="HTMLutil-been_marked.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 1996-9 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;ri&#101;dr&#105;ch&#64;py&#116;ho&#110;pr&#111;s.&#99;om">friedrich@pythonpros.com</A><br>
+Generated: Tue Apr 20, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>

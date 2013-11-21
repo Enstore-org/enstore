@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+
+<!-- This file generated using Python HTMLgen module. -->
+<HEAD>
+  <META NAME="GENERATOR" CONTENT="HTMLgen 2.2.2">
+        <TITLE>HTMLgen 2.2.2 Online Documentation</TITLE>
+
+ <LINK rel=stylesheet href="HTMLgen.css" type=text/css title="HTMLgen.css">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" BACKGROUND="../image/bg-dots.gif" TEXT="#000000" LINK="#EE0000" VLINK="#990000">
+<IMG src="../image/lists.gif" height="40" width="472" alt="lists.gif" border="0"><BR>
+<A HREF="document.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="frames.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<A HREF="overview.html"><IMG src="../image/top.gif" height="22" width="66" alt="Top of Manual" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<H3>HTMLgen 2.2.2 Online Documentation</H3>
+<H2>Lists</H2>
+<HR>
+
+
+<H3>FEATURES</H3>
+
+      <P>The List class and it's children have been structured to
+      allow full nesting of either regular Python data types, (e.g.,
+      lists of lists of strings) or HTMLgen objects. For example, an
+      OrderedList class can contain an instance of the List class,
+      ImageBulletList class and DefinitionList class. Added in version
+      2.0.6 is the capability to render the list into multiple
+      columns. Just set the <code>columns</code> attribute to a number
+      greater than one and it will use that many columns. Also added
+      is the ability to assign a background color through the use of
+      the <code>bgcolor</code> attribute.
+
+        <UL>
+        <LI><STRONG>List</STRONG> class uses the UL markup and 
+          is the base class for:
+          <UL>
+            <LI><strong>OrderedList</strong>, which uses the OL markup.
+            <LI><strong>DefinitionList</strong>, which uses the DL markup.
+            <LI><strong>ImageBulletList</strong>, which uses the UL markup and just
+              provides a simple <em>object object BR</em> style for 
+              each list item.
+            <LI><strong>NonBulletList</strong>, which uses the UL markup and just
+              provides a simple indented list without prepending a
+              bullet (or anything else).
+          </UL>
+        </UL>
+
+      <P>The Netscape Navigator extension <code>type</code> tag is
+      supported as an attribute of the List and OrderedList classes
+      and can be set as keyword parameters (although they have
+      different meanings).  In List instances you can set the
+      <code>type='disk' | 'circle' | 'square'</code> to hardwire the
+      style of bullet used. In OrderedList instances you can set
+      <code>type='A' | 'a' | 'I' | 'i'</code> to alter the numbering from
+      Arabic to respectively: capital letters, small letters, Roman
+      numerals, small Roman numerals.
+
+      <P>Normal list operations apply to all the classes in this family
+      as the base class inherits from the UserList class provided in
+      the core distribution.
+
+      <P>The rendered HTML output should also exhibit indentation
+      proportional to the level of list nesting.
+
+      <P>Below is some example output. See the HTMLtest.py script for the
+      source code which generated it.
+
+<HR>
+The following section just exercises most of the markup classes.
+<H3>List class</H3>
+
+<TABLE border="0" cellpadding="3" bgcolor="#DDDDDD"><TD valign="top"><OL type="I">
+<LI>First item in the OrderedList (ImageBulletList)
+    <UL>
+    <IMG src="../image/purple_dot.gif" alt="purple_dot.gif"> <STRONG>Purple</STRONG><BR>
+    <IMG src="../image/orange_dot.gif" alt="orange_dot.gif"> <STRONG>Orange</STRONG><BR>
+    <IMG src="../image/red_dot.gif" alt="red_dot.gif"> <STRONG>Red</STRONG><BR>
+    <IMG src="../image/blue_dot.gif" alt="blue_dot.gif"> <STRONG>Blue</STRONG><BR>
+    <IMG src="../image/green_dot.gif" alt="green_dot.gif"> <STRONG>Green</STRONG><BR>
+    <IMG src="../image/yellow_dot.gif" alt="yellow_dot.gif"> <STRONG>Yellow</STRONG><BR>
+    </UL>
+</OL>
+</TD><TD valign="top"><OL type="I">
+<LI>Second item in the OrderedList
+    <UL>
+    <LI>Items
+        <UL>
+        <LI>First Item
+        <LI>Second Item
+            <UL>
+            <LI>SubitemA
+            <LI>SubitemB
+            </UL>
+        <LI>Third Item
+        </UL>
+    <LI>More
+    </UL>
+</OL>
+</TD></TABLE>
+
+<DL>
+<DT><B>This should be initial upper caps</B><DD><FONT size="+2">I</FONT><FONT size="+1">NITIAL</FONT> <FONT size="+2">U</FONT><FONT size="+1">PPER</FONT> <FONT size="+2">C</FONT><FONT size="+1">APITAL</FONT> <FONT size="+2">L</FONT><FONT size="+1">ETTERS</FONT>
+<DT><B>This is normal Text with >< &  escaped.</B><DD>&lt;&amp;&gt;"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H
+<DT><B>This is Blockquote markup.</B><DD><BLOCKQUOTE>"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</BLOCKQUOTE>
+
+<DT><B>This is red text.</B><DD><FONT color="#EE0000">"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</FONT>
+<DT><B>This is Address markup.</B><DD><ADDRESS>"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</ADDRESS>
+<DT><B>This is Emphasis markup.</B><DD><EM>"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</EM>
+<DT><B>This is Cite markup.</B><DD><CITE>"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</CITE>
+<DT><B>This is KBD markup.</B><DD><KBD>"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</KBD>
+
+<DT><B>This is Sample markup.</B><DD><SAMP>"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</SAMP>
+
+<DT><B>This is Code markup.</B><DD><CODE>"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</CODE>
+
+<DT><B>This is Define markup.</B><DD><DFN>"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</DFN>
+
+<DT><B>This is Var markup.</B><DD><VAR>"Don't play dumb. You're not as good at it as I am.": Colonel Flagg - M*A*S*H</VAR>
+</DL>
+
+
+<P><HR>
+<A HREF="document.html"><IMG src="../image/back.gif" height="22" width="66" alt="Previous" border="0"></A> 
+<A HREF="frames.html"><IMG src="../image/next.gif" height="22" width="66" alt="Next" border="0"></A> 
+<A HREF="overview.html"><IMG src="../image/top.gif" height="22" width="66" alt="Top of Manual" border="0"></A> 
+<IMG src="../image/blank.gif" height="22" width="66" alt="blank.gif"> 
+<BR><IMG src="../image/Buzz.gif" height="51" width="56" alt="Buzz.gif" align="bottom">
+<FONT SIZE="-1"><P>Copyright &#169 1996-7 Robin Friedrich<BR>All Rights Reserved<BR>
+
+Comments to author: <A HREF="mailto:&#102;rie&#100;ric&#104;@py&#116;hon&#112;ros&#46;com">friedrich@pythonpros.com</A><br>
+Generated: Thu Aug 5, 1999 <BR><hr>
+</FONT>
+</BODY> </HTML>
