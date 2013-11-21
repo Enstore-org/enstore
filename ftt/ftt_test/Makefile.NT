@@ -1,0 +1,161 @@
+#
+# @(#) $Id$
+#
+# File:           Makefile.NT
+#
+# Author(s):      Dorota I Genser  
+#        e-mail: "dorota@fnal.gov"
+#
+# Description:
+#              This is make file to build ftt test library on Windoiws NT using nmake	
+#	
+####################################################################################  
+
+.SUFFIXES : .obj .bat
+
+#---------------------------------------------- Used to build noDebug version
+!IF "$(NODEB)" != ""
+!MESSAGE Create not DEBUG versions
+DEB = /D "NDEBUG" /O2 
+DB  = 
+!ELSE
+DEB = /D "_DEBUG" /Od /Z7 
+DB = /DEBUG
+!ENDIF
+
+#---------------------------------------------- Working directories
+SRCDIR  =  .
+LIBDIR  =  ..\lib
+BINDIR  =  ..\bin
+INCDIR  =  ..\include
+
+FTT_TEST_LIB = $(LIBDIR)\ftt_test.lib
+FTT_EXE      = \
+	$(BINDIR)\ftt_test.exe \
+	$(BINDIR)\ftt_random.exe \
+	$(BINDIR)\ftt_copy.exe
+
+SCRIPTS      = \
+				$(BINDIR)\ftt_run_test.bat \
+				$(BINDIR)\ftt_exercise.bat \
+				$(BINDIR)\ftt_ansi_prelabel.bat \
+				$(BINDIR)\ftt_dump.bat \
+				$(BINDIR)\ftt_fast.bat \
+				$(BINDIR)\ftt_slow.bat 
+		
+
+LIBS = $(FTT_TEST_LIB) $(LIBDIR)\ftt.lib
+
+ALL: $(FTT_TEST_LIB) $(FTT_EXE) $(SCRIPTS)
+
+LIB_OBJS= \
+	ftt_t_getopt.obj \
+	ftt_t_cmdline.obj \
+	ftt_t_cmdloop.obj \
+	ftt_t_cmdproc.obj \
+	ftt_t_parse.obj \
+	ftt_t_stats.obj \
+	ftt_t_rdwr.obj \
+	ftt_t_open.obj \
+	ftt_t_position.obj \
+	ftt_t_misc.obj \
+	ftt_t_error.obj \
+	ftt_t_block.obj \
+	ftt_t_name.obj \
+	ftt_t_label.obj
+
+
+FTT_DPD = \
+	$(INCDIR)\ftt.h \
+	$(INCDIR)\ftt_common.h \
+	$(INCDIR)\ftt_defines.h \
+	$(INCDIR)\ftt_voidtypes.h
+
+H_DPD  = ftt_t_parse.h \
+		 ftt_t_macros.h	
+		 
+
+CC     = cl.exe /nologo 
+LINK   = link.exe 
+LIB32  = link.exe -lib 
+
+CC_PROJ= /W3 /GX  /I "./" /I $(INCDIR)  /D "WIN32"\
+ /D "_WINDOWS" /D "_MBCS" $(DEB) 
+
+
+EXE_FLAGS = $(LIBS) \
+ kernel32.lib user32.lib gdi32.lib\
+ winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib \
+ uuid.lib odbc32.lib odbccp32.lib /subsystem:console /incremental:no /pdb:none \
+ /machine:I386  /nod:"libcmtd.lib" $(DB)
+
+
+CLEAN :  
+	    -@erase $(SRCDIR)\*.obj
+
+CLOBBER :
+	    -@erase $(SRCDIR)\*.obj
+	    -@erase $(FTT_TEST_LIB) 
+		-@erase $(FTT_EXE)
+
+
+$(FTT_TEST_LIB) : "$(LIBDIR)" $(LIB_OBJS)
+    $(LIB32)  @<<
+    /out:$(FTT_TEST_LIB) $(LIB_OBJS)
+<<
+
+$(FTT_EXE) : $(BINDIR) $(LIBS) $$(@B).obj
+	$(LINK) @<< 
+	$(EXE_FLAGS) /out:"$(*R).exe" $(*F).obj 
+<< 
+
+
+
+$(BINDIR)\*.bat : scripts\$$(@B).bat
+
+{scripts}.bat{$(BINDIR)}.bat :
+		copy scripts\$(*F).bat $(*R).bat 
+
+
+.c.obj : 
+	$(CC) /c $(CC_PROJ) $< 
+
+
+ftt_t_cmdline.obj : ftt_t_cmdline.c \
+					ftt_t_cmdline.h
+
+ 
+ftt_t_cmdloop.obj : ftt_t_cmdloop.c \
+					ftt_t_cmdline.h \
+					ftt_t_parse.h \
+					ftt_t_cmdtable.h
+
+ 
+ftt_t_cmdproc.obj : ftt_t_cmdproc.c \
+                    ftt_t_cmdline.h \
+                    ftt_t_parse.h \
+                    ftt_t_cmdtable.h
+
+
+ftt_t_parse.obj :   ftt_t_parse.c \
+					ftt_t_parse.h
+
+
+ftt_t_stats.obj \
+ftt_t_rdwr.obj \
+ftt_t_open.obj \
+ftt_t_position.obj \
+ftt_t_misc.obj \
+ftt_t_error.obj \
+ftt_t_name.obj \
+ftt_t_label.obj :	$$(@B).c $(FTT_DPD) $(H_DPD) 
+
+
+"$(LIBDIR)" :
+    	if not exist "$(LIBDIR)/" mkdir "$(LIBDIR)"
+
+"$(BINDIR)" :
+    if not exist "$(BINDIR)/" mkdir "$(BINDIR)"
+
+
+	

@@ -1,0 +1,24 @@
+files=" 2fm
+	align
+	async
+	close
+	delay
+	dump
+	erase
+	full
+	label
+	mode
+	notape
+	position
+	random
+	read_only
+	root
+	stats
+	twrite
+	verify"
+
+for f in $files
+do
+	rm -f $f
+	ln -s runme $f
+done

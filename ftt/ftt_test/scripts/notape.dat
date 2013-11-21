@@ -1,0 +1,15 @@
+#
+# @(#) $Id$
+#===============================================================================
+# This will verify that no tape is mounted
+#===============================================================================
+ 
+ftt_open
+ftt_unload
+ftt_close
+ftt_open
+ftt_status -timeout 1
+ftt_rewind -status FTT_ENOTAPE
+ftt_write_tblock -n 1 -b 0 -status FTT_ENOTAPE
+ftt_close
+quit

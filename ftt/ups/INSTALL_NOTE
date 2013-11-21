@@ -1,0 +1,14 @@
+
+NOTICE:
+
+This product contains a setuid executable bin/ftt_suid, which needs to
+be installed setuid to root on most platforms.  If you install this
+product as root, it should unpack that way, but if you install it as
+some other user, or in AFS space,  you will probably need to have a
+system administrator set the permissions on the executable.
+
+If you are on a system where this is not possible, simply replace
+the ftt_suid executable with a copy of /bin/true, to keep it from
+issuing error messages, and (while you lose some functionality like
+statistics, etc.) basic tape input/output will work.
+

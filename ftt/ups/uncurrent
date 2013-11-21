@@ -1,0 +1,13 @@
+#!/bin/sh
+# generic uncurrent script
+
+# find $PROD_DIR
+eval PROD_DIR=\$`echo $UPS_PROD_NAME | tr '[a-z]' '[A-Z]'`_DIR
+. $PROD_DIR/ups/Version
+
+# make sure we have a products link directory
+if cd /usr/local/products/$PROD_NAME 2>/dev/null
+then
+	# if so, dink current link
+	rm -f current
+fi

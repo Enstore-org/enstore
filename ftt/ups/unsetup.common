@@ -1,0 +1,5 @@
+# common environment setup between csh and sh
+# clear things up with setenv and unsetenv, which are 
+# shell functions if this is /bin/sh
+
+setenv PATH `dropit $PROD_DIR/bin`

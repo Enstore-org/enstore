@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec ftt_run_test ${0}.dat

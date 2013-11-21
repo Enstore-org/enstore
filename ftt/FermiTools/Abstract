@@ -1,0 +1,15 @@
+Abstract
+
+The "ftt" product is a library of software to allow platform and device
+independant tape I/O with a full feature set, including collection of
+tape statistics.  A command line interface is also provided for doing 
+tape drive testing, and other work.  The SCSI pass-through code that
+is provided as part of "ftt" is also used by other FermiTools packages,
+such as "juke".  The package includes a Users Guide, Design Notes, and
+Porting Guide, which are all FrameMaker documents provided in the
+"doc" directory of the product.
+
+The product currently supports Exabyte model 8200, 8500, and 8505
+tape drives, DLT 2000 and 4000 series tape drives, used on
+AIX 3.2, AIX 4.1, IRIX 5.3, SunOS 5.4 (a.k.a Solaris 2.4), and
+OSF1 V3.2d and later.

@@ -1,0 +1,67 @@
+#!/bin/sh
+
+# This script reads /proc/scsi/scsi and for each device it creates a
+# special file /dev/scsi/sg<BUS>d<SCSI ID> with the minor number = the
+# index of the device in /proc/scsi
+# 
+# It also creates the files /dev/tape/tp<BUS>d<SCSI ID> and
+# /dev/tape/tp<BUS>d<SCSI ID>n again with the minor number  = the index
+# of the device in /proc/scsi for the rewind and norewind tape devices.
+# 
+# This script is neccessary because the linux /dev/st and /dev/sg devices
+# change as devices are added to a bus The script should normally be run
+# at boot time or if the scsi configuration changes
+ 
+TAPEDIR=/dev/rmt
+SCSIDIR=/dev/sc
+if [ ! -d $TAPEDIR ]      # create the dirs if they don't exist
+then                      
+  mkdir $TAPEDIR
+fi
+if [ ! -d $SCSIDIR ] 
+then
+  mkdir $SCSIDIR
+fi
+                          # remove old files
+
+rm $TAPEDIR/tps*  $SCSIDIR/sc* 2> /dev/null  
+
+n=-1                      # index of device in proc/scsi ==  minor of sg device
+t=-1                      # index of tape devices in proc/scsi
+
+                          # read each record in proc scsi
+
+cat /proc/scsi/scsi | 
+  while read a b c d e f g  
+  do
+	 if [ ! $a = "Attached" ]
+	 then
+		if [ \"$a\" = \"Host:\" ]
+		then
+		   let n=n+1                      # increment index on first line
+		   bus=`echo $b|tr -d \"[a-z]\"`  # in /proc/scsi/scsi
+		   id=`echo $f|sed -e 's/^0//'`   # get the bus and id (w/o leading 0)
+		   DRV=$TAPEDIR/"tps"$bus"d"$id
+		   SCDRV=$SCSIDIR/"sc"$bus"d"$id
+		fi
+		if [ \"$c\" = \"Model:\" ]        # just interesting info
+		then
+		   vend=$b
+		   mod=$d
+		fi
+		if [ $a = "Type:" ]
+		then
+										  # identify tape device
+		   if [ \"$b\" = \"Sequential-Access\" ]  
+		   then
+			  let t=t+1
+			  mknod $DRV c 9 $t           # make the device 
+			  let tn=$t+128       
+			  mknod $DRV"n" c 9 $tn       # the norewind device
+			  mknod $SCDRV  c 21 $n       # the scsi passthru device
+		   else                           # for non tape
+			  mknod $SCDRV  c 21 $n       # just make scsi device
+		   fi
+		fi
+	  fi
+  done
