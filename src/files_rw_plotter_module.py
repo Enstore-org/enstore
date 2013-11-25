@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
-
 """
 Plot number of files read and written per mount versus date, stacked by
 storage group, individually for each unique drive type.
@@ -19,6 +13,7 @@ storage group, individually for each unique drive type.
 
 # Python imports
 from __future__ import division, print_function
+import collections
 import os
 import time
 
@@ -32,15 +27,11 @@ WEB_SUB_DIRECTORY = enstore_constants.FILES_RW_PLOTS_SUBDIR
 """Subdirectory in which to write plots. This constant is also referenced by
 the :mod:`enstore_make_plot_page` module."""
 
-TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
-"""PostgreSQL condition for the period of time for which to plot."""
-
 class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot number of files read and written per mount versus date, stacked
        by storage group, individually for each unique drive type."""
 
     num_bins = 32
-    plot_accumulative = False
 
     def book(self, frame):
         """
@@ -89,17 +80,18 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                     " as reads_and_writes_per_dismount "
                     "from tape_mounts where "
                     "storage_group notnull and finish notnull "
-                    "and finish > {0} and state='D' "
+                    "and finish > CURRENT_TIMESTAMP - interval '{} days' "
+                    "and state='D' "
                     "group by drive, storage_group, date "
                     "order by drive, storage_group, date"
-                    ).format(TIME_CONDITION)
+                    ).format(self.num_bins)
         res = db.query_dictresult(db_query)
 
         # Restructure data into nested dict
-        counts = {}
+        counts = collections.OrderedDict()  # Preserves preexisting sort order.
         for row in res:
             row = row.get
-            counts.setdefault(row('drive'), {}) \
+            counts.setdefault(row('drive'), collections.OrderedDict()) \
                   .setdefault(row('storage_group'), {}) \
                    [row('date')] = {'reads': row('reads_per_dismount'),
                                     'writes': row('writes_per_dismount'),
@@ -157,33 +149,10 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                                                  float(start_time),
                                                  float(now_time))
                 hist_sum.set_time_axis(True)
+                hists = []
 
-                if self.plot_accumulative:
-
-                    iplot_name = 'Accumulative_{}'.format(plot_name)
-                    iplot_title = ('Accumulative average file {} per mount '
-                                   'by storage group for {} drives.').format(
-                                   action, drive)
-                    iplotter = histogram.Plotter(iplot_name, iplot_title)
-                    iplotter.add_command(plot_key_setting)
-                    for cmd in set_xrange_cmds:
-                        iplotter.add_command(cmd)
-
-                    ihist_sum_name = 'acc_' + plot_name
-                    ihist_sum = histogram.Histogram1D(ihist_sum_name,
-                                                      ihist_sum_name,
-                                                      self.num_bins,
-                                                      float(start_time),
-                                                      float(now_time))
-                    ihist_sum.set_time_axis(True)
-
-                color = 0
+                plot_enabled = False
                 for sg, sg_dict in drive_dict.iteritems():
-
-                    print('Plotting: action={}; drive={}; storage_group={};'
-                          .format(action, drive, sg))
-
-                    color += 1
 
                     hist_name = plot_name + '_' + sg
                     hist = histogram.Histogram1D(hist_name, hist_name,
@@ -198,50 +167,47 @@ class FilesRWPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                         # Note: The shift above is to match the previously
                         # applied shift of now_time and start_time by half day.
                         value = datetime_dict[action]
-                        hist.fill(secs, value)
+                        if value > 0:
+                            # Note: This check ensures that the number of
+                            # entries in the histogram can if needed later be
+                            # used as an indicator of whether the histogram
+                            # contains nonzero data.
+                            hist.fill(secs, value)
+
+                    status = ('Plotting' if (hist.n_entries() > 0) else
+                              'Skipping')
+                    print('{}: action={}; drive={}; storage_group={}'
+                          .format(status, action, drive, sg))
+
+                    if hist.n_entries() > 0:
+                        plot_enabled = True
+                    else:
+                        continue
 
                     hist.set_time_axis(True)
                     hist.set_ylabel(ylabel)
                     hist.set_xlabel('Date (year-month-day)')
-                    hist.set_line_color(color)
                     hist.set_line_width(20)
+                    hist.set_marker_text(sg)
                     hist.set_marker_type('impulses')
+                    hists.append(hist)
 
+                hists.sort()
+                color = 0
+                for hist in hists:
                     hist_sum += hist
-                    hist_sum_name = 'drive_{}'.format(hist_name)
+                    hist_sum_name = 'drive_{}'.format(hist.get_name())
                     hist_sum.set_name(hist_sum_name)
                     hist_sum.set_data_file_name(hist_sum_name)
-                    hist_sum.set_marker_text(sg)
+                    hist_sum.set_marker_text(hist.get_marker_text())
                     hist_sum.set_time_axis(True)
                     hist_sum.set_ylabel(ylabel)
                     hist_sum.set_marker_type('impulses')
                     hist_sum.set_line_color(color)
                     hist_sum.set_line_width(20)
                     plotter.add(hist_sum)
+                    color += 1
 
-                    if self.plot_accumulative:
-
-                        ihist = hist.integral()
-                        ihist.set_marker_text(sg)
-                        ihist.set_marker_type('impulses')
-                        ihist.set_ylabel(ylabel)
-
-                        ihist_sum += ihist
-                        ihist_marker_text = ihist.get_marker_text()
-                        ihist_sum_name = 'accumulated_{}'.format(
-                                         ihist_marker_text)
-                        ihist_sum.set_name(ihist_sum_name)
-                        ihist_sum.set_data_file_name(ihist_sum_name)
-                        ihist_sum.set_marker_text(ihist_marker_text)
-                        ihist_sum.set_time_axis(True)
-                        ihist_sum.set_ylabel(ihist.get_ylabel())
-                        ihist_sum.set_marker_type(ihist.get_marker_type())
-                        ihist_sum.set_line_color(color)
-                        ihist_sum.set_line_width(20)
-                        iplotter.add(ihist_sum)
-
-                plotter.reshuffle()
-                plotter.plot(directory=self.web_dir)
-                if self.plot_accumulative:
-                    iplotter.reshuffle()
-                    iplotter.plot(directory=self.web_dir)
+                if plot_enabled:  # Check prevents error if no hist was added.
+                    plotter.reshuffle()
+                    plotter.plot(directory=self.web_dir)

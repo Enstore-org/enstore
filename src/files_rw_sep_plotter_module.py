@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
-
 """
 Plot number of files read and written per mount versus date, separately for
 each unique drive type and storage group combination.
@@ -19,6 +13,7 @@ each unique drive type and storage group combination.
 
 # Python imports
 from __future__ import division, print_function
+import collections
 import os
 import time
 
@@ -31,9 +26,6 @@ import histogram
 WEB_SUB_DIRECTORY = enstore_constants.FILES_RW_SEP_PLOTS_SUBDIR
 """Subdirectory in which to write plots. This constant is also referenced by
 the :mod:`enstore_make_plot_page` module."""
-
-TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
-"""PostgreSQL condition for the period of time for which to plot."""
 
 class FilesRWSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot number of files read and written per mount versus date, separately
@@ -89,17 +81,18 @@ class FilesRWSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                     " as reads_and_writes_per_dismount "
                     "from tape_mounts where "
                     "storage_group notnull and finish notnull "
-                    "and finish > {0} and state='D' "
+                    "and finish > CURRENT_TIMESTAMP - interval '{} days' "
+                    "and state='D' "
                     "group by drive, storage_group, date "
                     "order by drive, storage_group, date"
-                    ).format(TIME_CONDITION)
+                    ).format(self.num_bins)
         res = db.query_dictresult(db_query)
 
         # Restructure data into nested dict
-        counts = {}
+        counts = collections.OrderedDict()  # Preserves preexisting sort order.
         for row in res:
             row = row.get
-            counts.setdefault(row('drive'), {}) \
+            counts.setdefault(row('drive'), collections.OrderedDict()) \
                   .setdefault(row('storage_group'), {}) \
                    [row('date')] = {'reads': row('reads_per_dismount'),
                                     'writes': row('writes_per_dismount'),
@@ -216,7 +209,18 @@ class FilesRWSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                     # Note: The shift above is to match the previously
                     # applied shift of now_time and start_time by half day.
                     value = datetime_dict[action]
-                    hist.fill(secs, value)
+                    if value > 0:
+                        # Note: This check ensures that the number of
+                        # entries in the histogram can if needed later be
+                        # used as an indicator of whether the histogram
+                        # contains nonzero data.
+                        hist.fill(secs, value)
+
+            # Continue plotter configuration
+            if hist.n_entries() == 0:
+                plotter.add_command('set yrange[0:1]')
+                # Note: This suppresses the following stderr message:
+                # "Warning: empty y range [0:0], adjusting to [-1:1]"
 
             # Plot histogram
             plotter.add(hist)

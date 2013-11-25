@@ -38,7 +38,7 @@ def set_cache_status(fcc, set_cache_params):
     for param_list in list_of_set_cache_params:
         Trace.trace(10, "set_cache_status: sending set_cache_status %s %s"%(len(str(param_list)), param_list,))
 
-        rc = fcc.set_cache_status(param_list)
+        rc = fcc.set_cache_status(param_list, timeout=60, retry = 2)
         Trace.trace(10, "set_cache_status: set_cache_status 1 returned %s"%(rc,))
         if not e_errors.is_ok(rc['status']):
             break
@@ -70,7 +70,7 @@ def modify_records(fcc, file_records):
     for record_list in list_of_records:
         Trace.trace(10, "modify_records: sending modify %s %s"%(len(str(record_list)), record_list,))
 
-        rc = fcc.modify(record_list)
+        rc = fcc.modify(record_list, timeout=60, retry = 2)
         Trace.trace(10, "modify_records: returned %s"%(rc,))
         if not e_errors.is_ok(rc['status']):
             break

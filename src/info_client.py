@@ -213,10 +213,12 @@ class fileInfoMethods(generic_client.GenericClient):
 
         return done_ticket
 
-    def get_children(self, bfid):
+    def get_children(self, bfid, timeout = generic_client.DEFAULT_TIMEOUT,
+                     retry = generic_client.DEFAULT_TRIES):
         ticket = {"work"          : "get_children",
                   "bfid"          : bfid}
-        done_ticket = self.send(ticket, long_reply = 1)
+        done_ticket = self.send(ticket, rcv_timeout = timeout,
+                                tries = retry, long_reply = 1)
 
         if not e_errors.is_ok(done_ticket):
             return done_ticket

@@ -463,7 +463,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11a CVS $Revision$ "
+    version_string = "v3_11b CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -671,11 +671,15 @@ def get_directory_name(filepath):
             pac = get_pac()
             #get_parent_id() will raise an exception on error.
             parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5, tries=6)
+            parent_name = pac.get_nameof(parent_id, rcv_timeout=5, tries=6)
         else:
             try:
                 f = file_utils.open(parent_id_name, unstable_filesystem=True)
                 parent_id = file_utils.readline(f,
                                            unstable_filesystem=True).strip()
+                f.close()
+                f = file_utils.open(os.path.join(dirname,".(nameof)(%s)"%parent_id))
+                parent_name = file_utils.readline(f,unstable_filesystem=True).strip()
                 f.close()
             except (OSError, IOError), msg:
                 #We only need to worry about pnfs_agent_client_allowed here,
@@ -685,13 +689,20 @@ def get_directory_name(filepath):
                     pac = get_pac()
                     parent_id = pac.get_parent_id(pnfsid, rcv_timeout=5,
                                                   tries=6)
+                    parent_name = pac.get_nameof(parent_id,  rcv_timeout=5, tries=6)
                     if not parent_id: #Does this work to catch errors?
                         raise OSError, msg
                 else:
                     raise sys.exc_info()[0], sys.exc_info()[1], \
                           sys.exc_info()[2]
-
-        #Build the .(access)() filename of the parent directory.
+        #
+        # this avoids "[Errno 40] Too many levels of symbolic links"
+        # when resulting directory_name would have looked like
+        # /pnfs/fs/usr/data/.(access)(PNFSID) where PNFSID is
+        # pnfsid of directory "data"
+        #
+        if parent_name == os.path.basename(dirname) :
+            dirname = os.path.dirname(dirname)
         directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
     else:
         directory_name = os.path.dirname(filepath)

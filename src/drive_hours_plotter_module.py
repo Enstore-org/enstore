@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
-
 """
 Plot drive usage hours versus date, stacked by storage group, individually for
 each unique drive type.
@@ -31,9 +25,6 @@ import histogram
 WEB_SUB_DIRECTORY = enstore_constants.DRIVE_HOURS_PLOTS_SUBDIR
 """Subdirectory in which to write plots. This constant is also referenced by
 the :mod:`enstore_make_plot_page` module."""
-
-TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
-"""PostgreSQL condition for the period of time for which to plot."""
 
 class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot drive usage hours versus date, stacked by storage group,
@@ -83,9 +74,9 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         db_query = ("select * from tape_mounts where "
                     "start notnull and finish notnull "
                     "and storage_group notnull "
-                    "and start > {0} "
+                    "and start > CURRENT_TIMESTAMP - interval '{} days' "
                     "and state in ('M','D') "
-                    "order by start asc").format(TIME_CONDITION)
+                    "order by start asc").format(self.num_bins)
         res = db.query_dictresult(db_query)
 
         # Populate mounts
@@ -186,20 +177,24 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
             for cmd in set_xrange_cmds:
                 iplotter.add_command(cmd)
 
-            s = histogram.Histogram1D('h_' + t, 'h_' + t, self.num_bins,
+            s_name = 'h_{}'.format(t)
+            s = histogram.Histogram1D(s_name, s_name, self.num_bins,
                                       float(start_time), float(now_time))
-            s_i = histogram.Histogram1D('acc_' + t, 'acc_' + t, self.num_bins,
+            s_i_name = 'acc_{}'.format(s_name)
+            s_i = histogram.Histogram1D(s_i_name, s_i_name, self.num_bins,
                                         float(start_time), float(now_time))
 
             s.set_time_axis(True)
             s_i.set_time_axis(True)
 
-            color = 1
+            hists = []
+            hists_i = []
+
+            plot_enabled = False
             for sg, v2 in v1.iteritems():
 
-                print('Plotting: drive={}; storage_group={}'.format(t, sg))
-
-                h = histogram.Histogram1D(t + '__' + sg, t + '__' + sg,
+                h_name =  '{}_{}'.format(t, sg)
+                h = histogram.Histogram1D(h_name, h_name,
                                           self.num_bins,
                                           float(start_time), float(now_time))
 
@@ -212,53 +207,74 @@ class DriveHoursPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                         finish_time -= enstore_constants.SECS_PER_HALF_DAY
                         # Note: The shift above is to match the previously
                         # applied shift of now_time and start_time by half day.
-                        h.fill(finish_time, v / 3600.)
+                        v /= 3600.
+                        if v > 0:
+                            # Note: This check ensures that the number of
+                            # entries in the histogram can if needed later be
+                            # used as an indicator of whether the histogram
+                            # contains nonzero data.
+                            h.fill(finish_time, v)
                         # Note: If a mount-start and the corresponding
                         # dismount-finish times occur on separate dates, the
                         # duration is recorded only for the dismount date.
 
+                status = 'Plotting' if (h.n_entries() > 0) else 'Skipping'
+                print('{}: drive={}; storage_group={}'.format(status, t, sg))
+
+                if h.n_entries() > 0:
+                    plot_enabled = True
+                else:
+                    continue
+
                 h.set_time_axis(True)
-                h.set_ylabel(ylabel)
                 h.set_xlabel('Date (year-month-day)')
-                h.set_line_color(color)
+                h.set_ylabel(ylabel)
                 h.set_line_width(20)
+                h.set_marker_text(sg)
                 h.set_marker_type('impulses')
+                hists.append(h)
 
-                tmp = s + h
-                tmp.set_name('drive_%s_%s' % (t, sg,))
-                tmp.set_data_file_name(t + '_' + sg)
-                tmp.set_marker_text(sg)
-                tmp.set_time_axis(True)
-                tmp.set_ylabel(ylabel)
-                tmp.set_marker_type('impulses')
-                tmp.set_line_color(color)
-                tmp.set_line_width(20)
-                plotter.add(tmp)
-                s = tmp
+                h_i = h.integral()
+                h_i.set_xlabel('Date (year-month-day)')
+                h_i.set_ylabel(ylabel_i)
+                h_i.set_line_width(20)
+                h_i.set_marker_text(sg)
+                h_i.set_marker_type('impulses')
+                hists_i.append(h_i)
 
-                integral = h.integral()
-                integral.set_marker_text(sg)
-                integral.set_marker_type('impulses')
-                integral.set_ylabel(ylabel_i)
+            hists.sort()
+            hists_i.sort()
+            color = 0
+            for h, h_i in zip(hists, hists_i):
 
-                tmp = s_i + integral
-                marker_text = integral.get_marker_text()
-                name_ = 'accumulated_drive_time_%s' % (marker_text,)
-                tmp.set_name(name_)
-                data_file_name = 'accumulated_drive_time_%s' % (marker_text,)
-                tmp.set_data_file_name(data_file_name)
-                tmp.set_marker_text(marker_text)
-                tmp.set_time_axis(True)
-                tmp.set_ylabel(integral.get_ylabel())
-                tmp.set_marker_type(integral.get_marker_type())
-                tmp.set_line_color(color)
-                tmp.set_line_width(20)
-                iplotter.add(tmp)
+                s += h
+                s_name = 'drive_time_{}'.format(h.get_name())
+                s.set_name(s_name)
+                s.set_data_file_name(s_name)
+                s.set_marker_text(h.get_marker_text())
+                s.set_time_axis(True)
+                s.set_ylabel(ylabel)
+                s.set_marker_type('impulses')
+                s.set_line_color(color)
+                s.set_line_width(20)
+                plotter.add(s)
 
-                s_i = tmp
+                s_i += h_i
+                s_i_name = 'accumulated_drive_time_{}'.format(h_i.get_name())
+                s_i.set_name(s_i_name)
+                s_i.set_data_file_name(s_i_name)
+                s_i.set_marker_text(h_i.get_marker_text())
+                s_i.set_time_axis(True)
+                s_i.set_ylabel(ylabel_i)
+                s_i.set_marker_type('impulses')
+                s_i.set_line_color(color)
+                s_i.set_line_width(20)
+                iplotter.add(s_i)
+
                 color += 1
 
-            plotter.reshuffle()
-            plotter.plot(directory=self.web_dir)
-            iplotter.reshuffle()
-            iplotter.plot(directory=self.web_dir)
+            if plot_enabled:  # Check prevents error if no hist was added.
+                plotter.reshuffle()
+                plotter.plot(directory=self.web_dir)
+                iplotter.reshuffle()
+                iplotter.plot(directory=self.web_dir)

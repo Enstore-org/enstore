@@ -107,6 +107,7 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
 
         #Retrieve database information from the configuration.
         Trace.log(e_errors.INFO,"determine dbHome and jouHome")
+
         try:
             dbInfo = self.csc.get('database')
             dbHome = dbInfo['db_dir']
@@ -143,6 +144,8 @@ class FileClerkInfoMethods(dispatching_worker.DispatchingWorker):
     def invoke_function(self, function, args=()):
         if  function.__name__  in ("tape_list3",
 				   "set_cache_status",
+				   "get_children",
+				   "set_children",
 				   "alive",
 				   "get_bfids",
 				   "get_bfids2",
@@ -1078,9 +1081,9 @@ class FileClerkMethods(FileClerkInfoMethods):
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
+
     def unique_bit_file_id(self):
-        bfid = time.time()
-        bfid = long(bfid)*100000
+        bfid = long(time.time()*100000)
         while self.filedb_dict.has_key(self.brand+str(bfid)):
             bfid = bfid + 1
         return self.brand+str(bfid)
@@ -1545,7 +1548,6 @@ class FileClerkMethods(FileClerkInfoMethods):
 	    res = self.filedb_dict.query_getresult(q)
 	    file_records = []
 	    for i in res:
-		    child_record = self.filedb_dict[i[0]]
 		    file_records.append(self.filedb_dict[i[0]])
 	    ticket["status"] = (e_errors.OK, None)
 	    ticket["children"] = file_records

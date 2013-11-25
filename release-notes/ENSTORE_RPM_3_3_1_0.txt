@@ -1,0 +1,146 @@
+<html><body><pre>
+                      Enstore release notes, from ENSTORE_RPM_3_3_0_0 to ENSTORE_RPM_3_3_1_0
+                      Detailed cvs commit logs
+
+
+./src
+========== delfile_chimera.py ====================================================================================
+
+do not call volume_clerk method touch() after marking files deleted http://uqbar/reviews/r/742/ 
+
+========== drive_hours_plotter_module.py ====================================================================================
+
+In plots, align placement of histogram bins with ticks. (bz 1373) 
+
+Various minor updates to two existing plotter modules. (bz 1363) 
+
+========== drive_hours_sep_plotter_module.py ====================================================================================
+
+In plots, align placement of histogram bins with ticks. (bz 1373) 
+
+Plot number of files read and written per mount versus date, separately for each unique drive type and storage group. (bz 1366) 
+
+========== encp.py ====================================================================================
+
+http://uqbar/reviews/r/746/ encp get rid of "[Errno 40] Too many levels of symbolic links" and accompanying messages in /var/log/messages 
+
+extract parent directory properly from ".(access)(filename)" http://uqbar/reviews/r/746/ 
+
+========== enstore_constants.py ====================================================================================
+
+In plots, align placement of histogram bins with ticks. (bz 1373) 
+
+Plot number of files read and written per mount versus date, separately for each unique drive type and storage group. (bz 1366) 
+
+========== enstore_make_plot_page.py ====================================================================================
+
+Plot number of files read and written per mount versus date, separately for each unique drive type and storage group. (bz 1366) 
+
+========== enstore_plotter_module.py ====================================================================================
+
+In plots, align placement of histogram bins with ticks. (bz 1373) 
+
+========== file_clerk_client.py ====================================================================================
+
+Change default retry settings in FCC replay. replay uses timeout=0 and retry=0 which leads to indefinite retries every 10 s. Set default values so that timeout is big enough, yet reasonable to complete without retries. bz 1394, rb 750 
+
+========== file_clerk.py ====================================================================================
+
+http://uqbar.fnal.gov/reviews/r/755
+move get_children, set_children to separate thread
+
+Remove unused statement. This statement is not used and could stay if it would not cause an additional DB query.
+bz 1397, rb 754
+
+http://uqbar/reviews/r/747/ do not truncate time.time() to seconds when forming BFID 
+
+========== files_rw_plotter_module.py ====================================================================================
+
+In plots, align placement of histogram bins with ticks. (bz 1373) 
+
+Various minor updates to two existing plotter modules. (bz 1363) 
+
+========== info_client.py ====================================================================================
+
+Add timeout and retry parameters to get_children call. bz 1396, rb 753 
+
+========== mover.py ====================================================================================
+
+fixed new_bit_file re-try 
+
+Re-try new_bitfile if the first noe timed-out. 
+
+========== plotter_main.py ====================================================================================
+
+Plot number of files read and written per mount versus date, separately for each unique drive type and storage group. (bz 1366) 
+
+========== purge_files.py ====================================================================================
+
+Remove library from the ordering in query, otherwise query depends on arbitrary library name. On stken we have 2 libraries" CD-DiskSF and CD-DiskSF1. Files for CD-DiskSF get purged while for CD-DiskSF1 the write cache grows and does not get purged(bz 1382, rb 743) 
+
+========== set_cache_status.py ====================================================================================
+
+Increase FC request timeout and set number of retires. If no timeout and retries are specified in set_cache_status() and modify() file_clerk_client calls it will retry infinitely with 10 s timeout. When we have big lists to process we see that 10 s is not enough. This patch sets TO to 60 s and number of re-tries to 2 (udp client actually retires n-1 times if n > 0). (bz 1390, rb 748) 
+
+========== sfa_plotter_module.py ====================================================================================
+
+Fix division by 0 bug. When max - min is < 1.0 the number of bins is 0. Set it to 1. (bz 1379, rb 739). 
+
+./src/cache
+./src/cache/messaging
+./src/cache/servers
+========== dispatcher.py ====================================================================================
+
+Make check_pools_thread fault tolerant 
+
+Migration dispatcher sends migration requests for all lists in migration and purge pools every time the new list gets added to the pool. This patch fixes this bug. (bz 1378, rb 732) 
+
+BUG FIX: dispatcher hangs when no key exception occurs. (bz 1375) 
+
+========== migration_dispatcher.py ====================================================================================
+
+Migration dispatcher sends migration requests for all lists in migration and purge pools every time the new list gets added to the pool. This patch fixes this bug. (bz 1378, rb 732) 
+
+========== migrator.py ====================================================================================
+
+Reduce FC requests load. File clerk and enstore DB experience high load and increased response time. Use calls to info server and set_children where possible. bz 1396, rb 752 
+
+In write_to_tape reply MWRArchived if there are no files to write because they were already archived. This will remove the list from migration pool in dispatcher. Otherwise they need to get removed manually. (bz 1377, rb 731). 
+
+./databases/control_files
+========== pg_hba.conf-stken-enstoredb ====================================================================================
+
+Added pmig03, 04 
+
+./databases/schemas
+========== accounting.schema ====================================================================================
+
+updated schema from fresh pg_dump 
+
+========== drivestat.schema ====================================================================================
+
+updated schema from fresh pg_dump 
+
+========== enstoredb.schema ====================================================================================
+
+added INSERT into option select 'quota','disabled' where not exists (select key, value from option where key='quota' and value='disabled') statement to enstoredb_functions.sql and all insert statement in enstoredb_functions.sql duplicated in enstoredb schema dump. Inserts are constructed such that they can be executed multiple times with only one record created and no warning generated 
+
+updated schema from fresh pg_dump 
+
+./databases/schemas/ddl/enstoredb
+========== enstoredb_functions.sql ====================================================================================
+
+added INSERT into option select 'quota','disabled' where not exists (select key, value from option where key='quota' and value='disabled') statement to enstoredb_functions.sql and all insert statement in enstoredb_functions.sql duplicated in enstoredb schema dump. Inserts are constructed such that they can be executed multiple times with only one record created and no warning generated 
+
+./crontabs
+========== enstore_plots ====================================================================================
+
+In plots, align placement of histogram bins with ticks. (bz 1373) 
+
+Plot number of files read and written per mount versus date, separately for each unique drive type and storage group. (bz 1366) 
+
+========== tab_flip_watch_stken ====================================================================================
+
+Added CD-10KCGS library to tab flipping for the 8500GS robot - ritm 75771. 
+
+</pre></body></html>

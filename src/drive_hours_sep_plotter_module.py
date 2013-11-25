@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
-
 """
 Plot drive usage hours versus date, separately for each unique drive type and
 storage group combination.
@@ -31,10 +25,6 @@ import histogram
 WEB_SUB_DIRECTORY = enstore_constants.DRIVE_HOURS_SEP_PLOTS_SUBDIR
 """Subdirectory in which to write plots. This constant is also referenced by
 the :mod:`enstore_make_plot_page` module."""
-
-TIME_CONDITION = "CURRENT_TIMESTAMP - interval '1 month'"
-"""PostgreSQL condition for the period of time for which to plot."""
-
 
 class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
     """Plot drive usage hours versus date, separately for each unique drive
@@ -84,9 +74,9 @@ class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
         db_query = ("select * from tape_mounts where "
                     "start notnull and finish notnull "
                     "and storage_group notnull "
-                    "and start > {0} "
+                    "and start > CURRENT_TIMESTAMP - interval '{} days' "
                     "and state in ('M','D') "
-                    "order by start asc").format(TIME_CONDITION)
+                    "order by start asc").format(self.num_bins)
         res = db.query_dictresult(db_query)
 
         # Populate mounts
@@ -239,7 +229,12 @@ class DriveHoursSepPlotterModule(enstore_plotter_module.EnstorePlotterModule):
                         # Note: The shift above is to match the previously
                         # applied shift of now_time and start_time by half day.
                         duration /= 3600.  # convert seconds to hours
-                        hist.fill(finish_time, duration)
+                        if duration > 0:
+                            # Note: This check ensures that the number of
+                            # entries in the histogram can if needed later be
+                            # used as an indicator of whether the histogram
+                            # contains nonzero data.
+                            hist.fill(finish_time, duration)
                         # Note: If a mount-start and the corresponding
                         # dismount-finish times occur on separate dates, the
                         # duration is recorded only for the dismount date.
