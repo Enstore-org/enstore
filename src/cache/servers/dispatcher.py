@@ -186,14 +186,14 @@ class Dispatcher(mw.MigrationWorker,
                     'list': self.migration_pool[key].list_object.file_list,
                     'policy': self.migration_pool[key].list_object.list_name,
                     'type': self.migration_pool[key].list_object.list_type,
-                    'time_qd': time.ctime(self.migration_pool[key].list_object.creation_time),
+                    'time_qd': self.migration_pool[key].list_object.creation_time,
                     }
       pl = {}
       for key in self.purge_pool:
          pl[key] = {'id':self.purge_pool[key].id,
                     'list': self.purge_pool[key].list_object.file_list,
                     'type': self.purge_pool[key].list_object.list_type,
-                    'time_qd': time.ctime(self.purge_pool[key].list_object.creation_time),
+                    'time_qd': self.purge_pool[key].list_object.creation_time,
                     }
       ticket['pools'] = {'cache_missed':self.cache_missed_pool,
                          'cache_purge': self.cache_purge_pool,
