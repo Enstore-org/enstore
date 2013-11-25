@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# $Id$
+# $Id: library_manager.py,v 1.705 2013/03/18 20:10:59 moibenko Exp $
 #
 ###############################################################################
 
@@ -3536,34 +3536,34 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w['mover_type'] = self.mover_type(mticket) # this is needed for packaged files processing
         if w['mover_type'] == "DiskMover" and w['work'] == 'read_from_hsm':
             fcc = file_clerk_client.FileClient(self.csc)
-            # open_bitfile tells file clerk to initiate disk cache file staging if it is not in the cache.
-            # The mover to which this work (w) is submitted waits until file is cached
-            # and transfers file to the client.
-            # If file is a part of a package open the corresponding package istead of opening a requested file.
-            # This guaraties that the files in the package will be opened syncronously.
-            bfid_to_open = self.is_packaged(w) # package id
-            Trace.trace(self.my_trace_level+1, "_mover_idle: bfid_to_open %s"%(bfid_to_open,))
-
-            if not bfid_to_open:
-                bfid_to_open = w['fc']['bfid']
-                rc = fcc.open_bitfile(bfid_to_open)
-            else:
-                rc = fcc.open_bitfile_for_package(bfid_to_open)
-
+            # update file info
+            rc = fcc.bfid_info(w['fc']['bfid'])
             if rc['status'][0] == e_errors.OK:
-                # update file info
-                rc = fcc.bfid_info(w['fc']['bfid'])
-                if rc['status'][0] == e_errors.OK:
-                    w['fc'].update(rc)
-                else:
-                    Trace.log(e_errors.ERROR, "bfid_info %s"%(rc,))
-                    self.reply_to_caller(nowork)
-                    return
+                w['fc'].update(rc)
             else:
-                Trace.log(e_errors.ERROR, "open_bitfile returned %s"%(rc,))
+                Trace.log(e_errors.ERROR, "bfid_info %s"%(rc,))
                 self.reply_to_caller(nowork)
                 return
-                
+            if w['fc']['cache_status'] == file_cache_status.CacheStatus.PURGED:
+                # open_bitfile tells file clerk to initiate disk cache file staging if it is not in the cache.
+                # The mover to which this work (w) is submitted waits until file is cached
+                # and transfers file to the client.
+                # If file is a part of a package open the corresponding package istead of opening a requested file.
+                # This guaraties that the files in the package will be opened syncronously.
+                bfid_to_open = self.is_packaged(w) # package id
+                Trace.trace(self.my_trace_level+1, "_mover_idle: bfid_to_open %s"%(bfid_to_open,))
+
+                if not bfid_to_open:
+                    bfid_to_open = w['fc']['bfid']
+                    rc = fcc.open_bitfile(bfid_to_open)
+                else:
+                    rc = fcc.open_bitfile_for_package(bfid_to_open)
+
+                if rc['status'][0] != e_errors.OK:
+                    Trace.log(e_errors.ERROR, "open_bitfile returned %s"%(rc,))
+                    self.reply_to_caller(nowork)
+                    return
+
         Trace.trace(self.my_trace_level, "mover_idle: File Family = %s" % (w['vc']['file_family']))
 
 	log_add_to_wam_queue(w['vc'])
