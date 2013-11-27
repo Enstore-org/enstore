@@ -5,8 +5,8 @@
 ###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 3.4.1
-Release: 0
+Version: 4.0.0
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: enstore.tgz
@@ -226,6 +226,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Wed Nov 27 2013  <moibenko@fnal.gov> -
+- started using git, version major number 4 
 * Mon Aug 19 2013 <moibenko@fnal.gov> -
 - new version 3.4.1-0 
 * Mon Aug 12 2013 <moibenko@fnal.gov> -
