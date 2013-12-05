@@ -63,7 +63,6 @@ ENGLISH_TITLES = {
 		   "backup" : "(e)Backup Enstore Db",
 		   "backupsystem2Tape" : "(e)Backup tarit Output To Tape",
 		   "backup2Tape" : "(e)Back up Metadata To Tape Daily",
-		   "checkPNFS" : "(r)Check PNFS for Errors",
 		   "checkdb" : "(e)Scan Db keys",
 		   "chkcrons" : "(r)Make CRON plots",
                    "chk_prod_code" : "(e)Check Production Code Consistency",

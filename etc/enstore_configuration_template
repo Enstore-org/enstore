@@ -26,7 +26,7 @@ PB=KB*TB
 EB=KB*PB
 
 # maximal transfer rates for different types of tape drives
-# 
+#
 ait1_rate =    2.8 * MB
 ait2_rate =    9.5 * MB
 mam1_rate =    2.8 * MB
@@ -111,7 +111,7 @@ system_name="mysystem" # replace with system name (no white spaces allowed)
 enstore_head_node="host2" # replace with name of your enstore head node running enstore configuration server"
 monitoring_and_web=enstore_head_node
 enstore_DB="host4" # replace with name of your enstore Database server"
-enstore_backup="host5" # replace with name of your enstore server performing database, namespace and other backups" 
+enstore_backup="host5" # replace with name of your enstore server performing database, namespace and other backups"
 enstore_library="host3" # replace with name of your library manager server"
 #enstore_library_1="server5" # replace with name of your library manager server if needed more than one server"
 enstore_pnfs="host1" # name space (pnfs/chimera)
@@ -133,7 +133,7 @@ accounting_server_host=enstore_DB_host # this can be additional host to spread t
 drivestat_server_host=accounting_server_host
 media_changer_host=enstore_library
 library_manager_host=enstore_library
-#library_manager_host_1=enstore_library_1 
+#library_manager_host_1=enstore_library_1
 
 html_dir = "/srv2/enstore/www/web-pages/"
 log_dir = "/srv2/enstore/enstore-log"
@@ -218,7 +218,7 @@ configdict['discipline'] = {
        'function':'restrict_host_access', # function to call
        'args':['stkendca',(2,0,0)],     # function arguments
        'action':'ignore'},                # action
-      
+
       },
      }
 
@@ -286,35 +286,34 @@ configdict['crons'] = {
 
 # crontab definitions (see Admin Guide for details)
 configdict['crontabs'] = {
-'log_server'        : {'cronfiles' : 
+'log_server'        : {'cronfiles' :
                        ["log_server",
                         "log_html"]},
-'web_server'        : {'cronfiles' : 
+'web_server'        : {'cronfiles' :
                        ["enstore_plots",
                         "enstore_html",
                         #"inventory.fermi",
                         #"inventory.cms",
                         "inventory_web",
-                        "chkcrons", 
+                        "chkcrons",
                         #"tab_flip_watch_stken",
                         "summary_plots",
                         "drives_info",
                         ],
                        'host'      : monitoring_and_web},
 
-'verifying'         : {'cronfiles' : 
+'verifying'         : {'cronfiles' :
                        ["copy_ran_file"],
                        'host'      : verify_host},
-'pnfs'              : {'cronfiles' : 
+'pnfs'              : {'cronfiles' :
                        ["delfile",
                         "pnfs_misc",
-                        "pnfsFastBackup",
-                        "pmountd"],
+                        "pnfsFastBackup"],
                        'host'      : enstore_pnfs},
 'accounting_server' : {'cronfiles' : ["accounting_db"]},
 'drivestat_server'  : {'cronfiles' : ["drivestat_db"]},
 'file_clerk'        : {'cronfiles' : ["enstore_db"]},
-'databases'         : {'cronfiles' : 
+'databases'         : {'cronfiles' :
                        ["checkdb",
                         "backup",
                         "backup.operation",
@@ -326,7 +325,7 @@ configdict['crontabs'] = {
 }
 # inventory configuration
 # places for tape inventory
-configdict['inventory']    = { 
+configdict['inventory']    = {
 'inventory_dir'		: inventory_dir,
 'inventory_tmp_dir'		: "%s/tmp" % (inventory_dir,),
 'inventory_cache_dir'	: "%s_cache" % (inventory_dir,),
@@ -368,13 +367,13 @@ configdict['web_server'] = {
 'PidFile'        : "%s/adm/httpd.pid" % (httpd_dir,), # full path to httpd pid file
 'ErrorLog'       : "%s/adm/error.log" % (httpd_dir,), # full path to httpd error log file
 'CustomLog'      : {
-'combined' : "%s/adm/access.log" % (httpd_dir,), # full path to combined log file 
+'combined' : "%s/adm/access.log" % (httpd_dir,), # full path to combined log file
 'referer'  : "%s/adm/referer.log" % (httpd_dir,), #  full path to referer log file
 'agent'    : "%s/adm/agent.log" % (httpd_dir,), #  full path to agent log file
 },
 'ServerRoot'  : '/etc/httpd/' , # location of httpd.conf (e.g. /etc/httpd)
 'ScriptAlias' : {
-'fake' : '/cgi-bin/', #  e.g. /cgi-bin/ 
+'fake' : '/cgi-bin/', #  e.g. /cgi-bin/
 'real' : "%s/cgi-bin/" % (httpd_dir2,), #  real path to cgi scripts
 }
 }
@@ -442,7 +441,7 @@ configdict['inquisitor'] = {
 	       'Network-At-A-Glance'		: '/enstore/enstore_saag_network.html', # make the key name up
 	       'PNFS Export List'		: '/enstore/pnfsExports.html', # make the key name up
 	       'FAILED Transfers'		: '/enstore/transfer_failed.txt ', # make the key name up
-	       #'Recent SL8500F1 log messages'	: '/enstore/log/SL8500F1-log', 
+	       #'Recent SL8500F1 log messages'	: '/enstore/log/SL8500F1-log',
 	       'PNFS monitor report'	: '/enstore/%s_pnfs_monitor' % (inquisitor_host,), # make the key name up
 	       },
 'default_alive_interval': 40,
@@ -451,7 +450,7 @@ configdict['inquisitor'] = {
 }
 
 # monitor server
-# echoes messages from monitor_client to fake enstore transfers 
+# echoes messages from monitor_client to fake enstore transfers
 
 configdict['monitor_server'] = {
 'html_dir'		: html_dir,
@@ -479,7 +478,7 @@ configdict['backup'] = {
 configdict['database'] = {
 'dbarea':'%s/enstore-db' % (db_basedir,),        # database directory
 'db_dir': '%s/enstore-database' % (db_basedir,), # backup database directory
-'jou_dir': '%s/enstore-journal' % (db_basedir,), # journal files directory 
+'jou_dir': '%s/enstore-journal' % (db_basedir,), # journal files directory
 'db_host': DB_host,                              # data base host - obsolete, replaced with dbhost
 'db_port': 8888,                                 # data base port - obsolete, replaced with dbport
 'max_threads' : 50,                              # maximum number of db threads
@@ -534,7 +533,7 @@ configdict['info_server'] = {
 }
 
 # accounting server
-#maintains statistical information on a running system. 
+#maintains statistical information on a running system.
 configdict['accounting_server'] = {
 'host': accounting_server_host,
 'port': 7580,
@@ -633,7 +632,7 @@ configdict['null01.mover'] = {
     'logname':'NUL01MV',
     'norestart':'INQ',
     'noupdown':'PUT_SOMETHING_HERE',
-    'max_buffer':100*MB,                   # maximum amount of memory to allocate for buffering (recommended not less than 1GB) 
+    'max_buffer':100*MB,                   # maximum amount of memory to allocate for buffering (recommended not less than 1GB)
     'library':'null.library_manager',      # associated library manager
     'device':'/dev/null',                  # pathname to the UNIX (tape) device
     'driver':'NullDriver',                 # Low lewel media driver ('FTTDriver' for tape, 'NullDriver' for null mover, DiskDriver for disk)
@@ -642,7 +641,7 @@ configdict['null01.mover'] = {
     'update_interval':2,                   # interval for the mover to ask LM for the work.
     'max_dismount_delay':30,               # maximum dismount delay that can be set for this mover
     'dismount_delay':10,                   # delayed dismount value to use when none specified by the client. Set to negative value to get "infinite" dismount delay
-    
+
     }
 
 # add more null movers here
@@ -651,7 +650,7 @@ configdict['null01.mover'] = {
 #####################################
 
 #####################################
-# LTO4 library example configuration 
+# LTO4 library example configuration
 # with IBM 3584 media changer using
 # smc CLI
 #####################################
@@ -671,14 +670,14 @@ configdict['IBM_3584_LTO4.library_manager'] = {
 'max_requests':15000,                                           # Maximal amount of requests in the queue. The rest will be ignored (and retried later by encp)
 'legal_encp_version':legal_encp_version,
 'restrict_access_in_bound': True,                               # discipline applies to volumes in BOUND state
-'mover_port': 7006,                                             # Movers communucate with library manager on this port if specified. 
-'encp_port':7007,                                               # Clents (encp) communucate with library manager on this port if specified. 
+'mover_port': 7006,                                             # Movers communucate with library manager on this port if specified.
+'encp_port':7007,                                               # Clents (encp) communucate with library manager on this port if specified.
 'use_raw_input': 1,                                             # Use buffer to pull out requests from UDP buffer as fast as possible.
-'use_threads':False,                                            # Use separate threads for every mover request (shows problems during testing, avoid setting to True). 
+'use_threads':False,                                            # Use separate threads for every mover request (shows problems during testing, avoid setting to True).
 }
 
 #IBM 3584 media changer
-configdict['IBM_SMC.media_changer'] = { 
+configdict['IBM_SMC.media_changer'] = {
     'host': enstore_library,
     'port':7524,
     'logname':'IBMMC ',
@@ -687,7 +686,7 @@ configdict['IBM_SMC.media_changer'] = {
     'device':'/dev/sg6',                         # media loader device
     'norestart':'INQ',
     'max_work':4,                                # maximal number of simultaneous requests
-    'tape_library':"IBM 3500 in this building",  # if present, suplies a name to the tape library (robot) for reporting.    
+    'tape_library':"IBM 3500 in this building",  # if present, suplies a name to the tape library (robot) for reporting.
 }
 
 # mover(s)
@@ -725,7 +724,7 @@ configdict['IBM_SMC00.mover'] = {
 # add more movers if needed
 
 #####################################
-# END LTO4 library example configuration 
+# END LTO4 library example configuration
 # with IBM 3584 media changer using
 # smc CLI
 #####################################
@@ -733,7 +732,7 @@ configdict['IBM_SMC00.mover'] = {
 
 
 #####################################
-# LTO4 library example configuration 
+# LTO4 library example configuration
 # with IBM 3584 media changer using
 # mtx CLI
 #####################################
@@ -753,15 +752,15 @@ configdict['IBM_3584_LTO4MTX.library_manager'] = {
 'max_requests':15000,                                           # Maximal amount of requests in the queue. The rest will be ignored (and retried later by encp)
 'legal_encp_version':legal_encp_version,
 'restrict_access_in_bound': True,                               # discipline applies to volumes in BOUND state
-'mover_port': 7006,                                             # Movers communucate with library manager on this port if specified. 
-'encp_port':7007,                                               # Clents (encp) communucate with library manager on this port if specified. 
+'mover_port': 7006,                                             # Movers communucate with library manager on this port if specified.
+'encp_port':7007,                                               # Clents (encp) communucate with library manager on this port if specified.
 'use_raw_input': 1,                                             # Use buffer to pull out requests from UDP buffer as fast as possible.
-'use_threads':False,                                            # Use separate threads for every mover request (shows problems during testing, avoid setting to True). 
+'use_threads':False,                                            # Use separate threads for every mover request (shows problems during testing, avoid setting to True).
 }
 
 
-#IBM 3584 media changer (using mtx) 
-configdict['IBM_MTX.media_changer'] = { 
+#IBM 3584 media changer (using mtx)
+configdict['IBM_MTX.media_changer'] = {
     'host': enstore_library,
     'port':7524,
     'logname':'IBM_MTXMC ',
@@ -769,7 +768,7 @@ configdict['IBM_MTX.media_changer'] = {
     'device_name':'/dev/sg6',               # media loader device
     'norestart':'INQ',
     'max_work':4,                                # maximal number of simultaneous requests
-    'tape_library':"IBM 3500 in this building",  # if present, suplies a name to the tape library (robot) for reporting.    
+    'tape_library':"IBM 3500 in this building",  # if present, suplies a name to the tape library (robot) for reporting.
     'status_timeout':10, # maximum wait time for status command reply
     'mount_timeout':180, # maximum wait time for mount/dismolunt command reply
 }
@@ -809,7 +808,7 @@ configdict['IBM_MTX00.mover'] = {
 # add more movers if needed
 
 #####################################
-# END LTO4 library example configuration 
+# END LTO4 library example configuration
 # with IBM 3584 media changer using
 # mtx CLI
 #####################################
@@ -817,7 +816,7 @@ configdict['IBM_MTX00.mover'] = {
 
 
 #####################################
-# T10000C library example configuration 
+# T10000C library example configuration
 # with IBM 3584 media changer using
 # SL8500 robot with ACSLS controller
 #####################################
@@ -895,7 +894,7 @@ configdict['10KC_001.mover'] = {
 # add more movers if needed
 
 #####################################
-# END T10000C library example configuration 
+# END T10000C library example configuration
 # with IBM 3584 media changer using
 # SL8500 robot with ACSLS controller
 #####################################

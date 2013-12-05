@@ -165,8 +165,7 @@ configdict['crontabs'] = {
                                           "tab_flipping",
                                           ],
                            'host'      : monitoring_and_web},
-    'monitoring'        : {'cronfiles' : ["checkPNFS",
-                                          "inventory",
+    'monitoring'        : {'cronfiles' : ["inventory",
                                           "copy_ran_file"],
                            'host'      : enstore_backup},
     'pnfs'              : {'cronfiles' : ["delfile",
@@ -179,7 +178,7 @@ configdict['crontabs'] = {
                                           "backup",
                                           "backup2Tape"],
                            'host'      : enstore_backup},
-    }	   
+    }
 
 configdict['inventory']    = {
 'inventory_dir'		: '/srv3/enstore/db-inventory',

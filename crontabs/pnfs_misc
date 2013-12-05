@@ -1,4 +1,4 @@
 #This cronjob creates and enstore log web page containing all the nodes
 # that can mount pnfs.
-12 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfsExports -setup pnfs pnfsExportList >/dev/null 2>/dev/null
-12 5 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfs_monitor -setup pnfs pnfs_monitor >/dev/null 2>/dev/null
+12 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfsExports python $ENSTORE_DIR/sbin/chimeraExportList.py >/dev/null 2>/dev/null
+12 5 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfs_monitor python $ENSTORE_DIR/sbin/pnfs_monitor.py >/dev/null 2>/dev/null
