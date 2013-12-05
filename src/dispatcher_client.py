@@ -2,13 +2,14 @@
 
 ###############################################################################
 #
-# $Id$
+# $Id: dispatcher_client.py,v 1.2 2012/06/01 19:52:00 moibenko Exp $
 # Policy Engine Server and Migration Dispatcher Client
 #
 ###############################################################################
 
 # system imports
 import sys
+import time
 
 # enstore imports
 import enstore_constants
@@ -198,7 +199,7 @@ def do_work(intf):
                                    reply['pools'][pool][k]['policy'],
                                    len(reply['pools'][pool][k]['list']),
                                    reply['pools'][pool][k]['type'],
-                                   reply['pools'][pool][k]['time_qd'])
+                                   time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(reply['pools'][pool][k]['time_qd'])))
     elif intf.id:
         reply = dispatcher_client.show_id(intf.id)
         if reply.has_key('status') and reply['status'][0] == e_errors.OK:

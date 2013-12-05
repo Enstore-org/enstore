@@ -2,7 +2,7 @@
 
 ##############################################################################
 #
-# $Id$
+# Policy Engine Server - dispatcher
 #
 ##############################################################################
 
@@ -101,10 +101,19 @@ class Dispatcher(mw.MigrationWorker,
         self.check_watermarks = True # this allows to purge files ignoring watermarks
         self.purge_watermarks = self.my_conf.get("purge_watermarks", None)
         # purge_watermarks is a tuple
-        # (start_purging_disk_avalable, start_purging_disk_avalable)
+        # (start_purging_disk_avalable, stop_purging_disk_avalable)
         # start_purging_disk_avalable - available space as a fraction of the capacity
-        self.file_purger = purge_files.FilePurger(self.csc, self.max_time_in_cache, self.purge_watermarks)
-        
+
+        # For clustered systems purge only read pools belonging to certain libraries.
+        # Read pools belonging to other libraries are not mounted on this node.
+        libraries = self.my_conf.get("libraries_to_purge") # for clustered systems purge only
+        if not isinstance(libraries, list):
+           libraries = None # libraries must be list
+        self.file_purger = purge_files.FilePurger(self.csc,
+                                                  self.max_time_in_cache,
+                                                  self.purge_watermarks,
+                                                  libraries)
+
         # create pools for lists
         self.file_deleted_pool = {}
         self.cache_missed_pool = {}
@@ -186,14 +195,14 @@ class Dispatcher(mw.MigrationWorker,
                     'list': self.migration_pool[key].list_object.file_list,
                     'policy': self.migration_pool[key].list_object.list_name,
                     'type': self.migration_pool[key].list_object.list_type,
-                    'time_qd': time.ctime(self.migration_pool[key].list_object.creation_time),
+                    'time_qd': self.migration_pool[key].list_object.creation_time,
                     }
       pl = {}
       for key in self.purge_pool:
          pl[key] = {'id':self.purge_pool[key].id,
                     'list': self.purge_pool[key].list_object.file_list,
                     'type': self.purge_pool[key].list_object.list_type,
-                    'time_qd': time.ctime(self.purge_pool[key].list_object.creation_time),
+                    'time_qd': self.purge_pool[key].list_object.creation_time,
                     }
       ticket['pools'] = {'cache_missed':self.cache_missed_pool,
                          'cache_purge': self.cache_purge_pool,

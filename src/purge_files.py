@@ -2,7 +2,6 @@
 
 ##############################################################################
 #
-# $Id$
 #
 # Make decision on purging cached files
 ##############################################################################
@@ -10,6 +9,7 @@
 import sys
 import os
 import time
+import itertools
 
 # enstore imports
 import configuration_client
@@ -35,7 +35,7 @@ DB_CONNECTION_RETRY = 60
 
 class FilePurger:
     # init is stole from file_clerk
-    def  __init__(self, csc, max_time_in_cache=None, watermarks=None):
+    def  __init__(self, csc, max_time_in_cache=None, watermarks=None, libraries=None):
         # Obtain information from the configuration server.
         self.csc = csc
         configuration_client.ConfigurationClient(csc)
@@ -60,9 +60,13 @@ class FilePurger:
         # (start_purging_disk_avalable, start_purging_disk_avalable)
         # start_purging_disk_avalable - available space as afraction of the capacity
         self.purge_watermarks = watermarks
-        
+
+        self.libraries = None
+        if libraries:
+            self.libraries = itertools.cycle(libraries) # libraries to use for read purge query for clustered systems
+
         ic_conf = self.csc.get("info_server")
-        self.infoc = info_client.infoClient(self.csc, 
+        self.infoc = info_client.infoClient(self.csc,
                                             server_address=(ic_conf['host'],
                                                             ic_conf['port']))
         # Try to connect to enstore DB.
@@ -202,6 +206,65 @@ class FilePurger:
         return list_of_file_lists
 
     def files_to_purge(self, check_watermarks=True):
+        WRITE_QUERY = """
+        SELECT f.bfid,
+               f.cache_status,
+               f.archive_status,
+               f.cache_mod_time,
+               f.cache_location,
+               f.location_cookie,
+               v.library
+        FROM file f,
+             volume v,
+             cached_files cf
+        WHERE f.bfid=cf.bfid
+           AND f.volume=v.id
+           AND f.cache_status='CACHED'
+           AND f.archive_status='ARCHIVED'
+           AND f.cache_mod_time < CURRENT_TIMESTAMP - interval '{}'
+           AND f.cache_location=f.location_cookie
+        ORDER BY f.cache_mod_time asc limit 1000
+        """
+        QUERY_BY_LIBRARY="""
+        SELECT f.bfid,
+               f.cache_status,
+               f.archive_status,
+               f.cache_mod_time,
+               f.cache_location,
+               f.location_cookie,
+               v.library
+        FROM file f,
+             volume v,
+             cached_files cf
+        WHERE f.bfid=cf.bfid
+           AND f.volume=v.id
+           AND f.cache_status='CACHED'
+           AND f.archive_status='ARCHIVED'
+           AND f.cache_mod_time < CURRENT_TIMESTAMP - interval '{}'
+           AND f.cache_location!=f.location_cookie
+           AND v.library='{}'
+        ORDER by f.cache_mod_time asc limit 1000
+        """
+        QUERY_NO_LIBRARY="""
+        SELECT f.bfid,
+               f.cache_status,
+               f.archive_status,
+               f.cache_mod_time,
+               f.cache_location,
+               f.location_cookie,
+               v.library
+        FROM file f,
+             volume v,
+             cached_files cf
+        WHERE f.bfid=cf.bfid
+           AND f.volume=v.id
+           AND f.cache_status='CACHED'
+           AND f.archive_status='ARCHIVED'
+           AND f.cache_mod_time < CURRENT_TIMESTAMP - interval '{}'
+           AND f.cache_location!=f.location_cookie
+        ORDER by f.cache_mod_time asc limit 1000
+        """
+
         Trace.trace(10, "files_to_purge")
         # comment for queries:
         # The limit 1000 was found empirically.
@@ -214,25 +277,18 @@ class FilePurger:
         # To check that file is in write cache compare cache_location and location_cookie.
         # If they are the same the file is in write cache.
 
-        write_q = " select f.bfid, f.cache_status, f.archive_status, " \
-                  " f.cache_mod_time, f.cache_location, f.location_cookie, v.library from file f, volume v, " \
-                  " cached_files cf where f.bfid=cf.bfid and f.volume=v.id " \
-                  " and f.cache_status='CACHED' and f.archive_status='ARCHIVED' " \
-                  " and f.cache_mod_time < CURRENT_TIMESTAMP - interval '%s' " \
-                  " and f.cache_location=f.location_cookie " \
-                  " order by f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
+        write_q = WRITE_QUERY.format(self.max_time_in_cache)
 
         # comment for read_q:
         # To check that file is in read cache compare cache_location and location_cookie.
         # If they are different the file is in read cache.
 
-        read_q = " select f.bfid, f.cache_status, f.archive_status, " \
-                 " f.cache_mod_time, f.cache_location, f.location_cookie, v.library from file f, volume v, " \
-                 " cached_files cf where f.bfid=cf.bfid and f.volume=v.id " \
-                 " and f.cache_status='CACHED' and f.archive_status='ARCHIVED' " \
-                 " and f.cache_mod_time < CURRENT_TIMESTAMP - interval '%s' " \
-                 " and f.cache_location!=f.location_cookie " \
-                 " order by f.cache_mod_time asc limit 1000; "%(self.max_time_in_cache,)
+        if self.libraries:
+            library = self.libraries.next() # pick library from the circular list
+            Trace.trace(10, "files_to_purge: library to query %s"%(library,))
+            read_q = QUERY_BY_LIBRARY.format(self.max_time_in_cache, library)
+        else:
+            read_q = QUERY_NO_LIBRARY.format(self.max_time_in_cache)
 
         write_purge_list = self.files_to_purge_with_query(write_q, check_watermarks)
         Trace.trace(10, "write query returned %s"%(write_purge_list,))
@@ -248,6 +304,14 @@ if __name__ == "__main__":
     Trace.print_levels[5,10]=1
 
     csc = configuration_client.ConfigurationClient((config_host, config_port))
+    print "With read libraries"
+    fp = FilePurger(csc, libraries=["CD-DiskSF", "CD-DiskSFT"])
+    for _ in range(5):
+        fc = fp.files_to_purge()
+        print fc
+        print len(fc)
+
+    print "Without read libraries"
     fp = FilePurger(csc)
     fc = fp.files_to_purge()
     print fc

@@ -1,20 +1,45 @@
 #!/bin/sh
+
+# Modify enstore configuration file
+
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-# bin/$RCSfile$  $Revision$
-
 export place=`pwd`
+debug=false
+test=false
 
-#if [ `whoami` = "root" -o `whoami` = "enstore" ]; then
+if [ "${1:-}" = "--test" ]
+then
+    echo "TEST:  this script uses test settings"
+    test=true
+    debug=true
+    shift
+fi
+
+#-------------------------------------------------------------
+if $debug
+then
+    echo "DEBUG: this script uses debug settings"
+fi
+#-------------------------------------------------------------
 if [ `whoami` != "enstore" ]; then
-    echo "You can not be `whoami` while you modify the enstore config file" >&2
+    echo "You must be user enstore to modify the enstore config file" >&2
     exit 1
 fi
 
-#node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 node=`$ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.`
+#-------------------------------------------------------------
 gang=`gang`
+
+if $test
+then
+    gang=dms-test
+    echo "TEST:  gang reset to $gang"
+fi
+echo gang=$gang
+echo
+#-------------------------------------------------------------
 short_name=`echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.`
 case $node in
    stkensrv2|d0ensrv2|cdfensrv2)
@@ -29,113 +54,127 @@ case $node in
    *)     loadit=0
           ;;
 esac
+#-------------------------------------------------------------
+usage() {
+#    echo "USAGE: $0 config_file
+    echo "USAGE: $0 config_file [<optional editor>]
+       where config_file is stk, cdf or sam"; 
+}
 
-
-usage() { echo "USAGE: $0 config_file  <optional editor>  where config_file is stk, cdf or sam"; }
-
-abort() { cd $place
-          echo ${1-""}
-          if [ -z ${3-} ]; then usage; fi
-          exit ${2:-1}
-        }
-
+abort() {
+    cd $place
+    echo ${1-""}
+    if [ -z ${3-} ]; then usage; fi
+    exit ${2:-1}
+}
+#-------------------------------------------------------------
 # we need enstore to be setup
 if [ -z "${ENSTORE_DIR-}"  ]; then
    . /usr/local/etc/setups.sh
    setup enstore
 fi
 
-# all the action is here
-#cd $ENSTORE_DIR/etc
-
 # we need a config file to change
-if [ -n "${ENSTORE_CONFIG_FILE-}" ]; 
-then 
- echo "The following configuration file will be modified: `basename $ENSTORE_CONFIG_FILE`";
- dir=`dirname $ENSTORE_CONFIG_FILE`
- #cp -rpf $d .
- #cp -rpf $ENSTORE_CONFIG_FILE .
-  config=`basename $ENSTORE_CONFIG_FILE`;
-elif 
-    [ -z "${1-}"  ]; then abort  "you need to specify a config file"; 
+if [ -n "${ENSTORE_CONFIG_FILE-}" ]
+then
+    config=`basename $ENSTORE_CONFIG_FILE`
+    dir=`dirname $ENSTORE_CONFIG_FILE`
+elif [ -z "${1-}" ]
+then
+    abort  "you need to specify a config file"
 else
     dir=$ENSTORE_DIR/etc
     config=$1.conf
 fi
-cd $dir
 
-#config=$1.conf
-if [ ! -r $config ]; then abort "can not read $config"; fi
-#config2=/tmp/$1.conf-check.py
-config2=/tmp/$config.conf-check.py
+file=$(basename $config)
+gitdir=$(dirname $dir)/config
+# Note:
+#   config refers to file name
+#   config2 refers to ansolute path of temp file for edit
+# - Leave it as in original script
+config2=$gitdir/$file
 
+echo "The following configuration file will be modified: $dir/$config";
+#-------------------------------------------------------------
+if $debug
+then
+    echo "DEBUG:" dir=$dir
+    echo "DEBUG:" gitdir=$gitdir
+    echo "DEBUG:" config=$config
+    echo "DEBUG:" config2=$config2
+    echo
+fi
+#-------------------------------------------------------------
+
+if [ ! -d $dir ];         then abort "configuration directory $dir does not exist"; fi
+if [ ! -d $gitdir ];      then abort "git configuration directory $gitdir does not exist"; fi
+if [ ! -r $dir/$config ]; then abort "can not read $config"; fi
+
+#-------------------------------------------------------------
 # if the user wants a specific editor, use it
 # otherwise use vi since it is always there
 if [ -z "${2-}"  ]; then
-     edcmd=${EDITOR:-vi}
+    edcmd=${EDITOR:-vi}
 else
-     edcmd=$2
+    edcmd=$2
 fi
+
 export EDITOR=$edcmd # probably not needed, just did it so it is set
 export VISUAL=$edcmd # needed for cvs check in
 
-# make sure we are using the latest config from the repository
-echo "doing cvs update on $config"
-cvs update -A $config
-if [ $? -ne 0 ]; then abort "Something wrong with cvs update. Investigate"; fi
-echo "success"
-echo
-cvs status $config
+#-------------------------------------------------------------
+# do all changes in git configuration directory first
+cd $gitdir ||
+    abort "can not do  cd $gitdir"
+
+# make sure we are using the latest config from remote repository
+echo "updating local git repository from remote"
+# fetch data from remote preconfigured repository 'enconfig'
+git fetch enconfig ||
+    abort "Something wrong with 'git fetch enconfig'. Investigate"
+echo "... success"
 echo
 
-# make a copy and edit it
-rm -f $config2
-cp $config $config2
+echo "git status:"
+git status -uno
+echo "... end of git status"
 
-# edit the file allowing the user to make changes
-#echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $config"
+if [ ! -r $file ]
+then
+    abort "file $gitdir/$file is unreadable in configuration directory"
+fi
+
+echo "compare configuration file fetched from remote repo and local condifuration file"
+diff -q $dir/$file $gitdir/$file ||
+    abort "Files differ. diff $dir/$file $gitdir/$file . Investigate"
+echo "... end of compare"
+echo 
+
+# the configuration file is in e.g. /opt/enstore/etc, or equvivalent.
+# we will edit configuration file in e.g. /opt/enstore/config, or equvivalent.
+
+# edit temporary file allowing the user to make changes
 echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $config2"
-#$edcmd $config
 $edcmd $config2
-if [ $? -ne 0 ]; then abort "Something wrong with editting. Investigate"; fi
-echo "success"
+if [ $? -ne 0 ]; then abort "Something wrong with editing. Investigate"; fi
+echo "... success"
 echo
 
-# check if python file
-#sed -n '1p' $config | grep python 
+# check if updated file can be interpreted by python
+# echo "Checking $config2 is python file:"
 sed -n '1p' $config2 | grep python 
 if [ $? -eq 0 ]; then
     # see if python finds any errors
-    #echo "Checking $config by running python $config"
-    #python $config
     echo "Checking $config2 by running python $config2"
     python $config2
     if [ $? -ne 0 ]; then abort "Running python found errors."; fi
-    echo "success"
-    echo
-
-# check if it is an authorized volume file
-elif [ `echo $config | cut -c1-4` = "auth" ]; then
-    # make sure the auth file is correct
-    loadit=2
-    echo "Checking authorized file $config"
-    # ignore comment and empty lines
-    data="`grep -v "#" $config | grep -v "^[:space:]*$"`"
-    total=`echo "$data" | wc -l`
-    count="1"
-    while [ $count -le $total ]; do
-	# make sure each line has exactly 4 items on it.
-	line=`echo "$data" | sed -n ${count}p`
-	word_count=`echo "$line" | wc -w`
-	if [ $word_count -ne 4 ]; then
-	    abort "Error checking authorized volume file $config"
-	fi
-	count=`expr $count + 1`
-    done
-    echo "success"
-    echo
+    echo "... success"
+else
+    echo "  - it is not"
 fi
-
+echo
+#-------------------------------------------------------------
 # ok, time to commit - confirm
 echo -n 'About to commit changes, is this what you want [Y/n] '
 read ans
@@ -144,37 +183,71 @@ if [ "$answer" != "Y" ]; then
    abort 'ok, aborting' 1 0
 fi
 
-# copy $config2 to $config before committing
-cp $config2 $config
-rm -f $config2
+#-------------------------------------------------------------
+# Configuration modification complete.
+# now:
+# - copy temp file to the real configuration file;
+# - commit to remote repository
+# - copy to other nodes on cluster (where it is not used) 
 
-cvs commit $config
-if [ $? -ne 0 ]; then abort "Something wrong with commit. Investigate"; fi
-echo "success"
+# commit changes locally to git repository
+
+echo "committing:"
+git commit -- $file
+if [ $? -ne 0 ]; then abort "Something wrong with git commit. Investigate"; fi
+echo "... success"
 echo
 
-# bless the changes - make production status
-echo "Setting production tag"
-cvs tag -F production $config
-if [ $? -ne 0 ]; then abort "Something wrong with setting production tag.. Investigate"; fi
+# bless the changes - push to remote server
 
-echo "success"
+echo "push changes to remote git configuration repository"
+git push enconfig
+if [ $? -ne 0 ]; then abort "Something wrong with 'git push enconfig.' Investigate"; fi
+echo "... success"
 echo
 
-cvs status $config
+echo "get changes back from remote git configuration repository"
+git fetch enconfig && echo " ... OK"
+
+# compare file:
+
+echo "compare files with local repository:"
+git diff --stat HEAD -- $file
+echo "... end of compare"
 echo
+
+echo "compare files with remote repository:"
+git diff --stat HEAD~ -- $file
+echo "... end of compare"
+echo
+
+#---------------------------------------------------
+# Distribute configuration file
+#
+echo "copy $config to configuration directory:"
+# copy $file to $config
+echo "  on configuration host (locally)"
+# I think rgang will rewrite this file as enstore rgang does not have -C option
+# - Leave it as is in original script
+cp -p $config2 $dir/$config || abort "cp to $dir/$config failed"
+
 # update config file on all machines
-echo "syncronizing $config"
-rgang $gang "cd ${dir}; cvs -q update -r production $config"
+
+# Note, the file location on remote node is based on $ENSTORE_DIR setting on this node,
+#   but not on remote node. Leave it as in original script.
+
+echo "  synchronizing $config to gang $gang"
+# config2 is absolute path
+rgang -c $gang $config2 $dir/$config
 
 # check for situations where loading in the config file will not work.
-if [ `echo $config | cut -c1-4` = "auth" ]; then
-    # authority config files do not need to be loaded.
-    echo
-elif [ $loadit -ne 1 ]; then
-  abort "Not on stkensrv2, cdfensrv2 or d0ensrv2. Do not know how to load config file.  Try: enstore config --load --config_file=$ENSTORE_DIR/etc/$config" 0 0
+if [ $loadit -ne 1 ]; then
+  abort "Not on stkensrv2, cdfensrv2 or d0ensrv2. 
+    Do not know how to load config file.
+    Try: enstore config --load --config_file=$ENSTORE_DIR/etc/$config" 0 0
 fi
 
+#---------------------------------------------------
 # all is good, load the config file.
 if [ $loadit -eq 1 ]; then
     # ok, time to load new config file
@@ -184,10 +257,12 @@ if [ $loadit -eq 1 ]; then
     if [ "$answer" != "Y" ]; then
 	abort 'ok, done' 1 0
     fi
+
+# Note:
+#  if the file name is specified on command line, it is not what we load here
+#  but we leave it as in original script
+
+echo "Loading configuration file $ENSTORE_DIR/etc/$config
+echo \
     enstore config --load --config_file=$ENSTORE_DIR/etc/$config
-elif [ $loadit -eq 2 ]; then
-    echo "You need to "
-    echo "   becom enstore on  stkensrv2 (ksu enstore)"
-    echo "   cd ~/enstore/etc"
-    echo "   cvs -q update -r production auth_stk.conf"
 fi

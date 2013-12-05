@@ -197,7 +197,6 @@ install_enstore:
 	$(CP) $(ENSTORE_DIR)/sbin/log-stash		$(ENSTORE_BIN_DIR)/sbin/
 	$(CP) $(ENSTORE_DIR)/sbin/check_for_traceback	$(ENSTORE_BIN_DIR)/sbin/
 
-	$(CP) $(ENSTORE_DIR)/sbin/checkPNFS		$(ENSTORE_BIN_DIR)/sbin/
 	$(CP) $(ENSTORE_DIR)/sbin/copy_ran_file		$(ENSTORE_BIN_DIR)/sbin/
 
 #Why are these two in $ENSTORE_DIR/bin?

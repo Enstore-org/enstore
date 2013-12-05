@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# $Id$
+# $Id: delfile_chimera.py,v 1.7 2013/10/02 18:34:20 litvinse Exp $
 #
 # Equivalent of delfile for chimera
 # relies on configuration entry that looks like this:

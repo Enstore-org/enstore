@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# $Id$
+# $Id: mover.py,v 1.1166 2013/11/21 23:08:41 moibenko Exp $
 #
 ###############################################################################
 
@@ -7218,6 +7218,9 @@ class DiskMover(Mover):
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=0):
+        if self.tr_failed:
+            return          ## this function has been already called in the other thread
+        self.tr_failed = 1
         Trace.trace(25, "TR FAILED")
         self.timer('transfer_time')
         ticket = self.current_work_ticket
@@ -7236,9 +7239,6 @@ class DiskMover(Mover):
             os.unlink(self.tmp_file)
         except:
             pass
-        if self.tr_failed:
-            return          ## this function has been alredy called in the other thread
-        self.tr_failed = 1
         broken = ""
         Trace.log(e_errors.ERROR, "transfer failed %s %s volume=%s location=%s" % (
             exc, msg, self.current_volume, 0))

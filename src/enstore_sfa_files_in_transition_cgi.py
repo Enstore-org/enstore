@@ -183,6 +183,7 @@ def main():
                     policy=result['pools'][pool][k]['policy'].strip(".")
                     t=result['pools'][pool][k]['type']
                     time_qd = result['pools'][pool][k]['time_qd']
+                    time_qd = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time_qd))
                     times[k] = time_qd
                     if t != "CACHE_WRITTEN" :
                         continue
