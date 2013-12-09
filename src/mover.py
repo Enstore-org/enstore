@@ -7145,10 +7145,11 @@ class DiskMover(Mover):
                     cache_status = info['cache_status'] # File Clerk requested staging
                 elif (info['cache_status'] == file_cache_status.CacheStatus.STAGING and
                     cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED):
-                    cache_status == info['cache_status'] # Mirator started staging
+                    cache_status = info['cache_status'] # Migrator started staging
                 elif (info['cache_status'] == file_cache_status.CacheStatus.PURGED and
-                      ((cache_status ==  file_cache_status.CacheStatus.STAGING or
-                        cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED))):
+                      (cache_status in (file_cache_status.CacheStatus.STAGING,
+                                        file_cache_status.CacheStatus.STAGING_REQUESTED,
+                                        file_cache_status.CacheStatus.PURGING_REQUESTED))):
                     Trace.log(e_errors.ERROR, "File staging has failed for %s %s "%(info['bfid'], info['pnfs_name0']))
                     break
                 time.sleep(2)
