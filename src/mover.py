@@ -64,6 +64,7 @@ import generic_driver
 import event_relay_messages
 import file_cache_status
 import scsi_mode_select
+import set_cache_status
 
 DEBUG_LOG=11
 """
@@ -7145,10 +7146,11 @@ class DiskMover(Mover):
                     cache_status = info['cache_status'] # File Clerk requested staging
                 elif (info['cache_status'] == file_cache_status.CacheStatus.STAGING and
                     cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED):
-                    cache_status == info['cache_status'] # Mirator started staging
+                    cache_status = info['cache_status'] # Migrator started staging
                 elif (info['cache_status'] == file_cache_status.CacheStatus.PURGED and
-                      ((cache_status ==  file_cache_status.CacheStatus.STAGING or
-                        cache_status ==  file_cache_status.CacheStatus.STAGING_REQUESTED))):
+                      (cache_status in (file_cache_status.CacheStatus.STAGING,
+                                        file_cache_status.CacheStatus.STAGING_REQUESTED,
+                                        file_cache_status.CacheStatus.PURGING_REQUESTED))):
                     Trace.log(e_errors.ERROR, "File staging has failed for %s %s "%(info['bfid'], info['pnfs_name0']))
                     break
                 time.sleep(2)
@@ -7164,10 +7166,22 @@ class DiskMover(Mover):
                     return None
             loop_counter = loop_counter + 1
         else:
-            file_cache_location = self.file_info.get('cache_location', None)
-                    
+            # check if file exists in cache
+            file_cache_location = self.file_info.get('cache_location')
+            if os.path.exists(file_cache_location):
+                file_cache_location = self.file_info.get('cache_location', None)
+            else:
+                Trace.log(e_errors.ERROR, "file cache status was reported as %s, but it is not in cache. Setting to %s" %
+                          (file_cache_status.CacheStatus.CACHED, file_cache_status.CacheStatus.PURGED))
+                file_cache_location = None
+                rc = set_cache_status.set_cache_status(self.fcc,
+                                                       [{'bfid': self.file_info['bfid'],
+                                                         'cache_status':file_cache_status.CacheStatus.PURGED,
+                                                         'archive_status': None,
+                                                         'cache_location': None}
+                                                        ])
+
         return file_cache_location
-                
 
     def position_media(self, filename):
         Trace.log(e_errors.INFO, "position media for %s"%(filename,))

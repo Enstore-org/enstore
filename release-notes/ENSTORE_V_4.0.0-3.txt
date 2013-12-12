@@ -1,0 +1,202 @@
+commit 2cf82b95a346fcc8342c329f347c78911398b14d
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Thu Dec 5 14:20:06 2013 -0600
+
+D	crontabs/checkPNFS
+D	crontabs/pmountd
+M	crontabs/pnfs_misc
+M	etc/bogus.conf
+M	etc/cdf.conf
+M	etc/dmsen.conf
+M	etc/enstore_configuration
+M	etc/enstore_configuration_template
+M	etc/file_aggregation.conf
+M	etc/file_aggregation_test.conf
+M	etc/gccen.conf
+M	etc/minimal_enstore.conf
+M	etc/sam.conf
+M	etc/sample.conf
+M	etc/stk.conf
+D	sbin/checkPNFS
+D	sbin/pmountd_nanny.sh
+M	src/Makefile
+M	src/enstore_make_plot_page.py
+
+commit 83480fbd8590f2cfbdf2c41ced38ddeb1213730c
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Thu Dec 5 12:01:40 2013 -0600
+
+    Squashed commit of the following:
+    
+    commit 872b9d886768788c4141f0179cb9a5ec32cd47ad
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Dec 5 11:59:05 2013 -0600
+    
+        Review is done.
+    
+    commit 8db7b790a085b36f99f3e69f2b2d120b34ea8113
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Thu Dec 5 11:11:12 2013 -0600
+    
+        Deleted whitespaces
+    
+    commit 2b791f999a7434e0f4a2f277c34e4cc7da81e875
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Wed Dec 4 14:37:11 2013 -0600
+    
+        For clustered systems use libraries_to_purge defined in dispatcher configuration to
+        purge a selected by library set of files in read cache.
+
+M	src/cache/servers/dispatcher.py
+M	src/purge_files.py
+
+commit f4982a3faa81e419b335361499f979dfeb673787
+Author: Alex Kulyavtsev <aik@fnal.gov>
+Date:   Thu Dec 5 11:20:33 2013 -0600
+
+    rb 738: work with git repository to store configuration
+
+M	sbin/mod_config
+
+commit ce54a32467e76aca0a22da00951da158caafd887
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Tue Nov 26 11:16:34 2013 -0600
+
+    Squashed commit of the following:
+    
+    commit b9dfbbb7f508d008edbe1bf5eda59e1e72b3d308
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Tue Nov 26 11:06:17 2013 -0600
+    
+        Revert changes to read_tape, stage_files
+
+M	src/cache/servers/migrator.py
+
+commit 62d81bd1b6a8b7c282cfc0067edc5d0eca5c0672
+Merge: 8aadec0 dbe9289
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Mon Nov 25 14:40:27 2013 -0600
+
+    Merge branch 'develop' of ssh://cdgit.fnal.gov/cvs/projects/enstore into develop
+
+commit 8aadec0ac873aea3d8ad1a9a392e16fb343879e4
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Mon Nov 25 14:38:00 2013 -0600
+
+    Standardize time format shown by SFA files in transition CGI page. (bz 1391)
+
+M	src/cache/servers/dispatcher.py
+M	src/dispatcher_client.py
+M	src/enstore_sfa_files_in_transition_cgi.py
+
+commit dbe928958e25ef4f0ad351138d67c9e45dbc73e1
+Author: Alexander Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 25 14:13:41 2013 -0600
+
+    Squashed commit of the following:
+    
+    commit e76afda88ac75487709879e43460ca0d9b474d38
+    Author: Alexander Moibenko <moibenko@fnal.gov>
+    Date:   Mon Nov 25 14:12:30 2013 -0600
+    
+        Remove accidentally created src/rbtools.
+
+commit 96cd8be5d2c4fceeaf1fd0d68955e96c9fbe80ed
+Author: Alexander N. Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 25 13:23:24 2013 -0600
+
+    For DiskMover move transfer_failed flag setting up.
+    In disk mover the following scenario was observed:
+    net_tread detects encp gone and calls transfer_failed, which closes tape_tread reading from disk.
+    Tape thread errors out with READ_ERROR while it was ENCP_GONE.
+    If setting of self.tr_failed is moved closer to the beginning of the transfer_failed() call then read_tape will detect this flag before calling read() and return
+    Line 6769.
+    bz 1401, rb 756
+
+M	src/mover.py
+
+commit 0112b2ac69d119f77fdfc41398d5392c66bc667b
+Author: Alexander N. Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 25 12:59:07 2013 -0600
+
+    Do not send open to file clerk for cached file.
+    Send open_bitfile only for PURGED files.
+    Files in other states are ether available immediately (CACHED) or are on the process of staging.
+    bz 1402, rb http://srm.fnal.gov/reviews/r/5.
+
+M	src/library_manager.py
+
+commit 3834ec9ee9026acf81e6b46afd8cb81d1cccdf49
+Merge: c631339 9a78e62
+Author: Alexander N. Moibenko <moibenko@fnal.gov>
+Date:   Mon Nov 25 09:52:25 2013 -0600
+
+    Merge branch 'develop' of ssh://cdcvs.fnal.gov/cvs/projects/enstore into develop
+
+commit 9a78e622782fbe20636d20d5f9df69a29b3f03fb
+Author: Amit Belani <abelani@fnal.gov>
+Date:   Fri Nov 22 19:13:31 2013 -0600
+
+    Miscellaneous minor updates to new monitoring plots. (bz 1383)
+
+M	src/drive_hours_plotter_module.py
+M	src/drive_hours_sep_plotter_module.py
+M	src/files_rw_plotter_module.py
+M	src/files_rw_sep_plotter_module.py
+
+commit 97343c029493bac149b604c5dc6d682d56bac9eb
+Author: Alexander Moibenko <moibenko>
+Date:   Mon Nov 18 17:08:40 2013 +0000
+
+    from stkensrv2n
+
+M	site_specific/config/stken-setup
+
+commit 923e431fab2a07f57d1a47f862c13b0a0325774c
+Author: Alexander Moibenko <moibenko>
+Date:   Mon Nov 18 17:07:17 2013 +0000
+
+    stken-setup
+
+M	site_specific/config/stken-setup
+
+commit c631339c5a3344661ec41c1a0267a13ea339b057
+Author: Alexander N. Moibenko <moibenko@fnal.gov>
+Date:   Fri Oct 4 15:16:19 2013 -0500
+
+    Remove library from the ordering in query, otherwise query depends on arbitrary library name.
+    On stken we have 2 libraries" CD-DiskSF and CD-DiskSF1. Files for  CD-DiskSF get purged while
+    for CD-DiskSF1 the write cache grows and does not get purged(bz 1382, rb 743)
+
+M	src/purge_files.py
+
+commit ab9ea378f95541604646bea4d1d52fcb080d32b8
+Author: Alexander N. Moibenko <moibenko@fnal.gov>
+Date:   Thu Oct 3 16:44:48 2013 -0500
+
+    Added pmig03, 04
+
+M	databases/control_files/pg_hba.conf-stken-enstoredb
+
+commit 81d71ff374138f5ec6c519ac88f0ae7ff244e233
+Author: Alexander N. Moibenko <moibenko@fnal.gov>
+Date:   Thu Oct 3 12:10:28 2013 -0500
+
+    Make check_pools_thread fault tolerant....
+
+M	src/cache/servers/dispatcher.py
+
+commit e6a14ac3d23d94d9108518b721c06c5057a95d4c
+Author: Dmitry Litvintsev <litvinse@fnal.gov>
+Date:   Wed Oct 2 16:51:38 2013 -0500
+
+    Removed call to volume_clerk touch() method after file is maked deleted
+    
+    commit 2d85ee2d9c6250b73098a0d95e59374e1b563af4
+    Author: Dmitry Litvintsev <litvinse@fnal.gov>
+    Date:   Wed Oct 2 16:49:36 2013 -0500
+    
+        Removed call to volume_clerk touch() method after file is maked deleted
+
+M	src/delfile_chimera.py
+
