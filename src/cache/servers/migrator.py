@@ -1620,21 +1620,22 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # Internal list of bfid data is built
         # Create a list of files to get staged
         for  component in bfid_info:
+            stage = False
             bfid = component['bfid']
             Trace.trace(10, "read_from_tape: rec1 %s"%(component,))
             if component['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED:  # file is on tape and it can be staged
                 # check the state of each file
                 if component['cache_status'] == file_cache_status.CacheStatus.CACHED:
-                    # File is in cache and available immediately.
-                    continue
+                    # check if file exists in cache
+                    if os.path.exists(component['cache_location']):
+                        # File is in cache and available immediately.
+                        continue
+                    else:
+                        stage = True # file cache_status is CACHED, but it does not exist in the cache for some reason
                 elif component['cache_status'] == file_cache_status.CacheStatus.STAGING_REQUESTED:
                     # file clerk sets this when opens a file
                     if component['bfid'] != package_id: # we stage files in the package, not the package itself
-                        files_to_stage.append(component)
-                        set_cache_params.append({'bfid': bfid,
-                                                 'cache_status':file_cache_status.CacheStatus.STAGING,
-                                                 'archive_status': None,        # we are not changing this
-                                                 'cache_location': None})       # we are not changing this yet
+                        stage = True
                 elif component['cache_status'] == file_cache_status.CacheStatus.STAGING:
                     # File is being staged
                     # Log this for the further investigation in
@@ -1643,6 +1644,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     continue
                 else:
                     continue
+
+                if stage:
+                    files_to_stage.append(component)
+                    set_cache_params.append({'bfid': bfid,
+                                             'cache_status':file_cache_status.CacheStatus.STAGING,
+                                             'archive_status': None,        # we are not changing this
+                                             'cache_location': None})       # we are not changing this yet
+
 
         Trace.trace(10, "read_from_tape:  files to stage %s %s"%(len(files_to_stage), files_to_stage))
         if len(files_to_stage) != 0:
