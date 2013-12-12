@@ -111,7 +111,7 @@ if [ -z "$ENCP" ]; then
 fi
 
 if [ -z "$ENCP" ]; then say $0 $* Can not find encp in our path; exit 1; fi
-# . $E_H/dcache-deploy/scripts/encp.options # this sets variable options
+#. $E_H/dcache-deploy/scripts/encp.options # this sets variable options
 options="--verbose=4 --threaded --ecrc --bypass-filesystem-max-filesize-check --resubmit-timeout 1800"
 
 if [ $# -lt 3 ] ;then
@@ -238,6 +238,79 @@ fi
 
 #------------------------------------------------------------------------------------------
 if [ "$command" = "get" ] ; then
+
+#
+# Check if this is SFA file and we can just copy it
+#
+   t0=`date +"%s"`
+   py_file="/tmp/${si_bfid}_$$.py"
+   enstore info --file ${si_bfid} 1> ${py_file} 2>/dev/null
+   rc=$?
+   if [ $rc -eq 0 ]; then
+       cache_location=`python -c '
+import string
+import sys
+try:
+  f=open("'${py_file}'","r")
+  code="d=%s"%(string.join(f.readlines(),""))
+  f.close()
+  exec(code)
+  if d["cache_status"] == "CACHED":
+     print d["cache_location"]
+  else:
+     sys.exit(1)
+except:
+  sys.exit(1)
+'`
+       rc=$?
+       rm -f ${py_file}
+       if [ $rc -eq 0 -a "${cache_location}" != "" ]; then
+
+	   krbdir="/usr/krb5/bin"
+	   defaultDomain=".fnal.gov"
+	   host=`uname -n`
+
+	   if expr $host : '.*\.' >/dev/null;then
+	       thisHost=$host;
+	   else
+	       thisHost=${host}${defaultDomain};
+	   fi
+
+	   OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
+	   KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
+	   ${krbdir}/kinit -k host/${thisHost}
+
+	   rc=0
+	   #
+	   # TODO: in the future need to get names from configuration
+	   #
+	   for node in pagg01 pagg02;
+	     do
+	     scp -o StrictHostKeyChecking=no -c blowfish root@${node}:${cache_location} $filepath
+	     rc=$?
+	     if [ $rc -eq 0 ]; then
+		 break
+	     fi
+	   done
+	   if [ $rc -eq 0 ]; then
+	       crc=`ecrc $filepath -0 $filepath | awk '/CRC/ {print $2}' | sed -e 's/0x//'`
+	       if [ "${crc}" != "${uri_crc}" ]; then
+		   say "CRC do not match ${crc} ${uri_crc}"
+		   rm -f $filepath
+	       else
+		   chown ${si_uid}.${si_gid} $filepath
+		   chmod 0644 $filepath
+		   t1=`date +"%s"`
+		   dt=`echo "${t1}-${t0}"|bc`
+		   say SFA Completed transferring ${uri_size} bytes in ${dt} sec.
+		   exit 0
+	       fi
+	   else
+	       rm -f $filepath
+	   fi
+       fi
+   fi
+
    say  g1   $ENCP $options --age-time 60 --delpri 10 --pnfs-mount $pnfs_root --shortcut --get-cache $pnfsid $filepath
 nice -n -3   $ENCP $options --age-time 60 --delpri 10 --pnfs-mount $pnfs_root --shortcut --get-cache $pnfsid $filepath >>$LOGFILE 2>&1
    ENCP_EXIT=$?
