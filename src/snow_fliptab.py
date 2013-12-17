@@ -92,6 +92,9 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
-    result=submit_ticket(Dev=options.prd)
+    if options.prd:
+        result=submit_ticket()
+    else:
+        result=submit_ticket(Dev=True)
     print result
 
