@@ -1,100 +1,97 @@
-#!/usr/bin/getenv python
+#!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
+"""
+This script creates requests tickets in ServiceNow
+to be used to create tab flip tickets
+"""
 
 import os
-import sys
-sys.path.insert(0,"/usr/local/etc")
-import setups
-
-import HelpDesk
-import SubmitTicket
-import ConfigParser
-
-from HelpDesk import HelpDesk, HelpDeskException
-from SubmitTicket import SubmitTicket
+import time
 from ConfigParser import ConfigParser
+from optparse import OptionParser
+import socket
+
+import suds.client
+
+
+CONFIG_FILE=os.path.join(os.environ["ENSTORE_DIR"],"etc/servicenow_create_entry.cf")
+DEV_SNOW_PUT_URL="https://fermidev.service-now.com/CreateRequestedItem.do?WSDL"
+""" ServiceNow development URL used to insert requests """
+PRD_SNOW_PUT_URL="https://fermi.service-now.com/CreateRequestedItem.do?WSDL"
+""" ServiceNow production URL used to insert requests """
+DEV_SNOW_GET_URL="https://fermidev.service-now.com/sc_req_item.do?WSDL"
+""" ServiceNow development URL used to retrieve created ticket """
+PRD_SNOW_GET_URL="https://fermi.service-now.com/sc_req_item.do?WSDL"
+""" ServiceNow production URL used to retrieve created ticket """
+ASSIGNMENT_GROUP="Logistics/PREP Support"
+""" Assignment group """
+CAT_ITEM="18c27227042950008638553dd6544037"
+""" Magic categorization item that initiates the workflow """
+CALLER_ID="Dms-enstore System"
+AFFILIATION="Fermilab"
+E_MAIL="ssa-auto@fnal.gov"
+DESCRIPTION="Please run lock on stkensrv4n.fnal.gov to write protect 10 tapes (2 caps)"
+IMPACT = "3 - Moderate/Limited"
+INCIDENT_STATE="New"
+OPENED_BY="Enstore System"
+PRIORITY="3-Medium"
+SEVERITY=""
+SHORT_DESCRIPTION="write protect 10 tapes (flip tabs) in STKEN 8500GS tape library"
+COMMENTS="Please run lock on stkensrv4n.fnal.gov to write protect 10 tapes (2 caps)"
+
+MONITORED_CATEGORIZATION="Storage -- enstore"
+REPORTED_SOURCE="Event Monitoring"
+SERVICE="Infrastructure Event"
+CI_NAME=socket.gethostname().split('.')[0].upper()
+URGENCY="3 - Medium"
 
 def submit_ticket(**kwargs):
-    #
-    # The default values of variuos fields are chosen in such a way that
-    # if executed w/o any arguments this function would create moderate urgency
-    # ticket assigned to "Storage Service" group (that is "us")
-    #
-    lastName = "ENStore"
-    fistName = "System"
-    
-    if os.environ.has_key("SETUP_REMEDY_SOAP") :
-        config    = os.path.join(os.environ['ENSTORE_DIR'],'etc/create_entry.cf')
-        help_desk = HelpDesk.create(config)
-        config_parser = ConfigParser()
-        config_parser.read(config)
-        ciname = kwargs.get('CiName',None)
-        notes  = kwargs.get('Notes',None)
-        
-        submitter = SubmitTicket( 
-            Last_Name      = config_parser.get('create_entry','JohnDoeLast','ENStore'),
-            First_Name     = config_parser.get('create_entry','JohnDoeFirst','System'),
-            Assigned_Group       = kwargs.get('Assigned_Group',config_parser.get('create_entry','assigntogroup','Storage Service')),
-            Service_Type         = kwargs.get('Service_Type','Infrastructure Event'),
-            Impact_Type          = kwargs.get('Impact_Type','3-Moderate/Limited'),
-            Urgency_Type         = kwargs.get('Urgency_Type','3-Medium'),
-            Reported_Source_Type = kwargs.get('Reported_Source_Type','Other'),
-            Action               = kwargs.get('Action','CREATE'),
-            Status_Type          = kwargs.get('Status_Type','New'),
-            Summary              = kwargs.get('Summary',None))
-        
-        submitter.setProduct_Categorization(
-            kwargs.get('Product_Categorization_Tier_1',config_parser.get('create_entry','Product_Categorization_Tier_1','Storage Services')),
-            kwargs.get('Product_Categorization_Tier_2',config_parser.get('create_entry','Product_Categorization_Tier_2','Enstore')),
-            kwargs.get('Product_Categorization_Tier_3',config_parser.get('create_entry','Product_Categorization_Tier_3',None)))
-        submitter.setCIName(ciname)
-        submitter.setNotes(notes)
-        ticket = submitter.submit()
-        return ticket
-    elif  os.environ.has_key("SETUP_SERVICENOW_SOAP") :
-        config    = os.path.join(os.environ['ENSTORE_DIR'],'etc/servicenow_create_entry.cf')
-        help_desk = HelpDesk.create(config)
-        config_parser = ConfigParser()
-        config_parser.read(config)
-        ciname = kwargs.get('CiName',None)
-        notes  = kwargs.get('Notes',None)
-        
-        submitter = SubmitTicket( 
-            Last_Name      = config_parser.get('create_entry','user_last','Dms-enstore'),
-            First_Name     = config_parser.get('create_entry','user_first','System'),
-            Service_Type         = kwargs.get('Service_Type','Storage'),
-            impact               = kwargs.get('Impact_Type','3-Moderate/Limited'),
-            urgency              = kwargs.get('Urgency_Type','3-Medium'),
-            short_description    = kwargs.get('Summary',None),
-            reported_source      = kwargs.get('Reported_Source_Type','Event Monitoring'),
-            assignment_group     = kwargs.get('Assigned_Group',config_parser.get('create_entry','assignment_group','Storage Service')),
-            incident_state       = kwargs.get('Status_Type','New'))
-        
-        submitter.setCategory(kwargs.get('Product_Categorization_Tier_1',
-                                         config_parser.get('create_entry','category','Storage Services')))
-                                                        
-        submitter.setCIName(ciname)
-        submitter.setNotes(notes)
-        submitter.setPriority('3-Medium')
+    config_parser = ConfigParser()
+    config_parser.read(CONFIG_FILE)
+    url = DEV_SNOW_PUT_URL if kwargs.get("Dev") else PRD_SNOW_PUT_URL
+    client = suds.client.Client(url,
+                                username=config_parser.get("HelpDesk","acct","cd-srv-dms-enstore"),
+                                password=config_parser.get("HelpDesk","passwd"))
+    method = client.service.execute
+    result = method(assignment_group           = kwargs.get("Assignment_Group", ASSIGNMENT_GROUP),
+                    cat_item                   = kwargs.get("Cat_Item",CAT_ITEM),
+                    caller_id                  = kwargs.get("Caller_Id",CALLER_ID),
+                    affiliation                = kwargs.get("Affiliation",AFFILIATION),
+                    email                      = kwargs.get("E_mail",E_MAIL),
+                    description                = kwargs.get("Description",DESCRIPTION),
+                    impact                     = kwargs.get("Impact",IMPACT),
+                    incident_state             = kwargs.get("Incident_State",INCIDENT_STATE),
+                    opened_by                  = kwargs.get("Opened_By",OPENED_BY),
+                    opened_at                  = time.strftime("%Y-%m-%d %H:%M:%S",time.gmtime()),
+                    priority                   = kwargs.get("Priority",PRIORITY),
+                    severity                   = kwargs.get("Severity",SEVERITY),
+                    short_description          = kwargs.get("Summary",SHORT_DESCRIPTION),
+                    comments                   = kwargs.get("Comments",COMMENTS),
+                    u_monitored_categorization = kwargs.get("Monitored_Categorization",MONITORED_CATEGORIZATION),
+                    u_reported_source          = kwargs.get("Reported_Source",REPORTED_SOURCE),
+                    u_service                  = kwargs.get("Service",SERVICE),
+                    u_monitored_ci_name        = kwargs.get("CiName",CI_NAME).upper(),
+                    urgency                    = kwargs.get("Urgency",URGENCY)
+                    )
+    url = DEV_SNOW_GET_URL if kwargs.get("Dev") else PRD_SNOW_GET_URL
+    client = suds.client.Client(url,
+                                username=config_parser.get("HelpDesk","acct","cd-srv-dms-enstore"),
+                                password=config_parser.get("HelpDesk","passwd"))
+    result = client.service.get(sys_id=result)
+    return result.number
 
-        ticket = submitter.submit()
-        return ticket
-        
-    else:
-        raise Exception("Neither remedy_soap not servicenow_soap are setup")
-
+def help():
+    return "usage %prog [options]"
 
 if __name__ == "__main__":
-    try:
-        ticket=submit_ticket()
-        sys.stdout.write("Entry created with id= %s\n"%(ticket,))
-        sys.exit(0)
-    except Exception, msg:
-        sys.stderr.write("%s\n"%(str(msg)))
-        sys.exit(1)
-        
+
+    parser = OptionParser(usage=help())
+    parser.add_option("-p", "--prd",action="store_true",
+                      dest="prd",default=False,
+                      help="Create ticket in production system [default: %default] ")
+
+    (options, args) = parser.parse_args()
+
+    result=submit_ticket(Dev=options.prd)
+    print result
+
