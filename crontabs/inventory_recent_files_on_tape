@@ -1,0 +1,1 @@
+10 21 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p recent_files_on_tape $ENSTORE_DIR/src/recent_files_on_tape.py --duration 72 --output-dir `enstore config --print crons html_dir | cut -f 2- -d ":"`/tape_inventory/ > /dev/null 2> /dev/null
