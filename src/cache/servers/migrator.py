@@ -453,16 +453,15 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     def _change_proc_counter(self, increment=0):
         Trace.trace(10, "_change_proc_counter: increment %s"%(increment,))
         if increment:
+            self.proc_lock.acquire()
             # positive or negative
             incd = self.proc_counter.value + increment
             if 0 <= incd <= self.max_proc:
-                self.proc_lock.acquire()
                 try:
                     self.proc_counter.value = incd
                 except Exception, detail:
                     Trace.trace(10, "exception while changing process counter %s"%(detail,))
-                finally:
-                    self.proc_lock.release()
+            self.proc_lock.release()
 
         return self.proc_counter.value
 
