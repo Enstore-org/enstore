@@ -22,6 +22,7 @@ import shutil
 import string
 import qpid.util
 import qpid.messaging
+import Queue
 
 # enstore imports
 import e_errors
@@ -451,15 +452,20 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
     def _change_proc_counter(self, increment=0):
         Trace.trace(10, "_change_proc_counter: increment %s"%(increment,))
-        self.proc_lock.acquire()
         if increment:
             # positive or negative
             incd = self.proc_counter.value + increment
-            if incd >= 0 and incd <= self.max_proc:
-                self.proc_counter.value = incd
-        self.proc_lock.release()
+            if 0 <= incd <= self.max_proc:
+                self.proc_lock.acquire()
+                try:
+                    self.proc_counter.value = incd
+                except Exception, detail:
+                    Trace.trace(10, "exception while changing process counter %s"%(detail,))
+                finally:
+                    self.proc_lock.release()
+
         return self.proc_counter.value
-    
+
     # re-define __setattr__
     # to treat some attributes differently
     def __setattr__(self, attr, val):
@@ -816,10 +822,16 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             request_list.remove(c)
         if len(request_list) == 0:
             Trace.log(e_errors.INFO, "list is empty, nothing to write")
+            status_message = cache.messaging.mw_client.MWRArchived(orig_msg=rq)
+            try:
+                mq.put(status_message)
+            except Exception, e:
+                self.trace.exception("sending reply, exception %s", e)
+                return False
             return True
-            
+
         if write_enabled_counter != len(request_list):
-            Trace.log(DEBUGLOG, "No files will be archived, because some of them or all have been already archived or being archived write_enabled_counter %s request_list lenght %s request id %s"%(write_enabled_counter, len(request_list), rq.correlation_id))
+            Trace.log(DEBUGLOG, "No files will be archived, because some of them or all have been already archived or being archived write_enabled_counter %s request_list length %s request id %s"%(write_enabled_counter, len(request_list), rq.correlation_id))
             Trace.log(e_errors.ERROR, "No files will be archived, because some of them or all are already archived or being archived")
 
             # send reply
@@ -1726,7 +1738,15 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if self.work_dict.has_key(message.correlation_id):
             del(self.work_dict[message.correlation_id])
         proc_counter = self._change_proc_counter(-1)
-        msg = q.get()
+        try:
+            msg = q.get_nowait()
+        except Queue.Empty:
+            Trace.trace(10, "Queue Empty")
+            msg = None
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.handle_error(exc, detail, tb)
+            msg = None
         if msg:
             Trace.trace(10, "SEND REPLY FROM THREAD %s"%(msg,))
             self._send_reply(msg)
@@ -1826,11 +1846,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.trace(10, "Confirmation sending exception")
                 self.trace.exception("sending reply, exception %s", e)
                 return False
-            
+
             # launch worker
             proc_counter = self._change_proc_counter(1)
             try:
-                Trace.trace(10, "handle_request: launching worker")
+                Trace.trace(10, "handle_request: launching worker. Active threads %s"%(threading.activeCount(),))
                 dispatching_worker.run_in_thread(thread_name=None,
 						     function=self.run_mw_request,
 						     args=(message,))
