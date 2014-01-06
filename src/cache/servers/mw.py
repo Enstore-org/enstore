@@ -62,9 +62,10 @@ class MigrationWorker(object):
         '''
         self.shutdown = False
         self.finished = False
+        self.suspended = False
         self.auto_ack = True  # auto ack incoming messages
         self.command_receiver_started = False # start flag for qpid_command receiver
-        
+
         self.work_dict = {}
         self.log = logging.getLogger('log.encache.%s' % name)
         self.trace = logging.getLogger('trace.encache.%s' % name)
@@ -243,6 +244,10 @@ class MigrationWorker(object):
         """
         try:
             while not self.shutdown:
+                if self.suspended:
+                    time.sleep(2)
+                    continue
+
                 # Fetch message from qpid queue
                 message =  self._fetch_message(receiver)
                 if not message:
