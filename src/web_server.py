@@ -164,6 +164,8 @@ class WebServer:
                                         txt = txt + "   Allow from .fnal.gov\n"
                                         txt = txt + "   Allow from  137.138\n"
                                         txt = txt + "   Allow from  131.169\n"
+                                        txt = txt + "   Allow from  131.225.73\n"
+                                        txt = txt + "   Allow from  131.225.74\n"
                                     else:
                                         txt = txt + "   Allow from "+self.domain_name+"\n"
                                     for e in ["PYTHONINC", "PYTHONPATH", "PYTHONLIB", "PATH"]:
