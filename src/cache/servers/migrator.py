@@ -1751,8 +1751,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             self._send_reply(msg)
         q.close()
         self.proc_statuses.remove(status_dict)
+        self.suspended = False
         return rc
-    
+
     def process_mw_request(self, message, queue, status_dict):
         Trace.trace(10, "process_mw_request: %s"%(message,))
         request_type = message.properties["en_type"]
@@ -1803,6 +1804,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if proc_counter >= self.max_proc:
             # do not process request
             Trace.log(e_errors.INFO, "Migrator is full. Will not process request %s"%(message.correlation_id,))
+            self.suspended = True
             content = {"migrator_status":
                        mt.FAILED,
                        "detail": "RESEND",
