@@ -4067,11 +4067,23 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # Initialize return list
                     for lc in ticket['parameters']:
                        rec = info_c.find_file_by_location(ticket['vc']['external_label'], lc)
+                       Trace.trace(24, "find_file_by_location returned %s"%(rec,))
                        if rec['status'][0] != e_errors.OK:
                            self.transfer_failed(file_list['status'][0], file_list['status'][1])
                            return
-                       ticket['return_file_list'][lc] = e_errors.UNKNOWN
-                       file_info[lc] = rec
+                       if 'file_list' in rec:
+                           # This happens when there is more than one entry for the same location,
+                           # which, in general is wrong.
+                           # Send alarm but continue
+                           Trace.alarm(e_errors.WARNING,"Possibly the same location: %s %s"%
+                                       (ticket['vc']['external_label'], rec['file_list']))
+
+                           for entry in rec['file_list']:
+                               ticket['return_file_list'][entry['location_cookie']] = e_errors.UNKNOWN
+                               file_info[entry['location_cookie']] = entry
+                       else:
+                           ticket['return_file_list'][lc] = e_errors.UNKNOWN
+                           file_info[lc] = rec
                 else:
                     # get file list for the whole tape from file clerk
                     try:
