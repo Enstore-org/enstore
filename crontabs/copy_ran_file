@@ -1,4 +1,2 @@
-27,57 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p copy_ran_file $ENSTORE_DIR/sbin/copy_ran_file 1 alsofirstlast > /dev/null 2> /dev/null
-
-
+27,57 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p volume_audit python $ENSTORE_DIR/sbin/volume_audit.py > /dev/null 2> /dev/null
 30 2 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_failed_copies $ENSTORE_DIR/sbin/make_failed_copies > /dev/null 2> /dev/null
