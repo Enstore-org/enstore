@@ -88,10 +88,11 @@ export CVS_RSH=ssh
 #export ENSSH=/usr/bin/ssh
 #export ENSCP=/usr/bin/scp
 
-export ENSTORE_MAIL=enstore-auto@fnal.gov
-export ENSTORE_CONFIG_PORT=7500
+# These vary between system installations at fnal:
 export ENSTORE_CONFIG_HOST=stkensrv2n.fnal.gov
+export ENSTORE_CONFIG_PORT=7500
 export ENSTORE_CONFIG_FILE=${ENSTORE_CONFIG_DIR}/stk.conf
+export ENSTORE_MAIL=enstore-auto@fnal.gov
 
 # .end definitions
 
