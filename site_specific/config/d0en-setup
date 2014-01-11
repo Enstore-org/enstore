@@ -1,3 +1,19 @@
+# source this file to set enstore environment
+
+# Function definitions
+
+# add directory to path only once thus this file can be sourced multiple times
+pathmunge () { 
+         if ! [[ $PATH =~ (^|:)$1($|:) ]] ; then 
+             if [ "$2" = "after" ] ; then
+                PATH=$PATH:$1;
+             else
+                PATH=$1:$PATH;
+             fi
+         fi
+}
+
+# where is enstore code?
 rpm -q enstore > /dev/null
 if [ $? -eq 0 ]; then 
 	ENSTORE_DIR=`rpm -ql enstore | head -1`
@@ -5,52 +21,82 @@ else
 	echo "Enstore is not installed"
 	exit 1
 fi
-
-PYTHON_DIR=$ENSTORE_DIR/Python
-FTT_DIR=$ENSTORE_DIR/FTT
-ENSTORE_HOME=/home/enstore
-ENSTORE_OUT=/var/log/enstore
-
 export ENSTORE_DIR
-export PYTHON_DIR
-export FTT_DIR
-export ENSTORE_HOME
-export ENSTORE_OUT
-SWIG_DIR=$ENSTORE_DIR/SWIG
-export SWIG_DIR
-export SWIG_LIB=$SWIG_DIR/swig_lib
-PATH=$SWIG_DIR:$PATH
 
-PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$ENSTORE_DIR/tools:$PATH
+# Enstore site specific configuration files
+# These files come from enstore-config git repository
+# It may be referenced as default location at /usr/local/etc/setups.sh
+export ENSTORE_HOME=/home/enstore
+export HOME=${HOME:=${ENSTORE_HOME}} # set if does not exist such as for cgi
+export ENSTORE_CONFIG_DIR=${ENSTORE_HOME}/site_specific/config/
+
+# Directories for enstore submodules and tools
+export PYTHON_DIR=$ENSTORE_DIR/Python
+export FTT_DIR=$ENSTORE_DIR/FTT
+
+export SWIG_DIR=$ENSTORE_DIR/SWIG
+export SWIG_LIB=$SWIG_DIR/swig_lib
+export QPID_DIR=$ENSTORE_DIR/qpid
+
+# These use absolute paths:
+export ENSTORE_OUT=/var/log/enstore
+export FARMLETS_DIR=/usr/local/etc/farmlets
+
+#-----------
+# build PATH:
+
+pathmunge $SWIG_DIR before
+pathmunge $QPID_DIR/bin before
+pathmunge $ENSTORE_DIR/tools before
+pathmunge $ENSTORE_DIR/bin before
+pathmunge $ENSTORE_DIR/sbin before
+
 rpm -q pnfs > /dev/null
 if [ $? -eq 0 ]; then
         p_d=`rpm -ql pnfs | grep bin | head -1`
         PNFS_DIR=`dirname $p_d`
-        PATH=$PATH:$PNFS_DIR/tools
+	pathmunge $PNFS_DIR/tools after
         export PNFS_DIR
 fi
 
-#CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc; export CVSROOT
-#unset CVS_RSH 2>//dev/null;
+pathmunge $PYTHON_DIR/bin before
 
-PYTHONINC=`ls -d $PYTHON_DIR/include/python*`; export PYTHONINC
-PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*`;export PYTHONLIB
-PATH=$PYTHON_DIR/bin:$PATH
-PYTHONPATH=$ENSTORE_DIR:$ENSTORE_DIR/src:$ENSTORE_DIR/modules:$ENSTORE_DIR/HTMLgen:$ENSTORE_DIR/PyGreSQL; export PYTHONPATH
-PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
+# .end build path
+#----------------
+
+# definitions for python installed in enstore subtree 
+export PYTHONINC=`ls -d $PYTHON_DIR/include/python*`
+export PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*`
+export PYTHONPATH=$ENSTORE_DIR:$ENSTORE_DIR/src:$ENSTORE_DIR/modules:$ENSTORE_DIR/HTMLgen:$ENSTORE_DIR/PyGreSQL
+export PYTHONUNBUFFERED="x";
+
+export GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly
+
+# These urls are used to configure git to point to central enstore repositories at FNAL.
+#   ENSTORE_GIT - for code
+#   ENSTORE_CONF_GIT - site specific configuration
+# Once repository configured, you operate through remote alias and do not need this anymore
+export ENSTORE_GIT=ssh://p-enstore@cdgit.fnal.gov/cvs/projects
+export ENSTORE_CONF_GIT=ssh://p-enstore-config@cdgit.fnal.gov/cvs/projects/enstore-config
+
+# Keep this around while mod_config operates with configuration in CVS
+export CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc
+export CVS_RSH=ssh
 
 # if using ssh for enstore node communications for discribution, upgade, and maintenance 
 # uncomment the following lines
 #export ENSSH=/usr/bin/ssh
 #export ENSCP=/usr/bin/scp
 
-
-GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
-
-$ENSTORE_DIR/external_distr/update_sym_links.sh -c
-
-export ENSTORE_CONFIG_HOST=d0ensrv2.fnal.gov
+# These vary between system installations at fnal:
+export ENSTORE_CONFIG_HOST=d0ensrv2n.fnal.gov
 export ENSTORE_CONFIG_PORT=7500
-export ENSTORE_CONFIG_FILE=/home/enstore/enstore/etc/sam.conf
+export ENSTORE_CONFIG_FILE=${ENSTORE_CONFIG_DIR}/sam.conf
 export ENSTORE_MAIL=enstore-auto@fnal.gov
-export FARMLETS_DIR=/usr/local/etc/farmlets
+
+# .end definitions
+
+# Do we really need to run this on stken when setting environment??? 
+#
+# Execute:
+$ENSTORE_DIR/external_distr/update_sym_links.sh -c
