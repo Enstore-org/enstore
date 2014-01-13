@@ -96,6 +96,7 @@ export ENSTORE_MAIL=enstore-auto@fnal.gov
 
 # .end definitions
 
-# Do we really need to run this when setting environment???
+# Do we really need to run this on stken when setting environment??? 
+#
 # Execute:
 $ENSTORE_DIR/external_distr/update_sym_links.sh -c
