@@ -26,9 +26,16 @@ export ENSTORE_DIR
 # Enstore site specific configuration files
 # These files come from enstore-config git repository
 # It may be referenced as default location at /usr/local/etc/setups.sh
+
+# "set if does not exist such as for cgi"
+
 export ENSTORE_HOME=$(getent passwd enstore | cut -d: -f 6)
-export HOME=${HOME:-${ENSTORE_HOME}} # set if does not exist such as for cgi
-export ENSTORE_CONFIG_DIR=${ENSTORE_HOME}/site_specific/config/
+# Questions:
+# 1) If home is undefined, and the user is not enstore, we force HOME to be /home/enstore
+# 2) The construct a=${a:=$b} does double assignement to a .
+export HOME=${HOME:=${ENSTORE_HOME}} # set if does not exist such as for cgi
+
+export ENSTORE_CONFIG_DIR=${ENSTORE_HOME}/site_specific/config
 
 # Directories for enstore submodules and tools
 export PYTHON_DIR=$ENSTORE_DIR/Python
