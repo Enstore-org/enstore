@@ -65,7 +65,7 @@ corresponding server when generating the SAAG page, and will not use
 </tr>
 </table>
 
-<h2>Discipline</h2>
+<h2>Discipline -restrict requests coming from certain (set of) host(s)</h2>
 <table border="1" cellpadding="4" cellspacing="5" bgcolor="#DFF0FF">
 <tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
 </th>
@@ -76,8 +76,25 @@ corresponding server when generating the SAAG page, and will not use
 <th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
 </th>
 </tr>
-<tr><td><a NAME="discipline">discipline</a></td><td>restrict requests
-	      coming from certain (set of) host(s)</td><td>Optional</td><td>None</td><tr>
+<tr><td><a NAME="discipline">discipline</a></td>
+<td>
+<br>library_manager_1: # as described in configuration
+<br>   {1: # first entry
+<br>       'host': host1, # rule applies to this host (regex) 
+<br>       'function': discipline_function, # restrict_host_access
+<br>       'args':[host1, # rule applies to this host
+<br>               (max_allowed, # maximal concurrent requests
+<br>               addtl_read,   # additional reads for bound volumes
+<br>               addtl_write)  # additional writes for bound volumes
+<br>               ],
+<br>       'action': action}, # ignore, noread, nowrite
+<br>    2: {....
+<br>    }
+<br>library_manager_2:
+<br>   { ...}
+
+</td>
+<td>Optional</td><td>None</td>
 
 </tr>
 </table>
