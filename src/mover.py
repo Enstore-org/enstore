@@ -7134,6 +7134,36 @@ class DiskMover(Mover):
             # make this better!
             # When file gets staged its cache_status must change as
             # PURGED -> STAGING_REQUESTED -> STAGING -> CACHED
+            if cache_status == file_cache_status.CacheStatus.PURGING_REQUESTED:
+                # There were lots of cases when files do not get purged leaving them
+                # in this intermediate state and preventing from being transferred immediately.
+                info = self.fcc.bfid_info(self.file_info['bfid'])
+
+                # Check if file is still in cache:
+                if os.path.exists(info['cache_location']):
+                    Trace.log(DEBUG_LOG, "changing cache_status for %s to %s"%(self.file_info['bfid'],
+                                                                               file_cache_status.CacheStatus.CACHED))
+                    rc = set_cache_status.set_cache_status(self.fcc,
+                                                           [{'bfid': self.file_info['bfid'],
+                                                             'cache_status': file_cache_status.CacheStatus.CACHED,
+                                                             'archive_status': None,
+                                                             'cache_location': None}])
+                    rv = info['cache_location']
+                else:
+                    Trace.log(DEBUG_LOG, "changing cache_status for %s to %s"%(self.file_info['bfid'],
+                                                                               file_cache_status.CacheStatus.PURGED))                    
+                    rc = set_cache_status.set_cache_status(self.fcc,
+                                                           [{'bfid': self.file_info['bfid'],
+                                                             'cache_status': file_cache_status.CacheStatus.PURGED,
+                                                             'archive_status': None,
+                                                             'cache_location': None}])
+                    rv = None
+                Trace.trace(10, "set_cache_status: set_cache_status 1 returned %s"%(rc,))
+                if not e_errors.is_ok(rc['status']):
+                    Trace.log(e_errors.ERROR, "Error setting cache status for %s: %s"%(self.file_info['bfid'],rc))
+                    return None
+                return rv
+
             file_cache_location = None
             loop_counter = 1L
             while not hasattr(self,'too_long_in_state_sent'):
