@@ -68,7 +68,7 @@ GROUP="group by library"
 
 def print_common_header(fp):
     command_name = os.path.basename(sys.argv[0])
-    
+
     fp.write("Date this listing was generated: %s\n" % \
         (time.ctime(time.time())))
     fp.write("Brought to You by: %s\n\n" % (command_name,))
@@ -102,8 +102,8 @@ def prepare_query1(query,wpa_excluded_libraries):
 
 FILE_NAME="/tmp/WRITE_PROTECTION_ALERT_NEW"
 
-if __name__ == "__main__" :
-    
+
+def do_work(file_name):
     csc       = configuration_client.ConfigurationClient()
     inventory = csc.get('inventory',timeout=15,retry=3)
     inventory_rcp_dir   = inventory.get('inventory_rcp_dir',None)
@@ -119,9 +119,9 @@ if __name__ == "__main__" :
                dbname= enstoredb.get('dbname', "enstoredb"),
                port  = enstoredb.get('db_port', 5432),
                user  = enstoredb.get('dbuser_reader', "enstore_reader"))
-    fp = open(FILE_NAME,"w");
+    fp = open(file_name,"w");
 
-    #get should 
+    #get should
     q=prepare_query(SHOULD,wpa_states,wpa_media_types,wpa_excluded_libraries)
     q=q+" and "+NOT_SHELF + " " + GROUP
     should_library_counts={}
@@ -165,11 +165,11 @@ if __name__ == "__main__" :
          fp.write(wpa_format % wpa_values)
     fp.close()
     db.close()
-    
-    if inventory_rcp_dir:
-        #os.system("enrcp %s %s" % (FILE_NAME, inventory_rcp_dir,))
-        os.system("scp %s %s" % (FILE_NAME, inventory_rcp_dir,))
 
-    
- 
-    
+    #if inventory_rcp_dir:
+    #    os.system("enrcp %s %s" % (FILE_NAME, inventory_rcp_dir,))
+
+if __name__ == "__main__" :
+    do_work(FILE_NAME)
+
+

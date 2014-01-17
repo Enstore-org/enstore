@@ -22,6 +22,7 @@ import e_errors
 import quota as equota
 import accounting
 import dbaccess
+import write_protection_alert
 
 #Multiplier to determine if the actual size of the tape is close enough
 # to the the stated capacity of that media type.
@@ -609,28 +610,11 @@ def print_volumes_defined_footer(fp):
     fp.write("</pre></html>\n")
     pass
 
-def print_write_protect_alert_header(fp):
-    print_common_header(fp)
-
-    wpa_format = "%-16s %-12s %-16s %-16s %-3s\n\n"
-    wpa_titles = ("volume", "state", "library", "media type", "wp")
-    fp.write(wpa_format % wpa_titles)
-
 #n_vols: total number of volumes
 #n_rf_vols: number of volumes that should be write protected per library
 #n_not_rp_vols: number of volumes that are not write protected, but should be per library
 #n_rp_vols: number of volumes that are write protected and are write protected per library
 #n_vols_lib: number of volumes per library
-def print_write_protect_alert_footer(fp, n_vols, n_rf_vols, n_not_rp_vols,
-                                     n_rp_vols, n_vols_lib):
-    fp.write("\n\n")
-    fp.write("Total: %5d\n"%(n_vols))
-    for i in n_rf_vols.keys():
-        fp.write("\n%s:\n----------------\n"%(i))
-        wpa_format = "  Total: %5d\n Should: %5d\n   Done: %5d\nNot yet: %5d\n  Ratio: %5.2f%%\n"
-        wpa_values = (n_vols_lib[i], n_rf_vols[i], n_rp_vols[i],
-                      n_not_rp_vols[i], float(n_rp_vols[i])*100/n_rf_vols[i])
-        fp.write(wpa_format % wpa_values)
 
 def print_too_many_mounts_header(fp):
     print_common_header(fp)
@@ -944,7 +928,6 @@ def inventory(output_dir, cache_dir):
     csc = configuration_client.ConfigurationClient()
     invinfo = csc.get('inventory')
     wpa_states = invinfo.get('wpa_states', [])
-    #wpa_media_types = invinfo.get('wpa_media_types', [])
     wpa_excluded_media_types = ['null', 'disk']
     wpa_excluded_libraries = invinfo.get('wpa_excluded_libraries', [])
     dbinfo = csc.get('database')
@@ -1003,11 +986,15 @@ def inventory(output_dir, cache_dir):
     else:
         fd_output = 0
 
+    #
+    # generate WRITE_PROTECTION_ALERT
+    #
+    write_protection_alert.do_work(write_protect_alert_file)
+
     # open file handles for statistics
     la_file = open(last_access_file, "w")
     vs_file = open(volume_size_file, "w")
     vd_file = open(volumes_defined_file, "w")  #html; not text
-    wpa_file = open(write_protect_alert_file, "w")
     tm_file = open(volumes_too_many_mounts_file, "w")
     de_file = open(declaration_error, "w")
     mv_file = open(migrated_volumes, "w")
@@ -1020,7 +1007,6 @@ def inventory(output_dir, cache_dir):
     print_last_access_header(la_file)
     print_volume_size_header(vs_file)
     print_volumes_defined_header(vd_file)
-    print_write_protect_alert_header(wpa_file)
     print_too_many_mounts_header(tm_file)
     print_declaration_error_header(de_file)
     print_migrated_volumes_header(mv_file)
@@ -1028,7 +1014,6 @@ def inventory(output_dir, cache_dir):
     print_recyclable_volumes_header(rc_file)
 
     #
-    wpa_format = "%-16s %-12s %-16s %-16s %-3s\n"
 
     #Redefine de_format for printing out the lines.
     de_format = "%6d\t%12s\t%12d\t%12d\t%12s\t%12s\t%s\n"
@@ -1431,7 +1416,7 @@ def inventory(output_dir, cache_dir):
         else:
             wp = '---'
 
-        # write protect alert
+
         if vv['system_inhibit'][1] in wpa_states and \
                vv['media_type'] not in wpa_excluded_media_types and \
                not vv['library'] in wpa_excluded_libraries and \
@@ -1447,11 +1432,12 @@ def inventory(output_dir, cache_dir):
             if wp != 'ON':
                 wpa_values = (vv['external_label'], vv['system_inhibit'][1],
                               vv['library'], vv['media_type'], wp)
-                wpa_file.write(wpa_format % wpa_values)
                 n_not_rp_vols[vv['library']] = \
                                        n_not_rp_vols.get(vv['library'], 0) + 1
             else:
                 n_rp_vols[vv['library']] = n_rp_vols.get(vv['library'], 0) + 1
+
+
 
         #volumes defined
         vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %-3s %6s %-40s\n" % \
@@ -1490,8 +1476,6 @@ def inventory(output_dir, cache_dir):
     print_last_access_footer(la_file)
     print_volume_size_footer(vs_file)
     print_volumes_defined_footer(vd_file)
-    print_write_protect_alert_footer(wpa_file, n_vols, n_rf_vols,
-                                     n_not_rp_vols, n_rp_vols, n_vols_lib)
     print_too_many_mounts_footer(tm_file)
     print_migrated_volumes_footer(mv_file, n_migrated)
     print_duplicated_volumes_footer(dv_file, n_duplicated)
@@ -1503,7 +1487,6 @@ def inventory(output_dir, cache_dir):
     la_file.close()
     vs_file.close()
     vd_file.close()
-    wpa_file.close()
     tm_file.close()
     de_file.close()
     mv_file.close()
