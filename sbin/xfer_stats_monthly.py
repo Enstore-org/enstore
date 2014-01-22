@@ -357,7 +357,7 @@ def plot_bpd():
 def plot_bytes():
     #
     # This function plots bytes written/deleted to/from Enstore base on data in file and volume tables
-    # from *ensrv0 postgress databases damn slow
+    # from *ensrv0 postgres databases damn slow
     #
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
     csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
@@ -481,7 +481,7 @@ def plot_bytes():
 def plot_tape_bytes():
     #
     # This function plots bytes written/deleted to/from Enstore base on data in file and volume tables
-    # from *ensrv0 postgress databases damn slow
+    # from *ensrv0 postgres databases damn slow
     #
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
     csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
@@ -595,9 +595,9 @@ if __name__ == "__main__":
 
 
 
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.jpg  %s:%s/bytes_statistics/"%(html_host,html_dir)
+    cmd = "$ENSTORE_DIR/sbin/enrcp *.jpg  %s:%s/bytes_statistics/"%(html_host,html_dir)
     os.system(cmd)
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps   %s:%s/bytes_statistics/"%(html_host,html_dir)
+    cmd = "$ENSTORE_DIR/sbin/enrcp *.ps   %s:%s/bytes_statistics/"%(html_host,html_dir)
     os.system(cmd)
 
 

@@ -6,7 +6,7 @@
 #
 #  public | xfer_by_day                        | table | enstore
 #  public | xfer_by_month                      | table | enstore
-# 
+#
 ###############################################################################
 import sys
 import os
@@ -45,9 +45,9 @@ def get_min_max(h) :
     y_max   =  0
     i_max = 0
     y_min   = 1.e+32
-    i_min = 0 
+    i_min = 0
     for i in range(h.n_bins()) :
-        if (  h.get_bin_content(i) > y_max ) : 
+        if (  h.get_bin_content(i) > y_max ) :
             y_max = h.get_bin_content(i)
             i_max = i
         if ( h.get_bin_content(i) < y_min  and  h.get_bin_content(i) > 0 ) :
@@ -60,7 +60,7 @@ def get_sum(h) :
     for i in range(h.n_bins()) :
         sum = sum + h.get_bin_content(i)
     return sum
-              
+
 exitmutexes=[]
 
 def fill_histograms(i,server_name,server_port,hlist,s1,s2):
@@ -186,7 +186,7 @@ def plot_bpd():
 
     t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
     t_day = get_sum(tmp)
-        
+
     tmp.set_line_color(1)
 
     delta =  tmp.binarray[i_day_max]*0.05
@@ -206,7 +206,7 @@ def plot_bpd():
 
     t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
     tmp.add_text("set label \"Total Transferred (during 30 days):  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
-    
+
     tmp.set_line_color(1)
     tmp.set_marker_type("impulses")
     iplotter.plot()
@@ -222,11 +222,11 @@ def plot_bytes():
     servers=[]
     servers=csc.get('known_config_servers')
     histograms=[]
-    
+
     now_time    = time.time()
     t           = time.ctime(time.time())
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
-    
+
     now_time    = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
     start_time  = now_time-32*3600*24
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(start_time)
@@ -251,7 +251,7 @@ def plot_bytes():
     iplotter1=histogram.Plotter("integrated_deletes_total_by_day","Integrated Total TBytes deleted per day from Enstore")
 
     SELECT_DELETED_BYTES ="select to_char(state.time, 'YYYY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' and state.time between '%s' and '%s' group by state.time order by state.time desc"%(time.strftime("%Y-%m-%d",time.localtime(start_time)), time.strftime("%Y-%m-%d",time.localtime(now_time)))
-    
+
     SELECT_WRITTEN_BYTES ="select substr(bfid,5,10), size from file, volume  where file.volume = volume.id and not label like '%.deleted' and media_type != 'null' and substr(bfid,5,10)::bigint between "+str(start_time)+" and "+str(now_time)
 
 
@@ -346,7 +346,7 @@ def plot_bytes():
     plotters=[]
     plotters.append(plotter)
     plotters.append(plotter1)
-    
+
     iplotters=[]
     iplotters.append(iplotter)
     iplotters.append(iplotter1)
@@ -361,16 +361,16 @@ def plot_bytes():
         t_day = get_sum(tmp)
 
         delta =  tmp.binarray[i_day_max]*0.05
-        
+
         tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_max]+0.5,
                                                                                              time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
                                                                                              tmp.binarray[i_day_max]+delta,))
-        
+
 
         tmp.add_text("set label \"Total :  %5d TB (in 30 days) \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
         tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
-       
+
         tmp.set_marker_type("impulses")
         p.plot()
 
@@ -381,7 +381,7 @@ def plot_bytes():
 
         t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
         tmp.add_text("set label \"Total (in 30 days) :  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
-        
+
         tmp.set_marker_type("impulses")
         p.plot()
 
@@ -419,7 +419,7 @@ if __name__ == "__main__":
         html_dir=inq_d["html_file"]
     else:
         html_dir = enstore_files.default_dir
-    
+
 
     html_host=None
     if inq_d.has_key("host"):
@@ -427,9 +427,9 @@ if __name__ == "__main__":
     else:
         html_host = enstore_files.default_dir
 
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.jpg  %s:%s/bytes_statistics/"%(html_host,html_dir)
+    cmd = "$ENSTORE_DIR/sbin/enrcp *.jpg  %s:%s/bytes_statistics/"%(html_host,html_dir)
     os.system(cmd)
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps   %s:%s/bytes_statistics/"%(html_host,html_dir)
+    cmd = "$ENSTORE_DIR/sbin/enrcp *.ps   %s:%s/bytes_statistics/"%(html_host,html_dir)
     os.system(cmd)
 
     sys.exit(0)

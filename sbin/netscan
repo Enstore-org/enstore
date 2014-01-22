@@ -759,7 +759,6 @@ if (( REBOOT && SERVER )); then
 fi
 
 # check these files
-right_file $ENSTORE_DIR/sbin/gettkt			/home/enstore/gettkt
 right_file $ENSTORE_DIR/etc/root.k5login		/root/.k5login		0600
 right_file $ENSTORE_DIR/etc/$gang.enstore.k5login	/home/enstore/.k5login	0600
 right_file $ENSTORE_DIR/etc/$gang.hosts.allow		/etc/hosts.allow

@@ -59,7 +59,7 @@ case $action in
      ;;
   remove)
      work=$HOME/isa-tools/adic_purge_volumes_work
-     . $HOME/gettkt
+     . $ENSTORE_DIR/sbin/gettkt
      ;;
   *) usage
      exit 1

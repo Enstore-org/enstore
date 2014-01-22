@@ -7,7 +7,7 @@
 ###############################################################################
 
 ###############################################################################
-# 
+#
 # This script monitors files in dcache
 #
 ###############################################################################
@@ -22,6 +22,7 @@ import os
 import re
 import pnfsidparser
 
+import configuration_client
 
 exitmutexes=[]
 
@@ -55,7 +56,7 @@ def is_volatile(l):
 def check_layer_4(l):
     if (len(l) == 0 ) : return False
     return True
-    
+
 def check_volatile_files(db_name):
     #
     # extract entries from volatile files
@@ -112,7 +113,7 @@ def insert_into_volatile_files(db_name):
         start_time=now_time-3600*26
     str_now_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))
     str_start_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(start_time))
-    
+
     sql_txt = "select to_char(date,'YYYY-MM-DD HH24:MI:SS'),encode(pnfsid,'hex'),pnfsid from pnfs "+\
               " where "+\
               " (date>'%s' "%(str_start_time,)+\
@@ -128,7 +129,7 @@ def insert_into_volatile_files(db_name):
         p = str(row[1]);
         pnfsid_string=pnfsidparser.parse_id(p)
         is_file=0
-        try: 
+        try:
             f=open(os.path.join("/pnfs/fs/usr/%s"%(db_name,), ".(showid)(%s)"%(pnfsid_string,)));
         except IOError:
             print 'cannot open', os.path.join("/pnfs/fs/usr/%s"%(db_name,), ".(showid)(%s)"%(pnfsid_string,))
@@ -139,7 +140,7 @@ def insert_into_volatile_files(db_name):
                     is_file=1
             f.close()
         if ( is_file == 1 ) :
-            try: 
+            try:
                 p=pnfs.Pnfs(pnfsid_string,"/pnfs/fs/usr/%s"%(db_name,));
                 #print pnfsid_string,p.file_size,p.pnfsFilename, p.filename, p.directory
                 l1=p.readlayer(1)
@@ -152,7 +153,7 @@ def insert_into_volatile_files(db_name):
                     if not check_layer_1(l1) :
                         l1_str="n"
                     if not check_layer_2(l2) :
-                        l2_str="n" 
+                        l2_str="n"
                     if not check_layer_4(l4) :
                         l4_str="n"
                     if ( check_layer_2(l2) ) :
@@ -172,7 +173,7 @@ def insert_into_volatile_files(db_name):
 def prepare_html(db_name):
     db = pg.DB(db_name,user="enstore");
     #
-    # check for any bad files 
+    # check for any bad files
     #
     now_time       = time.time()
     stmt="select count(*) from volatile_files where layer2='n' and unix_date<%d"%(int(now_time-3600))
@@ -190,8 +191,7 @@ def prepare_html(db_name):
         os.system("rm -f %s"%fname);
         cmd = "psql  %s  -U enstore -o %s -c \"%s;\""%(db_name,fname,sql_txt)
         os.system(cmd)
-        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
-#        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
+        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /tmp; $ENSTORE_DIR/sbin/enrcp %s %s/\'"%(fname, destination)
         os.system(cmd)
     delta_time     = 25*3600
     if ( db_name == "minos" ) :
@@ -203,20 +203,19 @@ def prepare_html(db_name):
         if not row:
             continue
         count1=int(row[0])
-    if ( count1!=0 ) : 
+    if ( count1!=0 ) :
         fname="%s.txt"%(db_name,)
         sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='y' and unix_date<%d  order by date asc"%(int(now_time-delta_time),)
         cmd = "psql  %s -U enstore -o %s -c \"%s;\""%(db_name,fname,sql_txt)
         os.system(cmd)
-        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
-#        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
+        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /tmp; $ENSTORE_DIR/sbin/enrcp %s %s/\'"%(fname, destination)
         os.system(cmd)
     db.close()
     if (count !=0 or count1 !=0):
         return True
     else:
         return False
-            
+
 def do_work(i,db_name) :
     rc=False
     try:
@@ -238,11 +237,11 @@ def do_work(i,db_name) :
 def do_mail(db_name) :
     db = pg.DB(db_name,user="enstore");
     #
-    # check for any bad files 
+    # check for any bad files
     #
     now_time       = int(time.time());
     then_time      = int(now_time-24*3600)
-    
+
     stmt="select count(*) from volatile_files where layer2='n' and (unix_date<%d and unix_date>%d)"%(int(now_time-3600),then_time)
     if ( db_name == "netflow" ) :
         stmt="select count(*) from volatile_files where layer2='n' and (unix_date<%d and unix_date>%d)"%(int(now_time-12*3600),then_time)
@@ -260,14 +259,14 @@ def do_mail(db_name) :
         os.system("rm -f %s"%fname);
         cmd = "psql  %s  -U enstore -o %s -c \"%s;\""%(db_name,fname,sql_txt)
         os.system(cmd)
-        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
+        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /tmp; $ENSTORE_DIR/sbin/enrcp %s %s/\'"%(fname, destination)
         os.system(cmd)
     now_time=int(now_time-24*3600)
     then_time=int(now_time-24*3600)
     if (db_name=="minos") :
         now_time=int(now_time-26*3600)
         then_time=int(now_time-26*3600)
-        
+
     res=db.query("select count(*) from volatile_files where layer2='y' and (unix_date<%d and unix_date>%d)"%(now_time,then_time))
     count1=0
     for row in res.getresult():
@@ -275,12 +274,12 @@ def do_mail(db_name) :
             continue
         count1=int(row[0])
 
-    if ( count1!=0 ) : 
+    if ( count1!=0 ) :
         fname="%s.txt"%(db_name,)
         sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='y' and (unix_date<%d and unix_date>%d) order by date asc"%(now_time,then_time)
         cmd = "psql  %s -U enstore -o %s -c \"%s;\""%(db_name,fname,sql_txt)
         os.system(cmd)
-        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
+        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /tmp; $ENSTORE_DIR/sbin/enrcp %s %s/\'"%(fname, destination)
         os.system(cmd)
     db.close()
     if (count !=0 or count1 !=0):
@@ -301,7 +300,13 @@ if __name__ == '__main__':
         dbs.append(line[:-1])
     out.close()
 
-    cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp;  source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\"\'"
+    config = configuration_client.ConfigurationClient()
+    crons_config = config.get('crons')
+    destination_host = crons_config['web_node']
+    destination_dir = os.path.join(crons_config['html_dir'], 'dcache_monitor')
+    destination = ':'.join((destination_host, destination_dir))
+
+    cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /tmp; $ENSTORE_DIR/sbin/enrsh {} \"rm {}/*.txt\"\'".format(destination_host, destination_dir)
     os.system(cmd)
     yes_mail=False
 #    for db_name in ['minos']:
@@ -319,11 +324,11 @@ if __name__ == '__main__':
         rc = False
         try:
             rc = do_mail(db_name);
-            if ( rc ) : 
+            if ( rc ) :
                 yes_mail = True
         except:
             print "Failed in do_mail for database ",db_name
-            pass 
+            pass
 
     if ( yes_mail ) :
         os.system("cat *.txt > mail.txt");
@@ -332,5 +337,3 @@ if __name__ == '__main__':
 
 
 #    for db_name in ['eagle', 'exp-db']:
-
-

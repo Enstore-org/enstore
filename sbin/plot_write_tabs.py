@@ -36,10 +36,10 @@ def get_stats(host, port, start_date=None, finish_date=None):
         "select to_char(date, %s),total, should, not_yet, done from write_protect_summary\
         order by date desc;" enstore'
         pipeObj = popen2.Popen3(query_cmd%(host, port, host, date_fmt), 0, 0)
-        
-        
+
+
     if pipeObj is None:
-        sys.exit(1) 
+        sys.exit(1)
     stat = pipeObj.wait()
     result = pipeObj.fromchild.readlines()  # result has returned string
 
@@ -64,7 +64,7 @@ def make_plot_file(host):
     return s,n,d
 
 def make_plot(host, should, not_done, done):
-   t = time.ctime(time.time()) 
+   t = time.ctime(time.time())
    f = open("write_tabs_%s.gnuplot"%(host,),'w')
    f.write('set terminal postscript color solid\n')
    f.write('set output "write_tabs_%s.ps"\n' % (host,))
@@ -79,7 +79,7 @@ def make_plot(host, should, not_done, done):
    f.write('set format x "%y-%m-%d"\n')
    f.write('set ylabel "# tapes that should have write tabs ON"\n')
    f.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (t,))
-   
+
    f.write('set label "Should %s, Done %s(%3.1f%%), Not Done %s." at graph .05,.90\n' % (should, done, done*100./should, not_done))
 
    #f.write('plot "write_tabs_%s" using 1:10 t "ON" w impulses lw %s 3 1 using 1:8 t "OFF" w impulses lw %s 1 1\n'%
@@ -87,17 +87,17 @@ def make_plot(host, should, not_done, done):
    f.write('plot "write_tabs_%s" using 1:6 t "ON" w impulses lw %s lt 2, "write_tabs_%s" using 1:5 t "OFF" w impulses lw %s lt 1\n'%
            (host, 20, host, 20))
    #f.write('plot "write_tabs_%s" using 1:10 t "ON" w impulses lw %s 3 1\n'%(host, 20))
-   
+
    f.close()
    for cmd in '/usr/bin/gnuplot write_tabs_%s.gnuplot' % (host,),\
            '/usr/X11R6/bin/convert -rotate 90 -modulate 80 write_tabs_%s.ps write_tabs_%s.jpg' % (host,host),\
            '/usr/X11R6/bin/convert -rotate 90 -geometry 120x120 -modulate 80 write_tabs_%s.ps write_tabs_%s_stamp.jpg' % (host,host):
     os.system(cmd)
-    cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/write_tabs'
+    cmd = '$ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/write_tabs'
     os.system(cmd)
-   
 
-#d1, d2 =  generate_date()   
+
+#d1, d2 =  generate_date()
 for h in "stkensrv6", "d0ensrv6", "cdfensrv6":
     get_stats(h, 5432)
     should, not_done, done = make_plot_file(h)

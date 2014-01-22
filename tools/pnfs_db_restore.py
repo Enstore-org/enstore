@@ -45,7 +45,7 @@ def copy(source,destination):
 class PnfsSetup:
     # find uncommented lines that look like
     # " var = /value "
-    # there could be arbitraty number of white spaces between words
+    # there could be arbitrary number of white spaces between words
     #
     MATCH=re.compile("^[\s]*[^#]+[\s]*[\w]+[\s]*=[\s]*[\w\-/~]+")
     # default pnfsSetup file name
@@ -233,8 +233,7 @@ class PnfsDbRestore:
         # create recovery.conf
         rdir = '%s:%s.xlogs'% (pnfsSetup.remote_backup_host,
 			       os.path.dirname(backup_file))
-        cmd = "restore_command = '%s/sbin/gettkt && %s/sbin/enrcp %s/"% (os.getenv("ENSTORE_DIR"),
-									 os.getenv("ENSTORE_DIR"),
+        cmd = "restore_command = '%%s/sbin/enrcp %s/"% (os.getenv("ENSTORE_DIR"),
 									 rdir) + "%f.Z %p.Z" + " && uncompress %p.Z'"
 	pgdb = pnfsSetup[PnfsSetup.DATABASE_POSTGRES]
         print 'Creating recovery.conf: %s'% (cmd, )
@@ -345,6 +344,3 @@ if __name__ == "__main__" :
 
     rc = r.recover(sysname,backup_time)
     sys.exit(rc)
-
-
-
