@@ -83,7 +83,8 @@ elif [ -z "${1-}" ]
 then
     abort  "you need to specify a config file"
 else
-    dir=$ENSTORE_DIR/etc
+    # Use default location like ~enstore/site_specific/config :
+    dir=${ENSTORE_CONFIG_DIR}/config
     config=$1.conf
 fi
 
@@ -244,7 +245,7 @@ rgang -c $gang $config2 $dir/$config
 if [ $loadit -ne 1 ]; then
   abort "Not on stkensrv2, cdfensrv2 or d0ensrv2. 
     Do not know how to load config file.
-    Try: enstore config --load --config_file=$ENSTORE_DIR/etc/$config" 0 0
+    Try: enstore config --load --config_file=$ENSTORE_CONFIG_DIR/$config" 0 0
 fi
 
 #---------------------------------------------------
@@ -255,14 +256,14 @@ if [ $loadit -eq 1 ]; then
     read ans
     answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
     if [ "$answer" != "Y" ]; then
-	abort 'ok, done' 1 0
+        abort 'ok, done' 1 0
     fi
 
-# Note:
-#  if the file name is specified on command line, it is not what we load here
-#  but we leave it as in original script
+    # Note:
+    #  if the file name is specified on command line, it is not what we load here
+    #  but we leave it as in original script
 
-echo "Loading configuration file $ENSTORE_DIR/etc/$config
-echo \
-    enstore config --load --config_file=$ENSTORE_DIR/etc/$config
+    echo "Loading configuration file $ENSTORE_DIR/etc/$config
+    echo \
+        enstore config --load --config_file=$ENSTORE_DIR/etc/$config
 fi
