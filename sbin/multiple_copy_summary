@@ -101,6 +101,9 @@ echo "Multiple Copy File Family Summary" >> $temp_file 2>&1
 echo "=================================" >> $temp_file 2>&1
 echo                                     >> $temp_file 2>&1
 
+if [ 0 -eq 1 ] ; then
+
+
 echo "Creating Multiple Copy Summary" `date`
 
 echo "The original_files counts refer to active files located on volumes still available to the system." >> $temp_file 2>&1
@@ -124,7 +127,7 @@ select /* It should be as simple as just using the media_type. However,
        sum(original_files) as original_files,
        sum(duplicate_files) as duplicate_files,
        sum(non_duplicated_files) as non_duplicated_files
-/* 
+/*
    Only grab the columns needed.
  */
 from (select id, media_type, storage_group, file_family, capacity_bytes
@@ -156,13 +159,19 @@ join (select volume.id,
         and volume.file_family not like '%/_copy/__' escape '/'
       group by volume.id
      ) as file_counts on file_counts.id = volume_info.id
-/* 
+/*
    Other restrictions.
  */
 group by media_type,storage_group,file_family,capacity_bytes
 having sum(duplicate_files) > 0
 order by media_type,storage_group,file_family;
 " >> $temp_file 2>&1
+
+else
+
+    echo "Not creating ..... " >> $temp_file 2>&1
+
+fi
 
 echo                                    >> $temp_file 2>&1
 echo "================================" >> $temp_file 2>&1
@@ -264,7 +273,7 @@ echo "Creating Failed Multiple Copies" `date`
 psql -p $DB_PORT -h $DB_HOST -U $DB_USER $DB_NAME -c "
 select date(time) as day,
        count(active_file_copying.bfid) as mulitple_copies_failed,
-       count(case remaining 
+       count(case remaining
                   when 0
                   then file_copies_map.alt_bfid
                   else NULL
