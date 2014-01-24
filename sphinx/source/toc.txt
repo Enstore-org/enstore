@@ -1,0 +1,13 @@
+Contents
+--------
+.. container:: custom-index
+
+    .. raw:: html
+
+        <script type="text/javascript" src='../_static/toc.js'></script>
+
+----
+
+Documentation
+-------------
+
