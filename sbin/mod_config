@@ -5,7 +5,6 @@
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-#export place=`pwd`
 debug=false
 test=false
 
@@ -40,16 +39,18 @@ fi
 echo gang=$gang
 echo
 #-------------------------------------------------------------
-# set 'loadit' to mark if we're goint to load the file at the end
+# set 'loadit' to mark if we're going to load the configuration file at the end
 
 cfg_host=`echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.`
 node=`$ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.`
+# my node is ...
 case $node in
-    # known configuration hosts
-    stkensrv2n|d0ensrv2n|cdfensrv2n)
-        loadit=1
-        ;;
-    # current configuration host set in environment
+# I do not think we need this clause, and it was broken as written
+#    # known configuration host
+#    stkensrv2n|d0ensrv2n|cdfensrv2n)
+#        loadit=1
+#        ;;
+    # current configuration host as set in environment
     ${ENSTORE_CONFIG_HOST})
         loadit=1
         ;;
@@ -62,25 +63,26 @@ case $node in
         ;;
 esac
 #-------------------------------------------------------------
-usage () {
-    echo "USAGE: $0 [-x] [<config_file.conf>] [<editor>]
-       where config_file is stk.conf or stken_policy.py, cdf.conf, sam.conf";
+usage() {
+    cat << EOF 1>&2
+Usage: ${PROGNAME} [-x] [config_file.conf] [editor]
+       where config_file.conf is stk.conf or stken_policy.py, cdf.conf, sam.conf
+EOF
 }
-
-# OLD:
-#abort() {
-#    cd $place
-#    echo ${1-""}
-#    if [ -z ${3-} ]; then usage; fi
-#    exit ${2:-1}
-#}
-
 
 abort_usg ()        { echo ${1-} ; usage ; exit -2 ; }
 abort ()            { echo ${1-} ; exit -1 ; }
-abort_by_user ()    { echo ${1-} ; exit  1 ; }
 finish_OK ()        { echo ${1-} ; exit  0 ; }
 
+confirm_or_exit () {
+    echo -n "${1:-'Confirm: press Y to continue'}" ' [Y/n] '
+    read ans || abort "read answer failed"
+    answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
+    if [ "$answer" != "Y" ]; then
+        echo ${2:-'ok, exiting'}
+        exit 1
+    fi
+}
 #-------------------------------------------------------------
 # we need enstore to be setup
 if [ -z "${ENSTORE_DIR-}"  ]; then
@@ -119,6 +121,7 @@ config2=`mktemp /tmp/${config}.XXXXXX` ||
     abort "can not mktemp for temporary file /tmp/${config}.XXXXXX"
 
 echo "The following configuration file will be modified: $dir/$config";
+
 #-------------------------------------------------------------
 if $debug
 then
@@ -207,6 +210,8 @@ echo
 #-------------------------------------------------------------
 # ok, time to commit - confirm
 echo -n 'About to commit changes, is this what you want [Y/n] '
+
+echo -n 'About to commit changes, is this what you want [Y/n] '
 read ans
 answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
 if [ "$answer" != "Y" ]; then
@@ -290,13 +295,8 @@ fi
 #---------------------------------------------------
 # all is good, load the config file.
 if [ $loadit -eq 1 ]; then
-    # ok, time to load new config file
-    echo -n 'About to load new config file into server, is this what you want [Y/n] '
-    read ans
-    answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
-    if [ "$answer" != "Y" ]; then
-        abort_by_user 'ok, done'
-    fi
+    confirm_or_exit 'About to load new config file into server, is this what you want' \
+        'ok, done'
 
     # Note:
     #  if the file name is specified on command line, it is not what we load here
