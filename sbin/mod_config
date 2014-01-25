@@ -5,7 +5,7 @@
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-export place=`pwd`
+#export place=`pwd`
 debug=false
 test=false
 
@@ -28,8 +28,8 @@ if [ `whoami` != "enstore" ]; then
     exit 1
 fi
 
-node=`$ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.`
 #-------------------------------------------------------------
+# set system name
 gang=`gang`
 
 if $test
@@ -40,33 +40,47 @@ fi
 echo gang=$gang
 echo
 #-------------------------------------------------------------
-short_name=`echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.`
+# set 'loadit' to mark if we're goint to load the file at the end
+
+cfg_host=`echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.`
+node=`$ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.`
 case $node in
-   stkensrv2|d0ensrv2|cdfensrv2)
-          loadit=1
-          ;;
-   ${ENSTORE_CONFIG_HOST})
-          loadit=1
-	  ;;
-   ${short_name})
-          loadit=1
-          ;;	  
-   *)     loadit=0
-          ;;
+    # known configuration hosts
+    stkensrv2n|d0ensrv2n|cdfensrv2n)
+        loadit=1
+        ;;
+    # current configuration host set in environment
+    ${ENSTORE_CONFIG_HOST})
+        loadit=1
+        ;;
+    # current configuration host set in environment, short
+    ${cfg_host})
+        loadit=1
+        ;;
+    *)
+        loadit=0
+        ;;
 esac
 #-------------------------------------------------------------
-usage() {
-#    echo "USAGE: $0 config_file
-    echo "USAGE: $0 config_file [<optional editor>]
-       where config_file is stk, cdf or sam"; 
+usage () {
+    echo "USAGE: $0 [-x] [<config_file.conf>] [<editor>]
+       where config_file is stk.conf or stken_policy.py, cdf.conf, sam.conf";
 }
 
-abort() {
-    cd $place
-    echo ${1-""}
-    if [ -z ${3-} ]; then usage; fi
-    exit ${2:-1}
-}
+# OLD:
+#abort() {
+#    cd $place
+#    echo ${1-""}
+#    if [ -z ${3-} ]; then usage; fi
+#    exit ${2:-1}
+#}
+
+
+abort_usg ()        { echo ${1-} ; usage ; exit -2 ; }
+abort ()            { echo ${1-} ; exit -1 ; }
+abort_by_user ()    { echo ${1-} ; exit  1 ; }
+finish_OK ()        { echo ${1-} ; exit  0 ; }
+
 #-------------------------------------------------------------
 # we need enstore to be setup
 if [ -z "${ENSTORE_DIR-}"  ]; then
@@ -80,21 +94,29 @@ then
     config=`basename $ENSTORE_CONFIG_FILE`
     dir=`dirname $ENSTORE_CONFIG_FILE`
 elif [ -z "${1-}" ]
-then
-    abort  "you need to specify a config file"
-else
-    # Use default location like ~enstore/site_specific/config :
-    dir=${ENSTORE_CONFIG_DIR}/config
-    config=$1.conf
+    then
+        abort_usg  "you need to specify a config file"
+    else
+        # Use default location which is usually ~enstore/site_specific/config :
+        dir=${ENSTORE_CONFIG_DIR}
+        config=$1.conf
 fi
+
+#@todo: specify stken_policy.py
+# [[ ${ENSTORE_SFA_POLICY:-x} = "x" ]] || export ENSTORE_SFA_POLICY
+# we have: ENSTORE_GANG=dmsen
+#@todo: we can edit file other than ENSTORE_CONFIG_FILE and distribute it?
 
 file=$(basename $config)
 gitdir=$(dirname $dir)/config
 # Note:
 #   config refers to file name
 #   config2 refers to ansolute path of temp file for edit
+
 # - Leave it as in original script
-config2=$gitdir/$file
+#-x config2=$gitdir/$file
+config2=`mktemp /tmp/${config}.XXXXXX` ||
+    abort "can not mktemp for temporary file /tmp/${config}.XXXXXX"
 
 echo "The following configuration file will be modified: $dir/$config";
 #-------------------------------------------------------------
@@ -127,7 +149,7 @@ export VISUAL=$edcmd # needed for cvs check in
 #-------------------------------------------------------------
 # do all changes in git configuration directory first
 cd $gitdir ||
-    abort "can not do  cd $gitdir"
+    abort "can not  cd $gitdir"
 
 # make sure we are using the latest config from remote repository
 echo "updating local git repository from remote"
@@ -152,27 +174,34 @@ diff -q $dir/$file $gitdir/$file ||
 echo "... end of compare"
 echo 
 
-# the configuration file is in e.g. /opt/enstore/etc, or equvivalent.
-# we will edit configuration file in e.g. /opt/enstore/config, or equvivalent.
+# Edit file
+#   the configuration file is in e.g. /opt/enstore/etc, or equvivalent.
+#   we will edit configuration file in e.g. /opt/enstore/config, or equvivalent.
 
 # edit temporary file allowing the user to make changes
 echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $config2"
+
+# make a copy and edit it
+rm -f $config2
+cp -p $config $config2 || abort "can not copy file to edit"
+
 $edcmd $config2
 if [ $? -ne 0 ]; then abort "Something wrong with editing. Investigate"; fi
 echo "... success"
 echo
 
-# check if updated file can be interpreted by python
-# echo "Checking $config2 is python file:"
+# Check if updated file can be interpreted by python
+
+#echo "Checking $config2 is python file:"
 sed -n '1p' $config2 | grep python 
 if [ $? -eq 0 ]; then
     # see if python finds any errors
     echo "Checking $config2 by running python $config2"
     python $config2
-    if [ $? -ne 0 ]; then abort "Running python found errors."; fi
+    if [ $? -ne 0 ]; then abort "Running python on $config2 found errors."; fi
     echo "... success"
 else
-    echo "  - it is not"
+    abort "edited file $config2 is not python script (no 'python' on first line)"
 fi
 echo
 #-------------------------------------------------------------
@@ -181,7 +210,7 @@ echo -n 'About to commit changes, is this what you want [Y/n] '
 read ans
 answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
 if [ "$answer" != "Y" ]; then
-   abort 'ok, aborting' 1 0
+   abort_by_user 'ok, aborting'
 fi
 
 #-------------------------------------------------------------
@@ -190,6 +219,10 @@ fi
 # - copy temp file to the real configuration file;
 # - commit to remote repository
 # - copy to other nodes on cluster (where it is not used) 
+
+# copy temporary file $config2 to $config before committing
+cp -p $config2 $config
+rm -f $config2
 
 # commit changes locally to git repository
 
@@ -230,22 +263,28 @@ echo "copy $config to configuration directory:"
 echo "  on configuration host (locally)"
 # I think rgang will rewrite this file as enstore rgang does not have -C option
 # - Leave it as is in original script
-cp -p $config2 $dir/$config || abort "cp to $dir/$config failed"
+
+# @todo:
+cp -p $config2 $dir/$config || abort "cp -p $config2 $dir/$config failed"
 
 # update config file on all machines
 
-# Note, the file location on remote node is based on $ENSTORE_DIR setting on this node,
-#   but not on remote node. Leave it as in original script.
+# Note, the file location on remote node is based on $ENSTORE_DIR setting
+#   on the node where file was edited but not the setting on remote node.
+#   Leave it as in original script.
 
 echo "  synchronizing $config to gang $gang"
 # config2 is absolute path
 rgang -c $gang $config2 $dir/$config
 
+
+cmd_load_conf="enstore config --load --config_file=$ENSTORE_CONFIG_DIR/$config"
 # check for situations where loading in the config file will not work.
 if [ $loadit -ne 1 ]; then
-  abort "Not on stkensrv2, cdfensrv2 or d0ensrv2. 
+#@todo: do not tell "Not on ..." when user set the option
+finish_OK "Not on stkensrv2, cdfensrv2 or d0ensrv2.
     Do not know how to load config file.
-    Try: enstore config --load --config_file=$ENSTORE_CONFIG_DIR/$config" 0 0
+    Try: ${cmd_load_conf}"
 fi
 
 #---------------------------------------------------
@@ -256,14 +295,14 @@ if [ $loadit -eq 1 ]; then
     read ans
     answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
     if [ "$answer" != "Y" ]; then
-        abort 'ok, done' 1 0
+        abort_by_user 'ok, done'
     fi
 
     # Note:
     #  if the file name is specified on command line, it is not what we load here
     #  but we leave it as in original script
 
-    echo "Loading configuration file $ENSTORE_DIR/etc/$config
-    echo \
-        enstore config --load --config_file=$ENSTORE_DIR/etc/$config
+    echo "Loading configuration file $ENSTORE_CONFIG_DIR/$config
+    echo "DEBUG: ${cmd_load_conf}"
+### ${cmd_load_conf}
 fi
