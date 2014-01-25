@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Modify enstore configuration file
+# Modify enstore configuration or policy file
 
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
@@ -73,6 +73,7 @@ EOF
 abort_usg ()        { echo ${1:-} ; usage ; exit -2 ; }
 abort ()            { echo ${1:-} ; exit -1 ; }
 finish_OK ()        { echo ${1:-} ; exit  0 ; }
+
 success ()          { printf "... ${1:-success}\n\n"; }
 end_of_compare ()   { printf "... end of compare\n\n"; }
 
@@ -90,6 +91,10 @@ confirm_or_exit () {
 if [ -z "${ENSTORE_DIR-}"  ]; then
    . /usr/local/etc/setups.sh
    setup enstore
+fi
+if [ -z "${ENSTORE_DIR-}"  ]
+then
+    abort "ENSTORE_DIR not set and 'setup enstore' can not set it"
 fi
 
 # we need a config file to change
@@ -197,7 +202,6 @@ if [ $? -ne 0 ]; then
     abort "edited file $TEMPconfig is not python script (no 'python' on first line)"
 fi
 
-# see if python finds any errors
 echo "Checking $TEMPconfig by running python $TEMPconfig"
 python $TEMPconfig && success || abort "Running python on $TEMPconfig found errors."
 
@@ -238,8 +242,8 @@ end_of_compare
 #---------------------------------------------------
 # Distribute configuration file
 #
-echo "copy $config to configuration directory:"
-# copy $file to $config
+echo "Copy $config to configuration directory:"
+
 echo "  on configuration host (locally)"
 # I think rgang will rewrite this file as enstore rgang does not have -C option
 # - Leave it as is in original script
@@ -249,15 +253,15 @@ cp -p $TEMPconfig $dir/$config || abort "cp -p $TEMPconfig $dir/$config failed"
 
 # update config file on all machines
 
-# Note, the file location on remote node is based on $ENSTORE_DIR setting
-#   on the node where file was edited but not the setting on remote node.
+# Note, in the original script file location on remote node is based on
+#   $ENSTORE_DIR setting on the node where the file was edited
+#   but not the setting on remote node.
 #   Leave it as in original script.
 
-echo "  synchronizing $config to gang $gang"
-# TEMPconfig is absolute path
+echo "  synchronizing $config to gang $gang (remotely)"
 rgang -c $gang $TEMPconfig $dir/$config
 
-
+#---------------------------------------------------
 cmd_load_conf="enstore config --load --config_file=$ENSTORE_CONFIG_DIR/$config"
 # check for situations where loading in the config file will not work.
 if [ $loadit -ne 1 ]; then
