@@ -70,9 +70,11 @@ Usage: ${PROGNAME} [-x] [config_file.conf] [editor]
 EOF
 }
 
-abort_usg ()        { echo ${1-} ; usage ; exit -2 ; }
-abort ()            { echo ${1-} ; exit -1 ; }
-finish_OK ()        { echo ${1-} ; exit  0 ; }
+abort_usg ()        { echo ${1:-} ; usage ; exit -2 ; }
+abort ()            { echo ${1:-} ; exit -1 ; }
+finish_OK ()        { echo ${1:-} ; exit  0 ; }
+success ()          { printf "... ${1:-success}\n\n"; }
+end_of_compare ()   { printf "... end of compare\n\n"; }
 
 confirm_or_exit () {
     echo -n "${1:-'Confirm: press Y to continue'}" ' [Y/n] '
@@ -157,12 +159,9 @@ cd $gitdir ||
 # make sure we are using the latest config from remote repository
 echo "updating local git repository from remote"
 # fetch data from remote preconfigured repository 'enconfig'
-git fetch enconfig ||
-    abort "Something wrong with 'git fetch enconfig'. Investigate"
-echo "... success"
-echo
+git fetch enconfig && success || abort "Something wrong with 'git fetch enconfig'. Investigate"
 
-echo "git status:"
+echo "git status (all files):"
 git status -uno
 echo "... end of git status"
 
@@ -174,8 +173,7 @@ fi
 echo "compare configuration file fetched from remote repo and local condifuration file"
 diff -q $dir/$file $gitdir/$file ||
     abort "Files differ. diff $dir/$file $gitdir/$file . Investigate"
-echo "... end of compare"
-echo 
+end_of_compare
 
 # Edit file
 #   the configuration file is in e.g. /opt/enstore/etc, or equvivalent.
@@ -188,35 +186,25 @@ echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $TEMPconfi
 rm -f $TEMPconfig
 cp -p $config $TEMPconfig || abort "can not copy file to edit"
 
-$edcmd $TEMPconfig
-if [ $? -ne 0 ]; then abort "Something wrong with editing. Investigate"; fi
-echo "... success"
-echo
+$edcmd $TEMPconfig && success || abort "Something wrong with editing. Investigate"
 
+#-------------------------------------------------------------
 # Check if updated file can be interpreted by python
 
 #echo "Checking $TEMPconfig is python file:"
 sed -n '1p' $TEMPconfig | grep python 
-if [ $? -eq 0 ]; then
-    # see if python finds any errors
-    echo "Checking $TEMPconfig by running python $TEMPconfig"
-    python $TEMPconfig
-    if [ $? -ne 0 ]; then abort "Running python on $TEMPconfig found errors."; fi
-    echo "... success"
-else
+if [ $? -ne 0 ]; then
     abort "edited file $TEMPconfig is not python script (no 'python' on first line)"
 fi
-echo
+
+# see if python finds any errors
+echo "Checking $TEMPconfig by running python $TEMPconfig"
+python $TEMPconfig && success || abort "Running python on $TEMPconfig found errors."
+
 #-------------------------------------------------------------
 # ok, time to commit - confirm
-echo -n 'About to commit changes, is this what you want [Y/n] '
-
-echo -n 'About to commit changes, is this what you want [Y/n] '
-read ans
-answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
-if [ "$answer" != "Y" ]; then
-   abort_by_user 'ok, aborting'
-fi
+confirm_or_exit "About to commit changes, is this what you want [Y/n] " \
+    "ok, aborting"
 
 #-------------------------------------------------------------
 # Configuration modification complete.
@@ -230,35 +218,22 @@ cp -p $TEMPconfig $config
 rm -f $TEMPconfig
 
 # commit changes locally to git repository
-
 echo "committing:"
-git commit -- $file
-if [ $? -ne 0 ]; then abort "Something wrong with git commit. Investigate"; fi
-echo "... success"
-echo
-
-# bless the changes - push to remote server
+git commit -- $file && success || abort "Something wrong with git commit. Investigate"
 
 echo "push changes to remote git configuration repository"
-git push enconfig
-if [ $? -ne 0 ]; then abort "Something wrong with 'git push enconfig.' Investigate"; fi
-echo "... success"
-echo
+git push enconfig   && success || abort "Something wrong with 'git push enconfig.' Investigate"
 
 echo "get changes back from remote git configuration repository"
-git fetch enconfig && echo " ... OK"
-
-# compare file:
+git fetch enconfig  && succes "OK"
 
 echo "compare files with local repository:"
 git diff --stat HEAD -- $file
-echo "... end of compare"
-echo
+end_of_compare
 
 echo "compare files with remote repository:"
 git diff --stat HEAD~ -- $file
-echo "... end of compare"
-echo
+end_of_compare
 
 #---------------------------------------------------
 # Distribute configuration file
@@ -287,9 +262,11 @@ cmd_load_conf="enstore config --load --config_file=$ENSTORE_CONFIG_DIR/$config"
 # check for situations where loading in the config file will not work.
 if [ $loadit -ne 1 ]; then
 #@todo: do not tell "Not on ..." when user set the option
-finish_OK "Not on stkensrv2, cdfensrv2 or d0ensrv2.
-    Do not know how to load config file.
-    Try: ${cmd_load_conf}"
+    msg="Not on stkensrv2, cdfensrv2 or d0ensrv2.
+Do not know how to load config file.
+Try: ${cmd_load_conf}"
+
+    finish_OK $msg
 fi
 
 #---------------------------------------------------
