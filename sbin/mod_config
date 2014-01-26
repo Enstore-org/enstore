@@ -1,31 +1,183 @@
-#!/bin/sh
+#!/bin/bash
 
 # Modify enstore configuration or policy file
 
-set -u
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+#========================================================
+# Functions
 
+PROGNAME=$(basename $0)
+
+usage() {
+cat << 'EOF' 1>&2
+Usage: ${PROGNAME} [options] [--] [config_file.conf]
+   where config_file.conf is stk.conf or stken_policy.py; cdf.conf, sam.conf
+
+Change enstore configuration or SFA policy file. The file name is specified with
+    option --policy or --config or file name as last argument (config). If config name is
+    not specified it is taken from $ENSTORE_CONFIG_FILE. Exactly one file name must be specified.
+The command shall be run on configuration server host.
+Check if file content can be interpreted by enstore python.
+Store configuration file in local git repository (commit) and push changes to remote repository.
+See wiki for more details.
+Load configuration/policy file to enstore configuration server if  Use --load, --noload to change this.
+
+Options:
+  -h | --help | -?      print this help message
+       --config FILE    full name of configuration file [$ENSTORE_CONFIG_FILE]
+                        File name must be full file name, no .conf is added.
+       --policy FILE    full name of SFA policy file [$ENSTORE_CONFIG_FILE]
+  -f | --file FILE      file name
+       --gang           gang (system) name (stken, cdfen, d0en, ...)
+       --editor EDITOR  use EDITOR to edit the file [env. $EDITOR or vi] and
+                          also export it to be used by git to edit commit message
+  -v | --verbose        be verobose. Increase verbosity level if used multiple times (-vv)
+       --load           load configuration/policy file to configuration server
+                          [loads if running on config server]
+       --noload         do not load configuration/policy file
+  -x                    sets -xv option when executing this script
+       --               end of options, the rest is considered as arguments (file name)
+
+Arguments:
+   file                 file name to be modified. This is full file name like stken.conf
+                        If file name ends on .conf , it is configuration file.
+                        If file name ends on _policy.py, it is policy file.
+                        If file is not *.conf or *_policy.py, we try to add suffix .conf to
+                          file name <file>.conf to simulate old behavior.
+EOF
+}
+
+#-------------------------------------------------------------
+abort_usg ()        { echo ${1:-} >&2 ; usage ; exit -2 ; }
+abort ()            { echo ${1:-} >&2 ; exit -1 ; }
+finish_OK ()        { echo ${1:-}     ; exit  0 ; }
+
+success ()          { printf "... ${1:-success}\n\n"; }
+end_of_compare ()   { printf "... end of compare\n\n"; }
+
+confirm_or_exit () {
+    echo -n "${1:-'Confirm: press Y to continue'}" ' [Y/n] '
+    read ans || abort "read answer failed"
+    answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
+    if [ "$answer" != "Y" ]; then
+        echo ${2:-"ok, exiting"}
+        exit 1
+    fi
+}
+
+#-------------------------------------------------------------
+# Parse arguments
+set +u
+
+# Reset all variables that might be set
 debug=false
 test=false
+file=""
+config_file=""
+policy_file=""
+nfiles=0
+verbose=0
+gang=""
+editor=""
+load=true
 
-if [ "${1:-}" = "--test" ]
-then
-    echo "TEST:  this script uses test settings"
-    test=true
-    debug=true
-    shift
-fi
+errors=0
+while :
+do
+    case ${1-} in
+    -h | --help | -\?)
+        usage
+        exit 0;;
+    -f | --file)
+        file=$2
+        shift 2
+        ;;
+    --gang)
+        gang=$2
+        shift 2
+        ;;
+    --editor)
+        editor=$2
+        shift 2
+        ;;
+    --config)
+        config=$2
+        shift 2
+        ;;
+    --load)
+        load=true
+        shift
+        ;;
+    --noload)
+        load=false
+        shift
+        ;;
+    --policy)
+        policy=$2
+        shift 2
+        ;;
+    -v | --verbose)
+        # Each instance of -v adds 1 to verbosity                                                                                                   
+        verbose=$((verbose+1))
+        shift
+        ;;
+    --test)
+        echo "TEST:  this script uses test setings"
+        test=true
+        shift
+        ;;
+    -x)
+        set -xv
+        shift
+        ;;
+    --) # End of all options
+        shift
+        break
+        ;;
+    -*)
+        echo "Unknown option: $1" >&2
+        errors=$((errors+1))
+        shift
+        ;;
+    *)  # no more options. Stop while loop                                                                                                          
+        break
+        ;;
+    esac
+done
 
-#-------------------------------------------------------------
-if $debug
+echo "Args left @" $@
+echo "Args left *" $*
+echo "Args left #" $#
+
+echo errors: $errors
+
+if [ $errors -ne 0 ]
 then
-    echo "DEBUG: this script uses debug settings"
-fi
-#-------------------------------------------------------------
-if [ `whoami` != "enstore" ]; then
-    echo "You must be user enstore to modify the enstore config file" >&2
+    usage
     exit 1
 fi
+
+set -u
+# end parse arguments
+#-------------------------------------------------------------
+# Check we got all required options
+
+echo gang: $gang
+echo config: $config
+echo policy: $policy
+
+if [ ! "$file" ]; then
+    echo "Final check: ERROR: option '--file FILE' not given. See --help" >&2
+    exit 1
+fi
+
+#========================================================
+
+
+#-------------------------------------------------------------
+[[ $verbose > 1 ]] && echo "DEBUG: this script uses debug settings"
+
+#-------------------------------------------------------------
+[[ $(whoami) == "enstore" ]] || abort "You must be user enstore to modify the enstore config file"
 
 #-------------------------------------------------------------
 # set system name
@@ -51,6 +203,7 @@ case $node in
 #        loadit=1
 #        ;;
     # current configuration host as set in environment
+    #   usually FQDN like dmsen02.fnal.gov
     ${ENSTORE_CONFIG_HOST})
         loadit=1
         ;;
@@ -62,32 +215,9 @@ case $node in
         loadit=0
         ;;
 esac
+
 #-------------------------------------------------------------
-usage() {
-    cat << EOF 1>&2
-Usage: ${PROGNAME} [-x] [config_file.conf] [editor]
-       where config_file.conf is stk.conf or stken_policy.py, cdf.conf, sam.conf
-EOF
-}
-
-abort_usg ()        { echo ${1:-} ; usage ; exit -2 ; }
-abort ()            { echo ${1:-} ; exit -1 ; }
-finish_OK ()        { echo ${1:-} ; exit  0 ; }
-
-success ()          { printf "... ${1:-success}\n\n"; }
-end_of_compare ()   { printf "... end of compare\n\n"; }
-
-confirm_or_exit () {
-    echo -n "${1:-'Confirm: press Y to continue'}" ' [Y/n] '
-    read ans || abort "read answer failed"
-    answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
-    if [ "$answer" != "Y" ]; then
-        echo ${2:-'ok, exiting'}
-        exit 1
-    fi
-}
-#-------------------------------------------------------------
-# we need enstore to be setup
+# We need enstore to be setup
 if [ -z "${ENSTORE_DIR-}"  ]; then
    . /usr/local/etc/setups.sh
    setup enstore
@@ -97,7 +227,7 @@ then
     abort "ENSTORE_DIR not set and 'setup enstore' can not set it"
 fi
 
-# we need a config file to change
+# We need a config file to change
 if [ -n "${ENSTORE_CONFIG_FILE-}" ]
 then
     config=`basename $ENSTORE_CONFIG_FILE`
@@ -130,19 +260,20 @@ TEMPconfig=`mktemp /tmp/${config}.XXXXXX` ||
 echo "The following configuration file will be modified: $dir/$config";
 
 #-------------------------------------------------------------
-if $debug
+if [[ $verbose > 1 ]]
 then
-    echo "DEBUG:" dir=$dir
-    echo "DEBUG:" gitdir=$gitdir
-    echo "DEBUG:" config=$config
-    echo "DEBUG:" TEMPconfig=$TEMPconfig
+    echo "  dir=$dir"
+    echo "  gitdir=$gitdir"
+    echo "  config=$config"
+    echo "  TEMPconfig=$TEMPconfig"
     echo
 fi
 #-------------------------------------------------------------
+# Asserts:
 
-if [ ! -d $dir ];         then abort "configuration directory $dir does not exist"; fi
-if [ ! -d $gitdir ];      then abort "git configuration directory $gitdir does not exist"; fi
-if [ ! -r $dir/$config ]; then abort "can not read $config"; fi
+[ ! -d $dir ]         || abort "configuration directory $dir does not exist"
+[ ! -d $gitdir ]      || abort "git configuration directory $gitdir does not exist"
+[ ! -r $dir/$config ] || abort "can not read $config"
 
 #-------------------------------------------------------------
 # if the user wants a specific editor, use it
@@ -158,8 +289,7 @@ export VISUAL=$edcmd # needed for cvs check in
 
 #-------------------------------------------------------------
 # do all changes in git configuration directory first
-cd $gitdir ||
-    abort "can not  cd $gitdir"
+cd $gitdir || abort "can not  cd $gitdir"
 
 # make sure we are using the latest config from remote repository
 echo "updating local git repository from remote"
@@ -170,10 +300,7 @@ echo "git status (all files):"
 git status -uno
 echo "... end of git status"
 
-if [ ! -r $file ]
-then
-    abort "file $gitdir/$file is unreadable in configuration directory"
-fi
+[ ! -r $file ] || abort "file $gitdir/$file is unreadable in configuration directory"
 
 echo "compare configuration file fetched from remote repo and local condifuration file"
 diff -q $dir/$file $gitdir/$file ||
