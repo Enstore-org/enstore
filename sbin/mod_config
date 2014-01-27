@@ -289,13 +289,8 @@ esac
 
 [[ on_config_host ]] || abort "You must run $PROGNAME on configuration host" 
 
-# Use "loadit" for now to preserve functionality of legacy code
-# set 'loadit' to mark if we're going to load the configuration file at the end
-if [[ $load ]] ; then
-    loadit=1
-fi
-
 #-------------------------------------------------------------
+# Specify file name to be modified, directory
 # from now on $config is either config file or policy file
 #   for the purpose editing the file or commiting it to git
 
@@ -328,49 +323,37 @@ else # by defualt, load configuration
         config=$(basename $ENSTORE_CONFIG_FILE)
         dir=$(dirname $ENSTORE_CONFIG_FILE)
     fi
-    cmd_load_conf="enstore config --load --config_file=${dir}/${config}"
+    cmd_load_conf="enstore config --load --config_file=$dir/$config"
 fi
-
-
-
-#@todo: specify stken_policy.py
-# [[ ${ENSTORE_SFA_POLICY:-x} = "x" ]] || export ENSTORE_SFA_POLICY
-# we have: ENSTORE_GANG=dmsen
-#@todo: we can edit file other than ENSTORE_CONFIG_FILE and distribute it?
 
 file=$(basename $config)
 gitdir=$(dirname $dir)/config
-# Note:
-#   config refers to file name
-#   TEMPconfig refers to ansolute path of temp file for edit
 
-# - Leave it as in original script
-#-x TEMPconfig=$gitdir/$file
+# Note:
+#   config refers to file name (no path)
+#   TEMPconfig refers to ansolute path of temp file for edit
 TEMPconfig=`mktemp /tmp/${config}.XXXXXX` ||
     abort "can not mktemp for temporary file /tmp/${config}.XXXXXX"
 
 echo "The following configuration file will be modified: $dir/$config";
 
-#-------------------------------------------------------------
 if [[ $verbose > 1 ]]
 then
     echo "  dir=$dir"
-    echo "  gitdir=$gitdir"
     echo "  config=$config"
+    echo "  gitdir=$gitdir"
     echo "  TEMPconfig=$TEMPconfig"
     echo
 fi
-#-------------------------------------------------------------
-# Asserts:
+
+# Assert directories and file exist:
 
 [ ! -d $dir ]         || abort "configuration directory $dir does not exist"
 [ ! -d $gitdir ]      || abort "git configuration directory $gitdir does not exist"
 [ ! -r $dir/$config ] || abort "can not read $config"
 
-
-
-#-------------------------------------------------------------
-# do all changes in git configuration directory first
+#=============================================================
+# Work in configuration directory, and it is git working directory
 cd $gitdir || abort "can not  cd $gitdir"
 
 # make sure we are using the latest config from remote repository
@@ -389,17 +372,12 @@ diff -q $dir/$file $gitdir/$file ||
     abort "Files differ. diff $dir/$file $gitdir/$file . Investigate"
 end_of_compare
 
-# Edit file
-#   the configuration file is in e.g. /opt/enstore/etc, or equvivalent.
-#   we will edit configuration file in e.g. /opt/enstore/config, or equvivalent.
+# Make a copy of file
+rm -f $TEMPconfig 2>/dev/null
+cp -p $config $TEMPconfig || abort "can not copy file $config to $TEMPconfig for edits"
 
-# edit temporary file allowing the user to make changes
+# Edit temporary file allowing the user to make changes
 echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $TEMPconfig"
-
-# make a copy and edit it
-rm -f $TEMPconfig
-cp -p $config $TEMPconfig || abort "can not copy file to edit"
-
 $edcmd $TEMPconfig && success || abort "Something wrong with editing. Investigate"
 
 #-------------------------------------------------------------
@@ -411,24 +389,23 @@ if [ $? -ne 0 ]; then
     abort "edited file $TEMPconfig is not python script (no 'python' on first line)"
 fi
 
-echo "Checking $TEMPconfig by running python $TEMPconfig"
+echo "Checking $TEMPconfig by running command: python $TEMPconfig"
 python $TEMPconfig && success || abort "Running python on $TEMPconfig found errors."
 
-#-------------------------------------------------------------
+#=============================================================
 # ok, time to commit - confirm
 confirm_or_exit "About to commit changes, is this what you want [Y/n] " \
     "ok, aborting"
 
-#-------------------------------------------------------------
 # Configuration modification complete.
 # now:
-# - copy temp file to the real configuration file;
+# - copy temp file to the real configuration file
 # - commit to remote repository
-# - copy to other nodes on cluster (where it is not used) 
+# - copy to all other nodes on cluster (where it is not used anyway exept policy file)
 
-# copy temporary file $TEMPconfig to $config before committing
-cp -p $TEMPconfig $config
-rm -f $TEMPconfig
+echo "Copy $TEMPconfig to configuration directory:"
+cp -p $TEMPconfig $config || abort "cp -p $TEMPconfig $dir/$config failed"
+rm -f $TEMPconfig 2>/dev/null
 
 # commit changes locally to git repository
 echo "committing:"
@@ -448,52 +425,43 @@ echo "compare files with remote repository:"
 git diff --stat HEAD~ -- $file
 end_of_compare
 
-#---------------------------------------------------
-# Distribute configuration file
+# Distribute configuration file on all machines in gang
 #
-echo "Copy $config to configuration directory:"
+# AK: I think rgang will rewrite this file as enstore rgang does not have -C option
+#     - Leave it as is in original script
 
-echo "  on configuration host (locally)"
-# I think rgang will rewrite this file as enstore rgang does not have -C option
-# - Leave it as is in original script
-
-# @todo:
-cp -p $TEMPconfig $dir/$config || abort "cp -p $TEMPconfig $dir/$config failed"
-
-# update config file on all machines
-
-# Note, in the original script file location on remote node is based on
-#   $ENSTORE_DIR setting on the node where the file was edited
-#   but not the setting on remote node.
+# AK: Note, in the original script file location on remote node is based on
+#   $ENSTORE_DIR setting on the node where the file was edited but not the setting on remote node.
 #   Leave it as in original script.
 
-echo "  synchronizing $config to gang $gang (remotely)"
+echo "  synchronizing $config to gang $gang with rgang"
 rgang -c $gang $TEMPconfig $dir/$config
 
 #---------------------------------------------------
+# Load the config file if requested
+
+if [[ ! $load ]] ; then
+    echo "configuraition modification complete"
+    echo "To load this configuration file run: ${cmd_load_conf}"
+    exit 0
+fi
+
+
+# Assert the command was defined for load configuration or load policy
 [[ $cmd_load_conf ]] || abort "$PROGNAME internal error: cmd_load_conf not set"
 
-cmd_load_conf="enstore config --load --config_file=$ENSTORE_CONFIG_DIR/$config"
-# check for situations where loading in the config file will not work.
-if [ $loadit -ne 1 ]; then
-    msg="Not on stkensrv2, cdfensrv2 or d0ensrv2.
-Do not know how to load config file.
-Try: ${cmd_load_conf}"
 
-    finish_OK $msg
-fi
+confirm_or_exit 'About to load new config file into server, is this what you want' \
+                'ok, done'
 
-#---------------------------------------------------
-# all is good, load the config file.
-if [ $loadit -eq 1 ]; then
-    confirm_or_exit 'About to load new config file into server, is this what you want' \
-        'ok, done'
+# Note:
+#  if the file name is specified on command line, it is not what we load here
+#  but we leave it as in original script
 
-    # Note:
-    #  if the file name is specified on command line, it is not what we load here
-    #  but we leave it as in original script
+echo "Loading configuration file $ENSTORE_CONFIG_DIR/$config
 
-    echo "Loading configuration file $ENSTORE_CONFIG_DIR/$config
-    echo "DEBUG: ${cmd_load_conf}"
+### For testing, do not run actual command, just print it
+echo "DEBUG: ${cmd_load_conf}"
+echo "DEBUG: ### Uncomment command before commiting to production"
 ### ${cmd_load_conf}
-fi
+
