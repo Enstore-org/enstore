@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Modify enstore configuration or policy file
+# Modify enstore configuration or policy file,
+#   copy to nodes on the same cluster and load it.
 
 #========================================================
 # Functions
@@ -13,7 +14,7 @@ Usage: ${PROGNAME} [options] [--] [config_file.conf]
    where config_file.conf is stk.conf or stken_policy.py; cdf.conf, sam.conf
 
 Change enstore configuration or SFA policy file. The file name is specified with
-    option --policy or --config or file name as last argument (config). If config name is
+    option --policy or --config or as last argument (config only). If config name is
     not specified it is taken from $ENSTORE_CONFIG_FILE. Exactly one file name must be specified.
 The command shall be run on configuration server host.
 Check if file content can be interpreted by enstore python.
@@ -25,8 +26,7 @@ Options:
   -h | --help | -?      print this help message
        --config FILE    full name of configuration file [$ENSTORE_CONFIG_FILE]
                         File name must be full file name, no .conf is added.
-       --policy FILE    full name of SFA policy file [$ENSTORE_CONFIG_FILE]
-  -f | --file FILE      file name
+       --policy FILE    full name of SFA policy file [$ENSTORE_SFA_POLICY]
        --gang           gang (system) name (stken, cdfen, d0en, ...)
        --editor EDITOR  use EDITOR to edit the file [env. $EDITOR or vi] and
                           also export it to be used by git to edit commit message
@@ -38,11 +38,9 @@ Options:
        --               end of options, the rest is considered as arguments (file name)
 
 Arguments:
-   file                 file name to be modified. This is full file name like stken.conf
-                        If file name ends on .conf , it is configuration file.
-                        If file name ends on _policy.py, it is policy file.
-                        If file is not *.conf or *_policy.py, we try to add suffix .conf to
-                          file name <file>.conf to simulate old behavior.
+   file                 config file name to be modified. This is full file name like stken.conf
+                        You can specify only one file: with --config or --policy
+                        or as the last argument (configuration file is assumed).
 EOF
 }
 
@@ -71,38 +69,69 @@ set +u
 # Reset all variables that might be set
 debug=false
 test=false
-file=""
+opt_config=0
 config_file=""
+opt_policy=0
 policy_file=""
-nfiles=0
-verbose=0
+load=true
 gang=""
 editor=""
-load=true
-
+verbose=0
 errors=0
 while :
 do
     case ${1-} in
     -h | --help | -\?)
         usage
-        exit 0;;
-    -f | --file)
-        file=$2
-        shift 2
+        exit 0
         ;;
     --gang)
-        gang=$2
-        shift 2
+        shift
+        if [[ $# > 0 && $1 != -* ]]
+        then
+            gang=$1
+            shift
+        else
+            echo "No argument given for --gang option" >&2
+            errors=$((errors+1))
+        fi
         ;;
     --editor)
-        editor=$2
-        shift 2
+        shift
+        if [[ $# > 0 && $1 != -* ]]
+        then
+            editor=$1
+            shift
+        else
+            echo "No argument given for --editor option" >&2
+            errors=$((errors+1))
+        fi
         ;;
     --config)
-        config=$2
-        shift 2
+        opt_config=$((opt_config+1))
+        shift
+        if [[ $# > 0 && $1 != -* ]]
+        then
+            config_file=$1
+            shift
+        else
+            echo "No argument given for --config option" >&2
+            errors=$((errors+1))
+        fi
         ;;
+    --policy)
+        opt_policy=$((opt_policy+1))
+        shift
+        if [[ $# > 0 && $1 != -* ]]
+        then
+            policy_file=$1
+            shift
+        else
+            echo "No argument given for --policy option" >&2
+            errors=$((errors+1))
+        fi
+        ;;
+
     --load)
         load=true
         shift
@@ -111,27 +140,18 @@ do
         load=false
         shift
         ;;
-    --policy)
-        policy=$2
-        shift 2
-        ;;
+
     -v | --verbose)
-        # Each instance of -v adds 1 to verbosity                                                                                                   
         verbose=$((verbose+1))
         shift
         ;;
     --test)
-        echo "TEST:  this script uses test setings"
         test=true
         shift
         ;;
     -x)
         set -xv
         shift
-        ;;
-    --) # End of all options
-        shift
-        break
         ;;
     -*)
         echo "Unknown option: $1" >&2
@@ -144,88 +164,130 @@ do
     esac
 done
 
-echo "Args left @" $@
-echo "Args left *" $*
-echo "Args left #" $#
+[[ $verbose > 2 ]] && debug=true
 
-echo errors: $errors
-
-if [ $errors -ne 0 ]
+if [[ $debug ]]
 then
-    usage
-    exit 1
+    echo "Parse arguments:"
+    echo "  Args left *: $*"
+    echo "  Args left #: $#"
+    echo "  errors: $errors"
+fi
+
+[[ $errors == 0 ]] || abort_usg
+
+# make sure --opt_config, --opt_policy, file is used once, or not at all
+[[ $((opt_config+opt_policy+$#)) < 2 ]] || abort_usg
+
+if [[ $((opt_config+opt_policy+$#)) == 0 ]]
+then
+    # no option given - change configuration by default
+    opt_config=1
+    if [[ $# > 0 ]]
+    then
+        # there is one argument left, consider it configuration file
+        policy_file=$1
+    # else no --opt_config, --opt_policy or file specified
+    # the policy_file stays empty string for now until we validated ENSTORE_CONFIG_FILE
+    fi
 fi
 
 set -u
 # end parse arguments
-#-------------------------------------------------------------
-# Check we got all required options
-
-echo gang: $gang
-echo config: $config
-echo policy: $policy
-
-if [ ! "$file" ]; then
-    echo "Final check: ERROR: option '--file FILE' not given. See --help" >&2
-    exit 1
-fi
-
-#========================================================
-
 
 #-------------------------------------------------------------
-[[ $verbose > 1 ]] && echo "DEBUG: this script uses debug settings"
-
-#-------------------------------------------------------------
-[[ $(whoami) == "enstore" ]] || abort "You must be user enstore to modify the enstore config file"
-
-#-------------------------------------------------------------
-# set system name
-gang=`gang`
+# Set system name
+gang=$(gang)
 
 if $test
 then
+    echo "### TEST:  this script uses test setings ###"
+
     gang=dms-test
     echo "TEST:  gang reset to $gang"
 fi
-echo gang=$gang
-echo
+
 #-------------------------------------------------------------
-# set 'loadit' to mark if we're going to load the configuration file at the end
+# Set edit command
+#   if the user wants a specific editor, use it
+#   otherwise use vi since it is always there
+if [ -z "${editor-}"  ]; then
+    edcmd=${EDITOR:-vi}
+else
+    edcmd=${editor}
+fi
+
+export EDITOR=${edcmd}  # may be used by git for commit message
+export VISUAL=${edcmd}  # needed for cvs check in
+
+#-------------------------------------------------------------
+# Check we got all required options
+
+if $debug
+then
+    cat << 'EOF'
+  test:   $test
+  gang:   $gang
+  config: $config_file
+  policy: $policy_file
+  load:   $load
+  edcmd:  $edcmd
+EOF
+
+fi
+
+#=============================================================
+
+if [[ $(whoami) != "enstore" ]] ; then
+    abort "You must be user enstore to modify enstore config files"
+fi
+
+# We need enstore to be setup
+if [ -z "${ENSTORE_DIR-}"  ] ; then
+   . /usr/local/etc/setups.sh
+   setup enstore
+fi
+
+if [ -z "${ENSTORE_DIR-}"  ] ; then
+    abort "ENSTORE_DIR not set and 'setup enstore' can not set it"
+fi
+
+#-------------------------------------------------------------
+# Check if we are running on configuration host, refuse otherwise
+
+on_config_host=false
 
 cfg_host=`echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.`
 node=`$ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.`
 # my node is ...
 case $node in
-# I do not think we need this clause, and it was broken as written
-#    # known configuration host
-#    stkensrv2n|d0ensrv2n|cdfensrv2n)
-#        loadit=1
-#        ;;
+    # I do not think we need this clause as it is harcoded, and it was broken as written
+    # known configuration host
+    stkensrv2n|d0ensrv2n|cdfensrv2n)
+        on_config_host=true
+        ;;
     # current configuration host as set in environment
     #   usually FQDN like dmsen02.fnal.gov
     ${ENSTORE_CONFIG_HOST})
-        loadit=1
+        on_config_host=true
         ;;
     # current configuration host set in environment, short
     ${cfg_host})
-        loadit=1
+        on_config_host=true
         ;;
     *)
-        loadit=0
         ;;
 esac
 
+[[ on_config_host ]] || abort "You must run $PROGNAME on configuration host" 
+
+# Use "loadit" for now to preserve functionality of legacy code
+# set 'loadit' to mark if we're going to load the configuration file at the end
+if [[ $load ]] ; then
+    loadit=1
+fi
+
 #-------------------------------------------------------------
-# We need enstore to be setup
-if [ -z "${ENSTORE_DIR-}"  ]; then
-   . /usr/local/etc/setups.sh
-   setup enstore
-fi
-if [ -z "${ENSTORE_DIR-}"  ]
-then
-    abort "ENSTORE_DIR not set and 'setup enstore' can not set it"
-fi
 
 # We need a config file to change
 if [ -n "${ENSTORE_CONFIG_FILE-}" ]
@@ -275,17 +337,7 @@ fi
 [ ! -d $gitdir ]      || abort "git configuration directory $gitdir does not exist"
 [ ! -r $dir/$config ] || abort "can not read $config"
 
-#-------------------------------------------------------------
-# if the user wants a specific editor, use it
-# otherwise use vi since it is always there
-if [ -z "${2-}"  ]; then
-    edcmd=${EDITOR:-vi}
-else
-    edcmd=$2
-fi
 
-export EDITOR=$edcmd # probably not needed, just did it so it is set
-export VISUAL=$edcmd # needed for cvs check in
 
 #-------------------------------------------------------------
 # do all changes in git configuration directory first
@@ -392,7 +444,6 @@ rgang -c $gang $TEMPconfig $dir/$config
 cmd_load_conf="enstore config --load --config_file=$ENSTORE_CONFIG_DIR/$config"
 # check for situations where loading in the config file will not work.
 if [ $loadit -ne 1 ]; then
-#@todo: do not tell "Not on ..." when user set the option
     msg="Not on stkensrv2, cdfensrv2 or d0ensrv2.
 Do not know how to load config file.
 Try: ${cmd_load_conf}"
