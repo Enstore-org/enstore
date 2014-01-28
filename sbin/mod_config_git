@@ -1,0 +1,467 @@
+#!/bin/bash
+
+# Modify enstore configuration or policy file,
+#   copy to nodes on the same cluster and load it.
+
+#========================================================
+# Functions
+
+PROGNAME=$(basename $0)
+
+usage() {
+cat << 'EOF' 1>&2
+Usage: ${PROGNAME} [options] [--] [config_file.conf]
+   where config_file.conf is stk.conf or stken_policy.py; cdf.conf, sam.conf
+
+Change enstore configuration or SFA policy file. The file name is specified with
+    option --policy or --config or as last argument (config only). If config name is
+    not specified it is taken from $ENSTORE_CONFIG_FILE. Exactly one file name must be specified.
+The command shall be run on configuration server host.
+Check if file content can be interpreted by enstore python.
+Store configuration file in local git repository (commit) and push changes to remote repository.
+See wiki for more details.
+Load configuration/policy file to enstore configuration server if  Use --load, --noload to change this.
+
+Options:
+  -h | --help | -?      print this help message
+       --config FILE    full name of configuration file [$ENSTORE_CONFIG_FILE]
+                        File name must be full file name, no .conf is added.
+       --policy         modify SFA policy file $ENSTORE_SFA_POLICY
+                        load policy file specified in configuration file, thus these two files
+                          MUST be the same.
+       --gang           gang (system) name (stken, cdfen, d0en, ...)
+       --editor EDITOR  use EDITOR to edit the file [env. $EDITOR or vi] and
+                          also export it to be used by git to edit commit message
+  -v | --verbose        be verobose. Increase verbosity level if used multiple times (-vv)
+       --load           load configuration/policy file to configuration server
+                          [loads if running on config server]
+       --noload         do not load configuration/policy file
+  -x                    sets -xv option when executing this script
+       --               end of options, the rest is considered as arguments (file name)
+
+Arguments:
+   file                 config file name to be modified. This is full file name like stken.conf
+                        You can specify only one file: with --config or --policy
+                        or as the last argument (configuration file is assumed).
+EOF
+}
+
+#-------------------------------------------------------------
+abort_usg ()        { echo ${1:-} >&2 ; usage ; exit -2 ; }
+abort ()            { echo ${1:-} >&2 ; exit -1 ; }
+finish_OK ()        { echo ${1:-}     ; exit  0 ; }
+
+success ()          { printf "... ${1:-success}\n\n"; }
+end_of_compare ()   { printf "... end of compare\n\n"; }
+
+confirm_or_exit () {
+    echo -n "${1:-'Confirm: press Y to continue'}" ' [Y/n] '
+    read ans || abort "read answer failed"
+    answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
+    if [ "$answer" != "Y" ]; then
+        echo ${2:-"ok, exiting"}
+        exit 1
+    fi
+}
+
+#-------------------------------------------------------------
+# Parse arguments
+set +u
+
+# Reset all variables that might be set
+debug=false
+test=false
+opt_config=0
+config_file=""
+opt_policy=0
+policy_file=""
+load=true
+gang=""
+editor=""
+verbose=0
+errors=0
+while :
+do
+    case ${1-} in
+    -h | --help | -\?)
+        usage
+        exit 0
+        ;;
+    --gang)
+        shift
+        if [[ $# > 0 && $1 != -* ]]
+        then
+            gang=$1
+            shift
+        else
+            echo "No argument given for --gang option" >&2
+            errors=$((errors+1))
+        fi
+        ;;
+    --editor)
+        shift
+        if [[ $# > 0 && $1 != -* ]]
+        then
+            editor=$1
+            shift
+        else
+            echo "No argument given for --editor option" >&2
+            errors=$((errors+1))
+        fi
+        ;;
+    --config)
+        opt_config=$((opt_config+1))
+        shift
+        if [[ $# > 0 && $1 != -* ]]
+        then
+            config_file=$1
+            shift
+        else
+            echo "No argument given for --config option" >&2
+            errors=$((errors+1))
+        fi
+        ;;
+    --policy)
+        opt_policy=$((opt_policy+1))
+#       policy does not take second file argument now as we can not put it to config file
+#        shift
+#        if [[ $# > 0 && $1 != -* ]]
+#        then
+#            policy_file=$1
+#            shift
+#        else
+#            echo "No argument given for --policy option" >&2
+#            errors=$((errors+1))
+#        fi
+        ;;
+
+    --load)
+        load=true
+        shift
+        ;;
+    --noload)
+        load=false
+        shift
+        ;;
+
+    -v | --verbose)
+        verbose=$((verbose+1))
+        shift
+        ;;
+    --test)
+        test=true
+        shift
+        ;;
+    -x)
+        set -xv
+        shift
+        ;;
+    --) # End of all options
+        shift
+        break
+        ;;
+    -*)
+        echo "Unknown option: $1" >&2
+        errors=$((errors+1))
+        shift
+        ;;
+    *)  # no more options. Stop while loop                                                                                                          
+        break
+        ;;
+    esac
+done
+
+[[ $verbose > 2 ]] && debug=true
+
+if [[ $debug ]]
+then
+    echo "Parse arguments:"
+    echo "  Args left *: $*"
+    echo "  Args left #: $#"
+    echo "  errors: $errors"
+fi
+
+[[ $errors == 0 ]] || abort_usg
+
+# make sure --opt_config, --opt_policy, file is used once, or not at all
+[[ $((opt_config+opt_policy+$#)) < 2 ]] || abort_usg
+
+if [[ $((opt_config+opt_policy+$#)) == 0 ]]
+then
+    # no option given - change configuration by default
+    opt_config=1
+    if [[ $# > 0 ]]
+    then
+        # there is one argument left, consider it configuration file
+        config_file=$1
+    # else no --opt_config, --opt_policy or file specified
+    # the policy_file stays empty string for now until we validated ENSTORE_CONFIG_FILE
+    fi
+fi
+
+set -u
+# end parse arguments
+
+#-------------------------------------------------------------
+# Set system name
+gang=$(gang)
+
+if $test
+then
+    echo "### TEST:  this script uses test setings ###"
+
+    gang=dms-test
+    echo "TEST:  gang reset to $gang"
+fi
+
+#-------------------------------------------------------------
+# Set edit command
+#   if the user wants a specific editor, use it
+#   otherwise use vi since it is always there
+if [ -z "${editor-}"  ]; then
+    edcmd=${EDITOR:-vi}
+else
+    edcmd=${editor}
+fi
+
+export EDITOR=${edcmd}  # may be used by git for commit message
+export VISUAL=${edcmd}  # needed for cvs check in
+
+#-------------------------------------------------------------
+# Check we got all required options
+
+if $debug
+then
+    cat << 'EOF'
+  test:   $test
+  gang:   $gang
+  config: $config_file
+  policy: $policy_file
+  load:   $load
+  edcmd:  $edcmd
+EOF
+
+fi
+
+#=============================================================
+
+if [[ $(whoami) != "enstore" ]] ; then
+    abort "You must be user enstore to modify enstore config files"
+fi
+
+# We need enstore to be setup
+if [ -z "${ENSTORE_DIR-}"  ] ; then
+   . /usr/local/etc/setups.sh
+   setup enstore
+fi
+
+if [ -z "${ENSTORE_DIR-}"  ] ; then
+    abort "ENSTORE_DIR not set and 'setup enstore' can not set it"
+fi
+
+
+#-------------------------------------------------------------
+# Check if we are running on configuration host, refuse otherwise
+
+on_config_host=false
+
+cfg_host=${echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.}
+node=${$ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.}
+# my node is ...
+case $node in
+    # I do not think we need this clause as it is harcoded, and it was broken as written
+    # known configuration host
+    stkensrv2n|d0ensrv2n|cdfensrv2n)
+        on_config_host=true
+        ;;
+    # current configuration host as set in environment
+    #   usually FQDN like dmsen02.fnal.gov
+    ${ENSTORE_CONFIG_HOST})
+        on_config_host=true
+        ;;
+    # current configuration host set in environment, short
+    ${cfg_host})
+        on_config_host=true
+        ;;
+    *)
+        ;;
+esac
+
+[[ on_config_host ]] || abort "You must run $PROGNAME on configuration host" 
+
+#-------------------------------------------------------------
+# Specify file name to be modified, directory
+# from now on $config is either config file or policy file
+#   for the purpose editing the file or commiting it to git
+
+if [[ $opt_policy > 0 ]]
+then
+    # asserts:
+    [[ ${policy_file} ]] || abort "policy file name not provided"
+    [[ ${ENSTORE_SFA_POLICY ]]  || abort "environment ENSTORE_SFA_POLICY not set"
+
+    config=$(basename $ENSTORE_SFA_POLICY)
+    dir=$(dirname $ENSTORE_SFA_POLICY)
+
+    cmd_load_conf="enstore disp --load"
+
+else # by defualt, load configuration
+# elif [[ $opt_config > 0 ]] ; then
+    # configuration file name was provided on command line?
+    if [[ -n ${config_file} ]]
+    then
+        # file name shall not include path, use directory from environment
+        #   Default location is usually ~enstore/site_specific/config
+        [[ ${ENSTORE_CONFIG_DIR} ]] || abort "ENSTORE_CONFIG_DIR not set"
+
+        dir=${ENSTORE_CONFIG_DIR}
+        # Note, we do not append suffix ".conf" to fiule name anymore, must be full name
+        config=${config_file}
+    else
+        [[ ${ENSTORE_CONFIG_FILE ]]  || abort "ENSTORE_CONFIG_FILE not set"
+
+        config=$(basename $ENSTORE_CONFIG_FILE)
+        dir=$(dirname $ENSTORE_CONFIG_FILE)
+    fi
+    cmd_load_conf="enstore config --load --config_file=$dir/$config"
+fi
+
+file=$(basename $config)
+gitdir=$(dirname $dir)/config
+
+# Note:
+#   config refers to file name (no path)
+#   TEMPconfig refers to ansolute path of temp file for edit
+TEMPconfig=`mktemp /tmp/${config}.XXXXXX` ||
+    abort "can not mktemp for temporary file /tmp/${config}.XXXXXX"
+
+echo "The following configuration file will be modified: $dir/$config";
+
+if [[ $verbose > 1 ]]
+then
+    echo "  dir=$dir"
+    echo "  config=$config"
+    echo "  gitdir=$gitdir"
+    echo "  TEMPconfig=$TEMPconfig"
+    echo
+fi
+
+# Assert directories and file exist:
+
+[ ! -d $dir ]         || abort "configuration directory $dir does not exist"
+[ ! -d $gitdir ]      || abort "git configuration directory $gitdir does not exist"
+[ ! -r $dir/$config ] || abort "can not read $config"
+
+#=============================================================
+# Work in configuration directory, and it is git working directory
+cd $gitdir || abort "can not  cd $gitdir"
+
+# make sure we are using the latest config from remote repository
+echo "updating local git repository from remote"
+# fetch data from remote preconfigured repository 'enconfig'
+git fetch enconfig && success || abort "Something wrong with 'git fetch enconfig'. Investigate"
+
+echo "git status (all files):"
+git status -uno
+echo "... end of git status"
+
+[ ! -r $file ] || abort "file $gitdir/$file is unreadable in configuration directory"
+
+echo "compare configuration file fetched from remote repo and local condifuration file"
+diff -q $dir/$file $gitdir/$file ||
+    abort "Files differ. diff $dir/$file $gitdir/$file . Investigate"
+end_of_compare
+
+# Make a copy of file
+rm -f $TEMPconfig 2>/dev/null
+cp -p $config $TEMPconfig || abort "can not copy file $config to $TEMPconfig for edits"
+
+# Edit temporary file allowing the user to make changes
+echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $TEMPconfig"
+$edcmd $TEMPconfig && success || abort "Something wrong with editing. Investigate"
+
+#-------------------------------------------------------------
+# Check if updated file can be interpreted by python
+
+#echo "Checking $TEMPconfig is python file:"
+sed -n '1p' $TEMPconfig | grep python 
+if [ $? -ne 0 ]; then
+    abort "edited file $TEMPconfig is not python script (no 'python' on first line)"
+fi
+
+echo "Checking $TEMPconfig by running command: python $TEMPconfig"
+python $TEMPconfig && success || abort "Running python on $TEMPconfig found errors."
+
+#=============================================================
+# ok, time to commit - confirm
+confirm_or_exit "About to commit changes, is this what you want [Y/n] " \
+    "ok, aborting"
+
+# Configuration modification complete.
+# now:
+# - copy temp file to the real configuration file
+# - commit to remote repository
+# - copy to all other nodes on cluster (where it is not used anyway exept policy file)
+
+echo "Copy $TEMPconfig to configuration directory:"
+cp -p $TEMPconfig $config || abort "cp -p $TEMPconfig $dir/$config failed"
+rm -f $TEMPconfig 2>/dev/null
+
+# commit changes locally to git repository
+echo "committing:"
+git commit -- $file && success || abort "Something wrong with git commit. Investigate"
+
+echo "push changes to remote git configuration repository"
+git push enconfig   && success || abort "Something wrong with 'git push enconfig.' Investigate"
+
+echo "get changes back from remote git configuration repository"
+git fetch enconfig  && succes "OK"
+
+echo "compare files with local repository:"
+git diff --stat HEAD -- $file
+end_of_compare
+
+echo "compare files with remote repository:"
+git diff --stat HEAD~ -- $file
+end_of_compare
+
+# Distribute configuration file on all machines in gang
+#
+# AK: I think rgang will rewrite this file as enstore rgang does not have -C option
+#     - Leave it as is in original script
+
+# AK: Note, in the original script file location on remote node is based on
+#   $ENSTORE_DIR setting on the node where the file was edited but not the setting on remote node.
+#   Leave it as in original script.
+
+echo "  synchronizing $config to gang $gang with rgang"
+rgang -c $gang $TEMPconfig $dir/$config
+
+#---------------------------------------------------
+# Load the config file if requested
+
+if [[ ! $load ]] ; then
+    echo "configuraition modification complete"
+    echo "To load this configuration file run: ${cmd_load_conf}"
+    exit 0
+fi
+
+
+# Assert the command was defined for load configuration or load policy
+[[ $cmd_load_conf ]] || abort "$PROGNAME internal error: cmd_load_conf not set"
+
+
+confirm_or_exit 'About to load new config file into server, is this what you want' \
+                'ok, done'
+
+# Note:
+#  if the file name is specified on command line, it is not what we load here
+#  but we leave it as in original script
+
+echo "Loading configuration file $ENSTORE_CONFIG_DIR/$config
+
+### For testing, do not run actual command, just print it
+echo "DEBUG: ${cmd_load_conf}"
+echo "DEBUG: ### Uncomment command before commiting to production"
+### ${cmd_load_conf}
+
