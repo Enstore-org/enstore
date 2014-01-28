@@ -5,8 +5,8 @@
 ###############################################################################
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 4.0.0
-Release: 4
+Version: 4.1.0
+Release: 0
 #Copyright: GPL
 License: GPL
 Group: System Environment/Base
@@ -207,6 +207,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Fri Jan 12 2014  <moibenko@fnal.gov> -
+- started using python 2.7.6 rpm 
 * Thu Dec 12 2013  <moibenko@fnal.gov> -
 - new version 4.0.0-4 
 * Wed Nov 27 2013  <moibenko@fnal.gov> -
