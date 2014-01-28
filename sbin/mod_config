@@ -10,34 +10,34 @@ PROGNAME=$(basename $0)
 
 usage() {
 cat << 'EOF' 1>&2
-Usage: ${PROGNAME} [options] [--] [config_file]
-   where config_file.conf is stk.conf or stken_policy.py; cdf.conf, sam.conf
+Usage: ${PROGNAME} [options] [config_file]
+   where config_file.conf is stk.conf, cdf.conf, sam.conf
 
-Change enstore configuration or SFA policy file. The file name is specified with
-    option --policy or --config or as last argument (config only). If config name is
-    not specified it is taken from $ENSTORE_CONFIG_FILE. Exactly one file name must be specified.
-The command shall be run on configuration server host.
-Check if file content can be interpreted by enstore python.
+Change enstore configuration or SFA policy file.
+    By default (without --policy) mod_config operates enstore configuration file.
+    The configuration file name is specified as the last argument "config_file."
+    If configuration file name is not specified it is taken from env $ENSTORE_CONFIG_FILE.
+
+    If option --policy specified the file argument is not needed and the policy file name is taken from environment $ENSTORE_SFA_POLICY.
+    To load policy file, enstore takes the file specified in configuration file as SFA policy file, thus these two references MUST be set to the same during system configuration.
+
+Check if configuration or policy file content can be interpreted by python.
 Store configuration file in local git repository (commit) and push changes to remote repository.
-See wiki for more details.
-Load configuration/policy file to enstore configuration server if  Use --load, --noload to change this.
+Load configuration/policy file to enstore configuration server. Use --noload skip.
+
+The command shall be run on enstore configuration server host.
 
 Options:
-  -h | --help | -?           print this help message
-       --config config_file  full name of configuration file [$ENSTORE_CONFIG_FILE]
-                             File name must be full file name, no .conf is added.
-       --policy         modify SFA policy file $ENSTORE_SFA_POLICY
-                        load policy file specified in configuration file, thus these two files
-                          MUST be the same.
+  -h | --help | -?      print this help message
+       --policy         modify SFA policy file set at env $ENSTORE_SFA_POLICY
+                        load policy file specified in enstore configuration file.
+                        These two referenced must point to the same file.
        --gang           gang (system) name (stken, cdfen, d0en, ...)
-       --editor EDITOR  use EDITOR to edit the file [env. $EDITOR or vi] and
+       --editor EDITOR  use EDITOR to edit the file [env $EDITOR or vi] and
                           also export it to be used by git to edit commit message
   -v | --verbose        be verobose. Increase verbosity level if used multiple times (-vv)
-       --load           load configuration/policy file to configuration server
-                          [loads if running on config server]
        --noload         do not load configuration/policy file
   -x                    sets -xv option when executing this script
-       --               end of options, the rest is considered as arguments (file name)
 
 Arguments:
     config_file         config file name to be modified. This is full file name like stken.conf
@@ -45,6 +45,14 @@ Arguments:
                         or as the last argument (configuration file is assumed).
 EOF
 }
+
+# park here out help string for commented out ouptions:
+# Usage: ${PROGNAME} [options] [--] [config_file]
+#       --config config_file  full name of configuration file [$ENSTORE_CONFIG_FILE]
+#                             File name must be full file name, no .conf is added.
+#       --               end of options, the rest is considered as arguments (file name)
+#       --load           load configuration/policy file to configuration server
+#                          [loads if running on config server]
 
 #-------------------------------------------------------------
 abort_usg ()        { echo ${1:-} >&2 ; usage ; exit -2 ; }
@@ -110,21 +118,22 @@ do
             errors=$((errors+1))
         fi
         ;;
-    --config)
-        opt_config=$((opt_config+1))
-        shift
-        if [[ $# > 0 && $1 != -* ]]
-        then
-            config_file=$1
-            shift
-        else
-            echo "No argument given for --config option" >&2
-            errors=$((errors+1))
-        fi
-        ;;
+#    --config)
+#        opt_config=$((opt_config+1))
+#        shift
+#        if [[ $# > 0 && $1 != -* ]]
+#        then
+#            config_file=$1
+#            shift
+#        else
+#            echo "No argument given for --config option" >&2
+#            errors=$((errors+1))
+#        fi
+#        ;;
     --policy)
         opt_policy=$((opt_policy+1))
         shift
+        ;;
 #       policy does not take second file argument now as we can not put it to config file
 #        if [[ $# > 0 && $1 != -* ]]
 #        then
@@ -134,7 +143,7 @@ do
 #            echo "No argument given for --policy option" >&2
 #            errors=$((errors+1))
 #        fi
-        ;;
+#        ;;
 
     --load)
         load=true
@@ -157,10 +166,10 @@ do
         set -xv
         shift
         ;;
-    --) # End of all options
-        shift
-        break
-        ;;
+#    --) # End of all options
+#        shift
+#        break
+#        ;;
     -*)
         echo "Unknown option: $1" >&2
         errors=$((errors+1))
