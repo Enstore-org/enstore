@@ -472,21 +472,31 @@ fi
 #   $ENSTORE_DIR setting on the node where the file was edited but not the setting on remote node.
 #   Leave it as in original script.
 
+remote_cmd="source /opt/enstore/sbin/gettkt ;
+  cd \${ENSTORE_CONFIG_DIR} &&  git pull enconfig ${cur_branch}"
+
+remote_cmd='source /opt/enstore/sbin/gettkt; cd /home/enstore/site_specific; git pull enconfig test-mod_cofig '
+
 if [[ -n $gang && $gang != "UNKNOWN" ]] ; then
-    echo "  synchronizing $config to gang $gang with rgang"
-    rgang -c $gang $TEMPconfig $dir/$config
+    echo "  synchronizing $config to gang $gang with rgang:"
+    [[ $debug ]] && echo "rgang -s $gang ${remote_cmd}"
+    rgang -s $gang "${remote_cmd}"
+
 else
     echo "gang is not set, skip synchronizing $config to gang with rgang"
 fi
 
 #---------------------------------------------------
 # Load the config file if requested
+echo load=$load
 
-if [[ ! $load ]] ; then
+if ! $load ; then
     echo "configuraition modification complete"
     echo "To load this configuration file run: ${cmd_load_conf}"
     exit 0
 fi
+
+echo load=$load
 
 # Assert the command was defined for load configuration or load policy
 [[ $cmd_load_conf ]] || abort "$PROGNAME internal error: cmd_load_conf not set"
