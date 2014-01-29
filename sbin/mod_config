@@ -145,10 +145,10 @@ do
 #        fi
 #        ;;
 
-    --load)
-        load=true
-        shift
-        ;;
+#    --load)
+#        load=true
+#        shift
+#        ;;
     --noload)
         load=false
         shift
@@ -213,14 +213,13 @@ set -u
 
 #-------------------------------------------------------------
 # Set system name
-gang=$(gang)
+if [[ -z $(gang) ]] ; then
+    gang=$(gang)
+fi
 
 if $test
 then
     echo "### TEST:  this script uses test setings ###"
-
-    gang=dms-test
-    echo "TEST:  gang reset to $gang"
 fi
 
 #-------------------------------------------------------------
@@ -363,7 +362,7 @@ fi
 [[ -r $dir/$config ]] || abort "can not read $config"
 
 #=============================================================
-# Work in configuration directory, and it is git working directory
+# Work in configuration directory. It is git working directory
 cd $gitdir || abort "can not \"cd $gitdir\""
 
 # make sure we are using the latest config from remote repository
@@ -377,7 +376,7 @@ echo "... end of git status"
 
 [[ -r $cfile ]] || abort "file $gitdir/$cfile is unreadable in configuration directory"
 
-echo "compare configuration file fetched from remote repo and local condifuration file"
+echo "compare configuration file fetched from remote repo and local configuration file"
 diff -q $dir/$cfile $gitdir/$cfile ||
     abort "Files differ. diff $dir/$file $gitdir/$cfile . Investigate"
 end_of_compare
@@ -436,13 +435,16 @@ git push enconfig   && success || abort "Something wrong with 'git push enconfig
 echo "get changes back from remote git configuration repository"
 git fetch enconfig  && succes "OK"
 
-echo "compare files with local repository:"
-git diff --stat HEAD -- $cfile
-end_of_compare
+if [[ $verbose > 1 ]]
+then
+    echo "compare files with local repository:"
+    git diff --stat HEAD -- $cfile
+    end_of_compare
 
-echo "compare files with remote repository:"
-git diff --stat HEAD~ -- $cfile
-end_of_compare
+    echo "compare files with remote repository:"
+    git diff --stat HEAD~ -- $cfile
+    end_of_compare
+fi
 
 # Distribute configuration file on all machines in gang
 #
