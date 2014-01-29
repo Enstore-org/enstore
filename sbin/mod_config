@@ -472,10 +472,9 @@ fi
 #   $ENSTORE_DIR setting on the node where the file was edited but not the setting on remote node.
 #   Leave it as in original script.
 
-remote_cmd="source /opt/enstore/sbin/gettkt ;
-  cd \${ENSTORE_CONFIG_DIR} &&  git pull enconfig ${cur_branch}"
+remote_cmd="source /opt/enstore/sbin/gettkt ; cd ${ENSTORE_CONFIG_DIR} &&  git pull enconfig ${cur_branch}"
 
-remote_cmd='source /opt/enstore/sbin/gettkt; cd /home/enstore/site_specific; git pull enconfig test-mod_cofig '
+#remote_cmd='source /opt/enstore/sbin/gettkt; cd /home/enstore/site_specific; git pull enconfig test-mod_cofig '
 
 if [[ -n $gang && $gang != "UNKNOWN" ]] ; then
     echo "  synchronizing $config to gang $gang with rgang:"
