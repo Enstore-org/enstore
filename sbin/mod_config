@@ -478,15 +478,12 @@ fi
 
 #---------------------------------------------------
 # Load the config file if requested
-echo load=$load
 
 if ! $load ; then
     echo "configuraition modification complete"
     echo "To load this configuration file run: ${cmd_load_conf}"
     exit 0
 fi
-
-echo load=$load
 
 # Assert the command was defined for load configuration or load policy
 [[ $cmd_load_conf ]] || abort "$PROGNAME internal error: cmd_load_conf not set"
@@ -502,4 +499,6 @@ echo "Loading configuration file $ENSTORE_CONFIG_DIR/$config"
 $debug && echo ${cmd_load_conf}
 
 ${cmd_load_conf}
+
+$debug && echo rc=$?
 
