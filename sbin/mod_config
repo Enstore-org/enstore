@@ -496,8 +496,8 @@ confirm_or_exit "About to load new config file into server, is this what you wan
 
 echo "Loading configuration file $ENSTORE_CONFIG_DIR/$config"
 
-$debug && echo ${cmd_load_conf}
-
+#$debug && echo ${cmd_load_conf}
+echo ${cmd_load_conf}
 ${cmd_load_conf}
 
 $debug && echo rc=$?
