@@ -1,14 +1,9 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id$
-#
-###############################################################################
-
 """
-Enstore files metadata consistency scanner.
-Python requirements: Python 2.6+, psycopg2, Enstore modules.
+File metadata consistency scanner.
+
+Python requirements: Python 2.7, :mod:`psycopg2`, Enstore modules.
 """
 
 # Python imports
@@ -23,6 +18,7 @@ import fcntl
 import functools
 import grp
 import hashlib
+import inspect
 import locale
 import itertools
 import json
@@ -50,7 +46,7 @@ import namespace as enstore_namespace
 import volume_family as enstore_volume_family
 
 # Other imports
-import psycopg2.extras  # This imports psycopg2 as well.
+import psycopg2.extras  # This imports psycopg2 as well. @UnresolvedImport
 
 # Setup global environment
 locale.setlocale(locale.LC_ALL, '')
@@ -61,7 +57,7 @@ psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
 settings = {
 'cache_volume_info': False, # There is no speedup if this is True, and there is
                             # potentially a gradual slow-down.
-                            # If set to True, ensure sys.version_info >= (2, 7).
+                            # If True, ensure sys.version_info >= (2, 7).
                             # See MPSubDictCache.__init__
 'checkpoint_max_age': 60,  # (days)
 'checkpoint_write_interval': 5,  # (seconds)
@@ -70,10 +66,11 @@ settings = {
 #'fs_root': '/pnfs/fs/usr/astro/fulla/BACKUP',  # for quicker test
 'num_scan_processes_per_cpu': 3,
 'scriptname_root': os.path.splitext(os.path.basename(__file__))[0],
+'sleep_time_at_exit': 0.01,  # (seconds)
 'status_interval': 600,  # (seconds)
 }
 
-## {{{ http://code.activestate.com/recipes/577452/ (r1)
+
 class Memoize(object):
     """
     Cache the return value of a method.
@@ -84,21 +81,34 @@ class Memoize(object):
     be hashable.
 
     If a memoized method is invoked directly on its class the result will not
-    be cached. Instead the method will be invoked like a static method:
-    class Obj(object):
-        @memoize
-        def add_to(self, arg):
-            return self + arg
-    Obj.add_to(1) # not enough arguments
-    Obj.add_to(1, 2) # returns 3, result is not cached
+    be cached. Instead the method will be invoked like a static method::
+
+        class Obj(object):
+            @memoize
+            def add_to(self, arg):
+                return self + arg
+
+        Obj.add_to(1) # not enough arguments
+        Obj.add_to(1, 2) # returns 3, result is not cached
+
+    .. note :: This class is derived from
+               http://code.activestate.com/recipes/577452/history/1/.
+
+    .. warning :: This class should not be used directly, as doing so can
+        prevent Sphinx from documenting the decorated method correctly. Use the
+        :func:`memoize` or :func:`memoize_property` decorator instead.
     """
 
     def __init__(self, func):
         self.func = func
+        #self.__name__ = self.func.__name__  # For Sphinx.
+        #self.__doc__ = self.func.__doc__  # For Sphinx.
+
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self.func
         return functools.partial(self, obj)
+
     def __call__(self, *args, **kw):
         obj = args[0]
         try:
@@ -111,27 +121,53 @@ class Memoize(object):
         except KeyError:
             res = cache[key] = self.func(*args, **kw)
         return res
-## end of http://code.activestate.com/recipes/577452/ }}}
-memoize = Memoize
+
+
+def memoize(f):
+    """
+    Return a memoization decorator for methods of classes.
+
+    This wraps the :class:`Memoize` class using :py:func:`functools.wraps`.
+    This allows the decorated method to be documented correctly by Sphinx.
+
+    .. note :: This function is derived from
+               http://stackoverflow.com/a/6394966/832230.
+    """
+
+    memoized = Memoize(f)
+
+    @functools.wraps(f)
+    def helper(*args, **kws):
+        return memoized(*args, **kws)
+
+    return helper
 
 def memoize_property(f):
+    """
+    Return a memoization decorator for methods of classes, with it being usable
+    as a :obj:`property`.
+
+    This uses the :func:`memoize` function.
+    """
     return property(memoize(f))
 
 def do_random_test(negexp=3):
     """
-    Return True if a random probability is not greater than a threshold.
+    Return :obj:`True` if a random probability is not greater than a threshold,
+    otherwise return :obj:`False`.
 
-    `negexp` is the negative exponent that is used to compute a probability
-    threshold. `negexp` is a non-negative integer. Higher values of negexp make
-    the threshold exponentially smaller. A value of 0 naturally makes the
-    threshold equal 1, in which case the returned value will always be True.
+    :type negexp: :obj:`int` (non-negative)
+    :arg negexp: This is the negative exponent that is used to compute a
+        probability threshold. Higher values of ``negexp`` make the threshold
+        exponentially smaller. A value of 0 naturally makes the threshold equal
+        1, in which case the returned value will be :obj:`True`.
+    :rtype: :obj:`bool`
     """
     # Compare random probability with threshold 1e-negexp
     return random.random() <= 10**(-1*negexp)
 
 class PeriodicRunner:
-    """Provide a class used to run a provided callable periodically in a
-    daemonic background thread or process."""
+    "Run a callable periodically."
 
     _concurrency_classes = {'thread': threading.Thread,
                             'process': multiprocessing.Process,}
@@ -139,32 +175,35 @@ class PeriodicRunner:
     def __init__(self, is_active_indicator, target, interval, concurrency,
                  name=None):
         """
-        Run the `target` callable periodically with the specified idle
-        `interval` in seconds between each run.
+        Run the ``target`` callable periodically with the specified idle
+        ``interval`` in seconds between each run.
 
-        `target` is a callable object which is to be run periodically. Only one
-        instance of the target is called and run at a time. Even so, the target
-        should be thread or process safe, depending upon the indicated
-        `concurrency` type.
+        :type target: :obj:`callable`
+        :arg target: This is a callable which is to be run periodically. Only
+            one instance of the target is called and run at a time. Even so,
+            the target should be thread or process safe, depending upon the
+            indicated ``concurrency`` type. The target is also run once upon
+            program or thread termination.
 
-        `is_active_indicator` must have an attribute `value` which is evaluated
-        as a bool. The target is called only so long as
-        `is_active_indicator.value` evaluates to True. If and when this
-        indicator evaluates to False, the loop is terminated, although the
-        target is then still run one final time. The `is_active_indicator`
-        argument can typically be a multiprocessing.Value or
-        multiprocessing.RawValue object.
+        :type is_active_indicator: :obj:`multiprocessing.Value` or
+            :obj:`multiprocessing.RawValue`
+        :arg is_active_indicator: This must have an attribute ``value`` which
+            is evaluated as a :obj:`bool`. The target is called only so long as
+            ``is_active_indicator.value`` evaluates to :obj:`True`. If and when
+            this indicator evaluates to :obj:`False`, the loop is terminated,
+            although the target is then still run one final time.
 
-        `interval` is the number of seconds to sleep between each run of the
-        target.
+        :type interval: :obj:`int` or :obj:`float` (positive)
+        :arg interval: number of seconds to sleep between each run of the
+            target.
 
-        `concurrency` can be "thread" or "process", indicating whether the
-        target should run in a new thread or a new process.
+        :type concurrency: :obj:`str`
+        :arg concurrency: This can be ``thread`` or ``process``, indicating
+            whether the target should run in a new thread or a new process.
 
-        `name` is the name to assigned to the target thread or process. If None,
-        it is determined automatically.
-
-        The target is also run once upon program or thread termination.
+        :type name: :obj:`str` or :obj:`None`
+        :arg name: This is the name assigned to the target thread or process.
+            If :obj:`None`, it is determined automatically.
         """
 
         # Setup variables
@@ -185,7 +224,7 @@ class PeriodicRunner:
         self._runner_class = self._concurrency_classes[self._concurrency_type]
         if self._target_name is None:
             self._target_name = '{0}{1}'.format(self._target.__name__.title(),
-                                                self._concurrency_type.title(),)
+                                                self._concurrency_type.title())
 
         # Setup runner
         self._runner_instance = self._runner_class(target=self._target_runner,
@@ -212,7 +251,7 @@ class PeriodicRunner:
 
 class FileParser(ConfigParser.SafeConfigParser):
     """
-    Provide a file parser based on `ConfigParser.SafeConfigParser`.
+    Provide a file parser based on :class:`ConfigParser.SafeConfigParser`.
 
     Stored options are case-sensitive.
     """
@@ -224,15 +263,17 @@ class FileParser(ConfigParser.SafeConfigParser):
 
     def __init__(self, is_active_indicator, filepath_suffix=None):
         """
-        Initialize a file parser.
+        Initialize the parser.
 
-        `is_active_indicator` must have an attribute `value` which is evaluated
-        as a bool. The `is_active_indicator` argument can typically be a
-        multiprocessing.Value or multiprocessing.RawValue object.
+        :type is_active_indicator: :obj:`multiprocessing.Value` or
+            :obj:`multiprocessing.RawValue`
+        :arg is_active_indicator: This must have an attribute ``value`` which
+            is evaluated as a :obj:`bool`.
 
-        `filepath_suffix` is optional. If None, no suffix is used, otherwise
-        the provided suffix string is joined to the default file path with an
-        underscore.
+        :type filepath_suffix: :obj:`str` or :obj:`None`
+        :arg filepath_suffix: If :obj:`None`, no suffix is used, otherwise the
+            provided suffix string is joined to the default file path with an
+            underscore.
 
         Only one instance of this class may be initialized for each unique
         file path suffix.
@@ -271,13 +312,14 @@ class FileParser(ConfigParser.SafeConfigParser):
         """
         Add the provided filepath suffix to the list of suffixes in use.
 
-        ValueError is raised if the suffix is already in use.
+        :exc:`ValueError` is raised if the suffix is already in use.
         """
 
         with self._filepath_suffixes_lock:
             if self._filepath_suffix in self._filepath_suffixes_in_use:
                 msg = ('File path suffix "{}" was previously initialized. A '
-                       'suffix can be initialized only once.')
+                       'suffix can be initialized only once.'
+                       ).format(self._filepath_suffix)
                 raise ValueError(msg)
             else:
                 self._filepath_suffixes_in_use.append(self._filepath_suffix)
@@ -335,14 +377,12 @@ class Checkpoint(object):
     """
     Provide a checkpoint manager to get and set a checkpoint.
 
-    The `FileParser` class is used internally to read and write the checkpoint.
-
-    The `value` instance attribute can be used to get or asynchronously set a
-    checkpoint locally. The getter and setter for this attribute are
-    process safe.
+    The :class:`FileParser` class is used internally to read and write the
+    checkpoint.
     """
 
     version = 1  # Version number of checkpointing implementation.
+    """Version number of checkpointing implementation."""
 
     def __init__(self, is_active_indicator, scanner_name):
         """
@@ -354,17 +394,19 @@ class Checkpoint(object):
 
         All old or invalid checkpoints are initially deleted.
 
-        `is_active_indicator` must have an attribute `value` which is evaluated
-        as a bool. So long as `is_active_indicator.value` evaluates to True,
-        the current checkpoint is periodically written to file. If and when this
-        indicator evaluates to False, the write loop is terminated, although the
-        checkpoint is then still written one final time. The
-        `is_active_indicator` argument can typically be a multiprocessing.Value
-        or multiprocessing.RawValue object.
+        :type is_active_indicator: :obj:`multiprocessing.Value` or
+            :obj:`multiprocessing.RawValue`
+        :arg is_active_indicator: This must have an attribute ``value`` which
+            is evaluated as a :obj:`bool`. So long as
+            ``is_active_indicator.value`` evaluates to :obj:`True`, the current
+            checkpoint is periodically written to file. If and when this
+            indicator evaluates to :obj:`False`, the write loop is terminated.
+            The checkpoint is then still written one final time.
 
-        `scanner_name` is a string representing the name of the current scanner,
-        e.g. 'ScannerForward'. It is typically the name of the class of the
-        current scanner.
+        :type scanner_name: :obj:`str`
+        :arg scanner_name: This represents the name of the current scanner,
+            e.g. ``ScannerForward``. It is expected to be the name of the class
+            of the current scanner.
         """
 
         # Setup variables
@@ -398,29 +440,42 @@ class Checkpoint(object):
 
     def _is_reliably_active(self):
         """
-        Return whether the `self._is_active` indicator reliably returns True.
+        Return whether the ``self._is_active`` indicator reliably returns
+        :obj:`True`.
 
-        The indicator is checked twice with a time delay between the checks. The
-        time delay provides time for the indicator to possibly be set to False,
-        such as during an abort.
+        The indicator is checked twice with a time delay between the checks.
+        The time delay provides time for the indicator to possibly be set to
+        :obj:`False`, such as during an abort.
 
         This method may be used from any thread or process. It is thread and
         process safe.
+
+        :rtype: :obj:`bool`
         """
 
         return (self._is_active.value and
                 (time.sleep(0.1) or self._is_active.value))
                 # Note: "bool(time.sleep(0.1))" is False. Because it is
                 # succeeded by "or", it is essentially ignored for boolean
-                # considerations. Its only purpose is to introduce a time delay.
+                # considerations. Its only purpose is to introduce a time
+                # delay.
 
     @property
     def value(self):
         """
-        Return the locally stored checkpoint.
+        For use as a getter, return the locally stored checkpoint.
 
-        This method may be used from any thread or process. It is thread and
-        process safe.
+        :rtype: :obj:`str` (when *getting*)
+
+        For use as a setter, update the locally stored checkpoint with the
+        provided value. The checkpoint is updated into the parser
+        asynchronously.
+
+        :type value: :obj:`str` (when *setting*)
+        :arg value: the current checkpoint.
+
+        The getter or setter may be used from any thread or process. They are
+        thread and process safe.
         """
 
         try: return self._value.value
@@ -431,12 +486,10 @@ class Checkpoint(object):
     @value.setter
     def value(self, value):
         """
-        Update the locally stored checkpoint with the specified value.
+        See the documentation for the getter method.
 
-        The checkpoint is updated into the parser asynchronously.
-
-        This method may be used from any thread or process. It is thread and
-        process safe.
+        This method is not documented here because this docstring is ignored by
+        Sphinx.
         """
 
         value = unicode(value)
@@ -473,7 +526,8 @@ class Checkpoint(object):
 
         try:
             checkpoint = self._parser.get(self._section, self._option)
-            # Note: A parser lock is not required or useful for a get operation.
+            # Note: A parser lock is not required or useful for a get
+            # operation.
         except ConfigParser.NoOptionError:
             checkpoint = ''
         self.value = checkpoint
@@ -493,7 +547,7 @@ class Checkpoint(object):
         with self._parser_lock:
             if self._is_parser_set_enabled.value:
                 checkpoint = self.value
-                if checkpoint:  # Note: checkpoint is initially an empty string.
+                if checkpoint: # Note: checkpoint is initially an empty string.
                     self._parser.set(self._section, self._option, checkpoint)
                     self._parser.write()
 
@@ -512,45 +566,49 @@ class Checkpoint(object):
 
 
 class PrintableList(list):
-    """
-    Provide a list object which has a valid English string representation.
+    """Provide a list object which has a valid English string
+    representation."""
 
-    Refer to the __str__ method for examples.
-    """
-
-    def __init__(self, list_=None, separator=', ', separate_last=False):
+    def __init__(self, plist=None, separator=', ', separate_last=False):
         """
         Initialize the object.
 
-        `list_` is the initial list with which to initialize the object. It is
-        an optional argument with a default value of None, in which case an
-        empty list is initialized.
+        :type plist: :obj:`list` or :obj:`None`
+        :arg plist: This is the initial :obj:`list` with which to initialize
+            the object. It is optional, with a default value of :obj:`None`, in
+            which case an empty :obj:`list` is initialized.
 
-        `separator` is the string which is used to delimit consecutive items in
-        the list.
+        :type separator: :obj:`str`
+        :arg separator: the string which is used to delimit consecutive items
+            in the list.
 
-        `separate_last` is a bool which indicates whether to separate the last
-        two items in the list with the specified separator.
+        :type separate_last: :obj:`bool`
+        :arg separate_last: indicates whether to separate the last two items in
+            the list with the specified ``separator``.
         """
 
         self.separator = separator
         self.separate_last = separate_last
 
-        if list_ is None: list_ = []
-        list.__init__(self, list_)
+        if plist is None: plist = []
+        list.__init__(self, plist)
 
     def __str__(self):
         """
         Return a valid English string representation.
 
-        Example:
-        >>> for i in range(5): str(PrintableList(range(i)))
-        ...
-        ''
-        '0'
-        '0 and 1'
-        '0, 1 and 2'
-        '0, 1, 2 and 3'
+        :rtype: :obj:`str`
+
+        Example::
+
+            >>> for i in range(5):
+            ...     str(PrintableList(range(i)))
+            ...
+            ''
+            '0'
+            '0 and 1'
+            '0, 1 and 2'
+            '0, 1, 2 and 3'
         """
 
         separator = self.separator
@@ -564,16 +622,28 @@ class PrintableList(list):
 
 
 class ReversibleDict(dict):
+    """
+    Provide a reversible :obj:`dict`.
+
+    Initialize the object with a :obj:`dict`.
+    """
 
     def reversed(self, sort_values=True):
         """
-        Return a reversed dict, with keys corresponding to non-unique values in
-        the original dict grouped into a list in the returned dict.
+        Return a reversed :obj:`dict`, with keys corresponding to non-unique
+        values in the original :obj:`dict` grouped into a :obj:`list` in the
+        returned :obj:`dict`.
 
-        Example:
-        >>> d = ReversibleDict({'a': 3, 'c': 2, 'b': 2, 'e': 3, 'd': 1, 'f': 2})
-        >>> d.reversed()
-        {1: ['d'], 2: ['b', 'c', 'f'], 3: ['a', 'e']}
+        :type sort_values: :obj:`bool`
+        :arg sort_values: sort the items in each :obj:`list` in each value of
+            the returned :obj:`dict`.
+        :rtype: :obj:`dict`
+
+        Example::
+
+            >>> d = ReversibleDict({'a':3, 'c':2, 'b':2, 'e':3, 'd':1, 'f':2})
+            >>> d.reversed()
+            {1: ['d'], 2: ['b', 'c', 'f'], 3: ['a', 'e']}
         """
 
         revdict = {}
@@ -585,14 +655,18 @@ class ReversibleDict(dict):
 
     def _reversed_tuple_revlensorted(self):
         """
-        Return a tuple created from the reversed dict's items (see the
-        `reversed` method), with the items in the tuple being reverse sorted by
-        the length of the reversed dict's values.
+        Return a :obj:`tuple` created from the reversed dict's items.
 
-        Example:
-        >>> d = ReversibleDict({'a': 3, 'c': 2, 'b': 2, 'e': 3, 'd': 1, 'f': 2})
-        >>> d._reversed_tuple_revlensorted()
-        ((2, ['b', 'c', 'f']), (3, ['a', 'e']), (1, ['d']))
+        The items in the :obj:`tuple` are reverse-sorted by the length of the
+        reversed dict's values.
+
+        :rtype: :obj:`tuple`
+
+        Example::
+
+            >>> d = ReversibleDict({'a':3, 'c':2, 'b':2, 'e':3, 'd':1, 'f':2})
+            >>> d._reversed_tuple_revlensorted()
+            ((2, ['b', 'c', 'f']), (3, ['a', 'e']), (1, ['d']))
         """
 
         revitems = self.reversed().items()
@@ -602,15 +676,20 @@ class ReversibleDict(dict):
 
     def __str__(self):
         """
-        Return a string representation of the reversed dict's items (see the
-        `reversed` method) using the PrintableList class, sorted per the
-        `_reversed_tuple_revlensorted` method.
+        Return a string representation of the reversed dict's items using the
+        :class:`PrintableList` class.
 
-        Example
-        >>> print(ReversibleDict({'a':3, 'c':2, 'b':2, 'e':3, 'd':1, 'f':2}))
-        b, c and f (2); a and e (3); and d (1)
-        >>> print(ReversibleDict({'a': 3, 'c': 2}))
-        a (3) and c (2)
+        The items in the returned string are reverse-sorted by the length of
+        the reversed dict's values.
+
+        :rtype: :obj:`str`
+
+        Example::
+
+            >>> print(ReversibleDict({'a':3, 'c':2, 'b':2, 'e':3, 'd':1, 'f':2}))
+            b, c and f (2); a and e (3); and d (1)
+            >>> print(ReversibleDict({'a': 3, 'c': 2}))
+            a (3) and c (2)
         """
         revtuple = self._reversed_tuple_revlensorted()
 
@@ -624,14 +703,16 @@ class ReversibleDict(dict):
 
 class MPSubDictCache:
     """
-    Provide a memory-efficient and multiprocessing-safe subset of a dict for use
-    when the values in the dict are themselves dicts.
+    Provide a memory-efficient and :mod:`multiprocessing`-safe subset of a
+    :obj:`dict` for use when the values in the :obj:`dict` are themselves
+    dicts.
 
     Memory efficiency is derived from sharing the keys used in the level 2
     dicts.
     """
 
     def __init__(self):
+        """Initialize the object."""
 
         self._manager = multiprocessing.Manager()
         # Note: If the above line is executed at import-time, it makes the
@@ -649,14 +730,18 @@ class MPSubDictCache:
         self._setitem_lock = multiprocessing.Lock()
 
     def __contains__(self, k):
+        """``D.__contains__(k)`` returns :obj:`True` if ``D`` has a key ``k``,
+        else returns :obj:`False`."""
         return (k in self._cache)
 
     def __getitem__(self, k):
+        """``x.__getitem__(y) <==> x[y]``"""
         subdict = self._cache[k] # can raise KeyError
         subdict = self._decompress_subkeys(subdict) # should not raise KeyError
         return subdict
 
     def __setitem__(self, k, subdict):
+        """``x.__setitem__(i, y) <==> x[i]=y``"""
         with self._setitem_lock:
             subdict = self._compress_subkeys(subdict)
             self._cache[k] = subdict
@@ -668,6 +753,14 @@ class MPSubDictCache:
         return index
 
     def _compress_subkeys(self, subdict):
+        """
+        Compress the keys in the ``subdict`` using an internal index.
+
+        :type subdict: :obj:`dict`
+        :arg subdict:
+        :rtype: :obj:`dict`
+        """
+
         subdict_compressed = {}
         for k,v in subdict.items():
             try: k_compressed = self._subkeys[k]
@@ -679,29 +772,42 @@ class MPSubDictCache:
         return subdict_compressed
 
     def _decompress_subkeys(self, subdict):
+        """
+        Decompress the keys in the ``subdict`` using the internal index.
+
+        :type subdict: :obj:`dict`
+        :arg subdict:
+        :rtype: :obj:`dict`
+        """
+
         return dict((self._subkeys_reverse[k],v) for k,v in subdict.items())
 
 
-# Parse input arguments
 class CommandLineOptionsParser(optparse.OptionParser):
     """
     Parse program options specified on the command line.
 
-    These are made available using instance attributes "options" and "args".
+    These are made available using instance attributes ``options`` and
+    ``args``, as described below.
 
-    "options" is an object containing values for all options - e.g. if "--file"
-    takes a single string argument, then `options.file` will be the filename
-    supplied by the user, or None if the user did not supply that option.
+    ``options`` is an attribute providing values for all options. For example,
+    if ``--file`` takes a single string argument, then ``options.file`` will be
+    the filename supplied by the user. Alternatively, its value will be
+    :obj:`None` if the user did not supply this option.
 
-    "args" is the list of positional arguments leftover after parsing options.
+    ``args`` is the list of positional arguments leftover after parsing
+    ``options``.
+
+    The :meth:`add_option` method can be used to add an option.
     """
 
-    # In newer versions of Python, i.e. 2.7 or higher, the usage of the optparse
-    # module should be replaced by the newer argparse module.
+    # In newer versions of Python, i.e. 2.7 or higher, the usage of the
+    # optparse module should be replaced by the newer argparse module.
 
     _options_seq = []
 
     def __init__(self):
+        """Parse options."""
 
         usage = '%prog -t SCAN_TYPE [OPTIONS]'
         optparse.OptionParser.__init__(self, usage=usage)
@@ -712,7 +818,8 @@ class CommandLineOptionsParser(optparse.OptionParser):
         self._process_options()
 
     def add_option(self, *args, **kwargs):
-        """Add an option while keeping track of its destination."""
+
+        # Refer to the docstring of the overridden method.
 
         optparse.OptionParser.add_option(self, *args, **kwargs)
         if kwargs.get('dest'): self._options_seq.append(kwargs['dest'])
@@ -727,7 +834,7 @@ class CommandLineOptionsParser(optparse.OptionParser):
         return pathn
 
     def _add_options(self):
-        """Add options."""
+        """Add various options."""
 
         # Add scan type option
         self.add_option('-t', '--type', dest='scan_type',
@@ -758,8 +865,8 @@ class CommandLineOptionsParser(optparse.OptionParser):
         self.add_option('-p', '--print', dest='print',
                         choices=('checks', 'notices'),
                         help=('(checks, notices) for the specified scan type, '
-                              'print all checks and their overviews or all '
-                              'notice templates, and exit'),
+                              'print all runnable checks and their overviews, '
+                              'or all notice templates, and exit'),
                         )
 
         # Add resume option
@@ -779,7 +886,7 @@ class CommandLineOptionsParser(optparse.OptionParser):
                         )
 
     def _check_option_values(self):
-        """Check whether options have been correctly specified, and exit
+        """Check whether options have been specified correctly, and exit
         otherwise."""
 
         # Check required options
@@ -803,11 +910,12 @@ class Enstore:
     """
     Provide an interface to various Enstore modules.
 
-    A unique instance of this class must be created in each process in which the
-    interface is used.
+    A unique instance of this class must be created in each process in which
+    the interface is used.
     """
 
     def __init__(self):
+        """Initialize the interface."""
 
         self.config_client = \
             enstore_configuration_client.ConfigurationClient()
@@ -836,8 +944,8 @@ class Chimera:
 
     @staticmethod
     def confirm_psycopg2_version():
-        """Exit the calling process if the available psycopg2 version is less
-        than the minimally required version."""
+        """Exit the calling process with an error if the available
+        :mod:`psycopg2` version is less than the minimally required version."""
 
         ver_str = psycopg2.__version__
         ver = [int(i) for i in ver_str.partition(' ')[0].split('.')]
@@ -852,8 +960,8 @@ class Chimera:
 
     @staticmethod
     def confirm_fs():
-        """Exit the calling process if the filesystem root is not a Chimera
-        filesystem."""
+        """Exit the calling process with an error if the filesystem root is not
+        a Chimera filesystem."""
 
         # Note: This method helps confirm that PNFS is not being used.
 
@@ -889,12 +997,10 @@ class Chimera:
             return cursor
 
     def fetchone(self, *args):
+        """Fetch and return a row for the provided query arguments."""
+
         self._cursor.execute(*args)
         return self._cursor.fetchone()
-#
-#    def fetchone_test(self):
-#        oper = 'select ipnfsid from t_inodes offset random()*500 limit 1'
-#        return self.fetchone(oper)
 
 
 class Scanner:
@@ -902,19 +1008,23 @@ class Scanner:
     This is the base class for derived scanner classes.
 
     A derived class must:
-    -Define the "validate_scan_location" method to validate the scan location
-     root.
-    -Define the "queue_items" method which puts items into the "items_q" queue.
-    -Define check methods as relevant, which raise the appropriate Notice
-     exception.
-    -Define the "checks" variable which is a sequence of check method names,
-     indicating the order in which to execute the methods.
-    -Define the "notices" variable, the requirements for which are specified by
-     the Notice.update_notices method.
-    -Define the "get_num_items" method returning a non-negative integer which is
-     the total number of items to be processed.
 
-    To run the scan, initialize the derived class, and call the `run` method.
+    - Define the :meth:`validate_scan_location` method to validate the scan
+      location root.
+    - Define the :meth:`queue_items` method which puts items into the
+      :attr:`items_q` queue.
+    - Define *check methods* as relevant, which raise the appropriate
+      :class:`Notice` exception.
+    - Define the :attr:`checks` variable which is a
+      :obj:`~collections.Sequence` of *check method* names, indicating the
+      order in which to execute the methods.
+    - Define the :attr:`notices` variable, the requirements for which are
+      specified by the :meth:`Notice.update_notices` method.
+    - Define the :meth:`get_num_items` method returning a non-negative integer
+      which is the total number of items to be processed.
+
+    To run the scan, initialize the derived class, and call the :meth:`run`
+    method.
     """
 
     num_scan_processes = (multiprocessing.cpu_count() *
@@ -931,6 +1041,7 @@ class Scanner:
     # very different scan speeds.
 
     def __init__(self):
+        """Set up the scanner."""
 
         self._check_prereqs_prevars()
         self._setup_vars()
@@ -983,7 +1094,10 @@ class Scanner:
             self.queue_items()  # Defined by derived class  # is blocking
         except (KeyboardInterrupt, SystemExit) as e:
             self.is_active.value = False
-            if str(e): print(e, file=sys.stderr)
+            if isinstance(e, KeyboardInterrupt):
+                print()  # Prints a line break after "^C"
+            if str(e):
+                print(e, file=sys.stderr)
         except:
             self.is_active.value = False
             raise
@@ -993,21 +1107,30 @@ class Scanner:
             # essentially remain True if the work ends normally.
             self._stop_workers()
             self._do_postreqs()
+            if not self.is_active.value:
+                # Note: This condition will here be True if an abort was
+                # instructed, such as using KeyboardInterrupt or SystemExit.
+                # This can cause an unknown non-daemonic process to hang on
+                # exit. To get past the hang, the exit is forced. The hang is
+                # not observed to occur during a normal scan completion.
+                os._exit(1)
 
     def _do_postreqs(self):
         """Perform post-requisites after completion of the scan."""
 
         # Finalize checkpoint
-        if self.is_active.value: self.checkpoint.remove_permanently()
-        else: self.checkpoint.write()
+        if self.is_active.value:
+            self.checkpoint.remove_permanently()
+        else:
+            self.checkpoint.write()
 
         # Log status
         try: self._log_status()  # Warning: Not executed if using `tee`.
         except IOError: pass
 
     def _check_ugid(self):
-        """Check whether process UID and GID are 0, exiting the process
-        otherwise."""
+        """Check whether process UID and GID are 0, exiting the process with an
+        error otherwise."""
 
         id_reqd = 0
 
@@ -1028,17 +1151,19 @@ class Scanner:
         Check if the scanner is running exclusively.
 
         Requirements:
-        -Root permissions.
-        -The "enstore" user and group must exist.
+
+        - Root permissions.
+        - The ``enstore`` user and group must exist.
 
         This check is required to be performed only once. For safety, this must
         be done before the initialization of file-writing objects such as
-        self.checkpoint, etc.
+        :attr:`self.checkpoint`, etc.
 
         This check is performed to prevent accidentally overwriting any of the
         following:
-        -Notices output files if they have the same name.
-        -The common checkpoint file.
+
+        - Notices output files if they have the same name.
+        - The common checkpoint file.
         """
 
         # Establish lock dir settings
@@ -1171,11 +1296,12 @@ class Scanner:
                    'checkpoint is an approximate one, a few duplicate entries '
                    'may exist in the notices output file near the checkpoint.\n'
                    ).format(checkpoint)
-#           Note: For more info on setting a checkpoint, see self._item_handler.
+            # Note: For more info on setting a checkpoint, see
+            # self._item_handler.
             print(msg)
 
     def _setup_mp(self):
-        """Setup multiprocessing environment."""
+        """Setup :mod:`multiprocessing` environment."""
 
         # Setup queues
         self.items_q = multiprocessing.Queue(self.queue_max_len)
@@ -1208,6 +1334,9 @@ class Scanner:
         Increment the number of items processed by the specified amount.
 
         This method is process safe.
+
+        :type amount: :obj:`int` (positive)
+        :arg amount: number by which to increment
         """
 
         with self._num_items_processed_lock:  # required
@@ -1230,8 +1359,7 @@ class Scanner:
                 process.start()
 
     def _start_ScannerWorker_monitor(self):
-
-        # See included note.
+        """Start a monitor to track the number of running worker processes."""
 
         def monitor():
             interval = settings['status_interval']/4
@@ -1276,7 +1404,7 @@ class Scanner:
                 for p in pgrp['processes']:
                     p.join()
 
-        time.sleep(0.01)
+        time.sleep(settings['sleep_time_at_exit'])
 
     def _item_handler(self):
         """
@@ -1295,61 +1423,82 @@ class Scanner:
         # the global count. The local count is the number of items that have
         # been processed locally in the current process, but have not yet been
         # incremented in the global count.
-        global_count_update_threshold = self.num_scan_processes * 2
-        # Note: This threshold is used to reduce contention from multiple scan
-        # processes for updating the global count. It is a function of the
-        # number of scan processes.
+        update_time = time.time()  # Most recent global state update time.
+        update_thresholds = {'count': self.num_scan_processes * 2,
+                             'time': settings['status_interval'] / 2,}
+        # Note: The thresholds are used to reduce possible contention from
+        # multiple scan processes for updating the shared global values. A
+        # global update is executed when any of the thresholds are reached.
 
         # Setup required external variables locally
         item_get = self.items_q.get
         noticegrp_put = self.noticegrps_q.put
-        global_count_updater = self._increment_num_items_processed
+        gc_updater = self._increment_num_items_processed  # For global count.
+
+        def process_item(item):
+            noticegrp = self._scan_item(item)
+            if noticegrp:
+                noticegrp = noticegrp.to_dict()
+                # Note: The object is transmitted over multiprocessing as a
+                # dict. This is because a dict can be easily pickled and
+                # unpickled, whereas the object itself is more difficult to
+                # pickle and unpickle.
+                noticegrp_put(noticegrp)
+
+        def update_state(item, local_count, update_time, force_update=False):
+
+            if (item is not None) and item.is_scanned:
+                local_count += 1
+
+            update_age = time.time() - update_time
+            update_thresholds_met = {
+                'count': local_count == update_thresholds['count'],
+                'time': update_age > update_thresholds['time'],}
+            update_threshold_met = any(update_thresholds_met.values())
+
+            if (local_count > 0) and (update_threshold_met or force_update):
+                gc_updater(local_count)
+                local_count = 0
+                update_time = time.time()
+                if (item is not None) and item.is_scanned and item.is_file():
+                    # Note: The checkpoint is set only if the item is a
+                    # file, as opposed to a directory. This is because
+                    # the resumption code can currently only use a file
+                    # as a checkpoint.
+                    self.checkpoint.value = item
+                    # Note: Given that multiple workers work on the
+                    # work queue concurrently, this setting of the
+                    # checkpoint is an approximate one, as coordinated
+                    # checkpointing is not used. A blocking version of
+                    # coordinated checkpointing can possibly be
+                    # implemented with multiprocessing.Barrier, which
+                    # was only introduced in Python 3.3.
+
+            return (local_count, update_time)
 
         # Process items
+        item = None  # Prevents possible NameError exception in finally-block.
         try:
             while self.is_active.value:
                 item = item_get()
-                if item is not None:
-
-                    # Process item
-                    noticegrp = self._scan_item(item)
-                    if noticegrp:
-                        noticegrp = noticegrp.to_dict()
-                        # Note: The object is transmitted over multiprocessing
-                        # as a dict. This is because a dict can be easily
-                        # pickled and unpickled, whereas the object itself is
-                        # more difficult to pickle or unpickle.
-                        noticegrp_put(noticegrp)
-
-                    # Update state
-                    local_count += 1
-                    if local_count == global_count_update_threshold:
-                        global_count_updater(local_count)
-                        local_count = 0
-                        if item.is_file():
-                            # Note: The checkpoint is set only if the item is a
-                            # file, as opposed to a directory. This is because
-                            # the resumption code can currently only use a file
-                            # as a checkpoint.
-                            self.checkpoint.value = item
-                            # Note: Given that multiple workers work on the
-                            # work queue concurrently, this setting of the
-                            # checkpoint is an approximate one, as coordinated
-                            # checkpointing is not used. A blocking version of
-                            # coordinated checkpointing can possibly be
-                            # implemented with multiprocessing.Barrier, which
-                            # was only introduced in Python 3.3.
-                else:
+                if item is None:  # Put by self._stop_workers()
                     break
+                else:
+                    process_item(item)
+                    local_count, update_time = \
+                        update_state(item, local_count, update_time)
         except (KeyboardInterrupt, SystemExit):
             pass
         finally:
-            if local_count > 0: global_count_updater(local_count)
-            time.sleep(0.01)
+            update_state(item, local_count, update_time, force_update=True)
+            # Note: If an exception is raised in the try-block, due to
+            # implementation limitations, it is possible that a duplicate
+            # update is performed on the global count.
+            time.sleep(settings['sleep_time_at_exit'])
 
     def _noticegrp_handler(self):
         """
-        Handle queued NoticeGrp objects.
+        Handle queued :class:`NoticeGrp` objects.
 
         Only a single instance of this method is expected to run.
         """
@@ -1364,7 +1513,9 @@ class Scanner:
         try:
             while self.is_active.value:
                 noticegrp = noticegrp_get()
-                if noticegrp:
+                if noticegrp is None:  # Put by self._stop_workers()
+                    break
+                else:
                     noticegrp = NoticeGrp.from_dict(noticegrp)
                     # Note: The object is transmitted over multiprocessing
                     # as a dict. This is because a dict can be easily
@@ -1380,12 +1531,10 @@ class Scanner:
                         output_file.flush()
                         output_file_dict.flush()
 
-                else:
-                    break
         except (KeyboardInterrupt, SystemExit):
             pass
         finally:
-            time.sleep(0.01)
+            time.sleep(settings['sleep_time_at_exit'])
             output_file.flush()
             output_file_dict.flush()
             output_file.close()
@@ -1417,13 +1566,29 @@ class Scanner:
                 # incrementing x.
         except (KeyboardInterrupt, SystemExit):
             pass
-#        finally:
-#            #self._log_status() # Doesn't happen. Done in main process instead.
+        # Note: Execution of "self._log_status()" inside a "finally" block here
+        # does not happen. It is done in the main process instead.
 
     def _log_status(self, num_items_processed_previously=None,
                           secs_elapsed_previously=None,
                           interval_next=None):
-        """Log the current status once."""
+        """
+        Log the current status once.
+
+        :type num_items_processed_previously: :obj:`int` (non-negative) or
+            :obj:`None`
+        :arg num_items_processed_previously: Number of items processed
+            cumulatively, as returned previously.
+        :type secs_elapsed_previously: :obj:`int` (non-negative) or :obj:`None`
+        :arg secs_elapsed_previously: Number of seconds elapsed cumulatively,
+            as returned previously.
+        :type interval_next: :obj:`int` (non-negative) or :obj:`None`
+        :arg interval_next: Number of seconds to next update.
+
+        .. todo:: The `num_items_processed_previously` and
+            `secs_elapsed_previously` arguments are to be removed and replaced
+            using class instance variables.
+        """
 
         dttd = lambda s: datetime.timedelta(seconds=round(s))
         intstr = lambda i: locale.format('%i', i, grouping=True)
@@ -1495,12 +1660,12 @@ class Scanner:
 
     def _scan_item(self, item):
         """
-        Scan provided item as per the check-method names and dependencies which
-        are specified in the self.checks dict attribute, returning the updated
-        NoticeGrp object for the item.
+        Scan provided item as per the *check method* names and dependencies
+        which are specified in the :attr:`self.checks` attribute, returning the
+        updated :class:`NoticeGrp` instance for the item.
 
-        Multiple instances of this method are expected to run on different items
-        simultaneously.
+        Multiple instances of this method are expected to run on different
+        items simultaneously.
         """
 
         # Note: self.checks should not be modified.
@@ -1513,8 +1678,8 @@ class Scanner:
         #random.shuffle(checks_pending)
         # Note: The list of pending checks can be randomized to reduce the
         # possibility of multiple worker processes trying to read the same type
-        # of file metadata at the same time. By explicitly randomizing the order
-        # in which various checks may run, there may be slightly less
+        # of file metadata at the same time. By explicitly randomizing the
+        # order in which various checks may run, there may be slightly less
         # contention. It is unclear if this randomization actually affects the
         # scan speed.
 
@@ -1542,27 +1707,47 @@ class Scanner:
             check = getattr(self, check_name)
 
             # Run check
-            try: check(item)
+            run_status = None
+            try:
+                check(item)
             except Notice as notice:
                 item.add_notice(notice)
                 run_status = not (isinstance(notice, CriticalNotice)
                                   or isinstance(notice, ErrorNotice))
                 if isinstance(notice, CriticalNotice): break
-            else: run_status = True
+            else:
+                run_status = True
             finally:
-                try: ccs[check_name] = run_status
-                except UnboundLocalError: pass
+                if run_status is not None:
+                    ccs[check_name] = run_status
 
+        item.is_scanned = True
         return item.noticegrp
 
     @classmethod
     def print_checks(cls):
-        """Print names and doc-strings of all check methods."""
+        """
+        Print names and docstrings of all runnable *check methods*.
 
-        docstr = lambda m: ' '.join(m.__doc__.split())  # removes line breaks
-        check_str = lambda c: '{0}: {1}'.format(c.__name__, docstr(c))
-        checks = (getattr(cls, c) for c in sorted(cls.checks))
-        checks = (check_str(c) for c in checks)
+        A check is runnable if all its prerequisites, if any, are runnable.
+        """
+
+        def is_runnable(check):
+            return ((check in cls.checks) and
+                    all(is_runnable(prereq) for prereq in cls.checks[check]))
+            # Note: This check is performed to help with debugging in the
+            # event some checks are manually disabled.
+
+        def describe(check):
+            method = getattr(cls, check)
+            desc = inspect.getdoc(method)
+            desc = desc.partition('\n\n')[0]  # Truncate at first empty line.
+            desc = desc.replace('\n', ' ')  # Joins multiple lines.
+            desc = desc.replace('`', '')  # Removes what may be Sphinx syntax.
+            desc = '{}: {}'.format(check, desc)
+            return desc
+
+        checks = (describe(c) for c in sorted(cls.checks) if is_runnable(c))
         for c in checks: print(c)
 
 
@@ -1578,16 +1763,17 @@ class ScannerForward(Scanner):
     #
     # Each dict value is a sequence of names of dependencies of check methods.
     #
-    # The noted check methods will be run in a pseudo-random order as long as
+    # The noted check methods can be run in a pseudo-random order as long as
     # the respective dependencies have succeeded.
+    'check_path_attr':           (),  # Test check; never fails.
     'check_is_storage_path':     (),
     'check_lstat':               ('check_is_storage_path',),
     'check_link_target':         ('check_is_storage_path',),
     'check_file_nlink':          ('check_lstat',),
-    'check_file_tmp':            ('check_is_storage_path',),
+    'check_file_temp':           ('check_is_storage_path',),
     'check_file_bad':            ('check_is_storage_path',),
     'check_fsid':                ('check_is_storage_path',),
-#    'check_parentfsid':          # This check never fails.
+#    'check_parentfsid':          # Never fails
 #                                 ('check_fsid',
 #                                  'check_lstat',),
 
@@ -1638,7 +1824,8 @@ class ScannerForward(Scanner):
                                   'check_enstore_file_info',),
     'check_file_family':         ('check_fslayer4',
                                   'check_enstore_volume_info',),
-    'check_library':             ('check_enstore_volume_info',),
+#     'check_library':              # Not necessary
+#                                  ('check_enstore_volume_info',),
     'check_drive':               ('check_fslayer4',
                                   'check_enstore_file_info',),
     'check_crc':                 (#'check_fslayer2',
@@ -1655,12 +1842,13 @@ class ScannerForward(Scanner):
     }
 
     notices = {
+    'NoPath': "Cannot access object's path.",
     'NotStorage': 'Not an Enstore file or directory.',
     'NoStat': "Cannot access object's filesystem stat. {exception}",
     'NlinkGT1': ("lstat nlink (number of hard links) count is >1. It is "
                  "{nlink}."),
-    'LinkBroken': ('Symbolic link is broken. It points to "{target}" which does'
-                   ' not exist.'),
+    'LinkBroken': ('Symbolic link is broken. It points to "{target}" which '
+                   'does not exist.'),
     'TempFile': ('File is a likely temporary file because its name '
                  'or extension ends with "{ending}".'),
     'MarkedBad': 'File is marked bad.',
@@ -1668,7 +1856,8 @@ class ScannerForward(Scanner):
     'NoL2File': 'Cannot read layer 2 metadata file "{filename}". {exception}',
     'L2MultVal': 'Multiple layer 2 "{property_}" property values exist.',
     'L2RepVal': 'Repetition of layer 2 "{property_}" property values.',
-    'L2Extra': 'Layer 2 has these {num_extra_lines} extra lines: {extra_lines}',
+    'L2Extra': 'Layer 2 has these {num_extra_lines} extra lines: '
+               '{extra_lines}',
 #    'NoParentID': ('Cannot read parent\'s filesystem ID file "{filename}". '
 #                   '{exception}'),
 #    'ParentIDMismatch': ('Parent ID mismatch. The parent IDs provided by files'
@@ -1695,12 +1884,12 @@ class ScannerForward(Scanner):
     'FileInfoBadType': ('Enstore file info is not a dict. It is of type '
                         '"{type_}" and has value "{value}".'),
     'NoFileInfo': 'File is not in Enstore database.',
-    'FileInfoBad': ('File status in file info provided by Enstore is not ok. It'
-                    ' is "{status}".'),
+    'FileInfoBad': ('File status in file info provided by Enstore is not ok. '
+                    'It is "{status}".'),
     'FileInfoPathNone': 'File path in Enstore file info is missing.',
     'FileInfoPNFSIDNone': 'PNFS ID in Enstore file info is missing.',
-    'FileInfoPNFSIDBad': ('PNFS ID in file info provided by Enstore database is'
-                          ' invalid. It is "{pnfsid}".'),
+    'FileInfoPNFSIDBad': ('PNFS ID in file info provided by Enstore database '
+                          'is invalid. It is "{pnfsid}".'),
     'VolInfoBadType': ('Enstore volume info is not a dict. It is of type '
                        '"{type_}" and has value "{value}".'),
     'NoVolInfo': 'Volume is not in Enstore database.',
@@ -1723,8 +1912,8 @@ class ScannerForward(Scanner):
     'L4VolLabelNone': 'Layer 4 volume label is missing.',
     'FileInfoVolLabelNone': 'Volume label in Enstore file info is missing.',
     'VolLabelMismatch': ("Volume label mismatch. File's layer 4 volume label "
-                         "({volume_layer4}) doesn't match its Enstore file info"
-                         " volume label ({volume_enstore})."),
+                         "({volume_layer4}) doesn't match its Enstore file "
+                         "info volume label ({volume_enstore})."),
     'L4LCNone': 'Layer 4 location cookie is missing.',
     'FileInfoLCNone': 'Location cookie in Enstore file info is missing.',
     'L4LCBad': 'Layer 4 location cookie ({lc_layer4}) is invalid.',
@@ -1756,10 +1945,10 @@ class ScannerForward(Scanner):
     'CRCNone': 'CRC is missing in both layer 4 and Enstore file info.',
     'L4CRCNone': 'Layer 4 CRC is missing.',
     'FileInfoCRCNone': 'CRC is missing in Enstore file info.',
-    'L4CRCMismatch': ("CRC mismatch. File's layer 4 CRC ({crc_layer4}) doesn't "
-                      "match its Enstore file info CRC ({crc_enstore})."),
-    'L2CRCMismatch': ("CRC mismatch. File's layer 2 CRC ({crc_layer2}) doesn't "
-                      "match its Enstore file info 0-seeded CRC "
+    'L4CRCMismatch': ("CRC mismatch. File's layer 4 CRC ({crc_layer4}) doesn't"
+                      " match its Enstore file info CRC ({crc_enstore})."),
+    'L2CRCMismatch': ("CRC mismatch. File's layer 2 CRC ({crc_layer2}) doesn't"
+                      " match its Enstore file info 0-seeded CRC "
                       "({crc_enstore_0seeded}) or its Enstore file info "
                       "1-seeded CRC ({crc_enstore_1seeded})."),
     'L4PathNone': 'Layer 4 file path is missing.',
@@ -1771,8 +1960,8 @@ class ScannerForward(Scanner):
                        "\"{bfid_layer1}\" provided by {pnfsid} don't all "
                        "match. File may have been moved."),
     'FileInfoDelNone': 'The "deleted" field is missing in Enstore file info.',
-    'FileInfoDelBad': ('The value of the "deleted" field ({deleted}) in Enstore'
-                       ' file info is not recognized.'),
+    'FileInfoDelBad': ('The value of the "deleted" field ({deleted}) in '
+                       'Enstore file info is not recognized.'),
     'MarkedCopy': 'File is marked as {copy_types} by Enstore file info.',
     }
     # Note: The type of each notice, i.e. warning, error, etc. is not noted in
@@ -1784,11 +1973,15 @@ class ScannerForward(Scanner):
         Return the total number of items to be scanned.
 
         This method is thread and process safe.
+
+        .. note:: As implemented, the :class:`memoize` decorator will rerun the
+            target method if and when the target is called upon program exit.
+            This is one reason why this method is not implemented as a reused
+            *property*.
         """
 
-        # Note: As implemented, the @memoize decorator will rerun the target
-        # method when it is called upon program exit. This is one reason why
-        # this method is not implemented as a reused property.
+        # Note: settings['fs_root'] is known to be an absolute path (and not
+        # have a trailing slash).
 
         if settings['fs_root'] == '/pnfs/fs/usr':
 
@@ -1828,7 +2021,8 @@ class ScannerForward(Scanner):
         put_item = lambda item: items_q_put(Item(item))
         put_file = lambda root, file_: put_item(os_path_join(root, file_))
         def put_files(root, files):
-            for file_ in files: put_file(root, file_)
+            for file_ in files:
+                put_file(root, file_)
 
         # Provide checkpointing related variables
         resume_flag = settings['resume_scan']
@@ -1870,8 +2064,8 @@ class ScannerForward(Scanner):
                         self.num_items_total.value -= 1  # for root
                         for file_ in files:
                             if checkpoint_crossed:
-                                # Note: self.num_items_total.value should not be
-                                # reduced here.
+                                # Note: self.num_items_total.value should not
+                                # be reduced here.
                                 put_file(root, file_)
                             else:
                                 self.num_items_total.value -= 1  # for file_
@@ -1880,10 +2074,11 @@ class ScannerForward(Scanner):
                                     print('Checkpoint crossed.\n')
                         else:
                             if not checkpoint_crossed:
-                                msg = ('Error: Checkpoint directory "{0}" was '
-                                       'not found to contain checkpoint file '
+                                msg = ('Error: Checkpoint directory "{0}" was'
+                                       ' not found to contain checkpoint file '
                                        '"{1}". {2}'
-                                       ).format(checkpoint_dir, checkpoint_file,
+                                       ).format(checkpoint_dir,
+                                                checkpoint_file,
                                                 generic_failure_msg)
                                 exit(msg)
                         break
@@ -1922,16 +2117,41 @@ class ScannerForward(Scanner):
         if not os.path.isdir(loc):
             msg = 'Error: Scan root "{0}" is not a directory.'.format(loc)
             exit(msg)
-        # Note: There is no point in printing loc if it is valid, as it is
+        # Note: There is no reason to print loc if it is valid, as it is
         # already evident.
 
+    def check_path_attr(self, item):
+        """
+        Check whether ``item`` has a path.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
+
+        try:
+            item.path
+        except AttributeError:
+            raise CriticalNotice('NoPath')
+
     def check_is_storage_path(self, item):
-        """Check whether item is an Enstore item."""
+        """
+        Check whether ``item`` is an Enstore ``item``.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
+
         if not item.is_storage_path():
             raise CriticalNotice('NotStorage')
 
     def check_lstat(self, item):
-        """Check whether item's stats are accessible."""
+        """
+        Check whether ``item``'s stats are accessible.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
+
         try:
             item.lstat
         except OSError as e:
@@ -1941,25 +2161,43 @@ class ScannerForward(Scanner):
             raise CriticalNotice('NoStat', exception=e.strerror or '')
 
     def check_file_nlink(self, item):
-        """Check whether file has more than 1 hard links."""
+        """
+        Check whether file has more than 1 hard links.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
+
         if item.is_file() and (item.lstat.st_nlink > 1):
             raise InfoNotice('NlinkGT1', nlink=item.lstat.st_nlink)
         # There is no usual reason for the link count to be greater than 1.
-        # There have been cases where a move was aborted early and two directory
-        # entries were left pointing to one i-node, but the i-node only had a
-        # link count of 1 and not 2.  Since there may be legitimate reasons for
-        # multiple hard links, it is not considered an error or a warning.
+        # There have been cases where a move was aborted early and two
+        # directory entries were left pointing to one i-node, but the i-node
+        # only had a link count of 1 and not 2.  Since there may be legitimate
+        # reasons for multiple hard links, it is not considered an error or a
+        # warning.
 
     def check_link_target(self, item):
-        """Check whether symbolic link is broken."""
+        """
+        Check whether symbolic link is broken.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
 
         if item.is_link() and (not os.path.exists(item.path)):
             # Note: os.path.exists returns False for broken symbolic links.
             raise WarningNotice('LinkBroken',
                                 target=os.path.realpath(item.path))
 
-    def check_file_tmp(self, item):
-        """Check whether item is a temporary file."""
+    def check_file_temp(self, item):
+        """
+        Check whether ``item`` is a temporary file.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
+
         if item.is_file():
             path = item.path
             endings = ('.nfs', '.lock', '_lock')
@@ -1967,48 +2205,74 @@ class ScannerForward(Scanner):
                 if path.endswith(ending):
                     raise InfoNotice('TempFile', ending=ending)
 
+        # Note: If the item is a temporary file, this method reports the
+        # corresponding ending string. This is why an "is_temp_file" method in
+        # the Item class is not implemented or used insted.
+
     def check_file_bad(self, item):
-        """Check whether item is a file that is marked bad."""
+        """
+        Check whether ``item`` is a file that is marked bad.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
+
         if item.is_file_bad:
             raise InfoNotice('MarkedBad')
 
     def check_fsid(self, item):
-        """Check whether item has an accessible filesystem ID."""
+        """
+        Check whether ``item`` has an accessible filesystem ID.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
         try:
             _fsid = item.fsid
         except (IOError, OSError) as e:
             raise CriticalNotice('NoID', filename=item.fsidname,
                                  exception=e.strerror or '')
 
-#    def check_parentfsid(self, item):
-#        """Check file's parent's filesystem ID for its presence."""
+#     def check_parentfsid(self, item):
+#         """
+#         Check file's parent's filesystem ID for its presence.
 #
-#        if item.is_file():
+#         :type item: :class:`Item`
+#         :arg item: object to check
+#         """
 #
-#            # Check value for availability
-#            #sources = 'parent_file', 'parent_dir'
-#            sources = ('parent_file',)
-#            parentfsids = {}
-#            for source in sources:
-#                try:
-#                    parentfsids[source] = item.parentfsid(source)
-#                except (IOError, OSError) as e:
-#                    raise ErrorNotice('NoParentID',
-#                                      filename=item.parentfsidname(source),
-#                                      exception=e.strerror or '')
-
-#            # Check values for consistency (never observed to fail)
-#            source1, source2 = 'parent_file', 'parent_dir'
-#            if ((source1 in parentfsids) and (source2 in parentfsids) and
-#                (parentfsids[source1] != parentfsids[source2])):
-#                raise ErrorNotice('ParentIDMismatch',
-#                                  filename1=item.parentfsidname(source1),
-#                                  parentid1=parentfsids[source1],
-#                                  filename2=item.parentfsidname(source2),
-#                                  parentid2=parentfsids[source2])
+#         if item.is_file():
+#
+#             # Check value for availability
+#             #sources = 'parent_file', 'parent_dir'
+#             sources = ('parent_file',)
+#             parentfsids = {}
+#             for source in sources:
+#                 try:
+#                     parentfsids[source] = item.parentfsid(source)
+#                 except (IOError, OSError) as e:
+#                     raise ErrorNotice('NoParentID',
+#                                       filename=item.parentfsidname(source),
+#                                       exception=e.strerror or '')
+#
+#             # Check values for consistency (never observed to fail)
+#             source1, source2 = 'parent_file', 'parent_dir'
+#             if ((source1 in parentfsids) and (source2 in parentfsids) and
+#                 (parentfsids[source1] != parentfsids[source2])):
+#                 raise ErrorNotice('ParentIDMismatch',
+#                                   filename1=item.parentfsidname(source1),
+#                                   parentid1=parentfsids[source1],
+#                                   filename2=item.parentfsidname(source2),
+#                                   parentid2=parentfsids[source2])
 
     def check_fslayer2lines(self, item):
-        """Check whether a file's filesystem provided layer 2 is corrupted."""
+        """
+        Check whether a file's filesystem provided layer 2 is corrupted.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
+
         if item.is_file():
             try:
                 _layer_lines = item.fslayerlines(2, 'filename')
@@ -2021,8 +2285,12 @@ class ScannerForward(Scanner):
         """
         Check for inconsistencies in a file's filesystem provided layer 2.
 
-        The check is performed only if the item is a file and if its layer 2 is
-        present. If its layer 2 is missing, this is not an error condition.
+        The check is performed only if the ``item`` is a file and if its layer
+        2 is present. If its layer 2 is missing, this is not an error
+        condition.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         def check_properties(properties):
@@ -2055,7 +2323,11 @@ class ScannerForward(Scanner):
         """
         Check whether a file's layer 2 CRC is available.
 
-        The check is performed only if the item is a file and a HSM is not used.
+        The check is performed only if the ``item`` is a file and a HSM is not
+        used.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if (item.is_file() and item.has_fslayer(2)
@@ -2068,7 +2340,11 @@ class ScannerForward(Scanner):
         """
         Check whether a file's layer 2 size is available.
 
-        The check is performed only if the item is a file and a HSM is not used.
+        The check is performed only if the ``item`` is a file and a HSM is not
+        used.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if (item.is_file() and item.has_fslayer(2)
@@ -2078,9 +2354,14 @@ class ScannerForward(Scanner):
 
     def check_fslayer2_size_match(self, item):
         """
-        Conditionally check whether item's layer 2 and filesystem sizes match.
+        Conditionally check whether ``item``'s layer 2 and filesystem sizes
+        match.
 
-        The check is performed only if the item is a file and a HSM is not used.
+        The check is performed only if the ``item`` is a file and a HSM is not
+        used.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_file() and (item.fslayer2_property('hsm') == 'no'):
@@ -2098,8 +2379,11 @@ class ScannerForward(Scanner):
         """
         Check whether file's filesystem provided layer 1 is corrupted.
 
-        The check is performed only if the item is a non-recent file and if a
-        HSM may be used.
+        The check is performed only if the ``item`` is a non-recent file and if
+        a HSM may be used.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_nonrecent_file and (item.fslayer2_property('hsm') != 'no'):
@@ -2116,9 +2400,13 @@ class ScannerForward(Scanner):
         """
         Check for inconsistencies in file's filesystem provided layer 1.
 
-        The check is performed only if the item is a non-recent file and if its
-        layer 1 is present. If its layer 1 is missing, an appropriate notice is
-        raised by the `check_fslayer1lines` method as applicable.
+        The check is performed only if the ``item`` is a non-recent file and if
+        its layer 1 is present. If its layer 1 is missing, an appropriate
+        notice is raised by the :meth:`check_fslayer1lines` method as
+        applicable.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_nonrecent_file and item.has_fslayer(1):
@@ -2147,8 +2435,11 @@ class ScannerForward(Scanner):
         """
         Check whether a file's filesystem provided layer 4 is corrupted.
 
-        The check is performed only if the item is a non-recent file and if a
-        HSM may be used.
+        The check is performed only if the ``item`` is a non-recent file and if
+        a HSM may be used.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_nonrecent_file and (item.fslayer2_property('hsm') != 'no'):
@@ -2163,11 +2454,15 @@ class ScannerForward(Scanner):
 
     def check_fslayer4(self, item):
         """
-        Check for inconsistencies in item's filesystem provided layer 4.
+        Check for inconsistencies in ``item``'s filesystem provided layer 4.
 
-        The check is performed only if the item is a non-recent file and if its
-        layer 4 is present. If its layer 4 is missing, an appropriate notice is
-        raised by the `check_fslayer4lines` method as applicable.
+        The check is performed only if the ``item`` is a non-recent file and if
+        its layer 4 is present. If its layer 4 is missing, an appropriate
+        notice is raised by the :meth:`check_fslayer4lines` method as
+        applicable.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_nonrecent_file and item.has_fslayer(4):
@@ -2190,10 +2485,13 @@ class ScannerForward(Scanner):
 
     def check_enstore_file_info(self, item):
         """
-        Check for inconsistencies in item's Enstore provided file info.
+        Check for inconsistencies in ``item``'s Enstore provided file info.
 
-        This check is performed only if the item is a non-recent file and its
-        BFID is obtained.
+        This check is performed only if the ``item`` is a non-recent file and
+        its BFID is obtained.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_nonrecent_file:
@@ -2212,7 +2510,7 @@ class ScannerForward(Scanner):
                 if not item.is_enstore_file_info_ok:
 
                     if efi['status'][0] == enstore_errors.NO_FILE:
-                        # enstore_errors.NO_FILE == 'NO SUCH FILE/BFID'
+                        # Note: enstore_errors.NO_FILE == 'NO SUCH FILE/BFID'
                         raise ErrorNotice('NoFileInfo',
                                           bfid_layer1=bfid_layer1,)
                     else:
@@ -2241,10 +2539,13 @@ class ScannerForward(Scanner):
 
     def check_enstore_volume_info(self, item):
         """
-        Check for inconsistencies in item's Enstore provided volume info.
+        Check for inconsistencies in ``item``'s Enstore provided volume info.
 
-        This check is performed only if the item is a non-recent file and its
-        volume name is obtained.
+        This check is performed only if the ``item`` is a non-recent file and
+        its volume name is obtained.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_nonrecent_file:
@@ -2274,8 +2575,11 @@ class ScannerForward(Scanner):
         """
         Check for a mismatch in the file's layer 1 and layer 4 BFIDs.
 
-        This check is completed only if the item is a file, is not a copy, is
-        not marked deleted, and its layer 1 and 4 exist.
+        This check is performed only if the ``item`` is a file, is not a copy,
+        is not marked deleted, and its layer 1 and 4 exist.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if (item.is_file() and (not item.is_file_a_copy) and
@@ -2291,7 +2595,12 @@ class ScannerForward(Scanner):
                                   bfid_layer4=fslayer4_bfid)
 
     def check_file_deleted(self, item):
-        """Check if file is marked deleted."""
+        """
+        Check if file is marked deleted.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
 
         if item.is_file():
 
@@ -2309,7 +2618,10 @@ class ScannerForward(Scanner):
         """
         Check if the file is recent.
 
-        This can help in the assessment of other notices.
+        This check can help in the assessment of other notices.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_recent:
@@ -2317,9 +2629,12 @@ class ScannerForward(Scanner):
 
     def check_empty(self, item):
         """
-        Check if the file has lstat size zero.
+        Check if the file has :obj:`~os.lstat` size zero.
 
-        This check is performed only if the item is a non-recent file.
+        This check is performed only if the ``item`` is a non-recent file.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_nonrecent_file and item.is_file_empty:
@@ -2332,8 +2647,13 @@ class ScannerForward(Scanner):
             raise NoticeType(notice_key, layer2_size=fslayer2_size)
 
     def check_sfs_path(self, item):
-        """Check if any of the PNFS IDs in Enstore for the current file has more
-        than one path."""
+        """
+        Check if any of the PNFS IDs in Enstore for the current file has
+        more than one path.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
 
         # Note: This is very slow with PNFS, but is not too slow with Chimera.
 
@@ -2356,7 +2676,11 @@ class ScannerForward(Scanner):
         Check file's layer 4 and Enstore volume labels for their presence and
         also for a mismatch.
 
-        This check is completed only if the item is a file and is not a copy.
+        This check is performed only if the ``item`` is a file and is not a
+        copy.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_file() and (not item.is_file_a_copy):
@@ -2380,10 +2704,14 @@ class ScannerForward(Scanner):
 
     def check_location_cookie(self, item):
         """
-        Check file's layer 4 and Enstore location cookies for their presence and
-        also for a mismatch.
+        Check file's layer 4 and Enstore location cookies for their presence
+        and also for a mismatch.
 
-        This check is completed only if the item is a file and is not a copy.
+        This check is performed only if the ``item`` is a file and is not a
+        copy.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_file() and (not item.is_file_a_copy):
@@ -2407,7 +2735,8 @@ class ScannerForward(Scanner):
                 if not lc_layer4:
                     item.add_notice(ErrorNotice('L4LCNone'))
                 elif not is_lc(lc_layer4):
-                    item.add_notice(ErrorNotice('L4LCBad', lc_layer4=lc_layer4))
+                    item.add_notice(ErrorNotice('L4LCBad',
+                                                lc_layer4=lc_layer4))
 
             if item.is_enstore_file_info_ok:
                 if not lc_enstore:
@@ -2424,8 +2753,13 @@ class ScannerForward(Scanner):
                                   current_lc_enstore=lc_cur_enstore)
 
     def check_size(self, item):
-        """Check file's lstat, layer 4 and Enstore file sizes for their presence
-        and also for a mismatch."""
+        """
+        Check file's lstat, layer 4 and Enstore file sizes for their presence
+        and also for a mismatch.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
 
         if item.is_file():
 
@@ -2444,7 +2778,7 @@ class ScannerForward(Scanner):
 
             # Check values for consistency
             num_unique_sizes = len(set(s for s in sizes.values() if
-                                       (s is not None)))  # Disambiguates from 0
+                                       (s is not None))) # Disambiguates from 0
             if num_unique_sizes > 1:
 #                sizes = dict((b'size_{0}'.format(k),v) for k,v in
 #                              sizes.items())
@@ -2457,8 +2791,13 @@ class ScannerForward(Scanner):
                 # the `Notice.to_exportable_dict.flattened_dict` function.
 
     def check_file_family(self, item):
-        """Check file's layer 4 and Enstore file family for their presence and
-        also for a mismatch."""
+        """
+        Check file's layer 4 and Enstore file family for their presence and
+        also for a mismatch.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
 
         if item.is_file():
 
@@ -2481,30 +2820,37 @@ class ScannerForward(Scanner):
                 raise ErrorNotice('FFMismatch', ff_layer4=ff_layer4,
                                   ff_enstore=ff_enstore)
 
-    def check_library(self, item):
-        """
-        Check file's Enstore library name for its presence and validity.
-
-        This check is completed only if the item is a file and its Enstore
-        volume info is ok.
-        """
-
-        if item.is_file() and item.is_enstore_volume_info_ok:
-
-            try: library = item.enstore_volume_info['library']
-            except KeyError: raise ErrorNotice('VolInfoLibNone')
-            else:
-                if (library and
-                    (library not in item.enstore.library_managers) and
-                    ('shelf' not in library)):
-                    raise ErrorNotice('VolInfoLibBad', library=library)
+#     def check_library(self, item):
+#         """
+#         Check file's Enstore library name for its presence and validity.
+#
+#         This check is performed only if the ``item`` is a file and its Enstore
+#         volume info is ok.
+#
+#         :type item: :class:`Item`
+#         :arg item: object to check
+#         """
+#
+#         if item.is_file() and item.is_enstore_volume_info_ok:
+#
+#             try: library = item.enstore_volume_info['library']
+#             except KeyError: raise ErrorNotice('VolInfoLibNone')
+#             else:
+#                 if (library and
+#                     (library not in item.enstore.library_managers) and
+#                     ('shelf' not in library)):
+#                     raise ErrorNotice('VolInfoLibBad', library=library)
 
     def check_drive(self, item):
         """
         Check file's layer 4 and Enstore drives for their presence and also for
         a mismatch.
 
-        This check is completed only if the item is a file and is not a copy.
+        This check is performed only if the ``item`` is a file and is not a
+        copy.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_file() and (not item.is_file_a_copy):
@@ -2532,7 +2878,10 @@ class ScannerForward(Scanner):
         Check file's layer 4 and Enstore CRCs for their presence and also for
         a mismatch.
 
-        This check is completed only if the item is not an empty file.
+        This check is performed only if the ``item`` is not an empty file.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_file() and (not item.is_file_empty):
@@ -2571,8 +2920,13 @@ class ScannerForward(Scanner):
                                   crc_enstore=crc_enstore)
 
     def check_path(self, item):
-        """Check file's layer 4, Enstore, and filesystem provided paths for
-        their presence and also for a mismatch."""
+        """
+        Check file's layer 4, Enstore, and filesystem provided paths for
+        their presence and also for a mismatch.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
 
         if item.is_file() and (not item.is_file_a_copy):
 
@@ -2595,8 +2949,13 @@ class ScannerForward(Scanner):
                 # the `Notice.to_exportable_dict.flattened_dict` function.
 
     def check_pnfsid(self, item):
-        """Check file's filesystem ID file, layer 4 and Enstore PNFS IDs for
-        their presence and also for a mismatch."""
+        """
+        Check file's filesystem ID file, layer 4 and Enstore PNFS IDs for
+        their presence and also for a mismatch.
+
+        :type item: :class:`Item`
+        :arg item: object to check
+        """
 
         if item.is_file():
 
@@ -2617,16 +2976,20 @@ class ScannerForward(Scanner):
                 raise ErrorNotice('PNFSIDMismatch',
                                   bfid_layer1=item.fslayer1_bfid(),
                                   pnfsid=ReversibleDict(pnfsids))
-                # Note: The `pnfsid` arg name above must remain singular because
-                # this name is joined to the key names in its value. Refer to
-                # the `Notice.to_exportable_dict.flattened_dict` function.
+                # Note: The `pnfsid` arg name above must remain singular
+                # because this name is joined to the key names in its value.
+                # Refer to the `Notice.to_exportable_dict.flattened_dict`
+                # function.
 
     def check_copy(self, item):
         """
         Check if file has any of the copy attributes set.
 
-        This check is completed only if the item is a file and its Enstore file
-        info is ok.
+        This check is performed only if the ``item`` is a file and its Enstore
+        file info is ok.
+
+        :type item: :class:`Item`
+        :arg item: object to check
         """
 
         if item.is_file() and item.is_enstore_file_info_ok:
@@ -2661,12 +3024,14 @@ class Item:
     Return an object corresponding to a file or a directory.
 
     Before an instance is created:
-    -The `enstore` class attribute must be set to an `Enstore` instance. This
-    must be done individually in each process in which the class is to be used.
+
+    - The :attr:`enstore` class attribute must be set to an :class:`Enstore`
+      class instance. This must be done individually in each process in which
+      this :class:`Item` class is to be used.
     """
 
     start_time = time.time()
-    enstore = None  # to be set individually in each process
+    enstore = None  # To be set individually in each process.
     chimera = Chimera()
     _cache_volume_info = settings['cache_volume_info']
     if _cache_volume_info:
@@ -2674,23 +3039,42 @@ class Item:
         volume_info_cache = MPSubDictCache()
 
     def __init__(self, item_path):
-        """Initialize the item, with `item_path` being the filesystem path of
-        the item."""
+        """Initialize the ``item``.
+
+        :type item_path: :obj:`str`
+        :arg item_path: absolute filesystem path of the item.
+        """
 
         self.path = item_path
         self.noticegrp = NoticeGrp(self.path)
+        self.is_scanned = False
 
         self._cached_exceptions = {}
 
     def __repr__(self):
-        """Return a string representation of the class instance, to allow the
-        class instance to be sent to another process and reconstructed in it."""
+        """
+        Return a string representation.
+
+        This string allows the class instance to be reconstructed in another
+        process.
+        """
+
         return '{0}({1})'.format(self.__class__.__name__, repr(self.path))
 
     def __eq__(self, other):
+        """
+        Perform an equality comparison.
+
+        :type other: :class:`Item`
+        :arg other: object to compare.
+        :rtype: :obj:`bool`
+        """
+
         return (self.path==other.path)
 
     def __str__(self):
+        """Return a string representation."""
+
         return self.path
 
     @staticmethod
@@ -2700,19 +3084,41 @@ class Item:
         return open(filename).read().strip()
 
     def add_notice(self, notice):
+        """
+        Add the provided ``notice`` to the group of notices associated with
+        the ``item``.
+
+        :type notice: :class:`Notice`
+        :arg notice: object to add.
+        """
+
         self.noticegrp.add_notice(notice)
 
     @memoize_property
     def dirname(self):
+        """
+        Return the directory name of the ``item``.
+
+        :rtype: :obj:`str`
+        """
         return os.path.dirname(self.path)
 
     @memoize_property
     def basename(self):
+        """
+        Return the base name of the ``item``.
+
+        :rtype: :obj:`str`
+        """
         return os.path.basename(self.path)
 
     @memoize_property
     def fsidname(self):
-        """Return the name of the ID file."""
+        """
+        Return the name of the ID file.
+
+        :rtype: :obj:`str`
+        """
         return os.path.join(self.dirname, '.(id)({0})'.format(self.basename))
 
     @memoize
@@ -2720,7 +3126,9 @@ class Item:
         """
         Return the name of the parent ID file.
 
-        `source` must be 'parent_file' or 'parent_dir'.
+        :type source: :obj:`str`
+        :arg source: ``parent_file`` or ``parent_dir``.
+        :rtype: :obj:`str`
         """
         if source == 'parent_file':
             return os.path.join(self.dirname,
@@ -2737,8 +3145,11 @@ class Item:
         Return the name of layer information file for the specified layer
         number.
 
-        `source` can optionally be 'filename' or 'fsid', with the default value
-        being 'filename'.
+        :type layer_num: :obj:`int`
+        :arg layer_num: valid layer number
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``.
+        :rtype: :obj:`str`
         """
         if source == 'filename':
             return os.path.join(self.dirname,
@@ -2755,29 +3166,38 @@ class Item:
     @memoize
     def fslayerlines(self, layer_num, source):
         """
-        Return a list containing the lines contained in the layer information
-        file for the specified layer number.
+        Return a :obj:`list` containing the lines contained in the layer
+        information file for the specified layer number.
 
-        `source` must be 'filename' or 'fsid'. It does not have a default value
-        to allow memoization to work correctly.
+        :type layer_num: :obj:`int`
+        :arg layer_num: valid layer number
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``. It does not have a default value
+            to allow memoization to work correctly.
+        :rtype: :obj:`list`
 
-        A sample returned list for layer_num=1 is:
-        ['CDMS124711171800000']
+        A sample returned :obj:`list` for layer 1 is::
 
-        A sample returned list for layer_num=2 is:
-        ['2,0,0,0.0,0.0', ':c=1:6d0f3ab9;h=yes;l=8192000000;']
+            ['CDMS124711171800000']
 
-        A sample returned list for layer_num=4 is:
-        ['VON077', '0000_000000000_0001544', '635567027', 'volatile',
-        '/pnfs/ilc4c/LOI/uu/uu_Runs_130.FNAL2.tar.gz', '',
-        '003A0000000000000005E2E0', '', 'CDMS124655315900000',
-        'stkenmvr204a:/dev/rmt/tps0d0n:1310050819', '954405925']
+        A sample returned :obj:`list` for layer 2 is::
 
-        Layers are apparently unavailable for directories.
+            ['2,0,0,0.0,0.0', ':c=1:6d0f3ab9;h=yes;l=8192000000;']
+
+        A sample returned :obj:`list` for layer 4 is::
+
+            ['VON077', '0000_000000000_0001544', '635567027', 'volatile',
+            '/pnfs/ilc4c/LOI/uu/uu_Runs_130.FNAL2.tar.gz', '',
+            '003A0000000000000005E2E0', '', 'CDMS124655315900000',
+            'stkenmvr204a:/dev/rmt/tps0d0n:1310050819', '954405925']
+
+        Layers are unavailable for directories.
 
         The following exception will be raised if the layer information file is
-        unavailable:
+        unavailable::
+
             IOError: [Errno 2] No such file or directory
+
         Error 2 is ENOENT.
         """
 
@@ -2801,15 +3221,18 @@ class Item:
     @memoize
     def fslayer1(self, source):
         """
-        Return a dict containing layer 1 information for a file.
+        Return a :obj:`dict` containing layer 1 information for a file.
 
-        `source` must be 'filename' or 'fsid'. It does not have a default value
-        to allow memoization to work correctly.
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``. It does not have a default value
+            to allow memoization to work correctly.
+        :rtype: :obj:`dict`
 
-        A sample returned dict is:
-        {u'bfid': 'CDMS124711171800000'}
+        A sample returned :obj:`dict` is::
 
-        An empty dict is returned in the event of an OS or IO exception.
+            {u'bfid': 'CDMS124711171800000'}
+
+        An empty :obj:`dict` is returned in the event of an OS or IO exception.
 
         Layer 1 information is unavailable for directories.
         """
@@ -2835,30 +3258,35 @@ class Item:
     @memoize
     def fslayer1_bfid(self, source='filename'):
         """
-        Return the layer 1 value for BFID, or return None if unavailable.
+        Return the layer 1 value for BFID, or return :obj:`None` if
+        unavailable.
 
-        `source` can optionally be 'filename' or 'fsid', with the default value
-        being 'filename'.
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``
+        :rtype: :obj:`str` or :obj:`None`
         """
         return self.fslayer1(source).get('bfid')
 
     @memoize
     def fslayer2(self, source):
         """
-        Return a dict containing layer 2 information for a file.
+        Return a :obj:`dict` containing layer 2 information for a file.
 
-        `source` must be 'filename' or 'fsid'. It does not have a default value
-        to allow memoization to work correctly.
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``. It does not have a default value
+            to allow memoization to work correctly.
+        :rtype: :obj:`dict`
 
-        A sample returned dict is:
-        {u'numbers': [u'2', u'0', u'0', u'0.0', u'0.0'],
-         u'properties': {u'crc': [4000420189], u'length': [8192000000],
-                         u'hsm': [u'yes']}}
+        A sample returned dict is::
 
-        Each value in the properties dict is a list. This list can have more
-        than one item, and the items may even be duplicates.
+            {u'numbers': [u'2', u'0', u'0', u'0.0', u'0.0'],
+             u'properties': {u'crc': [4000420189], u'length': [8192000000],
+                             u'hsm': [u'yes']}}
 
-        An empty dict is returned in the event of an OS or IO exception.
+        Each value in the ``properties`` :obj:`dict` is a :obj:`list`. This
+        :obj:`list` can have more than one item.
+
+        An empty :obj:`dict` is returned in the event of an OS or IO exception.
 
         Layer 2 information is unavailable for directories.
         """
@@ -2900,17 +3328,17 @@ class Item:
                 properties = dict((k,[v[1] for v in v])
                                   for k,v in
                                   itertools.groupby(properties, lambda p: p[0]))
-                # This transforms the list into a dict in a way that if multiple
-                # values exist for a key, they are all noted in the list.
-                # Duplicate values are noted as well. Missing items are
+                # This transforms the list into a dict in a way that if
+                # multiple values exist for a key, they are all noted in the
+                # list. Duplicate values are noted as well. Missing items are
                 # possible.
                 # Sample: {'h': ['yes'], 'c': ['1:ee71915d'], 'l': ['8192']}
                 properties = dict((pkm.get(k,k), v) for k,v in
                                   properties.items())
                 # Sample: {'hsm': ['yes'], 'crc': ['1:ee71915d'],
                 #          'length': ['8192']}
-                properties = dict((k, [(pvt[k](v) if pvt.get(k) else v) for v in
-                                       vlist])
+                properties = dict((k, [(pvt[k](v) if pvt.get(k) else v) for v
+                                       in vlist])
                                   for k,vlist in properties.items())
                 # Sample: {'hsm': ['yes'], 'crc': [4000420189],
                 #          'length': [8192]}
@@ -2923,38 +3351,42 @@ class Item:
         return layer
 
     @memoize
-    def fslayer2_property(self, property_, source='filename'):
+    def fslayer2_property(self, l2property, source='filename'):
         """
-        Return the layer2 value for the specified property, or return None if
-        unavailable.
+        Return the value for the specified layer 2 property, or return
+        :obj:`None` if unavailable.
 
-        `property_` must typically be 'crc', 'hsm', or 'length'.
-
-        `source` can optionally be 'filename' or 'fsid', with the default value
-        being 'filename'.
+        :type l2property: :obj:`str`
+        :arg l2property: typically ``crc``, ``hsm``, or ``length``.
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``
         """
-        return self.fslayer2(source).get('properties', {}).get(property_,
+        return self.fslayer2(source).get('properties', {}).get(l2property,
                                                                [None])[0]
 
     @memoize
     def fslayer4(self, source):
         """
-        Return a dict containing layer 4 information for a file.
+        Return a :obj:`dict` containing layer 4 information for a file.
 
-        `source` must be 'filename' or 'fsid'. It does not have a default value
-        to allow memoization to work correctly.
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``. It does not have a default value
+            to allow memoization to work correctly.
+        :rtype: :obj:`dict`
 
-        A sample returned dict is:
-        {u'original_name': '/pnfs/BDMS/tariq/p2_004/p2_004_struc.LN22',
-         u'drive': 'stkenmvr214a:/dev/rmt/tps0d0n:1310051193',
-         u'volume': 'VOO007', 'crc': 1253462682, u'file_family': 'BDMS',
-         u'location_cookie': '0000_000000000_0000454',
-         u'pnfsid': '000E00000000000000013248', u'bfid': 'CDMS123258695100001',
-         'size': 294912,
-         'location_cookie_list': ['0000', '000000000', '0000454'],
-         'location_cookie_current': '0000454',}
+        A sample returned dict is::
 
-        An empty dict is returned in the event of an OS or IO exception.
+            {u'original_name': '/pnfs/BDMS/tariq/p2_004/p2_004_struc.LN22',
+             u'drive': 'stkenmvr214a:/dev/rmt/tps0d0n:1310051193',
+             u'volume': 'VOO007', 'crc': 1253462682, u'file_family': 'BDMS',
+             u'location_cookie': '0000_000000000_0000454',
+             u'pnfsid': '000E00000000000000013248',
+             u'bfid': 'CDMS123258695100001',
+             'size': 294912,
+             'location_cookie_list': ['0000', '000000000', '0000454'],
+             'location_cookie_current': '0000454',}
+
+        An empty :obj:`dict` is returned in the event of an OS or IO exception.
 
         Layer 4 information is unavailable for directories.
         """
@@ -3009,21 +3441,24 @@ class Item:
     @memoize
     def fslayer4_bfid(self, source='filename'):
         """
-        Return the layer 4 value for BFID, or return None if unavailable.
+        Return the layer 4 value for BFID, or return :obj:`None` if
+        unavailable.
 
-        `source` can optionally be 'filename' or 'fsid', with the default value
-        being 'filename'.
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``
+        :rtype: :obj:`str` or :obj:`None`
         """
         return self.fslayer4(source).get('bfid')
 
     @memoize
     def has_fslayer(self, layer_num, source='filename'):
         """
-        Return a bool indicating whether the specified layer number is
+        Return a :obj:`bool` indicating whether the specified layer number is
         available.
 
-        `source` can optionally be 'filename' or 'fsid', with the default value
-        being 'filename'.
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``
+        :rtype: :obj:`bool`
         """
 
         attr = 'fslayer{0}'.format(layer_num)
@@ -3037,7 +3472,9 @@ class Item:
 
         This is available for both files and directories.
 
-        Example: 00320000000000000001D6B0
+        :rtype: :obj:`str`
+
+        Example: ``00320000000000000001D6B0``
         """
 
         # Re-raise cached exception if it exists
@@ -3057,8 +3494,10 @@ class Item:
         """
         Return the parent's filesystem ID.
 
-        `source` must be 'parent_file' or 'parent_dir'. `source` does not have a
-        default value to allow memoization to work correctly.
+        :type source: :obj:`str`
+        :arg source: ``filename`` or ``fsid``. It does not have a default value
+            to allow memoization to work correctly.
+        :rtype: :obj:`str`
 
         This is available for both files and directories.
         """
@@ -3079,51 +3518,64 @@ class Item:
     @memoize_property
     def lstat(self):
         """
-        Return lstat info.
+        Return :obj:`~os.lstat` info.
 
-        Sample:
-        posix.stat_result(st_mode=33188, st_ino=1275083688, st_dev=24L,
-                          st_nlink=1, st_uid=13194, st_gid=1623,
-                          st_size=8192000000, st_atime=1248570004,
-                          st_mtime=1153410176, st_ctime=1153407484)
+        Sample::
+
+            posix.stat_result(st_mode=33188, st_ino=1275083688, st_dev=24L,
+                              st_nlink=1, st_uid=13194, st_gid=1623,
+                              st_size=8192000000, st_atime=1248570004,
+                              st_mtime=1153410176, st_ctime=1153407484)
         """
         return os.lstat(self.path)
 
     @memoize_property
     def is_recent(self):
-        """Return a bool indicating whether the item was modified in the past
-        one day since the scan began."""
+        """Return a :obj:`bool` indicating whether the ``item`` was modified
+        within the past one day since the scan began."""
         return (self.start_time - self.lstat.st_mtime) < 86400
 
     @memoize_property
     def is_nonrecent(self):
-        """Return a bool indicating whether the item was not modified in the
-        past one day since the scan began."""
+        """Return a :obj:`bool` indicating whether the ``item`` was modified
+        before the past one day since the scan began."""
         return (not self.is_recent)
 
     @memoize_property
     def st_mode(self):
+        """
+        Return the protection mode.
+
+        :rtype: :obj:`int`
+        """
         return self.lstat.st_mode
 
     @memoize
     def is_file(self):
+        """
+        Return a :obj:`bool` indicating whether the ``item`` is a regular file.
+
+        Given that :obj:`~os.lstat` is used, this returns :obj:`False` for
+        symbolic links.
+        """
         return stat.S_ISREG(self.st_mode)
-        # Using lstat, this is False for symlinks to files.
 
     @memoize_property
     def is_recent_file(self):
-        """Return a bool indicating whether the item is a file that was
-        modified in the past one day since the scan began."""
+        """Return a :obj:`bool` indicating whether the ``item`` is a file that
+        was modified within the past one day since the scan began."""
         return (self.is_file() and self.is_recent)
 
     @memoize_property
     def is_nonrecent_file(self):
-        """Return a bool indicating whether the item is a file that was not
-        modified in the past one day since the scan began."""
+        """Return a :obj:`bool` indicating whether the ``item`` is a file that
+        was modified before the past one day since the scan began."""
         return (self.is_file() and self.is_nonrecent)
 
     @memoize_property
     def is_file_a_copy(self):
+        """Return a :obj:`bool` indicating whether the ``item`` is a file that
+        is a copy."""
         is_true = lambda v: v in ('yes', 'Yes', '1', 1, True)
         is_true2 = lambda k: is_true(self.enstore_file_info.get(k))
         return (self.is_file() and
@@ -3131,29 +3583,49 @@ class Item:
 
     @memoize_property
     def is_file_bad(self):
-        return (self.is_file() and self.path.endswith('.bad'))
+        """Return a :obj:`bool` indicating whether the ``item`` is a file that
+        is marked bad."""
+        return (self.is_file() and
+                (self.path.startswith('.bad') or self.path.endswith('.bad')))
 
     @memoize_property
     def is_file_deleted(self):
+        """Return a :obj:`bool` indicating whether the ``item`` is a deleted
+        file."""
         return (self.is_file() and
                 (self.enstore_file_info.get('deleted')=='yes'))
 
     @memoize_property
     def is_file_empty(self):
+        """Return a :obj:`bool` indicating whether the ``item`` is a file with
+        size 0."""
         return (self.is_file() and (self.lstat.st_size==0))
 
     @memoize
     def is_dir(self):
+        """
+        Return a :obj:`bool` indicating whether the ``item`` is a directory.
+
+        Given that :obj:`~os.lstat` is used, this returns :obj:`False` for
+        symbolic links.
+        """
         return stat.S_ISDIR(self.st_mode)
-        # Using lstat, this is False for symlinks to dirs.
 
     @memoize
     def is_link(self):
+        """
+        Return a :obj:`bool` indicating whether the ``item`` is a symbolic
+        link.
+
+        .. Given that :obj:`~os.lstat` is used, this returns :obj:`True` for
+            symbolic links.
+        """
         return stat.S_ISLNK(self.st_mode)
-        # Using lstat, this is True for symlinks to files or dirs.
 
     @memoize
     def is_storage_path(self):
+        """Return a :obj:`bool` indicating whether the ``item`` is a path in
+        the Enstore namespace."""
         return bool(enstore_namespace.is_storage_path(self.path,
                                                       check_name_only=1))
 
@@ -3169,32 +3641,39 @@ class Item:
 
         This is returned for the layer 1 BFID.
 
-        Sample:
-        {'storage_group': 'astro', 'uid': 0,
-         'pnfs_name0': '/pnfs/fs/usr/astro/fulla/BACKUP/fulla.gnedin.026.tar',
-         'library': 'CD-LTO4F1', 'package_id': None,
-         'complete_crc': 3741678891L, 'size': 8192000000L,
-         'external_label': 'VOO732', 'wrapper': 'cpio_odc',
-         'package_files_count': None, 'active_package_files_count': None,
-         'gid': 0, 'pnfsid': '00320000000000000001DF20',
-         'archive_mod_time': None, 'file_family_width': None,
-         'status': ('ok', None), 'deleted': 'no', 'archive_status': None,
-         'cache_mod_time': None, 'update': '2009-07-25 23:57:23.222394',
-         'file_family': 'astro', 'location_cookie': '0000_000000000_0000150',
-         'cache_location': None, 'original_library': None,
-         'bfid': 'CDMS124858424200000', 'tape_label': 'VOO732',
-         'sanity_cookie': (65536L, 1288913660L), 'cache_status': None,
-         'drive': 'stkenmvr211a:/dev/rmt/tps0d0n:1310051081',
-         'location_cookie_list': ['0000', '000000000', '0000150'],
-         'location_cookie_current': '0000150',
-         'complete_crc_1seeded': 2096135468L,}
+        :rtype: :obj:`dict`
 
-         Sample if BFID is None:
-         {'status': ('KEYERROR', 'info_server: key bfid is None'), 'bfid': None}
+        Sample::
 
-         Sample if BFID is invalid:
-         {'status': ('WRONG FORMAT', 'info_server: bfid 12345 not valid'),
-          'bfid': '12345'}
+            {'storage_group': 'astro', 'uid': 0,
+             'pnfs_name0': '/pnfs/fs/usr/astro/fulla/fulla.gnedin.026.tar',
+             'library': 'CD-LTO4F1', 'package_id': None,
+             'complete_crc': 3741678891L, 'size': 8192000000L,
+             'external_label': 'VOO732', 'wrapper': 'cpio_odc',
+             'package_files_count': None, 'active_package_files_count': None,
+             'gid': 0, 'pnfsid': '00320000000000000001DF20',
+             'archive_mod_time': None, 'file_family_width': None,
+             'status': ('ok', None), 'deleted': 'no', 'archive_status': None,
+             'cache_mod_time': None, 'update': '2009-07-25 23:57:23.222394',
+             'file_family': 'astro',
+             'location_cookie': '0000_000000000_0000150',
+             'cache_location': None, 'original_library': None,
+             'bfid': 'CDMS124858424200000', 'tape_label': 'VOO732',
+             'sanity_cookie': (65536L, 1288913660L), 'cache_status': None,
+             'drive': 'stkenmvr211a:/dev/rmt/tps0d0n:1310051081',
+             'location_cookie_list': ['0000', '000000000', '0000150'],
+             'location_cookie_current': '0000150',
+             'complete_crc_1seeded': 2096135468L,}
+
+        Sample if BFID is :obj:`None`::
+
+            {'status': ('KEYERROR', 'info_server: key bfid is None'),
+             'bfid': None}
+
+        Sample if BFID is invalid::
+
+            {'status': ('WRONG FORMAT', 'info_server: bfid 12345 not valid'),
+             'bfid': '12345'}
         """
 
         bfid = self.fslayer1_bfid()
@@ -3223,13 +3702,18 @@ class Item:
         except KeyError: pass
         else:
             #file_info['complete_crc_0seeded'] = crc  # not necessary
-            file_info['complete_crc_1seeded'] = \
-                enstore_checksum.convert_0_adler32_to_1_adler32(crc, size)
+            if (crc is not None) and (size is not None):
+                file_info['complete_crc_1seeded'] = \
+                    enstore_checksum.convert_0_adler32_to_1_adler32(crc, size)
+            else:
+                file_info['complete_crc_1seeded'] = None
 
         return file_info
 
     @memoize_property
     def is_enstore_file_info_ok(self):
+        """Return a :obj:`bool` indicating whether Enstore file info is ok or
+        not."""
         return bool(enstore_errors.is_ok(self.enstore_file_info))
 
     @memoize_property
@@ -3240,40 +3724,48 @@ class Item:
         If volume caching is enabled, volume info may be cached and may be
         returned from cache if possible.
 
-        Sample (with no keys deleted):
-        {'comment': ' ', 'declared': 1217546233.0, 'blocksize': 131072,
-         'sum_rd_access': 4, 'library': 'CD-LTO4F1',
-         'si_time': [1317155514.0, 1246553166.0], 'wrapper': 'cpio_odc',
-         'deleted_bytes': 77020524269L, 'user_inhibit': ['none', 'none'],
-         u'storage_group': 'ilc4c', 'system_inhibit': ['none', 'full'],
-         'external_label': 'VON077', 'deleted_files': 214,
-         'remaining_bytes': 598819328L, 'sum_mounts': 149,
-         'capacity_bytes': 858993459200L, 'media_type': 'LTO4',
-         'last_access': 1331879563.0, 'status': ('ok', None),
-         'eod_cookie': '0000_000000000_0001545', 'non_del_files': 1556,
-         'sum_wr_err': 0, 'unknown_files': 10, 'sum_wr_access': 1544,
-         'active_bytes': 746796833291L,
-         'volume_family': 'ilc4c.volatile.cpio_odc',
-         'unknown_bytes': 7112706371L, 'modification_time': 1246553159.0,
-         u'file_family': 'volatile', 'write_protected': 'y', 'sum_rd_err': 0,
-         'active_files': 1330, 'first_access': 1234948627.0}
+        :rtype: :obj:`dict`
 
-        Sample (with unneeded keys deleted):
-        {'library': 'CD-LTO4F1', 'wrapper': 'cpio_odc', 'deleted_bytes': 0L,
-         'user_inhibit': ['none', 'none'], u'storage_group': 'ilc4c',
-         'system_inhibit': ['none', 'full'], 'external_label': 'VON778',
-         'deleted_files': 0, 'media_type': 'LTO4', 'status': ('ok', None),
-         'unknown_files': 0, 'active_bytes': 818291877632L,
-         'volume_family': 'ilc4c.static.cpio_odc', 'unknown_bytes': 0L,
-         u'file_family': 'static', 'active_files': 411}
+        Sample (with no keys deleted)::
 
-        Sample if volume is None:
-        {'status': ('KEYERROR', 'info_server: key external_label is None'),
-         'work': 'inquire_vol', 'external_label': None}
+            {'comment': ' ', 'declared': 1217546233.0, 'blocksize': 131072,
+             'sum_rd_access': 4, 'library': 'CD-LTO4F1',
+             'si_time': [1317155514.0, 1246553166.0], 'wrapper': 'cpio_odc',
+             'deleted_bytes': 77020524269L, 'user_inhibit': ['none', 'none'],
+             u'storage_group': 'ilc4c', 'system_inhibit': ['none', 'full'],
+             'external_label': 'VON077', 'deleted_files': 214,
+             'remaining_bytes': 598819328L, 'sum_mounts': 149,
+             'capacity_bytes': 858993459200L, 'media_type': 'LTO4',
+             'last_access': 1331879563.0, 'status': ('ok', None),
+             'eod_cookie': '0000_000000000_0001545', 'non_del_files': 1556,
+             'sum_wr_err': 0, 'unknown_files': 10, 'sum_wr_access': 1544,
+             'active_bytes': 746796833291L,
+             'volume_family': 'ilc4c.volatile.cpio_odc',
+             'unknown_bytes': 7112706371L, 'modification_time': 1246553159.0,
+             u'file_family': 'volatile', 'write_protected': 'y',
+             'sum_rd_err': 0, 'active_files': 1330,
+             'first_access': 1234948627.0}
 
-        Sample if volume is invalid:
-        {'status': ('WRONG FORMAT', 'info_server: bfid 12345 not valid'),
-         'bfid': '12345'}
+        Sample (with unneeded keys deleted)::
+
+            {'library': 'CD-LTO4F1', 'wrapper': 'cpio_odc',
+             'deleted_bytes': 0L, 'user_inhibit': ['none', 'none'],
+             u'storage_group': 'ilc4c', 'system_inhibit': ['none', 'full'],
+             'external_label': 'VON778', 'deleted_files': 0,
+             'media_type': 'LTO4', 'status': ('ok', None), 'unknown_files': 0,
+             'active_bytes': 818291877632L,
+             'volume_family': 'ilc4c.static.cpio_odc', 'unknown_bytes': 0L,
+             u'file_family': 'static', 'active_files': 411}
+
+        Sample if volume is :obj:`None`::
+
+            {'status': ('KEYERROR', 'info_server: key external_label is None'),
+             'work': 'inquire_vol', 'external_label': None}
+
+        Sample if volume is invalid::
+
+            {'status': ('WRONG FORMAT', 'info_server: bfid 12345 not valid'),
+             'bfid': '12345'}
         """
 
         # Get volume name
@@ -3343,65 +3835,77 @@ class Item:
 
     @memoize_property
     def is_enstore_volume_info_ok(self):
+        """Return a :obj:`bool` indicating whether Enstore volume info is ok or
+        not."""
         return bool(enstore_errors.is_ok(self.enstore_volume_info))
 
     @memoize_property
     def enstore_files_by_path(self):
         """
-        Return a dict containing information about the list of known files in
-        Enstore for the current path.
+        Return a :obj:`dict` containing information about the list of known
+        files in Enstore for the current path.
 
-        Sample:
-        {'status': ('ok', None),
-         'r_a': (('131.225.13.10', 59329), 21L,
-                 '131.225.13.10-59329-1347478604.303243-2022-47708927252656'),
-         'pnfs_name0': '/pnfs/fs/usr/astro/idunn/LONGTERM/rei256bin.015.tar',
-         'file_list':
-         [{'storage_group': 'astro', 'uid': 0,
-           'pnfs_name0': '/pnfs/fs/usr/astro/idunn/LONGTERM/rei256bin.015.tar',
-           'library': 'shelf-CD-9940B', 'package_id': None,
-           'complete_crc': 2995796126L, 'size': 8192000000L,
-           'external_label': 'VO9502', 'wrapper': 'cpio_odc',
-           'package_files_count': None, 'active_package_files_count': None,
-           'gid': 0, 'pnfsid': '00320000000000000001CF38',
-           'archive_status': None, 'file_family_width': None, 'deleted': 'yes',
-           'archive_mod_time': None, 'cache_mod_time': None,
-           'update': '2009-09-27 15:57:10.011141', 'file_family': 'astro',
-           'location_cookie': '0000_000000000_0000020', 'cache_location': None,
-           'original_library': None, 'bfid': 'CDMS113926889300000',
-           'tape_label': 'VO9502', 'sanity_cookie': (65536L, 2312288512L),
-           'cache_status': None,
-           'drive': 'stkenmvr36a:/dev/rmt/tps0d0n:479000032467'},
-          {'storage_group': 'astro', 'uid': 0,
-           'pnfs_name0': '/pnfs/fs/usr/astro/idunn/LONGTERM/rei256bin.015.tar',
-           'library': 'CD-LTO4F1', 'package_id': None,
-           'complete_crc': 2995796126L, 'size': 8192000000L,
-           'external_label': 'VOO732', 'wrapper': 'cpio_odc',
-           'package_files_count': None, 'active_package_files_count': None,
-           'gid': 0, 'pnfsid': '00320000000000000001CF38',
-           'archive_status': None, 'file_family_width': None, 'deleted': 'no',
-           'archive_mod_time': None, 'cache_mod_time': None,
-           'update': '2009-07-25 23:53:46.278724', 'file_family': 'astro',
-           'location_cookie': '0000_000000000_0000149', 'cache_location': None,
-           'original_library': None, 'bfid': 'CDMS124858402500000',
-           'tape_label': 'VOO732', 'sanity_cookie': (65536L, 2312288512L),
-           'cache_status': None,
-           'drive': 'stkenmvr211a:/dev/rmt/tps0d0n:1310051081'}]}
+        :rtype: :obj:`dict`
+
+        Sample::
+
+            {'status': ('ok', None),
+             'r_a': (('131.225.13.10', 59329), 21L,
+                     '131.225.13.10-59329-1347478604.303243-2022-47708927252656'),
+             'pnfs_name0': '/pnfs/fs/usr/astro/idunn/rei256bin.015.tar',
+             'file_list':
+             [{'storage_group': 'astro', 'uid': 0,
+               'pnfs_name0': '/pnfs/fs/usr/astro/idunn/rei256bin.015.tar',
+               'library': 'shelf-CD-9940B', 'package_id': None,
+               'complete_crc': 2995796126L, 'size': 8192000000L,
+               'external_label': 'VO9502', 'wrapper': 'cpio_odc',
+               'package_files_count': None, 'active_package_files_count': None,
+               'gid': 0, 'pnfsid': '00320000000000000001CF38',
+               'archive_status': None, 'file_family_width': None,
+               'deleted': 'yes', 'archive_mod_time': None,
+               'cache_mod_time': None, 'update': '2009-09-27 15:57:10.011141',
+               'file_family': 'astro',
+               'location_cookie': '0000_000000000_0000020',
+               'cache_location': None,
+               'original_library': None, 'bfid': 'CDMS113926889300000',
+               'tape_label': 'VO9502', 'sanity_cookie': (65536L, 2312288512L),
+               'cache_status': None,
+               'drive': 'stkenmvr36a:/dev/rmt/tps0d0n:479000032467'},
+              {'storage_group': 'astro', 'uid': 0,
+               'pnfs_name0': '/pnfs/fs/usr/astro/idunn/rei256bin.015.tar',
+               'library': 'CD-LTO4F1', 'package_id': None,
+               'complete_crc': 2995796126L, 'size': 8192000000L,
+               'external_label': 'VOO732', 'wrapper': 'cpio_odc',
+               'package_files_count': None, 'active_package_files_count': None,
+               'gid': 0, 'pnfsid': '00320000000000000001CF38',
+               'archive_status': None, 'file_family_width': None,
+               'deleted': 'no', 'archive_mod_time': None,
+               'cache_mod_time': None, 'update': '2009-07-25 23:53:46.278724',
+               'file_family': 'astro',
+               'location_cookie': '0000_000000000_0000149',
+               'cache_location': None, 'original_library': None,
+               'bfid': 'CDMS124858402500000', 'tape_label': 'VOO732',
+               'sanity_cookie': (65536L, 2312288512L), 'cache_status': None,
+               'drive': 'stkenmvr211a:/dev/rmt/tps0d0n:1310051081'}]}
         """
         return self.enstore.info_client.find_file_by_path(self.path)
 
     @memoize_property
     def is_enstore_files_by_path_ok(self):
+        """Return a :obj:`bool` indicating whether the list of Enstore provided
+        files for the current path is ok or not."""
         return bool(enstore_errors.is_ok(self.enstore_files_by_path))
 
     @memoize_property
     def enstore_files_list_by_path(self):
         """
-        If the list of Enstore provided files for the current path is ok,
-        return this list, otherwise an empty list.
+        If the :obj:`list` of Enstore provided files for the current path is
+        ok, return this :obj:`list`, otherwise an empty :obj:`list`.
 
-        For a sample, see the value of the `file_list` key in the sample
-        noted in the `enstore_list_by_path` method.
+        :rtype: :obj:`list`
+
+        For a sample, see the value of the ``file_list`` key in the sample
+        noted for :attr:`enstore_files_by_path`.
         """
         if self.is_enstore_files_by_path_ok:
             enstore_files_by_path = self.enstore_files_by_path
@@ -3413,18 +3917,33 @@ class Item:
 
     @memoize_property
     def _sfs(self):
-        """Return the StorageFS instance for the current file."""
+        """Return the :class:`~enstore_namespace.StorageFS` instance for the
+        current path."""
         return enstore_namespace.StorageFS(self.path)
 
     @memoize_property
     def sfs_pnfsid(self):
-        """Return the PNFS ID for the current file as provided by StorageFS."""
+        """
+        Return the PNFS ID for the current file as provided by
+        :class:`~enstore_namespace.StorageFS`.
+
+        :rtype: :obj:`str`
+        """
         return self._sfs.get_id(self.path)
 
     @memoize
     def sfs_paths(self, filepath, pnfsid):
-        """Return the paths for the indicated file path and PNFS ID, as provided
-        by StorageFS."""
+        """
+        Return the paths for the indicated file path and PNFS ID, as
+        provided by :class:`~enstore_namespace.StorageFS`.
+
+        :type filepath: :obj:`str`
+        :arg filepath: Absolute path of file, as provided by
+            :class:`~enstore_namespace.StorageFS`.
+        :type pnfsid: :obj:`str`
+        :arg pnfsid: PNFS ID of file, as provided by
+            :class:`~enstore_namespace.StorageFS`.
+        """
         try:
             sfs_paths = self._sfs.get_path(id=pnfsid,
                                            directory=os.path.dirname(filepath))
@@ -3440,10 +3959,14 @@ class Item:
     @memoize_property
     def sizes(self):
         """
-        Return a dict containing all available file sizes for the current file.
+        Return a :obj:`dict` containing all available file sizes for the
+        current file.
 
-        The available keys in the dict are lstat, layer 2, layer 4, and Enstore.
-        Each value is an int or is None if unavailable.
+        :rtype: :obj:`dict`
+
+        The available keys in the returned :obj:`dict` are ``lstat``,
+        ``layer 2``, ``layer 4``, and ``Enstore``. Each value in the
+        :obj:`dict` is an :obj:`int` or is :obj:`None` if unavailable.
         """
 
         return {'lstat': self.lstat.st_size,
@@ -3455,13 +3978,15 @@ class Item:
     @memoize_property
     def norm_paths(self):
         """
-        Return a dict containing all available paths for the current file.
+        Return a :obj:`dict` containing all available paths for the current
+        file.
 
         The paths are normalized to remove common mount locations such as
-        "/pnfs/fs/usr", etc.
+        ``/pnfs/fs/usr``, etc.
 
-        The available keys in the dict are filesystem, layer 4, and Enstore. A
-        value may be None if unavailable.
+        The available keys in the returned :obj:`dict` are ``filesystem``,
+        ``layer 4``, and ``Enstore``. A value in the :obj:`dict` may be
+        :obj:`None` if unavailable.
         """
 
         # Retrieve values
@@ -3474,6 +3999,7 @@ class Item:
         variations = ('/pnfs/fnal.gov/usr/',
                       '/pnfs/fs/usr/',
                       '/pnfs/',
+                      '/chimera/',
                       )
         for path_key, path_val in paths.items():
             if path_val:
@@ -3490,41 +4016,51 @@ class Item:
 
 
 class Notice(Exception):
-    """
-    Provide an exception containing a single notice.
-    """
+    """Provide an :obj:`~exceptions.Exception` representing a single notice."""
 
-    _notices = {'Test': 'Testing "{test}".',}  # Updated externally, specific to
-    #-->                                       # current scanner.
+    _notices = {'Test': 'Testing "{test}".',}  # Updated externally, specific
+    #-->                                       # to current scanner.
 
     @classmethod
     def update_notices(cls, notices):
         """
-        Update the class variable `notices` for the current scanner with a dict
-        containing notices.
+        Register the provided notices.
 
-        The keys of the provided dict are compact string identifiers. Its values
-        are corresponding string message templates. For example:
+        :type notices: :obj:`dict`
+        :arg notices: This is a :obj:`dict` containing notices to register. Its
+            keys are compact string identifiers. Its values are corresponding
+            string message templates. For example::
 
-        {'NoL1File': ('Cannot read layer 1 metadata file "{filename}".'
-                      '{exception}'),}
+                {'NoL1File': ('Cannot read layer 1 metadata file "{filename}".'
+                              '{exception}'),}
+
+            In the above example, ``filename`` and ``exception`` represent
+            keyword arguments whose values will be used to :obj:`~str.format`
+            the message template.
         """
 
         cls._notices.update(notices)
 
     def __init__(self, key, **kwargs):
         """
-        Return an exception for the indicated message key and kwargs.
+        Return an :obj:`~exceptions.Exception` containing a single notice for
+        the provided message arguments.
 
-        Before any instance is created, the `update_notices` classmethod must
-        have been called.
+        Before any instance is created, the :meth:`update_notices` classmethod
+        must have been called at least once.
 
-        `key` refers to the notice type that is to be raised. It must be a
-        string in the Notice._notices dict. The corresponding value in this dict
-        will be used as as the message template.
+        :type key: :obj:`str`
+        :arg key: This refers to the identifying-type of the notice. It must
+            have been previously registered using the :meth:`update_notices`
+            classmethod.
+        :rtype: :class:`Notice`
 
-        The provided keyword arguments are used to format the notice message
-        template. They are also included in the dict representation of the
+        Additionally provided keyword arguments are used to :obj:`~str.format`
+        the corresponding message template. This template must have been
+        previously provided together with the ``key`` using the
+        :meth:`update_notices` classmethod.
+
+        All arguments are also included in a :obj:`dict` representation of the
         notice.
         """
 
@@ -3536,14 +4072,18 @@ class Notice(Exception):
         message = message_template.format(**self._kwargs).strip()
         self._level = self.__class__.__name__.rpartition('Notice')[0].upper()
         self._level = self._level or 'INFO'
-#        message = '{0} {1} ({2}): {3}'.format(self._level, code, self.key,
-#                                              message)
         message = '{0} ({1}): {2}'.format(self._level, self.key, message)
         Exception.__init__(self, message)
 
     @staticmethod
     def hashtext(text):
-        """Return a four-hexadecimal-digit string hash of the provided text."""
+        """
+        Return a four-hexadecimal-digit string hash of the provided text.
+
+        :type text: :obj:`str`
+        :arg text: Text to hash.
+        :rtype: :obj:`str`
+        """
         hash_ = hashlib.md5(text).hexdigest()[:4]
         hash_ = '0x{0}'.format(hash_)
         return hash_
@@ -3558,27 +4098,51 @@ class Notice(Exception):
         for n in notices: print(n)
 
     def __repr__(self):
+        """
+        Return a string representation.
+
+        This string allows the class instance to be reconstructed in another
+        process.
+        """
+
         repr_ = '{0}({1}, **{2})'.format(self.__class__.__name__,
                                          repr(self.key), repr(self._kwargs))
         return repr_
 
     def __eq__(self, other):
+        """
+        Perform an equality comparison.
+
+        :type other: :class:`Notice`
+        :arg other: object to compare.
+        :rtype: :obj:`bool`
+        """
+
         return (str(self)==str(other) and self._level==other._level and
                 self.key==other.key and self._kwargs==other._kwargs)
 
     def to_dict(self):
-        """Return a dict which contains items describing the notice."""
+        """
+        Return a :obj:`dict` which describes the notice.
+
+        :rtype: :obj:`dict`
+
+        The returned :obj:`dict` can be used to reconstruct this
+        :class:`Notice` instance using the :meth:`from_dict` method.
+        """
 
         return {self.key: {'level': self._level,
                            'args': self._kwargs},
                 }
 
     def to_exportable_dict(self):
-        """"
-        Return an exportable dict which contains items describing the notice.
+        """
+        Return an exportable :obj:`dict` which describes the notice.
 
-        Nested args are flattened. The Notice object cannot be reconstructed
-        from the returned dict.
+        :rtype: :obj:`dict`
+
+        The returned :obj:`dict` cannot be used to reconstruct this
+        :class:`Notice` instance using the :meth:`from_dict` method.
         """
 
         def flatten_dict(d):
@@ -3609,10 +4173,14 @@ class Notice(Exception):
     @staticmethod
     def from_dict(notice):
         """
-        Return a Notice object constructed from the provided dict.
+        Return a :class:`Notice` instance constructed from the provided
+        :obj:`dict`.
 
-        The provided dict must have the same structure as is returned by the
-        `to_dict` method.
+        :type notice: :obj:`dict`
+        :arg notice: This is the object from which to construct a
+            :class:`Notice`. It must have the same structure as is returned by
+            :meth:`to_dict`.
+        :rtype: :class:`Notice`
         """
 
         nkey, notice = notice.items()[0]
@@ -3623,10 +4191,12 @@ class Notice(Exception):
 
     def to_json(self, indent=None):
         """
-        Return a sorted json representation of the dict which contains items
-        describing the notice.
+        Return a sorted JSON representation of the :obj:`dict` describing the
+        notice.
 
-        `indent` can optionally be None or a non-negative integer.
+        :type indent: :obj:`None` or :obj:`int` (non-negative)
+        :arg indent: See :py:func:`json.dumps`.
+        :rtype: :obj:`str`
         """
 
         return json.dumps(self.to_dict(), sort_keys=True, indent=indent)
@@ -3634,44 +4204,65 @@ class Notice(Exception):
     @classmethod
     def from_json(cls, notice):
         """
-        Return a Notice object constructed from the provided json string.
+        Return a :class:`Notice` instance constructed from the provided JSON
+        string.
 
-        The provided string must have the same structure as is returned by the
-        `to_json` method.
+        :type notice: :obj:`str`
+        :arg notice: This is the object from which to construct a
+            :class:`Notice`. It must have the same structure as is returned by
+            :meth:`to_json`.
+        :rtype: :class:`Notice`
 
-        This method can be used only with Python 2.7 or higher. It may cause the
-        following exception with Python 2.6:
-        TypeError: __init__() keywords must be strings
+        .. note:: This method can be used only with Python 2.7 or higher. It
+            may raise the following :obj:`~exceptions.Exception` with Python
+            2.6::
+
+                TypeError: __init__() keywords must be strings
         """
 
         return cls.from_dict(json.loads(notice))
 
 
-class TestNotice(Notice): pass
-class InfoNotice(Notice): pass
-class WarningNotice(Notice): pass
-class ErrorNotice(Notice): pass
-class CriticalNotice(Notice): pass
+class TestNotice(Notice):
+    """Test notice."""
+    pass
+
+
+class InfoNotice(Notice):
+    """Informational notice."""
+    pass
+
+
+class WarningNotice(Notice):
+    """Warning notice."""
+    pass
+
+
+class ErrorNotice(Notice):
+    """Error notice."""
+    pass
+
+
+class CriticalNotice(Notice):
+    """Critical error notice."""
+    pass
 
 
 class NoticeGrp(object):
-    """
-    Return an object that is a group of Notice objects for the specified item
-    path.
-
-    The "add_notice" method can be used to add a notice.
-
-    The "to_dict" and "from_dict" methods can be used to send the object
-    over a multiprocessing queue.
-    """
+    """Provide a container for :class:`Notice` objects."""
 
     def __init__(self, item_path, notices=None):
         """
-        Initialize the object with the specified item path and notices.
+        Return an object that is a group of :class:`Notice` objects for the
+        specified item path and notices.
 
-        `notices` can be a sequence of Notice objects that are added to the
-        group. If multiple Notice objects exist with the same `key` attribute,
-        only the latest such Notice will be stored.
+        :type item_path: :obj:`str`
+        :arg item_path: absolute filesystem path of the item.
+        :type notices: :obj:`~collections.Sequence` or :obj:`None`
+        :arg notices: This can be a :obj:`~collections.Sequence` of
+            :class:`Notice` objects that are added to the group. If multiple
+            :class:`Notice` objects exist in the sequence with the same ``key``
+            attribute, only the last such :class:`Notice` will be stored.
         """
 
         self.item = item_path
@@ -3681,8 +4272,12 @@ class NoticeGrp(object):
             for notice in notices: self.add_notice(notice)
 
     def __repr__(self):
-        """Return a string representation of the class instance, to allow the
-        class instance to be sent to another process and reconstructed in it."""
+        """
+        Return a string representation.
+
+        This string allows the class instance to be reconstructed in another
+        process.
+        """
 
         repr_ = '{0}({1}, {2})'.format(self.__class__.__name__,
                                        repr(self.item), repr(self.notices))
@@ -3690,28 +4285,42 @@ class NoticeGrp(object):
 
     def add_notice(self, notice):
         """
-        Add the specified Notice.
+        Add the provided :class:`Notice`.
 
-        If a Notice already exists with the same `key` attribute, it will be
-        overwritten.
+        If a :class:`Notice` already exists with the same ``key`` attribute, it
+        will be overwritten.
         """
         self.notices[notice.key] = notice
 
     def __eq__(self, other):
+        """
+        Perform an equality comparison.
+
+        :type other: :class:`NoticeGrp`
+        :arg other: object to compare.
+        :rtype: :obj:`bool`
+        """
+
         return (self.item==other.item and self.notices==other.notices)
 
-    def __nonzero__(self): # (bool check)
+    def __nonzero__(self):
+        """
+        Return :obj:`True` if one or more notices exist in the group, otherwise
+        return :obj:`False`.
+
+        :rtype: :obj:`bool`
+        """
         return bool(self.notices)
 
     def __str__(self):
         """
-        Return a space-separated string representation of the notice.
+        Return a multiline string representation of the notice group.
 
-        For example:
+        Example::
 
-        /pnfs/fs/usr/mydir1/myfile1
-        ERROR (ErrType1): This is error 1.
-        WARNING (WarnType1): This is warning 1.
+            /pnfs/fs/usr/mydir1/myfile1
+            ERROR (ErrType1): This is error 1.
+            WARNING (WarnType1): This is warning 1.
         """
 
         notices_strs = (str(n) for n in self.notices.values())
@@ -3719,10 +4328,12 @@ class NoticeGrp(object):
 
     def to_dict(self):
         """
-        Return a dict which contains the path and its notices.
+        Return a :obj:`dict` which describes the notice group.
 
-        If multiple notices exist with the same key, only the most recently
-        added notice with that key will be included in the returned dict.
+        :rtype: :obj:`dict`
+
+        The returned :obj:`dict` can be used to reconstruct this
+        :class:`NoticeGrp` instance using the :meth:`from_dict` method.
         """
 
         return {'path': self.item,
@@ -3732,13 +4343,12 @@ class NoticeGrp(object):
 
     def to_exportable_dict(self):
         """
-        Return a dict which contains the path and its notices.
+        Return an exportable :obj:`dict` which describes the notice group.
 
-        If multiple notices exist with the same key, only the most recently
-        added notice with that key will be included in the returned dict.
+        :rtype: :obj:`dict`
 
-        For each notice, its nested args are flattened. The NoticeGrp object
-        cannot be reconstructed from the returned dict.
+        The returned :obj:`dict` cannot be used to reconstruct this
+        :class:`NoticeGrp` instance using the :meth:`from_dict` method.
         """
 
         return {'path': self.item,
@@ -3749,10 +4359,14 @@ class NoticeGrp(object):
     @classmethod
     def from_dict(cls, noticegrp):
         """
-        Return a NoticeGrp object constructed from the provided dict.
+        Return a :class:`NoticeGrp` instance constructed from the provided
+        :obj:`dict`.
 
-        The provided dict must have the same structure as is returned by the
-        `to_dict` method.
+        :type notice: :obj:`dict`
+        :arg notice: This is the object from which to construct a
+            :class:`NoticeGrp`. It must have the same structure as is returned
+            by :meth:`to_dict`.
+        :rtype: :class:`NoticeGrp`
         """
 
         notices = noticegrp['notices'].items()
@@ -3761,10 +4375,12 @@ class NoticeGrp(object):
 
     def to_json(self, indent=None):
         """
-        Return a sorted json representation of the dict which contains the path
-        and its notices.
+        Return a sorted JSON representation of the :obj:`dict` describing the
+        notice group.
 
-        `indent` can optionally be None or a non-negative integer.
+        :type indent: :obj:`None` or :obj:`int` (non-negative)
+        :arg indent: See :py:func:`json.dumps`.
+        :rtype: :obj:`str`
         """
 
         return json.dumps(self.to_dict(), sort_keys=True,
@@ -3773,38 +4389,34 @@ class NoticeGrp(object):
 
 class ScanInterface:
     """
-    This class is referenced and initialized by enstore.py.
+    This class is referenced and initialized by the :mod:`enstore` module.
 
-    While this class is intended by enstore.py to perform command-line option
-    parsing using the option.Interface base class, it does not do so. Instead,
-    the parsing for this module is performed by the CommandLineOptionsParser
-    class. As such, this class intentionally does not inherit the
-    option.Interface base class.
+    While this class is intended by the :mod:`enstore` module to perform
+    command-line option parsing using the :class:`option.Interface` base class,
+    it does not do so. Instead, the command-line option parsing for this module
+    is performed by the :class:`CommandLineOptionsParser` class which is called
+    independently. As such, this :class:`ScanInterface` class intentionally
+    does not inherit the :class:`option.Interface` class.
     """
 
     def __init__(self, *args, **kwargs):
         """
         Initialize the interface.
 
-        No input arguments are used - they are ignored.
+        No input arguments are used.
         """
         pass
-
-#    def __getattr__(self, name):
-#        def method(*args, **kwargs):
-#            pass
-#        return method
 
 
 def do_work(*args, **kwargs):
     """
-    Perform scan as specified on the command line, using options described in
-    the CommandLineOptionsParser._add_options method.
+    Perform a scan as specified on the command line, using the options
+    described within the :meth:`CommandLineOptionsParser._add_options` method.
     """
 
     # Parse command line options
     options = CommandLineOptionsParser().options
-    #options = {'scan_type': 'forward'}  # These options are minimally required.
+    #options = {'scan_type': 'forward'} # These options are minimally required.
     settings.update(options)  # Merge provided options.
 
     # Select scanner
@@ -3823,8 +4435,6 @@ def do_work(*args, **kwargs):
         Notice.update_notices(scanner.notices)
         Notice.print_notice_templates()
     else:
-#        print('Primary process ID is {0}.\n'.format(os.getpid()))
-        # Run scan
         scanner().run()
 
 if __name__ == '__main__':
