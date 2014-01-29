@@ -365,20 +365,34 @@ fi
 # Work in configuration directory. It is git working directory
 cd $gitdir || abort "can not \"cd $gitdir\""
 
-# make sure we are using the latest config from remote repository
-echo "updating local git repository from remote"
-# fetch data from remote preconfigured repository 'enconfig'
-git fetch enconfig && success || abort "Something wrong with 'git fetch enconfig'. Investigate"
+# report current git branch
+cur_branch=$(git rev-parse --abbrev-ref HEAD)
+echo "git branch: ${cur_branch}"
 
-echo "git status (all files):"
+# Make sure we are using the latest config from remote repository
+#
+echo "updating local git repository from remote"
+
+# fetch data from remote preconfigured repository 'enconfig' to the current branch
+
+#cmd="git fetch enconfig"
+cmd="git pull enconfig ${cur_branch}"
+$cmd && success || abort "Something wrong with \"${cmd}\"; - Investigate"
+
+# report what files are changed
+echo "git status. List all files different from remote:"
 git status -uno
 echo "... end of git status"
+
+# checkout from local repository only one file we are going to change
+cmd="git checkout -- $cfile"
+$cmd   && success || abort "Something wrong with \"${cmd}\" ; - Investigate"
 
 [[ -r $cfile ]] || abort "file $gitdir/$cfile is unreadable in configuration directory"
 
 echo "compare configuration file fetched from remote repo and local configuration file"
-diff -q $dir/$cfile $gitdir/$cfile ||
-    abort "Files differ. diff $dir/$file $gitdir/$cfile . Investigate"
+cmd="diff -q $dir/$cfile $gitdir/$cfile"
+$cmd || abort "Files differ: \"${cmd}\" ; - Investigate"
 end_of_compare
 
 # Make a copy of file
@@ -402,8 +416,9 @@ fi
 # Check if updated file can be interpreted by python
 
 #echo "Checking $TEMPconfig is python file:"
-sed -n '1p' $TEMPconfig | grep python
+line=$(sed -n '1p' $TEMPconfig | grep python)
 if [ $? -ne 0 ]; then
+    if $debug ; then echo "First line of ${TEMPconfig}: ${line}"; fi
     abort "edited file $TEMPconfig is not python script (no 'python' on first line)"
 fi
 
@@ -427,13 +442,15 @@ rm -f $TEMPconfig 2>/dev/null
 
 # commit changes locally to git repository
 echo "committing:"
-git commit -uno -- $cfile && success || abort "Something wrong with git commit. Investigate"
+cmd="git commit -uno -- $cfile"
+$cmd && success || abort "Something wrong with \"${cmd}\" ; - Investigate"
 
 echo "push changes to remote git configuration repository"
-git push enconfig   && success || abort "Something wrong with 'git push enconfig.' Investigate"
+cmd="git push enconfig ${cur_branch}"
+$cmd && success || abort "Something wrong with \"${cmd}\" ; - Investigate"
 
 echo "get changes back from remote git configuration repository"
-git fetch enconfig  && succes "OK"
+git fetch enconfig  && success "OK"
 
 if [[ $verbose > 1 ]]
 then
@@ -455,7 +472,7 @@ fi
 #   $ENSTORE_DIR setting on the node where the file was edited but not the setting on remote node.
 #   Leave it as in original script.
 
-if [[ -n $gang && $gang != "UNKNOWN"]] ; then
+if [[ -n $gang && $gang != "UNKNOWN" ]] ; then
     echo "  synchronizing $config to gang $gang with rgang"
     rgang -c $gang $TEMPconfig $dir/$config
 else
@@ -475,7 +492,7 @@ fi
 [[ $cmd_load_conf ]] || abort "$PROGNAME internal error: cmd_load_conf not set"
 
 confirm_or_exit "About to load new config file into server, is this what you want [Y/n] " \
-                "ok, done"
+                "ok, exiting without load"
 # Note:
 #  if the file name is specified on command line, it is not what we load here
 #  but we leave it as in original script
