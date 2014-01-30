@@ -322,7 +322,7 @@ else # by default, load configuration
         dir=${ENSTORE_CONFIG_DIR}
         # Note, we do not append suffix ".conf" to file name anymore, must be full name
         [[ $(dirname file) == '.' ]] || echo abort "refuse to process relative path in file name ${config_file}"
-        config=$(basename ${config_file}}
+        config=$(basename ${config_file})
     else
         [[ ${ENSTORE_CONFIG_FILE} ]]  || abort "ENSTORE_CONFIG_FILE not set"
 
