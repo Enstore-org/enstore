@@ -5,8 +5,7 @@
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
-#BUILDDIR      = /srv2/enstore/www/web-pages/dev
-#BUILDDIR is set dynamically by external caller.
+#BUILDDIR is to be set dynamically by external caller.
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
