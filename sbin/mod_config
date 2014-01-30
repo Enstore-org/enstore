@@ -300,13 +300,28 @@ then
     # next line is when policy file is set as argument, not available now
     # [[ ${policy_file} ]] || abort "policy file name not provided"
 
-    # @todo: resolve policy file name by accessing configuration server
-    # n=$(/opt/enstore/bin/conf.sh -k dispatcher | awk -F ":" '/policy_file/{print $2}' | tr -d "\,\'[:space:]")
+    # we do not set policy_file with current argument parsing,
+    #    thus will always talk to configuration server
 
-    [[ ${ENSTORE_SFA_POLICY:-} ]]  || abort "environment ENSTORE_SFA_POLICY not set"
+    if [[ -z ${policy_file} ]]
+    then
+        echo "## Get policy_file name from configuration server"
+        # try get policy file name by accessing configuration server
+        policy_file=$(${ENSTORE_DIR}/bin/conf.sh -k dispatcher | awk -F ":" '/policy_file/{print $2}' | tr -d "\,\'[:space:]" )
+    fi
 
-    config=$(basename $ENSTORE_SFA_POLICY)
-    dir=$(dirname $ENSTORE_SFA_POLICY)
+    if [[ -z ${policy_file} ]]
+    then
+        echo "## Failed to get policy_file name from configuration server"
+        echo "## Get policy file name from environment $ENSTORE_SFA_POLICY"
+        [[ ${ENSTORE_SFA_POLICY:-} ]]  || abort "environment ENSTORE_SFA_POLICY not set"
+        policy_file=${ENSTORE_SFA_POLICY}
+    fi
+
+#    [[ ${ENSTORE_SFA_POLICY:-} ]]  || abort "environment ENSTORE_SFA_POLICY not set"
+
+    config=$(basename ${policy_file})
+    dir=$(dirname ${policy_file})
 
     cmd_load_conf="enstore disp --load"
 
