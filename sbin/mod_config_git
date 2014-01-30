@@ -46,7 +46,7 @@ Arguments:
 EOF
 }
 
-# park here out help string for commented out ouptions:
+# park here out help string for commented out options:
 # Usage: ${PROGNAME} [options] [--] [config_file]
 #       --config config_file  full name of configuration file [$ENSTORE_CONFIG_FILE]
 #                             File name must be full file name, no .conf is added.
@@ -269,27 +269,21 @@ fi
 #-------------------------------------------------------------
 # Check if we are running on configuration host, refuse otherwise
 
-on_config_host=false
-
 cfg_host=$(echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.)
 node=$($ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.)
 # my node is ...
 case $node in
-    # I do not think we need this clause as it is harcoded, and it was broken as written
-    # known configuration host
-    stkensrv2n|d0ensrv2n|cdfensrv2n)
-        on_config_host=true
-        ;;
     # current configuration host as set in environment
     #   usually FQDN like dmsen02.fnal.gov
     ${ENSTORE_CONFIG_HOST})
         on_config_host=true
         ;;
-    # current configuration host set in environment, short
+    # current configuration host set in environment, short form
     ${cfg_host})
         on_config_host=true
         ;;
     *)
+        on_config_host=false
         ;;
 esac
 
@@ -306,14 +300,32 @@ then
     # next line is when policy file is set as argument, not available now
     # [[ ${policy_file} ]] || abort "policy file name not provided"
 
-    [[ ${ENSTORE_SFA_POLICY:-} ]]  || abort "environment ENSTORE_SFA_POLICY not set"
+    # we do not set policy_file with current argument parsing,
+    #    thus will always talk to configuration server
 
-    config=$(basename $ENSTORE_SFA_POLICY)
-    dir=$(dirname $ENSTORE_SFA_POLICY)
+    if [[ -z ${policy_file} ]]
+    then
+        echo "## Get policy_file name from configuration server"
+        # try get policy file name by accessing configuration server
+        policy_file=$(${ENSTORE_DIR}/bin/conf.sh -k dispatcher | awk -F ":" '/policy_file/{print $2}' | tr -d "\,\'[:space:]" )
+    fi
+
+    if [[ -z ${policy_file} ]]
+    then
+        echo "## Failed to get policy_file name from configuration server"
+        echo "## Get policy file name from environment $ENSTORE_SFA_POLICY"
+        [[ ${ENSTORE_SFA_POLICY:-} ]]  || abort "environment ENSTORE_SFA_POLICY not set"
+        policy_file=${ENSTORE_SFA_POLICY}
+    fi
+
+#    [[ ${ENSTORE_SFA_POLICY:-} ]]  || abort "environment ENSTORE_SFA_POLICY not set"
+
+    config=$(basename ${policy_file})
+    dir=$(dirname ${policy_file})
 
     cmd_load_conf="enstore disp --load"
 
-else # by defualt, load configuration
+else # by default, load configuration
 # elif [[ $opt_config > 0 ]] ; then
     # configuration file name was provided on command line?
     if [[ -n ${config_file} ]]
@@ -323,8 +335,9 @@ else # by defualt, load configuration
         [[ ${ENSTORE_CONFIG_DIR} ]] || abort "ENSTORE_CONFIG_DIR not set"
 
         dir=${ENSTORE_CONFIG_DIR}
-        # Note, we do not append suffix ".conf" to fiule name anymore, must be full name
-        config=${config_file}
+        # Note, we do not append suffix ".conf" to file name anymore, must be full name
+        [[ $(dirname file) == '.' ]] || echo abort "refuse to process relative path in file name ${config_file}"
+        config=$(basename ${config_file})
     else
         [[ ${ENSTORE_CONFIG_FILE} ]]  || abort "ENSTORE_CONFIG_FILE not set"
 
@@ -334,6 +347,7 @@ else # by defualt, load configuration
     cmd_load_conf="enstore config --load --config_file=$dir/$config"
 fi
 
+# @todo: sanitize basename from cfile, presumably it was applied already. Check if we need dirname in gitdir [RB77]
 cfile=$(basename $config)
 gitdir=$(dirname $dir)/config
 
@@ -365,20 +379,34 @@ fi
 # Work in configuration directory. It is git working directory
 cd $gitdir || abort "can not \"cd $gitdir\""
 
-# make sure we are using the latest config from remote repository
-echo "updating local git repository from remote"
-# fetch data from remote preconfigured repository 'enconfig'
-git fetch enconfig && success || abort "Something wrong with 'git fetch enconfig'. Investigate"
+# report current git branch
+cur_branch=$(git rev-parse --abbrev-ref HEAD)
+echo "git branch: ${cur_branch}"
 
-echo "git status (all files):"
+# Make sure we are using the latest config from remote repository
+#
+echo "updating local git repository from remote"
+
+# fetch data from remote preconfigured repository 'enconfig' to the current branch
+
+#cmd="git fetch enconfig"
+cmd="git pull enconfig ${cur_branch}"
+$cmd && success || abort "Something wrong with \"${cmd}\"; - Investigate"
+
+# report what files are changed
+echo "git status. List all files different from remote:"
 git status -uno
 echo "... end of git status"
+
+# checkout from local repository only one file we are going to change
+cmd="git checkout -- $cfile"
+$cmd   && success || abort "Something wrong with \"${cmd}\" ; - Investigate"
 
 [[ -r $cfile ]] || abort "file $gitdir/$cfile is unreadable in configuration directory"
 
 echo "compare configuration file fetched from remote repo and local configuration file"
-diff -q $dir/$cfile $gitdir/$cfile ||
-    abort "Files differ. diff $dir/$file $gitdir/$cfile . Investigate"
+cmd="diff -q $dir/$cfile $gitdir/$cfile"
+$cmd || abort "Files differ: \"${cmd}\" ; - Investigate"
 end_of_compare
 
 # Make a copy of file
@@ -402,8 +430,9 @@ fi
 # Check if updated file can be interpreted by python
 
 #echo "Checking $TEMPconfig is python file:"
-sed -n '1p' $TEMPconfig | grep python
+line=$(sed -n '1p' $TEMPconfig | grep python)
 if [ $? -ne 0 ]; then
+    if $debug ; then echo "First line of ${TEMPconfig}: ${line}"; fi
     abort "edited file $TEMPconfig is not python script (no 'python' on first line)"
 fi
 
@@ -427,13 +456,15 @@ rm -f $TEMPconfig 2>/dev/null
 
 # commit changes locally to git repository
 echo "committing:"
-git commit -uno -- $cfile && success || abort "Something wrong with git commit. Investigate"
+cmd="git commit -uno -- $cfile"
+$cmd && success || abort "Something wrong with \"${cmd}\" ; - Investigate"
 
 echo "push changes to remote git configuration repository"
-git push enconfig   && success || abort "Something wrong with 'git push enconfig.' Investigate"
+cmd="git push enconfig ${cur_branch}"
+$cmd && success || abort "Something wrong with \"${cmd}\" ; - Investigate"
 
 echo "get changes back from remote git configuration repository"
-git fetch enconfig  && succes "OK"
+git fetch enconfig  && success "OK"
 
 if [[ $verbose > 1 ]]
 then
@@ -447,17 +478,16 @@ then
 fi
 
 # Distribute configuration file on all machines in gang
-#
-# AK: I think rgang will rewrite this file as enstore rgang does not have -C option
-#     - Leave it as is in original script
 
-# AK: Note, in the original script file location on remote node is based on
-#   $ENSTORE_DIR setting on the node where the file was edited but not the setting on remote node.
-#   Leave it as in original script.
+# remote=enconfig    # use first  git repository alias (central configuration server)
+remote=enconfig2     # use second git repostiory alais (can be central server or configuration host)
+remote_cmd="source /opt/enstore/sbin/gettkt ; cd \${ENSTORE_CONFIG_DIR} &&  git pull ${remote} ${cur_branch}"
 
-if [[ -n $gang && $gang != "UNKNOWN"]] ; then
-    echo "  synchronizing $config to gang $gang with rgang"
-    rgang -c $gang $TEMPconfig $dir/$config
+if [[ -n $gang && $gang != "UNKNOWN" ]] ; then
+    echo "  synchronizing $config to gang $gang with rgang:"
+    [[ $debug ]] && echo "rgang -s $gang ${remote_cmd}"
+    rgang -s $gang "${remote_cmd}"
+
 else
     echo "gang is not set, skip synchronizing $config to gang with rgang"
 fi
@@ -465,7 +495,7 @@ fi
 #---------------------------------------------------
 # Load the config file if requested
 
-if [[ ! $load ]] ; then
+if ! $load ; then
     echo "configuraition modification complete"
     echo "To load this configuration file run: ${cmd_load_conf}"
     exit 0
@@ -475,15 +505,16 @@ fi
 [[ $cmd_load_conf ]] || abort "$PROGNAME internal error: cmd_load_conf not set"
 
 confirm_or_exit "About to load new config file into server, is this what you want [Y/n] " \
-                "ok, done"
+                "ok, exiting without load"
 # Note:
 #  if the file name is specified on command line, it is not what we load here
 #  but we leave it as in original script
 
 echo "Loading configuration file $ENSTORE_CONFIG_DIR/$config"
 
-### For testing, do not run actual command, just print it
-echo "DEBUG: ${cmd_load_conf}"
-echo "DEBUG: ### Uncomment command before commiting to production"
-### ${cmd_load_conf}
+#$debug && echo ${cmd_load_conf}
+echo ${cmd_load_conf}
+${cmd_load_conf}
+
+$debug && echo rc=$?
 
