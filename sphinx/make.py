@@ -32,6 +32,7 @@ except ImportError:
 
 # Determine make directory
 make_dir = os.path.abspath(os.path.dirname(__file__))
+py_rst_dir = os.path.join(make_dir, 'source', 'modules')
 
 # Determine and export build directory
 build_dir = args.builddir
@@ -54,9 +55,9 @@ os.environ['BUILDDIR'] = build_dir
 print("""The HTML directory path is printed after the build has finished.
 
 General troubleshooting steps:
-• If docs fail to generate for a module, ensure its .rst file exists.
+• If docs fail to generate for a module, ensure its .rst file exists in {}.
 • If docs fail to update for a module, "touch" its .rst file.
-""")
+""".format(py_rst_dir))
 
 # GNU make
 make_cmd = 'make --directory="{}" html'.format(make_dir)
