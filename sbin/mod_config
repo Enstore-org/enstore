@@ -46,7 +46,7 @@ Arguments:
 EOF
 }
 
-# park here out help string for commented out ouptions:
+# park here out help string for commented out options:
 # Usage: ${PROGNAME} [options] [--] [config_file]
 #       --config config_file  full name of configuration file [$ENSTORE_CONFIG_FILE]
 #                             File name must be full file name, no .conf is added.
