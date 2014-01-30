@@ -269,27 +269,21 @@ fi
 #-------------------------------------------------------------
 # Check if we are running on configuration host, refuse otherwise
 
-on_config_host=false
-
 cfg_host=$(echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.)
 node=$($ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.)
 # my node is ...
 case $node in
-    # I do not think we need this clause as it is harcoded, and it was broken as written
-    # known configuration host
-    stkensrv2n|d0ensrv2n|cdfensrv2n)
-        on_config_host=true
-        ;;
     # current configuration host as set in environment
     #   usually FQDN like dmsen02.fnal.gov
     ${ENSTORE_CONFIG_HOST})
         on_config_host=true
         ;;
-    # current configuration host set in environment, short
+    # current configuration host set in environment, short form
     ${cfg_host})
         on_config_host=true
         ;;
     *)
+        on_config_host=false
         ;;
 esac
 
@@ -306,6 +300,9 @@ then
     # next line is when policy file is set as argument, not available now
     # [[ ${policy_file} ]] || abort "policy file name not provided"
 
+    # @todo: resolve policy file name by accessing configuration server
+    # n=$(/opt/enstore/bin/conf.sh -k dispatcher | awk -F ":" '/policy_file/{print $2}' | tr -d "\,\'[:space:]")
+
     [[ ${ENSTORE_SFA_POLICY:-} ]]  || abort "environment ENSTORE_SFA_POLICY not set"
 
     config=$(basename $ENSTORE_SFA_POLICY)
@@ -313,7 +310,7 @@ then
 
     cmd_load_conf="enstore disp --load"
 
-else # by defualt, load configuration
+else # by default, load configuration
 # elif [[ $opt_config > 0 ]] ; then
     # configuration file name was provided on command line?
     if [[ -n ${config_file} ]]
@@ -323,8 +320,9 @@ else # by defualt, load configuration
         [[ ${ENSTORE_CONFIG_DIR} ]] || abort "ENSTORE_CONFIG_DIR not set"
 
         dir=${ENSTORE_CONFIG_DIR}
-        # Note, we do not append suffix ".conf" to fiule name anymore, must be full name
-        config=${config_file}
+        # Note, we do not append suffix ".conf" to file name anymore, must be full name
+        [[ $(dirname file) == '.' ]] || echo abort "refuse to process relative path in file name ${config_file}"
+        config=$(basename ${config_file}}
     else
         [[ ${ENSTORE_CONFIG_FILE} ]]  || abort "ENSTORE_CONFIG_FILE not set"
 
@@ -334,6 +332,7 @@ else # by defualt, load configuration
     cmd_load_conf="enstore config --load --config_file=$dir/$config"
 fi
 
+# @todo: sanitize basename from cfile, presumably it was applied already. Check if we need dirname in gitdir [RB77]
 cfile=$(basename $config)
 gitdir=$(dirname $dir)/config
 
