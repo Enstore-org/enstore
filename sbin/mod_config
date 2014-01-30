@@ -464,7 +464,9 @@ fi
 
 # Distribute configuration file on all machines in gang
 
-remote_cmd="source /opt/enstore/sbin/gettkt ; cd \${ENSTORE_CONFIG_DIR} &&  git pull enconfig ${cur_branch}"
+# remote=enconfig    # use first  git repository alias (central configuration server)
+remote=enconfig2     # use second git repostiory alais (can be central server or configuration host)
+remote_cmd="source /opt/enstore/sbin/gettkt ; cd \${ENSTORE_CONFIG_DIR} &&  git pull ${remote} ${cur_branch}"
 
 if [[ -n $gang && $gang != "UNKNOWN" ]] ; then
     echo "  synchronizing $config to gang $gang with rgang:"
