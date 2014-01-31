@@ -213,7 +213,7 @@ set -u
 
 #-------------------------------------------------------------
 # Set system name
-if [[ -z $(gang) ]] ; then
+if [[ -z ${gang} ]] ; then
     gang=$(gang)
 fi
 
