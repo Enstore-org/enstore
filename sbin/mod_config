@@ -510,7 +510,7 @@ git pull ${remote} ${cur_branch}"
         # Use enstore rgang/enrcp to copy file while skipping this host.
         # $dir/$config is expanded on this (=configuraiton) host
         cmd="rgang -C $mygang $config $dir/$config"
-        [[ $debug ]] && echo "  cmd"
+        [[ $debug ]] && echo "  $cmd"
         ${cmd}
     fi
 else
