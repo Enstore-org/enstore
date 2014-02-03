@@ -85,6 +85,7 @@ config_file=""
 opt_policy=0
 policy_file=""
 load=true
+remote_pull=false
 mygang=""
 editor=""
 verbose=0
@@ -376,8 +377,11 @@ fi
 [[ -r $dir/$config ]] || abort "can not read $config"
 
 #=============================================================
-# Work in configuration directory. It is git working directory
+# Work in configuration directory. It must be git working directory
 cd $gitdir || abort "can not \"cd $gitdir\""
+
+git rev-parse --verify HEAD >/dev/null || abort "directory $gitdir is not git repository"
+git update-index -q --ignore-submodules --refresh
 
 # report current git branch
 cur_branch=$(git rev-parse --abbrev-ref HEAD)
@@ -404,10 +408,17 @@ $cmd   && success || abort "Something wrong with \"${cmd}\" ; - Investigate"
 
 [[ -r $cfile ]] || abort "file $gitdir/$cfile is unreadable in configuration directory"
 
+# obsolete: this is the same file when we work directly in git repository, skip
+#echo "compare configuration file fetched from remote repo and local configuration file"
+#cmd="diff -q $dir/$cfile $gitdir/$cfile"
+#$cmd || abort "Files differ: \"${cmd}\" ; - Investigate"
+#end_of_compare
+
 echo "compare configuration file fetched from remote repo and local configuration file"
-cmd="diff -q $dir/$cfile $gitdir/$cfile"
-$cmd || abort "Files differ: \"${cmd}\" ; - Investigate"
-end_of_compare
+git diff-files --quiet --ignore-submodules -- $cfile ||
+  abort "$cfile has unstaged changes in git"
+git diff-index --cached --quiet --ignore-submodules HEAD -- $cfile ||
+  abort "git index contains uncommitted changes for $cfile"
 
 # Make a copy of file
 rm -f $TEMPconfig 2>/dev/null
@@ -481,13 +492,26 @@ fi
 
 # remote=enconfig    # use first  git repository alias (central configuration server)
 remote=enconfig2     # use second git repostiory alais (can be central server or configuration host)
-remote_cmd="source /opt/enstore/sbin/gettkt ; cd \${ENSTORE_CONFIG_DIR} &&  git pull ${remote} ${cur_branch}"
 
 if [[ -n $mygang && $mygang != "UNKNOWN" ]] ; then
     echo "  synchronizing $config to gang $mygang with rgang:"
-    [[ $debug ]] && echo "rgang -s $mygang ${remote_cmd}"
-    rgang -s $mygang "${remote_cmd}"
+    if $remote_pull
+    then
+        # We do not normally use this, see "else"
+        # \${ENSTORE_CONFIG_DIR} is expanded on remote node
+        remote_cmd="source /opt/enstore/sbin/gettkt ; \
+cd \${ENSTORE_CONFIG_DIR} &&  \
+git pull ${remote} ${cur_branch}"
 
+        [[ $debug ]] && echo "  rgang -s $mygang ${remote_cmd}"
+        rgang -s $mygang "${remote_cmd}"
+    else
+        # Use enstore rgang/enrcp to copy file while skipping this host.
+        # $dir/$config is expanded on this (=configuraiton) host
+        cmd="rgang -C $mygang $config $dir/$config"
+        [[ $debug ]] && echo "  cmd"
+        ${cmd}
+    fi
 else
     echo "gang is not set, skip synchronizing $config to gang with rgang"
 fi
