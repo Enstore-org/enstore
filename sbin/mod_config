@@ -308,7 +308,8 @@ then
     then
         echo "## Get policy_file name from configuration server"
         # try get policy file name by accessing configuration server
-        policy_file=$(${ENSTORE_DIR}/bin/conf.sh -k dispatcher | awk -F ":" '/policy_file/{print $2}' | tr -d "\,\'[:space:]" )
+        policy_file=$(${ENSTORE_DIR}/bin/conf.sh -k dispatcher | \
+                        awk -F ":" '/policy_file/{print $2}' | tr -d "\,\'[:space:]" )
     fi
 
     if [[ -z ${policy_file} ]]
@@ -335,7 +336,9 @@ else # by default, load configuration
         #   Default location is usually ~enstore/site_specific/config
         [[ ${ENSTORE_CONFIG_DIR} ]] || abort "ENSTORE_CONFIG_DIR not set"
 
-        dir=${ENSTORE_CONFIG_DIR}
+        # ${ENSTORE_CONFIG_DIR points to top level of git working tree
+        #   we keep configuration files in subdirectory config
+        dir=${ENSTORE_CONFIG_DIR}/config
         # Note, we do not append suffix ".conf" to file name anymore, must be full name
         [[ $(dirname file) == '.' ]] || echo abort "refuse to process relative path in file name ${config_file}"
         config=$(basename ${config_file})
@@ -348,7 +351,8 @@ else # by default, load configuration
     cmd_load_conf="enstore config --load --config_file=$dir/$config"
 fi
 
-# @todo: sanitize basename from cfile, presumably it was applied already. Check if we need dirname in gitdir [RB77]
+# @todo: sanitize basename from cfile, presumably it has already been applied.
+#  Check if we need dirname in gitdir [RB77]
 cfile=$(basename $config)
 gitdir=$(dirname $dir)/config
 
@@ -535,11 +539,10 @@ confirm_or_exit "About to load new config file into server, is this what you wan
 #  if the file name is specified on command line, it is not what we load here
 #  but we leave it as in original script
 
-echo "Loading configuration file $ENSTORE_CONFIG_DIR/$config"
+echo "Loading configuration file $dir/$config"
 
 #$debug && echo ${cmd_load_conf}
 echo ${cmd_load_conf}
 ${cmd_load_conf}
 
 $debug && echo rc=$?
-
