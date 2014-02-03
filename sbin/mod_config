@@ -85,7 +85,7 @@ config_file=""
 opt_policy=0
 policy_file=""
 load=true
-gang=""
+mygang=""
 editor=""
 verbose=0
 errors=0
@@ -100,7 +100,7 @@ do
         shift
         if [[ $# > 0 && $1 != -* ]]
         then
-            gang=$1
+            mygang=$1
             shift
         else
             echo "No argument given for --gang option" >&2
@@ -213,8 +213,8 @@ set -u
 
 #-------------------------------------------------------------
 # Set system name
-if [[ -z ${gang} ]] ; then
-    gang=$(gang)
+if [[ -z ${mygang} ]] ; then
+    mygang=$($ENSTORE_DIR/sbin/gang)
 fi
 
 if $test
@@ -242,7 +242,7 @@ if $debug
 then
     echo "
   test:   $test
-  gang:   $gang
+  gang:   $mygang
   config: $config_file
   policy: $policy_file
   load:   $load
@@ -483,10 +483,10 @@ fi
 remote=enconfig2     # use second git repostiory alais (can be central server or configuration host)
 remote_cmd="source /opt/enstore/sbin/gettkt ; cd \${ENSTORE_CONFIG_DIR} &&  git pull ${remote} ${cur_branch}"
 
-if [[ -n $gang && $gang != "UNKNOWN" ]] ; then
-    echo "  synchronizing $config to gang $gang with rgang:"
-    [[ $debug ]] && echo "rgang -s $gang ${remote_cmd}"
-    rgang -s $gang "${remote_cmd}"
+if [[ -n $mygang && $mygang != "UNKNOWN" ]] ; then
+    echo "  synchronizing $config to gang $mygang with rgang:"
+    [[ $debug ]] && echo "rgang -s $mygang ${remote_cmd}"
+    rgang -s $mygang "${remote_cmd}"
 
 else
     echo "gang is not set, skip synchronizing $config to gang with rgang"
