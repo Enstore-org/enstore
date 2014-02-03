@@ -419,6 +419,7 @@ git diff-files --quiet --ignore-submodules -- $cfile ||
   abort "$cfile has unstaged changes in git"
 git diff-index --cached --quiet --ignore-submodules HEAD -- $cfile ||
   abort "git index contains uncommitted changes for $cfile"
+end_of_compare
 
 # Make a copy of file
 rm -f $TEMPconfig 2>/dev/null
