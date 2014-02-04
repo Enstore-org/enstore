@@ -25,12 +25,12 @@ stken=conf-stken.fnal.gov
 cdfen=conf-cdfen.fnal.gov
 gccen=conf-gccen.fnal.gov
 
+dmsen=dmsen02.fnal.gov
 happy=happy.fnal.gov
 fndapr=fndapr.fnal.gov
 h2oen=131.225.81.68
 woodlawn=woodlawn.fnal.gov
 kenwood=kenwood.fnal.gov
-airedale=airedale.fnal.gov
 
 #lancs=192.9.200.103 # THE UK lancaster group on bulk1.ukwork
 
@@ -121,8 +121,13 @@ case $node in
 	    ENSTORE_CONFIG_FILE=gccen.conf
 	    complain=0
 	    ;;
+  dmsen*)   ENSTORE_MAIL=moibenko@fnal.gov,litvinse@fnal.gov
+	    ENSTORE_CONFIG_HOST=$dmsen
+	    ENSTORE_CONFIG_FILE=dmsen.conf
+	    complain=0
+	    ;;
 
-  *)        ENSTORE_CONFIG_HOST=$stken
+  *)    ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
 	    qualifier=stken
 	    ;;

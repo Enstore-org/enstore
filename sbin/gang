@@ -10,7 +10,7 @@ gang=""
 
 farmlets=/usr/local/etc/farmlets
 if [ -d $farmlets ]; then
-  mstr=`grep ^${node}\$ $farmlets/{d0,stk,cdf,gcc}en 2>/dev/null`
+  mstr=`grep ^${node}\$ $farmlets/{d0,stk,cdf,gcc,dms}en 2>/dev/null`
   if [ `echo $mstr | wc -w` -eq 1 ]; then
     # extract matching filename, up to the first ":"
     gang=`expr $mstr : '\(.*\):'`
@@ -32,6 +32,9 @@ if [ -z $gang ]; then
     gccen*)
 	  gang=gccen
 	  ;;
+    dmsen*)
+          gang=dmsen
+          ;;
     *)
 	  gang=UNKNOWN
 	  ;;
