@@ -101,7 +101,7 @@ def file_checkum(f):
             Trace.log(e_errors.ERROR, "file_checksum error %s reading %s"%(r, f))
     # 1 seeded crc:
     crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(crc, fsize)
-    
+
     return crc, crc_1_seeded
 
 
@@ -109,7 +109,7 @@ def file_checkum(f):
 # runs in subprocess to deal with
 # .nfs.... files
 # @param package - package complete path
-# exit code maps to True / False 
+# exit code maps to True / False
 def _check_packaged_files(archive_area, package):
     Trace.trace(10, "_check_packaged_files: called with %s %s"%(archive_area, package))
     # create a temporay directory
@@ -230,7 +230,7 @@ def ns_tags(directory, library_tag, sg_tag, ff_tag, ff_wrapper_tag, ff_width_tag
         Trace.trace(10, "ns_tags: FF width tag: %s"%(ff_width_tag,))
         tag.writetag("file_family_width", ff_width_tag)
     return ff_wrapper_tag
-    
+
 
 class StorageArea():
     """
@@ -247,7 +247,7 @@ class StorageArea():
         self.remote_path = path # path on remote host if nfs mounted
         self.server = "localhost"
 
-        if remotehost: 
+        if remotehost:
             # find the real path
             self.real_path = os.path.realpath(self.path)
             if self.real_path != self.path:
@@ -274,7 +274,7 @@ class StorageArea():
                                                                 self.server)
 
 
-    
+
 class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServer, mw.MigrationWorker):
     """
     Configurable Migrator
@@ -311,13 +311,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.handle_error()
                 Trace.alarm(e_errors.ERROR, "Can not create packages_dir %s! Exiting"%(self.packages_location,))
                 sys.exit(-1)
-                
-        my_dispatcher_name = self.my_conf['migration_dispatcher']        
+
+        my_dispatcher_name = self.my_conf['migration_dispatcher']
         self.my_dispatcher = self.csc.get(my_dispatcher_name) # migration dispatcher configuration
         self.purge_watermarks = None
         if self.my_dispatcher:
-          self.purge_watermarks = self.my_dispatcher.get("purge_watermarks", None) 
-            
+          self.purge_watermarks = self.my_dispatcher.get("purge_watermarks", None)
+
         self.clustered_configuration = self.my_dispatcher.get("clustered_configuration")
         self.migration_worker_configuration = {'server':{}}
         if self.clustered_configuration:
@@ -330,12 +330,12 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always, node:{x-bindings:[{exchange:'%s', queue:'%s',key:'%s'}]}}"%(work_queue, work_exchange, work_queue, work_queue_key)
         else:
             self.migration_worker_configuration['server']['queue_work'] = "%s; {create: always}"%(self.my_dispatcher['migrator_work'],)
-            
 
 
 
-        self.migration_worker_configuration['server']['queue_reply'] = "%s; {create: always}"%(self.my_dispatcher['migrator_reply'],)        
-        
+
+        self.migration_worker_configuration['server']['queue_reply'] = "%s; {create: always}"%(self.my_dispatcher['migrator_reply'],)
+
         self.queue_in_name = self.name.split('.')[0]
         self.migration_worker_configuration['server']['queue_in'] = "%s; {create: receiver, delete: receiver}"%(self.queue_in_name,) # migrator input control queue
         # get amqp broker configuration - common for all servers
@@ -364,7 +364,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                                 server_address=(fc_conf['host'],
                                                                 fc_conf['port']))
         ic_conf = self.csc.get("info_server")
-        self.infoc = info_client.infoClient(self.csc, 
+        self.infoc = info_client.infoClient(self.csc,
                                             server_address=(ic_conf['host'],
                                                             ic_conf['port']))
         Trace.trace(10, "d_a %s a_a %s s_a %s t_s_a %s"%(self.data_area,
@@ -375,7 +375,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     def  __init__(self, name, cs):
         """
         Creates Migrator. Constructor gets configuration from enstore Configuration Server
-        
+
         """
         # Obtain information from the configuration server cs.
         self.csc = cs
@@ -398,7 +398,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         dispatching_worker.DispatchingWorker.__init__(self, (self.my_conf['hostip'],
                                                              self.my_conf['port']),
                                                       use_raw=0)
-        
+
         self.logger, self.tracer = cache.en_logging.en_logging.set_logging(self.log_name)
         Trace.log(e_errors.INFO, "create %s server instance, qpid client instance %s"%
                   (self.name,
@@ -430,7 +430,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         self.proc_lock = self.manager.Lock()
         self.proc_counter = self.manager.Value('i', 0)
         self.proc_statuses = self.manager.list()
-        self.status_dict = {}        
+        self.status_dict = {}
         # we want all message types processed by one handler
         self.handlers = {}
         for request_type in (mt.MWC_PURGE,
@@ -438,7 +438,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                              mt.MWC_STAGE,
                              mt.MWC_STATUS):
             self.handlers[request_type] = self.handle_request
-        
+
         Trace.log(e_errors.INFO, "Migrator %s instance created"%(self.name,))
 
         self.resubscribe_rate = 300
@@ -472,13 +472,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         dt = 0
         try:
             if attr == 'status':
-                dt = t - self.status_change_time 
+                dt = t - self.status_change_time
                 self.status_change_time = self.state_change_time = t
                 if self.cur_id:
-                    self.status_dict['state'] = val 
+                    self.status_dict['state'] = val
                     self.status_dict['time_in_state'] = self.status_change_time
             if attr == 'state':
-                dt = t - self.state_change_time            
+                dt = t - self.state_change_time
                 self.state_change_time = t
                 if self.cur_id:
                     self.status_dict['internal_state'] = val
@@ -490,8 +490,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
         self.__dict__[attr] = val
         if dt and self.cur_id:
-            Trace.log(e_errors.INFO, "Time in %s %s"%(old_val, dt)) 
-       
+            Trace.log(e_errors.INFO, "Time in %s %s"%(old_val, dt))
+
     # is it time to data files integrity?
     # stolen from mover.py
     def check_written_file(self):
@@ -514,14 +514,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     def check_packaged_files(self, package):
         Trace.trace(10, "check_packaged_files creating __check_packaged_files %s %s %s %s "%(type(self.archive_area),self.archive_area, type(package), package ))
         self.state = CHECKING_CRC
-        
+
         proc = multiprocessing.Process(target = _check_packaged_files, args = (self.archive_area.path, package))
         Trace.trace(10, "check_packaged_files  calling _check_packaged_files")
         proc.start()
         Trace.trace(10, "check_packaged_files _check_packaged_files started")
         proc.join()
         Trace.trace(10, "check_packaged_files: returns %s"%(proc.exitcode))
-        
+
         # Remove temporary directory
         # created by _check_packaged_files here
         # to take care about .nfs.... files
@@ -533,10 +533,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         except OSError, detail:
            Trace.log(e_errors.ERROR, "check_packaged_files: error removind directory %s: %s"%(tmp_dir, detail,))
            return False
-    
+
     # pack files into a single aggregated file
     # if there are multiple files in request list
-    # 
+    #
     def pack_files(self, request_list):
         """
         request_list is a list of components:
@@ -565,7 +565,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             ### This can be done by checking duplicate files map.
             ### Implementation must be HERE!!!!
             Trace.trace(10, "pack_files: cache_file_path %s"%(cache_file_path,))
-            
+
             if type(component['bfid']) == types.UnicodeType:
                 component['bfid'] = component['bfid'].encode("utf-8")
             bfids.append(component['bfid'])
@@ -588,7 +588,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # Create tar file name
             t = time.time()
             t_int = long(t)
-            fraction = int((t-t_int)*1000) # this gradation allows 1000 distinct file names 
+            fraction = int((t-t_int)*1000) # this gradation allows 1000 distinct file names
             src_fn = "package-%s-%s.%sZ"%(self.queue_in_name,
                                            time.strftime("%Y-%m-%dT%H:%M:%S",
                                                          time.localtime(t_int)),
@@ -596,13 +596,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
 
             # Create archive directory
             archive_dir = os.path.join(self.archive_area.remote_path, src_fn)
-            
+
             src_path = "%s.tar"%(os.path.join(archive_dir, src_fn),)
             special_file_name = "README.1st"
- 
+
             if not os.path.exists(archive_dir):
                 os.makedirs(archive_dir)
-                
+
             os.chdir(archive_dir)
             special_file_name = "README.1st"
             special_file = open(special_file_name, 'w')
@@ -611,14 +611,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.trace(10, "pack_files: cache_file_list: %s"%(cache_file_list,))
             for f, c_f, crc in cache_file_list:
                 special_file.write("%s %s %s\n"%(f, c_f, crc))
-            
+
             special_file.close()
 
             # Create list of files for tar
             file_list = open("file_list", "w")
             file_list.write("%s\n"%(special_file_name,))
             for f, junk, junk in cache_file_list:
-               Trace.trace(10, "file_list entry %s"%(f,)) 
+               Trace.trace(10, "file_list entry %s"%(f,))
                file_list.write("%s\n"%(f,))
             file_list.close()
 
@@ -638,19 +638,19 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             else:
                 Trace.trace(10, "will run tar on local host")
                 tarcmd = "tar -b %s --force-local -cf %s --files-from=file_list"%(self.blocking_factor, src_path,)
-            
+
             rtn = enstore_functions2.shell_command2(tarcmd)
             Trace.trace(10, "tar returned %s"%(rtn,))
-            
+
             if rtn[0] != 0: # tar return code
                 Trace.log(e_errors.ERROR, "Error creating package %s %s"%(src_path, rtn[2])) #stderr
                 return None, None, None
-            
+
             t = time.time() - start_t
             fstats = os.stat(src_path)
             fsize = fstats[stat.ST_SIZE]/1000000.
-            
-            Trace.log(e_errors.INFO, "Finished tar to %s size %s MB rate %s MB/s"%(src_path, fsize, fsize/t))              
+
+            Trace.log(e_errors.INFO, "Finished tar to %s size %s MB rate %s MB/s"%(src_path, fsize, fsize/t))
         os.remove("file_list")
 
         # Qpid converts strings to unicode.
@@ -659,7 +659,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if type(src_path) == types.UnicodeType:
             src_path = src_path.encode("utf-8")
         Trace.trace(10, "pack_files: returning %s %s"%(src_path, bfids))
-           
+
         return src_path, bfids
 
     # clean up after write
@@ -667,7 +667,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # and directories
     def clean_up_after_write(self, tmp_file_path):
         Trace.trace(10, "clean_up_after_write: removing temporary file %s"%(tmp_file_path,))
-        self.state = CLEANING        
+        self.state = CLEANING
         os.remove(tmp_file_path)
 
         # remove README.1st and file_list
@@ -682,9 +682,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         except OSError, detail:
             Trace.log(e_errors.ERROR, "clean_up_after_write: error removing directory: %s"%(detail,))
             pass
-        self.state = IDLE        
-        
-        
+        self.state = IDLE
+
+
     # get library tag
     def get_library_tag(self, file_info):
         """
@@ -703,7 +703,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # In such case the tag.readtag will cause an exception with the consequent path
             # discovery by pnfs id (See code below).
             Trace.trace(10, "using canonical name for %s"%(f_name,))
-            f_name=f_name.replace("/pnfs", self.namespace_top_dir,1) 
+            f_name=f_name.replace("/pnfs", self.namespace_top_dir,1)
         f_dir = os.path.dirname(f_name)
         Trace.trace(10, "get_library_tag: src dirs %s f_dir %s"%(self.src_dirs, f_dir))
 
@@ -741,13 +741,13 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     return e_errors.OK, None
             self.src_dirs.append(f_dir) # cache src dir to not repeat tag operations on already processed directory
         else:
-            return e_errors.OK, None 
+            return e_errors.OK, None
         Trace.trace(10, "get_library_tag: original library tag: %s"%(lib_tag,))
         # readtag returns a list with size 1 and a string as its element like
         # ['LTO3GS,LTO3GS']
         Trace.trace(10, "get_library_tag: library tag %s"%(lib_tag[0],))
         return e_errors.OK,lib_tag[0]
-        
+
     # combine output library tag
     def update_library_tag(self, library_tag):
         if not library_tag in self.output_library_tag:
@@ -769,7 +769,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         Trace.trace(10, "write_to_tape: request_list %s"%(request_list))
         if not request_list:
             raise e_errors.EnstoreError(None, "Write to tape failed: no files to write", e_errors.NO_FILES)
-            
+
         # check if files can be written to tape
         write_enabled_counter = 0
         self.output_library_tag = []
@@ -808,11 +808,11 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                                   (rec['bfid'], rec['archive_status']))
                         if rec['archive_status'] == file_cache_status.ArchiveStatus.ARCHIVED:
                             components_to_remove.append(component)
-                            
+
                 except Exception, detail:
-                    Trace.log(DEBUGLOG, "Error: %s. Returned status OK but still error %s"%(detail, rec)) 
-                    
-                
+                    Trace.log(DEBUGLOG, "Error: %s. Returned status OK but still error %s"%(detail, rec))
+
+
             else:
                 Trace.log(DEBUGLOG,
                           "FC error: %s. File was not included into package %s archive_status %s"%
@@ -845,7 +845,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             except Exception, e:
                 self.trace.exception("sending reply, exception %s", e)
             return False
-            
+
         packed_file = self.pack_files(request_list)
         Trace.trace(10, "write_to_tape: packed_file %s"%(packed_file,))
         Trace.log(e_errors.INFO, "write_to_tape: packed_file %s"%(packed_file,))
@@ -860,8 +860,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     Trace.handle_error()
                     Trace.log(e_errors.ERROR, "error checking CRC")
                     return False
-            
-                    
+
+
                 if not rc:
                     Trace.alarm(e_errors.ERROR, "selective CRC check failed for %s"%(bfid_list,))
                     # Remove temporary file
@@ -913,10 +913,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         # the package file will eventually go dst_dir
         # appended with volume label
         # we do not yet know the volume label
-        dst_dir = os.path.join(self.packages_location, v_f) 
+        dst_dir = os.path.join(self.packages_location, v_f)
         Trace.trace(10, "write_to_tape: write to %s"%(dst_dir,))
         tmp_dst_dir = os.path.join(dst_dir, "tmp")
-            
+
         if not os.path.exists(dst_dir):
             Trace.trace(10, "write_to_tape: creating dst directory %s"%(dst_dir,))
             os.makedirs(dst_dir)
@@ -930,7 +930,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.handle_error()
                 Trace.log(e_errors.ERROR, "Error creating tmp dst directory %s"%(tmp_dst_dir,))
                 return False
-                
+
         # convert output_library_tag to a comma separated string
         # if its size is more than one (multiple copies)
         if len(self.output_library_tag) == 1:
@@ -955,7 +955,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         dst_file_path = os.path.join(tmp_dst_dir, dst_package_fn)
         Trace.trace(10, "write_to_tape: dst_file_path: %s"%(dst_file_path,))
         self.status_dict['current_migration_file'] = dst_file_path
- 
+
         # Change archive_status
         set_cache_params = []
         for bfid in bfid_list:
@@ -970,7 +970,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if not e_errors.is_ok(rc['status']):
             Trace.alarm(e_errors.ALARM, "set cache status failed with %s"%(rc,))
             return False
-        
+
         Trace.trace(10, "write_to_tape: will write %s into %s"%(src_file_path, dst_file_path,))
         #return
         # create encp request
@@ -988,7 +988,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             Trace.handle_error()
             Trace.log(e_errors.ERROR, "encp failed with exception")
             rc = -1
-            
+
         Trace.trace(10, "write_to_tape: encp returned %s %s"%(rc, encp.exit_status))
 
         # encp finished
@@ -1004,7 +1004,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     # Check if it is in the active_file_copying
                     q_res = self.infoc.query_db("select bfid,remaining from active_file_copying where bfid='%s'"%(res['bfid'],))
                     Trace.trace(10, "write_to_tape: db query returned %s %s"%(rc, q_res))
-                    
+
                     # Example of query return
                     #  {'ntuples': 1,
                     #   'fields': ('bfid', 'remaining''),
@@ -1039,18 +1039,18 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 except:
                     pass
                 return False
-        
+
         # register archive file in file db
         self.state = REGISTERING_ARCHIVE
         res = self.infoc.find_file_by_path(dst_file_path)
         Trace.trace(10, "write_to_tape: find file %s returned %s"%(dst_file_path, res))
-        
+
         if e_errors.is_ok(res['status']):
             dst_bfids = [] # to deal with possible multiple copies
             if res.has_key('file_list'):
                 for rec in res['file_list']:
                    dst_bfids.append(rec['bfid'])
-                   
+
             else:
                 dst_bfids.append(res['bfid'])
 
@@ -1071,7 +1071,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 Trace.trace(10, "write_to_tape: exception findingfind the original")
                 Trace.handle_error()
             Trace.trace(10, "write_to_tape: find the original returned %s"%(rec,))
-            
+
             if (rec['status'][0] != e_errors.OK):
                 Trace.log(e_errors.ERROR,
                           "write_to_tape: write to tape failed: can not get bfid info %s"%(rec['status'],))
@@ -1084,27 +1084,27 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     Trace.log(e_errors.ERROR,
                               "write_to_tape: write to tape failed: can not get bfid info %s"%(bfid_info['status'],))
                     return False
-            
+
             rc = self.complete_write_to_tape(dst_file_path, dst_dir, bfid_info['external_label'],
                                              bfid_list, dst_bfids, output_library_tag_str, original_pack_bfid)
             if not rc:
                 return rc
             #########
-                                                 
+
         else:
             raise e_errors.EnstoreError(None, "Write to tape failed: %s"%(res['status'][1],), res['status'][0])
 
         # The file from cache was successfully written to tape.
         # Remove temporary file
         self.clean_up_after_write(src_file_path)
-        
+
         status_message = cache.messaging.mw_client.MWRArchived(orig_msg=rq)
         try:
             mq.put(status_message)
         except Exception, e:
             self.trace.exception("sending reply, exception %s", e)
             return False
-        
+
         return True # completed successfully, the request will be acknowledged
 
 
@@ -1113,10 +1113,10 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
     # @param dst_dir - name_space destination directory for a package file
     # @param external_label - tape label for a package file
     # @param bfid_list - list of bfids of files in a package
-    # @param dst_bfids - list of bfid(s) of package(s) 
+    # @param dst_bfids - list of bfid(s) of package(s)
     # @param output_library_tag - libray tag for the package file
     # @param original_pack_bfid - bfid or the original package tag for the package file
-    # exit code True / False 
+    # exit code True / False
     def complete_write_to_tape(self, src_path, dst_dir, external_label, bfid_list, dst_bfids, output_library_tag, original_pack_bfid):
         final_dst_dir = os.path.join(dst_dir, external_label)
         final_dst_path = os.path.join(final_dst_dir, os.path.basename(src_path))
@@ -1171,7 +1171,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         records = []
         pack_records = []
-        
+
         for bfid in bfid_list:
             if bfid in dst_bfids:
                 rec = self.infoc.bfid_info(bfid)
@@ -1240,7 +1240,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                            return False
 
         return True
-            
+
     # check all conditions for purging the file
     # returns True if purge conditions are met
     def really_purge(self, f_info):
@@ -1264,7 +1264,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                         avail = float(stats.f_bavail)
                         total = float(stats.f_blocks)
                         fr_avail = avail/total
-                        rc = fr_avail < 1 - self.purge_watermarks[1] 
+                        rc = fr_avail < 1 - self.purge_watermarks[1]
                         # purge_watermarks[1] is the lower watermark,
                         # we do not want to go lower.
                     except OSError:
@@ -1300,21 +1300,21 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 set_cache_params.append({'bfid': bfid,
                                          'cache_status': file_cache_status.CacheStatus.PURGING,
                                          'archive_status': None,        # we are not changing this
-                                         'cache_location': rec['cache_location']})     
+                                         'cache_location': rec['cache_location']})
                 if rec['package_id'] and rec['package_id'] != bfid and cur_package_id != rec['package_id']:
                     # append a package file itself
                     cur_package_id = rec['package_id']
                     set_cache_params.append({'bfid': cur_package_id,
                                              'cache_status': file_cache_status.CacheStatus.PURGING,
                                              'archive_status': None,        # we are not changing this
-                                             'cache_location': rec['cache_location']})     
-                    
-                    
+                                             'cache_location': rec['cache_location']})
+
+
         self.state = CHANGING_STATE
         rc = set_cache_status.set_cache_status(self.fcc, set_cache_params)
         Trace.trace(10, "purge_files: set_cache_status 1 returned %s"%(rc,))
         Trace.trace(e_errors.INFO, "Will purge files in cache")
-               
+
         for item in set_cache_params:
             try:
                 Trace.trace(10, "purge_files: removing %s"%(item['cache_location'],))
@@ -1326,7 +1326,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             except Exception, detail:
                 Trace.trace(10, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
                 Trace.log(e_errors.ERROR, "purge_files: can not remove %s: %s"%(item['cache_location'], detail))
-                
+
             try:
                 os.removedirs(os.path.dirname(item['cache_location']))
                 item['cache_status'] = file_cache_status.CacheStatus.PURGED
@@ -1338,7 +1338,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 else:
                     item['cache_status'] = file_cache_status.CacheStatus.PURGED
                     Trace.log(DEBUGLOG, "purge_files: purged %s"%(item['cache_location'],))
-                    
+
             except Exception, detail:
                 Trace.log(e_errors.ERROR, "purge_files: error removind directory: %s"%(detail,))
 
@@ -1352,7 +1352,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         except Exception, e:
             self.trace.exception("sending reply, exception %s", e)
             return False
-        
+
         return True # completed successfully, the request will be acknowledged
 
 
@@ -1446,13 +1446,14 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         else:
             tarcmd = "tar -b %s --force-local -xf %s"%(self.blocking_factor, stage_fname,)
         Trace.trace(10, "tar cmd %s"%(tarcmd,))
-        start_t = time.time() 
+        start_t = time.time()
         rtn = enstore_functions2.shell_command2(tarcmd)
         t = time.time() - start_t
         Trace.trace(10, "unwind returned %s"%(rtn,))
 
         if rtn[0] != 0 : # tar return code
-            Trace.log(e_errors.ERROR, "Error unwinding package %s %s"(stage_fname, rtn[2])) # stderr
+            Trace.alarm(e_errors.ERROR, "Error unwinding package %s %s %s"%
+                        (package['bfid'],stage_fname, rtn[2])) # stderr
             # clean up
             try:
                 rc = enstore_functions2.shell_command("rm -rf *")
@@ -1469,8 +1470,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             return False
 
         Trace.log(e_errors.INFO, "Finished tar from %s size %s MB rate %s MB/s"%
-                  (stage_fname, package["size"]/1000000., package["size"]/1000000./t))              
-        
+                  (stage_fname, package["size"]/1000000., package["size"]/1000000./t))
+
         new_set_cache_params = []
 
         # move files to their original location
@@ -1583,7 +1584,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             if rec['status'][0] != e_errors.OK:
                 Trace.log(e_errors.ERROR, "Package staging failed %s"%(rec ['status'],))
                 return True # return True so that the message is confirmed
-            
+
             package_id = rec.get('package_id', None)
             if package_id == bfid:
                 # request to stage a package
@@ -1594,7 +1595,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     Trace.log(e_errors.ERROR, "Package staging failed %s %s"%(package_id, rc ['status']))
                     return True # return True so that the message is confirmed
                 else:
-                    bfid_info = rc['children'] 
+                    bfid_info = rc['children']
             else: # single file
                 bfid_info.append(rec)
 
@@ -1623,7 +1624,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
         if not package_id:
             Trace.alarm(e_errors.ERROR, "is file on tape? bfid=%s"%(bfid,))
             return False
-        package = self.infoc.bfid_info(package_id) 
+        package = self.infoc.bfid_info(package_id)
         set_cache_params = [] # this list is needed to send set_cache_status command to file clerk
         Trace.log(e_errors.INFO, "Will stage package %s"%(package,))
         self.status_dict['current_migration_file'] = package['pnfs_name0']
@@ -1770,7 +1771,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                     self.status = mt.PURGED
                 elif request_type ==mt.MWC_STAGE:
                     self.status = mt.CACHED
-                self.state = IDLE 
+                self.state = IDLE
             else:
                 rc = False
         except:
@@ -1812,9 +1813,9 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             status_message = cache.messaging.mw_client.MWRStatus(orig_msg=message,
                                                                  content= content)
             Trace.trace(10, "Migrator is full. Will not process request %s sending back %s"%(message.correlation_id, status_message))
-            
+
             self._send_reply(status_message)
-            
+
             Trace.trace(10, "Migrator is full. reply sent")
             return False
 
@@ -1872,8 +1873,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
                 except Exception, e:
                     self.trace.exception("sending reply, exception %s", e)
                 return False
-                
-                
+
+
         elif request_type in (mt.MWC_STATUS): # there could more request of such nature in the future
             content = {"migrator_status": self.status, "name": self.name} # this may need more details
             if not self.work_dict.has_key(message.correlation_id):
@@ -1912,7 +1913,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             self._send_reply(confirmation_message)
             self.trace.debug("worker_purge() reply sent, reply=%s", confirmation_message)
         except Exception, e:
-            self.trace.exception("worker_purge(), sending reply, exception")         
+            self.trace.exception("worker_purge(), sending reply, exception")
         if self.write_to_tape(message.content):
             # work has completed successfully
             del(self.work_dict[message.correlation_id])
@@ -1936,7 +1937,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             self._send_reply(confirmation_message)
             self.trace.debug("worker_purge() reply sent, reply=%s", confirmation_message)
         except Exception, e:
-            self.trace.exception("worker_purge(), sending reply, exception")         
+            self.trace.exception("worker_purge(), sending reply, exception")
         if self.purge_files(message.content):
             # work has completed successfully
             del(self.work_dict[message.correlation_id])
@@ -1944,8 +1945,8 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             return True
         else:
             return False
-            
-        
+
+
     def handle_stage_from_tape(self, message):
         Trace.trace(10, "handle_stage_from_tape received: %s"%(message))
         if self.work_dict.has_key(message.correlation_id):
@@ -1960,7 +1961,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             self._send_reply(confirmation_message)
             self.trace.debug("worker_purge() reply sent, reply=%s", confirmation_message)
         except Exception, e:
-            self.trace.exception("worker_purge(), sending reply, exception")         
+            self.trace.exception("worker_purge(), sending reply, exception")
         if self.read_from_tape(message.content):
             # work has completed successfully
             del(self.work_dict[message.correlation_id])
@@ -1968,7 +1969,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             return True
         else:
             return False
-    
+
     # handle status command from migration dispatcher
     def handle_status(self, message):
         Trace.trace(10, "handle_status received: %s"%(message))
@@ -1979,7 +1980,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             self._send_reply(status_message)
             self.trace.debug("worker_purge() reply sent, reply=%s", status_message)
         except Exception, e:
-            self.trace.exception("worker_purge(), sending reply, exception")         
+            self.trace.exception("worker_purge(), sending reply, exception")
 
             # work has completed successfully
             del(self.work_dict[message.correlation_id])
@@ -2025,7 +2026,7 @@ class Migrator(dispatching_worker.DispatchingWorker, generic_server.GenericServe
             # can exit right away
             Trace.log(e_errors.INFO, "Exit requested while no active work. Will exit")
             sys.exit(0)
-        
+
 class MigratorInterface(generic_server.GenericServerInterface):
     def __init__(self):
         # fill in the defaults for possible options
@@ -2051,7 +2052,7 @@ class MigratorInterface(generic_server.GenericServerInterface):
             sys.exit(1)
         else:
             self.name = self.args[0]
-    
+
 def do_work():
     # get an interface
     intf = MigratorInterface()
@@ -2086,7 +2087,7 @@ def do_work():
         os._exit(0)
     Trace.alarm(e_errors.ALARM,"migrator %s finished (impossible)"%(intf.name,))
 
-        
+
 # check if named thread is running
 def thread_is_running(thread_name):
     threads = threading.enumerate()
