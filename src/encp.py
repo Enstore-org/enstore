@@ -463,7 +463,7 @@ def int32(v):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_11b CVS $Revision$ "
+    version_string = "v3_11c CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -5337,26 +5337,39 @@ def receive_final_dialog(control_socket):
     # File has been sent - wait for final dialog with mover.
     # We know the file has hit some sort of media....
 
-    try:
-        done_ticket = callback.read_tcp_obj(control_socket)
-
-        #Output the info.
-        if done_ticket.has_key("method"): #get
-            message = "Received final dialog (1)." + elapsed_string()
-            Trace.log(e_errors.INFO, message)
-            Trace.message(TRANSFER_LEVEL, message)
-        else: #encp
-            message = "Received final dialog for %s." % \
-                     done_ticket.get('unique_id', "Unknown") + elapsed_string()
-            Trace.log(e_errors.INFO, message)
-            Trace.message(TRANSFER_LEVEL, message)
-        #Output these two regardless of get or encp.
-        Trace.message(TICKET_LEVEL, "FINAL DIALOG:")
-        Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
-    except (select.error, socket.error, e_errors.EnstoreError), msg:
-        done_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
-    except e_errors.TCP_EXCEPTION:
-        done_ticket = {'status' : (e_errors.NET_ERROR, e_errors.TCP_EXCEPTION)}
+    last_percentage_done = 0
+    while True:
+        try:
+            done_ticket = callback.read_tcp_obj(control_socket)
+            (status, percentage) =  done_ticket["status"]
+            if status == e_errors.MOVER_BUSY:
+                percentage_done = int(percentage)
+                if percentage_done == last_percentage_done :
+                    done_ticket = {'status' : (e_errors.MOVER_STUCK, "stuck calculating selective CRC")}
+                    break
+                last_percentage_done = percentage_done
+                continue
+            else:
+                #Output the info.
+                if done_ticket.has_key("method"): #get
+                    message = "Received final dialog (1)." + elapsed_string()
+                    Trace.log(e_errors.INFO, message)
+                    Trace.message(TRANSFER_LEVEL, message)
+                else: #encp
+                    message = "Received final dialog for %s." % \
+                             done_ticket.get('unique_id', "Unknown") + elapsed_string()
+                    Trace.log(e_errors.INFO, message)
+                    Trace.message(TRANSFER_LEVEL, message)
+                #Output these two regardless of get or encp.
+                Trace.message(TICKET_LEVEL, "FINAL DIALOG:")
+                Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
+                break
+        except (select.error, socket.error, e_errors.EnstoreError), msg:
+            done_ticket = {'status' : (e_errors.NET_ERROR, str(msg))}
+            break
+        except e_errors.TCP_EXCEPTION:
+            done_ticket = {'status' : (e_errors.NET_ERROR, e_errors.TCP_EXCEPTION)}
+            break
 
     message = "[1] Time to receive final dialog: %s sec." % \
               (time.time() - receive_final_dialog_start_time,)
