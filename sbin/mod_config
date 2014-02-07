@@ -336,7 +336,7 @@ else # by default, load configuration
         #   Default location is usually ~enstore/site_specific/config
         [[ ${ENSTORE_CONFIG_DIR} ]] || abort "ENSTORE_CONFIG_DIR not set"
 
-        # ${ENSTORE_CONFIG_DIR points to top level of git working tree
+        # ${ENSTORE_CONFIG_DIR} points to the top level of git working tree
         #   we keep configuration files in subdirectory config
         dir=${ENSTORE_CONFIG_DIR}/config
         # Note, we do not append suffix ".conf" to file name anymore, must be full name
@@ -466,8 +466,8 @@ confirm_or_exit "About to commit changes, is this what you want [Y/n] " \
 # - commit to remote repository
 # - copy to all other nodes on cluster (where it is not used anyway exept policy file)
 
-echo "Copy $TEMPconfig to configuration directory:"
-cp -p $TEMPconfig $config || abort "cp -p $TEMPconfig $dir/$config failed"
+echo "Copy $TEMPconfig to $gitdir/$cfile:"
+cp -p $TEMPconfig $cfile || abort "cp -p $TEMPconfig $gitdir/$cfile failed"
 rm -f $TEMPconfig 2>/dev/null
 
 # commit changes locally to git repository
