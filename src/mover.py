@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-###############################################################################
-#
-# $Id: mover.py,v 1.1166 2013/11/21 23:08:41 moibenko Exp $
-#
-###############################################################################
-
 # python modules
 import sys
 import os
@@ -797,7 +791,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # fourth - error source
         self.need_lm_update = (0, None, 0, None)
         self.asc = None # accounting server client
-        self.send_update_cnt = 0 # send lm_update if this counter is not 0
+        self.send_update_cnt = 0 # send lm_update if this counter is 0
         self.control_socket = None
         self.lock_file_info = 0   # lock until file info is updated
         self.read_tape_running = 0 # use this to synchronize read and network threads
@@ -818,6 +812,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.last_absolute_location = 0L
         self.write_in_progress = False # set this to True before tape write, if write comletes successfuly it will be set to False
         self.read_crc_control = 0 # used to set client_crc for READ and ASSERT
+        self.read_errors = 0 # number of read errors per file
+        self.write_errors = 0 # number of write errors per file
         # 1: calculate CRC when reading from tape to memory
         # 0: calculate CRC when reading memory
 
@@ -1195,18 +1191,32 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.vol_info.update(self.vcc.inquire_vol(volume))
 
+    # get tape stats
+    def update_tape_stats(self):
+        try:
+            self.stats = self.tape_driver.get_stats()
+            self.block_n = self.stats[self.ftt.BLOCK_NUMBER]
+            self.tot_blocks = self.stats[self.ftt.BLOCK_TOTAL]
+            self.bloc_loc = long(self.stats[self.ftt.BLOC_LOC])
+            self.block_size = self.stats[self.ftt.BLOCK_SIZE]
+            self.bot = self.stats[self.ftt.BOT]
+            self.read_errors = long(self.stats[self.ftt.READ_ERRORS])
+            self.write_errors = long(self.stats[self.ftt.WRITE_ERRORS])
+
+        except (self.ftt.FTTError, TypeError), detail:
+            self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+            return
+
     # update statistics
     def update_stat(self):
         if self.driver_type != 'FTTDriver':
             return
         if self.tape_driver and self.tape_driver.ftt:
-            try:
-                stats = self.tape_driver.get_stats()
-            except (self.ftt.FTTError, TypeError), detail:
-                Trace.log(e_errors.ERROR, "error getting stats %s"%(detail,))
+            self.update_tape_stats()
+            if self.tr_failed:
                 return
 
-
+        stats = self.stats
         if self.override_ro_mount and self.tape_driver and self.tape_driver.ftt:
             Trace.log(e_errors.INFO,
                       "volume %s write protection %s  override_ro_mount %s" % \
@@ -2048,8 +2058,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             time_in_state = int(now - self.state_change_time)
             if not hasattr(self,'time_in_state'):
                 self.time_in_state = 0
-            Trace.trace(88, "time in state %s %s %s %s"%
-                        (time_in_state,self.time_in_state,self.max_time_in_state, self.state_change_time))
+            Trace.trace(88, "time in state %s %s %s %s state %s"%
+                        (time_in_state,self.time_in_state,self.max_time_in_state, self.state_change_time, state_name(self.state)))
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and
                 (self.state in (SETUP, SEEK, MOUNT_WAIT, DISMOUNT_WAIT, DRAINING, ERROR, FINISH_WRITE, ACTIVE))):
                 send_alarm = True
@@ -2119,6 +2129,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.time_in_state = time_in_state
                 self.in_state_to_cnt = self.in_state_to_cnt+1
                 Trace.trace(8, "in state cnt %s"%(self.in_state_to_cnt,))
+                Trace.trace(8, "transfer stuck %s"%(transfer_stuck,))
+                Trace.trace(8, "in_state_to_cnt %s max_in_state_cnt %s"%(self.in_state_to_cnt, self.max_in_state_cnt,))
 
                 if ((self.in_state_to_cnt >= self.max_in_state_cnt) and
                     (self.state != ERROR) and
@@ -2146,10 +2158,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         #ticket = self.format_lm_ticket(state=state, error_source=error_source)
         # if mover is offline or active send LM update less often
         Trace.trace(20, "BEFORE: STATE %s udp_sent %s"%(state_name(self.state), self.udp_cm_sent))
+        Trace.trace(20, "send_update_cnt %s method %s"%(self.send_update_cnt, self.method))
         send_rq = 1
         use_state = 1
         if ((self.state == self._last_state) and
-            (self.state == OFFLINE or self.state == ACTIVE or self.state == MOUNT_WAIT or self.state == DISMOUNT_WAIT or self.state == SEEK)):
+            (self.state in (OFFLINE, ACTIVE, MOUNT_WAIT, DISMOUNT_WAIT, SEEK))):
             send_rq = 0
             if self.send_update_cnt > 0:
                self.send_update_cnt = self.send_update_cnt - 1
@@ -2456,6 +2469,277 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.bytes_read_last = self.bytes_read
         Trace.trace(8, "read_client exiting, read %s/%s bytes" %(self.bytes_read, self.bytes_to_read))
 
+
+    def position_for_crc_check(self):
+        Trace.trace(22, "position media")
+        Trace.log(e_errors.INFO, "compression %s"%(self.compression,))
+        try:
+            have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
+            self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
+
+        except self.ftt.FTTError, detail:
+            Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive while checking a written file: %s %s"%(self.ftt.FTTError, detail))
+            self.vcc.set_system_readonly(self.current_volume)
+            Trace.alarm(e_errors.ERROR, "Serious FTT error %s on %s. Volume is set readonly"%(detail, self.current_volume))
+            self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
+            # also set volume to NOACCESS, so far
+            # no alarm is needed here because it is send by volume clerk
+            # when it sets a volume to NOACCESS
+            self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
+            # log all running proceses
+            self.log_processes(logit=1)
+
+            return
+        try:
+            save_location, block = self.tape_driver.tell()
+        except self.ftt.FTTError, detail:
+            self.transfer_failed(e_errors.WRITE_ERROR, 'Can not get drive info %s' % (detail,),
+                                 error_source=TAPE)
+            return
+        except:
+            exc, detail, tb = sys.exc_info()
+            self.transfer_failed(e_errors.WRITE_ERROR, 'Can not get drive info %s %s' % (exc, detail,),
+                                 error_source=TAPE)
+            return
+
+        Trace.trace(22,"save location %s" % (save_location,))
+        if have_tape != 1:
+            Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
+                        (self.current_volume,save_location))
+
+            self.transfer_failed(e_errors.WRITE_ERROR, "error positioning tape for selective CRC check", error_source=DRIVE)
+            return
+        try:
+            location = cookie_to_long(self.vol_info['eod_cookie'])
+            if self.header_labels:
+                location = location+1
+            self.tape_driver.seek(location, 0) #XXX is eot_ok needed?
+        except:
+            exc, detail, tb = sys.exc_info()
+            self.vcc.set_system_readonly(self.current_volume)
+            Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s. Volume is set readonly"%
+                        (self.current_volume,save_location))
+            self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
+            # also set volume to NOACCESS, so far
+            # no alarm is needed here because it is send by volume clerk
+            # when it sets a volume to NOACCESS
+            self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
+            # log all running proceses
+            self.log_processes(logit=1)
+            return
+        return save_location
+
+    def client_update_enabled(self, ticket):
+        legal_encp_version = "v3_11c" # used for backward compatibility
+        rc = False
+        c_legal_version = enstore_functions2.convert_version(legal_encp_version)
+        if "version" in ticket:
+            version=ticket['version'].split()[0]
+            c_version = enstore_functions2.convert_version(version)
+        else:
+            c_version = (0, "")
+        if c_version >= c_legal_version:
+                rc = True
+        Trace.trace(20, "client_update_enabled: legal version %s current version %s return code %s"%
+                    (c_legal_version, c_version, rc))
+
+        return rc
+
+    # this is to send to encp updated status if selective CRC check runs too long
+    # to avoid encp timeouts
+    def send_client_update(self, percent_completed):
+        if not self.client_update_enabled(self.current_work_ticket):
+            return
+        Trace.trace(20, "send_client_update: percent done %s"%(percent_completed,))
+        self.current_work_ticket['status'] = (e_errors.MOVER_BUSY, percent_completed)
+        Trace.log(e_errors.INFO, "Sending update to client: %s"%(self.current_work_ticket['status'],))
+        try:
+            callback.write_tcp_obj(self.control_socket, self.current_work_ticket)
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "error in send_client_update: %s" % (detail,))
+
+
+    def selective_crc_check(self):
+        failed = 0
+        save_location = self.position_for_crc_check()
+        if self.tr_failed:
+            # if self.position_for_crc_check fails self.tr_failed will be set
+            return
+
+        self.buffer.save_settings()
+        self.bytes_read = self.bytes_read_last = 0L
+        Trace.trace(20,"selective_crc_check: header size %s" % (self.buffer.header_size,))
+        bytes_to_read = self.bytes_to_transfer
+        header_size = self.buffer.header_size
+        # setup buffer for reads
+        saved_wrapper = self.buffer.wrapper
+        saved_sanity_bytes = self.buffer.sanity_bytes
+        saved_complete_crc = self.buffer.complete_crc
+        self.buffer.reset((self.buffer.sanity_bytes,
+                           self.buffer.sanity_crc),
+                          client_crc_on=1) # always calculate crc before writing to tape
+        self.buffer.set_wrapper(saved_wrapper)
+        Trace.trace(22, "selective_crc_check: starting check after write, bytes_to_read=%s" % (bytes_to_read,))
+        driver = self.tape_driver
+        first_block = 1
+        block_counter = 0
+        total_block_counter = 0L
+        time_started = time.time()
+        last_percent_done = 0
+        while self.bytes_read < bytes_to_read:
+
+            nbytes = min(bytes_to_read - self.bytes_read, self.buffer.blocksize)
+            self.buffer.bytes_for_crc = nbytes
+            if self.bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
+                nbytes = self.buffer.blocksize
+            try:
+                b_read = self.buffer.block_read(nbytes, driver)
+
+                # clean buffer
+                #Trace.trace(22,"write_tape: clean buffer")
+                self.buffer._writing_block = self.buffer.pull()
+                if self.buffer._writing_block:
+                    #Trace.trace(22,"write_tape: freeing block")
+                    self.buffer._freespace(self.buffer._writing_block)
+
+            except MoverError, detail:
+                detail = str(detail)
+                if detail == e_errors.CRC_ERROR:
+                    Trace.alarm(e_errors.ERROR, "selective CRC check error",
+                                {'outfile':self.current_work_ticket['outfile'],
+                                 'infile':self.current_work_ticket['infile'],
+                                 'external_label':self.current_work_ticket['vc']['external_label']})
+                    self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=DRIVE)
+                else:
+                    if detail == e_errors.ENCP_GONE:
+                        err_source = NETWORK
+                    else:
+                        err_source = UNKNOWN
+                    self.transfer_failed(detail, error_source=err_source)
+
+                failed = 1
+                break
+            except:
+                exc, detail, tb = sys.exc_info()
+                #Trace.handle_error(exc, detail, tb)
+                Trace.alarm(e_errors.ERROR, "selective CRC check error",
+                            {'outfile':self.current_work_ticket['outfile'],
+                             'infile':self.current_work_ticket['infile'],
+                             'external_label':self.current_work_ticket['vc']['external_label']})
+                self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=DRIVE)
+                failed = 1
+                break
+            if b_read <= 0:
+                Trace.alarm(e_errors.ERROR, "selective CRC check read error")
+                self.transfer_failed(e_errors.WRITE_ERROR, "read returns %s" % (self.bytes_read,),
+                                     error_source=DRIVE)
+                failed = 1
+                break
+            if first_block:
+                bytes_to_read = bytes_to_read + header_size
+                first_block = 0
+            self.bytes_read_last = self.bytes_read
+            self.bytes_read = self.bytes_read + b_read
+            if self.bytes_read > bytes_to_read: #this is OK, we read a cpio trailer or something
+                self.bytes_read = bytes_to_read
+
+            total_block_counter += 1
+            if block_counter == 2000:
+                percent_done = int(self.bytes_read*100 / self.bytes_to_write)
+                if percent_done - last_percent_done >= 5:
+                    Trace.notify("transfer %s %s %s media %s %.3f" %
+                                 (self.shortname, -self.bytes_read,
+                                  bytes_to_read, self.buffer.nbytes(), time.time()))
+
+                    last_percent_done = percent_done
+                now = time.time()
+                if now - time_started >= 14*60: # encp waits for 15 minutes before re-trying the transfer
+                    # send update message to client
+                    self.send_client_update(percent_done)
+                    time_started = now
+                block_counter = 0
+            else:
+                block_counter += 1
+            Trace.trace(22, "selective_crc_check: bytes_read %s bytes_read_last %s"%(self.bytes_read, self.bytes_read_last))
+        # end while
+        Trace.trace(22,"selective_crc_check: total blocks %s"%(total_block_counter,))
+
+        Trace.trace(22,"write_tape: read CRC %s write CRC %s"%
+                    (self.buffer.complete_crc, saved_complete_crc))
+        if failed:
+            self.vcc.set_system_readonly(self.current_volume)
+            Trace.alarm(e_errors.ERROR, "Write error on %s. See log for details. Volume is set readonly"%(self.current_volume,))
+            # also set volume to NOACCESS, so far
+            # no alarm is needed here because it is send by volume clerk
+            # when it sets a volume to NOACCESS
+            self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
+            # log all running proceses
+            self.log_processes(logit=1)
+            return
+        if self.buffer.complete_crc != saved_complete_crc:
+            self.vcc.set_system_readonly(self.current_volume)
+            Trace.alarm(e_errors.ERROR,
+                        "selective CRC check error on %s. See log for details. Volume is set readonly"%
+                        (self.current_volume,))
+            self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error",error_source=DRIVE)
+            return
+        Trace.log(e_errors.INFO,
+                  "selective CRC check after writing file completed successfuly")
+        self.buffer.restore_settings()
+        # position to eod"
+        try:
+            self.tape_driver.seek(save_location, 0) #XXX is eot_ok
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.alarm(e_errors.ERROR,
+                        "error positioning tape %s after selective CRC check. Position %s"%
+                        (self.current_volume,save_location))
+            self.vcc.set_system_readonly(self.current_volume)
+            self.transfer_failed(e_errors.POSITIONING_ERROR,
+                                 'positioning error %s. See log for details. Volume is set readonly' %
+                                 (detail,), error_source=DRIVE)
+            # also set volume to NOACCESS, so far
+            # no alarm is needed here because it is send by volume clerk
+            # when it sets a volume to NOACCESS
+            self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
+            # log all running proceses
+            self.log_processes(logit=1)
+            return
+
+        read_errors_1 = self.read_errors # save read error count returned after write
+        write_errors_1 = self.write_errors # save read error count returned after write
+        self.read_errors = -1
+        self.write_errors = -1
+
+        self.update_tape_stats()
+        if self.tr_failed:
+            return
+
+        if self.read_errors > 0:
+            self.read_errors = self.read_errors - read_errors_1 # number of read error per current file
+        if self.write_errors > 0:
+            self.write_errors = self.write_errors - write_errors_1 # number of read error per current file
+
+        #if self.buffer.read_stats[4] > 0.:
+        #    rates = bytes_read/self.buffer.read_stats[4]
+        if self.buffer.read_stats[1] > 0.:
+            rates = self.bytes_written/self.buffer.read_stats[1] # read rates are file_size / time_in_driver.read
+        else:
+            rates = 0.
+        Trace.log(e_errors.INFO, 'drive stats after crc check. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_read_tot %s tape_rate %s'%
+                  (self.current_volume,
+                   self.block_n,
+                   self.block_size,
+                   self.bloc_loc,
+                   self.tot_blocks,
+                   self.bot,
+                   self.read_errors,
+                   self.write_errors,
+                   self.bytes_read,
+                   self.buffer.read_stats[4],
+                   rates))
+
     def write_tape(self):
         Trace.log(e_errors.INFO, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         Trace.trace(8, "bytes_to_transfer=%s" % (self.bytes_to_transfer,))
@@ -2468,29 +2752,22 @@ class Mover(dispatching_worker.DispatchingWorker,
         count = 0
         defer_write = 1
         failed = 0
+        self.bloc_loc = 0L
         self.media_transfer_time = 0.
-        bloc_loc = 0L
         idle_time = 0. # accumulative time when not writing
 
         if self.driver_type == 'FTTDriver':
-            try:
-                # to test the case uncomment 2 lines below
-                #import ftt2
-                #raise self.ftt.FTTError(("partial stats", ftt2.FTT_EPARTIALSTAT,""))
-                stats = self.tape_driver.get_stats()
-                bloc_loc = long(stats[self.ftt.BLOC_LOC])
-                # get read and write error counts
-                read_errors_0 = long(stats[self.ftt.READ_ERRORS])
-                write_errors_0 = long(stats[self.ftt.WRITE_ERRORS])
-            except (self.ftt.FTTError, TypeError), detail:
-                self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%
-                                     (detail, bloc_loc), error_source=DRIVE)
+            self.update_tape_stats()
+            if self.tr_failed:
                 return
-        Trace.log(e_errors.INFO, 'Write starting. Tape %s absolute location in blocks %s'%(self.current_volume, bloc_loc))
+            read_errors_0 = self.read_errors
+            write_errors_0 = self.write_errors
+
+        Trace.log(e_errors.INFO, 'Write starting. Tape %s absolute location in blocks %s'%(self.current_volume, self.bloc_loc))
 
         if self.driver_type == 'FTTDriver':
             if self.write_counter == 0: # this is a first write since tape has been mounted
-                self.initial_abslute_location = bloc_loc
+                self.initial_abslute_location = self.bloc_loc
                 self.current_absolute_location = self.initial_abslute_location
                 self.last_absolute_location = self.current_absolute_location
                 self.last_blocks_written = 0L
@@ -2501,8 +2778,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.set_volume_noaccess(self.current_volume, "Tape is at BOT, can not write")
                     return
             else:
-                Trace.trace(31, "cur %s, initial %s, last %s"%(bloc_loc, self.initial_abslute_location, self.last_absolute_location))
-                if (bloc_loc <= self.initial_abslute_location) or (bloc_loc != self.last_absolute_location):
+                Trace.trace(31, "cur %s, initial %s, last %s"%(self.bloc_loc, self.initial_abslute_location, self.last_absolute_location))
+                if (self.bloc_loc <= self.initial_abslute_location) or (self.bloc_loc != self.last_absolute_location):
                     Trace.alarm(e_errors.ERROR, "Write error on %s. Wrong position. See log for details"%(self.current_volume,))
                     self.log_processes(logit=1)
                     self.transfer_failed(e_errors.WRITE_ERROR,
@@ -2510,13 +2787,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                                          (self.current_volume,
                                           self.initial_abslute_location,
                                           self.last_absolute_location,
-                                          bloc_loc,
+                                          self.bloc_loc,
                                           self.last_blocks_written),error_source=TAPE)
 
                     self.set_volume_noaccess(self.current_volume, "Wrong position. See log for details")
                     return
 
-                self.current_absolute_location = bloc_loc
+                self.current_absolute_location = self.bloc_loc
 
 
         buffer_empty_t = time.time()   #time when buffer empty has been detected
@@ -2807,27 +3084,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.last_blocks_written = nblocks
                 new_bloc_loc = 0L
                 if self.driver_type == 'FTTDriver':
-                    read_errors = -1
-                    write_errors = -1
-
-                    try:
-                        stats = self.tape_driver.get_stats()
-                        block_n = stats[self.ftt.BLOCK_NUMBER]
-                        tot_blocks = stats[self.ftt.BLOCK_TOTAL]
-                        new_bloc_loc = long(stats[self.ftt.BLOC_LOC])
-                        block_size = stats[self.ftt.BLOCK_SIZE]
-                        bot = stats[self.ftt.BOT]
-                        read_errors = long(stats[self.ftt.READ_ERRORS])
-                        write_errors = long(stats[self.ftt.WRITE_ERRORS])
-
-                    except self.ftt.FTTError, detail:
-                        self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+                    self.read_errors = -1
+                    self.write_errors = -1
+                    self.update_tape_stats()
+                    if self.tr_failed:
                         return
-
-                    if read_errors > 0:
-                       read_errors = read_errors - read_errors_0 # number of read error per current file
-                    if write_errors > 0:
-                       write_errors = write_errors - write_errors_0 # number of read error per current file
+                    new_bloc_loc = self.bloc_loc
+                    if self.read_errors > 0:
+                       self.read_errors = self.read_errors - read_errors_0 # number of read error per current file
+                    if self.write_errors > 0:
+                       self.write_errors = self.write_errors - write_errors_0 # number of read error per current file
 
                     Trace.log(e_errors.INFO, 'filemarks written. Tape %s absolute location in blocks %s'%(self.current_volume, new_bloc_loc,))
                     Trace.log(e_errors.INFO, "write_tape timing:pull %s write %s crc_check %s freespace %s block_write %s idle %s" %
@@ -2847,13 +3113,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO, 'drive stats after write. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_write_tot %s tape_rate %s'%
                               (self.current_volume,
                                self.current_location,
-                               block_n,
-                               block_size,
+                               self.block_n,
+                               self.block_size,
                                new_bloc_loc,
-                               tot_blocks,
-                               bot,
-                               read_errors,
-                               write_errors,
+                               self.tot_blocks,
+                               self.bot,
+                               self.read_errors,
+                               self.write_errors,
                                self.bytes_written,
                                self.buffer.write_stats[4],
                                rates))
@@ -2906,219 +3172,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if self.check_written_file() and self.driver_type == 'FTTDriver':
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
-                Trace.trace(22, "position media")
-                Trace.log(e_errors.INFO, "compression %s"%(self.compression,))
-                try:
-                    have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
-                    self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
-
-                except self.ftt.FTTError, detail:
-                    Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive while checking a written file: %s %s"%(self.ftt.FTTError, detail))
-                    self.vcc.set_system_readonly(self.current_volume)
-                    Trace.alarm(e_errors.ERROR, "Serious FTT error %s on %s. Volume is set readonly"%(detail, self.current_volume))
-                    self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
-                    # also set volume to NOACCESS, so far
-                    # no alarm is needed here because it is send by volume clerk
-                    # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
-                    # log all running proceses
-                    self.log_processes(logit=1)
-
+                self.selective_crc_check()
+                if self.tr_failed:
                     return
-                try:
-                    save_location, block = self.tape_driver.tell()
-                except self.ftt.FTTError, detail:
-                    self.transfer_failed(e_errors.WRITE_ERROR, 'Can not get drive info %s' % (detail,),
-                                         error_source=TAPE)
-                    return
-                except:
-                    exc, detail, tb = sys.exc_info()
-                    self.transfer_failed(e_errors.WRITE_ERROR, 'Can not get drive info %s %s' % (exc, detail,),
-                                         error_source=TAPE)
-                    return
-
-                Trace.trace(22,"save location %s" % (save_location,))
-                if have_tape != 1:
-                    Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
-                                (self.current_volume,save_location))
-
-                    self.transfer_failed(e_errors.WRITE_ERROR, "error positioning tape for selective CRC check", error_source=DRIVE)
-                    return
-                try:
-                    location = cookie_to_long(self.vol_info['eod_cookie'])
-                    if self.header_labels:
-                        location = location+1
-                    self.tape_driver.seek(location, 0) #XXX is eot_ok needed?
-                except:
-                    exc, detail, tb = sys.exc_info()
-                    self.vcc.set_system_readonly(self.current_volume)
-                    Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s. Volume is set readonly"%
-                                (self.current_volume,save_location))
-                    self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
-                    # also set volume to NOACCESS, so far
-                    # no alarm is needed here because it is send by volume clerk
-                    # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
-                    # log all running proceses
-                    self.log_processes(logit=1)
-                    return
-                self.buffer.save_settings()
-                bytes_read = 0L
-                Trace.trace(20,"write_tape: header size %s" % (self.buffer.header_size,))
-                #bytes_to_read = self.bytes_to_transfer + self.buffer.header_size
-                bytes_to_read = self.bytes_to_transfer
-                header_size = self.buffer.header_size
-                # setup buffer for reads
-                saved_wrapper = self.buffer.wrapper
-                saved_sanity_bytes = self.buffer.sanity_bytes
-                saved_complete_crc = self.buffer.complete_crc
-                self.buffer.reset((self.buffer.sanity_bytes,
-                                   self.buffer.sanity_crc),
-                                  client_crc_on=1) # always calculate crc before writing to tape
-                self.buffer.set_wrapper(saved_wrapper)
-                Trace.trace(22, "starting check after write, bytes_to_read=%s" % (bytes_to_read,))
-                driver = self.tape_driver
-                first_block = 1
-                while bytes_read < bytes_to_read:
-
-                    nbytes = min(bytes_to_read - bytes_read, self.buffer.blocksize)
-                    self.buffer.bytes_for_crc = nbytes
-                    if bytes_read == 0 and nbytes<self.buffer.blocksize: #first read, try to read a whole block
-                        nbytes = self.buffer.blocksize
-                    try:
-                        b_read = self.buffer.block_read(nbytes, driver)
-
-                        # clean buffer
-                        #Trace.trace(22,"write_tape: clean buffer")
-                        self.buffer._writing_block = self.buffer.pull()
-                        if self.buffer._writing_block:
-                            #Trace.trace(22,"write_tape: freeing block")
-                            self.buffer._freespace(self.buffer._writing_block)
-
-                    except MoverError, detail:
-                        detail = str(detail)
-                        if detail == e_errors.CRC_ERROR:
-                            Trace.alarm(e_errors.ERROR, "selective CRC check error",
-                                        {'outfile':self.current_work_ticket['outfile'],
-                                         'infile':self.current_work_ticket['infile'],
-                                         'external_label':self.current_work_ticket['vc']['external_label']})
-                            self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=DRIVE)
-                        else:
-                            if detail == e_errors.ENCP_GONE:
-                                err_source = NETWORK
-                            else:
-                                err_source = UNKNOWN
-                            self.transfer_failed(detail, error_source=err_source)
-
-                        failed = 1
-                        break
-                    except:
-                        exc, detail, tb = sys.exc_info()
-                        #Trace.handle_error(exc, detail, tb)
-                        Trace.alarm(e_errors.ERROR, "selective CRC check error",
-                                    {'outfile':self.current_work_ticket['outfile'],
-                                     'infile':self.current_work_ticket['infile'],
-                                     'external_label':self.current_work_ticket['vc']['external_label']})
-                        self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=DRIVE)
-                        failed = 1
-                        break
-                    if b_read <= 0:
-                        Trace.alarm(e_errors.ERROR, "selective CRC check read error")
-                        self.transfer_failed(e_errors.WRITE_ERROR, "read returns %s" % (bytes_read,),
-                                             error_source=DRIVE)
-                        failed = 1
-                        break
-                    if first_block:
-                        bytes_to_read = bytes_to_read + header_size
-                        first_block = 0
-                    bytes_read = bytes_read + b_read
-                    if bytes_read > bytes_to_read: #this is OK, we read a cpio trailer or something
-                        bytes_read = bytes_to_read
-
-                Trace.trace(22,"write_tape: read CRC %s write CRC %s"%
-                            (self.buffer.complete_crc, saved_complete_crc))
-                if failed:
-                    self.vcc.set_system_readonly(self.current_volume)
-                    Trace.alarm(e_errors.ERROR, "Write error on %s. See log for details. Volume is set readonly"%(self.current_volume,))
-                    # also set volume to NOACCESS, so far
-                    # no alarm is needed here because it is send by volume clerk
-                    # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume, "Write error. See log for details")
-                    # log all running proceses
-                    self.log_processes(logit=1)
-                    return
-                if self.buffer.complete_crc != saved_complete_crc:
-                    self.vcc.set_system_readonly(self.current_volume)
-                    Trace.alarm(e_errors.ERROR,
-                                "selective CRC check error on %s. See log for details. Volume is set readonly"%
-                                (self.current_volume,))
-                    self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error",error_source=DRIVE)
-                    return
-                Trace.log(e_errors.INFO,
-                          "selective CRC check after writing file completed successfuly")
-                self.buffer.restore_settings()
-                # position to eod"
-                try:
-                    self.tape_driver.seek(save_location, 0) #XXX is eot_ok
-                except:
-                    exc, detail, tb = sys.exc_info()
-                    Trace.alarm(e_errors.ERROR,
-                                "error positioning tape %s after selective CRC check. Position %s"%
-                                (self.current_volume,save_location))
-                    self.vcc.set_system_readonly(self.current_volume)
-                    self.transfer_failed(e_errors.POSITIONING_ERROR,
-                                         'positioning error %s. See log for details. Volume is set readonly' %
-                                         (detail,), error_source=DRIVE)
-                    # also set volume to NOACCESS, so far
-                    # no alarm is needed here because it is send by volume clerk
-                    # when it sets a volume to NOACCESS
-                    self.set_volume_noaccess(self.current_volume, "Positioning error. See log for details")
-                    # log all running proceses
-                    self.log_processes(logit=1)
-                    return
-
-                read_errors_1 = read_errors # save read error count returned after write
-                write_errors_1 = write_errors # save read error count returned after write
-                read_errors = -1
-                write_errors = -1
-                try:
-                    stats = self.tape_driver.get_stats()
-                    block_n = stats[self.ftt.BLOCK_NUMBER]
-                    tot_blocks = stats[self.ftt.BLOCK_TOTAL]
-                    new_bloc_loc = stats[self.ftt.BLOC_LOC]
-                    block_size = stats[self.ftt.BLOCK_SIZE]
-                    bot = stats[self.ftt.BOT]
-                    read_errors = long(stats[self.ftt.READ_ERRORS])
-                    write_errors = long(stats[self.ftt.WRITE_ERRORS])
-
-                except self.ftt.FTTError, detail:
-                    self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
-                    return
-
-                if read_errors > 0:
-                    read_errors = read_errors - read_errors_1 # number of read error per current file
-                if write_errors > 0:
-                    write_errors = write_errors - write_errors_1 # number of read error per current file
-
-                #if self.buffer.read_stats[4] > 0.:
-                #    rates = bytes_read/self.buffer.read_stats[4]
-                if self.buffer.read_stats[1] > 0.:
-                    rates = self.bytes_written/self.buffer.read_stats[1] # read rates are file_size / time_in_driver.read
-                else:
-                    rates = 0.
-                Trace.log(e_errors.INFO, 'drive stats after crc check. Tape %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_read_tot %s tape_rate %s'%
-                          (self.current_volume,
-                           block_n,
-                           block_size,
-                           bloc_loc,
-                           tot_blocks,
-                           bot,
-                           read_errors,
-                           write_errors,
-                           bytes_read,
-                           self.buffer.read_stats[4],
-                           rates))
-
 
             if self.update_after_writing():
                 self.files_written_cnt = self.files_written_cnt + 1
@@ -3127,7 +3183,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.check_drive_rate(self.current_work_ticket['fc'].get('bfid',None),
                                           self.bytes_written,
                                           rates, 'w',
-                                          read_errors, write_errors, stats)
+                                          self.read_errors, self.write_errors, self.stats)
 
                 self.transfer_completed()
                 self.write_counter =  self.write_counter + 1 # successful write was done
@@ -3142,18 +3198,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.read_tape_running = 1 # use this to synchronize read and network threads
 
         if self.driver_type == 'FTTDriver':
-            try:
-                # to test the case uncomment 2 lines below
-                #import ftt2
-                #raise self.ftt.FTTError(("partial stats", ftt2.FTT_EPARTIALSTAT,""))
-                stats = self.tape_driver.get_stats()
-                # get read and write error counts
-                read_errors_0 = long(stats[self.ftt.READ_ERRORS])
-                write_errors_0 = long(stats[self.ftt.WRITE_ERRORS])
-            except (self.ftt.FTTError, TypeError), detail:
-                self.transfer_failed(e_errors.READ_ERROR, "error getting stats before read %s"%
-                                     (detail,), error_source=DRIVE)
+            self.update_tape_stats()
+            if self.tr_failed:
                 return
+            read_errors_0 = self.read_errors
+            write_errors_0 = self.write_errors
 
         Trace.log(e_errors.INFO, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         if self.buffer.client_crc_on:
@@ -3413,27 +3462,16 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         block_n = tot_blocks = bloc_loc = block_size = bot = 0L
         if self.driver_type == 'FTTDriver':
-            read_errors = -1
-            write_errors = -1
-
-            try:
-                stats = self.tape_driver.get_stats()
-                block_n = stats[self.ftt.BLOCK_NUMBER]
-                tot_blocks = stats[self.ftt.BLOCK_TOTAL]
-                bloc_loc = stats[self.ftt.BLOC_LOC]
-                block_size = stats[self.ftt.BLOCK_SIZE]
-                bot = stats[self.ftt.BOT]
-                read_errors = long(stats[self.ftt.READ_ERRORS])
-                write_errors = long(stats[self.ftt.WRITE_ERRORS])
-
-            except self.ftt.FTTError, detail:
-                self.transfer_failed(e_errors.INFO, "error getting stats after read %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+            self.read_errors = -1
+            self.write_errors = -1
+            self.update_tape_stats()
+            if self.tr_failed:
                 return
 
-            if read_errors > 0:
-                read_errors = read_errors - read_errors_0 # number of read error per current file
-            if write_errors > 0:
-                write_errors = write_errors - write_errors_0 # number of read error per current file
+            if self.read_errors > 0:
+                self.read_errors = self.read_errors - read_errors_0 # number of read error per current file
+            if self.write_errors > 0:
+                self.write_errors = self.write_errors - write_errors_0 # number of read error per current file
 
 
             #if self.buffer.read_stats[4] > 0.:
@@ -3445,20 +3483,20 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO, 'drive stats after read. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s read_err %s write_err %s bytes %s block_read_tot %s tape_rate %s'%
                       (self.current_volume,
                        location,
-                       block_n,
-                       block_size,
-                       bloc_loc,
-                       tot_blocks,
-                       bot,
-                       read_errors,
-                       write_errors,
+                       self.block_n,
+                       self.block_size,
+                       self.bloc_loc,
+                       self.tot_blocks,
+                       self.bot,
+                       self.read_errors,
+                       self.write_errors,
                        self.bytes_read,
                        self.buffer.read_stats[4],
                        rates))
             self.check_drive_rate(self.file_info.get('bfid',None),
                                   self.bytes_read,
                                   rates, 'r',
-                                  read_errors, write_errors, stats)
+                                  self.read_errors, self.write_errors, self.stats)
 
         if break_here and self.method == 'read_next':
             self.bytes_to_write = self.bytes_read # set correct size for bytes to write
@@ -3887,21 +3925,17 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s %s' % (exc, detail,), error_source=DRIVE)
                         self.unlock_state()
                         return
-                try:
-                    stats = self.tape_driver.get_stats()
-                    bloc_loc = long(stats[self.ftt.BLOC_LOC])
-                except (self.ftt.FTTError, TypeError), detail:
-                    self.transfer_failed(e_errors.WRITE_ERROR,
-                                         "error getting stats before write %s"%
-                                         (detail, ), error_source=DRIVE)
+
+                self.update_tape_stats()
+                if self.tr_failed:
                     self.unlock_state()
                     return
 
-                if bloc_loc != self.last_absolute_location:
+                if self.bloc_loc != self.last_absolute_location:
                     self.transfer_failed(e_errors.WRITE_ERROR,
                                          "Wrong position for %s: last %s, current %s"%
                                          (self.current_volume, self.last_absolute_location,
-                                          bloc_loc,),error_source=TAPE)
+                                          self.bloc_loc,),error_source=TAPE)
                     self.vcc.set_system_readonly(self.current_volume)
                     Trace.alarm(e_errors.ERROR,
                                 "Wrong position for %s. See log for details. Volume is set readonly"%
@@ -5735,12 +5769,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                             exc, detail, tb = sys.exc_info()
                             Trace.log(e_errors.ERROR, "error positioning to last fm %s %s"%(exc, detail,))
                             return
-                    try:
-                        stats = self.tape_driver.get_stats()
-                        bloc_loc = long(stats[self.ftt.BLOC_LOC])
-                    except (self.ftt.FTTError, TypeError), detail:
-                        Trace.log(e_errors.WRITE_ERROR, "error getting stats before write %s"%(detail,))
+                    self.update_tape_stats()
+                    if self.tr_failed:
                         return
+                    bloc_loc = self.bloc_loc
                     if bloc_loc != self.last_absolute_location:
                         Trace.alarm(e_errors.ERROR, "Wrong position for %s: last %s, current %s. Will set readonly"%
                                   (self.current_volume, self.last_absolute_location,
